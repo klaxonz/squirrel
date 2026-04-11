@@ -8,20 +8,40 @@
           :tabs-with-counts="[]"
           :nsfw="nsfw"
           :site="site"
+          :sort-by="sortBy"
           :is-refreshing="isRefreshing"
           @update:nsfw="(value) => { nsfw = value }"
           @update:site="(value) => { site = value }"
+          @update:sortBy="(value) => { sortBy = value; handleSortChange(value) }"
           @refresh="refreshList"
         >
           <template #actions>
-            <Button size="xs" class="subscribed-toolbar__button whitespace-nowrap" @click="showAddDialog = true">
-              <PlusIcon class="h-4 w-4" />
-              <span>添加订阅</span>
-            </Button>
-            <Button size="xs" variant="secondary" class="subscribed-toolbar__button subscribed-toolbar__button--secondary whitespace-nowrap" @click="showImportDialog = true">
-              <ArrowDownTrayIcon class="h-4 w-4" />
-              <span>导入订阅</span>
-            </Button>
+            <div class="toolbar-left-actions">
+              <div class="sort-tabs" role="tablist" aria-label="排序方式">
+                <button
+                  v-for="opt in sortOptions"
+                  :key="opt.value"
+                  class="sort-tab"
+                  :class="{ 'is-active': sortBy === opt.value }"
+                  role="tab"
+                  :aria-selected="sortBy === opt.value"
+                  @click="handleSortChange(opt.value)"
+                >
+                  {{ opt.label }}
+                </button>
+              </div>
+              <div class="toolbar-divider" aria-hidden="true"></div>
+            </div>
+            <div class="toolbar-right-actions">
+              <Button size="xs" class="subscribed-toolbar__button whitespace-nowrap" @click="showAddDialog = true">
+                <PlusIcon class="h-4 w-4" />
+                <span>添加订阅</span>
+              </Button>
+              <Button size="xs" variant="secondary" class="subscribed-toolbar__button subscribed-toolbar__button--secondary whitespace-nowrap" @click="showImportDialog = true">
+                <ArrowDownTrayIcon class="h-4 w-4" />
+                <span>导入订阅</span>
+              </Button>
+            </div>
           </template>
         </FeedToolbar>
       </div>
@@ -45,9 +65,13 @@
       </div>
 
       <div class="content-container">
+        <div v-if="loading && subscriptions.length" class="subscribed-inline-loading">
+          <LoadingIndicator :loading="true" text="正在加载订阅" size="sm" />
+        </div>
+
         <Transition name="fade-list">
-          <div v-if="loading && !subscriptions.length" key="skeleton" class="subscription-stream">
-            <SubscriptionSkeleton v-for="i in 10" :key="i" :delay="i * 50" />
+          <div v-if="loading && !subscriptions.length" key="skeleton" class="subscription-list subscription-list--loading">
+            <SubscriptionSkeleton v-for="i in 14" :key="i" :delay="i * 70" />
           </div>
 
           <div v-else-if="hasLoadedOnce && !loading && !subscriptions.length" key="empty" class="subscribed-empty-card">
@@ -60,17 +84,16 @@
             </div>
           </div>
 
-          <TransitionGroup v-else key="list" name="subscription-row" tag="div" class="subscription-stream">
+          <TransitionGroup v-else key="list" name="subscription-row" tag="div" class="subscription-list">
             <article
               v-for="subscription in subscriptions"
               :key="subscription.id"
-              class="subscription-row group"
+              class="subscription-row"
               :class="{ 'is-refreshing': isResetting }"
-              @click="getSubscriptionVideos(subscription.id)"
             >
-              <!-- Left: Avatar with Status -->
-              <div class="subscription-row__media">
-                <div class="subscription-row__avatar-wrapper">
+              <!-- Left: Avatar -->
+              <div class="subscription-row__avatar-wrap" @click="getSubscriptionVideos(subscription.id)">
+                <div class="subscription-row__avatar-container">
                   <SubscriptionAvatar
                     :src="subscription.avatar"
                     :name="subscription.name"
@@ -82,65 +105,77 @@
               </div>
 
               <!-- Center: Identity & Metadata -->
-              <div class="subscription-row__main">
-                <div class="subscription-row__identity">
+              <div class="subscription-row__main" @click="getSubscriptionVideos(subscription.id)">
+                <div class="subscription-row__name-row">
                   <h3 class="subscription-row__name" :title="subscription.name">{{ subscription.name }}</h3>
-                  <span class="subscription-row__type-tag">
-                    {{ subscription.type === 'PLAYLIST' ? '播放列表' : '频道' }}
+                  <span class="subscription-row__site-badge">
+                    {{ subscription.site || 'unknown' }}
                   </span>
+                  <span v-if="subscription.type === 'PLAYLIST'" class="subscription-row__type-tag">播放列表</span>
+                  <span v-if="subscription.is_nsfw" class="subscription-row__nsfw-tag">NSFW</span>
                 </div>
                 <div class="subscription-row__meta">
-                  <div class="subscription-row__status">
+                  <span
+                    class="subscription-row__status-badge"
+                    :class="getStatusBadgeClass(getRefreshState(subscription.id).status)"
+                  >
                     <span
                       v-if="getRefreshState(subscription.id).isRefreshing"
-                      class="h-1 w-1 animate-pulse rounded-full bg-primary"
+                      class="status-badge-dot animate-pulse"
                     ></span>
-                    <span class="text-[10px] uppercase tracking-tighter opacity-60">
-                      {{ getYouTubeStyleStatusText(getRefreshState(subscription.id).status, getRefreshState(subscription.id).phase) }}
-                    </span>
-                  </div>
-                  <span class="subscription-row__dot"></span>
+                    {{ getStatusText(getRefreshState(subscription.id).status, getRefreshState(subscription.id).phase) }}
+                  </span>
+                  <span class="subscription-row__sep" aria-hidden="true"></span>
                   <span class="subscription-row__date">{{ formatDate(subscription.created_at) }}</span>
                 </div>
               </div>
 
-              <!-- Right: Stats (Desktop Only mostly) -->
-              <div class="subscription-row__stats">
-                <div class="subscription-row__stat">
+              <!-- Stats -->
+              <div class="subscription-row__stats" @click="getSubscriptionVideos(subscription.id)">
+                <div class="subscription-row__stat-item">
                   <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_videos }}</span>
-                  <span class="subscription-row__stat-label">全部</span>
+                  <span class="subscription-row__stat-label">视频</span>
                 </div>
-                <div class="subscription-row__stat">
+                <div class="subscription-row__stat-sep" aria-hidden="true"></div>
+                <div class="subscription-row__stat-item">
                   <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_extract }}</span>
                   <span class="subscription-row__stat-label">已解析</span>
                 </div>
               </div>
 
-              <!-- Far Right: Actions -->
+              <!-- Actions: always visible -->
               <div class="subscription-row__actions">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  class="subscription-row__settings-trigger"
-                  @click.stop="openSettings(subscription)"
+                <button
+                  class="row-action-btn"
+                  :disabled="getRefreshState(subscription.id).isRefreshing"
+                  :title="getRefreshState(subscription.id).isRefreshing ? '更新中' : '刷新'"
+                  @click="handleRefreshSubscription(subscription.id)"
                 >
-                  <Cog6ToothIcon class="h-4 w-4" />
-                </Button>
+                  <ArrowPathIcon class="row-action-icon" :class="{ 'is-spinning': getRefreshState(subscription.id).isRefreshing }" />
+                </button>
+                <button
+                  class="row-action-btn"
+                  title="设置"
+                  @click="openSettings(subscription)"
+                >
+                  <Cog6ToothIcon class="row-action-icon" />
+                </button>
               </div>
             </article>
           </TransitionGroup>
         </Transition>
 
         <div
-          v-if="!allLoaded"
+          v-show="loading || (!allLoaded && subscriptions.length > 0)"
           ref="loadingTrigger"
           class="subscribed-loading-trigger"
         >
-          <LoadingIndicator v-if="loading" :loading="true" text="正在同步订阅库" size="sm" />
+          <LoadingIndicator v-if="loading" :loading="true" text="加载更多" size="sm" />
+          <span v-else class="subscribed-trigger-hint">滚动加载更多</span>
         </div>
 
         <div v-if="allLoaded && subscriptions.length" class="subscribed-bottom-copy">
-          已经到底啦
+          {{ subscriptions.length }} 个订阅 · 已经到底啦
         </div>
       </div>
     </div>
@@ -255,7 +290,7 @@
 <script setup>
 import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowDownTrayIcon, Cog6ToothIcon, PlusIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, ArrowPathIcon, Cog6ToothIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import FeedToolbar from '@/components/feed/FeedToolbar.vue'
 import LoadingIndicator from '@/components/feed/LoadingIndicator.vue'
 import SubscriptionSkeleton from '@/components/feed/SubscriptionSkeleton.vue'
@@ -299,7 +334,7 @@ const hasLoadedOnce = ref(false)
 const allLoaded = ref(false)
 const currentPage = ref(1)
 const searchQuery = ref('')
-const { nsfw, site } = useFeedFilters()
+const { nsfw, site, sortBy } = useFeedFilters()
 
 const showSettings = ref(false)
 const selectedSubscription = ref(null)
@@ -340,6 +375,14 @@ const selectedRefreshState = computed(() => {
 const isUnsubscribing = computed(() => unsubscribingId.value === selectedSubscription.value?.id)
 
 const setupIntersectionObserver = () => {
+  if (observer.value) {
+    observer.value.disconnect()
+    observer.value = null
+  }
+
+  const el = document.querySelector('.subscribed-loading-trigger')
+  if (!el) return
+
   observer.value = new IntersectionObserver(
     (entries) => {
       if (entries[0].isIntersecting && !loading.value && !allLoaded.value) {
@@ -352,10 +395,7 @@ const setupIntersectionObserver = () => {
       threshold: 0,
     },
   )
-
-  if (loadingTrigger.value) {
-    observer.value.observe(loadingTrigger.value)
-  }
+  observer.value.observe(el)
 }
 
 const loadSubscriptions = async () => {
@@ -394,6 +434,7 @@ const loadSubscriptions = async () => {
 
     nextTick(() => {
       if (loadingTrigger.value && observer.value) {
+        observer.value.unobserve(loadingTrigger.value)
         observer.value.observe(loadingTrigger.value)
       }
       restoreScrollPosition()
@@ -555,21 +596,35 @@ const handleRetryRefresh = async (subscriptionId) => {
   await retryRefresh(subscriptionId)
 }
 
-const getYouTubeStyleStatusText = (status, phase) => {
-  if (status === 'queued') return '排队中'
-  if (status === 'in_progress') {
-    switch (phase) {
-      case 'init': return '准备中'
-      case 'fetching_feed': return '检查新内容'
-      case 'calculating_delta': return '分析更新'
-      case 'extracting': return '解析中'
-      case 'finalizing': return '即将完成'
-      default: return '更新中'
-    }
+const sortOptions = [
+  { value: 'name', label: '名称' },
+  { value: 'site', label: '站点' },
+  { value: 'recent', label: '最近更新' },
+]
+
+const handleSortChange = (value) => {
+  sortBy.value = value
+  const sorted = [...subscriptions.value]
+  if (value === 'name') {
+    sorted.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+  } else if (value === 'site') {
+    sorted.sort((a, b) => (a.site || '').localeCompare(b.site || '', 'zh-CN'))
+  } else if (value === 'recent') {
+    sorted.sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0))
   }
-  if (status === 'completed') return '已完成'
-  if (status === 'failed') return '更新失败'
-  return '更新中'
+  subscriptions.value = sorted
+}
+
+watch(sortBy, (val) => handleSortChange(val))
+
+const getStatusBadgeClass = (status) => {
+  switch (status) {
+    case 'queued': return 'badge--queued'
+    case 'in_progress': return 'badge--progress'
+    case 'completed': return 'badge--completed'
+    case 'failed': return 'badge--failed'
+    default: return 'badge--idle'
+  }
 }
 
 onMounted(async () => {
@@ -635,11 +690,62 @@ onUnmounted(() => {
 }
 
 .subscribed-toolbar {
-  padding: 1rem 0;
+  padding: 0.75rem 0;
 }
 
 .subscribed-toolbar :deep(.toolbar-slot-actions) {
   gap: 0.5rem;
+}
+
+.toolbar-left-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.toolbar-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 1.25rem;
+  background: hsl(var(--border) / 0.5);
+}
+
+.sort-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  background: hsl(var(--secondary) / 0.3);
+  border-radius: calc(var(--radius-sm) + 2px);
+  padding: 2px;
+}
+
+.sort-tab {
+  padding: 0.2rem 0.6rem;
+  border-radius: calc(var(--radius-sm) - 1px);
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground) / 0.7);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  letter-spacing: 0.02em;
+}
+
+.sort-tab:hover {
+  color: hsl(var(--foreground));
+  background: hsl(var(--background) / 0.5);
+}
+
+.sort-tab.is-active {
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  box-shadow: 0 1px 3px hsl(var(--border) / 0.4);
 }
 
 .subscribed-toolbar__button {
@@ -654,40 +760,58 @@ onUnmounted(() => {
 }
 
 .channel-container {
-  padding-top: 0.5rem;
+  padding-top: 0.75rem;
 }
 
-/* Fluid Stream Layout */
-.subscription-stream {
+/* List */
+.subscription-list {
   display: flex;
   flex-direction: column;
+  gap: 0;
+}
+
+.subscription-list--loading {
+  min-height: calc(100dvh - 12rem);
+}
+
+.subscription-list--loading .skeleton-row:first-child {
   border-top: 1px solid hsl(var(--border) / 0.5);
-  margin-top: 0.5rem;
+}
+
+.subscribed-inline-loading {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  padding: 0.25rem 0 0.5rem;
+  margin-bottom: 0.25rem;
+  background: linear-gradient(to bottom, hsl(var(--background)) 65%, hsl(var(--background) / 0));
+  pointer-events: none;
 }
 
 .subscription-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 3rem 1fr auto auto;
   align-items: center;
-  gap: 1.25rem;
-  padding: 1rem 0;
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
-  background: transparent;
+  gap: 0 1.25rem;
+  padding: 0.875rem 0;
   cursor: pointer;
-  transition: all 0.1s ease;
+  transition: background 0.1s ease;
 }
 
 .subscription-row:hover {
-  background: hsl(var(--secondary) / 0.15);
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
+  background: hsl(var(--secondary) / 0.12);
 }
 
-/* Avatar Wrapper */
-.subscription-row__media {
+/* Avatar */
+.subscription-row__avatar-wrap {
   flex-shrink: 0;
+  display: flex;
+  justify-content: center;
 }
 
-.subscription-row__avatar-wrapper {
+.subscription-row__avatar-container {
   position: relative;
   width: 2.75rem;
   height: 2.75rem;
@@ -696,12 +820,11 @@ onUnmounted(() => {
 .subscription-row__avatar {
   width: 100%;
   height: 100%;
-  border-radius: var(--radius-sm);
-  border: 1px solid hsl(var(--border) / 0.4);
+  border-radius: calc(var(--radius-sm) - 1px);
 }
 
 .subscription-row__avatar :deep(.avatar-image) {
-  filter: grayscale(0.2);
+  filter: grayscale(0.15);
   transition: filter 0.2s ease;
 }
 
@@ -712,29 +835,27 @@ onUnmounted(() => {
 .subscription-row__avatar-pulse {
   position: absolute;
   inset: -3px;
-  border: 2px solid hsl(var(--primary) / 0.6);
-  border-radius: calc(var(--radius-sm) + 3px);
+  border: 2px solid hsl(var(--primary) / 0.65);
+  border-radius: calc(var(--radius-sm) + 2px);
   animation: stream-pulse 1.5s ease-in-out infinite;
 }
 
-/* Identity & Metadata */
+/* Main info */
 .subscription-row__main {
-  flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
 }
 
-.subscription-row__identity {
+.subscription-row__name-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.3rem;
 }
 
 .subscription-row__name {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: hsl(var(--foreground));
   overflow: hidden;
@@ -742,100 +863,191 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
+.subscription-row__site-badge {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: hsl(var(--primary) / 0.75);
+  padding: 0.1rem 0.35rem;
+  background: hsl(var(--primary) / 0.08);
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  flex-shrink: 0;
+}
+
 .subscription-row__type-tag {
-  font-family: var(--font-mono, monospace);
   font-size: 0.55rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  color: hsl(var(--muted-foreground) / 0.8);
-  padding: 0.05rem 0.25rem;
-  background: hsl(var(--secondary) / 0.5);
-  border-radius: 2px;
+  letter-spacing: 0.06em;
+  color: hsl(var(--muted-foreground) / 0.7);
+  padding: 0.08rem 0.3rem;
+  background: hsl(var(--secondary) / 0.45);
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.subscription-row__nsfw-tag {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: hsl(var(--destructive) / 0.85);
+  padding: 0.08rem 0.3rem;
+  background: hsl(var(--destructive) / 0.1);
+  border-radius: 3px;
+  flex-shrink: 0;
 }
 
 .subscription-row__meta {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  font-family: var(--font-mono, monospace);
-  font-size: 0.65rem;
-  color: hsl(var(--muted-foreground) / 0.6);
 }
 
-.subscription-row__status {
-  display: flex;
+.subscription-row__status-badge {
+  display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
+  font-size: 0.65rem;
+  font-weight: 500;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
 }
 
-.subscription-row__dot {
+.badge--idle {
+  color: hsl(var(--muted-foreground) / 0.6);
+  background: hsl(var(--secondary) / 0.25);
+}
+.badge--queued {
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--secondary) / 0.4);
+}
+.badge--progress {
+  color: hsl(var(--primary) / 0.9);
+  background: hsl(var(--primary) / 0.1);
+}
+.badge--completed {
+  color: hsl(142 70% 40% / 0.9);
+  background: hsl(142 70% 40% / 0.1);
+}
+.badge--failed {
+  color: hsl(var(--destructive) / 0.85);
+  background: hsl(var(--destructive) / 0.1);
+}
+
+.status-badge-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.subscription-row__sep {
   width: 3px;
   height: 3px;
-  border-radius: 999px;
-  background: currentColor;
+  border-radius: 50%;
+  background: hsl(var(--border));
+  flex-shrink: 0;
 }
 
-/* Stats (Single Column Grid feel) */
+.subscription-row__date {
+  font-size: 0.65rem;
+  color: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Stats */
 .subscription-row__stats {
-  display: none;
-  gap: 3rem;
-  margin: 0 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0 0.5rem;
 }
 
-.subscription-row__stat {
+.subscription-row__stat-item {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  min-width: 5rem;
+  align-items: center;
+  gap: 1px;
+  min-width: 2.5rem;
 }
 
 .subscription-row__stat-value {
-  font-family: var(--font-mono, monospace);
   font-size: 0.875rem;
   font-weight: 600;
   color: hsl(var(--foreground));
+  line-height: 1;
 }
 
 .subscription-row__stat-label {
-  font-family: var(--font-mono, monospace);
   font-size: 0.55rem;
+  color: hsl(var(--muted-foreground) / 0.5);
+  text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: hsl(var(--muted-foreground) / 0.6);
+}
+
+.subscription-row__stat-sep {
+  width: 1px;
+  height: 1.5rem;
+  background: hsl(var(--border) / 0.5);
+  flex-shrink: 0;
 }
 
 /* Actions */
 .subscription-row__actions {
   display: flex;
   align-items: center;
-  opacity: 0;
+  gap: 0.125rem;
+  opacity: 0.35;
   transition: opacity 0.15s ease;
 }
 
-.subscription-row:hover .subscription-row__actions {
+.subscription-row:hover .subscription-row__actions,
+.subscription-row__actions:focus-within {
   opacity: 1;
 }
 
-.subscription-row__settings-trigger {
+.row-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  background: transparent;
+  border-radius: calc(var(--radius-sm) - 1px);
+  cursor: pointer;
   color: hsl(var(--muted-foreground));
+  transition: all 0.15s ease;
 }
 
-.subscription-row__settings-trigger:hover {
+.row-action-btn:hover {
+  background: hsl(var(--secondary) / 0.4);
   color: hsl(var(--foreground));
 }
 
-/* Empty State (Minimal) */
-.subscribed-empty-state,
+.row-action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.row-action-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.row-action-icon.is-spinning {
+  animation: spin 0.8s linear infinite;
+}
+
+/* Empty State */
 .subscribed-empty-card {
   min-height: 40vh;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.subscribed-empty-card {
   flex-direction: column;
   text-align: center;
-  gap: 1.5rem;
+  gap: 1.25rem;
   padding: 2rem;
   border: 1px dashed hsl(var(--border) / 0.6);
   border-radius: var(--radius-lg);
@@ -867,16 +1079,14 @@ onUnmounted(() => {
 }
 
 .subscribed-bottom-copy {
-  margin: 3rem 0;
+  margin: 2.5rem 0;
   text-align: center;
-  font-family: var(--font-mono, monospace);
-  color: hsl(var(--muted-foreground) / 0.4);
+  color: hsl(var(--muted-foreground) / 0.35);
   font-size: 0.7rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
-/* Dialog Styling */
+/* Dialog */
 .subscription-dialog__summary {
   display: flex;
   align-items: center;
@@ -906,11 +1116,16 @@ onUnmounted(() => {
   padding: 0 1.5rem 1.5rem;
 }
 
-/* Animation */
+/* Animations */
 @keyframes stream-pulse {
   0% { transform: scale(1); opacity: 0.4; }
   50% { transform: scale(1.05); opacity: 1; }
   100% { transform: scale(1); opacity: 0.4; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .subscription-row-enter-active,
@@ -920,17 +1135,17 @@ onUnmounted(() => {
 
 .subscription-row-enter-from {
   opacity: 0;
-  transform: translateX(-10px);
+  transform: translateX(-8px);
 }
 
 .subscription-row-leave-to {
   opacity: 0;
-  transform: translateX(10px);
+  transform: translateX(8px);
 }
 
 .fade-list-enter-active,
 .fade-list-leave-active {
-  transition: opacity 0.4s ease;
+  transition: opacity 0.3s ease;
 }
 
 .fade-list-enter-from,
@@ -939,14 +1154,67 @@ onUnmounted(() => {
 }
 
 .subscribed-loading-trigger {
-  padding: 2rem 0;
+  padding: 1rem 0;
   display: flex;
   justify-content: center;
+  min-height: 2.5rem;
 }
 
-@media (min-width: 768px) {
+.subscribed-trigger-hint {
+  font-size: 0.7rem;
+  color: hsl(var(--muted-foreground) / 0.35);
+  letter-spacing: 0.05em;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .subscription-row {
+    grid-template-columns: 2.5rem 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 0 0.75rem;
+    padding: 0.75rem 0;
+  }
+
+  .subscription-row__avatar-container {
+    width: 2.25rem;
+    height: 2.25rem;
+    grid-row: 1;
+  }
+
+  .subscription-row__avatar-wrap {
+    grid-row: 1;
+  }
+
+  .subscription-row__main {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
   .subscription-row__stats {
-    display: flex;
+    grid-column: 3;
+    grid-row: 1;
+    gap: 0.75rem;
+    padding: 0;
+  }
+
+  .subscription-row__actions {
+    grid-column: 2 / 4;
+    grid-row: 2;
+    opacity: 1;
+    padding-top: 0.25rem;
+    justify-content: flex-start;
+  }
+
+  .subscription-row__actions {
+    opacity: 0.35;
+  }
+
+  .subscription-row:hover .subscription-row__actions {
+    opacity: 1;
+  }
+
+  .toolbar-left-actions {
+    display: none;
   }
 }
 

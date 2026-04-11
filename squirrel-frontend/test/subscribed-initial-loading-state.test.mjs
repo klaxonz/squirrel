@@ -29,4 +29,5 @@ test('subscribed view swaps between empty and skeleton without out-in transition
 
   assert.doesNotMatch(source, /<Transition name="fade-list" mode="out-in">/)
   assert.match(source, /<Transition name="fade-list">/)
+  assert.match(source, /<div v-if="loading && !subscriptions\.length" key="skeleton" class="subscription-list subscription-list--loading">/)
 })
