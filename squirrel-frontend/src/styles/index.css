@@ -119,7 +119,7 @@
 
   /* Theme Definitions */
   [data-theme='light'] {
-    --background: 210 40% 98%;
+    --background: 30 20% 98%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
@@ -127,21 +127,21 @@
     --popover-foreground: 222 47% 11%;
     --primary: 24 100% 50%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96.1%;
+    --secondary: 30 15% 96%;
     --secondary-foreground: 222 47% 11.2%;
-    --muted: 210 40% 96.1%;
+    --muted: 30 15% 95%;
     --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96.1%;
+    --accent: 30 15% 96%;
     --accent-foreground: 222 47% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 30 15% 90%;
+    --input: 30 15% 90%;
     --ring: 24 100% 50%;
-    --sidebar: 210 40% 96.1%;
+    --sidebar: 30 20% 96%;
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-accent: 210 40% 93%;
+    --sidebar-border: 30 15% 90%;
+    --sidebar-accent: 30 15% 93%;
     --sidebar-accent-foreground: 24 100% 50%;
     --overlay: 222 47% 11% / 0.1;
     --overlay-soft: 222 47% 11% / 0.05;
