@@ -28,8 +28,8 @@ defineProps({
 .related-video-skeleton {
   display: grid;
   grid-template-columns: 110px 1fr;
-  gap: 0.6rem;
-  padding: 0.35rem;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
   position: relative;
   overflow: hidden;
   animation: skeleton-appear 0.4s ease-out forwards;

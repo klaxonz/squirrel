@@ -1,3 +1,4 @@
+
 <template>
   <div ref="videoPageRef" class="video-page terminal-viewport scrollbar-hide" :class="{ 'is-widescreen': isWidescreen }">
     <div :class="['video-page__container', { 'is-widescreen': isWidescreen }]">
@@ -140,7 +141,6 @@
         <div class="video-aside__panel">
           <div class="video-aside__header">
             <h2 class="video-aside__title">相关视频</h2>
-            <div class="video-aside__status">[链路已建立]</div>
           </div>
           <div class="video-aside__content scrollbar-hide">
             <Transition name="fade-aside" mode="out-in">
@@ -622,6 +622,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 基础容器 */
 .terminal-viewport {
   background-color: hsl(var(--background));
   background-image: 
@@ -635,12 +636,11 @@ onUnmounted(() => {
   min-height: 100%;
 }
 
-/* 视频页面容器对齐其它页面 */
 .video-page__container {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  max-width: 1720px; /* YouTube 风格的最大宽度约束 */
+  max-width: 1720px;
   margin: 0 auto;
   width: 100%;
   padding: 1rem;
@@ -649,7 +649,6 @@ onUnmounted(() => {
 @media (min-width: 1280px) {
   .video-page__container {
     display: grid;
-    /* 左侧主内容占大头，右侧相关视频固定宽度 */
     grid-template-columns: minmax(0, 1fr) 400px;
     align-items: start;
     padding: 1.5rem 2rem;
@@ -666,7 +665,6 @@ onUnmounted(() => {
   background: #000;
   border-radius: 0;
   overflow: hidden;
-  /* 移除之前的 padding 和 border，让视频更沉浸 */
 }
 
 .video-container {
@@ -676,508 +674,45 @@ onUnmounted(() => {
   background: #000;
 }
 
-/* 优化取景框，使其成为轻量级叠加层而非容器 */
-.viewfinder-box {
-  position: absolute;
-  inset: 0;
-  padding: 0;
-  z-index: 5;
-  pointer-events: none;
-}
-
-.video-container :deep(.sp-player) {
-  border-radius: 0; /* 视频内部填满容器 */
-}
-
-.video-meta {
-  margin-top: 1rem;
-  padding: 0;
-}
-
-.video-meta__title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  line-height: 1.4;
-  margin-bottom: 0.75rem;
-  color: hsl(var(--foreground));
-}
-
-/* 重新排列：频道信息和操作按钮在同一行 */
-.video-meta__header {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-@media (min-width: 768px) {
-  .video-meta__header {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-}
-
-.video-channel {
-  padding: 0;
-  border: none;
-}
-
-.video-channel__primary {
-  gap: 0.75rem;
-}
-
-.video-channel__avatar {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-}
-
-.video-meta__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0;
-  border: none;
-}
-
-.video-aside {
-  width: 100%;
-}
-
-@media (min-width: 1280px) {
-  .video-aside {
-    position: sticky;
-    top: 1.5rem;
-  }
-}
-
-.video-aside__panel {
-  height: auto;
-}
-
-.related-video-card {
-  grid-template-columns: 160px 1fr; /* 侧边栏卡片更宽一点，更像 YouTube */
-  gap: 0.75rem;
-  padding: 0.5rem 0;
-  background: transparent;
-  border: none;
-}
-
-.related-video-card:hover {
-  background: rgba(255, 255, 255, 0.05);
-  transform: none;
-}
-
-.related-video-card__thumb {
-  border-radius: 8px;
-}
-
-.related-video-card__title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  -webkit-line-clamp: 2;
-}
-
-
-.video-aside__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.45rem 0.75rem; /* 减小头部内边距 */
-  background: hsl(var(--primary) / 0.04);
-  border-bottom: 1px solid hsl(var(--primary) / 0.15);
-}
-
-.video-aside__title {
-  font-size: 0.72rem; /* 减小标题字号 */
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: hsl(var(--primary));
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.video-aside__status {
-  font-size: 0.55rem; /* 减小状态字号 */
-  color: hsl(var(--primary) / 0.4);
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.video-aside__content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0.5rem;
-}
-
-.video-aside__footer {
-  height: 4px;
-  background: linear-gradient(to right, hsl(var(--primary)) 0%, transparent 100%);
-  opacity: 0.3;
-}
-
-.related-videos-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem; /* 极致压缩间距 */
-}
-
+/* 推荐视频列表项 - 彻底移除卡片效果 */
 .related-video-card {
   position: relative;
   display: grid;
-  grid-template-columns: 110px 1fr; /* 左侧固定宽度，右侧自适应 */
-  gap: 0.6rem;
-  padding: 0.25rem;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.015);
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  grid-template-columns: 120px 1fr;
+  gap: 0.65rem;
+  padding: 0.4rem 0;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.2, 0, 0.1, 1);
   align-items: flex-start;
 }
 
-@media (min-width: 1280px) {
+@media (max-width: 640px) {
   .related-video-card {
-    grid-template-columns: 100px 1fr; /* 侧边栏更窄时微调比例 */
-    padding: 0.25rem;
-  }
-}
-
-/* 调整平板端的紧凑比例 */
-@media (min-width: 640px) and (max-width: 1279px) {
-  .related-video-card {
-    grid-template-columns: 140px 1fr;
-    gap: 0.8rem;
-    padding: 0.35rem;
+    grid-template-columns: 110px 1fr;
+    gap: 0.5rem;
   }
 }
 
 .related-video-card:hover {
-  background: hsl(var(--primary) / 0.04);
-  border-color: hsl(var(--primary) / 0.2);
   transform: translateX(4px);
+  background: hsl(var(--foreground) / 0.03) !important;
 }
 
-
-/* 视频区域容器样式 */
-.video-section {
-  position: relative;
+.related-video-card__thumb-container {
   width: 100%;
-  margin: 0 auto;
-  background: #000;
-  border: none;
-  border-radius: 0;
-  overflow: hidden;
-  box-shadow: none;
-}
-
-.video-container {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  background: #000;
-  border-radius: 0;
-}
-
-.viewfinder-box {
-  position: relative;
-  padding: 12px;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-@media (max-width: 640px) {
-  .viewfinder-box {
-    padding: 6px;
-  }
-}
-
-.viewfinder-corner {
-  position: absolute;
-  width: 15px;
-  height: 15px;
-  border: 1px solid hsl(var(--primary));
-  z-index: 10;
-  pointer-events: none;
-  box-shadow: 0 0 5px hsl(var(--primary) / 0.2);
-}
-
-.viewfinder-corner--top-left { top: 0; left: 0; border-right: none; border-bottom: none; }
-.viewfinder-corner--top-right { top: 0; right: 0; border-left: none; border-bottom: none; }
-.viewfinder-corner--bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; }
-.viewfinder-corner--bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; }
-
-.video-container :deep(.sp-player) {
-  background: #000;
-  border-radius: 0;
-  overflow: hidden;
-}
-
-.video-meta {
-  margin-top: 0.875rem;
-  padding: 0 12px;
-}
-
-@media (max-width: 640px) {
-  .video-meta {
-    padding: 0 6px;
-  }
-}
-
-.video-meta__panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-  padding: 0;
-}
-
-.video-meta__header {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.6rem;
-}
-
-.video-meta__eyebrow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-  margin-bottom: 0.45rem;
-}
-
-.video-meta__pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.2rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.video-meta__title {
-  width: 100%;
-  font-size: clamp(0.96rem, 0.9rem + 0.2rem, 1.1rem);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.3;
-  word-break: break-word;
-  padding-bottom: 0.4rem; /* 减小底部 padding */
-  border-bottom: none;
-  margin-bottom: 0.4rem; /* 显著减小底部 margin */
-}
-
-.video-meta__eyebrow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-  margin-bottom: 0.25rem; /* 减小间距 */
-}
-
-.video-channel {
-  padding: 0.25rem 0; /* 压缩频道区域高度 */
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.video-channel__avatar {
-  width: 2.2rem; /* 缩小头像 */
-  height: 2.2rem;
-  border-radius: 50%;
-}
-
-.video-channel__name {
-  font-size: 0.85rem; /* 稍微缩小字体 */
-  font-weight: 600;
-}
-
-.video-meta__actions {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  justify-content: flex-start;
-  padding-top: 0.5rem; /* 压缩动作栏顶部间距 */
-  border-top: 1px solid hsl(var(--foreground) / 0.05);
-}
-
-
-.video-meta__title-prefix {
-  opacity: 0.45;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8em;
-  margin-right: 0.5rem;
-  color: hsl(var(--primary));
-}
-
-.video-meta__actions {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  justify-content: flex-start;
-  padding-top: 0.75rem;
-  border-top: 1px solid hsl(var(--border) / 0.68);
-}
-
-.video-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.24rem;
-  min-height: 1.52rem;
-  padding: 0 0.5rem;
-  border-radius: 4px;
-  color: hsl(var(--foreground) / 0.45);
-  font-family: 'JetBrains Mono', monospace;
-  text-transform: uppercase;
-  font-size: 0.6rem;
-  transition: all 0.2s;
-}
-
-.video-action:hover, .video-action.is-active {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.08);
-}
-
-.video-action__label::before { content: '['; opacity: 0.5; }
-.video-action__label::after { content: ']'; opacity: 0.5; }
-
-.video-channel {
-  padding: 0.5rem 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  width: 100%;
-  min-width: 0;
-}
-
-.video-channel__primary {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.video-channel__identity {
-  min-width: 0;
-  flex: 0 1 auto;
-}
-
-.video-channel__avatar {
-  width: 2.6rem;
-  height: 2.6rem;
-  border-radius: 50%;
-}
-
-.video-channel__name {
-  font-size: 0.92rem;
-  font-weight: 600;
-}
-
-.video-channel__unsubscribe {
-  font-size: 0.6rem;
-  color: rgba(255, 255, 255, 0.45);
-}
-
-.video-channel__stats {
-  display: flex;
-  gap: 0.6rem;
-  font-size: 0.74rem;
-  color: hsl(var(--muted-foreground));
-}
-
-.related-video-card {
-  position: relative;
-  display: grid;
-  grid-template-columns: 110px 1fr; /* 强制左封面右标题布局 */
-  gap: 0.6rem;
-  padding: 0.35rem;
-  border-radius: 3px;
-  background: hsl(var(--foreground) / 0.015);
-  border: 1px solid hsl(var(--foreground) / 0.03);
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.2, 0, 0.1, 1);
-  align-items: flex-start;
-}
-
-@media (min-width: 1280px) {
-  .related-video-card {
-    grid-template-columns: 100px 1fr; /* 侧边栏模式下微调 */
-    padding: 0.35rem;
-    flex-direction: row; /* 覆盖之前的 column */
-  }
-}
-
-/* 调整平板端的布局比例 */
-@media (min-width: 640px) and (max-width: 1279px) {
-  .related-video-card {
-    grid-template-columns: 140px 1fr;
-    gap: 0.8rem;
-    padding: 0.35rem;
-  }
-}
-
-
-.related-video-card:hover {
-  background: hsl(var(--primary) / 0.04);
-  border-color: hsl(var(--primary) / 0.2);
-  transform: translateX(4px);
 }
 
 .related-video-card__thumb {
   position: relative;
   overflow: hidden;
-  border-radius: 2px;
+  border-radius: 4px; /* 进一步减小圆角，更显精致 */
   background: hsl(var(--background));
   aspect-ratio: 16 / 9;
   width: 100%;
-}
-
-.related-video-card__fallback {
-  position: absolute;
-  inset: 0;
-  background: hsl(var(--background) / 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.fallback-noise {
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  opacity: 0.05;
-}
-
-.fallback-content {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3rem;
-  z-index: 1;
-}
-
-.fallback-status {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.6rem;
-  color: hsl(var(--primary));
-  letter-spacing: 0.3em;
-  font-weight: 800;
-  opacity: 0.6;
-}
-
-.fallback-id {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.5rem;
-  color: hsl(var(--foreground) / 0.15);
-  letter-spacing: 0.1em;
 }
 
 .related-video-card__image {
@@ -1185,292 +720,56 @@ onUnmounted(() => {
   height: 100%;
   object-fit: cover;
   opacity: 0;
-  transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.2, 0, 0.1, 1);
+  transition: opacity 0.3s ease;
 }
 
 .related-video-card__image.image-loaded {
   opacity: 1;
 }
 
-.related-video-card:hover .related-video-card__image {
-  transform: scale(1.05);
-  filter: brightness(1.1) contrast(1.05);
-}
-
-.related-video-card__scanline {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: hsl(var(--primary) / 0.4);
-  box-shadow: 0 0 10px hsl(var(--primary) / 0.6);
-  opacity: 0;
-  pointer-events: none;
-  z-index: 5;
-}
-
-.related-video-card:hover .related-video-card__scanline {
-  animation: scanline-anim 1.5s linear infinite;
-  opacity: 1;
-}
-
-@keyframes scanline-anim {
-  0% { top: 0; }
-  100% { top: 100%; }
-}
-
-.related-video-card__data-overlay {
-  position: absolute;
-  top: 0.5rem;
-  left: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.15rem 0.4rem;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(4px);
-  border-radius: 2px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.6rem;
-  color: hsl(var(--primary));
-  border: 1px solid hsl(var(--primary) / 0.3);
-}
-
-.related-video-card__status-dot {
-  width: 5px;
-  height: 5px;
-  background: hsl(var(--primary));
-  border-radius: 50%;
-  box-shadow: 0 0 6px hsl(var(--primary));
-  animation: status-pulse 1s ease infinite alternate;
-}
-
-@keyframes status-pulse {
-  from { opacity: 0.4; }
-  to { opacity: 1; }
-}
-
-.related-video-card__duration {
-  position: absolute;
-  right: 0.5rem;
-  bottom: 0.5rem;
-  padding: 0.15rem 0.35rem;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.65rem;
-  border-radius: 2px;
-  backdrop-filter: blur(4px);
-}
-
 .related-video-card__title {
+  font-size: 0.82rem; /* 稍微调小字号 */
+  font-weight: 600;
+  line-height: 1.3;
+  color: hsl(var(--foreground));
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font-size: 0.75rem; /* 极致字号压缩 */
-  font-weight: 500;
-  line-height: 1.3;
-  color: hsl(var(--foreground));
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
+  transition: color 0.2s;
+}
+
+.related-video-card:hover .related-video-card__title {
+  color: hsl(var(--primary));
 }
 
 .related-video-card__meta {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.58rem; /* 极致字号压缩 */
-  color: hsl(var(--foreground) / 0.3);
+  gap: 0.35rem;
+  font-size: 0.7rem; /* 稍微调小字号 */
+  color: hsl(var(--muted-foreground) / 0.8);
 }
 
 .related-video-card__duration {
   position: absolute;
-  right: 0.35rem;
-  bottom: 0.35rem;
+  right: 0.25rem;
+  bottom: 0.25rem;
   padding: 0.05rem 0.25rem;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.8);
   color: #fff;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.55rem;
-  border-radius: 1px;
-  backdrop-filter: blur(4px);
-}
-
-.related-video-card__data-overlay {
-  position: absolute;
-  top: 0.35rem;
-  left: 0.35rem;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.05rem 0.25rem;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  border-radius: 1px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.5rem;
-  color: hsl(var(--primary));
-  border: 1px solid hsl(var(--primary) / 0.3);
-}
-
-
-.related-video-card__meta {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-family: 'JetBrains Mono', monospace;
   font-size: 0.65rem;
-  color: hsl(var(--foreground) / 0.4);
+  border-radius: 2px;
+  font-family: 'JetBrains Mono', monospace;
 }
 
-.related-video-card__channel:hover {
-  color: hsl(var(--primary));
-}
-
-.video-aside__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0;
-}
-
-.video-aside__title {
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-
-@media (min-width: 768px) {
-  .video-meta__header {
-    gap: 0.75rem;
-  }
-
-  .video-meta__title {
-    padding-right: 0;
-  }
-
-  .video-meta__actions {
-    width: 100%;
-    max-width: none;
-  }
-}
-
-@media (min-width: 1200px) {
-  .video-meta__header {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-    column-gap: 1rem;
-  }
-
-  .video-meta__copy {
-    padding-right: 0.25rem;
-  }
-
-  .video-meta__actions {
-    width: auto;
-    max-width: min(28rem, 38vw);
-    flex-wrap: nowrap;
-    gap: 0.35rem;
-    justify-content: flex-end;
-    align-self: start;
-    padding-top: 0;
-    border-top: none;
-  }
-}
-
-/* 滚动条样式统一到全局 .scrollbar */
-
-.no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;  /* Chrome, Safari and Opera */
-}
-
-@media (max-width: 640px) {
-  .video-section {
-    border-radius: 0;
-    box-shadow: none;
-  }
-
-  .video-container {
-    height: auto;
-    border-radius: 0;
-    aspect-ratio: 16 / 9;
-  }
-
-  .video-container :deep(.sp-player) {
-    border-radius: 0;
-  }
-
-  .video-meta__actions {
-    gap: 0.375rem;
-  }
-
-  .video-action {
-    min-height: 1.42rem;
-    padding: 0 0.34rem;
-  }
-
-  .video-action__label {
-    font-size: var(--font-size-2xs);
-  }
-
-  .video-meta__title {
-    font-size: 0.9rem;
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.5rem;
-  }
-
-  .video-meta__title-prefix {
-    font-size: 0.7rem;
-  }
-
-  .video-channel {
-    padding: 0.85rem;
-  }
-
-  .video-channel::before {
-    font-size: 8px;
-  }
-
-  .video-channel__avatar-wrapper {
-    font-size: 1.25rem;
-  }
-
-  .related-video-card__title {
-    font-size: 0.78rem;
-  }
-
-  .related-video-card__channel,
-  .related-video-card__date {
-    font-size: 0.6rem;
-  }
-}
-
-.related-video-card {
-  grid-template-columns: minmax(6.8rem, 7.6rem) minmax(0, 1fr);
-  gap: 0.7rem;
-  padding: 0.45rem 0;
-}
-
-@supports not (aspect-ratio: 1 / 1) {
-  .video-container {
-    height: 0;
-    padding-bottom: 56.25%;
-  }
-}
-
-/* Theater mode keeps the related rail mounted and reflows it below the player. */
+/* 宽屏/剧院模式适配 - 优化可视区域 */
 .video-page__container.is-widescreen {
   --video-theater-top-offset: calc(var(--app-topbar-height, 0px) + 0.5rem);
-  --video-theater-meta-peek: clamp(6.5rem, 12vh, 8.5rem);
-  --video-theater-bottom-gap: 0.75rem;
+  /* 增加保底高度，从 8.5rem 提升到更安全的 11rem，确保标题+两行信息可见 */
+  --video-theater-meta-peek: clamp(10rem, 20vh, 14rem); 
+  --video-theater-bottom-gap: 0.5rem;
   --video-theater-max-height: calc(100vh - var(--video-theater-top-offset) - var(--video-theater-meta-peek) - var(--video-theater-bottom-gap));
   --video-theater-max-height: calc(100dvh - var(--video-theater-top-offset) - var(--video-theater-meta-peek) - var(--video-theater-bottom-gap));
   display: grid;
@@ -1487,124 +786,227 @@ onUnmounted(() => {
   height: var(--video-theater-max-height);
   margin-inline: calc(50% - 50vw);
   background: #000;
+  overflow: hidden; /* 防止溢出 */
 }
 
+/* 关键修复：确保容器在高度受限时也能完整显示 */
 .video-page__container.is-widescreen .video-container {
-  width: 100%;
   height: 100%;
+  width: 100%;
   max-height: var(--video-theater-max-height);
-  background: #000;
+  aspect-ratio: 16 / 9;
   margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-page__container.is-widescreen .video-container :deep(.sp-player) {
+  height: 100%;
+  width: 100%;
+  max-height: 100%;
+}
+
+/* 宽屏模式下大幅压缩信息区域间距 */
+.video-page__container.is-widescreen .video-meta {
+  margin-top: 0.5rem;
+  padding: 0 1.5rem;
+}
+
+.video-page__container.is-widescreen .video-meta__title {
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+  padding-bottom: 0;
+}
+
+.video-page__container.is-widescreen .video-meta__header {
+  display: flex;
+  flex-direction: row; /* 强制横向排布 */
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.video-page__container.is-widescreen .video-channel {
+  padding: 0;
+  width: auto;
+}
+
+.video-page__container.is-widescreen .video-channel__avatar {
+  width: 2rem; /* 缩小头像 */
+  height: 2rem;
+}
+
+.video-page__container.is-widescreen .video-meta__actions {
+  width: auto;
+  padding-top: 0;
+  border-top: none;
+  justify-content: flex-end;
 }
 
 .video-page__container.is-widescreen .video-aside {
   position: static;
   top: auto;
-  margin-top: 0.5rem;
+  margin-top: 1rem;
 }
 
-.video-page__container.is-widescreen .video-aside__content,
-.video-page__container.is-widescreen .related-videos-list {
-  overflow: visible;
-  max-height: none;
-  padding-right: 0;
+/* 侧边栏整体样式 */
+.video-aside__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  margin-bottom: 1rem;
 }
 
-.video-page__container.is-widescreen .related-video-card {
-  grid-template-columns: minmax(10.5rem, 12rem) minmax(0, 1fr);
-  gap: 0.8rem;
-  padding: 0.45rem 0;
+.video-aside__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
 }
 
-@media (min-width: 1280px) {
-  .video-page__container.is-widescreen {
-    max-width: min(1920px, calc(100vw - 2rem));
-    padding: 0 1rem 2rem;
+.video-aside__status {
+  font-size: 0.7rem;
+  color: hsl(var(--primary) / 0.6);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.related-videos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* 视频元数据区域 - 恢复终端风格 */
+.video-meta {
+  margin-top: 0.875rem;
+  padding: 0 12px;
+}
+
+@media (max-width: 640px) {
+  .video-meta {
+    padding: 0 6px;
   }
+}
 
-  .video-page__container.is-widescreen .video-meta {
-    max-width: none;
-  }
+.video-meta__title {
+  width: 100%;
+  font-size: clamp(0.96rem, 0.9rem + 0.2rem, 1.1rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  word-break: break-word;
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.4rem;
+  color: hsl(var(--foreground));
+}
 
-  .video-page__container.is-widescreen .related-video-card {
-    grid-template-columns: minmax(13rem, 15rem) minmax(0, 1fr);
+.video-meta__header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+@media (min-width: 1200px) {
+  .video-meta__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: 1rem;
   }
 }
 
+.video-channel {
+  padding: 0.25rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+}
 
-/* 平滑过渡动画 - 快速淡入淡出 */
-.fade-meta-enter-active,
-.fade-meta-leave-active,
-.fade-aside-enter-active,
-.fade-aside-leave-active,
+.video-channel__primary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.video-channel__avatar {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+}
+
+.video-channel__name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.video-channel__stats {
+  font-size: 0.74rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.video-meta__actions {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-start;
+  padding-top: 0.75rem;
+  border-top: 1px solid hsl(var(--border) / 0.6);
+}
+
+@media (min-width: 1200px) {
+  .video-meta__actions {
+    width: auto;
+    padding-top: 0;
+    border-top: none;
+    justify-content: flex-end;
+  }
+}
+
+.video-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  min-height: 1.52rem;
+  padding: 0 0.5rem;
+  border-radius: 4px;
+  background: transparent;
+  color: hsl(var(--foreground) / 0.45);
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  font-size: 0.6rem;
+  transition: all 0.2s;
+}
+
+.video-action:hover, .video-action.is-active {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+}
+
+.video-action__label::before { content: '['; opacity: 0.5; }
+.video-action__label::after { content: ']'; opacity: 0.5; }
+
+/* 过渡动画 */
 .fade-player-enter-active {
-  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.2, 0, 0, 1);
+  transition: opacity 0.5s ease;
 }
-
-.fade-meta-enter-from,
-.fade-meta-leave-to,
-.fade-aside-enter-from,
-.fade-aside-leave-to,
 .fade-player-enter-from {
   opacity: 0;
-  transform: translateY(10px);
 }
 
 .related-list-enter-active {
-  transition: all 0.4s ease;
+  transition: all 0.3s ease;
 }
-
 .related-list-enter-from {
   opacity: 0;
-  transform: translateX(10px);
+  transform: translateY(10px);
 }
-
-.video-meta-skeleton {
-  @apply animate-pulse;
-}
-
-.fade-enter-active {
-  transition: opacity 0.15s cubic-bezier(0.2, 0, 0, 1), transform 0.15s cubic-bezier(0.2, 0, 0, 1);
-}
-
-.fade-leave-active {
-  transition: opacity 0.1s cubic-bezier(0.2, 0, 0, 1), transform 0.1s cubic-bezier(0.2, 0, 0, 1);
-}
-
-.fade-enter-from {
-  opacity: 0;
-  transform: translateY(4px) scale(0.995);
-}
-
-.fade-leave-to {
-  opacity: 0;
-  transform: translateY(-4px) scale(0.995);
-}
-
-.channel-dismiss-enter-active,
-.channel-dismiss-leave-active {
-  transition: opacity 0.2s cubic-bezier(0.2, 0, 0, 1), transform 0.2s cubic-bezier(0.2, 0, 0, 1), max-height 0.2s ease;
-  overflow: hidden;
-}
-
-.channel-dismiss-enter-from,
-.channel-dismiss-leave-to {
-  opacity: 0;
-  transform: translateX(-10px);
-  max-height: 0;
-}
-
-.channel-dismiss-enter-to,
-.channel-dismiss-leave-from {
-  opacity: 1;
-  transform: translateX(0);
-  max-height: 20rem;
-}
-
-@keyframes video-channel-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 </style>
