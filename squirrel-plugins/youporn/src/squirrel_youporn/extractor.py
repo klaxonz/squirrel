@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import html as html_lib
 import logging
+import re
 from datetime import datetime
 from typing import Any, Dict, Optional
+
+import httpx
 
 from crawl import (
     AuthError,
@@ -36,6 +40,12 @@ AGE_GATE_COOKIES = {
     'access': '1',
     'accessPH': '1',
 }
+_META_THUMBNAIL_PATTERNS = (
+    re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', re.I),
+    re.compile(r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image["\']', re.I),
+)
 
 
 class YouPornExtractor(YoutubeDLExtractorBase):
@@ -57,7 +67,7 @@ class YouPornExtractor(YoutubeDLExtractorBase):
             with YoutubeDL(ydl_opts) as ydl:
                 video_info = ydl.extract_info(url, download=False)
                 if video_info:
-                    self._process_youporn_info(video_info)
+                    self._process_youporn_info(video_info, url)
                 return video_info
         except Exception as exc:
             error_msg = str(exc).lower()
@@ -93,13 +103,60 @@ class YouPornExtractor(YoutubeDLExtractorBase):
             ydl_opts['cookiefile'] = cookie_file
         return apply_ytdlp_rate_limit(self.site_name, ydl_opts)
 
-    def _process_youporn_info(self, video_info: Dict[str, Any]) -> None:
+    def _process_youporn_info(self, video_info: Dict[str, Any], source_url: Optional[str] = None) -> None:
         try:
             timestamp = video_info.get('timestamp')
             if timestamp:
                 video_info['publish_date'] = datetime.fromtimestamp(timestamp)
+            self._normalize_thumbnail(video_info, source_url)
         except Exception as exc:
             logger.warning('Failed to process YouPorn video info: %s', exc)
+
+    def _normalize_thumbnail(self, video_info: Dict[str, Any], source_url: Optional[str]) -> None:
+        thumbnail_url = str(video_info.get('thumbnail') or '').strip()
+        if not self._looks_like_expiring_preview_thumbnail(thumbnail_url):
+            return
+
+        fresh_thumbnail_url = self._fetch_page_thumbnail_url(source_url or str(video_info.get('webpage_url') or '').strip())
+        if not fresh_thumbnail_url:
+            return
+
+        video_info['thumbnail'] = fresh_thumbnail_url
+        if isinstance(video_info.get('thumbnails'), list) and video_info['thumbnails']:
+            video_info['thumbnails'][0]['url'] = fresh_thumbnail_url
+
+    @staticmethod
+    def _looks_like_expiring_preview_thumbnail(url: str) -> bool:
+        normalized = str(url or '').strip().lower()
+        return bool(normalized) and '.mp4/plain/' in normalized and 'validto=' in normalized
+
+    def _fetch_page_thumbnail_url(self, url: str) -> Optional[str]:
+        page_url = str(url or '').strip()
+        if not page_url:
+            return None
+
+        cookie_file = resolve_cookie_file_path(page_url)
+        headers = self._build_ytdlp_headers(page_url, cookie_file)
+
+        try:
+            response = httpx.get(page_url, headers=headers, timeout=30.0, follow_redirects=True)
+        except Exception as exc:
+            logger.warning('Failed to fetch YouPorn page thumbnail metadata: %s', exc)
+            return None
+
+        if response.status_code != 200:
+            return None
+
+        html_text = response.text
+        for pattern in _META_THUMBNAIL_PATTERNS:
+            match = pattern.search(html_text)
+            if not match:
+                continue
+            thumbnail_url = html_lib.unescape(match.group(1).strip())
+            if thumbnail_url:
+                return thumbnail_url
+
+        return None
 
     def _build_ytdlp_headers(self, url: str, cookie_file: Optional[str]) -> Dict[str, str]:
         headers = get_http_headers(

@@ -193,6 +193,23 @@ class SharedSdkHelperTests(unittest.TestCase):
         self.assertEqual(lines[2], '# comment teaser.ts')
         self.assertTrue(lines[3].startswith('/api/video/proxy?'))
 
+    def test_playlist_rewrite_helper_rewrites_extensionless_segment_ids(self):
+        with _stub_sdk_crawl_package():
+            module = importlib.import_module('crawl.playlist_rewrite')
+
+        rewritten = module.rewrite_playlist_for_proxy(
+            url='https://cdn.example.com/path/master.m3u8',
+            content='#EXTM3U\n#EXT-X-MAP:URI="vts:init?hash=abc"\nvts:504?hash=def&validto=1775464209\n',
+            site_domain='example.com',
+            referer='https://www.example.com/watch',
+        )['content']
+
+        lines = rewritten.splitlines()
+        self.assertIn('URI="/api/video/proxy?', lines[1])
+        self.assertIn('/api/video/proxy?', lines[2])
+        self.assertIn('url=https%3A%2F%2Fcdn.example.com%2Fpath%2Fvts%3Ainit%3Fhash%3Dabc', lines[1])
+        self.assertIn('url=https%3A%2F%2Fcdn.example.com%2Fpath%2Fvts%3A504%3Fhash%3Ddef%26validto%3D1775464209', lines[2])
+
     def test_subscription_helpers_deduplicate_urls_and_build_cursor_payload(self):
         with _stub_sdk_crawl_package():
             module = importlib.import_module('crawl.subscription_helpers')

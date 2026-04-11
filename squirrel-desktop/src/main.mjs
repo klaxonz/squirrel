@@ -448,6 +448,20 @@ const reloadRenderer = (mainWindow, ignoreCache = false) => {
   mainWindow.webContents.reload()
 }
 
+const getDesktopWindowState = (mainWindow) => {
+  return {
+    isMaximized: mainWindow?.isMaximized() === true,
+  }
+}
+
+const sendDesktopWindowState = (mainWindow) => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return
+  }
+
+  mainWindow.webContents.send('desktop:window-state', getDesktopWindowState(mainWindow))
+}
+
 const installDesktopBridgeHandlers = () => {
   ipcMain.removeHandler('desktop:open-external')
   ipcMain.handle('desktop:open-external', async (_event, targetUrl) => {
@@ -468,6 +482,44 @@ const installDesktopBridgeHandlers = () => {
     }
 
     reloadRenderer(mainWindow)
+  })
+
+  ipcMain.removeHandler('desktop:get-window-state')
+  ipcMain.handle('desktop:get-window-state', (event) => {
+    const mainWindow = BrowserWindow.fromWebContents(event.sender)
+    if (!mainWindow) {
+      return { isMaximized: false }
+    }
+
+    return getDesktopWindowState(mainWindow)
+  })
+
+  ipcMain.removeHandler('desktop:window-action')
+  ipcMain.handle('desktop:window-action', (event, action) => {
+    const mainWindow = BrowserWindow.fromWebContents(event.sender)
+    if (!mainWindow) {
+      return { isMaximized: false }
+    }
+
+    switch (String(action || '')) {
+      case 'minimize':
+        mainWindow.minimize()
+        break
+      case 'toggle-maximize':
+        if (mainWindow.isMaximized()) {
+          mainWindow.unmaximize()
+        } else {
+          mainWindow.maximize()
+        }
+        break
+      case 'close':
+        mainWindow.close()
+        break
+      default:
+        break
+    }
+
+    return getDesktopWindowState(mainWindow)
   })
 }
 
@@ -539,9 +591,40 @@ const buildContextMenuTemplate = (mainWindow, params) => {
 }
 
 const installMainWindowBehaviors = (mainWindow) => {
+  const syncDesktopWindowState = () => {
+    sendDesktopWindowState(mainWindow)
+  }
+
+  const debugDesktopChrome = async () => {
+    if (app.isPackaged) {
+      return
+    }
+
+    try {
+      const debugState = await mainWindow.webContents.executeJavaScript(`(() => ({
+        hasDesktopApp: Boolean(window.desktopApp),
+        desktopAppKeys: Object.keys(window.desktopApp || {}),
+        isDesktopShell: Boolean(window.desktopApp?.isDesktop),
+        titlebarExists: Boolean(document.querySelector('.desktop-titlebar')),
+        controlsExists: Boolean(document.querySelector('.desktop-window-controls')),
+        titlebarText: document.querySelector('.desktop-titlebar')?.innerText || '',
+      }))()`, true)
+      console.log('[squirrel-desktop] Chrome debug', debugState)
+    } catch (error) {
+      console.error('[squirrel-desktop] Failed to inspect desktop chrome', error)
+    }
+  }
+
   mainWindow.on('page-title-updated', (event, title) => {
     event.preventDefault()
     mainWindow.setTitle(formatWindowTitle(title))
+  })
+
+  mainWindow.on('maximize', syncDesktopWindowState)
+  mainWindow.on('unmaximize', syncDesktopWindowState)
+  mainWindow.webContents.on('did-finish-load', () => {
+    syncDesktopWindowState()
+    void debugDesktopChrome()
   })
 
   mainWindow.webContents.on('before-input-event', (event, input) => {
@@ -622,6 +705,7 @@ const installMainWindowBehaviors = (mainWindow) => {
 
 const createMainWindow = () => {
   const windowState = loadWindowState()
+  const isMac = process.platform === 'darwin'
   const mainWindow = new BrowserWindow({
     x: windowState.x,
     y: windowState.y,
@@ -632,9 +716,17 @@ const createMainWindow = () => {
     show: false,
     title: APP_NAME,
     autoHideMenuBar: true,
-    backgroundColor: '#101418',
+    backgroundColor: '#091019',
+    ...(isMac
+      ? {
+          titleBarStyle: 'hiddenInset',
+        }
+      : {
+          frame: false,
+          titleBarStyle: 'hidden',
+        }),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       // Desktop playback pulls media directly from site CDNs, so the shell

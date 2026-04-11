@@ -76,6 +76,53 @@ def test_bulk_thumbnail_lookup_prefers_local_index(monkeypatch):
     ]
 
 
+def test_local_thumbnail_path_map_skips_stale_index_entries(monkeypatch):
+    service = ThumbnailDownloaderService()
+    index_updates = []
+
+    rows = [
+        SimpleNamespace(video_id=31, batch_name='batch_001', filename='31.jpg'),
+        SimpleNamespace(video_id=32, batch_name='batch_001', filename='32.jpg'),
+    ]
+
+    class _FakeSession:
+        def execute(self, _statement):
+            return SimpleNamespace(all=lambda: rows)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(thumbnail_downloader, 'get_session', lambda: _FakeSession())
+    monkeypatch.setattr(
+        thumbnail_downloader.os.path,
+        'exists',
+        lambda path: path.replace('\\', '/').endswith('/32.jpg'),
+    )
+    monkeypatch.setattr(
+        service,
+        '_upsert_local_thumbnail_index',
+        lambda video_id, batch_name, filename, exists=True: index_updates.append(
+            (video_id, batch_name, filename, exists)
+        ),
+        raising=False,
+    )
+
+    results = service._get_local_thumbnail_path_map([
+        (31, 'https://img.example.com/31.jpg', 'https://www.youtube.com/watch?v=31'),
+        (32, 'https://img.example.com/32.jpg', 'https://www.youtube.com/watch?v=32'),
+    ])
+
+    assert results == {
+        32: '/static/thumbnails/batch_001/32.jpg',
+    }
+    assert index_updates == [
+        (31, 'batch_001', '31.jpg', False),
+    ]
+
+
 def test_download_thumbnail_updates_local_index(monkeypatch, tmp_path):
     service = ThumbnailDownloaderService()
     index_updates = []

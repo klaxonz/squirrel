@@ -14,8 +14,17 @@ interface DesktopAppBridge {
     chrome?: string
     node?: string
   }
+  getWindowState?: () => Promise<DesktopWindowState>
+  minimizeWindow?: () => Promise<DesktopWindowState>
+  toggleMaximizeWindow?: () => Promise<DesktopWindowState>
+  closeWindow?: () => Promise<DesktopWindowState>
+  onWindowStateChange?: (listener: (state: DesktopWindowState) => void) => () => void
   reloadApp?: () => void
   openExternal?: (targetUrl: string) => Promise<boolean>
+}
+
+interface DesktopWindowState {
+  isMaximized?: boolean
 }
 
 interface Window {

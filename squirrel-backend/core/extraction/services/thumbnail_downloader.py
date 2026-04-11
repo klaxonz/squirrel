@@ -278,10 +278,22 @@ class ThumbnailDownloaderService:
             logger.warning(f'Failed to read thumbnail local index: error={e}')
             return {}
 
-        return {
-            row.video_id: self._build_static_thumbnail_url(row.batch_name, row.filename)
-            for row in rows
-        }
+        results: dict[int, str] = {}
+
+        for row in rows:
+            file_path = os.path.join(str(settings.thumbnails_dir), row.batch_name, row.filename)
+            if os.path.exists(file_path):
+                results[row.video_id] = self._build_static_thumbnail_url(row.batch_name, row.filename)
+                continue
+
+            self._upsert_local_thumbnail_index(
+                row.video_id,
+                row.batch_name,
+                row.filename,
+                exists=False,
+            )
+
+        return results
 
     def download_thumbnail(
         self,

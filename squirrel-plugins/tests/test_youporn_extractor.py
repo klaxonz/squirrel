@@ -101,6 +101,57 @@ class YouPornExtractorTests(unittest.TestCase):
         self.assertEqual(info['duration'], 321)
         self.assertEqual(info['publish_date'], datetime.fromtimestamp(1700000000))
 
+    def test_youporn_extractor_rewrites_expiring_preview_thumbnail_from_page_metadata(self):
+        youporn_extractor = _load_extractor_module()
+
+        class _PreviewYoutubeDL(_FakeYoutubeDL):
+            def extract_info(self, _url, download=False):
+                return {
+                    'title': 'Demo',
+                    'timestamp': 1700000000,
+                    'duration': 321,
+                    'webpage_url': 'https://www.youporn.com/watch/123456/demo-video/',
+                    'thumbnail': (
+                        'https://pix-cdn77.ypncdn.com/c6251/videos/demo.mp4/plain/'
+                        'rs:fit:1280:720/vts:620?hash=stale&validto=123'
+                    ),
+                    'thumbnails': [
+                        {
+                            'url': (
+                                'https://pix-cdn77.ypncdn.com/c6251/videos/demo.mp4/plain/'
+                                'rs:fit:1280:720/vts:620?hash=stale&validto=123'
+                            ),
+                            'id': '0',
+                        }
+                    ],
+                }
+
+        class _FakeHttpResponse:
+            status_code = 200
+            text = (
+                '<meta property="og:image" '
+                'content="https://cdn.example.com/thumb.jpg?hash=fresh&amp;validto=456">'
+            )
+
+        with mock.patch.object(youporn_extractor, 'YoutubeDL', _PreviewYoutubeDL), mock.patch.object(
+            youporn_extractor.httpx,
+            'get',
+            return_value=_FakeHttpResponse(),
+        ):
+            extractor = youporn_extractor.YouPornExtractor()
+            extractor._build_ytdlp_opts = lambda url, queue_name=None: {}
+
+            info = extractor._extract_with_ytdlp('https://www.youporn.com/watch/123456/demo-video/')
+
+        self.assertEqual(
+            info['thumbnail'],
+            'https://cdn.example.com/thumb.jpg?hash=fresh&validto=456',
+        )
+        self.assertEqual(
+            info['thumbnails'][0]['url'],
+            'https://cdn.example.com/thumb.jpg?hash=fresh&validto=456',
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

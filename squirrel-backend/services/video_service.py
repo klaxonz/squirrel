@@ -68,6 +68,14 @@ def _append_direct_flag(url: Optional[str]) -> Optional[str]:
     return parsed._replace(query=urlencode(query, doseq=True)).geturl()
 
 
+def _playback_cache_scope(client_type: Optional[str], *, prefer_direct_urls: bool) -> str:
+    normalized_client_type = str(client_type or '').strip().lower()
+    if not normalized_client_type:
+        return 'default'
+    mode = 'direct' if prefer_direct_urls else 'proxied'
+    return f'{normalized_client_type}:{mode}'
+
+
 def _finalize_video_url_dto(dto: VideoUrlDto, *, prefer_direct_urls: bool) -> VideoUrlDto:
     finalized = dto.model_copy(deep=True)
     if not prefer_direct_urls:
@@ -160,7 +168,6 @@ def get_video_url(video_id: int, force_refresh: bool = False, client_type: Optio
     video_domain = None
     video: Optional[Video] = None
     normalized_client_type = str(client_type or '').strip().lower() or None
-    prefer_direct_urls = normalized_client_type == 'desktop'
     with get_session() as session:
         video = session.get(Video, video_id)
         if not video:
@@ -173,11 +180,13 @@ def get_video_url(video_id: int, force_refresh: bool = False, client_type: Optio
 
     site_slug, site_info = SiteCatalog.find_site_by_domain(video_domain)
     metadata = (site_info or {}).get("metadata") or {}
+    prefer_direct_urls = normalized_client_type == 'desktop'
     enable_cache = bool(metadata.get("player_url_cache"))
+    cache_scope = _playback_cache_scope(normalized_client_type, prefer_direct_urls=prefer_direct_urls)
 
     cache_key: Optional[str] = None
     if enable_cache:
-        cache_key = f"video_url:{site_slug or video_domain}:{video_id}"
+        cache_key = f"video_url:{site_slug or video_domain}:{video_id}:{cache_scope}"
         if not force_refresh:
             try:
                 cached = redis_client.get(cache_key)

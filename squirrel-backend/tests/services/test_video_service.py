@@ -218,6 +218,88 @@ def test_get_video_url_returns_direct_links_for_desktop_client(monkeypatch):
     assert result.mpd_url == '/api/video/mpd?video_id=1&direct=1'
 
 
+def test_get_video_url_uses_client_scoped_cache_keys(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_video(engine)
+    monkeypatch.setattr(
+        video_service.SiteCatalog,
+        'find_site_by_domain',
+        lambda domain: ('bilibili', {'metadata': {'player_url_cache': True}}),
+    )
+
+    observed_get_keys = []
+    observed_set_keys = []
+
+    monkeypatch.setattr(video_service.redis_client, 'get', lambda key: observed_get_keys.append(key) or None)
+    monkeypatch.setattr(
+        video_service.redis_client,
+        'setex',
+        lambda key, ttl, value: observed_set_keys.append((key, ttl)),
+    )
+
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            return PluginInvokeResponse(
+                request_id='video-1',
+                ok=True,
+                data={
+                    'video_url': '/api/video/proxy?domain=bilibili.com&url=https%3A%2F%2Fcdn.example.com%2Fvideo.m4s',
+                    'audio_url': '/api/video/proxy?domain=bilibili.com&url=https%3A%2F%2Fcdn.example.com%2Faudio.m4s',
+                    'mpd_url': '/api/video/mpd?video_id=1',
+                },
+            )
+
+    monkeypatch.setattr(
+        video_service,
+        'get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+
+    video_service.get_video_url(video_id=1, client_type='desktop')
+    video_service.get_video_url(video_id=1)
+
+    assert 'video_url:bilibili:1:desktop:direct' in observed_get_keys
+    assert 'video_url:bilibili:1:default' in observed_get_keys
+    assert ('video_url:bilibili:1:desktop:direct', video_service.VIDEO_URL_CACHE_TTL) in observed_set_keys
+    assert ('video_url:bilibili:1:default', video_service.VIDEO_URL_CACHE_TTL) in observed_set_keys
+
+
+def test_get_video_url_unwraps_cookie_bound_desktop_sites_to_direct_links(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_video(engine, url='https://www.youporn.com/watch/123456/demo-video/')
+    monkeypatch.setattr(
+        video_service.SiteCatalog,
+        'find_site_by_domain',
+        lambda domain: ('youporn', {'metadata': {'requires_cookies': True}}),
+    )
+
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            assert payload['client_type'] == 'desktop'
+            assert payload['direct_playback'] is True
+            return PluginInvokeResponse(
+                request_id='video-1',
+                ok=True,
+                data={
+                    'video_url': '/api/video/proxy?domain=youporn.com&url=https%3A%2F%2Fcdn.example.com%2Fmaster.m3u8',
+                    'audio_url': None,
+                    'mpd_url': '/api/video/mpd?video_id=1',
+                },
+            )
+
+    monkeypatch.setattr(
+        video_service,
+        'get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+
+    result = video_service.get_video_url(video_id=1, client_type='desktop')
+
+    assert result.video_url == 'https://cdn.example.com/master.m3u8'
+    assert result.audio_url is None
+    assert result.mpd_url == '/api/video/mpd?video_id=1&direct=1'
+
+
 def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
     engine = _setup_test_env(monkeypatch)
 

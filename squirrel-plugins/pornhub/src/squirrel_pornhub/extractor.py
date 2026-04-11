@@ -1,7 +1,10 @@
 """
 Pornhub视频提取器
 """
+import html as html_lib
 import logging
+import re
+import time
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
 from typing import Optional, Dict, Any
@@ -31,6 +34,14 @@ AGE_GATE_COOKIES = {
     'accessAgeDisclaimerUK': '1',
     'accessPH': '1',
 }
+_META_THUMBNAIL_PATTERNS = (
+    re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', re.I),
+    re.compile(r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image["\']', re.I),
+)
+_PAGE_FETCH_MAX_ATTEMPTS = 3
+_PAGE_FETCH_RETRYABLE_STATUS_CODES = {403, 408, 425, 429, 500, 502, 503, 504}
 
 
 class PornhubExtractor(YoutubeDLExtractorBase):
@@ -56,7 +67,7 @@ class PornhubExtractor(YoutubeDLExtractorBase):
                 video_info = ydl.extract_info(url, download=False)
 
                 if video_info:
-                    self._process_pornhub_info(video_info)
+                    self._process_pornhub_info(video_info, url)
 
                 return video_info
 
@@ -105,13 +116,75 @@ class PornhubExtractor(YoutubeDLExtractorBase):
 
         return apply_ytdlp_rate_limit(self.site_name, ydl_opts)
 
-    def _process_pornhub_info(self, video_info: dict) -> None:
+    def _process_pornhub_info(self, video_info: dict, source_url: Optional[str] = None) -> None:
         """处理Pornhub特定信息"""
         try:
             if 'timestamp' in video_info:
                 video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
+            self._normalize_thumbnail(video_info, source_url)
         except Exception as e:
             logger.warning(f"处理Pornhub特定信息失败: {e}")
+
+    def _normalize_thumbnail(self, video_info: Dict[str, Any], source_url: Optional[str]) -> None:
+        thumbnail_url = str(video_info.get('thumbnail') or '').strip()
+        if not self._looks_like_expiring_preview_thumbnail(thumbnail_url):
+            return
+
+        fresh_thumbnail_url = self._fetch_page_thumbnail_url(source_url or str(video_info.get('webpage_url') or '').strip())
+        if not fresh_thumbnail_url:
+            return
+
+        video_info['thumbnail'] = fresh_thumbnail_url
+        if isinstance(video_info.get('thumbnails'), list) and video_info['thumbnails']:
+            video_info['thumbnails'][0]['url'] = fresh_thumbnail_url
+
+    @staticmethod
+    def _looks_like_expiring_preview_thumbnail(url: str) -> bool:
+        normalized = str(url or '').strip().lower()
+        return bool(normalized) and '/plain/' in normalized and (
+            'validto=' in normalized or 'hdnea=' in normalized
+        )
+
+    def _fetch_page_thumbnail_url(self, url: str) -> Optional[str]:
+        page_url = str(url or '').strip()
+        if not page_url:
+            return None
+
+        cookie_file = resolve_cookie_file_path(page_url)
+        headers = self._build_ytdlp_headers(page_url, cookie_file)
+
+        for attempt in range(1, _PAGE_FETCH_MAX_ATTEMPTS + 1):
+            try:
+                response = requests.get(
+                    page_url,
+                    headers=headers,
+                    allow_redirects=True,
+                    timeout=30,
+                )
+            except Exception as exc:
+                logger.warning('Failed to fetch Pornhub page thumbnail metadata: %s', exc)
+                return None
+
+            if response.status_code == 200:
+                for pattern in _META_THUMBNAIL_PATTERNS:
+                    match = pattern.search(response.text)
+                    if not match:
+                        continue
+                    thumbnail_url = html_lib.unescape(match.group(1).strip())
+                    if thumbnail_url:
+                        return thumbnail_url
+                return None
+
+            if (
+                response.status_code in _PAGE_FETCH_RETRYABLE_STATUS_CODES
+                and attempt < _PAGE_FETCH_MAX_ATTEMPTS
+            ):
+                time.sleep(min(5.0, 0.8 * attempt))
+                continue
+
+            return None
+
+        return None
 
     def _build_ytdlp_headers(self, url: str, cookie_file: Optional[str]) -> Dict[str, str]:
         headers = get_http_headers(self.site_name, {

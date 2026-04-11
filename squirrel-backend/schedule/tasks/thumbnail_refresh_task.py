@@ -1,3 +1,4 @@
+import html as html_lib
 import json
 import logging
 import os
@@ -11,16 +12,31 @@ from sqlalchemy import select, func
 
 from schedule.task import TaskRegistry, BaseTask
 from core.database import get_session
-from core.config import settings
+from core.site_config_manager import get_effective_site_catalog
 from models.video import Video
 from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
 
 logger = logging.getLogger()
 
 _HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept-Language": "en-US,en;q=0.9",
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept-Language': 'en-US,en;q=0.9',
 }
+
+_LDJSON_THUMBNAIL_RE = re.compile(r'<script\s+type=["\']application/ld\+json["\']>(.*?)</script>', re.I | re.S)
+_META_THUMBNAIL_PATTERNS = (
+    re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', re.I),
+    re.compile(r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image["\']', re.I),
+)
+
+_SUPPORTED_SITE_PATTERNS = {
+    'pornhub': '%pornhub.com%',
+    'youporn': '%youporn.com%',
+}
+_PAGE_FETCH_MAX_ATTEMPTS = 3
+_PAGE_FETCH_RETRYABLE_STATUS_CODES = {403, 408, 425, 429, 500, 502, 503, 504}
 
 # 全局 HTTP 客户端，复用连接
 _shared_http_client: Optional[httpx.Client] = None
@@ -52,7 +68,7 @@ def _get_shared_http_client() -> httpx.Client:
 
 @TaskRegistry.register(interval=60 * 24, unit='minutes', start_immediately=True)
 class ThumbnailRefreshTask(BaseTask):
-    """定时补全视频封面缓存（仅处理 pornhub 视频）。"""
+    """定时补全支持离线封面的站点封面缓存。"""
 
     @classmethod
     def _batch_check_thumbnails(cls, video_ids: List[int]) -> set[int]:
@@ -83,129 +99,244 @@ class ThumbnailRefreshTask(BaseTask):
 
     @classmethod
     def _extract_thumbnail_url(cls, html: str) -> Optional[str]:
-        """从页面 JSON-LD 结构化数据中提取 thumbnailUrl"""
-        match = re.search(r'<script\s+type=["\']application/ld\+json["\']>([^<]+)</script>', html)
-        if not match:
+        """Extract a thumbnail URL from JSON-LD or social preview metadata."""
+        for match in _LDJSON_THUMBNAIL_RE.finditer(html):
+            try:
+                data = json.loads(match.group(1).strip())
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+            candidates = data if isinstance(data, list) else [data]
+            for item in candidates:
+                if not isinstance(item, dict):
+                    continue
+                thumbnail_url = item.get('thumbnailUrl')
+                if thumbnail_url:
+                    return str(thumbnail_url).strip()
+
+        for pattern in _META_THUMBNAIL_PATTERNS:
+            match = pattern.search(html)
+            if not match:
+                continue
+            thumbnail_url = html_lib.unescape(match.group(1).strip())
+            if thumbnail_url:
+                return thumbnail_url
+
+        return None
+
+    @classmethod
+    def _get_refresh_targets(cls) -> list[tuple[str, str]]:
+        catalog = get_effective_site_catalog()
+        targets: list[tuple[str, str]] = []
+
+        for site_name, url_pattern in _SUPPORTED_SITE_PATTERNS.items():
+            site_info = catalog.get(site_name, {})
+            metadata = site_info.get('metadata') or {}
+            if not site_info.get('enabled', True):
+                continue
+            if not metadata.get('offline_thumbnails_download', False):
+                continue
+            targets.append((site_name, url_pattern))
+
+        return targets
+
+    @staticmethod
+    def _build_page_fetch_retry_delay(attempt: int) -> float:
+        return min(5.0, 0.8 * attempt)
+
+    @staticmethod
+    def _get_site_max_workers(site_name: str) -> int:
+        if str(site_name).lower() == 'pornhub':
+            return 4
+        return 8
+
+    @classmethod
+    def _get_stored_thumbnail_url(cls, video: Video) -> Optional[str]:
+        stored_thumbnail = str(video.thumbnail or '').strip()
+        return stored_thumbnail or None
+
+    @classmethod
+    def _fetch_thumbnail_url_from_page(cls, video: Video, site_name: str) -> Optional[str]:
+        client = _get_shared_http_client()
+        headers = thumbnail_downloader_service.build_request_headers(
+            site_name,
+            source_url=video.url,
+            target_url=video.url,
+        )
+        response: Optional[httpx.Response] = None
+
+        for attempt in range(1, _PAGE_FETCH_MAX_ATTEMPTS + 1):
+            response = client.get(video.url, headers=headers)
+            if response.status_code == 200:
+                return cls._extract_thumbnail_url(response.text)
+
+            if (
+                response.status_code in _PAGE_FETCH_RETRYABLE_STATUS_CODES
+                and attempt < _PAGE_FETCH_MAX_ATTEMPTS
+            ):
+                logger.info(
+                    '[ThumbnailRefreshTask] Retrying page thumbnail fetch: site=%s video id=%s status=%s attempt=%s/%s',
+                    site_name,
+                    video.id,
+                    response.status_code,
+                    attempt,
+                    _PAGE_FETCH_MAX_ATTEMPTS,
+                )
+                time.sleep(cls._build_page_fetch_retry_delay(attempt))
+                continue
+
+            logger.warning(
+                '[ThumbnailRefreshTask] Failed to fetch page: site=%s video id=%s status=%s',
+                site_name,
+                video.id,
+                response.status_code,
+            )
             return None
-        try:
-            data = json.loads(match.group(1))
-            return data.get('thumbnailUrl')
-        except (json.JSONDecodeError, TypeError):
-            return None
+
+        return None
+
+    @classmethod
+    def _resolve_thumbnail_url(cls, video: Video, site_name: str) -> Optional[str]:
+        return cls._get_stored_thumbnail_url(video) or cls._fetch_thumbnail_url_from_page(video, site_name)
 
     @classmethod
     def run(cls):
-        logger.info("[ThumbnailRefreshTask] Start refreshing video thumbnails")
+        logger.info('[ThumbnailRefreshTask] Start refreshing video thumbnails')
 
-        # 增大批次大小，减少数据库查询次数
         batch_size = 100
-        last_id: int | None = None
-        max_workers = 8  # 增加并发数
         processed_count = 0
         total_checked = 0
+        refresh_targets = cls._get_refresh_targets()
 
-        with get_session() as session:
-            # 获取总数用于进度显示
-            total_pornhub_videos = session.scalar(
-                select(func.count(Video.id)).where(Video.url.like('%pornhub.com%'))
-            )
+        if not refresh_targets:
+            logger.info('[ThumbnailRefreshTask] No enabled sites require thumbnail refresh')
+            return
 
-        logger.info("[ThumbnailRefreshTask] Total pornhub videos to check: %d", total_pornhub_videos)
+        for site_name, url_pattern in refresh_targets:
+            max_workers = cls._get_site_max_workers(site_name)
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                last_id: int | None = None
+                site_checked = 0
 
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            while True:
                 with get_session() as session:
-                    query = select(Video).where(Video.url.like('%pornhub.com%')).order_by(Video.id.desc())
-                    if last_id is not None:
-                        query = query.where(Video.id < last_id)
-                    rows: List[Video] = session.scalars(query.limit(batch_size)).all()
-
-                if not rows:
-                    break
-
-                # 批量预加载缩略图索引，避免逐个检查
-                video_ids = [video.id for video in rows]
-                existing_thumbnails = cls._batch_check_thumbnails(video_ids)
-
-                # 筛选需要处理的视频
-                videos_to_process = []
-                for video in rows:
-                    total_checked += 1
-                    if video.id not in existing_thumbnails:
-                        videos_to_process.append(video)
-
-                if videos_to_process:
-                    # 并发处理视频下载，使用更大的并发数
-                    futures = [
-                        executor.submit(cls._process_single_video, video)
-                        for video in videos_to_process
-                    ]
-
-                    for future in as_completed(futures):
-                        try:
-                            future.result()
-                            processed_count += 1
-                        except Exception as e:
-                            logger.exception(
-                                "[ThumbnailRefreshTask] error processing video: %s", e
-                            )
-
-                # 显示进度
-                if total_pornhub_videos > 0:
-                    progress_pct = (total_checked / total_pornhub_videos * 100)
-                    logger.info(
-                        "[ThumbnailRefreshTask] Progress: checked %d/%d videos (%.1f%%), processed %d thumbnails",
-                        total_checked,
-                        total_pornhub_videos,
-                        progress_pct,
-                        processed_count
+                    total_site_videos = session.scalar(
+                        select(func.count(Video.id)).where(Video.url.like(url_pattern))
                     )
 
-                last_id = rows[-1].id
+                logger.info(
+                    '[ThumbnailRefreshTask] Total %s videos to check: %d',
+                    site_name,
+                    total_site_videos,
+                )
+
+                while True:
+                    with get_session() as session:
+                        query = select(Video).where(Video.url.like(url_pattern)).order_by(Video.id.desc())
+                        if last_id is not None:
+                            query = query.where(Video.id < last_id)
+                        rows: List[Video] = session.scalars(query.limit(batch_size)).all()
+
+                    if not rows:
+                        break
+
+                    video_ids = [video.id for video in rows]
+                    existing_thumbnails = cls._batch_check_thumbnails(video_ids)
+
+                    videos_to_process = []
+                    for video in rows:
+                        total_checked += 1
+                        site_checked += 1
+                        if video.id not in existing_thumbnails:
+                            videos_to_process.append(video)
+
+                    if videos_to_process:
+                        futures = [
+                            executor.submit(cls._process_single_video, video, site_name)
+                            for video in videos_to_process
+                        ]
+
+                        for future in as_completed(futures):
+                            try:
+                                future.result()
+                                processed_count += 1
+                            except Exception as e:
+                                logger.exception(
+                                    '[ThumbnailRefreshTask] error processing video: %s', e
+                                )
+
+                    if total_site_videos > 0:
+                        progress_pct = (site_checked / total_site_videos * 100)
+                        logger.info(
+                            '[ThumbnailRefreshTask] Site %s batch checked %d/%d videos (%.1f%%), processed %d thumbnails',
+                            site_name,
+                            min(total_site_videos, site_checked),
+                            total_site_videos,
+                            progress_pct,
+                            processed_count,
+                        )
+
+                    last_id = rows[-1].id
 
         logger.info(
-            "[ThumbnailRefreshTask] Finished: checked %d videos, processed %d thumbnails",
+            '[ThumbnailRefreshTask] Finished: checked %d videos, processed %d thumbnails',
             total_checked,
-            processed_count
+            processed_count,
         )
 
     @classmethod
-    def _process_single_video(cls, video: Video) -> None:
+    def _process_single_video(cls, video: Video, site_name: str) -> None:
         try:
-            # 使用共享的 HTTP 客户端，提高连接复用率
-            client = _get_shared_http_client()
-            headers = thumbnail_downloader_service.build_request_headers(
-                'pornhub',
-                source_url=video.url,
-                target_url=video.url,
-            )
-            resp = client.get(video.url, headers=headers)
-
-            if resp.status_code != 200:
+            stored_thumbnail_url = cls._get_stored_thumbnail_url(video)
+            thumbnail_url = stored_thumbnail_url or cls._fetch_thumbnail_url_from_page(video, site_name)
+            if not thumbnail_url:
                 logger.warning(
-                    "[ThumbnailRefreshTask] Failed to fetch page: video id=%s status=%s",
+                    '[ThumbnailRefreshTask] No thumbnail found for site=%s video id=%s',
+                    site_name,
                     video.id,
-                    resp.status_code
                 )
                 return
 
-            thumbnail_url = cls._extract_thumbnail_url(resp.text)
-            if not thumbnail_url:
-                logger.warning("[ThumbnailRefreshTask] No thumbnail found for video id=%s", video.id)
-                return
-
-            # 下载缩略图时指定 site_name，启用配置检查
-            thumbnail_downloader_service.download_thumbnail(
+            downloaded_path = thumbnail_downloader_service.download_thumbnail(
                 video.id,
                 thumbnail_url,
-                'pornhub',
+                site_name,
                 source_url=video.url,
             )
-            logger.info("[ThumbnailRefreshTask] Downloaded thumbnail for video id=%s", video.id)
+            if downloaded_path:
+                logger.info(
+                    '[ThumbnailRefreshTask] Downloaded thumbnail for site=%s video id=%s',
+                    site_name,
+                    video.id,
+                )
+                return
+
+            if stored_thumbnail_url:
+                page_thumbnail_url = cls._fetch_thumbnail_url_from_page(video, site_name)
+                if page_thumbnail_url and page_thumbnail_url != stored_thumbnail_url:
+                    downloaded_path = thumbnail_downloader_service.download_thumbnail(
+                        video.id,
+                        page_thumbnail_url,
+                        site_name,
+                        source_url=video.url,
+                    )
+                    if downloaded_path:
+                        logger.info(
+                            '[ThumbnailRefreshTask] Downloaded thumbnail from page fallback for site=%s video id=%s',
+                            site_name,
+                            video.id,
+                        )
+                        return
+
+            logger.warning(
+                '[ThumbnailRefreshTask] Failed to cache thumbnail for site=%s video id=%s',
+                site_name,
+                video.id,
+            )
 
         except Exception as e:
             logger.warning(
-                "[ThumbnailRefreshTask] Failed to process video id=%s url=%s: %s",
+                '[ThumbnailRefreshTask] Failed to process site=%s video id=%s url=%s: %s',
+                site_name,
                 video.id,
                 video.url,
                 e,

@@ -1,76 +1,157 @@
 <template>
-  <div v-if="isAuthPage" class="h-screen overflow-hidden">
-    <router-view />
-  </div>
-  <TooltipProvider v-else :delay-duration="200">
-    <div class="app-shell" :class="{ 'video-widescreen': isVideoWidescreen }">
-      <Sidebar
-        v-if="!isMobile && !isSidebarFlyout && !(isVideoWidescreen && !isVideoSidebarOpen)"
-        :flyout="isVideoWidescreen"
-        @requestClose="closeVideoSidebar"
-      />
-
-      <div v-if="!isMobile && isSidebarFlyout" class="sidebar-flyout">
-        <button
-          class="sidebar-flyout-toggle"
-          @click="toggleSidebarFlyout"
-          :aria-label="isSidebarFlyoutOpen ? '关闭侧边栏' : '打开侧边栏'"
-          :title="isSidebarFlyoutOpen ? '关闭侧边栏' : '打开侧边栏'"
-        >
-          <Bars3Icon class="h-5 w-5" />
-        </button>
-        <transition name="sidebar-flyout">
-          <div
-            v-if="isSidebarFlyoutOpen"
-            class="sidebar-flyout-overlay"
-            @click.self="closeSidebarFlyout"
-          >
-            <Sidebar
-              class="sidebar-flyout-panel"
-              :flyout="true"
-              @requestClose="closeSidebarFlyout"
-            />
+  <div class="app-root" :class="{ 'app-root--desktop': isDesktopShell }">
+    <header
+      v-if="isDesktopShell"
+      :class="['desktop-titlebar', `desktop-titlebar--${desktopPlatform}`]"
+    >
+      <div class="desktop-titlebar__drag">
+        <div class="desktop-titlebar__identity">
+          <span class="desktop-titlebar__eyebrow">Squirrel Desktop</span>
+          <div class="desktop-titlebar__headline">
+            <span class="desktop-titlebar__title">{{ desktopPageTitle }}</span>
+            <span class="desktop-titlebar__divider"></span>
+            <span class="desktop-titlebar__context">{{ desktopChromeContext }}</span>
           </div>
-        </transition>
-      </div>
-
-      <main class="app-main">
-        <div class="page-container">
-          <div
-            ref="contentContainerRef"
-            class="content-container absolute inset-0"
-            :class="contentScrollClass"
-          >
-            <!-- 顶部装饰栏：极简搜索（居中） + 状态 -->
-            <div
-              v-if="showGlobalSearch"
-              :class="['minimal-header', { 'minimal-header--compact': isVideoPlayRoute }]"
-            >
-              <div :class="['header-left-spacer', { 'is-compact': isVideoPlayRoute }]"></div>
-              <GlobalSearchBar
-                ref="globalSearchBar"
-                v-model="searchQuery"
-                :class="['minimal-search', { 'minimal-search--compact': isVideoPlayRoute }]"
-                :placeholder="searchPlaceholder"
-                @search="handleGlobalSearch"
-                @clear="handleGlobalSearchClear"
-              />
-              <div :class="['header-right-spacer', { 'is-compact': isVideoPlayRoute }]"></div>
-            </div>
-
-            <router-view v-slot="{ Component }">
-              <keep-alive :include="['LatestVideos', 'Subscribed']">
-                <component :is="Component" :key="routeCacheKey" />
-              </keep-alive>
-            </router-view>
-          </div>
-          <RefreshCenter />
         </div>
-      </main>
+        <div class="desktop-titlebar__trailing">
+          <div class="desktop-titlebar__meta">
+            <span class="desktop-titlebar__pill">
+              <span class="desktop-titlebar__status-dot"></span>
+              {{ desktopPlatformLabel }}
+            </span>
+          </div>
+          <div
+            v-if="showDesktopWindowControls"
+            class="desktop-window-controls"
+            role="group"
+            aria-label="窗口控制"
+          >
+            <button
+              type="button"
+              class="desktop-window-controls__button"
+              aria-label="最小化窗口"
+              title="最小化"
+              @click="minimizeDesktopWindow"
+            >
+              <svg viewBox="0 0 12 12" class="desktop-window-controls__icon" aria-hidden="true">
+                <path d="M2 8.25h8" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="desktop-window-controls__button"
+              :aria-label="isDesktopWindowMaximized ? '还原窗口' : '最大化窗口'"
+              :title="isDesktopWindowMaximized ? '还原' : '最大化'"
+              @click="toggleDesktopWindowMaximize"
+            >
+              <svg
+                v-if="isDesktopWindowMaximized"
+                viewBox="0 0 12 12"
+                class="desktop-window-controls__icon"
+                aria-hidden="true"
+              >
+                <path d="M4.25 2.25h5.5v5.5" />
+                <path d="M2.25 4.25h5.5v5.5h-5.5z" />
+              </svg>
+              <svg
+                v-else
+                viewBox="0 0 12 12"
+                class="desktop-window-controls__icon"
+                aria-hidden="true"
+              >
+                <path d="M2.25 2.25h7.5v7.5h-7.5z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="desktop-window-controls__button desktop-window-controls__button--close"
+              aria-label="关闭窗口"
+              title="关闭"
+              @click="closeDesktopWindow"
+            >
+              <svg viewBox="0 0 12 12" class="desktop-window-controls__icon" aria-hidden="true">
+                <path d="M3 3l6 6" />
+                <path d="M9 3l-6 6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
 
-      <MobileNav v-if="isMobile" :routes="mobileRoutes" />
+    <div v-if="isAuthPage" :class="isDesktopShell ? 'app-auth-shell' : 'h-screen overflow-hidden'">
+      <router-view />
     </div>
-  </TooltipProvider>
+    <TooltipProvider v-else :delay-duration="200">
+      <div class="app-shell" :class="{ 'video-widescreen': isVideoWidescreen }">
+        <Sidebar
+          v-if="!isMobile && !isSidebarFlyout && !(isVideoWidescreen && !isVideoSidebarOpen)"
+          :flyout="isVideoWidescreen"
+          @requestClose="closeVideoSidebar"
+        />
+
+        <div v-if="!isMobile && isSidebarFlyout" class="sidebar-flyout">
+          <button
+            class="sidebar-flyout-toggle"
+            @click="toggleSidebarFlyout"
+            :aria-label="isSidebarFlyoutOpen ? '关闭侧边栏' : '打开侧边栏'"
+            :title="isSidebarFlyoutOpen ? '关闭侧边栏' : '打开侧边栏'"
+          >
+            <Bars3Icon class="h-5 w-5" />
+          </button>
+          <transition name="sidebar-flyout">
+            <div
+              v-if="isSidebarFlyoutOpen"
+              class="sidebar-flyout-overlay"
+              @click.self="closeSidebarFlyout"
+            >
+              <Sidebar
+                class="sidebar-flyout-panel"
+                :flyout="true"
+                @requestClose="closeSidebarFlyout"
+              />
+            </div>
+          </transition>
+        </div>
+
+        <main class="app-main">
+          <div class="page-container">
+            <div
+              ref="contentContainerRef"
+              class="content-container absolute inset-0"
+              :class="contentScrollClass"
+            >
+              <!-- 顶部装饰栏：极简搜索（居中） + 状态 -->
+              <div
+                v-if="showGlobalSearch"
+                :class="['minimal-header', { 'minimal-header--compact': isVideoPlayRoute }]"
+              >
+                <div :class="['header-left-spacer', { 'is-compact': isVideoPlayRoute }]"></div>
+                <GlobalSearchBar
+                  ref="globalSearchBar"
+                  v-model="searchQuery"
+                  :class="['minimal-search', { 'minimal-search--compact': isVideoPlayRoute }]"
+                  :placeholder="searchPlaceholder"
+                  @search="handleGlobalSearch"
+                  @clear="handleGlobalSearchClear"
+                />
+                <div :class="['header-right-spacer', { 'is-compact': isVideoPlayRoute }]"></div>
+              </div>
+
+              <router-view v-slot="{ Component }">
+                <keep-alive :include="['LatestVideos', 'Subscribed']">
+                  <component :is="Component" :key="routeCacheKey" />
+                </keep-alive>
+              </router-view>
+            </div>
+            <RefreshCenter />
+          </div>
+        </main>
+
+        <MobileNav v-if="isMobile" :routes="mobileRoutes" />
+      </div>
+    </TooltipProvider>
+  </div>
 </template>
 
 <script setup>
@@ -94,6 +175,10 @@ const emitter = mitt()
 provide('emitter', emitter)
 
 const APP_TITLE = 'Squirrel'
+const desktopBridge = typeof window === 'undefined' ? null : window.desktopApp
+const isDesktopShell = desktopBridge?.isDesktop === true
+const desktopPlatform = String(desktopBridge?.platform || 'desktop').toLowerCase()
+const DESKTOP_WINDOW_CONTROL_PLATFORMS = new Set(['win32', 'linux'])
 const ROUTE_TITLES = {
   AllVideos: '全部视频',
   UnreadVideos: '未读视频',
@@ -122,7 +207,11 @@ const ROUTE_TITLES = {
 const contentContainerRef = ref(null)
 const topbarRef = ref(null)
 const globalSearchBar = ref(null)
+const desktopPageTitle = ref('桌面应用')
+const isDesktopWindowMaximized = ref(false)
 let contentResizeObserver = null
+let titleObserver = null
+let stopDesktopWindowStateSync = null
 
 const isAuthPage = computed(() => ['/login', '/register'].includes(route.path))
 
@@ -145,6 +234,30 @@ const isVideoPlayRoute = computed(() => route.name === 'VideoPlay')
 const showShellHeader = computed(() => showGlobalSearch.value || isVideoWidescreen.value)
 const isCenteredSearchPage = computed(() => ['home', 'subscribed', 'history'].includes(String(route.meta?.search || '')))
 const isScrollablePage = computed(() => !!route.meta?.scrollable)
+const desktopPlatformLabel = computed(() => {
+  const platformMap = {
+    win32: 'Windows',
+    darwin: 'macOS',
+    linux: 'Linux',
+  }
+
+  return platformMap[desktopPlatform] || 'Desktop'
+})
+const desktopChromeContext = computed(() => {
+  if (isAuthPage.value) {
+    return '身份认证'
+  }
+  if (isVideoPlayRoute.value) {
+    return '沉浸播放'
+  }
+  if (route.name === 'Settings') {
+    return '系统配置'
+  }
+  return '工作台'
+})
+const showDesktopWindowControls = computed(() => {
+  return isDesktopShell && DESKTOP_WINDOW_CONTROL_PLATFORMS.has(desktopPlatform)
+})
 
 const contentScrollClass = computed(() => {
   if (!isScrollablePage.value) {
@@ -153,10 +266,90 @@ const contentScrollClass = computed(() => {
   return route.meta?.hideScrollbar ? 'scrollbar-hide overflow-y-auto' : 'scrollbar overflow-y-auto'
 })
 
-const syncDocumentTitle = () => {
+const resolveRouteTitle = () => {
   const routeName = String(route.name || '')
-  const routeTitle = ROUTE_TITLES[routeName] || '桌面应用'
-  document.title = `${routeTitle} - ${APP_TITLE}`
+  return ROUTE_TITLES[routeName] || '桌面应用'
+}
+
+const updateDesktopPageTitle = (rawTitle) => {
+  const normalizedTitle = String(rawTitle || '').replace(new RegExp(`\\s+-\\s+${APP_TITLE}$`), '').trim()
+  desktopPageTitle.value = normalizedTitle || resolveRouteTitle()
+}
+
+const syncDocumentTitle = () => {
+  const nextTitle = `${resolveRouteTitle()} - ${APP_TITLE}`
+  document.title = nextTitle
+  updateDesktopPageTitle(nextTitle)
+}
+
+const applyDesktopWindowState = (state) => {
+  isDesktopWindowMaximized.value = state?.isMaximized === true
+}
+
+const syncDesktopWindowState = async () => {
+  if (!showDesktopWindowControls.value || typeof desktopBridge?.getWindowState !== 'function') {
+    return
+  }
+
+  try {
+    applyDesktopWindowState(await desktopBridge.getWindowState())
+  } catch (error) {
+    Logger.warn('Failed to sync desktop window state', error)
+  }
+}
+
+const minimizeDesktopWindow = async () => {
+  if (typeof desktopBridge?.minimizeWindow !== 'function') {
+    return
+  }
+
+  try {
+    await desktopBridge.minimizeWindow()
+  } catch (error) {
+    Logger.warn('Failed to minimize desktop window', error)
+  }
+}
+
+const toggleDesktopWindowMaximize = async () => {
+  if (typeof desktopBridge?.toggleMaximizeWindow !== 'function') {
+    return
+  }
+
+  try {
+    applyDesktopWindowState(await desktopBridge.toggleMaximizeWindow())
+  } catch (error) {
+    Logger.warn('Failed to toggle desktop maximize state', error)
+  }
+}
+
+const closeDesktopWindow = async () => {
+  if (typeof desktopBridge?.closeWindow !== 'function') {
+    return
+  }
+
+  try {
+    await desktopBridge.closeWindow()
+  } catch (error) {
+    Logger.warn('Failed to close desktop window', error)
+  }
+}
+
+const startDesktopTitleObserver = () => {
+  if (!isDesktopShell) {
+    return
+  }
+
+  const titleElement = document.head.querySelector('title')
+  if (!titleElement) {
+    updateDesktopPageTitle(document.title)
+    return
+  }
+
+  titleObserver = new MutationObserver(() => {
+    updateDesktopPageTitle(titleElement.textContent || document.title)
+  })
+  titleObserver.observe(titleElement, { childList: true, characterData: true, subtree: true })
+  updateDesktopPageTitle(titleElement.textContent || document.title)
 }
 
 const syncAppTopbarHeight = async () => {
@@ -258,6 +451,15 @@ onMounted(async () => {
     Logger.error('Failed to load system config', configResult.error)
   }
 
+  startDesktopTitleObserver()
+  if (showDesktopWindowControls.value) {
+    if (typeof desktopBridge?.onWindowStateChange === 'function') {
+      stopDesktopWindowStateSync = desktopBridge.onWindowStateChange((state) => {
+        applyDesktopWindowState(state)
+      })
+    }
+    await syncDesktopWindowState()
+  }
   syncAppTopbarHeight()
   window.addEventListener('resize', handleWindowResize)
 
@@ -275,6 +477,14 @@ onUnmounted(() => {
     contentResizeObserver.disconnect()
     contentResizeObserver = null
   }
+  if (titleObserver) {
+    titleObserver.disconnect()
+    titleObserver = null
+  }
+  if (typeof stopDesktopWindowStateSync === 'function') {
+    stopDesktopWindowStateSync()
+    stopDesktopWindowStateSync = null
+  }
   emitter.all.clear()
 })
 </script>
@@ -291,6 +501,208 @@ body {
   @apply bg-background text-foreground;
 }
 
+.app-root {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-root--desktop {
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at top, rgba(91, 139, 255, 0.12), transparent 32%),
+    linear-gradient(180deg, #091019 0%, #050505 56%);
+}
+
+.app-auth-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.desktop-titlebar {
+  position: relative;
+  z-index: 80;
+  flex: 0 0 auto;
+  height: 52px;
+  border-bottom: 1px solid rgba(160, 189, 255, 0.1);
+  background:
+    linear-gradient(180deg, rgba(8, 14, 24, 0.98) 0%, rgba(7, 11, 18, 0.88) 100%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+.desktop-titlebar__drag {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 1rem 0 1.15rem;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.desktop-titlebar--darwin .desktop-titlebar__drag {
+  padding-left: 5.5rem;
+}
+
+.desktop-titlebar__identity {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.desktop-titlebar__eyebrow {
+  color: rgba(148, 163, 184, 0.72);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.desktop-titlebar__headline {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.desktop-titlebar__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(248, 250, 252, 0.96);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.desktop-titlebar__divider {
+  width: 0.28rem;
+  height: 0.28rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(96, 165, 250, 0.72);
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+}
+
+.desktop-titlebar__context {
+  color: rgba(148, 163, 184, 0.76);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.desktop-titlebar__meta {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.desktop-titlebar__trailing {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.desktop-titlebar__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.68rem;
+  border: 1px solid rgba(96, 165, 250, 0.16);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.52);
+  color: rgba(226, 232, 240, 0.88);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.desktop-titlebar__status-dot {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #60a5fa 0%, #22d3ee 100%);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+}
+
+.desktop-window-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid rgba(96, 165, 250, 0.12);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.56) 0%, rgba(10, 15, 24, 0.72) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 24px rgba(0, 0, 0, 0.18);
+  -webkit-app-region: no-drag;
+}
+
+.desktop-window-controls__button {
+  display: inline-flex;
+  width: 2rem;
+  height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.84);
+  transition:
+    transform 0.14s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.desktop-window-controls__button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(248, 250, 252, 0.98);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.desktop-window-controls__button:active {
+  transform: translateY(1px);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+
+.desktop-window-controls__button:focus-visible {
+  outline: none;
+  border-color: rgba(125, 211, 252, 0.4);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.desktop-window-controls__button--close:hover {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(248, 113, 113, 0.18);
+  color: rgba(254, 226, 226, 0.98);
+}
+
+.desktop-window-controls__button--close:active {
+  background: rgba(239, 68, 68, 0.22);
+}
+
+.desktop-window-controls__icon {
+  width: 0.92rem;
+  height: 0.92rem;
+}
+
+.desktop-window-controls__icon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.15;
+}
+
 h1,
 h2,
 h3,
@@ -302,10 +714,14 @@ h6 {
 
 .app-shell {
   display: flex;
-  height: 100vh;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
   background: #050505;
+}
+
+.app-root--desktop .app-shell {
+  flex: 1 1 auto;
 }
 
 .app-main {

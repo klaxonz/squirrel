@@ -23,6 +23,18 @@ class YouPornHandler:
         if not formats:
             raise ParseError('No YouPorn playback formats were returned', context={'url': video_url})
 
+        if self._prefer_progressive_for_desktop(video):
+            progressive_url = self._select_progressive_url(formats)
+            if progressive_url:
+                return {
+                    'video_url': progressive_url,
+                    'audio_url': None,
+                }
+            raise ParseError(
+                'Desktop playback requires a direct YouPorn stream, but no progressive MP4 format was returned',
+                context={'url': video_url},
+            )
+
         hls_url = self._select_hls_url(formats)
         if hls_url:
             return {
@@ -38,6 +50,12 @@ class YouPornHandler:
             }
 
         raise ParseError('No supported YouPorn playback format was found', context={'url': video_url})
+
+    @staticmethod
+    def _prefer_progressive_for_desktop(video: Any) -> bool:
+        client_type = str(getattr(video, 'client_type', '') or '').strip().lower()
+        direct_playback = bool(getattr(video, 'direct_playback', False))
+        return client_type == 'desktop' or direct_playback
 
     def _build_proxy_url(self, url: str) -> str:
         return f'/api/video/proxy?domain={self.domain}&url={quote(url)}'

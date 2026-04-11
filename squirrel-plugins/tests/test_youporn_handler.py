@@ -86,6 +86,83 @@ class YouPornHandlerTests(unittest.TestCase):
         self.assertEqual(params['domain'], ['youporn.com'])
         self.assertEqual(unquote(params['url'][0]), 'https://cdn.example/video/master.m3u8')
 
+    def test_youporn_handler_prefers_progressive_format_for_desktop_clients(self):
+        youporn_handler = _load_handler_module()
+
+        with mock.patch.object(
+            youporn_handler,
+            'extract_playback_info',
+            lambda _url: {
+                'formats': [
+                    {
+                        'format_id': '720p-http',
+                        'url': 'https://cdn.example/video-720.mp4',
+                        'protocol': 'https',
+                        'height': 720,
+                    },
+                    {
+                        'format_id': 'hls-1080',
+                        'url': 'https://cdn.example/video/index.m3u8',
+                        'manifest_url': 'https://cdn.example/video/master.m3u8',
+                        'protocol': 'm3u8_native',
+                        'height': 1080,
+                    },
+                ],
+            },
+        ):
+            payload = youporn_handler.YouPornHandler().get_video_url(
+                type(
+                    'VideoRef',
+                    (),
+                    {
+                        'url': 'https://www.youporn.com/watch/123456/demo-video/',
+                        'client_type': 'desktop',
+                        'direct_playback': True,
+                    },
+                )()
+            )
+
+        self.assertEqual(
+            payload,
+            {
+                'video_url': 'https://cdn.example/video-720.mp4',
+                'audio_url': None,
+            },
+        )
+
+    def test_youporn_handler_rejects_desktop_hls_fallback_when_no_progressive_stream_exists(self):
+        youporn_handler = _load_handler_module()
+
+        with mock.patch.object(
+            youporn_handler,
+            'extract_playback_info',
+            lambda _url: {
+                'formats': [
+                    {
+                        'format_id': 'hls-1080',
+                        'url': 'https://cdn.example/video/index.m3u8',
+                        'manifest_url': 'https://cdn.example/video/master.m3u8',
+                        'protocol': 'm3u8_native',
+                        'height': 1080,
+                    },
+                ],
+            },
+        ):
+            with self.assertRaises(youporn_handler.ParseError) as exc:
+                youporn_handler.YouPornHandler().get_video_url(
+                    type(
+                        'VideoRef',
+                        (),
+                        {
+                            'url': 'https://www.youporn.com/watch/123456/demo-video/',
+                            'client_type': 'desktop',
+                            'direct_playback': True,
+                        },
+                    )()
+                )
+
+        self.assertIn('Desktop playback requires a direct YouPorn stream', str(exc.exception))
+
     def test_youporn_handler_falls_back_to_best_progressive_format(self):
         youporn_handler = _load_handler_module()
 
