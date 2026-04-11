@@ -17,8 +17,36 @@ const shouldUseShell = process.platform === 'win32'
 let frontendProcess = null
 let electronProcess = null
 let shuttingDown = false
+let shutdownPromise = null
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const waitForProcessExit = (child, timeoutMs = 5000) => {
+  if (!child || child.exitCode !== null) {
+    return Promise.resolve()
+  }
+
+  return new Promise((resolve) => {
+    let settled = false
+    let timeout = null
+
+    const finish = () => {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      if (timeout) {
+        clearTimeout(timeout)
+      }
+      resolve()
+    }
+
+    child.once('exit', finish)
+    child.once('error', finish)
+    timeout = setTimeout(finish, timeoutMs)
+  })
+}
 
 const waitForServer = async (url, timeoutMs = 60000) => {
   const startedAt = Date.now()
@@ -39,12 +67,37 @@ const waitForServer = async (url, timeoutMs = 60000) => {
   throw new Error(`Timed out waiting for renderer server: ${url}`)
 }
 
-const terminate = (child) => {
-  if (!child || child.killed) {
+const terminate = async (child) => {
+  if (!child || child.exitCode !== null) {
+    return
+  }
+
+  if (process.platform === 'win32') {
+    await new Promise((resolve) => {
+      const killer = spawn(
+        'taskkill',
+        ['/pid', String(child.pid), '/t', '/f'],
+        {
+          stdio: 'ignore',
+          windowsHide: true,
+        }
+      )
+
+      killer.once('exit', resolve)
+      killer.once('error', resolve)
+    })
+
+    await waitForProcessExit(child, 5000)
     return
   }
 
   child.kill('SIGTERM')
+  await waitForProcessExit(child, 3000)
+
+  if (child.exitCode === null) {
+    child.kill('SIGKILL')
+    await waitForProcessExit(child, 2000)
+  }
 }
 
 const spawnNpm = (args, options) => {
@@ -55,14 +108,20 @@ const spawnNpm = (args, options) => {
 }
 
 const shutdown = (exitCode = 0) => {
-  if (shuttingDown) {
-    return
+  if (shutdownPromise) {
+    return shutdownPromise
   }
 
   shuttingDown = true
-  terminate(electronProcess)
-  terminate(frontendProcess)
-  process.exit(exitCode)
+  shutdownPromise = (async () => {
+    await Promise.allSettled([
+      terminate(electronProcess),
+      terminate(frontendProcess),
+    ])
+    process.exit(exitCode)
+  })()
+
+  return shutdownPromise
 }
 
 const start = async () => {
@@ -80,7 +139,7 @@ const start = async () => {
 
   frontendProcess.on('exit', (code) => {
     if (!shuttingDown) {
-      shutdown(code ?? 1)
+      void shutdown(code ?? 1)
     }
   })
 
@@ -100,14 +159,18 @@ const start = async () => {
   )
 
   electronProcess.on('exit', (code) => {
-    shutdown(code ?? 0)
+    void shutdown(code ?? 0)
   })
 }
 
-process.on('SIGINT', () => shutdown(0))
-process.on('SIGTERM', () => shutdown(0))
+process.on('SIGINT', () => {
+  void shutdown(0)
+})
+process.on('SIGTERM', () => {
+  void shutdown(0)
+})
 
 start().catch((error) => {
   console.error('[squirrel-desktop] Failed to start dev mode', error)
-  shutdown(1)
+  void shutdown(1)
 })
