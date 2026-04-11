@@ -242,6 +242,7 @@ import { getRandomVideo, unsubscribe as apiUnsubscribe } from '@/api'
 const route = useRoute();
 const router = useRouter();
 const emitter = inject('emitter');
+const APP_TITLE = 'Squirrel'
 
 const playerAdapter = new LocalStorageAdapter();
 const { effectiveTheme } = useAppTheme()
@@ -593,6 +594,21 @@ watch(() => video.value?.id, () => {
   isChannelUnsubscribing.value = false
   videoChannelError.value = ''
 })
+
+watch(
+  () => [route.params.videoId, video.value?.title],
+  ([videoId, videoTitle]) => {
+    const resolvedTitle = String(videoTitle || '').trim()
+    if (resolvedTitle) {
+      document.title = `${resolvedTitle} - ${APP_TITLE}`
+      return
+    }
+
+    const fallbackId = String(videoId || '').trim()
+    document.title = `${fallbackId ? `视频 ${fallbackId}` : '视频播放'} - ${APP_TITLE}`
+  },
+  { immediate: true }
+)
 
 watch(() => relatedVideos.value, () => {
   Object.keys(relatedImagesLoaded).forEach(key => delete relatedImagesLoaded[key])

@@ -1,12 +1,22 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { app, BrowserWindow, session, shell } from 'electron'
+import { app, BrowserWindow, clipboard, ipcMain, Menu, session, shell } from 'electron'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+const APP_NAME = 'Squirrel'
 const DEFAULT_APP_URL = 'http://127.0.0.1:8001'
+const WINDOW_STATE_FILE_NAME = 'window-state.json'
+const WINDOW_STATE_SAVE_DELAY_MS = 250
+const DEFAULT_WINDOW_STATE = {
+  width: 1440,
+  height: 960,
+  minWidth: 1100,
+  minHeight: 720,
+}
 
 const resolveRendererUrl = () => {
   const value = String(
@@ -15,11 +25,269 @@ const resolveRendererUrl = () => {
     || DEFAULT_APP_URL
   ).trim()
 
-  return value || DEFAULT_APP_URL
+  try {
+    return new URL(value || DEFAULT_APP_URL).toString()
+  } catch {
+    return DEFAULT_APP_URL
+  }
 }
 
 const rendererUrl = resolveRendererUrl()
 const rendererOrigin = new URL(rendererUrl).origin
+
+const escapeHtml = (value) => {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+const formatWindowTitle = (value) => {
+  const title = String(value || '').trim()
+  if (!title || title === APP_NAME) {
+    return APP_NAME
+  }
+
+  return title.endsWith(` - ${APP_NAME}`) ? title : `${title} - ${APP_NAME}`
+}
+
+const getWindowStateFilePath = () => {
+  return path.join(app.getPath('userData'), WINDOW_STATE_FILE_NAME)
+}
+
+const sanitizeDimension = (value, fallback, minimum) => {
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue)) {
+    return fallback
+  }
+
+  return Math.max(Math.round(numericValue), minimum)
+}
+
+const sanitizeCoordinate = (value) => {
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? Math.round(numericValue) : undefined
+}
+
+const loadWindowState = () => {
+  try {
+    const rawState = fs.readFileSync(getWindowStateFilePath(), 'utf8')
+    const parsedState = JSON.parse(rawState)
+
+    return {
+      x: sanitizeCoordinate(parsedState.x),
+      y: sanitizeCoordinate(parsedState.y),
+      width: sanitizeDimension(parsedState.width, DEFAULT_WINDOW_STATE.width, DEFAULT_WINDOW_STATE.minWidth),
+      height: sanitizeDimension(parsedState.height, DEFAULT_WINDOW_STATE.height, DEFAULT_WINDOW_STATE.minHeight),
+      isMaximized: parsedState.isMaximized === true,
+    }
+  } catch {
+    return {
+      width: DEFAULT_WINDOW_STATE.width,
+      height: DEFAULT_WINDOW_STATE.height,
+      isMaximized: false,
+    }
+  }
+}
+
+const persistWindowState = (mainWindow) => {
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMinimized()) {
+    return
+  }
+
+  const bounds = mainWindow.isMaximized()
+    ? mainWindow.getNormalBounds()
+    : mainWindow.getBounds()
+
+  const state = {
+    x: bounds.x,
+    y: bounds.y,
+    width: Math.max(bounds.width, DEFAULT_WINDOW_STATE.minWidth),
+    height: Math.max(bounds.height, DEFAULT_WINDOW_STATE.minHeight),
+    isMaximized: mainWindow.isMaximized(),
+  }
+
+  fs.mkdirSync(path.dirname(getWindowStateFilePath()), { recursive: true })
+  fs.writeFileSync(getWindowStateFilePath(), JSON.stringify(state, null, 2), 'utf8')
+}
+
+const bindWindowStatePersistence = (mainWindow) => {
+  let saveTimer = null
+
+  const scheduleSave = () => {
+    if (saveTimer) {
+      clearTimeout(saveTimer)
+    }
+
+    saveTimer = setTimeout(() => {
+      persistWindowState(mainWindow)
+      saveTimer = null
+    }, WINDOW_STATE_SAVE_DELAY_MS)
+  }
+
+  mainWindow.on('resize', scheduleSave)
+  mainWindow.on('move', scheduleSave)
+  mainWindow.on('maximize', scheduleSave)
+  mainWindow.on('unmaximize', scheduleSave)
+  mainWindow.on('close', () => {
+    if (saveTimer) {
+      clearTimeout(saveTimer)
+      saveTimer = null
+    }
+    persistWindowState(mainWindow)
+  })
+}
+
+const buildShellPageUrl = ({ title, eyebrow, heading, body, status, tone = 'loading' }) => {
+  const accent = tone === 'error' ? '#f97373' : '#7dd3fc'
+  const actionScript = `window.desktopApp?.reloadApp?.() || window.location.replace(${JSON.stringify(rendererUrl)})`
+  const openExternalScript = `window.desktopApp?.openExternal?.(${JSON.stringify(rendererUrl)}) || window.open(${JSON.stringify(rendererUrl)}, '_blank', 'noopener,noreferrer')`
+
+  const html = `<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(formatWindowTitle(title))}</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #05080c;
+        --panel: rgba(12, 18, 26, 0.88);
+        --panel-border: rgba(125, 211, 252, 0.16);
+        --text: rgba(255, 255, 255, 0.94);
+        --muted: rgba(255, 255, 255, 0.62);
+        --accent: ${accent};
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at top, rgba(125, 211, 252, 0.12), transparent 36%),
+          radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.08), transparent 24%),
+          linear-gradient(180deg, #08111a 0%, var(--bg) 100%);
+        color: var(--text);
+        font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      .shell {
+        width: min(36rem, calc(100vw - 2rem));
+        padding: 1.5rem;
+        border-radius: 1.25rem;
+        border: 1px solid var(--panel-border);
+        background: var(--panel);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+      }
+      .eyebrow {
+        margin: 0 0 0.75rem;
+        color: var(--accent);
+        font-size: 0.78rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(1.5rem, 4vw, 2.15rem);
+        line-height: 1.1;
+      }
+      p {
+        margin: 0;
+        font-size: 0.98rem;
+        line-height: 1.7;
+        color: var(--muted);
+      }
+      .copy {
+        display: grid;
+        gap: 0.9rem;
+      }
+      .status {
+        margin-top: 1.2rem;
+        padding: 0.8rem 0.95rem;
+        border-radius: 0.85rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        color: var(--muted);
+        font-family: "JetBrains Mono", Consolas, monospace;
+        font-size: 0.82rem;
+        word-break: break-all;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1.2rem;
+      }
+      button, a {
+        appearance: none;
+        border: 0;
+        cursor: pointer;
+        border-radius: 999px;
+        padding: 0.8rem 1.15rem;
+        font: inherit;
+        text-decoration: none;
+      }
+      .primary {
+        background: linear-gradient(135deg, var(--accent), #38bdf8);
+        color: #04121e;
+        font-weight: 700;
+      }
+      .secondary {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <div class="copy">
+        <div class="eyebrow">${escapeHtml(eyebrow)}</div>
+        <h1>${escapeHtml(heading)}</h1>
+        <p>${escapeHtml(body)}</p>
+      </div>
+      <div class="status">${escapeHtml(status)}</div>
+      <div class="actions">
+        <button class="primary" type="button" onclick="${actionScript}">重试连接</button>
+        <button class="secondary" type="button" onclick="${openExternalScript}">浏览器打开</button>
+      </div>
+    </main>
+  </body>
+</html>`
+
+  return `data:text/html;charset=UTF-8,${encodeURIComponent(html)}`
+}
+
+const showLoadingShell = (mainWindow) => {
+  return mainWindow.loadURL(buildShellPageUrl({
+    title: '正在连接',
+    eyebrow: 'Desktop Shell',
+    heading: '正在连接 Squirrel',
+    body: '桌面端正在初始化窗口并连接页面入口，这一步通常只需要几秒。',
+    status: rendererUrl,
+  }))
+}
+
+const showErrorShell = (mainWindow, details) => {
+  const errorSummary = [
+    rendererUrl,
+    details?.errorCode ? `code=${details.errorCode}` : null,
+    details?.errorDescription || null,
+  ].filter(Boolean).join('\n')
+
+  return mainWindow.loadURL(buildShellPageUrl({
+    title: '连接失败',
+    eyebrow: 'Desktop Recovery',
+    heading: '页面入口暂时不可用',
+    body: '桌面壳已经启动，但还没有连接上前端页面。请确认前端地址可访问，或直接点击重试。',
+    status: errorSummary,
+    tone: 'error',
+  }))
+}
 
 const MEDIA_HEADER_RULES = [
   {
@@ -91,37 +359,156 @@ const isTrustedNavigation = (targetUrl) => {
   }
 }
 
-const createMainWindow = () => {
-  const mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 960,
-    minWidth: 1100,
-    minHeight: 720,
-    show: false,
-    autoHideMenuBar: true,
-    backgroundColor: '#101418',
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.cjs'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      // Desktop playback pulls media directly from site CDNs, so the shell
-      // must not enforce browser CORS for those cross-origin segment requests.
-      webSecurity: false,
-    },
+const navigateToRenderer = async (mainWindow) => {
+  try {
+    await mainWindow.loadURL(rendererUrl)
+  } catch (error) {
+    console.error('[squirrel-desktop] Failed to load renderer', error)
+    await showErrorShell(mainWindow, {
+      errorDescription: error instanceof Error ? error.message : 'Unknown load error',
+      errorCode: 'LOAD_URL_FAILED',
+    })
+  }
+}
+
+const reloadRenderer = (mainWindow, ignoreCache = false) => {
+  if (mainWindow.isDestroyed()) {
+    return
+  }
+
+  const currentUrl = mainWindow.webContents.getURL()
+  if (!isTrustedNavigation(currentUrl)) {
+    void showLoadingShell(mainWindow).then(() => navigateToRenderer(mainWindow))
+    return
+  }
+
+  if (ignoreCache) {
+    mainWindow.webContents.reloadIgnoringCache()
+    return
+  }
+
+  mainWindow.webContents.reload()
+}
+
+const installDesktopBridgeHandlers = () => {
+  ipcMain.removeHandler('desktop:open-external')
+  ipcMain.handle('desktop:open-external', async (_event, targetUrl) => {
+    const normalizedUrl = String(targetUrl || '').trim()
+    if (!normalizedUrl) {
+      return false
+    }
+
+    await shell.openExternal(normalizedUrl)
+    return true
   })
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show()
+  ipcMain.removeAllListeners('desktop:reload')
+  ipcMain.on('desktop:reload', (event) => {
+    const mainWindow = BrowserWindow.fromWebContents(event.sender)
+    if (!mainWindow) {
+      return
+    }
+
+    reloadRenderer(mainWindow)
+  })
+}
+
+const buildContextMenuTemplate = (mainWindow, params) => {
+  const template = []
+
+  if (params.linkURL) {
+    template.push(
+      {
+        label: '在浏览器中打开链接',
+        click: () => {
+          void shell.openExternal(params.linkURL)
+        },
+      },
+      {
+        label: '复制链接地址',
+        click: () => clipboard.writeText(params.linkURL),
+      },
+      { type: 'separator' },
+    )
+  }
+
+  if (params.isEditable) {
+    template.push(
+      { role: 'undo', label: '撤销' },
+      { role: 'redo', label: '重做' },
+      { type: 'separator' },
+      { role: 'cut', label: '剪切' },
+      { role: 'copy', label: '复制' },
+      { role: 'paste', label: '粘贴' },
+      { role: 'selectAll', label: '全选' },
+    )
+  } else if (String(params.selectionText || '').trim()) {
+    template.push(
+      { role: 'copy', label: '复制' },
+      { role: 'selectAll', label: '全选' },
+    )
+  }
+
+  template.push(
+    { type: 'separator' },
+    {
+      label: '后退',
+      enabled: mainWindow.webContents.canGoBack(),
+      click: () => mainWindow.webContents.goBack(),
+    },
+    {
+      label: '前进',
+      enabled: mainWindow.webContents.canGoForward(),
+      click: () => mainWindow.webContents.goForward(),
+    },
+    {
+      label: '重新加载',
+      click: () => reloadRenderer(mainWindow),
+    },
+  )
+
+  if (!app.isPackaged) {
+    template.push(
+      { type: 'separator' },
+      {
+        label: '检查元素',
+        click: () => mainWindow.webContents.inspectElement(params.x, params.y),
+      },
+    )
+  }
+
+  return template
+}
+
+const installMainWindowBehaviors = (mainWindow) => {
+  mainWindow.on('page-title-updated', (event, title) => {
+    event.preventDefault()
+    mainWindow.setTitle(formatWindowTitle(title))
   })
 
   mainWindow.webContents.on('before-input-event', (event, input) => {
     const key = String(input.key || '').toLowerCase()
+    const isPrimaryModifier = input.control || input.meta
     const openDevTools =
       key === 'f12'
-      || ((input.control || input.meta) && input.shift && key === 'i')
+      || (isPrimaryModifier && input.shift && key === 'i')
       || (input.meta && input.alt && key === 'i')
 
-    if (!openDevTools || input.type !== 'keyDown') {
+    const reloadPage =
+      key === 'f5'
+      || (isPrimaryModifier && key === 'r')
+
+    if (input.type !== 'keyDown') {
+      return
+    }
+
+    if (reloadPage) {
+      event.preventDefault()
+      reloadRenderer(mainWindow, input.shift === true)
+      return
+    }
+
+    if (!openDevTools) {
       return
     }
 
@@ -132,6 +519,28 @@ const createMainWindow = () => {
     }
 
     mainWindow.webContents.openDevTools({ mode: 'detach' })
+  })
+
+  mainWindow.webContents.on('context-menu', (event, params) => {
+    const menu = Menu.buildFromTemplate(buildContextMenuTemplate(mainWindow, params))
+    if (menu.items.length > 0) {
+      menu.popup({ window: mainWindow })
+    }
+  })
+
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    if (!isMainFrame || errorCode === -3 || String(validatedURL || '').startsWith('data:')) {
+      return
+    }
+
+    void showErrorShell(mainWindow, { errorCode, errorDescription })
+  })
+
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    void showErrorShell(mainWindow, {
+      errorCode: details.reason,
+      errorDescription: 'Renderer process exited unexpectedly',
+    })
   })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -151,21 +560,89 @@ const createMainWindow = () => {
     event.preventDefault()
     void shell.openExternal(url)
   })
+}
 
-  void mainWindow.loadURL(rendererUrl)
+const createMainWindow = () => {
+  const windowState = loadWindowState()
+  const mainWindow = new BrowserWindow({
+    x: windowState.x,
+    y: windowState.y,
+    width: windowState.width,
+    height: windowState.height,
+    minWidth: DEFAULT_WINDOW_STATE.minWidth,
+    minHeight: DEFAULT_WINDOW_STATE.minHeight,
+    show: false,
+    title: APP_NAME,
+    autoHideMenuBar: true,
+    backgroundColor: '#101418',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.mjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      // Desktop playback pulls media directly from site CDNs, so the shell
+      // must not enforce browser CORS for those cross-origin segment requests.
+      webSecurity: false,
+    },
+  })
+
+  bindWindowStatePersistence(mainWindow)
+  installMainWindowBehaviors(mainWindow)
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show()
+  })
+
+  if (windowState.isMaximized) {
+    mainWindow.maximize()
+  }
+
+  void showLoadingShell(mainWindow).then(() => navigateToRenderer(mainWindow))
   return mainWindow
 }
 
-app.whenReady().then(() => {
-  installDesktopMediaHeaders()
-  createMainWindow()
+const hasSingleInstanceLock = app.requestSingleInstanceLock()
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createMainWindow()
+if (!hasSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    const mainWindow = BrowserWindow.getAllWindows()[0]
+    if (!mainWindow) {
+      return
+    }
+
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore()
+    }
+    if (!mainWindow.isVisible()) {
+      mainWindow.show()
+    }
+
+    mainWindow.focus()
+    if (!isTrustedNavigation(mainWindow.webContents.getURL())) {
+      reloadRenderer(mainWindow)
     }
   })
-})
+
+  app.whenReady().then(() => {
+    installDesktopBridgeHandlers()
+    installDesktopMediaHeaders()
+    createMainWindow()
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createMainWindow()
+        return
+      }
+
+      const mainWindow = BrowserWindow.getAllWindows()[0]
+      if (mainWindow?.isMinimized()) {
+        mainWindow.restore()
+      }
+      mainWindow?.focus()
+    })
+  })
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

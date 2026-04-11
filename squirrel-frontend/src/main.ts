@@ -9,9 +9,13 @@ import './styles/index.css'
 import '@fortawesome/fontawesome-free/css/all.min.css'
 import './utils/iconify'
 
-document.addEventListener('contextmenu', (event) => {
-  event.preventDefault()
-})
+const isDesktopShell = typeof window !== 'undefined' && window.desktopApp?.isDesktop === true
+
+if (!isDesktopShell) {
+  document.addEventListener('contextmenu', (event) => {
+    event.preventDefault()
+  })
+}
 
 initializeAppTheme()
 

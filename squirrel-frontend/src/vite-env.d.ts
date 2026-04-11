@@ -6,6 +6,22 @@ declare module '*.vue' {
   export default component
 }
 
+interface DesktopAppBridge {
+  isDesktop?: boolean
+  platform?: string
+  versions?: {
+    electron?: string
+    chrome?: string
+    node?: string
+  }
+  reloadApp?: () => void
+  openExternal?: (targetUrl: string) => Promise<boolean>
+}
+
+interface Window {
+  desktopApp?: DesktopAppBridge
+}
+
 // 扩展 Document 接口以支持各浏览器的全屏 API
 interface Document {
   webkitFullscreenElement?: Element

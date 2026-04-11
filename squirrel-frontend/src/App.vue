@@ -93,6 +93,32 @@ const route = useRoute()
 const emitter = mitt()
 provide('emitter', emitter)
 
+const APP_TITLE = 'Squirrel'
+const ROUTE_TITLES = {
+  AllVideos: '全部视频',
+  UnreadVideos: '未读视频',
+  ReadVideos: '已读视频',
+  PreviewVideos: '预览视频',
+  LikedVideos: '喜欢的视频',
+  LaterVideos: '稍后再看',
+  Subscribed: '订阅',
+  Settings: '系统设置',
+  Plugins: '插件管理',
+  Logs: '日志查看器',
+  SyncCenter: '同步中心',
+  ScheduledTasks: '计划任务',
+  SubscriptionAllVideos: '订阅视频',
+  SubscriptionUnreadVideos: '订阅未读',
+  SubscriptionReadVideos: '订阅已读',
+  SubscriptionPreviewVideos: '订阅预览',
+  SubscriptionLikedVideos: '订阅喜欢',
+  SubscriptionLaterVideos: '订阅稍后看',
+  History: '历史记录',
+  VideoPlay: '视频播放',
+  Login: '登录',
+  Register: '注册',
+}
+
 const contentContainerRef = ref(null)
 const topbarRef = ref(null)
 const globalSearchBar = ref(null)
@@ -127,6 +153,12 @@ const contentScrollClass = computed(() => {
   return route.meta?.hideScrollbar ? 'scrollbar-hide overflow-y-auto' : 'scrollbar overflow-y-auto'
 })
 
+const syncDocumentTitle = () => {
+  const routeName = String(route.name || '')
+  const routeTitle = ROUTE_TITLES[routeName] || '桌面应用'
+  document.title = `${routeTitle} - ${APP_TITLE}`
+}
+
 const syncAppTopbarHeight = async () => {
   await nextTick()
   const root = document.documentElement
@@ -150,6 +182,10 @@ const syncAppTopbarHeight = async () => {
 
   const height = Math.ceil(bar.getBoundingClientRect().height)
   root.style.setProperty('--app-topbar-height', `${height}px`)
+}
+
+const handleWindowResize = () => {
+  void syncAppTopbarHeight()
 }
 
 const routeCacheKey = computed(() => {
@@ -198,6 +234,7 @@ watch(
 
 watch(showShellHeader, syncAppTopbarHeight)
 watch(() => route.path, syncAppTopbarHeight)
+watch(() => route.fullPath, syncDocumentTitle, { immediate: true })
 
 watch(() => route.name, () => {
   if (sidebarMeta.value?.mode !== 'flyout') {
@@ -222,9 +259,7 @@ onMounted(async () => {
   }
 
   syncAppTopbarHeight()
-
-  const handleResize = () => syncAppTopbarHeight()
-  window.addEventListener('resize', handleResize)
+  window.addEventListener('resize', handleWindowResize)
 
   if (contentContainerRef.value && !contentResizeObserver) {
     contentResizeObserver = new ResizeObserver(() => {
@@ -232,17 +267,14 @@ onMounted(async () => {
     })
     contentResizeObserver.observe(contentContainerRef.value)
   }
-
-  onUnmounted(() => {
-    window.removeEventListener('resize', handleResize)
-    if (contentResizeObserver) {
-      contentResizeObserver.disconnect()
-      contentResizeObserver = null
-    }
-  })
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', handleWindowResize)
+  if (contentResizeObserver) {
+    contentResizeObserver.disconnect()
+    contentResizeObserver = null
+  }
   emitter.all.clear()
 })
 </script>
