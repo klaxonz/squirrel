@@ -4,7 +4,9 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from crawl import PluginInvokeResponse
+from fastapi import HTTPException
+
+from crawl import PluginInvokeResponse, PluginRuntimeError
 from routes import video as video_route
 
 
@@ -134,6 +136,47 @@ def test_get_video_subtitles_allows_site_default_language(monkeypatch):
     }]
     assert response.body.decode('utf-8') == '1\n00:00:00,000 --> 00:00:01,000\nhello\n'
     assert response.headers['content-disposition'] == 'inline; filename="demo.en.srt"'
+
+
+def test_get_video_subtitles_surfaces_runtime_error_message(monkeypatch):
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            return PluginInvokeResponse(
+                request_id='subtitles-error-1',
+                ok=False,
+                error=PluginRuntimeError.crashed(
+                    'No subtitles available: ERROR: [youtube] demo: Requested format is not available.',
+                ),
+            )
+
+    monkeypatch.setattr(
+        video_route.video_service,
+        'get_video_by_id',
+        lambda video_id: SimpleNamespace(
+            id=video_id,
+            url='https://www.youtube.com/watch?v=demo',
+            title='Test video',
+            duration=120,
+        ),
+    )
+    monkeypatch.setattr(
+        video_route,
+        'get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        raising=False,
+    )
+
+    try:
+        video_route.get_video_subtitles(
+            video_id=1,
+            lang='en',
+            fmt='srt',
+            current_user=SimpleNamespace(id=1),
+        )
+        raise AssertionError('Expected get_video_subtitles to raise HTTPException')
+    except HTTPException as exc:
+        assert exc.status_code == 404
+        assert exc.detail == 'No subtitles available'
 
 
 def test_get_video_mpd_reads_from_plugin_gateway(monkeypatch):

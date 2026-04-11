@@ -195,7 +195,15 @@ def get_video_subtitles(
             },
         )
         if not result.ok or not isinstance(result.data, dict):
-            raise HTTPException(status_code=400, detail="Subtitles provider not available for this domain")
+            error = getattr(result, 'error', None)
+            error_message = str(getattr(error, 'message', '') or '').strip()
+            if 'No subtitles available' in error_message:
+                raise HTTPException(status_code=404, detail='No subtitles available')
+            if 'No runtime route found for capability' in error_message:
+                raise HTTPException(status_code=400, detail='Subtitles provider not available for this domain')
+            if error_message:
+                raise HTTPException(status_code=400, detail=error_message)
+            raise HTTPException(status_code=400, detail='Subtitles provider not available for this domain')
         srt_text = str(result.data.get('content') or '')
         fallback_filename = f'{video.id}.{lang}.srt' if lang else f'{video.id}.srt'
         filename = str(result.data.get('filename') or fallback_filename)

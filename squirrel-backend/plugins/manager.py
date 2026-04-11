@@ -259,6 +259,14 @@ class PluginManager:
                     existing.runtime_path = str(runtime_path if runtime_path.exists() else plugin_root)
                     existing.metadata = {'source': 'workspace'}
                     self._store.upsert(existing)
+
+                    if existing.enabled:
+                        self._gateway.unregister_plugin(existing.plugin_id)
+                        self._gateway.register_manifest(
+                            plugin_id=existing.plugin_id,
+                            version=existing.version,
+                            manifest=PluginManifest.from_dict(existing.manifest),
+                        )
                     continue
 
                 record = PluginInstallRecord(
