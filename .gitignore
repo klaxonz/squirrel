@@ -8,6 +8,7 @@ downloads
 mysql
 redis
 logs
+output/
 
 # Environment variables
 .env
