@@ -507,13 +507,13 @@ onUnmounted(() => {
   background: hsl(var(--secondary));
   border: 1px solid hsl(var(--border) / 0.5);
   padding: 1px;
-  border-radius: 2px;
+  border-radius: calc(var(--radius-sm) - 1px);
 }
 
 .meta-avatar {
   width: 14px;
   height: 14px;
-  border-radius: 1px;
+  border-radius: calc(var(--radius-sm) - 1px);
 }
 
 .meta-avatar:deep(.avatar-image),

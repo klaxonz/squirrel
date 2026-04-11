@@ -948,7 +948,7 @@ onUnmounted(() => {
 .video-channel__avatar {
   width: 2.5rem !important;
   height: 2.5rem !important;
-  border-radius: 50%;
+  border-radius: calc(var(--radius-sm) - 1px);
   border: 2px solid hsl(var(--border));
 }
 

@@ -25,7 +25,7 @@
       <div
         v-for="item in items"
         :key="item.run_id || item.subscription_id"
-        class="recent-row animate-scan"
+        class="recent-row"
         :class="item.sync_status === 'failed' ? 'recent-row--failed' : ''"
       >
         <div class="recent-row__identity">

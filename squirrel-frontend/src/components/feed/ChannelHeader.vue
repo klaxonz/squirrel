@@ -163,7 +163,7 @@ watch(() => props.subscriptionId, () => {
   width: 52px;
   height: 52px;
   flex-shrink: 0;
-  border-radius: 8px;
+  border-radius: calc(var(--radius-sm) - 1px);
   overflow: hidden;
 }
 
@@ -179,7 +179,7 @@ watch(() => props.subscriptionId, () => {
 }
 
 .channel-avatar-card:deep(.subscription-avatar) {
-  border-radius: 8px;
+  border-radius: calc(var(--radius-sm) - 1px);
 }
 
 .channel-avatar-card:deep(.avatar-image) {

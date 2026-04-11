@@ -9,7 +9,7 @@
               <img
                 :src="getAvatarSrc(run.subscription_avatar, `run-drawer-${run.run_id}`)"
                 :alt="run.subscription_name"
-                class="h-10 w-10 sm:h-14 sm:w-14 rounded-xl object-cover ring-1 ring-border/40 shadow-sm"
+                class="sync-run-detail-drawer__avatar h-10 w-10 sm:h-14 sm:w-14 object-cover ring-1 ring-border/40 shadow-sm"
                 referrerpolicy="no-referrer"
                 @error="(e) => handleAvatarError(e, `run-drawer-${run?.run_id || 'unknown'}`)"
               >
@@ -145,3 +145,9 @@ const getStatusLabel = (status: string) => {
   }
 }
 </script>
+
+<style scoped>
+.sync-run-detail-drawer__avatar {
+  border-radius: calc(var(--radius-sm) - 1px);
+}
+</style>

@@ -32,7 +32,7 @@
         v-for="item in items"
         :key="item.run_id || item.subscription_id"
         type="button"
-        class="run-row animate-scan"
+        class="run-row"
         @click="emit('open-run', item)"
       >
         <div class="run-row__identity">

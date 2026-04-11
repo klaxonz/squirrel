@@ -60,6 +60,7 @@ const sizeClass = computed(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  border-radius: calc(var(--radius-sm) - 1px);
 }
 
 .avatar--xs { width: 1.25rem; height: 1.25rem; }

@@ -534,7 +534,7 @@ watch(() => props.show, (visible) => {
 .import-dialog__avatar {
   width: 2.15rem;
   height: 2.15rem;
-  border-radius: 9999px;
+  border-radius: calc(var(--radius-sm) - 1px);
   object-fit: cover;
 }
 

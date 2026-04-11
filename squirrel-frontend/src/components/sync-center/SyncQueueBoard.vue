@@ -26,7 +26,7 @@
           v-for="item in items"
           :key="item.run_id || item.subscription_id"
           type="button"
-          class="queue-row animate-scan"
+          class="queue-row"
           @click="emit('open-run', item)"
         >
           <div class="queue-row__identity">

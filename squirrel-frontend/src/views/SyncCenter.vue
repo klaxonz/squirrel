@@ -2,7 +2,7 @@
   <div class="sync-center-page tactical-terminal min-h-full selection:bg-primary/10">
     <div class="toolbar-container py-4 md:py-8 relative z-10">
       <div class="flex flex-col gap-4 md:gap-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border/50 pb-4 gap-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <SyncControlBar
             :summary="dashboardSummary"
             class="border-none pb-0 mb-0"

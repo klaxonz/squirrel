@@ -26,7 +26,7 @@
         v-for="run in displayRuns"
         :key="run.run_id"
         type="button"
-        class="recent-row animate-scan"
+        class="recent-row"
         :class="selectedRunId === run.run_id ? 'recent-row--active' : ''"
         @click="emit('open-run', run.run_id)"
       >

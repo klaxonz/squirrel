@@ -109,7 +109,7 @@ const progress = (state) => getProgressPercentage(state.processed, state.total);
 .list { max-height: 360px; overflow: auto; }
 .item { display: flex; gap: 10px; padding: 10px 12px; }
 .item + .item { border-top: 1px solid hsl(var(--border)); }
-.item img { width: 28px; height: 28px; border-radius: 999px; }
+.item img { width: 28px; height: 28px; border-radius: calc(var(--radius-sm) - 1px); }
 .meta { flex: 1; min-width: 0; }
 .title { font-size: var(--font-size-xs); color: hsl(var(--foreground)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sub { font-size: var(--font-size-2xs); color: hsl(var(--muted-foreground)); margin-top: 2px; }

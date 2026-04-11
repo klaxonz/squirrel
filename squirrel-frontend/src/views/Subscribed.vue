@@ -1099,7 +1099,7 @@ onUnmounted(() => {
 .subscription-dialog__avatar {
   width: 3rem;
   height: 3rem;
-  border-radius: var(--radius-sm);
+  border-radius: calc(var(--radius-sm) - 1px);
   border: 1px solid hsl(var(--border) / 0.4);
 }
 

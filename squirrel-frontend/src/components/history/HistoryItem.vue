@@ -351,7 +351,7 @@ onUnmounted(() => {
 .history-item__avatar {
   width: 1rem;
   height: 1rem;
-  border-radius: 2px;
+  border-radius: calc(var(--radius-sm) - 1px);
   margin-right: -0.25rem;
   border: 1px solid hsl(var(--background));
 }
