@@ -42,3 +42,4 @@ class SubscriptionDto(sqlalchemy_to_pydantic(Subscription)):
     next_sync_at: Optional[datetime] = None
     last_error: Optional[str] = None
     pending_video_count: int = 0
+    site: Optional[str] = None

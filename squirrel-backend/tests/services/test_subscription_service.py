@@ -793,6 +793,66 @@ def test_list_subscriptions_prefers_actual_extract_count_when_total_videos_is_st
     assert subscriptions[0]['total_videos'] == 2
 
 
+def test_list_subscriptions_only_counts_extracts_for_current_page(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_subscription(engine, user_ids=[1])
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            Subscription(
+                id=2,
+                type='CHANNEL',
+                name='Second subscription',
+                url='https://www.youtube.com/channel/second',
+                avatar=None,
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 2),
+                updated_at=datetime(2024, 1, 2),
+            )
+        )
+        session.add(
+            UserSubscription(
+                id=2,
+                user_id=1,
+                subscription_id=2,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 2),
+                updated_at=datetime(2024, 1, 2),
+            )
+        )
+        session.commit()
+
+    monkeypatch.setattr(subscription_service.user_config_service, 'get_config', lambda _user_id: {'showNsfw': False})
+    captured_ids = []
+
+    def fake_load_subscription_extract_counts(_session, subscription_ids):
+        captured_ids.append(list(subscription_ids))
+        return {subscription_id: 0 for subscription_id in subscription_ids}
+
+    monkeypatch.setattr(
+        subscription_service,
+        '_load_subscription_extract_counts',
+        fake_load_subscription_extract_counts,
+    )
+
+    subscriptions, total = subscription_service.list_subscriptions(
+        user_id=1,
+        query=None,
+        type=None,
+        nsfw='all',
+        page=1,
+        page_size=1,
+    )
+
+    assert total == 2
+    assert [item['id'] for item in subscriptions] == [2]
+    assert captured_ids == [[2]]
+
+
 def test_get_subscription_detail_prefers_actual_extract_count_when_total_videos_is_stale(monkeypatch):
     engine = _setup_test_env(monkeypatch)
     _seed_subscription(engine, user_ids=[1])

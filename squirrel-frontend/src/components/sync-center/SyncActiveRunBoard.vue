@@ -29,75 +29,73 @@
 
     <TransitionGroup v-else name="lane-card" tag="div" class="board-list">
       <button
-        v-for="(item, index) in items"
+        v-for="item in items"
         :key="item.run_id || item.subscription_id"
         type="button"
-        class="run-row animate-scan h-auto min-h-[3.5rem]"
+        class="run-row animate-scan"
         @click="emit('open-run', item)"
       >
-        <div class="run-row__main flex-col sm:flex-row items-start sm:items-center">
-          <div class="run-row__identity w-full sm:w-auto">
-            <SubscriptionAvatar
-              :src="item.subscription_avatar"
-              :name="item.subscription_name"
-              size="md"
-            />
-            <div class="min-w-0 flex-1">
-              <div class="run-row__title">
-                <h3 class="truncate text-sm font-bold text-foreground">{{ item.subscription_name }}</h3>
-              </div>
-              <div class="run-row__meta run-row__meta--with-icon font-mono">
-                <SiteIcon
-                  v-if="item.site"
-                  :icon-url="item.site_icon_url"
-                  :label="item.site"
-                  size="xs"
-                  class="run-row__site-icon"
-                />
-                <span class="run-row__meta-text">{{ getMetaText(item) }}</span>
-              </div>
+        <div class="run-row__identity">
+          <SubscriptionAvatar
+            :src="item.subscription_avatar"
+            :name="item.subscription_name"
+            size="md"
+          />
+          <div class="run-row__info">
+            <div class="run-row__title">
+              <h3 class="truncate text-sm font-bold text-foreground">{{ item.subscription_name }}</h3>
+            </div>
+            <div class="run-row__meta run-row__meta--with-icon font-mono mt-0.5">
+              <SiteIcon
+                v-if="item.site"
+                :icon-url="item.site_icon_url"
+                :label="item.site"
+                size="xs"
+                class="run-row__site-icon"
+              />
+              <span class="run-row__meta-text">{{ getMetaText(item) }}</span>
             </div>
           </div>
+        </div>
 
-          <div
-            v-if="pipeline === 'extract' || getFeedMetrics(item).length"
-            class="metric-inline mt-3 sm:mt-0 w-full sm:w-auto justify-start sm:justify-end flex-wrap"
-            :class="pipeline === 'extract' ? 'metric-inline--compact' : ''"
-          >
-            <template v-if="pipeline === 'extract'">
-              <div class="metric-group">
-                <span class="metric-label">总数</span>
-                <span class="metric-value font-mono">{{ item.batch_task_count }}</span>
-              </div>
-              <div class="metric-group">
-                <span class="metric-label">排队</span>
-                <span class="metric-value font-mono">{{ item.queued_task_count }}</span>
-              </div>
-              <div class="metric-group">
-                <span class="metric-label">活跃</span>
-                <span class="metric-value font-mono text-[#FFB300]">{{ item.running_task_count }}</span>
-              </div>
-              <div class="metric-group">
-                <span class="metric-label">完成</span>
-                <span class="metric-value font-mono text-[#00FF41]">{{ item.completed_task_count }}</span>
-              </div>
-            </template>
-            <template v-else>
-              <div
-                v-for="metric in getFeedMetrics(item)"
-                :key="`${item.run_id || item.subscription_id}-${metric.label}`"
-                class="metric-group"
+        <div
+          v-if="pipeline === 'extract' || getFeedMetrics(item).length"
+          class="run-row__metrics"
+          :class="pipeline === 'extract' ? 'run-row__metrics--compact' : ''"
+        >
+          <template v-if="pipeline === 'extract'">
+            <div class="metric-group">
+              <span class="metric-label">总数</span>
+              <span class="metric-value font-mono">{{ item.batch_task_count }}</span>
+            </div>
+            <div class="metric-group">
+              <span class="metric-label">排队</span>
+              <span class="metric-value font-mono">{{ item.queued_task_count }}</span>
+            </div>
+            <div class="metric-group">
+              <span class="metric-label">活跃</span>
+              <span class="metric-value font-mono text-[#FFB300]">{{ item.running_task_count }}</span>
+            </div>
+            <div class="metric-group">
+              <span class="metric-label">完成</span>
+              <span class="metric-value font-mono text-[#00FF41]">{{ item.completed_task_count }}</span>
+            </div>
+          </template>
+          <template v-else>
+            <div
+              v-for="metric in getFeedMetrics(item)"
+              :key="`${item.run_id || item.subscription_id}-${metric.label}`"
+              class="metric-group"
+            >
+              <span class="metric-label uppercase">{{ metric.label }}</span>
+              <span
+                class="metric-value font-mono"
+                :class="metric.tone === 'pending' ? 'text-[#FFB300]' : metric.tone === 'warn' ? 'text-rose-500' : ''"
               >
-                <span class="metric-label uppercase">{{ metric.label }}</span>
-                <span
-                  class="metric-value font-mono"
-                  :class="metric.tone === 'pending' ? 'text-[#FFB300]' : metric.tone === 'warn' ? 'text-rose-500' : ''"
-                >
-                  {{ metric.value }}
-                </span>
-              </div>
-            </template>
-          </div>
+                {{ metric.value }}
+              </span>
+            </div>
+          </template>
         </div>
       </button>
     </TransitionGroup>
@@ -213,6 +211,8 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   padding: 1.2rem;
   min-height: 0;
   border: none;
+  display: flex;
+  flex-direction: column;
 }
 
 .board-header {
@@ -253,64 +253,93 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 .board-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border) / 0.4) transparent;
+}
+
+.board-list:hover {
+  scrollbar-width: thin;
 }
 
 .board-list::-webkit-scrollbar {
-  display: none;
+  width: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.board-list:hover::-webkit-scrollbar {
+  opacity: 1;
+}
+
+.board-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.board-list::-webkit-scrollbar-thumb {
+  background: hsl(var(--border) / 0.4);
+  border-radius: 2px;
 }
 
 .run-row {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
   min-height: 3.5rem;
   background: transparent;
-  padding: 0.6rem 1rem;
+  padding: 0.5rem 0.75rem;
   text-align: left;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
   position: relative;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+  cursor: pointer;
+  gap: 0.75rem;
 }
 
 .run-row:hover {
-  transform: translateX(6px);
-  background: hsl(var(--foreground) / 0.02);
-}
-
-.run-row__main {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 1rem;
+  background: hsl(var(--background));
 }
 
 .run-row__identity {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
   min-width: 0;
   flex: 1;
 }
 
-.run-row__meta {
-  margin-top: 0.2rem;
-  font-size: 9px;
-  font-weight: 600;
-  color: hsl(var(--muted-foreground) / 0.4);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.run-row__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  flex: 1;
 }
 
 .run-row__title {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
   min-width: 0;
+  flex: 1;
+}
+
+.run-row__title h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.run-row__meta {
+  font-size: 9px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground) / 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .run-row__meta--with-icon {
@@ -322,6 +351,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 
 .run-row__site-icon {
   opacity: 0.72;
+  flex-shrink: 0;
 }
 
 .run-row__meta-text {
@@ -331,15 +361,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   white-space: nowrap;
 }
 
-.run-row__avatar {
-  transition: all 0.3s ease;
-}
-
-.run-row:hover .run-row__avatar {
-  transform: scale(1.1);
-}
-
-.metric-inline {
+.run-row__metrics {
   display: flex;
   flex-direction: row;
   gap: 1.5rem;
@@ -347,7 +369,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   align-items: flex-end;
 }
 
-.metric-inline--compact {
+.run-row__metrics--compact {
   gap: 0.85rem;
 }
 
@@ -358,10 +380,10 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
 }
 
 .metric-label {
-  font-size: 6px;
+  font-size: 7px;
   font-weight: 900;
   color: hsl(var(--muted-foreground) / 0.3);
-  letter-spacing: 0.2em;
+  letter-spacing: 0.15em;
 }
 
 .metric-value {

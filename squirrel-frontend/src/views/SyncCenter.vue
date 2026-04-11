@@ -26,39 +26,41 @@
           </div>
 
           <section class="flow-shell relative z-10">
-            <SyncQueueBoard
-              :items="currentQueuedLaneItems"
-              :loading="currentBoardInitialLoading"
-              :error="currentQueuedError"
-              :site-options="siteOptions"
-              @open-run="handleOpenRunFromItem"
-            />
+            <div class="flow-grid">
+              <SyncQueueBoard
+                :items="currentQueuedLaneItems"
+                :loading="currentBoardInitialLoading"
+                :error="currentQueuedError"
+                :site-options="siteOptions"
+                @open-run="handleOpenRunFromItem"
+              />
 
-            <SyncActiveRunBoard
-              :items="currentActiveLaneItems"
-              :slot-count="activeSlotCount"
-              :loading="currentBoardInitialLoading"
-              :error="currentRunningError"
-              :pipeline="activePipeline"
-              :carryover-count="activePipeline === 'feed' ? feedAwaitingExtractCount : 0"
-              @open-run="handleOpenRunFromItem"
-            />
+              <SyncActiveRunBoard
+                :items="currentActiveLaneItems"
+                :slot-count="activeSlotCount"
+                :loading="currentBoardInitialLoading"
+                :error="currentRunningError"
+                :pipeline="activePipeline"
+                :carryover-count="activePipeline === 'feed' ? feedAwaitingExtractCount : 0"
+                @open-run="handleOpenRunFromItem"
+              />
 
-            <SyncRecentRunBoard
-              v-if="activePipeline === 'feed'"
-              :runs="recentLaneRuns"
-              :loading="feedInitialLoading"
-              :error="currentRecentError"
-              :selected-run-id="selectedRunId"
-              @open-run="handleSelectRun"
-            />
+              <SyncRecentRunBoard
+                v-if="activePipeline === 'feed'"
+                :runs="recentLaneRuns"
+                :loading="feedInitialLoading"
+                :error="currentRecentError"
+                :selected-run-id="selectedRunId"
+                @open-run="handleSelectRun"
+              />
 
-            <SyncRecentTaskBoard
-              v-else
-              :items="extractionRecentItems"
-              :loading="extractionInitialLoading"
-              :error="extractionRecentPreviewError"
-            />
+              <SyncRecentTaskBoard
+                v-else
+                :items="extractionRecentItems"
+                :loading="extractionInitialLoading"
+                :error="extractionRecentPreviewError"
+              />
+            </div>
           </section>
         </div>
 
@@ -515,33 +517,30 @@ onBeforeUnmount(() => {
 }
 
 .flow-shell {
+  position: relative;
+  z-index: 10;
+}
+
+.flow-grid {
   display: grid;
-  gap: 2rem;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  max-height: calc(100vh - 16rem);
+  overflow: hidden;
 }
 
-.lane-card-enter-active,
-.lane-card-leave-active,
-.lane-card-move {
-  transition: all 0.6s cubic-bezier(0.2, 1, 0.2, 1);
-}
-
-.lane-card-enter-from {
-  opacity: 0;
-  transform: translateX(-30px) scale(0.95);
-  filter: blur(4px);
-}
-
-.lane-card-leave-to {
-  opacity: 0;
-  transform: translateX(30px) scale(0.95);
-  filter: blur(4px);
-}
-
-@media (min-width: 1280px) {
-  .flow-shell {
+@media (min-width: 640px) {
+  .flow-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-items: start;
-    grid-auto-rows: minmax(0, auto);
+    gap: 0.75rem;
+    max-height: calc(100vh - 14rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .flow-grid {
+    gap: 1rem;
+    max-height: calc(100vh - 12rem);
   }
 }
 

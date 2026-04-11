@@ -23,36 +23,34 @@
 
     <TransitionGroup v-else name="lane-card" tag="div" class="board-list">
         <button
-          v-for="(item, index) in items"
+          v-for="item in items"
           :key="item.run_id || item.subscription_id"
           type="button"
-          class="queue-row animate-scan h-auto min-h-[3.5rem]"
+          class="queue-row animate-scan"
           @click="emit('open-run', item)"
         >
-          <div class="queue-row__main w-full">
-            <div class="queue-row__identity w-full">
-              <SubscriptionAvatar
-                :src="item.subscription_avatar"
-                :name="item.subscription_name"
-                size="md"
-              />
+          <div class="queue-row__identity">
+            <SubscriptionAvatar
+              :src="item.subscription_avatar"
+              :name="item.subscription_name"
+              size="md"
+            />
 
-              <div class="min-w-0 flex-1">
-                <div class="queue-row__title">
-                  <h3 class="truncate text-sm font-bold text-foreground">{{ item.subscription_name }}</h3>
-                </div>
-                <p class="queue-row__meta font-mono flex flex-wrap items-center gap-1.5 mt-1">
-                  <SiteIcon
-                    v-if="item.site"
-                    :icon-url="getSiteIconUrl(item)"
-                    :label="item.site"
-                    size="xs"
-                  />
-                  <span>{{ getSyncModeLabel(item.sync_mode) }}</span>
-                  <span class="opacity-30 sm:inline hidden">·</span>
-                  <span>{{ getQueueTimeLabel(item) }}</span>
-                </p>
+            <div class="queue-row__info">
+              <div class="queue-row__title">
+                <h3 class="truncate text-sm font-bold text-foreground">{{ item.subscription_name }}</h3>
               </div>
+              <p class="queue-row__meta font-mono flex flex-wrap items-center gap-1.5 mt-0.5">
+                <SiteIcon
+                  v-if="item.site"
+                  :icon-url="getSiteIconUrl(item)"
+                  :label="item.site"
+                  size="xs"
+                />
+                <span>{{ getSyncModeLabel(item.sync_mode) }}</span>
+                <span class="opacity-30">·</span>
+                <span>{{ getQueueTimeLabel(item) }}</span>
+              </p>
             </div>
           </div>
         </button>
@@ -128,6 +126,8 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
   padding: 1.2rem;
   min-height: 0;
   border: none;
+  display: flex;
+  flex-direction: column;
 }
 
 .board-header {
@@ -168,77 +168,85 @@ const getQueueTimeLabel = (item: SyncCenterItem) => {
 .board-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border) / 0.4) transparent;
+}
+
+.board-list:hover {
+  scrollbar-width: thin;
 }
 
 .board-list::-webkit-scrollbar {
-  display: none;
+  width: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.board-list:hover::-webkit-scrollbar {
+  opacity: 1;
+}
+
+.board-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.board-list::-webkit-scrollbar-thumb {
+  background: hsl(var(--border) / 0.4);
+  border-radius: 2px;
 }
 
 .queue-row {
   display: flex;
   width: 100%;
   min-height: 3.5rem;
-  align-items: center;
-  gap: 1rem;
   background: transparent;
-  padding: 0.6rem 1rem;
+  padding: 0.5rem 0.75rem;
   text-align: left;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
   position: relative;
-}
-
-.queue-row::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: hsl(var(--foreground));
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+  cursor: pointer;
 }
 
 .queue-row:hover {
-  transform: translateX(6px);
-  background: hsl(var(--foreground) / 0.02);
-}
-
-.queue-row:hover::before {
-  opacity: 0.02;
-}
-
-.queue-row__main {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 1rem;
+  background: hsl(var(--background));
 }
 
 .queue-row__identity {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.queue-row__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
   min-width: 0;
   flex: 1;
 }
 
-.queue-row__avatar {
-  filter: grayscale(0.6) brightness(0.8);
-  transition: all 0.3s ease;
+.queue-row__title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
 }
 
-.queue-row:hover .queue-row__avatar {
-  filter: grayscale(0) brightness(1);
-  transform: scale(1.05);
+.queue-row__title h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .queue-row__meta {
-  margin-top: 0.25rem;
   font-size: 9px;
   font-weight: 600;
   color: hsl(var(--muted-foreground) / 0.4);

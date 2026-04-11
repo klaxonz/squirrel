@@ -1,215 +1,268 @@
 <template>
-  <div class="scheduled-page tactical-terminal min-h-full selection:bg-primary/10">
-    <div class="matrix-bg"></div>
-    <!-- Header Area -->
-    <div class="scheduled-header border-b border-border/50 relative z-10 max-w-full">
-      <div class="max-w-[1440px] mx-auto w-full space-y-8">
-        <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div class="space-y-1">
-            <h1 class="text-xl font-bold tracking-tighter text-foreground uppercase font-mono">任务调度</h1>
-            <p class="text-[10px] font-medium text-primary/60 uppercase tracking-[0.2em] font-mono">全局自动化执行流水线与任务负载监控</p>
-          </div>
-          
-          <div class="flex items-center gap-4">
-            <!-- Scheduler Toggle -->
-            <div class="flex items-center gap-3 px-3 py-1 rounded border border-border/50 bg-secondary/40">
-              <div :class="['h-1.5 w-1.5 rounded-full', schedulerStatus?.running ? 'bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)] animate-pulse' : 'bg-rose-500 dark:bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.4)]']"></div>
-              <span class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 font-mono">调度器: {{ schedulerStatus?.running ? '就绪' : '暂停' }}</span>
-              <div class="mx-1 h-3 w-px bg-border/50"></div>
-              <Switch 
-                :checked="schedulerStatus?.running" 
-                @update:checked="toggleScheduler"
-                :disabled="loading"
-              />
-            </div>
-
-            <div class="flex items-center gap-2">
-              <button 
-                class="tactical-btn" 
-                :disabled="loading" 
-                @click="refreshData"
-              >
-                [ {{ loading ? '刷新中...' : '刷新数据' }} ]
-              </button>
-
-              <button 
-                class="tactical-btn" 
-                @click="showCreateDialog = true"
-              >
-                [ 新建任务 ]
-              </button>
-            </div>
-          </div>
+  <div class="scheduled-page bg-background text-foreground h-full flex flex-col min-h-0">
+    <div class="toolbar-container pt-4 pb-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <!-- Title & Description -->
+        <div class="flex flex-col gap-0.5">
+          <h1 class="text-base font-bold tracking-tight text-foreground">任务调度</h1>
+          <p class="text-[11px] text-muted-foreground">全局自动化执行流水线与任务负载监控</p>
         </div>
 
-        <!-- Signal Matrix (Stats) -->
-        <div class="flex flex-wrap items-center gap-8 px-1">
-          <div v-for="stat in signals" :key="stat.key" class="flex items-center gap-3 group">
-            <div :class="[stat.bg, 'flex h-9 w-9 items-center justify-center rounded-lg transition-colors group-hover:bg-opacity-80']">
-              <component :is="stat.icon" :class="[stat.color, 'h-4 w-4']" />
-            </div>
-            <div class="flex flex-col">
-              <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">{{ stat.label }}</span>
-              <span class="text-sm font-semibold tabular-nums text-foreground/80">{{ stat.value }}</span>
-            </div>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="flex items-center gap-3 mt-4 overflow-x-auto">
+        <div
+          v-for="stat in signals"
+          :key="stat.key"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/20 bg-muted/10 shrink-0"
+        >
+          <component :is="stat.icon" :class="['h-4 w-4 shrink-0', stat.color]" />
+          <div class="flex flex-col min-w-0">
+            <span class="text-[10px] text-muted-foreground leading-none">{{ stat.label }}</span>
+            <span class="text-sm font-semibold tabular-nums text-foreground leading-tight mt-0.5">{{ stat.value }}</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Main Content Area -->
-      <div class="scheduled-content flex-1 overflow-hidden flex flex-col max-w-full mx-auto w-full gap-6 relative z-10">
-      <!-- Search & Filters -->
-      <div class="flex flex-wrap items-center gap-1.5 rounded-xl border border-border/40 bg-muted/10 p-1">
-        <div class="relative flex-1 min-w-[200px] group">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/30 transition-colors group-focus-within:text-primary/60" />
-          <Input 
-            v-model="searchQuery" 
-            @input="debouncedSearch"
-            placeholder="搜索任务、描述或异常细节..." 
-            class="pl-9 bg-transparent border-none h-8 text-[11px] focus-visible:ring-0"
-          />
-        </div>
-        
-        <div class="mx-0.5 h-3.5 w-px bg-border/40"></div>
+    <!-- Main Content -->
+    <div class="content-container flex-1 flex flex-col min-h-0 overflow-hidden">
 
-        <div class="w-full sm:w-[8rem]">
-          <Select v-model="statusFilter" @update:model-value="loadTasks">
-            <SelectTrigger class="h-8 border-none bg-transparent text-[11px] font-semibold text-muted-foreground/80 focus:ring-0">
-              <SelectValue placeholder="状态" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <!-- Search & Filter Bar -->
+      <div class="px-4 py-3 border-b border-border/30">
+        <div class="flex items-center gap-3 flex-wrap">
+          <!-- Search with border -->
+          <div class="relative flex-1 min-w-[180px] border border-border/60 rounded-lg bg-background">
+            <Search class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
+            <Input
+              v-model="searchQuery"
+              @input="debouncedSearch"
+              placeholder="搜索任务名称、描述或异常..."
+              class="pl-8 pr-8 bg-transparent border-none h-8 text-[11px] focus-visible:ring-0 placeholder:text-muted-foreground/30 shadow-none"
+            />
+            <button
+              v-if="searchQuery"
+              @click="clearSearch"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-foreground transition-colors"
+            >
+              <X class="h-3 w-3" />
+            </button>
+          </div>
 
-        <div class="mx-0.5 h-3.5 w-px bg-border/40"></div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              class="h-8 px-3 text-[11px] font-medium border-border/40 text-muted-foreground hover:text-foreground hover:border-border/80 transition-all shadow-none"
+              :disabled="loading"
+              @click="refreshData"
+            >
+              <RefreshCw :class="['h-3.5 w-3.5 mr-1.5', loading ? 'animate-spin' : '']" />
+              刷新
+            </Button>
 
-        <div class="w-full sm:w-[8rem]">
-          <Select v-model="typeFilter" @update:model-value="loadTasks">
-            <SelectTrigger class="h-8 border-none bg-transparent text-[11px] font-semibold text-muted-foreground/80 focus:ring-0">
-              <SelectValue placeholder="类型" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="opt in typeOptions" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+            <Button
+              size="sm"
+              class="h-8 px-4 text-[11px] font-medium transition-all shadow-none"
+              @click="showCreateDialog = true"
+            >
+              <Plus class="h-3.5 w-3.5 mr-1.5" />
+              新建任务
+            </Button>
+          </div>
 
-        <div class="ml-auto flex items-center pr-1">
-          <Button variant="ghost" size="xs" class="h-7 w-7 p-0 text-muted-foreground/70 dark:text-muted-foreground/80 hover:text-foreground hover:bg-muted/30" :disabled="loading" @click="loadTasks">
-            <Search class="h-3.5 w-3.5" />
-          </Button>
+          <div class="h-5 w-px bg-border/20 shrink-0"></div>
+
+          <!-- Status filter buttons -->
+          <div class="flex items-center gap-1 shrink-0">
+              <button
+              v-for="opt in statusOptions"
+              :key="opt.value"
+              @click="setStatusFilter(opt.value)"
+              :class="[
+                'h-8 px-3 rounded-md text-[11px] font-medium transition-all whitespace-nowrap',
+                statusFilter === opt.value
+                  ? 'bg-foreground text-background'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              ]"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
+
+          <div class="h-5 w-px bg-border/20 shrink-0 hidden md:block"></div>
+
+          <!-- Type filter buttons -->
+          <div class="hidden md:flex items-center gap-1 shrink-0">
+            <button
+              v-for="opt in typeOptions"
+              :key="opt.value"
+              @click="setTypeFilter(opt.value)"
+              :class="[
+                'px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap',
+                typeFilter === opt.value
+                  ? 'bg-foreground text-background'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              ]"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
+
+          <!-- Mobile type filter -->
+          <div class="md:hidden shrink-0">
+            <Select v-model="typeFilter" @update:model-value="loadTasks">
+              <SelectTrigger class="h-8 w-24 border border-border/40 bg-background text-[11px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="opt in typeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
-      <!-- Table Container -->
-      <div class="flex-1 overflow-hidden flex flex-col">
-        <div class="flex-1 overflow-auto custom-scrollbar">
-          <table class="w-full text-left border-collapse min-w-[1000px] text-[12px]">
+      <!-- Table Area -->
+      <div class="flex-1 overflow-hidden flex flex-col min-h-0">
+
+        <!-- Empty State -->
+        <div v-if="!loading && tasks.length === 0" class="flex-1 flex flex-col items-center justify-center py-20 gap-4">
+          <div class="w-12 h-12 rounded-xl border border-border/20 bg-muted/10 flex items-center justify-center">
+            <Clock class="h-5 w-5 text-muted-foreground/15" />
+          </div>
+          <div class="text-center space-y-1.5">
+            <p class="text-xs font-mono font-bold text-foreground/25 uppercase tracking-widest">无任务</p>
+            <p class="text-[9px] text-muted-foreground/15 max-w-[220px] leading-relaxed">
+              当前调度器下没有任何任务实例，点击上方按钮部署第一个任务
+            </p>
+          </div>
+          <button
+            class="mt-1 h-7 px-4 text-[9px] font-mono font-bold uppercase tracking-widest border border-border/30 text-muted-foreground/30 hover:text-foreground/50 hover:border-border/60 transition-all rounded-lg"
+            @click="showCreateDialog = true"
+          >
+            <Plus class="h-3 w-3 inline mr-1" />
+            deploy
+          </button>
+        </div>
+
+        <!-- Table -->
+        <div v-else class="flex-1 overflow-auto min-h-0">
+          <table class="w-full text-left border-collapse">
             <thead>
-              <tr class="sticky top-0 z-10 bg-secondary/80 backdrop-blur-md border-b border-border/50">
-                <th class="pl-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60">任务详情</th>
-                <th class="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 w-32">当前状态</th>
-                <th class="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 w-32">调度配置</th>
-                <th class="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60">最后一次执行</th>
-                <th class="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60">下一次计划</th>
-                <th class="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 w-44">负载与健康</th>
-                <th class="pr-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 text-right w-16">操作</th>
+              <tr class="sticky top-0 z-10 bg-background border-b border-border/30">
+                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-left">任务</th>
+                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-center w-20">状态</th>
+                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-center w-20">频率</th>
+                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-left w-36">上次执行</th>
+                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-left w-36">下次计划</th>
+                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-center w-16">执行数</th>
+                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-center w-16">成功率</th>
+                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-right w-12"></th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border/10">
-              <tr v-for="task in tasks" :key="task.id" class="group hover:bg-muted/50 transition-all cursor-pointer">
-                <td class="pl-6 py-4 align-middle">
+              <!-- Loading Skeleton -->
+              <template v-if="loading && tasks.length === 0">
+                <tr v-for="i in 6" :key="i" class="animate-pulse">
+                  <td class="px-4 py-4"><div class="h-3 w-32 bg-muted/30 rounded"></div></td>
+                  <td class="px-4 py-4"><div class="h-3 w-12 bg-muted/20 rounded mx-auto"></div></td>
+                  <td class="px-4 py-4"><div class="h-3 w-10 bg-muted/20 rounded mx-auto"></div></td>
+                  <td class="px-4 py-4"><div class="h-3 w-20 bg-muted/20 rounded"></div></td>
+                  <td class="px-4 py-4"><div class="h-3 w-20 bg-muted/20 rounded"></div></td>
+                  <td class="px-4 py-4"><div class="h-3 w-10 bg-muted/20 rounded mx-auto"></div></td>
+                  <td class="px-4 py-4"><div class="h-3 w-10 bg-muted/20 rounded mx-auto"></div></td>
+                  <td class="px-4 py-4"><div class="h-5 w-5 bg-muted/20 rounded ml-auto"></div></td>
+                </tr>
+              </template>
+
+              <!-- Data Rows -->
+              <tr
+                v-for="task in tasks"
+                :key="task.id"
+                class="hover:bg-muted/30 transition-all"
+              >
+                <!-- Task Info -->
+                <td class="px-4 py-4 align-middle">
                   <div class="flex flex-col gap-0.5">
                     <div class="flex items-center gap-2">
-                      <span class="font-bold text-foreground/80 tracking-tight">{{ task.name }}</span>
-                      <span class="px-1.5 py-0.5 rounded bg-muted/40 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40">{{ getTypeText(task.task_type) }}</span>
+                      <span class="font-medium text-foreground text-[12px]">{{ task.name }}</span>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">{{ getTypeText(task.task_type) }}</span>
                     </div>
-                    <p class="text-[10px] font-medium text-muted-foreground/30 line-clamp-1 max-w-[280px]">{{ task.description || '无详细描述' }}</p>
-                    <div v-if="task.last_error" class="mt-1 flex items-center gap-1.5 text-[9px] text-rose-500/50 dark:text-rose-400/50 font-semibold uppercase tracking-tight" :title="task.last_error">
-                      <AlertCircle class="h-2.5 w-2.5 shrink-0" />
+                    <p class="text-[11px] text-muted-foreground line-clamp-1">{{ task.description || '无描述' }}</p>
+                    <div v-if="task.last_error" class="flex items-center gap-1 text-[10px] text-destructive" :title="task.last_error">
+                      <AlertCircle class="h-3 w-3 shrink-0" />
                       <span class="truncate">{{ task.last_error }}</span>
                     </div>
                   </div>
                 </td>
 
-                <td class="px-4 py-4 align-middle">
-                  <div class="flex items-center gap-2">
-                    <div :class="['h-2 w-2 rounded-full', getStatusDotColor(task.status)]"></div>
-                    <span class="text-[11px] font-bold text-foreground/70 tracking-tight uppercase">{{ getStatusText(task.status) }}</span>
-                  </div>
+                <!-- Status -->
+                <td class="px-4 py-4 align-middle text-center">
+                  <span class="text-[11px] text-foreground">{{ getStatusText(task.status) }}</span>
                 </td>
 
-                <td class="px-4 py-4 align-middle">
-                  <div class="flex flex-col">
-                    <span class="text-xs font-bold tabular-nums text-foreground/60 leading-none">{{ task.interval }}</span>
-                    <span class="text-[9px] font-bold text-muted-foreground/20 uppercase tracking-widest mt-1">{{ getUnitLabel(task.unit) }}</span>
-                  </div>
+                <!-- Frequency -->
+                <td class="px-4 py-4 align-middle text-center">
+                  <span class="text-[12px] font-medium text-foreground tabular-nums">{{ task.interval }}{{ getUnitShort(task.unit) }}</span>
                 </td>
 
+                <!-- Last Run -->
                 <td class="px-4 py-4 align-middle">
-                  <span class="text-[11px] font-semibold text-foreground/50 tabular-nums">{{ formatDateTime(task.last_run_at) || '-' }}</span>
+                  <span class="text-[11px] text-muted-foreground tabular-nums">{{ formatDateTime(task.last_run_at) || '—' }}</span>
                 </td>
 
+                <!-- Next Run -->
                 <td class="px-4 py-4 align-middle">
-                  <span class="text-[11px] font-semibold tabular-nums text-primary/50">{{ formatDateTime(task.next_run_at) || '-' }}</span>
+                  <span class="text-[11px] text-foreground tabular-nums">{{ formatDateTime(task.next_run_at) || '—' }}</span>
                 </td>
 
-                <td class="px-4 py-4 align-middle">
-                  <div class="flex flex-col gap-1.5">
-                    <div class="flex items-center justify-between text-[9px] font-bold tracking-widest">
-                      <span class="text-muted-foreground/20 uppercase">{{ calculateSuccessRate(task) }}%</span>
-                      <span class="text-foreground/30 tabular-nums">{{ task.success_count }} / {{ task.run_count }}</span>
-                    </div>
-                    <div class="h-0.5 w-full bg-muted/10 rounded-full overflow-hidden">
-                      <div
-                        class="h-full bg-primary/30 dark:bg-primary/40 transition-all duration-700 ease-out"
-                        :style="{ width: `${calculateSuccessRate(task)}%` }"
-                      ></div>
-                    </div>
-                  </div>
+                <!-- Run Count -->
+                <td class="px-4 py-4 align-middle text-center">
+                  <span class="text-[11px] text-muted-foreground tabular-nums">{{ task.run_count || 0 }}</span>
                 </td>
 
-                <td class="pr-6 py-4 text-right align-middle">
+                <!-- Success Rate -->
+                <td class="px-4 py-4 align-middle text-center">
+                  <span class="text-[11px] font-medium text-foreground tabular-nums">{{ calculateSuccessRate(task) }}%</span>
+                </td>
+
+                <!-- Actions -->
+                <td class="px-4 py-4 align-middle text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger as-child>
-                      <Button variant="ghost" size="sm" class="h-8 w-8 p-0 text-muted-foreground/30 dark:text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 rounded-lg transition-all">
-                        <MoreVertical class="h-3.5 w-3.5" />
+                      <Button variant="ghost" size="sm" class="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 shrink-0">
+                        <MoreVertical class="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" class="w-40 border-border/40 bg-card/95 backdrop-blur-xl">
-                      <DropdownMenuLabel class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 dark:text-muted-foreground/60 px-3 py-2">配置选项</DropdownMenuLabel>
-                      <DropdownMenuItem @click="executeTaskNow(task.id)" :disabled="loading" class="gap-2 px-3 py-1.5 cursor-pointer">
-                        <Play class="h-3 w-3 text-emerald-500/60 dark:text-emerald-400/60" />
-                        <span class="text-[11px] font-bold uppercase tracking-tight">立即触发</span>
+                    <DropdownMenuContent align="end" class="w-40 bg-background border border-border/40">
+                      <DropdownMenuItem @click="executeTask(task)" :disabled="executingTaskId === task.id" class="gap-2 px-3 py-2 cursor-pointer">
+                        <Play class="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                        <span class="text-[11px]">{{ executingTaskId === task.id ? '触发中...' : '立即触发' }}</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem @click="editTask(task)" class="gap-2 px-3 py-1.5 cursor-pointer">
-                        <Pencil class="h-3 w-3" />
-                        <span class="text-[11px] font-bold uppercase tracking-tight">编辑配置</span>
+                      <DropdownMenuItem @click="editTask(task)" class="gap-2 px-3 py-2 cursor-pointer">
+                        <Pencil class="h-3.5 w-3.5 shrink-0" />
+                        <span class="text-[11px]">编辑配置</span>
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator class="bg-border/20" />
-                      <DropdownMenuItem v-if="task.is_active" @click="disableTask(task.id)" class="gap-2 px-3 py-1.5 cursor-pointer">
-                        <Pause class="h-3 w-3 text-amber-500/60 dark:text-amber-400/60" />
-                        <span class="text-[11px] font-bold uppercase tracking-tight">禁用调度</span>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem v-if="task.is_active" @click="disableTask(task.id)" class="gap-2 px-3 py-2 cursor-pointer">
+                        <Pause class="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                        <span class="text-[11px]">暂停调度</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem v-else @click="enableTask(task.id)" class="gap-2 px-3 py-1.5 cursor-pointer">
-                        <Zap class="h-3 w-3 text-primary/60 dark:text-primary/50" />
-                        <span class="text-[11px] font-bold uppercase tracking-tight">恢复调度</span>
+                      <DropdownMenuItem v-else @click="enableTask(task.id)" class="gap-2 px-3 py-2 cursor-pointer">
+                        <Zap class="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span class="text-[11px]">恢复调度</span>
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator class="bg-border/20" />
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        @click="deleteTask(task.id)"
-                        :disabled="task.task_type === 'system'"
-                        class="gap-2 px-3 py-1.5 text-rose-500/70 dark:text-rose-400/70 focus:text-rose-600 dark:focus:text-rose-300 focus:bg-rose-500/5 dark:focus:bg-rose-400/5 cursor-pointer"
+                        @click="confirmDeleteTask(task)"
+                        :disabled="task.task_type === 'system' || deletingTaskId === task.id"
+                        class="gap-2 px-3 py-2 cursor-pointer text-destructive"
                       >
-                        <Trash2 class="h-3 w-3" />
-                        <span class="text-[11px] font-bold uppercase tracking-tight">移除任务</span>
+                        <Loader2 v-if="deletingTaskId === task.id" class="h-3.5 w-3.5 animate-spin shrink-0" />
+                        <Trash2 v-else class="h-3.5 w-3.5 shrink-0" />
+                        <span class="text-[11px]">{{ deletingTaskId === task.id ? '删除中...' : '移除任务' }}</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -219,28 +272,28 @@
           </table>
         </div>
 
-        <!-- Footer / Pagination -->
-        <div class="px-8 py-6 border-t border-border/10 flex items-center justify-between">
-          <p class="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/20">
-            共 {{ statistics.total_tasks }} 个任务实例
+        <!-- Pagination -->
+        <div v-if="totalPages > 0" class="flex items-center justify-between px-4 py-3 border-t border-border/20">
+          <p class="text-[11px] text-muted-foreground">
+            共 {{ statistics.total_tasks }} 个任务
           </p>
-          <div class="flex items-center gap-1.5">
+          <div class="flex items-center gap-2">
             <Button
-              variant="ghost"
-              size="xs"
-              class="h-8 px-4 text-[11px] font-bold rounded-lg border border-border/40 text-muted-foreground/60 dark:text-muted-foreground/70 hover:text-foreground hover:bg-muted/30 disabled:opacity-40"
+              variant="outline"
+              size="sm"
+              class="h-8 px-3 text-[11px]"
               :disabled="currentPage <= 1 || loading"
               @click="goToPage(currentPage - 1)"
             >
               上一页
             </Button>
-            <span class="text-[11px] font-bold text-muted-foreground/30 dark:text-muted-foreground/40 mx-4 uppercase tracking-[0.1em]">
-              第 {{ currentPage }} / {{ totalPages }} 页
+            <span class="text-[11px] text-muted-foreground px-2">
+              {{ currentPage }} / {{ totalPages }}
             </span>
             <Button
-              variant="ghost"
-              size="xs"
-              class="h-8 px-4 text-[11px] font-bold rounded-lg border border-border/40 text-muted-foreground/60 dark:text-muted-foreground/70 hover:text-foreground hover:bg-muted/30 disabled:opacity-40"
+              variant="outline"
+              size="sm"
+              class="h-8 px-3 text-[11px]"
               :disabled="currentPage >= totalPages || loading"
               @click="goToPage(currentPage + 1)"
             >
@@ -266,23 +319,88 @@
       @close="editingTask = null"
       @save="handleUpdateTask"
     />
+
+    <!-- Delete Confirm Dialog -->
+    <Dialog v-model:open="showDeleteDialog">
+      <DialogContent class="max-w-sm">
+        <DialogHeader>
+          <DialogTitle class="text-base font-bold">确认移除任务</DialogTitle>
+          <DialogDescription class="text-[11px] text-muted-foreground/50">
+            确定要移除任务 <strong class="text-foreground/60">"{{ deletingTask?.name }}"</strong> 吗？此操作不可撤销。
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter class="gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            class="h-8 px-4 text-[10px] font-bold uppercase tracking-wider"
+            @click="showDeleteDialog = false"
+          >
+            取消
+          </Button>
+          <Button
+            size="sm"
+            class="h-8 px-4 text-[10px] font-bold uppercase tracking-wider bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20"
+            @click="doDeleteTask"
+          >
+            确认移除
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Execute Confirm Dialog -->
+    <Dialog v-model:open="showExecuteDialog">
+      <DialogContent class="max-w-sm">
+        <DialogHeader>
+          <DialogTitle class="text-base font-bold">确认立即触发</DialogTitle>
+          <DialogDescription class="text-[11px] text-muted-foreground/50">
+            任务 <strong class="text-foreground/60">"{{ executingTask?.name }}"</strong> 将跳过调度周期立即执行，是否继续？
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter class="gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            class="h-8 px-4 text-[10px] font-bold uppercase tracking-wider"
+            @click="showExecuteDialog = false"
+          >
+            取消
+          </Button>
+          <Button
+            size="sm"
+            class="h-8 px-4 text-[11px] font-medium"
+            @click="doExecuteTask"
+          >
+            立即执行
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Feedback Toast -->
+    <Transition name="toast">
+      <div v-if="toast.visible" :class="['save-toast', toast.error ? 'save-toast--error' : 'save-toast--success']">
+        <CheckCircle2 v-if="!toast.error" class="h-4 w-4 shrink-0" />
+        <AlertCircle v-else class="h-4 w-4 shrink-0" />
+        <span class="text-xs font-semibold">{{ toast.message }}</span>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
 import { computed, ref, onMounted } from 'vue'
-import { 
-  Activity, RefreshCw, Plus, Search, Clock, Zap, AlertCircle, 
-  CheckCircle2, Play, Pause, Pencil, Trash2, MoreVertical, 
-  ChevronLeft, ChevronRight, Layers, PlayCircle, Timer
+import {
+  Activity, RefreshCw, Plus, Search, Clock, Zap, AlertCircle,
+  CheckCircle2, Play, Pause, Pencil, Trash2, MoreVertical,
+  ChevronLeft, ChevronRight, Loader2, X
 } from 'lucide-vue-next'
 import TaskDialog from '@/components/dialogs/TaskDialog.vue'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
-import { 
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select'
 import {
   DropdownMenu,
@@ -292,25 +410,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter, DialogClose
+} from '@/components/ui/dialog'
 import { debounce } from '../utils/debounce'
 import { Logger } from '@/utils/logger'
 import {
   createTask as apiCreateTask,
   deleteTask as apiDeleteTask,
-  disableScheduler as apiDisableScheduler,
   disableTask as apiDisableTask,
-  enableScheduler as apiEnableScheduler,
   enableTask as apiEnableTask,
   executeTaskNow as apiExecuteTaskNow,
   getAvailableTaskClasses,
-  getSchedulerStatus,
   getScheduledTasks,
   getTaskStatistics,
   updateTask as apiUpdateTask,
 } from '@/api'
 
 // Data
-const schedulerStatus = ref(null)
 const statistics = ref({
   total_tasks: 0,
   active_tasks: 0,
@@ -321,6 +439,8 @@ const statistics = ref({
 const tasks = ref([])
 const taskClasses = ref({})
 const loading = ref(false)
+const executingTaskId = ref(null)
+const deletingTaskId = ref(null)
 const currentPage = ref(1)
 const totalPages = ref(1)
 const searchQuery = ref('')
@@ -329,84 +449,127 @@ const typeFilter = ref('all')
 const showCreateDialog = ref(false)
 const editingTask = ref(null)
 
-// Signal Matrix Configuration
+// Dialogs
+const showDeleteDialog = ref(false)
+const deletingTask = ref(null)
+const showExecuteDialog = ref(false)
+const executingTask = ref(null)
+
+// Toast
+const toast = ref({ visible: false, message: '', error: false })
+let toastTimer = null
+
+const showToast = (message, isError = false) => {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value = { visible: true, message, error: isError }
+  toastTimer = setTimeout(() => { toast.value.visible = false }, 2800)
+}
+
+// Stats
 const signals = computed(() => [
   {
     key: 'total',
     label: '任务总数',
     value: statistics.value.total_tasks,
-    icon: Layers,
-    bg: 'bg-slate-500/10 dark:bg-slate-400/10',
-    color: 'text-slate-500 dark:text-slate-600'
+    icon: Activity,
+    color: 'text-muted-foreground'
   },
   {
     key: 'active',
-    label: '活跃实例',
+    label: '活跃',
     value: statistics.value.active_tasks,
     icon: Zap,
-    bg: 'bg-emerald-500/10 dark:bg-emerald-400/10',
-    color: 'text-emerald-600 dark:text-emerald-500'
+    color: 'text-foreground'
   },
   {
     key: 'running',
-    label: '正在运行',
+    label: '运行中',
     value: statistics.value.running_tasks,
-    icon: Timer,
-    bg: 'bg-blue-500/10 dark:bg-blue-400/10',
-    color: 'text-blue-600 dark:text-blue-500'
+    icon: Loader2,
+    color: 'text-muted-foreground'
   },
   {
     key: 'error',
-    label: '异常告警',
+    label: '异常',
     value: statistics.value.error_tasks,
     icon: AlertCircle,
-    bg: 'bg-rose-500/10 dark:bg-rose-400/10',
-    color: 'text-rose-600 dark:text-rose-500'
+    color: 'text-destructive'
   },
   {
     key: 'today',
     label: '今日完成',
     value: statistics.value.today_executions,
     icon: CheckCircle2,
-    bg: 'bg-emerald-500/10 dark:bg-emerald-400/10',
-    color: 'text-emerald-600 dark:text-emerald-500'
+    color: 'text-foreground'
   },
 ])
 
 const statusOptions = [
-  { value: 'all', label: '全部状态' },
+  { value: 'all', label: '全部' },
   { value: 'enabled', label: '就绪' },
-  { value: 'disabled', label: '已暂停' },
-  { value: 'running', label: '运行中' },
+  { value: 'disabled', label: '暂停' },
+  { value: 'running', label: '运行' },
   { value: 'error', label: '异常' }
 ]
 
 const typeOptions = [
-  { value: 'all', label: '全部类型' },
+  { value: 'all', label: '全部' },
   { value: 'system', label: '核心' },
   { value: 'user', label: '用户' },
   { value: 'plugin', label: '插件' }
 ]
 
-// Methods
-const debouncedSearch = debounce(() => {
+// Pagination: visible page buttons
+const visiblePages = computed(() => {
+  const total = totalPages.value
+  const current = currentPage.value
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+  const pages = []
+  if (current <= 4) {
+    for (let i = 1; i <= 5; i++) pages.push(i)
+    pages.push('...')
+    pages.push(total)
+  } else if (current >= total - 3) {
+    pages.push(1)
+    pages.push('...')
+    for (let i = total - 4; i <= total; i++) pages.push(i)
+  } else {
+    pages.push(1)
+    pages.push('...')
+    for (let i = current - 1; i <= current + 1; i++) pages.push(i)
+    pages.push('...')
+    pages.push(total)
+  }
+  return pages
+})
+
+// Filter setters
+const setStatusFilter = (val) => {
+  statusFilter.value = val
   currentPage.value = 1
   loadTasks()
-}, 300)
+}
 
+const setTypeFilter = (val) => {
+  typeFilter.value = val
+  currentPage.value = 1
+  loadTasks()
+}
+
+// Load
 const loadData = async () => {
   loading.value = true
   try {
-    const [statusResult, statsResult, classesResult] = await Promise.all([
-      getSchedulerStatus(),
+    const [statsResult, classesResult] = await Promise.all([
       getTaskStatistics(),
       getAvailableTaskClasses()
     ])
 
-    if (!statusResult.error) schedulerStatus.value = statusResult.data
     if (!statsResult.error) statistics.value = statsResult.data
     if (!classesResult.error) taskClasses.value = classesResult.data
-    
+
     await loadTasks()
   } catch (error) {
     Logger.error('ScheduledTasks: Initial load failed', error)
@@ -438,21 +601,23 @@ const refreshData = async () => {
   await loadData()
 }
 
-const toggleScheduler = async (val) => {
-  const api = val ? apiEnableScheduler : apiDisableScheduler
-  const result = await api()
-  if (!result.error) {
-    schedulerStatus.value.running = val
-  }
+// Task actions
+const executeTask = (task) => {
+  executingTask.value = task
+  showExecuteDialog.value = true
 }
 
-const executeTaskNow = async (taskId) => {
-  loading.value = true
-  const result = await apiExecuteTaskNow(taskId)
+const doExecuteTask = async () => {
+  if (!executingTask.value) return
+  showExecuteDialog.value = false
+  executingTaskId.value = executingTask.value.id
+  const result = await apiExecuteTaskNow(executingTask.value.id)
+  executingTaskId.value = null
   if (!result.error) {
+    showToast(`任务「${executingTask.value.name}」已触发`)
     setTimeout(() => refreshData(), 600)
   } else {
-    loading.value = false
+    showToast('触发失败', true)
   }
 }
 
@@ -464,7 +629,10 @@ const handleCreateTask = async (taskData) => {
   const result = await apiCreateTask(taskData)
   if (!result.error) {
     showCreateDialog.value = false
+    showToast('任务创建成功')
     await refreshData()
+  } else {
+    showToast('创建失败：' + (result.message || '未知错误'), true)
   }
 }
 
@@ -472,25 +640,52 @@ const handleUpdateTask = async (taskData) => {
   const result = await apiUpdateTask(editingTask.value.id, taskData)
   if (!result.error) {
     editingTask.value = null
+    showToast('任务已更新')
     await refreshData()
+  } else {
+    showToast('更新失败', true)
   }
 }
 
-const deleteTask = async (id) => {
-  if (confirm('确定要移除此定时任务吗？')) {
-    const result = await apiDeleteTask(id)
-    if (!result.error) await refreshData()
+const confirmDeleteTask = (task) => {
+  if (task.task_type === 'system') return
+  deletingTask.value = task
+  showDeleteDialog.value = true
+}
+
+const doDeleteTask = async () => {
+  if (!deletingTask.value) return
+  showDeleteDialog.value = false
+  deletingTaskId.value = deletingTask.value.id
+  const result = await apiDeleteTask(deletingTask.value.id)
+  deletingTaskId.value = null
+  if (!result.error) {
+    showToast(`任务「${deletingTask.value.name}」已移除`)
+    await refreshData()
+  } else {
+    showToast('删除失败', true)
   }
+  deletingTask.value = null
 }
 
 const enableTask = async (id) => {
   const result = await apiEnableTask(id)
-  if (!result.error) await refreshData()
+  if (!result.error) {
+    showToast('任务已恢复调度')
+    await refreshData()
+  } else {
+    showToast('操作失败', true)
+  }
 }
 
 const disableTask = async (id) => {
   const result = await apiDisableTask(id)
-  if (!result.error) await refreshData()
+  if (!result.error) {
+    showToast('任务已暂停调度')
+    await refreshData()
+  } else {
+    showToast('操作失败', true)
+  }
 }
 
 const goToPage = (page) => {
@@ -500,23 +695,24 @@ const goToPage = (page) => {
   }
 }
 
+// Helpers
+const debouncedSearch = debounce(() => {
+  currentPage.value = 1
+  loadTasks()
+}, 350)
+
+const clearSearch = () => {
+  searchQuery.value = ''
+  debouncedSearch()
+}
+
 const calculateSuccessRate = (task) => {
   if (!task.run_count) return 0
   return Math.round((task.success_count / task.run_count) * 100)
 }
 
-const getUnitLabel = (unit) => {
-  return { seconds: '秒/次', minutes: '分/次', hours: '时/次', days: '天/次' }[unit] || unit
-}
-
-const getStatusDotColor = (status) => {
-  switch (status) {
-    case 'enabled': return 'bg-emerald-400 dark:bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.4)]'
-    case 'running': return 'bg-primary shadow-[0_0_8px_rgba(59,130,246,0.4)] animate-pulse'
-    case 'disabled': return 'bg-slate-500/20 dark:bg-slate-400/20 shadow-none'
-    case 'error': return 'bg-rose-500 dark:bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.4)]'
-    default: return 'bg-slate-500/10 dark:bg-slate-400/10'
-  }
+const getUnitShort = (unit) => {
+  return { seconds: 's', minutes: 'm', hours: 'h', days: 'd' }[unit] || unit
 }
 
 const getStatusText = (status) => {
@@ -539,90 +735,66 @@ onMounted(loadData)
 </script>
 
 <style scoped>
-.scheduled-header {
-  padding: 1rem 1rem 1.5rem;
+/* Container: consistent with other pages */
+.toolbar-container,
+.content-container {
+  max-width: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  width: 100%;
 }
 
 @media (min-width: 640px) {
-  .scheduled-header {
-    padding: 1.5rem 1.5rem 1.5rem;
+  .toolbar-container,
+  .content-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
   }
 }
 
 @media (min-width: 1024px) {
-  .scheduled-header {
-    padding: 2rem 2rem 1.5rem;
+  .toolbar-container,
+  .content-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
   }
 }
 
-.scheduled-content {
-  padding: 1rem 1rem 1.5rem;
-}
-
-@media (min-width: 640px) {
-  .scheduled-content {
-    padding: 1.5rem 1.5rem 1.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .scheduled-content {
-    padding: 1.5rem 2rem 1.5rem;
-  }
-}
-
-.tactical-terminal {
-  background-color: hsl(var(--background));
-  position: relative;
-  overflow: hidden;
-}
-
-.matrix-bg {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(hsl(var(--foreground) / 0.03) 1px, transparent 1px);
-  background-size: 20px 20px;
-  pointer-events: none;
-}
-
-.tactical-btn {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  font-weight: 700;
-  color: hsl(var(--muted-foreground) / 0.6);
-  padding: 0.5rem 0.75rem;
-  transition: all 0.2s ease;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.tactical-btn:hover:not(:disabled) {
-  color: hsl(var(--primary));
-  text-shadow: 0 0 10px hsl(var(--primary) / 0.5);
-}
-
-.tactical-btn:disabled {
-  opacity: 0.2;
-  cursor: not-allowed;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: hsl(var(--border) / 0.1);
-  border-radius: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--border) / 0.3);
-}
-
-/* Typography refinement */
+/* Typography */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* Toast */
+.save-toast {
+  position: fixed;
+  bottom: 1.75rem;
+  right: 1.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  box-shadow: 0 8px 32px hsl(var(--foreground) / 0.15);
+  z-index: 200;
+}
+.save-toast--error {
+  background: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+}
+.save-toast--success {
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+}
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(0.75rem) scale(0.95);
 }
 </style>

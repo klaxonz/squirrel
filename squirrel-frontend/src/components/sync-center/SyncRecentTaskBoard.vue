@@ -23,60 +23,53 @@
 
     <TransitionGroup v-else name="lane-card" tag="div" class="board-list">
       <div
-        v-for="(item, index) in items"
-        :key="item.run_id || `${item.subscription_id}-${index}`"
-        class="recent-row animate-scan h-auto min-h-[3.5rem]"
+        v-for="item in items"
+        :key="item.run_id || item.subscription_id"
+        class="recent-row animate-scan"
         :class="item.sync_status === 'failed' ? 'recent-row--failed' : ''"
       >
-        <div class="recent-row__main flex-col sm:flex-row items-start sm:items-center">
-          <div class="recent-row__identity w-full sm:w-auto">
-            <SubscriptionAvatar
-              :src="item.subscription_avatar"
-              :name="item.subscription_name"
-              size="md"
-            />
+        <div class="recent-row__identity">
+          <SubscriptionAvatar
+            :src="item.subscription_avatar"
+            :name="item.subscription_name"
+            size="md"
+          />
 
-            <div class="min-w-0 flex-1">
-              <div class="recent-row__title">
-                <h3 class="truncate text-sm font-bold text-foreground/70">{{ item.subscription_name }}</h3>
-              </div>
-              <div class="recent-row__meta recent-row__meta--with-icon font-mono flex flex-wrap items-center gap-1.5 mt-1">
-                <SiteIcon
-                  v-if="item.site"
-                  :icon-url="item.site_icon_url"
-                  :label="item.site"
-                  size="xs"
-                  class="recent-row__site-icon"
-                />
-                <span>{{ getSyncModeLabel(item.sync_mode) }}</span>
-                <span class="opacity-10 sm:inline hidden">·</span>
-                <span>{{ formatDate(item.updated_at || item.last_success_at) }}</span>
-              </div>
+          <div class="recent-row__info">
+            <div class="recent-row__title">
+              <h3 class="truncate text-sm font-bold text-foreground/70">{{ item.subscription_name }}</h3>
+            </div>
+            <div class="recent-row__meta font-mono flex flex-wrap items-center gap-1.5 mt-0.5">
+              <SiteIcon
+                v-if="item.site"
+                :icon-url="item.site_icon_url"
+                :label="item.site"
+                size="xs"
+              />
+              <span>{{ getSyncModeLabel(item.sync_mode) }}</span>
+              <span class="opacity-10">·</span>
+              <span>{{ formatDate(item.updated_at || item.last_success_at) }}</span>
             </div>
           </div>
+        </div>
 
-          <div class="metric-inline mt-3 sm:mt-0 w-full sm:w-auto justify-start sm:justify-end">
-            <div class="metric-group">
-              <span class="metric-label">总数</span>
-              <span class="metric-value font-mono">{{ item.batch_task_count }}</span>
-            </div>
-            <div class="metric-group">
-              <span class="metric-label">完成</span>
-              <span class="metric-value font-mono">{{ item.completed_task_count }}</span>
-            </div>
-            <div class="metric-group">
-              <span
-                class="metric-label"
-              >
-                失败
-              </span>
-              <span
-                class="metric-value font-mono"
-                :class="item.failed_task_count > 0 ? 'text-rose-500' : ''"
-              >
-                {{ item.failed_task_count }}
-              </span>
-            </div>
+        <div class="recent-row__metrics">
+          <div class="metric-group">
+            <span class="metric-label">总数</span>
+            <span class="metric-value font-mono">{{ item.batch_task_count }}</span>
+          </div>
+          <div class="metric-group">
+            <span class="metric-label">完成</span>
+            <span class="metric-value font-mono">{{ item.completed_task_count }}</span>
+          </div>
+          <div class="metric-group">
+            <span class="metric-label">失败</span>
+            <span
+              class="metric-value font-mono"
+              :class="item.failed_task_count > 0 ? 'text-rose-500' : ''"
+            >
+              {{ item.failed_task_count }}
+            </span>
           </div>
         </div>
       </div>
@@ -107,6 +100,8 @@ defineProps<{
   padding: 1.2rem;
   min-height: 0;
   border: none;
+  display: flex;
+  flex-direction: column;
 }
 
 .board-header {
@@ -147,51 +142,72 @@ defineProps<{
 .board-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border) / 0.4) transparent;
+}
+
+.board-list:hover {
+  scrollbar-width: thin;
 }
 
 .board-list::-webkit-scrollbar {
-  display: none;
+  width: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.board-list:hover::-webkit-scrollbar {
+  opacity: 1;
+}
+
+.board-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.board-list::-webkit-scrollbar-thumb {
+  background: hsl(var(--border) / 0.4);
+  border-radius: 2px;
 }
 
 .recent-row {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
   min-height: 3.5rem;
   background: transparent;
-  padding: 0.6rem 1rem;
+  padding: 0.5rem 0.75rem;
   text-align: left;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
   position: relative;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+  gap: 0.75rem;
 }
 
 .recent-row:hover {
-  transform: translateX(6px);
-  background: hsl(var(--foreground) / 0.02);
+  background: hsl(var(--background));
 }
 
 .recent-row--failed {
-  border-left: 2px solid theme('colors.rose.500');
   background: oklch(70% 0.15 20 / 0.03);
-}
-
-.recent-row__main {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 1rem;
 }
 
 .recent-row__identity {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.recent-row__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
   min-width: 0;
   flex: 1;
 }
@@ -199,12 +215,18 @@ defineProps<{
 .recent-row__title {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
   min-width: 0;
+  flex: 1;
+}
+
+.recent-row__title h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .recent-row__meta {
-  margin-top: 0.2rem;
   font-size: 9px;
   font-weight: 600;
   color: hsl(var(--muted-foreground) / 0.4);
@@ -212,22 +234,16 @@ defineProps<{
   letter-spacing: 0.05em;
 }
 
-.recent-row__meta--with-icon {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.recent-row__site-icon {
-  opacity: 0.72;
-}
-
-.metric-inline {
+.recent-row__metrics {
   display: flex;
   flex-direction: row;
   gap: 0.85rem;
   flex-shrink: 0;
   align-items: flex-end;
+}
+
+.recent-row--failed {
+  background: oklch(70% 0.15 20 / 0.03);
 }
 
 .metric-group {
@@ -237,10 +253,10 @@ defineProps<{
 }
 
 .metric-label {
-  font-size: 6px;
+  font-size: 7px;
   font-weight: 900;
   color: hsl(var(--muted-foreground) / 0.3);
-  letter-spacing: 0.2em;
+  letter-spacing: 0.15em;
 }
 
 .metric-value {

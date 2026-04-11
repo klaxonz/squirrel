@@ -1,8 +1,9 @@
 import logging
+from functools import lru_cache
 from typing import Optional, Tuple, List, Dict, Any
 from urllib.parse import urlparse
 
-from sqlalchemy import select, func, and_, or_, false, case
+from sqlalchemy import select, func, and_, or_, false, case, literal
 from sqlalchemy.sql import text
 
 from core.database import get_session
@@ -87,6 +88,37 @@ def _resolved_total_videos_expr(total_videos_column, extracted_count_column):
         (extracted_total > stored_total, extracted_total),
         else_=stored_total,
     )
+
+
+@lru_cache(maxsize=256)
+def _resolve_site_slug(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return None
+    try:
+        parsed = urlparse(url)
+        domain = parsed.netloc or parsed.path.split('/')[0]
+        slug, _ = SiteCatalog.find_site_by_domain(domain)
+        return slug
+    except Exception:
+        return None
+
+
+def _load_subscription_extract_counts(session, subscription_ids: List[int]) -> Dict[int, int]:
+    if not subscription_ids:
+        return {}
+
+    rows = session.execute(
+        select(
+            SubscriptionVideo.subscription_id,
+            func.count(SubscriptionVideo.video_id).label('total_extract'),
+        )
+        .where(SubscriptionVideo.subscription_id.in_(subscription_ids))
+        .group_by(SubscriptionVideo.subscription_id)
+    ).all()
+    return {
+        int(subscription_id): int(total_extract or 0)
+        for subscription_id, total_extract in rows
+    }
 
 
 def _detect_subscription_type(url: str) -> str:
@@ -211,15 +243,6 @@ def list_subscriptions(
     user_config = user_config_service.get_config(user_id)
     show_nsfw = user_config.get('showNsfw', False)
 
-    video_count_subquery = (
-        select(
-            SubscriptionVideo.subscription_id.label('subscription_id'),
-            func.count(SubscriptionVideo.video_id).label('total_extract'),
-        )
-        .group_by(SubscriptionVideo.subscription_id)
-        .subquery()
-    )
-
     with get_session() as session:
         conditions: List[Any] = [
             UserSubscription.user_id == user_id,
@@ -264,16 +287,13 @@ def list_subscriptions(
                 Subscription.url,
                 Subscription.avatar,
                 Subscription.description,
-                _resolved_total_videos_expr(
-                    Subscription.total_videos,
-                    video_count_subquery.c.total_extract,
-                ).label('total_videos'),
+                func.coalesce(Subscription.total_videos, 0).label('total_videos'),
                 Subscription.is_deleted,
                 Subscription.extra_data,
                 Subscription.created_at,
                 Subscription.updated_at,
                 UserSubscription.is_nsfw.label('is_nsfw'),
-                func.coalesce(video_count_subquery.c.total_extract, 0).label('total_extract'),
+                literal(0).label('total_extract'),
                 func.coalesce(SubscriptionSyncState.sync_status, 'idle').label('sync_status'),
                 SubscriptionSyncState.last_sync_at.label('last_sync_at'),
                 SubscriptionSyncState.last_success_at.label('last_success_at'),
@@ -290,7 +310,6 @@ def list_subscriptions(
                     SubscriptionSyncState.sync_mode == SyncMode.INCREMENTAL.value,
                 ),
             )
-            .outerjoin(video_count_subquery, video_count_subquery.c.subscription_id == Subscription.id)
             .where(*conditions)
             .order_by(Subscription.created_at.desc())
             .limit(page_size)
@@ -298,8 +317,19 @@ def list_subscriptions(
         )
 
         results = session.execute(statement).all()
-        subscriptions = [SubscriptionDto.model_validate(row._mapping).model_dump() for row in results]
-            
+        subscription_ids = [int(row._mapping['id']) for row in results]
+        extract_count_map = _load_subscription_extract_counts(session, subscription_ids)
+
+        subscriptions = []
+        for row in results:
+            payload = dict(row._mapping)
+            total_extract = extract_count_map.get(int(payload['id']), 0)
+            payload['total_extract'] = total_extract
+            payload['total_videos'] = max(int(payload.get('total_videos') or 0), total_extract)
+            dto = SubscriptionDto.model_validate(payload)
+            dto.site = _resolve_site_slug(dto.url)
+            subscriptions.append(dto.model_dump())
+
         return subscriptions, total_count
 
 
@@ -313,8 +343,9 @@ def get_subscription_detail(subscription_id: int) -> SubscriptionDto:
         subscription = session.execute(text(sql), params).first()
         if not subscription:
             return None
-        subscription = SubscriptionDto.model_validate(subscription._mapping)
-        return subscription
+        dto = SubscriptionDto.model_validate(subscription._mapping)
+        dto.site = _resolve_site_slug(dto.url)
+        return dto
 
 
 def list_subscription_options(user_id: int) -> List[Dict[str, Any]]:

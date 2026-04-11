@@ -23,55 +23,50 @@
 
     <TransitionGroup v-else name="lane-card" tag="div" class="board-list">
       <button
-        v-for="(run, index) in displayRuns"
+        v-for="run in displayRuns"
         :key="run.run_id"
         type="button"
-        class="recent-row animate-scan h-auto min-h-[3.5rem]"
-        :class="[
-          selectedRunId === run.run_id ? 'recent-row--active' : '',
-          freshRunIds.has(run.run_id) ? 'recent-row--fresh' : '',
-        ]"
+        class="recent-row animate-scan"
+        :class="selectedRunId === run.run_id ? 'recent-row--active' : ''"
         @click="emit('open-run', run.run_id)"
       >
-        <div class="recent-row__main flex-col sm:flex-row items-start sm:items-center">
-          <div class="recent-row__identity w-full sm:w-auto">
-            <SubscriptionAvatar
-              :src="run.subscription_avatar"
-              :name="run.subscription_name"
-              size="md"
-            />
+        <div class="recent-row__identity">
+          <SubscriptionAvatar
+            :src="run.subscription_avatar"
+            :name="run.subscription_name"
+            size="md"
+          />
 
-            <div class="min-w-0 flex-1">
-              <div class="recent-row__title">
-                <h3 class="truncate text-sm font-bold text-foreground/70">{{ run.subscription_name }}</h3>
-              </div>
-              <div class="recent-row__meta font-mono flex flex-wrap items-center gap-1.5 mt-1">
-                <SiteIcon
-                  v-if="run.site"
-                  :icon-url="run.site_icon_url"
-                  :label="run.site"
-                  size="xs"
-                />
-                <span>{{ getSyncModeLabel(run.sync_mode) }}</span>
-                <span class="opacity-10 sm:inline hidden">·</span>
-                <span class="truncate">{{ getMetaTimestamp(run) }}</span>
-              </div>
+          <div class="recent-row__info">
+            <div class="recent-row__title">
+              <h3 class="truncate text-sm font-bold text-foreground/70">{{ run.subscription_name }}</h3>
+            </div>
+            <div class="recent-row__meta font-mono flex flex-wrap items-center gap-1.5 mt-0.5">
+              <SiteIcon
+                v-if="run.site"
+                :icon-url="run.site_icon_url"
+                :label="run.site"
+                size="xs"
+              />
+              <span>{{ getSyncModeLabel(run.sync_mode) }}</span>
+              <span class="opacity-10">·</span>
+              <span class="truncate">{{ getMetaTimestamp(run) }}</span>
             </div>
           </div>
+        </div>
 
-          <div class="metric-inline mt-3 sm:mt-0 w-full sm:w-auto justify-start sm:justify-end">
-            <div class="metric-group">
-              <span class="metric-label">发现</span>
-              <span class="metric-value font-mono">{{ run.videos_found }}</span>
-            </div>
-            <div class="metric-group">
-              <span class="metric-label">入队</span>
-              <span class="metric-value font-mono">{{ run.videos_enqueued }}</span>
-            </div>
-            <div class="metric-group">
-              <span class="metric-label">完成</span>
-              <span class="metric-value font-mono">{{ run.videos_extracted }}</span>
-            </div>
+        <div class="recent-row__metrics">
+          <div class="metric-group">
+            <span class="metric-label">发现</span>
+            <span class="metric-value font-mono">{{ run.videos_found }}</span>
+          </div>
+          <div class="metric-group">
+            <span class="metric-label">入队</span>
+            <span class="metric-value font-mono">{{ run.videos_enqueued }}</span>
+          </div>
+          <div class="metric-group">
+            <span class="metric-label">完成</span>
+            <span class="metric-value font-mono">{{ run.videos_extracted }}</span>
           </div>
         </div>
       </button>
@@ -211,6 +206,8 @@ const getStatusChipClass = (status: string) => {
   padding: 1.2rem;
   min-height: 0;
   border: none;
+  display: flex;
+  flex-direction: column;
 }
 
 .board-header {
@@ -251,73 +248,92 @@ const getStatusChipClass = (status: string) => {
 .board-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
   max-height: calc(100vh - 18rem);
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border) / 0.4) transparent;
+}
+
+.board-list:hover {
+  scrollbar-width: thin;
 }
 
 .board-list::-webkit-scrollbar {
-  display: none;
+  width: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.board-list:hover::-webkit-scrollbar {
+  opacity: 1;
+}
+
+.board-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.board-list::-webkit-scrollbar-thumb {
+  background: hsl(var(--border) / 0.4);
+  border-radius: 2px;
 }
 
 .recent-row {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
   min-height: 3.5rem;
   background: transparent;
-  padding: 0.6rem 1rem;
+  padding: 0.5rem 0.75rem;
   text-align: left;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
   position: relative;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+  cursor: pointer;
+  gap: 0.75rem;
 }
 
 .recent-row:hover {
-  transform: translateX(6px);
-  background: hsl(var(--foreground) / 0.02);
+  background: hsl(var(--background));
 }
 
 .recent-row--active {
-  background: oklch(75% 0.2 150 / 0.03);
-  border-left: 2px solid var(--sci-fi-green);
-}
-
-.recent-row__main {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 1rem;
+  background: hsl(var(--foreground) / 0.025);
 }
 
 .recent-row__identity {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
   min-width: 0;
   flex: 1;
 }
 
-.recent-row__avatar {
-  filter: grayscale(0.8) opacity(0.4);
-  transition: all 0.3s ease;
-}
-
-.recent-row:hover .recent-row__avatar {
-  filter: grayscale(0.2) opacity(0.8);
+.recent-row__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  flex: 1;
 }
 
 .recent-row__title {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
   min-width: 0;
+  flex: 1;
+}
+
+.recent-row__title h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .recent-row__meta {
-  margin-top: 0.2rem;
   font-size: 9px;
   font-weight: 600;
   color: hsl(var(--muted-foreground) / 0.4);
@@ -325,7 +341,7 @@ const getStatusChipClass = (status: string) => {
   letter-spacing: 0.05em;
 }
 
-.metric-inline {
+.recent-row__metrics {
   display: flex;
   flex-direction: row;
   gap: 1.5rem;
@@ -343,7 +359,7 @@ const getStatusChipClass = (status: string) => {
   font-size: 7px;
   font-weight: 900;
   color: hsl(var(--muted-foreground) / 0.3);
-  letter-spacing: 0.2em;
+  letter-spacing: 0.15em;
 }
 
 .metric-value {
