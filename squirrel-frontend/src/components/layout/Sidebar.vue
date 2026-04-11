@@ -6,7 +6,7 @@
 
     <nav class="sidebar-nav-neon flex-1 overflow-y-auto py-4 scrollbar-hide">
       <div
-        v-for="(group, groupIdx) in NAV_GROUPS"
+        v-for="(group) in NAV_GROUPS"
         :key="group.key"
         class="sidebar-section-neon mb-6"
       >
@@ -15,10 +15,9 @@
           <div class="section-line"></div>
         </div>
         <SidebarMenuItem
-          v-for="(item, itemIdx) in group.items"
+          v-for="(item) in group.items"
           :key="item.path"
           :item="item"
-          :index="(groupIdx * 3) + itemIdx + 1"
           :is-active="isNavigationItemActive(item, $route.path)"
         />
       </div>
@@ -35,7 +34,6 @@
             </svg>
           </div>
           <div class="label-wrapper">
-            <span class="menu-index">99</span>
             <span class="menu-label">退出</span>
           </div>
         </div>
@@ -64,7 +62,6 @@ const handleLogout = async () => {
 .sidebar-minimal {
   width: var(--sidebar-width, 11rem);
   background: hsl(var(--sidebar));
-  border-right: 1px solid hsl(var(--sidebar-border));
   display: flex;
   flex-direction: column;
 }

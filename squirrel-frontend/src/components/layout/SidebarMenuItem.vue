@@ -13,7 +13,6 @@
         />
       </div>
       <div class="label-wrapper">
-        <span class="menu-index">{{ formattedIndex }}</span>
         <span class="menu-label">{{ item.name }}</span>
       </div>
     </div>
@@ -22,25 +21,15 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-
 const props = defineProps({
   item: {
     type: Object,
-    required: true,
-  },
-  index: {
-    type: Number,
     required: true,
   },
   isActive: {
     type: Boolean,
     default: false,
   },
-})
-
-const formattedIndex = computed(() => {
-  return props.index < 10 ? `0${props.index}` : props.index
 })
 </script>
 
