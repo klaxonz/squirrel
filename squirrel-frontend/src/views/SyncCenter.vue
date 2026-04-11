@@ -468,11 +468,21 @@ onBeforeUnmount(() => {
 }
 
 .toolbar-container {
-  max-width: 1520px;
   margin: 0 auto;
-  padding-left: 2rem;
-  padding-right: 2rem;
+  padding: 1rem 1rem 0.5rem;
   width: 100%;
+}
+
+@media (min-width: 640px) {
+  .toolbar-container {
+    padding: 1.5rem 1.5rem 0.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .toolbar-container {
+    padding: 2rem 2rem 0.5rem;
+  }
 }
 
 .pipeline-tabs {

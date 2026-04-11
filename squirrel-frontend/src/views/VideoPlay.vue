@@ -648,12 +648,23 @@ onUnmounted(() => {
   padding: 1rem;
 }
 
+@media (min-width: 640px) {
+  .video-page__container {
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .video-page__container {
+    padding: 2rem;
+  }
+}
+
 @media (min-width: 1280px) {
   .video-page__container {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 400px;
     align-items: start;
-    padding: 1.5rem 2rem;
   }
 }
 

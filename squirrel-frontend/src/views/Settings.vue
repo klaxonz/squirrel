@@ -556,9 +556,26 @@ const handleRevokeSessions = async () => {
 
 /* Header */
 .settings-header {
-  padding: 2rem 2rem 0;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 1rem 2rem 0;
+}
+
+@media (min-width: 640px) {
+  .settings-header {
+    padding: 1.5rem 2rem 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .settings-header {
+    padding: 2rem 2rem 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .settings-header {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
 }
 
 .settings-header__inner {
@@ -613,11 +630,16 @@ const handleRevokeSessions = async () => {
   display: flex;
   gap: 0.25rem;
   padding: 1.5rem 2rem 0;
-  max-width: 1200px;
-  margin: 0 auto;
   border-bottom: 1px solid hsl(var(--border) / 0.5);
   overflow-x: auto;
   scrollbar-width: none;
+}
+
+@media (max-width: 768px) {
+  .settings-tabs {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
 }
 
 .settings-tabs::-webkit-scrollbar {
@@ -669,6 +691,27 @@ const handleRevokeSessions = async () => {
   padding: 1.5rem 2rem 3rem;
   max-width: 1200px;
   margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .settings-content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+@media (min-width: 640px) {
+  .settings-content {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .settings-content {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
 }
 
 .settings-panel {

@@ -2,7 +2,7 @@
   <div class="scheduled-page tactical-terminal min-h-full selection:bg-primary/10">
     <div class="matrix-bg"></div>
     <!-- Header Area -->
-    <div class="px-8 pt-8 pb-6 border-b border-border/50 relative z-10">
+    <div class="scheduled-header border-b border-border/50 relative z-10 max-w-full">
       <div class="max-w-[1440px] mx-auto w-full space-y-8">
         <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div class="space-y-1">
@@ -58,7 +58,7 @@
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex-1 overflow-hidden flex flex-col max-w-[1440px] mx-auto w-full px-8 py-6 gap-6 relative z-10">
+      <div class="scheduled-content flex-1 overflow-hidden flex flex-col max-w-full mx-auto w-full gap-6 relative z-10">
       <!-- Search & Filters -->
       <div class="flex flex-wrap items-center gap-1.5 rounded-xl border border-border/40 bg-muted/10 p-1">
         <div class="relative flex-1 min-w-[200px] group">
@@ -539,6 +539,38 @@ onMounted(loadData)
 </script>
 
 <style scoped>
+.scheduled-header {
+  padding: 1rem 1rem 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .scheduled-header {
+    padding: 1.5rem 1.5rem 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .scheduled-header {
+    padding: 2rem 2rem 1.5rem;
+  }
+}
+
+.scheduled-content {
+  padding: 1rem 1rem 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .scheduled-content {
+    padding: 1.5rem 1.5rem 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .scheduled-content {
+    padding: 1.5rem 2rem 1.5rem;
+  }
+}
+
 .tactical-terminal {
   background-color: hsl(var(--background));
   position: relative;

@@ -612,9 +612,22 @@ onUnmounted(() => {
 .toolbar-container,
 .content-container {
   width: 100%;
-  max-width: var(--container-max-width, 1440px);
   margin: 0 auto;
   padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .toolbar-container,
+  .content-container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .toolbar-container,
+  .content-container {
+    padding: 0 2rem;
+  }
 }
 
 .subscribed-shell {

@@ -1130,9 +1130,17 @@ onMounted(() => {
 .content-container {
   max-width: var(--container-max-width, 2560px);
   margin: 0 auto;
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
   width: 100%;
+}
+
+@media (min-width: 640px) {
+  .toolbar-container,
+  .content-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
 }
 
 @media (min-width: 1024px) {

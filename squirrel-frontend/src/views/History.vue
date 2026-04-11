@@ -2,7 +2,7 @@
   <div class="history-page flex flex-col h-full bg-background">
     <!-- Header/Toolbar -->
     <div class="toolbar-container border-b border-accent/10 bg-background/50 backdrop-blur-md sticky top-0 z-10">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 max-w-[1400px] mx-auto w-full">
+      <div class="toolbar-inner flex flex-col md:flex-row md:items-center justify-between gap-4 max-w-full mx-auto">
         <div class="flex items-center gap-4 flex-grow">
           <!-- Removed "播放历史" header per user request -->
         </div>
@@ -38,7 +38,7 @@
 
     <!-- Content Area -->
     <div class="history-content flex-grow overflow-y-auto scrollbar-hide" ref="scrollContainer" @scroll="handleScroll">
-      <div class="max-w-[1000px] mx-auto w-full p-4 pb-20">
+      <div class="history-inner max-w-full mx-auto w-full py-4 pb-20">
         <Transition name="fade-list">
           <!-- Loading State -->
           <div v-if="loading && videos.length === 0" key="skeleton" class="space-y-1 mt-8">
@@ -266,6 +266,48 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.toolbar-container {
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .toolbar-container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .toolbar-container {
+    padding: 0 2rem;
+  }
+}
+
+.toolbar-inner {
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .toolbar-inner {
+    padding: 0;
+  }
+}
+
+.history-inner {
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .history-inner {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .history-inner {
+    padding: 0 2rem;
+  }
+}
+
 .history-page {
   height: 100%;
 }
