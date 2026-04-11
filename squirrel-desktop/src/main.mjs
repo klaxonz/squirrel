@@ -101,7 +101,7 @@ const createMainWindow = () => {
     autoHideMenuBar: true,
     backgroundColor: '#101418',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       // Desktop playback pulls media directly from site CDNs, so the shell
