@@ -15,6 +15,67 @@ def _base_url(stream: dict) -> Optional[str]:
     return stream.get('baseUrl') or stream.get('base_url')
 
 
+def _safe_int(value: Any) -> int:
+    try:
+        return int(value)
+    except Exception:
+        return 0
+
+
+def _codec_family_from_stream(stream: dict) -> Optional[str]:
+    codecs = str(stream.get('codecs') or '').lower()
+    if any(token in codecs for token in ('avc1', 'avc', 'h264')):
+        return 'avc'
+    if any(token in codecs for token in ('hev1', 'hvc1', 'hevc', 'h265')):
+        return 'hevc'
+    if any(token in codecs for token in ('av01', 'av1')):
+        return 'av1'
+    if any(token in codecs for token in ('vp09', 'vp9')):
+        return 'vp9'
+
+    codecid = _safe_int(stream.get('codecid'))
+    if codecid == 7:
+        return 'avc'
+    if codecid == 12:
+        return 'hevc'
+    if codecid == 13:
+        return 'av1'
+    return None
+
+
+def _video_stream_sort_key(stream: dict) -> tuple[int, int]:
+    return (
+        _safe_int(stream.get('height')),
+        _safe_int(stream.get('bandwidth')),
+    )
+
+
+def _video_stream_group_sort_key(group: tuple[Optional[str], List[dict]]) -> tuple[int, int, int]:
+    codec_family, streams = group
+    best_height, best_bandwidth = _video_stream_sort_key(streams[0]) if streams else (0, 0)
+    return (
+        1 if codec_family == 'avc' else 0,
+        best_height,
+        best_bandwidth,
+    )
+
+
+def _group_video_streams_by_codec(video_streams: List[dict]) -> List[tuple[Optional[str], List[dict]]]:
+    if not video_streams:
+        return []
+
+    grouped_by_codec: dict[Optional[str], List[dict]] = {}
+    for stream in video_streams:
+        codec_family = _codec_family_from_stream(stream)
+        grouped_by_codec.setdefault(codec_family, []).append(stream)
+
+    groups = [
+        (codec_family, sorted(streams, key=_video_stream_sort_key, reverse=True))
+        for codec_family, streams in grouped_by_codec.items()
+    ]
+    return sorted(groups, key=_video_stream_group_sort_key, reverse=True)
+
+
 def get_dash_data(url: str) -> dict:
     play_data, _ = fetch_play_data(url, throttled=False)
     dash_data = play_data.get('dash') if isinstance(play_data, dict) else None
@@ -36,12 +97,12 @@ class BilibiliHandler:
         best_video_url: Optional[str] = None
         best_audio_url: Optional[str] = None
         qualities: List[dict] = []
-        id_to_index: dict[str, int] = {}
 
         video_streams = dash_data.get('video') or []
         audio_streams = dash_data.get('audio') or []
 
         if video_streams:
+            video_stream_groups = _group_video_streams_by_codec(video_streams)
             quality_map = {
                 16: 360,
                 32: 480,
@@ -57,50 +118,34 @@ class BilibiliHandler:
                 127: 4320,
             }
 
-            filtered_streams = [
-                v for v in video_streams
-                if 'codecs' in v and any(x in v['codecs'] for x in ('avc', 'avc1', 'h264'))
-            ] or video_streams
-
-            index_meta: List[dict] = []
-
-            for stream in filtered_streams:
-                bandwidth = stream.get('bandwidth')
-                vid = stream.get('id')
-                height = None
-                try:
-                    qn = int(vid)
-                    height = quality_map.get(qn)
-                except Exception:
+            for codec_family, grouped_streams in video_stream_groups:
+                for index, stream in enumerate(grouped_streams):
+                    bandwidth = stream.get('bandwidth')
+                    vid = stream.get('id')
                     height = None
-                if not height:
                     try:
-                        height = int(stream.get('height') or 0) or None
+                        qn = int(vid)
+                        height = quality_map.get(qn)
                     except Exception:
                         height = None
-                label = f"{height}p" if height else (f"{int(bandwidth/1000)}kbps" if bandwidth else 'unknown')
-                value = f"{height}p" if height else (f"{int(bandwidth/1000)}kbps" if bandwidth else 'auto')
-                q = {
-                    'value': value,
-                    'label': label,
-                    'height': height,
-                    'bandwidth': bandwidth,
-                    'id': str(vid) if vid is not None else None,
-                }
-                qualities.append(q)
-
-                if vid is not None:
-                    index_meta.append({
-                        'id': str(vid),
-                        'height': height or 0,
-                        'bandwidth': bandwidth or 0,
+                    if not height:
+                        try:
+                            height = int(stream.get('height') or 0) or None
+                        except Exception:
+                            height = None
+                    label = f"{height}p" if height else (f"{int(bandwidth/1000)}kbps" if bandwidth else 'unknown')
+                    value = f"{height}p" if height else (f"{int(bandwidth/1000)}kbps" if bandwidth else 'auto')
+                    qualities.append({
+                        'value': value,
+                        'label': label,
+                        'height': height,
+                        'bandwidth': bandwidth,
+                        'codec': codec_family,
+                        'id': str(vid) if vid is not None else None,
+                        'index': index,
                     })
 
-            if index_meta:
-                sorted_meta = sorted(index_meta, key=lambda m: (m['height'], m['bandwidth']), reverse=True)
-                id_to_index = {m['id']: idx for idx, m in enumerate(sorted_meta)}
-
-            best_video_stream = max(video_streams, key=lambda x: x.get('bandwidth', 0))
+            best_video_stream = max(video_streams, key=_video_stream_sort_key)
             best_video_url = _base_url(best_video_stream)
 
         if audio_streams:
@@ -113,41 +158,29 @@ class BilibiliHandler:
                 def sort_key(q: dict):
                     return (q.get('height') or 0, q.get('bandwidth') or 0)
 
-                height_counts: dict[int, int] = {}
+                height_counts: dict[tuple[str, int], int] = {}
                 for q in qualities:
+                    codec = str(q.get('codec') or '')
                     height = q.get('height') or 0
-                    height_counts[height] = height_counts.get(height, 0) + 1
+                    key = (codec, height)
+                    height_counts[key] = height_counts.get(key, 0) + 1
 
                 for q in qualities:
+                    codec = str(q.get('codec') or '')
                     height = q.get('height')
                     if not height:
                         continue
-                    if height_counts.get(height, 0) > 1 and q.get('bandwidth'):
+                    if height_counts.get((codec, height), 0) > 1 and q.get('bandwidth'):
                         kbps = int((q.get('bandwidth') or 0) / 1000)
                         q['label'] = f"{height}p {kbps}kbps"
                         q['value'] = q['label']
 
                 uniq: dict[str, dict] = {}
                 for q in qualities:
-                    key = f"{q.get('height') or ''}|{q.get('bandwidth') or ''}"
-                    existing = uniq.get(key)
-                    if not existing:
-                        uniq[key] = q
-                    else:
-                        prev_id = existing.get('id')
-                        new_id = q.get('id')
-                        prev_idx = id_to_index.get(prev_id) if prev_id is not None else -1
-                        new_idx = id_to_index.get(new_id) if new_id is not None else -1
-                        if (new_idx or -1) > (prev_idx or -1):
-                            uniq[key] = q
+                    key = f"{q.get('codec') or ''}|{q.get('height') or ''}|{q.get('bandwidth') or ''}"
+                    uniq.setdefault(key, q)
 
                 qualities = list(uniq.values())
-
-                for q in qualities:
-                    vid = q.get('id')
-                    if vid is not None and vid in id_to_index:
-                        q['index'] = id_to_index[vid]
-
                 qualities = sorted(qualities, key=sort_key, reverse=True)
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from urllib.parse import quote
 from xml.etree import ElementTree as ET
 
-from .handler import get_dash_data, _base_url
+from .handler import _base_url, _group_video_streams_by_codec, get_dash_data
 
 
 class BilibiliMpdBuilder:
@@ -25,17 +25,9 @@ class BilibiliMpdBuilder:
         mpd.set("profiles", "urn:mpeg:dash:profile:isoff-on-demand:2011")
 
         period = ET.SubElement(mpd, "Period")
+        video_stream_groups = _group_video_streams_by_codec(dash_data.get('video') or [])
 
-        if 'video' in dash_data:
-            video_streams = [
-                v for v in dash_data['video']
-                if 'codecs' in v and any(x in v['codecs'] for x in ('avc', 'avc1', 'h264'))
-            ] or dash_data['video']
-            
-            # 按照bandwidth排序（高到低），确保与handler中qualities的排序一致
-            # 这样qualities中的index就能正确对应MPD中Representation的顺序
-            video_streams = sorted(video_streams, key=lambda x: (x.get('height', 0), x.get('bandwidth', 0)), reverse=True)
-
+        for _, video_streams in video_stream_groups:
             video_adaptation_set = ET.SubElement(period, "AdaptationSet", contentType="video", mimeType="video/mp4")
             for stream in video_streams:
                 representation = ET.SubElement(video_adaptation_set, "Representation")
@@ -69,9 +61,10 @@ class BilibiliMpdBuilder:
                         init_el = ET.SubElement(seg, 'Initialization')
                         init_el.set('range', init_range)
 
-        if 'audio' in dash_data:
+        audio_streams = dash_data.get('audio') or []
+        if audio_streams:
             audio_adaptation_set = ET.SubElement(period, "AdaptationSet", contentType="audio", mimeType="audio/mp4")
-            for audio_stream in dash_data['audio']:
+            for audio_stream in audio_streams:
                 representation = ET.SubElement(audio_adaptation_set, "Representation")
                 representation.set("id", str(audio_stream.get('id')))
                 if 'codecs' in audio_stream:
@@ -98,5 +91,3 @@ class BilibiliMpdBuilder:
                         init_el.set('range', init_range)
 
         return ET.tostring(mpd, encoding='unicode')
-
-
