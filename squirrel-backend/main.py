@@ -14,7 +14,18 @@ from utils.cookie import resolve_cookie_file_for_url, resolve_cookie_match_domai
 from utils.runtime_http import set_cloudflare_bypass_client
 from utils.runtime_http import set_cookie_domain_resolver, set_cookie_file_resolver
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
+
+STARTUP_TOTAL_STEPS = 4
+SHUTDOWN_TOTAL_STEPS = 1
+
+
+def _log_lifecycle_event(phase: str, message: str) -> None:
+    logger.info('%s: %s', phase, message)
+
+
+def _log_lifecycle_step(phase: str, step: int, total: int, message: str) -> None:
+    logger.info('%s [%s/%s] %s', phase, step, total, message)
 
 
 @asynccontextmanager
@@ -27,74 +38,77 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     关闭时优雅停止所有服务
     """
-    # ========== 启动阶段 ==========
-    logger.info("=" * 60)
-    logger.info("Application startup sequence begin")
-    logger.info("=" * 60)
-    
-    # 0. 应用站点配置覆盖（HTTP / 代理 / 限流 等）
-    logger.info("[0/5] Applying site configuration overrides...")
+    _log_lifecycle_event('Startup', 'begin')
+
+    _log_lifecycle_step('Startup', 1, STARTUP_TOTAL_STEPS, 'Applying site configuration overrides')
     try:
         apply_site_config_overrides()
-        logger.info("[0/5] ✓ Site configuration overrides applied")
-    except Exception as e:
-        logger.warning(f"[0/5] ⚠ Failed to apply site config overrides: {e}")
+        _log_lifecycle_step('Startup', 1, STARTUP_TOTAL_STEPS, 'Site configuration overrides applied')
+    except Exception as exc:
+        logger.warning('Startup [1/%s] Site configuration overrides skipped: %s', STARTUP_TOTAL_STEPS, exc)
 
-    # 0.5. 配置 Cloudflare bypass 客户端
-    logger.info("[0.5/5] Configuring Cloudflare bypass client...")
+    _log_lifecycle_step('Startup', 2, STARTUP_TOTAL_STEPS, 'Configuring runtime HTTP helpers')
+    runtime_http_enabled: list[str] = []
+    runtime_http_degraded: list[str] = []
     try:
         from utils.cloudflare_bypass import get_default_client
         set_cloudflare_bypass_client(get_default_client())
-        logger.info("[0.5/5] ✓ Cloudflare bypass client configured")
-    except Exception as e:
-        logger.warning(f"[0.5/5] ⚠ Failed to configure Cloudflare bypass client: {e}")
+        runtime_http_enabled.append('cloudflare_bypass')
+    except Exception as exc:
+        runtime_http_degraded.append(f'cloudflare_bypass={exc}')
     try:
         set_cookie_file_resolver(resolve_cookie_file_for_url)
         set_cookie_domain_resolver(resolve_cookie_match_domain_for_url)
-        logger.info("[0.5/5] ✓ Cookie resolver configured")
-    except Exception as e:
-        logger.warning(f"[0.5/5] ⚠ Failed to configure cookie resolver: {e}")
+        runtime_http_enabled.append('cookie_resolver')
+    except Exception as exc:
+        runtime_http_degraded.append(f'cookie_resolver={exc}')
 
-    # 1. 启动插件 runtime manager
-    logger.info("[1/4] Bootstrapping plugin runtime manager...")
+    if runtime_http_degraded:
+        logger.warning(
+            'Startup [2/%s] Runtime HTTP helpers ready with degraded features: enabled=%s degraded=%s',
+            STARTUP_TOTAL_STEPS,
+            ', '.join(runtime_http_enabled) if runtime_http_enabled else 'none',
+            '; '.join(runtime_http_degraded),
+        )
+    else:
+        _log_lifecycle_step('Startup', 2, STARTUP_TOTAL_STEPS, 'Runtime HTTP helpers ready')
+
+    _log_lifecycle_step('Startup', 3, STARTUP_TOTAL_STEPS, 'Bootstrapping plugin runtime manager')
     try:
         bootstrap_plugin_runtime()
-        logger.info("[1/4] ✓ Plugin runtime manager bootstrapped")
-    except Exception as e:
-        logger.exception(f"[1/4] ✗ Failed to bootstrap plugin runtime manager: {e}")
+        _log_lifecycle_step('Startup', 3, STARTUP_TOTAL_STEPS, 'Plugin runtime manager ready')
+    except Exception:
+        logger.exception('Startup [3/%s] Failed to bootstrap plugin runtime manager', STARTUP_TOTAL_STEPS)
         raise
 
-    logger.info("[2/4] Seeding video extraction projection...")
+    _log_lifecycle_step('Startup', 4, STARTUP_TOTAL_STEPS, 'Seeding video extraction projection')
     try:
         from services import video_extraction_projection_service
         rebuilt_count = video_extraction_projection_service.ensure_projection_seeded()
-        logger.info(f"[2/4] ✓ Video extraction projection ready (rebuilt={rebuilt_count})")
-    except Exception as e:
-        logger.exception(f"[2/4] ✗ Failed to seed video extraction projection: {e}")
+        _log_lifecycle_step(
+            'Startup',
+            4,
+            STARTUP_TOTAL_STEPS,
+            f'Video extraction projection ready (rebuilt={rebuilt_count})',
+        )
+    except Exception:
+        logger.exception('Startup [4/%s] Failed to seed video extraction projection', STARTUP_TOTAL_STEPS)
         raise
 
-    logger.info("=" * 60)
-    logger.info("✓ Application startup completed successfully")
-    logger.info("=" * 60)
-    
+    _log_lifecycle_event('Startup', 'complete')
+
     yield
-    
-    # ========== 关闭阶段 ==========
-    logger.info("=" * 60)
-    logger.info("Application shutdown sequence begin")
-    logger.info("=" * 60)
-    
-    # 优雅停止所有服务（逆序）
-    logger.info("[2/3] Stopping plugin runtime manager...")
+
+    _log_lifecycle_event('Shutdown', 'begin')
+
+    _log_lifecycle_step('Shutdown', 1, SHUTDOWN_TOTAL_STEPS, 'Stopping plugin runtime manager')
     try:
         shutdown_plugin_runtime()
-        logger.info("[2/3] ✓ Plugin runtime manager stopped")
-    except Exception as e:
-        logger.warning(f"[2/3] ⚠ Error stopping plugin runtime manager (ignored): {e}")
+        _log_lifecycle_step('Shutdown', 1, SHUTDOWN_TOTAL_STEPS, 'Plugin runtime manager stopped')
+    except Exception as exc:
+        logger.warning('Shutdown [1/%s] Error stopping plugin runtime manager (ignored): %s', SHUTDOWN_TOTAL_STEPS, exc)
 
-    logger.info("=" * 60)
-    logger.info("✓ Application shutdown completed")
-    logger.info("=" * 60)
+    _log_lifecycle_event('Shutdown', 'complete')
 
 
 def create_application() -> FastAPI:
@@ -127,11 +141,13 @@ def main() -> None:
     upgrade_database()
     init_logging()
     
-    # 创建应用
-    app = create_application()
-    
-    # 启动服务器
-    logger.info("Starting FastAPI server...")
+    logger.info(
+        'Launching FastAPI server host=%s port=%s mode=%s',
+        '0.0.0.0',
+        settings.PORT,
+        'development' if settings.is_dev else 'production',
+    )
+
     if settings.is_dev:
         uvicorn.run(
             "main:create_application",
@@ -143,6 +159,7 @@ def main() -> None:
             access_log=False,
         )
     else:
+        app = create_application()
         uvicorn.run(app, host="0.0.0.0", port=settings.PORT, log_config=None, access_log=False)
 
 

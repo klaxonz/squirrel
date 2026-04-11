@@ -170,5 +170,3 @@ def _register_spa_route(app: FastAPI) -> None:
             content={"code": -1, "msg": "Frontend static files not found"}
         )
 
-
-app = create_app()

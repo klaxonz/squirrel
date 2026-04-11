@@ -2,9 +2,56 @@ import asyncio
 import logging
 from pathlib import Path
 import sys
+import types
 from types import SimpleNamespace
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'squirrel-backend'))
+sys.path.insert(0, str(ROOT / 'squirrel-sdk' / 'src'))
+
+
+class _AlembicConfig:
+    def __init__(self, *_args, **_kwargs):
+        self.attributes = {}
+
+    def set_main_option(self, *_args, **_kwargs):
+        return None
+
+
+alembic_module = types.ModuleType('alembic')
+alembic_module.command = SimpleNamespace(upgrade=lambda *_args, **_kwargs: None)
+alembic_config_module = types.ModuleType('alembic.config')
+alembic_config_module.Config = _AlembicConfig
+bs4_module = types.ModuleType('bs4')
+bs4_module.BeautifulSoup = object
+redis_module = types.ModuleType('redis')
+
+
+class _BlockingConnectionPool:
+    def __init__(self, *_args, **_kwargs):
+        pass
+
+
+class _Redis:
+    def __init__(self, *_args, **_kwargs):
+        pass
+
+
+class _RedisLock:
+    def __init__(self, *_args, **_kwargs):
+        pass
+
+
+redis_module.BlockingConnectionPool = _BlockingConnectionPool
+redis_module.Redis = _Redis
+redis_lock_module = types.ModuleType('redis_lock')
+redis_lock_module.Lock = _RedisLock
+sys.modules.setdefault('alembic', alembic_module)
+sys.modules.setdefault('alembic.config', alembic_config_module)
+sys.modules.setdefault('bs4', bs4_module)
+sys.modules.setdefault('redis', redis_module)
+sys.modules.setdefault('redis_lock', redis_lock_module)
 
 from crawl import PluginInvokeResponse
 import main as app_main
@@ -41,6 +88,51 @@ def test_lifespan_configures_backend_runtime_http_state(monkeypatch):
 
     asyncio.run(_run())
     assert projection_calls == ['seeded']
+
+
+def test_lifespan_logs_ordered_startup_and_shutdown_sequence(monkeypatch, caplog):
+    client = object()
+    resolver = lambda url: f'cookie:{url}'
+    domain_resolver = lambda url: 'youtube.com'
+
+    monkeypatch.setattr(app_main, 'apply_site_config_overrides', lambda: None)
+    monkeypatch.setattr(app_main, 'bootstrap_plugin_runtime', lambda: None)
+    monkeypatch.setattr(app_main, 'shutdown_plugin_runtime', lambda: None)
+    monkeypatch.setattr(app_main, 'resolve_cookie_file_for_url', resolver)
+    monkeypatch.setattr(app_main, 'resolve_cookie_match_domain_for_url', domain_resolver)
+    monkeypatch.setattr('utils.cloudflare_bypass.get_default_client', lambda: client)
+    monkeypatch.setitem(
+        sys.modules,
+        'services.video_extraction_projection_service',
+        SimpleNamespace(ensure_projection_seeded=lambda: 0),
+    )
+
+    runtime_http.reset_runtime_http_state()
+
+    async def _run() -> None:
+        async with app_main.lifespan(SimpleNamespace()):
+            pass
+
+    with caplog.at_level(logging.INFO, logger='main'):
+        asyncio.run(_run())
+
+    messages = [record.getMessage() for record in caplog.records if record.name == 'main']
+    assert messages == [
+        'Startup: begin',
+        'Startup [1/4] Applying site configuration overrides',
+        'Startup [1/4] Site configuration overrides applied',
+        'Startup [2/4] Configuring runtime HTTP helpers',
+        'Startup [2/4] Runtime HTTP helpers ready',
+        'Startup [3/4] Bootstrapping plugin runtime manager',
+        'Startup [3/4] Plugin runtime manager ready',
+        'Startup [4/4] Seeding video extraction projection',
+        'Startup [4/4] Video extraction projection ready (rebuilt=0)',
+        'Startup: complete',
+        'Shutdown: begin',
+        'Shutdown [1/1] Stopping plugin runtime manager',
+        'Shutdown [1/1] Plugin runtime manager stopped',
+        'Shutdown: complete',
+    ]
 
 
 def test_bootstrap_runtime_configures_backend_runtime_http_state(monkeypatch):
