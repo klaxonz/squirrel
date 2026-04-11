@@ -216,6 +216,9 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     onError,
     onTimeUpdate,
     onQualityChange,
+    errorRecovery: {
+      enableQualityFallback: true,
+    },
   })
 
   const syncCodecFamilies = (): void => {

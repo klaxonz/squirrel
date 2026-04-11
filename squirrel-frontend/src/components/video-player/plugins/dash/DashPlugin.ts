@@ -145,9 +145,8 @@ export class DashPlugin implements PlayerPlugin {
 
     player.updateSettings(settings)
     this.setupEventListeners(player)
-    player.initialize(this.context.videoElement, src, this.context.state.playing)
-
     this.player = player
+    player.initialize(this.context.videoElement, src, this.context.state.playing)
   }
 
   /**
@@ -182,6 +181,7 @@ export class DashPlugin implements PlayerPlugin {
 
     // 质量变化
     player.on('qualityChangeRendered', (e: any) => {
+      if (this.player !== player) return
       if (e?.mediaType === 'video') {
         const qualities = this.getAvailableQualities()
         const currentTrackIndex = this.resolveTrackIndex((this.player as any)?.getCurrentTrackFor?.('video'))
@@ -200,6 +200,7 @@ export class DashPlugin implements PlayerPlugin {
     })
 
     player.on('trackChangeRendered', (e: any) => {
+      if (this.player !== player) return
       if (e?.mediaType === 'video') {
         this.currentTrackIndex = this.resolveTrackIndex(e.newMediaInfo)
         if (
@@ -222,11 +223,13 @@ export class DashPlugin implements PlayerPlugin {
 
     // 清单加载完成
     player.on('streamInitialized', () => {
+      if (this.player !== player) return
       this.updateQualities()
     })
 
     // 片段加载完成 - 带宽采样
     player.on('fragmentLoadingCompleted', (data: any) => {
+      if (this.player !== player) return
       if (this.options.onBandwidthSample) {
         try {
           const loaded = data?.request?.bytesLoaded || 0
@@ -252,11 +255,11 @@ export class DashPlugin implements PlayerPlugin {
     }
 
     if (code.includes('NETWORK') || code.includes('TIMEOUT')) {
-      this.context?.logger.debug('[DashPlugin] Transient recovery handled without source reload', {
+      this.context?.logger.debug('[DashPlugin] Requesting source reload for transient network recovery', {
         code,
         source: this.currentSource,
       })
-      return 'handled'
+      return 'reload-source'
     }
 
     if (
@@ -265,11 +268,11 @@ export class DashPlugin implements PlayerPlugin {
       code.includes('BUFFER') ||
       code.includes('STALL')
     ) {
-      this.context?.logger.debug('[DashPlugin] Transient recovery handled without source reload', {
+      this.context?.logger.debug('[DashPlugin] Requesting source reload for transient media recovery', {
         code,
         source: this.currentSource,
       })
-      return 'handled'
+      return 'reload-source'
     }
 
     this.context?.logger.debug('[DashPlugin] Requesting source reload for recovery', {
@@ -473,7 +476,6 @@ export class DashPlugin implements PlayerPlugin {
               this.context?.logger.debug('[DashPlugin] Waiting for target track before applying quality', hintedSelection)
               return
             }
-            player.setCurrentTrack(targetTrack)
             this.currentTrackIndex = hintedSelection.trackIndex
           }
           if (typeof player.setQualityFor === 'function') {
