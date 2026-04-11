@@ -5,21 +5,8 @@
       :class="['desktop-titlebar', `desktop-titlebar--${desktopPlatform}`]"
     >
       <div class="desktop-titlebar__drag">
-        <div class="desktop-titlebar__identity">
-          <span class="desktop-titlebar__eyebrow">Squirrel Desktop</span>
-          <div class="desktop-titlebar__headline">
-            <span class="desktop-titlebar__title">{{ desktopPageTitle }}</span>
-            <span class="desktop-titlebar__divider"></span>
-            <span class="desktop-titlebar__context">{{ desktopChromeContext }}</span>
-          </div>
-        </div>
+        <div class="desktop-titlebar__identity"></div>
         <div class="desktop-titlebar__trailing">
-          <div class="desktop-titlebar__meta">
-            <span class="desktop-titlebar__pill">
-              <span class="desktop-titlebar__status-dot"></span>
-              {{ desktopPlatformLabel }}
-            </span>
-          </div>
           <div
             v-if="showDesktopWindowControls"
             class="desktop-window-controls"
@@ -524,11 +511,10 @@ body {
   position: relative;
   z-index: 80;
   flex: 0 0 auto;
-  height: 52px;
-  border-bottom: 1px solid rgba(160, 189, 255, 0.1);
-  background:
-    linear-gradient(180deg, rgba(8, 14, 24, 0.98) 0%, rgba(7, 11, 18, 0.88) 100%);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  height: 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(8, 10, 15, 0.95);
+  backdrop-filter: blur(12px);
 }
 
 .desktop-titlebar__drag {
@@ -537,7 +523,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0 1rem 0 1.15rem;
+  padding: 0 0.5rem 0 1rem;
   -webkit-app-region: drag;
   user-select: none;
 }
@@ -550,149 +536,82 @@ body {
   display: flex;
   min-width: 0;
   flex: 1 1 auto;
-  flex-direction: column;
-  gap: 0.15rem;
+  align-items: center;
 }
 
-.desktop-titlebar__eyebrow {
-  color: rgba(148, 163, 184, 0.72);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+.desktop-titlebar__logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #ff4d00;
+  opacity: 0.9;
+  margin-right: 0.85rem;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid rgba(255, 77, 0, 0.25);
+  border-radius: 3px;
+  background: rgba(255, 77, 0, 0.03);
+  letter-spacing: 0.02em;
 }
 
 .desktop-titlebar__headline {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 0.55rem;
 }
 
 .desktop-titlebar__title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: rgba(248, 250, 252, 0.96);
-  font-size: 0.95rem;
-  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.725rem;
+  font-weight: 500;
   letter-spacing: 0.01em;
-}
-
-.desktop-titlebar__divider {
-  width: 0.28rem;
-  height: 0.28rem;
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: rgba(96, 165, 250, 0.72);
-  box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
-}
-
-.desktop-titlebar__context {
-  color: rgba(148, 163, 184, 0.76);
-  font-size: 0.78rem;
-  white-space: nowrap;
-}
-
-.desktop-titlebar__meta {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
 }
 
 .desktop-titlebar__trailing {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 0.75rem;
-}
-
-.desktop-titlebar__pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.35rem 0.68rem;
-  border: 1px solid rgba(96, 165, 250, 0.16);
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.52);
-  color: rgba(226, 232, 240, 0.88);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-}
-
-.desktop-titlebar__status-dot {
-  width: 0.42rem;
-  height: 0.42rem;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #60a5fa 0%, #22d3ee 100%);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
 }
 
 .desktop-window-controls {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem;
-  border: 1px solid rgba(96, 165, 250, 0.12);
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.56) 0%, rgba(10, 15, 24, 0.72) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 10px 24px rgba(0, 0, 0, 0.18);
+  gap: 1px;
   -webkit-app-region: no-drag;
 }
 
 .desktop-window-controls__button {
   display: inline-flex;
-  width: 2rem;
-  height: 1.5rem;
+  width: 2.5rem;
+  height: 32px;
   align-items: center;
   justify-content: center;
-  border: 1px solid transparent;
-  border-radius: 0.75rem;
   background: transparent;
-  color: rgba(226, 232, 240, 0.84);
-  transition:
-    transform 0.14s ease,
-    background-color 0.18s ease,
-    border-color 0.18s ease,
-    color 0.18s ease,
-    box-shadow 0.18s ease;
+  border: none;
+  border-radius: 0;
+  color: rgba(255, 255, 255, 0.45);
+  transition: all 0.2s ease;
 }
 
 .desktop-window-controls__button:hover {
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.08);
-  color: rgba(248, 250, 252, 0.98);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .desktop-window-controls__button:active {
-  transform: translateY(1px);
   background: rgba(255, 255, 255, 0.12);
-  box-shadow: none;
-}
-
-.desktop-window-controls__button:focus-visible {
-  outline: none;
-  border-color: rgba(125, 211, 252, 0.4);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
 }
 
 .desktop-window-controls__button--close:hover {
-  background: rgba(239, 68, 68, 0.16);
-  border-color: rgba(248, 113, 113, 0.18);
-  color: rgba(254, 226, 226, 0.98);
-}
-
-.desktop-window-controls__button--close:active {
-  background: rgba(239, 68, 68, 0.22);
+  background: #e81123;
+  color: #fff;
 }
 
 .desktop-window-controls__icon {
-  width: 0.92rem;
-  height: 0.92rem;
+  width: 10px;
+  height: 10px;
 }
 
 .desktop-window-controls__icon path {
@@ -741,7 +660,7 @@ h6 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 2.5rem 2rem 1rem 2rem;
+  padding: 1.5rem 2rem 1rem 2rem;
   background: linear-gradient(to bottom, #050505 0%, rgba(5, 5, 5, 0.8) 60%, transparent 100%);
   pointer-events: none;
 }

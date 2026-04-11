@@ -262,16 +262,6 @@ const buildShellPageUrl = ({ title, eyebrow, heading, body, status, tone = 'load
   return `data:text/html;charset=UTF-8,${encodeURIComponent(html)}`
 }
 
-const showLoadingShell = (mainWindow) => {
-  return mainWindow.loadURL(buildShellPageUrl({
-    title: '正在连接',
-    eyebrow: 'Desktop Shell',
-    heading: '正在连接 Squirrel',
-    body: '桌面端正在初始化窗口并连接页面入口，这一步通常只需要几秒。',
-    status: rendererUrl,
-  }))
-}
-
 const showErrorShell = (mainWindow, details) => {
   const errorSummary = [
     rendererUrl,
@@ -436,7 +426,7 @@ const reloadRenderer = (mainWindow, ignoreCache = false) => {
 
   const currentUrl = mainWindow.webContents.getURL()
   if (!isTrustedNavigation(currentUrl)) {
-    void showLoadingShell(mainWindow).then(() => navigateToRenderer(mainWindow))
+    void navigateToRenderer(mainWindow)
     return
   }
 
@@ -746,7 +736,7 @@ const createMainWindow = () => {
     mainWindow.maximize()
   }
 
-  void showLoadingShell(mainWindow).then(() => navigateToRenderer(mainWindow))
+  void navigateToRenderer(mainWindow)
   return mainWindow
 }
 
