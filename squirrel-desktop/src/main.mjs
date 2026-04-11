@@ -322,17 +322,64 @@ const MEDIA_HEADER_RULES = [
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     },
   },
+  {
+    hosts: ['surrit.com'],
+    headers: {
+      Referer: 'https://missav.ai/',
+      Origin: 'https://missav.ai',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    },
+  },
+  {
+    hosts: ['jdbstatic.com'],
+    headers: {
+      Referer: 'https://javdb.com/',
+      Origin: 'https://javdb.com',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    },
+  },
 ]
+
+const RELAXED_CROSS_ORIGIN_HOSTS = ['surrit.com', 'jdbstatic.com']
+const RELAXED_RESPONSE_HEADER_NAMES = new Set([
+  'cross-origin-resource-policy',
+  'cross-origin-embedder-policy',
+  'cross-origin-opener-policy',
+])
+
+const hostMatchesAnyRule = (hostname, hosts) => {
+  return hosts.some((host) => hostname === host || hostname.endsWith(`.${host}`))
+}
 
 const matchMediaHeaderRule = (targetUrl) => {
   try {
     const hostname = new URL(targetUrl).hostname.toLowerCase()
     return MEDIA_HEADER_RULES.find((rule) => {
-      return rule.hosts.some((host) => hostname === host || hostname.endsWith(`.${host}`))
+      return hostMatchesAnyRule(hostname, rule.hosts)
     }) || null
   } catch {
     return null
   }
+}
+
+const shouldRelaxCrossOriginResponseHeaders = (targetUrl) => {
+  try {
+    const hostname = new URL(targetUrl).hostname.toLowerCase()
+    return hostMatchesAnyRule(hostname, RELAXED_CROSS_ORIGIN_HOSTS)
+  } catch {
+    return false
+  }
+}
+
+const stripRelaxedResponseHeaders = (responseHeaders) => {
+  const filteredHeaders = {}
+  for (const [name, value] of Object.entries(responseHeaders || {})) {
+    if (RELAXED_RESPONSE_HEADER_NAMES.has(String(name).toLowerCase())) {
+      continue
+    }
+    filteredHeaders[name] = value
+  }
+  return filteredHeaders
 }
 
 const installDesktopMediaHeaders = () => {
@@ -348,6 +395,17 @@ const installDesktopMediaHeaders = () => {
       ...rule.headers,
     }
     callback({ requestHeaders })
+  })
+
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    if (!shouldRelaxCrossOriginResponseHeaders(details.url)) {
+      callback({ responseHeaders: details.responseHeaders })
+      return
+    }
+
+    callback({
+      responseHeaders: stripRelaxedResponseHeaders(details.responseHeaders),
+    })
   })
 }
 
