@@ -19,7 +19,7 @@ const SEARCH_META = {
   showSearch: true,
   search: 'home',
   searchEvent: 'search:home',
-  searchPlaceholder: '搜索视频、频道、作者，或用 site:youtube'
+  searchPlaceholder: '搜索'
 }
 
 const NO_SEARCH_META = {
@@ -99,7 +99,7 @@ const routes = [
       showSearch: true,
       search: 'subscribed',
       searchEvent: 'search:subscribed',
-      searchPlaceholder: '搜索频道，或用 type:playlist / site:youtube'
+      searchPlaceholder: '搜索订阅源'
     },
   },
   {
@@ -188,7 +188,7 @@ const routes = [
       showSearch: true,
       search: 'history',
       searchEvent: 'search:history',
-      searchPlaceholder: '搜索历史，支持 channel: / url: / site:'
+      searchPlaceholder: '搜索历史'
     },
   },
   {
@@ -199,7 +199,7 @@ const routes = [
       showSearch: true,
       search: 'home',
       searchEvent: 'search:home',
-      searchPlaceholder: '搜索视频、频道、作者，或用 site:youtube',
+      searchPlaceholder: '搜索视频',
       searchRedirectName: 'AllVideos',
       searchPersistKey: 'LatestVideos',
       scrollable: true,
