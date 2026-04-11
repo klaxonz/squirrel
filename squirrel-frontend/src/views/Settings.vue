@@ -1,317 +1,367 @@
 <template>
-  <div class="settings-page bg-background text-foreground h-full flex flex-col min-h-0">
-    <div class="toolbar-container pt-12 pb-12">
-      <PageHeader title="系统设置" />
-    </div>
+  <div class="settings-page bg-background text-foreground min-h-full">
+    <!-- Header -->
+    <header class="settings-header">
+      <div class="settings-header__inner">
+        <div class="settings-header__copy">
+          <h1 class="settings-header__title">设置</h1>
+          <p class="settings-header__desc">配置你的偏好与账户</p>
+        </div>
+        <div v-if="hasUnsavedChanges" class="settings-header__status">
+          <span class="status-dot"></span>
+          <span class="status-text">有未保存的更改</span>
+        </div>
+      </div>
+    </header>
 
-    <div
-      class="content-container pb-20 flex-1 min-h-0 overflow-hidden mt-12"
-    >
-      <div class="flex flex-col lg:flex-row gap-24 min-h-0 h-full">
-        <aside class="lg:w-48 lg:shrink-0 lg:sticky lg:top-0 self-start">
-          <nav class="settings-nav space-y-8">
-            <button
-              v-for="tab in tabs"
-              :key="tab.key"
-              @click="currentTab = tab.key"
-              class="tab-button w-full py-2.5 px-4 rounded-xl text-[13px] font-bold tracking-wide transition-all flex items-center gap-3 group relative text-left"
-              :class="isCurrentTab(tab.key)
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground/40 hover:text-foreground/60 hover:bg-foreground/[0.02]'"
-              :aria-current="isCurrentTab(tab.key) ? 'page' : undefined"
-            >
-              <component :is="tab.icon" class="h-4 w-4 transition-transform group-hover:scale-110" />
-              <span class="flex-1">{{ tab.label }}</span>
-              <div 
-                v-if="isCurrentTab(tab.key)"
-                class="absolute left-0 top-3 bottom-3 w-[2px] bg-primary rounded-full"
-              ></div>
-            </button>
-          </nav>
-        </aside>
+    <!-- Tab Navigation -->
+    <nav class="settings-tabs" role="tablist">
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        role="tab"
+        :aria-selected="currentTab === tab.key"
+        :aria-controls="`panel-${tab.key}`"
+        class="settings-tab"
+        :class="{ 'settings-tab--active': currentTab === tab.key }"
+        @click="currentTab = tab.key"
+      >
+        <component :is="tab.icon" class="settings-tab__icon" />
+        <span class="settings-tab__label">{{ tab.label }}</span>
+      </button>
+    </nav>
 
-        <section
-          class="flex-1"
-          :class="allowScroll ? 'overflow-y-auto min-h-0 pr-6 -mr-6' : ''"
-        >
-          <Transition name="fade-slide" mode="out-in">
-            <div :key="currentTab" class="space-y-24">
-              <div v-if="currentTab === 'appearance'" class="settings-section slide-up">
-                <div class="settings-section-header flex items-center gap-4 mb-8">
-                  <div class="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                    <Palette class="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h2>外观与主题</h2>
-                    <p>视觉体验与界面主题</p>
-                  </div>
-                </div>
-
-                <div class="settings-section-content p-6 rounded-[2rem] bg-card/40 border border-border/10 backdrop-blur-sm">
-                  <TransitionGroup name="staggered-reveal" tag="div" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <button
-                      v-for="(option, index) in themeOptions"
-                      :key="option.value"
-                      type="button"
-                      class="theme-card relative group p-5 border transition-all duration-300 rounded-2xl flex flex-col items-center justify-center gap-2 overflow-hidden"
-                      :class="themeMode === option.value 
-                        ? 'border-primary bg-primary/5 shadow-[0_4px_20px_rgba(var(--primary-rgb),0.1)]' 
-                        : 'border-border/10 hover:border-border/30 bg-background/40 hover:bg-background/60'"
-                      :style="{ '--delay': `${index * 0.1}s` }"
-                      @click="setThemeMode(option.value)"
-                    >
-                      <component :is="option.icon" class="h-5 w-5 mb-1 transition-colors" :class="themeMode === option.value ? 'text-primary' : 'text-muted-foreground/40'" />
-                      <div class="text-[13px] font-bold tracking-tight transition-colors" :class="themeMode === option.value ? 'text-primary' : 'text-foreground'">{{ option.label }}</div>
-                      <div class="text-[11px] text-muted-foreground/30 font-medium">{{ option.description }}</div>
-                      
-                      <div 
-                        v-if="themeMode === option.value"
-                        class="absolute top-2.5 right-2.5"
-                      >
-                        <CheckCircle2 class="h-3.5 w-3.5 text-primary" />
-                      </div>
-                    </button>
-                  </TransitionGroup>
-                </div>
-              </div>
-
-              <div v-if="currentTab === 'content'" class="settings-section slide-up">
-                <div class="settings-section-header flex items-center gap-4 mb-8">
-                  <div class="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                    <ShieldCheck class="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h2>内容偏好</h2>
-                    <p>内容偏好与隐私</p>
-                  </div>
-                </div>
-                <div class="settings-section-content rounded-[2rem] bg-card/40 border border-border/10 backdrop-blur-sm overflow-hidden">
-                  <TransitionGroup name="staggered-reveal" tag="div" class="divide-y divide-border/5">
-                    <div class="setting-item group p-8" :key="'nsfw'" :style="{ '--delay': '0s' }">
-                      <div class="setting-item-copy">
-                        <h3 class="setting-item-title">显示敏感内容</h3>
-                        <p class="setting-item-desc">启用后将在平台显示标记为敏感内容的内容。</p>
-                      </div>
-                      <Switch
-                        :checked="!!settings.showNsfw"
-                        :disabled="userSaving"
-                        @update:checked="(value: boolean) => { settings.showNsfw = !!value; onUserSettingChange() }"
-                      />
-                    </div>
-
-                    <div class="setting-item group p-8" :key="'blur'" :style="{ '--delay': '0.1s' }">
-                      <div class="setting-item-copy">
-                        <h3 class="setting-item-title">自动模糊封面</h3>
-                        <p class="setting-item-desc">在画廊视图中对敏感内容缩略图应用高斯模糊。</p>
-                      </div>
-                      <Switch
-                        :checked="Boolean(systemConfig?.blur_nsfw_thumbnails)"
-                        :disabled="systemLoading || systemSaving"
-                        @update:checked="(value: boolean) => onSystemToggle('blur_nsfw_thumbnails', !!value)"
-                      />
-                    </div>
-                  </TransitionGroup>
-                </div>
-              </div>
-
-              <div v-if="currentTab === 'playback'" class="settings-section slide-up">
-                <div class="settings-section-header flex items-center gap-4 mb-8">
-                  <div class="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                    <PlayCircle class="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h2>播放控制</h2>
-                    <p>媒体播放器与交互</p>
-                  </div>
-                </div>
-                <div class="settings-section-content rounded-[2rem] bg-card/40 border border-border/10 backdrop-blur-sm overflow-hidden">
-                  <TransitionGroup name="staggered-reveal" tag="div" class="divide-y divide-border/5">
-                    <div class="setting-item group p-8" :key="'autoplay'" :style="{ '--delay': '0s' }">
-                      <div class="setting-item-copy">
-                        <h3 class="setting-item-title">进入页面自动播放</h3>
-                        <p class="setting-item-desc">进入详情页时自动开始媒体播放。</p>
-                      </div>
-                      <Switch
-                        :checked="!!settings.autoplay"
-                        :disabled="userSaving"
-                        @update:checked="(value: boolean) => { settings.autoplay = !!value; onUserSettingChange() }"
-                      />
-                    </div>
-
-                    <div class="setting-item group p-8" :key="'autoplayNext'" :style="{ '--delay': '0.1s' }">
-                      <div class="setting-item-copy">
-                        <h3 class="setting-item-title">自动播放下一个</h3>
-                        <p class="setting-item-desc">按顺序播放当前收藏夹中的项目。</p>
-                      </div>
-                      <Switch
-                        :checked="!!settings.autoplayNext"
-                        :disabled="userSaving"
-                        @update:checked="(value: boolean) => { settings.autoplayNext = !!value; onUserSettingChange() }"
-                      />
-                    </div>
-
-                    <div class="setting-item group p-8" :key="'loop'" :style="{ '--delay': '0.2s' }">
-                      <div class="setting-item-copy">
-                        <h3 class="setting-item-title">循环播放</h3>
-                        <p class="setting-item-desc">播放完成后自动重新开始当前媒体项目。</p>
-                      </div>
-                      <Switch
-                        :checked="!!settings.loop"
-                        :disabled="userSaving"
-                        @update:checked="(value: boolean) => { settings.loop = !!value; onUserSettingChange() }"
-                      />
-                    </div>
-                  </TransitionGroup>
-                </div>
-              </div>
-
-              <div v-if="currentTab === 'security'" class="settings-section slide-up">
-                <div class="settings-section-header flex items-center gap-4 mb-8">
-                  <div class="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                    <KeyRound class="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h2>账户安全</h2>
-                    <p>密码更新与会话撤销</p>
-                  </div>
-                </div>
-
-                <div class="space-y-6">
-                  <Alert v-if="securityError" variant="destructive">
-                    <AlertDescription>{{ securityError }}</AlertDescription>
-                  </Alert>
-
-                  <Alert v-if="securitySuccess">
-                    <AlertDescription>{{ securitySuccess }}</AlertDescription>
-                  </Alert>
-
-                  <div class="security-card">
-                    <div class="security-card__copy">
-                      <div class="security-card__eyebrow">
-                        <ShieldAlert class="h-4 w-4" />
-                        <span>密码轮换</span>
-                      </div>
-                      <h3 class="security-card__title">修改登录密码</h3>
-                      <p class="security-card__desc">修改后，服务端会自动废弃此前签发的旧 token，只保留当前这个会话。</p>
-                    </div>
-
-                    <form class="security-form" @submit.prevent="handlePasswordUpdate">
-                      <label class="security-field">
-                        <span class="security-field__label">当前密码</span>
-                        <input
-                          v-model="securityForm.currentPassword"
-                          type="password"
-                          autocomplete="current-password"
-                          class="security-field__input"
-                          :disabled="passwordSubmitting"
-                        />
-                      </label>
-
-                      <label class="security-field">
-                        <span class="security-field__label">新密码</span>
-                        <input
-                          v-model="securityForm.newPassword"
-                          type="password"
-                          autocomplete="new-password"
-                          class="security-field__input"
-                          :disabled="passwordSubmitting"
-                        />
-                      </label>
-
-                      <label class="security-field">
-                        <span class="security-field__label">确认新密码</span>
-                        <input
-                          v-model="securityForm.confirmPassword"
-                          type="password"
-                          autocomplete="new-password"
-                          class="security-field__input"
-                          :disabled="passwordSubmitting"
-                        />
-                      </label>
-
-                      <div class="security-actions">
-                        <Button type="submit" :disabled="passwordSubmitting" class="min-w-[7rem]">
-                          {{ passwordSubmitting ? '提交中...' : '更新密码' }}
-                        </Button>
-                      </div>
-                    </form>
-                  </div>
-
-                  <div class="security-card security-card--compact">
-                    <div class="security-card__copy">
-                      <div class="security-card__eyebrow">
-                        <LogOut class="h-4 w-4" />
-                        <span>会话撤销</span>
-                      </div>
-                      <h3 class="security-card__title">注销其他设备</h3>
-                      <p class="security-card__desc">如果怀疑 token 泄露，可以立即让其他浏览器或设备上的旧登录态失效，当前页面会自动续签新 token。</p>
-                    </div>
-
-                    <div class="security-actions">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        :disabled="sessionSubmitting"
-                        @click="handleRevokeSessions"
-                      >
-                        {{ sessionSubmitting ? '处理中...' : '撤销其他会话' }}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div v-if="currentTab === 'system'" class="settings-section slide-up">
-                <div class="settings-section-header flex items-center gap-4 mb-8">
-                  <div class="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                    <Settings2 class="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h2>核心引擎</h2>
-                    <p>系统调度与工作引擎</p>
-                  </div>
-                </div>
-                <div class="settings-section-content rounded-[2rem] bg-card/40 border border-border/10 backdrop-blur-sm overflow-hidden">
-                  <TransitionGroup name="staggered-reveal" tag="div" class="divide-y divide-border/5">
-                    <div class="setting-item group p-8" :key="'scheduler'" :style="{ '--delay': '0s' }">
-                      <div class="setting-item-copy">
-                        <h3 class="setting-item-title">任务调度器</h3>
-                        <p class="setting-item-desc">后台任务编排与状态同步。</p>
-                      </div>
-                      <Switch
-                        :checked="Boolean(systemConfig?.enable_scheduler)"
-                        :disabled="systemLoading || systemSaving"
-                        @update:checked="(value: boolean) => onSystemToggle('enable_scheduler', !!value)"
-                      />
-                    </div>
-
-                    <div class="setting-item group p-8" :key="'worker'" :style="{ '--delay': '0.1s' }">
-                      <div class="setting-item-copy">
-                        <h3 class="setting-item-title">异步工作流</h3>
-                        <p class="setting-item-desc">用于采集任务的高并发处理引擎。</p>
-                      </div>
-                      <Switch
-                        :checked="Boolean(systemConfig?.enable_worker)"
-                        :disabled="systemLoading || systemSaving"
-                        @update:checked="(value: boolean) => onSystemToggle('enable_worker', !!value)"
-                      />
-                    </div>
-                  </TransitionGroup>
-                </div>
-              </div>
-
-              <SiteConfigSection v-if="currentTab === 'sites'" />
+    <!-- Content Panel -->
+    <main class="settings-content">
+      <div
+        v-if="currentTab === 'appearance'"
+        role="tabpanel"
+        :id="`panel-appearance`"
+        class="settings-panel"
+      >
+        <!-- Section: Theme -->
+        <section class="settings-section">
+          <div class="settings-section__header">
+            <div class="settings-section__icon">
+              <Palette class="h-5 w-5" />
             </div>
-          </Transition>
+            <div class="settings-section__meta">
+              <h2 class="settings-section__title">主题</h2>
+              <p class="settings-section__desc">选择界面外观</p>
+            </div>
+          </div>
+
+          <div class="theme-grid">
+            <button
+              v-for="option in themeOptions"
+              :key="option.value"
+              type="button"
+              class="theme-option"
+              :class="{ 'theme-option--active': themeMode === option.value }"
+              @click="setThemeMode(option.value)"
+            >
+              <div class="theme-option__preview" :class="`theme-option__preview--${option.value}`">
+                <div class="theme-option__preview-inner">
+                  <component :is="option.icon" class="h-4 w-4" />
+                </div>
+              </div>
+              <div class="theme-option__info">
+                <span class="theme-option__name">{{ option.label }}</span>
+                <span class="theme-option__type">{{ option.description }}</span>
+              </div>
+              <div v-if="themeMode === option.value" class="theme-option__check">
+                <Check class="h-3.5 w-3.5" />
+              </div>
+            </button>
+          </div>
         </section>
       </div>
-    </div>
+
+      <div
+        v-if="currentTab === 'content'"
+        role="tabpanel"
+        :id="`panel-content`"
+        class="settings-panel"
+      >
+        <section class="settings-section">
+          <div class="settings-section__header">
+            <div class="settings-section__icon">
+              <ShieldCheck class="h-5 w-5" />
+            </div>
+            <div class="settings-section__meta">
+              <h2 class="settings-section__title">内容与隐私</h2>
+              <p class="settings-section__desc">控制内容展示偏好</p>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-row">
+              <div class="settings-row__info">
+                <h3 class="settings-row__title">显示敏感内容</h3>
+                <p class="settings-row__desc">启用后在平台显示标记为敏感的内容</p>
+              </div>
+              <Switch
+                :checked="!!settings.showNsfw"
+                :disabled="userSaving"
+                @update:checked="(value: boolean) => { settings.showNsfw = !!value; onUserSettingChange() }"
+              />
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <div class="settings-row">
+              <div class="settings-row__info">
+                <h3 class="settings-row__title">自动模糊封面</h3>
+                <p class="settings-row__desc">对敏感内容缩略图应用模糊效果</p>
+              </div>
+              <Switch
+                :checked="Boolean(systemConfig?.blur_nsfw_thumbnails)"
+                :disabled="systemLoading || systemSaving"
+                @update:checked="(value: boolean) => onSystemToggle('blur_nsfw_thumbnails', !!value)"
+              />
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div
+        v-if="currentTab === 'playback'"
+        role="tabpanel"
+        :id="`panel-playback`"
+        class="settings-panel"
+      >
+        <section class="settings-section">
+          <div class="settings-section__header">
+            <div class="settings-section__icon">
+              <PlayCircle class="h-5 w-5" />
+            </div>
+            <div class="settings-section__meta">
+              <h2 class="settings-section__title">播放控制</h2>
+              <p class="settings-section__desc">管理媒体播放行为</p>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-row">
+              <div class="settings-row__info">
+                <h3 class="settings-row__title">自动播放</h3>
+                <p class="settings-row__desc">进入详情页时自动开始播放</p>
+              </div>
+              <Switch
+                :checked="!!settings.autoplay"
+                :disabled="userSaving"
+                @update:checked="(value: boolean) => { settings.autoplay = !!value; onUserSettingChange() }"
+              />
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <div class="settings-row">
+              <div class="settings-row__info">
+                <h3 class="settings-row__title">自动播放下一个</h3>
+                <p class="settings-row__desc">当前播放完成后自动播放下一项</p>
+              </div>
+              <Switch
+                :checked="!!settings.autoplayNext"
+                :disabled="userSaving"
+                @update:checked="(value: boolean) => { settings.autoplayNext = !!value; onUserSettingChange() }"
+              />
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <div class="settings-row">
+              <div class="settings-row__info">
+                <h3 class="settings-row__title">循环播放</h3>
+                <p class="settings-row__desc">播放完成后重新开始当前项目</p>
+              </div>
+              <Switch
+                :checked="!!settings.loop"
+                :disabled="userSaving"
+                @update:checked="(value: boolean) => { settings.loop = !!value; onUserSettingChange() }"
+              />
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div
+        v-if="currentTab === 'security'"
+        role="tabpanel"
+        :id="`panel-security`"
+        class="settings-panel"
+      >
+        <section class="settings-section">
+          <div class="settings-section__header">
+            <div class="settings-section__icon">
+              <KeyRound class="h-5 w-5" />
+            </div>
+            <div class="settings-section__meta">
+              <h2 class="settings-section__title">账户安全</h2>
+              <p class="settings-section__desc">密码与会话管理</p>
+            </div>
+          </div>
+
+          <div v-if="securityError" class="settings-alert settings-alert--error">
+            <AlertCircle class="h-4 w-4" />
+            <span>{{ securityError }}</span>
+          </div>
+
+          <div v-if="securitySuccess" class="settings-alert settings-alert--success">
+            <CheckCircle2 class="h-4 w-4" />
+            <span>{{ securitySuccess }}</span>
+          </div>
+
+          <div class="settings-card settings-card--form">
+            <div class="settings-card__label">
+              <ShieldAlert class="h-4 w-4" />
+              <span>修改密码</span>
+            </div>
+            <p class="settings-card__note">修改密码后，系统会自动使其他设备上的会话失效。</p>
+
+            <form class="security-form" @submit.prevent="handlePasswordUpdate">
+              <div class="form-field">
+                <label class="form-field__label">当前密码</label>
+                <input
+                  v-model="securityForm.currentPassword"
+                  type="password"
+                  autocomplete="current-password"
+                  class="form-field__input"
+                  :disabled="passwordSubmitting"
+                  placeholder="输入当前密码"
+                />
+              </div>
+
+              <div class="form-field">
+                <label class="form-field__label">新密码</label>
+                <input
+                  v-model="securityForm.newPassword"
+                  type="password"
+                  autocomplete="new-password"
+                  class="form-field__input"
+                  :disabled="passwordSubmitting"
+                  placeholder="输入新密码（至少8位）"
+                />
+              </div>
+
+              <div class="form-field">
+                <label class="form-field__label">确认密码</label>
+                <input
+                  v-model="securityForm.confirmPassword"
+                  type="password"
+                  autocomplete="new-password"
+                  class="form-field__input"
+                  :disabled="passwordSubmitting"
+                  placeholder="再次输入新密码"
+                />
+              </div>
+
+              <div class="form-actions">
+                <Button
+                  type="submit"
+                  :disabled="passwordSubmitting"
+                  size="sm"
+                >
+                  {{ passwordSubmitting ? '更新中...' : '更新密码' }}
+                </Button>
+              </div>
+            </form>
+          </div>
+
+          <div class="settings-card settings-card--compact">
+            <div class="settings-card__copy">
+              <div class="settings-card__label settings-card__label--inline">
+                <LogOut class="h-4 w-4" />
+                <span>撤销会话</span>
+              </div>
+              <h3 class="settings-card__title">注销其他设备</h3>
+              <p class="settings-card__desc">使其他浏览器或设备上的登录态失效</p>
+            </div>
+            <Button
+              variant="outline"
+              :disabled="sessionSubmitting"
+              size="sm"
+              @click="handleRevokeSessions"
+            >
+              {{ sessionSubmitting ? '处理中...' : '撤销会话' }}
+            </Button>
+          </div>
+        </section>
+      </div>
+
+      <div
+        v-if="currentTab === 'system'"
+        role="tabpanel"
+        :id="`panel-system`"
+        class="settings-panel"
+      >
+        <section class="settings-section">
+          <div class="settings-section__header">
+            <div class="settings-section__icon">
+              <Settings2 class="h-5 w-5" />
+            </div>
+            <div class="settings-section__meta">
+              <h2 class="settings-section__title">系统引擎</h2>
+              <p class="settings-section__desc">后台调度与工作进程</p>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-row">
+              <div class="settings-row__info">
+                <h3 class="settings-row__title">任务调度器</h3>
+                <p class="settings-row__desc">后台任务编排与状态同步引擎</p>
+              </div>
+              <Switch
+                :checked="Boolean(systemConfig?.enable_scheduler)"
+                :disabled="systemLoading || systemSaving"
+                @update:checked="(value: boolean) => onSystemToggle('enable_scheduler', !!value)"
+              />
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <div class="settings-row">
+              <div class="settings-row__info">
+                <h3 class="settings-row__title">异步工作流</h3>
+                <p class="settings-row__desc">用于采集任务的高并发处理引擎</p>
+              </div>
+              <Switch
+                :checked="Boolean(systemConfig?.enable_worker)"
+                :disabled="systemLoading || systemSaving"
+                @update:checked="(value: boolean) => onSystemToggle('enable_worker', !!value)"
+              />
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div
+        v-if="currentTab === 'sites'"
+        role="tabpanel"
+        :id="`panel-sites`"
+        class="settings-panel"
+      >
+        <SiteConfigSection />
+      </div>
+    </main>
+
+    <!-- Save Feedback Toast -->
+    <Transition name="toast">
+      <div v-if="saveToastVisible" class="save-toast" :class="saveToastClass">
+        <CheckCircle2 v-if="!saveToastError" class="h-4 w-4" />
+        <AlertCircle v-else class="h-4 w-4" />
+        <span>{{ saveToastMessage }}</span>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { 
+import {
+  AlertCircle,
+  Check,
   CheckCircle2,
   Globe,
   KeyRound,
@@ -328,9 +378,7 @@ import {
   Zap,
 } from 'lucide-vue-next';
 import { revokeUserSessions, updateUserPassword } from '@/api'
-import PageHeader from '@/components/layout/PageHeader.vue'
 import SiteConfigSection from '@/components/settings/SiteConfigSection.vue';
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useAppTheme } from '@/composables/useAppTheme'
@@ -341,33 +389,32 @@ import { useUserSettings } from '../composables/useUserSettings';
 
 type SettingsTabKey = 'appearance' | 'content' | 'playback' | 'security' | 'system' | 'sites'
 
-// Tabs 配置
-const tabs: Array<{ key: SettingsTabKey; label: string; description: string; icon: any }> = [
-  { key: 'appearance', label: '外观主题', description: '外观与主题', icon: Palette },
-  { key: 'content', label: '内容设置', description: '内容偏好', icon: ShieldCheck },
-  { key: 'playback', label: '播放设置', description: '播放控制', icon: PlayCircle },
-  { key: 'security', label: '账户安全', description: '密码与会话', icon: KeyRound },
-  { key: 'system', label: '系统配置', description: '核心引擎', icon: Settings2 },
-  { key: 'sites', label: '站点配置', description: '采集源配置', icon: Globe },
+const tabs: Array<{ key: SettingsTabKey; label: string; icon: any }> = [
+  { key: 'appearance', label: '外观', icon: Palette },
+  { key: 'content', label: '内容', icon: ShieldCheck },
+  { key: 'playback', label: '播放', icon: PlayCircle },
+  { key: 'security', label: '安全', icon: KeyRound },
+  { key: 'system', label: '系统', icon: Settings2 },
+  { key: 'sites', label: '站点', icon: Globe },
 ];
 const currentTab = ref<SettingsTabKey>('appearance');
 
 const themeOptions: Array<{ value: AppThemeMode; label: string; description: string; icon: any }> = [
-  { value: 'light', label: '浅色', description: '浅色主题', icon: Sun },
-  { value: 'dark', label: '深色', description: '深色主题', icon: Moon },
-  { value: 'system', label: '系统', description: '跟随系统', icon: Monitor },
-  { value: 'cyber', label: '赛博', description: '霓虹工业', icon: Zap },
-  { value: 'scifi', label: '科幻', description: '星际流体', icon: Rocket },
+  { value: 'light', label: '浅色', description: '明亮的浅色主题', icon: Sun },
+  { value: 'dark', label: '深色', description: '护眼的深色主题', icon: Moon },
+  { value: 'system', label: '系统', description: '跟随系统设置', icon: Monitor },
+  { value: 'cyber', label: '赛博', description: '霓虹工业风', icon: Zap },
+  { value: 'scifi', label: '科幻', description: '星际流体风格', icon: Rocket },
 ]
 
 const { themeMode, setThemeMode } = useAppTheme()
 
-// 用户设置
+// User settings
 const { settings, loading: userSaving, loadUserSettings, saveUserSettings } = useUserSettings();
 
-// 系统配置
+// System config
 const { config: systemConfig, loading: systemLoading, loadSystemConfig, updateSystemConfig } = useSystemConfig();
-const systemSaving = ref(false);
+const systemSaving = ref(false)
 const passwordSubmitting = ref(false)
 const sessionSubmitting = ref(false)
 const securityError = ref('')
@@ -378,9 +425,26 @@ const securityForm = ref({
   confirmPassword: '',
 })
 
-const allowScroll = computed(() => currentTab.value === 'sites');
+// Save toast
+const saveToastVisible = ref(false)
+const saveToastMessage = ref('')
+const saveToastError = ref(false)
+const saveToastClass = computed(() => saveToastError.value ? 'save-toast--error' : 'save-toast--success')
+const hasUnsavedChanges = ref(false)
 
-const isCurrentTab = (tab: SettingsTabKey) => currentTab.value === tab
+let saveToastTimer: ReturnType<typeof setTimeout> | null = null
+
+const showSaveToast = (message: string, isError = false) => {
+  if (saveToastTimer) {
+    clearTimeout(saveToastTimer)
+  }
+  saveToastMessage.value = message
+  saveToastError.value = isError
+  saveToastVisible.value = true
+  saveToastTimer = setTimeout(() => {
+    saveToastVisible.value = false
+  }, 3000)
+}
 
 const resetSecurityFeedback = () => {
   securityError.value = ''
@@ -403,14 +467,27 @@ onMounted(async () => {
 });
 
 const onUserSettingChange = async () => {
-  await saveUserSettings();
+  userSaving.value = true;
+  hasUnsavedChanges.value = true;
+  try {
+    await saveUserSettings();
+    showSaveToast('已保存');
+  } catch (err) {
+    showSaveToast('保存失败', true);
+  } finally {
+    userSaving.value = false;
+    hasUnsavedChanges.value = false;
+  }
 };
 
 const onSystemToggle = async (key: string, val: boolean) => {
   systemSaving.value = true;
   const result = await updateSystemConfig({ [key]: val });
   if (result.error) {
+    showSaveToast('保存失败', true);
     Logger.error('Failed to update system config', result.error);
+  } else {
+    showSaveToast('已保存');
   }
   systemSaving.value = false;
 };
@@ -444,7 +521,7 @@ const handlePasswordUpdate = async () => {
       return
     }
 
-    securitySuccess.value = '密码已更新，旧 token 已失效'
+    securitySuccess.value = '密码已更新，其他设备会话已失效'
     securityForm.value = {
       currentPassword: '',
       newPassword: '',
@@ -465,12 +542,11 @@ const handleRevokeSessions = async () => {
       return
     }
 
-    securitySuccess.value = '其他设备上的旧登录态已失效'
+    securitySuccess.value = '其他设备上的登录态已失效'
   } finally {
     sessionSubmitting.value = false
   }
 }
-
 </script>
 
 <style scoped>
@@ -478,120 +554,512 @@ const handleRevokeSessions = async () => {
   font-feature-settings: "tnum";
 }
 
-.toolbar-container,
-.content-container {
-  max-width: 1000px;
+/* Header */
+.settings-header {
+  padding: 2rem 2rem 0;
+  max-width: 1200px;
   margin: 0 auto;
-  padding-left: 2rem;
-  padding-right: 2rem;
-  width: 100%;
 }
 
-.slide-up {
-  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+.settings-header__inner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
-.staggered-reveal-enter-active {
-  animation: staggered-reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: var(--delay);
+.settings-header__title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+  margin: 0;
 }
 
-.fade-slide-enter-active,
-.fade-slide-leave-active {
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+.settings-header__desc {
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
+  margin: 0.25rem 0 0;
 }
 
-.fade-slide-enter-from {
-  opacity: 0;
-  transform: translateX(10px);
+.settings-header__status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  background: hsl(var(--warning) / 0.1);
+  border: 1px solid hsl(var(--warning) / 0.2);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsl(var(--warning));
 }
 
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translateX(-10px);
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: hsl(var(--warning));
+  animation: pulse 2s infinite;
 }
 
-@keyframes staggered-reveal {
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Tab Navigation */
+.settings-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 1.5rem 2rem 0;
+  max-width: 1200px;
+  margin: 0 auto;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.settings-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.settings-tab:hover {
+  color: hsl(var(--foreground));
+}
+
+.settings-tab--active {
+  color: hsl(var(--primary));
+  border-bottom-color: hsl(var(--primary));
+}
+
+.settings-tab__icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.settings-tab__badge {
+  padding: 0.125rem 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  border-radius: 9999px;
+}
+
+/* Content */
+.settings-content {
+  padding: 1.5rem 2rem 3rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.settings-panel {
+  animation: fade-in 0.3s ease;
+}
+
+@keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(20px) rotateX(10deg);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) rotateX(0);
+    transform: translateY(0);
   }
 }
 
-.setting-item {
-  @apply relative flex items-center justify-between py-6 px-8 transition-all duration-500;
+/* Section */
+.settings-section {
+  margin-bottom: 2rem;
 }
 
-.setting-item:hover {
-  @apply bg-foreground/[0.02];
+.settings-section__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
-.setting-item-copy {
-  @apply flex-1 min-w-0 pr-8;
+.settings-section__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  border-radius: 0.75rem;
 }
 
-.setting-item-title {
-  @apply text-[15px] font-bold text-foreground tracking-tight mb-1 transition-colors group-hover:text-primary;
+.settings-section__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin: 0;
 }
 
-.setting-item-desc {
-  @apply text-[12px] text-muted-foreground/50 leading-relaxed font-medium;
+.settings-section__desc {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  margin: 0.125rem 0 0;
 }
 
-.settings-section-header h2 {
-  @apply text-2xl font-black tracking-tight text-foreground;
-  font-family: var(--font-sans);
+/* Theme Grid */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
 }
 
-.settings-section-header p {
-  @apply text-[12px] text-muted-foreground/40 mt-1 font-medium tracking-normal;
+.theme-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
-.security-card {
-  @apply rounded-[2rem] border border-border/10 bg-card/40 p-8 backdrop-blur-sm;
+.theme-option:hover {
+  border-color: hsl(var(--primary) / 0.3);
+  transform: translateY(-2px);
 }
 
-.security-card--compact {
-  @apply flex flex-col gap-6 md:flex-row md:items-end md:justify-between;
+.theme-option--active {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.05);
 }
 
-.security-card__copy {
-  @apply space-y-3;
+.theme-option__preview {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.security-card__eyebrow {
-  @apply inline-flex items-center gap-2 rounded-full border border-border/15 bg-background/40 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/60;
+.theme-option__preview--light {
+  background: linear-gradient(135deg, #fafafa 0%, #e8e8e8 100%);
+  color: #333;
 }
 
-.security-card__title {
-  @apply text-lg font-black tracking-tight text-foreground;
+.theme-option__preview--dark {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: #f0f0f0;
 }
 
-.security-card__desc {
-  @apply max-w-2xl text-sm leading-relaxed text-muted-foreground/70;
+.theme-option__preview--system {
+  background: linear-gradient(135deg, #fafafa 0%, #1a1a2e 100%);
+  color: #666;
 }
 
+.theme-option__preview--cyber {
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+  color: #FF4F00;
+}
+
+.theme-option__preview--scifi {
+  background: linear-gradient(135deg, #05080a 0%, #0a1628 100%);
+  color: #00E5FF;
+}
+
+.theme-option__preview-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-option__info {
+  text-align: center;
+}
+
+.theme-option__name {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.theme-option__type {
+  display: block;
+  font-size: 0.6875rem;
+  color: hsl(var(--muted-foreground));
+  margin-top: 0.125rem;
+}
+
+.theme-option__check {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  color: hsl(var(--primary));
+}
+
+/* Settings Card */
+.settings-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.settings-card--form {
+  padding: 1.25rem;
+}
+
+.settings-card--compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.settings-card__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--secondary));
+  border-radius: 9999px;
+  margin-bottom: 0.75rem;
+}
+
+.settings-card__label--inline {
+  margin-bottom: 0.5rem;
+}
+
+.settings-card__note {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  margin: 0 0 1rem;
+}
+
+.settings-card__copy {
+  flex: 1;
+}
+
+.settings-card__title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin: 0;
+}
+
+.settings-card__desc {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  margin: 0.25rem 0 0;
+}
+
+/* Settings Row */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  transition: background 0.15s ease;
+}
+
+.settings-row:hover {
+  background: hsl(var(--secondary) / 0.3);
+}
+
+.settings-row__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-row__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin: 0;
+}
+
+.settings-row__desc {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  margin: 0.125rem 0 0;
+}
+
+.settings-divider {
+  height: 1px;
+  background: hsl(var(--border) / 0.5);
+  margin: 0 1.25rem;
+}
+
+/* Alert */
+.settings-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.settings-alert--error {
+  background: hsl(var(--destructive) / 0.1);
+  color: hsl(var(--destructive));
+  border: 1px solid hsl(var(--destructive) / 0.2);
+}
+
+.settings-alert--success {
+  background: hsl(var(--success) / 0.1);
+  color: hsl(var(--success));
+  border: 1px solid hsl(var(--success) / 0.2);
+}
+
+/* Security Form */
 .security-form {
-  @apply mt-8 grid gap-4;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-.security-field {
-  @apply grid gap-2;
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
 }
 
-.security-field__label {
-  @apply text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/55;
+.form-field__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
 }
 
-.security-field__input {
-  @apply h-11 rounded-2xl border border-border/15 bg-background/50 px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/30 focus:border-primary/40 focus:bg-background;
+.form-field__input {
+  height: 2.5rem;
+  padding: 0 0.875rem;
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.625rem;
+  outline: none;
+  transition: all 0.15s ease;
 }
 
-.security-actions {
-  @apply flex flex-wrap items-center gap-3 pt-2;
+.form-field__input:focus {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+}
+
+.form-field__input::placeholder {
+  color: hsl(var(--muted-foreground) / 0.5);
+}
+
+.form-field__input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+}
+
+/* Toast */
+.save-toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  box-shadow: 0 10px 40px hsl(var(--foreground) / 0.2);
+  z-index: 100;
+}
+
+.save-toast--error {
+  background: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+}
+
+.save-toast--success {
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(1rem) scale(0.95);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .settings-header,
+  .settings-tabs,
+  .settings-content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .theme-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .settings-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .settings-card--compact {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .save-toast {
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+  }
 }
 </style>
