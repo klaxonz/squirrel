@@ -28,17 +28,6 @@
         </div>
       </div>
 
-      <div class="scanline"></div>
-      <div class="video-status-overlay">
-        <div class="flex justify-between items-start w-full">
-          <div class="tech-tag">[信号锁定]</div>
-          <div v-if="isLikedVideo" class="fav-dot"></div>
-        </div>
-        <div class="flex justify-between items-end w-full">
-          <div class="tech-tag">ID: {{ videoCardId }}</div>
-        </div>
-      </div>
-
       <div class="video-duration-badge">{{ formatDuration(video.duration) }}</div>
 
       <!-- 进度条：1px 极细线 -->
@@ -148,7 +137,6 @@ const imageLoaded = ref(false)
 
 const isNsfwVideo = computed(() => props.video.subscriptions?.some((subscription) => subscription.is_nsfw) || false)
 const shouldBlurThumbnail = computed(() => systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value)
-const isLikedVideo = computed(() => props.video.is_liked === 1)
 const videoCardId = computed(() => formatVideoCardId(props.video?.id))
 const videoBgIndex = computed(() => formatVideoCardId(props.video?.id, { length: 2, placeholder: '--' }))
 
@@ -351,74 +339,11 @@ onUnmounted(() => {
   transform: scale(1.04);
 }
 
-.scanline {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: hsl(var(--primary) / 0.3);
-  box-shadow: 0 0 8px hsl(var(--primary) / 0.6);
-  z-index: 3;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.video-terminal-item:hover .scanline {
-  animation: scan 1.5s linear infinite;
-  opacity: 1;
-}
-
-@keyframes scan {
-  0% { top: 0; }
-  100% { top: 100%; }
-}
-
-.video-status-overlay {
-  position: absolute;
-  inset: 0;
-  padding: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  z-index: 4;
-  background: linear-gradient(
-    to bottom, 
-    rgba(0, 0, 0, 0.45) 0%, 
-    transparent 35%, 
-    transparent 65%, 
-    rgba(0, 0, 0, 0.65) 100%
-  );
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-
-.video-terminal-item:hover .video-status-overlay {
-  opacity: 1;
-}
-
-.tech-tag {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.5rem;
-  color: hsl(var(--primary));
-  letter-spacing: 0.1em;
-  opacity: 0.9;
-}
-
-.fav-dot {
-  width: 6px;
-  height: 6px;
-  background: hsl(var(--primary));
-  border-radius: 50%;
-  box-shadow: 0 0 10px hsl(var(--primary));
-}
-
 .video-duration-badge {
   position: absolute;
   right: 0.35rem;
   bottom: 0.35rem;
-  z-index: 6;
+  z-index: 4;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem;
   color: #fff;
@@ -518,12 +443,16 @@ onUnmounted(() => {
 
 .meta-avatar:deep(.avatar-image),
 .meta-avatar:deep(.avatar-placeholder) {
-  border-radius: 1px;
+  border-radius: calc(var(--radius-sm) - 1px);
 }
 
 .meta-avatar:deep(.avatar-image) {
   filter: grayscale(0.5);
   transition: all 0.3s;
+}
+
+.meta-channel {
+  text-transform: none;
 }
 
 .video-terminal-item:hover .meta-avatar:deep(.avatar-image) {
