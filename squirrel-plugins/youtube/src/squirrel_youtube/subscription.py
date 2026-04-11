@@ -110,11 +110,13 @@ class YoutubeSubscription:
             offset = self._resolve_playlist_offset(context)
             batch_limit = self._resolve_full_sync_batch_limit(context)
             info = self._extract_source_info(self.url, start=offset + 1, end=offset + batch_limit + 1)
-            entries = info.get('entries') or []
+            entries = list(info.get('entries') or [])
+            scanned_entry_count = 0
 
             for entry in entries:
                 watch_url = self._resolve_entry_url(entry, source_name='videos')
                 if not watch_url or watch_url in seen_urls:
+                    scanned_entry_count += 1
                     continue
                 seen_urls.add(watch_url)
                 if len(video_urls) >= batch_limit:
@@ -122,7 +124,7 @@ class YoutubeSubscription:
                         video_urls,
                         latest_video_url,
                         'batch_exhausted',
-                        {'source': 'playlist', 'offset': offset + len(video_urls)},
+                        {'source': 'playlist', 'offset': offset + scanned_entry_count},
                         True,
                         {},
                     )
@@ -135,6 +137,17 @@ class YoutubeSubscription:
                 )
                 if stop_reason:
                     return video_urls, latest_video_url, stop_reason, None, False, {}
+                scanned_entry_count += 1
+
+            if len(entries) >= batch_limit + 1:
+                return (
+                    video_urls,
+                    latest_video_url,
+                    'batch_exhausted',
+                    {'source': 'playlist', 'offset': offset + len(entries)},
+                    True,
+                    {},
+                )
 
             return video_urls, latest_video_url, 'source_exhausted', None, False, {}
 
@@ -249,11 +262,13 @@ class YoutubeSubscription:
                 start=current_offset + 1,
                 end=current_offset + remaining + 1,
             )
+            entries = list(info.get('entries') or [])
+            scanned_entry_count = 0
 
-            added_in_source = 0
-            for entry in info.get('entries') or []:
+            for entry in entries:
                 watch_url = self._resolve_entry_url(entry, source_name=source_name)
                 if not watch_url or watch_url in seen_urls:
+                    scanned_entry_count += 1
                     continue
                 seen_urls.add(watch_url)
                 if len(video_urls) >= batch_limit:
@@ -261,7 +276,7 @@ class YoutubeSubscription:
                         video_urls,
                         latest_video_url,
                         'batch_exhausted',
-                        {'source': source_name, 'offset': current_offset + added_in_source},
+                        {'source': source_name, 'offset': current_offset + scanned_entry_count},
                         True,
                         {},
                     )
@@ -274,7 +289,17 @@ class YoutubeSubscription:
                 )
                 if stop_reason:
                     return video_urls, latest_video_url, stop_reason, None, False, {}
-                added_in_source += 1
+                scanned_entry_count += 1
+
+            if len(entries) >= remaining + 1:
+                return (
+                    video_urls,
+                    latest_video_url,
+                    'batch_exhausted',
+                    {'source': source_name, 'offset': current_offset + len(entries)},
+                    True,
+                    {},
+                )
 
             if len(video_urls) < batch_limit:
                 continue

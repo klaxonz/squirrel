@@ -2,7 +2,7 @@ import logging
 from typing import Optional, Tuple, List, Dict, Any
 from urllib.parse import urlparse
 
-from sqlalchemy import select, func, and_, or_, false
+from sqlalchemy import select, func, and_, or_, false, case
 from sqlalchemy.sql import text
 
 from core.database import get_session
@@ -78,6 +78,15 @@ def _build_subscription_search_clauses(query: Optional[str]) -> List[Any]:
             clauses.append(Subscription.type == normalized_type)
 
     return clauses
+
+
+def _resolved_total_videos_expr(total_videos_column, extracted_count_column):
+    stored_total = func.coalesce(total_videos_column, 0)
+    extracted_total = func.coalesce(extracted_count_column, 0)
+    return case(
+        (extracted_total > stored_total, extracted_total),
+        else_=stored_total,
+    )
 
 
 def _detect_subscription_type(url: str) -> str:
@@ -255,7 +264,10 @@ def list_subscriptions(
                 Subscription.url,
                 Subscription.avatar,
                 Subscription.description,
-                Subscription.total_videos,
+                _resolved_total_videos_expr(
+                    Subscription.total_videos,
+                    video_count_subquery.c.total_extract,
+                ).label('total_videos'),
                 Subscription.is_deleted,
                 Subscription.extra_data,
                 Subscription.created_at,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import Future, ThreadPoolExecutor, wait
 import json
 from pathlib import Path
 from typing import List, Optional
@@ -159,19 +160,40 @@ class PluginManager:
 
     def bootstrap_enabled_plugins(self) -> List[PluginInstallRecord]:
         self.discover_plugins()
-        started: List[PluginInstallRecord] = []
-        for record in self._store.list_records():
-            if not record.enabled:
-                continue
+        enabled_records = [record for record in self._store.list_records() if record.enabled]
+        if not enabled_records:
+            return []
+
+        for record in enabled_records:
             self._gateway.register_manifest(
                 plugin_id=record.plugin_id,
                 version=record.version,
                 manifest=PluginManifest.from_dict(record.manifest),
             )
-            self._supervisor.start_runtime(record)
+
+        futures: list[tuple[PluginInstallRecord, Future[object]]] = []
+        with ThreadPoolExecutor(max_workers=len(enabled_records), thread_name_prefix='plugin-bootstrap') as executor:
+            for record in enabled_records:
+                futures.append((record, executor.submit(self._supervisor.start_runtime, record)))
+
+            _done, not_done = wait([future for _, future in futures], return_when='FIRST_EXCEPTION')
+            if not_done:
+                wait(not_done)
+
+        started: List[PluginInstallRecord] = []
+        first_error: Exception | None = None
+        for record, future in futures:
+            try:
+                future.result()
+            except Exception as exc:  # pragma: no cover - exercised via tests
+                if first_error is None:
+                    first_error = exc
+                continue
             record.status = PluginInstallStatus.RUNNING
             self._store.upsert(record)
             started.append(record)
+        if first_error is not None:
+            raise first_error
         return started
 
     def shutdown_all(self) -> None:

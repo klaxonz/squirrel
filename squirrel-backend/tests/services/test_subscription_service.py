@@ -738,3 +738,99 @@ def test_list_subscriptions_hides_nsfw_results_when_show_nsfw_disabled(monkeypat
 
     assert total == 0
     assert subscriptions == []
+
+
+def test_list_subscriptions_prefers_actual_extract_count_when_total_videos_is_stale(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_subscription(engine, user_ids=[1])
+
+    with Session(engine, expire_on_commit=False) as session:
+        subscription = session.get(Subscription, 1)
+        subscription.total_videos = 1
+        session.add_all([
+            Video(
+                id=101,
+                title='Video 101',
+                url='https://www.youtube.com/watch?v=101',
+                domain='youtube.com',
+                duration=120,
+                thumbnail='https://img.example.com/101.jpg',
+                publish_date=datetime(2024, 1, 2),
+                created_at=datetime(2024, 1, 2),
+                updated_at=datetime(2024, 1, 2),
+                is_deleted=False,
+            ),
+            Video(
+                id=102,
+                title='Video 102',
+                url='https://www.youtube.com/watch?v=102',
+                domain='youtube.com',
+                duration=120,
+                thumbnail='https://img.example.com/102.jpg',
+                publish_date=datetime(2024, 1, 3),
+                created_at=datetime(2024, 1, 3),
+                updated_at=datetime(2024, 1, 3),
+                is_deleted=False,
+            ),
+            SubscriptionVideo(subscription_id=1, video_id=101),
+            SubscriptionVideo(subscription_id=1, video_id=102),
+        ])
+        session.commit()
+
+    monkeypatch.setattr(subscription_service.user_config_service, 'get_config', lambda _user_id: {'showNsfw': False})
+
+    subscriptions, total = subscription_service.list_subscriptions(
+        user_id=1,
+        query=None,
+        type=None,
+        nsfw='all',
+        page=1,
+        page_size=10,
+    )
+
+    assert total == 1
+    assert subscriptions[0]['total_extract'] == 2
+    assert subscriptions[0]['total_videos'] == 2
+
+
+def test_get_subscription_detail_prefers_actual_extract_count_when_total_videos_is_stale(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_subscription(engine, user_ids=[1])
+
+    with Session(engine, expire_on_commit=False) as session:
+        subscription = session.get(Subscription, 1)
+        subscription.total_videos = 1
+        session.add_all([
+            Video(
+                id=201,
+                title='Video 201',
+                url='https://www.youtube.com/watch?v=201',
+                domain='youtube.com',
+                duration=120,
+                thumbnail='https://img.example.com/201.jpg',
+                publish_date=datetime(2024, 1, 2),
+                created_at=datetime(2024, 1, 2),
+                updated_at=datetime(2024, 1, 2),
+                is_deleted=False,
+            ),
+            Video(
+                id=202,
+                title='Video 202',
+                url='https://www.youtube.com/watch?v=202',
+                domain='youtube.com',
+                duration=120,
+                thumbnail='https://img.example.com/202.jpg',
+                publish_date=datetime(2024, 1, 3),
+                created_at=datetime(2024, 1, 3),
+                updated_at=datetime(2024, 1, 3),
+                is_deleted=False,
+            ),
+            SubscriptionVideo(subscription_id=1, video_id=201),
+            SubscriptionVideo(subscription_id=1, video_id=202),
+        ])
+        session.commit()
+
+    detail = subscription_service.get_subscription_detail(1)
+
+    assert detail.total_extract == 2
+    assert detail.total_videos == 2

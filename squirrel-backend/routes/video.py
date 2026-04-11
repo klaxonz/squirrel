@@ -169,7 +169,7 @@ async def proxy_video(domain: str, url: str, request: Request, referer: str | No
 @router.get("/api/video/subtitles")
 def get_video_subtitles(
         video_id: int = Query(..., description="视频ID"),
-        lang: str = Query("ai-zh", description="字幕语言代码（b站如 ai-zh/zh/zh-CN/en 等）"),
+        lang: str | None = Query(None, description="字幕语言代码；留空时走站点默认值"),
         fmt: str = Query("srt", description="返回格式：目前仅支持 srt"),
         current_user: User = Depends(get_current_user)
 ):
@@ -197,7 +197,8 @@ def get_video_subtitles(
         if not result.ok or not isinstance(result.data, dict):
             raise HTTPException(status_code=400, detail="Subtitles provider not available for this domain")
         srt_text = str(result.data.get('content') or '')
-        filename = str(result.data.get('filename') or f'{video.id}.{lang}.srt')
+        fallback_filename = f'{video.id}.{lang}.srt' if lang else f'{video.id}.srt'
+        filename = str(result.data.get('filename') or fallback_filename)
         media_type = str(result.data.get('media_type') or 'text/plain; charset=utf-8')
         return PlainTextResponse(
             content=srt_text,

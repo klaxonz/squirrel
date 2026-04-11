@@ -13,6 +13,7 @@ output/
 # Environment variables
 .env
 .env.dev
+.gemini/.env
 
 # IDE and Editor-specific files
 .vscode/

@@ -877,6 +877,115 @@ class SubscriptionSyncTests(unittest.TestCase):
             self.assertEqual(result.total_available, 4)
             self.assertEqual(calls[0][1].get('playliststart'), 3)
 
+    def test_youtube_full_sync_keeps_scanning_channel_source_when_batch_window_contains_duplicates(self):
+        with _stub_youtube_subscription_dependencies():
+            module = _load_youtube_subscription_module()
+            module.FULL_SYNC_BATCH_SIZE = 2
+            module.youtube_ytdlp_support.apply_youtube_player_strategy = lambda _url, _opts: None
+
+            def fake_extract(url, opts, *, process=False):
+                if url == 'https://www.youtube.com/@demo':
+                    return _build_ytdlp_info(entries=[], playlist_count=4)
+                if url.endswith('/videos'):
+                    entries = [
+                        {'url': 'https://www.youtube.com/watch?v=video0000001'},
+                        {'url': 'https://www.youtube.com/watch?v=video0000001'},
+                        {'url': 'https://www.youtube.com/watch?v=video0000002'},
+                        {'url': 'https://www.youtube.com/watch?v=video0000003'},
+                    ]
+                    start = max(0, int(opts.get('playliststart', 1)) - 1)
+                    end = int(opts.get('playlistend', len(entries)))
+                    return _build_ytdlp_info(entries=entries[start:end])
+                if url.endswith('/shorts'):
+                    return _build_ytdlp_info(entries=[])
+                raise AssertionError(f'Unexpected URL: {url}')
+
+            module.youtube_ytdlp_support.extract_info = fake_extract
+
+            subscription = module.YoutubeSubscription('https://www.youtube.com/@demo')
+            first_batch = subscription.sync_videos(_SubscriptionSyncContext(mode='full'))
+            second_batch = subscription.sync_videos(
+                _SubscriptionSyncContext(
+                    mode='full',
+                    cursor_payload=first_batch.cursor_payload,
+                )
+            )
+
+            self.assertEqual(
+                first_batch.video_urls,
+                [
+                    'https://www.youtube.com/watch?v=video0000001',
+                    'https://www.youtube.com/watch?v=video0000002',
+                ],
+            )
+            self.assertEqual(first_batch.cursor_payload, {'source': 'videos', 'offset': 3})
+            self.assertEqual(first_batch.stop_reason, 'batch_exhausted')
+            self.assertTrue(first_batch.has_more)
+
+            self.assertEqual(
+                second_batch.video_urls,
+                ['https://www.youtube.com/watch?v=video0000003'],
+            )
+            self.assertEqual(second_batch.latest_video_url, 'https://www.youtube.com/watch?v=video0000003')
+            self.assertEqual(second_batch.stop_reason, 'source_exhausted')
+            self.assertFalse(second_batch.has_more)
+
+    def test_youtube_full_sync_keeps_scanning_playlist_when_batch_window_contains_invalid_entries(self):
+        with _stub_youtube_subscription_dependencies():
+            module = _load_youtube_subscription_module()
+            module.FULL_SYNC_BATCH_SIZE = 2
+            module.youtube_ytdlp_support.apply_youtube_player_strategy = lambda _url, _opts: None
+
+            def fake_extract(url, opts, *, process=False):
+                if url == 'https://www.youtube.com/playlist?list=PLdemo':
+                    entries = [
+                        {'url': 'https://www.youtube.com/watch?v=video0000001'},
+                        {'id': ''},
+                        {'url': 'https://www.youtube.com/watch?v=video0000002'},
+                        {'url': 'https://www.youtube.com/watch?v=video0000003'},
+                    ]
+                    start = max(0, int(opts.get('playliststart', 1)) - 1)
+                    end = int(opts.get('playlistend', len(entries)))
+                    return _build_ytdlp_info(
+                        entries=entries[start:end],
+                        playlist_id='PLdemo',
+                        playlist_count=3,
+                        channel_id='PLdemo',
+                        channel='Demo Playlist',
+                        title='Demo Playlist',
+                    )
+                raise AssertionError(f'Unexpected URL: {url}')
+
+            module.youtube_ytdlp_support.extract_info = fake_extract
+
+            subscription = module.YoutubeSubscription('https://www.youtube.com/playlist?list=PLdemo')
+            first_batch = subscription.sync_videos(_SubscriptionSyncContext(mode='full'))
+            second_batch = subscription.sync_videos(
+                _SubscriptionSyncContext(
+                    mode='full',
+                    cursor_payload=first_batch.cursor_payload,
+                )
+            )
+
+            self.assertEqual(
+                first_batch.video_urls,
+                [
+                    'https://www.youtube.com/watch?v=video0000001',
+                    'https://www.youtube.com/watch?v=video0000002',
+                ],
+            )
+            self.assertEqual(first_batch.cursor_payload, {'source': 'playlist', 'offset': 3})
+            self.assertEqual(first_batch.stop_reason, 'batch_exhausted')
+            self.assertTrue(first_batch.has_more)
+
+            self.assertEqual(
+                second_batch.video_urls,
+                ['https://www.youtube.com/watch?v=video0000003'],
+            )
+            self.assertEqual(second_batch.latest_video_url, 'https://www.youtube.com/watch?v=video0000003')
+            self.assertEqual(second_batch.stop_reason, 'source_exhausted')
+            self.assertFalse(second_batch.has_more)
+
     def test_youtube_get_subscribe_info_uses_ytdlp_channel_metadata(self):
         with _stub_youtube_subscription_dependencies():
             module = _load_youtube_subscription_module()

@@ -26,6 +26,7 @@ alembic_config_module.Config = _AlembicConfig
 bs4_module = types.ModuleType('bs4')
 bs4_module.BeautifulSoup = object
 redis_module = types.ModuleType('redis')
+redis_client_module = types.ModuleType('redis.client')
 
 
 class _BlockingConnectionPool:
@@ -43,14 +44,22 @@ class _RedisLock:
         pass
 
 
+class _PubSubWorkerThread:
+    def __init__(self, *_args, **_kwargs):
+        pass
+
+
 redis_module.BlockingConnectionPool = _BlockingConnectionPool
 redis_module.Redis = _Redis
+redis_client_module.PubSubWorkerThread = _PubSubWorkerThread
+redis_module.client = redis_client_module
 redis_lock_module = types.ModuleType('redis_lock')
 redis_lock_module.Lock = _RedisLock
 sys.modules.setdefault('alembic', alembic_module)
 sys.modules.setdefault('alembic.config', alembic_config_module)
 sys.modules.setdefault('bs4', bs4_module)
 sys.modules.setdefault('redis', redis_module)
+sys.modules.setdefault('redis.client', redis_client_module)
 sys.modules.setdefault('redis_lock', redis_lock_module)
 
 from crawl import PluginInvokeResponse

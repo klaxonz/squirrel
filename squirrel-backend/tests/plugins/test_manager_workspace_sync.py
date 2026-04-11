@@ -1,15 +1,42 @@
 from pathlib import Path
 import json
 import sys
+import threading
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from plugins.installer import PluginInstaller
 from plugins.manager import PluginManager
-from plugins.models import PluginInstallRecord
+from plugins.models import PluginInstallRecord, PluginInstallStatus
 from plugins.paths import build_plugin_paths
 from plugins.store import PluginInstallStore
 from plugins.runtime_models import PluginCapability, PluginManifest, PluginSiteManifest
+
+
+def _create_enabled_record(repo_root: Path, plugin_id: str, domain: str) -> PluginInstallRecord:
+    plugin_root = repo_root / 'squirrel-plugins' / plugin_id
+    return PluginInstallRecord(
+        plugin_id=plugin_id,
+        version='0.1.0',
+        install_path=str(plugin_root),
+        entrypoint=f'squirrel_{plugin_id}.runtime:get_plugin_runtime',
+        enabled=True,
+        status=PluginInstallStatus.INSTALLED,
+        manifest=PluginManifest(
+            plugin_id=plugin_id,
+            version='0.1.0',
+            capabilities=[
+                PluginCapability(name='resolve_subscription', timeout_ms=30000),
+            ],
+            sites=[
+                PluginSiteManifest(site_name=plugin_id, domains=[domain]),
+            ],
+        ).to_dict(),
+        runtime_path=str(plugin_root / 'src'),
+        metadata={'source': 'workspace'},
+    )
 
 
 def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path):
@@ -161,3 +188,78 @@ def test_manager_uses_shared_paths_for_workspace_discovery(tmp_path):
     manager = PluginManager(paths=paths)
 
     assert manager._paths.workspace_plugins_dir == repo_root / 'squirrel-plugins'
+
+
+def test_bootstrap_enabled_plugins_starts_runtimes_in_parallel_and_preserves_order(tmp_path):
+    repo_root = tmp_path / 'repo'
+    backend_root = repo_root / 'squirrel-backend'
+    backend_root.mkdir(parents=True, exist_ok=True)
+    paths = build_plugin_paths(repo_root=repo_root, backend_root=backend_root)
+    store = PluginInstallStore(data_path=paths.installations_file, paths=paths)
+    for plugin_id in ('alpha', 'beta', 'gamma'):
+        store.upsert(_create_enabled_record(repo_root, plugin_id, f'{plugin_id}.test'))
+
+    class _ParallelSupervisor:
+        def __init__(self) -> None:
+            self.barrier = threading.Barrier(3, timeout=3)
+            self.started: list[str] = []
+            self._lock = threading.Lock()
+
+        def start_runtime(self, record: PluginInstallRecord):
+            self.barrier.wait()
+            with self._lock:
+                self.started.append(record.plugin_id)
+            return object()
+
+    supervisor = _ParallelSupervisor()
+    manager = PluginManager(
+        store=store,
+        installer=PluginInstaller(paths=paths),
+        supervisor=supervisor,
+        paths=paths,
+    )
+
+    started = manager.bootstrap_enabled_plugins()
+
+    assert sorted(supervisor.started) == ['alpha', 'beta', 'gamma']
+    assert [record.plugin_id for record in started] == ['alpha', 'beta', 'gamma']
+    assert store.get_record('alpha').status == PluginInstallStatus.RUNNING
+    assert store.get_record('beta').status == PluginInstallStatus.RUNNING
+    assert store.get_record('gamma').status == PluginInstallStatus.RUNNING
+    assert manager.gateway.resolve_route('resolve_subscription', domain='gamma.test').plugin_id == 'gamma'
+
+
+def test_bootstrap_enabled_plugins_raises_after_persisting_successful_starts(tmp_path):
+    repo_root = tmp_path / 'repo'
+    backend_root = repo_root / 'squirrel-backend'
+    backend_root.mkdir(parents=True, exist_ok=True)
+    paths = build_plugin_paths(repo_root=repo_root, backend_root=backend_root)
+    store = PluginInstallStore(data_path=paths.installations_file, paths=paths)
+    for plugin_id in ('alpha', 'beta', 'gamma'):
+        store.upsert(_create_enabled_record(repo_root, plugin_id, f'{plugin_id}.test'))
+
+    class _FailingSupervisor:
+        def __init__(self) -> None:
+            self.started: list[str] = []
+
+        def start_runtime(self, record: PluginInstallRecord):
+            if record.plugin_id == 'beta':
+                raise RuntimeError('boom beta')
+            self.started.append(record.plugin_id)
+            return object()
+
+    supervisor = _FailingSupervisor()
+    manager = PluginManager(
+        store=store,
+        installer=PluginInstaller(paths=paths),
+        supervisor=supervisor,
+        paths=paths,
+    )
+
+    with pytest.raises(RuntimeError, match='boom beta'):
+        manager.bootstrap_enabled_plugins()
+
+    assert sorted(supervisor.started) == ['alpha', 'gamma']
+    assert store.get_record('alpha').status == PluginInstallStatus.RUNNING
+    assert store.get_record('beta').status == PluginInstallStatus.INSTALLED
+    assert store.get_record('gamma').status == PluginInstallStatus.RUNNING

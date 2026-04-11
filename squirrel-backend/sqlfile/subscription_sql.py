@@ -2,6 +2,10 @@ def get_subscriptions_sql():
     return """
         select 
             s.*,
+            case
+                when coalesce(vc.video_count, 0) > coalesce(s.total_videos, 0) then coalesce(vc.video_count, 0)
+                else coalesce(s.total_videos, 0)
+            end as total_videos,
             us.is_nsfw,
             coalesce(vc.video_count, 0) as total_extract,
             coalesce(ss.sync_status, 'idle') as sync_status,
@@ -75,6 +79,10 @@ def get_subscription_sql():
     return """
         select 
             s.*,
+            case
+                when coalesce(vc.video_count, 0) > coalesce(s.total_videos, 0) then coalesce(vc.video_count, 0)
+                else coalesce(s.total_videos, 0)
+            end as total_videos,
             0 as is_nsfw,
             coalesce(vc.video_count, 0) as total_extract,
             coalesce(ss.sync_status, 'idle') as sync_status,

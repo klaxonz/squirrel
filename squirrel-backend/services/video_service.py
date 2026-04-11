@@ -861,6 +861,7 @@ def get_video(user_id, video_id):
             user_subscription = user_subscriptions[0]
             s_dict = subscription.to_dict()
             s_dict['total_extract'] = counts_map.get(subscription.id, 0)
+            s_dict['total_videos'] = max(int(s_dict.get('total_videos') or 0), s_dict['total_extract'])
             s_dict['is_nsfw'] = user_subscription.is_nsfw
             subscriptions_data.append(s_dict)
 

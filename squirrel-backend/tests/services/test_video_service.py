@@ -1085,3 +1085,66 @@ def test_list_videos_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
 
     assert total == 0
     assert videos == []
+
+
+def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add_all([
+            Subscription(
+                id=1,
+                type='CHANNEL',
+                name='Deep Channel',
+                url='https://www.youtube.com/channel/deep-channel',
+                avatar=None,
+                description=None,
+                total_videos=1,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            UserSubscription(
+                id=1,
+                user_id=7,
+                subscription_id=1,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            Video(
+                id=701,
+                title='Deep Dive',
+                url='https://www.youtube.com/watch?v=701',
+                domain='youtube.com',
+                duration=180,
+                thumbnail='https://img.example.com/701.jpg',
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+                is_deleted=False,
+            ),
+            Video(
+                id=702,
+                title='Deep Dive 2',
+                url='https://www.youtube.com/watch?v=702',
+                domain='youtube.com',
+                duration=180,
+                thumbnail='https://img.example.com/702.jpg',
+                publish_date=datetime(2024, 1, 4, 12, 0, 0),
+                created_at=datetime(2024, 1, 4, 12, 0, 0),
+                updated_at=datetime(2024, 1, 4, 12, 0, 0),
+                is_deleted=False,
+            ),
+            SubscriptionVideo(subscription_id=1, video_id=701),
+            SubscriptionVideo(subscription_id=1, video_id=702),
+        ])
+        session.commit()
+
+    video = video_service.get_video(user_id=7, video_id=701)
+
+    assert video is not None
+    assert video['subscriptions'][0]['total_extract'] == 2
+    assert video['subscriptions'][0]['total_videos'] == 2
