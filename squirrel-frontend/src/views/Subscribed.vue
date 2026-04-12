@@ -13,7 +13,7 @@
           :filter-scope="'subscription'"
           @update:nsfw="(value) => { nsfw = value }"
           @update:site="(value) => { site = value }"
-          @update:sortBy="(value) => { sortBy = value; handleSortChange(value) }"
+          @update:sortBy="(value) => { sortBy = value }"
           @refresh="refreshList"
         >
           <template #actions>
@@ -26,7 +26,7 @@
                   :class="{ 'is-active': sortBy === opt.value }"
                   role="tab"
                   :aria-selected="sortBy === opt.value"
-                  @click="handleSortChange(opt.value)"
+                  @click="sortBy = opt.value"
                 >
                   {{ opt.label }}
                 </button>
@@ -85,9 +85,9 @@
             </div>
           </div>
 
-          <TransitionGroup v-else key="list" name="subscription-row" tag="div" class="subscription-list">
+          <div v-else key="list" class="subscription-list">
             <article
-              v-for="subscription in subscriptions"
+              v-for="subscription in sortedSubscriptions"
               :key="subscription.id"
               class="subscription-row"
               :class="{ 'is-refreshing': isResetting }"
@@ -101,7 +101,7 @@
                     size="lg"
                     class="subscription-row__avatar"
                   />
-                  <div v-if="getRefreshState(subscription.id).isRefreshing" class="subscription-row__avatar-pulse"></div>
+                  <div v-if="getSubscriptionRefreshState(subscription.id).isRefreshing" class="subscription-row__avatar-pulse"></div>
                 </div>
               </div>
 
@@ -118,13 +118,13 @@
                 <div class="subscription-row__meta">
                   <span
                     class="subscription-row__status-badge"
-                    :class="getStatusBadgeClass(getRefreshState(subscription.id).status)"
+                    :class="getStatusBadgeClass(getSubscriptionRefreshState(subscription.id).status)"
                   >
                     <span
-                      v-if="getRefreshState(subscription.id).isRefreshing"
+                      v-if="getSubscriptionRefreshState(subscription.id).isRefreshing"
                       class="status-badge-dot animate-pulse"
                     ></span>
-                    {{ getStatusText(getRefreshState(subscription.id).status, getRefreshState(subscription.id).phase) }}
+                    {{ getStatusText(getSubscriptionRefreshState(subscription.id).status, getSubscriptionRefreshState(subscription.id).phase) }}
                   </span>
                   <span class="subscription-row__sep" aria-hidden="true"></span>
                   <span class="subscription-row__date">{{ formatDate(subscription.created_at) }}</span>
@@ -148,11 +148,11 @@
               <div class="subscription-row__actions">
                 <button
                   class="row-action-btn"
-                  :disabled="getRefreshState(subscription.id).isRefreshing"
-                  :title="getRefreshState(subscription.id).isRefreshing ? '更新中' : '刷新'"
+                  :disabled="getSubscriptionRefreshState(subscription.id).isRefreshing"
+                  :title="getSubscriptionRefreshState(subscription.id).isRefreshing ? '更新中' : '刷新'"
                   @click="handleRefreshSubscription(subscription.id)"
                 >
-                  <ArrowPathIcon class="row-action-icon" :class="{ 'is-spinning': getRefreshState(subscription.id).isRefreshing }" />
+                  <ArrowPathIcon class="row-action-icon" :class="{ 'is-spinning': getSubscriptionRefreshState(subscription.id).isRefreshing }" />
                 </button>
                 <button
                   class="row-action-btn"
@@ -163,7 +163,7 @@
                 </button>
               </div>
             </article>
-          </TransitionGroup>
+          </div>
         </Transition>
 
         <div
@@ -289,7 +289,7 @@
 </template>
 
 <script setup>
-import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, inject, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowDownTrayIcon, ArrowPathIcon, Cog6ToothIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import FeedToolbar from '@/components/feed/FeedToolbar.vue'
@@ -328,7 +328,7 @@ const isRefreshing = ref(false)
 const isResetting = ref(false)
 const { scrollContainer, handleScroll: handleScrollPosition, restoreScrollPosition } = useScrollPosition('subscribed-page')
 
-const subscriptions = ref([])
+const subscriptions = shallowRef([])
 const loadError = ref(null)
 const loading = ref(false)
 const hasLoadedOnce = ref(false)
@@ -346,12 +346,22 @@ const showImportDialog = ref(false)
 const unsubscribeError = ref('')
 const unsubscribingId = ref(null)
 const SUBSCRIPTION_REMOVE_DELAY_MS = 120
+const SUBSCRIPTIONS_PAGE_SIZE = 100
+let latestLoadRequestId = 0
+const defaultRefreshState = Object.freeze({
+  status: 'idle',
+  phase: null,
+  lastError: null,
+  isRefreshing: false,
+})
+const sortTextCollator = new Intl.Collator('zh-CN')
 
 const wait = (ms) => new Promise((resolve) => {
   window.setTimeout(resolve, ms)
 })
 
 const {
+  refreshStates,
   getRefreshState,
   triggerRefresh,
   retryRefresh,
@@ -360,20 +370,40 @@ const {
   setSubscriptionMeta,
 } = useSubscriptionRefresh()
 
-const selectedRefreshState = computed(() => {
-  if (!selectedSubscription.value) {
-    return {
-      status: 'idle',
-      phase: null,
-      lastError: null,
-      isRefreshing: false,
-    }
+const sortedSubscriptions = computed(() => {
+  if (subscriptions.value.length < 2) {
+    return subscriptions.value
   }
 
-  return getRefreshState(selectedSubscription.value.id)
+  const sorted = [...subscriptions.value]
+
+  if (sortBy.value === 'name') {
+    sorted.sort((a, b) => sortTextCollator.compare(a.name || '', b.name || ''))
+    return sorted
+  }
+
+  if (sortBy.value === 'site') {
+    sorted.sort((a, b) => sortTextCollator.compare(a.site || '', b.site || ''))
+    return sorted
+  }
+
+  if (sortBy.value === 'recent') {
+    sorted.sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime())
+  }
+
+  return sorted
+})
+
+const selectedRefreshState = computed(() => {
+  if (!selectedSubscription.value) {
+    return defaultRefreshState
+  }
+
+  return refreshStates.get(selectedSubscription.value.id) || defaultRefreshState
 })
 
 const isUnsubscribing = computed(() => unsubscribingId.value === selectedSubscription.value?.id)
+const getSubscriptionRefreshState = (subscriptionId) => refreshStates.get(subscriptionId) || defaultRefreshState
 
 const setupIntersectionObserver = () => {
   if (observer.value) {
@@ -381,7 +411,7 @@ const setupIntersectionObserver = () => {
     observer.value = null
   }
 
-  const el = document.querySelector('.subscribed-loading-trigger')
+  const el = loadingTrigger.value
   if (!el) return
 
   observer.value = new IntersectionObserver(
@@ -399,53 +429,76 @@ const setupIntersectionObserver = () => {
   observer.value.observe(el)
 }
 
-const loadSubscriptions = async () => {
-  if (loading.value || allLoaded.value) return
+const syncObserverWithLoadingTrigger = () => {
+  nextTick(() => {
+    if (observer.value && loadingTrigger.value) {
+      observer.value.unobserve(loadingTrigger.value)
+      observer.value.observe(loadingTrigger.value)
+    }
+  })
+}
+
+const loadSubscriptions = async ({ force = false } = {}) => {
+  if ((loading.value && !force) || allLoaded.value) return
+
+  const requestId = ++latestLoadRequestId
+  const requestedPage = currentPage.value
 
   loading.value = true
 
-  const { data, error } = await apiGetSubscriptions({
-    query: searchQuery.value,
-    nsfw: nsfw.value,
-    site: site.value,
-    page: currentPage.value,
-    page_size: 100,
-  })
-
-  if (!error) {
-    const newSubscriptions = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
-    const mapped = newSubscriptions.map((subscription) => ({
-      ...subscription,
-      total_videos: subscription.total_videos || 0,
-      total_extract: subscription.total_extract || 0,
-    }))
-
-    if (currentPage.value === 1) {
-      subscriptions.value = mapped
-    } else {
-      const existingIds = new Set(subscriptions.value.map((subscription) => subscription.id))
-      const deduped = mapped.filter((subscription) => !existingIds.has(subscription.id))
-      subscriptions.value = [...subscriptions.value, ...deduped]
-    }
-
-    currentPage.value++
-    if (newSubscriptions.length < 20) {
-      allLoaded.value = true
-    }
-
-    nextTick(() => {
-      if (loadingTrigger.value && observer.value) {
-        observer.value.unobserve(loadingTrigger.value)
-        observer.value.observe(loadingTrigger.value)
-      }
-      restoreScrollPosition()
+  try {
+    const { data, error } = await apiGetSubscriptions({
+      query: searchQuery.value,
+      nsfw: nsfw.value,
+      site: site.value,
+      page: requestedPage,
+      page_size: SUBSCRIPTIONS_PAGE_SIZE,
     })
-  } else {
-    loadError.value = error || '获取订阅列表失败'
-  }
 
-  hasLoadedOnce.value = true
-  loading.value = false
+    if (requestId !== latestLoadRequestId) {
+      return
+    }
+
+    if (!error) {
+      const newSubscriptions = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
+      const mapped = newSubscriptions.map((subscription) => ({
+        ...subscription,
+        total_videos: subscription.total_videos || 0,
+        total_extract: subscription.total_extract || 0,
+      }))
+
+      mapped.forEach((subscription) => {
+        getRefreshState(subscription.id)
+        setSubscriptionMeta(subscription.id, { name: subscription.name, avatar: subscription.avatar })
+      })
+
+      if (requestedPage === 1) {
+        subscriptions.value = mapped
+      } else {
+        const existingIds = new Set(subscriptions.value.map((subscription) => subscription.id))
+        const deduped = mapped.filter((subscription) => !existingIds.has(subscription.id))
+        subscriptions.value = [...subscriptions.value, ...deduped]
+      }
+
+      loadError.value = null
+      currentPage.value = requestedPage + 1
+      if (newSubscriptions.length < SUBSCRIPTIONS_PAGE_SIZE) {
+        allLoaded.value = true
+      }
+
+      nextTick(() => {
+        syncObserverWithLoadingTrigger()
+        restoreScrollPosition()
+      })
+    } else {
+      loadError.value = error || '获取订阅列表失败'
+    }
+  } finally {
+    if (requestId === latestLoadRequestId) {
+      hasLoadedOnce.value = true
+      loading.value = false
+    }
+  }
 }
 
 const resetSubscriptionList = () => {
@@ -481,7 +534,7 @@ async function refreshList() {
   spinStartAt.value = Date.now()
 
   try {
-    await loadSubscriptions()
+    await loadSubscriptions({ force: true })
   } finally {
     const elapsed = Date.now() - spinStartAt.value
     const remain = Math.max(0, MIN_SPIN_MS - elapsed)
@@ -500,7 +553,7 @@ const handleGlobalSearch = (query) => {
   }
   searchQuery.value = query
   resetSubscriptionList()
-  loadSubscriptions().then(() => {
+  loadSubscriptions({ force: true }).then(() => {
     nextTick(() => {
       restoreScrollPosition()
     })
@@ -513,7 +566,7 @@ watch([nsfw, site], async () => {
     observer.value.unobserve(loadingTrigger.value)
   }
   resetSubscriptionList()
-  await loadSubscriptions()
+  await loadSubscriptions({ force: true })
 })
 
 const loadMore = () => {
@@ -568,12 +621,12 @@ const getSubscriptionVideos = (subscriptionId) => {
 
 const handleChannelAdded = () => {
   resetSubscriptionList()
-  loadSubscriptions()
+  loadSubscriptions({ force: true })
 }
 
 const handleSubscriptionsImported = () => {
   resetSubscriptionList()
-  loadSubscriptions()
+  loadSubscriptions({ force: true })
 }
 
 const updateNsfwStatus = async (isNsfw) => {
@@ -582,7 +635,12 @@ const updateNsfwStatus = async (isNsfw) => {
   if (!error) {
     const index = subscriptions.value.findIndex((subscription) => subscription.id === selectedSubscription.value.id)
     if (index !== -1) {
-      subscriptions.value[index].is_nsfw = isNsfw
+      const nextSubscriptions = [...subscriptions.value]
+      nextSubscriptions[index] = {
+        ...nextSubscriptions[index],
+        is_nsfw: isNsfw,
+      }
+      subscriptions.value = nextSubscriptions
     }
   } else {
     selectedSubscription.value.is_nsfw = !isNsfw
@@ -602,21 +660,6 @@ const sortOptions = [
   { value: 'site', label: '站点' },
   { value: 'recent', label: '最近更新' },
 ]
-
-const handleSortChange = (value) => {
-  sortBy.value = value
-  const sorted = [...subscriptions.value]
-  if (value === 'name') {
-    sorted.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
-  } else if (value === 'site') {
-    sorted.sort((a, b) => (a.site || '').localeCompare(b.site || '', 'zh-CN'))
-  } else if (value === 'recent') {
-    sorted.sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0))
-  }
-  subscriptions.value = sorted
-}
-
-watch(sortBy, (val) => handleSortChange(val))
 
 const getStatusBadgeClass = (status) => {
   switch (status) {
@@ -642,13 +685,8 @@ onMounted(async () => {
 })
 
 watch(subscriptions, () => {
-  nextTick(() => {
-    if (observer.value && loadingTrigger.value) {
-      observer.value.unobserve(loadingTrigger.value)
-      observer.value.observe(loadingTrigger.value)
-    }
-  })
-}, { deep: true })
+  syncObserverWithLoadingTrigger()
+})
 
 onUnmounted(() => {
   if (observer.value) {
