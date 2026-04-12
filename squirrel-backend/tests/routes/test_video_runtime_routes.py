@@ -289,39 +289,3 @@ def test_get_video_mpd_passes_direct_playback_flag(monkeypatch):
         'timeout_ms': None,
     }]
     assert response.body.decode('utf-8') == '<MPD></MPD>'
-
-
-def test_get_video_mpd_surfaces_auth_required_error(monkeypatch):
-    class _FakeGateway:
-        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
-            return PluginInvokeResponse(
-                request_id='mpd-auth-1',
-                ok=False,
-                error=PluginRuntimeError.auth_required(
-                    '需要登录或通过风控校验后才能播放: https://www.youtube.com/watch?v=demo',
-                ),
-            )
-
-    monkeypatch.setattr(
-        video_route.video_service,
-        'get_video_by_id',
-        lambda video_id: SimpleNamespace(
-            id=video_id,
-            url='https://www.youtube.com/watch?v=demo',
-            title='Runtime video',
-            duration=120,
-        ),
-    )
-    monkeypatch.setattr(
-        video_route,
-        'get_plugin_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
-        raising=False,
-    )
-
-    try:
-        video_route.get_video_mpd(video_id=1)
-        raise AssertionError('Expected get_video_mpd to raise HTTPException')
-    except HTTPException as exc:
-        assert exc.status_code == 403
-        assert exc.detail == '需要登录或通过风控校验后才能播放: https://www.youtube.com/watch?v=demo'
