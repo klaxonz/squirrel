@@ -1,35 +1,33 @@
 <template>
-  <div class="plugin-skeleton-item" :style="{ animationDelay: `${delay}ms` }">
-    <div class="skeleton-row">
-      <div class="col-icon">
+  <tr class="plugin-skeleton-item" :style="{ animationDelay: `${delay}ms` }">
+      <td class="col-icon skeleton-cell">
         <div class="skeleton-icon"></div>
-      </div>
-      <div class="col-name">
+      </td>
+      <td class="col-name skeleton-cell">
         <div class="skeleton-text w-32"></div>
-      </div>
-      <div class="col-status">
+      </td>
+      <td class="col-status skeleton-cell">
         <div class="skeleton-badge"></div>
-      </div>
-      <div class="col-caps">
+      </td>
+      <td class="col-caps skeleton-cell">
         <div class="skeleton-tag"></div>
         <div class="skeleton-tag ml-1"></div>
-      </div>
-      <div class="col-endpoint">
+      </td>
+      <td class="col-endpoint skeleton-cell">
         <div class="skeleton-text w-24"></div>
-      </div>
-      <div class="col-site-access">
+      </td>
+      <td class="col-site-access skeleton-cell">
         <div class="skeleton-text w-12"></div>
-      </div>
-      <div class="col-site-login">
+      </td>
+      <td class="col-site-login skeleton-cell">
         <div class="skeleton-text w-10"></div>
-      </div>
-      <div class="col-actions">
+      </td>
+      <td class="col-actions skeleton-cell">
         <div class="skeleton-action-btn"></div>
         <div class="skeleton-action-btn"></div>
         <div class="skeleton-action-btn"></div>
-      </div>
-    </div>
-  </div>
+      </td>
+  </tr>
 </template>
 
 <script setup>
@@ -52,12 +50,12 @@ const props = defineProps({
   to { opacity: 1; }
 }
 
-.skeleton-row {
-  display: flex;
-  align-items: center;
-  width: 100%;
+.plugin-skeleton-item :deep(td) {
+  vertical-align: middle;
+}
+
+.skeleton-cell {
   padding: 0.625rem 0.75rem;
-  box-sizing: border-box;
   border-bottom: 1px solid hsl(var(--border) / 0.15);
 }
 
@@ -191,19 +189,10 @@ const props = defineProps({
 
 /* Column widths matching table */
 .col-icon { width: 2.5rem; text-align: center; }
-.col-name {
-  min-width: 160px;
-  flex: 1 1 0;
-}
+.col-name { min-width: 160px; }
 .col-status { min-width: 70px; }
-.col-caps {
-  min-width: 120px;
-  flex: 1 1 0;
-}
-.col-endpoint {
-  min-width: 180px;
-  flex: 1 1 0;
-}
+.col-caps { min-width: 120px; }
+.col-endpoint { min-width: 180px; }
 .col-site-access { min-width: 90px; }
 .col-site-login { min-width: 80px; }
 .col-actions { width: 120px; text-align: right; }
