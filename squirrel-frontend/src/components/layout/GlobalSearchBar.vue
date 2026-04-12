@@ -1,7 +1,5 @@
 <template>
   <div ref="rootRef" class="search-command-bar" :class="{ 'search-command-bar--focused': isFocused }">
-    <div class="search-command-glow"></div>
-
     <div class="search-inner">
       <div class="search-icon-group">
         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -39,8 +37,6 @@
         <kbd v-else class="search-hint-key">⏎</kbd>
       </div>
     </div>
-
-    <div class="search-border-anim"></div>
   </div>
 </template>
 
@@ -132,72 +128,17 @@ onUnmounted(() => {
   position: relative;
   display: flex;
   align-items: center;
-  background: hsl(var(--secondary) / 0.65);
-  backdrop-filter: blur(16px) saturate(180%);
+  background: hsl(var(--secondary) / 0.5);
+  border: 1px solid hsl(var(--border) / 0.6);
   border-radius: var(--radius-lg);
   padding: 0.5rem 0.75rem;
-  box-shadow:
-    0 1px 3px hsl(var(--surface-shadow)),
-    inset 0 1px 0 hsl(var(--white) / 0.05);
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-}
-
-.search-command-bar::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-    135deg,
-    hsl(var(--primary) / 0.2) 0%,
-    transparent 50%,
-    hsl(var(--accent) / 0.1) 100%
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.35s ease;
-}
-
-.search-command-bar--focused::before {
-  opacity: 1;
+  transition: all 0.2s ease;
 }
 
 .search-command-bar--focused {
-  background: hsl(var(--secondary) / 0.9);
-  box-shadow:
-    0 4px 16px -4px hsl(var(--primary) / 0.15),
-    0 0 0 1px hsl(var(--primary) / 0.08),
-    inset 0 1px 0 hsl(var(--white) / 0.08);
-  transform: translateY(-1px);
-}
-
-.search-command-glow {
-  position: absolute;
-  top: 50%;
-  left: 1.5rem;
-  width: 60px;
-  height: 40px;
-  background: radial-gradient(ellipse, hsl(var(--primary) / 0.12) 0%, transparent 70%);
-  transform: translateY(-50%);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.search-command-bar--focused .search-command-glow {
-  opacity: 1;
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.8; }
-  50% { opacity: 1; }
+  background: hsl(var(--secondary) / 0.8);
+  border-color: hsl(var(--primary) / 0.5);
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
 }
 
 .search-inner {
@@ -206,7 +147,6 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   width: 100%;
-  z-index: 1;
 }
 
 .search-icon-group {
@@ -219,13 +159,12 @@ onUnmounted(() => {
 .search-icon {
   width: 1rem;
   height: 1rem;
-  color: hsl(var(--primary) / 0.7);
-  transition: color 0.2s ease, transform 0.2s ease;
+  color: hsl(var(--muted-foreground) / 0.7);
+  transition: color 0.2s ease;
 }
 
 .search-command-bar--focused .search-icon {
   color: hsl(var(--primary));
-  transform: scale(1.05);
 }
 
 .search-divider {
@@ -329,37 +268,8 @@ onUnmounted(() => {
 }
 
 .search-command-bar--focused .search-hint-key {
-  color: hsl(var(--primary) / 0.5);
-  border-color: hsl(var(--primary) / 0.15);
-  background: hsl(var(--primary) / 0.03);
-}
-
-.search-border-anim {
-  position: absolute;
-  bottom: 0;
-  left: 10%;
-  right: 10%;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    hsl(var(--primary) / 0.5),
-    hsl(var(--primary) / 0.8),
-    hsl(var(--primary) / 0.5),
-    transparent
-  );
-  opacity: 0;
-  transition: opacity 0.35s ease;
-}
-
-.search-command-bar--focused .search-border-anim {
-  opacity: 1;
-  animation: border-scan 1.5s ease-in-out infinite;
-}
-
-@keyframes border-scan {
-  0% { transform: scaleX(0.3); opacity: 0.5; }
-  50% { transform: scaleX(1); opacity: 1; }
-  100% { transform: scaleX(0.3); opacity: 0.5; }
+  color: hsl(var(--primary) / 0.7);
+  border-color: hsl(var(--primary) / 0.3);
+  background: hsl(var(--primary) / 0.05);
 }
 </style>

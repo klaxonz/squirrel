@@ -192,6 +192,13 @@
                         {{ relatedVideo.title }}
                       </div>
                       <div class="related-video-card__meta">
+                        <SubscriptionAvatar
+                          v-if="relatedVideo.subscriptions?.[0]"
+                          :src="relatedVideo.subscriptions[0].avatar"
+                          :name="relatedVideo.subscriptions[0].name"
+                          size="sm"
+                          class="related-video-card__avatar"
+                        />
                         <router-link
                           v-if="relatedVideo.subscriptions?.[0]?.id"
                           :to="`/subscription/${relatedVideo.subscriptions[0].id}/all`"
@@ -761,6 +768,20 @@ onUnmounted(() => {
   gap: 0.35rem;
   font-size: 0.7rem; /* 稍微调小字号 */
   color: hsl(var(--muted-foreground) / 0.8);
+}
+
+.related-video-card__avatar {
+  width: 1.1rem !important;
+  height: 1.1rem !important;
+  border-radius: calc(var(--radius-sm) - 1px);
+  flex-shrink: 0;
+}
+
+.related-video-card__channel {
+  max-width: 6rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .related-video-card__duration {

@@ -111,18 +111,18 @@
               <!-- 顶部装饰栏：极简搜索（居中） + 状态 -->
               <div
                 v-if="showGlobalSearch"
-                :class="['minimal-header', { 'minimal-header--compact': isVideoPlayRoute }]"
+                class="minimal-header"
               >
-                <div :class="['header-left-spacer', { 'is-compact': isVideoPlayRoute }]"></div>
+                <div class="header-left-spacer"></div>
                 <GlobalSearchBar
                   ref="globalSearchBar"
                   v-model="searchQuery"
-                  :class="['minimal-search', { 'minimal-search--compact': isVideoPlayRoute }]"
+                  class="minimal-search"
                   :placeholder="searchPlaceholder"
                   @search="handleGlobalSearch"
                   @clear="handleGlobalSearchClear"
                 />
-                <div :class="['header-right-spacer', { 'is-compact': isVideoPlayRoute }]"></div>
+                <div class="header-right-spacer"></div>
               </div>
 
               <router-view v-slot="{ Component }">
@@ -669,33 +669,15 @@ h6 {
   pointer-events: none;
 }
 
-.minimal-header--compact {
-  padding: 0.5rem 1rem;
-  background: linear-gradient(to bottom, hsl(var(--background)) 0%, hsl(var(--background) / 0.92) 72%, hsl(var(--background) / 0.55) 100%);
-}
-
-.header-left-spacer {
-  width: 120px;
-  flex-shrink: 0;
-}
-
+.header-left-spacer,
 .header-right-spacer {
   width: 120px;
   flex-shrink: 0;
 }
 
-.header-left-spacer.is-compact,
-.header-right-spacer.is-compact {
-  width: 3rem;
-}
-
 .minimal-search {
   width: clamp(20rem, calc(100vw - 18rem), 480px);
   pointer-events: auto;
-}
-
-.minimal-search--compact {
-  width: min(46rem, calc(100vw - 6rem));
 }
 
 .page-container {

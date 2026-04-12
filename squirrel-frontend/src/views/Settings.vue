@@ -4,14 +4,24 @@
     <header class="settings-header">
       <div class="settings-header__inner">
         <div class="settings-header__copy">
+          <div class="settings-header__eyebrow">
+            <span class="settings-header__badge">
+              <Settings2 class="h-3 w-3" />
+              配置中心
+            </span>
+          </div>
           <h1 class="settings-header__title">设置</h1>
           <p class="settings-header__desc">配置你的偏好与账户</p>
         </div>
-        <div v-if="hasUnsavedChanges" class="settings-header__status">
-          <span class="status-dot"></span>
-          <span class="status-text">有未保存的更改</span>
-        </div>
+        <Transition name="status-pop">
+          <div v-if="hasUnsavedChanges" class="settings-header__status">
+            <span class="status-dot"></span>
+            <span class="status-text">有未保存的更改</span>
+          </div>
+        </Transition>
       </div>
+      <!-- Decorative line -->
+      <div class="settings-header__line"></div>
     </header>
 
     <!-- Tab Navigation -->
@@ -28,13 +38,52 @@
       >
         <component :is="tab.icon" class="settings-tab__icon" />
         <span class="settings-tab__label">{{ tab.label }}</span>
+        <span v-if="tab.badge" class="settings-tab__badge">{{ tab.badge }}</span>
       </button>
     </nav>
 
     <!-- Content Panel -->
     <main class="settings-content">
+      <!-- Skeleton loading state -->
+      <div v-if="pageLoading" class="settings-skeleton">
+        <div class="skeleton-section">
+          <div class="skeleton-header">
+            <div class="skeleton-icon"></div>
+            <div class="skeleton-text-group">
+              <div class="skeleton-line skeleton-line--title"></div>
+              <div class="skeleton-line skeleton-line--desc"></div>
+            </div>
+          </div>
+          <div class="skeleton-card">
+            <div v-for="i in 5" :key="i" class="skeleton-row">
+              <div class="skeleton-row__text">
+                <div class="skeleton-line skeleton-line--row-title"></div>
+                <div class="skeleton-line skeleton-line--row-desc"></div>
+              </div>
+              <div class="skeleton-switch"></div>
+            </div>
+          </div>
+        </div>
+        <div class="skeleton-section">
+          <div class="skeleton-header">
+            <div class="skeleton-icon"></div>
+            <div class="skeleton-text-group">
+              <div class="skeleton-line skeleton-line--title"></div>
+              <div class="skeleton-line skeleton-line--desc"></div>
+            </div>
+          </div>
+          <div class="skeleton-theme-grid">
+            <div v-for="i in 5" :key="i" class="skeleton-theme-item">
+              <div class="skeleton-theme-preview"></div>
+              <div class="skeleton-line skeleton-line--theme-name"></div>
+              <div class="skeleton-line skeleton-line--theme-desc"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div
-        v-if="currentTab === 'appearance'"
+        v-else-if="currentTab === 'appearance'"
         role="tabpanel"
         :id="`panel-appearance`"
         class="settings-panel"
@@ -389,7 +438,7 @@ import { useUserSettings } from '../composables/useUserSettings';
 
 type SettingsTabKey = 'appearance' | 'content' | 'playback' | 'security' | 'system' | 'sites'
 
-const tabs: Array<{ key: SettingsTabKey; label: string; icon: any }> = [
+const tabs: Array<{ key: SettingsTabKey; label: string; icon: any; badge?: string }> = [
   { key: 'appearance', label: '外观', icon: Palette },
   { key: 'content', label: '内容', icon: ShieldCheck },
   { key: 'playback', label: '播放', icon: PlayCircle },
@@ -415,6 +464,7 @@ const { settings, loading: userSaving, loadUserSettings, saveUserSettings } = us
 // System config
 const { config: systemConfig, loading: systemLoading, loadSystemConfig, updateSystemConfig } = useSystemConfig();
 const systemSaving = ref(false)
+const pageLoading = ref(true)
 const passwordSubmitting = ref(false)
 const sessionSubmitting = ref(false)
 const securityError = ref('')
@@ -459,11 +509,16 @@ const getErrorMessage = (error: any, fallback: string) => {
 }
 
 onMounted(async () => {
-  await loadUserSettings();
-  const result = await loadSystemConfig()
-  if (result.error) {
-    Logger.error('Failed to load system config', result.error)
-  }
+  pageLoading.value = true;
+  await Promise.all([
+    loadUserSettings(),
+    loadSystemConfig().then(result => {
+      if (result.error) {
+        Logger.error('Failed to load system config', result.error)
+      }
+    }),
+  ])
+  pageLoading.value = false;
 });
 
 const onUserSettingChange = async () => {
@@ -552,30 +607,23 @@ const handleRevokeSessions = async () => {
 <style scoped>
 .settings-page {
   font-feature-settings: "tnum";
+  --settings-card-radius: 1.25rem;
 }
 
-/* Header */
+/* ── Header ── */
 .settings-header {
-  padding: 1rem 2rem 0;
+  position: relative;
+  padding: 1.5rem 2rem 0;
 }
 
 @media (min-width: 640px) {
-  .settings-header {
-    padding: 1.5rem 2rem 0;
-  }
+  .settings-header { padding: 1.75rem 2rem 0; }
 }
-
 @media (min-width: 1024px) {
-  .settings-header {
-    padding: 2rem 2rem 0;
-  }
+  .settings-header { padding: 2.25rem 2.5rem 0; }
 }
-
 @media (max-width: 768px) {
-  .settings-header {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
+  .settings-header { padding-left: 1rem; padding-right: 1rem; }
 }
 
 .settings-header__inner {
@@ -585,31 +633,52 @@ const handleRevokeSessions = async () => {
   gap: 1rem;
 }
 
+.settings-header__eyebrow {
+  margin-bottom: 0.5rem;
+}
+
+.settings-header__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+  border: 1px solid hsl(var(--primary) / 0.15);
+  border-radius: 9999px;
+}
+
 .settings-header__title {
-  font-size: 1.5rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-size: 1.875rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
   color: hsl(var(--foreground));
   margin: 0;
+  line-height: 1.1;
 }
 
 .settings-header__desc {
   font-size: 0.8125rem;
   color: hsl(var(--muted-foreground));
-  margin: 0.25rem 0 0;
+  margin: 0.375rem 0 0;
 }
 
 .settings-header__status {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.375rem 0.75rem;
-  background: hsl(var(--warning) / 0.1);
+  padding: 0.5rem 0.875rem;
+  background: hsl(var(--warning) / 0.08);
   border: 1px solid hsl(var(--warning) / 0.2);
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 600;
   color: hsl(var(--warning));
+  backdrop-filter: blur(8px);
 }
 
 .status-dot {
@@ -617,76 +686,111 @@ const handleRevokeSessions = async () => {
   height: 6px;
   border-radius: 50%;
   background: hsl(var(--warning));
-  animation: pulse 2s infinite;
+  animation: status-pulse 2s ease-in-out infinite;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-/* Tab Navigation */
-.settings-tabs {
-  display: flex;
-  gap: 0.25rem;
-  padding: 1.5rem 2rem 0;
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-@media (max-width: 768px) {
-  .settings-tabs {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-}
-
-.settings-tabs::-webkit-scrollbar {
+.settings-header__line {
   display: none;
 }
 
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* Status pop transition */
+.status-pop-enter-active {
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.status-pop-leave-active {
+  transition: all 0.2s ease;
+}
+.status-pop-enter-from,
+.status-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.75) translateY(-6px);
+}
+
+/* ── Tab Navigation ── */
+.settings-tabs {
+  display: flex;
+  gap: 0.125rem;
+  padding: 0.75rem 2rem 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .settings-tabs { padding-left: 1rem; padding-right: 1rem; }
+}
+
+.settings-tabs::-webkit-scrollbar { display: none; }
+
 .settings-tab {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.875rem;
   font-size: 0.8125rem;
   font-weight: 600;
   color: hsl(var(--muted-foreground));
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  border-radius: 0.75rem;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  overflow: hidden;
+  user-select: none;
+}
+
+.settings-tab::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: hsl(var(--primary) / 0.07);
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 .settings-tab:hover {
   color: hsl(var(--foreground));
 }
 
+.settings-tab:hover::before { opacity: 1; }
+
 .settings-tab--active {
   color: hsl(var(--primary));
-  border-bottom-color: hsl(var(--primary));
+}
+
+.settings-tab--active::before {
+  opacity: 1;
+  background: hsl(var(--primary) / 0.12);
 }
 
 .settings-tab__icon {
   width: 1rem;
   height: 1rem;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
 }
+
+.settings-tab:hover .settings-tab__icon { transform: scale(1.1) rotate(-3deg); }
 
 .settings-tab__badge {
   padding: 0.125rem 0.375rem;
   font-size: 0.625rem;
   font-weight: 700;
-  background: hsl(var(--primary) / 0.1);
+  background: hsl(var(--primary) / 0.18);
   color: hsl(var(--primary));
   border-radius: 9999px;
+  line-height: 1.4;
 }
 
-/* Content */
+/* ── Content ── */
 .settings-content {
   padding: 1.5rem 2rem 3rem;
   max-width: 1200px;
@@ -694,42 +798,25 @@ const handleRevokeSessions = async () => {
 }
 
 @media (max-width: 768px) {
-  .settings-content {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
+  .settings-content { padding-left: 1rem; padding-right: 1rem; }
 }
-
 @media (min-width: 640px) {
-  .settings-content {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-  }
+  .settings-content { padding-left: 1.5rem; padding-right: 1.5rem; }
 }
-
 @media (min-width: 1024px) {
-  .settings-content {
-    padding-left: 2rem;
-    padding-right: 2rem;
-  }
+  .settings-content { padding-left: 2rem; padding-right: 2rem; }
 }
 
 .settings-panel {
-  animation: fade-in 0.3s ease;
+  animation: panel-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes panel-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* Section */
+/* ── Section ── */
 .settings-section {
   margin-bottom: 2rem;
 }
@@ -749,7 +836,14 @@ const handleRevokeSessions = async () => {
   height: 2.5rem;
   background: hsl(var(--primary) / 0.1);
   color: hsl(var(--primary));
-  border-radius: 0.75rem;
+  border-radius: 0.875rem;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.06);
+  transition: box-shadow 0.25s ease;
+}
+
+.settings-section:hover .settings-section__icon {
+  box-shadow: 0 0 0 6px hsl(var(--primary) / 0.1);
 }
 
 .settings-section__title {
@@ -765,7 +859,7 @@ const handleRevokeSessions = async () => {
   margin: 0.125rem 0 0;
 }
 
-/* Theme Grid */
+/* ── Theme Grid ── */
 .theme-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -777,57 +871,84 @@ const handleRevokeSessions = async () => {
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
-  padding: 1rem;
+  padding: 1.25rem 1rem;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
+  overflow: hidden;
+}
+
+.theme-option::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.08), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .theme-option:hover {
-  border-color: hsl(var(--primary) / 0.3);
-  transform: translateY(-2px);
+  border-color: hsl(var(--primary) / 0.35);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px hsl(var(--foreground) / 0.06);
 }
+
+.theme-option:hover::after { opacity: 1; }
 
 .theme-option--active {
   border-color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.05);
+  background: hsl(var(--primary) / 0.04);
+  box-shadow:
+    0 0 0 1px hsl(var(--primary) / 0.2),
+    0 4px 16px hsl(var(--primary) / 0.12);
 }
 
+.theme-option--active::after { opacity: 1; }
+
 .theme-option__preview {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 0.75rem;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 0.875rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.25s ease;
 }
 
+.theme-option:hover .theme-option__preview { transform: scale(1.08) rotate(3deg); }
+
 .theme-option__preview--light {
-  background: linear-gradient(135deg, #fafafa 0%, #e8e8e8 100%);
-  color: #333;
+  background: linear-gradient(145deg, #fafafa 0%, #e4e4e4 100%);
+  color: #444;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 8px rgba(0,0,0,0.08);
 }
 
 .theme-option__preview--dark {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
   color: #f0f0f0;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.3);
 }
 
 .theme-option__preview--system {
-  background: linear-gradient(135deg, #fafafa 0%, #1a1a2e 100%);
-  color: #666;
+  background: linear-gradient(145deg, #fafafa 0%, #1a1a2e 100%);
+  color: #888;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .theme-option__preview--cyber {
-  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+  background: linear-gradient(145deg, #0a0a0a 0%, #1a1a1a 100%);
   color: #FF4F00;
+  box-shadow: 0 0 12px rgba(255,79,0,0.2), inset 0 1px 0 rgba(255,255,255,0.03);
 }
 
 .theme-option__preview--scifi {
-  background: linear-gradient(135deg, #05080a 0%, #0a1628 100%);
+  background: linear-gradient(145deg, #05080a 0%, #0a1628 100%);
   color: #00E5FF;
+  box-shadow: 0 0 12px rgba(0,229,255,0.2), inset 0 1px 0 rgba(255,255,255,0.03);
 }
 
 .theme-option__preview-inner {
@@ -838,12 +959,14 @@ const handleRevokeSessions = async () => {
 
 .theme-option__info {
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 .theme-option__name {
   display: block;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 700;
   color: hsl(var(--foreground));
 }
 
@@ -858,19 +981,39 @@ const handleRevokeSessions = async () => {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
-  color: hsl(var(--primary));
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: 50%;
+  animation: check-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Settings Card */
+@keyframes check-pop {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* ── Settings Card ── */
 .settings-card {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 1rem;
+  border-radius: var(--settings-card-radius);
   overflow: hidden;
+  backdrop-filter: blur(12px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.settings-card:hover {
+  border-color: hsl(var(--border));
+  box-shadow: 0 4px 16px hsl(var(--foreground) / 0.04);
 }
 
 .settings-card--form {
-  padding: 1.25rem;
+  padding: 1.5rem;
 }
 
 .settings-card--compact {
@@ -878,7 +1021,7 @@ const handleRevokeSessions = async () => {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1.25rem;
+  padding: 1.25rem 1.5rem;
 }
 
 .settings-card__label {
@@ -896,19 +1039,16 @@ const handleRevokeSessions = async () => {
   margin-bottom: 0.75rem;
 }
 
-.settings-card__label--inline {
-  margin-bottom: 0.5rem;
-}
+.settings-card__label--inline { margin-bottom: 0.5rem; }
 
 .settings-card__note {
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
   margin: 0 0 1rem;
+  line-height: 1.5;
 }
 
-.settings-card__copy {
-  flex: 1;
-}
+.settings-card__copy { flex: 1; }
 
 .settings-card__title {
   font-size: 0.9375rem;
@@ -921,26 +1061,36 @@ const handleRevokeSessions = async () => {
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
   margin: 0.25rem 0 0;
+  line-height: 1.4;
 }
 
-/* Settings Row */
+/* ── Settings Row ── */
 .settings-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem 1.25rem;
+  padding: 1.125rem 1.5rem;
   transition: background 0.15s ease;
+  position: relative;
 }
 
-.settings-row:hover {
-  background: hsl(var(--secondary) / 0.3);
+.settings-row::before {
+  content: '';
+  position: absolute;
+  left: 1.5rem;
+  right: 1.5rem;
+  bottom: 0;
+  height: 1px;
+  background: hsl(var(--border) / 0.3);
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
-.settings-row__info {
-  flex: 1;
-  min-width: 0;
-}
+.settings-row:hover { background: hsl(var(--secondary) / 0.25); }
+.settings-row:hover::before { opacity: 1; }
+
+.settings-row__info { flex: 1; min-width: 0; }
 
 .settings-row__title {
   font-size: 0.875rem;
@@ -953,39 +1103,47 @@ const handleRevokeSessions = async () => {
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
   margin: 0.125rem 0 0;
+  line-height: 1.4;
 }
 
 .settings-divider {
   height: 1px;
-  background: hsl(var(--border) / 0.5);
-  margin: 0 1.25rem;
+  background: hsl(var(--border) / 0.3);
+  margin: 0 1.5rem;
 }
 
-/* Alert */
+/* ── Alert ── */
 .settings-alert {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
+  padding: 0.875rem 1.125rem;
+  border-radius: 0.875rem;
   font-size: 0.8125rem;
   font-weight: 500;
   margin-bottom: 1rem;
+  animation: alert-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border-width: 1px;
+}
+
+@keyframes alert-enter {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .settings-alert--error {
-  background: hsl(var(--destructive) / 0.1);
+  background: hsl(var(--destructive) / 0.08);
   color: hsl(var(--destructive));
-  border: 1px solid hsl(var(--destructive) / 0.2);
+  border-color: hsl(var(--destructive) / 0.2);
 }
 
 .settings-alert--success {
-  background: hsl(var(--success) / 0.1);
+  background: hsl(var(--success) / 0.08);
   color: hsl(var(--success));
-  border: 1px solid hsl(var(--success) / 0.2);
+  border-color: hsl(var(--success) / 0.2);
 }
 
-/* Security Form */
+/* ── Security Form ── */
 .security-form {
   display: flex;
   flex-direction: column;
@@ -1005,15 +1163,16 @@ const handleRevokeSessions = async () => {
 }
 
 .form-field__input {
-  height: 2.5rem;
-  padding: 0 0.875rem;
+  height: 2.75rem;
+  padding: 0 1rem;
   font-size: 0.875rem;
   color: hsl(var(--foreground));
   background: hsl(var(--background));
   border: 1px solid hsl(var(--border));
-  border-radius: 0.625rem;
+  border-radius: 0.75rem;
   outline: none;
   transition: all 0.15s ease;
+  width: 100%;
 }
 
 .form-field__input:focus {
@@ -1022,11 +1181,11 @@ const handleRevokeSessions = async () => {
 }
 
 .form-field__input::placeholder {
-  color: hsl(var(--muted-foreground) / 0.5);
+  color: hsl(var(--muted-foreground) / 0.45);
 }
 
 .form-field__input:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
@@ -1036,7 +1195,7 @@ const handleRevokeSessions = async () => {
   padding-top: 0.5rem;
 }
 
-/* Toast */
+/* ── Toast ── */
 .save-toast {
   position: fixed;
   bottom: 2rem;
@@ -1044,14 +1203,32 @@ const handleRevokeSessions = async () => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: hsl(var(--foreground));
-  color: hsl(var(--background));
-  border-radius: 0.75rem;
+  padding: 0.75rem 1.125rem;
+  border-radius: 0.875rem;
   font-size: 0.8125rem;
   font-weight: 600;
-  box-shadow: 0 10px 40px hsl(var(--foreground) / 0.2);
+  box-shadow:
+    0 4px 6px -1px hsl(var(--foreground) / 0.08),
+    0 10px 40px hsl(var(--foreground) / 0.12);
   z-index: 100;
+  overflow: hidden;
+}
+
+.save-toast::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: currentColor;
+  opacity: 0.3;
+  animation: toast-progress 3s linear forwards;
+  width: 100%;
+}
+
+@keyframes toast-progress {
+  from { transform: scaleX(1); transform-origin: left; }
+  to { transform: scaleX(0); transform-origin: left; }
 }
 
 .save-toast--error {
@@ -1064,18 +1241,132 @@ const handleRevokeSessions = async () => {
   color: hsl(var(--background));
 }
 
-.toast-enter-active,
-.toast-leave-active {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+.toast-enter-active {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
-.toast-enter-from,
+.toast-leave-active {
+  transition: all 0.25s ease;
+}
+.toast-enter-from {
+  opacity: 0;
+  transform: translateY(1.5rem) scale(0.9);
+}
 .toast-leave-to {
   opacity: 0;
-  transform: translateY(1rem) scale(0.95);
+  transform: translateY(0.5rem) scale(0.95);
 }
 
-/* Responsive */
+/* ── Skeleton Loading ── */
+.settings-skeleton {
+  animation: skeleton-fade-in 0.4s ease;
+}
+
+@keyframes skeleton-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.skeleton-section {
+  margin-bottom: 2.5rem;
+}
+
+.skeleton-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.skeleton-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.875rem;
+  background: hsl(var(--muted-foreground) / 0.08);
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.skeleton-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border) / 0.4);
+  border-radius: var(--settings-card-radius);
+  overflow: hidden;
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.125rem 1.5rem;
+}
+
+.skeleton-row__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.skeleton-switch {
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: hsl(var(--muted-foreground) / 0.1);
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.skeleton-theme-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 1.25rem 1rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border) / 0.4);
+  border-radius: 1.25rem;
+}
+
+.skeleton-theme-preview {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 0.875rem;
+  background: hsl(var(--muted-foreground) / 0.08);
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
+.skeleton-line {
+  border-radius: 0.375rem;
+  background: hsl(var(--muted-foreground) / 0.08);
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
+.skeleton-line--title { height: 1rem; width: 7rem; }
+.skeleton-line--desc { height: 0.75rem; width: 9rem; }
+.skeleton-line--row-title { height: 0.875rem; width: 10rem; }
+.skeleton-line--row-desc { height: 0.75rem; width: 14rem; }
+.skeleton-line--theme-name { height: 0.875rem; width: 4rem; }
+.skeleton-line--theme-desc { height: 0.625rem; width: 6rem; }
+
+@keyframes skeleton-shimmer {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* ── Responsive ── */
 @media (max-width: 768px) {
   .settings-header,
   .settings-tabs,
@@ -1092,12 +1383,18 @@ const handleRevokeSessions = async () => {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
+    padding: 1rem 1.25rem;
   }
+
+  .settings-row::before { left: 1.25rem; right: 1.25rem; }
 
   .settings-card--compact {
     flex-direction: column;
     align-items: flex-start;
+    padding: 1rem 1.25rem;
   }
+
+  .settings-divider { margin: 0 1.25rem; }
 
   .save-toast {
     left: 1rem;

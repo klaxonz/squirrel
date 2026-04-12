@@ -47,7 +47,9 @@ test('video detail requests subtitles through per-site candidate lists instead o
 
   assert.match(source, /pattern: \/bilibili\\\.com\/i/)
   assert.match(source, /pattern: \/\(\?:youtube\\\.com\|youtu\\\.be\)\/i/)
-  assert.match(source, /\{ id: 'yt-default', language: 'Default' \}/)
+  assert.match(source, /\{ id: 'yt-en', language: 'English', lang: 'en' \}/)
+  assert.match(source, /\{ id: 'yt-en-US', language: 'English \(US\)', lang: 'en-US' \}/)
+  assert.doesNotMatch(source, /\{ id: 'yt-default', language: 'Default' \}/)
   assert.match(source, /const candidates = getSubtitleCandidates\(snapshot\.url\)/)
   assert.match(source, /getVideoSubtitles\(videoId, \{ lang: candidate\.lang, fmt: 'srt' \}\)/)
   assert.doesNotMatch(source, /if \(!url \|\| !\/bilibili\\\.com\/\.test\(url\)\) return/)
