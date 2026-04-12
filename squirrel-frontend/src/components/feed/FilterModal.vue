@@ -206,6 +206,15 @@ const selectSite = (opt: { value: string; label: string }) => {
   siteLabel.value = opt.label
 }
 
+const resetAll = () => {
+  localTimeRange.value = 'all'
+  localDuration.value = 'all'
+  localContentType.value = 'all'
+  localNsfw.value = 'all'
+  localSortBy.value = 'publish_date'
+  clearSite()
+}
+
 watch(() => props.modelValue, (open) => {
   document.body.style.overflow = open ? 'hidden' : ''
 })

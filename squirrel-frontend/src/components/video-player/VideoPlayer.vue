@@ -56,11 +56,13 @@
         <div class="sp-controls-content">
           <!-- 极致紧凑进度条 -->
           <div class="sp-progress-container">
-            <div class="sp-progress-area" 
+            <div ref="progressAreaRef"
+                 class="sp-progress-area" 
                  @pointerdown.prevent="onProgressPointerDown"
                  @pointermove="onProgressPointerMove"
                  @pointerleave="onProgressPointerLeave"
-                 @pointerup="onProgressPointerUp">
+                 @pointerup="onProgressPointerUp"
+                 @pointercancel="onProgressPointerUp">
               <div class="sp-progress-rail">
                 <div class="sp-progress-buffered" :style="{ width: `${store.bufferedProgress}%` }"></div>
                 <div class="sp-progress-played" :style="{ width: `${progress}%` }">
@@ -439,6 +441,7 @@ const {
 
 const videoRef = ref<HTMLVideoElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
+const progressAreaRef = ref<HTMLElement | null>(null)
 const settingsPopupRef = ref<HTMLElement | null>(null)
 const opacityRailRef = ref<HTMLElement | null>(null)
 
@@ -733,21 +736,74 @@ const onPointerMove = (event: PointerEvent) => {
   showControls()
 }
 
-const onProgressPointerDown = (e: PointerEvent) => {
-  isScrubbing.value = true
-  handleProgressMove(e)
-}
-const onProgressPointerMove = (e: PointerEvent) => {
-  handleProgressMove(e)
-}
-const handleProgressMove = (e: PointerEvent) => {
-  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+let activeProgressPointerId: number | null = null
+
+const updateProgressPreview = (e: PointerEvent) => {
+  const progressArea = progressAreaRef.value
+  if (!progressArea) return
+
+  const rect = progressArea.getBoundingClientRect()
+  if (rect.width <= 0) return
+
   const p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
   previewPercent.value = p * 100
   previewTime.value = p * duration.value
-  if (isScrubbing.value) seek(previewTime.value)
+
+  if (isScrubbing.value) {
+    seek(previewTime.value)
+  }
 }
-const onProgressPointerUp = () => { isScrubbing.value = false }
+
+const releaseProgressPointerCapture = () => {
+  const progressArea = progressAreaRef.value
+  if (!progressArea || activeProgressPointerId === null || typeof progressArea.hasPointerCapture !== 'function') return
+
+  if (!progressArea.hasPointerCapture(activeProgressPointerId)) return
+
+  try {
+    progressArea.releasePointerCapture(activeProgressPointerId)
+  } catch {
+    // Ignore browsers that reject release when the capture is already gone.
+  }
+}
+
+const stopProgressScrub = (pointerId?: number) => {
+  if (activeProgressPointerId !== null && typeof pointerId === 'number' && pointerId !== activeProgressPointerId) return
+
+  releaseProgressPointerCapture()
+  activeProgressPointerId = null
+  isScrubbing.value = false
+}
+
+const onWindowProgressPointerMove = (e: PointerEvent) => {
+  if (!isScrubbing.value) return
+  if (activeProgressPointerId !== null && e.pointerId !== activeProgressPointerId) return
+
+  updateProgressPreview(e)
+}
+
+const onWindowProgressPointerUp = (e: PointerEvent) => {
+  stopProgressScrub(e.pointerId)
+}
+
+const onProgressPointerDown = (e: PointerEvent) => {
+  activeProgressPointerId = e.pointerId
+  isScrubbing.value = true
+  const progressArea = progressAreaRef.value
+  if (progressArea && typeof progressArea.setPointerCapture === 'function') {
+    try {
+      progressArea.setPointerCapture(e.pointerId)
+    } catch {
+      // Ignore browsers that do not support capturing this pointer.
+    }
+  }
+  updateProgressPreview(e)
+}
+const onProgressPointerMove = (e: PointerEvent) => {
+  if (isScrubbing.value) return
+  updateProgressPreview(e)
+}
+const onProgressPointerUp = (e?: PointerEvent) => { stopProgressScrub(e?.pointerId) }
 const onProgressPointerLeave = () => { if (!isScrubbing.value) previewTime.value = null }
 
 const onVolumePointerDown = (e: PointerEvent) => { isVolumeScrubbing.value = true; updateVol(e) }
@@ -818,9 +874,18 @@ watch(isScrubbing, (scrubbing) => {
 })
 
 onMounted(() => { window.addEventListener('keydown', handleKeyDown) })
+onMounted(() => {
+  window.addEventListener('pointermove', onWindowProgressPointerMove)
+  window.addEventListener('pointerup', onWindowProgressPointerUp)
+  window.addEventListener('pointercancel', onWindowProgressPointerUp)
+})
 onUnmounted(() => {
   clearHideTimer()
   clearInitialTimeListener()
+  releaseProgressPointerCapture()
+  window.removeEventListener('pointermove', onWindowProgressPointerMove)
+  window.removeEventListener('pointerup', onWindowProgressPointerUp)
+  window.removeEventListener('pointercancel', onWindowProgressPointerUp)
   window.removeEventListener('keydown', handleKeyDown)
 })
 
