@@ -185,16 +185,17 @@ watch(() => props.modelValue, (open) => {
   }
 })
 
-watch(localTimeRange, (v) => emit('update:timeRange', v))
-watch(localDuration, (v) => emit('update:duration', v))
-watch(localContentType, (v) => emit('update:contentType', v))
-watch(localNsfw, (v) => emit('update:nsfw', v))
-watch(localSite, (v) => emit('update:site', v))
-watch(localSortBy, (v) => emit('update:sortBy', v))
-
 const isOpen = computed(() => props.modelValue)
 const close = () => emit('update:modelValue', false)
-const confirm = () => emit('update:modelValue', false)
+const confirm = () => {
+  emit('update:timeRange', localTimeRange.value)
+  emit('update:duration', localDuration.value)
+  emit('update:contentType', localContentType.value)
+  emit('update:nsfw', localNsfw.value)
+  emit('update:site', localSite.value)
+  emit('update:sortBy', localSortBy.value)
+  emit('update:modelValue', false)
+}
 
 const clearSite = () => {
   localSite.value = undefined
