@@ -1,4 +1,5 @@
 from typing import Optional, List
+from datetime import datetime, timedelta
 
 from sqlalchemy import select, func, and_, exists, or_, false
 from sqlalchemy.orm import aliased
@@ -254,7 +255,10 @@ def _build_base_video_conditions(
         subscription_id: Optional[int] = None,
         query: Optional[str] = None,
         nsfw: str = 'all',
-        domains: Optional[List[str]] = None
+        domains: Optional[List[str]] = None,
+        time_range: str = 'all',
+        duration: str = 'all',
+        content_type: str = 'all',
 ):
     conditions = [
         Video.is_deleted == False,
@@ -288,6 +292,10 @@ def _build_base_video_conditions(
         if normalized_domains:
             conditions.append(Video.domain.in_(normalized_domains))
 
+    conditions.extend(time_range_predicate(time_range))
+    conditions.extend(duration_predicate(duration))
+    conditions.extend(content_type_predicate(content_type))
+
     return conditions
 
 
@@ -297,7 +305,10 @@ def build_base_video_query(
         subscription_id: Optional[int] = None,
         query: Optional[str] = None,
         nsfw: str = 'all',
-        domains: Optional[List[str]] = None
+        domains: Optional[List[str]] = None,
+        time_range: str = 'all',
+        duration: str = 'all',
+        content_type: str = 'all',
 ):
     """构建基础视频查询，以 Video 为主表。"""
     base_query = (
@@ -309,7 +320,10 @@ def build_base_video_query(
     )
 
     return base_query.where(
-        and_(*_build_base_video_conditions(user_id, show_nsfw, subscription_id, query, nsfw, domains))
+        and_(*_build_base_video_conditions(
+            user_id, show_nsfw, subscription_id, query, nsfw, domains,
+            time_range, duration, content_type,
+        ))
     )
 
 
@@ -319,7 +333,10 @@ def build_video_count_source_query(
         subscription_id: Optional[int] = None,
         query: Optional[str] = None,
         nsfw: str = 'all',
-        domains: Optional[List[str]] = None
+        domains: Optional[List[str]] = None,
+        time_range: str = 'all',
+        duration: str = 'all',
+        content_type: str = 'all',
 ):
     user_subscriptions = (
         select(UserSubscription.subscription_id.label('subscription_id'))
@@ -373,6 +390,25 @@ def build_video_count_source_query(
         ]
         if normalized_domains:
             count_source = count_source.where(Video.domain.in_(normalized_domains))
+
+    time_conds = time_range_predicate(time_range)
+    dur_conds = duration_predicate(duration)
+    type_clause = content_type_predicate(content_type)
+
+    if time_conds or dur_conds or type_clause:
+        count_source = count_source.join(
+            SubscriptionVideo,
+            SubscriptionVideo.video_id == Video.id,
+        ).join(
+            Subscription,
+            Subscription.id == SubscriptionVideo.subscription_id,
+        )
+        for cond in time_conds:
+            count_source = count_source.where(cond)
+        for cond in dur_conds:
+            count_source = count_source.where(cond)
+        for cond in type_clause:
+            count_source = count_source.where(cond)
 
     return count_source.distinct()
 
@@ -441,3 +477,43 @@ def resolve_sort_column(sort_by: str):
     if sort_by == 'created_at':
         return Video.created_at
     return Video.publish_date
+
+
+def time_range_predicate(time_range: str):
+    """返回 publish_date 时间范围过滤条件。"""
+    if time_range == 'all':
+        return []
+    now = func.now()
+    if time_range == 'today':
+        return [Video.publish_date >= func.date(now)]
+    if time_range == 'week':
+        start = now - timedelta(days=now.extract('dow') - 1)
+        return [Video.publish_date >= func.date(start)]
+    if time_range == 'month':
+        return [
+            func.extract('year', Video.publish_date) == func.extract('year', now),
+            func.extract('month', Video.publish_date) == func.extract('month', now),
+        ]
+    if time_range == 'year':
+        return [func.extract('year', Video.publish_date) == func.extract('year', now)]
+    return []
+
+
+def duration_predicate(duration: str):
+    """返回视频时长过滤条件（秒）。"""
+    if duration == 'all':
+        return []
+    if duration == 'short':
+        return [Video.duration < 300]
+    if duration == 'medium':
+        return [Video.duration >= 300, Video.duration <= 1800]
+    if duration == 'long':
+        return [Video.duration > 1800]
+    return []
+
+
+def content_type_predicate(content_type: str):
+    """返回订阅类型过滤条件（需要 JOIN Subscription）。"""
+    if content_type == 'all':
+        return []
+    return [Subscription.type == content_type]

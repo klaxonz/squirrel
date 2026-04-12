@@ -80,6 +80,9 @@ def get_videos(
         with_total: bool = Query(False, alias="withTotal", description="是否返回 total（会额外执行 count 查询）"),
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
+        time_range: str = Query("all", description="时间范围: all|today|week|month|year"),
+        duration: str = Query("all", description="时长: all|short|medium|long"),
+        content_type: str = Query("all", description="内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR"),
         current_user: User = Depends(get_current_user)
 ):
 
@@ -90,9 +93,10 @@ def get_videos(
 
     if hasattr(current_user, '_cached_config'):
         logger.info(f"[Performance] Route: Using cached user config")
-    
+
     videos, total_counts = video_service.list_videos(
-        current_user.id, query, subscription_id, category, sort_by, nsfw, domains_list, page, page_size, with_total=with_total
+        current_user.id, query, subscription_id, category, sort_by, nsfw, domains_list, page, page_size,
+        with_total=with_total, time_range=time_range, duration=duration, content_type=content_type,
     )
 
     result = response.success({
@@ -111,6 +115,9 @@ def get_video_counts(
         subscription_id: int = Query(None, description="订阅ID"),
         nsfw: str = Query("all", description="NSFW 过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
         site: str = Query(None, description="站点过滤：例如 youtube、bilibili 等（支持别名）"),
+        time_range: str = Query("all", description="时间范围: all|today|week|month|year"),
+        duration: str = Query("all", description="时长: all|short|medium|long"),
+        content_type: str = Query("all", description="内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR"),
         current_user: User = Depends(get_current_user)
 ):
     """获取视频各类别计数的独立接口（可单独缓存）"""
@@ -119,11 +126,12 @@ def get_video_counts(
     if site:
         resolved = SiteCatalog.resolve_domains(site)
         domains_list = resolved if resolved else None
-    
+
     counts = video_service.get_video_counts(
-        current_user.id, query, subscription_id, nsfw, domains_list
+        current_user.id, query, subscription_id, nsfw, domains_list,
+        time_range=time_range, duration=duration, content_type=content_type,
     )
-    
+
     return response.success(counts)
 
 
@@ -134,6 +142,9 @@ def get_random_video(
         nsfw: str = Query("all", description="NSFW 过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
         site: str = Query(None, description="站点过滤：例如 youtube、bilibili 等（支持别名）"),
         query: str = Query(None, description="搜索关键字"),
+        time_range: str = Query("all", description="时间范围: all|today|week|month|year"),
+        duration: str = Query("all", description="时长: all|short|medium|long"),
+        content_type: str = Query("all", description="内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR"),
         current_user: User = Depends(get_current_user)
 ):
     domains_list: List[str] | None = None
@@ -147,7 +158,10 @@ def get_random_video(
         subscription_id=subscription_id,
         nsfw=nsfw,
         domains=domains_list,
-        query=query
+        query=query,
+        time_range=time_range,
+        duration=duration,
+        content_type=content_type,
     )
     if not video:
         return response.not_found("未找到符合条件的视频")

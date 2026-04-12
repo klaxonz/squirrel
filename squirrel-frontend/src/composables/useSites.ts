@@ -17,7 +17,7 @@ type SiteInfo = {
   [key: string]: unknown
 }
 
-type SiteOption = { value: SiteSlug | undefined; label: string }
+type SiteOption = { value: SiteSlug; label: string }
 type SitesResponse = Record<SiteSlug, SiteInfo>
 
 type ApiResult<T> = { data?: T | null; error?: unknown | null }
@@ -42,7 +42,7 @@ export async function fetchSites() {
   }
 
   const items = data ? Object.entries(data) : []
-  const opts: SiteOption[] = [{ value: undefined, label: '全部站点' }]
+  const opts: SiteOption[] = []
   for (const [slug, info] of items as Array<[SiteSlug, SiteInfo]>) {
     if (info && info.enabled !== false) {
       opts.push({ value: slug, label: info.label || slug })

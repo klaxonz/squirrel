@@ -52,6 +52,18 @@ const props = defineProps({
     type: String,
     default: 'all',
   },
+  timeRange: {
+    type: String,
+    default: 'all',
+  },
+  duration: {
+    type: String,
+    default: 'all',
+  },
+  contentType: {
+    type: String,
+    default: 'all',
+  },
 })
 
 // 辅助函数：统一处理props映射
@@ -62,6 +74,9 @@ const getFiltersFromProps = () => ({
   sort: props.filters?.sort ?? props.sortBy ?? 'publish_date',
   site: props.filters?.site ?? props.site,
   nsfw: props.filters?.nsfw ?? props.nsfw ?? 'all',
+  timeRange: props.filters?.timeRange ?? 'all',
+  duration: props.filters?.duration ?? 'all',
+  contentType: props.filters?.contentType ?? 'all',
 })
 
 const createFilterSignature = (filters) => JSON.stringify([
@@ -71,6 +86,9 @@ const createFilterSignature = (filters) => JSON.stringify([
   filters?.sort ?? 'publish_date',
   filters?.site ?? null,
   filters?.nsfw ?? 'all',
+  filters?.timeRange ?? 'all',
+  filters?.duration ?? 'all',
+  filters?.contentType ?? 'all',
 ])
 
 const {
@@ -86,6 +104,9 @@ const {
   isResetting,
   site,
   nsfw,
+  timeRange,
+  duration,
+  contentType,
   videoCounts,
   error,
 } = useLatestVideos({
@@ -95,6 +116,9 @@ const {
   sortBy: getFiltersFromProps().sort,
   site: getFiltersFromProps().site,
   nsfw: getFiltersFromProps().nsfw,
+  timeRange: getFiltersFromProps().timeRange,
+  duration: getFiltersFromProps().duration,
+  contentType: getFiltersFromProps().contentType,
 })
 
 const processedVideos = computed(() => {
@@ -126,6 +150,9 @@ watch(
     sortBy.value = filters.sort
     site.value = filters.site
     nsfw.value = filters.nsfw
+    timeRange.value = filters.timeRange
+    duration.value = filters.duration
+    contentType.value = filters.contentType
 
     if (!lastAppliedFilterSignature.value) {
       lastAppliedFilterSignature.value = nextSignature

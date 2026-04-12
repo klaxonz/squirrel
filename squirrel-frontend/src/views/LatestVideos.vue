@@ -15,10 +15,16 @@
           :subscription-id="subscriptionId"
           :tabs-with-counts="tabsWithCounts"
           :is-refreshing="isRefreshing"
+          :time-range="timeRange"
+          :duration="duration"
+          :content-type="contentType"
           @update:activeTab="(value) => activeTab = value"
           @update:nsfw="(value) => nsfw = value"
           @update:sortBy="(value) => sortBy = value"
           @update:site="(value) => site = value"
+          @update:timeRange="(value) => timeRange = value"
+          @update:duration="(value) => duration = value"
+          @update:contentType="(value) => contentType = value"
           @tab-dblclick="handleTabDoubleClick"
           @refresh="refreshCurrentList"
         />
@@ -74,7 +80,7 @@ const route = useRoute()
 const emitter = inject('emitter')
 
 const subscriptionId = computed(() => route.params.id)
-const { activeTab, nsfw, sortBy, site, searchQuery, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId })
+const { activeTab, nsfw, sortBy, site, searchQuery, timeRange, duration, contentType, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId })
 
 const tabsWithCounts = ref(buildTabsWithCounts({}))
 const isRefreshing = ref(false)

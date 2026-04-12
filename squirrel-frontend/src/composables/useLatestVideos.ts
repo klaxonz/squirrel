@@ -28,6 +28,9 @@ type InitialState = {
   sortBy?: string
   nsfw?: string
   site?: string
+  timeRange?: string
+  duration?: string
+  contentType?: string
 }
 
 type ApiResult<T> = { data?: T | null; error?: unknown | null }
@@ -48,6 +51,9 @@ export default function useLatestVideos(initial: InitialState = {}) {
   const sortBy = ref(initial.sortBy ?? 'publish_date')
   const nsfw = ref(initial.nsfw ?? 'all')
   const site = ref<string | undefined>(initial.site)
+  const timeRange = ref(initial.timeRange ?? 'all')
+  const duration = ref(initial.duration ?? 'all')
+  const contentType = ref(initial.contentType ?? 'all')
 
   const category = computed(() => activeTab.value)
 
@@ -63,6 +69,9 @@ export default function useLatestVideos(initial: InitialState = {}) {
       subscription_id: subscriptionId.value,
       nsfw: nsfw.value,
       site: site.value,
+      time_range: timeRange.value,
+      duration: duration.value,
+      content_type: contentType.value,
     })) as ApiResult<VideoCounts>
 
     if (currentToken !== countsRequestToken) {
@@ -94,6 +103,9 @@ export default function useLatestVideos(initial: InitialState = {}) {
       sort_by: sortBy.value,
       nsfw: nsfw.value,
       site: site.value,
+      time_range: timeRange.value,
+      duration: duration.value,
+      content_type: contentType.value,
     })) as ApiResult<VideoListResponse>
 
     if (currentToken !== requestToken) {
@@ -151,7 +163,7 @@ export default function useLatestVideos(initial: InitialState = {}) {
     }
   }
 
-  watch([subscriptionId, searchQuery, nsfw, site], () => {
+  watch([subscriptionId, searchQuery, nsfw, site, timeRange, duration, contentType], () => {
     if (currentPage.value > 1) {
       loadVideoCounts()
     }
@@ -174,6 +186,9 @@ export default function useLatestVideos(initial: InitialState = {}) {
     sortBy,
     nsfw,
     site,
+    timeRange,
+    duration,
+    contentType,
     isResetting,
   }
 }

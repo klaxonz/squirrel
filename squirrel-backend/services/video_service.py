@@ -14,6 +14,9 @@ from services.video_query import (
     build_video_search_clauses,
     category_predicate,
     resolve_sort_column,
+    time_range_predicate,
+    duration_predicate,
+    content_type_predicate,
 )
 
 
@@ -131,6 +134,9 @@ def get_random_video(
         nsfw: str = 'all',
         domains: Optional[List[str]] = None,
         query: Optional[str] = None,
+        time_range: str = 'all',
+        duration: str = 'all',
+        content_type: str = 'all',
 ) -> Optional[Video]:
     """返回符合过滤条件的一个随机视频（已发布）。
 
@@ -142,7 +148,10 @@ def get_random_video(
     show_nsfw = user_config.get('showNsfw', False)
 
     # 基础可重用查询
-    base = build_base_video_query(user_id, show_nsfw, subscription_id, query, nsfw, domains)
+    base = build_base_video_query(
+        user_id, show_nsfw, subscription_id, query, nsfw, domains,
+        time_range, duration, content_type,
+    )
     base = base.where(category_predicate(user_id, category))
 
 
@@ -245,7 +254,8 @@ def get_video_url(video_id: int, force_refresh: bool = False, client_type: Optio
 
 
 def _get_video_counts_in_session(session, user_id: int, show_nsfw: bool, subscription_id: Optional[int] = None,
-                                 query: Optional[str] = None, nsfw: str = 'all', domains: Optional[List[str]] = None):
+                                 query: Optional[str] = None, nsfw: str = 'all', domains: Optional[List[str]] = None,
+                                 time_range: str = 'all', duration: str = 'all', content_type: str = 'all'):
     """获取各类别视频数量 - 基于实时 feed 表统计"""
     started_at = perf_counter()
     candidate_videos = (
@@ -258,6 +268,9 @@ def _get_video_counts_in_session(session, user_id: int, show_nsfw: bool, subscri
             sort_by='publish_date',
             nsfw=nsfw,
             domains=domains,
+            time_range=time_range,
+            duration=duration,
+            content_type=content_type,
         )
         .order_by(None)
         .subquery('candidate_videos')
@@ -366,14 +379,20 @@ def get_video_counts(
         query: str,
         subscription_id: int,
         nsfw: str,
-        domains: Optional[List[str]]
+        domains: Optional[List[str]],
+        time_range: str = 'all',
+        duration: str = 'all',
+        content_type: str = 'all',
 ) -> dict:
     """获取视频各类别计数（独立接口）"""
     user_config = user_config_service.get_config(user_id)
     show_nsfw = user_config.get('showNsfw', False)
 
     with get_session() as session:
-        return _get_video_counts_in_session(session, user_id, show_nsfw, subscription_id, query, nsfw, domains)
+        return _get_video_counts_in_session(
+            session, user_id, show_nsfw, subscription_id, query, nsfw, domains,
+            time_range, duration, content_type,
+        )
 
 
 def _feed_sort_column(sort_by: str):
@@ -453,6 +472,9 @@ def _build_feed_query(
     sort_by: str,
     nsfw: str,
     domains: Optional[List[str]],
+    time_range: str = 'all',
+    duration: str = 'all',
+    content_type: str = 'all',
 ):
     effective_nsfw = resolve_effective_nsfw_filter(nsfw, show_nsfw)
     feed_query = select(
@@ -494,6 +516,46 @@ def _build_feed_query(
 
     if category:
         feed_query = feed_query.where(_feed_category_predicate(user_id, category))
+
+    # Collect Video-level conditions (time_range, duration)
+    video_conds = []
+    video_conds.extend(time_range_predicate(time_range))
+    video_conds.extend(duration_predicate(duration))
+    # Collect Subscription-level conditions (content_type)
+    type_conds = content_type_predicate(content_type)
+
+    needs_subscription_join = bool(type_conds)
+    needs_video_join = bool(video_conds) or needs_subscription_join
+
+    if search_clauses:
+        # Video already joined above; add remaining Video conditions and Subscription conditions
+        if needs_subscription_join:
+            feed_query = feed_query.join(
+                SubscriptionVideo,
+                SubscriptionVideo.video_id == UserVideoFeed.video_id,
+            ).join(
+                Subscription,
+                Subscription.id == SubscriptionVideo.subscription_id,
+            )
+        for cond in type_conds:
+            feed_query = feed_query.where(cond)
+        for cond in video_conds:
+            feed_query = feed_query.where(cond)
+    elif needs_video_join:
+        # Video not yet joined; join once and apply all conditions
+        if needs_subscription_join:
+            feed_query = feed_query.join(
+                SubscriptionVideo,
+                SubscriptionVideo.video_id == UserVideoFeed.video_id,
+            ).join(
+                Subscription,
+                Subscription.id == SubscriptionVideo.subscription_id,
+            )
+        feed_query = feed_query.join(Video, Video.id == UserVideoFeed.video_id)
+        for cond in type_conds:
+            feed_query = feed_query.where(cond)
+        for cond in video_conds:
+            feed_query = feed_query.where(cond)
 
     feed_source = feed_query.subquery()
     if sort_by == 'created_at':
@@ -522,6 +584,9 @@ def _build_ordered_feed_query(
     sort_by: str,
     nsfw: str,
     domains: Optional[List[str]],
+    time_range: str = 'all',
+    duration: str = 'all',
+    content_type: str = 'all',
 ):
     effective_nsfw = resolve_effective_nsfw_filter(nsfw, show_nsfw)
     feed_query = select(
@@ -563,6 +628,42 @@ def _build_ordered_feed_query(
 
     if category:
         feed_query = feed_query.where(_feed_category_predicate(user_id, category))
+
+    video_conds = []
+    video_conds.extend(time_range_predicate(time_range))
+    video_conds.extend(duration_predicate(duration))
+    type_conds = content_type_predicate(content_type)
+
+    needs_subscription_join = bool(type_conds)
+    needs_video_join = bool(video_conds) or needs_subscription_join
+
+    if search_clauses:
+        if needs_subscription_join:
+            feed_query = feed_query.join(
+                SubscriptionVideo,
+                SubscriptionVideo.video_id == UserVideoFeed.video_id,
+            ).join(
+                Subscription,
+                Subscription.id == SubscriptionVideo.subscription_id,
+            )
+        for cond in type_conds:
+            feed_query = feed_query.where(cond)
+        for cond in video_conds:
+            feed_query = feed_query.where(cond)
+    elif needs_video_join:
+        if needs_subscription_join:
+            feed_query = feed_query.join(
+                SubscriptionVideo,
+                SubscriptionVideo.video_id == UserVideoFeed.video_id,
+            ).join(
+                Subscription,
+                Subscription.id == SubscriptionVideo.subscription_id,
+            )
+        feed_query = feed_query.join(Video, Video.id == UserVideoFeed.video_id)
+        for cond in type_conds:
+            feed_query = feed_query.where(cond)
+        for cond in video_conds:
+            feed_query = feed_query.where(cond)
 
     sort_column = _feed_sort_column(sort_by)
     return feed_query.order_by(sort_column.desc(), UserVideoFeed.video_id.desc())
@@ -612,6 +713,9 @@ def list_videos(
         page: int,
         page_size: int,
         with_total: bool = False,
+        time_range: str = 'all',
+        duration: str = 'all',
+        content_type: str = 'all',
 ) -> Tuple[List[dict], Optional[int]]:
     user_config = user_config_service.get_config(user_id)
     show_nsfw = user_config.get('showNsfw', False)
@@ -629,6 +733,9 @@ def list_videos(
             sort_by=sort_by,
             nsfw=nsfw,
             domains=domains,
+            time_range=time_range,
+            duration=duration,
+            content_type=content_type,
         )
         build_query_ms = _elapsed_ms(build_query_started_at)
 
