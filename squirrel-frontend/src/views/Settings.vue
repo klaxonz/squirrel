@@ -384,15 +384,6 @@
           </div>
         </section>
       </div>
-
-      <div
-        v-if="currentTab === 'sites'"
-        role="tabpanel"
-        :id="`panel-sites`"
-        class="settings-panel"
-      >
-        <SiteConfigSection />
-      </div>
     </main>
 
     <!-- Save Feedback Toast -->
@@ -412,7 +403,6 @@ import {
   AlertCircle,
   Check,
   CheckCircle2,
-  Globe,
   KeyRound,
   LogOut,
   Monitor,
@@ -427,7 +417,6 @@ import {
   Zap,
 } from 'lucide-vue-next';
 import { revokeUserSessions, updateUserPassword } from '@/api'
-import SiteConfigSection from '@/components/settings/SiteConfigSection.vue';
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useAppTheme } from '@/composables/useAppTheme'
@@ -436,7 +425,7 @@ import { Logger } from '@/utils/logger'
 import { useSystemConfig } from '../composables/useSystemConfig';
 import { useUserSettings } from '../composables/useUserSettings';
 
-type SettingsTabKey = 'appearance' | 'content' | 'playback' | 'security' | 'system' | 'sites'
+type SettingsTabKey = 'appearance' | 'content' | 'playback' | 'security' | 'system'
 
 const tabs: Array<{ key: SettingsTabKey; label: string; icon: any; badge?: string }> = [
   { key: 'appearance', label: '外观', icon: Palette },
@@ -444,7 +433,6 @@ const tabs: Array<{ key: SettingsTabKey; label: string; icon: any; badge?: strin
   { key: 'playback', label: '播放', icon: PlayCircle },
   { key: 'security', label: '安全', icon: KeyRound },
   { key: 'system', label: '系统', icon: Settings2 },
-  { key: 'sites', label: '站点', icon: Globe },
 ];
 const currentTab = ref<SettingsTabKey>('appearance');
 
