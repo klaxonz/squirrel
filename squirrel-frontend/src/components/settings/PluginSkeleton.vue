@@ -1,32 +1,32 @@
 <template>
   <tr class="plugin-skeleton-item" :style="{ animationDelay: `${delay}ms` }">
-      <td class="col-icon skeleton-cell">
-        <div class="skeleton-icon"></div>
-      </td>
-      <td class="col-name skeleton-cell">
-        <div class="skeleton-text w-32"></div>
-      </td>
-      <td class="col-status skeleton-cell">
-        <div class="skeleton-badge"></div>
-      </td>
-      <td class="col-caps skeleton-cell">
-        <div class="skeleton-tag"></div>
-        <div class="skeleton-tag ml-1"></div>
-      </td>
-      <td class="col-endpoint skeleton-cell">
-        <div class="skeleton-text w-24"></div>
-      </td>
-      <td class="col-site-access skeleton-cell">
-        <div class="skeleton-text w-12"></div>
-      </td>
-      <td class="col-site-login skeleton-cell">
-        <div class="skeleton-text w-10"></div>
-      </td>
-      <td class="col-actions skeleton-cell">
-        <div class="skeleton-action-btn"></div>
-        <div class="skeleton-action-btn"></div>
-        <div class="skeleton-action-btn"></div>
-      </td>
+    <td class="col-icon skeleton-cell">
+      <div class="skeleton-icon"></div>
+    </td>
+    <td class="col-name skeleton-cell">
+      <div class="skeleton-text w-32"></div>
+    </td>
+    <td class="col-status skeleton-cell">
+      <div class="skeleton-badge"></div>
+    </td>
+    <td class="col-caps skeleton-cell">
+      <div class="skeleton-tag"></div>
+      <div class="skeleton-tag ml-1"></div>
+    </td>
+    <td class="col-endpoint skeleton-cell">
+      <div class="skeleton-text w-24"></div>
+    </td>
+    <td class="col-site-access skeleton-cell">
+      <div class="skeleton-text w-12"></div>
+    </td>
+    <td class="col-site-login skeleton-cell">
+      <div class="skeleton-text w-10"></div>
+    </td>
+    <td class="col-actions skeleton-cell">
+      <div class="skeleton-action-btn"></div>
+      <div class="skeleton-action-btn"></div>
+      <div class="skeleton-action-btn"></div>
+    </td>
   </tr>
 </template>
 
@@ -50,7 +50,7 @@ const props = defineProps({
   to { opacity: 1; }
 }
 
-.plugin-skeleton-item :deep(td) {
+.plugin-skeleton-item > td {
   vertical-align: middle;
 }
 
