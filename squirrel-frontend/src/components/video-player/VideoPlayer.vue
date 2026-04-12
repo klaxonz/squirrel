@@ -416,7 +416,7 @@ const props = withDefaults(defineProps<Props>(), {
   externalLoading: false,
 })
 
-const emit = defineEmits(['play', 'pause', 'timeupdate', 'error', 'fullscreenChange', 'retry', 'widescreenChange'])
+const emit = defineEmits(['play', 'pause', 'ended', 'timeupdate', 'error', 'fullscreenChange', 'retry', 'widescreenChange'])
 
 const {
   store, videoElement, containerElement, isPlaying, currentTime, duration, volume, isMuted, isFullscreen,
@@ -432,6 +432,7 @@ const {
   },
   onPlay: () => emit('play'),
   onPause: () => emit('pause'),
+  onEnded: () => emit('ended'),
   onError: (e) => emit('error', e),
   onTimeUpdate: (time) => emit('timeupdate', time)
 })
