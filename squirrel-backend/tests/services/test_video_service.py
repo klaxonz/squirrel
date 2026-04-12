@@ -17,6 +17,7 @@ from models.creator import Creator
 from models.links import SubscriptionVideo, UserSubscription
 from models.subscription import Subscription
 from models.video import Video
+from models.video_clip_marker import VideoClipMarker
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
 from models.user_video_feed import UserVideoFeed
@@ -49,6 +50,7 @@ def _setup_test_env(monkeypatch):
             VideoCreator.__table__,
             UserSubscription.__table__,
             VideoHistory.__table__,
+            VideoClipMarker.__table__,
             VideoInteraction.__table__,
             UserVideoFeed.__table__,
         ],
@@ -1140,6 +1142,17 @@ def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale
             ),
             SubscriptionVideo(subscription_id=1, video_id=701),
             SubscriptionVideo(subscription_id=1, video_id=702),
+            VideoClipMarker(
+                id=1,
+                user_id=7,
+                video_id=701,
+                title='Best part',
+                note='Use this in share links',
+                start_time=42,
+                end_time=63,
+                created_at=datetime(2024, 1, 3, 12, 30, 0),
+                updated_at=datetime(2024, 1, 3, 12, 30, 0),
+            ),
         ])
         session.commit()
 
@@ -1148,3 +1161,74 @@ def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale
     assert video is not None
     assert video['subscriptions'][0]['total_extract'] == 2
     assert video['subscriptions'][0]['total_videos'] == 2
+    assert len(video['clip_markers']) == 1
+    assert video['clip_markers'][0]['title'] == 'Best part'
+    assert video['clip_markers'][0]['duration_seconds'] == 21
+
+
+def test_get_video_gracefully_skips_clip_markers_when_table_is_missing(monkeypatch):
+    engine = create_engine('sqlite:///:memory:')
+    Base.metadata.create_all(
+        engine,
+        tables=[
+            Video.__table__,
+            Subscription.__table__,
+            SubscriptionVideo.__table__,
+            Creator.__table__,
+            VideoCreator.__table__,
+            UserSubscription.__table__,
+            VideoHistory.__table__,
+            VideoInteraction.__table__,
+            UserVideoFeed.__table__,
+        ],
+    )
+    monkeypatch.setattr(video_service, 'get_session', lambda: _managed_session(engine))
+    monkeypatch.setattr(
+        video_service.thumbnail_downloader_service,
+        'get_thumbnail_url',
+        lambda video_id, remote_url, video_url=None: remote_url,
+    )
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add_all([
+            Subscription(
+                id=1,
+                name='Fallback Channel',
+                url='https://www.youtube.com/@fallback',
+                type='CHANNEL',
+                avatar='https://img.example.com/channel.jpg',
+                total_videos=1,
+                is_deleted=False,
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            UserSubscription(
+                id=1,
+                user_id=7,
+                subscription_id=1,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            Video(
+                id=901,
+                title='No marker table',
+                url='https://www.youtube.com/watch?v=901',
+                domain='youtube.com',
+                duration=180,
+                thumbnail='https://img.example.com/901.jpg',
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+                is_deleted=False,
+            ),
+            SubscriptionVideo(subscription_id=1, video_id=901),
+        ])
+        session.commit()
+
+    video = video_service.get_video(user_id=7, video_id=901)
+
+    assert video is not None
+    assert video['id'] == 901
+    assert video['clip_markers'] == []

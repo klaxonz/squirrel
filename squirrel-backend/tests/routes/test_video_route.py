@@ -13,7 +13,19 @@ from utils.jwt_helper import get_current_user
 def test_get_videos_defaults_missing_category_to_all(monkeypatch):
     captured = {}
 
-    def fake_list_videos(user_id, query, subscription_id, category, sort_by, nsfw, domains, page, page_size, with_total=False):
+    def fake_list_videos(
+        user_id,
+        query,
+        subscription_id,
+        category,
+        sort_by,
+        nsfw,
+        domains,
+        page,
+        page_size,
+        with_total=False,
+        **_,
+    ):
         captured.update({
             'user_id': user_id,
             'query': query,

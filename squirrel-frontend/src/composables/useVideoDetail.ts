@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { getVideoDetail } from '@/api'
+import type { VideoClipMarker } from '@/types/videoClipMarker'
 
 type VideoId = string | number
 
@@ -18,6 +19,7 @@ type VideoLike = {
   duration?: number
   last_position?: number
   subtitles?: VideoSubtitle[]
+  clip_markers?: VideoClipMarker[]
   [key: string]: unknown
 }
 

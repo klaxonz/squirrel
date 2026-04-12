@@ -40,6 +40,11 @@ def _interactions_join():
     return Video.id == foreign(VideoInteraction.video_id)
 
 
+def _clip_markers_join():
+    from models.video_clip_marker import VideoClipMarker
+    return Video.id == foreign(VideoClipMarker.video_id)
+
+
 class Video(Base, SerializerMixin):
     __tablename__ = "video"
 
@@ -104,5 +109,11 @@ class Video(Base, SerializerMixin):
         "VideoInteraction",
         primaryjoin=_interactions_join,
         back_populates="video",
+        viewonly=True,
+    )
+    clip_markers: Mapped[List["VideoClipMarker"]] = relationship(
+        'VideoClipMarker',
+        primaryjoin=_clip_markers_join,
+        back_populates='video',
         viewonly=True,
     )

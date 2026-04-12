@@ -65,6 +65,19 @@
                  @pointercancel="onProgressPointerUp">
               <div class="sp-progress-rail">
                 <div class="sp-progress-buffered" :style="{ width: `${store.bufferedProgress}%` }"></div>
+                <button
+                  v-for="marker in normalizedClipMarkers"
+                  :key="marker.id"
+                  class="sp-clip-marker"
+                  :class="{ 'is-active': activeClipMarkerId === marker.id }"
+                  :style="{ left: `${marker.startPercent}%`, width: `${marker.widthPercent}%` }"
+                  :title="marker.title || formatTime(marker.startTime)"
+                  @pointerdown.stop
+                  @click.stop="handleClipMarkerSelect(marker)"
+                >
+                  <span class="sp-clip-marker-track"></span>
+                  <span class="sp-clip-marker-dot"></span>
+                </button>
                 <div class="sp-progress-played" :style="{ width: `${progress}%` }">
                   <div class="sp-progress-dot"></div>
                 </div>
@@ -389,6 +402,7 @@ import {
 import type { MediaSource, SubtitleTrack } from './core'
 import type { ThemeName } from './themes'
 import type { IconName } from './core/useIcons'
+import type { VideoClipMarker } from '@/types/videoClipMarker'
 import PlayerIcon from './PlayerIcon.vue'
 
 // 基础变量与主题
@@ -401,6 +415,7 @@ import './themes/scifi.css'
 interface Props {
   source?: MediaSource | null
   subtitles?: SubtitleTrack[]
+  clipMarkers?: VideoClipMarker[]
   poster?: string
   title?: string
   autoplay?: boolean
@@ -413,6 +428,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   source: null,
   subtitles: () => [],
+  clipMarkers: () => [],
   poster: '',
   title: '',
   autoplay: true,
@@ -431,7 +447,8 @@ const emit = defineEmits([
   'retry',
   'widescreenChange',
   'enterpictureinpicture',
-  'leavepictureinpicture'
+  'leavepictureinpicture',
+  'clipmarkerselect',
 ])
 
 const {
@@ -523,6 +540,32 @@ const subtitleStyleLabel = (key: string, value: string, options: any[]) => {
   return opt ? opt.label : value
 }
 const progress = computed(() => duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0)
+const normalizedClipMarkers = computed(() => {
+  if (!duration.value || duration.value <= 0) return []
+
+  return (props.clipMarkers || []).map((marker) => {
+    const startTime = Math.max(Number(marker.start_time) || 0, 0)
+    const rawEndTime = Number(marker.end_time)
+    const endTime = Number.isFinite(rawEndTime) ? Math.max(rawEndTime, startTime) : startTime
+    const startPercent = Math.min((startTime / duration.value) * 100, 100)
+    const widthPercent = Math.max(((endTime - startTime) / duration.value) * 100, 0.35)
+
+    return {
+      id: marker.id,
+      title: marker.title,
+      startTime,
+      endTime,
+      startPercent,
+      widthPercent,
+    }
+  })
+})
+const activeClipMarkerId = computed(() => {
+  const activeMarker = normalizedClipMarkers.value.find((marker) => (
+    currentTime.value >= marker.startTime && currentTime.value <= marker.endTime
+  ))
+  return activeMarker?.id ?? null
+})
 const volumeIconName = computed(() => (isMuted.value || volume.value === 0) ? 'volumeOff' : volume.value < 50 ? 'volumeLow' : 'volumeHigh')
 const visibleCodecFamily = computed(() => (
   selectedCodecFamily.value !== 'auto'
@@ -754,6 +797,10 @@ const toggleControls = (nextVisible = !store.controlsVisible) => {
 const handleVideoClick = () => {
   if (!shouldTogglePlayOnVideoClick(lastPointerType.value)) return
   togglePlay()
+}
+const handleClipMarkerSelect = (marker: { id: number; startTime: number }) => {
+  seek(marker.startTime)
+  emit('clipmarkerselect', marker.startTime)
 }
 
 const onPointerEnter = (event: PointerEvent) => {
@@ -1147,6 +1194,52 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   display: flex;
   align-items: center;
   justify-content: flex-end;
+}
+
+.sp-clip-marker {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 4px;
+  height: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.sp-clip-marker-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: rgba(255, 215, 64, 0.45);
+  box-shadow: 0 0 10px rgba(255, 215, 64, 0.25);
+}
+
+.sp-clip-marker-dot {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  transform: translate(50%, -50%);
+  border-radius: 999px;
+  background: #ffd740;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55);
+}
+
+.sp-clip-marker.is-active .sp-clip-marker-track {
+  background: rgba(118, 245, 160, 0.75);
+  box-shadow: 0 0 12px rgba(118, 245, 160, 0.45);
+}
+
+.sp-clip-marker.is-active .sp-clip-marker-dot {
+  background: #76f5a0;
 }
 
 .sp-progress-dot {

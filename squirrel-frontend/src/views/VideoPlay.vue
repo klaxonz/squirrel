@@ -110,6 +110,16 @@
               </div>
             </div>
           </Transition>
+
+          <ClipMarkersPanel
+            v-if="video"
+            :video-id="video.id"
+            :duration="video.duration || 0"
+            :current-time="currentPlaybackTime"
+            :markers="clipMarkers"
+            @seek="handleClipMarkerSeek"
+            @updated="handleClipMarkersUpdated"
+          />
         </div>
       </div>
 
@@ -210,6 +220,7 @@ import usePlaybackReporting from '../composables/usePlaybackReporting';
 import { useGlobalVideoPlayer } from '@/composables/useGlobalVideoPlayer'
 import { useAppTheme } from '@/composables/useAppTheme'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
+import ClipMarkersPanel from '@/components/video-player/ClipMarkersPanel.vue'
 import RelatedVideoSkeleton from '@/components/video-player/RelatedVideoSkeleton.vue';
 import { LocalStorageAdapter } from '@/components/video-player/core';
 import { Icon } from '@iconify/vue';
@@ -236,6 +247,8 @@ const {
   registerGlobalVideoPlayerTarget,
   unregisterGlobalVideoPlayerTarget,
   focusGlobalVideoPlayer,
+  seekGlobalVideoPlayer,
+  playGlobalVideoPlayer,
   setGlobalVideoPlayerCurrentVideoId,
   globalVideoPlayerSession,
 } = useGlobalVideoPlayer()
@@ -257,6 +270,42 @@ const {
 const { sendReport } = useVideoHistory();
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
+const currentPlaybackTime = ref(0)
+const clipMarkers = computed(() => Array.isArray(video.value?.clip_markers) ? video.value.clip_markers : [])
+
+const parseSharedStartTime = (value) => {
+  if (Array.isArray(value)) {
+    return parseSharedStartTime(value[0])
+  }
+
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed < 0) return null
+  return parsed
+}
+
+const resolvedInitialTime = computed(() => {
+  const sharedStartTime = parseSharedStartTime(route.query.t)
+  return sharedStartTime ?? startTime.value
+})
+
+const handlePlaybackTimeUpdate = (currentTime) => {
+  currentPlaybackTime.value = currentTime
+  onVideoTimeUpdate(currentTime)
+}
+
+const handleClipMarkersUpdated = (markers) => {
+  if (!video.value) return
+  video.value.clip_markers = markers
+}
+
+const handleClipMarkerSeek = async (time) => {
+  currentPlaybackTime.value = Number(time) || 0
+  const seeked = await seekGlobalVideoPlayer(time)
+  if (seeked) {
+    await playGlobalVideoPlayer()
+  }
+  await focusVideoPlayer()
+}
 
 const currentInteractionType = computed(() => video.value?.interaction_type ?? null);
 
@@ -563,7 +612,8 @@ watch(
     subtitleTracks,
     () => video.value?.thumbnail,
     () => video.value?.title,
-    startTime,
+    resolvedInitialTime,
+    clipMarkers,
     hasPrevVideo,
     hasNextVideo,
     externalError,
@@ -580,6 +630,7 @@ watch(
     nextPoster,
     nextTitle,
     nextInitialTime,
+    nextClipMarkers,
     nextHasPrev,
     nextHasNext,
     nextExternalError,
@@ -604,6 +655,7 @@ watch(
       target: videoPlayerHostRef.value,
       source: nextSource,
       subtitles: nextSubtitles || [],
+      clipMarkers: nextClipMarkers || [],
       poster: nextPoster || '',
       title: nextTitle || '',
       initialTime: nextInitialTime,
@@ -623,11 +675,12 @@ watch(
         onPlay: onVideoPlay,
         onPause: onVideoPause,
         onEnded: handleAutoplayNext,
-        onTimeUpdate: onVideoTimeUpdate,
+        onTimeUpdate: handlePlaybackTimeUpdate,
         onPrev: handlePrevVideo,
         onNext: handleNextVideo,
         onRetry: handlePlayerRetry,
         onWidescreenChange: toggleWidescreen,
+        onClipMarkerSelect: handleClipMarkerSeek,
       }
     });
   },
@@ -658,7 +711,7 @@ const goToVideo = async (id, videoData = null) => {
     } : {};
 
     try {
-      await router.replace({ name: 'VideoPlay', params: { videoId: targetId }, state: simpleState });
+      await router.replace({ name: 'VideoPlay', params: { videoId: targetId }, query: {}, state: simpleState });
     } catch (_) {
       await router.replace(`/video/${targetId}`);
     }
@@ -714,10 +767,23 @@ watch(() => route.params.videoId, async (newId, oldId) => {
   }
 });
 
+watch(
+  () => route.query.t,
+  async (nextValue, previousValue) => {
+    if (nextValue === previousValue) return
+
+    const nextTime = parseSharedStartTime(nextValue)
+    if (nextTime === null) return
+
+    await handleClipMarkerSeek(nextTime)
+  }
+)
+
 watch(() => video.value?.id, () => {
   isVideoChannelVisible.value = true
   isChannelUnsubscribing.value = false
   videoChannelError.value = ''
+  currentPlaybackTime.value = resolvedInitialTime.value || 0
 })
 
 watch(

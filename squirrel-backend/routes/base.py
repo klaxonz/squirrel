@@ -26,6 +26,7 @@ from routes.health import router as health_router
 from routes.subscription import router as subscription_router
 from routes.user import router as user_router
 from routes.video import router as video_router
+from routes.video_clip_marker import router as video_clip_marker_router
 from routes.video_history import router as video_history_router
 from routes.video_interaction import router as video_interaction_router
 from routes.system_config import router as system_config_router
@@ -108,6 +109,7 @@ def create_app() -> FastAPI:
     # 注册路由
     app.include_router(health_router)  # 健康检查路由（无需认证）
     app.include_router(video_router)
+    app.include_router(video_clip_marker_router)
     app.include_router(subscription_router)
     app.include_router(user_router)
     app.include_router(video_history_router)
@@ -169,4 +171,3 @@ def _register_spa_route(app: FastAPI) -> None:
             status_code=404,
             content={"code": -1, "msg": "Frontend static files not found"}
         )
-

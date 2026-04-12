@@ -5,6 +5,7 @@ const createDefaultSession = () => ({
   target: null,
   source: null,
   subtitles: [],
+  clipMarkers: [],
   poster: '',
   title: '',
   initialTime: 0,
@@ -30,6 +31,7 @@ const createDefaultSession = () => ({
     onNext: null,
     onRetry: null,
     onWidescreenChange: null,
+    onClipMarkerSelect: null,
   },
 })
 
@@ -62,6 +64,27 @@ const applySessionPayload = (payload = {}) => {
 
 const registerPlayerInstance = (instance) => {
   playerRef.value = instance
+}
+
+const seekPlayer = async (time) => {
+  const nextTime = Number(time)
+  if (!Number.isFinite(nextTime)) return false
+
+  try {
+    playerRef.value?.seek?.(nextTime)
+    return true
+  } catch {
+    return false
+  }
+}
+
+const playPlayer = async () => {
+  try {
+    await playerRef.value?.play?.()
+    return true
+  } catch {
+    return false
+  }
 }
 
 const focusPlayer = async () => {
@@ -122,6 +145,8 @@ export function useGlobalVideoPlayer() {
     unregisterGlobalVideoPlayerTarget,
     registerGlobalVideoPlayerInstance: registerPlayerInstance,
     focusGlobalVideoPlayer: focusPlayer,
+    seekGlobalVideoPlayer: seekPlayer,
+    playGlobalVideoPlayer: playPlayer,
     setGlobalVideoPlayerPictureInPicture,
     setGlobalVideoPlayerCurrentVideoId,
   }

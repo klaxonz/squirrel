@@ -6,6 +6,7 @@ from typing import List, Tuple, Optional, Dict
 from urllib.parse import parse_qs, urlencode, urlparse
 from crawl.runtime_errors import RuntimeErrorCode
 from sqlalchemy import select, func, and_, case, exists, false
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import selectinload, with_loader_criteria
 from core.database import get_session
 from services.video_query import (
@@ -26,6 +27,7 @@ from models.links import SubscriptionVideo, UserSubscription, VideoCreator
 from models.subscription import Subscription
 from models.user_video_feed import UserVideoFeed
 from models.video import Video
+from models.video_clip_marker import VideoClipMarker
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
 from plugins.manager import get_plugin_manager
@@ -980,6 +982,18 @@ def get_video(user_id, video_id):
 
         video_history = max(video.histories, key=_history_sort_key, default=None)
         video_interaction = max(video.interactions, key=_interaction_sort_key, default=None)
+        try:
+            clip_markers = session.scalars(
+                select(VideoClipMarker)
+                .where(
+                    VideoClipMarker.user_id == user_id,
+                    VideoClipMarker.video_id == video_id,
+                )
+                .order_by(VideoClipMarker.start_time.asc(), VideoClipMarker.created_at.asc(), VideoClipMarker.id.asc())
+            ).all()
+        except OperationalError:
+            logger.warning('[video_service] video_clip_marker table is unavailable; falling back to empty clip markers')
+            clip_markers = []
 
         video_data = {
             **video.to_dict(),
@@ -988,7 +1002,14 @@ def get_video(user_id, video_id):
             'last_position': video_history.last_position if video_history else 0,
             'domain': url_helper.extract_top_level_domain(video.url),
             'subscriptions': subscriptions_data,
-            'creators': [creator.to_dict() for creator in video.creators]
+            'creators': [creator.to_dict() for creator in video.creators],
+            'clip_markers': [
+                {
+                    **marker.to_dict(),
+                    'duration_seconds': round(max((marker.end_time or 0) - (marker.start_time or 0), 0), 3),
+                }
+                for marker in clip_markers
+            ],
         }
 
         return video_data
