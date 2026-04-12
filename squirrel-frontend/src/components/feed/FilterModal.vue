@@ -15,7 +15,7 @@
 
           <div class="modal-body">
             <!-- 排序 -->
-            <div class="filter-section">
+            <div v-if="scope === 'video'" class="filter-section">
               <div class="filter-section-title">排序</div>
               <div class="filter-chips">
                 <button
@@ -31,7 +31,7 @@
             </div>
 
             <!-- 上传日期 -->
-            <div class="filter-section">
+            <div v-if="scope === 'video'" class="filter-section">
               <div class="filter-section-title">上传日期</div>
               <div class="filter-chips">
                 <button
@@ -47,7 +47,7 @@
             </div>
 
             <!-- 时长 -->
-            <div class="filter-section">
+            <div v-if="scope === 'video'" class="filter-section">
               <div class="filter-section-title">时长</div>
               <div class="filter-chips">
                 <button
@@ -63,7 +63,7 @@
             </div>
 
             <!-- 类型 -->
-            <div v-if="!subscriptionId" class="filter-section">
+            <div v-if="scope === 'video' && !subscriptionId" class="filter-section">
               <div class="filter-section-title">类型</div>
               <div class="filter-chips">
                 <button
@@ -136,7 +136,7 @@ import { useUserSettings } from '@/composables/useUserSettings'
 import { useSites } from '@/composables/useSites'
 import type { TimeRange, Duration, ContentType } from '@/composables/useFeedFilters'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: boolean
   timeRange: TimeRange
   duration: Duration
@@ -146,7 +146,11 @@ const props = defineProps<{
   subscriptionId?: string | number
   siteLabel?: string
   sortBy: string
-}>()
+  /** 'video' shows all feed filters; 'subscription' shows only nsfw/site */
+  scope?: 'video' | 'subscription'
+}>(), {
+  scope: 'video',
+})
 
 const emit = defineEmits<{
   'update:modelValue': [v: boolean]

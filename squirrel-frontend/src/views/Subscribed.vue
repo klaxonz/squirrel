@@ -10,6 +10,7 @@
           :site="site"
           :sort-by="sortBy"
           :is-refreshing="isRefreshing"
+          :filter-scope="'subscription'"
           @update:nsfw="(value) => { nsfw = value }"
           @update:site="(value) => { site = value }"
           @update:sortBy="(value) => { sortBy = value; handleSortChange(value) }"

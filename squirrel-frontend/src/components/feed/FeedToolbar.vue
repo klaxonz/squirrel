@@ -58,6 +58,7 @@
       :subscription-id="subscriptionId"
       :site-label="siteLabel"
       :sort-by="localSortBy"
+      :scope="props.filterScope"
       @update:time-range="(v) => emit('update:timeRange', v)"
       @update:duration="(v) => emit('update:duration', v)"
       @update:content-type="(v) => emit('update:contentType', v)"
@@ -100,6 +101,8 @@ const props = withDefaults(defineProps<{
   duration?: Duration
   contentType?: ContentType
   siteLabel?: string
+  /** Controls which filter sections FilterModal shows: 'video' (full) or 'subscription' (minimal) */
+  filterScope?: 'video' | 'subscription'
 }>(), {
   activeTab: 'all',
   nsfw: 'all',
@@ -113,6 +116,7 @@ const props = withDefaults(defineProps<{
   timeRange: 'all',
   duration: 'all',
   contentType: 'all',
+  filterScope: 'video',
 })
 
 const emit = defineEmits([
