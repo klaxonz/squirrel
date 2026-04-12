@@ -327,6 +327,14 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     store.setFullscreen(isFs)
   })
 
+  engine.on('enterpictureinpicture', () => {
+    store.setPictureInPicture(true)
+  })
+
+  engine.on('leavepictureinpicture', () => {
+    store.setPictureInPicture(false)
+  })
+
   engine.on('sourcetypechange', (type) => {
     sourceType.value = type
     if (type !== 'dash') {

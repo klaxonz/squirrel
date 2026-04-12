@@ -121,6 +121,9 @@
               <button class="sp-icon-btn" @click="toggleWidescreen" :title="props.widescreen ? t('exitWidescreen') : t('widescreen')">
                 <PlayerIcon :name="props.widescreen ? 'widescreenExit' : 'widescreen'" />
               </button>
+              <button class="sp-icon-btn" @click="togglePictureInPicture" :title="store.pictureInPicture ? t('exitPictureInPicture') : t('pictureInPicture')">
+                <PlayerIcon :name="store.pictureInPicture ? 'pipExit' : 'pip'" />
+              </button>
               <button class="sp-icon-btn" @click="toggleFullscreen" :title="isFullscreen ? t('exitFullscreen') : t('fullscreen')">
                 <PlayerIcon :name="isFullscreen ? 'fullscreenExit' : 'fullscreen'" />
               </button>
@@ -423,6 +426,7 @@ const emit = defineEmits(['play', 'pause', 'ended', 'timeupdate', 'error', 'full
 const {
   store, videoElement, containerElement, isPlaying, currentTime, duration, volume, isMuted, isFullscreen,
   play, pause, seek, setVolume, toggleMute, setPlaybackRate, toggleFullscreen,
+  togglePictureInPicture,
   subtitleTracks, currentSubtitle, subtitleStyle, subtitlePresets, setSubtitle, setSubtitleTracks, setSubtitleStyle, applySubtitlePreset, loadSource, theme, t,
   qualities, codecFamilies, selectedCodecFamily, currentCodecFamily,
   currentQualityLabel, currentQualityId, setQuality, setCodecFamily
@@ -453,6 +457,7 @@ const previewPercent = ref(0)
 const isScrubbing = ref(false)
 const isVolumeScrubbing = ref(false)
 const lastPointerType = ref('mouse')
+const pendingWidescreenValue = ref<boolean | null>(null)
 const shouldResumeAfterSourceSwap = ref(false)
 const hidePosterForCurrentSource = ref(false)
 const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
@@ -672,7 +677,24 @@ const currentPresetLabel = computed(() => {
   const active = subtitlePresets.find(p => isPresetActive(p))
   return active ? active.label : t('custom')
 })
-const toggleWidescreen = () => emit('widescreenChange', !props.widescreen)
+const toggleWidescreen = async () => {
+  const nextWidescreen = !props.widescreen
+
+  if (isFullscreen.value) {
+    pendingWidescreenValue.value = nextWidescreen
+    await toggleFullscreen()
+
+    if (pendingWidescreenValue.value !== null && typeof document !== 'undefined' && !document.fullscreenElement) {
+      const resolvedWidescreen = pendingWidescreenValue.value
+      pendingWidescreenValue.value = null
+      emit('widescreenChange', resolvedWidescreen)
+    }
+
+    return
+  }
+
+  emit('widescreenChange', nextWidescreen)
+}
 const toggleAutoplayNext = () => store.setAutoplayNext(!store.autoplayNext)
 const toggleLoop = () => store.setLoop(!store.loop)
 const toggleSubtitlesQuick = () => {
@@ -864,6 +886,16 @@ watch(isPlaying, (playing) => {
   syncHideTimer()
 })
 
+watch(isFullscreen, (fullscreen) => {
+  emit('fullscreenChange', fullscreen)
+
+  if (fullscreen || pendingWidescreenValue.value === null) return
+
+  const nextWidescreen = pendingWidescreenValue.value
+  pendingWidescreenValue.value = null
+  emit('widescreenChange', nextWidescreen)
+})
+
 watch(isScrubbing, (scrubbing) => {
   if (scrubbing) {
     clearHideTimer()
@@ -889,7 +921,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
 })
 
-defineExpose({ play, pause, seek, toggleFullscreen })
+defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 </script>
 
 <style scoped>
