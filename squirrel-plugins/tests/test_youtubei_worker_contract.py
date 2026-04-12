@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import sys
 import threading
@@ -11,10 +12,24 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / 'squirrel-plugins' / 'youtube' / 'src'))
+YOUTUBE_RESOLVER_PATH = ROOT / 'squirrel-plugins' / 'youtube' / 'src' / 'squirrel_youtube' / 'youtubei_resolver.py'
 
-import squirrel_youtube.youtubei_resolver as resolver_module
-from squirrel_youtube.youtubei_resolver import parse_worker_payload, resolve_with_youtubei
+
+def _load_resolver_module():
+    module_name = '_test_squirrel_youtube_youtubei_resolver'
+    sys.modules.pop(module_name, None)
+    module_spec = importlib.util.spec_from_file_location(module_name, YOUTUBE_RESOLVER_PATH)
+    module = importlib.util.module_from_spec(module_spec)
+    assert module_spec is not None and module_spec.loader is not None
+    sys.modules[module_name] = module
+    module_spec.loader.exec_module(module)
+    return module
+
+
+resolver_module = _load_resolver_module()
+parse_worker_payload = resolver_module.parse_worker_payload
+resolve_with_youtubei = resolver_module.resolve_with_youtubei
+resolve_captions_with_youtubei = resolver_module.resolve_captions_with_youtubei
 
 
 def _reset_worker_state() -> None:
@@ -144,6 +159,36 @@ def test_resolve_with_youtubei_returns_worker_result_without_media_probe(monkeyp
 
     assert result.client == 'MWEB'
     assert result.formats[0].url == 'https://example.test/itag/18'
+
+
+def test_resolve_captions_with_youtubei_passes_lang_and_cookie_to_worker(monkeypatch):
+    _reset_worker_state()
+    captured = {}
+
+    crawl_module = types.ModuleType('crawl')
+    crawl_module.filter_cookies_to_query_string = lambda _url: 'SAPISID=abc; SID=def'
+    monkeypatch.setitem(sys.modules, 'crawl', crawl_module)
+
+    class FakeWorkerClient:
+        def request(self, payload, timeout_seconds):
+            captured['input'] = payload
+            captured['timeout_seconds'] = timeout_seconds
+            return json.dumps({
+                'status': 'ok',
+                'language_code': 'en',
+                'content': '<?xml version="1.0"?><timedtext format="3"><body /></timedtext>',
+            })
+
+    monkeypatch.setattr(resolver_module, '_get_worker_client', lambda: FakeWorkerClient())
+
+    result = resolve_captions_with_youtubei('demo-video', 'en-US', timeout_seconds=1)
+
+    assert result['language_code'] == 'en'
+    assert captured['input']['action'] == 'captions'
+    assert captured['input']['video_id'] == 'demo-video'
+    assert captured['input']['lang'] == 'en-US'
+    assert captured['input']['cookie'] == 'SAPISID=abc; SID=def'
+    assert captured['timeout_seconds'] == 1
 
 
 def test_get_worker_client_reuses_singleton(monkeypatch):

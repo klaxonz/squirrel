@@ -284,6 +284,9 @@ export class SubtitlesPlugin implements PlayerPlugin {
       try {
         const response = await fetch(track.url)
         content = await response.text()
+        if (content) {
+          track.content = content
+        }
       } catch (e) {
         this.context?.logger.error('[SubtitlesPlugin] Failed to load subtitle', e)
         return

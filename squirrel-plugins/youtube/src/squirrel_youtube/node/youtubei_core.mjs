@@ -7,6 +7,8 @@ import { SessionManager } from './build/session_manager.js';
 const AUTHENTICATED_PLAYBACK_CLIENTS = ['TV', 'MWEB', 'WEB'];
 const AUTHENTICATED_FULL_CLIENTS = ['TV', 'MWEB', 'WEB'];
 const ANONYMOUS_CLIENTS = ['ANDROID'];
+const CAPTIONS_ANONYMOUS_CLIENTS = ['ANDROID'];
+const CAPTIONS_AUTHENTICATED_CLIENTS = ['WEB', 'TV', 'MWEB'];
 const YOUTUBE_WEB_ORIGIN = 'https://www.youtube.com';
 const SESSION_CACHE = new Map();
 
@@ -138,6 +140,213 @@ function isPlayableFormatSet(formats) {
   return playable.length > 0 && (hasMuxed || (hasVideoOnly && hasAudioOnly));
 }
 
+function normalizeLanguageCode(value) {
+  return String(value || '').trim();
+}
+
+function normalizeLanguageKey(value) {
+  return normalizeLanguageCode(value).toLowerCase();
+}
+
+function languageCodesMatch(candidate, requested) {
+  const candidateKey = normalizeLanguageKey(candidate);
+  const requestedKey = normalizeLanguageKey(requested);
+  if (!candidateKey || !requestedKey) {
+    return false;
+  }
+  return candidateKey === requestedKey ||
+    candidateKey.startsWith(`${requestedKey}-`) ||
+    requestedKey.startsWith(`${candidateKey}-`);
+}
+
+function normalizeCaptionTrack(track) {
+  return {
+    language_code: normalizeLanguageCode(track?.language_code),
+    language_name: track?.name?.toString?.() || '',
+    kind: track?.kind || null,
+    base_url: track?.base_url || null,
+    is_generated: track?.kind === 'asr',
+  };
+}
+
+function normalizeTranslationLanguage(language) {
+  return {
+    language_code: normalizeLanguageCode(language?.language_code),
+    language_name: language?.language_name?.toString?.() || '',
+  };
+}
+
+function trackPreferenceScore(track) {
+  return track?.kind === 'asr' ? 0 : 1;
+}
+
+function pickDefaultCaptionTrack(captions) {
+  const tracks = Array.isArray(captions?.caption_tracks) ? captions.caption_tracks : [];
+  if (!tracks.length) {
+    return null;
+  }
+
+  const audioTracks = Array.isArray(captions?.audio_tracks) ? captions.audio_tracks : [];
+  const defaultAudioTrack = audioTracks[captions?.default_audio_track_index ?? 0];
+  const preferredIndexes = Array.isArray(defaultAudioTrack?.caption_track_indices)
+    ? defaultAudioTrack.caption_track_indices
+    : [];
+  const preferredTracks = preferredIndexes
+    .map((index) => tracks[index])
+    .filter(Boolean)
+    .sort((left, right) => trackPreferenceScore(right) - trackPreferenceScore(left));
+
+  if (preferredTracks.length) {
+    return preferredTracks[0];
+  }
+
+  const manualTrack = tracks.find((track) => track?.kind !== 'asr');
+  return manualTrack || tracks[0];
+}
+
+function pickCaptionTrack(captions, requestedLanguage) {
+  const tracks = Array.isArray(captions?.caption_tracks) ? captions.caption_tracks : [];
+  if (!tracks.length) {
+    throw new Error('No subtitles available');
+  }
+
+  const preferredDefaultTrack = pickDefaultCaptionTrack(captions);
+  const normalizedRequested = normalizeLanguageCode(requestedLanguage);
+  if (!normalizedRequested) {
+    return {
+      track: preferredDefaultTrack,
+      translated: false,
+      requested_language_code: '',
+      resolved_language_code: normalizeLanguageCode(preferredDefaultTrack?.language_code),
+      resolved_language_name: preferredDefaultTrack?.name?.toString?.() || '',
+    };
+  }
+
+  const matchingTracks = tracks
+    .filter((track) => languageCodesMatch(track?.language_code, normalizedRequested))
+    .sort((left, right) => trackPreferenceScore(right) - trackPreferenceScore(left));
+  if (matchingTracks.length) {
+    const selectedTrack = matchingTracks[0];
+    return {
+      track: selectedTrack,
+      translated: false,
+      requested_language_code: normalizedRequested,
+      resolved_language_code: normalizeLanguageCode(selectedTrack?.language_code),
+      resolved_language_name: selectedTrack?.name?.toString?.() || '',
+    };
+  }
+
+  const translationLanguages = (captions?.translation_languages || [])
+    .map(normalizeTranslationLanguage)
+    .filter((language) => language.language_code);
+  const translatedLanguage = translationLanguages.find((language) =>
+    languageCodesMatch(language.language_code, normalizedRequested)
+  );
+  if (!translatedLanguage) {
+    throw new Error(`No subtitles available for language: ${normalizedRequested}`);
+  }
+
+  return {
+    track: preferredDefaultTrack,
+    translated: true,
+    requested_language_code: normalizedRequested,
+    resolved_language_code: translatedLanguage.language_code,
+    resolved_language_name: translatedLanguage.language_name,
+  };
+}
+
+function buildCaptionUrl(track, requestedLanguage, translated) {
+  const baseUrl = track?.base_url;
+  if (!baseUrl) {
+    throw new Error('Subtitle track URL is missing');
+  }
+
+  const url = new URL(baseUrl);
+  url.searchParams.set('fmt', 'srv3');
+  if (translated && requestedLanguage) {
+    url.searchParams.set('tlang', requestedLanguage);
+  }
+  return url;
+}
+
+async function fetchCaptionXml(runtime, captionUrl) {
+  const headers = {
+    'User-Agent': runtime.yt.session.user_agent || 'Mozilla/5.0',
+  };
+  if (runtime.yt.session.cookie) {
+    headers.Cookie = runtime.yt.session.cookie;
+  }
+
+  const response = await runtime.yt.session.http.fetch_function(captionUrl, {
+    method: 'GET',
+    headers,
+  });
+  const content = await response.text();
+  if (!response.ok) {
+    throw new Error(`Caption fetch failed with status ${response.status}`);
+  }
+  return content;
+}
+
+async function resolveCaptionPayload(payload) {
+  const videoId = String(payload?.video_id || '');
+  if (!videoId) {
+    throw new Error('video_id is required');
+  }
+
+  const cookie = typeof payload?.cookie === 'string' ? payload.cookie.trim() : '';
+  const requestedLanguage = normalizeLanguageCode(payload?.lang);
+  const runtime = await getRuntime(cookie);
+  const clients = cookie ? CAPTIONS_AUTHENTICATED_CLIENTS : CAPTIONS_ANONYMOUS_CLIENTS;
+  const attempts = [];
+
+  for (const client of clients) {
+    try {
+      const info = await runtime.yt.getBasicInfo(videoId, { client });
+      const captions = info.captions;
+      if (!captions?.caption_tracks?.length) {
+        attempts.push({
+          client,
+          error: 'No subtitles available',
+        });
+        continue;
+      }
+
+      const selection = pickCaptionTrack(captions, requestedLanguage);
+      const captionUrl = buildCaptionUrl(
+        selection.track,
+        selection.resolved_language_code,
+        selection.translated,
+      );
+      const content = await fetchCaptionXml(runtime, captionUrl);
+
+      return {
+        status: 'ok',
+        client,
+        video_id: videoId,
+        requested_language_code: selection.requested_language_code || null,
+        language_code: selection.resolved_language_code || null,
+        language_name: selection.resolved_language_name || null,
+        translated: selection.translated,
+        kind: selection.track?.kind || null,
+        content,
+        tracks: (captions.caption_tracks || []).map(normalizeCaptionTrack),
+        translation_languages: (captions.translation_languages || []).map(normalizeTranslationLanguage),
+      };
+    } catch (error) {
+      attempts.push({
+        client,
+        error: error?.message || String(error),
+      });
+    }
+  }
+
+  throw new Error(JSON.stringify({
+    message: 'No subtitles available',
+    attempts,
+  }));
+}
+
 function buildYoutubeFetch() {
   return async (input, init = {}) => {
     const url = typeof input === 'string' ? input : input?.url || String(input);
@@ -234,6 +443,9 @@ export async function resolveYoutubeiPayload(payload) {
 
   if (action === 'prewarm') {
     return prewarmYoutubeiRuntime(cookie);
+  }
+  if (action === 'captions') {
+    return resolveCaptionPayload(payload);
   }
 
   const videoId = String(payload?.video_id || '');

@@ -119,6 +119,17 @@ def parse_worker_payload(stdout: str) -> YoutubeiResult:
     )
 
 
+def _parse_worker_json(stdout: str) -> dict[str, Any]:
+    payload = json.loads(stdout)
+    if not isinstance(payload, dict):
+        raise ValueError('youtubei worker returned an invalid payload')
+    if payload.get('status') != 'ok':
+        error = payload.get('error') if isinstance(payload, dict) else None
+        message = error.get('message') if isinstance(error, dict) else 'youtubei worker did not return success'
+        raise ValueError(str(message))
+    return payload
+
+
 def _get_cached_result(cache_key: str) -> YoutubeiResult | None:
     now = time.monotonic()
     with _RESULT_CACHE_LOCK:
@@ -336,3 +347,23 @@ def resolve_with_youtubei(
     result = parse_worker_payload(response_text)
     _set_cached_result(cache_key, result)
     return result
+
+
+def resolve_captions_with_youtubei(
+    video_id: str,
+    lang: str | None = None,
+    timeout_seconds: float = WORKER_TIMEOUT_SECONDS,
+) -> dict[str, Any]:
+    cookie_header = _load_youtube_cookie_header(video_id)
+    worker_payload: dict[str, Any] = {
+        'action': 'captions',
+        'video_id': video_id,
+    }
+    normalized_lang = str(lang or '').strip()
+    if normalized_lang:
+        worker_payload['lang'] = normalized_lang
+    if cookie_header:
+        worker_payload['cookie'] = cookie_header
+
+    response_text = _get_worker_client().request(worker_payload, timeout_seconds)
+    return _parse_worker_json(response_text)

@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import importlib.util
 import sys
-import tempfile
 import types
 from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -20,7 +21,6 @@ def _stub_crawl_module():
     original = sys.modules.get('crawl')
     crawl_module = types.ModuleType('crawl')
     crawl_module.SubtitlesProvider = object
-    crawl_module.resolve_cookie_file_path = lambda _url: None
     try:
         sys.modules['crawl'] = crawl_module
         yield crawl_module
@@ -32,50 +32,39 @@ def _stub_crawl_module():
 
 
 @contextmanager
-def _stub_yt_dlp_module(youtube_dl_cls):
-    original = sys.modules.get('yt_dlp')
-    yt_dlp_module = types.ModuleType('yt_dlp')
-    yt_dlp_module.YoutubeDL = youtube_dl_cls
-    try:
-        sys.modules['yt_dlp'] = yt_dlp_module
-        yield yt_dlp_module
-    finally:
-        if original is None:
-            sys.modules.pop('yt_dlp', None)
-        else:
-            sys.modules['yt_dlp'] = original
-
-
-@contextmanager
-def _stub_youtube_support_module():
-    package_original = sys.modules.get('squirrel_youtube')
-    support_original = sys.modules.get('squirrel_youtube.ytdlp_support')
+def _stub_youtube_modules():
+    originals = {
+        name: sys.modules.get(name)
+        for name in (
+            'squirrel_youtube',
+            'squirrel_youtube.video_id',
+            'squirrel_youtube.youtubei_resolver',
+        )
+    }
 
     package_module = types.ModuleType('squirrel_youtube')
     package_module.__path__ = [str(YOUTUBE_PACKAGE)]
-    support_module = types.ModuleType('squirrel_youtube.ytdlp_support')
-    support_module.YOUTUBE_PLAYER_CLIENT = 'android'
-    support_module.apply_youtube_player_strategy = lambda _url, _opts: None
 
-    @contextmanager
-    def _prepared_ytdlp_opts(opts):
-        yield opts
+    video_id_module = types.ModuleType('squirrel_youtube.video_id')
+    video_id_module.extract_youtube_video_id = lambda _url: 'demo-video'
 
-    support_module.prepared_ytdlp_opts = _prepared_ytdlp_opts
+    resolver_module = types.ModuleType('squirrel_youtube.youtubei_resolver')
+    resolver_module.resolve_captions_with_youtubei = lambda _video_id, _lang: {
+        'content': '',
+        'language_code': 'en',
+    }
 
     try:
         sys.modules['squirrel_youtube'] = package_module
-        sys.modules['squirrel_youtube.ytdlp_support'] = support_module
-        yield support_module
+        sys.modules['squirrel_youtube.video_id'] = video_id_module
+        sys.modules['squirrel_youtube.youtubei_resolver'] = resolver_module
+        yield video_id_module, resolver_module
     finally:
-        if package_original is None:
-            sys.modules.pop('squirrel_youtube', None)
-        else:
-            sys.modules['squirrel_youtube'] = package_original
-        if support_original is None:
-            sys.modules.pop('squirrel_youtube.ytdlp_support', None)
-        else:
-            sys.modules['squirrel_youtube.ytdlp_support'] = support_original
+        for name, original in originals.items():
+            if original is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = original
 
 
 def _load_subtitles_module():
@@ -89,170 +78,90 @@ def _load_subtitles_module():
     return module
 
 
-def test_youtube_subtitles_retry_without_cookie_strategy(monkeypatch):
-    calls = []
+def test_youtube_subtitles_provider_converts_srv3_xml_to_srt():
+    srv3_xml = (
+        '<?xml version="1.0" encoding="utf-8" ?>'
+        '<timedtext format="3"><body>'
+        '<p t="1000" d="1500">Hello</p>'
+        '<p t="3000"><s>World</s><s>!</s></p>'
+        '</body></timedtext>'
+    )
 
-    class _FakeYoutubeDL:
-        def __init__(self, opts):
-            self.opts = dict(opts)
-
-        def __enter__(self):
-            calls.append(self.opts)
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-        def download(self, _urls):
-            if self.opts.get('cookiefile'):
-                raise Exception('ERROR: [youtube] demo: Requested format is not available.')
-            outdir = Path(self.opts['outtmpl']).parent
-            (outdir / 'demo.en.srt').write_text('1\n00:00:00,000 --> 00:00:01,000\nhello\n', encoding='utf-8')
-
-    with _stub_crawl_module() as crawl_module, _stub_yt_dlp_module(_FakeYoutubeDL), _stub_youtube_support_module() as support_module:
-        crawl_module.resolve_cookie_file_path = lambda _url: 'D:/Code/init/squirrel/config/site_cookies/youtube.txt'
-
-        def _apply_youtube_player_strategy(_url, opts):
-            opts['cookiefile'] = 'D:/Code/init/squirrel/config/site_cookies/youtube.txt'
-            opts['extractor_args']['youtube']['player_client'] = ['tv']
-
-        support_module.apply_youtube_player_strategy = _apply_youtube_player_strategy
+    with _stub_crawl_module(), _stub_youtube_modules() as (_video_id_module, resolver_module):
+        resolver_module.resolve_captions_with_youtubei = lambda _video_id, _lang: {
+            'content': srv3_xml,
+            'language_code': 'en',
+        }
         module = _load_subtitles_module()
         provider = module.YoutubeSubtitlesProvider()
 
         content, filename = provider.get_subtitles(
-            SimpleNamespace(id='demo', url='https://www.youtube.com/watch?v=demo'),
+            SimpleNamespace(id='db-id', url='https://www.youtube.com/watch?v=demo-video'),
             'en',
             'srt',
         )
 
-    assert content == '1\n00:00:00,000 --> 00:00:01,000\nhello\n'
-    assert filename == 'demo.en.srt'
-    assert len(calls) == 2
-    assert calls[0]['cookiefile'] == 'D:/Code/init/squirrel/config/site_cookies/youtube.txt'
-    assert calls[0]['extractor_args']['youtube']['player_client'] == ['tv']
-    assert 'cookiefile' not in calls[1]
-    assert calls[1]['extractor_args']['youtube']['player_client'] == ['android']
+    assert content == (
+        '1\n'
+        '00:00:01,000 --> 00:00:02,500\n'
+        'Hello\n'
+        '\n'
+        '2\n'
+        '00:00:03,000 --> 00:00:05,000\n'
+        'World!\n'
+    )
+    assert filename == 'demo-video.en.srt'
 
 
-def test_youtube_subtitles_retry_after_bot_challenge(monkeypatch):
-    calls = []
+def test_youtube_subtitles_provider_uses_resolved_language_code_in_filename():
+    srv3_xml = (
+        '<?xml version="1.0" encoding="utf-8" ?>'
+        '<timedtext format="3"><body>'
+        '<p t="0" d="1000">Hello</p>'
+        '</body></timedtext>'
+    )
 
-    class _FakeYoutubeDL:
-        def __init__(self, opts):
-            self.opts = dict(opts)
-
-        def __enter__(self):
-            calls.append(self.opts)
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-        def download(self, _urls):
-            if len(calls) < 3:
-                raise Exception("ERROR: [youtube] demo: Sign in to confirm you're not a bot")
-            outdir = Path(self.opts['outtmpl']).parent
-            (outdir / 'demo.en.srt').write_text('1\n00:00:00,000 --> 00:00:01,000\nhello\n', encoding='utf-8')
-
-    with _stub_crawl_module(), _stub_yt_dlp_module(_FakeYoutubeDL), _stub_youtube_support_module():
+    with _stub_crawl_module(), _stub_youtube_modules() as (_video_id_module, resolver_module):
+        resolver_module.resolve_captions_with_youtubei = lambda _video_id, _lang: {
+            'content': srv3_xml,
+            'language_code': 'en',
+        }
         module = _load_subtitles_module()
         provider = module.YoutubeSubtitlesProvider()
 
-        content, filename = provider.get_subtitles(
-            SimpleNamespace(id='demo', url='https://www.youtube.com/watch?v=demo'),
-            'en',
+        _content, filename = provider.get_subtitles(
+            SimpleNamespace(id='db-id', url='https://www.youtube.com/watch?v=demo-video'),
+            'en-US',
             'srt',
         )
 
-    assert content == '1\n00:00:00,000 --> 00:00:01,000\nhello\n'
-    assert filename == 'demo.en.srt'
-    assert len(calls) == 3
-    assert calls[0]['extractor_args']['youtube']['player_client'] == ['android']
-    assert calls[1]['extractor_args']['youtube']['player_client'] == ['android']
-    assert calls[2]['extractor_args']['youtube']['player_client'] == ['android']
+    assert filename == 'demo-video.en.srt'
 
 
-def test_youtube_subtitles_does_not_restore_cookie_file_contents():
-    with tempfile.TemporaryDirectory() as temp_dir:
-        cookie_path = Path(temp_dir) / 'youtube.txt'
-        cookie_path.write_text('original-cookie', encoding='utf-8')
+def test_youtube_subtitles_provider_surfaces_worker_errors():
+    with _stub_crawl_module(), _stub_youtube_modules() as (_video_id_module, resolver_module):
+        resolver_module.resolve_captions_with_youtubei = lambda _video_id, _lang: (_ for _ in ()).throw(
+            ValueError('No subtitles available: worker failed')
+        )
+        module = _load_subtitles_module()
+        provider = module.YoutubeSubtitlesProvider()
 
-        with _stub_crawl_module() as crawl_module, _stub_yt_dlp_module(object), _stub_youtube_support_module():
-            crawl_module.resolve_cookie_file_path = lambda _url: str(cookie_path)
-            module = _load_subtitles_module()
-            provider = module.YoutubeSubtitlesProvider()
-
-            def _mutate_cookie_file(video, lang):
-                cookie_path.write_text('updated-cookie', encoding='utf-8')
-                return 'subtitle body', f'{video.id}.{lang}.srt'
-
-            provider._do_get_subtitles = _mutate_cookie_file
-
-            content, filename = provider.get_subtitles(
-                SimpleNamespace(id='demo', url='https://www.youtube.com/watch?v=demo'),
+        with pytest.raises(ValueError, match='No subtitles available'):
+            provider.get_subtitles(
+                SimpleNamespace(id='db-id', url='https://www.youtube.com/watch?v=demo-video'),
                 'en',
                 'srt',
             )
-            final_cookie_content = cookie_path.read_text(encoding='utf-8')
-
-    assert content == 'subtitle body'
-    assert filename == 'demo.en.srt'
-    assert final_cookie_content == 'updated-cookie'
 
 
-def test_youtube_subtitles_uses_temporary_cookiefile_copy():
-    calls = []
+def test_youtube_subtitles_provider_rejects_non_srt_formats():
+    with _stub_crawl_module(), _stub_youtube_modules():
+        module = _load_subtitles_module()
+        provider = module.YoutubeSubtitlesProvider()
 
-    class _FakeYoutubeDL:
-        def __init__(self, opts):
-            self.opts = dict(opts)
-
-        def __enter__(self):
-            calls.append(self.opts)
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-        def download(self, _urls):
-            Path(self.opts['cookiefile']).write_text('mutated-by-ytdlp', encoding='utf-8')
-            outdir = Path(self.opts['outtmpl']).parent
-            (outdir / 'demo.en.srt').write_text('1\n00:00:00,000 --> 00:00:01,000\nhello\n', encoding='utf-8')
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        original_cookie_path = Path(temp_dir) / 'youtube.txt'
-        original_cookie_path.write_text('original-cookie', encoding='utf-8')
-
-        with _stub_crawl_module() as crawl_module, _stub_yt_dlp_module(_FakeYoutubeDL), _stub_youtube_support_module() as support_module:
-            crawl_module.resolve_cookie_file_path = lambda _url: str(original_cookie_path)
-
-            def _apply_youtube_player_strategy(_url, opts):
-                opts['cookiefile'] = str(original_cookie_path)
-                opts['extractor_args']['youtube']['player_client'] = ['tv']
-
-            @contextmanager
-            def _prepared_ytdlp_opts(opts):
-                temp_cookie_path = Path(temp_dir) / 'youtube-copy.txt'
-                temp_cookie_path.write_text(Path(opts['cookiefile']).read_text(encoding='utf-8'), encoding='utf-8')
-                prepared_opts = dict(opts)
-                prepared_opts['cookiefile'] = str(temp_cookie_path)
-                yield prepared_opts
-
-            module = _load_subtitles_module()
-            support_module.apply_youtube_player_strategy = _apply_youtube_player_strategy
-            support_module.prepared_ytdlp_opts = _prepared_ytdlp_opts
-            provider = module.YoutubeSubtitlesProvider()
-
-            content, filename = provider.get_subtitles(
-                SimpleNamespace(id='demo', url='https://www.youtube.com/watch?v=demo'),
+        with pytest.raises(ValueError, match='Only srt format is supported'):
+            provider.get_subtitles(
+                SimpleNamespace(id='db-id', url='https://www.youtube.com/watch?v=demo-video'),
                 'en',
-                'srt',
+                'vtt',
             )
-            final_cookie_content = original_cookie_path.read_text(encoding='utf-8')
-
-    assert content == '1\n00:00:00,000 --> 00:00:01,000\nhello\n'
-    assert filename == 'demo.en.srt'
-    assert len(calls) == 1
-    assert calls[0]['cookiefile'] != str(original_cookie_path)
-    assert final_cookie_content == 'original-cookie'

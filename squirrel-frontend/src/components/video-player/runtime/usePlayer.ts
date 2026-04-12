@@ -449,15 +449,17 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     subtitleTracks.value = tracks
     await engine.setSubtitleTracks(tracks)
 
-    const nextTrack = tracks.find((track) => track.id === currentSubtitle.value?.id)
-      || tracks.find((track) => track.default)
-      || tracks[0]
-      || null
+    const nextTrack = tracks.find((track) => track.id === currentSubtitle.value?.id) || null
 
     currentSubtitle.value = nextTrack
     store.setCurrentSubtitle(nextTrack)
-    store.setSubtitlesEnabled(!!nextTrack)
-    engine.setSubtitle(nextTrack)
+    if (nextTrack && store.subtitlesEnabled) {
+      engine.setSubtitle(nextTrack)
+      return
+    }
+
+    store.setSubtitlesEnabled(false)
+    engine.setSubtitle(null)
   }
 
   const toggleSubtitles = (): void => {

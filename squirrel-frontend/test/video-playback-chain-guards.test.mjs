@@ -35,23 +35,25 @@ test('video detail ignores stale detail responses after a newer request or snaps
 test('video detail revokes generated subtitle object urls when replacing the active video or disposing the composable', async () => {
   const source = await readFile(useVideoDetailPath, 'utf8')
 
-  assert.match(source, /const managedSubtitleObjectUrls = new Set<string>\(\)/)
-  assert.match(source, /URL\.revokeObjectURL\(url\)/)
-  assert.match(source, /onScopeDispose\(\(\) => \{\s*revokeManagedSubtitleObjectUrls\(\)\s*\}\)/)
-  assert.match(source, /managedSubtitleObjectUrls\.add\(objectUrl\)/)
-  assert.match(source, /content: data/)
+  assert.doesNotMatch(source, /const managedSubtitleObjectUrls = new Set<string>\(\)/)
+  assert.doesNotMatch(source, /URL\.revokeObjectURL\(url\)/)
+  assert.doesNotMatch(source, /Blob\(\[data\]/)
+  assert.match(source, /const subtitlePlaceholders = candidates/)
+  assert.match(source, /url: `\/api\/video\/subtitles\?\$\{params\.toString\(\)\}`/)
 })
 
-test('video detail requests subtitles through per-site candidate lists instead of a bilibili-only hardcode', async () => {
+test('video detail builds lazy subtitle endpoints through per-site candidate lists instead of prefetching subtitle bodies', async () => {
   const source = await readFile(useVideoDetailPath, 'utf8')
 
   assert.match(source, /pattern: \/bilibili\\\.com\/i/)
   assert.match(source, /pattern: \/\(\?:youtube\\\.com\|youtu\\\.be\)\/i/)
   assert.match(source, /\{ id: 'yt-en', language: 'English', lang: 'en' \}/)
   assert.match(source, /\{ id: 'yt-en-US', language: 'English \(US\)', lang: 'en-US' \}/)
-  assert.doesNotMatch(source, /\{ id: 'yt-default', language: 'Default' \}/)
+  assert.match(source, /\{ id: 'yt-default', language: 'Default' \}/)
   assert.match(source, /const candidates = getSubtitleCandidates\(snapshot\.url\)/)
-  assert.match(source, /getVideoSubtitles\(videoId, \{ lang: candidate\.lang, fmt: 'srt' \}\)/)
+  assert.match(source, /const params = new URLSearchParams\(\{\s*video_id: String\(videoId\),\s*fmt: 'srt',\s*\}\)/)
+  assert.match(source, /if \(candidate\.lang\) \{\s*params\.set\('lang', candidate\.lang\)\s*\}/)
+  assert.doesNotMatch(source, /getVideoSubtitles\(videoId, \{ lang: candidate\.lang, fmt: 'srt' \}\)/)
   assert.doesNotMatch(source, /if \(!url \|\| !\/bilibili\\\.com\/\.test\(url\)\) return/)
 })
 
@@ -94,14 +96,23 @@ test('subtitle plugin refreshes the current cue as soon as a track finishes load
   assert.match(source, /enable\(\): void \{[\s\S]*this\.refreshCurrentCue\(\)/)
 })
 
-test('player runtime keeps subtitle selection state aligned with incoming tracks', async () => {
+test('player runtime keeps subtitle selection state aligned with incoming tracks without auto-enabling fresh subtitle lists', async () => {
   const source = await readFile(usePlayerPath, 'utf8')
 
   assert.match(source, /const nextTrack = tracks\.find\(\(track\) => track\.id === currentSubtitle\.value\?\.id\)/)
   assert.match(source, /store\.setCurrentSubtitle\(nextTrack\)/)
-  assert.match(source, /store\.setSubtitlesEnabled\(!!nextTrack\)/)
-  assert.match(source, /engine\.setSubtitle\(nextTrack\)/)
+  assert.match(source, /if \(nextTrack && store\.subtitlesEnabled\) \{\s*engine\.setSubtitle\(nextTrack\)/)
+  assert.match(source, /store\.setSubtitlesEnabled\(false\)/)
+  assert.match(source, /engine\.setSubtitle\(null\)/)
   assert.match(source, /if \(subtitleTracks\.value\.length > 0\) \{\s*await setSubtitleTracks\(subtitleTracks\.value\)\s*\}/)
+})
+
+test('subtitle plugin caches fetched subtitle bodies after the first lazy load', async () => {
+  const source = await readFile(subtitlesPluginPath, 'utf8')
+
+  assert.match(source, /if \(!content && track\.url\) \{/)
+  assert.match(source, /const response = await fetch\(track\.url\)/)
+  assert.match(source, /track\.content = content/)
 })
 
 test('video player exposes subtitle settings alongside quick toggle controls', async () => {

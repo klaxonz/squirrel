@@ -1,22 +1,91 @@
 from __future__ import annotations
 
-import glob
-import logging
-import os
+import html
 import re
-import tempfile
-from typing import Tuple
+import xml.etree.ElementTree as ET
+from typing import Any, Tuple
 
-from yt_dlp import YoutubeDL
+from .video_id import extract_youtube_video_id
+from .youtubei_resolver import resolve_captions_with_youtubei
 
-from crawl import SubtitlesProvider
-from . import ytdlp_support as youtube_ytdlp_support
 
-logger = logging.getLogger(__name__)
+def _safe_int(value: Any) -> int | None:
+    try:
+        return int(str(value))
+    except Exception:
+        return None
+
+
+def _format_srt_timestamp(milliseconds: int) -> str:
+    total_ms = max(int(milliseconds), 0)
+    hours, remainder = divmod(total_ms, 3_600_000)
+    minutes, remainder = divmod(remainder, 60_000)
+    seconds, millis = divmod(remainder, 1_000)
+    return f'{hours:02}:{minutes:02}:{seconds:02},{millis:03}'
+
+
+def _normalize_caption_text(value: str) -> str:
+    text = html.unescape(value or '')
+    text = text.replace('\xa0', ' ')
+    text = re.sub(r'\s*\n\s*', '\n', text)
+    text = re.sub(r'[ \t]+', ' ', text)
+    return text.strip()
+
+
+def _extract_timedtext_entries(xml_text: str) -> list[dict[str, Any]]:
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError as exc:
+        raise ValueError('No subtitles available: invalid timedtext payload') from exc
+
+    entries: list[dict[str, Any]] = []
+    for paragraph in root.findall('.//p'):
+        start_ms = _safe_int(paragraph.attrib.get('t'))
+        if start_ms is None:
+            continue
+
+        duration_ms = _safe_int(paragraph.attrib.get('d'))
+        text = _normalize_caption_text(''.join(paragraph.itertext()))
+        if not text:
+            continue
+
+        entries.append({
+            'start_ms': start_ms,
+            'duration_ms': duration_ms,
+            'text': text,
+        })
+
+    return entries
+
+
+def _entries_to_srt(entries: list[dict[str, Any]]) -> str:
+    if not entries:
+        raise ValueError('No subtitles available')
+
+    lines: list[str] = []
+    for index, entry in enumerate(entries, start=1):
+        start_ms = int(entry['start_ms'])
+        duration_ms = entry.get('duration_ms')
+        if isinstance(duration_ms, int) and duration_ms > 0:
+            end_ms = start_ms + duration_ms
+        elif index < len(entries):
+            next_start_ms = int(entries[index]['start_ms'])
+            end_ms = max(start_ms + 500, next_start_ms)
+        else:
+            end_ms = start_ms + 2_000
+
+        lines.extend([
+            str(index),
+            f'{_format_srt_timestamp(start_ms)} --> {_format_srt_timestamp(end_ms)}',
+            str(entry['text']),
+            '',
+        ])
+
+    return '\n'.join(lines).strip() + '\n'
 
 
 class YoutubeSubtitlesProvider:
-    """YouTube字幕提供者，实现SubtitlesProvider Protocol"""
+    """YouTube subtitles provider implemented on top of youtubei.js caption tracks."""
 
     domain = 'youtube.com'
 
@@ -26,104 +95,14 @@ class YoutubeSubtitlesProvider:
         return self._do_get_subtitles(video, lang)
 
     def _do_get_subtitles(self, video, lang: str) -> Tuple[str, str]:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            try:
-                return self._download_subtitles(video, lang, tmpdir, use_runtime_auth_strategy=True)
-            except ValueError as exc:
-                if not self._should_retry_without_auth(exc):
-                    if not self._is_transient_bot_challenge(exc):
-                        raise
-                    logger.info('Retrying YouTube subtitle extraction after bot challenge for %s', video.url)
-                    try:
-                        return self._download_subtitles(video, lang, tmpdir, use_runtime_auth_strategy=False)
-                    except ValueError as retry_exc:
-                        if not self._is_transient_bot_challenge(retry_exc):
-                            raise
-                        logger.info('Retrying YouTube subtitle extraction after repeated bot challenge for %s', video.url)
-                        return self._download_subtitles(video, lang, tmpdir, use_runtime_auth_strategy=False)
-                logger.info('Retrying YouTube subtitle extraction without authenticated player strategy for %s', video.url)
-                try:
-                    return self._download_subtitles(video, lang, tmpdir, use_runtime_auth_strategy=False)
-                except ValueError as retry_exc:
-                    if not self._is_transient_bot_challenge(retry_exc):
-                        raise
-                    logger.info('Retrying YouTube subtitle extraction after unauthenticated bot challenge for %s', video.url)
-                    return self._download_subtitles(video, lang, tmpdir, use_runtime_auth_strategy=False)
-
-    def _build_ydl_opts(self, video, lang: str, tmpdir: str, *, use_runtime_auth_strategy: bool) -> dict:
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'ignoreerrors': False,
-            'skip_download': True,
-            'writesubtitles': True,
-            'writeautomaticsub': True,
-            'subtitleslangs': [lang],
-            'subtitlesformat': 'srt',
-            'extractor_args': {
-                'youtube': {
-                    'player_client': [youtube_ytdlp_support.YOUTUBE_PLAYER_CLIENT],
-                }
-            },
-            'outtmpl': os.path.join(tmpdir, '%(id)s.%(ext)s'),
-        }
-        if use_runtime_auth_strategy:
-            youtube_ytdlp_support.apply_youtube_player_strategy(video.url, ydl_opts)
-        return ydl_opts
-
-    @staticmethod
-    def _uses_authenticated_strategy(ydl_opts: dict) -> bool:
-        return bool(ydl_opts.get('cookiefile') or ydl_opts.get('cookie'))
-
-    def _download_subtitles(
-        self,
-        video,
-        lang: str,
-        tmpdir: str,
-        *,
-        use_runtime_auth_strategy: bool,
-    ) -> Tuple[str, str]:
-        ydl_opts = self._build_ydl_opts(
-            video,
-            lang,
-            tmpdir,
-            use_runtime_auth_strategy=use_runtime_auth_strategy,
-        )
-        try:
-            with youtube_ytdlp_support.prepared_ytdlp_opts(ydl_opts) as prepared_opts:
-                with YoutubeDL(prepared_opts) as ydl:
-                    ydl.download([video.url])
-        except Exception as exc:
-            logger.warning('yt-dlp subtitle extraction failed for %s: %s', video.url, exc)
-            retryable = use_runtime_auth_strategy and self._uses_authenticated_strategy(ydl_opts)
-            error = ValueError(f'No subtitles available: {exc}')
-            setattr(error, '_retry_without_auth', retryable)
-            raise error from exc
-
-        srt_files = glob.glob(os.path.join(tmpdir, '*.srt'))
-        preferred = None
-        for path in srt_files:
-            filename = os.path.basename(path)
-            if f'.{lang}.' in filename or filename.endswith(f'.{lang}.srt'):
-                preferred = path
-                break
-        target_path = preferred or (srt_files[0] if srt_files else None)
-        if not target_path:
+        video_id = extract_youtube_video_id(getattr(video, 'url', '') or '') or str(getattr(video, 'id', 'video'))
+        payload = resolve_captions_with_youtubei(video_id, lang)
+        timedtext_xml = str(payload.get('content') or '').strip()
+        if not timedtext_xml:
             raise ValueError('No subtitles available')
 
-        with open(target_path, 'r', encoding='utf-8', errors='ignore') as rf:
-            srt_text = rf.read()
-
-        vid_match = re.search(r'(?:v=|/shorts/|/live/|/embed/)([\w-]{6,})', video.url)
-        base = vid_match.group(1) if vid_match else str(getattr(video, 'id', 'video'))
-        filename = f'{base}.{lang}.srt'
+        entries = _extract_timedtext_entries(timedtext_xml)
+        srt_text = _entries_to_srt(entries)
+        resolved_language = str(payload.get('language_code') or lang or 'default').strip() or 'default'
+        filename = f'{video_id}.{resolved_language}.srt'
         return srt_text, filename
-
-    @staticmethod
-    def _should_retry_without_auth(exc: ValueError) -> bool:
-        return bool(getattr(exc, '_retry_without_auth', False))
-
-    @staticmethod
-    def _is_transient_bot_challenge(exc: ValueError) -> bool:
-        message = str(exc).lower()
-        return 'sign in to confirm you' in message and 'not a bot' in message
