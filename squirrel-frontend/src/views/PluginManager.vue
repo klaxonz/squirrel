@@ -113,121 +113,28 @@
 
     <div class="plugin-content scrollbar-hide flex-grow overflow-y-auto">
       <div class="content-container">
-        <div v-if="loading && !plugins.length" class="plugin-loading">
-          <div class="animate-spin rounded-full h-6 w-6 border-2 border-muted-foreground/30 border-t-foreground"></div>
-        </div>
-
-        <div v-else-if="!loading && !displayPlugins.length" class="plugin-empty">
-          <CubeIcon class="h-10 w-10 opacity-20" />
-          <p>暂无插件</p>
-        </div>
-
-        <div v-else class="plugin-table-wrap">
-            <table class="plugin-table">
-              <thead>
-                <tr>
-                  <th class="col-icon"></th>
-                  <th class="col-name">名称</th>
-                  <th class="col-status">状态</th>
-                  <th class="col-caps">能力</th>
-                  <th class="col-endpoint">端点</th>
-                  <th class="col-actions"></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="plugin in displayPlugins" :key="plugin.plugin_id">
-                  <td class="col-icon">
-                    <SiteIcon
-                      v-if="plugin.primarySite"
-                      :icon-url="plugin.primarySite.icon_url"
-                      :label="plugin.primarySite.site_name || plugin.display_name"
-                      size="sm"
-                    />
-                    <div v-else class="col-icon-placeholder">
-                      <CubeIcon class="h-4 w-4 text-muted-foreground/30" />
-                    </div>
-                  </td>
-                  <td class="col-name">
-                    <span class="name-primary">{{ plugin.display_name }}</span>
-                  </td>
-                  <td class="col-status">
-                    <span
-                      v-if="!plugin.enabled"
-                      class="badge badge--off"
-                    >停用</span>
-                    <span
-                      v-else-if="plugin.active_runtime?.state === 'running'"
-                      class="badge badge--ok"
-                    >运行</span>
-                    <span
-                      v-else-if="plugin.health?.healthy === false || plugin.active_runtime?.state === 'failed'"
-                      class="badge badge--error"
-                    >异常</span>
-                    <span
-                      v-else
-                      class="badge badge--loading"
-                    >加载中</span>
-                  </td>
-                  <td class="col-caps">
-                    <div class="caps-cell">
-                      <span
-                        v-for="cap in plugin.capabilities.slice(0, 3)"
-                        :key="cap.name"
-                        class="cap-tag"
-                      >{{ cap.name }}</span>
-                      <span v-if="plugin.capabilities.length > 3" class="cap-more">
-                        +{{ plugin.capabilities.length - 3 }}
-                      </span>
-                      <span v-if="!plugin.capabilities.length" class="text-muted-foreground/30">—</span>
-                    </div>
-                  </td>
-                  <td class="col-endpoint">
-                    <span class="endpoint-text">{{ plugin.active_runtime?.endpoint || '—' }}</span>
-                  </td>
-                  <td class="col-actions">
-                    <div class="actions-cell">
-                      <button
-                        v-if="!plugin.enabled"
-                        :disabled="actioning === plugin.plugin_id"
-                        @click="handleEnable(plugin)"
-                        class="action-btn"
-                        title="启用"
-                      >
-                        <PlayIcon class="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        v-else
-                        :disabled="actioning === plugin.plugin_id"
-                        @click="handleDisable(plugin)"
-                        class="action-btn"
-                        title="停用"
-                      >
-                        <PauseIcon class="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        :disabled="actioning === plugin.plugin_id"
-                        @click="handleUninstall(plugin)"
-                        class="action-btn action-btn--danger"
-                        title="卸载"
-                      >
-                        <TrashIcon class="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="plugin-table-sep">
-          <div class="plugin-section-divider">
-            <span class="plugin-section-label">站点连通性</span>
-          </div>
-        </div>
-
-        <div v-if="loadingSites && !displaySites.length" class="plugin-loading">
-          <div class="animate-spin rounded-full h-6 w-6 border-2 border-muted-foreground/30 border-t-foreground"></div>
+        <div v-if="loading && !plugins.length" class="plugin-skeleton-wrap plugin-table-wrap">
+          <table class="plugin-table">
+            <thead>
+              <tr>
+                <th class="col-icon"></th>
+                <th class="col-name">名称</th>
+                <th class="col-status">状态</th>
+                <th class="col-caps">能力</th>
+                <th class="col-endpoint">端点</th>
+                <th class="col-site-access">网络</th>
+                <th class="col-site-login">登录</th>
+                <th class="col-actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <PluginSkeleton
+                v-for="i in 8"
+                :key="i"
+                :delay="i * 60"
+              />
+            </tbody>
+          </table>
         </div>
 
         <div v-else class="plugin-table-wrap">
@@ -235,127 +142,183 @@
             <thead>
               <tr>
                 <th class="col-icon"></th>
-                <th class="col-name">站点</th>
-                <th class="col-domains">域名</th>
-                <th class="col-status">网络</th>
-                <th class="col-status">登录</th>
-                <th class="col-latency">延迟</th>
+                <th class="col-name">名称</th>
+                <th class="col-status">状态</th>
+                <th class="col-caps">能力</th>
+                <th class="col-endpoint">端点</th>
+                <th class="col-site-access">网络</th>
+                <th class="col-site-login">登录</th>
                 <th class="col-actions"></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="site in displaySites" :key="site.site_name">
+              <tr v-for="plugin in displayPlugins" :key="plugin.plugin_id">
                 <td class="col-icon">
                   <SiteIcon
-                    :icon-url="site.icon_url"
-                    :label="site.display_label || site.site_name || site.name"
+                    v-if="plugin.primarySite"
+                    :icon-url="plugin.primarySite.icon_url"
+                    :label="plugin.primarySite.site_name || plugin.display_name"
                     size="sm"
                   />
+                  <div v-else class="col-icon-placeholder">
+                    <CubeIcon class="h-4 w-4 text-muted-foreground/30" />
+                  </div>
                 </td>
                 <td class="col-name">
-                  <span class="name-primary">{{ site.display_label || site.site_name || site.name }}</span>
+                  <span class="name-primary">{{ plugin.display_name }}</span>
+                </td>
+                <td class="col-status">
+                  <span
+                    v-if="!plugin.enabled"
+                    class="badge badge--off"
+                  >停用</span>
+                  <span
+                    v-else-if="plugin.active_runtime?.state === 'running'"
+                    class="badge badge--ok"
+                  >运行</span>
+                  <span
+                    v-else-if="plugin.health?.healthy === false || plugin.active_runtime?.state === 'failed'"
+                    class="badge badge--error"
+                  >异常</span>
+                  <span
+                    v-else
+                    class="badge badge--loading"
+                  >加载中</span>
+                </td>
+                <td class="col-caps">
+                  <span v-if="!plugin.capabilities.length" class="text-muted-foreground/30">—</span>
+                  <span v-else class="caps-inline">
                     <span
-                      v-if="site.config_enabled === false"
-                      class="badge badge--off"
-                    >禁用</span>
-                  </td>
-                  <td class="col-domains">
-                    <div class="domains-cell">
-                      <span
-                        v-for="domain in (site.domains || []).slice(0, 3)"
-                        :key="domain"
-                        class="domain-tag"
-                      >{{ domain }}</span>
-                      <span v-if="(site.domains || []).length > 3" class="domain-more">
-                        +{{ site.domains.length - 3 }}
-                      </span>
-                      <span v-if="!(site.domains || []).length" class="text-muted-foreground/30">—</span>
-                    </div>
-                  </td>
-                  <td class="col-status">
-                    <div v-if="site.testing" class="flex items-center gap-1 text-muted-foreground/40 animate-pulse">
-                      <ArrowPathIcon class="h-3 w-3 animate-spin" />
-                    </div>
-                    <div
-                      v-else-if="site.accessible === true"
-                      class="status-ok"
-                      title="网络可达"
+                      v-for="(cap, idx) in plugin.capabilities.slice(0, 2)"
+                      :key="cap.name"
+                      class="cap-wrapper"
                     >
-                      <CheckCircleIcon class="h-3.5 w-3.5" />
-                      <span>可达</span>
-                    </div>
-                    <div
-                      v-else-if="site.accessible === false"
-                      class="status-error"
-                      title="网络不可达"
-                    >
-                      <XCircleIcon class="h-3.5 w-3.5" />
-                      <span>不可达</span>
-                    </div>
-                    <span v-else class="text-muted-foreground/30">—</span>
-                  </td>
-                  <td class="col-status">
-                    <div v-if="!site.supports_login_status" class="text-muted-foreground/30">—</div>
-                    <div v-else-if="site.loginTesting" class="flex items-center gap-1 text-muted-foreground/40 animate-pulse">
-                      <ArrowPathIcon class="h-3 w-3 animate-spin" />
-                    </div>
-                    <div
-                      v-else-if="site.loginStatus?.logged_in"
-                      class="status-ok"
-                      title="登录有效"
-                    >
-                      <CheckCircleIcon class="h-3.5 w-3.5" />
-                      <span>有效</span>
-                    </div>
-                    <div
-                      v-else-if="site.loginStatus"
-                      class="status-error"
-                      title="登录无效"
-                    >
-                      <XCircleIcon class="h-3.5 w-3.5" />
-                      <span>无效</span>
-                    </div>
-                    <span v-else class="text-muted-foreground/30">—</span>
-                  </td>
-                  <td class="col-latency">
-                    <span v-if="site.response_time" class="text-xs font-mono" :class="site.response_time > 1000 ? 'text-warning/80' : 'text-muted-foreground/70'">
-                      {{ site.response_time }}ms
+                      <span class="cap-tag">{{ cap.name }}</span>
+                      <span class="cap-tooltip">{{ plugin.capabilities.map(c => c.name).join('\n') }}</span>
+                      <span v-if="idx < Math.min(plugin.capabilities.length, 2) - 1"> </span>
                     </span>
-                    <span v-else class="text-muted-foreground/30">—</span>
-                  </td>
-                  <td class="col-actions">
-                    <div class="actions-cell">
-                      <button
-                        @click="handleTestSingle(site)"
-                        :disabled="site.testing || testingAll"
-                        class="action-btn"
-                        title="测试"
-                      >
-                        <BoltIcon class="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        v-if="site.supports_login_status"
-                        @click="handleTestLogin(site)"
-                        :disabled="site.loginTesting || testingAll"
-                        class="action-btn"
-                        title="验证登录"
-                      >
-                        <KeyIcon class="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        @click="handleUploadCookies(site)"
-                        :disabled="site.cookieUploading || testingAll"
-                        class="action-btn"
-                        title="上传Cookie"
-                      >
-                        <CookieIcon class="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                    <span v-if="plugin.capabilities.length > 2" class="cap-wrapper">
+                      <span class="cap-more" :data-count="plugin.capabilities.length - 2">
+                        +{{ plugin.capabilities.length - 2 }}
+                      </span>
+                      <span class="cap-tooltip">{{ plugin.capabilities.map(c => c.name).join('\n') }}</span>
+                    </span>
+                  </span>
+                </td>
+                <td class="col-endpoint">
+                  <span class="endpoint-text">{{ plugin.active_runtime?.endpoint || '—' }}</span>
+                </td>
+                <td class="col-site-access">
+                  <div v-if="plugin.siteTesting" class="flex items-center gap-1 text-muted-foreground/40 animate-pulse">
+                    <ArrowPathIcon class="h-3 w-3 animate-spin" />
+                  </div>
+                  <div
+                    v-else-if="plugin.siteAccessible === true"
+                    class="status-ok"
+                    title="网络可达"
+                  >
+                    <CheckCircleIcon class="h-3.5 w-3.5" />
+                    <span>可达</span>
+                  </div>
+                  <div
+                    v-else-if="plugin.siteAccessible === false"
+                    class="status-error"
+                    title="网络不可达"
+                  >
+                    <XCircleIcon class="h-3.5 w-3.5" />
+                    <span>不可达</span>
+                  </div>
+                  <span v-else class="text-muted-foreground/30">—</span>
+                </td>
+                <td class="col-site-login">
+                  <div v-if="plugin.siteLoginTesting" class="flex items-center gap-1 text-muted-foreground/40 animate-pulse">
+                    <ArrowPathIcon class="h-3 w-3 animate-spin" />
+                  </div>
+                  <div
+                    v-else-if="plugin.siteLoginStatus?.logged_in"
+                    class="status-ok"
+                    title="登录有效"
+                  >
+                    <CheckCircleIcon class="h-3.5 w-3.5" />
+                    <span>有效</span>
+                  </div>
+                  <div
+                    v-else-if="plugin.siteLoginStatus"
+                    class="status-error"
+                    title="登录无效"
+                  >
+                    <XCircleIcon class="h-3.5 w-3.5" />
+                    <span>无效</span>
+                  </div>
+                  <span v-else class="text-muted-foreground/30">—</span>
+                </td>
+                <td class="col-actions">
+                  <div class="actions-cell">
+                    <button
+                      v-if="!plugin.enabled"
+                      :disabled="actioning === plugin.plugin_id"
+                      @click="handleEnable(plugin)"
+                      class="action-btn"
+                      title="启用"
+                    >
+                      <PlayIcon class="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      v-else
+                      :disabled="actioning === plugin.plugin_id"
+                      @click="handleDisable(plugin)"
+                      class="action-btn"
+                      title="停用"
+                    >
+                      <PauseIcon class="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      v-if="plugin.siteName"
+                      @click="handleTestSingleBySite(plugin.siteName)"
+                      :disabled="plugin.siteTesting || testingAll"
+                      class="action-btn"
+                      title="测试"
+                    >
+                      <BoltIcon class="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      v-if="plugin.siteSupportsLogin"
+                      @click="handleTestLoginBySite(plugin.siteName)"
+                      :disabled="plugin.siteLoginTesting || testingAll"
+                      class="action-btn"
+                      title="验证登录"
+                    >
+                      <KeyIcon class="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      v-if="plugin.siteName"
+                      @click="handleUploadCookiesBySite(plugin.siteName)"
+                      :disabled="plugin.cookieUploading || testingAll"
+                      class="action-btn"
+                      title="上传Cookie"
+                    >
+                      <CookieIcon class="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      @click="openSiteEditorByPlugin(plugin)"
+                      class="action-btn"
+                      title="站点配置"
+                    >
+                      <CogIcon class="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      :disabled="actioning === plugin.plugin_id"
+                      @click="handleUninstall(plugin)"
+                      class="action-btn action-btn--danger"
+                      title="卸载"
+                    >
+                      <TrashIcon class="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -378,6 +341,7 @@ import {
   ArrowPathIcon,
   CheckCircleIcon,
   CloudArrowUpIcon,
+  CogIcon,
   CubeIcon,
   MagnifyingGlassIcon,
   PlusCircleIcon,
@@ -390,6 +354,7 @@ import {
 } from '@heroicons/vue/24/outline';
 import SiteIcon from '@/components/common/SiteIcon.vue'
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
+import PluginSkeleton from '@/components/settings/PluginSkeleton.vue';
 import { Button } from '@/components/ui/button'
 import { getConnectivityBadge } from '@/utils/plugin-connectivity-status'
 import { Logger } from '@/utils/logger'
@@ -426,6 +391,20 @@ const loginStatusResults = ref({});
 const loginStatusTesting = ref({});
 const cookieUploading = ref({});
 const lastTestedAt = ref(null);
+
+// Site config
+const { catalog: siteCatalog, loading: siteLoading, error: siteError, loadCatalog, saveCatalog } = useSiteCatalog();
+const siteList = computed(() => {
+  const catalog = siteCatalog.value || {};
+  return Object.entries(catalog).map(([slug, info]) => ({
+    slug,
+    label: info?.label || slug,
+    enabled: info?.enabled !== false,
+    test_url: info?.test_url || '',
+    domains: info?.domains || [],
+    iconUrl: info?.icon_url || '',
+  }));
+});
 
 const CACHE_KEY_CONNECTIVITY = 'squirrel_connectivity_results';
 const CACHE_KEY_LOGIN_STATUS = 'squirrel_login_status_results';
@@ -484,7 +463,6 @@ const cookiesFileName = ref('');
 const importingCookies = ref(false);
 const syncingCookieCloud = ref(false);
 
-const { catalog: siteCatalog, loading: siteCatalogLoading, error: siteCatalogErrorState, loadCatalog, saveCatalog } = useSiteCatalog();
 const siteCatalogLoaded = ref(false);
 const editingSite = ref(null);
 const siteEditorVisible = ref(false);
@@ -496,19 +474,47 @@ const searchQuery = ref('');
 const siteSearchQuery = ref('');
 
 const displayPlugins = computed(() => {
-  let list = (plugins.value || []).map((plugin) => ({
-    ...plugin,
-    capabilities: Array.isArray(plugin.capabilities) ? plugin.capabilities : [],
-    sites: Array.isArray(plugin.sites) ? plugin.sites : [],
-    primarySite: plugin.sites?.[0] || null,
-  }));
+  // Build maps for site connectivity and catalog info
+  const resultsMap = new Map();
+  if (connectivityResults.value.length > 0 && connectivityResults.value[0]?.results) {
+    connectivityResults.value[0].results.forEach(result => {
+      resultsMap.set(result.site_name, result);
+    });
+  }
+  const loginResultMap = loginStatusResults.value || {};
+  const loginTestingMap = loginStatusTesting.value || {};
+
+  let list = (plugins.value || []).map((plugin) => {
+    // Find associated site info
+    const primarySite = plugin.sites?.[0] || null;
+    const siteName = primarySite?.site_name || primarySite?.name || '';
+    const siteResult = resultsMap.get(siteName) || {};
+    const catalogInfo = siteCatalogMap.value[siteName?.toLowerCase()] || null;
+    const loginStatus = loginResultMap[siteName];
+
+    return {
+      ...plugin,
+      capabilities: Array.isArray(plugin.capabilities) ? plugin.capabilities : [],
+      sites: Array.isArray(plugin.sites) ? plugin.sites : [],
+      primarySite,
+      siteName,
+      siteAccessible: siteResult.accessible,
+      siteTesting: !!siteResult.testing,
+      siteLoginStatus: loginStatus,
+      siteLoginTesting: !!loginTestingMap[siteName],
+      siteSupportsLogin: primarySite?.supports_login_status ?? false,
+      siteConfigEnabled: catalogInfo?.enabled !== false,
+      cookieUploading: !!cookieUploading.value[siteName],
+    };
+  });
 
   if (searchQuery.value.trim()) {
     const keyword = searchQuery.value.trim().toLowerCase();
     list = list.filter(p =>
       p.display_name?.toLowerCase().includes(keyword) ||
       p.plugin_id?.toLowerCase().includes(keyword) ||
-      p.description?.toLowerCase().includes(keyword)
+      p.description?.toLowerCase().includes(keyword) ||
+      p.siteName?.toLowerCase().includes(keyword)
     );
   }
 
@@ -898,6 +904,100 @@ const handleTestAll = async () => {
   }
 };
 
+// Handlers for plugin-integrated site actions
+const handleTestSingleBySite = async (siteName) => {
+  if (!siteName) return;
+  const result = await testSiteConnectivity(siteName);
+  if (!result.error && result.data) {
+    if (connectivityResults.value.length === 0) {
+      connectivityResults.value = [{ results: [], summary: { total: 0, accessible: 0, failed: 0, success_rate: 0 } }];
+    }
+    const results = connectivityResults.value[0].results;
+    const existingIndex = results.findIndex(r => r.site_name === siteName);
+    if (existingIndex !== -1) {
+      results[existingIndex] = result.data;
+    } else {
+      results.push(result.data);
+    }
+    const accessible = results.filter(r => r.accessible).length;
+    const failed = results.filter(r => !r.accessible).length;
+    connectivityResults.value[0].summary = {
+      total: results.length,
+      accessible,
+      failed,
+      success_rate: results.length > 0 ? Math.round((accessible / results.length) * 100 * 100) / 100 : 0
+    };
+    saveResultsToCache();
+  }
+};
+
+const handleTestLoginBySite = async (siteName) => {
+  if (!siteName) return;
+  setLoginTesting(siteName, true);
+  try {
+    const { data, error } = await testSiteLoginStatus(siteName);
+    if (!error && data) {
+      upsertLoginStatus(siteName, data);
+    } else {
+      upsertLoginStatus(siteName, {
+        site_name: siteName,
+        logged_in: false,
+        message: error?.message || '检测失败',
+        supported: false,
+        checked_at: new Date().toISOString(),
+      });
+    }
+  } finally {
+    setLoginTesting(siteName, false);
+    saveResultsToCache();
+  }
+};
+
+const handleUploadCookiesBySite = (siteName) => {
+  if (!siteName) return;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.txt,.json';
+
+  input.onchange = async (event) => {
+    const files = event.target.files || [];
+    if (!files.length) return;
+
+    const file = files[0];
+    setCookieUploading(siteName, true);
+    try {
+      const result = await uploadSiteCookies(siteName, file);
+      if (!result.error && result.data?.login_status) {
+        upsertLoginStatus(siteName, result.data.login_status);
+        saveResultsToCache();
+      }
+    } finally {
+      setCookieUploading(siteName, false);
+    }
+    input.value = '';
+  };
+
+  input.click();
+};
+
+const openSiteEditorByPlugin = (plugin) => {
+  const siteName = plugin.siteName;
+  if (!siteName) return;
+
+  // Find or create site info from catalog
+  const catalogInfo = siteCatalogMap.value[siteName?.toLowerCase()] || {};
+  editingSite.value = {
+    slug: siteName,
+    label: catalogInfo.label || plugin.display_name || siteName,
+    enabled: catalogInfo.enabled !== false,
+    test_url: catalogInfo.test_url || '',
+    domains: catalogInfo.domains || [],
+    iconUrl: catalogInfo.icon_url || '',
+  };
+  siteEditorError.value = '';
+  siteEditorVisible.value = true;
+};
+
 onMounted(() => {
   fetchPlugins();
   loadSiteCatalog();
@@ -1080,49 +1180,144 @@ onMounted(() => {
   padding-top: 0.5rem;
 }
 
+.plugin-unified-panel {
+  border: 1px solid hsl(var(--border) / 0.45);
+  border-radius: 0.875rem;
+  background: hsl(var(--card) / 0.45);
+  overflow: hidden;
+}
+
+.plugin-unified-section {
+  padding: 0.5rem 0;
+}
+
+.plugin-unified-section + .plugin-unified-section {
+  border-top: 1px solid hsl(var(--border) / 0.35);
+}
+
+.plugin-unified-section__head {
+  padding: 0.5rem 0.75rem 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: hsl(var(--muted-foreground) / 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .plugin-loading,
 .plugin-empty {
+  display: none;
+}
+
+.plugin-skeleton-wrap {
+  display: block;
+}
+
+.plugin-inline-loading,
+.plugin-inline-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 40vh;
-  gap: 1rem;
+  min-height: 7rem;
+  gap: 0.625rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
 }
 
-/* Section divider */
-.plugin-table-sep {
-  margin: 1.5rem 0 0.75rem;
-}
-
-.plugin-section-divider {
+/* Alert */
+.plugin-alert {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
+  padding: 0.875rem 1.125rem;
+  border-radius: 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  border-width: 1px;
 }
 
-.plugin-section-divider::before,
-.plugin-section-divider::after {
-  content: '';
+.plugin-alert--error {
+  background: hsl(var(--destructive) / 0.08);
+  color: hsl(var(--destructive));
+  border-color: hsl(var(--destructive) / 0.2);
+}
+
+/* Site Config Grid */
+.site-config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0;
+  padding: 0 0.75rem 0.5rem;
+}
+
+.site-config-item {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 1rem 1.25rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border) / 0.4);
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.site-config-item:hover {
+  border-color: hsl(var(--primary) / 0.3);
+  background: hsl(var(--secondary) / 0.2);
+}
+
+.site-config-icon {
+  flex-shrink: 0;
+  border: 1px solid hsl(var(--border) / 0.3);
+}
+
+.site-config-info {
   flex: 1;
-  height: 1px;
-  background: hsl(var(--border) / 0.4);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
 }
 
-.plugin-section-label {
-  font-size: 11px;
+.site-config-label {
+  font-size: 0.875rem;
   font-weight: 600;
-  color: hsl(var(--muted-foreground) / 0.6);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  color: hsl(var(--foreground));
+  truncate: ellipsis;
+  overflow: hidden;
   white-space: nowrap;
+}
+
+.site-config-slug {
+  font-size: 0.6875rem;
+  color: hsl(var(--muted-foreground) / 0.5);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.site-config-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.site-config-status--enabled {
+  background: hsl(var(--success));
+  box-shadow: 0 0 6px hsl(var(--success) / 0.4);
+}
+
+.site-config-status--disabled {
+  background: hsl(var(--muted-foreground) / 0.2);
 }
 
 /* Table */
 .plugin-table-wrap {
   overflow-x: auto;
+  padding: 0 0.5rem;
 }
 
 .plugin-table {
@@ -1166,8 +1361,11 @@ onMounted(() => {
 .col-status { min-width: 70px; }
 .col-caps { min-width: 120px; }
 .col-endpoint { min-width: 180px; }
+.col-site-access { min-width: 90px; }
+.col-site-login { min-width: 80px; }
 .col-latency { width: 70px; text-align: center; }
-.col-actions { width: 90px; text-align: right; }
+.col-domains { min-width: 140px; }
+.col-actions { width: 120px; text-align: right; }
 
 /* Cell styles */
 .name-primary {
@@ -1175,22 +1373,69 @@ onMounted(() => {
   color: hsl(var(--foreground));
 }
 
-.caps-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+/* Caps cell */
+.caps-inline {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 2px;
+  white-space: nowrap;
 }
 
 .cap-tag {
-  font-size: 11px;
-  padding: 2px 6px;
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 5px;
   border-radius: 3px;
   white-space: nowrap;
+  background: hsl(var(--secondary));
+  color: hsl(var(--muted-foreground));
 }
 
 .cap-more {
   font-size: 10px;
-  color: hsl(var(--muted-foreground) / 0.4);
+  color: hsl(var(--muted-foreground) / 0.5);
+  margin-left: 2px;
+}
+
+.cap-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.cap-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: pre-line;
+  line-height: 1.5;
+  z-index: 50;
+  box-shadow: 0 4px 12px hsl(0 0% 0% / 0.15);
+  min-width: 100px;
+  max-width: 250px;
+}
+
+.cap-wrapper:hover .cap-tooltip {
+  display: block;
+}
+
+.cap-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: hsl(var(--popover));
 }
 
 .endpoint-text {
