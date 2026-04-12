@@ -2,6 +2,7 @@ import logging
 from fastapi import Query, APIRouter, Request, HTTPException, Depends, Response, Body
 from fastapi.responses import PlainTextResponse
 import common.response as response
+from crawl.runtime_errors import RuntimeErrorCode
 from core.exceptions.video_exceptions import UnsupportedDomainError, VideoUrlExtractionError
 from models.user import User
 from schemas.video.request.video import SortBy
@@ -274,6 +275,18 @@ def get_video_mpd(
             payload=payload,
         )
         if not result.ok or not isinstance(result.data, dict):
+            error = getattr(result, 'error', None)
+            error_message = str(getattr(error, 'message', '') or '').strip()
+            error_code = getattr(error, 'code', None)
+
+            if error_code == RuntimeErrorCode.AUTH_REQUIRED:
+                raise HTTPException(status_code=403, detail=error_message or 'Authentication is required for MPD playback')
+            if error_code == RuntimeErrorCode.NETWORK_ERROR:
+                raise HTTPException(status_code=502, detail=error_message or 'Failed to build MPD due to upstream network error')
+            if error_message:
+                if 'No runtime route found for capability' in error_message:
+                    raise HTTPException(status_code=400, detail="MPD builder not available for this domain")
+                raise HTTPException(status_code=400, detail=error_message)
             raise HTTPException(status_code=400, detail="MPD builder not available for this domain")
         mpd_xml = str(result.data.get('content') or '')
         if not mpd_xml:

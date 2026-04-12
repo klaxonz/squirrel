@@ -11,6 +11,7 @@ const CAPTIONS_ANONYMOUS_CLIENTS = ['ANDROID'];
 const CAPTIONS_AUTHENTICATED_CLIENTS = ['WEB', 'TV', 'MWEB'];
 const YOUTUBE_WEB_ORIGIN = 'https://www.youtube.com';
 const SESSION_CACHE = new Map();
+let runtimeFactory = createRuntime;
 
 Platform.shim.eval = async (data, env) => {
   const source = `${data.output}\nreturn process(${JSON.stringify(env.n || '')}, ${JSON.stringify(env.sp || '')}, ${JSON.stringify(env.sig || '')});`;
@@ -296,48 +297,65 @@ async function resolveCaptionPayload(payload) {
 
   const cookie = typeof payload?.cookie === 'string' ? payload.cookie.trim() : '';
   const requestedLanguage = normalizeLanguageCode(payload?.lang);
-  const runtime = await getRuntime(cookie);
   const clients = cookie ? CAPTIONS_AUTHENTICATED_CLIENTS : CAPTIONS_ANONYMOUS_CLIENTS;
   const attempts = [];
 
-  for (const client of clients) {
-    try {
-      const info = await runtime.yt.getBasicInfo(videoId, { client });
-      const captions = info.captions;
-      if (!captions?.caption_tracks?.length) {
+  const tryResolvePass = async (forceRefresh = false) => {
+    const runtime = await getRuntime(cookie, { forceRefresh });
+    for (const client of clients) {
+      try {
+        const info = await runtime.yt.getBasicInfo(videoId, { client });
+        const captions = info.captions;
+        if (!captions?.caption_tracks?.length) {
+          attempts.push({
+            client,
+            error: 'No subtitles available',
+            runtime_refresh: forceRefresh,
+          });
+          continue;
+        }
+
+        const selection = pickCaptionTrack(captions, requestedLanguage);
+        const captionUrl = buildCaptionUrl(
+          selection.track,
+          selection.resolved_language_code,
+          selection.translated,
+        );
+        const content = await fetchCaptionXml(runtime, captionUrl);
+
+        return {
+          status: 'ok',
+          client,
+          video_id: videoId,
+          requested_language_code: selection.requested_language_code || null,
+          language_code: selection.resolved_language_code || null,
+          language_name: selection.resolved_language_name || null,
+          translated: selection.translated,
+          kind: selection.track?.kind || null,
+          content,
+          tracks: (captions.caption_tracks || []).map(normalizeCaptionTrack),
+          translation_languages: (captions.translation_languages || []).map(normalizeTranslationLanguage),
+        };
+      } catch (error) {
         attempts.push({
           client,
-          error: 'No subtitles available',
+          error: error?.message || String(error),
+          runtime_refresh: forceRefresh,
         });
-        continue;
       }
+    }
+    return null;
+  };
 
-      const selection = pickCaptionTrack(captions, requestedLanguage);
-      const captionUrl = buildCaptionUrl(
-        selection.track,
-        selection.resolved_language_code,
-        selection.translated,
-      );
-      const content = await fetchCaptionXml(runtime, captionUrl);
+  const initialResult = await tryResolvePass(false);
+  if (initialResult) {
+    return initialResult;
+  }
 
-      return {
-        status: 'ok',
-        client,
-        video_id: videoId,
-        requested_language_code: selection.requested_language_code || null,
-        language_code: selection.resolved_language_code || null,
-        language_name: selection.resolved_language_name || null,
-        translated: selection.translated,
-        kind: selection.track?.kind || null,
-        content,
-        tracks: (captions.caption_tracks || []).map(normalizeCaptionTrack),
-        translation_languages: (captions.translation_languages || []).map(normalizeTranslationLanguage),
-      };
-    } catch (error) {
-      attempts.push({
-        client,
-        error: error?.message || String(error),
-      });
+  if (cookie) {
+    const refreshedResult = await tryResolvePass(true);
+    if (refreshedResult) {
+      return refreshedResult;
     }
   }
 
@@ -347,7 +365,7 @@ async function resolveCaptionPayload(payload) {
   }));
 }
 
-function buildYoutubeFetch() {
+function buildYoutubeFetch(authenticated = false) {
   return async (input, init = {}) => {
     const url = typeof input === 'string' ? input : input?.url || String(input);
     const inheritedHeaders =
@@ -359,7 +377,11 @@ function buildYoutubeFetch() {
       headers.set('Origin', YOUTUBE_WEB_ORIGIN);
       headers.set('Sec-Fetch-Site', 'same-origin');
       headers.set('Sec-Fetch-Mode', 'same-origin');
-      headers.set('X-Youtube-Bootstrap-Logged-In', 'false');
+      if (!authenticated) {
+        headers.set('X-Youtube-Bootstrap-Logged-In', 'false');
+      } else {
+        headers.delete('X-Youtube-Bootstrap-Logged-In');
+      }
     }
 
     return fetch(input, { ...init, headers });
@@ -379,7 +401,7 @@ async function createRuntime(cookie) {
     generate_session_locally: !cookie,
     retrieve_player: true,
     client_type: cookie ? 'MWEB' : 'ANDROID',
-    fetch: buildYoutubeFetch(),
+    fetch: buildYoutubeFetch(Boolean(cookie)),
     ...(cookie ? { cookie } : {}),
   });
 
@@ -389,17 +411,43 @@ async function createRuntime(cookie) {
   };
 }
 
-async function getRuntime(cookie) {
+function clearRuntimeCache(cookie = '') {
+  SESSION_CACHE.delete(sessionCacheKey(cookie));
+}
+
+async function getRuntime(cookie, { forceRefresh = false } = {}) {
   const key = sessionCacheKey(cookie);
+  if (forceRefresh) {
+    SESSION_CACHE.delete(key);
+  }
   let runtime = SESSION_CACHE.get(key);
   if (runtime) {
     return runtime;
   }
 
-  runtime = await createRuntime(cookie);
+  runtime = await runtimeFactory(cookie);
   SESSION_CACHE.set(key, runtime);
   return runtime;
 }
+
+export const __testing = {
+  clearRuntimeCache,
+  clearAllRuntimeCache() {
+    SESSION_CACHE.clear();
+  },
+  setRuntimeFactory(factory) {
+    runtimeFactory = factory;
+  },
+  resetRuntimeFactory() {
+    runtimeFactory = createRuntime;
+  },
+  createYoutubeFetch(authenticated = false) {
+    return buildYoutubeFetch(authenticated);
+  },
+  sessionCacheSize() {
+    return SESSION_CACHE.size;
+  },
+};
 
 async function buildPoToken(videoId, runtime, attempts) {
   if (!runtime.sessionManager) {
@@ -456,7 +504,6 @@ export async function resolveYoutubeiPayload(payload) {
     ? 'all'
     : 'playback';
   const includeDebugTimings = Boolean(payload?.debug_timings);
-  const timings = {};
 
   const requestedClients = Array.isArray(payload?.clients)
     ? payload.clients.map((item) => String(item || '').trim().toUpperCase()).filter(Boolean)
@@ -468,64 +515,87 @@ export async function resolveYoutubeiPayload(payload) {
       ? (resolutionMode === 'all' ? AUTHENTICATED_FULL_CLIENTS : AUTHENTICATED_PLAYBACK_CLIENTS)
       : ANONYMOUS_CLIENTS);
   const attempts = [];
-  const runtimeStart = performance.now();
-  const runtime = await getRuntime(cookie);
-  timings.get_runtime_ms = Number((performance.now() - runtimeStart).toFixed(1));
-  let contentPoToken;
+  let lastTimings = {};
 
-  for (const client of clients) {
-    try {
-      let requestOptions = { client };
-      if (client === 'MWEB') {
-        if (contentPoToken === undefined) {
-          const poTokenStart = performance.now();
-          contentPoToken = await buildPoToken(videoId, runtime, attempts);
-          timings.build_po_token_ms = Number((performance.now() - poTokenStart).toFixed(1));
+  const tryResolvePass = async (forceRefresh = false) => {
+    const passTimings = {};
+    const runtimeStart = performance.now();
+    const runtime = await getRuntime(cookie, { forceRefresh });
+    passTimings.get_runtime_ms = Number((performance.now() - runtimeStart).toFixed(1));
+    let contentPoToken;
+
+    for (const client of clients) {
+      try {
+        let requestOptions = { client };
+        if (client === 'MWEB') {
+          if (contentPoToken === undefined) {
+            const poTokenStart = performance.now();
+            contentPoToken = await buildPoToken(videoId, runtime, attempts);
+            passTimings.build_po_token_ms = Number((performance.now() - poTokenStart).toFixed(1));
+          }
+          if (contentPoToken) {
+            requestOptions = { client, po_token: contentPoToken };
+          }
         }
-        if (contentPoToken) {
-          requestOptions = { client, po_token: contentPoToken };
-        }
-      }
 
-      const infoStart = performance.now();
-      const info = await runtime.yt.getBasicInfo(videoId, requestOptions);
-      const infoMs = Number((performance.now() - infoStart).toFixed(1));
-      const formatsStart = performance.now();
-      const formats = await collectFormats(info, runtime.yt.session.player, resolutionMode);
-      const formatsMs = Number((performance.now() - formatsStart).toFixed(1));
-      const playabilityStatus = info.playability_status?.status || null;
-      attempts.push({
-        client,
-        playability_status: playabilityStatus,
-        format_count: formats.length,
-        playable: isPlayableFormatSet(formats),
-        get_basic_info_ms: infoMs,
-        collect_formats_ms: formatsMs,
-      });
-
-      if (!isPlayableFormatSet(formats)) {
-        continue;
-      }
-
-      const response = {
-        status: 'ok',
-        client,
-        playability_status: playabilityStatus,
-        formats,
-      };
-      if (includeDebugTimings) {
-        response.timings = {
-          ...timings,
+        const infoStart = performance.now();
+        const info = await runtime.yt.getBasicInfo(videoId, requestOptions);
+        const infoMs = Number((performance.now() - infoStart).toFixed(1));
+        const formatsStart = performance.now();
+        const formats = await collectFormats(info, runtime.yt.session.player, resolutionMode);
+        const formatsMs = Number((performance.now() - formatsStart).toFixed(1));
+        const playabilityStatus = info.playability_status?.status || null;
+        attempts.push({
+          client,
+          playability_status: playabilityStatus,
+          format_count: formats.length,
+          playable: isPlayableFormatSet(formats),
           get_basic_info_ms: infoMs,
           collect_formats_ms: formatsMs,
+          runtime_refresh: forceRefresh,
+        });
+
+        if (!isPlayableFormatSet(formats)) {
+          continue;
+        }
+
+        const response = {
+          status: 'ok',
+          client,
+          playability_status: playabilityStatus,
+          formats,
         };
+        if (includeDebugTimings) {
+          response.timings = {
+            ...passTimings,
+            get_basic_info_ms: infoMs,
+            collect_formats_ms: formatsMs,
+          };
+        }
+        return { response, passTimings };
+      } catch (error) {
+        attempts.push({
+          client,
+          error: error?.message || String(error),
+          runtime_refresh: forceRefresh,
+        });
       }
-      return response;
-    } catch (error) {
-      attempts.push({
-        client,
-        error: error?.message || String(error),
-      });
+    }
+
+    return { response: null, passTimings };
+  };
+
+  let passResult = await tryResolvePass(false);
+  lastTimings = passResult.passTimings;
+  if (passResult.response) {
+    return passResult.response;
+  }
+
+  if (cookie) {
+    passResult = await tryResolvePass(true);
+    lastTimings = passResult.passTimings;
+    if (passResult.response) {
+      return passResult.response;
     }
   }
 
@@ -538,7 +608,7 @@ export async function resolveYoutubeiPayload(payload) {
     attempts,
   };
   if (includeDebugTimings) {
-    errorResponse.timings = timings;
+    errorResponse.timings = lastTimings;
   }
   return errorResponse;
 }
