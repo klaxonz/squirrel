@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from pathlib import Path
 import sys
 import types
@@ -144,6 +145,39 @@ def test_lifespan_logs_ordered_startup_and_shutdown_sequence(monkeypatch, caplog
     ]
 
 
+def test_lifespan_sets_youtube_oauth_env_before_bootstrap(monkeypatch):
+    captured = {}
+
+    monkeypatch.setattr(app_main, 'apply_site_config_overrides', lambda: None)
+    monkeypatch.setattr(app_main, 'shutdown_plugin_runtime', lambda: None)
+    monkeypatch.setattr('utils.cloudflare_bypass.get_default_client', lambda: object())
+    monkeypatch.setattr(app_main, 'resolve_cookie_file_for_url', lambda url: url)
+    monkeypatch.setattr(app_main, 'resolve_cookie_match_domain_for_url', lambda _url: 'youtube.com')
+    monkeypatch.setitem(
+        sys.modules,
+        'services.video_extraction_projection_service',
+        SimpleNamespace(ensure_projection_seeded=lambda: 0),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        'services.youtube_oauth_service',
+        SimpleNamespace(get_oauth_credentials_for_daemon=lambda: 'D:/tmp/youtube_oauth.json'),
+    )
+
+    def _capture_bootstrap():
+        captured['oauth_env'] = os.environ.get('YOUTUBE_OAUTH_STATE_FILE')
+
+    monkeypatch.setattr(app_main, 'bootstrap_plugin_runtime', _capture_bootstrap)
+    monkeypatch.delenv('YOUTUBE_OAUTH_STATE_FILE', raising=False)
+
+    async def _run() -> None:
+        async with app_main.lifespan(SimpleNamespace()):
+            pass
+
+    asyncio.run(_run())
+    assert captured['oauth_env'] == 'D:/tmp/youtube_oauth.json'
+
+
 def test_bootstrap_runtime_configures_backend_runtime_http_state(monkeypatch):
     client = object()
     resolver = lambda url: f'cookie:{url}'
@@ -183,6 +217,53 @@ def test_bootstrap_runtime_configures_backend_runtime_http_state(monkeypatch):
         assert runtime_http.get_cookie_file_resolver() is resolver
         assert runtime_http.get_cookie_domain_resolver() is domain_resolver
     assert projection_calls == ['seeded']
+
+
+def test_bootstrap_runtime_sets_youtube_oauth_env_before_bootstrap(monkeypatch):
+    projection_calls = []
+    captured = {}
+
+    monkeypatch.setattr(service_runtime, 'init_logging', lambda: None)
+    monkeypatch.setattr(service_runtime, 'upgrade_database', lambda: None)
+    monkeypatch.setattr(service_runtime, 'apply_site_config_overrides', lambda: None)
+    monkeypatch.setattr(service_runtime, 'shutdown_plugin_runtime', lambda: None)
+    monkeypatch.setattr(service_runtime, 'start_reload_listener', lambda component: None)
+    monkeypatch.setattr(service_runtime, 'stop_reload_listener', lambda component: None)
+    monkeypatch.setattr('utils.cloudflare_bypass.get_default_client', lambda: object())
+    monkeypatch.setattr(service_runtime, 'resolve_cookie_file_for_url', lambda url: url)
+    monkeypatch.setattr(service_runtime, 'resolve_cookie_match_domain_for_url', lambda _url: 'youtube.com')
+    monkeypatch.setitem(
+        sys.modules,
+        'services.subscription_sync_state_service',
+        SimpleNamespace(
+            recover_stale_queued_sync_states=lambda: {'recovered': 0},
+            recover_stale_running_sync_states=lambda: {'recovered': 0},
+            reconcile_terminal_drained_sync_states=lambda: {'completed': 0, 'failed': 0},
+            reconcile_retry_wait_run_projections=lambda: {'repaired': 0},
+        ),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        'services.video_extraction_projection_service',
+        SimpleNamespace(ensure_projection_seeded=lambda: projection_calls.append('seeded') or 0),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        'services.youtube_oauth_service',
+        SimpleNamespace(get_oauth_credentials_for_daemon=lambda: 'D:/tmp/youtube_oauth.json'),
+    )
+
+    def _capture_bootstrap():
+        captured['oauth_env'] = os.environ.get('YOUTUBE_OAUTH_STATE_FILE')
+
+    monkeypatch.setattr(service_runtime, 'bootstrap_plugin_runtime', _capture_bootstrap)
+    monkeypatch.delenv('YOUTUBE_OAUTH_STATE_FILE', raising=False)
+
+    with service_runtime.bootstrap_runtime('worker'):
+        pass
+
+    assert projection_calls == ['seeded']
+    assert captured['oauth_env'] == 'D:/tmp/youtube_oauth.json'
 
 
 def test_runtime_bridge_configures_backend_runtime_http_state(monkeypatch):

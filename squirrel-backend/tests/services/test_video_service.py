@@ -260,10 +260,64 @@ def test_get_video_url_uses_client_scoped_cache_keys(monkeypatch):
     video_service.get_video_url(video_id=1, client_type='desktop')
     video_service.get_video_url(video_id=1)
 
-    assert 'video_url:bilibili:1:desktop:direct' in observed_get_keys
-    assert 'video_url:bilibili:1:default' in observed_get_keys
-    assert ('video_url:bilibili:1:desktop:direct', video_service.VIDEO_URL_CACHE_TTL) in observed_set_keys
-    assert ('video_url:bilibili:1:default', video_service.VIDEO_URL_CACHE_TTL) in observed_set_keys
+    assert 'video_url:bilibili:1:desktop:direct:auth:default' in observed_get_keys
+    assert 'video_url:bilibili:1:default:auth:default' in observed_get_keys
+    assert ('video_url:bilibili:1:desktop:direct:auth:default', video_service.VIDEO_URL_CACHE_TTL) in observed_set_keys
+    assert ('video_url:bilibili:1:default:auth:default', video_service.VIDEO_URL_CACHE_TTL) in observed_set_keys
+
+
+def test_get_video_url_uses_youtube_auth_scoped_cache_keys(monkeypatch, tmp_path):
+    engine = _setup_test_env(monkeypatch)
+    _seed_video(engine, url='https://www.youtube.com/watch?v=demo')
+    monkeypatch.setattr(
+        video_service.SiteCatalog,
+        'find_site_by_domain',
+        lambda domain: ('youtube', {'metadata': {'player_url_cache': True}}),
+    )
+    monkeypatch.setattr(
+        video_service,
+        'get_site_cookies_file_path',
+        lambda site_name: tmp_path / f'{site_name}.txt',
+    )
+    (tmp_path / 'youtube.txt').write_text('cookie-state-a', encoding='utf-8')
+    monkeypatch.setitem(
+        sys.modules,
+        'services.youtube_oauth_service',
+        SimpleNamespace(get_oauth_cache_scope=lambda: 'oauth:state-a'),
+    )
+
+    observed_get_keys = []
+    observed_set_keys = []
+
+    monkeypatch.setattr(video_service.redis_client, 'get', lambda key: observed_get_keys.append(key) or None)
+    monkeypatch.setattr(
+        video_service.redis_client,
+        'setex',
+        lambda key, ttl, value: observed_set_keys.append((key, ttl)),
+    )
+
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            return PluginInvokeResponse(
+                request_id='video-1',
+                ok=True,
+                data={
+                    'video_url': 'https://cdn.example.com/video.m4s',
+                    'audio_url': 'https://cdn.example.com/audio.m4s',
+                    'mpd_url': '/api/video/mpd?video_id=1',
+                },
+            )
+
+    monkeypatch.setattr(
+        video_service,
+        'get_plugin_manager',
+        lambda: SimpleNamespace(gateway=_FakeGateway()),
+    )
+
+    video_service.get_video_url(video_id=1)
+
+    assert observed_get_keys == ['video_url:youtube:1:default:oauth:state-a:cookie:ef1b831d0e796e79']
+    assert observed_set_keys == [('video_url:youtube:1:default:oauth:state-a:cookie:ef1b831d0e796e79', video_service.VIDEO_URL_CACHE_TTL)]
 
 
 def test_get_video_url_unwraps_cookie_bound_desktop_sites_to_direct_links(monkeypatch):

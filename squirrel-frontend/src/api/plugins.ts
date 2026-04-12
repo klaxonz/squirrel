@@ -1,4 +1,4 @@
-import { ApiError, get, post } from '@/utils/request'
+import { ApiError, del, get, post } from '@/utils/request'
 
 export interface PluginCapability {
   name: string
@@ -45,6 +45,20 @@ export interface PluginRuntimeInfo {
   drained_at?: string | null
   last_error?: string | null
   health?: PluginHealth | null
+}
+
+export interface YouTubeOAuthAccount {
+  name?: string | null
+  email?: string | null
+  avatar?: string | null
+}
+
+export interface YouTubeOAuthState {
+  status: string
+  verification_url?: string | null
+  user_code?: string | null
+  account?: YouTubeOAuthAccount | null
+  error?: string | null
 }
 
 export interface PluginListItem {
@@ -145,4 +159,16 @@ export const syncCookieCloudCookies = async (siteName: string | null = null) => 
   return post('/api/plugins/sites/cookies/cookiecloud/sync', null, {
     params: siteName ? { site_name: siteName } : {},
   })
+}
+
+export const setupYouTubeOAuth = async () => {
+  return post<YouTubeOAuthState>('/api/plugins/sites/youtube/oauth/setup', null)
+}
+
+export const getYouTubeOAuthStatus = async () => {
+  return get<YouTubeOAuthState>('/api/plugins/sites/youtube/oauth/status')
+}
+
+export const revokeYouTubeOAuth = async () => {
+  return del<{ revoked: boolean }>('/api/plugins/sites/youtube/oauth')
 }

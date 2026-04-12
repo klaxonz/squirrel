@@ -153,6 +153,7 @@ class PluginRuntimeSupervisor:
             'HOMEPATH',
             'LOCALAPPDATA',
             'APPDATA',
+            'YOUTUBE_OAUTH_STATE_FILE',
         }
         process_env = {
             key: value

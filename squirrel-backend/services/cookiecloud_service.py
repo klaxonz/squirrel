@@ -1,6 +1,11 @@
 import logging
+import json
 from datetime import datetime, timezone
+from pathlib import PurePosixPath
 from typing import Any, Dict, Optional, Tuple
+from urllib.parse import urljoin, urlparse
+
+import requests
 
 from core.config import settings
 from core.cookie_config import get_site_cookies_dir, get_site_cookies_file_path, write_cookie_text_file
@@ -25,6 +30,50 @@ def is_cookiecloud_configured() -> bool:
     return bool(url and uuid and password)
 
 
+def _decode_cookiecloud_response_json(response: requests.Response) -> Dict[str, Any]:
+    payload = response.content or b''
+    attempted_encodings: list[str] = []
+    last_error: Exception | None = None
+
+    encodings = [
+        response.encoding,
+        getattr(response, 'apparent_encoding', None),
+        'utf-8',
+        'utf-8-sig',
+        'latin-1',
+    ]
+
+    for encoding in encodings:
+        if not encoding or encoding in attempted_encodings:
+            continue
+        attempted_encodings.append(encoding)
+        try:
+            return json.loads(payload.decode(encoding))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            last_error = exc
+
+    raise CookieCloudSyncError(
+        'CookieCloud 响应不是有效的 JSON 数据，请检查服务端编码或反向代理压缩配置'
+    ) from last_error
+
+
+def _fetch_cookiecloud_encrypted_data(url: str, uuid: str) -> str:
+    api_root = urlparse(url).path or '/'
+    request_path = str(PurePosixPath(api_root, 'get', uuid))
+
+    try:
+        response = requests.get(urljoin(url, request_path), timeout=15)
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        raise CookieCloudSyncError(f'CookieCloud 请求失败: {exc}') from exc
+
+    payload = _decode_cookiecloud_response_json(response)
+    encrypted_data = payload.get('encrypted')
+    if not isinstance(encrypted_data, str) or not encrypted_data.strip():
+        raise CookieCloudSyncError('CookieCloud 响应缺少 encrypted 字段')
+    return encrypted_data
+
+
 def fetch_cookiecloud_cookie_data() -> Dict[str, Any]:
     url, uuid, password = _get_cookiecloud_config()
     if not url or not uuid or not password:
@@ -34,11 +83,19 @@ def fetch_cookiecloud_cookie_data() -> Dict[str, Any]:
 
     try:
         from PyCookieCloud import PyCookieCloud
+        from PyCookieCloud.PyCryptoJS import decrypt
     except Exception as exc:
         raise CookieCloudSyncError(f"缺少依赖 PyCookieCloud: {exc}") from exc
 
     client = PyCookieCloud(url=url, uuid=uuid, password=password)
-    data = client.get_decrypted_data()
+    encrypted_data = _fetch_cookiecloud_encrypted_data(url=url, uuid=uuid)
+    try:
+        decrypted_data = decrypt(encrypted_data, client.get_the_key().encode('utf-8')).decode('utf-8')
+        payload = json.loads(decrypted_data)
+    except Exception as exc:
+        raise CookieCloudSyncError(f'CookieCloud 解密失败: {exc}') from exc
+
+    data = payload.get('cookie_data')
     if not isinstance(data, dict) or not data:
         raise CookieCloudSyncError("CookieCloud 返回为空或解密失败")
     return data

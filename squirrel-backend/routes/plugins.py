@@ -316,6 +316,21 @@ def get_site_login_status(site_name: str):
         return param_error(f"不支持的站点: {site_name}")
 
     status = test_site_login_status(site_name)
+
+    # For YouTube, also include OAuth status
+    if site_name.lower() == 'youtube':
+        try:
+            from services.youtube_oauth_service import get_oauth_state
+            oauth_state = get_oauth_state()
+            status['oauth_status'] = oauth_state.status
+            status['oauth_account'] = {
+                'name': oauth_state.account.name if oauth_state.account else None,
+                'email': oauth_state.account.email if oauth_state.account else None,
+                'avatar': oauth_state.account.avatar if oauth_state.account else None,
+            } if oauth_state.account else None
+        except Exception:
+            pass
+
     return success(status)
 
 
@@ -690,3 +705,70 @@ async def test_all_sites_connectivity(timeout: int = Query(10, ge=1, le=60)):
     })
 
 
+# ── YouTube OAuth ─────────────────────────────────────────────────────────────
+
+@router.post("/sites/youtube/oauth/setup")
+def setup_youtube_oauth():
+    """
+    Start YouTube TV OAuth flow.
+    Returns verification URL and user code for user to complete authorization in browser.
+    """
+    try:
+        from services.youtube_oauth_service import setup_oauth_via_daemon
+
+        state = setup_oauth_via_daemon(timeout_seconds=60.0)
+        return success({
+            "status": state.status,
+            "verification_url": state.verification_url,
+            "user_code": state.user_code,
+            "account": {
+                "name": state.account.name if state.account else None,
+                "email": state.account.email if state.account else None,
+                "avatar": state.account.avatar if state.account else None,
+            } if state.account or state.status == "authenticated" else None,
+            "error": state.error,
+        })
+    except Exception as exc:
+        logger.exception("YouTube OAuth setup failed: %s", exc)
+        return error(f"OAuth 启动失败: {exc}")
+
+
+@router.get("/sites/youtube/oauth/status")
+def get_youtube_oauth_status():
+    """
+    Poll current YouTube OAuth status.
+    Call this periodically after oauth/setup to detect when user completes authorization.
+    """
+    try:
+        from services.youtube_oauth_service import poll_oauth_status_via_daemon
+
+        state = poll_oauth_status_via_daemon(timeout_seconds=10.0)
+        return success({
+            "status": state.status,
+            "verification_url": state.verification_url,
+            "user_code": state.user_code,
+            "account": {
+                "name": state.account.name if state.account else None,
+                "email": state.account.email if state.account else None,
+                "avatar": state.account.avatar if state.account else None,
+            } if state.account else None,
+            "error": state.error,
+        })
+    except Exception as exc:
+        logger.exception("YouTube OAuth status check failed: %s", exc)
+        return error(f"OAuth 状态查询失败: {exc}")
+
+
+@router.delete("/sites/youtube/oauth")
+def revoke_youtube_oauth():
+    """
+    Revoke YouTube OAuth credentials and sign out.
+    """
+    try:
+        from services.youtube_oauth_service import revoke_oauth_via_daemon
+
+        ok = revoke_oauth_via_daemon(timeout_seconds=30.0)
+        return success({"revoked": ok}, msg="已撤销 YouTube 授权" if ok else "撤销失败")
+    except Exception as exc:
+        logger.exception("YouTube OAuth revoke failed: %s", exc)
+        return error(f"撤销授权失败: {exc}")

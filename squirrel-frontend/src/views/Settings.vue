@@ -1389,5 +1389,6 @@ const handleRevokeSessions = async () => {
     right: 1rem;
     bottom: 1rem;
   }
+
 }
 </style>

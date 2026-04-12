@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import atexit
+import hashlib
 import json
+import os
 import queue
 import subprocess
 import threading
@@ -21,6 +23,10 @@ _WORKER_CLIENT: '_YoutubeiWorkerClient | None' = None
 _WORKER_CLIENT_LOCK = threading.Lock()
 _PREWARM_THREAD: threading.Thread | None = None
 _PREWARM_THREAD_LOCK = threading.Lock()
+
+
+def _get_oauth_state_file() -> str:
+    return os.environ.get('YOUTUBE_OAUTH_STATE_FILE', '').strip()
 
 
 @dataclass(slots=True)
@@ -66,8 +72,20 @@ def _load_youtube_cookie_header(video_id: str) -> str:
     return _load_cookie_header_for_target(f'https://www.youtube.com/watch?v={video_id}')
 
 
-def _cache_key(video_id: str, cookie_header: str) -> str:
-    return f'{video_id}|auth={int(bool(cookie_header))}'
+def _oauth_cache_scope() -> str:
+    oauth_state_file = _get_oauth_state_file()
+    if not oauth_state_file:
+        return 'oauth:none'
+    try:
+        payload = Path(oauth_state_file).read_bytes()
+    except OSError:
+        return 'oauth:none'
+    return f'oauth:{hashlib.sha256(payload).hexdigest()[:16]}'
+
+
+def _cache_key(video_id: str, cookie_header: str, oauth_scope: str) -> str:
+    digest = hashlib.sha256(cookie_header.encode()).hexdigest()[:16]
+    return f'{video_id}|auth={int(bool(cookie_header))}|cookie={digest}|{oauth_scope}'
 
 
 def _range_to_str(range_dict) -> str | None:
@@ -81,12 +99,39 @@ def _range_to_str(range_dict) -> str | None:
     return None
 
 
+def _summarize_worker_attempts(payload: dict[str, Any]) -> str:
+    attempts = payload.get('attempts')
+    if not isinstance(attempts, list) or not attempts:
+        return ''
+
+    parts: list[str] = []
+    for attempt in attempts[:4]:
+        if not isinstance(attempt, dict):
+            continue
+        client = str(attempt.get('client') or '?')
+        playability = str(attempt.get('playability_status') or '').strip()
+        format_count = attempt.get('format_count')
+        error = str(attempt.get('error') or '').strip()
+        fields = [client]
+        if playability:
+            fields.append(f'playability={playability}')
+        if format_count is not None:
+            fields.append(f'formats={format_count}')
+        if error:
+            fields.append(f'error={error}')
+        parts.append('[' + ', '.join(fields) + ']')
+
+    if not parts:
+        return ''
+    return ' attempts=' + ' '.join(parts)
+
+
 def parse_worker_payload(stdout: str) -> YoutubeiResult:
     payload = json.loads(stdout)
     if payload.get('status') != 'ok':
         error = payload.get('error') if isinstance(payload, dict) else None
         message = error.get('message') if isinstance(error, dict) else 'youtubei worker did not return success'
-        raise ValueError(str(message))
+        raise ValueError(str(message) + _summarize_worker_attempts(payload))
 
     formats = [
         YoutubeiFormat(
@@ -110,7 +155,7 @@ def parse_worker_payload(stdout: str) -> YoutubeiResult:
         for item in list(payload.get('formats') or [])
     ]
     if not formats:
-        raise ValueError('youtubei worker did not return a complete format set')
+        raise ValueError('youtubei worker did not return a complete format set' + _summarize_worker_attempts(payload))
 
     return YoutubeiResult(
         client=str(payload.get('client') or ''),
@@ -128,6 +173,14 @@ def _parse_worker_json(stdout: str) -> dict[str, Any]:
         message = error.get('message') if isinstance(error, dict) else 'youtubei worker did not return success'
         raise ValueError(str(message))
     return payload
+
+
+def _request_worker_json(payload: dict[str, Any], timeout_seconds: float) -> dict[str, Any]:
+    response_text = _get_worker_client().request(payload, timeout_seconds)
+    parsed = json.loads(response_text)
+    if not isinstance(parsed, dict):
+        raise ValueError('youtubei worker returned an invalid payload')
+    return parsed
 
 
 def _get_cached_result(cache_key: str) -> YoutubeiResult | None:
@@ -229,6 +282,10 @@ class _YoutubeiWorkerClient:
             return self._process
 
         self._stop_process()
+        env = dict(os.environ)
+        oauth_file = _get_oauth_state_file()
+        if oauth_file:
+            env['YOUTUBE_OAUTH_STATE_FILE'] = oauth_file
         process = subprocess.Popen(  # noqa: S603
             ['node', str(DAEMON_PATH)],
             cwd=str(WORKER_DIR),
@@ -238,6 +295,7 @@ class _YoutubeiWorkerClient:
             text=True,
             encoding='utf-8',
             bufsize=1,
+            env=env,
         )
         self._process = process
         self._stderr_tail.clear()
@@ -292,6 +350,8 @@ def shutdown_youtubei_worker() -> None:
     with _WORKER_CLIENT_LOCK:
         client = _WORKER_CLIENT
         _WORKER_CLIENT = None
+    with _RESULT_CACHE_LOCK:
+        _RESULT_CACHE.clear()
     if client is not None:
         close = getattr(client, 'close', None)
         if callable(close):
@@ -334,7 +394,8 @@ def resolve_with_youtubei(
     resolution_mode: str = 'playback',
 ) -> YoutubeiResult:
     cookie_header = _load_youtube_cookie_header(video_id)
-    cache_key = f'{_cache_key(video_id, cookie_header)}|mode={resolution_mode}'
+    oauth_scope = _oauth_cache_scope()
+    cache_key = f'{_cache_key(video_id, cookie_header, oauth_scope)}|mode={resolution_mode}'
     cached = _get_cached_result(cache_key)
     if cached:
         return cached
@@ -367,3 +428,32 @@ def resolve_captions_with_youtubei(
 
     response_text = _get_worker_client().request(worker_payload, timeout_seconds)
     return _parse_worker_json(response_text)
+
+
+# ── OAuth daemon helpers (called from Python service layer) ─────────────────────
+
+def resolve_oauth_setup_via_daemon(
+    oauth_state_file: str,
+    timeout_seconds: float = 10.0,
+) -> dict[str, Any]:
+    """Start YouTube TV OAuth flow. Returns immediately with verification URL/code."""
+    os.environ['YOUTUBE_OAUTH_STATE_FILE'] = oauth_state_file
+    return _request_worker_json({'action': 'oauth-setup'}, timeout_seconds)
+
+
+def resolve_oauth_status_via_daemon(
+    oauth_state_file: str,
+    timeout_seconds: float = 10.0,
+) -> dict[str, Any]:
+    """Poll current OAuth status."""
+    os.environ['YOUTUBE_OAUTH_STATE_FILE'] = oauth_state_file
+    return _request_worker_json({'action': 'oauth-status'}, timeout_seconds)
+
+
+def resolve_oauth_revoke_via_daemon(
+    oauth_state_file: str,
+    timeout_seconds: float = 30.0,
+) -> dict[str, Any]:
+    """Revoke OAuth credentials."""
+    os.environ['YOUTUBE_OAUTH_STATE_FILE'] = oauth_state_file
+    return _request_worker_json({'action': 'oauth-revoke'}, timeout_seconds)

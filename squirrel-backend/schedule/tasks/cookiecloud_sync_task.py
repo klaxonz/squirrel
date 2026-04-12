@@ -6,9 +6,9 @@ from services.cookiecloud_service import sync_cookiecloud_to_site_files
 logger = logging.getLogger(__name__)
 
 
-@TaskRegistry.register(interval=60 * 6, unit='minutes', start_immediately=False)
+@TaskRegistry.register(interval=60 * 5, unit='minutes', start_immediately=False)
 class CookieCloudSyncTask(BaseTask):
-    interval = 60 * 6
+    interval = 60 * 5
     unit = 'minutes'
     start_immediately = False
 

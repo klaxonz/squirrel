@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -75,6 +76,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     _log_lifecycle_step('Startup', 3, STARTUP_TOTAL_STEPS, 'Bootstrapping plugin runtime manager')
     try:
+        from services.youtube_oauth_service import get_oauth_credentials_for_daemon
+        oauth_file = get_oauth_credentials_for_daemon()
+        if oauth_file:
+            os.environ['YOUTUBE_OAUTH_STATE_FILE'] = oauth_file
         bootstrap_plugin_runtime()
         _log_lifecycle_step('Startup', 3, STARTUP_TOTAL_STEPS, 'Plugin runtime manager ready')
     except Exception:

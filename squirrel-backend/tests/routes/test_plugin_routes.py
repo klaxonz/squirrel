@@ -1,6 +1,7 @@
 import asyncio
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -170,3 +171,37 @@ def test_import_all_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_p
             '.youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n',
         )
     ]
+
+
+def test_get_site_login_status_includes_youtube_oauth_state(monkeypatch):
+    monkeypatch.setattr(
+        plugin_routes,
+        'get_merged_site_catalog',
+        lambda: {'youtube': {'label': 'YouTube', 'domains': ['youtube.com'], 'enabled': True}},
+    )
+    monkeypatch.setattr(
+        plugin_routes,
+        'build_site_info',
+        lambda site_name, catalog: {'site_name': site_name, **catalog[site_name]},
+    )
+    monkeypatch.setattr(
+        plugin_routes,
+        'test_site_login_status',
+        lambda site_name: {'supported': True, 'logged_in': False, 'site_name': site_name},
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        'services.youtube_oauth_service',
+        SimpleNamespace(
+            get_oauth_state=lambda timeout_seconds=5.0: SimpleNamespace(
+                status='authenticated',
+                account=SimpleNamespace(name='YT User', email='yt@example.com', avatar='https://img.example.com/a.png'),
+            ),
+        ),
+    )
+
+    response = plugin_routes.get_site_login_status('youtube')
+
+    assert response['code'] == 0
+    assert response['data']['oauth_status'] == 'authenticated'
+    assert response['data']['oauth_account']['email'] == 'yt@example.com'

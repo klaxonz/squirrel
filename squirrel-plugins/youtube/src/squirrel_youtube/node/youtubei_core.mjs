@@ -1,4 +1,7 @@
 import { createHash } from 'node:crypto';
+import { mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { Innertube, Platform, UniversalCache } from 'youtubei.js/web';
 
@@ -11,6 +14,55 @@ const CAPTIONS_ANONYMOUS_CLIENTS = ['ANDROID'];
 const CAPTIONS_AUTHENTICATED_CLIENTS = ['WEB', 'TV', 'MWEB'];
 const YOUTUBE_WEB_ORIGIN = 'https://www.youtube.com';
 const SESSION_CACHE = new Map();
+
+// OAuth state file path (passed via environment variable from Python side)
+const OAUTH_STATE_FILE = process.env.YOUTUBE_OAUTH_STATE_FILE || '';
+
+// ── OAuth state helpers ─────────────────────────────────────────────────────
+
+function getOAuthStateFilePath() {
+  return OAUTH_STATE_FILE || null;
+}
+
+function loadOAuthState() {
+  const stateFile = getOAuthStateFilePath();
+  if (!stateFile) return null;
+  try {
+    return JSON.parse(readFileSync(stateFile, 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+function saveOAuthState(state) {
+  const stateFile = getOAuthStateFilePath();
+  if (!stateFile) return;
+  mkdirSync(resolve(stateFile, '..'), { recursive: true });
+  writeFileSync(stateFile, JSON.stringify(state, null, 2), 'utf-8');
+}
+
+function extractAccountInfo(yt) {
+  try {
+    const account =
+      yt.account?.info?.name ||
+      yt.session?.account?.name ||
+      yt.account?.profile?.name ||
+      '';
+    const email =
+      yt.account?.info?.email ||
+      yt.session?.account?.email ||
+      yt.account?.profile?.email ||
+      '';
+    const avatar =
+      yt.account?.info?.photo ||
+      yt.session?.account?.photo ||
+      yt.account?.profile?.photo ||
+      '';
+    return { name: account, email, avatar };
+  } catch {
+    return { name: '', email: '', avatar: '' };
+  }
+}
 
 Platform.shim.eval = async (data, env) => {
   const source = `${data.output}\nreturn process(${JSON.stringify(env.n || '')}, ${JSON.stringify(env.sp || '')}, ${JSON.stringify(env.sig || '')});`;
@@ -373,30 +425,69 @@ function sessionCacheKey(cookie) {
   return `auth:${createHash('sha1').update(cookie).digest('hex')}`;
 }
 
-async function createRuntime(cookie) {
+function oauthSessionCacheKey(oauthState) {
+  if (!oauthState?.credentials) {
+    return 'oauth:none';
+  }
+  return `oauth:${createHash('sha1').update(JSON.stringify(oauthState.credentials)).digest('hex')}`;
+}
+
+async function createRuntime(cookie, oauthCredentials = null) {
   const yt = await Innertube.create({
     cache: new UniversalCache(true),
-    generate_session_locally: !cookie,
+    generate_session_locally: !cookie && !oauthCredentials,
     retrieve_player: true,
-    client_type: cookie ? 'MWEB' : 'ANDROID',
+    client_type: oauthCredentials ? 'WEB' : cookie ? 'MWEB' : 'ANDROID',
     fetch: buildYoutubeFetch(),
-    ...(cookie ? { cookie } : {}),
+    ...((cookie && !oauthCredentials) ? { cookie } : {}),
   });
+
+  if (oauthCredentials) {
+    try {
+      await yt.session.signIn(oauthCredentials);
+      return { yt, sessionManager: null, authMode: 'oauth' };
+    } catch (err) {
+      console.error(`[DEBUG] OAuth signIn failed (credentials will be skipped): ${err?.message || err}`);
+      return createRuntime(cookie, null);
+    }
+  }
 
   return {
     yt,
     sessionManager: cookie ? new SessionManager(false, {}) : null,
+    authMode: cookie ? 'cookie' : 'anonymous',
   };
 }
 
 async function getRuntime(cookie) {
-  const key = sessionCacheKey(cookie);
+  const oauthState = loadOAuthState();
+  let oauthCredentials = oauthState?.credentials || null;
+
+  // If OAuth credentials are present but stale, attempt to validate by creating a session
+  if (oauthCredentials) {
+    try {
+      const testYt = await Innertube.create({
+        cache: new UniversalCache(false),
+        generate_session_locally: true,
+        retrieve_player: false,
+        client_type: 'WEB',
+        fetch: buildYoutubeFetch(),
+      });
+      await testYt.session.signIn(oauthCredentials);
+      // Sign-in succeeded, proceed with OAuth
+    } catch {
+      // OAuth credentials are invalid or expired, clear them
+      oauthCredentials = null;
+    }
+  }
+
+  const key = `${sessionCacheKey(cookie)}|${oauthSessionCacheKey(oauthState)}`;
   let runtime = SESSION_CACHE.get(key);
   if (runtime) {
     return runtime;
   }
 
-  runtime = await createRuntime(cookie);
+  runtime = await createRuntime(cookie, oauthCredentials);
   SESSION_CACHE.set(key, runtime);
   return runtime;
 }
@@ -429,6 +520,10 @@ async function buildPoToken(videoId, runtime, attempts) {
   }
 }
 
+// ── OAuth in-flight flow tracker ──────────────────────────────────────────────
+
+let _oauthFlowInFlight = null; // { yt, resolve, reject, settled }
+
 export async function prewarmYoutubeiRuntime(cookie = '') {
   await getRuntime(cookie);
   return {
@@ -437,9 +532,213 @@ export async function prewarmYoutubeiRuntime(cookie = '') {
   };
 }
 
+async function resolveOAuthSetup() {
+  const stateFile = getOAuthStateFilePath();
+  if (!stateFile) {
+    throw new Error('OAuth state file path not configured');
+  }
+
+  // If credentials exist, validate them before claiming "authenticated"
+  const existing = loadOAuthState();
+  if (existing?.credentials) {
+    try {
+      const validatorYt = await Innertube.create({
+        cache: new UniversalCache(false),
+        generate_session_locally: true,
+        retrieve_player: false,
+        client_type: 'WEB',
+        fetch: buildYoutubeFetch(),
+      });
+      await validatorYt.session.signIn(existing.credentials);
+      return {
+        action: 'oauth-setup',
+        status: 'authenticated',
+        account: extractAccountInfo(validatorYt),
+      };
+    } catch {
+      // Credentials are invalid/expired, clear the file and start fresh
+      saveOAuthState({ pending: false, error: null });
+    }
+  }
+
+  if (_oauthFlowInFlight?.settled === false) {
+    const state = loadOAuthState();
+    if (state?.pending) {
+      return {
+        action: 'oauth-setup',
+        status: 'pending',
+        verification_url: state.verification_url,
+        user_code: state.user_code,
+      };
+    }
+  }
+
+  if (_oauthFlowInFlight) {
+    _oauthFlowInFlight.yt.session.signOut?.();
+    _oauthFlowInFlight = null;
+  }
+
+  const yt = await Innertube.create({
+    cache: new UniversalCache(false),
+    fetch: buildYoutubeFetch(),
+  });
+
+  return new Promise((resolve, reject) => {
+    _oauthFlowInFlight = { yt, resolve, reject, settled: false };
+
+    yt.session.on('auth-pending', (data) => {
+      saveOAuthState({
+        pending: true,
+        verification_url: data.verification_url,
+        user_code: data.user_code,
+      });
+      resolve({
+        action: 'oauth-setup',
+        status: 'pending',
+        verification_url: data.verification_url,
+        user_code: data.user_code,
+      });
+    });
+
+    yt.session.on('auth', ({ credentials }) => {
+      saveOAuthState({ pending: false, credentials });
+      if (_oauthFlowInFlight) {
+        _oauthFlowInFlight.settled = true;
+        _oauthFlowInFlight.resolve({
+          action: 'oauth-setup',
+          status: 'authenticated',
+          account: extractAccountInfo(yt),
+        });
+        _oauthFlowInFlight = null;
+      }
+    });
+
+    yt.session.on('auth-error', ({ error }) => {
+      saveOAuthState({ pending: false, error: String(error) });
+      if (_oauthFlowInFlight) {
+        _oauthFlowInFlight.settled = true;
+        _oauthFlowInFlight.reject(new Error(`OAuth error: ${error}`));
+        _oauthFlowInFlight = null;
+      }
+    });
+
+    yt.session.signIn().catch((err) => {
+      if (_oauthFlowInFlight) {
+        saveOAuthState({ pending: false, error: String(err) });
+        _oauthFlowInFlight = null;
+        reject(err);
+      }
+    });
+  });
+}
+
+async function resolveOAuthStatus() {
+  const stateFile = getOAuthStateFilePath();
+  if (!stateFile) {
+    return { status: 'not_configured' };
+  }
+
+  const state = loadOAuthState();
+
+  // Check in-flight flow first (user is mid-authorization)
+  if (_oauthFlowInFlight?.settled === false) {
+    if (state?.pending) {
+      return {
+        status: 'pending',
+        verification_url: state.verification_url,
+        user_code: state.user_code,
+      };
+    }
+    // In-flight but no pending in file → auth may have completed
+  }
+
+  if (!state?.credentials) {
+    return { status: 'not_configured' };
+  }
+
+  if (state.error) {
+    return { status: 'error', error: state.error };
+  }
+
+  // Fast path: check expiry_date before making a network request
+  const expiry = state.credentials?.expiry_date;
+  if (expiry) {
+    try {
+      const expiryMs = typeof expiry === 'number' ? expiry : Date.parse(String(expiry));
+      if (!isNaN(expiryMs) && expiryMs < Date.now() - 60_000) {
+        return { status: 'expired' };
+      }
+    } catch {
+      // Fall through to network validation
+    }
+  }
+
+  // Credentials exist in file — validate them (handles token refresh)
+  try {
+    const yt = await Innertube.create({
+      cache: new UniversalCache(false),
+      fetch: buildYoutubeFetch(),
+    });
+    await yt.session.signIn(state.credentials);
+    const updatedCredentials = yt.session.credentials || state.credentials;
+    saveOAuthState({ pending: false, credentials: updatedCredentials });
+    return {
+      status: 'authenticated',
+      account: extractAccountInfo(yt),
+    };
+  } catch {
+    return { status: 'expired' };
+  }
+}
+
+async function resolveOAuthRevoke() {
+  const stateFile = getOAuthStateFilePath();
+  if (!stateFile) {
+    return { status: 'done' };
+  }
+
+  if (_oauthFlowInFlight) {
+    _oauthFlowInFlight.yt.session.signOut?.();
+    _oauthFlowInFlight = null;
+  }
+
+  const state = loadOAuthState();
+  if (state?.credentials) {
+    try {
+      const yt = await Innertube.create({
+        cache: new UniversalCache(false),
+        fetch: buildYoutubeFetch(),
+      });
+      await yt.session.signIn(state.credentials);
+      await yt.session.signOut();
+    } catch {
+      // Ignore errors
+    }
+  }
+
+  try {
+    const { unlinkSync } = await import('node:fs');
+    unlinkSync(stateFile);
+  } catch {
+    // Ignore
+  }
+
+  return { status: 'done' };
+}
+
 export async function resolveYoutubeiPayload(payload) {
   const action = String(payload?.action || 'resolve');
   const cookie = typeof payload?.cookie === 'string' ? payload.cookie.trim() : '';
+
+  if (action === 'oauth-setup') {
+    return resolveOAuthSetup();
+  }
+  if (action === 'oauth-status') {
+    return resolveOAuthStatus();
+  }
+  if (action === 'oauth-revoke') {
+    return resolveOAuthRevoke();
+  }
 
   if (action === 'prewarm') {
     return prewarmYoutubeiRuntime(cookie);
@@ -461,16 +760,16 @@ export async function resolveYoutubeiPayload(payload) {
   const requestedClients = Array.isArray(payload?.clients)
     ? payload.clients.map((item) => String(item || '').trim().toUpperCase()).filter(Boolean)
     : [];
-
-  const clients = requestedClients.length
-    ? requestedClients
-    : (cookie
-      ? (resolutionMode === 'all' ? AUTHENTICATED_FULL_CLIENTS : AUTHENTICATED_PLAYBACK_CLIENTS)
-      : ANONYMOUS_CLIENTS);
   const attempts = [];
   const runtimeStart = performance.now();
   const runtime = await getRuntime(cookie);
   timings.get_runtime_ms = Number((performance.now() - runtimeStart).toFixed(1));
+  const hasAuth = runtime.authMode === 'oauth' || runtime.authMode === 'cookie';
+  const clients = requestedClients.length
+    ? requestedClients
+    : (hasAuth
+      ? (resolutionMode === 'all' ? AUTHENTICATED_FULL_CLIENTS : AUTHENTICATED_PLAYBACK_CLIENTS)
+      : ANONYMOUS_CLIENTS);
   let contentPoToken;
 
   for (const client of clients) {

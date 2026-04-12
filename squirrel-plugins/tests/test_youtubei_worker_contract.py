@@ -120,8 +120,21 @@ def test_resolve_with_youtubei_passes_cookie_to_worker(monkeypatch):
     assert captured['timeout_seconds'] == 1
 
 
-def test_cache_key_changes_when_cookie_auth_is_present():
-    assert resolver_module._cache_key('demo', '') != resolver_module._cache_key('demo', 'SAPISID=abc')
+def test_cache_key_changes_when_cookie_or_oauth_auth_changes():
+    assert resolver_module._cache_key('demo', '', 'oauth:none') != resolver_module._cache_key('demo', 'SAPISID=abc', 'oauth:none')
+    assert resolver_module._cache_key('demo', '', 'oauth:none') != resolver_module._cache_key('demo', '', 'oauth:abc123')
+
+
+def test_oauth_cache_scope_uses_configured_state_file(tmp_path, monkeypatch):
+    state_file = tmp_path / 'youtube_oauth.json'
+    state_file.write_text('{"credentials":{"access_token":"abc"}}', encoding='utf-8')
+
+    monkeypatch.setenv('YOUTUBE_OAUTH_STATE_FILE', str(state_file))
+
+    scope = resolver_module._oauth_cache_scope()
+
+    assert scope.startswith('oauth:')
+    assert scope != 'oauth:none'
 
 
 def test_worker_timeout_keeps_headroom_for_authenticated_cold_starts():
@@ -211,10 +224,12 @@ def test_get_worker_client_reuses_singleton(monkeypatch):
 def test_shutdown_youtubei_worker_tolerates_clients_without_close():
     _reset_worker_state()
     resolver_module._WORKER_CLIENT = object()
+    resolver_module._RESULT_CACHE['demo'] = (time.monotonic() + 1, object())
 
     resolver_module.shutdown_youtubei_worker()
 
     assert resolver_module._WORKER_CLIENT is None
+    assert resolver_module._RESULT_CACHE == {}
 
 
 def test_prewarm_youtubei_worker_runs_in_background(monkeypatch):

@@ -235,6 +235,38 @@
                     <ArrowPathIcon class="h-3 w-3 animate-spin" />
                   </div>
                   <div
+                    v-else-if="plugin.siteOAuthStatus === 'authenticated'"
+                    class="status-ok"
+                    :title="plugin.siteOAuthAccount?.email || 'YouTube OAuth 已连接'"
+                  >
+                    <LinkIcon class="h-3.5 w-3.5" />
+                    <span>已授权</span>
+                  </div>
+                  <div
+                    v-else-if="plugin.siteOAuthStatus === 'pending'"
+                    class="status-warning"
+                    :title="plugin.siteLoginStatus?.user_code ? `等待完成授权，验证码：${plugin.siteLoginStatus.user_code}` : '等待完成浏览器授权'"
+                  >
+                    <ArrowPathIcon class="h-3.5 w-3.5 animate-spin" />
+                    <span>待授权</span>
+                  </div>
+                  <div
+                    v-else-if="plugin.siteOAuthStatus === 'expired'"
+                    class="status-warning"
+                    title="YouTube OAuth 已过期"
+                  >
+                    <XCircleIcon class="h-3.5 w-3.5" />
+                    <span>已过期</span>
+                  </div>
+                  <div
+                    v-else-if="plugin.siteOAuthStatus === 'error'"
+                    class="status-error"
+                    :title="plugin.siteLoginStatus?.message || 'YouTube OAuth 异常'"
+                  >
+                    <XCircleIcon class="h-3.5 w-3.5" />
+                    <span>异常</span>
+                  </div>
+                  <div
                     v-else-if="plugin.siteLoginStatus?.logged_in"
                     class="status-ok"
                     title="登录有效"
@@ -291,6 +323,20 @@
                       <KeyIcon class="h-3.5 w-3.5" />
                     </button>
                     <button
+                      v-if="plugin.siteName === 'youtube'"
+                      @click="plugin.siteOAuthStatus === 'authenticated' || plugin.siteOAuthStatus === 'pending' ? handleRevokeYouTubeOAuth() : handleStartYouTubeOAuth()"
+                      :disabled="ytOAuthActioning || testingAll"
+                      class="action-btn"
+                      :title="plugin.siteOAuthStatus === 'authenticated' || plugin.siteOAuthStatus === 'pending' ? '解除 YouTube 授权' : '关联 YouTube 账户'"
+                    >
+                      <ArrowPathIcon v-if="ytOAuthActioning" class="h-3.5 w-3.5 animate-spin" />
+                      <LinkSlashIcon
+                        v-else-if="plugin.siteOAuthStatus === 'authenticated' || plugin.siteOAuthStatus === 'pending'"
+                        class="h-3.5 w-3.5"
+                      />
+                      <LinkIcon v-else class="h-3.5 w-3.5" />
+                    </button>
+                    <button
                       v-if="plugin.siteName"
                       @click="handleUploadCookiesBySite(plugin.siteName)"
                       :disabled="plugin.cookieUploading || testingAll"
@@ -336,7 +382,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed, watch } from 'vue';
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
 import {
   ArrowPathIcon,
   CheckCircleIcon,
@@ -351,6 +397,8 @@ import {
   TrashIcon,
   BoltIcon,
   KeyIcon,
+  LinkIcon,
+  LinkSlashIcon,
 } from '@heroicons/vue/24/outline';
 import SiteIcon from '@/components/common/SiteIcon.vue'
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
@@ -367,7 +415,10 @@ import {
   getSupportedSites,
   importAllSiteCookies,
   installPlugin,
+  getYouTubeOAuthStatus,
   reloadPlugins,
+  revokeYouTubeOAuth,
+  setupYouTubeOAuth,
   syncCookieCloudCookies,
   testAllSitesConnectivity,
   testSiteConnectivity,
@@ -391,6 +442,8 @@ const loginStatusResults = ref({});
 const loginStatusTesting = ref({});
 const cookieUploading = ref({});
 const lastTestedAt = ref(null);
+const ytOAuthActioning = ref(false);
+let ytOAuthPollTimer = null;
 
 // Site config
 const { catalog: siteCatalog, loading: siteLoading, error: siteError, loadCatalog, saveCatalog } = useSiteCatalog();
@@ -501,6 +554,8 @@ const displayPlugins = computed(() => {
       siteAccessible: siteResult.accessible,
       siteTesting: !!siteResult.testing,
       siteLoginStatus: loginStatus,
+      siteOAuthStatus: loginStatus?.oauth_status || null,
+      siteOAuthAccount: loginStatus?.oauth_account || null,
       siteLoginTesting: !!loginTestingMap[siteName],
       siteSupportsLogin: primarySite?.supports_login_status ?? false,
       siteConfigEnabled: catalogInfo?.enabled !== false,
@@ -639,6 +694,117 @@ const setLoginTesting = (siteName, value) => {
     ...loginStatusTesting.value,
     [siteName]: value
   };
+};
+
+const stopYouTubeOAuthPolling = () => {
+  if (ytOAuthPollTimer !== null) {
+    clearInterval(ytOAuthPollTimer);
+    ytOAuthPollTimer = null;
+  }
+};
+
+const upsertYouTubeOAuthStatus = (payload = {}) => {
+  const current = loginStatusResults.value?.youtube || {};
+  upsertLoginStatus('youtube', {
+    ...current,
+    oauth_status: payload.status || 'not_configured',
+    oauth_account: payload.account || null,
+    verification_url: payload.verification_url || null,
+    user_code: payload.user_code || null,
+    message: payload.error || current.message || '',
+    checked_at: new Date().toISOString(),
+  });
+};
+
+const pollYouTubeOAuthStatus = async () => {
+  const { data, error } = await getYouTubeOAuthStatus();
+  if (error || !data) {
+    upsertYouTubeOAuthStatus({
+      status: 'error',
+      error: error?.message || 'OAuth 状态查询失败',
+    });
+    stopYouTubeOAuthPolling();
+    saveResultsToCache();
+    return;
+  }
+
+  upsertYouTubeOAuthStatus(data);
+  if (data.status !== 'pending') {
+    stopYouTubeOAuthPolling();
+  }
+  saveResultsToCache();
+};
+
+const startYouTubeOAuthPolling = () => {
+  stopYouTubeOAuthPolling();
+  ytOAuthPollTimer = setInterval(pollYouTubeOAuthStatus, 3000);
+};
+
+const showYouTubeOAuthPendingNotice = (payload) => {
+  if (payload?.verification_url) {
+    window.open(payload.verification_url, '_blank', 'noopener,noreferrer');
+  }
+
+  const lines = ['请在浏览器中完成 YouTube 授权。'];
+  if (payload?.user_code) {
+    lines.push(`验证码：${payload.user_code}`);
+  }
+  if (payload?.verification_url) {
+    lines.push(`链接：${payload.verification_url}`);
+  }
+  alert(lines.join('\n'));
+};
+
+const handleStartYouTubeOAuth = async () => {
+  ytOAuthActioning.value = true;
+  try {
+    const { data, error } = await setupYouTubeOAuth();
+    if (error || !data) {
+      upsertYouTubeOAuthStatus({
+        status: 'error',
+        error: error?.message || 'OAuth 启动失败',
+      });
+      saveResultsToCache();
+      return;
+    }
+
+    upsertYouTubeOAuthStatus(data);
+    saveResultsToCache();
+
+    if (data.status === 'pending') {
+      showYouTubeOAuthPendingNotice(data);
+      startYouTubeOAuthPolling();
+    }
+  } finally {
+    ytOAuthActioning.value = false;
+  }
+};
+
+const handleRevokeYouTubeOAuth = async () => {
+  ytOAuthActioning.value = true;
+  stopYouTubeOAuthPolling();
+  try {
+    const { data, error } = await revokeYouTubeOAuth();
+    if (error || !data?.revoked) {
+      upsertYouTubeOAuthStatus({
+        status: 'error',
+        error: error?.message || '撤销授权失败',
+      });
+      saveResultsToCache();
+      return;
+    }
+
+    upsertYouTubeOAuthStatus({
+      status: 'not_configured',
+      account: null,
+      verification_url: null,
+      user_code: null,
+      error: null,
+    });
+    saveResultsToCache();
+  } finally {
+    ytOAuthActioning.value = false;
+  }
 };
 
 const upsertLoginStatus = (siteName, payload) => {
@@ -1003,6 +1169,10 @@ onMounted(() => {
   loadSiteCatalog();
   loadResultsFromCache();
   fetchSupportedSites();
+});
+
+onUnmounted(() => {
+  stopYouTubeOAuthPolling();
 });
 </script>
 
@@ -1484,7 +1654,8 @@ onMounted(() => {
 
 /* Status */
 .status-ok,
-.status-error {
+.status-error,
+.status-warning {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1498,6 +1669,10 @@ onMounted(() => {
 
 .status-error {
   color: hsl(var(--destructive));
+}
+
+.status-warning {
+  color: hsl(var(--warning));
 }
 
 /* Actions */

@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import datetime
+import hashlib
 from time import perf_counter
 from typing import List, Tuple, Optional, Dict
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -39,6 +40,7 @@ from utils import url_helper
 from utils.url_helper import extract_top_level_domain
 from utils.site_catalog import SiteCatalog
 from core.cache import redis_client
+from core.cookie_config import get_site_cookies_file_path
 from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
 
 logger = logging.getLogger()
@@ -79,6 +81,25 @@ def _playback_cache_scope(client_type: Optional[str], *, prefer_direct_urls: boo
         return 'default'
     mode = 'direct' if prefer_direct_urls else 'proxied'
     return f'{normalized_client_type}:{mode}'
+
+
+def _file_cache_scope(path) -> str:
+    try:
+        payload = path.read_bytes()
+    except OSError:
+        return 'none'
+    return hashlib.sha256(payload).hexdigest()[:16]
+
+
+def _auth_cache_scope(site_slug: Optional[str]) -> str:
+    if site_slug != 'youtube':
+        return 'auth:default'
+
+    from services.youtube_oauth_service import get_oauth_cache_scope
+
+    oauth_scope = get_oauth_cache_scope()
+    cookie_scope = _file_cache_scope(get_site_cookies_file_path('youtube'))
+    return f'{oauth_scope}:cookie:{cookie_scope}'
 
 
 def _finalize_video_url_dto(dto: VideoUrlDto, *, prefer_direct_urls: bool) -> VideoUrlDto:
@@ -194,6 +215,7 @@ def get_video_url(video_id: int, force_refresh: bool = False, client_type: Optio
     prefer_direct_urls = normalized_client_type == 'desktop'
     enable_cache = bool(metadata.get("player_url_cache"))
     cache_scope = _playback_cache_scope(normalized_client_type, prefer_direct_urls=prefer_direct_urls)
+    cache_scope = f'{cache_scope}:{_auth_cache_scope(site_slug)}'
 
     cache_key: Optional[str] = None
     if enable_cache:

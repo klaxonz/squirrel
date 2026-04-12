@@ -1,4 +1,5 @@
 import logging
+import os
 import signal
 import threading
 from contextlib import contextmanager
@@ -49,6 +50,10 @@ def bootstrap_runtime(component: str):
         logger.warning("[%s] Failed to configure cookie resolver: %s", component, exc)
 
     try:
+        from services.youtube_oauth_service import get_oauth_credentials_for_daemon
+        oauth_file = get_oauth_credentials_for_daemon()
+        if oauth_file:
+            os.environ['YOUTUBE_OAUTH_STATE_FILE'] = oauth_file
         bootstrap_plugin_runtime()
         try:
             from services import video_extraction_projection_service
