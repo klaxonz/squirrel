@@ -103,6 +103,7 @@
 
         <main class="app-main">
           <div class="page-container">
+            <GlobalVideoPlayerHost />
             <div
               ref="contentContainerRef"
               class="content-container absolute inset-0"
@@ -150,6 +151,7 @@ import GlobalSearchBar from '@/components/layout/GlobalSearchBar.vue'
 import MobileNav from '@/components/layout/MobileNav.vue'
 import RefreshCenter from '@/components/layout/RefreshCenter.vue'
 import Sidebar from '@/components/layout/Sidebar.vue'
+import GlobalVideoPlayerHost from '@/components/video-player/GlobalVideoPlayerHost.vue'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { MOBILE_NAV_ITEMS } from '@/constants/sidebar'
 import { isMobile } from './composables/useMobile'

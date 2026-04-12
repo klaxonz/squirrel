@@ -13,35 +13,10 @@
                 <div class="viewfinder-corner viewfinder-corner--top-right"></div>
                 <div class="viewfinder-corner viewfinder-corner--bottom-left"></div>
                 <div class="viewfinder-corner viewfinder-corner--bottom-right"></div>
-                <VideoPlayer
-                  ref="videoPlayerRef"
+                <div
                   v-if="video || playbackSource || isResolvingPlayback || externalError"
-                  :source="playbackSource"
-                  :subtitles="subtitleTracks"
-                  :poster="video?.thumbnail"
-                  :title="video?.title"
-                  :initialTime="startTime"
-                  :has-prev="hasPrevVideo"
-                  :has-next="hasNextVideo"
-                  :external-error="externalError"
-                  :widescreen="isWidescreen"
-                  :external-loading="isResolvingPlayback"
-                  :external-loading-text="'正在建立播放链路'"
-                  :adapter="playerAdapter"
-                  :theme="effectiveTheme"
-                  :i18n-options="{ persist: true, storageKey: 'sp-locale', applyToDocument: true, useGlobal: true }"
-                  :enable-global-shortcuts="true"
-                  :enable-click-outside-close-menu="true"
-                  :enable-window-resize="true"
-
-                  @play="onVideoPlay"
-                  @pause="onVideoPause"
-                  @ended="handleAutoplayNext"
-                  @timeupdate="onVideoTimeUpdate"
-                  @prev="handlePrevVideo"
-                  @next="handleNextVideo"
-                  @widescreenChange="toggleWidescreen"
-                  @retry="handlePlayerRetry"
+                  ref="videoPlayerHostRef"
+                  class="video-player-host"
                 />
               </div>
             </Transition>
@@ -228,13 +203,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, computed, nextTick, reactive, inject } from 'vue';
+import { ref, onMounted, onUnmounted, watch, computed, reactive, inject } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
 import usePlaybackReporting from '../composables/usePlaybackReporting';
+import { useGlobalVideoPlayer } from '@/composables/useGlobalVideoPlayer'
 import { useAppTheme } from '@/composables/useAppTheme'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
-import VideoPlayer from '@/components/video-player/VideoPlayer.vue';
 import RelatedVideoSkeleton from '@/components/video-player/RelatedVideoSkeleton.vue';
 import { LocalStorageAdapter } from '@/components/video-player/core';
 import { Icon } from '@iconify/vue';
@@ -255,10 +230,30 @@ const APP_TITLE = 'Squirrel'
 
 const playerAdapter = new LocalStorageAdapter();
 const { effectiveTheme } = useAppTheme()
+const {
+  activateGlobalVideoPlayerSession,
+  clearGlobalVideoPlayerSession,
+  registerGlobalVideoPlayerTarget,
+  unregisterGlobalVideoPlayerTarget,
+  focusGlobalVideoPlayer,
+  setGlobalVideoPlayerCurrentVideoId,
+  globalVideoPlayerSession,
+} = useGlobalVideoPlayer()
 
 
 // 内部切换不使用 router，所以不需要从 history.state 读取初始数据
-const { video, startTime, relatedVideos, loadingRelated, playbackSource, subtitleTracks, loadAndPlayById, externalError, isResolvingPlayback } = usePlaybackOrchestrator(null);
+const {
+  video,
+  startTime,
+  relatedVideos,
+  loadingRelated,
+  playbackSource,
+  subtitleTracks,
+  loadAndPlayById,
+  externalError,
+  isResolvingPlayback,
+  hydratePlaybackState,
+} = usePlaybackOrchestrator(null);
 const { sendReport } = useVideoHistory();
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
@@ -334,7 +329,7 @@ const handleVideoAction = async (action) => {
 
 
 // 视频播放器引用
-const videoPlayerRef = ref(null);
+const videoPlayerHostRef = ref(null);
 const videoPageRef = ref(null);
 const videoSectionRef = ref(null);
 const videoMetaRef = ref(null);
@@ -502,23 +497,142 @@ const handlePlayRandom = async () => {
 
   // 聚焦到视频播放器，使键盘控制生效
   const focusVideoPlayer = async () => {
-    await nextTick();
-    // 延迟一点，确保 DOM 已经完全渲染
-    setTimeout(() => {
-      try {
-        const rootEl = videoPlayerRef.value?.$el;
-        const containerEl = rootEl instanceof HTMLElement ? rootEl : null;
-        const playerContainer = containerEl?.classList?.contains('sp-player')
-          ? containerEl
-          : containerEl?.querySelector('.sp-player');
-        if (playerContainer && typeof playerContainer.focus === 'function') {
-          playerContainer.focus({ preventScroll: true });
-        }
-      } catch (e) {
-        Logger.debug('Failed to focus video player', e);
-      }
-    }, 100);
+    try {
+      await focusGlobalVideoPlayer();
+    } catch (e) {
+      Logger.debug('Failed to focus video player', e);
+    }
   };
+
+watch(videoPlayerHostRef, (element) => {
+  if (element) {
+    registerGlobalVideoPlayerTarget(element);
+    return;
+  }
+
+  unregisterGlobalVideoPlayerTarget();
+}, { immediate: true });
+
+watch(() => route.params.videoId, (videoId) => {
+  setGlobalVideoPlayerCurrentVideoId(videoId);
+}, { immediate: true });
+
+const isSameGlobalPlaybackSession = (videoId = route.params.videoId) => {
+  return String(globalVideoPlayerSession.currentVideoId || '') === String(videoId || '');
+};
+
+const hasReusableGlobalPlaybackSession = (videoId = route.params.videoId) => {
+  if (!isSameGlobalPlaybackSession(videoId)) return false;
+
+  return !!(
+    globalVideoPlayerSession.source
+    || globalVideoPlayerSession.externalError
+    || globalVideoPlayerSession.externalLoading
+    || globalVideoPlayerSession.videoSnapshot
+  );
+};
+
+const hydrateFromGlobalPlaybackSession = () => {
+  hydratePlaybackState({
+    videoSnapshot: globalVideoPlayerSession.videoSnapshot || null,
+    nextPlaybackSource: globalVideoPlayerSession.source || null,
+    nextSubtitleTracks: globalVideoPlayerSession.subtitles || [],
+    nextExternalError: globalVideoPlayerSession.externalError || null,
+    nextIsResolvingPlayback: globalVideoPlayerSession.externalLoading,
+    nextRelatedVideos: globalVideoPlayerSession.relatedVideos || [],
+    nextLoadingRelated: globalVideoPlayerSession.loadingRelated,
+  });
+};
+
+const hasActivePictureInPictureSession = () => {
+  if (globalVideoPlayerSession.pictureInPicture) {
+    return true;
+  }
+
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  return !!document.pictureInPictureElement;
+};
+
+watch(
+  [
+    video,
+    playbackSource,
+    subtitleTracks,
+    () => video.value?.thumbnail,
+    () => video.value?.title,
+    startTime,
+    hasPrevVideo,
+    hasNextVideo,
+    externalError,
+    isWidescreen,
+    isResolvingPlayback,
+    effectiveTheme,
+    relatedVideos,
+    loadingRelated,
+  ],
+  ([
+    nextVideo,
+    nextSource,
+    nextSubtitles,
+    nextPoster,
+    nextTitle,
+    nextInitialTime,
+    nextHasPrev,
+    nextHasNext,
+    nextExternalError,
+    nextWidescreen,
+    nextExternalLoading,
+    nextTheme,
+    nextRelatedVideos,
+    nextLoadingRelated,
+  ]) => {
+    const hasLocalPlaybackState = !!(
+      nextVideo
+      || nextSource
+      || nextExternalError
+      || nextExternalLoading
+    );
+
+    if (!hasLocalPlaybackState && hasReusableGlobalPlaybackSession()) {
+      return;
+    }
+
+    activateGlobalVideoPlayerSession({
+      target: videoPlayerHostRef.value,
+      source: nextSource,
+      subtitles: nextSubtitles || [],
+      poster: nextPoster || '',
+      title: nextTitle || '',
+      initialTime: nextInitialTime,
+      hasPrev: nextHasPrev,
+      hasNext: nextHasNext,
+      externalError: nextExternalError,
+      widescreen: nextWidescreen,
+      externalLoading: nextExternalLoading,
+      externalLoadingText: '正在建立播放链路',
+      adapter: playerAdapter,
+      theme: nextTheme,
+      currentVideoId: String(route.params.videoId || ''),
+      videoSnapshot: nextVideo || null,
+      relatedVideos: nextRelatedVideos || [],
+      loadingRelated: nextLoadingRelated,
+      handlers: {
+        onPlay: onVideoPlay,
+        onPause: onVideoPause,
+        onEnded: handleAutoplayNext,
+        onTimeUpdate: onVideoTimeUpdate,
+        onPrev: handlePrevVideo,
+        onNext: handleNextVideo,
+        onRetry: handlePlayerRetry,
+        onWidescreenChange: toggleWidescreen,
+      }
+    });
+  },
+  { immediate: true, deep: true }
+);
 
 const goToVideo = async (id, videoData = null) => {
   if (!id) return;
@@ -534,11 +648,6 @@ const goToVideo = async (id, videoData = null) => {
     }
   }
   
-  // 切换到新视频前，先停止当前播放并重置状态
-  try {
-    videoPlayerRef.value?.stop();
-  } catch (_) {}
-
   // 使用 Vue Router 进行导航，确保路由参数更新、后退可用，并触发依赖路由的逻辑
   // 注意：state 只能存储可序列化的数据，避免传入响应式对象
   if (String(route.params.videoId ?? '') !== targetId) {
@@ -581,8 +690,11 @@ const handleAutoplayNext = async (evt) => {
 
 
 onMounted(async () => {
-  // 初始加载时从API获取数据
-  await loadAndPlayById(route.params.videoId);
+  if (hasReusableGlobalPlaybackSession()) {
+    hydrateFromGlobalPlaybackSession();
+  } else {
+    await loadAndPlayById(route.params.videoId);
+  }
   await focusVideoPlayer();
 
   setWidescreenClass(isWidescreen.value);
@@ -593,7 +705,11 @@ watch(() => route.params.videoId, async (newId, oldId) => {
   // 只有从外部导航进来才需要重新加载
   // 内部切换（goToVideo）已经调用了loadAndPlayById，不需要重复加载
   if (newId && newId !== oldId && video.value?.id !== newId) {
-    await loadAndPlayById(newId);
+    if (hasReusableGlobalPlaybackSession(newId)) {
+      hydrateFromGlobalPlaybackSession();
+    } else {
+      await loadAndPlayById(newId);
+    }
     await focusVideoPlayer();
   }
 });
@@ -626,6 +742,11 @@ watch(() => relatedVideos.value, () => {
 onUnmounted(() => {
   setWidescreenClass(false);
   syncWidescreenSidebarState(false);
+  unregisterGlobalVideoPlayerTarget(videoPlayerHostRef.value);
+  if (hasActivePictureInPictureSession()) {
+    return;
+  }
+  clearGlobalVideoPlayerSession();
 });
 
 </script>
@@ -690,6 +811,11 @@ onUnmounted(() => {
   width: 100%;
   aspect-ratio: 16 / 9;
   background: #000;
+}
+
+.video-player-host {
+  position: absolute;
+  inset: 0;
 }
 
 /* 推荐视频列表项 - 彻底移除卡片效果 */

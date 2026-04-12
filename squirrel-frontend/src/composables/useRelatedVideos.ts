@@ -85,10 +85,17 @@ export default function useRelatedVideos(sourceVideo: Ref<VideoListItem | null>)
     }
   }
 
+  const setRelatedVideosSnapshot = (items: VideoListItem[] = [], loading = false) => {
+    requestSeq.value += 1
+    relatedVideos.value = Array.isArray(items) ? [...items] : []
+    loadingRelated.value = !!loading
+  }
+
   return {
     relatedVideos,
     loadingRelated,
     fetchRelatedVideos,
+    setRelatedVideosSnapshot,
   }
 }
 

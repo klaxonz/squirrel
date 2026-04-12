@@ -29,7 +29,7 @@ const toRecord = (value: unknown): Record<string, any> => {
 
 export default function usePlaybackOrchestrator(initialVideo: VideoLike | null = null) {
   const { video, startTime, fetchVideoDetails, maybeInjectSubtitles, setVideoSnapshot } = useVideoDetail(initialVideo)
-  const { relatedVideos, loadingRelated, fetchRelatedVideos } = useRelatedVideos(video)
+  const { relatedVideos, loadingRelated, fetchRelatedVideos, setRelatedVideosSnapshot } = useRelatedVideos(video)
   const { getPlaybackSource } = useVideoOperations()
   const playbackSource = ref<MediaSource | null>(null)
   const subtitleTracks = ref<SubtitleTrack[]>([])
@@ -149,6 +149,32 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
     })
   }
 
+  const hydratePlaybackState = ({
+    videoSnapshot = null,
+    nextPlaybackSource = null,
+    nextSubtitleTracks = [],
+    nextExternalError = null,
+    nextIsResolvingPlayback = false,
+    nextRelatedVideos = [],
+    nextLoadingRelated = false,
+  }: {
+    videoSnapshot?: VideoLike | null
+    nextPlaybackSource?: MediaSource | null
+    nextSubtitleTracks?: SubtitleTrack[]
+    nextExternalError?: ExternalErrorState | null
+    nextIsResolvingPlayback?: boolean
+    nextRelatedVideos?: VideoLike[]
+    nextLoadingRelated?: boolean
+  } = {}) => {
+    requestSeq.value += 1
+    setVideoSnapshot(videoSnapshot)
+    playbackSource.value = nextPlaybackSource
+    subtitleTracks.value = Array.isArray(nextSubtitleTracks) ? [...nextSubtitleTracks] : []
+    externalError.value = nextExternalError
+    isResolvingPlayback.value = !!nextIsResolvingPlayback
+    setRelatedVideosSnapshot(nextRelatedVideos as any[], nextLoadingRelated)
+  }
+
   watch(
     () => toRecord(video.value as any)?.subtitles,
     (subtitles) => {
@@ -167,10 +193,10 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
     subtitleTracks,
     externalError,
     isResolvingPlayback,
+    hydratePlaybackState,
 
     // actions
     loadAndPlayById,
   }
 }
-
 

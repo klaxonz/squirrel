@@ -421,7 +421,18 @@ const props = withDefaults(defineProps<Props>(), {
   externalLoading: false,
 })
 
-const emit = defineEmits(['play', 'pause', 'ended', 'timeupdate', 'error', 'fullscreenChange', 'retry', 'widescreenChange'])
+const emit = defineEmits([
+  'play',
+  'pause',
+  'ended',
+  'timeupdate',
+  'error',
+  'fullscreenChange',
+  'retry',
+  'widescreenChange',
+  'enterpictureinpicture',
+  'leavepictureinpicture'
+])
 
 const {
   store, videoElement, containerElement, isPlaying, currentTime, duration, volume, isMuted, isFullscreen,
@@ -894,6 +905,11 @@ watch(isFullscreen, (fullscreen) => {
   const nextWidescreen = pendingWidescreenValue.value
   pendingWidescreenValue.value = null
   emit('widescreenChange', nextWidescreen)
+})
+
+watch(() => store.pictureInPicture, (inPictureInPicture, previousValue) => {
+  if (inPictureInPicture === previousValue) return
+  emit(inPictureInPicture ? 'enterpictureinpicture' : 'leavepictureinpicture')
 })
 
 watch(isScrubbing, (scrubbing) => {
