@@ -1,115 +1,90 @@
 <template>
   <div
     v-if="visible"
-    class="fixed inset-0 bg-background/60 flex items-center justify-center z-50 p-4 backdrop-blur-md transition-all duration-500"
+    class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
   >
-    <div class="bg-background/90 border border-border/10 w-full max-w-4xl rounded-[2rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-      <!-- Header: 参照 PageHeader 风格 -->
-      <div class="flex items-center justify-between px-8 py-6 border-b border-border/5">
-        <div class="flex items-center gap-4">
+    <div class="bg-background border border-border/80 w-full max-w-xl rounded-lg flex flex-col max-h-[80vh] overflow-hidden">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-4 py-3 border-b border-border/50">
+        <div class="flex items-center gap-3">
           <SiteIcon
             :icon-url="siteEditorForm.iconUrl"
             :label="siteEditorForm.label || siteEditorForm.slug"
-            size="lg"
-            rounded="md"
-            class="h-12 w-12 rounded-2xl bg-primary/10 text-primary border-primary/10"
+            size="sm"
+            rounded="sm"
           />
           <div>
-            <h3 class="text-xl font-black tracking-tight text-foreground">站点配置</h3>
-            <p class="text-[11px] text-muted-foreground/40 mt-0.5 font-bold uppercase tracking-widest">配置标识：{{ siteEditorForm.slug }}</p>
+            <h3 class="text-sm font-medium text-foreground">站点配置</h3>
+            <p class="text-[11px] text-muted-foreground">{{ siteEditorForm.slug }}</p>
           </div>
         </div>
         <button
-          class="h-9 w-9 rounded-full bg-foreground/5 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-all"
+          class="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
           @click="$emit('close')"
         >
-          <span class="text-lg">✕</span>
+          <span class="text-xs">✕</span>
         </button>
       </div>
 
-      <!-- Content: 模块化卡片布局 -->
-      <div class="site-editor-scroll flex-1 px-8 py-8 space-y-10 overflow-y-auto pr-4">
+      <!-- Content -->
+      <div class="site-editor-scroll flex-1 px-4 py-4 overflow-y-auto">
         
-        <!-- 第一组：基础信息 -->
-        <div class="space-y-5">
-          <div class="flex items-center gap-3 ml-1">
-            <Settings2 class="h-4 w-4 text-primary/60" />
-            <h4 class="text-[12px] font-black text-foreground/80 uppercase tracking-[0.2em]">基本参数</h4>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-[2rem] bg-card/40 border border-border/10">
-            <div class="space-y-1.5 md:col-span-2">
-              <Label class="text-[11px] font-bold text-muted-foreground/40 uppercase ml-1 tracking-wider">显示名称</Label>
-              <Input v-model="siteEditorForm.label" placeholder="展示给用户的名称" class="bg-transparent border-border/20 focus:border-primary/40 h-11 rounded-xl transition-all" />
+        <!-- 基本参数 -->
+        <section class="mb-5">
+          <h4 class="text-[11px] font-medium text-muted-foreground uppercase mb-3">基本参数</h4>
+          <div class="space-y-2.5">
+            <div class="flex items-center gap-2">
+              <label class="text-[11px] text-muted-foreground w-16 shrink-0">显示名称</label>
+              <Input v-model="siteEditorForm.label" placeholder="展示给用户的名称" class="flex-1 h-7 text-xs" />
             </div>
-            <div class="space-y-1.5">
-              <Label class="text-[11px] font-bold text-muted-foreground/40 uppercase ml-1 tracking-wider">域名列表</Label>
+            <div class="flex items-center gap-2">
+              <label class="text-[11px] text-muted-foreground w-16 shrink-0">站点别名</label>
+              <Textarea v-model="siteEditorForm.aliasesText" :rows="2" placeholder="每行一个别名" class="flex-1 text-xs resize-none" />
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-[11px] text-muted-foreground w-16 shrink-0">域名</label>
               <Textarea
-                v-model="siteEditorForm.domainsText"
-                :rows="4"
+                :model-value="siteEditorForm.domainsText"
+                :rows="2"
                 readonly
-                placeholder="由插件定义，当前为只读"
-                class="bg-transparent border-border/10 rounded-xl resize-none p-3.5 text-[13px] text-muted-foreground/60 cursor-default"
+                class="flex-1 text-xs resize-none text-muted-foreground/70"
               />
-              <p class="text-[11px] text-muted-foreground/30 font-medium ml-1">域名来源于插件声明，站点配置页不再允许手动修改。</p>
             </div>
-            <div class="space-y-1.5">
-              <Label class="text-[11px] font-bold text-muted-foreground/40 uppercase ml-1 tracking-wider">站点别名</Label>
-              <Textarea v-model="siteEditorForm.aliasesText" :rows="4" placeholder="每行一个别名" class="bg-transparent border-border/20 focus:border-primary/40 rounded-xl resize-none p-3.5 transition-all text-[13px]" />
-            </div>
-            
-            <div class="md:col-span-2 flex items-center justify-between p-5 rounded-2xl bg-foreground/[0.03] border border-border/5 hover:border-primary/20 transition-all group">
-              <div class="space-y-0.5">
-                <div class="text-[13px] font-bold text-foreground group-hover:text-primary transition-colors">启用该站点</div>
-                <div class="text-[11px] text-muted-foreground/40 font-medium">控制该站点是否参与自动更新与订阅采集</div>
-              </div>
+            <div class="flex items-center justify-between py-1">
+              <span class="text-xs text-foreground">启用站点</span>
               <Switch :checked="!!siteEditorForm.enabled" @update:checked="(v) => setSiteEditorBooleanField('enabled', v)" />
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- 第二组：采集策略 -->
-        <div class="space-y-5">
-          <div class="flex items-center gap-3 ml-1">
-            <RefreshCcw class="h-4 w-4 text-primary/60" />
-            <h4 class="text-[12px] font-black text-foreground/80 uppercase tracking-[0.2em]">采集策略</h4>
-          </div>
-          <div class="p-6 rounded-[2rem] bg-card/40 border border-border/10 space-y-6">
-            <div class="space-y-1.5">
-              <Label class="text-[11px] font-bold text-muted-foreground/40 uppercase ml-1 tracking-wider">测试地址</Label>
-              <Input v-model="siteEditorForm.testUrl" placeholder="用于连通性检测的地址" class="bg-transparent border-border/20 focus:border-primary/40 h-11 rounded-xl transition-all" />
+        <!-- 采集策略 -->
+        <section class="mb-5">
+          <h4 class="text-[11px] font-medium text-muted-foreground uppercase mb-3">采集策略</h4>
+          <div class="space-y-2.5">
+            <div class="flex items-center gap-2">
+              <label class="text-[11px] text-muted-foreground w-16 shrink-0">测试地址</label>
+              <Input v-model="siteEditorForm.testUrl" placeholder="用于连通性检测的地址" class="flex-1 h-7 text-xs" />
             </div>
-            
-            <div class="space-y-5">
-              <div class="flex items-center justify-between p-5 rounded-2xl bg-foreground/[0.03] border border-border/5">
-                <div class="space-y-0.5">
-                  <div class="text-[13px] font-bold text-foreground">频率限制</div>
-                  <div class="text-[11px] text-muted-foreground/40 font-medium">开启后将按照设定的时间间隔进行反爬虫规避</div>
-                </div>
+            <div class="flex items-center gap-2">
+              <label class="text-[11px] text-muted-foreground w-16 shrink-0">频率限制</label>
+              <div class="flex items-center gap-2 flex-1">
                 <Switch :checked="!!siteEditorForm.rateLimitEnabled" @update:checked="(v) => setSiteEditorBooleanField('rateLimitEnabled', v)" />
-              </div>
-
-              <div class="grid grid-cols-2 gap-5 transition-all duration-500" :class="!siteEditorForm.rateLimitEnabled ? 'opacity-20 grayscale pointer-events-none' : ''">
-                <div class="space-y-1.5">
-                  <Label class="text-[11px] font-bold text-muted-foreground/40 uppercase ml-1">最小间隔 (秒)</Label>
-                  <Input v-model="siteEditorForm.rateLimitMin" type="number" step="0.1" class="bg-transparent border-border/20 h-10 rounded-xl" />
-                </div>
-                <div class="space-y-1.5">
-                  <Label class="text-[11px] font-bold text-muted-foreground/40 uppercase ml-1">最大间隔 (秒)</Label>
-                  <Input v-model="siteEditorForm.rateLimitMax" type="number" step="0.1" class="bg-transparent border-border/20 h-10 rounded-xl" />
-                </div>
+                <span v-if="siteEditorForm.rateLimitEnabled" class="flex items-center gap-1.5 text-[11px]">
+                  <Input v-model="siteEditorForm.rateLimitMin" type="number" step="0.1" class="w-16 h-6 text-xs" placeholder="最小" />
+                  <span class="text-muted-foreground/60">~</span>
+                  <Input v-model="siteEditorForm.rateLimitMax" type="number" step="0.1" class="w-16 h-6 text-xs" placeholder="最大" />
+                  <span class="text-muted-foreground/60">秒</span>
+                </span>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- 第三组：内容与隐私 -->
-        <div class="space-y-5">
-          <div class="flex items-center gap-3 ml-1">
-            <ShieldCheck class="h-4 w-4 text-primary/60" />
-            <h4 class="text-[12px] font-black text-foreground/80 uppercase tracking-[0.2em]">内容与隐私</h4>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div 
+        <!-- 内容标记 -->
+        <section>
+          <h4 class="text-[11px] font-medium text-muted-foreground uppercase mb-3">内容标记</h4>
+          <div class="space-y-0.5">
+            <label 
               v-for="meta in [
                 { key: 'metadataNsfw', label: '默认标记为敏感内容' },
                 { key: 'metadataRequiresCookies', label: '需要 Cookie 才可抓取' },
@@ -119,37 +94,37 @@
                 { key: 'metadataOfflineThumbnailsDisplay', label: '优先使用本地封面显示' }
               ]" 
               :key="meta.key"
-              class="flex items-center justify-between p-5 rounded-2xl bg-card/40 border border-border/10 hover:border-primary/20 transition-all group"
+              class="flex items-center justify-between py-1.5 px-1 rounded hover:bg-muted/40 transition-colors cursor-pointer"
             >
-              <span class="text-[13px] font-bold text-foreground/70 group-hover:text-primary transition-colors pr-4">{{ meta.label }}</span>
+              <span class="text-xs text-foreground/80">{{ meta.label }}</span>
               <Switch :checked="!!siteEditorForm[meta.key]" @update:checked="(v) => setSiteEditorBooleanField(meta.key, v)" />
-            </div>
+            </label>
           </div>
-        </div>
+        </section>
 
         <Transition name="fade">
-          <div v-if="resolvedError" class="p-5 rounded-2xl bg-destructive/5 border border-destructive/20 text-destructive text-[13px] font-bold flex items-center gap-4">
-            <AlertCircle class="h-5 w-5" />
+          <div v-if="resolvedError" class="mt-4 p-2.5 rounded text-destructive text-xs flex items-center gap-2">
+            <AlertCircle class="h-3.5 w-3.5 shrink-0" />
             {{ resolvedError }}
           </div>
         </Transition>
       </div>
 
-      <!-- Footer: 底部操作栏 -->
-      <div class="px-8 py-6 border-t border-border/5 flex items-center justify-end gap-5 bg-card/20">
+      <!-- Footer -->
+      <div class="px-4 py-3 border-t border-border/50 flex items-center justify-end gap-2">
         <button 
-          class="text-[13px] font-bold text-muted-foreground hover:text-foreground transition-all px-4 py-2"
+          class="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 rounded hover:bg-muted/60 transition-all"
           @click="$emit('close')"
         >
           取消
         </button>
         <button 
-          class="px-8 py-3 rounded-full bg-primary text-white text-[13px] font-black tracking-widest hover:brightness-110 shadow-lg shadow-primary/10 transition-all disabled:opacity-50 flex items-center h-11"
+          class="px-4 py-1.5 rounded bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-all disabled:opacity-50 flex items-center"
           :disabled="saving"
           @click="handleSave"
         >
-          <Loader2 v-if="saving" class="h-4 w-4 animate-spin mr-3" />
-          {{ saving ? '正在应用' : '应用配置' }}
+          <Loader2 v-if="saving" class="h-3 w-3 animate-spin mr-1.5" />
+          {{ saving ? '保存中...' : '保存' }}
         </button>
       </div>
     </div>
@@ -159,11 +134,10 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 
-import { AlertCircle, Loader2, Settings2, RefreshCcw, ShieldCheck } from 'lucide-vue-next'
+import { AlertCircle, Loader2 } from 'lucide-vue-next'
 import SiteIcon from '@/components/common/SiteIcon.vue'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
 const props = defineProps({
