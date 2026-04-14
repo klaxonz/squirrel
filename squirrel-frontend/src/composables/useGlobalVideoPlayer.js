@@ -32,6 +32,7 @@ const createDefaultSession = () => ({
     onRetry: null,
     onWidescreenChange: null,
     onClipMarkerSelect: null,
+    onClipMarkersUpdated: null,
   },
 })
 

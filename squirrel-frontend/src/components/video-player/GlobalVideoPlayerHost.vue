@@ -8,6 +8,7 @@
       :source="globalVideoPlayerSession.source"
       :subtitles="globalVideoPlayerSession.subtitles"
       :clip-markers="globalVideoPlayerSession.clipMarkers"
+      :video-id="globalVideoPlayerSession.currentVideoId || null"
       :poster="globalVideoPlayerSession.poster"
       :title="globalVideoPlayerSession.title"
       :initialTime="globalVideoPlayerSession.initialTime"
@@ -32,6 +33,7 @@
       @widescreenChange="globalVideoPlayerSession.handlers.onWidescreenChange?.($event)"
       @retry="globalVideoPlayerSession.handlers.onRetry?.()"
       @clipmarkerselect="globalVideoPlayerSession.handlers.onClipMarkerSelect?.($event)"
+      @clipmarkersupdated="globalVideoPlayerSession.handlers.onClipMarkersUpdated?.($event)"
       @enterpictureinpicture="handleEnterPictureInPicture"
       @leavepictureinpicture="handleLeavePictureInPicture"
     />

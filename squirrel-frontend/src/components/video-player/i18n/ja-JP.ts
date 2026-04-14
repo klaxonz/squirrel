@@ -58,6 +58,9 @@ const jaJP: LocaleConfig = {
     // 播放列表
     previousVideo: '前へ',
     nextVideo: '次へ',
+    prev: '前へ',
+    next: '次へ',
+    previous: '前へ',
     
     // 快进快退
     skipForward: '早送り',
@@ -89,7 +92,15 @@ const jaJP: LocaleConfig = {
     // 提示
     volumePercent: '音量 {percent}%',
     speedPercent: '{speed}倍速',
-    
+
+    // 片段标记
+    startClipSegment: 'クリップ開始',
+    endClipSegment: 'クリップ終了',
+    markClip: 'マーク',
+    clipSaved: '保存完了',
+    clipSavedAt: '{time} マーク',
+    delete: '削除',
+
     // 无障碍
     videoPlayer: 'ビデオプレーヤー',
     progressBar: '再生バー',

@@ -58,6 +58,9 @@ const enUS: LocaleConfig = {
     // 播放列表
     previousVideo: 'Previous',
     nextVideo: 'Next',
+    prev: 'Previous',
+    next: 'Next',
+    previous: 'Previous',
     
     // 快进快退
     skipForward: 'Skip forward',
@@ -90,6 +93,14 @@ const enUS: LocaleConfig = {
     volumePercent: 'Volume {percent}%',
     speedPercent: '{speed}x speed',
     
+    // 片段标记
+    startClipSegment: 'Start clip segment',
+    endClipSegment: 'End clip segment',
+    markClip: 'Mark',
+    clipSaved: 'Clip saved',
+    clipSavedAt: 'Clip at {time}',
+    delete: 'Delete',
+
     // 无障碍
     videoPlayer: 'Video Player',
     progressBar: 'Progress bar',

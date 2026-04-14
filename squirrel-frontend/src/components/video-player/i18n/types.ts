@@ -59,6 +59,9 @@ export interface LocaleMessages {
   // 播放列表
   previousVideo: string
   nextVideo: string
+  prev: string
+  next: string
+  previous: string
   
   // 快进快退
   skipForward: string
@@ -90,7 +93,15 @@ export interface LocaleMessages {
   // 提示
   volumePercent: string
   speedPercent: string
-  
+
+  // 片段标记
+  startClipSegment: string
+  endClipSegment: string
+  markClip: string
+  clipSaved: string
+  clipSavedAt: string
+  delete: string
+
   // 无障碍
   videoPlayer: string
   progressBar: string

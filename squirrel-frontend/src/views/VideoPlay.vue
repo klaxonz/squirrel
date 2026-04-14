@@ -110,16 +110,6 @@
               </div>
             </div>
           </Transition>
-
-          <ClipMarkersPanel
-            v-if="video"
-            :video-id="video.id"
-            :duration="video.duration || 0"
-            :current-time="currentPlaybackTime"
-            :markers="clipMarkers"
-            @seek="handleClipMarkerSeek"
-            @updated="handleClipMarkersUpdated"
-          />
         </div>
       </div>
 
@@ -127,10 +117,35 @@
       <div class="video-aside">
         <div class="video-aside__panel">
           <div class="video-aside__header">
-            <h2 class="video-aside__title">相关视频</h2>
+            <div class="video-aside__tabs">
+              <button
+                class="video-aside__tab"
+                :class="{ 'is-active': asideTab === 'related' }"
+                @click="asideTab = 'related'"
+              >
+                相关视频
+              </button>
+              <button
+                class="video-aside__tab"
+                :class="{ 'is-active': asideTab === 'clips' }"
+                @click="asideTab = 'clips'"
+              >
+                视频片段
+                <span v-if="clipMarkers.length > 0" class="video-aside__tab-badge">{{ clipMarkers.length }}</span>
+              </button>
+            </div>
+            <button
+              class="playlist-toggle-btn"
+              :class="{ 'is-active': isPlaylistPanelOpen }"
+              @click="isPlaylistPanelOpen = !isPlaylistPanelOpen"
+              title="播放列表"
+            >
+              <Icon icon="lucide:list-music" />
+            </button>
           </div>
-          <div class="video-aside__content scrollbar-hide">
-            <Transition name="fade-aside" mode="out-in">
+          <div class="video-aside__content">
+            <!-- 相关视频 tab -->
+            <Transition v-if="asideTab === 'related'" name="fade-aside" mode="out-in">
               <div v-if="loadingRelated && !relatedVideos.length" key="skeleton" class="related-videos-list">
                 <RelatedVideoSkeleton v-for="i in 8" :key="i" :delay="i * 100" />
               </div>
@@ -205,10 +220,68 @@
                 </TransitionGroup>
               </div>
             </Transition>
+            <!-- 视频片段 tab -->
+            <Transition v-else-if="asideTab === 'clips'" name="fade-aside" mode="out-in">
+              <div v-if="!clipMarkers.length" key="empty" class="clip-empty">
+                <div class="clip-empty__icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                    <circle cx="12" cy="13" r="3"/>
+                  </svg>
+                </div>
+                <div class="clip-empty__text">暂无片段</div>
+                <div class="clip-empty__hint">Shift + M 标记起点<br>拖动进度条设终点，再按 Shift + M 保存</div>
+              </div>
+              <div v-else key="list" class="clip-markers-list">
+                <div
+                  v-for="marker in clipMarkers"
+                  :key="marker.id"
+                  class="clip-card"
+                  :class="{ 'is-active': isClipActive(marker) }"
+                  @click="handleClipMarkerSeek(marker.start_time)"
+                >
+                  <div class="clip-card__stripe" :style="{ background: getMarkerColor(marker) }"></div>
+                  <div class="clip-card__content">
+                    <div class="clip-card__header">
+                      <span class="clip-card__title">{{ marker.title || (marker.start_time === marker.end_time ? '点标记' : '片段') }}</span>
+                      <button
+                        class="clip-card__del"
+                        @click.stop="handleDeleteMarker(marker.id)"
+                        title="删除"
+                      >
+                        <Icon icon="lucide:trash-2" />
+                      </button>
+                    </div>
+                    <div class="clip-card__meta">
+                      <span class="clip-card__range">
+                        {{ formatTime(marker.start_time) }}
+                        <template v-if="marker.start_time !== marker.end_time"> → {{ formatTime(marker.end_time) }}</template>
+                      </span>
+                      <span class="clip-card__duration" v-if="marker.start_time !== marker.end_time">
+                        {{ formatClipDuration(marker) }}
+                      </span>
+                    </div>
+                    <div class="clip-card__progress" v-if="marker.start_time !== marker.end_time">
+                      <div
+                        class="clip-card__progress-fill"
+                        :style="{ width: `${getClipProgress(marker)}%`, background: getMarkerColor(marker) }"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Transition>
           </div>
         </div>
       </div>
     </div>
+
+    <PlaylistPanel
+      :is-open="isPlaylistPanelOpen"
+      :video-id="video?.id"
+      @close="isPlaylistPanelOpen = false"
+      @play-video="handlePlayFromPlaylist"
+    />
   </div>
 </template>
 
@@ -220,16 +293,18 @@ import usePlaybackReporting from '../composables/usePlaybackReporting';
 import { useGlobalVideoPlayer } from '@/composables/useGlobalVideoPlayer'
 import { useAppTheme } from '@/composables/useAppTheme'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
-import ClipMarkersPanel from '@/components/video-player/ClipMarkersPanel.vue'
 import RelatedVideoSkeleton from '@/components/video-player/RelatedVideoSkeleton.vue';
+import PlaylistPanel from '@/components/playlist/PlaylistPanel.vue';
 import { LocalStorageAdapter } from '@/components/video-player/core';
 import { Icon } from '@iconify/vue';
 import useVideoHistory from "../composables/useVideoHistory";
-import { formatDate, formatDuration } from '../utils/dateFormat';
+import { formatDate, formatDuration, formatTime } from '../utils/dateFormat';
 import { formatVideoCardId } from '@/utils/videoCard';
 import useVideoInteraction from '../composables/useVideoInteraction';
+import usePlaylist from '../composables/usePlaylist';
 import { Logger } from '@/utils/logger'
 import { getRandomVideo, unsubscribe as apiUnsubscribe } from '@/api'
+import { deleteVideoClipMarker } from '@/api/videoClipMarkers'
 
 
 
@@ -269,6 +344,19 @@ const {
 } = usePlaybackOrchestrator(null);
 const { sendReport } = useVideoHistory();
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
+const {
+  activePlaylist,
+  activePlaylistItems,
+  currentVideoId,
+  hasPrev,
+  hasNext,
+  goToPrev,
+  goToNext,
+  setCurrentVideo,
+  fetchPlaylists,
+  loadAndSetPlaylist,
+  addVideo,
+} = usePlaylist();
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
 const currentPlaybackTime = ref(0)
 const clipMarkers = computed(() => Array.isArray(video.value?.clip_markers) ? video.value.clip_markers : [])
@@ -307,6 +395,46 @@ const handleClipMarkerSeek = async (time) => {
   await focusVideoPlayer()
 }
 
+const handleClipMarkerCreated = () => {
+  asideTab.value = 'clips'
+}
+
+const handleDeleteMarker = async (markerId) => {
+  const { error } = await deleteVideoClipMarker(markerId)
+  if (error) return
+  if (!video.value) return
+  video.value.clip_markers = (video.value.clip_markers || []).filter((m) => m.id !== markerId)
+}
+
+const COLORS = ['#f87171', '#fb923c', '#facc15', '#4ade80', '#34d399', '#22d3ee', '#60a5fa', '#a78bfa', '#f472b6']
+const getMarkerColor = (marker) => {
+  const markers = clipMarkers.value
+  const index = markers.findIndex((m) => m.id === marker.id)
+  return COLORS[index % COLORS.length]
+}
+
+const isClipActive = (marker) => {
+  const t = currentPlaybackTime.value
+  return t >= marker.start_time && t <= marker.end_time
+}
+
+const getClipProgress = (marker) => {
+  const t = currentPlaybackTime.value
+  if (t < marker.start_time) return 0
+  if (t > marker.end_time) return 100
+  const total = marker.end_time - marker.start_time
+  if (!total) return 0
+  return Math.round(((t - marker.start_time) / total) * 100)
+}
+
+const formatClipDuration = (marker) => {
+  const dur = marker.duration_seconds ?? (marker.end_time - marker.start_time)
+  if (dur < 60) return `${Math.round(dur)}s`
+  const m = Math.floor(dur / 60)
+  const s = Math.round(dur % 60)
+  return s ? `${m}m ${s}s` : `${m}m`
+}
+
 const currentInteractionType = computed(() => video.value?.interaction_type ?? null);
 
 const videoPrimaryActions = computed(() => {
@@ -337,6 +465,15 @@ const videoPrimaryActions = computed(() => {
       tone: 'later',
       variant: 'primary',
       onClick: () => video.value && handleLater(video.value)
+    },
+    {
+      key: 'add-playlist',
+      label: '播放列表',
+      icon: 'lucide:list-plus',
+      active: false,
+      tone: 'neutral',
+      variant: 'secondary',
+      onClick: () => handleAddToPlaylist()
     }
   ];
 
@@ -408,6 +545,8 @@ const isVideoChannelVisible = ref(true)
 const isChannelUnsubscribing = ref(false)
 const videoChannelError = ref('')
 const VIDEO_CHANNEL_DISMISS_MS = 180
+const isPlaylistPanelOpen = ref(false)
+const asideTab = ref('related')
 
 const wait = (ms) => new Promise((resolve) => {
   window.setTimeout(resolve, ms)
@@ -434,7 +573,7 @@ const hasNextVideo = computed(() => {
 // 切换到上一个视频（从相关视频列表末尾开始找一个未播放的）
 const handlePrevVideo = async () => {
   if (!relatedVideos.value?.length) return;
-  
+
   // 从末尾往前找第一个未在最近播放历史中的视频
   for (let i = relatedVideos.value.length - 1; i >= 0; i--) {
     const prevVideo = relatedVideos.value[i];
@@ -443,7 +582,7 @@ const handlePrevVideo = async () => {
       return;
     }
   }
-  
+
   // 如果所有视频都播放过，就播放最后一个
   const lastVideo = relatedVideos.value[relatedVideos.value.length - 1];
   if (lastVideo?.id) {
@@ -454,18 +593,38 @@ const handlePrevVideo = async () => {
 // 切换到下一个视频（从相关视频列表开头找一个未播放的）
 const handleNextVideo = async () => {
   if (!relatedVideos.value?.length) return;
-  
+
   // 查找第一个未在最近播放历史中的视频
   const nextVideo = relatedVideos.value.find(v => !recentlyPlayed.value.includes(v.id));
   if (nextVideo?.id) {
     await goToVideo(nextVideo.id, nextVideo);
     return;
   }
-  
+
   // 如果所有视频都播放过，就播放第一个
   const firstVideo = relatedVideos.value[0];
   if (firstVideo?.id) {
     await goToVideo(firstVideo.id, firstVideo);
+  }
+};
+
+// 从播放列表切换上一个视频
+const handlePrevVideoFromPlaylist = async () => {
+  const prevVideo = goToPrev();
+  if (prevVideo?.id) {
+    await goToVideo(prevVideo.id, prevVideo);
+  } else {
+    await handlePrevVideo();
+  }
+};
+
+// 从播放列表切换下一个视频
+const handleNextVideoFromPlaylist = async () => {
+  const nextVideo = goToNext();
+  if (nextVideo?.id) {
+    await goToVideo(nextVideo.id, nextVideo);
+  } else {
+    await handleNextVideo();
   }
 };
 
@@ -513,6 +672,23 @@ const handleLater = async (video) => {
     if (!error) {
       video.interaction_type = null;
     }
+  }
+};
+
+const handleAddToPlaylist = async () => {
+  if (!video.value?.id) return;
+  isPlaylistPanelOpen.value = true;
+  await fetchPlaylists();
+  if (activePlaylist.value) {
+    await loadAndSetPlaylist(activePlaylist.value.id);
+  }
+};
+
+const handlePlayFromPlaylist = async (videoItem) => {
+  if (videoItem?.id) {
+    await goToVideo(videoItem.id, videoItem);
+    setCurrentVideo(videoItem.id);
+    isPlaylistPanelOpen.value = false;
   }
 };
 
@@ -622,6 +798,8 @@ watch(
     effectiveTheme,
     relatedVideos,
     loadingRelated,
+    hasPrev,
+    hasNext,
   ],
   ([
     nextVideo,
@@ -639,6 +817,8 @@ watch(
     nextTheme,
     nextRelatedVideos,
     nextLoadingRelated,
+    nextPlaylistPrev,
+    nextPlaylistNext,
   ]) => {
     const hasLocalPlaybackState = !!(
       nextVideo
@@ -676,11 +856,13 @@ watch(
         onPause: onVideoPause,
         onEnded: handleAutoplayNext,
         onTimeUpdate: handlePlaybackTimeUpdate,
-        onPrev: handlePrevVideo,
-        onNext: handleNextVideo,
+        onPrev: nextPlaylistPrev ? handlePrevVideoFromPlaylist : null,
+        onNext: nextPlaylistNext ? handleNextVideoFromPlaylist : null,
         onRetry: handlePlayerRetry,
         onWidescreenChange: toggleWidescreen,
         onClipMarkerSelect: handleClipMarkerSeek,
+        onClipMarkersUpdated: handleClipMarkersUpdated,
+        onClipMarkerCreated: handleClipMarkerCreated,
       }
     });
   },
@@ -1084,20 +1266,289 @@ onUnmounted(() => {
   height: 14px;
 }
 
-.video-page__container.is-widescreen .video-aside {
-  position: static;
-  top: auto;
-  margin-top: 1rem;
+.video-aside {
+  min-height: 0;
 }
 
-/* 侧边栏整体样式 */
+.video-aside__panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(100vh - var(--app-topbar-height, 0px) - 2rem);
+  max-height: calc(100dvh - var(--app-topbar-height, 0px) - 2rem);
+  overflow: hidden;
+}
+
 .video-aside__header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 0;
   border-bottom: 1px solid hsl(var(--border) / 0.5);
   margin-bottom: 1rem;
+}
+
+.video-page__container.is-widescreen .video-aside {
+  position: static;
+  top: auto;
+  margin-top: 1rem;
+}
+
+.video-aside__content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.video-aside__content::-webkit-scrollbar {
+  display: none;
+}
+
+/* 侧边栏整体样式 */
+.video-aside__header {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0 1rem 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  margin-bottom: 0;
+}
+
+.video-aside__tabs {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  gap: 0.25rem;
+  background: hsl(var(--background));
+  padding: 0.75rem 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+}
+
+.video-aside__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.video-aside__tab:hover {
+  color: hsl(var(--foreground));
+  background: hsl(var(--accent) / 0.1);
+}
+
+.video-aside__tab.is-active {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+.video-aside__tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.25rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: hsl(var(--primary-foreground));
+  background: hsl(var(--primary));
+  border-radius: 9999px;
+  line-height: 1;
+}
+
+.video-aside__empty {
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8rem;
+  padding: 2rem 0;
+}
+
+.clip-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2.5rem 1rem;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.clip-empty__icon {
+  color: hsl(var(--muted-foreground) / 0.4);
+  margin-bottom: 0.25rem;
+}
+
+.clip-empty__text {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+}
+
+.clip-empty__hint {
+  font-size: 0.7rem;
+  color: hsl(var(--muted-foreground) / 0.6);
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.clip-markers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.clip-card {
+  display: flex;
+  align-items: stretch;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: hsl(var(--accent) / 0.04);
+  border: 1px solid hsl(var(--border) / 0.4);
+  transition: all 0.15s;
+}
+
+.clip-card:hover {
+  background: hsl(var(--accent) / 0.08);
+  border-color: hsl(var(--border) / 0.7);
+}
+
+.clip-card.is-active {
+  background: hsl(var(--primary) / 0.06);
+  border-color: hsl(var(--primary) / 0.25);
+}
+
+.clip-card__stripe {
+  width: 4px;
+  flex-shrink: 0;
+  border-radius: 8px 0 0 8px;
+  opacity: 0.85;
+}
+
+.clip-card__content {
+  flex: 1;
+  padding: 0.5rem 0.6rem;
+  min-width: 0;
+}
+
+.clip-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.clip-card__title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.clip-card__del {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  color: hsl(var(--muted-foreground));
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.clip-card:hover .clip-card__del {
+  opacity: 1;
+}
+
+.clip-card__del:hover {
+  color: hsl(var(--destructive));
+  background: hsl(var(--destructive) / 0.1);
+}
+
+.clip-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.clip-card__range {
+  font-size: 0.68rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+}
+
+.clip-card__duration {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground) / 0.7);
+  white-space: nowrap;
+}
+
+.clip-card__progress {
+  height: 2px;
+  background: hsl(var(--accent) / 0.2);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.clip-card__progress-fill {
+  height: 100%;
+  border-radius: 1px;
+  transition: width 0.5s linear;
+  opacity: 0.8;
+}
+
+.playlist-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid hsl(var(--border) / 0.4);
+  background: hsl(var(--accent) / 0.05);
+  color: hsl(var(--muted-foreground));
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.playlist-toggle-btn:hover {
+  background: hsl(var(--accent) / 0.15);
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+.playlist-toggle-btn.is-active {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary) / 0.4);
 }
 
 .video-aside__title {

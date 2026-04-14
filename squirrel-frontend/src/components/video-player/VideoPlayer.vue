@@ -11,10 +11,10 @@
     @keydown="handleKeyDown"
     tabindex="0"
   >
-    <!-- 全屏视觉增强层 -->
+    <!-- ????????-->
     <div class="sp-vignette-overlay"></div>
 
-    <!-- 视频核心 -->
+    <!-- ???? -->
     <video
       ref="videoRef"
       class="sp-video"
@@ -28,7 +28,7 @@
       @click="handleVideoClick"
       @dblclick="toggleFullscreen"
     />
-    <!-- 中央 HUD 指示器 -->
+    <!-- ?? HUD ????-->
     <transition name="sp-hud-fade">
       <div v-if="centralHud.visible" class="sp-central-hud">
         <div class="sp-central-hud-content">
@@ -38,7 +38,7 @@
       </div>
     </transition>
 
-    <!-- 加载状态 -->
+    <!-- ?????-->
     <Transition name="sp-loading-fade" @after-enter="onLoadingEnter" @after-leave="onLoadingLeave">
       <div v-if="showLoadingOverlay" class="sp-loading">
         <div class="sp-loader">
@@ -47,14 +47,14 @@
       </div>
     </Transition>
 
-    <!-- 极简控制层 -->
+    <!-- ??????-->
     <transition name="sp-ui-fade">
       <div v-show="store.controlsVisible" class="sp-controls-wrapper" data-player-interactive>
-        <!-- 底部渐变遮罩 -->
+        <!-- ?????? -->
         <div class="sp-gradient-overlay"></div>
 
         <div class="sp-controls-content">
-          <!-- 极致紧凑进度条 -->
+          <!-- ????????-->
           <div class="sp-progress-container">
             <div ref="progressAreaRef"
                  class="sp-progress-area" 
@@ -68,21 +68,44 @@
                 <button
                   v-for="marker in normalizedClipMarkers"
                   :key="marker.id"
+                  :data-drag-id="marker.id"
                   class="sp-clip-marker"
-                  :class="{ 'is-active': activeClipMarkerId === marker.id }"
-                  :style="{ left: `${marker.startPercent}%`, width: `${marker.widthPercent}%` }"
-                  :title="marker.title || formatTime(marker.startTime)"
-                  @pointerdown.stop
+                  :class="{ 'is-active': activeClipMarkerId === marker.id, 'is-point': marker.isPoint, 'is-dragging': draggingMarker?.markerId === marker.id }"
+                  :style="{ left: `${marker.startPercent}%`, width: `${marker.widthPercent}%`, '--marker-color': marker.color }"
+                  :title="getMarkerTitle(marker)"
+                  @pointerdown.stop.prevent="onMarkerPointerDown($event, marker)"
                   @click.stop="handleClipMarkerSelect(marker)"
+                  @mouseenter="hoveredMarkerId = marker.id"
+                  @mouseleave="hoveredMarkerId = null"
                 >
                   <span class="sp-clip-marker-track"></span>
                   <span class="sp-clip-marker-dot"></span>
+                  <span class="sp-clip-marker-tooltip">
+                    <span class="sp-clip-marker-tooltip__title">{{ getMarkerTitle(marker) }}</span>
+                    <span class="sp-clip-marker-tooltip__time">{{ getMarkerTimeText(marker) }}</span>
+                    <span class="sp-clip-marker-tooltip__actions">
+                      <button class="sp-clip-marker-tooltip__del" @click.stop="deleteMarkerFromPanel(marker)">?</button>
+                    </span>
+                  </span>
                 </button>
+                <!-- 捕获中预览区域 -->
+                <div
+                  v-if="hasPendingSegment && duration > 0"
+                  class="sp-clip-marker sp-clip-marker--pending"
+                  :style="{
+                    left: `${Math.min((pendingSegmentStartTime! / duration) * 100, 100)}%`,
+                    width: `${Math.max(((pendingSegmentPreviewEnd - pendingSegmentStartTime!) / duration) * 100, 0.1)}%`
+                  }"
+                  :title="`片段 ${formatTime(pendingSegmentStartTime!)} → ${formatTime(pendingSegmentPreviewEnd)}`"
+                >
+                  <span class="sp-clip-marker-track"></span>
+                  <span class="sp-clip-marker-dot" style="right: 0; transform: translateY(-50%)"></span>
+                </div>
                 <div class="sp-progress-played" :style="{ width: `${progress}%` }">
                   <div class="sp-progress-dot"></div>
                 </div>
               </div>
-              <!-- 预览时间浮窗 -->
+              <!-- ?????? -->
               <div v-if="previewTime !== null" class="sp-preview-hint" :style="{ left: `${previewPercent}%` }">
                 <div class="sp-preview-hint-inner">
                   {{ formatTime(previewTime) }}
@@ -91,11 +114,17 @@
             </div>
           </div>
 
-          <!-- 核心交互区 -->
+          <!-- ??????-->
           <div class="sp-controls-main">
             <div class="sp-controls-left">
+              <button class="sp-icon-btn" @click="emit('prev')" :title="t('prev')" :disabled="!props.hasPrev">
+                <PlayerIcon name="prev" />
+              </button>
               <button class="sp-icon-btn sp-btn--play" @click="togglePlay" :title="isPlaying ? t('pause') : t('play')">
                 <PlayerIcon :name="isPlaying ? 'pause' : 'play'" />
+              </button>
+              <button class="sp-icon-btn" @click="emit('next')" :title="t('next')" :disabled="!props.hasNext">
+                <PlayerIcon name="next" />
               </button>
               
               <div class="sp-volume-group" :class="{ 'is-active': isVolumeScrubbing }">
@@ -128,6 +157,11 @@
               <button v-if="subtitleTracks.length > 0" class="sp-icon-btn" @click.stop="toggleSubtitlesQuick" :title="t('subtitles')">
                 <PlayerIcon :name="store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff'" />
               </button>
+              <button class="sp-icon-btn" :class="{ 'sp-icon-btn--active': hasPendingSegment || localClipMarkers.length > 0 }" :title="hasPendingSegment ? `保存片段` : localClipMarkers.length > 0 ? `${localClipMarkers.length} 个标记` : t('markClip')" :disabled="isSavingMarker" @click.stop="hasPendingSegment ? finishSegmentCapture() : markCurrentPoint()">
+                <PlayerIcon name="markClip" />
+                <span v-if="localClipMarkers.length > 0 && !hasPendingSegment" class="sp-marker-count">{{ localClipMarkers.length }}</span>
+                <span v-if="hasPendingSegment" class="sp-marker-count sp-marker-count--capturing">●</span>
+              </button>
               <button class="sp-icon-btn" @click.stop="toggleSettingsMenu" :title="t('settings')">
                 <PlayerIcon name="settings" />
               </button>
@@ -146,7 +180,7 @@
       </div>
     </transition>
 
-    <!-- 独立画质菜单 -->
+    <!-- ?????? -->
     <transition name="sp-ui-fade">
       <div v-if="showQualityMenu" class="sp-settings-pop sp-quality-pop" data-player-interactive>
         <div class="sp-menu-list">
@@ -163,7 +197,7 @@
       </div>
     </transition>
 
-    <!-- 设置菜单 -->
+    <!-- ???? -->
     <transition name="sp-ui-fade">
       <div v-if="showSettingsMenu" class="sp-settings-pop" ref="settingsPopupRef" data-player-interactive>
         <template v-if="settingsView === 'main'">
@@ -262,27 +296,27 @@
             <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('subtitleSettings') }}
           </div>
           <div class="sp-menu-list">
-            <!-- 预设 -->
+            <!-- ?? -->
             <div class="sp-menu-item" @click="settingsView = 'subtitlePreset'">
               <span>{{ t('preset') }}</span>
               <span class="sp-menu-val">{{ currentPresetLabel }}</span>
             </div>
-            <!-- 字体大小 -->
+            <!-- ???? -->
             <div class="sp-menu-item" @click="settingsView = 'subtitleFontSize'">
               <span>{{ t('fontSize') }}</span>
               <span class="sp-menu-val">{{ subtitleStyleLabel('fontSize', subtitleStyle.fontSize || 'medium', fontSizeOptions) }}</span>
             </div>
-            <!-- 字体颜色 -->
+            <!-- ???? -->
             <div class="sp-menu-item" @click="settingsView = 'subtitleColor'">
               <span>{{ t('fontColor') }}</span>
               <span class="sp-subtitle-color-preview" :style="{ background: subtitleStyle.color || '#ffffff' }"></span>
             </div>
-            <!-- 背景颜色 -->
+            <!-- ???? -->
             <div class="sp-menu-item" @click="settingsView = 'subtitleBg'">
               <span>{{ t('backgroundColor') }}</span>
               <span class="sp-subtitle-color-preview" :style="{ background: subtitleStyle.backgroundColor || 'rgba(0,0,0,0.8)' }"></span>
             </div>
-            <!-- 字幕位置 -->
+            <!-- ???? -->
             <div class="sp-menu-item" @click="settingsView = 'subtitlePosition'">
               <span>{{ t('position') }}</span>
               <span class="sp-menu-val">{{ subtitleStyle.position === 'top' ? t('positionTop') : t('positionBottom') }}</span>
@@ -386,6 +420,7 @@
         </template>
       </div>
     </transition>
+
   </div>
 </template>
 
@@ -399,14 +434,21 @@ import {
   shouldAutoHideControls,
   shouldTogglePlayOnVideoClick
 } from './runtime/mobileControls'
+import {
+  createPointMarkerDraft,
+  createSegmentMarkerDraft,
+  isClipMarkerActive,
+  isPointMarker,
+  resolveClipMarkerVideoId,
+} from './runtime/clipMarkers'
 import type { MediaSource, SubtitleTrack } from './core'
 import type { ThemeName } from './themes'
 import type { IconName } from './core/useIcons'
 import type { VideoClipMarker } from '@/types/videoClipMarker'
+import { createVideoClipMarker, deleteVideoClipMarker, updateVideoClipMarker } from '@/api/videoClipMarkers'
 import PlayerIcon from './PlayerIcon.vue'
 
-// 基础变量与主题
-import './themes/variables.css'
+// ????????import './themes/variables.css'
 import './themes/dark.css'
 import './themes/light.css'
 import './themes/cyber.css'
@@ -414,6 +456,7 @@ import './themes/scifi.css'
 
 interface Props {
   source?: MediaSource | null
+  videoId?: string | number | null
   subtitles?: SubtitleTrack[]
   clipMarkers?: VideoClipMarker[]
   poster?: string
@@ -423,10 +466,13 @@ interface Props {
   initialTime?: number
   widescreen?: boolean
   externalLoading?: boolean
+  hasPrev?: boolean
+  hasNext?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   source: null,
+  videoId: null,
   subtitles: () => [],
   clipMarkers: () => [],
   poster: '',
@@ -435,6 +481,8 @@ const props = withDefaults(defineProps<Props>(), {
   theme: 'dark',
   widescreen: false,
   externalLoading: false,
+  hasPrev: false,
+  hasNext: false,
 })
 
 const emit = defineEmits([
@@ -449,6 +497,9 @@ const emit = defineEmits([
   'enterpictureinpicture',
   'leavepictureinpicture',
   'clipmarkerselect',
+  'clipmarkersupdated',
+  'prev',
+  'next',
 ])
 
 const {
@@ -477,6 +528,306 @@ const progressAreaRef = ref<HTMLElement | null>(null)
 const settingsPopupRef = ref<HTMLElement | null>(null)
 const opacityRailRef = ref<HTMLElement | null>(null)
 
+// Clip Markers state
+const localClipMarkers = ref<VideoClipMarker[]>([])
+const clipMarkerVideoId = ref<string | number | null>(null)
+const hoveredMarkerId = ref<number | null>(null)
+const pendingSegmentStartTime = ref<number | null>(null)
+const pendingSegmentEndTime = ref<number | null>(null)
+
+const hasPendingSegment = computed(() => pendingSegmentStartTime.value !== null)
+const isSavingMarker = ref(false)
+const pendingSegmentPreviewEnd = computed(() => {
+  const end = pendingSegmentEndTime.value
+  if (end === null) return currentTime.value
+  if (pendingSegmentStartTime.value !== null && end < pendingSegmentStartTime.value) {
+    return pendingSegmentStartTime.value
+  }
+  return end
+})
+const draggingMarker = ref<{
+  markerId: number
+  pointerId: number
+  dragType: 'start' | 'end' | 'move'
+  startX: number
+  originalStart: number
+  originalEnd: number
+  previewStart: number
+  previewEnd: number
+  moved: boolean
+} | null>(null)
+let activeMarkerPointerTarget: HTMLElement | null = null
+let suppressMarkerClickUntil = 0
+
+const handleOverlaySeek = (time: number) => {
+  seek(time)
+  emit('clipmarkerselect', time)
+}
+
+const syncLocalClipMarkers = (markers: VideoClipMarker[]) => {
+  localClipMarkers.value = [...markers].sort((a, b) => a.start_time - b.start_time)
+  emit('clipmarkersupdated', localClipMarkers.value)
+}
+
+const markCurrentPoint = async () => {
+  if (!clipMarkerVideoId.value || isSavingMarker.value) return
+  const t = currentTime.value
+  isSavingMarker.value = true
+  try {
+    const { data, error } = await createVideoClipMarker({
+      video_id: clipMarkerVideoId.value,
+      start_time: t,
+      end_time: t,
+    })
+
+    isSavingMarker.value = false
+    if (error || !data) {
+      showCentralHud('error', error?.message || '标记失败', 'play')
+      return
+    }
+
+    syncLocalClipMarkers([...localClipMarkers.value, data])
+    showCentralHud('marker', `标记 ${formatTime(t)}`, 'play')
+  } finally {
+    isSavingMarker.value = false
+  }
+}
+
+const startSegmentCapture = () => {
+  if (isSavingMarker.value) return
+  const t = currentTime.value
+  if (!isFinite(t) || t < 0 || !duration.value) return
+  const draft = createPointMarkerDraft({ currentTime: t, duration: duration.value })
+  pendingSegmentStartTime.value = draft.startTime
+  showCentralHud('marker', `起点 ${formatTime(draft.startTime)}`, 'skipBackward')
+}
+
+const finishSegmentCapture = async () => {
+  if (!clipMarkerVideoId.value || pendingSegmentStartTime.value === null || isSavingMarker.value) return
+  const startTime = pendingSegmentStartTime.value
+  const endTime = pendingSegmentEndTime.value ?? currentTime.value
+  const draft = createSegmentMarkerDraft({
+    startTime,
+    currentTime: endTime,
+    duration: duration.value,
+  })
+  pendingSegmentEndTime.value = null
+  isSavingMarker.value = true
+
+  try {
+    const { data, error } = await createVideoClipMarker({
+      video_id: clipMarkerVideoId.value,
+      start_time: draft.startTime,
+      end_time: draft.endTime,
+    })
+
+    if (error || !data) {
+      pendingSegmentStartTime.value = null
+      showCentralHud('error', error?.message || '保存失败', 'play')
+      return
+    }
+
+    pendingSegmentStartTime.value = null
+    syncLocalClipMarkers([...localClipMarkers.value, data])
+    showCentralHud('segment', `片段 ${formatTime(draft.startTime)}`, 'skipForward')
+  } finally {
+    isSavingMarker.value = false
+  }
+}
+
+const cancelSegmentCapture = () => {
+  pendingSegmentStartTime.value = null
+  pendingSegmentEndTime.value = null
+  showCentralHud('seek', '已取消', 'play')
+}
+
+const deleteMarkerFromPanel = async (marker: { id: number }) => {
+  const { error } = await deleteVideoClipMarker(marker.id)
+  if (error) {
+    showCentralHud('error', error.message || '删除失败', 'play')
+    return
+  }
+  syncLocalClipMarkers(localClipMarkers.value.filter((item) => item.id !== marker.id))
+  hoveredMarkerId.value = null
+}
+
+// ---- Marker drag ----
+const getProgressRect = () => progressAreaRef.value?.getBoundingClientRect()
+
+const getTimeFromPointerX = (clientX: number) => {
+  const rect = getProgressRect()
+  if (!rect || !duration.value) return null
+  const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+  return ratio * duration.value
+}
+
+const onMarkerPointerDown = (e: PointerEvent, marker: ReturnType<typeof normalizedClipMarkers.value.find>) => {
+  if (isSavingMarker.value || !marker) return
+  const rect = getProgressRect()
+  if (!rect) return
+  const ratio = (e.clientX - rect.left) / rect.width
+  const markerStartRatio = marker.startPercent / 100
+  const markerEndRatio = (marker.startPercent + marker.widthPercent) / 100
+
+  let dragType: 'start' | 'end' | 'move' = 'move'
+  if (!marker.isPoint && marker.widthPercent > 0.5) {
+    const startDist = Math.abs(ratio - markerStartRatio)
+    const endDist = Math.abs(ratio - markerEndRatio)
+    if (startDist < endDist) dragType = 'start'
+    else if (endDist < startDist) dragType = 'end'
+  }
+
+  draggingMarker.value = {
+    markerId: marker.id,
+    pointerId: e.pointerId,
+    dragType,
+    startX: e.clientX,
+    originalStart: marker.startTime,
+    originalEnd: marker.endTime,
+    previewStart: marker.startTime,
+    previewEnd: marker.endTime,
+    moved: false,
+  }
+
+  if (e.currentTarget instanceof HTMLElement && typeof e.currentTarget.setPointerCapture === 'function') {
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+      activeMarkerPointerTarget = e.currentTarget
+    } catch {
+      activeMarkerPointerTarget = null
+    }
+  }
+}
+
+const onPointerMove = (event: PointerEvent) => {
+  if (!shouldHandlePointerVisibility(event.pointerType)) return
+  showControls()
+}
+
+const releaseMarkerPointerCapture = () => {
+  const markerPointerId = draggingMarker.value?.pointerId
+  if (!activeMarkerPointerTarget || markerPointerId === undefined || markerPointerId === null) {
+    activeMarkerPointerTarget = null
+    return
+  }
+  if (typeof activeMarkerPointerTarget.hasPointerCapture !== 'function') {
+    activeMarkerPointerTarget = null
+    return
+  }
+  if (!activeMarkerPointerTarget.hasPointerCapture(markerPointerId)) {
+    activeMarkerPointerTarget = null
+    return
+  }
+
+  try {
+    activeMarkerPointerTarget.releasePointerCapture(markerPointerId)
+  } catch {
+    // Ignore browsers that reject release when capture is already gone.
+  }
+
+  activeMarkerPointerTarget = null
+}
+
+const updateDragPreview = (deltaTime: number) => {
+  const d = draggingMarker.value
+  if (!d) return
+  const rect = getProgressRect()
+  if (!rect || !duration.value) return
+
+  const rawStart = d.originalStart + deltaTime
+  const rawEnd = d.originalEnd + deltaTime
+
+  let newStart: number, newEnd: number
+  if (d.dragType === 'move') {
+    const span = d.originalEnd - d.originalStart
+    newStart = Math.max(0, Math.min(duration.value - span, rawStart))
+    newEnd = newStart + span
+  } else if (d.dragType === 'start') {
+    newStart = Math.max(0, Math.min(d.originalEnd - 0.1, rawStart))
+    newEnd = d.originalEnd
+  } else {
+    newStart = d.originalStart
+    newEnd = Math.min(duration.value, Math.max(d.originalStart + 0.1, rawEnd))
+  }
+
+  d.previewStart = newStart
+  d.previewEnd = newEnd
+  d.moved = d.moved
+    || Math.abs(newStart - d.originalStart) > 0.01
+    || Math.abs(newEnd - d.originalEnd) > 0.01
+
+  showCentralHud('seek', `${formatTime(newStart)} → ${formatTime(newEnd)}`, 'skipForward')
+}
+
+const commitDrag = () => {
+  const d = draggingMarker.value
+  if (!d) return
+  const normMarker = normalizedClipMarkers.value.find((m) => m.id === d.markerId)
+  if (!normMarker || !duration.value) {
+    releaseMarkerPointerCapture()
+    draggingMarker.value = null
+    return
+  }
+
+  const newStart = Math.max(0, Math.min(duration.value, d.previewStart))
+  const newEnd = Math.max(newStart, Math.min(duration.value, d.previewEnd))
+
+  releaseMarkerPointerCapture()
+  draggingMarker.value = null
+  if (d.moved) {
+    suppressMarkerClickUntil = Date.now() + 250
+  }
+
+  if (normMarker.isPoint || Math.abs(newStart - newEnd) < 0.1) {
+    updateVideoClipMarker(d.markerId, { start_time: newStart, end_time: newStart }).then(({ data, error }) => {
+      if (error || !data) {
+        showCentralHud('error', error?.message || '更新失败', 'play')
+        return
+      }
+      syncLocalClipMarkers(localClipMarkers.value.map((m) => m.id === d.markerId ? data : m))
+      showCentralHud('marker', `标记 ${formatTime(newStart)}`, 'skipForward')
+    })
+    return
+  }
+
+  updateVideoClipMarker(d.markerId, { start_time: newStart, end_time: newEnd }).then(({ data, error }) => {
+    if (error || !data) {
+      showCentralHud('error', error?.message || '更新失败', 'play')
+      return
+    }
+    syncLocalClipMarkers(localClipMarkers.value.map((m) => m.id === d.markerId ? data : m))
+    showCentralHud('segment', `${formatTime(newStart)} → ${formatTime(newEnd)}`, 'skipForward')
+  })
+}
+
+const onWindowMarkerPointerMove = (event: PointerEvent) => {
+  if (!draggingMarker.value) return
+  if (event.pointerId !== draggingMarker.value.pointerId) return
+
+  const rect = getProgressRect()
+  if (!rect || !duration.value) return
+
+  const deltaX = event.clientX - draggingMarker.value.startX
+  const deltaTime = (deltaX / rect.width) * duration.value
+  updateDragPreview(deltaTime)
+}
+
+const onWindowMarkerPointerUp = (event: PointerEvent) => {
+  if (!draggingMarker.value) return
+  if (event.pointerId !== draggingMarker.value.pointerId) return
+  commitDrag()
+}
+// ---- end marker drag ----
+
+// Sync local markers from prop
+watch(() => props.clipMarkers, (markers) => {
+  localClipMarkers.value = Array.isArray(markers) ? [...markers] : []
+}, { immediate: true, deep: true })
+
+watch(() => [props.videoId, props.source] as const, ([videoId, source]) => {
+  clipMarkerVideoId.value = resolveClipMarkerVideoId(videoId, source as any)
+}, { immediate: true })
+
 const showSettingsMenu = ref(false)
 const showQualityMenu = ref(false)
 const settingsView = ref('main')
@@ -495,9 +846,8 @@ const centralHud = ref<{ visible: boolean; type: string; value: string; icon: Ic
 const showLoadingOverlay = computed(() => (store.loading || props.externalLoading) && !errorState.value.show)
 const effectivePoster = computed(() => hidePosterForCurrentSource.value ? '' : (props.source?.poster || props.poster || ''))
 
-// 加载状态控制
+// Loading state control
 const onLoadingEnter = () => {}
-
 const onLoadingLeave = () => {}
 
 let centralHudTimer: any
@@ -540,32 +890,64 @@ const subtitleStyleLabel = (key: string, value: string, options: any[]) => {
   return opt ? opt.label : value
 }
 const progress = computed(() => duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0)
+const COLORS = [
+  'hsl(24 100% 50%)',
+  'hsl(186 100% 50%)',
+  'hsl(145 70% 50%)',
+  'hsl(280 80% 60%)',
+  'hsl(38 92% 55%)',
+]
 const normalizedClipMarkers = computed(() => {
   if (!duration.value || duration.value <= 0) return []
 
-  return (props.clipMarkers || []).map((marker) => {
-    const startTime = Math.max(Number(marker.start_time) || 0, 0)
-    const rawEndTime = Number(marker.end_time)
+  return localClipMarkers.value.map((marker, index) => {
+    const dragPreview = draggingMarker.value?.markerId === marker.id
+      ? {
+          startTime: draggingMarker.value.previewStart,
+          endTime: draggingMarker.value.previewEnd,
+        }
+      : null
+    const startTime = Math.max(
+      Number(dragPreview?.startTime ?? marker.start_time) || 0,
+      0
+    )
+    const rawEndTime = Number(dragPreview?.endTime ?? marker.end_time)
     const endTime = Number.isFinite(rawEndTime) ? Math.max(rawEndTime, startTime) : startTime
+    const isPoint = isPointMarker({ startTime, endTime })
     const startPercent = Math.min((startTime / duration.value) * 100, 100)
-    const widthPercent = Math.max(((endTime - startTime) / duration.value) * 100, 0.35)
+    const widthPercent = isPoint ? 0.001 : Math.max(((endTime - startTime) / duration.value) * 100, 0.35)
 
     return {
       id: marker.id,
       title: marker.title,
       startTime,
       endTime,
+      isPoint,
       startPercent,
       widthPercent,
+      color: COLORS[index % COLORS.length],
     }
   })
 })
+const markerColorById = computed(() => Object.fromEntries(
+  normalizedClipMarkers.value.map((marker) => [marker.id, marker.color])
+))
 const activeClipMarkerId = computed(() => {
-  const activeMarker = normalizedClipMarkers.value.find((marker) => (
-    currentTime.value >= marker.startTime && currentTime.value <= marker.endTime
-  ))
+  const activeMarker = normalizedClipMarkers.value.find((marker) => isClipMarkerActive(marker, currentTime.value))
   return activeMarker?.id ?? null
 })
+const getMarkerTitle = (marker: { title?: string | null; start_time?: number; startTime?: number; end_time?: number; endTime?: number }) => {
+  if (marker.title) return marker.title
+  const startTime = Number(marker.start_time ?? marker.startTime ?? 0)
+  return isPointMarker(marker) ? `?? ${formatTime(startTime)}` : `?? ${formatTime(startTime)}`
+}
+const getMarkerTimeText = (marker: { start_time?: number; startTime?: number; end_time?: number; endTime?: number }) => {
+  const startTime = Number(marker.start_time ?? marker.startTime ?? 0)
+  const endTime = Number(marker.end_time ?? marker.endTime ?? startTime)
+  return isPointMarker(marker)
+    ? `????${formatTime(startTime)}`
+    : `${formatTime(startTime)} ??${formatTime(endTime)}`
+}
 const volumeIconName = computed(() => (isMuted.value || volume.value === 0) ? 'volumeOff' : volume.value < 50 ? 'volumeLow' : 'volumeHigh')
 const visibleCodecFamily = computed(() => (
   selectedCodecFamily.value !== 'auto'
@@ -578,7 +960,7 @@ const displayedQualities = computed(() => {
   return codecMatchedQualities.length > 0 ? codecMatchedQualities : qualities.value
 })
 const isInternalQualityLabel = (label: string | null | undefined) => /^level[_\s-]?\d+$/i.test(String(label || '').trim())
-const isAutoQualityLabel = (label: string | null | undefined) => ['auto', '自动', '自動'].includes(String(label || '').trim().toLowerCase())
+const isAutoQualityLabel = (label: string | null | undefined) => ['auto', '??', '??'].includes(String(label || '').trim().toLowerCase())
 const isDisplayableQualityLabel = (label: string | null | undefined) => !isInternalQualityLabel(label) && !isAutoQualityLabel(label)
 const qualityTagLabel = computed(() => (
   isDisplayableQualityLabel(currentQualityLabel.value)
@@ -799,6 +1181,7 @@ const handleVideoClick = () => {
   togglePlay()
 }
 const handleClipMarkerSelect = (marker: { id: number; startTime: number }) => {
+  if (Date.now() < suppressMarkerClickUntil) return
   seek(marker.startTime)
   emit('clipmarkerselect', marker.startTime)
 }
@@ -811,11 +1194,6 @@ const onPointerLeave = (event: PointerEvent) => {
   if (!shouldHandlePointerVisibility(event.pointerType)) return
   if (!isScrubbing.value) hideControls()
 }
-const onPointerMove = (event: PointerEvent) => {
-  if (!shouldHandlePointerVisibility(event.pointerType)) return
-  showControls()
-}
-
 let activeProgressPointerId: number | null = null
 
 const updateProgressPreview = (e: PointerEvent) => {
@@ -829,8 +1207,11 @@ const updateProgressPreview = (e: PointerEvent) => {
   previewPercent.value = p * 100
   previewTime.value = p * duration.value
 
-  if (isScrubbing.value) {
+  if (isScrubbing.value && !hasPendingSegment.value) {
     seek(previewTime.value)
+  }
+  if (isScrubbing.value) {
+    pendingSegmentEndTime.value = previewTime.value
   }
 }
 
@@ -901,6 +1282,30 @@ const handleKeyDown = (e: KeyboardEvent) => {
   if (e.key === 'ArrowRight') { seek(currentTime.value + 10); showCentralHud('seek', '+10s', 'skipForward') }
   if (e.key === 'ArrowUp') { setVolume(Math.min(100, volume.value + 5)) }
   if (e.key === 'ArrowDown') { setVolume(Math.max(0, volume.value - 5)) }
+  if (e.key === 'm' || e.key === 'M') {
+    if (document.activeElement?.tagName === 'INPUT') return
+    e.preventDefault()
+    if (e.shiftKey) {
+      if (hasPendingSegment.value) {
+        finishSegmentCapture()
+      } else {
+        startSegmentCapture()
+      }
+      return
+    }
+    markCurrentPoint()
+  }
+  if (e.key === 'Escape' && hasPendingSegment.value) {
+    cancelSegmentCapture()
+  }
+  if ((e.key === 'p' || e.key === 'P') && props.hasPrev) {
+    e.preventDefault()
+    emit('prev')
+  }
+  if ((e.key === 'n' || e.key === 'N') && props.hasNext) {
+    e.preventDefault()
+    emit('next')
+  }
 }
 
 const getCodecFamily = (codec: string | null | undefined) => {
@@ -970,6 +1375,9 @@ watch(isScrubbing, (scrubbing) => {
 
 onMounted(() => { window.addEventListener('keydown', handleKeyDown) })
 onMounted(() => {
+  window.addEventListener('pointermove', onWindowMarkerPointerMove)
+  window.addEventListener('pointerup', onWindowMarkerPointerUp)
+  window.addEventListener('pointercancel', onWindowMarkerPointerUp)
   window.addEventListener('pointermove', onWindowProgressPointerMove)
   window.addEventListener('pointerup', onWindowProgressPointerUp)
   window.addEventListener('pointercancel', onWindowProgressPointerUp)
@@ -977,7 +1385,11 @@ onMounted(() => {
 onUnmounted(() => {
   clearHideTimer()
   clearInitialTimeListener()
+  releaseMarkerPointerCapture()
   releaseProgressPointerCapture()
+  window.removeEventListener('pointermove', onWindowMarkerPointerMove)
+  window.removeEventListener('pointerup', onWindowMarkerPointerUp)
+  window.removeEventListener('pointercancel', onWindowMarkerPointerUp)
   window.removeEventListener('pointermove', onWindowProgressPointerMove)
   window.removeEventListener('pointerup', onWindowProgressPointerUp)
   window.removeEventListener('pointercancel', onWindowProgressPointerUp)
@@ -1009,7 +1421,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   object-fit: contain;
 }
 
-/* 全屏视觉增强层 */
+/* ????????*/
 .sp-vignette-overlay {
   position: absolute;
   inset: 0;
@@ -1018,7 +1430,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   z-index: 5;
 }
 
-/* 中央 HUD 指示器 */
+/* ?? HUD ????*/
 .sp-central-hud {
   position: absolute;
   top: 50%;
@@ -1061,7 +1473,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 .sp-hud-fade-enter-from { opacity: 0; transform: translate(-50%, -30%) scale(0.95); }
 .sp-hud-fade-leave-to { opacity: 0; transform: translate(-50%, -70%) scale(1.05); }
 
-/* HUD 系统状态 */
+/* HUD ?????*/
 .sp-hud-overlay {
   position: absolute;
   top: 16px;
@@ -1121,7 +1533,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   width: 60px;
 }
 
-/* 底部渐变遮罩 */
+/* ?????? */
 .sp-gradient-overlay {
   position: absolute;
   inset: auto 0 0 0;
@@ -1149,7 +1561,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   pointer-events: auto;
 }
 
-/* 进度条容器 */
+/* ??????*/
 .sp-progress-container {
   padding: 6px 0;
   margin: 0 -4px;
@@ -1201,12 +1613,43 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   top: 50%;
   transform: translateY(-50%);
   min-width: 4px;
-  height: 12px;
+  height: 18px;
   padding: 0;
   border: 0;
   background: transparent;
-  cursor: pointer;
+  cursor: grab;
   z-index: 1;
+}
+
+.sp-clip-marker.is-dragging {
+  cursor: grabbing;
+  z-index: 2;
+}
+
+.sp-clip-marker--pending {
+  cursor: default;
+  animation: pending-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pending-pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+
+.sp-clip-marker--pending .sp-clip-marker-track {
+  background: hsla(0, 84%, 60%, 0.45);
+  box-shadow: 0 0 10px hsla(0, 84%, 60%, 0.5);
+}
+
+.sp-clip-marker--pending .sp-clip-marker-dot {
+  background: hsl(0, 84%, 60%);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5), 0 0 10px hsl(0, 84%, 60%);
+  animation: pending-dot-pulse 1s ease-in-out infinite;
+}
+
+@keyframes pending-dot-pulse {
+  0%, 100% { transform: translateY(-50%) scale(1); }
+  50% { transform: translateY(-50%) scale(1.3); }
 }
 
 .sp-clip-marker-track {
@@ -1214,11 +1657,17 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   top: 50%;
   left: 0;
   right: 0;
-  height: 4px;
+  height: 5px;
   transform: translateY(-50%);
   border-radius: 999px;
-  background: rgba(255, 215, 64, 0.45);
-  box-shadow: 0 0 10px rgba(255, 215, 64, 0.25);
+  background: color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 40%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 30%, transparent);
+  transition: height 0.15s ease, background 0.2s ease;
+}
+
+.sp-clip-marker:hover .sp-clip-marker-track {
+  height: 7px;
+  background: color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 60%, transparent);
 }
 
 .sp-clip-marker-dot {
@@ -1229,17 +1678,134 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   height: 8px;
   transform: translate(50%, -50%);
   border-radius: 999px;
-  background: #ffd740;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55);
+  background: var(--marker-color, hsl(24 100% 50%));
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 6px color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 50%, transparent);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.sp-clip-marker:hover .sp-clip-marker-dot {
+  transform: translate(50%, -50%) scale(1.2);
+}
+
+.sp-clip-marker.is-point .sp-clip-marker-track {
+  left: 50%;
+  right: auto;
+  width: 2px;
+  transform: translate(-50%, -50%);
+}
+
+.sp-clip-marker.is-point .sp-clip-marker-dot {
+  right: 50%;
+  transform: translate(50%, -50%);
 }
 
 .sp-clip-marker.is-active .sp-clip-marker-track {
-  background: rgba(118, 245, 160, 0.75);
-  box-shadow: 0 0 12px rgba(118, 245, 160, 0.45);
+  background: color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 85%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 50%, transparent);
 }
 
 .sp-clip-marker.is-active .sp-clip-marker-dot {
-  background: #76f5a0;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.5), 0 0 10px var(--marker-color, hsl(24 100% 50%));
+}
+
+.sp-clip-marker-tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: hsl(0 0% 8% / 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 40%, transparent);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.sp-clip-marker:hover .sp-clip-marker-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.sp-clip-marker-tooltip__title {
+  font-weight: 600;
+  color: #fff;
+}
+
+.sp-clip-marker-tooltip__time {
+  color: rgba(255,255,255,0.6);
+  font-size: 10px;
+}
+
+.sp-clip-marker-tooltip__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 2px;
+}
+
+.sp-clip-marker-tooltip__del {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 3px;
+  background: rgba(255, 99, 99, 0.15);
+  color: hsl(0 72% 64%);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sp-clip-marker-tooltip__del:hover {
+  background: rgba(255, 99, 99, 0.3);
+}
+
+/* 标记数量徽章 */
+.sp-marker-count {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  background: var(--sp-primary);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.sp-marker-count--capturing {
+  background: hsl(0 84% 60%);
+  font-size: 6px;
+  animation: capture-blink 1s ease-in-out infinite;
+}
+
+@keyframes capture-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 
 .sp-progress-dot {
@@ -1259,7 +1825,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   width: 2px;
 }
 
-/* 预览时间提示 */
+/* ?????? */
 .sp-preview-hint {
   position: absolute;
   bottom: 20px;
@@ -1285,7 +1851,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   box-shadow: 0 4px 10px rgba(0,0,0,0.6);
 }
 
-/* 控制按钮主区域 */
+/* ????????*/
 .sp-controls-main {
   display: flex;
   align-items: center;
@@ -1300,7 +1866,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   gap: 10px;
 }
 
-/* 画质标签 */
+/* ???? */
 .sp-quality-tag {
   font-family: var(--sp-font-mono);
   font-size: 10px;
@@ -1323,7 +1889,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   box-shadow: 0 0 8px rgba(var(--sp-primary-rgb), 0.3);
 }
 
-/* 按钮样式优化 */
+/* ?????? */
 .sp-icon-btn {
   background: transparent;
   border: none;
@@ -1367,7 +1933,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   filter: drop-shadow(0 0 4px rgba(0,0,0,0.4));
 }
 
-/* 时间显示 */
+/* ???? */
 .sp-time-display {
   font-family: var(--sp-font-mono);
   font-size: 12px;
@@ -1388,7 +1954,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   opacity: 0.4;
 }
 
-/* 音量控制 */
+/* ???? */
 .sp-volume-group {
   display: flex;
   align-items: center;
@@ -1437,7 +2003,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   box-shadow: 0 0 10px rgba(var(--sp-primary-rgb), 0.6);
 }
 
-/* 设置菜单提示框 */
+/* ????????*/
 .sp-settings-pop {
   position: absolute;
   bottom: 52px;
@@ -1524,7 +2090,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 
 .sp-simple-switch.is-on::after { transform: translateX(14px); }
 
-/* 字幕颜色预览 */
+/* ?????? */
 .sp-subtitle-color-preview {
   width: 14px;
   height: 14px;
@@ -1533,7 +2099,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   flex-shrink: 0;
 }
 
-/* 字幕颜色网格 */
+/* ?????? */
 .sp-subtitle-color-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -1561,7 +2127,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   box-shadow: 0 0 8px rgba(var(--sp-primary-rgb), 0.5);
 }
 
-/* 字幕透明度滑块 */
+/* ????????*/
 .sp-subtitle-opacity-row {
   display: flex;
   align-items: center;
@@ -1623,7 +2189,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   flex-shrink: 0;
 }
 
-/* 加载动画 */
+/* ???? */
 .sp-loading {
   position: absolute;
   inset: 0;
@@ -1652,7 +2218,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   to { transform: rotate(360deg); }
 }
 
-/* 加载状态过渡动画 */
+/* ?????????*/
 .sp-loading-fade-enter-active,
 .sp-loading-fade-leave-active {
   transition: opacity 0.3s ease;
@@ -1671,4 +2237,20 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   opacity: 0;
   transform: translateY(10px);
 }
+
+/* Active icon button */
+.sp-icon-btn--active {
+  color: var(--sp-primary) !important;
+}
+
+.sp-icon-btn--active::after {
+  background: rgba(var(--sp-primary-rgb), 0.1) !important;
+  border-color: rgba(var(--sp-primary-rgb), 0.3) !important;
+}
+
+.sp-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 </style>

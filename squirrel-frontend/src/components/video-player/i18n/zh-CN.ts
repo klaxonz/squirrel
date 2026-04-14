@@ -58,6 +58,9 @@ const zhCN: LocaleConfig = {
     // 播放列表
     previousVideo: '上一个',
     nextVideo: '下一个',
+    prev: '上一个',
+    next: '下一个',
+    previous: '上一个',
     
     // 快进快退
     skipForward: '快进',
@@ -90,6 +93,14 @@ const zhCN: LocaleConfig = {
     volumePercent: '音量 {percent}%',
     speedPercent: '{speed}x 倍速',
     
+    // 片段标记
+    startClipSegment: '开始片段',
+    endClipSegment: '结束片段',
+    markClip: '标记',
+    clipSaved: '已保存',
+    clipSavedAt: '{time} 标记',
+    delete: '删除',
+
     // 无障碍
     videoPlayer: '视频播放器',
     progressBar: '播放进度条',
