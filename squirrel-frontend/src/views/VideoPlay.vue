@@ -224,64 +224,88 @@
             <Transition v-else-if="asideTab === 'clips'" name="fade-aside" mode="out-in">
               <div v-if="!clipMarkers.length" key="empty" class="clip-empty">
                 <div class="clip-empty__icon">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
-                    <circle cx="12" cy="13" r="3"/>
-                  </svg>
+                  <Icon icon="lucide:scissors" />
                 </div>
-                <div class="clip-empty__text">暂无片段</div>
-                <div class="clip-empty__hint">Shift + M 标记起点<br>拖动进度条设终点，再按 Shift + M 保存</div>
+                <div class="clip-empty__text">Shift + M</div>
               </div>
               <div v-else key="list" class="clip-markers-list">
                 <div
                   v-for="marker in clipMarkers"
                   :key="marker.id"
-                  class="clip-card"
+                  class="clip-row"
                   :class="{ 'is-active': isClipActive(marker) }"
-                  @click="handleClipMarkerSeek(marker.start_time)"
+                  @click="handleClipRowClick(marker)"
                 >
-                  <div class="clip-card__stripe" :style="{ background: getMarkerColor(marker) }"></div>
-                  <div class="clip-card__thumb">
+                  <div class="clip-row__thumb">
                     <img
                       v-if="marker.preview_image_url"
                       :src="marker.preview_image_url"
-                      class="clip-card__thumb-image"
+                      class="clip-row__thumb-image"
                       referrerpolicy="no-referrer"
                       draggable="false"
-                      :alt="marker.title || (marker.start_time === marker.end_time ? '点标记预览' : '片段预览')"
+                      :alt="marker.title || 'preview'"
                     >
-                    <div v-else class="clip-card__thumb-fallback">
-                      <Icon icon="lucide:image-off" />
+                    <div v-else class="clip-row__thumb-fallback">
+                      <div class="fallback-noise"></div>
                     </div>
-                    <span class="clip-card__thumb-time">{{ formatTime(marker.start_time) }}</span>
                   </div>
-                  <div class="clip-card__content">
-                    <div class="clip-card__header">
-                      <span class="clip-card__title">{{ marker.title || (marker.start_time === marker.end_time ? '点标记' : '片段') }}</span>
-                      <button
-                        class="clip-card__del"
-                        @click.stop="handleDeleteMarker(marker.id)"
-                        title="删除"
-                      >
-                        <Icon icon="lucide:trash-2" />
-                      </button>
+                  <div class="clip-row__info">
+                    <div class="clip-row__title-row">
+                      <template v-if="isEditingClipMarker(marker.id)">
+                        <input
+                        :data-clip-title-input="marker.id"
+                        :value="clipMarkerTitleDraft"
+                        class="clip-row__title-input"
+                        type="text"
+                        maxlength="255"
+                        placeholder="命名片段"
+                        @click.stop
+                        @input="clipMarkerTitleDraft = $event.target.value"
+                        @keydown.enter.prevent="commitClipMarkerTitle(marker)"
+                        @keydown.esc.prevent="cancelClipMarkerTitleEdit()"
+                        @blur="commitClipMarkerTitle(marker)"
+                        >
+                        <button
+                        class="clip-row__action"
+                        title="保存"
+                        :disabled="isSavingClipMarkerTitle"
+                        @click.stop="commitClipMarkerTitle(marker)"
+                        >
+                          <Icon icon="lucide:check" />
+                        </button>
+                      </template>
+                      <template v-else>
+                        <span v-if="getClipMarkerTitle(marker)" class="clip-row__title">
+                          {{ getClipMarkerTitle(marker) }}
+                        </span>
+                        <span v-else class="clip-row__title clip-row__title--empty"></span>
+                        <button
+                        class="clip-row__action"
+                        title="命名"
+                        @click.stop="startClipMarkerTitleEdit(marker)"
+                        >
+                          <Icon icon="lucide:pencil-line" />
+                        </button>
+                      </template>
                     </div>
-                    <div class="clip-card__meta">
-                      <span class="clip-card__range">
-                        {{ formatTime(marker.start_time) }}
-                        <template v-if="marker.start_time !== marker.end_time"> → {{ formatTime(marker.end_time) }}</template>
-                      </span>
-                      <span class="clip-card__duration" v-if="marker.start_time !== marker.end_time">
-                        {{ formatClipDuration(marker) }}
-                      </span>
-                    </div>
-                    <div class="clip-card__progress" v-if="marker.start_time !== marker.end_time">
+                    <span class="clip-row__range">
+                      {{ formatTime(marker.start_time) }}
+                      <template v-if="marker.start_time !== marker.end_time"> → {{ formatTime(marker.end_time) }}</template>
+                    </span>
+                    <div class="clip-row__progress" v-if="marker.start_time !== marker.end_time">
                       <div
-                        class="clip-card__progress-fill"
+                        class="clip-row__progress-fill"
                         :style="{ width: `${getClipProgress(marker)}%`, background: getMarkerColor(marker) }"
                       ></div>
                     </div>
                   </div>
+                  <button
+                    class="clip-row__del"
+                    @click.stop="handleDeleteMarker(marker.id)"
+                    title="delete"
+                  >
+                    <Icon icon="lucide:x" />
+                  </button>
                 </div>
               </div>
             </Transition>
@@ -423,7 +447,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, computed, reactive, inject } from 'vue';
+import { ref, onMounted, onUnmounted, watch, computed, reactive, inject, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
 import usePlaybackReporting from '../composables/usePlaybackReporting';
@@ -447,7 +471,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Logger } from '@/utils/logger'
 import { getRandomVideo, unsubscribe as apiUnsubscribe } from '@/api'
-import { deleteVideoClipMarker } from '@/api/videoClipMarkers'
+import { deleteVideoClipMarker, updateVideoClipMarker } from '@/api/videoClipMarkers'
 
 
 
@@ -508,6 +532,9 @@ const {
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
 const currentPlaybackTime = ref(0)
 const clipMarkers = computed(() => Array.isArray(video.value?.clip_markers) ? video.value.clip_markers : [])
+const editingClipMarkerId = ref(null)
+const clipMarkerTitleDraft = ref('')
+const isSavingClipMarkerTitle = ref(false)
 
 const parseSharedStartTime = (value) => {
   if (Array.isArray(value)) {
@@ -548,6 +575,62 @@ const handleDeleteMarker = async (markerId) => {
   if (error) return
   if (!video.value) return
   video.value.clip_markers = (video.value.clip_markers || []).filter((m) => m.id !== markerId)
+  if (String(editingClipMarkerId.value || '') === String(markerId || '')) {
+    cancelClipMarkerTitleEdit()
+  }
+}
+
+const getClipMarkerTitle = (marker) => String(marker.title || '').trim()
+const isEditingClipMarker = (markerId) => String(editingClipMarkerId.value || '') === String(markerId || '')
+
+const focusClipMarkerTitleInput = async (markerId) => {
+  await nextTick()
+  const input = document.querySelector(`[data-clip-title-input="${markerId}"]`)
+  if (input instanceof HTMLInputElement) {
+    input.focus()
+    input.select()
+  }
+}
+
+const startClipMarkerTitleEdit = async (marker) => {
+  editingClipMarkerId.value = marker.id
+  clipMarkerTitleDraft.value = String(marker.title || '')
+  await focusClipMarkerTitleInput(marker.id)
+}
+
+const cancelClipMarkerTitleEdit = () => {
+  editingClipMarkerId.value = null
+  clipMarkerTitleDraft.value = ''
+  isSavingClipMarkerTitle.value = false
+}
+
+const commitClipMarkerTitle = async (marker) => {
+  if (!video.value || !isEditingClipMarker(marker.id) || isSavingClipMarkerTitle.value) return
+
+  const nextTitle = String(clipMarkerTitleDraft.value || '').trim() || null
+  const currentTitle = String(marker.title || '').trim() || null
+  if (currentTitle === nextTitle) {
+    cancelClipMarkerTitleEdit()
+    return
+  }
+
+  isSavingClipMarkerTitle.value = true
+  const { data, error } = await updateVideoClipMarker(marker.id, { title: nextTitle })
+  isSavingClipMarkerTitle.value = false
+
+  if (error || !data) {
+    return
+  }
+
+  video.value.clip_markers = (video.value.clip_markers || []).map((item) => (
+    String(item.id) === String(marker.id) ? data : item
+  ))
+  cancelClipMarkerTitleEdit()
+}
+
+const handleClipRowClick = (marker) => {
+  if (isEditingClipMarker(marker.id)) return
+  handleClipMarkerSeek(marker.start_time)
 }
 
 const COLORS = ['#f87171', '#fb923c', '#facc15', '#4ade80', '#34d399', '#22d3ee', '#60a5fa', '#a78bfa', '#f472b6']
@@ -1573,9 +1656,9 @@ onUnmounted(() => {
   display: flex;
   gap: 0.25rem;
   background: hsl(var(--background));
-  padding: 0.75rem 0;
+  padding: 0;
   margin-bottom: 0;
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  border-bottom: none;
 }
 
 .video-aside__tab {
@@ -1630,144 +1713,152 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2.5rem 1rem;
+  padding: 2rem 1rem;
   text-align: center;
   gap: 0.5rem;
 }
 
 .clip-empty__icon {
-  color: hsl(var(--muted-foreground) / 0.4);
-  margin-bottom: 0.25rem;
+  color: hsl(var(--muted-foreground) / 0.3);
+  font-size: 1.5rem;
 }
 
 .clip-empty__text {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: hsl(var(--muted-foreground));
-}
-
-.clip-empty__hint {
+  font-family: 'JetBrains Mono', monospace;
   font-size: 0.7rem;
-  color: hsl(var(--muted-foreground) / 0.6);
-  line-height: 1.5;
-  white-space: pre-line;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  letter-spacing: 0.1em;
 }
 
 .clip-markers-list {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.1rem;
 }
 
-.clip-card {
+.clip-row {
   display: grid;
-  grid-template-columns: 4px 5.75rem minmax(0, 1fr);
-  align-items: stretch;
-  border-radius: 8px;
-  overflow: hidden;
+  grid-template-columns: 6.25rem minmax(0, 1fr) 1.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
   cursor: pointer;
-  background: hsl(var(--accent) / 0.04);
-  border: 1px solid hsl(var(--border) / 0.4);
-  transition: all 0.15s;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0.1, 1);
 }
 
-.clip-card:hover {
-  background: hsl(var(--accent) / 0.08);
-  border-color: hsl(var(--border) / 0.7);
+.clip-row:hover {
+  transform: translateX(4px);
 }
 
-.clip-card.is-active {
-  background: hsl(var(--primary) / 0.06);
-  border-color: hsl(var(--primary) / 0.25);
+.clip-row:hover .clip-row__del {
+  opacity: 1;
 }
 
-.clip-card__stripe {
-  width: 4px;
-  flex-shrink: 0;
-  border-radius: 8px 0 0 8px;
-  opacity: 0.85;
+.clip-row.is-active .clip-row__range {
+  color: hsl(var(--foreground));
+  font-weight: 600;
 }
 
-.clip-card__thumb {
+.clip-row__thumb {
   position: relative;
-  margin: 0.42rem 0 0.42rem 0.48rem;
-  border-radius: 7px;
-  overflow: hidden;
-  background: hsl(var(--muted) / 0.7);
-  min-height: 3.4rem;
+  width: 100%;
   aspect-ratio: 16 / 9;
+  border-radius: 3px;
+  overflow: hidden;
+  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--border) / 0.4);
+  transition: all 0.2s;
 }
 
-.clip-card__thumb::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent 58%);
-  pointer-events: none;
+.clip-row:hover .clip-row__thumb {
+  border-color: hsl(var(--primary) / 0.4);
+  box-shadow: inset 0 0 10px hsl(var(--primary) / 0.1);
 }
 
-.clip-card__thumb-image,
-.clip-card__thumb-fallback {
+.clip-row__thumb-image {
   width: 100%;
   height: 100%;
-}
-
-.clip-card__thumb-image {
-  display: block;
   object-fit: cover;
 }
 
-.clip-card__thumb-fallback {
+.clip-row__thumb-fallback {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: hsl(var(--muted-foreground));
-  background:
-    radial-gradient(circle at top left, hsl(var(--primary) / 0.18), transparent 52%),
-    linear-gradient(135deg, hsl(var(--accent) / 0.28), hsl(var(--background)));
 }
 
-.clip-card__thumb-time {
-  position: absolute;
-  left: 0.38rem;
-  bottom: 0.3rem;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  padding: 0.12rem 0.34rem;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.62);
-  color: #fff;
-  font-size: 0.58rem;
-  font-family: 'JetBrains Mono', monospace;
-  letter-spacing: 0.02em;
-}
-
-.clip-card__content {
-  flex: 1;
-  padding: 0.5rem 0.6rem;
+.clip-row__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
   min-width: 0;
 }
 
-.clip-card__header {
+.clip-row__title-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.2rem;
+  gap: 0.4rem;
+  min-width: 0;
+  min-height: 1.4rem;
 }
 
-.clip-card__title {
-  font-size: 0.78rem;
+.clip-row__title {
+  min-width: 0;
+  flex: 1;
+  font-size: 0.76rem;
   font-weight: 600;
   color: hsl(var(--foreground));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1;
 }
 
-.clip-card__del {
+.clip-row__title--empty {
+  min-height: 1rem;
+}
+
+.clip-row__title-input {
+  min-width: 0;
+  flex: 1;
+  height: 1.6rem;
+  padding: 0 0.45rem;
+  border-radius: 4px;
+  border: 1px solid hsl(var(--primary) / 0.35);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-size: 0.74rem;
+  outline: none;
+}
+
+.clip-row__title-input:focus {
+  border-color: hsl(var(--primary) / 0.6);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.2);
+}
+
+.clip-row__range {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: hsl(var(--muted-foreground));
+  transition: color 0.2s;
+}
+
+.clip-row__progress {
+  height: 1px;
+  background: hsl(var(--accent) / 0.2);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.clip-row__progress-fill {
+  height: 100%;
+  border-radius: 1px;
+  transition: width 0.5s linear;
+}
+
+.clip-row__del {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1776,56 +1867,46 @@ onUnmounted(() => {
   color: hsl(var(--muted-foreground));
   background: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s;
+}
+
+.clip-row__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  color: hsl(var(--muted-foreground));
+  background: transparent;
+  border: none;
+  border-radius: 3px;
   cursor: pointer;
   opacity: 0;
   transition: all 0.15s;
   flex-shrink: 0;
 }
 
-.clip-card:hover .clip-card__del {
-  opacity: 1;
-}
-
-.clip-card__del:hover {
+.clip-row__del:hover {
   color: hsl(var(--destructive));
   background: hsl(var(--destructive) / 0.1);
 }
 
-.clip-card__meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.35rem;
+.clip-row:hover .clip-row__action,
+.clip-row__action:focus-visible,
+.clip-row__action:disabled {
+  opacity: 1;
 }
 
-.clip-card__range {
-  font-size: 0.68rem;
-  font-family: 'JetBrains Mono', monospace;
-  color: hsl(var(--muted-foreground));
-  white-space: nowrap;
+.clip-row__action:hover:not(:disabled) {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.1);
 }
 
-.clip-card__duration {
-  font-size: 0.65rem;
-  font-weight: 500;
-  color: hsl(var(--muted-foreground) / 0.7);
-  white-space: nowrap;
-}
-
-.clip-card__progress {
-  height: 2px;
-  background: hsl(var(--accent) / 0.2);
-  border-radius: 1px;
-  overflow: hidden;
-}
-
-.clip-card__progress-fill {
-  height: 100%;
-  border-radius: 1px;
-  transition: width 0.5s linear;
-  opacity: 0.8;
+.clip-row__action:disabled {
+  cursor: not-allowed;
 }
 
 .playlist-aside {
