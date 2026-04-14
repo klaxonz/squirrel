@@ -157,9 +157,8 @@
               <button v-if="subtitleTracks.length > 0" class="sp-icon-btn" @click.stop="toggleSubtitlesQuick" :title="t('subtitles')">
                 <PlayerIcon :name="store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff'" />
               </button>
-              <button class="sp-icon-btn" :class="{ 'sp-icon-btn--active': hasPendingSegment || localClipMarkers.length > 0 }" :title="hasPendingSegment ? `保存片段` : localClipMarkers.length > 0 ? `${localClipMarkers.length} 个标记` : t('markClip')" :disabled="isSavingMarker" @click.stop="hasPendingSegment ? finishSegmentCapture() : markCurrentPoint()">
+              <button class="sp-icon-btn" :class="{ 'sp-icon-btn--active': hasPendingSegment || localClipMarkers.length > 0 }" :title="hasPendingSegment ? `保存片段` : t('markClip')" :disabled="isSavingMarker" @click.stop="hasPendingSegment ? finishSegmentCapture() : markCurrentPoint()">
                 <PlayerIcon name="markClip" />
-                <span v-if="localClipMarkers.length > 0 && !hasPendingSegment" class="sp-marker-count">{{ localClipMarkers.length }}</span>
                 <span v-if="hasPendingSegment" class="sp-marker-count sp-marker-count--capturing">●</span>
               </button>
               <button class="sp-icon-btn" @click.stop="toggleSettingsMenu" :title="t('settings')">
@@ -1705,8 +1704,8 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 }
 
 .sp-clip-marker.is-active .sp-clip-marker-dot {
-  background: #fff;
-  box-shadow: 0 0 0 2px rgba(0,0,0,0.5), 0 0 10px var(--marker-color, hsl(24 100% 50%));
+  background: var(--marker-color, hsl(24 100% 50%));
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.88), 0 0 10px var(--marker-color, hsl(24 100% 50%));
 }
 
 .sp-clip-marker-tooltip {

@@ -87,3 +87,30 @@ test('segment capture uses submit protection and no longer emits dead creation e
   assert.doesNotMatch(playerSource, /clipmarkercreated/)
   assert.match(playerSource, /isClipMarkerActive\(marker, currentTime\.value\)/)
 })
+
+test('active clip marker keeps the marker color instead of switching to a dark ring style', async () => {
+  const playerSource = await readFile(new URL('../src/components/video-player/VideoPlayer.vue', import.meta.url), 'utf8')
+
+  assert.match(
+    playerSource,
+    /\.sp-clip-marker\.is-active \.sp-clip-marker-dot \{\s*background: var\(--marker-color, hsl\(24 100% 50%\)\);/
+  )
+  assert.match(playerSource, /rgba\(255,255,255,0\.88\)/)
+  assert.doesNotMatch(
+    playerSource,
+    /\.sp-clip-marker\.is-active \.sp-clip-marker-dot \{\s*background: #fff;\s*box-shadow: 0 0 0 2px rgba\(0,0,0,0\.5\)/
+  )
+})
+
+test('clip marker control no longer renders a count badge for existing markers', async () => {
+  const playerSource = await readFile(new URL('../src/components/video-player/VideoPlayer.vue', import.meta.url), 'utf8')
+
+  assert.doesNotMatch(
+    playerSource,
+    /<span v-if="localClipMarkers\.length > 0 && !hasPendingSegment" class="sp-marker-count">\{\{ localClipMarkers\.length \}\}<\/span>/
+  )
+  assert.match(
+    playerSource,
+    /:title="hasPendingSegment \? `保存片段` : t\('markClip'\)"/
+  )
+})
