@@ -45,6 +45,11 @@ def _clip_markers_join():
     return Video.id == foreign(VideoClipMarker.video_id)
 
 
+def _playlist_items_join():
+    from models.playlist_item import PlaylistItem
+    return Video.id == foreign(PlaylistItem.video_id)
+
+
 class Video(Base, SerializerMixin):
     __tablename__ = "video"
 
@@ -114,6 +119,12 @@ class Video(Base, SerializerMixin):
     clip_markers: Mapped[List["VideoClipMarker"]] = relationship(
         'VideoClipMarker',
         primaryjoin=_clip_markers_join,
+        back_populates='video',
+        viewonly=True,
+    )
+    playlist_items: Mapped[List["PlaylistItem"]] = relationship(
+        'PlaylistItem',
+        primaryjoin=_playlist_items_join,
         back_populates='video',
         viewonly=True,
     )

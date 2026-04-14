@@ -29,6 +29,7 @@ from routes.video import router as video_router
 from routes.video_clip_marker import router as video_clip_marker_router
 from routes.video_history import router as video_history_router
 from routes.video_interaction import router as video_interaction_router
+from routes.playlist import router as playlist_router
 from routes.system_config import router as system_config_router
 from routes.plugins import router as plugins_router
 from routes.logs import router as logs_router
@@ -114,6 +115,7 @@ def create_app() -> FastAPI:
     app.include_router(user_router)
     app.include_router(video_history_router)
     app.include_router(video_interaction_router)
+    app.include_router(playlist_router)
     app.include_router(system_config_router)
     app.include_router(plugins_router)
     app.include_router(logs_router)

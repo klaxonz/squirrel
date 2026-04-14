@@ -133,15 +133,15 @@
                 视频片段
                 <span v-if="clipMarkers.length > 0" class="video-aside__tab-badge">{{ clipMarkers.length }}</span>
               </button>
+              <button
+                class="video-aside__tab"
+                :class="{ 'is-active': asideTab === 'playlist' }"
+                @click="asideTab = 'playlist'"
+              >
+                播放列表
+                <span v-if="activePlaylistItems.length > 0" class="video-aside__tab-badge">{{ activePlaylistItems.length }}</span>
+              </button>
             </div>
-            <button
-              class="playlist-toggle-btn"
-              :class="{ 'is-active': isPlaylistPanelOpen }"
-              @click="isPlaylistPanelOpen = !isPlaylistPanelOpen"
-              title="播放列表"
-            >
-              <Icon icon="lucide:list-music" />
-            </button>
           </div>
           <div class="video-aside__content">
             <!-- 相关视频 tab -->
@@ -271,17 +271,140 @@
                 </div>
               </div>
             </Transition>
+            <Transition v-else-if="asideTab === 'playlist'" name="fade-aside" mode="out-in">
+              <div key="playlist" class="playlist-aside">
+                <div class="playlist-aside__toolbar">
+                  <div class="playlist-aside__toolbar-copy">
+                    <span class="playlist-aside__toolbar-title">
+                      {{ activePlaylist?.name || '播放列表' }}
+                    </span>
+                    <span class="playlist-aside__toolbar-meta">
+                      {{ activePlaylist ? `${activePlaylistItems.length} 个视频` : `${playlists.length} 个列表` }}
+                    </span>
+                  </div>
+                  <button class="playlist-aside__add-btn" @click="handleAddToPlaylist">
+                    <Icon icon="lucide:list-plus" />
+                    <span>加入</span>
+                  </button>
+                </div>
+
+                <div v-if="loadingPlaylists && !playlists.length" class="video-aside__empty">
+                  加载中
+                </div>
+                <div v-else-if="!playlists.length" class="playlist-aside__empty">
+                  <div class="playlist-aside__empty-title">暂无列表</div>
+                  <div class="playlist-aside__empty-desc">新建后可直接加入当前视频。</div>
+                  <button class="playlist-aside__empty-action" @click="handleAddToPlaylist">新建</button>
+                </div>
+                <template v-else>
+                  <div v-if="playlists.length > 1" class="playlist-aside__playlist-list">
+                    <button
+                      v-for="playlist in playlists"
+                      :key="playlist.id"
+                      class="playlist-aside__playlist-chip"
+                      :class="{ 'is-active': activePlaylist && String(activePlaylist.id) === String(playlist.id) }"
+                      @click="selectActivePlaylist(playlist.id)"
+                    >
+                      <span class="playlist-aside__playlist-name">{{ playlist.name }}</span>
+                      <span class="playlist-aside__playlist-count">{{ playlist.video_count }}</span>
+                    </button>
+                  </div>
+
+                  <div v-if="loadingPlaylistItems" class="video-aside__empty">
+                    加载中
+                  </div>
+                  <div v-else-if="!activePlaylist" class="video-aside__empty">
+                    选择列表
+                  </div>
+                  <div v-else-if="!activePlaylistItems.length" class="video-aside__empty">
+                    列表为空
+                  </div>
+                  <div v-else class="playlist-aside__items">
+                    <div
+                      v-for="(item, index) in activePlaylistItems"
+                      :key="item.id"
+                      class="playlist-aside__item"
+                      :class="{ 'is-active': currentVideoId && String(item.video_id) === String(currentVideoId) }"
+                      @click="playPlaylistItem(item)"
+                    >
+                      <span class="playlist-aside__item-index">{{ index + 1 }}</span>
+                      <div class="playlist-aside__item-thumb">
+                        <img
+                          v-if="item.video?.thumbnail"
+                          :src="item.video.thumbnail"
+                          referrerpolicy="no-referrer"
+                          :alt="item.video.title"
+                          @error="handlePlaylistItemImageError"
+                        >
+                        <div v-else class="playlist-aside__item-thumb-fallback">
+                          <Icon icon="lucide:film" />
+                        </div>
+                      </div>
+                      <div class="playlist-aside__item-body">
+                        <span class="playlist-aside__item-title">{{ item.video?.title || '未知视频' }}</span>
+                        <span class="playlist-aside__item-meta">{{ formatDuration(item.video?.duration) }}</span>
+                      </div>
+                      <button
+                        class="playlist-aside__item-remove"
+                        @click.stop="handleRemoveVideoFromActivePlaylist(item)"
+                        title="从播放列表移除"
+                      >
+                        <Icon icon="lucide:x" />
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </Transition>
           </div>
         </div>
       </div>
     </div>
 
-    <PlaylistPanel
-      :is-open="isPlaylistPanelOpen"
-      :video-id="video?.id"
-      @close="isPlaylistPanelOpen = false"
-      @play-video="handlePlayFromPlaylist"
-    />
+    <Dialog :open="showPlaylistPicker" @update:open="handlePlaylistPickerOpenChange">
+      <DialogContent class="playlist-picker-dialog">
+        <DialogHeader class="playlist-picker__header">
+          <DialogTitle>加入列表</DialogTitle>
+        </DialogHeader>
+
+        <div class="playlist-picker__body">
+          <div v-if="playlists.length" class="playlist-picker__section">
+            <Input v-model="playlistPickerQuery" class="playlist-picker__search" placeholder="搜索列表" />
+          </div>
+
+          <div v-if="playlists.length" class="playlist-picker__list">
+            <button
+              v-for="playlist in filteredPlaylists"
+              :key="playlist.id"
+              class="playlist-picker__item"
+              :disabled="isPlaylistPickerSubmitting"
+              @click="handleAddCurrentVideoToPlaylist(playlist.id)"
+            >
+              <span class="playlist-picker__item-copy">
+                <span class="playlist-picker__item-title">{{ playlist.name }}</span>
+                <span class="playlist-picker__item-meta">{{ playlist.video_count }} 个视频</span>
+              </span>
+              <Icon icon="lucide:plus" class="playlist-picker__item-icon" />
+            </button>
+            <div v-if="playlistPickerQuery.trim() && !filteredPlaylists.length" class="playlist-picker__empty">
+              没有结果
+            </div>
+          </div>
+          <div v-else class="playlist-picker__blank">还没有列表</div>
+
+          <div class="playlist-picker__create-row" :class="{ 'is-standalone': !playlists.length }">
+            <Input v-model="newPlaylistName" class="playlist-picker__create-input" placeholder="新建列表" />
+            <button
+              class="playlist-picker__create-btn"
+              :disabled="isPlaylistPickerSubmitting || !newPlaylistName.trim()"
+              @click="handleCreatePlaylistFromPicker"
+            >
+              创建
+            </button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -294,7 +417,6 @@ import { useGlobalVideoPlayer } from '@/composables/useGlobalVideoPlayer'
 import { useAppTheme } from '@/composables/useAppTheme'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import RelatedVideoSkeleton from '@/components/video-player/RelatedVideoSkeleton.vue';
-import PlaylistPanel from '@/components/playlist/PlaylistPanel.vue';
 import { LocalStorageAdapter } from '@/components/video-player/core';
 import { Icon } from '@iconify/vue';
 import useVideoHistory from "../composables/useVideoHistory";
@@ -302,6 +424,13 @@ import { formatDate, formatDuration, formatTime } from '../utils/dateFormat';
 import { formatVideoCardId } from '@/utils/videoCard';
 import useVideoInteraction from '../composables/useVideoInteraction';
 import usePlaylist from '../composables/usePlaylist';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { Logger } from '@/utils/logger'
 import { getRandomVideo, unsubscribe as apiUnsubscribe } from '@/api'
 import { deleteVideoClipMarker } from '@/api/videoClipMarkers'
@@ -345,9 +474,12 @@ const {
 const { sendReport } = useVideoHistory();
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 const {
+  playlists,
+  loading: loadingPlaylists,
   activePlaylist,
   activePlaylistItems,
   currentVideoId,
+  loadingItems: loadingPlaylistItems,
   hasPrev,
   hasNext,
   goToPrev,
@@ -356,6 +488,8 @@ const {
   fetchPlaylists,
   loadAndSetPlaylist,
   addVideo,
+  create: createPlaylist,
+  removeVideo,
 } = usePlaylist();
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
 const currentPlaybackTime = ref(0)
@@ -395,10 +529,6 @@ const handleClipMarkerSeek = async (time) => {
   await focusVideoPlayer()
 }
 
-const handleClipMarkerCreated = () => {
-  asideTab.value = 'clips'
-}
-
 const handleDeleteMarker = async (markerId) => {
   const { error } = await deleteVideoClipMarker(markerId)
   if (error) return
@@ -411,6 +541,13 @@ const getMarkerColor = (marker) => {
   const markers = clipMarkers.value
   const index = markers.findIndex((m) => m.id === marker.id)
   return COLORS[index % COLORS.length]
+}
+
+const handlePlaylistItemImageError = (event) => {
+  const target = event?.target
+  if (target instanceof HTMLImageElement) {
+    target.style.display = 'none'
+  }
 }
 
 const isClipActive = (marker) => {
@@ -545,8 +682,22 @@ const isVideoChannelVisible = ref(true)
 const isChannelUnsubscribing = ref(false)
 const videoChannelError = ref('')
 const VIDEO_CHANNEL_DISMISS_MS = 180
-const isPlaylistPanelOpen = ref(false)
 const asideTab = ref('related')
+const showPlaylistPicker = ref(false)
+const playlistPickerQuery = ref('')
+const newPlaylistName = ref('')
+const isPlaylistPickerSubmitting = ref(false)
+
+const filteredPlaylists = computed(() => {
+  const query = playlistPickerQuery.value.trim().toLowerCase()
+  if (!query) return playlists.value
+  return playlists.value.filter((playlist) => String(playlist.name || '').toLowerCase().includes(query))
+})
+
+const currentVideoAlreadyInActivePlaylist = computed(() => {
+  if (!video.value?.id || !activePlaylist.value) return false
+  return activePlaylistItems.value.some((item) => String(item.video_id) === String(video.value.id))
+})
 
 const wait = (ms) => new Promise((resolve) => {
   window.setTimeout(resolve, ms)
@@ -675,21 +826,98 @@ const handleLater = async (video) => {
   }
 };
 
+const ensurePlaylistData = async () => {
+  await fetchPlaylists();
+  const nextPlaylistId = activePlaylist.value?.id ?? playlists.value[0]?.id;
+  if (nextPlaylistId) {
+    await loadAndSetPlaylist(nextPlaylistId);
+  }
+}
+
+const handlePlaylistPickerOpenChange = async (open) => {
+  showPlaylistPicker.value = open;
+  if (!open) {
+    playlistPickerQuery.value = '';
+    newPlaylistName.value = '';
+    isPlaylistPickerSubmitting.value = false;
+    return;
+  }
+  await fetchPlaylists();
+}
+
 const handleAddToPlaylist = async () => {
   if (!video.value?.id) return;
-  isPlaylistPanelOpen.value = true;
+  showPlaylistPicker.value = true;
+  playlistPickerQuery.value = '';
+  newPlaylistName.value = '';
   await fetchPlaylists();
-  if (activePlaylist.value) {
-    await loadAndSetPlaylist(activePlaylist.value.id);
+};
+
+const selectActivePlaylist = async (playlistId) => {
+  asideTab.value = 'playlist';
+  await loadAndSetPlaylist(playlistId);
+};
+
+const focusPlaylistTab = async (playlistId = null) => {
+  asideTab.value = 'playlist';
+  await fetchPlaylists();
+  const nextPlaylistId = playlistId ?? activePlaylist.value?.id ?? playlists.value[0]?.id;
+  if (nextPlaylistId) {
+    await loadAndSetPlaylist(nextPlaylistId);
   }
 };
 
-const handlePlayFromPlaylist = async (videoItem) => {
-  if (videoItem?.id) {
-    await goToVideo(videoItem.id, videoItem);
-    setCurrentVideo(videoItem.id);
-    isPlaylistPanelOpen.value = false;
+const handleAddCurrentVideoToPlaylist = async (playlistId) => {
+  if (!video.value?.id || isPlaylistPickerSubmitting.value) return;
+
+  isPlaylistPickerSubmitting.value = true;
+  try {
+    const item = await addVideo(video.value.id, playlistId);
+    if (!item) return;
+
+    await focusPlaylistTab(playlistId);
+    showPlaylistPicker.value = false;
+  } finally {
+    isPlaylistPickerSubmitting.value = false;
   }
+};
+
+const handleCreatePlaylistFromPicker = async () => {
+  const playlistName = newPlaylistName.value.trim();
+  if (!playlistName || !video.value?.id || isPlaylistPickerSubmitting.value) return;
+
+  isPlaylistPickerSubmitting.value = true;
+  try {
+    const createdPlaylist = await createPlaylist(playlistName, null);
+    if (!createdPlaylist) return;
+
+    const item = await addVideo(video.value.id, createdPlaylist.id);
+    if (!item) return;
+
+    await focusPlaylistTab(createdPlaylist.id);
+    showPlaylistPicker.value = false;
+    newPlaylistName.value = '';
+  } finally {
+    isPlaylistPickerSubmitting.value = false;
+  }
+};
+
+const handleAddCurrentVideoToActivePlaylist = async () => {
+  if (!video.value?.id || !activePlaylist.value || currentVideoAlreadyInActivePlaylist.value) return;
+  const item = await addVideo(video.value.id, activePlaylist.value.id);
+  if (!item) return;
+  await loadAndSetPlaylist(activePlaylist.value.id);
+};
+
+const playPlaylistItem = async (item) => {
+  if (!item?.video?.id) return;
+  setCurrentVideo(item.video.id);
+  await goToVideo(item.video.id, item.video);
+};
+
+const handleRemoveVideoFromActivePlaylist = async (item) => {
+  if (!activePlaylist.value) return;
+  await removeVideo(activePlaylist.value.id, item.video_id);
 };
 
 
@@ -740,7 +968,13 @@ watch(videoPlayerHostRef, (element) => {
 
 watch(() => route.params.videoId, (videoId) => {
   setGlobalVideoPlayerCurrentVideoId(videoId);
+  setCurrentVideo(videoId ?? null);
 }, { immediate: true });
+
+watch(asideTab, async (tab) => {
+  if (tab !== 'playlist') return;
+  await ensurePlaylistData();
+});
 
 const isSameGlobalPlaybackSession = (videoId = route.params.videoId) => {
   return String(globalVideoPlayerSession.currentVideoId || '') === String(videoId || '');
@@ -862,7 +1096,6 @@ watch(
         onWidescreenChange: toggleWidescreen,
         onClipMarkerSelect: handleClipMarkerSeek,
         onClipMarkersUpdated: handleClipMarkersUpdated,
-        onClipMarkerCreated: handleClipMarkerCreated,
       }
     });
   },
@@ -1525,30 +1758,375 @@ onUnmounted(() => {
   opacity: 0.8;
 }
 
-.playlist-toggle-btn {
+.playlist-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.playlist-aside__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.playlist-aside__toolbar-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.playlist-aside__toolbar-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-aside__toolbar-meta {
+  font-size: 0.68rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.playlist-aside__add-btn,
+.playlist-aside__empty-action,
+.playlist-picker__create-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--primary) / 0.35);
+  background: hsl(var(--primary) / 0.08);
+  color: hsl(var(--primary));
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.playlist-aside__add-btn,
+.playlist-aside__empty-action {
+  padding: 0.38rem 0.78rem;
+}
+
+.playlist-aside__add-btn:hover,
+.playlist-aside__empty-action:hover,
+.playlist-picker__create-btn:hover:not(:disabled) {
+  background: hsl(var(--primary) / 0.16);
+  border-color: hsl(var(--primary) / 0.55);
+}
+
+.playlist-aside__playlist-list {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.playlist-aside__playlist-list::-webkit-scrollbar {
+  display: none;
+}
+
+.playlist-aside__playlist-chip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: 100%;
+  padding: 0.42rem 0.68rem;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border) / 0.55);
+  background: hsl(var(--accent) / 0.06);
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.playlist-aside__playlist-chip:hover {
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+  background: hsl(var(--accent) / 0.12);
+}
+
+.playlist-aside__playlist-chip.is-active {
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary) / 0.35);
+  background: hsl(var(--primary) / 0.08);
+}
+
+.playlist-aside__playlist-name {
+  max-width: 9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.playlist-aside__playlist-count {
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.28rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: hsl(var(--background) / 0.9);
+  font-size: 0.62rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.playlist-aside__items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.playlist-aside__item {
+  display: grid;
+  grid-template-columns: 1.6rem 5rem minmax(0, 1fr) 1.5rem;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.45rem 0.5rem;
+  border-radius: 8px;
+  background: hsl(var(--accent) / 0.04);
+  border: 1px solid hsl(var(--border) / 0.4);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.playlist-aside__item:hover {
+  background: hsl(var(--accent) / 0.08);
+  border-color: hsl(var(--border) / 0.65);
+}
+
+.playlist-aside__item.is-active {
+  background: hsl(var(--primary) / 0.08);
+  border-color: hsl(var(--primary) / 0.28);
+}
+
+.playlist-aside__item-index {
+  font-size: 0.68rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+}
+
+.playlist-aside__item-thumb {
+  width: 5rem;
+  aspect-ratio: 16 / 9;
+  border-radius: 5px;
+  overflow: hidden;
+  background: hsl(var(--muted));
+}
+
+.playlist-aside__item-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.playlist-aside__item-thumb-fallback {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: 1px solid hsl(var(--border) / 0.4);
-  background: hsl(var(--accent) / 0.05);
   color: hsl(var(--muted-foreground));
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
 }
 
-.playlist-toggle-btn:hover {
-  background: hsl(var(--accent) / 0.15);
+.playlist-aside__item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.playlist-aside__item-title {
+  font-size: 0.78rem;
+  font-weight: 500;
   color: hsl(var(--foreground));
-  border-color: hsl(var(--border));
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.playlist-toggle-btn.is-active {
-  background: hsl(var(--primary) / 0.1);
+.playlist-aside__item-meta {
+  font-size: 0.65rem;
+  color: hsl(var(--muted-foreground));
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.playlist-aside__item-remove {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  opacity: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.playlist-aside__item:hover .playlist-aside__item-remove {
+  opacity: 1;
+}
+
+.playlist-aside__item-remove:hover {
+  color: hsl(var(--destructive));
+  background: hsl(var(--destructive) / 0.1);
+}
+
+.playlist-aside__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 2.25rem 1rem;
+  text-align: center;
+}
+
+.playlist-aside__empty-title {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.playlist-aside__empty-desc {
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+  max-width: 18rem;
+}
+
+.playlist-picker-dialog {
+  max-width: 28rem;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.playlist-picker__header {
+  padding: 1.1rem 1.1rem 0.55rem;
+}
+
+.playlist-picker__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0 1.1rem 1.1rem;
+}
+
+.playlist-picker__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.playlist-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.playlist-picker__list::-webkit-scrollbar {
+  display: none;
+}
+
+.playlist-picker__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid hsl(var(--border) / 0.5);
+  background: hsl(var(--accent) / 0.05);
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.playlist-picker__item:hover:not(:disabled) {
+  border-color: hsl(var(--primary) / 0.35);
+  background: hsl(var(--primary) / 0.06);
+}
+
+.playlist-picker__item:disabled,
+.playlist-picker__create-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.playlist-picker__item-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.playlist-picker__item-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.playlist-picker__item-meta {
+  font-size: 0.7rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.playlist-picker__item-icon {
+  flex-shrink: 0;
   color: hsl(var(--primary));
-  border-color: hsl(var(--primary) / 0.4);
+}
+
+.playlist-picker__empty {
+  padding: 0.9rem 0.5rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.playlist-picker__blank {
+  padding: 1rem 0.35rem 0.15rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.playlist-picker__create-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  padding-top: 0.8rem;
+  border-top: 1px solid hsl(var(--border) / 0.45);
+}
+
+.playlist-picker__create-row.is-standalone {
+  padding-top: 0;
+  border-top: none;
+}
+
+.playlist-picker__create-btn {
+  padding: 0.48rem 0.85rem;
 }
 
 .video-aside__title {

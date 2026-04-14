@@ -8,6 +8,7 @@ const Settings = () => import('../views/Settings.vue')
 const VideoTab = () => import('@/components/feed/VideoTab.vue')
 const History = () => import('../views/History.vue')
 const VideoPlay = () => import('../views/VideoPlay.vue')
+const PlaylistView = () => import('../views/PlaylistView.vue')
 const Login = () => import('../views/Login.vue')
 const Register = () => import('../views/Register.vue')
 const PluginManager = () => import('../views/PluginManager.vue')
@@ -189,6 +190,14 @@ const routes = [
       search: 'history',
       searchEvent: 'search:history',
       searchPlaceholder: '搜索历史'
+    },
+  },
+  {
+    path: '/playlists',
+    name: 'Playlists',
+    component: PlaylistView,
+    meta: {
+      showSearch: false,
     },
   },
   {

@@ -7,6 +7,7 @@ import {
   CpuChipIcon,
   DocumentTextIcon,
   HomeIcon,
+  ListBulletIcon,
   PuzzlePieceIcon,
 } from '@heroicons/vue/24/outline'
 
@@ -50,6 +51,14 @@ export const NAV_ITEMS: NavigationItem[] = [
     mobileLabel: '历史',
     path: '/history',
     icon: ClockIcon,
+    group: 'content',
+    showOnMobile: true,
+  },
+  {
+    name: '播放列表',
+    mobileLabel: '播放列表',
+    path: '/playlists',
+    icon: ListBulletIcon,
     group: 'content',
     showOnMobile: true,
   },
