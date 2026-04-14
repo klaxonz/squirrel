@@ -82,6 +82,7 @@ def test_create_update_list_and_delete_clip_marker(monkeypatch):
     assert created['start_time'] == 12.5
     assert created['end_time'] == 28.25
     assert created['duration_seconds'] == 15.75
+    assert created['preview_image_url'] is None
 
     listed = video_clip_marker_service.list_markers(user_id=7, video_id=1)
     assert len(listed) == 1
@@ -102,6 +103,7 @@ def test_create_update_list_and_delete_clip_marker(monkeypatch):
     assert updated['start_time'] == 10
     assert updated['end_time'] == 20
     assert updated['duration_seconds'] == 10
+    assert updated['preview_image_url'] is None
 
     deleted_count = video_clip_marker_service.delete_marker(user_id=7, marker_id=created['id'])
     assert deleted_count == 1
@@ -140,3 +142,30 @@ def test_create_clip_marker_rejects_inverted_range(monkeypatch):
         assert 'end_time must be greater than or equal to start_time' in str(exc)
     else:
         raise AssertionError('expected ValidationError for inverted clip range')
+
+
+def test_save_preview_persists_jpeg_and_returns_cache_busted_url(monkeypatch, tmp_path):
+    engine = _setup_test_env(monkeypatch)
+    _seed_video(engine)
+    monkeypatch.setattr(video_clip_marker_service, '_clip_marker_previews_dir', lambda: tmp_path)
+
+    created = video_clip_marker_service.create_marker(
+        user_id=7,
+        data=ClipMarkerCreate(
+            video_id=1,
+            start_time=12,
+            end_time=18,
+        ),
+    )
+
+    updated = video_clip_marker_service.save_preview(
+        user_id=7,
+        marker_id=created['id'],
+        image_data_url='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAXAQEBAQEAAAAAAAAAAAAAAAABAAID/9oADAMBAAIQAxAAAAFqgP/EABQQAQAAAAAAAAAAAAAAAAAAACD/2gAIAQEAAQUCX//EABQRAQAAAAAAAAAAAAAAAAAAACD/2gAIAQMBAT8BX//EABQRAQAAAAAAAAAAAAAAAAAAACD/2gAIAQIBAT8BX//Z',
+    )
+
+    assert updated is not None
+    assert updated['preview_image_url'] is not None
+    assert updated['preview_image_url'].startswith('/static/clip-markers/user_7/video_1/marker_')
+    assert '?v=' in updated['preview_image_url']
+    assert (tmp_path / 'user_7' / 'video_1').exists()

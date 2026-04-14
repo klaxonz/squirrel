@@ -70,3 +70,36 @@ def test_update_clip_marker_returns_not_found_when_service_misses(monkeypatch):
     assert response.status_code == 200
     assert response.json()['code'] == 404
     assert response.json()['msg'] == '片段标记不存在'
+
+
+def test_upload_clip_marker_preview_forwards_payload_to_service(monkeypatch):
+    captured = {}
+
+    def fake_save_preview(user_id, marker_id, image_data_url):
+        captured['user_id'] = user_id
+        captured['marker_id'] = marker_id
+        captured['image_data_url'] = image_data_url
+        return {
+            'id': marker_id,
+            'preview_image_url': '/static/clip-markers/user_7/video_5/marker_11.jpg?v=1',
+        }
+
+    monkeypatch.setattr('routes.video_clip_marker.video_clip_marker_service.save_preview', fake_save_preview)
+
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_current_user] = lambda: type('User', (), {'id': 7})()
+    client = TestClient(app)
+
+    response = client.post(
+        '/api/video-clip-markers/11/preview',
+        json={
+            'image_data_url': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAXAQEBAQEAAAAAAAAAAAAAAAABAAID/9oADAMBAAIQAxAAAAFqgP/EABQQAQAAAAAAAAAAAAAAAAAAACD/2gAIAQEAAQUCX//EABQRAQAAAAAAAAAAAAAAAAAAACD/2gAIAQMBAT8BX//EABQRAQAAAAAAAAAAAAAAAAAAACD/2gAIAQIBAT8BX//Z',
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()['code'] == 0
+    assert captured['user_id'] == 7
+    assert captured['marker_id'] == 11
+    assert captured['image_data_url'].startswith('data:image/jpeg;base64,')

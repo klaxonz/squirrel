@@ -157,7 +157,7 @@
               <button v-if="subtitleTracks.length > 0" class="sp-icon-btn" @click.stop="toggleSubtitlesQuick" :title="t('subtitles')">
                 <PlayerIcon :name="store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff'" />
               </button>
-              <button class="sp-icon-btn" :class="{ 'sp-icon-btn--active': hasPendingSegment || localClipMarkers.length > 0 }" :title="hasPendingSegment ? `保存片段` : t('markClip')" :disabled="isSavingMarker" @click.stop="hasPendingSegment ? finishSegmentCapture() : markCurrentPoint()">
+              <button class="sp-icon-btn" :title="hasPendingSegment ? `保存片段` : t('markClip')" :disabled="isSavingMarker" @click.stop="hasPendingSegment ? finishSegmentCapture() : markCurrentPoint()">
                 <PlayerIcon name="markClip" />
                 <span v-if="hasPendingSegment" class="sp-marker-count sp-marker-count--capturing">●</span>
               </button>
@@ -444,7 +444,7 @@ import type { MediaSource, SubtitleTrack } from './core'
 import type { ThemeName } from './themes'
 import type { IconName } from './core/useIcons'
 import type { VideoClipMarker } from '@/types/videoClipMarker'
-import { createVideoClipMarker, deleteVideoClipMarker, updateVideoClipMarker } from '@/api/videoClipMarkers'
+import { createVideoClipMarker, deleteVideoClipMarker, updateVideoClipMarker, uploadVideoClipMarkerPreview } from '@/api/videoClipMarkers'
 import PlayerIcon from './PlayerIcon.vue'
 
 // ????????import './themes/variables.css'
@@ -533,6 +533,7 @@ const clipMarkerVideoId = ref<string | number | null>(null)
 const hoveredMarkerId = ref<number | null>(null)
 const pendingSegmentStartTime = ref<number | null>(null)
 const pendingSegmentEndTime = ref<number | null>(null)
+const pendingSegmentPreviewImageDataUrl = ref<string | null>(null)
 
 const hasPendingSegment = computed(() => pendingSegmentStartTime.value !== null)
 const isSavingMarker = ref(false)
@@ -568,9 +569,49 @@ const syncLocalClipMarkers = (markers: VideoClipMarker[]) => {
   emit('clipmarkersupdated', localClipMarkers.value)
 }
 
+const captureCurrentFrameDataUrl = (): string | null => {
+  const video = videoRef.value
+  if (
+    !video
+    || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+    || video.videoWidth <= 0
+    || video.videoHeight <= 0
+  ) {
+    return null
+  }
+
+  const canvas = document.createElement('canvas')
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  const context = canvas.getContext('2d')
+  if (!context) return null
+
+  try {
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL('image/jpeg', 0.82)
+  } catch {
+    return null
+  }
+}
+
+const uploadMarkerPreviewIfAvailable = async (marker: VideoClipMarker, imageDataUrl: string | null): Promise<VideoClipMarker> => {
+  if (!imageDataUrl) return marker
+
+  const { data, error } = await uploadVideoClipMarkerPreview(marker.id, {
+    image_data_url: imageDataUrl,
+  })
+
+  if (error || !data) {
+    return marker
+  }
+
+  return data
+}
+
 const markCurrentPoint = async () => {
   if (!clipMarkerVideoId.value || isSavingMarker.value) return
   const t = currentTime.value
+  const previewImageDataUrl = captureCurrentFrameDataUrl()
   isSavingMarker.value = true
   try {
     const { data, error } = await createVideoClipMarker({
@@ -585,7 +626,8 @@ const markCurrentPoint = async () => {
       return
     }
 
-    syncLocalClipMarkers([...localClipMarkers.value, data])
+    const markerWithPreview = await uploadMarkerPreviewIfAvailable(data, previewImageDataUrl)
+    syncLocalClipMarkers([...localClipMarkers.value, markerWithPreview])
     showCentralHud('marker', `标记 ${formatTime(t)}`, 'play')
   } finally {
     isSavingMarker.value = false
@@ -598,6 +640,7 @@ const startSegmentCapture = () => {
   if (!isFinite(t) || t < 0 || !duration.value) return
   const draft = createPointMarkerDraft({ currentTime: t, duration: duration.value })
   pendingSegmentStartTime.value = draft.startTime
+  pendingSegmentPreviewImageDataUrl.value = captureCurrentFrameDataUrl()
   showCentralHud('marker', `起点 ${formatTime(draft.startTime)}`, 'skipBackward')
 }
 
@@ -611,6 +654,7 @@ const finishSegmentCapture = async () => {
     duration: duration.value,
   })
   pendingSegmentEndTime.value = null
+  const previewImageDataUrl = pendingSegmentPreviewImageDataUrl.value
   isSavingMarker.value = true
 
   try {
@@ -627,7 +671,9 @@ const finishSegmentCapture = async () => {
     }
 
     pendingSegmentStartTime.value = null
-    syncLocalClipMarkers([...localClipMarkers.value, data])
+    pendingSegmentPreviewImageDataUrl.value = null
+    const markerWithPreview = await uploadMarkerPreviewIfAvailable(data, previewImageDataUrl)
+    syncLocalClipMarkers([...localClipMarkers.value, markerWithPreview])
     showCentralHud('segment', `片段 ${formatTime(draft.startTime)}`, 'skipForward')
   } finally {
     isSavingMarker.value = false
@@ -637,6 +683,7 @@ const finishSegmentCapture = async () => {
 const cancelSegmentCapture = () => {
   pendingSegmentStartTime.value = null
   pendingSegmentEndTime.value = null
+  pendingSegmentPreviewImageDataUrl.value = null
   showCentralHud('seek', '已取消', 'play')
 }
 
@@ -2235,16 +2282,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 .sp-ui-fade-enter-from, .sp-ui-fade-leave-to {
   opacity: 0;
   transform: translateY(10px);
-}
-
-/* Active icon button */
-.sp-icon-btn--active {
-  color: var(--sp-primary) !important;
-}
-
-.sp-icon-btn--active::after {
-  background: rgba(var(--sp-primary-rgb), 0.1) !important;
-  border-color: rgba(var(--sp-primary-rgb), 0.3) !important;
 }
 
 .sp-icon-btn:disabled {

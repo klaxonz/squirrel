@@ -1,5 +1,9 @@
-from sqlalchemy import delete, select
+import base64
+from pathlib import Path
 
+from sqlalchemy import select
+
+from core.config import settings
 from core.database import get_session
 from models.video import Video
 from models.video_clip_marker import VideoClipMarker
@@ -8,10 +12,64 @@ from schemas.video_clip_marker import ClipMarkerCreate, ClipMarkerUpdate
 DEFAULT_CLIP_DURATION_SECONDS = 15.0
 
 
-def _serialize_marker(marker: VideoClipMarker) -> dict:
+def _clip_marker_previews_dir() -> Path:
+    return settings.clip_marker_previews_dir
+
+
+def _serialize_preview_url(marker: VideoClipMarker) -> str | None:
+    preview_url = getattr(marker, 'preview_image_url', None)
+    if not preview_url:
+        return None
+
+    version_source = marker.updated_at or marker.created_at
+    if not version_source:
+        return preview_url
+
+    version = int(version_source.timestamp() * 1000)
+    separator = '&' if '?' in preview_url else '?'
+    return f'{preview_url}{separator}v={version}'
+
+
+def serialize_marker(marker: VideoClipMarker) -> dict:
     payload = marker.to_dict()
     payload['duration_seconds'] = round(max((marker.end_time or 0) - (marker.start_time or 0), 0), 3)
+    payload['preview_image_url'] = _serialize_preview_url(marker)
     return payload
+
+
+def _resolve_preview_file_path(marker: VideoClipMarker) -> Path:
+    return (
+        _clip_marker_previews_dir()
+        / f'user_{marker.user_id}'
+        / f'video_{marker.video_id}'
+        / f'marker_{marker.id}.jpg'
+    )
+
+
+def _remove_preview_file(marker: VideoClipMarker) -> None:
+    preview_path = _resolve_preview_file_path(marker)
+    if preview_path.exists():
+        preview_path.unlink()
+
+    parent = preview_path.parent
+    while parent != _clip_marker_previews_dir() and parent.exists():
+        try:
+            parent.rmdir()
+        except OSError:
+            break
+        parent = parent.parent
+
+
+def _decode_preview_image(data_url: str) -> bytes:
+    try:
+        encoded = data_url.split(',', 1)[1]
+    except IndexError as exc:
+        raise ValueError('Invalid image_data_url') from exc
+
+    try:
+        return base64.b64decode(encoded, validate=True)
+    except ValueError as exc:
+        raise ValueError('Invalid image_data_url') from exc
 
 
 def _get_video_or_raise(session, video_id: int) -> Video:
@@ -52,7 +110,7 @@ def list_markers(user_id: int, video_id: int) -> list[dict]:
             )
             .order_by(VideoClipMarker.start_time.asc(), VideoClipMarker.created_at.asc(), VideoClipMarker.id.asc())
         ).all()
-        return [_serialize_marker(marker) for marker in markers]
+        return [serialize_marker(marker) for marker in markers]
 
 
 def create_marker(user_id: int, data: ClipMarkerCreate) -> dict:
@@ -71,7 +129,7 @@ def create_marker(user_id: int, data: ClipMarkerCreate) -> dict:
         session.add(marker)
         session.commit()
         session.refresh(marker)
-        return _serialize_marker(marker)
+        return serialize_marker(marker)
 
 
 def update_marker(user_id: int, marker_id: int, data: ClipMarkerUpdate) -> dict | None:
@@ -99,16 +157,46 @@ def update_marker(user_id: int, marker_id: int, data: ClipMarkerUpdate) -> dict 
 
         session.commit()
         session.refresh(marker)
-        return _serialize_marker(marker)
+        return serialize_marker(marker)
 
 
-def delete_marker(user_id: int, marker_id: int) -> int:
+def save_preview(user_id: int, marker_id: int, image_data_url: str) -> dict | None:
+    preview_bytes = _decode_preview_image(image_data_url)
+
     with get_session() as session:
-        result = session.execute(
-            delete(VideoClipMarker).where(
+        marker = session.scalar(
+            select(VideoClipMarker).where(
                 VideoClipMarker.id == marker_id,
                 VideoClipMarker.user_id == user_id,
             )
         )
+        if not marker:
+            return None
+
+        preview_path = _resolve_preview_file_path(marker)
+        preview_path.parent.mkdir(parents=True, exist_ok=True)
+        preview_path.write_bytes(preview_bytes)
+
+        marker.preview_image_url = (
+            f'/static/clip-markers/user_{marker.user_id}/video_{marker.video_id}/marker_{marker.id}.jpg'
+        )
         session.commit()
-        return int(result.rowcount or 0)
+        session.refresh(marker)
+        return serialize_marker(marker)
+
+
+def delete_marker(user_id: int, marker_id: int) -> int:
+    with get_session() as session:
+        marker = session.scalar(
+            select(VideoClipMarker).where(
+                VideoClipMarker.id == marker_id,
+                VideoClipMarker.user_id == user_id,
+            )
+        )
+        if not marker:
+            return 0
+
+        _remove_preview_file(marker)
+        session.delete(marker)
+        session.commit()
+        return 1

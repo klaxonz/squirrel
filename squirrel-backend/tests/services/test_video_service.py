@@ -1202,6 +1202,7 @@ def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale
                 video_id=701,
                 title='Best part',
                 note='Use this in share links',
+                preview_image_url='/static/clip-markers/user_7/video_701/marker_1.jpg',
                 start_time=42,
                 end_time=63,
                 created_at=datetime(2024, 1, 3, 12, 30, 0),
@@ -1218,6 +1219,7 @@ def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale
     assert len(video['clip_markers']) == 1
     assert video['clip_markers'][0]['title'] == 'Best part'
     assert video['clip_markers'][0]['duration_seconds'] == 21
+    assert video['clip_markers'][0]['preview_image_url'].startswith('/static/clip-markers/user_7/video_701/marker_1.jpg')
 
 
 def test_get_video_gracefully_skips_clip_markers_when_table_is_missing(monkeypatch):

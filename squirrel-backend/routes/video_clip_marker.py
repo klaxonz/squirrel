@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 
 import common.response as response
 from models.user import User
-from schemas.video_clip_marker import ClipMarkerCreate, ClipMarkerUpdate
+from schemas.video_clip_marker import ClipMarkerCreate, ClipMarkerPreviewUpload, ClipMarkerUpdate
 from services import video_clip_marker_service
 from utils.jwt_helper import get_current_user
 
@@ -38,6 +38,22 @@ def update_video_clip_marker(
 ):
     try:
         marker = video_clip_marker_service.update_marker(user.id, marker_id, data)
+    except ValueError as exc:
+        return response.param_error(str(exc))
+
+    if not marker:
+        return response.not_found('片段标记不存在')
+    return response.success(marker)
+
+
+@router.post('/api/video-clip-markers/{marker_id}/preview')
+def upload_video_clip_marker_preview(
+        marker_id: int,
+        data: ClipMarkerPreviewUpload,
+        user: User = Depends(get_current_user),
+):
+    try:
+        marker = video_clip_marker_service.save_preview(user.id, marker_id, data.image_data_url)
     except ValueError as exc:
         return response.param_error(str(exc))
 

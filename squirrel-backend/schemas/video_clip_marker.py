@@ -44,3 +44,15 @@ class ClipMarkerUpdate(BaseModel):
         if self.start_time is not None and self.end_time is not None and self.end_time < self.start_time:
             raise ValueError('end_time must be greater than or equal to start_time')
         return self
+
+
+class ClipMarkerPreviewUpload(BaseModel):
+    image_data_url: str = Field(..., min_length=32, description='JPEG data URL captured from the player frame')
+
+    @field_validator('image_data_url')
+    @classmethod
+    def validate_image_data_url(cls, value: str) -> str:
+        normalized = str(value).strip()
+        if not normalized.startswith('data:image/jpeg;base64,'):
+            raise ValueError('image_data_url must be a JPEG data URL')
+        return normalized

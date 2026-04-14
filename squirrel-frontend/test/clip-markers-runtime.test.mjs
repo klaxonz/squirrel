@@ -86,6 +86,9 @@ test('segment capture uses submit protection and no longer emits dead creation e
   )
   assert.doesNotMatch(playerSource, /clipmarkercreated/)
   assert.match(playerSource, /isClipMarkerActive\(marker, currentTime\.value\)/)
+  assert.match(playerSource, /const previewImageDataUrl = captureCurrentFrameDataUrl\(\)/)
+  assert.match(playerSource, /uploadVideoClipMarkerPreview\(marker\.id, \{/)
+  assert.match(playerSource, /pendingSegmentPreviewImageDataUrl\.value = captureCurrentFrameDataUrl\(\)/)
 })
 
 test('active clip marker keeps the marker color instead of switching to a dark ring style', async () => {
@@ -113,4 +116,18 @@ test('clip marker control no longer renders a count badge for existing markers',
     playerSource,
     /:title="hasPendingSegment \? `保存片段` : t\('markClip'\)"/
   )
+})
+
+test('clip marker control keeps the default icon button color even when markers exist', async () => {
+  const playerSource = await readFile(new URL('../src/components/video-player/VideoPlayer.vue', import.meta.url), 'utf8')
+
+  assert.match(
+    playerSource,
+    /<button class="sp-icon-btn" :title="hasPendingSegment \? `保存片段` : t\('markClip'\)" :disabled="isSavingMarker" @click\.stop="hasPendingSegment \? finishSegmentCapture\(\) : markCurrentPoint\(\)">/
+  )
+  assert.doesNotMatch(
+    playerSource,
+    /<button class="sp-icon-btn" :class="\{ 'sp-icon-btn--active': hasPendingSegment \|\| localClipMarkers\.length > 0 \}"/
+  )
+  assert.doesNotMatch(playerSource, /\.sp-icon-btn--active/)
 })

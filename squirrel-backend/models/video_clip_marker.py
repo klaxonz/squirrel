@@ -25,6 +25,7 @@ class VideoClipMarker(Base, SerializerMixin):
     video_id: Mapped[int] = mapped_column(Integer, nullable=False)
     title: Mapped[str | None] = mapped_column(VARCHAR(255), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    preview_image_url: Mapped[str | None] = mapped_column(VARCHAR(1024), nullable=True)
     start_time: Mapped[float] = mapped_column(Float, default=0.0)
     end_time: Mapped[float] = mapped_column(Float, default=0.0)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())

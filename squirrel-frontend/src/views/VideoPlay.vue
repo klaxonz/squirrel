@@ -241,6 +241,20 @@
                   @click="handleClipMarkerSeek(marker.start_time)"
                 >
                   <div class="clip-card__stripe" :style="{ background: getMarkerColor(marker) }"></div>
+                  <div class="clip-card__thumb">
+                    <img
+                      v-if="marker.preview_image_url"
+                      :src="marker.preview_image_url"
+                      class="clip-card__thumb-image"
+                      referrerpolicy="no-referrer"
+                      draggable="false"
+                      :alt="marker.title || (marker.start_time === marker.end_time ? '点标记预览' : '片段预览')"
+                    >
+                    <div v-else class="clip-card__thumb-fallback">
+                      <Icon icon="lucide:image-off" />
+                    </div>
+                    <span class="clip-card__thumb-time">{{ formatTime(marker.start_time) }}</span>
+                  </div>
                   <div class="clip-card__content">
                     <div class="clip-card__header">
                       <span class="clip-card__title">{{ marker.title || (marker.start_time === marker.end_time ? '点标记' : '片段') }}</span>
@@ -1646,7 +1660,8 @@ onUnmounted(() => {
 }
 
 .clip-card {
-  display: flex;
+  display: grid;
+  grid-template-columns: 4px 5.75rem minmax(0, 1fr);
   align-items: stretch;
   border-radius: 8px;
   overflow: hidden;
@@ -1671,6 +1686,61 @@ onUnmounted(() => {
   flex-shrink: 0;
   border-radius: 8px 0 0 8px;
   opacity: 0.85;
+}
+
+.clip-card__thumb {
+  position: relative;
+  margin: 0.42rem 0 0.42rem 0.48rem;
+  border-radius: 7px;
+  overflow: hidden;
+  background: hsl(var(--muted) / 0.7);
+  min-height: 3.4rem;
+  aspect-ratio: 16 / 9;
+}
+
+.clip-card__thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent 58%);
+  pointer-events: none;
+}
+
+.clip-card__thumb-image,
+.clip-card__thumb-fallback {
+  width: 100%;
+  height: 100%;
+}
+
+.clip-card__thumb-image {
+  display: block;
+  object-fit: cover;
+}
+
+.clip-card__thumb-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--muted-foreground));
+  background:
+    radial-gradient(circle at top left, hsl(var(--primary) / 0.18), transparent 52%),
+    linear-gradient(135deg, hsl(var(--accent) / 0.28), hsl(var(--background)));
+}
+
+.clip-card__thumb-time {
+  position: absolute;
+  left: 0.38rem;
+  bottom: 0.3rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.34rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  font-size: 0.58rem;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.02em;
 }
 
 .clip-card__content {

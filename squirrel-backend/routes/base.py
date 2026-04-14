@@ -122,8 +122,9 @@ def create_app() -> FastAPI:
     app.include_router(connectivity_router)
     app.include_router(scheduler_router)
 
-    # 开发环境也需要挂载 thumbnails 静态文件
+    # 开发环境也需要挂载可单独配置的静态资源目录
     _mount_thumbnails(app)
+    _mount_clip_marker_previews(app)
 
     # 生产环境：挂载静态文件和 SPA 路由
     if not settings.is_dev:
@@ -138,6 +139,13 @@ def _mount_thumbnails(app: FastAPI) -> None:
     if os.path.exists(thumbnails_dir):
         app.mount("/static/thumbnails", StaticFiles(directory=thumbnails_dir), name="thumbnails")
         logger.info(f"Thumbnails mounted: {thumbnails_dir}")
+
+
+def _mount_clip_marker_previews(app: FastAPI) -> None:
+    clip_marker_previews_dir = str(settings.clip_marker_previews_dir)
+    if os.path.exists(clip_marker_previews_dir):
+        app.mount("/static/clip-markers", StaticFiles(directory=clip_marker_previews_dir), name="clip-marker-previews")
+        logger.info(f"Clip marker previews mounted: {clip_marker_previews_dir}")
 
 
 def _mount_static_files(app: FastAPI) -> None:

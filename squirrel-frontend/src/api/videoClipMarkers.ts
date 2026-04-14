@@ -16,6 +16,10 @@ export type VideoClipMarkerUpdatePayload = {
   end_time?: number | null
 }
 
+export type VideoClipMarkerPreviewUploadPayload = {
+  image_data_url: string
+}
+
 export const getVideoClipMarkers = async (videoId: string | number) => {
   return get<VideoClipMarker[]>('/api/video-clip-markers', { video_id: videoId })
 }
@@ -26,6 +30,13 @@ export const createVideoClipMarker = async (payload: VideoClipMarkerPayload) => 
 
 export const updateVideoClipMarker = async (markerId: string | number, payload: VideoClipMarkerUpdatePayload) => {
   return put<VideoClipMarker>(`/api/video-clip-markers/${markerId}`, payload)
+}
+
+export const uploadVideoClipMarkerPreview = async (
+  markerId: string | number,
+  payload: VideoClipMarkerPreviewUploadPayload,
+) => {
+  return post<VideoClipMarker>(`/api/video-clip-markers/${markerId}/preview`, payload)
 }
 
 export const deleteVideoClipMarker = async (markerId: string | number) => {

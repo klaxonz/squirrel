@@ -3,6 +3,7 @@ export interface VideoClipMarker {
   video_id: number
   title?: string | null
   note?: string | null
+  preview_image_url?: string | null
   start_time: number
   end_time: number
   duration_seconds?: number

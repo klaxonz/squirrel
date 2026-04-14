@@ -35,6 +35,7 @@ from plugins.manager import get_plugin_manager
 from schemas.video.dto.video_dto import VideoUrlDto
 
 from services import user_config_service
+from services.video_clip_marker_service import serialize_marker
 from services.nsfw_policy import resolve_effective_nsfw_filter
 from utils import url_helper
 from utils.url_helper import extract_top_level_domain
@@ -1025,13 +1026,7 @@ def get_video(user_id, video_id):
             'domain': url_helper.extract_top_level_domain(video.url),
             'subscriptions': subscriptions_data,
             'creators': [creator.to_dict() for creator in video.creators],
-            'clip_markers': [
-                {
-                    **marker.to_dict(),
-                    'duration_seconds': round(max((marker.end_time or 0) - (marker.start_time or 0), 0), 3),
-                }
-                for marker in clip_markers
-            ],
+            'clip_markers': [serialize_marker(marker) for marker in clip_markers],
         }
 
         return video_data

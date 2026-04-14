@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     POSTGRES_DATABASE: str = 'squirrel'
     PORT: int = 8001
     THUMBNAILS_PATH: str = ''
+    CLIP_MARKER_PREVIEWS_PATH: str = ''
     CLOUDFLARE_BYPASS_SERVICE_URL: str = ''
     COOKIECLOUD_URL: str = ''
     COOKIECLOUD_UUID: str = ''
@@ -100,6 +101,13 @@ class Settings(BaseSettings):
         if self.THUMBNAILS_PATH:
             return Path(self.THUMBNAILS_PATH)
         return self.static_dir / "thumbnails"
+
+    @property
+    def clip_marker_previews_dir(self) -> Path:
+        """Directory for persisted clip marker preview images."""
+        if self.CLIP_MARKER_PREVIEWS_PATH:
+            return Path(self.CLIP_MARKER_PREVIEWS_PATH)
+        return self.static_dir / "clip-markers"
 
 
 @lru_cache()
