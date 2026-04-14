@@ -2444,13 +2444,6 @@ onUnmounted(() => {
   opacity: 1;
 }
 
-/* 特殊色调 */
-.action-btn.tone-like.is-active {
-  background: hsl(142 76% 36% / 0.12);
-  color: hsl(142 76% 36%);
-  border-color: hsl(142 76% 36% / 0.4);
-}
-
 .action-btn.tone-danger.is-active {
   background: hsl(var(--destructive) / 0.12);
   color: hsl(var(--destructive));
