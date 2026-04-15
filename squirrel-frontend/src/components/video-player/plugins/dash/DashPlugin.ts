@@ -8,6 +8,7 @@ import type {
   PlayerPlugin,
   PluginContext,
   QualityLevel,
+  QualitySelectionRequest,
   PlayerError,
   MediaSource,
   PlaybackRecoveryAction,
@@ -27,6 +28,11 @@ export interface DashPluginOptions {
   onBandwidthSample?: (loaded: number, durationSec: number) => void
 }
 
+type DashQualitySelection = {
+  trackIndex: number
+  qualityIndex: number
+}
+
 export class DashPlugin implements PlayerPlugin {
   readonly name = 'dash'
   readonly version = '1.0.0'
@@ -38,9 +44,9 @@ export class DashPlugin implements PlayerPlugin {
   private sourceQualityHints: QualityLevel[] = []
   private selectedCodecFamily: string = 'auto'
   private currentVisibleCodecFamily: string | null = null
-  private hintedSelectionsById = new Map<string, { trackIndex: number; qualityIndex: number }>()
+  private hintedSelectionsById = new Map<string, DashQualitySelection>()
   private currentTrackIndex: number | null = null
-  private pendingHintedSelection: { trackIndex: number; qualityIndex: number } | null = null
+  private pendingHintedSelection: DashQualitySelection | null = null
 
   /**
    * 检测是否为 DASH 源
@@ -184,10 +190,8 @@ export class DashPlugin implements PlayerPlugin {
       if (this.player !== player) return
       if (e?.mediaType === 'video') {
         const qualities = this.getAvailableQualities()
-        const currentTrackIndex = this.resolveTrackIndex((this.player as any)?.getCurrentTrackFor?.('video'))
-          ?? this.currentTrackIndex
-        const quality = this.findHintForSelection(currentTrackIndex, e.newQuality)
-          || qualities.find(q => q.id === e.newQuality)
+        const currentTrackIndex = this.getCurrentPlaybackTrackIndex(this.player as any)
+        const quality = this.findQualityForPlaybackSelection(currentTrackIndex, e.newQuality, qualities)
         const qualityId = quality?.id ?? (typeof e.newQuality === 'number' ? e.newQuality : undefined)
         this.context?.emit('qualitychange', {
           quality: quality?.label || `level_${e.newQuality}`,
@@ -203,20 +207,7 @@ export class DashPlugin implements PlayerPlugin {
       if (this.player !== player) return
       if (e?.mediaType === 'video') {
         this.currentTrackIndex = this.resolveTrackIndex(e.newMediaInfo)
-        if (
-          this.pendingHintedSelection &&
-          this.currentTrackIndex !== null &&
-          this.pendingHintedSelection.trackIndex === this.currentTrackIndex
-        ) {
-          try {
-            player.setQualityFor?.('video', this.pendingHintedSelection.qualityIndex, true)
-            this.context?.logger.debug('[DashPlugin] Applied pending quality after track change', this.pendingHintedSelection)
-          } catch (error) {
-            this.context?.logger.warn('[DashPlugin] Failed to apply pending quality after track change', error)
-          } finally {
-            this.pendingHintedSelection = null
-          }
-        }
+        this.applyPendingHintedSelection(player)
         this.updateQualities()
       }
     })
@@ -291,32 +282,21 @@ export class DashPlugin implements PlayerPlugin {
     try {
       const player = this.player as any
       const bitrateList = player.getBitrateInfoListFor?.('video') || []
-      this.currentTrackIndex = this.resolveTrackIndex(player.getCurrentTrackFor?.('video'))
+      this.currentTrackIndex = this.getCurrentPlaybackTrackIndex(player)
       this.updateHintSelections()
 
-      if (this.sourceQualityHints.length > 0) {
-        const hintedQualities: QualityLevel[] = this.sourceQualityHints
-          .filter((hint) => this.hintedSelectionsById.has(String(hint.id)))
-          .map((hint) => ({
-            id: hint.id,
-            label: hint.label,
-            width: hint.width,
-            height: hint.height,
-            bitrate: hint.bitrate,
-            codec: hint.codec
-          }))
-        if (hintedQualities.length > 0) {
-          const visibleCodecFamily = this.resolveVisibleCodecFamily()
-          if (visibleCodecFamily) {
-            const activeCodecQualities = hintedQualities.filter(
-              (hint) => this.getCodecFamily(hint.codec) === visibleCodecFamily
-            )
-            if (activeCodecQualities.length > 0) {
-              return activeCodecQualities
-            }
+      const hintedQualities = this.getHintedQualities()
+      if (hintedQualities.length > 0) {
+        const visibleCodecFamily = this.resolveVisibleCodecFamily()
+        if (visibleCodecFamily) {
+          const activeCodecQualities = hintedQualities.filter(
+            (hint) => this.getCodecFamily(hint.codec) === visibleCodecFamily
+          )
+          if (activeCodecQualities.length > 0) {
+            return activeCodecQualities
           }
-          return hintedQualities
         }
+        return hintedQualities
       }
 
       const qualities: QualityLevel[] = bitrateList.map((info: any, index: number) => ({
@@ -325,7 +305,13 @@ export class DashPlugin implements PlayerPlugin {
         width: info.width,
         height: info.height,
         bitrate: info.bitrate,
-        codec: player.getCurrentTrackFor?.('video')?.codec || undefined
+        codec: player.getCurrentTrackFor?.('video')?.codec || undefined,
+        runtimeSelection: this.currentTrackIndex !== null
+          ? this.toRuntimeSelection({
+              trackIndex: this.currentTrackIndex,
+              qualityIndex: typeof info?.qualityIndex === 'number' ? info.qualityIndex : index
+            })
+          : undefined
       }))
 
       const heightCounts = new Map<number, number>()
@@ -376,8 +362,7 @@ export class DashPlugin implements PlayerPlugin {
 
   getAvailableCodecFamilies(): string[] {
     const hintedFamilies = Array.from(new Set(
-      this.sourceQualityHints
-        .filter((hint) => this.hintedSelectionsById.has(String(hint.id)))
+      this.getHintedQualities()
         .map((hint) => this.getCodecFamily(hint.codec))
         .filter((family): family is string => !!family)
     ))
@@ -430,7 +415,7 @@ export class DashPlugin implements PlayerPlugin {
   /**
    * 设置质量
    */
-  setQuality(quality: string | number): void {
+  setQuality(quality: QualitySelectionRequest): void {
     if (!this.player) return
 
     const player = this.player as any
@@ -462,32 +447,19 @@ export class DashPlugin implements PlayerPlugin {
     // 设置指定质量
     let targetIndex: number = -1
 
+    if (typeof quality === 'object' && quality?.kind === 'dash-selection') {
+      if (this.applyHintedSelection(player, {
+        trackIndex: quality.trackIndex,
+        qualityIndex: quality.qualityIndex
+      })) {
+        return
+      }
+    }
+
     if (typeof quality === 'string') {
-      const hintedSelection = this.hintedSelectionsById.get(String(quality))
-      if (hintedSelection) {
-        try {
-          const tracks = this.getVideoTracks()
-          const targetTrack = tracks[hintedSelection.trackIndex]
-          const currentTrackIndex = this.resolveTrackIndex(player.getCurrentTrackFor?.('video')) ?? this.currentTrackIndex
-          if (targetTrack && typeof player.setCurrentTrack === 'function') {
-            if (currentTrackIndex !== hintedSelection.trackIndex) {
-              this.pendingHintedSelection = hintedSelection
-              player.setCurrentTrack(targetTrack)
-              this.context?.logger.debug('[DashPlugin] Waiting for target track before applying quality', hintedSelection)
-              return
-            }
-            this.currentTrackIndex = hintedSelection.trackIndex
-          }
-          if (typeof player.setQualityFor === 'function') {
-            player.setQualityFor('video', hintedSelection.qualityIndex, true)
-          }
-          this.pendingHintedSelection = null
-          this.context?.logger.debug('[DashPlugin] Quality set via hinted selection', hintedSelection)
-          return
-        } catch (e) {
-          this.pendingHintedSelection = null
-          this.context?.logger.warn('[DashPlugin] Failed to set hinted dash quality', e)
-        }
+      const hintedSelection = this.getHintedSelection(quality)
+      if (hintedSelection && this.applyHintedSelection(player, hintedSelection)) {
+        return
       }
 
       try {
@@ -545,8 +517,8 @@ export class DashPlugin implements PlayerPlugin {
       const index = typeof p.getQualityFor === 'function' ? p.getQualityFor('video') : -1
       if (index >= 0) {
         const qualities = this.getAvailableQualities()
-        const trackIndex = this.resolveTrackIndex(p.getCurrentTrackFor?.('video')) ?? this.currentTrackIndex
-        const quality = this.findHintForSelection(trackIndex, index) || qualities.find(q => q.id === index)
+        const trackIndex = this.getCurrentPlaybackTrackIndex(p)
+        const quality = this.findQualityForPlaybackSelection(trackIndex, index, qualities)
         return quality?.label || `level_${index}`
       }
     } catch {
@@ -594,6 +566,42 @@ export class DashPlugin implements PlayerPlugin {
     return matchedIndex >= 0 ? matchedIndex : null
   }
 
+  private getCurrentPlaybackTrackIndex(player: any = this.player as any): number | null {
+    if (!player) return this.currentTrackIndex
+    return this.resolveTrackIndex(player.getCurrentTrackFor?.('video')) ?? this.currentTrackIndex
+  }
+
+  private getHintedSelection(qualityId: string | number | null | undefined): DashQualitySelection | null {
+    if (qualityId === null || qualityId === undefined) return null
+    return this.hintedSelectionsById.get(String(qualityId)) || null
+  }
+
+  private toRuntimeSelection(selection: DashQualitySelection) {
+    return {
+      kind: 'dash-selection' as const,
+      trackIndex: selection.trackIndex,
+      qualityIndex: selection.qualityIndex
+    }
+  }
+
+  private getHintedQualities(): QualityLevel[] {
+    if (this.sourceQualityHints.length === 0) return []
+    return this.sourceQualityHints.reduce<QualityLevel[]>((qualities, hint) => {
+        const selection = this.getHintedSelection(hint.id)
+        if (!selection) return qualities
+        qualities.push({
+          id: hint.id,
+          label: hint.label,
+          width: hint.width,
+          height: hint.height,
+          bitrate: hint.bitrate,
+          codec: hint.codec,
+          runtimeSelection: this.toRuntimeSelection(selection)
+        })
+        return qualities
+      }, [])
+  }
+
   private updateHintSelections(): void {
     this.hintedSelectionsById.clear()
     if (this.sourceQualityHints.length === 0) return
@@ -637,12 +645,68 @@ export class DashPlugin implements PlayerPlugin {
   private findHintForSelection(trackIndex: number | null, qualityIndex: number): QualityLevel | null {
     if (trackIndex === null) return null
     for (const hint of this.sourceQualityHints) {
-      const selection = this.hintedSelectionsById.get(String(hint.id))
+      const selection = this.getHintedSelection(hint.id)
       if (selection && selection.trackIndex === trackIndex && selection.qualityIndex === qualityIndex) {
         return hint
       }
     }
     return null
+  }
+
+  private findQualityForPlaybackSelection(
+    trackIndex: number | null,
+    qualityIndex: number,
+    availableQualities: QualityLevel[] = this.getAvailableQualities()
+  ): QualityLevel | null {
+    return this.findHintForSelection(trackIndex, qualityIndex)
+      || availableQualities.find((quality) => quality.id === qualityIndex)
+      || null
+  }
+
+  private applyPendingHintedSelection(player: any): void {
+    if (
+      !this.pendingHintedSelection ||
+      this.currentTrackIndex === null ||
+      this.pendingHintedSelection.trackIndex !== this.currentTrackIndex
+    ) {
+      return
+    }
+
+    try {
+      player.setQualityFor?.('video', this.pendingHintedSelection.qualityIndex, true)
+      this.context?.logger.debug('[DashPlugin] Applied pending quality after track change', this.pendingHintedSelection)
+    } catch (error) {
+      this.context?.logger.warn('[DashPlugin] Failed to apply pending quality after track change', error)
+    } finally {
+      this.pendingHintedSelection = null
+    }
+  }
+
+  private applyHintedSelection(player: any, hintedSelection: DashQualitySelection): boolean {
+    try {
+      const tracks = this.getVideoTracks()
+      const targetTrack = tracks[hintedSelection.trackIndex]
+      const currentTrackIndex = this.getCurrentPlaybackTrackIndex(player)
+      if (targetTrack && typeof player.setCurrentTrack === 'function') {
+        if (currentTrackIndex !== hintedSelection.trackIndex) {
+          this.pendingHintedSelection = hintedSelection
+          player.setCurrentTrack(targetTrack)
+          this.context?.logger.debug('[DashPlugin] Waiting for target track before applying quality', hintedSelection)
+          return true
+        }
+        this.currentTrackIndex = hintedSelection.trackIndex
+      }
+      if (typeof player.setQualityFor === 'function') {
+        player.setQualityFor('video', hintedSelection.qualityIndex, true)
+      }
+      this.pendingHintedSelection = null
+      this.context?.logger.debug('[DashPlugin] Quality set via hinted selection', hintedSelection)
+      return true
+    } catch (error) {
+      this.pendingHintedSelection = null
+      this.context?.logger.warn('[DashPlugin] Failed to set hinted dash quality', error)
+      return false
+    }
   }
 
   private resolveVisibleCodecFamily(): string | null {

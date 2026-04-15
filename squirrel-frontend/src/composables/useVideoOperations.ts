@@ -11,9 +11,12 @@ type VideoUrlOptions = {
 type ApiResult<T> = { data?: T | null; error?: any }
 
 type VideoUrlInfo = {
+  stream_type?: 'hls' | 'dash' | 'progressive'
   mpd_url?: string
   video_url?: string
   audio_url?: string
+  default_quality_id?: string
+  supports_manual_quality?: boolean
   qualities?: Array<{
     value: string
     label: string
@@ -23,6 +26,11 @@ type VideoUrlInfo = {
     id?: string | number
     index?: number
   }>
+}
+
+const toPlayerSourceType = (streamType?: VideoUrlInfo['stream_type']): MediaSource['type'] => {
+  if (streamType === 'progressive') return 'native'
+  return streamType || 'auto'
 }
 
 type DesktopWindow = Window & {
@@ -68,6 +76,7 @@ export default function useVideoOperations() {
       const mpdUrl = data?.mpd_url
       const videoUrl = data?.video_url
       const audioUrl = data?.audio_url
+      const streamType = data?.stream_type
       const qualities = (data?.qualities || []).map((item) => ({
         id: item.id ?? item.value,
         label: item.label,
@@ -83,7 +92,7 @@ export default function useVideoOperations() {
       const progressKey = String(videoId)
       const resolvedMpdUrl = mpdUrl || synthesizedMpdUrl
 
-      if (resolvedMpdUrl) return { src: resolvedMpdUrl, type: 'auto', key, progressKey, qualities }
+      if (resolvedMpdUrl) return { src: resolvedMpdUrl, type: toPlayerSourceType(streamType), key, progressKey, qualities }
 
       if (!videoUrl && !audioUrl) {
         throw Object.assign(new Error('无法获取播放链接'), { code: 'NO_STREAM_URL' })
@@ -91,7 +100,7 @@ export default function useVideoOperations() {
 
       return {
         src: videoUrl || audioUrl || '',
-        type: 'auto',
+        type: toPlayerSourceType(streamType),
         key,
         progressKey,
         qualities

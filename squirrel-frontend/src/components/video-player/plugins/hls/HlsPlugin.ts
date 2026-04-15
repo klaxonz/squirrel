@@ -8,6 +8,7 @@ import type {
   PlayerPlugin,
   PluginContext,
   QualityLevel,
+  QualitySelectionRequest,
   PlayerError,
   MediaSource,
   PlaybackRecoveryAction,
@@ -36,6 +37,8 @@ export class HlsPlugin implements PlayerPlugin {
   private options: HlsPluginOptions = {}
   private retryCount = 0
   private currentSource: string | null = null
+  private sourceQualityHints: QualityLevel[] = []
+  private currentQualities: QualityLevel[] = []
   private retryTimer: ReturnType<typeof setTimeout> | null = null
   private reloadTimer: ReturnType<typeof setTimeout> | null = null
   private qualityIdByLevelIndex = new Map<number, string>()
@@ -87,7 +90,14 @@ export class HlsPlugin implements PlayerPlugin {
     this.qualityIdByLevelIndex.clear()
     this.levelIndexByQualityId.clear()
 
+    const hintedLevels = this.matchHintedLevels(levels)
+    hintedLevels.forEach((levelIndex, qualityId) => {
+      this.qualityIdByLevelIndex.set(levelIndex, qualityId)
+      this.levelIndexByQualityId.set(qualityId, levelIndex)
+    })
+
     levels.forEach((level, index) => {
+      if (this.qualityIdByLevelIndex.has(index)) return
       const stableId = this.buildStableQualityId(level, index)
       this.qualityIdByLevelIndex.set(index, stableId)
       this.levelIndexByQualityId.set(stableId, index)
@@ -103,6 +113,111 @@ export class HlsPlugin implements PlayerPlugin {
     this.qualityIdByLevelIndex.set(index, stableId)
     this.levelIndexByQualityId.set(stableId, index)
     return stableId
+  }
+
+  private getCodecFamily(codec: string | null | undefined): string | null {
+    if (!codec) return null
+    const normalized = String(codec).toLowerCase()
+    if (normalized.includes('av01') || normalized.includes('av1')) return 'av1'
+    if (normalized.includes('vp09') || normalized.includes('vp9')) return 'vp9'
+    if (normalized.includes('avc1') || normalized.includes('avc') || normalized.includes('h264')) return 'avc'
+    if (normalized.includes('hev1') || normalized.includes('hvc1') || normalized.includes('hevc') || normalized.includes('h265')) return 'hevc'
+    return normalized
+  }
+
+  private matchHintedLevels(levels: Level[]): Map<string, number> {
+    const matches = new Map<string, number>()
+    const usedLevelIndexes = new Set<number>()
+    if (this.sourceQualityHints.length === 0) return matches
+
+    for (const hint of this.sourceQualityHints) {
+      if (!hint.id) continue
+
+      let bestLevelIndex: number | null = null
+      let bestScore = Number.POSITIVE_INFINITY
+      const hintCodecFamily = this.getCodecFamily(hint.codec)
+
+      levels.forEach((level, index) => {
+        if (usedLevelIndexes.has(index)) return
+
+        const levelCodecFamily = this.getCodecFamily(level.videoCodec)
+        const codecPenalty = (
+          hintCodecFamily &&
+          levelCodecFamily &&
+          hintCodecFamily !== levelCodecFamily
+        ) ? 1_000_000_000 : 0
+        const score = codecPenalty
+          + Math.abs((hint.height || 0) - (level.height || 0)) * 1_000_000
+          + Math.abs((hint.bitrate || 0) - (level.bitrate || 0))
+
+        if (score < bestScore) {
+          bestScore = score
+          bestLevelIndex = index
+        }
+      })
+
+      if (bestLevelIndex === null) continue
+      usedLevelIndexes.add(bestLevelIndex)
+      matches.set(String(hint.id), bestLevelIndex)
+    }
+
+    return matches
+  }
+
+  private buildHintedQualities(): QualityLevel[] {
+    if (this.sourceQualityHints.length === 0) return []
+
+    return this.sourceQualityHints.reduce<QualityLevel[]>((qualities, hint) => {
+      if (!hint.id) return qualities
+      const levelIndex = this.levelIndexByQualityId.get(String(hint.id))
+      if (typeof levelIndex !== 'number') return qualities
+
+      qualities.push({
+        id: hint.id,
+        label: hint.label,
+        width: hint.width,
+        height: hint.height,
+        bitrate: hint.bitrate,
+        codec: hint.codec,
+        runtimeSelection: { kind: 'hls-level', levelIndex }
+      })
+      return qualities
+    }, [])
+  }
+
+  private buildRuntimeQualities(levels: Level[]): QualityLevel[] {
+    const qualities: QualityLevel[] = levels.map((level, index) => ({
+      id: this.getStableQualityId(level, index),
+      label: level.height ? `${level.height}p` : `Level ${index}`,
+      width: level.width,
+      height: level.height,
+      bitrate: level.bitrate,
+      runtimeSelection: { kind: 'hls-level', levelIndex: index }
+    }))
+
+    const heightCounts = new Map<number, number>()
+    qualities.forEach((q) => {
+      const height = q.height || 0
+      heightCounts.set(height, (heightCounts.get(height) || 0) + 1)
+    })
+
+    qualities.forEach((q) => {
+      if (!q.height) return
+      const count = heightCounts.get(q.height) || 0
+      if (count > 1 && q.bitrate) {
+        const kbps = Math.round(q.bitrate / 1000)
+        q.label = `${q.height}p ${kbps}kbps`
+      }
+    })
+
+    return qualities
+  }
+
+  private findQualityForLevel(levelIndex: number): QualityLevel | null {
+    return this.currentQualities.find((quality) => (
+      quality.runtimeSelection?.kind === 'hls-level'
+      && quality.runtimeSelection.levelIndex === levelIndex
+    )) || null
   }
 
   /**
@@ -145,6 +260,8 @@ export class HlsPlugin implements PlayerPlugin {
 
   onSourceChange(source: MediaSource): void {
     if (!this.context) return
+    this.sourceQualityHints = Array.isArray(source.qualities) ? source.qualities : []
+    this.currentQualities = []
 
     // 检查是否为 HLS 源
     const isHls = source.type === 'hls' || 
@@ -229,8 +346,9 @@ export class HlsPlugin implements PlayerPlugin {
     this.hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
       const level = this.hls?.levels[data.level]
       if (level) {
-        const quality = level.height ? `${level.height}p` : `level_${data.level}`
-        const qualityId = this.getStableQualityId(level, data.level)
+        const currentQuality = this.findQualityForLevel(data.level)
+        const quality = currentQuality?.label || (level.height ? `${level.height}p` : `level_${data.level}`)
+        const qualityId = currentQuality?.id || this.getStableQualityId(level, data.level)
         this.context?.registerCurrentQualityId?.(qualityId)
         this.context?.emit('qualitychange', { 
           quality, 
@@ -274,28 +392,10 @@ export class HlsPlugin implements PlayerPlugin {
 
     this.registerStableQualityIds(levels)
 
-    const qualities: QualityLevel[] = levels.map((level, index) => ({
-      id: this.getStableQualityId(level, index),
-      label: level.height ? `${level.height}p` : `Level ${index}`,
-      width: level.width,
-      height: level.height,
-      bitrate: level.bitrate
-    }))
-
-    const heightCounts = new Map<number, number>()
-    qualities.forEach((q) => {
-      const height = q.height || 0
-      heightCounts.set(height, (heightCounts.get(height) || 0) + 1)
-    })
-
-    qualities.forEach((q) => {
-      if (!q.height) return
-      const count = heightCounts.get(q.height) || 0
-      if (count > 1 && q.bitrate) {
-        const kbps = Math.round(q.bitrate / 1000)
-        q.label = `${q.height}p ${kbps}kbps`
-      }
-    })
+    const hintedQualities = this.buildHintedQualities()
+    const qualities = hintedQualities.length > 0
+      ? hintedQualities
+      : this.buildRuntimeQualities(levels)
 
     // 按高度、带宽降序排列
     qualities.sort((a, b) => {
@@ -304,7 +404,7 @@ export class HlsPlugin implements PlayerPlugin {
       return (b.bitrate || 0) - (a.bitrate || 0)
     })
 
-
+    this.currentQualities = qualities
     this.context.registerQualities(qualities)
     this.context.emit('qualitiesloaded', qualities)
 
@@ -409,7 +509,7 @@ export class HlsPlugin implements PlayerPlugin {
   /**
    * 设置质量
    */
-  setQuality(quality: string | number): void {
+  setQuality(quality: QualitySelectionRequest): void {
     if (!this.hls) return
 
     if (quality === 'auto' || quality === -1) {
@@ -424,6 +524,8 @@ export class HlsPlugin implements PlayerPlugin {
     // 直接使用索引
     if (typeof quality === 'number' && quality >= 0 && quality < levels.length) {
       targetLevel = quality
+    } else if (typeof quality === 'object' && quality?.kind === 'hls-level') {
+      targetLevel = quality.levelIndex
     } else {
       let resolvedFromStableId = false
       if (typeof quality === 'string') {
@@ -466,7 +568,10 @@ export class HlsPlugin implements PlayerPlugin {
     
     const level = this.hls.currentLevel
     if (level === -1) return 'auto'
-    
+
+    const currentQuality = this.findQualityForLevel(level)
+    if (currentQuality?.label) return currentQuality.label
+
     const levelData = this.hls.levels[level]
     return levelData?.height ? `${levelData.height}p` : `level_${level}`
   }
@@ -476,6 +581,8 @@ export class HlsPlugin implements PlayerPlugin {
    */
   private destroyHls(): void {
     this.clearRetryTimers()
+    this.sourceQualityHints = []
+    this.currentQualities = []
     this.qualityIdByLevelIndex.clear()
     this.levelIndexByQualityId.clear()
     if (this.hls) {

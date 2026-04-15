@@ -16,6 +16,8 @@ test('dash plugin maps backend quality hints onto dash tracks before switching q
   const source = await readFile(dashPluginPath, 'utf8')
 
   assert.match(source, /getTracksFor\?\.\('video'\)/)
+  assert.match(source, /private toRuntimeSelection\(selection: DashQualitySelection\)/)
+  assert.match(source, /runtimeSelection:\s*this\.toRuntimeSelection\(selection\)/)
   assert.match(source, /setCurrentTrack\(targetTrack\)/)
   assert.match(source, /setQualityFor\('video',\s*hintedSelection\.qualityIndex,\s*true\)/)
 })
@@ -25,7 +27,9 @@ test('dash plugin waits for track rendering before applying a quality index on a
 
   assert.match(source, /pendingHintedSelection/)
   assert.match(source, /trackChangeRendered/)
-  assert.match(source, /pendingHintedSelection\.trackIndex === this\.currentTrackIndex/)
+  assert.match(source, /this\.applyPendingHintedSelection\(player\)/)
+  assert.match(source, /private applyPendingHintedSelection\(player: any\): void/)
+  assert.match(source, /private applyHintedSelection\(player: any, hintedSelection: DashQualitySelection\): boolean/)
 })
 
 test('dash plugin flushes buffered video after cross-track switches', async () => {

@@ -150,6 +150,9 @@ def test_get_video_url_reads_playback_from_plugin_gateway(monkeypatch):
     assert result.video_url == 'https://cdn.example.com/video.m4s'
     assert result.audio_url == 'https://cdn.example.com/audio.m4s'
     assert result.mpd_url == '/api/video/mpd?video_id=1'
+    assert result.stream_type == 'dash'
+    assert result.default_quality_id == '1080p'
+    assert result.supports_manual_quality is False
     assert result.qualities[0].value == '1080p'
     assert result.qualities[0].codec == 'avc'
 
@@ -218,6 +221,7 @@ def test_get_video_url_returns_direct_links_for_desktop_client(monkeypatch):
     assert result.video_url == 'https://cdn.example.com/video.m4s'
     assert result.audio_url == 'https://cdn.example.com/audio.m4s'
     assert result.mpd_url == '/api/video/mpd?video_id=1&direct=1'
+    assert result.stream_type == 'dash'
 
 
 def test_get_video_url_uses_client_scoped_cache_keys(monkeypatch):
@@ -354,6 +358,7 @@ def test_get_video_url_unwraps_cookie_bound_desktop_sites_to_direct_links(monkey
     assert result.video_url == 'https://cdn.example.com/master.m3u8'
     assert result.audio_url is None
     assert result.mpd_url == '/api/video/mpd?video_id=1&direct=1'
+    assert result.stream_type == 'dash'
 
 
 def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):

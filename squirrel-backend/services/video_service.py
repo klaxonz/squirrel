@@ -32,7 +32,7 @@ from models.video_clip_marker import VideoClipMarker
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
 from plugins.manager import get_plugin_manager
-from schemas.video.dto.video_dto import VideoUrlDto
+from schemas.video.dto.video_dto import QualityOptionDto, VideoUrlDto
 
 from services import user_config_service
 from services.video_clip_marker_service import serialize_marker
@@ -112,6 +112,64 @@ def _finalize_video_url_dto(dto: VideoUrlDto, *, prefer_direct_urls: bool) -> Vi
     finalized.audio_url = _unwrap_proxy_url(finalized.audio_url)
     finalized.mpd_url = _append_direct_flag(finalized.mpd_url)
     return finalized
+
+
+def _looks_like_hls_url(url: Optional[str]) -> bool:
+    if not url:
+        return False
+    lowered = str(url).lower()
+    return '.m3u8' in lowered or 'format=m3u8' in lowered
+
+
+def _normalize_quality_options(qualities: Optional[List[QualityOptionDto]]) -> list[QualityOptionDto]:
+    if not qualities:
+        return []
+
+    normalized: list[QualityOptionDto] = []
+    for index, item in enumerate(qualities):
+        item_id = str(item.id or item.value or item.label or index)
+        item_value = item.value or item_id
+        normalized.append(item.model_copy(update={
+            'id': item_id,
+            'value': item_value,
+            'label': item.label or item_value,
+        }))
+
+    normalized.sort(key=lambda item: ((item.height or 0), (item.bandwidth or 0)), reverse=True)
+    return normalized
+
+
+def _infer_stream_type(dto: VideoUrlDto) -> str:
+    if dto.stream_type:
+        return dto.stream_type
+    if dto.mpd_url or (dto.video_url and dto.audio_url):
+        return 'dash'
+    if _looks_like_hls_url(dto.video_url) or _looks_like_hls_url(dto.audio_url):
+        return 'hls'
+    return 'progressive'
+
+
+def _normalize_playback_contract(dto: VideoUrlDto, *, video_id: int) -> VideoUrlDto:
+    normalized = dto.model_copy(deep=True)
+    if normalized.video_url and normalized.audio_url and not normalized.mpd_url:
+        normalized.mpd_url = f'/api/video/mpd?video_id={video_id}'
+
+    stream_type = _infer_stream_type(normalized)
+    qualities = _normalize_quality_options(normalized.qualities)
+    available_quality_ids = {str(item.id) for item in qualities if item.id}
+
+    default_quality_id = str(normalized.default_quality_id) if normalized.default_quality_id else None
+    if default_quality_id not in available_quality_ids:
+        default_quality_id = str(qualities[0].id) if qualities else None
+
+    supports_manual_quality = normalized.supports_manual_quality or len(qualities) > 1
+
+    return normalized.model_copy(update={
+        'stream_type': stream_type,
+        'qualities': qualities or None,
+        'default_quality_id': default_quality_id,
+        'supports_manual_quality': supports_manual_quality,
+    })
 
 
 def get_video_by_url(url: str) -> Video:
@@ -229,7 +287,7 @@ def get_video_url(video_id: int, force_refresh: bool = False, client_type: Optio
             if cached:
                 try:
                     payload = json.loads(cached)
-                    dto = VideoUrlDto.model_validate(payload)
+                    dto = _normalize_playback_contract(VideoUrlDto.model_validate(payload), video_id=video_id)
                     return _finalize_video_url_dto(dto, prefer_direct_urls=prefer_direct_urls)
                 except Exception:
                     pass
@@ -264,9 +322,7 @@ def get_video_url(video_id: int, force_refresh: bool = False, client_type: Optio
     if not isinstance(response.data, dict):
         raise TypeError('Plugin resolve_playback must return an object payload')
 
-    dto = VideoUrlDto.model_validate(response.data)
-    if dto.video_url and dto.audio_url and not dto.mpd_url:
-        dto.mpd_url = f'/api/video/mpd?video_id={video_id}'
+    dto = _normalize_playback_contract(VideoUrlDto.model_validate(response.data), video_id=video_id)
 
     if enable_cache and cache_key is not None:
         try:

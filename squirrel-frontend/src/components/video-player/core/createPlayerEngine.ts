@@ -8,6 +8,7 @@ import type {
   PlayerEvents,
   PlayerState,
   QualityLevel,
+  QualitySelectionRequest,
   PluginConfig,
   PluginContext,
   SubtitleTrack,
@@ -63,7 +64,7 @@ export type PlayerEngine = {
   setAutoplay: (autoplay: boolean) => void
   setAutoplayNext: (autoplayNext: boolean) => void
 
-  setQuality: (quality: string | number) => void
+  setQuality: (quality: QualitySelectionRequest) => void
 
   toggleFullscreen: () => Promise<void>
   togglePictureInPicture: () => Promise<void>
@@ -872,20 +873,22 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     void adapter.saveConfig({ autoplayNext: value })
   }
 
-  const isAutoQualityToken = (quality: string | number): boolean => {
+  const isAutoQualityToken = (quality: QualitySelectionRequest): boolean => {
+    if (typeof quality !== 'string' && typeof quality !== 'number') return false
     const qStr = String(quality).toLowerCase()
     return quality === 'auto' || quality === -1 || qStr === 'auto' || qStr === '自动'
   }
 
-  const findQualityByRequest = (quality: string | number): QualityLevel | null => {
+  const findQualityByRequest = (quality: QualitySelectionRequest): QualityLevel | null => {
+    if (typeof quality !== 'string' && typeof quality !== 'number') return null
     const normalizedQuality = String(quality)
     return qualities.find(
       (item) => String(item.id) === normalizedQuality || item.label === normalizedQuality
     ) || null
   }
 
-  const resolveQualitySelection = (quality: string | number): {
-    controllerQuality: string | number
+  const resolveQualitySelection = (quality: QualitySelectionRequest): {
+    controllerQuality: QualitySelectionRequest
     emittedLabel: string
     isAutoQuality: boolean
   } => {
@@ -912,13 +915,13 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     }
 
     return {
-      controllerQuality: currentQualityId ?? quality,
+      controllerQuality: matchedQuality?.runtimeSelection ?? currentQualityId ?? quality,
       emittedLabel: currentQualityLabel || String(quality),
       isAutoQuality: false
     }
   }
 
-  const setQuality = (quality: string | number): void => {
+  const setQuality = (quality: QualitySelectionRequest): void => {
     waitingRecoverySuppressedUntil = Date.now() + Math.max(retryDelay * 2, 4000)
     const { controllerQuality, emittedLabel, isAutoQuality } = resolveQualitySelection(quality)
 

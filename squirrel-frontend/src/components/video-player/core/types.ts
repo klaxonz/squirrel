@@ -56,15 +56,24 @@ export interface PlayerEvents {
   destroy: void
 }
 
-// 质量级别
-export interface QualityLevel {
+export type RuntimeQualitySelection =
+  | { kind: 'hls-level'; levelIndex: number }
+  | { kind: 'dash-selection'; trackIndex: number; qualityIndex: number }
+
+export type QualitySelectionRequest = string | number | RuntimeQualitySelection
+
+// 质量描述对象
+export interface QualityDescriptor {
   id: string | number
   label: string
   width?: number
   height?: number
   bitrate?: number
   codec?: string
+  runtimeSelection?: RuntimeQualitySelection
 }
+
+export type QualityLevel = QualityDescriptor
 
 export interface SubtitleTrack {
   id: string
@@ -83,7 +92,7 @@ export interface MediaSource {
   progressKey?: string
   poster?: string
   title?: string
-  qualities?: QualityLevel[]
+  qualities?: QualityDescriptor[]
 }
 
 // 播放器错误
@@ -146,7 +155,7 @@ export interface PluginContext {
   setPlaybackRate(rate: number): void
 
   // 质量控制
-  setQuality(quality: string | number): void
+  setQuality(quality: QualitySelectionRequest): void
   getQualities(): QualityLevel[]
   registerQualities(qualities: QualityLevel[]): void
   registerCurrentQualityId(id?: string | number): void

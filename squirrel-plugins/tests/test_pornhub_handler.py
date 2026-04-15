@@ -122,6 +122,10 @@ class PornhubHandlerTests(unittest.TestCase):
         self.assertEqual(query['domain'], ['pornhub.com'])
         self.assertEqual(unquote(query['url'][0]), 'https://cdn.example.com/master.m3u8')
         self.assertIsNone(payload['audio_url'])
+        self.assertEqual(payload['stream_type'], 'hls')
+        self.assertEqual(payload['default_quality_id'], 'ph-hls:1920x1080')
+        self.assertFalse(payload['supports_manual_quality'])
+        self.assertEqual(payload['qualities'][0]['label'], '1080p')
 
 
 if __name__ == '__main__':

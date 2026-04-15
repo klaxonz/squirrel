@@ -88,3 +88,6 @@ def test_get_video_url_synthesizes_mpd_url_for_split_streams(monkeypatch):
     assert result.video_url == 'https://cdn.example.com/video.m4s'
     assert result.audio_url == 'https://cdn.example.com/audio.m4s'
     assert result.mpd_url == '/api/video/mpd?video_id=1'
+    assert result.stream_type == 'dash'
+    assert result.default_quality_id == '1080p'
+    assert result.supports_manual_quality is False

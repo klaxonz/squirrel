@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Literal, Optional, List
 
 from pydantic import BaseModel, field_serializer
 from sqlalchemy_to_pydantic import sqlalchemy_to_pydantic
@@ -51,11 +51,13 @@ class QualityOptionDto(BaseModel):
 
 class VideoUrlDto(BaseModel):
     """DTO for video URL response"""
+    stream_type: Optional[Literal['hls', 'dash', 'progressive']] = None
     video_url: Optional[str] = None
     audio_url: Optional[str] = None
     mpd_url: Optional[str] = None
     qualities: Optional[List[QualityOptionDto]] = None
+    default_quality_id: Optional[str] = None
+    supports_manual_quality: bool = False
 
     class Config:
         from_attributes = True
-

@@ -81,6 +81,10 @@ class YouPornHandlerTests(unittest.TestCase):
             )
 
         self.assertIsNone(payload['audio_url'])
+        self.assertEqual(payload['stream_type'], 'hls')
+        self.assertEqual(payload['default_quality_id'], payload['qualities'][0]['id'])
+        self.assertFalse(payload['supports_manual_quality'])
+        self.assertEqual(payload['qualities'][0]['height'], 1080)
         parsed = urlparse(payload['video_url'])
         params = parse_qs(parsed.query)
         self.assertEqual(params['domain'], ['youporn.com'])
@@ -125,8 +129,10 @@ class YouPornHandlerTests(unittest.TestCase):
         self.assertEqual(
             payload,
             {
+                'stream_type': 'progressive',
                 'video_url': 'https://cdn.example/video-720.mp4',
                 'audio_url': None,
+                'supports_manual_quality': False,
             },
         )
 
@@ -193,8 +199,10 @@ class YouPornHandlerTests(unittest.TestCase):
         self.assertEqual(
             payload,
             {
+                'stream_type': 'progressive',
                 'video_url': 'https://cdn.example/video-720.mp4',
                 'audio_url': None,
+                'supports_manual_quality': False,
             },
         )
 

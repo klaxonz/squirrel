@@ -59,11 +59,47 @@ class PornhubHandler:
         video_obj = client.get(video.url)
         video_url = getattr(video_obj, 'get_m3u8_urls', None)
         url = None
+        qualities: list[dict] = []
         if isinstance(video_url, dict):
-            url = next(iter(video_url.values()), None)
+            sorted_variants = sorted(
+                video_url.items(),
+                key=lambda item: self._variant_sort_key(item[0]),
+                reverse=True,
+            )
+            url = sorted_variants[0][1] if sorted_variants else None
+            for key, variant_url in sorted_variants:
+                width, height = self._variant_resolution(key)
+                quality_id = f'ph-hls:{width or 0}x{height or 0}'
+                qualities.append({
+                    'value': quality_id,
+                    'id': quality_id,
+                    'label': f'{height}p' if height else quality_id,
+                    'height': height,
+                    'bandwidth': None,
+                    'codec': None,
+                })
         return {
+            "stream_type": "hls",
             "video_url": f"{proxy_prefix_path}&url=" + quote(url) if url else None,
             "audio_url": None,
+            "qualities": qualities or None,
+            "default_quality_id": qualities[0]['id'] if qualities else None,
+            "supports_manual_quality": len(qualities) > 1,
         }
+
+    @staticmethod
+    def _variant_resolution(value: Any) -> tuple[int | None, int | None]:
+        if isinstance(value, tuple) and len(value) == 2:
+            width, height = value
+            try:
+                return int(width), int(height)
+            except Exception:
+                return None, None
+        return None, None
+
+    @classmethod
+    def _variant_sort_key(cls, value: Any) -> tuple[int, int]:
+        width, height = cls._variant_resolution(value)
+        return height or 0, width or 0
 
 
