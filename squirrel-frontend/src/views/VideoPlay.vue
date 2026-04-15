@@ -175,7 +175,8 @@
                         <div v-else class="related-video-card__fallback">
                           <div class="fallback-noise"></div>
                           <div class="fallback-content">
-                            <span class="fallback-status">信号丢失</span>
+                            <Icon icon="lucide:image-off" class="fallback-icon" />
+                            <span class="fallback-status">暂无封面</span>
                             <span class="fallback-id">ID: {{ formatVideoCardId(relatedVideo.id) }}</span>
                           </div>
                         </div>
@@ -1445,6 +1446,56 @@ onUnmounted(() => {
 
 .related-video-card__image.image-loaded {
   opacity: 1;
+}
+
+.related-video-card__fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 32% 24%, hsl(var(--primary) / 0.14), transparent 34%),
+    linear-gradient(135deg, hsl(var(--muted) / 0.68), hsl(var(--background)));
+  color: hsl(var(--muted-foreground));
+}
+
+.related-video-card__fallback .fallback-noise {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.045;
+}
+
+.related-video-card__fallback .fallback-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.related-video-card__fallback .fallback-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: hsl(var(--primary) / 0.72);
+}
+
+.related-video-card__fallback .fallback-status {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: hsl(var(--foreground) / 0.66);
+  line-height: 1;
+}
+
+.related-video-card__fallback .fallback-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.5rem;
+  color: hsl(var(--muted-foreground) / 0.62);
+  line-height: 1;
 }
 
 .related-video-card__title {
