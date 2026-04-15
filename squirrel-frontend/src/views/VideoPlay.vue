@@ -491,7 +491,6 @@ const {
   focusGlobalVideoPlayer,
   seekGlobalVideoPlayer,
   playGlobalVideoPlayer,
-  setGlobalVideoPlayerCurrentVideoId,
   globalVideoPlayerSession,
 } = useGlobalVideoPlayer()
 
@@ -1064,7 +1063,6 @@ watch(videoPlayerHostRef, (element) => {
 }, { immediate: true });
 
 watch(() => route.params.videoId, (videoId) => {
-  setGlobalVideoPlayerCurrentVideoId(videoId);
   setCurrentVideo(videoId ?? null);
 }, { immediate: true });
 
@@ -1178,7 +1176,7 @@ watch(
       externalLoadingText: '正在建立播放链路',
       adapter: playerAdapter,
       theme: nextTheme,
-      currentVideoId: String(route.params.videoId || ''),
+      currentVideoId: String(nextVideo?.id ?? route.params.videoId ?? ''),
       videoSnapshot: nextVideo || null,
       relatedVideos: nextRelatedVideos || [],
       loadingRelated: nextLoadingRelated,

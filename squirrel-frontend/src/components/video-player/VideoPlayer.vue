@@ -1025,12 +1025,19 @@ const codecMenuLabel = computed(() => (
 ))
 
 let removeInitialTimeListener: (() => void) | null = null
+let removeResumeAfterSourceSwapListener: (() => void) | null = null
 let initialTimeAppliedSourceKey: string | null = null
 
 const clearInitialTimeListener = (): void => {
   if (!removeInitialTimeListener) return
   removeInitialTimeListener()
   removeInitialTimeListener = null
+}
+
+const clearResumeAfterSourceSwapListener = (): void => {
+  if (!removeResumeAfterSourceSwapListener) return
+  removeResumeAfterSourceSwapListener()
+  removeResumeAfterSourceSwapListener = null
 }
 
 const getSourceIdentity = (source: MediaSource | null | undefined): string => {
@@ -1076,24 +1083,57 @@ const applyInitialTime = (source: MediaSource | null | undefined, time: number |
   }
 }
 
+const resumePlaybackAfterSourceSwap = (): void => {
+  if (!shouldResumeAfterSourceSwap.value) return
+
+  const video = videoRef.value
+  if (!video) {
+    shouldResumeAfterSourceSwap.value = false
+    return
+  }
+
+  const resume = (): void => {
+    clearResumeAfterSourceSwapListener()
+    if (!shouldResumeAfterSourceSwap.value) return
+    shouldResumeAfterSourceSwap.value = false
+    void play()
+  }
+
+  if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+    resume()
+    return
+  }
+
+  clearResumeAfterSourceSwapListener()
+  video.addEventListener('canplay', resume, { once: true })
+  removeResumeAfterSourceSwapListener = () => {
+    video.removeEventListener('canplay', resume)
+  }
+}
+
 watch(videoRef, (el) => { videoElement.value = el }, { immediate: true })
 watch(containerRef, (el) => { containerElement.value = el }, { immediate: true })
 watch(() => props.source, (s, previousSource) => {
   const sourceChanged = getSourceIdentity(s) !== getSourceIdentity(previousSource)
   if (sourceChanged) {
     clearInitialTimeListener()
+    clearResumeAfterSourceSwapListener()
     initialTimeAppliedSourceKey = null
     hidePosterForCurrentSource.value = false
   }
   if (!s) {
     shouldResumeAfterSourceSwap.value = isPlaying.value
+    clearResumeAfterSourceSwapListener()
     pause()
     return
   }
   loadSource(s)
   if (shouldResumeAfterSourceSwap.value) {
-    shouldResumeAfterSourceSwap.value = false
-    void play()
+    if (props.autoplay) {
+      shouldResumeAfterSourceSwap.value = false
+    } else {
+      resumePlaybackAfterSourceSwap()
+    }
   }
   applyInitialTime(s, props.initialTime)
 }, { immediate: true })
@@ -1431,6 +1471,7 @@ onMounted(() => {
 onUnmounted(() => {
   clearHideTimer()
   clearInitialTimeListener()
+  clearResumeAfterSourceSwapListener()
   releaseMarkerPointerCapture()
   releaseProgressPointerCapture()
   window.removeEventListener('pointermove', onWindowMarkerPointerMove)

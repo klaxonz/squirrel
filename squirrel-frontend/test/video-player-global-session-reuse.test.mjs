@@ -28,6 +28,9 @@ test('video play reuses the active global playback session before calling loadAn
 
   assert.match(source, /const hasReusableGlobalPlaybackSession = \(videoId = route\.params\.videoId\) => \{/)
   assert.match(source, /const hydrateFromGlobalPlaybackSession = \(\) => \{/)
+  assert.doesNotMatch(source, /watch\(\(\) => route\.params\.videoId, \(videoId\) => \{\s*setGlobalVideoPlayerCurrentVideoId\(videoId\);/s)
+  assert.match(source, /watch\(\(\) => route\.params\.videoId, \(videoId\) => \{\s*setCurrentVideo\(videoId \?\? null\);/s)
+  assert.match(source, /currentVideoId: String\(nextVideo\?\.id \?\? route\.params\.videoId \?\? ''\)/)
   assert.match(source, /if \(hasReusableGlobalPlaybackSession\(\)\) \{\s*hydrateFromGlobalPlaybackSession\(\);\s*\} else \{\s*await loadAndPlayById\(route\.params\.videoId\);/s)
   assert.match(source, /if \(hasReusableGlobalPlaybackSession\(newId\)\) \{\s*hydrateFromGlobalPlaybackSession\(\);\s*\} else \{\s*await loadAndPlayById\(newId\);/s)
   assert.match(source, /if \(!hasLocalPlaybackState && hasReusableGlobalPlaybackSession\(\)\) \{\s*return;\s*\}/s)
