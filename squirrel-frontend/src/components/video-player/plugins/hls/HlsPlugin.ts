@@ -38,6 +38,8 @@ export class HlsPlugin implements PlayerPlugin {
   private currentSource: string | null = null
   private retryTimer: ReturnType<typeof setTimeout> | null = null
   private reloadTimer: ReturnType<typeof setTimeout> | null = null
+  private qualityIdByLevelIndex = new Map<number, string>()
+  private levelIndexByQualityId = new Map<string, number>()
 
   private clearRetryTimers(): void {
     if (this.retryTimer) {
@@ -65,6 +67,42 @@ export class HlsPlugin implements PlayerPlugin {
 
     this.hls.currentLevel = targetLevel
     this.context?.logger.debug('[HlsPlugin] Quality switch applied via currentLevel', targetLevel)
+  }
+
+  private buildStableQualityId(level: Level, index: number): string {
+    const parts = [
+      level.height ?? 0,
+      level.width ?? 0,
+      level.bitrate ?? 0,
+      level.videoCodec ?? '',
+      level.audioCodec ?? '',
+      level.name ?? '',
+      Array.isArray(level.url) ? level.url.join(',') : '',
+      index,
+    ]
+    return `hls:${parts.join('|')}`
+  }
+
+  private registerStableQualityIds(levels: Level[]): void {
+    this.qualityIdByLevelIndex.clear()
+    this.levelIndexByQualityId.clear()
+
+    levels.forEach((level, index) => {
+      const stableId = this.buildStableQualityId(level, index)
+      this.qualityIdByLevelIndex.set(index, stableId)
+      this.levelIndexByQualityId.set(stableId, index)
+    })
+  }
+
+  private getStableQualityId(level: Level | undefined, index: number): string {
+    if (!level) return `hls:level:${index}`
+    const cachedId = this.qualityIdByLevelIndex.get(index)
+    if (cachedId) return cachedId
+
+    const stableId = this.buildStableQualityId(level, index)
+    this.qualityIdByLevelIndex.set(index, stableId)
+    this.levelIndexByQualityId.set(stableId, index)
+    return stableId
   }
 
   /**
@@ -192,11 +230,12 @@ export class HlsPlugin implements PlayerPlugin {
       const level = this.hls?.levels[data.level]
       if (level) {
         const quality = level.height ? `${level.height}p` : `level_${data.level}`
-        this.context?.registerCurrentQualityId?.(data.level)
+        const qualityId = this.getStableQualityId(level, data.level)
+        this.context?.registerCurrentQualityId?.(qualityId)
         this.context?.emit('qualitychange', { 
           quality, 
           auto: this.hls?.autoLevelEnabled ?? false,
-          id: data.level
+          id: qualityId
         })
       }
     })
@@ -233,8 +272,10 @@ export class HlsPlugin implements PlayerPlugin {
   private updateQualities(levels: Level[]): void {
     if (!this.context || !levels.length) return
 
+    this.registerStableQualityIds(levels)
+
     const qualities: QualityLevel[] = levels.map((level, index) => ({
-      id: index,
+      id: this.getStableQualityId(level, index),
       label: level.height ? `${level.height}p` : `Level ${index}`,
       width: level.width,
       height: level.height,
@@ -384,19 +425,30 @@ export class HlsPlugin implements PlayerPlugin {
     if (typeof quality === 'number' && quality >= 0 && quality < levels.length) {
       targetLevel = quality
     } else {
-      // 按高度匹配
-      const height = parseInt(String(quality).replace(/[^0-9]/g, ''), 10)
-      targetLevel = levels.findIndex(l => l.height === height)
+      let resolvedFromStableId = false
+      if (typeof quality === 'string') {
+        const matchedLevelIndex = this.levelIndexByQualityId.get(quality)
+        if (typeof matchedLevelIndex === 'number') {
+          targetLevel = matchedLevelIndex
+          resolvedFromStableId = true
+        }
+      }
 
-      // 找不到则找最接近的
-      if (targetLevel === -1 && height > 0) {
-        targetLevel = levels.reduce((closest, level, i) => {
-          if (level.height <= height && 
-              (closest === -1 || level.height > levels[closest].height)) {
-            return i
-          }
-          return closest
-        }, -1)
+      if (!resolvedFromStableId) {
+        // 按高度匹配
+        const height = parseInt(String(quality).replace(/[^0-9]/g, ''), 10)
+        targetLevel = levels.findIndex(l => l.height === height)
+
+        // 找不到则找最接近的
+        if (targetLevel === -1 && height > 0) {
+          targetLevel = levels.reduce((closest, level, i) => {
+            if (level.height <= height &&
+                (closest === -1 || level.height > levels[closest].height)) {
+              return i
+            }
+            return closest
+          }, -1)
+        }
       }
     }
 
@@ -424,6 +476,8 @@ export class HlsPlugin implements PlayerPlugin {
    */
   private destroyHls(): void {
     this.clearRetryTimers()
+    this.qualityIdByLevelIndex.clear()
+    this.levelIndexByQualityId.clear()
     if (this.hls) {
       this.hls.destroy()
       this.hls = null
