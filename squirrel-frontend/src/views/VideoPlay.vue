@@ -28,9 +28,15 @@
           <Transition name="fade-meta" mode="out-in">
             <div v-if="video" :key="video.id">
               <!-- 标题行 -->
-              <h1 class="video-meta__title">
-                {{ video?.title }}
-              </h1>
+              <div class="video-meta__headline">
+                <h1 class="video-meta__title">
+                  {{ video?.title }}
+                </h1>
+                <div v-if="videoPublishedText" class="video-meta__publish-date" title="发布时间">
+                  <Icon icon="lucide:calendar-days" class="video-meta__publish-date-icon" />
+                  <span>发布于 {{ videoPublishedText }}</span>
+                </div>
+              </div>
 
               <!-- 频道信息 + 操作按钮 -->
               <div class="video-meta__info-row">
@@ -741,6 +747,11 @@ const videoOverflowActions = computed(() => {
 });
 
 const videoActions = computed(() => [...videoPrimaryActions.value, ...videoOverflowActions.value]);
+
+const videoPublishedText = computed(() => {
+  const publishedAt = video.value?.publish_date || video.value?.uploaded_at
+  return publishedAt ? formatDate(publishedAt) : ''
+});
 
 const handleVideoAction = async (action) => {
   if (action.href || !action.onClick) return;
@@ -1597,9 +1608,17 @@ onUnmounted(() => {
   margin-top: 0.75rem;
 }
 
+.video-page__container.is-widescreen .video-meta__headline {
+  margin-bottom: 0.5rem;
+}
+
 .video-page__container.is-widescreen .video-meta__title {
   font-size: 1rem;
-  margin-bottom: 0.5rem;
+}
+
+.video-page__container.is-widescreen .video-meta__publish-date {
+  margin-top: 0.1rem;
+  font-size: 0.66rem;
 }
 
 .video-page__container.is-widescreen .video-meta__info-row {
@@ -2352,7 +2371,14 @@ onUnmounted(() => {
   margin-top: 0.875rem;
 }
 
-/* 标题 */
+.video-meta__headline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
 .video-meta__title {
   font-size: clamp(1rem, 1rem + 0.3rem, 1.2rem);
   font-weight: 700;
@@ -2360,7 +2386,24 @@ onUnmounted(() => {
   line-height: 1.4;
   word-break: break-word;
   color: hsl(var(--foreground));
-  margin-bottom: 0.75rem;
+  margin: 0;
+}
+
+.video-meta__publish-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.72rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.video-meta__publish-date-icon {
+  width: 0.88rem;
+  height: 0.88rem;
+  flex-shrink: 0;
 }
 
 /* 信息行：频道 + 操作按钮 */
@@ -2507,6 +2550,15 @@ onUnmounted(() => {
 
 /* 响应式适配 */
 @media (max-width: 640px) {
+  .video-meta__headline {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.35rem;
+  }
+
+  .video-meta__publish-date {
+    margin-top: 0;
+  }
+
   .video-channel__avatar {
     width: 2.25rem !important;
     height: 2.25rem !important;
