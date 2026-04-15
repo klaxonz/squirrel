@@ -95,7 +95,9 @@ test('video player filters the quality menu by the selected or active codec fami
   const source = await readFile(new URL('../src/components/video-player/VideoPlayer.vue', import.meta.url), 'utf8')
 
   assert.match(source, /const visibleCodecFamily = computed\(\(\) =>/)
-  assert.match(source, /currentCodecFamily\.value \|\| inferCodecFamilyFromLabel\(currentQualityLabel\.value\)/)
+  assert.doesNotMatch(source, /inferCodecFamilyFromLabel\(currentQualityLabel\.value\)/)
+  assert.match(source, /selectedCodecFamily\.value !== 'auto'/)
+  assert.match(source, /:\s*currentCodecFamily\.value/)
   assert.match(source, /const displayedQualities = computed\(\(\) =>/)
   assert.match(source, /qualities\.value\.filter\(\(quality\) => getCodecFamily\(quality\.codec\) === visibleCodecFamily\.value\)/)
   assert.match(source, /v-for="q in displayedQualities"/)

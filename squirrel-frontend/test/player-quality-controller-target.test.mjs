@@ -7,8 +7,8 @@ const enginePath = new URL('../src/components/video-player/core/createPlayerEngi
 test('player engine passes resolved quality ids to the stream controller instead of ambiguous labels', async () => {
   const source = await readFile(enginePath, 'utf8')
 
-  assert.match(source, /const controllerQuality = isAutoQuality/)
-  assert.match(source, /\(currentQualityId \?\? quality\)/)
+  assert.match(source, /const \{ controllerQuality, emittedLabel, isAutoQuality \} = resolveQualitySelection\(quality\)/)
+  assert.match(source, /controllerQuality:\s*currentQualityId \?\? quality/)
   assert.match(source, /controller\.setQuality\(controllerQuality\)/)
   assert.match(source, /setQuality\(nextQuality\.id \?\? nextQuality\.label\)/)
 })

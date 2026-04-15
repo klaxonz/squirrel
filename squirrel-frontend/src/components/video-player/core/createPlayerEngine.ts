@@ -872,41 +872,55 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     void adapter.saveConfig({ autoplayNext: value })
   }
 
-  const setQuality = (quality: string | number): void => {
-    waitingRecoverySuppressedUntil = Date.now() + Math.max(retryDelay * 2, 4000)
-
+  const isAutoQualityToken = (quality: string | number): boolean => {
     const qStr = String(quality).toLowerCase()
-    const isAutoQuality = quality === 'auto' || quality === -1 || qStr === 'auto' || qStr === '自动'
+    return quality === 'auto' || quality === -1 || qStr === 'auto' || qStr === '自动'
+  }
 
-    if (isAutoQuality) {
+  const findQualityByRequest = (quality: string | number): QualityLevel | null => {
+    const normalizedQuality = String(quality)
+    return qualities.find(
+      (item) => String(item.id) === normalizedQuality || item.label === normalizedQuality
+    ) || null
+  }
+
+  const resolveQualitySelection = (quality: string | number): {
+    controllerQuality: string | number
+    emittedLabel: string
+    isAutoQuality: boolean
+  } => {
+    if (isAutoQualityToken(quality)) {
       currentQualityId = null
       registeredQualityId = null
       currentQualityLabel = 'auto'
-    } else {
-      const directMatch = qualities.find(
-        (item) => String(item.id) === String(quality) || item.label === String(quality)
-      )
-      if (directMatch) {
-        currentQualityId = directMatch.id
-        registeredQualityId = directMatch.id
-        currentQualityLabel = directMatch.label
-      } else {
-        if (typeof quality === 'number') {
-          currentQualityId = quality
-          registeredQualityId = quality
-        }
-        currentQualityLabel = String(quality)
+      return {
+        controllerQuality: 'auto',
+        emittedLabel: 'auto',
+        isAutoQuality: true
       }
     }
 
-    if (!isAutoQuality && currentQualityId === null && typeof quality !== 'number') {
-      const labelMatch = qualities.find((item) => item.label === String(quality))
-      if (labelMatch) {
-        currentQualityId = labelMatch.id
-        registeredQualityId = labelMatch.id
-        currentQualityLabel = labelMatch.label
-      }
+    const matchedQuality = findQualityByRequest(quality)
+    if (matchedQuality) {
+      currentQualityId = matchedQuality.id
+      registeredQualityId = matchedQuality.id
+      currentQualityLabel = matchedQuality.label
+    } else {
+      currentQualityId = typeof quality === 'number' ? quality : null
+      registeredQualityId = typeof quality === 'number' ? quality : null
+      currentQualityLabel = String(quality)
     }
+
+    return {
+      controllerQuality: currentQualityId ?? quality,
+      emittedLabel: currentQualityLabel || String(quality),
+      isAutoQuality: false
+    }
+  }
+
+  const setQuality = (quality: string | number): void => {
+    waitingRecoverySuppressedUntil = Date.now() + Math.max(retryDelay * 2, 4000)
+    const { controllerQuality, emittedLabel, isAutoQuality } = resolveQualitySelection(quality)
 
     const getQualityController = (): any => {
       if (currentSourceType === 'hls') return pluginManager.get<any>('hls')
@@ -914,13 +928,11 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       return pluginManager.get<any>('dash') || pluginManager.get<any>('hls')
     }
 
-    const controllerQuality = isAutoQuality ? 'auto' : (currentQualityId ?? quality)
     const controller = getQualityController()
     if (controller && typeof controller.setQuality === 'function') {
       controller.setQuality(controllerQuality)
     }
 
-    const emittedLabel = currentQualityLabel || String(quality)
     events.emit('qualitychange', { quality: emittedLabel, auto: emittedLabel === 'auto', id: currentQualityId ?? undefined })
     options.onQualityChange?.(emittedLabel)
   }

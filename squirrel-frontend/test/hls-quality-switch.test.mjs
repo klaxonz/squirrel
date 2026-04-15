@@ -12,3 +12,11 @@ test('hls plugin preloads the target level before switching when manually changi
     /this\.hls\.nextLevel\s*=\s*targetLevel/
   )
 })
+
+test('hls plugin uses stable level ids for default selection and quality change events', async () => {
+  const source = await readFile(hlsPluginPath, 'utf8')
+
+  assert.match(source, /this\.context\?\.registerCurrentQualityId\?\.\(data\.level\)/)
+  assert.match(source, /this\.context\?\.emit\('qualitychange',\s*\{\s*quality,\s*auto:\s*this\.hls\?\.autoLevelEnabled \?\? false,\s*id:\s*data\.level/s)
+  assert.match(source, /this\.context\.setQuality\(qualities\[0\]\.id \?\? qualities\[0\]\.label\)/)
+})

@@ -151,7 +151,7 @@
             </div>
 
             <div class="sp-controls-right">
-              <div v-if="displayedQualities.length > 0" class="sp-quality-tag" @click.stop="toggleQualityMenu">
+              <div v-if="displayedQualities.length > 0 && qualityTagLabel" class="sp-quality-tag" @click.stop="toggleQualityMenu">
                 {{ qualityTagLabel }}
               </div>
               <button v-if="subtitleTracks.length > 0" class="sp-icon-btn" @click.stop="toggleSubtitlesQuick" :title="t('subtitles')">
@@ -187,7 +187,7 @@
             v-for="q in displayedQualities"
             :key="q.id"
             class="sp-menu-item"
-            :class="{ 'is-active': currentQualityId === q.id }"
+            :class="{ 'is-active': isQualityActive(q) }"
             @click="handleQualitySelect(q)"
           >
             {{ q.label }}
@@ -261,7 +261,7 @@
           </div>
           <div class="sp-menu-list">
             <div v-for="q in displayedQualities" :key="q.id" 
-                 class="sp-menu-item" :class="{ 'is-active': currentQualityId === q.id }"
+                 class="sp-menu-item" :class="{ 'is-active': isQualityActive(q) }"
                  @click="handleQualitySelect(q)">
               {{ q.label }}
             </div>
@@ -998,7 +998,7 @@ const volumeIconName = computed(() => (isMuted.value || volume.value === 0) ? 'v
 const visibleCodecFamily = computed(() => (
   selectedCodecFamily.value !== 'auto'
     ? selectedCodecFamily.value
-    : currentCodecFamily.value || inferCodecFamilyFromLabel(currentQualityLabel.value)
+    : currentCodecFamily.value
 ))
 const displayedQualities = computed(() => {
   if (!visibleCodecFamily.value) return qualities.value
@@ -1008,12 +1008,16 @@ const displayedQualities = computed(() => {
 const isInternalQualityLabel = (label: string | null | undefined) => /^level[_\s-]?\d+$/i.test(String(label || '').trim())
 const isAutoQualityLabel = (label: string | null | undefined) => ['auto', '??', '??'].includes(String(label || '').trim().toLowerCase())
 const isDisplayableQualityLabel = (label: string | null | undefined) => !isInternalQualityLabel(label) && !isAutoQualityLabel(label)
-const qualityTagLabel = computed(() => (
-  isDisplayableQualityLabel(currentQualityLabel.value)
-    ? (currentQualityLabel.value || '')
-    : (displayedQualities.value[0]?.label || t('quality'))
+const resolvedCurrentQuality = computed(() => {
+  if (currentQualityId.value === null || currentQualityId.value === undefined) return null
+  return qualities.value.find((quality) => String(quality.id) === String(currentQualityId.value)) || null
+})
+const currentQualityText = computed(() => (
+  resolvedCurrentQuality.value?.label
+    || (isDisplayableQualityLabel(currentQualityLabel.value) ? (currentQualityLabel.value || '') : '')
 ))
-const qualityMenuLabel = computed(() => isDisplayableQualityLabel(currentQualityLabel.value) ? (currentQualityLabel.value || '') : (displayedQualities.value[0]?.label || t('quality')))
+const qualityTagLabel = computed(() => currentQualityText.value)
+const qualityMenuLabel = computed(() => currentQualityText.value || t('quality'))
 const subtitleMenuLabel = computed(() => {
   if (!store.subtitlesEnabled || !currentSubtitle.value) return t('subtitlesOff')
   return currentSubtitle.value.label
@@ -1403,11 +1407,6 @@ const getCodecFamily = (codec: string | null | undefined) => {
   return normalized
 }
 
-const inferCodecFamilyFromLabel = (label: string | null | undefined) => {
-  if (!label) return null
-  return getCodecFamily(label)
-}
-
 const formatCodecFamilyLabel = (codecFamily: string | null | undefined) => {
   if (!codecFamily) return t('codec')
   const normalized = String(codecFamily).toLowerCase()
@@ -1416,6 +1415,11 @@ const formatCodecFamilyLabel = (codecFamily: string | null | undefined) => {
   if (normalized === 'avc') return 'AVC'
   return normalized.toUpperCase()
 }
+
+const isQualityActive = (quality: { id: string | number }) => (
+  resolvedCurrentQuality.value !== null
+    && String(resolvedCurrentQuality.value.id) === String(quality.id)
+)
 
 const markPlayerActive = () => {}
 const handlePointerDown = (event: PointerEvent) => {

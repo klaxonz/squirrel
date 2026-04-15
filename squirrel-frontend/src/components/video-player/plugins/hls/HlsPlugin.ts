@@ -192,9 +192,11 @@ export class HlsPlugin implements PlayerPlugin {
       const level = this.hls?.levels[data.level]
       if (level) {
         const quality = level.height ? `${level.height}p` : `level_${data.level}`
+        this.context?.registerCurrentQualityId?.(data.level)
         this.context?.emit('qualitychange', { 
           quality, 
-          auto: this.hls?.autoLevelEnabled ?? false 
+          auto: this.hls?.autoLevelEnabled ?? false,
+          id: data.level
         })
       }
     })
@@ -266,7 +268,7 @@ export class HlsPlugin implements PlayerPlugin {
     this.context.emit('qualitiesloaded', qualities)
 
     if (!this.options.enableAutoQuality && !this.context.state.quality && qualities.length > 0) {
-      this.context.setQuality(qualities[0].label)
+      this.context.setQuality(qualities[0].id ?? qualities[0].label)
     }
   }
 
