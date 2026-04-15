@@ -151,7 +151,12 @@
             </div>
 
             <div class="sp-controls-right">
-              <div v-if="displayedQualities.length > 0 && qualityTagLabel" class="sp-quality-tag" @click.stop="toggleQualityMenu">
+              <div
+                v-if="displayedQualities.length > 0 && qualityTagLabel"
+                class="sp-quality-tag"
+                :class="{ 'is-active': showQualityMenu }"
+                @click.stop="toggleQualityMenu"
+              >
                 {{ qualityTagLabel }}
               </div>
               <button v-if="subtitleTracks.length > 0" class="sp-icon-btn" @click.stop="toggleSubtitlesQuick" :title="t('subtitles')">
@@ -1962,22 +1967,22 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   font-family: var(--sp-font-mono);
   font-size: 10px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.7);
   padding: 2px 6px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid transparent;
   border-radius: 3px;
   cursor: pointer;
   transition: all 0.2s;
-  background: rgba(255, 255, 255, 0.05);
+  background: transparent;
   letter-spacing: 0.05em;
   margin-right: 4px;
 }
 
-.sp-quality-tag:hover {
-  color: var(--sp-primary);
-  border-color: var(--sp-primary);
-  background: rgba(var(--sp-primary-rgb), 0.1);
-  box-shadow: 0 0 8px rgba(var(--sp-primary-rgb), 0.3);
+.sp-quality-tag:hover,
+.sp-quality-tag.is-active {
+  color: var(--sp-primary, #ff4d00);
+  border-color: var(--sp-border);
+  background: var(--sp-bg-hover);
 }
 
 /* ?????? */

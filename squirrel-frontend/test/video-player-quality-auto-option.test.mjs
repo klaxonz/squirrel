@@ -26,6 +26,6 @@ test('video player hides the floating quality tag when the runtime label is only
   assert.match(source, /const qualityTagLabel = computed\(\(\) => currentQualityText\.value\)/)
   assert.match(source, /const qualityMenuLabel = computed\(\(\) => currentQualityText\.value \|\| t\('quality'\)\)/)
   assert.doesNotMatch(source, /displayedQualities\.value\[0\]\?\.label/)
-  assert.match(source, /<div v-if="displayedQualities\.length > 0 && qualityTagLabel" class="sp-quality-tag" @click\.stop="toggleQualityMenu">/)
+  assert.match(source, /<div[\s\S]*v-if="displayedQualities\.length > 0 && qualityTagLabel"[\s\S]*class="sp-quality-tag"[\s\S]*@click\.stop="toggleQualityMenu"/)
   assert.doesNotMatch(source, /<div v-if="displayedQualities\.length > 0" class="sp-quality-tag" @click\.stop="toggleQualityMenu">/)
 })
