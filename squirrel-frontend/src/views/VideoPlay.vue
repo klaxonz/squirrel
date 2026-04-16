@@ -41,11 +41,10 @@
               <!-- 频道信息 + 操作按钮 -->
               <div class="video-meta__info-row">
                 <!-- 频道信息 -->
-                <div class="video-channel">
+                <div v-if="isVideoChannelVisible && video?.subscriptions?.[0]" class="video-channel">
                   <div class="video-channel__primary">
                     <div class="video-channel__avatar-wrapper">
                       <SubscriptionAvatar
-                        v-if="video?.subscriptions?.[0]"
                         :src="video.subscriptions[0].avatar"
                         :name="video.subscriptions[0].name"
                         size="lg"
@@ -67,12 +66,18 @@
                   </div>
                 </div>
                 <button
-                  v-if="video?.subscriptions?.[0]"
+                  v-if="isVideoChannelVisible && video?.subscriptions?.[0]"
                   class="subscribe-btn"
+                  :disabled="isChannelUnsubscribing"
+                  :title="isChannelUnsubscribing ? '正在取消订阅' : '取消订阅'"
                   @click.stop="handleUnsubscribe(video.subscriptions[0].id)"
                 >
-                  <Icon icon="lucide:bell" class="subscribe-btn__icon" />
-                  <span class="subscribe-btn__label">订阅</span>
+                  <Icon
+                    :icon="isChannelUnsubscribing ? 'lucide:loader-circle' : 'lucide:bell-off'"
+                    class="subscribe-btn__icon"
+                    :class="{ 'is-spinning': isChannelUnsubscribing }"
+                  />
+                  <span class="subscribe-btn__label">{{ isChannelUnsubscribing ? '取消中' : '取消订阅' }}</span>
                 </button>
 
                 <!-- 操作按钮 -->
@@ -2470,23 +2475,34 @@ onUnmounted(() => {
   gap: 0.3rem;
   padding: 0.4rem 0.875rem;
   border-radius: 20px;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
+  background: hsl(var(--secondary) / 0.6);
+  color: hsl(var(--foreground));
   font-size: 0.75rem;
   font-weight: 600;
-  border: none;
+  border: 1px solid hsl(var(--border) / 0.65);
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
 }
 
 .subscribe-btn:hover {
-  background: hsl(var(--primary) / 0.9);
+  background: hsl(var(--destructive) / 0.1);
+  border-color: hsl(var(--destructive) / 0.35);
+  color: hsl(var(--destructive));
+}
+
+.subscribe-btn:disabled {
+  cursor: wait;
+  opacity: 0.75;
 }
 
 .subscribe-btn__icon {
   width: 14px;
   height: 14px;
+}
+
+.subscribe-btn__icon.is-spinning {
+  animation: spin 0.8s linear infinite;
 }
 
 /* 操作按钮 - 靠右 */
