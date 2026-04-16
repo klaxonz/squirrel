@@ -138,7 +138,6 @@ const imageLoaded = ref(false)
 const isNsfwVideo = computed(() => props.video.subscriptions?.some((subscription) => subscription.is_nsfw) || false)
 const shouldBlurThumbnail = computed(() => systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value)
 const videoCardId = computed(() => formatVideoCardId(props.video?.id))
-const videoBgIndex = computed(() => formatVideoCardId(props.video?.id, { length: 2, placeholder: '--' }))
 
 const displayDateText = computed(() => {
   const timestamp = props.sortBy === 'created_at'
@@ -260,6 +259,14 @@ const handleImageLoad = () => {
   imageLoaded.value = true
 }
 
+watch(
+  () => props.video?.thumbnail,
+  () => {
+    imageLoaded.value = false
+    showDefaultThumbnail.value = false
+  }
+)
+
 watch(showMenu, (isOpen) => {
   if (isOpen) {
     nextTick(() => {
@@ -286,22 +293,10 @@ onUnmounted(() => {
   padding: 0.85rem;
   border-radius: 8px;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: item-appear 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .video-terminal-item:hover {
   background: hsl(var(--foreground) / 0.04);
-}
-
-@keyframes item-appear {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .video-viewer-frame {
