@@ -484,6 +484,7 @@ import { Input } from '@/components/ui/input'
 import { Logger } from '@/utils/logger'
 import { getRandomVideo, unsubscribe as apiUnsubscribe } from '@/api'
 import { deleteVideoClipMarker, updateVideoClipMarker } from '@/api/videoClipMarkers'
+import { notifySubscriptionRemoved } from '@/utils/subscriptionEvents'
 
 
 
@@ -908,6 +909,7 @@ const handleUnsubscribe = async (subscriptionId) => {
   }
 
   isVideoChannelVisible.value = false
+  notifySubscriptionRemoved(subscriptionId)
   await wait(VIDEO_CHANNEL_DISMISS_MS)
   isChannelUnsubscribing.value = false
 };

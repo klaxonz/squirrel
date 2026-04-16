@@ -64,7 +64,7 @@
 </template>
 
 <script setup>
-import { computed, inject, onActivated, onDeactivated, ref } from 'vue'
+import { computed, inject, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRouteTabSync } from '../composables/useRouteTabSync'
 import { useFeedFilters } from '../composables/useFeedFilters'
@@ -74,6 +74,7 @@ import ChannelHeader from '@/components/feed/ChannelHeader.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { buildTabsWithCounts } from '../utils/feed'
+import { onSubscriptionRemoved } from '@/utils/subscriptionEvents'
 
 const router = useRouter()
 const route = useRoute()
@@ -86,6 +87,9 @@ const tabsWithCounts = ref(buildTabsWithCounts({}))
 const isRefreshing = ref(false)
 const loadError = ref(null)
 const videoChildRef = ref(null)
+const isActive = ref(false)
+const needsSubscriptionRefresh = ref(false)
+let stopSubscriptionRemovedListener = null
 
 const childFilters = computed(() => filters.value)
 
@@ -118,15 +122,57 @@ const handleTabDoubleClick = (tab) => {
   }
 }
 
+const refreshAfterSubscriptionRemoved = async () => {
+  await nextTick()
+  needsSubscriptionRefresh.value = false
+  refreshCurrentList()
+}
+
+const handleSubscriptionRemoved = (subscriptionId) => {
+  const removedId = String(subscriptionId || '')
+  if (!removedId) return
+
+  needsSubscriptionRefresh.value = true
+
+  if (String(route.params.id || '') === removedId) {
+    router.replace({ name: 'AllVideos' }).then(() => {
+      if (isActive.value) {
+        refreshAfterSubscriptionRemoved()
+      }
+    })
+    return
+  }
+
+  if (isActive.value) {
+    refreshAfterSubscriptionRemoved()
+  }
+}
+
 useRefreshTriggers({ onRefresh: refreshCurrentList })
 useRouteTabSync(router, route, activeTab, subscriptionId)
 
 onActivated(() => {
+  isActive.value = true
   emitter?.on?.('search:home', handleGlobalSearch)
+  if (needsSubscriptionRefresh.value) {
+    refreshAfterSubscriptionRemoved()
+  }
 })
 
 onDeactivated(() => {
+  isActive.value = false
   emitter?.off?.('search:home', handleGlobalSearch)
+})
+
+onMounted(() => {
+  stopSubscriptionRemovedListener = onSubscriptionRemoved(({ subscriptionId }) => {
+    handleSubscriptionRemoved(subscriptionId)
+  })
+})
+
+onUnmounted(() => {
+  stopSubscriptionRemovedListener?.()
+  stopSubscriptionRemovedListener = null
 })
 </script>
 

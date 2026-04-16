@@ -315,6 +315,7 @@ import { useScrollPosition } from '../composables/useScrollPosition'
 import { useSubscriptionRefresh } from '../composables/useSubscriptionRefresh'
 import { useFeedFilters } from '../composables/useFeedFilters'
 import { formatDate } from '../utils/dateFormat'
+import { notifySubscriptionRemoved } from '@/utils/subscriptionEvents'
 import {
   getSubscriptions as apiGetSubscriptions,
   unsubscribe as apiUnsubscribe,
@@ -610,6 +611,7 @@ const unsubscribe = async (subscriptionId) => {
   }
 
   closeSettings()
+  notifySubscriptionRemoved(subscriptionId)
   await wait(SUBSCRIPTION_REMOVE_DELAY_MS)
   subscriptions.value = subscriptions.value.filter((subscription) => subscription.id !== subscriptionId)
   unsubscribingId.value = null

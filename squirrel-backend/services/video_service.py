@@ -558,12 +558,26 @@ def _build_feed_query(
     content_type: str = 'all',
 ):
     effective_nsfw = resolve_effective_nsfw_filter(nsfw, show_nsfw)
-    feed_query = select(
-        UserVideoFeed.video_id.label('video_id'),
-        UserVideoFeed.publish_date.label('publish_date'),
-        UserVideoFeed.video_created_at.label('video_created_at'),
-    ).where(
-        UserVideoFeed.user_id == user_id,
+    feed_query = (
+        select(
+            UserVideoFeed.video_id.label('video_id'),
+            UserVideoFeed.publish_date.label('publish_date'),
+            UserVideoFeed.video_created_at.label('video_created_at'),
+        )
+        .select_from(UserVideoFeed)
+        .join(
+            UserSubscription,
+            and_(
+                UserSubscription.user_id == UserVideoFeed.user_id,
+                UserSubscription.subscription_id == UserVideoFeed.subscription_id,
+                UserSubscription.is_deleted.is_(False),
+            ),
+        )
+        .join(Subscription, Subscription.id == UserVideoFeed.subscription_id)
+        .where(
+            UserVideoFeed.user_id == user_id,
+            Subscription.is_deleted.is_(False),
+        )
     )
 
     if subscription_id:
@@ -605,37 +619,21 @@ def _build_feed_query(
     # Collect Subscription-level conditions (content_type)
     type_conds = content_type_predicate(content_type)
 
-    needs_subscription_join = bool(type_conds)
-    needs_video_join = bool(video_conds) or needs_subscription_join
+    needs_video_join = bool(video_conds)
 
     if search_clauses:
-        # Video already joined above; add remaining Video conditions and Subscription conditions
-        if needs_subscription_join:
-            feed_query = feed_query.join(
-                SubscriptionVideo,
-                SubscriptionVideo.video_id == UserVideoFeed.video_id,
-            ).join(
-                Subscription,
-                Subscription.id == SubscriptionVideo.subscription_id,
-            )
         for cond in type_conds:
             feed_query = feed_query.where(cond)
         for cond in video_conds:
             feed_query = feed_query.where(cond)
     elif needs_video_join:
-        # Video not yet joined; join once and apply all conditions
-        if needs_subscription_join:
-            feed_query = feed_query.join(
-                SubscriptionVideo,
-                SubscriptionVideo.video_id == UserVideoFeed.video_id,
-            ).join(
-                Subscription,
-                Subscription.id == SubscriptionVideo.subscription_id,
-            )
         feed_query = feed_query.join(Video, Video.id == UserVideoFeed.video_id)
         for cond in type_conds:
             feed_query = feed_query.where(cond)
         for cond in video_conds:
+            feed_query = feed_query.where(cond)
+    else:
+        for cond in type_conds:
             feed_query = feed_query.where(cond)
 
     feed_source = feed_query.subquery()
@@ -670,12 +668,26 @@ def _build_ordered_feed_query(
     content_type: str = 'all',
 ):
     effective_nsfw = resolve_effective_nsfw_filter(nsfw, show_nsfw)
-    feed_query = select(
-        UserVideoFeed.video_id.label('video_id'),
-        UserVideoFeed.publish_date.label('publish_date'),
-        UserVideoFeed.video_created_at.label('video_created_at'),
-    ).where(
-        UserVideoFeed.user_id == user_id,
+    feed_query = (
+        select(
+            UserVideoFeed.video_id.label('video_id'),
+            UserVideoFeed.publish_date.label('publish_date'),
+            UserVideoFeed.video_created_at.label('video_created_at'),
+        )
+        .select_from(UserVideoFeed)
+        .join(
+            UserSubscription,
+            and_(
+                UserSubscription.user_id == UserVideoFeed.user_id,
+                UserSubscription.subscription_id == UserVideoFeed.subscription_id,
+                UserSubscription.is_deleted.is_(False),
+            ),
+        )
+        .join(Subscription, Subscription.id == UserVideoFeed.subscription_id)
+        .where(
+            UserVideoFeed.user_id == user_id,
+            Subscription.is_deleted.is_(False),
+        )
     )
 
     if subscription_id:
@@ -715,35 +727,21 @@ def _build_ordered_feed_query(
     video_conds.extend(duration_predicate(duration))
     type_conds = content_type_predicate(content_type)
 
-    needs_subscription_join = bool(type_conds)
-    needs_video_join = bool(video_conds) or needs_subscription_join
+    needs_video_join = bool(video_conds)
 
     if search_clauses:
-        if needs_subscription_join:
-            feed_query = feed_query.join(
-                SubscriptionVideo,
-                SubscriptionVideo.video_id == UserVideoFeed.video_id,
-            ).join(
-                Subscription,
-                Subscription.id == SubscriptionVideo.subscription_id,
-            )
         for cond in type_conds:
             feed_query = feed_query.where(cond)
         for cond in video_conds:
             feed_query = feed_query.where(cond)
     elif needs_video_join:
-        if needs_subscription_join:
-            feed_query = feed_query.join(
-                SubscriptionVideo,
-                SubscriptionVideo.video_id == UserVideoFeed.video_id,
-            ).join(
-                Subscription,
-                Subscription.id == SubscriptionVideo.subscription_id,
-            )
         feed_query = feed_query.join(Video, Video.id == UserVideoFeed.video_id)
         for cond in type_conds:
             feed_query = feed_query.where(cond)
         for cond in video_conds:
+            feed_query = feed_query.where(cond)
+    else:
+        for cond in type_conds:
             feed_query = feed_query.where(cond)
 
     sort_column = _feed_sort_column(sort_by)
@@ -893,6 +891,15 @@ def list_videos(
                 Subscription.type,
                 Subscription.avatar,
                 UserVideoFeed.is_nsfw,
+            )
+            .select_from(UserVideoFeed)
+            .join(
+                UserSubscription,
+                and_(
+                    UserSubscription.user_id == UserVideoFeed.user_id,
+                    UserSubscription.subscription_id == UserVideoFeed.subscription_id,
+                    UserSubscription.is_deleted.is_(False),
+                ),
             )
             .join(Subscription, Subscription.id == UserVideoFeed.subscription_id)
             .where(

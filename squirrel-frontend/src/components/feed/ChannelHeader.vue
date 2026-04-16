@@ -58,15 +58,14 @@
 
 <script setup>
 import { ref, watch } from 'vue';
-import { useRouter } from 'vue-router'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import { getSubscriptionDetail, unsubscribe as apiUnsubscribe } from '@/api'
+import { notifySubscriptionRemoved } from '@/utils/subscriptionEvents'
 
 const props = defineProps({
   subscriptionId: { type: [String, Number], required: true }
 });
 
-const router = useRouter()
 const detail = ref(null);
 const loading = ref(false);
 const isVisible = ref(true)
@@ -101,8 +100,8 @@ const handleUnsubscribe = async () => {
   }
 
   isVisible.value = false
+  notifySubscriptionRemoved(props.subscriptionId)
   await wait(DISMISS_MS)
-  router.back()
 }
 
 watch(() => props.subscriptionId, () => {

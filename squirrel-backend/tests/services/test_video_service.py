@@ -716,6 +716,7 @@ def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_row
 
     with Session(engine, expire_on_commit=False) as session:
         subscriptions = []
+        user_subscriptions = []
         feed_rows = []
         interactions = []
 
@@ -731,6 +732,17 @@ def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_row
                     total_videos=0,
                     is_deleted=False,
                     extra_data={},
+                    created_at=datetime(2024, 1, 1),
+                    updated_at=datetime(2024, 1, 1),
+                )
+            )
+            user_subscriptions.append(
+                UserSubscription(
+                    id=subscription_id,
+                    user_id=7,
+                    subscription_id=subscription_id,
+                    is_deleted=False,
+                    is_nsfw=False,
                     created_at=datetime(2024, 1, 1),
                     updated_at=datetime(2024, 1, 1),
                 )
@@ -764,6 +776,17 @@ def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_row
                 updated_at=datetime(2024, 1, 1),
             )
         )
+        user_subscriptions.append(
+            UserSubscription(
+                id=duplicate_subscription_count + 1,
+                user_id=7,
+                subscription_id=duplicate_subscription_count + 1,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            )
+        )
         feed_rows.append(
             UserVideoFeed(
                 user_id=7,
@@ -779,6 +802,7 @@ def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_row
         )
 
         session.add_all(subscriptions)
+        session.add_all(user_subscriptions)
         session.add_all([
             Video(
                 id=301,
@@ -855,6 +879,28 @@ def test_get_video_counts_uses_feed_rows_for_realtime_counts(monkeypatch):
 
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
+            Subscription(
+                id=1,
+                type='CHANNEL',
+                name='Realtime counts feed',
+                url='https://www.youtube.com/channel/counts',
+                avatar=None,
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            UserSubscription(
+                id=1,
+                user_id=7,
+                subscription_id=1,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
             Video(
                 id=201,
                 title='Read video',
@@ -936,6 +982,28 @@ def test_get_video_counts_does_not_order_candidate_videos(monkeypatch):
 
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
+            Subscription(
+                id=1,
+                type='CHANNEL',
+                name='Counted feed',
+                url='https://www.youtube.com/channel/counted',
+                avatar=None,
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            UserSubscription(
+                id=1,
+                user_id=7,
+                subscription_id=1,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
             Video(
                 id=401,
                 title='Counted video',
@@ -1146,6 +1214,172 @@ def test_list_videos_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
 
     assert total == 0
     assert videos == []
+
+
+def test_list_videos_ignores_deleted_user_subscription_feed_rows(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add_all([
+            Subscription(
+                id=1,
+                type='CHANNEL',
+                name='Removed feed',
+                url='https://www.youtube.com/channel/removed',
+                avatar=None,
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            UserSubscription(
+                id=1,
+                user_id=7,
+                subscription_id=1,
+                is_deleted=True,
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 2),
+            ),
+            Video(
+                id=801,
+                title='Removed subscription video',
+                url='https://www.youtube.com/watch?v=801',
+                domain='youtube.com',
+                duration=180,
+                thumbnail='https://img.example.com/801.jpg',
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+                is_deleted=False,
+            ),
+            UserVideoFeed(
+                user_id=7,
+                subscription_id=1,
+                video_id=801,
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                video_created_at=datetime(2024, 1, 3, 12, 0, 0),
+                domain='youtube.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+            ),
+        ])
+        session.commit()
+
+    videos, total = video_service.list_videos(
+        user_id=7,
+        query=None,
+        subscription_id=None,
+        category='all',
+        sort_by='publish_date',
+        nsfw='all',
+        domains=None,
+        page=1,
+        page_size=10,
+        with_total=True,
+    )
+    counts = video_service.get_video_counts(
+        user_id=7,
+        query=None,
+        subscription_id=None,
+        nsfw='all',
+        domains=None,
+    )
+
+    assert total == 0
+    assert videos == []
+    assert counts['all'] == 0
+
+
+def test_list_videos_subscription_metadata_ignores_deleted_feed_links(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add_all([
+            Subscription(
+                id=1,
+                type='CHANNEL',
+                name='Active feed',
+                url='https://www.youtube.com/channel/active',
+                avatar='https://img.example.com/active.jpg',
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            Subscription(
+                id=2,
+                type='CHANNEL',
+                name='Removed feed',
+                url='https://www.youtube.com/channel/removed',
+                avatar='https://img.example.com/removed.jpg',
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            UserSubscription(id=1, user_id=7, subscription_id=1, is_deleted=False, is_nsfw=False, created_at=datetime(2024, 1, 1), updated_at=datetime(2024, 1, 1)),
+            UserSubscription(id=2, user_id=7, subscription_id=2, is_deleted=True, is_nsfw=False, created_at=datetime(2024, 1, 1), updated_at=datetime(2024, 1, 2)),
+            Video(
+                id=802,
+                title='Shared video',
+                url='https://www.youtube.com/watch?v=802',
+                domain='youtube.com',
+                duration=180,
+                thumbnail='https://img.example.com/802.jpg',
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+                is_deleted=False,
+            ),
+            UserVideoFeed(
+                user_id=7,
+                subscription_id=1,
+                video_id=802,
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                video_created_at=datetime(2024, 1, 3, 12, 0, 0),
+                domain='youtube.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+            ),
+            UserVideoFeed(
+                user_id=7,
+                subscription_id=2,
+                video_id=802,
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                video_created_at=datetime(2024, 1, 3, 12, 0, 0),
+                domain='youtube.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+            ),
+        ])
+        session.commit()
+
+    videos, total = video_service.list_videos(
+        user_id=7,
+        query=None,
+        subscription_id=None,
+        category='all',
+        sort_by='publish_date',
+        nsfw='all',
+        domains=None,
+        page=1,
+        page_size=10,
+        with_total=True,
+    )
+
+    assert total == 1
+    assert [video['id'] for video in videos] == [802]
+    assert [subscription['id'] for subscription in videos[0]['subscriptions']] == [1]
 
 
 def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale(monkeypatch):
