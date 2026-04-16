@@ -54,7 +54,7 @@
       :duration="duration"
       :content-type="contentType"
       :nsfw="nsfw"
-      :site="nsfwSite"
+      :site="site"
       :subscription-id="subscriptionId"
       :site-label="siteLabel"
       :sort-by="localSortBy"
@@ -89,7 +89,6 @@ const props = withDefaults(defineProps<{
   nsfw?: string
   sortBy?: string
   site?: string
-  nsfwSite?: string
   subscriptionId?: string | number
   tabsWithCounts?: TabWithCount[]
   isRefreshing?: boolean

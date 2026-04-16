@@ -162,7 +162,7 @@ const emit = defineEmits<{
   'update:sortBy': [v: string]
 }>()
 
-const { settings } = useUserSettings()
+const { settings, loadUserSettings } = useUserSettings()
 const { options: siteOptions, fetchSites } = useSites()
 
 const localTimeRange = ref<TimeRange>(props.timeRange)
@@ -225,6 +225,7 @@ const handleKeydown = (e: KeyboardEvent) => {
 }
 onMounted(async () => {
   document.addEventListener('keydown', handleKeydown)
+  await loadUserSettings()
   if (!siteOptions.value) {
     await fetchSites()
   }
