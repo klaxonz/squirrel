@@ -676,6 +676,7 @@ const formatClipDuration = (marker) => {
 }
 
 const currentInteractionType = computed(() => video.value?.interaction_type ?? null);
+const isLaterActionActive = computed(() => currentInteractionType.value === INTERACTION_TYPE.LATER);
 
 const videoPrimaryActions = computed(() => {
   const actions = [
@@ -700,8 +701,8 @@ const videoPrimaryActions = computed(() => {
     {
       key: 'later',
       label: '稍后看',
-      icon: currentInteractionType.value === INTERACTION_TYPE.LATER ? 'lucide:list-plus' : 'lucide:list-plus',
-      active: currentInteractionType.value === INTERACTION_TYPE.LATER,
+      icon: isLaterActionActive.value ? 'lucide:bookmark-check' : 'lucide:bookmark-plus',
+      active: isLaterActionActive.value,
       tone: 'later',
       variant: 'primary',
       onClick: () => video.value && handleLater(video.value)
@@ -2543,9 +2544,21 @@ onUnmounted(() => {
 }
 
 .action-btn.tone-later.is-active {
-  background: hsl(var(--accent) / 0.12);
-  color: hsl(var(--accent));
-  border-color: hsl(var(--accent) / 0.4);
+  background:
+    linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.18),
+      hsl(var(--accent) / 0.18)
+    );
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--primary) / 0.45);
+  box-shadow:
+    0 0 0 1px hsl(var(--primary) / 0.14),
+    0 10px 24px hsl(var(--surface-shadow));
+}
+
+.action-btn.tone-later.is-active .action-btn__icon {
+  color: hsl(var(--primary));
 }
 
 /* 响应式适配 */
