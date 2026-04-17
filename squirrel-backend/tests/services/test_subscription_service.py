@@ -628,6 +628,92 @@ def test_import_user_subscriptions_can_enqueue_synchronously(monkeypatch):
     ]
 
 
+def test_import_user_subscriptions_skips_manually_unsubscribed_urls_for_auto_import(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_subscription(engine, user_ids=[1])
+
+    with Session(engine, expire_on_commit=False) as session:
+        subscription = session.get(Subscription, 1)
+        subscription.url = 'https://example.com/channel/1'
+        session.commit()
+
+    assert subscription_service.unsubscribe_by_id(user_id=1, subscription_id=1) is True
+
+    enqueued_batches = []
+
+    monkeypatch.setattr(
+        subscription_service,
+        '_load_runtime_import_items',
+        lambda _site_name: [
+            subscription_service.SubscriptionImportItem(url='https://example.com/channel/1', name='Channel 1'),
+            subscription_service.SubscriptionImportItem(url='https://example.com/channel/2', name='Channel 2'),
+        ],
+    )
+    monkeypatch.setattr(
+        subscription_service,
+        '_enqueue_subscriptions_async',
+        lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
+    )
+
+    result = subscription_service.import_user_subscriptions(
+        site_name='example',
+        user_id=1,
+        use_background_thread=False,
+        respect_manual_unsubscribe=True,
+    )
+
+    assert result == {
+        'total': 1,
+        'found': 2,
+        'selected': 2,
+        'skipped': 1,
+    }
+    assert len(enqueued_batches) == 1
+    assert [item.url for item in enqueued_batches[0][0]] == ['https://example.com/channel/2']
+
+
+def test_import_user_subscriptions_allows_manual_reimport_of_unsubscribed_urls(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_subscription(engine, user_ids=[1])
+
+    with Session(engine, expire_on_commit=False) as session:
+        subscription = session.get(Subscription, 1)
+        subscription.url = 'https://example.com/channel/1'
+        session.commit()
+
+    assert subscription_service.unsubscribe_by_id(user_id=1, subscription_id=1) is True
+
+    enqueued_batches = []
+
+    monkeypatch.setattr(
+        subscription_service,
+        '_load_runtime_import_items',
+        lambda _site_name: [
+            subscription_service.SubscriptionImportItem(url='https://example.com/channel/1', name='Channel 1'),
+        ],
+    )
+    monkeypatch.setattr(
+        subscription_service,
+        '_enqueue_subscriptions_async',
+        lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
+    )
+
+    result = subscription_service.import_user_subscriptions(
+        site_name='example',
+        user_id=1,
+        use_background_thread=False,
+    )
+
+    assert result == {
+        'total': 1,
+        'found': 1,
+        'selected': 1,
+        'skipped': 0,
+    }
+    assert len(enqueued_batches) == 1
+    assert [item.url for item in enqueued_batches[0][0]] == ['https://example.com/channel/1']
+
+
 def test_auto_import_missing_subscriptions_imports_each_enabled_site_for_each_user(monkeypatch):
     _setup_test_env(monkeypatch)
     calls = []
@@ -642,8 +728,8 @@ def test_auto_import_missing_subscriptions_imports_each_enabled_site_for_each_us
     monkeypatch.setattr(
         subscription_service,
         'import_user_subscriptions',
-        lambda site_name, user_id, selected_urls=None, *, use_background_thread=True: (
-            calls.append((site_name, user_id, use_background_thread))
+        lambda site_name, user_id, selected_urls=None, *, use_background_thread=True, respect_manual_unsubscribe=False: (
+            calls.append((site_name, user_id, use_background_thread, respect_manual_unsubscribe))
             or {
                 'total': 1,
                 'skipped': 2,
@@ -654,10 +740,10 @@ def test_auto_import_missing_subscriptions_imports_each_enabled_site_for_each_us
     result = subscription_service.auto_import_missing_subscriptions()
 
     assert calls == [
-        ('youtube', 1, False),
-        ('bilibili', 1, False),
-        ('youtube', 2, False),
-        ('bilibili', 2, False),
+        ('youtube', 1, False, True),
+        ('bilibili', 1, False, True),
+        ('youtube', 2, False, True),
+        ('bilibili', 2, False, True),
     ]
     assert result == {
         'users': 2,

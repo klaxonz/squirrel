@@ -184,6 +184,20 @@ def get_active_user_subscription_url_map(user_id: int) -> Dict[str, int]:
         return {url: subscription_id for url, subscription_id in rows if url}
 
 
+def get_deleted_user_subscription_urls(user_id: int) -> set[str]:
+    with get_session() as session:
+        rows = session.execute(
+            select(Subscription.url)
+            .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
+            .where(
+                Subscription.url.is_not(None),
+                UserSubscription.user_id == user_id,
+                UserSubscription.is_deleted.is_(True),
+            )
+        ).all()
+        return {url for url, in rows if url}
+
+
 def create_subscription(user_id: int, subscribe_info: SubscriptionMeta):  
     with get_session() as session:
         user_subscription = None
@@ -832,6 +846,7 @@ def import_user_subscriptions(
     selected_urls: Optional[List[str]] = None,
     *,
     use_background_thread: bool = True,
+    respect_manual_unsubscribe: bool = False,
 ) -> Dict[str, Any]:
     """
     从指定站点导入用户的所有订阅（异步）
@@ -863,7 +878,15 @@ def import_user_subscriptions(
 
         imported_url_map = get_active_user_subscription_url_map(user_id)
         imported_urls = set(imported_url_map.keys())
-        to_import = [s for s in subscriptions if s.url not in imported_urls]
+        manually_unsubscribed_urls = (
+            get_deleted_user_subscription_urls(user_id)
+            if respect_manual_unsubscribe
+            else set()
+        )
+        to_import = [
+            s for s in subscriptions
+            if s.url not in imported_urls and s.url not in manually_unsubscribed_urls
+        ]
 
         if to_import:
             if use_background_thread:
@@ -924,6 +947,7 @@ def auto_import_missing_subscriptions(
                     site_name,
                     user_id,
                     use_background_thread=False,
+                    respect_manual_unsubscribe=True,
                 )
                 summary['imported'] += int(result.get('total') or 0)
                 summary['skipped'] += int(result.get('skipped') or 0)
