@@ -13,6 +13,12 @@ test('hls plugin preloads the target level before switching when manually changi
   )
 })
 
+test('hls plugin preserves fixed quality after stream errors', async () => {
+  const source = await readFile(hlsPluginPath, 'utf8')
+
+  assert.match(source, /preserveManualLevelOnError:\s*true/)
+})
+
 test('hls plugin uses stable quality ids instead of exposing raw level indexes', async () => {
   const source = await readFile(hlsPluginPath, 'utf8')
 

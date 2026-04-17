@@ -316,6 +316,7 @@ export class HlsPlugin implements PlayerPlugin {
       enableWorker: true,
       lowLatencyMode: false,
       backBufferLength: 90,
+      preserveManualLevelOnError: true,
       ...this.options.config
     }
 

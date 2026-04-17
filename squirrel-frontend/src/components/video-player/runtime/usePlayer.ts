@@ -245,7 +245,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     onTimeUpdate,
     onQualityChange,
     errorRecovery: {
-      enableQualityFallback: true,
+      enableQualityFallback: false,
     },
   })
 
