@@ -5,7 +5,23 @@
       <div class="latest-videos__container channel-header__container">
         <div class="header-content">
           <div class="channel-main-info">
-          <div class="avatar-frame">
+
+            <a
+              v-if="detail?.url"
+              :href="detail.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="avatar-frame avatar-frame--link"
+            >
+              <SubscriptionAvatar
+                :src="detail?.avatar || null"
+                :name="detail?.name || 'UNKNOWN_CHANNEL'"
+                size="lg"
+                class="channel-avatar-card"
+              />
+              <div class="avatar-scan"></div>
+            </a>
+            <div v-else class="avatar-frame">
               <SubscriptionAvatar
                 :src="detail?.avatar || null"
                 :name="detail?.name || 'UNKNOWN_CHANNEL'"
@@ -18,12 +34,21 @@
             <div class="channel-text-minimal">
               <div class="channel-top-row">
                 <div class="channel-title-row">
-                  <h2 class="channel-title-minimal">{{ detail?.name || 'UNKNOWN_CHANNEL' }}</h2>
+                  <a
+                    v-if="detail?.url"
+                    :href="detail.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="channel-title-link"
+                  >
+                    <h2 class="channel-title-minimal">{{ detail?.name || 'UNKNOWN_CHANNEL' }}</h2>
+                  </a>
+                  <h2 v-else class="channel-title-minimal">{{ detail?.name || 'UNKNOWN_CHANNEL' }}</h2>
                   <button
-                  type="button"
-                  class="unsubscribe-minimal unsubscribe-minimal--tag"
-                  :disabled="isUnsubscribing"
-                  @click="handleUnsubscribe"
+                    type="button"
+                    class="unsubscribe-minimal unsubscribe-minimal--tag"
+                    :disabled="isUnsubscribing"
+                    @click="handleUnsubscribe"
                   >
                     {{ isUnsubscribing ? '取消中...' : '取消订阅' }}
                   </button>
@@ -166,6 +191,16 @@ watch(() => props.subscriptionId, () => {
   overflow: hidden;
 }
 
+.avatar-frame--link {
+  display: block;
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+
+.avatar-frame--link:hover {
+  transform: translateY(-1px);
+}
+
 .channel-avatar-card {
   display: block;
   width: 100%;
@@ -223,6 +258,11 @@ watch(() => props.subscriptionId, () => {
   min-width: 0;
 }
 
+.channel-title-link {
+  min-width: 0;
+  text-decoration: none;
+}
+
 .channel-side-meta {
   display: flex;
   align-items: center;
@@ -240,6 +280,10 @@ watch(() => props.subscriptionId, () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.channel-title-link:hover .channel-title-minimal {
+  color: hsl(var(--primary));
 }
 
 .nsfw-tag {
