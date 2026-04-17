@@ -1146,6 +1146,105 @@ def test_list_videos_search_matches_subscription_name(monkeypatch):
     assert [video['id'] for video in videos] == [502]
 
 
+def test_list_videos_search_orders_title_matches_before_newer_subscription_matches(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add_all([
+            Subscription(
+                id=1,
+                type='CHANNEL',
+                name='Archive Feed',
+                url='https://www.youtube.com/channel/archive',
+                avatar=None,
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            Subscription(
+                id=2,
+                type='CHANNEL',
+                name='Gamma Subscription',
+                url='https://www.youtube.com/channel/gamma',
+                avatar=None,
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            UserSubscription(id=1, user_id=7, subscription_id=1, is_deleted=False, is_nsfw=False, created_at=datetime(2024, 1, 1), updated_at=datetime(2024, 1, 1)),
+            UserSubscription(id=2, user_id=7, subscription_id=2, is_deleted=False, is_nsfw=False, created_at=datetime(2024, 1, 1), updated_at=datetime(2024, 1, 1)),
+            Video(
+                id=511,
+                title='Gamma title match',
+                url='https://www.youtube.com/watch?v=511',
+                domain='youtube.com',
+                duration=180,
+                thumbnail='https://img.example.com/511.jpg',
+                publish_date=datetime(2024, 1, 1, 12, 0, 0),
+                created_at=datetime(2024, 1, 1, 12, 0, 0),
+                updated_at=datetime(2024, 1, 1, 12, 0, 0),
+                is_deleted=False,
+            ),
+            Video(
+                id=512,
+                title='Fresh unrelated upload',
+                url='https://www.youtube.com/watch?v=512',
+                domain='youtube.com',
+                duration=180,
+                thumbnail='https://img.example.com/512.jpg',
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+                is_deleted=False,
+            ),
+            UserVideoFeed(
+                user_id=7,
+                subscription_id=1,
+                video_id=511,
+                publish_date=datetime(2024, 1, 1, 12, 0, 0),
+                video_created_at=datetime(2024, 1, 1, 12, 0, 0),
+                domain='youtube.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 1, 12, 0, 0),
+                updated_at=datetime(2024, 1, 1, 12, 0, 0),
+            ),
+            UserVideoFeed(
+                user_id=7,
+                subscription_id=2,
+                video_id=512,
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                video_created_at=datetime(2024, 1, 3, 12, 0, 0),
+                domain='youtube.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+            ),
+        ])
+        session.commit()
+
+    videos, total = video_service.list_videos(
+        user_id=7,
+        query='gamma',
+        subscription_id=None,
+        category='all',
+        sort_by='publish_date',
+        nsfw='all',
+        domains=None,
+        page=1,
+        page_size=10,
+        with_total=True,
+    )
+
+    assert total == 2
+    assert [video['id'] for video in videos] == [511, 512]
+
+
 def test_list_videos_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
     engine = _setup_test_env(monkeypatch)
 
