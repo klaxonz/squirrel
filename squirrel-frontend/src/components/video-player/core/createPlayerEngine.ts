@@ -236,6 +236,11 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     el.loop = loop
   }
 
+  const saveConfigPatch = (patch: Partial<UserConfig>): void => {
+    config = { ...config, ...patch }
+    void adapter.saveConfig(patch)
+  }
+
   const applyConfig = (next: UserConfig): void => {
     const hasAutoplay = next.autoplay !== undefined
     const hasAutoplayNext = next.autoplayNext !== undefined
@@ -1021,6 +1026,10 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   const setSubtitleTracks = async (tracks: SubtitleTrack[]): Promise<void> => {
     subtitleTracks = tracks
+    if (tracks.length === 0) {
+      currentSubtitle = null
+    }
+
     const subtitlesPlugin = pluginManager.get<any>('subtitles')
     if (subtitlesPlugin && typeof subtitlesPlugin.setTracks === 'function') {
       await subtitlesPlugin.setTracks(tracks)
@@ -1042,6 +1051,12 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
         subtitlesPlugin.disable()
       }
     }
+
+    saveConfigPatch({
+      subtitleEnabled: !!track,
+      subtitleTrackId: track?.id,
+      subtitleLanguage: track?.language,
+    })
   }
 
   const getSubtitleStyle = (): Record<string, any> => {

@@ -434,7 +434,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { formatTime } from '@/utils/dateFormat'
-import { usePlayer } from './runtime/usePlayer'
+import { usePlayer, type PlayerOptions } from './runtime/usePlayer'
 import {
   getNextControlsVisibilityOnTouchTap,
   shouldHandlePointerVisibility,
@@ -469,6 +469,8 @@ interface Props {
   poster?: string
   title?: string
   autoplay?: boolean
+  adapter?: PlayerOptions['adapter'] | null
+  i18nOptions?: PlayerOptions['i18nOptions']
   theme?: ThemeName
   initialTime?: number
   widescreen?: boolean
@@ -486,6 +488,8 @@ const props = withDefaults(defineProps<Props>(), {
   poster: '',
   title: '',
   autoplay: true,
+  adapter: null,
+  i18nOptions: undefined,
   theme: 'dark',
   widescreen: false,
   externalLoading: false,
@@ -520,7 +524,9 @@ const {
   currentQualityLabel, currentQualityId, setQuality, setCodecFamily
 } = usePlayer({
   autoplay: props.autoplay,
+  adapter: props.adapter ?? undefined,
   theme: props.theme,
+  i18nOptions: props.i18nOptions,
   onTouchTap: () => {
     toggleControls(getNextControlsVisibilityOnTouchTap(store.controlsVisible))
   },

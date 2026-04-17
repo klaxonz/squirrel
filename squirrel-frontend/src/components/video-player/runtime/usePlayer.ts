@@ -196,6 +196,10 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   const currentSubtitle = ref<SubtitleTrack | null>(null)
   const subtitleStyle = ref<Record<string, any>>(loadSubtitleStyleFromStorage())
   const subtitlePresets = BUILT_IN_PRESETS
+  const preferredSubtitleEnabled = ref(true)
+  const preferredSubtitleTrackId = ref<string | null>(null)
+  const preferredSubtitleLanguage = ref<string | null>(null)
+  const subtitlePreferenceReady = ref(false)
 
   const sourceType = ref<'native' | 'hls' | 'dash' | null>(null)
 
@@ -272,6 +276,41 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     if (cfg.volume !== undefined) store.setVolume(cfg.volume as number)
     if (cfg.muted !== undefined) store.setMuted(cfg.muted as boolean)
     if (cfg.playbackRate !== undefined) store.setPlaybackRate(cfg.playbackRate as number)
+    if (cfg.subtitleEnabled !== undefined) preferredSubtitleEnabled.value = !!cfg.subtitleEnabled
+    if (typeof cfg.subtitleTrackId === 'string') preferredSubtitleTrackId.value = cfg.subtitleTrackId
+    if (typeof cfg.subtitleLanguage === 'string') preferredSubtitleLanguage.value = cfg.subtitleLanguage
+    if (cfg.subtitleEnabled === false) {
+      store.setSubtitlesEnabled(false)
+      store.setCurrentSubtitle(null)
+      currentSubtitle.value = null
+    }
+  }
+
+  const isKnownLanguage = (language: unknown): language is string => (
+    typeof language === 'string'
+    && language.trim().length > 0
+    && language.toLowerCase() !== 'unknown'
+  )
+
+  const findPreferredSubtitleTrack = (tracks: SubtitleTrack[]): SubtitleTrack | null => {
+    if (tracks.length === 0) return null
+
+    const language = isKnownLanguage(preferredSubtitleLanguage.value)
+      ? preferredSubtitleLanguage.value
+      : (isKnownLanguage(currentSubtitle.value?.language) ? currentSubtitle.value.language : null)
+
+    if (language) {
+      const languageMatch = tracks.find((track) => track.language === language)
+      if (languageMatch) return languageMatch
+    }
+
+    const trackId = preferredSubtitleTrackId.value || currentSubtitle.value?.id
+    if (trackId) {
+      const idMatch = tracks.find((track) => track.id === trackId)
+      if (idMatch) return idMatch
+    }
+
+    return tracks.find((track) => track.default) || tracks[0] || null
   }
 
   engine.on('play', () => {
@@ -435,6 +474,9 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     currentSubtitle.value = track
     store.setCurrentSubtitle(track)
     store.setSubtitlesEnabled(!!track)
+    preferredSubtitleEnabled.value = !!track
+    preferredSubtitleTrackId.value = track?.id || null
+    preferredSubtitleLanguage.value = isKnownLanguage(track?.language) ? track.language : null
     engine.setSubtitle(track)
   }
 
@@ -452,27 +494,36 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
   const setSubtitleTracks = async (tracks: SubtitleTrack[]): Promise<void> => {
     subtitleTracks.value = tracks
+    if (!subtitlePreferenceReady.value) return
+
     await engine.setSubtitleTracks(tracks)
 
-    const nextTrack = tracks.find((track) => track.id === currentSubtitle.value?.id) || null
-
-    currentSubtitle.value = nextTrack
-    store.setCurrentSubtitle(nextTrack)
-    if (nextTrack && store.subtitlesEnabled) {
-      engine.setSubtitle(nextTrack)
+    if (tracks.length === 0) {
+      currentSubtitle.value = null
+      store.setCurrentSubtitle(null)
+      store.setSubtitlesEnabled(false)
       return
     }
 
+    if (preferredSubtitleEnabled.value) {
+      const nextTrack = findPreferredSubtitleTrack(tracks)
+      setSubtitle(nextTrack)
+      return
+    }
+
+    currentSubtitle.value = null
+    store.setCurrentSubtitle(null)
     store.setSubtitlesEnabled(false)
     engine.setSubtitle(null)
   }
 
   const toggleSubtitles = (): void => {
-    engine.toggleSubtitles()
-    const subtitlesPlugin = engine.getPlugin<any>('subtitles')
-    if (subtitlesPlugin && typeof subtitlesPlugin.isEnabled === 'function') {
-      store.setSubtitlesEnabled(!!subtitlesPlugin.isEnabled())
+    if (store.subtitlesEnabled) {
+      setSubtitle(null)
+      return
     }
+
+    setSubtitle(findPreferredSubtitleTrack(subtitleTracks.value))
   }
 
   const loadSource = (source: MediaSource): void => {
@@ -536,6 +587,8 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     store.setLoop(loop)
 
     await engine.init()
+    updateStoreFromConfig(engine.getConfig())
+    subtitlePreferenceReady.value = true
 
     if (Object.keys(subtitleStyle.value).length > 0) {
       engine.setSubtitleStyle(subtitleStyle.value)
@@ -544,7 +597,6 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
       await setSubtitleTracks(subtitleTracks.value)
     }
 
-    updateStoreFromConfig(engine.getConfig())
     syncCodecFamilies()
     isReady.value = true
   })

@@ -22,6 +22,8 @@ export interface UserConfig {
   volume?: number
   muted?: boolean
   playbackRate?: number
+  subtitleEnabled?: boolean
+  subtitleTrackId?: string
   subtitleLanguage?: string
   quality?: string
 }
