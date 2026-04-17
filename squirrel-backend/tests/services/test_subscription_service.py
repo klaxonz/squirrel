@@ -17,6 +17,7 @@ from models.subscription import Subscription
 from models.subscription_sync_state import SubscriptionSyncState
 from models.user import User
 from models.video import Video
+from schemas.subscription.dto.subscription_dto import SubscriptionDto
 from models.user_video_feed import UserVideoFeed
 from services import subscription_service
 from services import subscription_sync_state_service
@@ -937,6 +938,69 @@ def test_list_subscriptions_only_counts_extracts_for_current_page(monkeypatch):
     assert total == 2
     assert [item['id'] for item in subscriptions] == [2]
     assert captured_ids == [[2]]
+
+
+def test_list_subscriptions_uses_lightweight_serializer_without_dto_validation(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_subscription(engine, user_ids=[1])
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add_all([
+            Video(
+                id=301,
+                title='Video 301',
+                url='https://www.youtube.com/watch?v=301',
+                domain='youtube.com',
+                duration=120,
+                thumbnail='https://img.example.com/301.jpg',
+                publish_date=datetime(2024, 1, 2),
+                created_at=datetime(2024, 1, 2),
+                updated_at=datetime(2024, 1, 2),
+                is_deleted=False,
+            ),
+            SubscriptionVideo(subscription_id=1, video_id=301),
+        ])
+        session.commit()
+
+    monkeypatch.setattr(subscription_service.user_config_service, 'get_config', lambda _user_id: {'showNsfw': False})
+
+    def _unexpected_validate(_cls, _data):
+        raise AssertionError('list_subscriptions should not call SubscriptionDto.model_validate')
+
+    monkeypatch.setattr(SubscriptionDto, 'model_validate', classmethod(_unexpected_validate))
+
+    subscriptions, total = subscription_service.list_subscriptions(
+        user_id=1,
+        query=None,
+        type=None,
+        nsfw='all',
+        page=1,
+        page_size=10,
+    )
+
+    assert total == 1
+    assert subscriptions == [{
+        'id': 1,
+        'type': 'CHANNEL',
+        'name': 'Test subscription',
+        'url': 'https://www.youtube.com/channel/1',
+        'avatar': None,
+        'description': None,
+        'total_videos': 1,
+        'is_deleted': False,
+        'extra_data': {},
+        'created_at': '2024-01-01 00:00:00',
+        'updated_at': '2024-01-01 00:00:00',
+        'is_nsfw': False,
+        'total_extract': 1,
+        'sync_status': 'queued',
+        'last_sync_at': '',
+        'last_success_at': '',
+        'next_sync_at': '2024-01-01 01:00:00',
+        'last_error': None,
+        'pending_video_count': 3,
+        'site': 'youtube',
+    }]
 
 
 def test_get_subscription_detail_prefers_actual_extract_count_when_total_videos_is_stale(monkeypatch):

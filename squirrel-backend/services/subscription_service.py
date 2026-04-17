@@ -1,6 +1,7 @@
 import logging
+from datetime import datetime
 from functools import lru_cache
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Optional, Tuple, List, Dict, Any, Mapping
 from urllib.parse import urlparse
 
 from sqlalchemy import select, func, and_, or_, false, case, literal
@@ -27,7 +28,7 @@ from services.nsfw_policy import resolve_effective_nsfw_filter
 from sqlfile.subscription_sql import get_subscription_sql
 from utils.site_catalog import SiteCatalog
 from utils.sql_parser import parse_dynamic_sql
-from utils.url_helper import extract_top_level_domain
+from utils.url_helper import extract_top_level_domain, get_site_from_url
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,10 @@ def _resolve_site_slug(url: Optional[str]) -> Optional[str]:
     if not url:
         return None
     try:
+        slug = get_site_from_url(url)
+        if slug:
+            return slug
+
         parsed = urlparse(url)
         domain = parsed.netloc or parsed.path.split('/')[0]
         slug, _ = SiteCatalog.find_site_by_domain(domain)
@@ -118,6 +123,39 @@ def _load_subscription_extract_counts(session, subscription_ids: List[int]) -> D
     return {
         int(subscription_id): int(total_extract or 0)
         for subscription_id, total_extract in rows
+    }
+
+
+def _serialize_datetime(dt: Optional[datetime]) -> str:
+    return dt.strftime('%Y-%m-%d %H:%M:%S') if dt else ''
+
+
+def _serialize_subscription_list_item(row: Mapping[str, Any], total_extract: int) -> Dict[str, Any]:
+    row_data = row if isinstance(row, dict) else dict(row)
+    total_videos = max(int(row_data['total_videos'] or 0), total_extract)
+    url = row_data['url']
+
+    return {
+        'id': int(row_data['id']),
+        'type': row_data['type'],
+        'name': row_data['name'],
+        'url': url,
+        'avatar': row_data['avatar'],
+        'description': row_data['description'],
+        'total_videos': total_videos,
+        'is_deleted': bool(row_data['is_deleted']),
+        'extra_data': row_data['extra_data'],
+        'created_at': _serialize_datetime(row_data['created_at']),
+        'updated_at': _serialize_datetime(row_data['updated_at']),
+        'is_nsfw': bool(row_data['is_nsfw']),
+        'total_extract': total_extract,
+        'sync_status': row_data['sync_status'] or 'idle',
+        'last_sync_at': _serialize_datetime(row_data['last_sync_at']),
+        'last_success_at': _serialize_datetime(row_data['last_success_at']),
+        'next_sync_at': _serialize_datetime(row_data['next_sync_at']),
+        'last_error': row_data['last_error'],
+        'pending_video_count': int(row_data['pending_video_count'] or 0),
+        'site': _resolve_site_slug(url),
     }
 
 
@@ -336,13 +374,9 @@ def list_subscriptions(
 
         subscriptions = []
         for row in results:
-            payload = dict(row._mapping)
-            total_extract = extract_count_map.get(int(payload['id']), 0)
-            payload['total_extract'] = total_extract
-            payload['total_videos'] = max(int(payload.get('total_videos') or 0), total_extract)
-            dto = SubscriptionDto.model_validate(payload)
-            dto.site = _resolve_site_slug(dto.url)
-            subscriptions.append(dto.model_dump())
+            row_mapping = row._mapping
+            total_extract = extract_count_map.get(int(row_mapping['id']), 0)
+            subscriptions.append(_serialize_subscription_list_item(row_mapping, total_extract))
 
         return subscriptions, total_count
 
