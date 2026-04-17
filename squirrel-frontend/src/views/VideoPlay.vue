@@ -860,15 +860,21 @@ const handlePrevVideo = async () => {
 const handleNextVideo = async () => {
   if (!relatedVideos.value?.length) return;
 
+  const currentId = String(video.value?.id ?? route.params.videoId ?? '');
+
   // 查找第一个未在最近播放历史中的视频
-  const nextVideo = relatedVideos.value.find(v => !recentlyPlayed.value.includes(v.id));
+  const nextVideo = relatedVideos.value.find(v => (
+    v?.id
+    && String(v.id) !== currentId
+    && !recentlyPlayed.value.includes(v.id)
+  ));
   if (nextVideo?.id) {
     await goToVideo(nextVideo.id, nextVideo);
     return;
   }
 
   // 如果所有视频都播放过，就播放第一个
-  const firstVideo = relatedVideos.value[0];
+  const firstVideo = relatedVideos.value.find(v => v?.id && String(v.id) !== currentId);
   if (firstVideo?.id) {
     await goToVideo(firstVideo.id, firstVideo);
   }
@@ -1256,11 +1262,23 @@ const handleAutoplayNext = async (evt) => {
     const loopEnabled = evt?.loop ?? false;
     if (!autoplayEnabled || !autoplayNextEnabled || loopEnabled) return;
 
+    const playlistNext = goToNext();
+    if (playlistNext?.id) {
+      await goToVideo(playlistNext.id, playlistNext);
+      return;
+    }
+
     const relatedList = Array.isArray(relatedVideos.value) ? relatedVideos.value : [];
     if (!relatedList.length) return;
 
+    const currentId = String(video.value?.id ?? route.params.videoId ?? '');
+
     // 查找第一个未在最近播放历史中的视频
-    const next = relatedList.find(v => !recentlyPlayed.value.includes(v.id));
+    const next = relatedList.find(v => (
+      v?.id
+      && String(v.id) !== currentId
+      && !recentlyPlayed.value.includes(v.id)
+    ));
     if (next?.id) {
       await goToVideo(next.id, next);
       return;

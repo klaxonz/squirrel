@@ -309,6 +309,11 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     store.setBufferedProgress(calculateBufferedAheadPercent(buffered, duration, store.currentTime))
   })
 
+  engine.on('loadsstart', () => {
+    store.setCanPlay('video', false)
+    store.setLoading(true, 'fetching')
+  })
+
   engine.on('volumechange', ({ volume, muted }) => {
     store.setVolume(volume * 100)
     store.setMuted(muted)

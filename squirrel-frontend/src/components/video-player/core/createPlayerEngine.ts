@@ -143,6 +143,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   let pendingSource: MediaSource | null = null
   let pendingSourceKey = ''
   let autoPlayOnReady = false
+  let mediaLoadStartedForCurrentSource = false
+  let mediaMetadataLoadedForCurrentSource = false
 
   let lastSavedTime = 0
   let lastSavedAt = 0
@@ -258,6 +260,33 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     loading = false
     events.emit('error', error)
     options.onError?.(error)
+  }
+
+  const resolveMediaUrl = (src: string): string => {
+    try {
+      return new URL(src, window.location.href).href
+    } catch {
+      return src
+    }
+  }
+
+  const isNativeMediaSourceCurrent = (): boolean => {
+    if (!videoElement || !currentSource || currentSourceType !== 'native') return true
+    if (!videoElement.currentSrc) return false
+    return resolveMediaUrl(videoElement.currentSrc) === resolveMediaUrl(currentSource.src)
+  }
+
+  const markSourceLoadingStarted = (): void => {
+    loading = true
+    mediaLoadStartedForCurrentSource = false
+    mediaMetadataLoadedForCurrentSource = false
+    events.emit('loadsstart', undefined)
+  }
+
+  const canAcceptNativeCanPlay = (): boolean => {
+    if (!isNativeMediaSourceCurrent()) return false
+    if (!loading) return true
+    return mediaLoadStartedForCurrentSource && mediaMetadataLoadedForCurrentSource
   }
 
   const setRecoveryQualities = (qs: QualityLevel[]): void => {
@@ -523,6 +552,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     const nextKey = source.key || src
     if (nextKey === currentSourceKey) return
 
+    markSourceLoadingStarted()
+
     try {
       videoElement.pause()
     } catch {}
@@ -569,7 +600,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     if (nextKey === currentSourceKey || nextKey === pendingSourceKey) return
 
     bufferedProgress = 0
-    loading = true
+    markSourceLoadingStarted()
     clearWaitingRecovery()
     qualities = []
     currentQualityLabel = null
@@ -626,8 +657,20 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     const onDurationChange = () => {
       events.emit('durationchange', video.duration)
     }
+    const onLoadStart = () => {
+      mediaLoadStartedForCurrentSource = true
+      mediaMetadataLoadedForCurrentSource = false
+      loading = true
+      events.emit('loadsstart', undefined)
+    }
     const onLoadedMetadata = () => {
+      if (!isNativeMediaSourceCurrent()) return
+      mediaMetadataLoadedForCurrentSource = true
       events.emit('loadedmetadata', { duration: video.duration, videoWidth: video.videoWidth, videoHeight: video.videoHeight })
+    }
+    const onLoadedData = () => {
+      if (!isNativeMediaSourceCurrent()) return
+      events.emit('loadeddata', undefined)
     }
     const onProgress = () => {
       if (video.buffered.length > 0 && video.duration > 0) {
@@ -654,6 +697,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       events.emit('waiting', undefined)
     }
     const onCanPlay = () => {
+      if (!canAcceptNativeCanPlay()) return
       loading = false
       retryCount = 0
       clearWaitingRecovery()
@@ -698,7 +742,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     video.addEventListener('ended', onEnded)
     video.addEventListener('timeupdate', onTimeUpdate)
     video.addEventListener('durationchange', onDurationChange)
+    video.addEventListener('loadstart', onLoadStart)
     video.addEventListener('loadedmetadata', onLoadedMetadata)
+    video.addEventListener('loadeddata', onLoadedData)
     video.addEventListener('progress', onProgress)
     video.addEventListener('volumechange', onVolumeChange)
     video.addEventListener('waiting', onWaiting)
@@ -714,7 +760,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       video.removeEventListener('ended', onEnded)
       video.removeEventListener('timeupdate', onTimeUpdate)
       video.removeEventListener('durationchange', onDurationChange)
+      video.removeEventListener('loadstart', onLoadStart)
       video.removeEventListener('loadedmetadata', onLoadedMetadata)
+      video.removeEventListener('loadeddata', onLoadedData)
       video.removeEventListener('progress', onProgress)
       video.removeEventListener('volumechange', onVolumeChange)
       video.removeEventListener('waiting', onWaiting)
