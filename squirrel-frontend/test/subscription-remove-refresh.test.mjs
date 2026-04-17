@@ -19,12 +19,13 @@ test('unsubscribe actions broadcast subscription removal events', async () => {
   assert.match(videoPlay, /notifySubscriptionRemoved\(subscriptionId\)/)
 })
 
-test('latest video list refreshes after a subscription removal event', async () => {
+test('latest video list jumps away from removed channel without refreshing', async () => {
   const source = await read('../src/views/LatestVideos.vue')
 
   assert.match(source, /import \{ onSubscriptionRemoved \} from ['"]@\/utils\/subscriptionEvents['"]/)
-  assert.match(source, /const needsSubscriptionRefresh = ref\(false\)/)
   assert.match(source, /stopSubscriptionRemovedListener = onSubscriptionRemoved/)
   assert.match(source, /router\.replace\(\{ name: 'AllVideos' \}\)/)
-  assert.match(source, /if \(needsSubscriptionRefresh\.value\) \{[\s\S]*refreshAfterSubscriptionRemoved\(\)[\s\S]*\}/)
+  assert.doesNotMatch(source, /needsSubscriptionRefresh/)
+  assert.doesNotMatch(source, /refreshAfterSubscriptionRemoved/)
+  assert.doesNotMatch(source, /router\.replace\(\{ name: 'AllVideos' \}\)\.then/)
 })
