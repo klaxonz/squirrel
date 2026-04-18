@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue'
+import { computed, shallowRef, ref, watch } from 'vue'
 import { getVideoCounts, getVideoList } from '@/api'
 
 type VideoId = string | number
@@ -37,7 +37,7 @@ type ApiResult<T> = { data?: T | null; error?: unknown | null }
 type VideoListResponse = { data?: unknown[] }
 
 export default function useLatestVideos(initial: InitialState = {}) {
-  const videos = ref<VideoListItem[]>([])
+  const videos = shallowRef<VideoListItem[]>([])
   const loading = ref(false)
   const allLoaded = ref(false)
   const error = ref<unknown | null>(null)
@@ -129,13 +129,12 @@ export default function useLatestVideos(initial: InitialState = {}) {
 
     if (currentPage.value === 1) {
       const seen = new Set<VideoId>()
-      videos.value = newVideos.filter((video) => {
-        if (seen.has(video.id)) {
-          return false
-        }
+      const deduped = newVideos.filter((video) => {
+        if (seen.has(video.id)) return false
         seen.add(video.id)
         return true
       })
+      videos.value = deduped
     } else {
       const existingIds = new Set(videos.value.map((v) => v.id))
       const uniqueNewVideos = newVideos.filter((video) => !existingIds.has(video.id))

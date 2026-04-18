@@ -131,7 +131,6 @@ const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction(
 
 const showMenu = ref(false)
 const menuPosition = ref({ x: 0, y: 0 })
-const showActors = ref(false)
 const showDefaultThumbnail = ref(false)
 const imageLoaded = ref(false)
 
@@ -140,43 +139,41 @@ const shouldBlurThumbnail = computed(() => systemConfig.value?.blur_nsfw_thumbna
 const videoCardId = computed(() => formatVideoCardId(props.video?.id))
 
 const displayDateText = computed(() => {
+  const video = props.video
   const timestamp = props.sortBy === 'created_at'
-    ? (props.video.created_at || props.video.uploaded_at)
-    : (props.video.uploaded_at || props.video.created_at)
-
+    ? (video.created_at || video.uploaded_at)
+    : (video.uploaded_at || video.created_at)
   return timestamp ? formatDate(timestamp) : ''
 })
 
+const subscriptions = computed(() => props.video.subscriptions || [])
+const actors = computed(() => props.video.actors || [])
+
 const displayAvatars = computed(() => {
-  let avatars = props.video.subscriptions?.map((subscription) => ({
+  const subs = subscriptions.value
+  let avatars = subs.map((subscription) => ({
     id: subscription.id,
     name: subscription.name,
     avatar: subscription.avatar,
-  })) || []
-
-  if (!avatars.length && props.video.actors) {
-    avatars = props.video.actors.map((actor) => ({
+  }))
+  if (!avatars.length) {
+    avatars = actors.value.map((actor) => ({
       id: actor.id,
       name: actor.name,
       avatar: actor.avatar,
     }))
   }
-
   return avatars.slice(0, 3)
 })
 
 const displayNames = computed(() => {
   const names = displayAvatars.value.map((avatar) => avatar.name)
-
-  if (!names.length) {
-    return '未知'
-  }
-
+  if (!names.length) return '未知'
   return names.join(' / ')
 })
 
 const primarySubscriptionId = computed(() => {
-  return props.video.subscriptions?.[0]?.id ?? displayAvatars.value[0]?.id
+  return subscriptions.value[0]?.id ?? displayAvatars.value[0]?.id
 })
 
 const closeContextMenu = () => {
@@ -184,22 +181,15 @@ const closeContextMenu = () => {
 }
 
 const handleScroll = () => {
-  if (showMenu.value) {
-    closeContextMenu()
-  }
+  if (showMenu.value) closeContextMenu()
 }
 
 const showContextMenu = async (event) => {
   event.preventDefault()
   event.stopPropagation()
   document.dispatchEvent(new CustomEvent('closeAllContextMenus'))
-
   await nextTick()
-
-  menuPosition.value = {
-    x: event.clientX,
-    y: event.clientY,
-  }
+  menuPosition.value = { x: event.clientX, y: event.clientY }
   showMenu.value = true
 }
 
@@ -224,7 +214,6 @@ const toggleReadStatus = async (isRead) => {
       props.video.is_read = false
       props.video.last_position = 0
     }
-
     closeContextMenu()
   } catch (error) {
     Logger.error('Failed to update read status', error)
@@ -235,16 +224,11 @@ const toggleLikeVideo = async () => {
   try {
     if (props.video.is_liked === 1 || props.video.is_liked === 0) {
       const { error } = await deleteInteraction(props.video.id)
-      if (!error) {
-        props.video.is_liked = null
-      }
+      if (!error) props.video.is_liked = null
     } else {
       const { error } = await toggleLike(props.video.id, INTERACTION_TYPE.LIKE)
-      if (!error) {
-        props.video.is_liked = 1
-      }
+      if (!error) props.video.is_liked = 1
     }
-
     closeContextMenu()
   } catch (error) {
     Logger.error('Failed to toggle like state', error)

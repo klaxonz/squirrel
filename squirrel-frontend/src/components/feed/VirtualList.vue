@@ -1,11 +1,11 @@
 <template>
-  <div 
+  <div
     ref="container"
     class="virtual-list-container"
-    @scroll.passive="handleScroll"
+    @scroll.passive="onScroll"
   >
-    <div 
-      class="scroll-phantom" 
+    <div
+      class="scroll-phantom"
       :style="{ height: totalHeight + 'px' }"
     ></div>
 
@@ -13,25 +13,25 @@
       class="visible-items"
       :style="itemStyle"
     >
-        <div
-          v-for="item in visibleItems"
-          :key="item[keyField]"
-          class="list-item"
-        >
-          <slot
-            name="item"
-            :item="item"
-            :index="item._index"
-            :row="item._row"
-            :column="item._column"
-          ></slot>
-        </div>
+      <div
+        v-for="item in visibleItems"
+        :key="item[keyField]"
+        class="list-item"
+      >
+        <slot
+          name="item"
+          :item="item"
+          :index="item._index"
+          :row="item._row"
+          :column="item._column"
+        ></slot>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 
 const props = defineProps({
   items: {
@@ -78,12 +78,14 @@ const emit = defineEmits(['scroll', 'range-change', 'reach-start', 'reach-end'])
 const container = ref(null);
 const scrollTop = ref(0);
 const containerHeight = ref(0);
+const itemsRef = shallowRef(props.items);
 
 const MAX_SCROLL_POSITIONS = 50;
 const scrollPositions = ref(new Map());
 const instanceId = ref(null);
-const resizeObserver = ref(null);
-const rangeThrottleState = { last: 0, timer: null, lastArgs: null };
+let resizeObserver = null;
+let rangeThrottleTimer = null;
+let rangeThrottleLast = 0;
 
 const saveScrollPosition = (id, position) => {
   if (scrollPositions.value.size >= MAX_SCROLL_POSITIONS) {
@@ -102,7 +104,7 @@ const restoreScrollPosition = () => {
 
 const columnCount = computed(() => Math.max(1, props.gridItems));
 const rowHeight = computed(() => Math.max(1, Math.floor(props.itemSize || 0)));
-const rowCount = computed(() => Math.ceil(props.items.length / columnCount.value));
+const rowCount = computed(() => Math.ceil(itemsRef.value.length / columnCount.value));
 
 const itemStyle = computed(() => ({
   display: 'grid',
@@ -126,7 +128,8 @@ const prerenderRows = computed(() => {
 });
 
 const range = computed(() => {
-  if (rowCount.value === 0) return { startRow: 0, endRow: 0, startIndex: 0, endIndex: 0 };
+  const len = itemsRef.value.length;
+  if (len === 0) return { startRow: 0, endRow: 0, startIndex: 0, endIndex: 0 };
 
   const safeScrollTop = Math.max(0, scrollTop.value);
   const firstVisibleRow = Math.floor(safeScrollTop / rowHeight.value);
@@ -137,22 +140,28 @@ const range = computed(() => {
   if (endRow <= startRow) endRow = Math.min(rowCount.value, startRow + 1);
 
   const startIndex = startRow * columnCount.value;
-  const endIndex = Math.min(props.items.length, endRow * columnCount.value);
+  const endIndex = Math.min(len, endRow * columnCount.value);
 
   return { startRow, endRow, startIndex, endIndex };
 });
 
 const visibleItems = computed(() => {
   const { startIndex, endIndex } = range.value;
-  return props.items.slice(startIndex, endIndex).map((item, i) => {
-    const realIndex = startIndex + i;
-    return {
-      ...item,
-      _index: realIndex,
-      _row: Math.floor(realIndex / columnCount.value),
-      _column: realIndex % columnCount.value
-    };
-  });
+  const items = itemsRef.value;
+  const result = new Array(endIndex - startIndex);
+  const cols = columnCount.value;
+  for (let i = startIndex; i < endIndex; i++) {
+    const item = items[i];
+    if (item) {
+      result[i - startIndex] = {
+        ...item,
+        _index: i,
+        _row: Math.floor(i / cols),
+        _column: i % cols
+      };
+    }
+  }
+  return result;
 });
 
 const totalHeight = computed(() => {
@@ -162,21 +171,20 @@ const totalHeight = computed(() => {
 const offset = computed(() => range.value.startRow * rowHeight.value);
 const maxScrollTop = computed(() => Math.max(0, totalHeight.value - containerHeight.value));
 
-const emitRangeChange = (r) => {
+const emitRangeChange = () => {
   const now = performance.now();
   if (props.rangeChangeThrottleMs > 0) {
-    rangeThrottleState.lastArgs = r;
-    if (!rangeThrottleState.timer) {
-      const elapsed = now - rangeThrottleState.last;
-      const wait = Math.max(0, props.rangeChangeThrottleMs - elapsed);
-      rangeThrottleState.timer = setTimeout(() => {
-        rangeThrottleState.timer = null;
-        rangeThrottleState.last = performance.now();
-        const args = rangeThrottleState.lastArgs;
-        emit('range-change', { start: args.startIndex, end: args.endIndex, startRow: args.startRow, endRow: args.endRow });
-      }, wait);
-    }
+    if (rangeThrottleTimer) return;
+    const elapsed = now - rangeThrottleLast;
+    const wait = Math.max(0, props.rangeChangeThrottleMs - elapsed);
+    rangeThrottleTimer = setTimeout(() => {
+      rangeThrottleTimer = null;
+      rangeThrottleLast = performance.now();
+      const r = range.value;
+      emit('range-change', { start: r.startIndex, end: r.endIndex, startRow: r.startRow, endRow: r.endRow });
+    }, wait);
   } else {
+    const r = range.value;
     emit('range-change', { start: r.startIndex, end: r.endIndex, startRow: r.startRow, endRow: r.endRow });
   }
 };
@@ -186,12 +194,12 @@ const updateContainerHeight = () => {
 };
 
 const observeContainer = () => {
-  if (resizeObserver.value || !container.value) return;
-  resizeObserver.value = new ResizeObserver(() => {
+  if (resizeObserver || !container.value) return;
+  resizeObserver = new ResizeObserver(() => {
     updateContainerHeight();
     clampScrollTop();
   });
-  resizeObserver.value.observe(container.value);
+  resizeObserver.observe(container.value);
 };
 
 const clampScrollTop = () => {
@@ -203,20 +211,19 @@ const clampScrollTop = () => {
   scrollTop.value = clamped;
 };
 
-const handleScroll = () => {
+const onScroll = () => {
   if (!container.value) return;
-
-  scrollTop.value = container.value.scrollTop;
-  saveScrollPosition(instanceId.value, scrollTop.value);
+  const st = container.value.scrollTop;
+  scrollTop.value = st;
+  saveScrollPosition(instanceId.value, st);
 
   emit('scroll', {
     target: container.value,
-    scrollTop: scrollTop.value
+    scrollTop: st
   });
 
-  if (scrollTop.value <= 0) emit('reach-start');
-  const nearEnd = scrollTop.value + containerHeight.value >= totalHeight.value - 1;
-  if (nearEnd) emit('reach-end');
+  if (st <= 0) emit('reach-start');
+  if (st + containerHeight.value >= totalHeight.value - 1) emit('reach-end');
 };
 
 const scrollToOffset = (offsetPx) => {
@@ -228,7 +235,7 @@ const scrollToOffset = (offsetPx) => {
 };
 
 const scrollToIndex = (index, align = 'start') => {
-  const clamped = Math.max(0, Math.min(index, props.items.length - 1));
+  const clamped = Math.max(0, Math.min(index, itemsRef.value.length - 1));
   const row = Math.floor(clamped / columnCount.value);
   const base = row * rowHeight.value;
   let target = base;
@@ -241,63 +248,48 @@ const reset = () => {
   scrollToOffset(0);
 };
 
-onMounted(() => {
-  instanceId.value = Symbol('virtual-list-instance');
-  observeContainer();
-  nextTick(() => {
-    updateContainerHeight();
-    restoreScrollPosition();
-    clampScrollTop();
-  });
-});
-
-onActivated(() => {
-  updateContainerHeight();
-  restoreScrollPosition();
-});
-
-onBeforeUnmount(() => {
-  scrollPositions.value.delete(instanceId.value);
-  if (resizeObserver.value) {
-    resizeObserver.value.disconnect();
-    resizeObserver.value = null;
+const isItemsEqual = (a, b) => {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  const key = props.keyField || 'id';
+  for (let i = 0; i < a.length; i++) {
+    const av = a[i];
+    const bv = b[i];
+    if (av === bv) continue;
+    if (!av || !bv) return false;
+    if (av[key] !== bv[key]) return false;
   }
-  if (rangeThrottleState.timer) clearTimeout(rangeThrottleState.timer);
-});
+  return true;
+};
 
-watch(() => props.items, (newItems, oldItems) => {
-  const oldLen = oldItems?.length || 0;
-  const newLen = newItems?.length || 0;
-  let appended = false;
+watch(
+  () => props.items,
+  (newItems) => {
+    const oldItems = itemsRef.value;
+    const newLen = newItems ? newItems.length : 0;
+    const oldLen = oldItems ? oldItems.length : 0;
 
-  if (oldLen > 0 && newLen >= oldLen) {
-    const key = props.keyField || 'id';
-    appended = true;
-    for (let i = 0; i < oldLen; i++) {
-      if (!newItems[i] || newItems[i][key] !== oldItems[i][key]) {
-        appended = false;
-        break;
-      }
+    const appended = oldLen > 0 && newLen > oldLen && isItemsEqual(oldItems.slice(0, oldLen), newItems.slice(0, oldLen));
+    itemsRef.value = newItems || [];
+
+    if (!appended) {
+      scrollToOffset(0);
+    } else {
+      nextTick(() => {
+        updateContainerHeight();
+        clampScrollTop();
+      });
     }
-  }
-
-  if (!appended) {
-    scrollToOffset(0);
-  } else {
-    nextTick(() => {
-      updateContainerHeight();
-      clampScrollTop();
-    });
-  }
-});
+  },
+  { immediate: false }
+);
 
 watch(
   () => [columnCount.value, rowHeight.value],
-  (_, oldValue) => {
-    if (!oldValue) return;
-    const [oldColumnCount, oldRowHeight] = oldValue;
-    const anchorRow = Math.floor(scrollTop.value / oldRowHeight);
-    const anchorIndex = Math.min(props.items.length - 1, anchorRow * oldColumnCount);
+  ([newCols, newRowH], [oldCols, oldRowH]) => {
+    const anchorRow = Math.floor(scrollTop.value / oldRowH);
+    const anchorIndex = Math.min(itemsRef.value.length - 1, anchorRow * oldCols);
     nextTick(() => {
       updateContainerHeight();
       if (anchorIndex >= 0) {
@@ -316,9 +308,36 @@ watch(totalHeight, () => {
   });
 });
 
-watch(range, (r) => {
-  emitRangeChange(r);
+watch(range, () => {
+  emitRangeChange();
 }, { immediate: true });
+
+onMounted(() => {
+  instanceId.value = Symbol('virtual-list-instance');
+  observeContainer();
+  nextTick(() => {
+    updateContainerHeight();
+    restoreScrollPosition();
+    clampScrollTop();
+  });
+});
+
+onActivated(() => {
+  updateContainerHeight();
+  restoreScrollPosition();
+});
+
+onBeforeUnmount(() => {
+  scrollPositions.value.delete(instanceId.value);
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
+  if (rangeThrottleTimer) {
+    clearTimeout(rangeThrottleTimer);
+    rangeThrottleTimer = null;
+  }
+});
 
 defineExpose({ scrollToOffset, scrollToIndex, reset, container, range, totalHeight });
 </script>

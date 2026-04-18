@@ -15,19 +15,17 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { markRaw, ref, shallowRef, watch } from 'vue'
 import VideoList from './VideoList.vue'
 import useLatestVideos from '@/composables/useLatestVideos'
 
-const emit = defineEmits(['openModal', 'update-counts', 'goToSubscription', 'loading-change']);
+const emit = defineEmits(['openModal', 'update-counts', 'goToSubscription', 'loading-change', 'error']);
 
 const props = defineProps({
-  // New unified filters prop (preferred)
   filters: {
     type: Object,
     default: null,
   },
-  // Back-compat individual props (will be derived if filters missing)
   searchQuery: {
     type: String,
     default: '',
@@ -66,7 +64,6 @@ const props = defineProps({
   },
 })
 
-// 辅助函数：统一处理props映射
 const getFiltersFromProps = () => ({
   tab: props.filters?.tab ?? props.activeTab ?? 'all',
   q: props.filters?.q ?? props.searchQuery ?? '',
@@ -78,18 +75,6 @@ const getFiltersFromProps = () => ({
   duration: props.filters?.duration ?? 'all',
   contentType: props.filters?.contentType ?? 'all',
 })
-
-const createFilterSignature = (filters) => JSON.stringify([
-  filters?.tab ?? 'all',
-  filters?.q ?? '',
-  filters?.sid ?? null,
-  filters?.sort ?? 'publish_date',
-  filters?.site ?? null,
-  filters?.nsfw ?? 'all',
-  filters?.timeRange ?? 'all',
-  filters?.duration ?? 'all',
-  filters?.contentType ?? 'all',
-])
 
 const {
   videos,
@@ -121,63 +106,89 @@ const {
   contentType: getFiltersFromProps().contentType,
 })
 
-const processedVideos = computed(() => {
-  return videos.value.map(video => ({
-    ...video,
-    showProgress: true,
-    progress: video.duration > 0 ? (video.last_position / video.duration) : 0
-  }));
-});
+const processedVideos = shallowRef([])
 
-const lastAppliedFilterSignature = ref('')
+const updateProcessedVideos = () => {
+  const raw = videos.value
+  const len = raw.length
+  const result = new Array(len)
+  for (let i = 0; i < len; i++) {
+    const v = raw[i]
+    const progress = v.duration > 0 ? (v.last_position / v.duration) : 0
+    result[i] = markRaw({
+      ...v,
+      showProgress: true,
+      progress,
+    })
+  }
+  processedVideos.value = result
+}
 
-watch(() => videoCounts.value, (counts) => {
-  emit('update-counts', counts);
-}, { immediate: true });
+const lastSignature = ref('')
 
-watch(() => error.value, (err) => {
-  emit('error', err);
-});
+const applyFilters = (filters) => {
+  const nextSignature = [
+    filters.tab,
+    filters.q,
+    filters.sid,
+    filters.sort,
+    filters.site,
+    filters.nsfw,
+    filters.timeRange,
+    filters.duration,
+    filters.contentType,
+  ].join('\x00')
+
+  if (lastSignature.value && nextSignature === lastSignature.value) return
+
+  activeTab.value = filters.tab
+  searchQuery.value = filters.q
+  subscriptionId.value = filters.sid
+  sortBy.value = filters.sort
+  site.value = filters.site
+  nsfw.value = filters.nsfw
+  timeRange.value = filters.timeRange
+  duration.value = filters.duration
+  contentType.value = filters.contentType
+  lastSignature.value = nextSignature
+
+  handleSearch()
+}
 
 watch(
   getFiltersFromProps,
-  (filters) => {
-    const nextSignature = createFilterSignature(filters)
+  (filters) => applyFilters(filters),
+  { immediate: true }
+)
 
-    activeTab.value = filters.tab
-    searchQuery.value = filters.q
-    subscriptionId.value = filters.sid
-    sortBy.value = filters.sort
-    site.value = filters.site
-    nsfw.value = filters.nsfw
-    timeRange.value = filters.timeRange
-    duration.value = filters.duration
-    contentType.value = filters.contentType
+watch(videos, () => updateProcessedVideos(), { immediate: true })
 
-    if (!lastAppliedFilterSignature.value) {
-      lastAppliedFilterSignature.value = nextSignature
-      handleSearch()
-      return
+watch(sortBy, () => updateProcessedVideos())
+
+const lastCountsJson = ref('')
+watch(
+  videoCounts,
+  (counts) => {
+    const json = JSON.stringify(counts)
+    if (json !== lastCountsJson.value) {
+      lastCountsJson.value = json
+      emit('update-counts', counts)
     }
-
-    if (nextSignature === lastAppliedFilterSignature.value) {
-      return
-    }
-
-    lastAppliedFilterSignature.value = nextSignature
-    handleSearch()
   },
   { immediate: true }
 )
 
-watch(() => loading.value, (val) => {
-  emit('loading-change', val);
-});
+watch(error, (err) => {
+  if (err !== undefined) emit('error', err)
+})
+
+watch(loading, (val) => {
+  emit('loading-change', val)
+})
 
 defineExpose({
   refresh: () => handleSearch(),
-});
-
+})
 </script>
 
 <style scoped>
