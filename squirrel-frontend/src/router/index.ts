@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUser } from '../composables/useUser'
+import { useServerConfig } from '../composables/useServerConfig'
 import { Logger } from '@/utils/logger'
 
 const LatestVideos = () => import('../views/LatestVideos.vue')
@@ -16,18 +17,18 @@ const LogViewer = () => import('../views/LogViewer.vue')
 const ScheduledTasks = () => import('../views/ScheduledTasks.vue')
 const SyncCenter = () => import('../views/SyncCenter.vue')
 
-const SEARCH_META = {
+const SearchMeta = {
   showSearch: true,
   search: 'home',
   searchEvent: 'search:home',
   searchPlaceholder: '搜索'
 }
 
-const NO_SEARCH_META = {
+const NoSearchMeta = {
   showSearch: false
 }
 
-const SIDEBAR_MODE = {
+const SidebarMode = {
   fixed: {
     mode: 'fixed',
     defaultOpen: false,
@@ -42,36 +43,38 @@ const SIDEBAR_MODE = {
   },
 }
 
+const PUBLIC_ROUTES = ['/login', '/register', '/server-config']
+
 const routes = [
   {
     path: '/videos',
     name: 'LatestVideos',
     component: LatestVideos,
-    meta: SEARCH_META,
+    meta: SearchMeta,
     children: [
       {
         path: 'all',
         name: 'AllVideos',
         component: VideoTab,
-        meta: SEARCH_META,
+        meta: SearchMeta,
       },
       {
         path: 'unread',
         name: 'UnreadVideos',
         component: VideoTab,
-        meta: SEARCH_META,
+        meta: SearchMeta,
       },
       {
         path: 'read',
         name: 'ReadVideos',
         component: VideoTab,
-        meta: SEARCH_META,
+        meta: SearchMeta,
       },
       {
         path: 'preview',
         name: 'PreviewVideos',
         component: VideoTab,
-        meta: SEARCH_META,
+        meta: SearchMeta,
       },
       {
         path: 'liked',
@@ -112,13 +115,13 @@ const routes = [
     path: '/plugins',
     name: 'Plugins',
     component: PluginManager,
-    meta: NO_SEARCH_META
+    meta: NoSearchMeta
   },
   {
     path: '/logs',
     name: 'Logs',
     component: LogViewer,
-    meta: NO_SEARCH_META
+    meta: NoSearchMeta
   },
   {
     path: '/sync-center',
@@ -130,13 +133,13 @@ const routes = [
     path: '/scheduled-tasks',
     name: 'ScheduledTasks',
     component: ScheduledTasks,
-    meta: NO_SEARCH_META
+    meta: NoSearchMeta
   },
   {
     path: '/subscription/:id',
     name: 'SubscriptionDetail',
     component: LatestVideos,
-    meta: SEARCH_META,
+    meta: SearchMeta,
     children: [
       {
         path: '',
@@ -147,37 +150,37 @@ const routes = [
         path: 'all',
         name: 'SubscriptionAllVideos',
         component: VideoTab,
-        meta: SEARCH_META,
+        meta: SearchMeta,
       },
       {
         path: 'unread',
         name: 'SubscriptionUnreadVideos',
         component: VideoTab,
-        meta: SEARCH_META,
+        meta: SearchMeta,
       },
       {
         path: 'read',
         name: 'SubscriptionReadVideos',
         component: VideoTab,
-        meta: SEARCH_META,
+        meta: SearchMeta,
       },
       {
         path: 'preview',
         name: 'SubscriptionPreviewVideos',
         component: VideoTab,
-        meta: SEARCH_META,
+        meta: SearchMeta,
       },
       {
         path: 'liked',
         name: 'SubscriptionLikedVideos',
         component: VideoTab,
-        meta: SEARCH_META,
+        meta: SearchMeta,
       },
       {
         path: 'later',
         name: 'SubscriptionLaterVideos',
         component: VideoTab,
-        meta: SEARCH_META,
+        meta: SearchMeta,
       }
     ],
   },
@@ -213,8 +216,14 @@ const routes = [
       searchPersistKey: 'LatestVideos',
       scrollable: true,
       hideScrollbar: true,
-      sidebar: SIDEBAR_MODE.fixed,
+      sidebar: SidebarMode.fixed,
     },
+  },
+  {
+    path: '/server-config',
+    name: 'ServerConfig',
+    component: () => import('../views/ServerConfig.vue'),
+    meta: { requiresAuth: false }
   },
   {
     path: '/login',
@@ -237,6 +246,17 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const { getCurrentUser, hasResolvedAuth, isAuthenticated } = useUser()
+  const { getServerUrl, initServerConfig } = useServerConfig()
+
+  await initServerConfig()
+  const serverUrl = getServerUrl()
+
+  if (!PUBLIC_ROUTES.includes(to.path)) {
+    if (!serverUrl) {
+      next('/server-config')
+      return
+    }
+  }
 
   if (!hasResolvedAuth.value) {
     const result = await getCurrentUser()

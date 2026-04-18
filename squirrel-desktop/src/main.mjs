@@ -18,6 +18,8 @@ const DEFAULT_WINDOW_STATE = {
   minHeight: 720,
 }
 
+const SERVER_CONFIG_FILE = 'server-config.json'
+
 const resolveRendererUrl = () => {
   const value = String(
     process.env.DESKTOP_RENDERER_URL
@@ -34,6 +36,42 @@ const resolveRendererUrl = () => {
 
 const rendererUrl = resolveRendererUrl()
 const rendererOrigin = new URL(rendererUrl).origin
+
+// ── Server config persistence ──────────────────────────────────────────────
+
+const getServerConfigPath = () => {
+  return path.join(app.getPath('userData'), SERVER_CONFIG_FILE)
+}
+
+const loadServerConfig = () => {
+  try {
+    const raw = fs.readFileSync(getServerConfigPath(), 'utf8')
+    const parsed = JSON.parse(raw)
+    const url = typeof parsed?.serverUrl === 'string' ? parsed.serverUrl.trim() : ''
+    if (url) {
+      try {
+        return new URL(url).origin
+      } catch {
+        return ''
+      }
+    }
+    return ''
+  } catch {
+    return ''
+  }
+}
+
+const saveServerConfig = (url) => {
+  try {
+    fs.mkdirSync(path.dirname(getServerConfigPath()), { recursive: true })
+    fs.writeFileSync(getServerConfigPath(), JSON.stringify({ serverUrl: url }, null, 2), 'utf8')
+    return true
+  } catch {
+    return false
+  }
+}
+
+// ── Escape helpers ──────────────────────────────────────────────────────────
 
 const escapeHtml = (value) => {
   return String(value ?? '')
@@ -510,6 +548,55 @@ const installDesktopBridgeHandlers = () => {
     }
 
     return getDesktopWindowState(mainWindow)
+  })
+
+  // Server config IPC
+  ipcMain.removeHandler('server:get-url')
+  ipcMain.handle('server:get-url', () => {
+    return loadServerConfig()
+  })
+
+  ipcMain.removeHandler('server:set-url')
+  ipcMain.handle('server:set-url', (_event, url) => {
+    const normalized = String(url || '').trim()
+    if (!normalized) return false
+
+    try {
+      const parsed = new URL(normalized)
+      if (!['http:', 'https:'].includes(parsed.protocol)) return false
+      const finalUrl = parsed.origin
+      const ok = saveServerConfig(finalUrl)
+
+      if (ok) {
+        // Broadcast change to all windows
+        BrowserWindow.getAllWindows().forEach((win) => {
+          if (!win.isDestroyed()) {
+            win.webContents.send('server:url-changed', finalUrl)
+          }
+        })
+      }
+
+      return ok ? finalUrl : false
+    } catch {
+      return false
+    }
+  })
+
+  ipcMain.removeHandler('server:clear-url')
+  ipcMain.handle('server:clear-url', () => {
+    try {
+      fs.rmSync(getServerConfigPath())
+    } catch {
+      // ignore
+    }
+
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) {
+        win.webContents.send('server:url-changed', '')
+      }
+    })
+
+    return true
   })
 }
 

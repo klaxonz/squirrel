@@ -214,6 +214,7 @@ const ROUTE_TITLES = {
   VideoPlay: '视频播放',
   Login: '登录',
   Register: '注册',
+  ServerConfig: '服务器配置',
 }
 
 const contentContainerRef = ref(null)
@@ -225,7 +226,7 @@ let contentResizeObserver = null
 let titleObserver = null
 let stopDesktopWindowStateSync = null
 
-const isAuthPage = computed(() => ['/login', '/register'].includes(route.path))
+const isAuthPage = computed(() => ['/login', '/register', '/server-config'].includes(route.path))
 
 const sidebarMeta = computed(() => route.meta?.sidebar || { mode: 'fixed', defaultOpen: false })
 const isSidebarFlyout = computed(() => sidebarMeta.value?.mode === 'flyout')
@@ -265,6 +266,9 @@ const desktopChromeContext = computed(() => {
   }
   if (route.name === 'Settings') {
     return '系统配置'
+  }
+  if (route.name === 'ServerConfig') {
+    return '服务器配置'
   }
   return '工作台'
 })

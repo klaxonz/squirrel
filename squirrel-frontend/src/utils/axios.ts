@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { AxiosError } from 'axios'
+import { getServerUrl } from '@/composables/useServerConfig'
 import { logoutAndRedirect } from './auth'
 
 const instance = axios.create({
@@ -8,6 +9,14 @@ const instance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+})
+
+instance.interceptors.request.use((config) => {
+  const base = getServerUrl()
+  if (base && !config.url?.startsWith('http')) {
+    config.baseURL = base
+  }
+  return config
 })
 
 instance.interceptors.response.use(
@@ -25,5 +34,7 @@ instance.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+export const invalidateBaseUrlCache = () => {}
 
 export default instance

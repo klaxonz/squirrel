@@ -1,5 +1,14 @@
 <template>
   <div class="auth-shell">
+    <div class="auth-topbar">
+      <router-link to="/server-config" class="auth-topbar__link">
+        <span>
+          <span class="auth-topbar__eyebrow">Server</span>
+          <span class="auth-topbar__value">{{ currentServerLabel }}</span>
+        </span>
+      </router-link>
+    </div>
+
     <div class="auth-divider-line"></div>
 
     <div class="auth-layout">
@@ -7,6 +16,9 @@
       <aside class="auth-sidebar">
         <div class="auth-sidebar__status">创建新身份</div>
         <h1 class="auth-sidebar__brand">SQRL</h1>
+        <p v-if="currentServerUrl" class="auth-sidebar__server">
+          已连接至 {{ currentServerUrl }}
+        </p>
         <div class="auth-sidebar__status" style="margin-top: auto; opacity: 0.1">00:00:00 // 加入网络</div>
       </aside>
 
@@ -71,6 +83,11 @@
             <span>已完成同步？</span>
             <router-link to="/login" class="auth-link-minimal">直接登入</router-link>
           </div>
+
+          <div class="auth-footer-minimal">
+            <span>服务器不对？</span>
+            <router-link to="/server-config" class="auth-link-minimal">切换服务器</router-link>
+          </div>
         </form>
       </main>
     </div>
@@ -78,15 +95,17 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUser } from '../composables/useUser'
+import { useServerConfig } from '@/composables/useServerConfig'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Eye, EyeOff } from 'lucide-vue-next'
 
 const router = useRouter()
 const { register } = useUser()
+const { initServerConfig, serverUrl: currentServerUrl } = useServerConfig()
 const loading = ref(false)
 const showPassword = ref(false)
 const errorMessage = ref('')
@@ -95,6 +114,12 @@ const form = ref({
   email: '',
   password: '',
 })
+
+onMounted(async () => {
+  await initServerConfig()
+})
+
+const currentServerLabel = computed(() => currentServerUrl.value || '切换服务器')
 
 const getErrorMessage = (error) => {
   if (!error) return '注册失败，请稍后再试。'
@@ -126,3 +151,13 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped src="../styles/views/auth-entry.css"></style>
+
+<style scoped>
+.auth-sidebar__server {
+  margin-top: 0.75rem;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.08em;
+  word-break: break-all;
+}
+</style>

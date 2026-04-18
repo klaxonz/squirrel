@@ -1,5 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
+const createUnidirectionalListener = (channel) => {
+  return (listener) => {
+    if (typeof listener !== 'function') return () => {}
+    const handleEvent = (_event, value) => listener(value)
+    ipcRenderer.on(channel, handleEvent)
+    return () => ipcRenderer.removeListener(channel, handleEvent)
+  }
+}
+
 contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   isDesktop: true,
   platform: process.platform,
@@ -14,18 +23,11 @@ contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   minimizeWindow: () => ipcRenderer.invoke('desktop:window-action', 'minimize'),
   toggleMaximizeWindow: () => ipcRenderer.invoke('desktop:window-action', 'toggle-maximize'),
   closeWindow: () => ipcRenderer.invoke('desktop:window-action', 'close'),
-  onWindowStateChange: (listener) => {
-    if (typeof listener !== 'function') {
-      return () => {}
-    }
+  onWindowStateChange: createUnidirectionalListener('desktop:window-state'),
 
-    const handleWindowStateChange = (_event, value) => {
-      listener(value)
-    }
-
-    ipcRenderer.on('desktop:window-state', handleWindowStateChange)
-    return () => {
-      ipcRenderer.removeListener('desktop:window-state', handleWindowStateChange)
-    }
-  },
+  // Server config
+  getServerUrl: () => ipcRenderer.invoke('server:get-url'),
+  setServerUrl: (url) => ipcRenderer.invoke('server:set-url', url),
+  clearServerUrl: () => ipcRenderer.invoke('server:clear-url'),
+  onServerUrlChange: createUnidirectionalListener('server:url-changed'),
 }))

@@ -384,10 +384,89 @@
           </div>
         </section>
       </div>
+
+      <div
+        v-if="currentTab === 'server'"
+        role="tabpanel"
+        :id="`panel-server`"
+        class="settings-panel"
+      >
+        <section class="settings-section">
+          <div class="settings-section__header">
+            <div class="settings-section__icon">
+              <Network class="h-5 w-5" />
+            </div>
+            <div class="settings-section__meta">
+              <h2 class="settings-section__title">服务器连接</h2>
+              <p class="settings-section__desc">配置后端服务器地址</p>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-row">
+              <div class="settings-row__info">
+                <h3 class="settings-row__title">当前服务器</h3>
+                <p class="settings-row__desc">当前连接的后端服务器地址</p>
+              </div>
+              <div class="server-url-display">
+                {{ currentServerUrl || '未配置' }}
+              </div>
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <div class="settings-row settings-row--column">
+              <div class="settings-row__info">
+                <h3 class="settings-row__title">修改服务器地址</h3>
+                <p class="settings-row__desc">输入新的服务器地址后点击保存</p>
+              </div>
+            </div>
+
+            <div class="server-config-form">
+              <div class="form-field">
+                <label class="form-field__label">服务器地址</label>
+                <input
+                  v-model="serverForm.url"
+                  type="url"
+                  class="form-field__input"
+                  placeholder="http://127.0.0.1:8001"
+                  :disabled="serverSaving"
+                />
+              </div>
+
+              <div class="form-field">
+                <button
+                  type="button"
+                  class="test-button-inline"
+                  :disabled="!serverForm.url.trim() || serverTesting"
+                  @click="handleTestServer"
+                >
+                  <span v-if="serverTesting" class="test-spinner"></span>
+                  <span v-else-if="serverTestResult !== null" :class="serverTestResult ? 'text-success' : 'text-destructive'">
+                    {{ serverTestResult ? '✓ 连接成功' : '✗ ' + serverTestMessage }}
+                  </span>
+                  <span v-else>测试连接</span>
+                </button>
+              </div>
+
+              <div class="form-actions">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  :disabled="serverSaving || !serverForm.url.trim()"
+                  @click="handleSaveServer"
+                >
+                  {{ serverSaving ? '保存中...' : '保存并重连' }}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </main>
 
-    <!-- Save Feedback Toast -->
-    <Transition name="toast">
+    <!-- Save Feedback Toast -->    <Transition name="toast">
       <div v-if="saveToastVisible" class="save-toast" :class="saveToastClass">
         <CheckCircle2 v-if="!saveToastError" class="h-4 w-4" />
         <AlertCircle v-else class="h-4 w-4" />
@@ -407,6 +486,7 @@ import {
   LogOut,
   Monitor,
   Moon,
+  Network,
   Palette,
   PlayCircle,
   Rocket,
@@ -420,12 +500,13 @@ import { revokeUserSessions, updateUserPassword } from '@/api'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useAppTheme } from '@/composables/useAppTheme'
+import { useServerConfig } from '@/composables/useServerConfig'
 import type { AppThemeMode } from '@/lib/theme'
 import { Logger } from '@/utils/logger'
 import { useSystemConfig } from '../composables/useSystemConfig';
 import { useUserSettings } from '../composables/useUserSettings';
 
-type SettingsTabKey = 'appearance' | 'content' | 'playback' | 'security' | 'system'
+type SettingsTabKey = 'appearance' | 'content' | 'playback' | 'security' | 'system' | 'server'
 
 const tabs: Array<{ key: SettingsTabKey; label: string; icon: any; badge?: string }> = [
   { key: 'appearance', label: '外观', icon: Palette },
@@ -433,6 +514,7 @@ const tabs: Array<{ key: SettingsTabKey; label: string; icon: any; badge?: strin
   { key: 'playback', label: '播放', icon: PlayCircle },
   { key: 'security', label: '安全', icon: KeyRound },
   { key: 'system', label: '系统', icon: Settings2 },
+  { key: 'server', label: '服务器', icon: Network },
 ];
 const currentTab = ref<SettingsTabKey>('appearance');
 
@@ -462,6 +544,14 @@ const securityForm = ref({
   newPassword: '',
   confirmPassword: '',
 })
+
+// Server config
+const { serverUrl: currentServerUrl, setServerUrl, testServerConnection, initServerConfig } = useServerConfig()
+const serverForm = ref({ url: '' })
+const serverSaving = ref(false)
+const serverTesting = ref(false)
+const serverTestResult = ref<boolean | null>(null)
+const serverTestMessage = ref('')
 
 // Save toast
 const saveToastVisible = ref(false)
@@ -498,6 +588,7 @@ const getErrorMessage = (error: any, fallback: string) => {
 
 onMounted(async () => {
   pageLoading.value = true;
+  await initServerConfig()
   await Promise.all([
     loadUserSettings(),
     loadSystemConfig().then(result => {
@@ -506,6 +597,7 @@ onMounted(async () => {
       }
     }),
   ])
+  serverForm.value.url = currentServerUrl.value || ''
   pageLoading.value = false;
 });
 
@@ -534,6 +626,43 @@ const onSystemToggle = async (key: string, val: boolean) => {
   }
   systemSaving.value = false;
 };
+
+const handleTestServer = async () => {
+  if (!serverForm.value.url.trim()) return
+  serverTesting.value = true
+  serverTestResult.value = null
+  serverTestMessage.value = ''
+
+  try {
+    const result = await testServerConnection(serverForm.value.url)
+    serverTestResult.value = result.ok
+    serverTestMessage.value = result.message
+  } catch {
+    serverTestResult.value = false
+    serverTestMessage.value = '测试失败'
+  } finally {
+    serverTesting.value = false
+  }
+}
+
+const handleSaveServer = async () => {
+  if (!serverForm.value.url.trim()) return
+  serverSaving.value = true
+
+  try {
+    const ok = await setServerUrl(serverForm.value.url)
+    if (!ok) {
+      showSaveToast('无效的服务器地址', true)
+      return
+    }
+    showSaveToast('已保存，正在重新连接...')
+    serverForm.value.url = currentServerUrl.value || ''
+  } catch {
+    showSaveToast('保存失败', true)
+  } finally {
+    serverSaving.value = false
+  }
+}
 
 const handlePasswordUpdate = async () => {
   resetSecurityFeedback()
@@ -1352,6 +1481,78 @@ const handleRevokeSessions = async () => {
 @keyframes skeleton-shimmer {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
+}
+
+.settings-row--column {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.server-url-display {
+  font-size: 0.8rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+  border: 1px solid hsl(var(--primary) / 0.2);
+  padding: 0.3rem 0.75rem;
+  border-radius: 0.5rem;
+  max-width: 100%;
+  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.server-config-form {
+  padding: 0.5rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.test-button-inline {
+  background: transparent;
+  border: none;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  transition: color 0.2s ease;
+  text-align: left;
+}
+
+.test-button-inline:hover:not(:disabled) {
+  color: hsl(var(--primary));
+}
+
+.test-button-inline:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.test-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 1px solid hsl(var(--muted-foreground) / 0.3);
+  border-top-color: hsl(var(--primary));
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.text-success {
+  color: hsl(var(--success));
+}
+
+.text-destructive {
+  color: hsl(var(--destructive));
 }
 
 /* ── Responsive ── */

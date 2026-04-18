@@ -21,6 +21,10 @@ interface DesktopAppBridge {
   onWindowStateChange?: (listener: (state: DesktopWindowState) => void) => () => void
   reloadApp?: () => void
   openExternal?: (targetUrl: string) => Promise<boolean>
+  getServerUrl?: () => Promise<string>
+  setServerUrl?: (url: string) => Promise<string | false>
+  clearServerUrl?: () => Promise<boolean>
+  onServerUrlChange?: (listener: (url: string) => void) => () => void
 }
 
 interface DesktopWindowState {
