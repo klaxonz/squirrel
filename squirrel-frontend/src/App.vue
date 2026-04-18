@@ -114,7 +114,17 @@
                 v-if="showGlobalSearch"
                 class="minimal-header"
               >
-                <div class="header-left-spacer"></div>
+                <div class="header-left">
+                  <button
+                    v-if="canGoBack"
+                    class="back-btn"
+                    @click="handleBack"
+                    aria-label="返回"
+                    title="返回"
+                  >
+                    <ArrowLeftIcon class="back-btn__icon" />
+                  </button>
+                </div>
                 <GlobalSearchBar
                   ref="globalSearchBar"
                   v-model="searchQuery"
@@ -144,9 +154,9 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue'
-import { Bars3Icon } from '@heroicons/vue/24/outline'
+import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import mitt from 'mitt'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import GlobalSearchBar from '@/components/layout/GlobalSearchBar.vue'
 import MobileNav from '@/components/layout/MobileNav.vue'
 import RefreshCenter from '@/components/layout/RefreshCenter.vue'
@@ -161,8 +171,17 @@ import { useAppTheme } from './composables/useAppTheme'
 import { Logger } from '@/utils/logger'
 
 const route = useRoute()
+const router = useRouter()
 const emitter = mitt()
 provide('emitter', emitter)
+
+const handleBack = () => {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push({ name: 'AllVideos' })
+  }
+}
 
 // Initialize theme
 useAppTheme()
@@ -227,6 +246,7 @@ const isVideoPlayRoute = computed(() => route.name === 'VideoPlay')
 const showShellHeader = computed(() => showGlobalSearch.value || isVideoWidescreen.value)
 const isCenteredSearchPage = computed(() => ['home', 'subscribed', 'history'].includes(String(route.meta?.search || '')))
 const isScrollablePage = computed(() => !!route.meta?.scrollable)
+const canGoBack = computed(() => window.history.length > 1)
 const desktopPlatformLabel = computed(() => {
   const platformMap = {
     win32: 'Windows',
@@ -671,10 +691,40 @@ h6 {
   pointer-events: none;
 }
 
-.header-left-spacer,
+.header-left {
+  width: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
 .header-right-spacer {
   width: 120px;
   flex-shrink: 0;
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.back-btn:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+
+.back-btn__icon {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .minimal-search {
