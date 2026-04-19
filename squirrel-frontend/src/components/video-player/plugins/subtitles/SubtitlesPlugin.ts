@@ -22,7 +22,6 @@ export interface SubtitleStyle {
   backgroundOpacity?: number
   position?: 'top' | 'bottom'
   textShadow?: boolean
-  timeOffset?: number
 }
 
 export interface SubtitlesPluginOptions {
@@ -332,8 +331,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
    */
   private refreshCurrentCue(): void {
     const currentTime = this.context?.videoElement?.currentTime ?? this.context?.state.currentTime ?? 0
-    const adjustedTime = Math.max(0, currentTime + (this.style.timeOffset ?? 0))
-    this.updateActiveCue(adjustedTime)
+    this.updateActiveCue(currentTime)
   }
 
   private startSyncLoop(): void {

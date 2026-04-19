@@ -54,10 +54,6 @@ const enUS: LocaleConfig = {
     preset: 'Preset',
     opacity: 'Opacity',
     custom: 'Custom',
-    subtitleTiming: 'Subtitle sync',
-    subtitleTimingNormal: 'Normal',
-    subtitleTimingAdvance: 'Advance {seconds}s',
-    subtitleTimingDelay: 'Delay {seconds}s',
     
     // 播放列表
     previousVideo: 'Previous',

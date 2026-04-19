@@ -54,10 +54,6 @@ const jaJP: LocaleConfig = {
     preset: 'プリセット',
     opacity: '不透明度',
     custom: 'カスタム',
-    subtitleTiming: '字幕同期',
-    subtitleTimingNormal: '標準',
-    subtitleTimingAdvance: '{seconds}秒早く',
-    subtitleTimingDelay: '{seconds}秒遅く',
     
     // 播放列表
     previousVideo: '前へ',
