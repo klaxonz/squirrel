@@ -4,7 +4,15 @@
       <div class="toolbar-container">
         <h1 class="plugin-title">插件</h1>
         <div class="plugin-header">
-          <div class="plugin-toolbar-right">
+          <div v-if="isInitialLoading" class="plugin-toolbar-skeleton" aria-hidden="true">
+            <div
+              v-for="(width, index) in toolbarSkeletonWidths"
+              :key="`${width}-${index}`"
+              class="plugin-toolbar-skeleton__chip skeleton-surface"
+              :style="{ width }"
+            ></div>
+          </div>
+          <div v-else class="plugin-toolbar-right">
             <Button as-child variant="outline" size="xs" class="plugin-toolbar-btn">
               <label>
                 <input type="file" accept=".zip" class="hidden" @change="handleFileChange" />
@@ -69,51 +77,69 @@
         </div>
 
         <div class="plugin-stats-row">
-          <span class="plugin-stat">
-            <span class="plugin-stat__value">{{ pluginSummary.total }}</span>
-            <span class="plugin-stat__label">插件</span>
-          </span>
-          <span class="plugin-stat-sep"></span>
-          <span class="plugin-stat">
-            <span class="plugin-stat__value text-warning">{{ pluginSummary.attention }}</span>
-            <span class="plugin-stat__label">异常</span>
-          </span>
-          <span class="plugin-stat-sep"></span>
-          <span class="plugin-stat">
-            <span class="plugin-stat__value">{{ connectivitySummary.total }}</span>
-            <span class="plugin-stat__label">站点</span>
-          </span>
-          <span class="plugin-stat-sep"></span>
-          <span class="plugin-stat">
-            <span class="plugin-stat__value text-success">{{ connectivitySummary.accessible }}</span>
-            <span class="plugin-stat__label">可用</span>
-          </span>
-          <span class="plugin-stat-sep"></span>
-          <span class="plugin-stat">
-            <span class="plugin-stat__value text-destructive">{{ connectivitySummary.failed }}</span>
-            <span class="plugin-stat__label">异常</span>
-          </span>
-          <span class="plugin-stat-sep"></span>
-          <span class="plugin-stat">
-            <span class="plugin-stat__value">{{ connectivitySummary.success_rate }}%</span>
-            <span class="plugin-stat__label">成功率</span>
-          </span>
-          <span v-if="lastTestedAt" class="plugin-timestamp">检测于 {{ formatTime(lastTestedAt) }}</span>
-          <div class="plugin-search">
-            <MagnifyingGlassIcon class="h-3 w-3" />
-            <input
-              v-model="searchQuery"
-              placeholder="搜索..."
-              class="plugin-search-input"
-            />
-          </div>
+          <template v-if="isInitialLoading">
+            <div
+              v-for="(item, index) in statSkeletonItems"
+              :key="`stat-${index}`"
+              class="plugin-stat-skeleton"
+              aria-hidden="true"
+            >
+              <span class="plugin-stat-skeleton__value skeleton-surface" :style="{ width: item.valueWidth }"></span>
+              <span class="plugin-stat-skeleton__label skeleton-surface" :style="{ width: item.labelWidth }"></span>
+            </div>
+            <span class="plugin-timestamp plugin-timestamp--skeleton skeleton-surface" aria-hidden="true"></span>
+            <div class="plugin-search plugin-search--skeleton" aria-hidden="true">
+              <span class="plugin-search__icon-skeleton skeleton-surface"></span>
+              <span class="plugin-search__input-skeleton skeleton-surface"></span>
+            </div>
+          </template>
+          <template v-else>
+            <span class="plugin-stat">
+              <span class="plugin-stat__value">{{ pluginSummary.total }}</span>
+              <span class="plugin-stat__label">插件</span>
+            </span>
+            <span class="plugin-stat-sep"></span>
+            <span class="plugin-stat">
+              <span class="plugin-stat__value text-warning">{{ pluginSummary.attention }}</span>
+              <span class="plugin-stat__label">异常</span>
+            </span>
+            <span class="plugin-stat-sep"></span>
+            <span class="plugin-stat">
+              <span class="plugin-stat__value">{{ connectivitySummary.total }}</span>
+              <span class="plugin-stat__label">站点</span>
+            </span>
+            <span class="plugin-stat-sep"></span>
+            <span class="plugin-stat">
+              <span class="plugin-stat__value text-success">{{ connectivitySummary.accessible }}</span>
+              <span class="plugin-stat__label">可用</span>
+            </span>
+            <span class="plugin-stat-sep"></span>
+            <span class="plugin-stat">
+              <span class="plugin-stat__value text-destructive">{{ connectivitySummary.failed }}</span>
+              <span class="plugin-stat__label">异常</span>
+            </span>
+            <span class="plugin-stat-sep"></span>
+            <span class="plugin-stat">
+              <span class="plugin-stat__value">{{ connectivitySummary.success_rate }}%</span>
+              <span class="plugin-stat__label">成功率</span>
+            </span>
+            <span v-if="lastTestedAt" class="plugin-timestamp">检测于 {{ formatTime(lastTestedAt) }}</span>
+            <div class="plugin-search">
+              <MagnifyingGlassIcon class="h-3 w-3" />
+              <input
+                v-model="searchQuery"
+                placeholder="搜索..."
+                class="plugin-search-input"
+              />
+            </div>
+          </template>
         </div>
       </div>
     </section>
 
     <div class="plugin-content scrollbar-hide flex-grow overflow-y-auto">
       <div class="content-container">
-        <div v-if="loading && !plugins.length" class="plugin-skeleton-wrap plugin-table-wrap">
+        <div v-if="isInitialLoading" class="plugin-skeleton-wrap plugin-table-wrap">
           <table class="plugin-table">
             <thead>
               <tr>
@@ -129,9 +155,17 @@
             </thead>
             <tbody>
               <PluginSkeleton
-                v-for="i in 8"
-                :key="i"
-                :delay="i * 60"
+                v-for="(row, index) in pluginSkeletonRows"
+                :key="`plugin-skeleton-${index}`"
+                :delay="index * 60"
+                :name-width="row.nameWidth"
+                :meta-width="row.metaWidth"
+                :status-width="row.statusWidth"
+                :caps="row.caps"
+                :endpoint-width="row.endpointWidth"
+                :network-width="row.networkWidth"
+                :login-width="row.loginWidth"
+                :actions="row.actions"
               />
             </tbody>
           </table>
@@ -433,6 +467,79 @@ const reloading = ref(false);
 const plugins = ref([]);
 const selectedFile = ref(null);
 const actioning = ref(null);
+const isInitialLoading = computed(() => loading.value && !plugins.value.length);
+
+const toolbarSkeletonWidths = ['7rem', '2rem', '2rem', '5.5rem', '4rem', '3.25rem', '4.5rem'];
+const statSkeletonItems = [
+  { valueWidth: '1.5rem', labelWidth: '2rem' },
+  { valueWidth: '1.35rem', labelWidth: '2rem' },
+  { valueWidth: '1.5rem', labelWidth: '2rem' },
+  { valueWidth: '1.6rem', labelWidth: '2rem' },
+  { valueWidth: '1.35rem', labelWidth: '2rem' },
+  { valueWidth: '2.25rem', labelWidth: '2.5rem' },
+];
+const pluginSkeletonRows = [
+  {
+    nameWidth: '8.5rem',
+    metaWidth: '5rem',
+    statusWidth: '3rem',
+    caps: ['2.5rem', '3.25rem'],
+    endpointWidth: '8.5rem',
+    networkWidth: '2.5rem',
+    loginWidth: '3rem',
+    actions: 6,
+  },
+  {
+    nameWidth: '7rem',
+    metaWidth: '4.25rem',
+    statusWidth: '3.5rem',
+    caps: ['3rem', '2.25rem', '2rem'],
+    endpointWidth: '7rem',
+    networkWidth: '2.75rem',
+    loginWidth: '2.5rem',
+    actions: 5,
+  },
+  {
+    nameWidth: '9rem',
+    metaWidth: '5.75rem',
+    statusWidth: '2.75rem',
+    caps: ['2.75rem'],
+    endpointWidth: '9.5rem',
+    networkWidth: '3rem',
+    loginWidth: '3.5rem',
+    actions: 6,
+  },
+  {
+    nameWidth: '7.75rem',
+    metaWidth: '4.75rem',
+    statusWidth: '3.25rem',
+    caps: ['3.25rem', '2.5rem'],
+    endpointWidth: '7.5rem',
+    networkWidth: '2.5rem',
+    loginWidth: '2.75rem',
+    actions: 4,
+  },
+  {
+    nameWidth: '8.25rem',
+    metaWidth: '5.25rem',
+    statusWidth: '3rem',
+    caps: ['2.75rem', '2.75rem', '2rem'],
+    endpointWidth: '8rem',
+    networkWidth: '2.75rem',
+    loginWidth: '3rem',
+    actions: 6,
+  },
+  {
+    nameWidth: '6.75rem',
+    metaWidth: '4rem',
+    statusWidth: '2.75rem',
+    caps: ['2.25rem', '3rem'],
+    endpointWidth: '6.5rem',
+    networkWidth: '2.25rem',
+    loginWidth: '2.75rem',
+    actions: 5,
+  },
+];
 
 const loadingSites = ref(false);
 const testingAll = ref(false);
@@ -1264,6 +1371,20 @@ onUnmounted(() => {
   gap: 4px;
 }
 
+.plugin-toolbar-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.plugin-toolbar-skeleton__chip {
+  height: 1.75rem;
+  border-radius: calc(var(--radius-sm) - 1px);
+}
+
 .plugin-toolbar-btn {
   gap: 4px;
   border-radius: calc(var(--radius-sm) - 1px);
@@ -1287,6 +1408,7 @@ onUnmounted(() => {
 .plugin-stats-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.75rem;
   padding: 0.5rem 0;
   border-bottom: 1px solid hsl(var(--border) / 0.5);
@@ -1316,10 +1438,34 @@ onUnmounted(() => {
   background: hsl(var(--border));
 }
 
+.plugin-stat-skeleton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.plugin-stat-skeleton__value {
+  height: 0.9rem;
+  border-radius: 999px;
+}
+
+.plugin-stat-skeleton__label {
+  height: 0.7rem;
+  border-radius: 999px;
+  opacity: 0.85;
+}
+
 .plugin-timestamp {
   font-size: 0.65rem;
   color: hsl(var(--muted-foreground) / 0.4);
   margin-left: auto;
+}
+
+.plugin-timestamp--skeleton {
+  width: 7.5rem;
+  height: 0.85rem;
+  border-radius: 999px;
+  margin-left: 0.25rem;
 }
 
 .plugin-search {
@@ -1331,6 +1477,23 @@ onUnmounted(() => {
   background: hsl(var(--secondary) / 0.3);
   border-radius: calc(var(--radius-sm) - 1px);
   color: hsl(var(--muted-foreground) / 0.5);
+}
+
+.plugin-search--skeleton {
+  min-width: 8.75rem;
+}
+
+.plugin-search__icon-skeleton {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.plugin-search__input-skeleton {
+  width: 6rem;
+  height: 0.72rem;
+  border-radius: 999px;
 }
 
 .plugin-search-input {
@@ -1381,6 +1544,35 @@ onUnmounted(() => {
 
 .plugin-skeleton-wrap {
   display: block;
+}
+
+.skeleton-surface {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    hsl(var(--foreground) / 0.06),
+    hsl(var(--foreground) / 0.03)
+  );
+  border: 1px solid hsl(var(--border) / 0.12);
+}
+
+.skeleton-surface::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(var(--foreground) / 0.05),
+    transparent
+  );
+  animation: plugin-skeleton-shimmer 1.8s infinite;
+}
+
+@keyframes plugin-skeleton-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 .plugin-inline-loading,
@@ -1719,8 +1911,19 @@ onUnmounted(() => {
     align-items: stretch;
   }
 
+  .plugin-toolbar-skeleton,
   .plugin-toolbar-right {
     justify-content: flex-end;
+  }
+
+  .plugin-stats-row {
+    gap: 0.5rem;
+  }
+
+  .plugin-timestamp--skeleton,
+  .plugin-search,
+  .plugin-search--skeleton {
+    margin-left: 0;
   }
 
   .col-endpoint,
