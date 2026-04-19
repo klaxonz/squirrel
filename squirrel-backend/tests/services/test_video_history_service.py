@@ -470,3 +470,65 @@ def test_batch_update_histories_updates_existing_rows_and_creates_missing_rows(m
     assert histories[0].last_position == 91
     assert histories[1].video_id == 2
     assert histories[1].last_position == 12.5
+
+
+def test_update_history_ignores_stale_timestamp_that_would_rewind_progress(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    existing_end_time = datetime(2024, 1, 3, 12, 0, 10)
+    _seed_history(
+        engine,
+        [
+            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': existing_end_time, 'last_position': 42},
+        ],
+    )
+
+    stale_timestamp_ms = int(datetime(2024, 1, 3, 12, 0, 5).timestamp() * 1000)
+
+    video_history_service.update_history(
+        user_id=1,
+        data=HistoryCreate(video_id=1, last_position=18, timestamp=stale_timestamp_ms),
+    )
+
+    with Session(engine, expire_on_commit=False) as session:
+        history = session.query(VideoHistory).filter_by(user_id=1, video_id=1).one()
+
+    assert history.last_position == 42
+    assert history.end_time == existing_end_time
+
+
+def test_batch_update_histories_prefers_latest_timestamp_per_video(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            Video(
+                id=1,
+                title='Video 1',
+                url='https://alpha.example.com/watch/1',
+                domain='alpha.example.com',
+                duration=120,
+                thumbnail='https://img.example.com/1.jpg',
+                publish_date=datetime(2024, 1, 1),
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+                is_deleted=False,
+            )
+        )
+        session.commit()
+
+    older_timestamp = int(datetime(2024, 1, 3, 12, 0, 5).timestamp() * 1000)
+    latest_timestamp = int(datetime(2024, 1, 3, 12, 0, 8).timestamp() * 1000)
+
+    video_history_service.batch_update_histories(
+        user_id=1,
+        reports=[
+            HistoryCreate(video_id=1, last_position=12, timestamp=older_timestamp),
+            HistoryCreate(video_id=1, last_position=24, timestamp=latest_timestamp),
+            HistoryCreate(video_id=1, last_position=18, timestamp=older_timestamp),
+        ],
+    )
+
+    with Session(engine, expire_on_commit=False) as session:
+        history = session.query(VideoHistory).filter_by(user_id=1, video_id=1).one()
+
+    assert history.last_position == 24
+    assert history.end_time == datetime.fromtimestamp(latest_timestamp / 1000)

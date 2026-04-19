@@ -11,7 +11,12 @@ test('playback reporting keeps high-frequency time updates out of the reactive v
   assert.doesNotMatch(source, /videoRef\.value\.last_position = currentTime/)
   assert.doesNotMatch(source, /videoRef\.value\.progress =/)
   assert.match(source, /const syncLocalPlaybackPosition = \(currentTime = lastObservedTime\) => \{/)
-  assert.match(source, /const onVideoPause = \(\) => \{[\s\S]*syncLocalPlaybackPosition\(\)/)
+  assert.match(source, /let queuedReport: QueuedReport \| null = null/)
+  assert.match(source, /const ensureReportDrain = \(\) => \{/)
+  assert.match(source, /const onVideoPause = \(\) => \{[\s\S]*void flushPendingReport\(\)/)
+  assert.match(source, /const onVideoEnded = \(\) => \{[\s\S]*videoRef\.value\.is_read = true[\s\S]*void flushPendingReport\(duration, \{ force: true \}\)/)
+  assert.doesNotMatch(source, /videoRef\.value\.if_read = true/)
+  assert.doesNotMatch(source, /syncLocalPlaybackPosition\(report\.currentTime\)/)
 })
 
 test('video play global session bridge no longer deep-watches the entire video detail object', async () => {

@@ -541,7 +541,7 @@ const {
   create: createPlaylist,
   removeVideo,
 } = usePlaylist();
-const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
+const { flushPendingReport, onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
 const currentPlaybackTime = ref(0)
 const clipMarkers = computed(() => Array.isArray(video.value?.clip_markers) ? video.value.clip_markers : [])
 const editingClipMarkerId = ref(null)
@@ -1356,6 +1356,7 @@ onUnmounted(() => {
   if (hasActivePictureInPictureSession()) {
     return;
   }
+  void flushPendingReport();
   clearGlobalVideoPlayerSession();
 });
 

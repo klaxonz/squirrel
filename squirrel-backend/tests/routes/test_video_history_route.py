@@ -28,8 +28,8 @@ def test_batch_update_history_forwards_reports_to_service(monkeypatch):
         '/api/video-history/batch-update',
         json={
             'reports': [
-                {'video_id': 1, 'last_position': 12.5},
-                {'video_id': 2, 'last_position': 34},
+                {'video_id': 1, 'last_position': 12.5, 'timestamp': 1710000000000},
+                {'video_id': 2, 'last_position': 34, 'timestamp': 1710000002000},
             ]
         },
     )
@@ -40,5 +40,7 @@ def test_batch_update_history_forwards_reports_to_service(monkeypatch):
     assert len(captured['reports']) == 2
     assert captured['reports'][0].video_id == 1
     assert captured['reports'][0].last_position == 12.5
+    assert captured['reports'][0].timestamp == 1710000000000
     assert captured['reports'][1].video_id == 2
     assert captured['reports'][1].last_position == 34
+    assert captured['reports'][1].timestamp == 1710000002000

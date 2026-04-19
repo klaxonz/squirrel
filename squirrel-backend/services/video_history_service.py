@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Iterable, List
 
 from sqlalchemy import and_, delete, exists, func, select, false
@@ -17,11 +18,34 @@ from utils.url_helper import get_site_from_url
 from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
 
 
+def _resolve_reported_at(report: HistoryCreate) -> datetime:
+    raw_timestamp = report.timestamp
+    if raw_timestamp is None:
+        return datetime.now()
+
+    seconds = raw_timestamp / 1000 if raw_timestamp > 1_000_000_000_000 else raw_timestamp
+    return datetime.fromtimestamp(seconds)
+
+
+def _is_newer_report(candidate: HistoryCreate, current: HistoryCreate, *, candidate_index: int, current_index: int) -> bool:
+    if candidate.timestamp is not None and current.timestamp is not None:
+        candidate_reported_at = _resolve_reported_at(candidate)
+        current_reported_at = _resolve_reported_at(current)
+        if candidate_reported_at != current_reported_at:
+            return candidate_reported_at > current_reported_at
+        if candidate.last_position != current.last_position:
+            return candidate.last_position >= current.last_position
+
+    return candidate_index >= current_index
+
+
 def _normalize_history_reports(reports: Iterable[HistoryCreate]) -> list[HistoryCreate]:
-    latest_by_video_id: dict[int, HistoryCreate] = {}
-    for report in reports:
-        latest_by_video_id[report.video_id] = report
-    return list(latest_by_video_id.values())
+    latest_by_video_id: dict[int, tuple[HistoryCreate, int]] = {}
+    for index, report in enumerate(reports):
+        current = latest_by_video_id.get(report.video_id)
+        if current is None or _is_newer_report(report, current[0], candidate_index=index, current_index=current[1]):
+            latest_by_video_id[report.video_id] = (report, index)
+    return [item[0] for item in latest_by_video_id.values()]
 
 
 def _apply_history_updates(session, user_id: int, reports: list[HistoryCreate]) -> None:
@@ -44,25 +68,31 @@ def _apply_history_updates(session, user_id: int, reports: list[HistoryCreate]) 
 
     for report in normalized_reports:
         histories = histories_by_video_id.get(report.video_id, [])
+        reported_at = _resolve_reported_at(report)
 
         if histories:
             history = histories[0]
-            history.watch_duration += 0
-            history.last_position = report.last_position
-            history.end_time = func.now()
             duplicate_ids = [item.id for item in histories[1:]]
             if duplicate_ids:
                 session.execute(
                     delete(VideoHistory).where(VideoHistory.id.in_(duplicate_ids))
                 )
+
+            existing_end_time = history.end_time or history.updated_at or history.created_at or reported_at
+            if reported_at < existing_end_time and report.last_position <= history.last_position:
+                continue
+
+            history.watch_duration += 0
+            history.last_position = report.last_position
+            history.end_time = reported_at if reported_at >= existing_end_time else existing_end_time
             continue
 
         session.add(
             VideoHistory(
                 user_id=user_id,
                 video_id=report.video_id,
-                start_time=func.now(),
-                end_time=func.now(),
+                start_time=reported_at,
+                end_time=reported_at,
                 duration=0,
                 watch_duration=0,
                 last_position=report.last_position
