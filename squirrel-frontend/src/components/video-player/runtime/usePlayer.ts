@@ -313,9 +313,19 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     return tracks.find((track) => track.default) || tracks[0] || null
   }
 
-  engine.on('play', () => {
+  const markPlaybackActive = () => {
     store.setPlaying(true)
     store.setHasStartedPlayback(true)
+    store.setLoading(false, 'ready')
+    store.setCanPlay('video', true)
+  }
+
+  engine.on('play', () => {
+    markPlaybackActive()
+  })
+
+  engine.on('playing', () => {
+    markPlaybackActive()
   })
 
   engine.on('pause', () => {

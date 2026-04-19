@@ -9,6 +9,7 @@ import type { PlayerLogger } from './logger'
 export interface PlayerEvents {
   // 播放状态
   play: void
+  playing: void
   pause: void
   ended: void
   waiting: void

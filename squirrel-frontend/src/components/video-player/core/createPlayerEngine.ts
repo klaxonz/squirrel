@@ -661,6 +661,12 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       events.emit('play', undefined)
       options.onPlay?.()
     }
+    const onPlaying = () => {
+      loading = false
+      retryCount = 0
+      clearWaitingRecovery()
+      events.emit('playing', undefined)
+    }
     const onPause = () => {
       clearWaitingRecovery()
       flushProgress()
@@ -765,6 +771,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     }
 
     video.addEventListener('play', onPlay)
+    video.addEventListener('playing', onPlaying)
     video.addEventListener('pause', onPause)
     video.addEventListener('ended', onEnded)
     video.addEventListener('timeupdate', onTimeUpdate)
@@ -783,6 +790,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
     removeVideoListeners = () => {
       video.removeEventListener('play', onPlay)
+      video.removeEventListener('playing', onPlaying)
       video.removeEventListener('pause', onPause)
       video.removeEventListener('ended', onEnded)
       video.removeEventListener('timeupdate', onTimeUpdate)
