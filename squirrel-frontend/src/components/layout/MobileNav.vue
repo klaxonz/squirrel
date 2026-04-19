@@ -5,7 +5,7 @@
         <router-link
           :to="route.path"
           class="mobile-nav-link"
-          :class="{ 'mobile-nav-link--active': isNavigationItemActive(route, $route.path) }"
+          :class="{ 'mobile-nav-link--active': isNavigationItemActive(route, $route) }"
         >
           <span class="mobile-nav-link__icon">
             <component :is="route.icon" class="w-5 h-5" />

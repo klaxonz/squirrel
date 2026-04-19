@@ -109,21 +109,49 @@
               class="content-container absolute inset-0"
               :class="contentScrollClass"
             >
-              <!-- 顶部装饰栏：极简搜索（居中） + 状态 -->
               <div
-                v-if="showGlobalSearch"
-                class="minimal-header"
+                v-if="showShellHeader"
+                ref="topbarRef"
+                class="shell-topbar"
               >
-                <div class="header-left">
-                  <button
-                    v-if="canGoBack"
-                    class="back-btn"
-                    @click="handleBack"
-                    aria-label="返回"
-                    title="返回"
-                    >
-                      <ArrowLeftIcon class="back-btn__icon" />
-                    </button>
+                <RouteContextBar
+                  v-if="!showGlobalSearch"
+                  :breadcrumbs="currentRouteContext.breadcrumbs"
+                  :page-title="currentRouteContext.pageTitle"
+                  :section-label="currentRouteContext.sectionLabel"
+                />
+                <div
+                  v-if="showGlobalSearch"
+                  class="minimal-header"
+                >
+                  <div class="header-left">
+                    <nav class="header-breadcrumbs" aria-label="面包屑">
+                      <template
+                        v-for="(item, index) in currentRouteContext.breadcrumbs"
+                        :key="`${item.label}-${index}`"
+                      >
+                        <router-link
+                          v-if="item.to"
+                          :to="item.to"
+                          class="header-breadcrumbs__item header-breadcrumbs__item--link"
+                        >
+                          {{ item.label }}
+                        </router-link>
+                        <span
+                          v-else
+                          class="header-breadcrumbs__item header-breadcrumbs__item--current"
+                        >
+                          {{ item.label }}
+                        </span>
+                        <span
+                          v-if="index < currentRouteContext.breadcrumbs.length - 1"
+                          class="header-breadcrumbs__separator"
+                          aria-hidden="true"
+                        >
+                          /
+                        </span>
+                      </template>
+                    </nav>
                   </div>
                   <GlobalSearchBar
                     ref="globalSearchBar"
@@ -134,6 +162,7 @@
                     @clear="handleGlobalSearchClear"
                   />
                   <div class="header-right-spacer"></div>
+                </div>
               </div>
 
               <router-view v-slot="{ Component }">
@@ -154,16 +183,17 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue'
-import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
+import { Bars3Icon } from '@heroicons/vue/24/outline'
 import mitt from 'mitt'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import GlobalSearchBar from '@/components/layout/GlobalSearchBar.vue'
 import MobileNav from '@/components/layout/MobileNav.vue'
+import RouteContextBar from '@/components/layout/RouteContextBar.vue'
 import RefreshCenter from '@/components/layout/RefreshCenter.vue'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import GlobalVideoPlayerHost from '@/components/video-player/GlobalVideoPlayerHost.vue'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { MOBILE_NAV_ITEMS } from '@/constants/sidebar'
+import { MOBILE_NAV_ITEMS, resolveRouteContext } from '@/constants/sidebar'
 import { isMobile } from './composables/useMobile'
 import { useGlobalSearch } from './composables/useGlobalSearch'
 import { useSystemConfig } from './composables/useSystemConfig'
@@ -171,17 +201,8 @@ import { useAppTheme } from './composables/useAppTheme'
 import { Logger } from '@/utils/logger'
 
 const route = useRoute()
-const router = useRouter()
 const emitter = mitt()
 provide('emitter', emitter)
-
-const handleBack = () => {
-  if (window.history.length > 1) {
-    router.back()
-  } else {
-    router.push({ name: 'AllVideos' })
-  }
-}
 
 // Initialize theme
 useAppTheme()
@@ -191,31 +212,6 @@ const desktopBridge = typeof window === 'undefined' ? null : window.desktopApp
 const isDesktopShell = desktopBridge?.isDesktop === true
 const desktopPlatform = String(desktopBridge?.platform || 'desktop').toLowerCase()
 const DESKTOP_WINDOW_CONTROL_PLATFORMS = new Set(['win32', 'linux'])
-const ROUTE_TITLES = {
-  AllVideos: '全部视频',
-  UnreadVideos: '未读视频',
-  ReadVideos: '已读视频',
-  PreviewVideos: '预览视频',
-  LikedVideos: '喜欢的视频',
-  LaterVideos: '稍后再看',
-  Subscribed: '订阅',
-  Settings: '系统设置',
-  Plugins: '插件管理',
-  Logs: '日志查看器',
-  SyncCenter: '同步中心',
-  ScheduledTasks: '计划任务',
-  SubscriptionAllVideos: '订阅视频',
-  SubscriptionUnreadVideos: '订阅未读',
-  SubscriptionReadVideos: '订阅已读',
-  SubscriptionPreviewVideos: '订阅预览',
-  SubscriptionLikedVideos: '订阅喜欢',
-  SubscriptionLaterVideos: '订阅稍后看',
-  History: '历史记录',
-  VideoPlay: '视频播放',
-  Login: '登录',
-  Register: '注册',
-  ServerConfig: '服务器配置',
-}
 
 const contentContainerRef = ref(null)
 const topbarRef = ref(null)
@@ -227,6 +223,7 @@ let titleObserver = null
 let stopDesktopWindowStateSync = null
 
 const isAuthPage = computed(() => ['/login', '/register', '/server-config'].includes(route.path))
+const currentRouteContext = computed(() => resolveRouteContext(route))
 
 const sidebarMeta = computed(() => route.meta?.sidebar || { mode: 'fixed', defaultOpen: false })
 const isSidebarFlyout = computed(() => sidebarMeta.value?.mode === 'flyout')
@@ -244,10 +241,8 @@ const mobileRoutes = MOBILE_NAV_ITEMS
 
 const showGlobalSearch = computed(() => !isAuthPage.value && !!route.meta?.showSearch)
 const isVideoPlayRoute = computed(() => route.name === 'VideoPlay')
-const showShellHeader = computed(() => showGlobalSearch.value || isVideoWidescreen.value)
-const isCenteredSearchPage = computed(() => ['home', 'subscribed', 'history'].includes(String(route.meta?.search || '')))
+const showShellHeader = computed(() => !isAuthPage.value && route.meta?.shellHeader !== false)
 const isScrollablePage = computed(() => !!route.meta?.scrollable)
-const canGoBack = computed(() => window.history.length > 1)
 const desktopPlatformLabel = computed(() => {
   const platformMap = {
     win32: 'Windows',
@@ -264,13 +259,7 @@ const desktopChromeContext = computed(() => {
   if (isVideoPlayRoute.value) {
     return '沉浸播放'
   }
-  if (route.name === 'Settings') {
-    return '系统配置'
-  }
-  if (route.name === 'ServerConfig') {
-    return '服务器配置'
-  }
-  return '工作台'
+  return currentRouteContext.value.sectionLabel || '工作台'
 })
 const showDesktopWindowControls = computed(() => {
   return isDesktopShell && DESKTOP_WINDOW_CONTROL_PLATFORMS.has(desktopPlatform)
@@ -284,8 +273,7 @@ const contentScrollClass = computed(() => {
 })
 
 const resolveRouteTitle = () => {
-  const routeName = String(route.name || '')
-  return ROUTE_TITLES[routeName] || '桌面应用'
+  return currentRouteContext.value.pageTitle || String(route.meta?.title || '') || '桌面应用'
 }
 
 const updateDesktopPageTitle = (rawTitle) => {
@@ -384,7 +372,7 @@ const syncAppTopbarHeight = async () => {
     return
   }
 
-  const bar = topbarRef.value || globalSearchBar.value?.$el || document.querySelector('.global-search-bar')
+  const bar = topbarRef.value
   if (!bar) {
     root.style.setProperty('--app-topbar-height', '0px')
     return
@@ -682,16 +670,24 @@ h6 {
   overflow: hidden;
 }
 
-/* 极简页头 */
-.minimal-header {
+.shell-topbar {
   position: sticky;
   top: 0;
   z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background:
+    linear-gradient(180deg, hsl(var(--background) / 0.96) 0%, hsl(var(--background) / 0.9) 100%);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
+}
+
+.minimal-header {
   display: grid;
   grid-template-columns: minmax(2.5rem, 1fr) minmax(0, auto) minmax(2.5rem, 1fr);
   align-items: center;
   gap: 1rem;
-  padding: 1.1rem 2rem 0.9rem 2rem;
+  padding: 0.45rem 2rem 0.85rem 2rem;
   pointer-events: none;
 }
 
@@ -706,28 +702,38 @@ h6 {
   min-width: 2.5rem;
 }
 
-.back-btn {
-  display: inline-flex;
+.header-breadcrumbs {
+  min-width: 0;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  gap: 0.35rem;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
-.back-btn:hover {
-  background: hsl(var(--accent));
+.header-breadcrumbs__item {
+  font-size: 0.75rem;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.header-breadcrumbs__item--link {
+  color: hsl(var(--muted-foreground));
+  transition: color 0.15s ease;
+}
+
+.header-breadcrumbs__item--link:hover {
   color: hsl(var(--foreground));
 }
 
-.back-btn__icon {
-  width: 1.25rem;
-  height: 1.25rem;
+.header-breadcrumbs__item--current {
+  color: hsl(var(--foreground));
+  font-weight: 700;
+}
+
+.header-breadcrumbs__separator {
+  color: hsl(var(--muted-foreground) / 0.55);
+  font-size: 0.7rem;
 }
 
 .minimal-search {
@@ -818,12 +824,16 @@ h6 {
 
 @media (max-width: 767px) {
   .minimal-header {
-    padding: 0.85rem 1rem 0.7rem;
+    padding: 0.35rem 1rem 0.7rem;
   }
 
   .header-left,
   .header-right-spacer {
     width: 40px;
+  }
+
+  .header-breadcrumbs__item {
+    font-size: 0.7rem;
   }
 
   .minimal-search {

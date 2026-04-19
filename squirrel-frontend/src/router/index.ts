@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { DEFAULT_SETTINGS_TAB, SETTINGS_TABS } from '@/constants/sidebar'
 import { useUser } from '../composables/useUser'
 import { useServerConfig } from '../composables/useServerConfig'
 import { Logger } from '@/utils/logger'
@@ -17,15 +18,15 @@ const LogViewer = () => import('../views/LogViewer.vue')
 const ScheduledTasks = () => import('../views/ScheduledTasks.vue')
 const SyncCenter = () => import('../views/SyncCenter.vue')
 
-const SearchMeta = {
+const baseSearchMeta = {
   showSearch: true,
   search: 'home',
   searchEvent: 'search:home',
-  searchPlaceholder: '搜索'
+  searchPlaceholder: '搜索',
 }
 
-const NoSearchMeta = {
-  showSearch: false
+const noSearchMeta = {
+  showSearch: false,
 }
 
 const SidebarMode = {
@@ -45,203 +46,238 @@ const SidebarMode = {
 
 const PUBLIC_ROUTES = ['/login', '/register', '/server-config']
 
+const createSearchMeta = (title: string, overrides = {}) => ({
+  ...baseSearchMeta,
+  title,
+  ...overrides,
+})
+
+const createNoSearchMeta = (title: string, overrides = {}) => ({
+  ...noSearchMeta,
+  title,
+  ...overrides,
+})
+
+const createVideoTabRoute = (
+  path: string,
+  name: string,
+  title: string,
+  overrides = {},
+) => ({
+  path,
+  name,
+  component: VideoTab,
+  meta: createSearchMeta(title, overrides),
+})
+
 const routes = [
   {
     path: '/videos',
     name: 'LatestVideos',
     component: LatestVideos,
-    meta: SearchMeta,
+    meta: createSearchMeta('首页', { navKey: 'videos', sectionLabel: '首页' }),
     children: [
-      {
-        path: 'all',
-        name: 'AllVideos',
-        component: VideoTab,
-        meta: SearchMeta,
-      },
-      {
-        path: 'unread',
-        name: 'UnreadVideos',
-        component: VideoTab,
-        meta: SearchMeta,
-      },
-      {
-        path: 'read',
-        name: 'ReadVideos',
-        component: VideoTab,
-        meta: SearchMeta,
-      },
-      {
-        path: 'preview',
-        name: 'PreviewVideos',
-        component: VideoTab,
-        meta: SearchMeta,
-      },
-      {
-        path: 'liked',
-        name: 'LikedVideos',
-        component: VideoTab,
-        meta: { showSearch: true, search: 'home' },
-      },
-      {
-        path: 'later',
-        name: 'LaterVideos',
-        component: VideoTab,
-        meta: { showSearch: true, search: 'home' },
-      }
+      createVideoTabRoute('all', 'AllVideos', '全部视频', { navKey: 'videos', sectionLabel: '首页' }),
+      createVideoTabRoute('unread', 'UnreadVideos', '未读视频', { navKey: 'videos', sectionLabel: '首页' }),
+      createVideoTabRoute('read', 'ReadVideos', '已读视频', { navKey: 'videos', sectionLabel: '首页' }),
+      createVideoTabRoute('preview', 'PreviewVideos', '预览视频', { navKey: 'videos', sectionLabel: '首页' }),
+      createVideoTabRoute('liked', 'LikedVideos', '喜欢的视频', { navKey: 'videos', sectionLabel: '首页' }),
+      createVideoTabRoute('later', 'LaterVideos', '稍后再看', { navKey: 'videos', sectionLabel: '首页' }),
     ],
     redirect: { name: 'AllVideos' },
   },
   {
     path: '/',
-    redirect: {name: 'AllVideos', replace: true}
+    redirect: { name: 'AllVideos', replace: true },
   },
   {
     path: '/subscribed',
     name: 'Subscribed',
     component: Subscribed,
-    meta: {
-      showSearch: true,
+    meta: createSearchMeta('订阅中心', {
+      navKey: 'subscribed',
+      sectionLabel: '订阅',
       search: 'subscribed',
       searchEvent: 'search:subscribed',
-      searchPlaceholder: '搜索订阅源'
-    },
+      searchPlaceholder: '搜索订阅源',
+    }),
   },
   {
     path: '/settings',
     name: 'Settings',
-    component: Settings
+    redirect: { name: 'SettingsAppearance', replace: true },
+    meta: createNoSearchMeta('系统设置', {
+      navKey: 'settings',
+      sectionLabel: '设置',
+    }),
   },
+  ...SETTINGS_TABS.map((tab) => ({
+    path: tab.path,
+    name: tab.routeName,
+    component: Settings,
+    meta: createNoSearchMeta(tab.label, {
+      navKey: 'settings',
+      sectionLabel: '设置',
+    }),
+  })),
   {
     path: '/plugins',
     name: 'Plugins',
     component: PluginManager,
-    meta: NoSearchMeta
+    meta: createNoSearchMeta('插件管理', {
+      navKey: 'plugins',
+      sectionLabel: '插件',
+    }),
   },
   {
     path: '/logs',
     name: 'Logs',
     component: LogViewer,
-    meta: NoSearchMeta
+    meta: createNoSearchMeta('日志查看器', {
+      navKey: 'logs',
+      sectionLabel: '日志',
+    }),
   },
   {
     path: '/sync-center',
     name: 'SyncCenter',
     component: SyncCenter,
-    meta: { showSearch: false, scrollable: true, hideScrollbar: true }
+    meta: createNoSearchMeta('同步中心', {
+      navKey: 'sync-center',
+      sectionLabel: '采集',
+      scrollable: true,
+      hideScrollbar: true,
+    }),
   },
   {
     path: '/scheduled-tasks',
     name: 'ScheduledTasks',
     component: ScheduledTasks,
-    meta: NoSearchMeta
+    meta: createNoSearchMeta('计划任务', {
+      navKey: 'scheduled-tasks',
+      sectionLabel: '定时',
+    }),
   },
   {
     path: '/subscription/:id',
     name: 'SubscriptionDetail',
     component: LatestVideos,
-    meta: SearchMeta,
+    meta: createSearchMeta('频道', {
+      navKey: 'subscribed',
+      sectionLabel: '订阅',
+      contextParentLabel: '频道',
+    }),
     children: [
       {
         path: '',
         name: 'SubscriptionIndex',
-        redirect: (to: any) => ({name: 'SubscriptionAllVideos', params: {id: to.params.id}})
+        redirect: (to: any) => ({ name: 'SubscriptionAllVideos', params: { id: to.params.id } }),
       },
-      {
-        path: 'all',
-        name: 'SubscriptionAllVideos',
-        component: VideoTab,
-        meta: SearchMeta,
-      },
-      {
-        path: 'unread',
-        name: 'SubscriptionUnreadVideos',
-        component: VideoTab,
-        meta: SearchMeta,
-      },
-      {
-        path: 'read',
-        name: 'SubscriptionReadVideos',
-        component: VideoTab,
-        meta: SearchMeta,
-      },
-      {
-        path: 'preview',
-        name: 'SubscriptionPreviewVideos',
-        component: VideoTab,
-        meta: SearchMeta,
-      },
-      {
-        path: 'liked',
-        name: 'SubscriptionLikedVideos',
-        component: VideoTab,
-        meta: SearchMeta,
-      },
-      {
-        path: 'later',
-        name: 'SubscriptionLaterVideos',
-        component: VideoTab,
-        meta: SearchMeta,
-      }
+      createVideoTabRoute('all', 'SubscriptionAllVideos', '全部视频', {
+        navKey: 'subscribed',
+        sectionLabel: '订阅',
+        contextParentLabel: '频道',
+      }),
+      createVideoTabRoute('unread', 'SubscriptionUnreadVideos', '未读视频', {
+        navKey: 'subscribed',
+        sectionLabel: '订阅',
+        contextParentLabel: '频道',
+      }),
+      createVideoTabRoute('read', 'SubscriptionReadVideos', '已读视频', {
+        navKey: 'subscribed',
+        sectionLabel: '订阅',
+        contextParentLabel: '频道',
+      }),
+      createVideoTabRoute('preview', 'SubscriptionPreviewVideos', '预览视频', {
+        navKey: 'subscribed',
+        sectionLabel: '订阅',
+        contextParentLabel: '频道',
+      }),
+      createVideoTabRoute('liked', 'SubscriptionLikedVideos', '喜欢的视频', {
+        navKey: 'subscribed',
+        sectionLabel: '订阅',
+        contextParentLabel: '频道',
+      }),
+      createVideoTabRoute('later', 'SubscriptionLaterVideos', '稍后再看', {
+        navKey: 'subscribed',
+        sectionLabel: '订阅',
+        contextParentLabel: '频道',
+      }),
     ],
   },
   {
     path: '/history',
     name: 'History',
     component: History,
-    meta: {
-      showSearch: true,
+    meta: createSearchMeta('历史记录', {
+      navKey: 'history',
+      sectionLabel: '历史',
       search: 'history',
       searchEvent: 'search:history',
-      searchPlaceholder: '搜索历史'
-    },
+      searchPlaceholder: '搜索历史',
+    }),
   },
   {
     path: '/playlists',
     name: 'Playlists',
     component: PlaylistView,
-    meta: {
-      showSearch: false,
-    },
+    meta: createNoSearchMeta('播放列表', {
+      navKey: 'playlists',
+      sectionLabel: '播放列表',
+    }),
   },
   {
     path: '/video/:videoId',
     name: 'VideoPlay',
     component: VideoPlay,
-    meta: {
-      showSearch: true,
-      search: 'home',
-      searchEvent: 'search:home',
-      searchPlaceholder: '搜索视频',
+    meta: createSearchMeta('视频播放', {
+      navKey: 'videos',
+      sectionLabel: '首页',
       searchRedirectName: 'AllVideos',
       searchPersistKey: 'LatestVideos',
       scrollable: true,
       hideScrollbar: true,
       sidebar: SidebarMode.fixed,
-    },
+    }),
   },
   {
     path: '/server-config',
     name: 'ServerConfig',
     component: () => import('../views/ServerConfig.vue'),
-    meta: { requiresAuth: false }
+    meta: {
+      requiresAuth: false,
+      title: '服务器配置',
+    },
   },
   {
     path: '/login',
     name: 'Login',
     component: Login,
-    meta: { requiresAuth: false }
+    meta: {
+      requiresAuth: false,
+      title: '登录',
+    },
   },
   {
     path: '/register',
     name: 'Register',
     component: Register,
-    meta: { requiresAuth: false }
-  }
+    meta: {
+      requiresAuth: false,
+      title: '注册',
+    },
+  },
+  {
+    path: '/settings/:tab',
+    redirect: {
+      name: SETTINGS_TABS.find((tab) => tab.key === DEFAULT_SETTINGS_TAB)?.routeName || 'SettingsAppearance',
+    },
+  },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
 })
 
 router.beforeEach(async (to, from, next) => {

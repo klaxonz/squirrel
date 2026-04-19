@@ -1,53 +1,48 @@
 <template>
   <div class="log-viewer-container bg-background text-foreground h-full flex flex-col min-h-0">
     <div class="toolbar-container pt-4 pb-4">
-      <PageHeader
-        title="日志查看器"
-        description="把错误、链路和上下文折叠成连续的排障时间线，适合快速筛选 trace、定位异常和导出现场。"
-      >
-        <template #actions>
-          <div class="log-hero__pill">
-            <span class="log-hero__label">总量</span>
-            <span>共 {{ totalLogs }} 条</span>
-            <span v-if="hasActiveFilters" class="text-warning">已筛选</span>
-          </div>
-          <div class="log-hero__pill">
-            <span class="log-hero__label">自动刷新</span>
-            <span>{{ autoRefresh ? '5s' : '关闭' }}</span>
-          </div>
-          <Button
-            @click="copyAllLogs"
-            :disabled="logs.length === 0"
-            size="sm"
-            variant="outline"
-            class="log-toolbar-button"
-            :title="'复制所有显示的日志 (' + logs.length + ' 条)'"
-          >
-            <ClipboardDocumentIcon class="h-4 w-4" />
-            {{ allCopied ? '已复制全部' : '复制全部' }}
-          </Button>
-          <Button
-            @click="toggleAutoRefresh"
-            size="sm"
-            :variant="autoRefresh ? 'secondary' : 'outline'"
-            class="log-toolbar-button"
-          >
-            {{ autoRefresh ? '停止自动刷新' : '开启自动刷新' }}
-          </Button>
-          <Button
-            @click="loadLogs"
-            :disabled="loading"
-            size="sm"
-            class="log-toolbar-button"
-          >
-            <span
-              v-if="loading"
-              class="h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground"
-            ></span>
-            <span>刷新</span>
-          </Button>
-        </template>
-      </PageHeader>
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        <div class="log-hero__pill">
+          <span class="log-hero__label">总量</span>
+          <span>共 {{ totalLogs }} 条</span>
+          <span v-if="hasActiveFilters" class="text-warning">已筛选</span>
+        </div>
+        <div class="log-hero__pill">
+          <span class="log-hero__label">自动刷新</span>
+          <span>{{ autoRefresh ? '5s' : '关闭' }}</span>
+        </div>
+        <Button
+          @click="copyAllLogs"
+          :disabled="logs.length === 0"
+          size="sm"
+          variant="outline"
+          class="log-toolbar-button"
+          :title="'复制所有显示的日志 (' + logs.length + ' 条)'"
+        >
+          <ClipboardDocumentIcon class="h-4 w-4" />
+          {{ allCopied ? '已复制全部' : '复制全部' }}
+        </Button>
+        <Button
+          @click="toggleAutoRefresh"
+          size="sm"
+          :variant="autoRefresh ? 'secondary' : 'outline'"
+          class="log-toolbar-button"
+        >
+          {{ autoRefresh ? '停止自动刷新' : '开启自动刷新' }}
+        </Button>
+        <Button
+          @click="loadLogs"
+          :disabled="loading"
+          size="sm"
+          class="log-toolbar-button"
+        >
+          <span
+            v-if="loading"
+            class="h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground"
+          ></span>
+          <span>刷新</span>
+        </Button>
+      </div>
     </div>
 
     <div class="content-container py-2 space-y-2 flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -194,7 +189,6 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import { ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
-import PageHeader from '@/components/layout/PageHeader.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

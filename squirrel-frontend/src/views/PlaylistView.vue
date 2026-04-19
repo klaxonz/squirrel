@@ -1,19 +1,5 @@
 <template>
   <div class="playlist-page flex h-full flex-col bg-background text-foreground">
-    <div class="playlist-toolbar-shell">
-      <div class="toolbar-container">
-        <PageHeader
-          class="playlist-page__header"
-          title="播放列表"
-        >
-          <template #meta>
-            <span class="playlist-page__meta-inline">{{ playlists.length }} 个列表</span>
-            <span v-if="playlists.length" class="playlist-page__meta-inline">{{ totalVideoCount }} 个视频</span>
-          </template>
-        </PageHeader>
-      </div>
-    </div>
-
     <div class="playlist-content scrollbar-hide">
       <div class="content-container playlist-content__inner">
         <div v-if="loading && !playlists.length" class="playlist-state playlist-state--loading">
@@ -276,7 +262,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
-import PageHeader from '@/components/layout/PageHeader.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {

@@ -18,7 +18,7 @@
           v-for="(item) in group.items"
           :key="item.path"
           :item="item"
-          :is-active="isNavigationItemActive(item, $route.path)"
+          :is-active="isNavigationItemActive(item, $route)"
         />
       </div>
     </nav>
@@ -43,7 +43,6 @@
 </template>
 
 <script setup>
-import { inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUser } from '@/composables/useUser'
 import SidebarMenuItem from './SidebarMenuItem.vue'

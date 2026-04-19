@@ -1,29 +1,5 @@
 <template>
   <div class="settings-page bg-background text-foreground min-h-full">
-    <!-- Header -->
-    <header class="settings-header">
-      <div class="settings-header__inner">
-        <div class="settings-header__copy">
-          <div class="settings-header__eyebrow">
-            <span class="settings-header__badge">
-              <Settings2 class="h-3 w-3" />
-              配置中心
-            </span>
-          </div>
-          <h1 class="settings-header__title">设置</h1>
-          <p class="settings-header__desc">配置你的偏好与账户</p>
-        </div>
-        <Transition name="status-pop">
-          <div v-if="hasUnsavedChanges" class="settings-header__status">
-            <span class="status-dot"></span>
-            <span class="status-text">有未保存的更改</span>
-          </div>
-        </Transition>
-      </div>
-      <!-- Decorative line -->
-      <div class="settings-header__line"></div>
-    </header>
-
     <!-- Tab Navigation -->
     <nav class="settings-tabs" role="tablist">
       <button
@@ -34,12 +10,18 @@
         :aria-controls="`panel-${tab.key}`"
         class="settings-tab"
         :class="{ 'settings-tab--active': currentTab === tab.key }"
-        @click="currentTab = tab.key"
+        @click="navigateToTab(tab.path)"
       >
         <component :is="tab.icon" class="settings-tab__icon" />
         <span class="settings-tab__label">{{ tab.label }}</span>
         <span v-if="tab.badge" class="settings-tab__badge">{{ tab.badge }}</span>
       </button>
+      <Transition name="status-pop">
+        <div v-if="hasUnsavedChanges" class="settings-header__status">
+          <span class="status-dot"></span>
+          <span class="status-text">有未保存的更改</span>
+        </div>
+      </Transition>
     </nav>
 
     <!-- Content Panel -->
@@ -477,7 +459,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue'
 import {
   AlertCircle,
   Check,
@@ -495,28 +477,31 @@ import {
   ShieldCheck,
   Sun,
   Zap,
-} from 'lucide-vue-next';
+} from 'lucide-vue-next'
+import { useRoute, useRouter } from 'vue-router'
 import { revokeUserSessions, updateUserPassword } from '@/api'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import {
+  DEFAULT_SETTINGS_TAB,
+  SETTINGS_TABS,
+  getSettingsTabByRouteName,
+  type SettingsTabKey,
+} from '@/constants/sidebar'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { useServerConfig } from '@/composables/useServerConfig'
 import type { AppThemeMode } from '@/lib/theme'
 import { Logger } from '@/utils/logger'
-import { useSystemConfig } from '../composables/useSystemConfig';
-import { useUserSettings } from '../composables/useUserSettings';
+import { useSystemConfig } from '../composables/useSystemConfig'
+import { useUserSettings } from '../composables/useUserSettings'
 
-type SettingsTabKey = 'appearance' | 'content' | 'playback' | 'security' | 'system' | 'server'
+const route = useRoute()
+const router = useRouter()
 
-const tabs: Array<{ key: SettingsTabKey; label: string; icon: any; badge?: string }> = [
-  { key: 'appearance', label: '外观', icon: Palette },
-  { key: 'content', label: '内容', icon: ShieldCheck },
-  { key: 'playback', label: '播放', icon: PlayCircle },
-  { key: 'security', label: '安全', icon: KeyRound },
-  { key: 'system', label: '系统', icon: Settings2 },
-  { key: 'server', label: '服务器', icon: Network },
-];
-const currentTab = ref<SettingsTabKey>('appearance');
+const tabs = SETTINGS_TABS
+const currentTab = computed<SettingsTabKey>(() => {
+  return getSettingsTabByRouteName(route.name)?.key || DEFAULT_SETTINGS_TAB
+})
 
 const themeOptions: Array<{ value: AppThemeMode; label: string; description: string; icon: any }> = [
   { value: 'light', label: '浅色', description: '明亮的浅色主题', icon: Sun },
@@ -529,10 +514,10 @@ const themeOptions: Array<{ value: AppThemeMode; label: string; description: str
 const { themeMode, setThemeMode } = useAppTheme()
 
 // User settings
-const { settings, loading: userSaving, loadUserSettings, saveUserSettings } = useUserSettings();
+const { settings, loading: userSaving, loadUserSettings, saveUserSettings } = useUserSettings()
 
 // System config
-const { config: systemConfig, loading: systemLoading, loadSystemConfig, updateSystemConfig } = useSystemConfig();
+const { config: systemConfig, loading: systemLoading, loadSystemConfig, updateSystemConfig } = useSystemConfig()
 const systemSaving = ref(false)
 const pageLoading = ref(true)
 const passwordSubmitting = ref(false)
@@ -586,8 +571,14 @@ const getErrorMessage = (error: any, fallback: string) => {
   return fallback
 }
 
+const navigateToTab = (path: string) => {
+  if (route.path !== path) {
+    router.push(path)
+  }
+}
+
 onMounted(async () => {
-  pageLoading.value = true;
+  pageLoading.value = true
   await initServerConfig()
   await Promise.all([
     loadUserSettings(),
@@ -598,34 +589,34 @@ onMounted(async () => {
     }),
   ])
   serverForm.value.url = currentServerUrl.value || ''
-  pageLoading.value = false;
-});
+  pageLoading.value = false
+})
 
 const onUserSettingChange = async () => {
-  userSaving.value = true;
-  hasUnsavedChanges.value = true;
+  userSaving.value = true
+  hasUnsavedChanges.value = true
   try {
-    await saveUserSettings();
-    showSaveToast('已保存');
+    await saveUserSettings()
+    showSaveToast('已保存')
   } catch (err) {
-    showSaveToast('保存失败', true);
+    showSaveToast('保存失败', true)
   } finally {
-    userSaving.value = false;
-    hasUnsavedChanges.value = false;
+    userSaving.value = false
+    hasUnsavedChanges.value = false
   }
-};
+}
 
 const onSystemToggle = async (key: string, val: boolean) => {
-  systemSaving.value = true;
-  const result = await updateSystemConfig({ [key]: val });
+  systemSaving.value = true
+  const result = await updateSystemConfig({ [key]: val })
   if (result.error) {
     showSaveToast('保存失败', true);
     Logger.error('Failed to update system config', result.error);
   } else {
     showSaveToast('已保存');
   }
-  systemSaving.value = false;
-};
+  systemSaving.value = false
+}
 
 const handleTestServer = async () => {
   if (!serverForm.value.url.trim()) return

@@ -2,12 +2,6 @@
   <div class="scheduled-page bg-background text-foreground h-full flex flex-col min-h-0">
     <div class="toolbar-container pt-4 pb-4">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <!-- Title & Description -->
-        <div class="flex flex-col gap-0.5">
-          <h1 class="text-base font-bold tracking-tight text-foreground">任务调度</h1>
-          <p class="text-[11px] text-muted-foreground">全局自动化执行流水线与任务负载监控</p>
-        </div>
-
       </div>
 
       <!-- Stats Row -->

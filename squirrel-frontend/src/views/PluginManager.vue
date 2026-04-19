@@ -2,7 +2,6 @@
   <div class="plugin-page flex h-full flex-col bg-background text-foreground">
     <section class="plugin-shell">
       <div class="toolbar-container">
-        <h1 class="plugin-title">插件</h1>
         <div class="plugin-header">
           <div v-if="isInitialLoading" class="plugin-toolbar-skeleton" aria-hidden="true">
             <div
@@ -1129,14 +1128,6 @@ onUnmounted(() => {
   gap: 1rem;
   padding: 0.75rem 0;
   flex-wrap: wrap;
-}
-
-.plugin-title {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: hsl(var(--foreground));
 }
 
 .plugin-tabs {
