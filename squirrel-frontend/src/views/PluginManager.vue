@@ -17,10 +17,11 @@
               <label>
                 <input type="file" accept=".zip" class="hidden" @change="handleFileChange" />
                 <CloudArrowUpIcon class="h-3.5 w-3.5" />
-                <span>{{ selectedFile ? selectedFile.name : '导入' }}</span>
+                <span>{{ selectedFile ? selectedFile.name : '导入插件' }}</span>
               </label>
             </Button>
             <Button
+              v-if="selectedFile"
               :disabled="!selectedFile || installing"
               @click="handleInstall"
               size="xs"
@@ -28,16 +29,25 @@
             >
               <ArrowPathIcon v-if="installing" class="h-3.5 w-3.5 animate-spin" />
               <PlusCircleIcon v-else class="h-3.5 w-3.5" />
+              {{ installing ? '安装中' : '安装' }}
+            </Button>
+            <Button as-child variant="outline" size="xs" class="plugin-toolbar-btn">
+              <label>
+                <input type="file" accept=".txt,.json" class="hidden" @change="handleCookiesFileChange" />
+                <CloudArrowUpIcon class="h-3.5 w-3.5" />
+                <span>{{ cookiesFileName || '导入 Cookie' }}</span>
+              </label>
             </Button>
             <Button
-              :disabled="reloading || loading"
-              @click="handleReload"
-              size="icon-xs"
-              variant="ghost"
-              class="plugin-toolbar-icon"
-              title="刷新"
+              v-if="selectedCookiesFile"
+              @click="handleImportAllCookies"
+              :disabled="!selectedCookiesFile || importingCookies"
+              size="xs"
+              class="plugin-toolbar-btn plugin-toolbar-btn--primary"
             >
-              <ArrowPathIcon class="h-3.5 w-3.5" :class="{ 'animate-spin': reloading }" />
+              <ArrowPathIcon v-if="importingCookies" class="h-3.5 w-3.5 animate-spin" />
+              <PlusCircleIcon v-else class="h-3.5 w-3.5" />
+              {{ importingCookies ? '导入中' : '导入' }}
             </Button>
             <Button
               @click="handleTestAll"
@@ -48,30 +58,6 @@
               <ArrowPathIcon v-if="testingAll" class="h-3.5 w-3.5 animate-spin" />
               <CheckCircleIcon v-else class="h-3.5 w-3.5" />
               {{ testingAll ? '测试中' : '测试全部' }}
-            </Button>
-            <Button as-child variant="ghost" size="xs" class="plugin-toolbar-btn">
-              <label>
-                <input type="file" accept=".txt" class="hidden" @change="handleCookiesFileChange" />
-                <span>{{ cookiesFileName || 'Cookie' }}</span>
-              </label>
-            </Button>
-            <Button
-              @click="handleImportAllCookies"
-              :disabled="!selectedCookiesFile || importingCookies"
-              size="xs"
-              variant="ghost"
-              class="plugin-toolbar-btn"
-            >
-              {{ importingCookies ? '...' : '导入' }}
-            </Button>
-            <Button
-              @click="handleSyncCookieCloud"
-              :disabled="syncingCookieCloud"
-              size="xs"
-              variant="ghost"
-              class="plugin-toolbar-btn"
-            >
-              {{ syncingCookieCloud ? '...' : '云同步' }}
             </Button>
           </div>
         </div>
@@ -96,34 +82,28 @@
           <template v-else>
             <span class="plugin-stat">
               <span class="plugin-stat__value">{{ pluginSummary.total }}</span>
-              <span class="plugin-stat__label">插件</span>
+              <span class="plugin-stat__label">已安装</span>
             </span>
             <span class="plugin-stat-sep"></span>
             <span class="plugin-stat">
-              <span class="plugin-stat__value text-warning">{{ pluginSummary.attention }}</span>
-              <span class="plugin-stat__label">异常</span>
+              <span class="plugin-stat__value text-success">{{ pluginSummary.running }}</span>
+              <span class="plugin-stat__label">运行中</span>
             </span>
-            <span class="plugin-stat-sep"></span>
-            <span class="plugin-stat">
-              <span class="plugin-stat__value">{{ connectivitySummary.total }}</span>
-              <span class="plugin-stat__label">站点</span>
-            </span>
-            <span class="plugin-stat-sep"></span>
-            <span class="plugin-stat">
-              <span class="plugin-stat__value text-success">{{ connectivitySummary.accessible }}</span>
-              <span class="plugin-stat__label">可用</span>
-            </span>
-            <span class="plugin-stat-sep"></span>
-            <span class="plugin-stat">
-              <span class="plugin-stat__value text-destructive">{{ connectivitySummary.failed }}</span>
-              <span class="plugin-stat__label">异常</span>
-            </span>
-            <span class="plugin-stat-sep"></span>
-            <span class="plugin-stat">
-              <span class="plugin-stat__value">{{ connectivitySummary.success_rate }}%</span>
-              <span class="plugin-stat__label">成功率</span>
-            </span>
-            <span v-if="lastTestedAt" class="plugin-timestamp">检测于 {{ formatTime(lastTestedAt) }}</span>
+            <template v-if="pluginSummary.attention > 0">
+              <span class="plugin-stat-sep"></span>
+              <span class="plugin-stat">
+                <span class="plugin-stat__value text-warning">{{ pluginSummary.attention }}</span>
+                <span class="plugin-stat__label">需关注</span>
+              </span>
+            </template>
+            <template v-if="connectivitySummary.total > 0">
+              <span class="plugin-stat-sep"></span>
+              <span class="plugin-stat">
+                <span class="plugin-stat__value">{{ connectivitySummary.accessible }}/{{ connectivitySummary.total }}</span>
+                <span class="plugin-stat__label">已检测</span>
+              </span>
+            </template>
+            <span v-if="lastTestedAt" class="plugin-timestamp">最近检测 {{ formatTime(lastTestedAt) }}</span>
             <div class="plugin-search">
               <MagnifyingGlassIcon class="h-3 w-3" />
               <input
@@ -132,6 +112,16 @@
                 class="plugin-search-input"
               />
             </div>
+            <Button
+              :disabled="reloading || loading"
+              @click="handleReload"
+              size="icon-xs"
+              variant="ghost"
+              class="plugin-search-refresh"
+              title="刷新"
+            >
+              <ArrowPathIcon class="h-3.5 w-3.5" :class="{ 'animate-spin': reloading }" />
+            </Button>
           </template>
         </div>
       </div>
@@ -416,7 +406,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
+import { onMounted, onUnmounted, ref, computed } from 'vue';
 import {
   ArrowPathIcon,
   CheckCircleIcon,
@@ -438,9 +428,8 @@ import SiteIcon from '@/components/common/SiteIcon.vue'
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
 import PluginSkeleton from '@/components/settings/PluginSkeleton.vue';
 import { Button } from '@/components/ui/button'
-import { getConnectivityBadge } from '@/utils/plugin-connectivity-status'
 import { Logger } from '@/utils/logger'
-import { getLoginStatusBadge, mergeLoginStatusResult, shouldRefreshLoginStatusesAfterCookieImport } from '@/utils/plugin-login-status'
+import { mergeLoginStatusResult, shouldRefreshLoginStatusesAfterCookieImport } from '@/utils/plugin-login-status'
 import { useSiteCatalog } from '@/composables/useSites';
 import {
   disablePlugin,
@@ -453,7 +442,6 @@ import {
   reloadPlugins,
   revokeYouTubeOAuth,
   setupYouTubeOAuth,
-  syncCookieCloudCookies,
   testAllSitesConnectivity,
   testSiteConnectivity,
   testSiteLoginStatus,
@@ -469,14 +457,11 @@ const selectedFile = ref(null);
 const actioning = ref(null);
 const isInitialLoading = computed(() => loading.value && !plugins.value.length);
 
-const toolbarSkeletonWidths = ['7rem', '2rem', '2rem', '5.5rem', '4rem', '3.25rem', '4.5rem'];
+const toolbarSkeletonWidths = ['8.5rem', '4.5rem', '8.5rem', '4.5rem', '5.5rem'];
 const statSkeletonItems = [
   { valueWidth: '1.5rem', labelWidth: '2rem' },
-  { valueWidth: '1.35rem', labelWidth: '2rem' },
   { valueWidth: '1.5rem', labelWidth: '2rem' },
   { valueWidth: '1.6rem', labelWidth: '2rem' },
-  { valueWidth: '1.35rem', labelWidth: '2rem' },
-  { valueWidth: '2.25rem', labelWidth: '2.5rem' },
 ];
 const pluginSkeletonRows = [
   {
@@ -553,18 +538,7 @@ const ytOAuthActioning = ref(false);
 let ytOAuthPollTimer = null;
 
 // Site config
-const { catalog: siteCatalog, loading: siteLoading, error: siteError, loadCatalog, saveCatalog } = useSiteCatalog();
-const siteList = computed(() => {
-  const catalog = siteCatalog.value || {};
-  return Object.entries(catalog).map(([slug, info]) => ({
-    slug,
-    label: info?.label || slug,
-    enabled: info?.enabled !== false,
-    test_url: info?.test_url || '',
-    domains: info?.domains || [],
-    iconUrl: info?.icon_url || '',
-  }));
-});
+const { catalog: siteCatalog, loadCatalog, saveCatalog } = useSiteCatalog();
 
 const CACHE_KEY_CONNECTIVITY = 'squirrel_connectivity_results';
 const CACHE_KEY_LOGIN_STATUS = 'squirrel_login_status_results';
@@ -615,15 +589,10 @@ const loadResultsFromCache = () => {
   }
 };
 
-const getSiteConnectivityBadge = (site) => getConnectivityBadge(site);
-const getSiteLoginBadge = (site) => getLoginStatusBadge(site?.loginStatus);
-
 const selectedCookiesFile = ref(null);
 const cookiesFileName = ref('');
 const importingCookies = ref(false);
-const syncingCookieCloud = ref(false);
 
-const siteCatalogLoaded = ref(false);
 const editingSite = ref(null);
 const siteEditorVisible = ref(false);
 const siteEditorSaving = ref(false);
@@ -631,7 +600,6 @@ const siteEditorError = ref('');
 
 const siteCatalogMap = computed(() => siteCatalog.value || {});
 const searchQuery = ref('');
-const siteSearchQuery = ref('');
 
 const displayPlugins = computed(() => {
   // Build maps for site connectivity and catalog info
@@ -665,7 +633,6 @@ const displayPlugins = computed(() => {
       siteOAuthAccount: loginStatus?.oauth_account || null,
       siteLoginTesting: !!loginTestingMap[siteName],
       siteSupportsLogin: primarySite?.supports_login_status ?? false,
-      siteConfigEnabled: catalogInfo?.enabled !== false,
       cookieUploading: !!cookieUploading.value[siteName],
     };
   });
@@ -702,53 +669,6 @@ const connectivitySummary = computed(() => {
   return connectivityResults.value[0]?.summary || { total: 0, accessible: 0, failed: 0, success_rate: 0 };
 });
 
-const displaySites = computed(() => {
-  const resultsMap = new Map();
-  if (connectivityResults.value.length > 0 && connectivityResults.value[0]?.results) {
-    connectivityResults.value[0].results.forEach(result => {
-      resultsMap.set(result.site_name, result);
-    });
-  }
-
-  const loginResultMap = loginStatusResults.value || {};
-  const loginTestingMap = loginStatusTesting.value || {};
-
-  let list = supportedSites.value.map(siteInfo => {
-    const siteName = siteInfo.site_name || siteInfo.name;
-    const result = resultsMap.get(siteName);
-    const catalogInfo = siteCatalogMap.value[siteName?.toLowerCase()] || null;
-    const catalogDomains = catalogInfo?.domains || [];
-    const displayLabel = catalogInfo?.label || siteInfo.name;
-
-    return {
-      ...siteInfo,
-      ...result,
-      site_name: siteName,
-      domains: catalogDomains.length > 0 ? catalogDomains : (result?.domains || siteInfo.domains || []),
-      test_url: result?.test_url || siteInfo.test_url || '',
-      icon_url: siteInfo.icon_url || catalogInfo?.icon_url || '',
-      loginStatus: loginResultMap[siteName],
-      loginTesting: !!loginTestingMap[siteName],
-      supports_login_status: siteInfo.supports_login_status ?? false,
-      cookieUploading: !!cookieUploading.value[siteName],
-      display_label: displayLabel,
-      config_enabled: catalogInfo?.enabled !== false,
-      config_aliases: catalogInfo?.aliases || [],
-    };
-  });
-
-  if (siteSearchQuery.value.trim()) {
-    const keyword = siteSearchQuery.value.trim().toLowerCase();
-    list = list.filter(s =>
-      s.site_name?.toLowerCase().includes(keyword) ||
-      s.display_label?.toLowerCase().includes(keyword) ||
-      (s.domains && s.domains.some(d => d.toLowerCase().includes(keyword)))
-    );
-  }
-
-  return list;
-});
-
 const handleCookiesFileChange = (event) => {
   const file = event.target.files?.[0];
   selectedCookiesFile.value = file || null;
@@ -770,29 +690,6 @@ const handleImportAllCookies = async () => {
     saveResultsToCache();
   }
   importingCookies.value = false;
-};
-
-const handleSyncCookieCloud = async () => {
-  if (syncingCookieCloud.value) return;
-  syncingCookieCloud.value = true;
-  const { data, error } = await syncCookieCloudCookies();
-  if (error) {
-    alert(error.message || 'CookieCloud 同步失败');
-    syncingCookieCloud.value = false;
-    return;
-  }
-
-  const updatedSites = data?.updated_sites ?? 0;
-  if (updatedSites > 0) {
-    if (supportedSites.value.length === 0) {
-      await fetchSupportedSites();
-    }
-    clearLoginStatusCache();
-    await testLoginForAllSupportedSites();
-    saveResultsToCache();
-  }
-  alert(`CookieCloud 同步完成，更新 ${updatedSites} 个站点`);
-  syncingCookieCloud.value = false;
 };
 
 const setLoginTesting = (siteName, value) => {
@@ -925,10 +822,8 @@ const upsertLoginStatus = (siteName, payload) => {
 const loadSiteCatalog = async () => {
   try {
     await loadCatalog();
-    siteCatalogLoaded.value = !siteCatalogErrorState.value;
   } catch (error) {
     Logger.error('Failed to load site config', error);
-    siteCatalogLoaded.value = false;
   }
 };
 
@@ -1038,99 +933,11 @@ const fetchSupportedSites = async () => {
   loadingSites.value = false;
 };
 
-const handleTestSingle = async (site) => {
-  const siteName = site.site_name || site.name;
-  const index = displaySites.value.findIndex(s => (s.site_name || s.name) === siteName);
-  if (index !== -1) {
-    displaySites.value[index].testing = true;
-  }
-
-  const result = await testSiteConnectivity(siteName);
-
-  if (!result.error && result.data) {
-    if (connectivityResults.value.length === 0) {
-      connectivityResults.value = [{ results: [], summary: { total: 0, accessible: 0, failed: 0, success_rate: 0 } }];
-    }
-
-    const results = connectivityResults.value[0].results;
-    const existingIndex = results.findIndex(r => r.site_name === siteName);
-
-    if (existingIndex !== -1) {
-      results[existingIndex] = result.data;
-    } else {
-      results.push(result.data);
-    }
-
-    const accessible = results.filter(r => r.accessible).length;
-    const failed = results.filter(r => !r.accessible).length;
-    connectivityResults.value[0].summary = {
-      total: results.length,
-      accessible,
-      failed,
-      success_rate: results.length > 0 ? Math.round((accessible / results.length) * 100 * 100) / 100 : 0
-    };
-    saveResultsToCache();
-  }
-
-  if (index !== -1) {
-    displaySites.value[index].testing = false;
-  }
-};
-
-const handleTestLogin = async (site) => {
-  const siteName = site.site_name || site.name;
-  setLoginTesting(siteName, true);
-
-  const { data, error } = await testSiteLoginStatus(siteName);
-
-  if (!error && data) {
-    upsertLoginStatus(siteName, data);
-  } else {
-    upsertLoginStatus(siteName, {
-      site_name: siteName,
-      logged_in: false,
-      message: error?.message || '检测失败',
-      supported: false,
-      checked_at: new Date().toISOString(),
-    });
-  }
-
-  setLoginTesting(siteName, false);
-  saveResultsToCache();
-};
-
 const setCookieUploading = (siteName, value) => {
   cookieUploading.value = {
     ...cookieUploading.value,
     [siteName]: value
   };
-};
-
-const handleUploadCookies = (site) => {
-  const siteName = site.site_name || site.name;
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.txt,.json';
-
-  input.onchange = async (event) => {
-    const files = event.target.files || [];
-    if (!files.length) return;
-
-    const file = files[0];
-    setCookieUploading(siteName, true);
-    try {
-      const result = await uploadSiteCookies(siteName, file);
-      if (!result.error && result.data?.login_status) {
-        upsertLoginStatus(siteName, result.data.login_status);
-        saveResultsToCache();
-      }
-    } finally {
-      setCookieUploading(siteName, false);
-    }
-    input.value = '';
-  };
-
-  input.click();
 };
 
 const testLoginForAllSupportedSites = async () => {
@@ -1316,7 +1123,7 @@ onUnmounted(() => {
 .plugin-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 1rem;
   padding: 0.75rem 0;
   flex-wrap: wrap;
@@ -1400,11 +1207,6 @@ onUnmounted(() => {
   background: hsl(var(--primary) / 0.9);
 }
 
-.plugin-toolbar-icon {
-  width: 1.75rem;
-  height: 1.75rem;
-}
-
 .plugin-stats-row {
   display: flex;
   align-items: center;
@@ -1472,11 +1274,11 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
   padding: 4px 8px;
   background: hsl(var(--secondary) / 0.3);
   border-radius: calc(var(--radius-sm) - 1px);
   color: hsl(var(--muted-foreground) / 0.5);
+  margin-left: auto;
 }
 
 .plugin-search--skeleton {
@@ -1507,6 +1309,12 @@ onUnmounted(() => {
 
 .plugin-search-input::placeholder {
   color: hsl(var(--muted-foreground) / 0.4);
+}
+
+.plugin-search-refresh {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
 }
 
 .plugin-content {
