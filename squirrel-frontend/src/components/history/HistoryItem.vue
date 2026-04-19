@@ -1,88 +1,66 @@
 <template>
-  <div
-    class="history-item"
-    @click="$emit('open', video)"
-  >
-    <!-- Thumbnail Section -->
-    <div class="thumbnail-wrapper">
-      <div class="thumbnail-container">
+  <article class="history-item-row">
+    <button type="button" class="history-item-row__primary" @click="$emit('open', video)">
+      <div class="history-item-row__thumb">
+        <div class="history-item-row__thumb-fallback">
+          <Icon icon="lucide:film" />
+        </div>
         <img
-          v-if="video.thumbnail && !showDefaultThumbnail"
+          v-if="video.thumbnail"
           :src="video.thumbnail"
           referrerpolicy="no-referrer"
-          class="thumbnail-image"
-          :class="{ 'image-loaded': imageLoaded }"
           :alt="video.title"
-          @load="imageLoaded = true"
           @error="handleThumbnailError"
         />
-
-        <!-- Terminal Fallback -->
-        <div v-else class="video-terminal-fallback">
-          <div class="fallback-noise"></div>
-          <div class="fallback-content">
-            <span class="fallback-status">信号丢失</span>
-            <span class="fallback-id">ID: {{ videoCardId }}</span>
-          </div>
-        </div>
-
-        <!-- Duration Badge -->
-        <div class="duration-badge">{{ formatDuration(video.duration) }}</div>
-
-        <!-- Progress Bar -->
-        <div
-          v-if="video.progress > 0"
-          class="progress-bar"
-        >
+        <span v-if="video.duration" class="history-item-row__duration">
+          {{ formatDuration(video.duration) }}
+        </span>
+        <div v-if="video.progress > 0" class="history-item-row__progress">
           <div
-            class="progress-fill"
+            class="history-item-row__progress-fill"
             :style="{ width: `${video.progress * 100}%` }"
           ></div>
         </div>
       </div>
-    </div>
 
-    <!-- Info Section -->
-    <div class="info-container">
-      <h4 class="video-title line-clamp-2">{{ video.title }}</h4>
-
-      <div class="meta-row">
-        <div class="meta-left">
-          <div v-if="displayAvatars.length" class="avatar-stack">
+      <div class="history-item-row__body">
+        <span class="history-item-row__title">{{ video.title }}</span>
+        <span class="history-item-row__meta">
+          <template v-if="displayAvatars.length">
             <SubscriptionAvatar
               v-for="(avatar, index) in displayAvatars"
               :key="`avatar-${index}`"
               :src="avatar.avatar"
               :name="avatar.name"
               size="xs"
-              class="history-item__avatar"
+              class="history-item-row__avatar"
             />
-          </div>
+          </template>
 
-          <span v-if="displayChannel" class="channel-name">{{ displayChannel }}</span>
-        </div>
+          <span v-if="displayChannel">{{ displayChannel }}</span>
 
-        <div class="meta-right">
-          <span v-if="video.progress > 0" class="progress-text">已看 {{ (video.progress * 100).toFixed(0) }}%</span>
-          <span v-else class="progress-text">未观看</span>
-          <span class="separator">·</span>
-          <span class="watch-time">{{ formatLastWatchTime(video.played_at) }}</span>
-        </div>
+          <span class="history-item-row__meta-dot" aria-hidden="true"></span>
+
+          <span v-if="video.progress > 0" class="history-item-row__progress-text">
+            {{ (video.progress * 100).toFixed(0) }}%
+          </span>
+
+          <span class="history-item-row__meta-dot" aria-hidden="true"></span>
+
+          <span>{{ formatDate(video.played_at) }}</span>
+        </span>
       </div>
-    </div>
+    </button>
 
-    <!-- Actions Section -->
-    <div class="actions-container" :class="{ 'is-always-visible': isMobile }">
-      <button
-        class="delete-btn"
-        :title="isMobile ? '移除' : '从历史记录中移除'"
-        @click.stop="handleDelete"
-      >
-        <TrashIcon class="h-4 w-4" />
-      </button>
-    </div>
+    <button
+      type="button"
+      class="history-item-row__remove"
+      title="从历史记录中移除"
+      @click.stop="handleDelete"
+    >
+      <Icon icon="lucide:x" />
+    </button>
 
-    <!-- Delete Confirmation Dialog -->
     <Dialog :open="showDeleteConfirm" @update:open="showDeleteConfirm = $event">
       <DialogContent class="max-w-sm">
         <DialogHeader>
@@ -97,12 +75,12 @@
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  </div>
+  </article>
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
-import { TrashIcon } from '@heroicons/vue/24/outline'
+import { computed, ref } from 'vue'
+import { Icon } from '@iconify/vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import { Button } from '@/components/ui/button'
 import {
@@ -113,8 +91,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { formatDuration } from '@/utils/dateFormat'
-import { formatVideoCardId } from '@/utils/videoCard'
+import { formatDate, formatDuration } from '@/utils/dateFormat'
 
 const props = defineProps({
   video: {
@@ -125,16 +102,10 @@ const props = defineProps({
 
 const emit = defineEmits(['open', 'delete'])
 
-const showDefaultThumbnail = ref(false)
-const imageLoaded = ref(false)
 const showDeleteConfirm = ref(false)
-const isMobile = ref(false)
 
-const videoCardId = computed(() => formatVideoCardId(props.video?.id))
-
-const handleThumbnailError = () => {
-  imageLoaded.value = false
-  showDefaultThumbnail.value = true
+const handleThumbnailError = (e) => {
+  e.target.style.display = 'none'
 }
 
 const handleDelete = () => {
@@ -147,17 +118,17 @@ const confirmDelete = () => {
 }
 
 const displayAvatars = computed(() => {
-  let avatars = props.video.subscriptions?.map((subscription) => ({
-    id: subscription.id,
-    name: subscription.name,
-    avatar: subscription.avatar,
+  let avatars = props.video.subscriptions?.map((s) => ({
+    id: s.id,
+    name: s.name,
+    avatar: s.avatar,
   })) || []
 
   if (!avatars.length && props.video.actors) {
-    avatars = props.video.actors.map((actor) => ({
-      id: actor.id,
-      name: actor.name,
-      avatar: actor.avatar,
+    avatars = props.video.actors.map((a) => ({
+      id: a.id,
+      name: a.name,
+      avatar: a.avatar,
     }))
   }
 
@@ -165,190 +136,134 @@ const displayAvatars = computed(() => {
 })
 
 const displayChannel = computed(() => {
-  if (props.video.subscriptions && props.video.subscriptions.length > 0) {
+  if (props.video.subscriptions?.length) {
     return props.video.subscriptions.map(s => s.name).join(' / ')
   }
   return ''
 })
-
-const formatLastWatchTime = (timestamp) => {
-  if (!timestamp) return ''
-  const raw = typeof timestamp === 'string' ? timestamp : String(timestamp)
-  const datePart = raw.includes('T') ? raw.split('T')[0] : raw.split(' ')[0]
-  const date = new Date(datePart)
-  const now = new Date()
-  now.setHours(0, 0, 0, 0)
-  const yesterday = new Date(now)
-  yesterday.setDate(yesterday.getDate() - 1)
-
-  if (date.getTime() === now.getTime()) {
-    return '今天'
-  } else if (date.getTime() === yesterday.getTime()) {
-    return '昨天'
-  } else {
-    return `${date.getMonth() + 1}/${date.getDate()}`
-  }
-}
-
-const checkMobile = () => {
-  isMobile.value = window.innerWidth < 640
-}
-
-watch(
-  () => props.video?.thumbnail,
-  () => {
-    imageLoaded.value = false
-    showDefaultThumbnail.value = false
-  }
-)
-
-onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', checkMobile)
-})
 </script>
 
 <style scoped>
-.history-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 0.5rem 0;
+.history-item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0;
+  border-radius: var(--radius-md);
+  transition: background 0.15s ease;
+}
+
+.history-item-row:hover {
+  background: hsl(var(--secondary) / 0.15);
+}
+
+.history-item-row__primary {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: center;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 0.5rem 0.4rem;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 
-.history-item:hover {
-  background: hsl(var(--secondary) / 0.08);
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Thumbnail */
-.thumbnail-wrapper {
+.history-item-row__thumb {
   position: relative;
+  width: 7.5rem;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: hsl(var(--secondary) / 0.75);
   flex-shrink: 0;
 }
 
-.thumbnail-container {
-  position: relative;
-  width: 11rem;
-  aspect-ratio: 16/9;
-  background: hsl(var(--secondary) / 0.3);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
+.history-item-row__thumb-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--muted-foreground));
+  font-size: 1.1rem;
 }
 
-@media (max-width: 640px) {
-  .thumbnail-container {
-    width: 8rem;
-  }
-}
-
-.thumbnail-image {
+.history-item-row__thumb img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0;
-  transition: opacity 0.5s ease, transform 0.3s ease;
 }
 
-.thumbnail-image.image-loaded {
-  opacity: 1;
-}
-
-.history-item:hover .thumbnail-image.image-loaded {
-  transform: scale(1.04);
-}
-
-.duration-badge {
+.history-item-row__duration {
   position: absolute;
-  right: 0.3rem;
-  bottom: 0.3rem;
-  z-index: 4;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.55rem;
+  bottom: 4px;
+  right: 4px;
+  padding: 0.1rem 0.35rem;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: rgb(0 0 0 / 0.75);
   color: #fff;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
-  padding: 1px 5px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
 }
 
-/* Progress Bar - 放在封面内 */
-.progress-bar {
+.history-item-row__progress {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
   height: 2px;
   background: rgba(255, 255, 255, 0.15);
-  border-radius: 0;
   z-index: 1;
 }
 
-.progress-fill {
+.history-item-row__progress-fill {
   height: 100%;
   background: hsl(var(--primary));
   box-shadow: 0 0 6px hsl(var(--primary) / 0.8);
-  border-radius: 0;
 }
 
-/* Info Container */
-.info-container {
-  flex: 1;
+.history-item-row__body {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  padding-right: 0.5rem;
+  display: grid;
+  gap: 0.25rem;
+  align-content: center;
 }
 
-.video-title {
-  font-size: 0.8rem;
+.history-item-row__title {
+  color: hsl(var(--foreground));
+  font-size: 0.84rem;
   font-weight: 600;
   line-height: 1.4;
-  color: hsl(var(--foreground));
-  transition: color 0.2s ease;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.history-item:hover .video-title {
-  color: hsl(var(--primary));
-}
-
-.meta-row {
+.history-item-row__meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.65rem;
+  flex-wrap: wrap;
+  gap: 0.35rem;
   color: hsl(var(--muted-foreground));
+  font-size: 0.66rem;
 }
 
-.meta-left {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-  flex: 1;
+.history-item-row__meta-dot {
+  width: 0.2rem;
+  height: 0.2rem;
+  border-radius: 999px;
+  background: hsl(var(--border));
 }
 
-.avatar-stack {
-  display: flex;
-  align-items: center;
-}
-
-.history-item__avatar {
+.history-item-row__avatar {
   width: 1rem;
   height: 1rem;
   border-radius: calc(var(--radius-sm) - 1px);
@@ -356,129 +271,55 @@ onUnmounted(() => {
   border: 1px solid hsl(var(--background));
 }
 
-.channel-name {
-  font-weight: 500;
-  color: hsl(var(--foreground) / 0.7);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.meta-right {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex-shrink: 0;
-}
-
-.progress-text {
+.history-item-row__progress-text {
   color: hsl(var(--primary) / 0.8);
   font-weight: 500;
 }
 
-.separator {
-  opacity: 0.4;
-}
-
-.watch-time {
-  opacity: 0.7;
-}
-
-/* Actions */
-.actions-container {
-  flex-shrink: 0;
-  align-self: flex-start;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  display: flex;
-  align-items: center;
-  padding: 0 0.25rem;
-}
-
-.history-item:hover .actions-container {
-  opacity: 1;
-}
-
-.actions-container.is-always-visible {
-  opacity: 1;
-}
-
-.delete-btn {
-  display: flex;
+.history-item-row__remove {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 2rem;
+  height: 2rem;
   border: none;
+  border-radius: 999px;
   background: transparent;
-  border-radius: var(--radius-sm);
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
-  color: hsl(var(--muted-foreground) / 0.6);
-  transition: all 0.15s ease;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  margin-right: 0.1rem;
 }
 
-.delete-btn:hover {
+.history-item-row:hover .history-item-row__remove,
+.history-item-row__remove:focus-visible {
+  opacity: 1;
+}
+
+.history-item-row__remove:hover {
   background: hsl(var(--destructive) / 0.1);
   color: hsl(var(--destructive));
 }
 
-/* Terminal Fallback */
-.video-terminal-fallback {
-  position: absolute;
-  inset: 0;
-  background: #0a0a0a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.fallback-noise {
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  opacity: 0.05;
-}
-
-.fallback-content {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-  z-index: 1;
-}
-
-.fallback-status {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.55rem;
-  color: #ff4d00;
-  letter-spacing: 0.25rem;
-  font-weight: 800;
-  opacity: 0.6;
-}
-
-.fallback-id {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.45rem;
-  color: rgba(255, 255, 255, 0.15);
-  letter-spacing: 0.1em;
-}
-
-/* Responsive */
-@media (max-width: 640px) {
-  .info-container {
-    padding-right: 0;
+@media (max-width: 767px) {
+  .history-item-row__primary {
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    gap: 0.5rem;
   }
 
-  .meta-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
+  .history-item-row__thumb {
+    width: 5.5rem;
   }
 
-  .meta-right {
-    font-size: 0.6rem;
+  .history-item-row__remove {
+    opacity: 1;
+  }
+}
+
+@media (hover: none) {
+  .history-item-row__remove {
+    opacity: 1;
   }
 }
 </style>

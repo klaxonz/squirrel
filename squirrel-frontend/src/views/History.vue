@@ -1,7 +1,7 @@
 <template>
-  <div class="history-page flex flex-col h-full bg-background">
+  <div class="history-page flex h-full flex-col bg-background text-foreground">
     <!-- Header/Toolbar -->
-    <div class="toolbar-container">
+    <div class="history-toolbar__container">
       <FeedToolbar
         class="history-toolbar"
         :show-tabs="false"
@@ -35,7 +35,7 @@
               class="action-btn-minimal is-danger"
               @click="showClearConfirm = true"
             >
-              <TrashIcon class="h-3 w-3 mr-1.5" />
+              <Icon icon="lucide:trash-2" />
               清空历史
             </button>
           </div>
@@ -60,60 +60,53 @@
     </Dialog>
 
     <!-- Content Area -->
-    <div class="history-content flex-grow overflow-y-auto scrollbar-hide" ref="scrollContainer" @scroll="handleScroll">
-      <div class="history-inner max-w-full mx-auto w-full py-4 pb-20">
-        <Transition name="fade-list">
+    <div class="history-content scrollbar-hide" ref="scrollContainer" @scroll="handleScroll">
+      <div class="history-content__inner">
           <!-- Loading State -->
-          <div v-if="loading && videos.length === 0" key="skeleton" class="space-y-1 mt-8">
-            <HistorySkeleton v-for="i in 10" :key="i" :delay="i * 50" />
+          <div v-if="loading && videos.length === 0" class="history-state">
+            <div class="history-state__spinner" aria-hidden="true"></div>
+            <span>正在加载历史记录</span>
           </div>
 
           <!-- Empty State -->
-          <div v-else-if="hasLoadedOnce && groupedVideos.length === 0" key="empty" class="history-empty-card">
-            <div class="empty-terminal-fallback">
-              <div class="fallback-noise"></div>
-              <div class="fallback-content">
-                <span class="fallback-status">{{ searchQuery ? '未找到匹配' : '暂无记录' }}</span>
-                <span class="fallback-id">{{ searchQuery ? '搜索结果为空' : '播放历史为空' }}</span>
-              </div>
-            </div>
-            <p class="empty-hint">{{ searchQuery ? '尝试更换关键词' : '你观看过的视频会出现在这里' }}</p>
+          <div v-else-if="hasLoadedOnce && groupedVideos.length === 0" class="history-empty-card">
+            <p class="history-empty-card__eyebrow">历史记录</p>
+            <h2 class="history-empty-card__title">{{ searchQuery ? '未找到匹配' : '暂无记录' }}</h2>
+            <p class="history-empty-card__copy">{{ searchQuery ? '尝试更换关键词' : '你观看过的视频会出现在这里' }}</p>
           </div>
 
           <!-- History Groups -->
-          <div v-else key="list" class="space-y-8">
+          <div v-else class="history-groups">
             <div v-for="group in groupedVideos" :key="group.date" class="history-group">
               <h3 class="history-date-header">
-                <CalendarIcon class="h-4 w-4" />
-                <span class="date-label">{{ group.date }}</span>
-                <span class="date-count">({{ group.items.length }})</span>
+                <Icon icon="lucide:calendar" class="history-date-header__icon" />
+                <span class="history-date-header__label">{{ group.date }}</span>
+                <span class="history-date-header__meta-dot" aria-hidden="true"></span>
+                <span class="history-date-header__count">{{ group.items.length }} 条</span>
               </h3>
-              
-              <div class="space-y-1">
-                <TransitionGroup name="history-list">
-                  <HistoryItem
-                    v-for="video in group.items"
-                    :key="video.history_id || video.id"
-                    :video="video"
-                    @open="handleOpenModal"
-                    @delete="handleDeleteItem"
-                  />
-                </TransitionGroup>
+
+              <div class="history-group__items">
+                <HistoryItem
+                  v-for="video in group.items"
+                  :key="video.history_id || video.id"
+                  :video="video"
+                  @open="handleOpenModal"
+                  @delete="handleDeleteItem"
+                />
               </div>
             </div>
 
             <!-- Loading More Indicator -->
-            <div v-if="loading" class="history-loading-indicator">
-              <span class="loading-dot"></span>
-              <span class="loading-text">加载中</span>
+            <div v-if="loading && videos.length > 0" class="history-loading">
+              <div class="history-state__spinner" aria-hidden="true"></div>
+              <span>正在加载</span>
             </div>
-            
+
             <!-- All Loaded -->
-            <div v-if="allLoaded && groupedVideos.length > 0" class="py-12 text-center text-[10px] text-muted-foreground/30 uppercase tracking-[0.4em]">
+            <div v-if="allLoaded && groupedVideos.length > 0" class="history-all-loaded">
               没有更多历史记录了
             </div>
           </div>
-        </Transition>
       </div>
     </div>
   </div>
@@ -122,10 +115,9 @@
 <script setup>
 import { onMounted, ref, computed, watch, inject, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { TrashIcon, CalendarIcon } from '@heroicons/vue/24/outline';
+import { Icon } from '@iconify/vue';
 import FeedToolbar from '@/components/feed/FeedToolbar.vue';
 import HistoryItem from '@/components/history/HistoryItem.vue';
-import HistorySkeleton from '@/components/history/HistorySkeleton.vue';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -337,10 +329,10 @@ onUnmounted(() => {
 
 <style scoped>
 .history-page {
-  height: 100%;
+  min-height: 100%;
 }
 
-.toolbar-container {
+.history-toolbar__container {
   width: 100%;
   margin: 0 auto;
   padding: 0 1rem;
@@ -348,13 +340,13 @@ onUnmounted(() => {
 }
 
 @media (min-width: 640px) {
-  .toolbar-container {
+  .history-toolbar__container {
     padding: 0 1.5rem;
   }
 }
 
 @media (min-width: 1024px) {
-  .toolbar-container {
+  .history-toolbar__container {
     padding: 0 2rem;
   }
 }
@@ -410,22 +402,28 @@ onUnmounted(() => {
   box-shadow: 0 1px 3px hsl(var(--border) / 0.4);
 }
 
-/* History Inner */
-.history-inner {
+/* Content */
+.history-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.history-content__inner {
   width: 100%;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 0.75rem 1rem 1.25rem;
 }
 
 @media (min-width: 640px) {
-  .history-inner {
-    padding: 0 1.5rem;
+  .history-content__inner {
+    padding: 0.75rem 1.5rem 1.25rem;
   }
 }
 
 @media (min-width: 1024px) {
-  .history-inner {
-    padding: 0 2rem;
+  .history-content__inner {
+    padding: 0.75rem 2rem 1.25rem;
   }
 }
 
@@ -437,24 +435,91 @@ onUnmounted(() => {
   scrollbar-width: none;
 }
 
+/* States */
+.history-state,
+.history-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.85rem;
+  gap: 0.75rem;
+}
+
+.history-state {
+  min-height: 18rem;
+}
+
+.history-loading {
+  padding: 2rem 0;
+}
+
+.history-state__spinner {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  border: 2px solid hsl(var(--border));
+  border-top-color: hsl(var(--primary));
+  animation: history-spin 0.8s linear infinite;
+}
+
+@keyframes history-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Empty Card */
+.history-empty-card {
+  min-height: 40vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  gap: 1.25rem;
+  padding: 2rem;
+  border: 1px dashed hsl(var(--border) / 0.6);
+  border-radius: var(--radius-lg);
+}
+
+.history-empty-card__eyebrow {
+  margin: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: hsl(var(--primary));
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.history-empty-card__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.history-empty-card__copy {
+  margin: 0;
+  max-width: 22rem;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.6;
+}
+
 /* Date Group Header */
 .history-date-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   padding: 0.5rem 0;
   margin-bottom: 0;
-  background: hsl(var(--background));
-  border-radius: 0;
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-size: 0.7rem;
   color: hsl(var(--muted-foreground));
   position: sticky;
   top: 0;
   z-index: 10;
-  transition: all 0.2s ease;
+  background: hsl(var(--background));
 }
 
 .history-date-header::after {
@@ -468,159 +533,81 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-.date-label {
-  font-weight: 700;
+.history-date-header__icon {
+  font-size: 0.75rem;
+  opacity: 0.6;
 }
 
-.date-count {
-  font-size: 0.55rem;
+.history-date-header__label {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-date-header__meta-dot {
+  width: 0.2rem;
+  height: 0.2rem;
+  border-radius: 999px;
+  background: hsl(var(--border));
+}
+
+.history-date-header__count {
   font-weight: 400;
-  opacity: 0.5;
-  margin-left: 0.25rem;
-}
-
-/* Empty State */
-.history-empty-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 40vh;
-  gap: 1.5rem;
-}
-
-.empty-terminal-fallback {
-  position: relative;
-  width: 6rem;
-  aspect-ratio: 16/9;
-  background: hsl(var(--secondary) / 0.5);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.fallback-noise {
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  opacity: 0.05;
-}
-
-.fallback-content {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3rem;
-  z-index: 1;
-}
-
-.fallback-status {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.55rem;
-  color: hsl(var(--primary));
-  letter-spacing: 0.2em;
-  font-weight: 800;
+  font-size: 0.6rem;
   opacity: 0.7;
 }
 
-.fallback-id {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.45rem;
-  color: hsl(var(--muted-foreground) / 0.4);
-  letter-spacing: 0.08em;
-}
-
-.empty-hint {
-  font-size: 0.8rem;
-  color: hsl(var(--muted-foreground) / 0.6);
-}
-
-/* Loading Indicator */
-.history-loading-indicator {
+/* Groups */
+.history-groups {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 2rem 0;
-  color: hsl(var(--muted-foreground) / 0.5);
-  font-family: 'JetBrains Mono', monospace;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.history-group__items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* All Loaded */
+.history-all-loaded {
+  padding: 3rem 0;
+  text-align: center;
   font-size: 0.6rem;
+  color: hsl(var(--muted-foreground) / 0.3);
   text-transform: uppercase;
-  letter-spacing: 0.15em;
-}
-
-.loading-dot {
-  width: 4px;
-  height: 4px;
-  background: hsl(var(--primary));
-  border-radius: 50%;
-  animation: pulse-dot 1s ease-in-out infinite;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { opacity: 0.3; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.2); }
+  letter-spacing: 0.4em;
 }
 
 /* Action Buttons */
 .action-btn-minimal {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  gap: 0.3rem;
   background: transparent;
-  border: 1px solid hsl(var(--foreground) / 0.08);
-  color: hsl(var(--foreground) / 0.4);
+  border: 1px solid hsl(var(--border) / 0.4);
+  color: hsl(var(--muted-foreground) / 0.7);
   font-family: 'JetBrains Mono', 'Courier New', monospace;
-  font-size: 0.55rem;
-  font-weight: 500;
-  letter-spacing: 0.15em;
-  padding: 0.4rem 0.75rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.625rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  border-radius: 2px;
+  border-radius: var(--radius-md);
 }
 
 .action-btn-minimal:hover:not(:disabled) {
-  border-color: hsl(var(--foreground) / 0.25);
+  border-color: hsl(var(--border));
   color: hsl(var(--foreground));
-  background: hsl(var(--foreground) / 0.02);
+  background: hsl(var(--secondary) / 0.3);
 }
 
 .action-btn-minimal.is-danger:hover {
   border-color: hsl(var(--primary) / 0.4);
   color: hsl(var(--primary));
   background: hsl(var(--primary) / 0.05);
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* Transitions */
-.fade-list-enter-active,
-.fade-list-leave-active {
-  transition: opacity 0.4s ease;
-}
-
-.fade-list-enter-from,
-.fade-list-leave-to {
-  opacity: 0;
-}
-
-.history-list-enter-active {
-  transition: all 0.3s ease;
-}
-
-.history-list-enter-from {
-  opacity: 0;
-  transform: translateX(-10px);
 }
 
 /* Responsive */
