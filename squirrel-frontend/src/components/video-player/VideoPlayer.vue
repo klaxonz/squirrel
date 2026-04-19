@@ -18,7 +18,6 @@
     <video
       ref="videoRef"
       class="sp-video"
-      :poster="effectivePoster"
       :muted="store.muted"
       :autoplay="store.autoplay"
       :loop="store.loop"
@@ -43,9 +42,6 @@
       <div v-if="showLoadingOverlay" class="sp-loading">
         <div class="sp-loader">
           <div class="sp-loader-ring"></div>
-        </div>
-        <div v-if="props.externalLoadingText" class="sp-loading-text">
-          {{ props.externalLoadingText }}
         </div>
       </div>
     </Transition>
@@ -466,7 +462,6 @@ interface Props {
   videoId?: string | number | null
   subtitles?: SubtitleTrack[]
   clipMarkers?: VideoClipMarker[]
-  poster?: string
   title?: string
   autoplay?: boolean
   adapter?: PlayerOptions['adapter'] | null
@@ -475,7 +470,6 @@ interface Props {
   initialTime?: number
   widescreen?: boolean
   externalLoading?: boolean
-  externalLoadingText?: string
   hasPrev?: boolean
   hasNext?: boolean
 }
@@ -485,7 +479,6 @@ const props = withDefaults(defineProps<Props>(), {
   videoId: null,
   subtitles: () => [],
   clipMarkers: () => [],
-  poster: '',
   title: '',
   autoplay: true,
   adapter: null,
@@ -493,7 +486,6 @@ const props = withDefaults(defineProps<Props>(), {
   theme: 'dark',
   widescreen: false,
   externalLoading: false,
-  externalLoadingText: '',
   hasPrev: false,
   hasNext: false,
 })
@@ -900,13 +892,11 @@ const isVolumeScrubbing = ref(false)
 const lastPointerType = ref('mouse')
 const pendingWidescreenValue = ref<boolean | null>(null)
 const shouldResumeAfterSourceSwap = ref(false)
-const hidePosterForCurrentSource = ref(false)
 const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
 const centralHud = ref<{ visible: boolean; type: string; value: string; icon: IconName; percent: number }>({ 
   visible: false, type: '', value: '', icon: 'play', percent: 0 
 })
 const showLoadingOverlay = computed(() => (store.loading || props.externalLoading) && !errorState.value.show)
-const effectivePoster = computed(() => hidePosterForCurrentSource.value ? '' : (props.source?.poster || props.poster || ''))
 
 // Loading state control
 const onLoadingEnter = () => {}
@@ -1139,7 +1129,6 @@ watch(() => props.source, (s, previousSource) => {
     clearInitialTimeListener()
     clearResumeAfterSourceSwapListener()
     initialTimeAppliedSourceKey = null
-    hidePosterForCurrentSource.value = false
   }
   if (!s) {
     shouldResumeAfterSourceSwap.value = isPlaying.value
@@ -1443,10 +1432,6 @@ const handlePointerDown = (event: PointerEvent) => {
 }
 
 watch(isPlaying, (playing) => {
-  if (playing) {
-    hidePosterForCurrentSource.value = true
-  }
-
   if (!playing) {
     showControls()
     return
@@ -2321,14 +2306,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   border-top-color: rgba(255, 255, 255, 0.6);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-}
-
-.sp-loading-text {
-  max-width: min(80%, 320px);
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 13px;
-  line-height: 1.4;
-  text-align: center;
 }
 
 @keyframes spin {

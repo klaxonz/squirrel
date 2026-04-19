@@ -576,9 +576,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       videoElement.load()
     }
 
-    if (source.poster && videoElement) {
-      videoElement.poster = source.poster
-    }
+    videoElement.poster = ''
+    videoElement.removeAttribute('poster')
 
     if (autoplay) {
       autoPlayOnReady = true

@@ -97,7 +97,6 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
       const v: any = video.value || initialVideoData || {}
       playbackSource.value = {
         ...source,
-        poster: source.poster || v.thumbnail,
         title: source.title || v.title,
       }
 
@@ -199,4 +198,3 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
     loadAndPlayById,
   }
 }
-
