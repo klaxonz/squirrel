@@ -6,13 +6,16 @@
   >
     <div class="video-viewer-frame">
       <img
-        v-if="video.thumbnail && !showDefaultThumbnail"
-        :src="video.thumbnail"
+        v-if="thumbnailSrc && !showThumbnailFallback"
+        :src="thumbnailSrc"
+        loading="lazy"
+        decoding="async"
+        fetchpriority="low"
         referrerpolicy="no-referrer"
         class="video-terminal-image"
-        :class="{ 
+        :class="{
           'blur-thumbnail': shouldBlurThumbnail,
-          'image-loaded': imageLoaded 
+          'image-loaded': imageLoaded,
         }"
         :alt="video.title"
         @load="handleImageLoad"
@@ -32,12 +35,12 @@
 
       <!-- 进度条：1px 极细线 -->
       <div
-        v-if="showProgress && progress > 0"
+        v-if="progressRatio > 0"
         class="tech-progress-bar"
       >
         <div
           class="tech-progress-fill"
-          :style="{ width: `${(progress * 100).toFixed(1)}%` }"
+          :style="{ width: `${(progressRatio * 100).toFixed(1)}%` }"
         ></div>
       </div>
     </div>
@@ -88,6 +91,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, toRef, watch } from 'vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import ContextMenu from './ContextMenu.vue'
+import { useThumbnailRegistry } from './useThumbnailRegistry'
 import useOptionsMenu from '@/composables/useOptionsMenu'
 import useVideoHistory from '@/composables/useVideoHistory'
 import useVideoInteraction from '@/composables/useVideoInteraction'
@@ -104,14 +108,6 @@ const props = defineProps({
   showAvatar: {
     type: Boolean,
     default: true,
-  },
-  showProgress: {
-    type: Boolean,
-    default: false,
-  },
-  progress: {
-    type: Number,
-    default: 0,
   },
   sortBy: {
     type: String,
@@ -131,12 +127,26 @@ const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction(
 
 const showMenu = ref(false)
 const menuPosition = ref({ x: 0, y: 0 })
-const showDefaultThumbnail = ref(false)
-const imageLoaded = ref(false)
-
+const thumbnailSrc = computed(() => String(props.video?.thumbnail || '').trim())
+const {
+  imageLoaded,
+  showFallback: showThumbnailFallback,
+  handleLoad: handleImageLoad,
+  handleError: handleThumbnailError,
+} = useThumbnailRegistry(thumbnailSrc)
 const isNsfwVideo = computed(() => props.video.subscriptions?.some((subscription) => subscription.is_nsfw) || false)
 const shouldBlurThumbnail = computed(() => systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value)
 const videoCardId = computed(() => formatVideoCardId(props.video?.id))
+const progressRatio = computed(() => {
+  const duration = Number(props.video?.duration || 0)
+  if (!duration || duration <= 0) {
+    return 0
+  }
+
+  const position = Number(props.video?.last_position || 0)
+  const normalized = position / duration
+  return Math.max(0, Math.min(1, normalized))
+})
 
 const displayDateText = computed(() => {
   const video = props.video
@@ -235,22 +245,6 @@ const toggleLikeVideo = async () => {
   }
 }
 
-const handleThumbnailError = () => {
-  showDefaultThumbnail.value = true
-}
-
-const handleImageLoad = () => {
-  imageLoaded.value = true
-}
-
-watch(
-  () => props.video?.thumbnail,
-  () => {
-    imageLoaded.value = false
-    showDefaultThumbnail.value = false
-  }
-)
-
 watch(showMenu, (isOpen) => {
   if (isOpen) {
     nextTick(() => {
@@ -324,7 +318,7 @@ onUnmounted(() => {
   position: absolute;
   right: 0.35rem;
   bottom: 0.35rem;
-  z-index: 4;
+  z-index: 6;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem;
   color: #fff;

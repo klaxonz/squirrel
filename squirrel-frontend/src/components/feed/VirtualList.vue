@@ -31,7 +31,10 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, shallowRef, watch } from 'vue';
+
+const MAX_SCROLL_POSITIONS = 50;
+const scrollPositions = new Map();
 
 const props = defineProps({
   items: {
@@ -71,6 +74,10 @@ const props = defineProps({
     type: Number,
     default: 0
   },
+  cacheKey: {
+    type: String,
+    default: ''
+  },
 });
 
 const emit = defineEmits(['scroll', 'range-change', 'reach-start', 'reach-end']);
@@ -80,26 +87,43 @@ const scrollTop = ref(0);
 const containerHeight = ref(0);
 const itemsRef = shallowRef(props.items);
 
-const MAX_SCROLL_POSITIONS = 50;
-const scrollPositions = ref(new Map());
-const instanceId = ref(null);
+const instanceId = ref(Symbol('virtual-list-instance'));
 let resizeObserver = null;
 let rangeThrottleTimer = null;
 let rangeThrottleLast = 0;
 
-const saveScrollPosition = (id, position) => {
-  if (scrollPositions.value.size >= MAX_SCROLL_POSITIONS) {
-    const firstKey = scrollPositions.value.keys().next().value;
-    scrollPositions.value.delete(firstKey);
+const stopObservingContainer = () => {
+  if (!resizeObserver) return;
+  resizeObserver.disconnect();
+  resizeObserver = null;
+};
+
+const getScrollCacheKey = () => {
+  return props.cacheKey || instanceId.value;
+};
+
+const saveScrollPosition = (position) => {
+  const key = getScrollCacheKey();
+  if (!key) {
+    return;
   }
-  scrollPositions.value.set(id, position);
+
+  if (scrollPositions.size >= MAX_SCROLL_POSITIONS && !scrollPositions.has(key)) {
+    const firstKey = scrollPositions.keys().next().value;
+    scrollPositions.delete(firstKey);
+  }
+
+  scrollPositions.set(key, position);
 };
 
 const restoreScrollPosition = () => {
-  if (instanceId.value && scrollPositions.value.has(instanceId.value)) {
-    const targetPos = scrollPositions.value.get(instanceId.value);
-    scrollToOffset(targetPos);
+  const key = getScrollCacheKey();
+  if (!key || !scrollPositions.has(key)) {
+    return;
   }
+
+  const targetPos = scrollPositions.get(key);
+  scrollToOffset(targetPos);
 };
 
 const columnCount = computed(() => Math.max(1, props.gridItems));
@@ -215,7 +239,7 @@ const onScroll = () => {
   if (!container.value) return;
   const st = container.value.scrollTop;
   scrollTop.value = st;
-  saveScrollPosition(instanceId.value, st);
+  saveScrollPosition(st);
 
   emit('scroll', {
     target: container.value,
@@ -231,7 +255,7 @@ const scrollToOffset = (offsetPx) => {
   const nextOffset = Math.max(0, Math.min(offsetPx, maxScrollTop.value));
   container.value.scrollTop = nextOffset;
   scrollTop.value = nextOffset;
-  saveScrollPosition(instanceId.value, nextOffset);
+  saveScrollPosition(nextOffset);
 };
 
 const scrollToIndex = (index, align = 'start') => {
@@ -313,7 +337,6 @@ watch(range, () => {
 }, { immediate: true });
 
 onMounted(() => {
-  instanceId.value = Symbol('virtual-list-instance');
   observeContainer();
   nextTick(() => {
     updateContainerHeight();
@@ -323,16 +346,23 @@ onMounted(() => {
 });
 
 onActivated(() => {
-  updateContainerHeight();
-  restoreScrollPosition();
+  nextTick(() => {
+    observeContainer();
+    updateContainerHeight();
+    restoreScrollPosition();
+    clampScrollTop();
+  });
+});
+
+onDeactivated(() => {
+  stopObservingContainer();
 });
 
 onBeforeUnmount(() => {
-  scrollPositions.value.delete(instanceId.value);
-  if (resizeObserver) {
-    resizeObserver.disconnect();
-    resizeObserver = null;
+  if (!props.cacheKey) {
+    scrollPositions.delete(instanceId.value);
   }
+  stopObservingContainer();
   if (rangeThrottleTimer) {
     clearTimeout(rangeThrottleTimer);
     rangeThrottleTimer = null;

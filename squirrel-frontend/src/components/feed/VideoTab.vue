@@ -1,10 +1,11 @@
 <template>
   <VideoList
-      :videos="processedVideos"
+      :videos="videos"
       :loading="loading"
       :allLoaded="allLoaded"
       :showAvatar="false"
       :sortBy="sortBy"
+      :scroll-cache-key="listScrollCacheKey"
       @loadMore="loadMore"
       @openModal="(video) => emit('openModal', video, videos)"
       @goToSubscription="(newSubscriptionId) => emit('goToSubscription', newSubscriptionId)"
@@ -12,7 +13,7 @@
 </template>
 
 <script setup>
-import { markRaw, ref, shallowRef, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import VideoList from './VideoList.vue'
 import useLatestVideos from '@/composables/useLatestVideos'
 
@@ -83,7 +84,6 @@ const {
   activeTab,
   subscriptionId,
   sortBy,
-  isResetting,
   site,
   nsfw,
   timeRange,
@@ -102,25 +102,21 @@ const {
   contentType: getFiltersFromProps().contentType,
 })
 
-const processedVideos = shallowRef([])
-
-const updateProcessedVideos = () => {
-  const raw = videos.value
-  const len = raw.length
-  const result = new Array(len)
-  for (let i = 0; i < len; i++) {
-    const v = raw[i]
-    const progress = v.duration > 0 ? (v.last_position / v.duration) : 0
-    result[i] = markRaw({
-      ...v,
-      showProgress: true,
-      progress,
-    })
-  }
-  processedVideos.value = result
-}
-
 const lastSignature = ref('')
+const listScrollCacheKey = computed(() => {
+  const filters = getFiltersFromProps()
+  return [
+    filters.sid ?? 'all',
+    filters.tab,
+    filters.q,
+    filters.sort,
+    filters.site ?? '',
+    filters.nsfw,
+    filters.timeRange,
+    filters.duration,
+    filters.contentType,
+  ].join('\x00')
+})
 
 const applyFilters = (filters) => {
   const nextSignature = [
@@ -156,10 +152,6 @@ watch(
   (filters) => applyFilters(filters),
   { immediate: true }
 )
-
-watch(videos, () => updateProcessedVideos(), { immediate: true })
-
-watch(sortBy, () => updateProcessedVideos())
 
 watch(error, (err) => {
   if (err !== undefined) emit('error', err)

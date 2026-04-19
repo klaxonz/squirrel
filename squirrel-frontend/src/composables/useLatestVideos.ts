@@ -26,6 +26,54 @@ type InitialState = {
 type ApiResult<T> = { data?: T | null; error?: unknown | null }
 type VideoListResponse = { data?: unknown[] }
 type ApiErrorLike = { type?: string | null }
+type VideoListParams = {
+  page: number
+  pageSize: number
+  query: string
+  subscription_id: VideoId | null
+  category: string
+  sort_by: string
+  nsfw: string
+  site: string | undefined
+  time_range: string
+  duration: string
+  content_type: string
+}
+
+const PAGE_SIZE = 50
+
+const normalizeVideoListItem = (video: any): VideoListItem => ({
+  ...video,
+  is_read: video?.is_read ?? false,
+  isPlaying: false,
+  video_url: null,
+})
+
+const extractVideoListItems = (payload: VideoListResponse | null | undefined): VideoListItem[] => {
+  const rawList = Array.isArray(payload?.data) ? payload.data : []
+  return rawList.map((video) => normalizeVideoListItem(video))
+}
+
+const dedupeByVideoId = (videos: VideoListItem[]): VideoListItem[] => {
+  const seen = new Set<VideoId>()
+  return videos.filter((video) => {
+    if (seen.has(video.id)) {
+      return false
+    }
+    seen.add(video.id)
+    return true
+  })
+}
+
+const appendUniqueVideos = (currentVideos: VideoListItem[], nextVideos: VideoListItem[]): VideoListItem[] => {
+  if (!currentVideos.length) {
+    return dedupeByVideoId(nextVideos)
+  }
+
+  const existingIds = new Set(currentVideos.map((video) => video.id))
+  const uniqueVideos = nextVideos.filter((video) => !existingIds.has(video.id))
+  return currentVideos.concat(uniqueVideos)
+}
 
 export default function useLatestVideos(initial: InitialState = {}) {
   const videos = shallowRef<VideoListItem[]>([])
@@ -49,72 +97,68 @@ export default function useLatestVideos(initial: InitialState = {}) {
   let requestToken = 0
   let listAbortController: AbortController | null = null
 
+  const createRequestParams = (): VideoListParams => ({
+    page: currentPage.value,
+    pageSize: PAGE_SIZE,
+    query: searchQuery.value || '',
+    subscription_id: subscriptionId.value,
+    category: category.value,
+    sort_by: sortBy.value,
+    nsfw: nsfw.value,
+    site: site.value,
+    time_range: timeRange.value,
+    duration: duration.value,
+    content_type: contentType.value,
+  })
+
+  const finishRequest = (): void => {
+    loading.value = false
+  }
+
+  const applyVideoPage = (nextVideos: VideoListItem[], requestedPage: number): void => {
+    if (requestedPage === 1) {
+      videos.value = dedupeByVideoId(nextVideos)
+      return
+    }
+
+    videos.value = appendUniqueVideos(videos.value, nextVideos)
+  }
+
   const loadMore = async () => {
     if (loading.value || allLoaded.value) return
     loading.value = true
 
-    const pageSize = 50
+    const requestPage = currentPage.value
     const currentToken = ++requestToken
     listAbortController?.abort()
     listAbortController = new AbortController()
 
-    const { data, error: requestError } = (await getVideoList({
-      page: currentPage.value,
-      pageSize,
-      query: searchQuery.value || '',
-      subscription_id: subscriptionId.value,
-      category: category.value,
-      sort_by: sortBy.value,
-      nsfw: nsfw.value,
-      site: site.value,
-      time_range: timeRange.value,
-      duration: duration.value,
-      content_type: contentType.value,
-    }, {
+    const { data, error: requestError } = (await getVideoList(createRequestParams(), {
       signal: listAbortController.signal,
     })) as ApiResult<VideoListResponse>
 
     if (currentToken !== requestToken) {
-      loading.value = false
+      finishRequest()
       return
     }
 
     if ((requestError as ApiErrorLike | null)?.type === 'CANCELED') {
-      loading.value = false
+      finishRequest()
       return
     }
 
     if (requestError) {
       error.value = requestError
-      loading.value = false
+      finishRequest()
       return
     }
 
-    const rawList = Array.isArray(data?.data) ? data?.data : []
-    const newVideos: VideoListItem[] = rawList.map((video: any) => ({
-      ...video,
-      is_read: video?.is_read ?? false,
-      isPlaying: false,
-      video_url: null,
-    }))
-
-    if (currentPage.value === 1) {
-      const seen = new Set<VideoId>()
-      const deduped = newVideos.filter((video) => {
-        if (seen.has(video.id)) return false
-        seen.add(video.id)
-        return true
-      })
-      videos.value = deduped
-    } else {
-      const existingIds = new Set(videos.value.map((v) => v.id))
-      const uniqueNewVideos = newVideos.filter((video) => !existingIds.has(video.id))
-      videos.value = [...videos.value, ...uniqueNewVideos]
-    }
+    const nextVideos = extractVideoListItems(data)
+    applyVideoPage(nextVideos, requestPage)
 
     currentPage.value++
-    allLoaded.value = newVideos.length < pageSize
-    loading.value = false
+    allLoaded.value = nextVideos.length < PAGE_SIZE
+    finishRequest()
   }
 
   const resetAndReload = async () => {

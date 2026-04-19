@@ -25,6 +25,7 @@
           class="scroller scrollbar-hide"
           :items="props.videos"
           :item-size="layout.itemSize"
+          :cache-key="scrollCacheKey"
           key-field="id"
           :buffer="BUFFER_PX"
           buffer-mode="px"
@@ -41,8 +42,6 @@
                 :video="video"
                 :show-avatar="showAvatar"
                 :sort-by="sortBy"
-                :show-progress="video.showProgress"
-                :progress="video.progress"
                 @goToSubscription="$emit('goToSubscription', $event)"
                 @openModal="$emit('openModal', video)"
               />
@@ -59,7 +58,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
+import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import LoadingIndicator from './LoadingIndicator.vue'
 import VideoItem from './VideoItem.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
@@ -69,8 +68,8 @@ const ASPECT_RATIO = 9 / 16
 const GRID_ITEM_HORIZONTAL_PADDING = 16
 const GRID_ITEM_VERTICAL_PADDING = 24
 const CARD_INFO_HEIGHT = 70
-const BUFFER_PX = 1200
-const PRERENDER_COUNT = 40
+const BUFFER_PX = 480
+const PRERENDER_COUNT = 12
 const RANGE_CHANGE_THROTTLE_MS = 30
 const PRELOAD_ROWS = 4
 const SCROLL_DEBOUNCE_MS = 50
@@ -82,6 +81,10 @@ const props = defineProps({
   showAvatar: Boolean,
   sortBy: { type: String, default: 'publish_date' },
   refreshing: Boolean,
+  scrollCacheKey: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits([
@@ -95,6 +98,7 @@ const containerRef = ref(null)
 const virtualList = ref(null)
 
 const hasVideos = computed(() => Array.isArray(props.videos) && props.videos.length > 0)
+const scrollCacheKey = computed(() => props.scrollCacheKey || 'video-list')
 
 const calculateGridItems = (width) => {
   if (width >= 2560) return 8
@@ -109,9 +113,14 @@ const calculateGridItems = (width) => {
 const containerWidth = ref(0)
 
 let resizeObserver = null
+const stopResizeObserver = () => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
+}
+
 const initResizeObserver = () => {
   if (!containerRef.value) return
-  resizeObserver?.disconnect()
+  stopResizeObserver()
   resizeObserver = new ResizeObserver((entries) => {
     const box = entries[0]?.contentRect
     if (box) containerWidth.value = Math.floor(box.width)
@@ -120,8 +129,10 @@ const initResizeObserver = () => {
 }
 
 onMounted(initResizeObserver)
+onActivated(initResizeObserver)
+onDeactivated(stopResizeObserver)
 watch(containerRef, (el) => {
-  resizeObserver?.disconnect()
+  stopResizeObserver()
   if (el) {
     resizeObserver = new ResizeObserver((entries) => {
       const box = entries[0]?.contentRect
@@ -130,7 +141,7 @@ watch(containerRef, (el) => {
     resizeObserver.observe(el)
   }
 })
-onUnmounted(() => resizeObserver?.disconnect())
+onUnmounted(stopResizeObserver)
 
 const layout = computed(() => {
   const width = containerWidth.value || 0
