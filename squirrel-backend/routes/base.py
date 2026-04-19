@@ -33,6 +33,7 @@ from routes.playlist import router as playlist_router
 from routes.system_config import router as system_config_router
 from routes.plugins import router as plugins_router
 from routes.logs import router as logs_router
+from routes.search import router as search_router
 from routes.connectivity import router as connectivity_router
 from routes.scheduler import router as scheduler_router
 
@@ -119,6 +120,7 @@ def create_app() -> FastAPI:
     app.include_router(system_config_router)
     app.include_router(plugins_router)
     app.include_router(logs_router)
+    app.include_router(search_router)
     app.include_router(connectivity_router)
     app.include_router(scheduler_router)
 

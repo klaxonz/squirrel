@@ -1,6 +1,7 @@
 export * from './plugins'
 export * from './scheduler'
 export * from './logs'
+export * from './search'
 export * from './sites'
 export * from './system'
 export * from './subscription'

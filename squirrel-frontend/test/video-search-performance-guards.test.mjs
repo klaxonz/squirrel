@@ -15,8 +15,13 @@ test('latest videos no longer retains count-loading logic', async () => {
   assert.doesNotMatch(source, /loadVideoCounts/)
 })
 
-test('global search bar uses a slower debounce to avoid eager backend refreshes', async () => {
+test('global search bar debounces remote suggestions and waits for explicit confirmation to search', async () => {
   const source = await read('../src/components/layout/GlobalSearchBar.vue')
 
   assert.match(source, /default:\s*500/)
+  assert.match(source, /setTimeout\(\(\)\s*=>\s*\{\s*void loadRemoteSuggestions\(\)/)
+  assert.doesNotMatch(source, /setTimeout\(\(\)\s*=>\s*\{\s*emit\('search'\)/)
+  assert.match(source, /scope:\s*normalizedSuggestionScope\.value/)
+  assert.match(source, /const handleEnterKey = \(\) => \{/)
+  assert.match(source, /handleSearch\(\{ persist: true \}\)/)
 })

@@ -158,6 +158,9 @@
                     v-model="searchQuery"
                     class="minimal-search"
                     :placeholder="searchPlaceholder"
+                    :history-scope-key="searchScopeKey"
+                    :history-scope-label="searchScopeLabel"
+                    :suggestion-scope="searchSuggestionScope"
                     @search="handleGlobalSearch"
                     @clear="handleGlobalSearchClear"
                   />
@@ -232,7 +235,15 @@ const isSidebarFlyoutOpen = ref(false)
 const isVideoWidescreen = ref(false)
 const isVideoSidebarOpen = ref(true)
 
-const { searchQuery, searchPlaceholder, handleSearch: handleGlobalSearch, handleClear: handleGlobalSearchClear } =
+const {
+  searchQuery,
+  searchPlaceholder,
+  searchScopeKey,
+  searchScopeLabel,
+  searchSuggestionScope,
+  handleSearch: handleGlobalSearch,
+  handleClear: handleGlobalSearchClear,
+} =
   useGlobalSearch(emitter)
 
 const { loadSystemConfig } = useSystemConfig()

@@ -23,6 +23,17 @@ export function useGlobalSearch(emitter?: EmitterLike) {
     return placeholder ?? '搜索...'
   })
 
+  const searchScopeLabel = computed(() => {
+    return getStringMeta(route.meta, 'sectionLabel')
+      ?? getStringMeta(route.meta, 'title')
+      ?? searchPlaceholder.value
+      ?? '当前页'
+  })
+
+  const searchSuggestionScope = computed(() => {
+    return getStringMeta(route.meta, 'search') ?? 'home'
+  })
+
   const getPersistKey = (r: RouteLocationNormalizedLoaded = route) => {
     return getStringMeta(r.meta, 'searchPersistKey') ?? String(r.name ?? r.path ?? 'GLOBAL')
   }
@@ -63,9 +74,10 @@ export function useGlobalSearch(emitter?: EmitterLike) {
   return {
     searchQuery,
     searchPlaceholder,
+    searchScopeKey: computed(() => getPersistKey()),
+    searchScopeLabel,
+    searchSuggestionScope,
     handleSearch,
     handleClear,
   }
 }
-
-
