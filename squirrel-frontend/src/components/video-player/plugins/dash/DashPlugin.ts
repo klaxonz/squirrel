@@ -143,7 +143,26 @@ export class DashPlugin implements PlayerPlugin {
           fastSwitchEnabled: true,
           flushBufferAtTrackSwitch: true
         },
+        errors: {
+          recoverAttempts: {
+            mediaErrorDecode: 4,
+          },
+        },
+        fragmentRequestTimeout: 20000,
+        fragmentRequestProgressTimeout: 5000,
         manifestRequestTimeout: 60000,
+        retryIntervals: {
+          MediaSegment: 1000,
+          InitializationSegment: 1000,
+          IndexSegment: 1000,
+          other: 2000,
+        },
+        retryAttempts: {
+          MediaSegment: 5,
+          InitializationSegment: 5,
+          IndexSegment: 3,
+          other: 3,
+        },
         ...this.options.settings?.streaming
       },
       ...this.options.settings
@@ -161,6 +180,7 @@ export class DashPlugin implements PlayerPlugin {
   private setupEventListeners(player: MediaPlayerClass): void {
     // 错误处理
     player.on('error', (e: any) => {
+      if (this.player !== player) return
       const fatal = e?.error === 'capability' || e?.event?.type === 'critical'
       const error: PlayerError = {
         code: `DASH_${e?.event?.id || 'UNKNOWN'}`,
@@ -245,24 +265,19 @@ export class DashPlugin implements PlayerPlugin {
       return 'unrecoverable'
     }
 
-    if (code.includes('NETWORK') || code.includes('TIMEOUT')) {
-      this.context?.logger.debug('[DashPlugin] Requesting source reload for transient network recovery', {
-        code,
-        source: this.currentSource,
-      })
-      return 'reload-source'
+    if (code.includes('MEDIA') || code.includes('DECODE') || code.includes('STALL')) {
+      this.context?.logger.debug('[DashPlugin] Allowing dash.js built-in recovery for media/decode error', { code })
+      return 'handled'
     }
 
-    if (
-      code.includes('MEDIA') ||
-      code.includes('DECODE') ||
-      code.includes('BUFFER') ||
-      code.includes('STALL')
-    ) {
-      this.context?.logger.debug('[DashPlugin] Requesting source reload for transient media recovery', {
-        code,
-        source: this.currentSource,
-      })
+    if (code.includes('NETWORK') || code.includes('TIMEOUT')) {
+      if (this.player && this.currentSource) {
+        try {
+          this.player.attachSource(this.currentSource)
+          this.context?.logger.debug('[DashPlugin] Recovered network error via attachSource')
+          return 'handled'
+        } catch {}
+      }
       return 'reload-source'
     }
 

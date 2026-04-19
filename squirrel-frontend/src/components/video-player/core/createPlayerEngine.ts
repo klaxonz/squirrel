@@ -158,6 +158,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   const enableQualityFallback = options.errorRecovery?.enableQualityFallback ?? false
 
   let isRecovering = false
+  let pluginHandlingError = false
   let retryCount = 0
   let waitingRecoveryTimer: ReturnType<typeof setTimeout> | null = null
   let waitingRecoverySuppressedUntil = 0
@@ -192,7 +193,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     waitingRecoveryTimer = setTimeout(() => {
       waitingRecoveryTimer = null
       if (!videoElement || !loading || videoElement.ended) return
-      if (Math.abs((videoElement.currentTime ?? 0) - stalledAtTime) > 0.25) return
+      if (Math.abs((videoElement.currentTime ?? 0) - stalledAtTime) > 1) return
 
       const err: PlayerError = {
         code: 'STALL_DETECTED',
@@ -204,7 +205,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
           if (!recovered) reportFatalError(err)
         })
         .catch(() => reportFatalError(err))
-    }, Math.max(retryDelay, 1500) + suppressionDelay)
+    }, Math.max(retryDelay * 2, 5000) + suppressionDelay)
   }
 
   const getState = (): PlayerState => {
@@ -422,6 +423,18 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       return false
     }
 
+    const code = String(error.code || '')
+    if (code.includes('STALL')) {
+      if (videoElement && !videoElement.ended && videoElement.paused) {
+        try {
+          await videoElement.play()
+          logger.debug('[ErrorRecovery] Recovered stall via play()')
+          return true
+        } catch {}
+      }
+      return false
+    }
+
     isRecovering = true
     try {
       const strategy = determineRecoveryStrategy(error)
@@ -518,11 +531,16 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     },
 
     reportError(error) {
+      pluginHandlingError = true
       void handleRecoveryError(error)
         .then((recovered) => {
           if (!recovered) reportFatalError(error)
+          pluginHandlingError = false
         })
-        .catch(() => reportFatalError(error))
+        .catch(() => {
+          reportFatalError(error)
+          pluginHandlingError = false
+        })
     },
     getPlugin<T>(name: string) { return pluginManager.get(name) as T }
   })
@@ -558,6 +576,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     if (nextKey === currentSourceKey) return
 
     markSourceLoadingStarted()
+    pluginHandlingError = false
 
     try {
       videoElement.pause()
@@ -696,8 +715,6 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       events.emit('waiting', undefined)
     }
     const onStalled = () => {
-      loading = true
-      scheduleWaitingRecovery()
       events.emit('waiting', undefined)
     }
     const onCanPlay = () => {
@@ -713,6 +730,11 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       }
     }
     const onError = (e: Event) => {
+      if (pluginHandlingError) {
+        logger.debug('[PlayerEngine] Skipping native error, plugin is already handling recovery')
+        return
+      }
+
       clearWaitingRecovery()
       const mediaErrorCode = videoElement?.error?.code
       const errorCode = mediaErrorCode === MediaError.MEDIA_ERR_NETWORK
