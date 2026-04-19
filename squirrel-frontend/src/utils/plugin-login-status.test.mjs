@@ -67,6 +67,21 @@ test('keeps logged-in statuses as Valid', () => {
   )
 })
 
+test('maps explicit logged-out statuses to Logged Out instead of Invalid', () => {
+  assert.deepEqual(
+    getLoginStatusBadge({
+      logged_in: false,
+      message: '未登录，当前 Cookie 被站点识别为游客态',
+      supported: true,
+    }),
+    {
+      tone: 'warning',
+      label: '未登录',
+      title: '未登录，当前 Cookie 被站点识别为游客态',
+    },
+  )
+})
+
 test('marks all-site cookie imports for status refresh', () => {
   assert.equal(shouldRefreshLoginStatusesAfterCookieImport({ sites: { youtube: { cookies: 10 } } }), true)
   assert.equal(shouldRefreshLoginStatusesAfterCookieImport({}), false)

@@ -81,7 +81,15 @@ export const getLoginStatusBadge = (loginStatus) => {
     }
   }
 
-  if (containsAny(normalized, ['未登录', '重定向', '登录页', 'expired', 'invalid'])) {
+  if (containsAny(normalized, ['未登录', '重定向', '登录页'])) {
+    return {
+      tone: 'warning',
+      label: '未登录',
+      title,
+    }
+  }
+
+  if (containsAny(normalized, ['expired', 'invalid'])) {
     return {
       tone: 'warning',
       label: '无效',

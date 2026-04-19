@@ -24,6 +24,7 @@ _LOGGED_OUT_PATTERN = re.compile(r'"loggedIn(?:Context)?":\s*false', re.IGNORECA
 _AGE_GATE_PATTERN = re.compile(r"agecheck|ageverification|ageDisclaimer", re.IGNORECASE)
 _USERNAME_PATTERN = re.compile(r'"username"\s*:\s*"([^"]+)"', re.IGNORECASE)
 _DATA_USERNAME_PATTERN = re.compile(r'data-username="([^"]+)"')
+_PROFILE_LINK_PATTERN = re.compile(r'<a[^>]+class="username"[^>]+href="/users/([^"/?#]+)"', re.IGNORECASE)
 _PROFILE_BLOCK_PATTERN = re.compile(
     r'<div[^>]+class="profile"[\s\S]*?class="js_userName"[^>]*>([^<]+)<',
     re.IGNORECASE,
@@ -31,6 +32,17 @@ _PROFILE_BLOCK_PATTERN = re.compile(
 _PROFILE_STATUS_PATTERN = re.compile(
     r'class="userUserStatus[^"]*">\s*See Your Profile',
     re.IGNORECASE,
+)
+_CHALLENGE_PAGE_PATTERNS = (
+    re.compile(r'function\s+leastFactor\s*\(', re.IGNORECASE),
+    re.compile(r"typeof\s+phantom\s*!==\s*'undefined'", re.IGNORECASE),
+    re.compile(r'module\.exports', re.IGNORECASE),
+    re.compile(r'htjschal', re.IGNORECASE),
+)
+_ERROR_PAGE_PATTERNS = (
+    re.compile(r'down\s+for\s+maintenance\s*403', re.IGNORECASE),
+    re.compile(r'access\s+denied', re.IGNORECASE),
+    re.compile(r'cf-error-details', re.IGNORECASE),
 )
 
 
@@ -57,12 +69,15 @@ def check_pornhub_login_status() -> LoginStatusResult:
 
     body = resp.text or ""
 
-    if resp.status_code in (401, 403):
+    if resp.status_code == 401:
         return LoginStatusResult(
             site_name=site_name,
             logged_in=False,
             message=f"被拒绝访问 (status={resp.status_code})",
         )
+
+    if resp.status_code in (403, 429, 500, 502, 503, 504):
+        return _transient_login_failure(site_name, f'被拒绝访问 (status={resp.status_code})')
 
     final_url = resp.url or check_url
     if any(token in final_url for token in ("/login", "/users/login")):
@@ -73,21 +88,24 @@ def check_pornhub_login_status() -> LoginStatusResult:
             extra={"redirect_url": final_url},
         )
 
+    if _looks_like_challenge_page(body):
+        return _transient_login_failure(site_name, '返回内容显示为站点验证页')
+
+    if _looks_like_error_page(body):
+        return _transient_login_failure(site_name, '返回内容显示为站点错误页')
+
     profile_match = _PROFILE_BLOCK_PATTERN.search(body)
+    profile_username = profile_match.group(1).strip() if profile_match else _extract_username(body)
     if profile_match or _PROFILE_STATUS_PATTERN.search(body):
-        username = profile_match.group(1).strip() if profile_match else None
         return LoginStatusResult(
             site_name=site_name,
             logged_in=True,
-            username=username,
+            username=profile_username,
             message="已登录",
         )
 
-    if _LOGGED_IN_PATTERN.search(body):
-        username = None
-        match = _USERNAME_PATTERN.search(body) or _DATA_USERNAME_PATTERN.search(body)
-        if match:
-            username = match.group(1).strip()
+    username = _extract_username(body)
+    if _LOGGED_IN_PATTERN.search(body) or (_PROFILE_LINK_PATTERN.search(body) and username):
         return LoginStatusResult(
             site_name=site_name,
             logged_in=True,
@@ -145,3 +163,37 @@ def _fetch_with_age_bypass(headers: dict, check_url: str, login_config: dict):
 
 def _is_age_gate(url: str, body: str) -> bool:
     return bool(_AGE_GATE_PATTERN.search(url) or _AGE_GATE_PATTERN.search(body))
+
+
+def _extract_username(body: str) -> str | None:
+    match = _PROFILE_LINK_PATTERN.search(body) or _USERNAME_PATTERN.search(body) or _DATA_USERNAME_PATTERN.search(body)
+    if not match:
+        return None
+
+    username = match.group(1).strip()
+    return username or None
+
+
+def _looks_like_challenge_page(body: str) -> bool:
+    normalized_body = str(body or '').lower()
+    if not normalized_body:
+        return False
+    return all(pattern.search(normalized_body) for pattern in _CHALLENGE_PAGE_PATTERNS[:3]) or bool(
+        _CHALLENGE_PAGE_PATTERNS[3].search(normalized_body)
+    )
+
+
+def _looks_like_error_page(body: str) -> bool:
+    normalized_body = str(body or '').lower()
+    if not normalized_body:
+        return False
+    return any(pattern.search(normalized_body) for pattern in _ERROR_PAGE_PATTERNS)
+
+
+def _transient_login_failure(site_name: str, reason: str) -> LoginStatusResult:
+    return LoginStatusResult(
+        site_name=site_name,
+        logged_in=False,
+        message=f'检测失败: {reason}',
+        extra={'transient_failure': True},
+    )
