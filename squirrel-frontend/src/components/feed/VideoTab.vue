@@ -19,7 +19,7 @@ import { markRaw, ref, shallowRef, watch } from 'vue'
 import VideoList from './VideoList.vue'
 import useLatestVideos from '@/composables/useLatestVideos'
 
-const emit = defineEmits(['openModal', 'update-counts', 'goToSubscription', 'loading-change', 'error']);
+const emit = defineEmits(['openModal', 'goToSubscription', 'loading-change', 'error']);
 
 const props = defineProps({
   filters: {
@@ -92,7 +92,6 @@ const {
   timeRange,
   duration,
   contentType,
-  videoCounts,
   error,
 } = useLatestVideos({
   activeTab: getFiltersFromProps().tab,
@@ -164,19 +163,6 @@ watch(
 watch(videos, () => updateProcessedVideos(), { immediate: true })
 
 watch(sortBy, () => updateProcessedVideos())
-
-const lastCountsJson = ref('')
-watch(
-  videoCounts,
-  (counts) => {
-    const json = JSON.stringify(counts)
-    if (json !== lastCountsJson.value) {
-      lastCountsJson.value = json
-      emit('update-counts', counts)
-    }
-  },
-  { immediate: true }
-)
 
 watch(error, (err) => {
   if (err !== undefined) emit('error', err)

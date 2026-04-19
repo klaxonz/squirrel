@@ -4,14 +4,13 @@
       <div v-if="showTabs || $slots.actions || $slots.default" class="toolbar-primary">
         <div v-if="showTabs" class="toolbar-tabs">
           <button
-            v-for="tab in tabsWithCounts"
+            v-for="tab in tabs"
             :key="tab.value"
             class="tab-item-minimal"
             :class="{ 'is-active': localActiveTab === tab.value }"
             @click="localActiveTab = tab.value"
           >
             <span class="tab-label">{{ tab.label }}</span>
-            <span v-if="tab.count > 0" class="tab-count">{{ tab.count }}</span>
           </button>
         </div>
 
@@ -77,12 +76,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import FilterModal from './FilterModal.vue'
 import type { TimeRange, Duration, ContentType } from '@/composables/useFeedFilters'
-
-type TabWithCount = {
-  value: string
-  label: string
-  count: number
-}
+import type { VideoTab } from '@/constants/videos'
 
 const props = withDefaults(defineProps<{
   activeTab?: string
@@ -90,7 +84,7 @@ const props = withDefaults(defineProps<{
   sortBy?: string
   site?: string
   subscriptionId?: string | number
-  tabsWithCounts?: TabWithCount[]
+  tabs?: VideoTab[]
   isRefreshing?: boolean
   showTabs?: boolean
   showSort?: boolean
@@ -106,7 +100,7 @@ const props = withDefaults(defineProps<{
   activeTab: 'all',
   nsfw: 'all',
   sortBy: 'publish_date',
-  tabsWithCounts: () => [],
+  tabs: () => [],
   isRefreshing: false,
   showTabs: true,
   showSort: true,
@@ -215,12 +209,6 @@ watch(localSortBy, (v) => emit('update:sortBy', v))
   font-weight: 500;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-}
-
-.tab-count {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.55rem;
-  opacity: 0.5;
 }
 
 .toolbar-actions {

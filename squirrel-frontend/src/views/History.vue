@@ -5,7 +5,7 @@
       <FeedToolbar
         class="history-toolbar"
         :show-tabs="false"
-        :tabs-with-counts="[]"
+        :tabs="[]"
         :nsfw="nsfw"
         :site="site"
         :is-refreshing="isRefreshing"

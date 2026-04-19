@@ -54,7 +54,7 @@ const props = defineProps({
   },
   debounceMs: {
     type: Number,
-    default: 300,
+    default: 500,
   },
 })
 

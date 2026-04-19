@@ -13,7 +13,7 @@
           :sort-by="sortBy"
           :site="site"
           :subscription-id="subscriptionId"
-          :tabs-with-counts="tabsWithCounts"
+          :tabs="tabs"
           :is-refreshing="isRefreshing"
           :time-range="timeRange"
           :duration="duration"
@@ -53,7 +53,6 @@
             ref="videoChildRef"
             @goToSubscription="goToChannelDetail"
             @openModal="handleOpenModal"
-            @update-counts="updateCounts"
             @error="(error) => (loadError = error)"
             @loading-change="(value) => (isRefreshing = !!value)"
           />
@@ -73,7 +72,7 @@ import FeedToolbar from '@/components/feed/FeedToolbar.vue'
 import ChannelHeader from '@/components/feed/ChannelHeader.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { buildTabsWithCounts } from '../utils/feed'
+import { VIDEO_TABS } from '@/constants/videos'
 import { onSubscriptionRemoved } from '@/utils/subscriptionEvents'
 
 const router = useRouter()
@@ -83,7 +82,7 @@ const emitter = inject('emitter')
 const subscriptionId = computed(() => route.params.id)
 const { activeTab, nsfw, sortBy, site, searchQuery, timeRange, duration, contentType, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId })
 
-const tabsWithCounts = ref(buildTabsWithCounts({}))
+const tabs = ref(VIDEO_TABS)
 const isRefreshing = ref(false)
 const loadError = ref(null)
 const videoChildRef = ref(null)
@@ -95,10 +94,6 @@ const refreshCurrentList = () => {
   isRefreshing.value = true
   loadError.value = null
   videoChildRef.value?.refresh?.()
-}
-
-const updateCounts = (counts) => {
-  tabsWithCounts.value = buildTabsWithCounts(counts)
 }
 
 const handleGlobalSearch = (keyword) => {

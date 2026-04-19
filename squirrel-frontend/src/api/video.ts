@@ -1,11 +1,12 @@
+import type { AxiosRequestConfig } from 'axios'
 import { get } from '@/utils/request'
 
 export const getVideoDetail = async (videoId: string | number) => {
   return get('/api/video/detail', { video_id: videoId })
 }
 
-export const getVideoList = async (params: Record<string, unknown> = {}) => {
-  return get('/api/video/list', params)
+export const getVideoList = async (params: Record<string, unknown> = {}, config: AxiosRequestConfig = {}) => {
+  return get('/api/video/list', params, config)
 }
 
 export const getVideoSubtitles = async (
@@ -21,10 +22,6 @@ export const getVideoSubtitles = async (
 
 export const getRandomVideo = async (params: Record<string, unknown> = {}) => {
   return get('/api/video/random', params)
-}
-
-export const getVideoCounts = async (params: Record<string, unknown> = {}) => {
-  return get('/api/video/counts', params)
 }
 
 export const getVideoUrlInfo = async (

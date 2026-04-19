@@ -1,5 +1,5 @@
-import { computed, shallowRef, ref, watch } from 'vue'
-import { getVideoCounts, getVideoList } from '@/api'
+import { computed, shallowRef, ref } from 'vue'
+import { getVideoList } from '@/api'
 
 type VideoId = string | number
 
@@ -9,16 +9,6 @@ type VideoListItem = {
   isPlaying?: boolean
   video_url?: string | null
   [key: string]: unknown
-}
-
-type VideoCounts = {
-  all: number
-  unread: number
-  read: number
-  preview: number
-  liked: number
-  later: number
-  [key: string]: number
 }
 
 type InitialState = {
@@ -35,6 +25,7 @@ type InitialState = {
 
 type ApiResult<T> = { data?: T | null; error?: unknown | null }
 type VideoListResponse = { data?: unknown[] }
+type ApiErrorLike = { type?: string | null }
 
 export default function useLatestVideos(initial: InitialState = {}) {
   const videos = shallowRef<VideoListItem[]>([])
@@ -42,8 +33,6 @@ export default function useLatestVideos(initial: InitialState = {}) {
   const allLoaded = ref(false)
   const error = ref<unknown | null>(null)
   const activeTab = ref(initial.activeTab ?? 'unread')
-  const videoCounts = ref<VideoCounts>({ all: 0, unread: 0, read: 0, preview: 0, liked: 0, later: 0 })
-  const countsLoading = ref(false)
   const currentPage = ref(1)
   const searchQuery = ref(initial.searchQuery ?? '')
   const isResetting = ref(false)
@@ -58,34 +47,7 @@ export default function useLatestVideos(initial: InitialState = {}) {
   const category = computed(() => activeTab.value)
 
   let requestToken = 0
-  let countsRequestToken = 0
-
-  const loadVideoCounts = async () => {
-    countsLoading.value = true
-    const currentToken = ++countsRequestToken
-
-    const { data, error: requestError } = (await getVideoCounts({
-      query: searchQuery.value || '',
-      subscription_id: subscriptionId.value,
-      nsfw: nsfw.value,
-      site: site.value,
-      time_range: timeRange.value,
-      duration: duration.value,
-      content_type: contentType.value,
-    })) as ApiResult<VideoCounts>
-
-    if (currentToken !== countsRequestToken) {
-      countsLoading.value = false
-      return null
-    }
-
-    if (!requestError && data) {
-      videoCounts.value = data
-    }
-
-    countsLoading.value = false
-    return data ?? null
-  }
+  let listAbortController: AbortController | null = null
 
   const loadMore = async () => {
     if (loading.value || allLoaded.value) return
@@ -93,6 +55,8 @@ export default function useLatestVideos(initial: InitialState = {}) {
 
     const pageSize = 50
     const currentToken = ++requestToken
+    listAbortController?.abort()
+    listAbortController = new AbortController()
 
     const { data, error: requestError } = (await getVideoList({
       page: currentPage.value,
@@ -106,9 +70,16 @@ export default function useLatestVideos(initial: InitialState = {}) {
       time_range: timeRange.value,
       duration: duration.value,
       content_type: contentType.value,
+    }, {
+      signal: listAbortController.signal,
     })) as ApiResult<VideoListResponse>
 
     if (currentToken !== requestToken) {
+      loading.value = false
+      return
+    }
+
+    if ((requestError as ApiErrorLike | null)?.type === 'CANCELED') {
       loading.value = false
       return
     }
@@ -144,10 +115,6 @@ export default function useLatestVideos(initial: InitialState = {}) {
     currentPage.value++
     allLoaded.value = newVideos.length < pageSize
     loading.value = false
-
-    if (currentPage.value === 2) {
-      loadVideoCounts()
-    }
   }
 
   const resetAndReload = async () => {
@@ -162,24 +129,15 @@ export default function useLatestVideos(initial: InitialState = {}) {
     }
   }
 
-  watch([subscriptionId, searchQuery, nsfw, site, timeRange, duration, contentType], () => {
-    if (currentPage.value > 1) {
-      loadVideoCounts()
-    }
-  })
-
   return {
     videos,
     loading,
     allLoaded,
     error,
     activeTab,
-    videoCounts,
-    countsLoading,
     handleSearch: resetAndReload,
     refresh: resetAndReload,
     loadMore,
-    loadVideoCounts,
     searchQuery,
     subscriptionId,
     sortBy,

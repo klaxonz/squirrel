@@ -5,7 +5,7 @@
         <FeedToolbar
           class="subscribed-toolbar"
           :show-tabs="false"
-          :tabs-with-counts="[]"
+          :tabs="[]"
           :nsfw="nsfw"
           :site="site"
           :sort-by="sortBy"

@@ -2,6 +2,7 @@ import type { AxiosRequestConfig, AxiosResponse } from 'axios'
 import axios from './axios'
 
 export const ErrorTypes = {
+  CANCELED: 'CANCELED',
   NETWORK: 'NETWORK',
   API: 'API',
   TIMEOUT: 'TIMEOUT',
@@ -43,6 +44,10 @@ const isApiEnvelope = (data: any): data is ApiEnvelope => {
   return !!data && typeof data.code === 'number'
 }
 const getErrorType = (error: any): ErrorType => {
+  if (error?.code === 'ERR_CANCELED') {
+    return ErrorTypes.CANCELED
+  }
+
   if (!error.response) {
     if (error.code === 'ECONNABORTED') return ErrorTypes.TIMEOUT
     return ErrorTypes.NETWORK
@@ -65,6 +70,7 @@ const formatErrorMessage = (error: any) => {
   }
 
   switch (getErrorType(error)) {
+    case ErrorTypes.CANCELED: return '请求已取消'
     case ErrorTypes.NETWORK: return '网络连接失败，请检查网络设置'
     case ErrorTypes.TIMEOUT: return '请求超时，请稍后重试'
     case ErrorTypes.UNAUTHORIZED: return '登录已过期，请重新登录'
