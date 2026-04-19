@@ -14,16 +14,16 @@
       :style="itemStyle"
     >
       <div
-        v-for="item in visibleItems"
-        :key="item[keyField]"
+        v-for="entry in visibleItems"
+        :key="entry.item[keyField]"
         class="list-item"
       >
         <slot
           name="item"
-          :item="item"
-          :index="item._index"
-          :row="item._row"
-          :column="item._column"
+          :item="entry.item"
+          :index="entry.index"
+          :row="entry.row"
+          :column="entry.column"
         ></slot>
       </div>
     </div>
@@ -148,17 +148,17 @@ const range = computed(() => {
 const visibleItems = computed(() => {
   const { startIndex, endIndex } = range.value;
   const items = itemsRef.value;
-  const result = new Array(endIndex - startIndex);
+  const result = [];
   const cols = columnCount.value;
   for (let i = startIndex; i < endIndex; i++) {
     const item = items[i];
     if (item) {
-      result[i - startIndex] = {
-        ...item,
-        _index: i,
-        _row: Math.floor(i / cols),
-        _column: i % cols
-      };
+      result.push({
+        item,
+        index: i,
+        row: Math.floor(i / cols),
+        column: i % cols
+      });
     }
   }
   return result;

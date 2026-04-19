@@ -1,17 +1,14 @@
 <template>
-  <keep-alive>
-    <VideoList
-        :key="`video-list-${$route.name}`"
-        :videos="processedVideos"
-        :loading="loading"
-        :allLoaded="allLoaded"
-        :showAvatar="false"
-        :sortBy="sortBy"
-        @loadMore="loadMore"
-        @openModal="(video) => emit('openModal', video, videos)"
-        @goToSubscription="(newSubscriptionId) => emit('goToSubscription', newSubscriptionId)"
-    />
-  </keep-alive>
+  <VideoList
+      :videos="processedVideos"
+      :loading="loading"
+      :allLoaded="allLoaded"
+      :showAvatar="false"
+      :sortBy="sortBy"
+      @loadMore="loadMore"
+      @openModal="(video) => emit('openModal', video, videos)"
+      @goToSubscription="(newSubscriptionId) => emit('goToSubscription', newSubscriptionId)"
+  />
 </template>
 
 <script setup>

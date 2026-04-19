@@ -778,12 +778,12 @@ def list_videos(
         creators_ms = _elapsed_ms(creators_started_at)
 
         thumbnails_started_at = perf_counter()
-        thumbnail_map = {
-            video.id: video.thumbnail
+        thumbnail_map = thumbnail_downloader_service.get_thumbnail_url_map([
+            (video.id, video.thumbnail, video.url)
             for video_id in video_ids
             for video in [video_map.get(video_id)]
             if video is not None
-        }
+        ])
         thumbnails_ms = _elapsed_ms(thumbnails_started_at)
 
         assemble_started_at = perf_counter()
