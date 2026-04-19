@@ -134,6 +134,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   let subtitleTracks: SubtitleTrack[] = []
   let currentSubtitle: SubtitleTrack | null = null
+  let subtitleLoadRequestId = 0
 
   let progressKey: string | null = null
 
@@ -1059,15 +1060,29 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   const setSubtitle = (track: SubtitleTrack | null): void => {
     currentSubtitle = track
+    const requestId = ++subtitleLoadRequestId
     const subtitlesPlugin = pluginManager.get<any>('subtitles')
 
     if (subtitlesPlugin) {
       if (track && typeof subtitlesPlugin.loadTrack === 'function') {
-        void subtitlesPlugin.loadTrack(track)
-      }
-
-      if (track && typeof subtitlesPlugin.enable === 'function') {
-        subtitlesPlugin.enable()
+        void Promise.resolve(subtitlesPlugin.loadTrack(track))
+          .then((loaded) => {
+            if (requestId !== subtitleLoadRequestId) return
+            if (loaded !== false && typeof subtitlesPlugin.enable === 'function') {
+              subtitlesPlugin.enable()
+              return
+            }
+            if (typeof subtitlesPlugin.disable === 'function') {
+              subtitlesPlugin.disable()
+            }
+          })
+          .catch((error) => {
+            logger.warn('[PlayerEngine] Failed to load subtitle track', error)
+            if (requestId !== subtitleLoadRequestId) return
+            if (typeof subtitlesPlugin.disable === 'function') {
+              subtitlesPlugin.disable()
+            }
+          })
       } else if (!track && typeof subtitlesPlugin.disable === 'function') {
         subtitlesPlugin.disable()
       }

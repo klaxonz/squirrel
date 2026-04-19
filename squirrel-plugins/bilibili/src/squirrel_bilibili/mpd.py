@@ -1,9 +1,27 @@
 from __future__ import annotations
 
-from urllib.parse import quote
 from xml.etree import ElementTree as ET
 
-from .handler import _base_url, _group_video_streams_by_codec, get_dash_data
+from .handler import _backup_urls, _base_url, _group_video_streams_by_codec, _proxy_stream_url, get_dash_data
+
+
+def _append_representation_base_urls(representation: ET.Element, stream: dict, *, direct_playback: bool) -> bool:
+    urls = []
+    primary_url = _base_url(stream)
+    if primary_url:
+        urls.append(primary_url)
+    urls.extend(_backup_urls(stream))
+
+    emitted = set()
+    for url in urls:
+        proxied_url = _proxy_stream_url(url, direct_playback=direct_playback)
+        if not proxied_url or proxied_url in emitted:
+            continue
+        base_url = ET.SubElement(representation, 'BaseURL')
+        base_url.text = proxied_url
+        emitted.add(proxied_url)
+
+    return bool(emitted)
 
 
 class BilibiliMpdBuilder:
@@ -44,15 +62,12 @@ class BilibiliMpdBuilder:
                 if 'bandwidth' in stream:
                     representation.set("bandwidth", str(stream['bandwidth']))
 
-                base = _base_url(stream)
-                if not base:
+                if not _append_representation_base_urls(
+                    representation,
+                    stream,
+                    direct_playback=direct_playback,
+                ):
                     continue
-                base_url = ET.SubElement(representation, "BaseURL")
-                if direct_playback:
-                    base_url.text = base
-                else:
-                    proxied = f"/api/video/proxy?domain=bilibili.com&url=" + quote(base, safe='')
-                    base_url.text = proxied
 
                 segment_base = stream.get('SegmentBase')
                 if isinstance(segment_base, dict):
@@ -76,15 +91,12 @@ class BilibiliMpdBuilder:
                 if 'bandwidth' in audio_stream:
                     representation.set("bandwidth", str(audio_stream['bandwidth']))
 
-                base = _base_url(audio_stream)
-                if not base:
+                if not _append_representation_base_urls(
+                    representation,
+                    audio_stream,
+                    direct_playback=direct_playback,
+                ):
                     continue
-                base_url = ET.SubElement(representation, "BaseURL")
-                if direct_playback:
-                    base_url.text = base
-                else:
-                    proxied = f"/api/video/proxy?domain=bilibili.com&url=" + quote(base, safe='')
-                    base_url.text = proxied
 
                 segment_base = audio_stream.get('SegmentBase')
                 if isinstance(segment_base, dict):

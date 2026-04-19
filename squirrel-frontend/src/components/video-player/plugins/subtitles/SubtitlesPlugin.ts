@@ -81,6 +81,8 @@ export class SubtitlesPlugin implements PlayerPlugin {
   private containerElement: HTMLElement | null = null
   private syncAnimationFrameId: number | null = null
   private syncVideoFrameId: number | null = null
+  private loadRequestId: number = 0
+  private unavailableTrackIds = new Set<string>()
 
   constructor() {
     this.options = {}
@@ -412,7 +414,8 @@ export class SubtitlesPlugin implements PlayerPlugin {
   /**
    * 加载字幕轨道
    */
-  async loadTrack(track: SubtitleTrack): Promise<void> {
+  async loadTrack(track: SubtitleTrack): Promise<boolean> {
+    const requestId = ++this.loadRequestId
     this.currentTrack = track
     this.cues = []
     this.activeCueIndex = -1
@@ -423,23 +426,53 @@ export class SubtitlesPlugin implements PlayerPlugin {
 
     // 从 URL 加载
     if (!content && track.url) {
+      if (this.unavailableTrackIds.has(track.id)) {
+        this.context?.logger.debug('[SubtitlesPlugin] Skipping known unavailable subtitle track', { trackId: track.id })
+        return false
+      }
+
       try {
         const response = await fetch(track.url)
+        if (!response.ok) {
+          if (response.status === 404) {
+            this.unavailableTrackIds.add(track.id)
+            this.context?.logger.warn('[SubtitlesPlugin] Subtitle track returned 404, degrading subtitles only', {
+              trackId: track.id,
+              url: track.url,
+            })
+            return false
+          }
+          throw new Error(`HTTP ${response.status}`)
+        }
         content = await response.text()
+        if (requestId !== this.loadRequestId) {
+          return false
+        }
         if (content) {
           track.content = content
         }
       } catch (e) {
-        this.context?.logger.error('[SubtitlesPlugin] Failed to load subtitle', e)
-        return
+        this.context?.logger.warn('[SubtitlesPlugin] Failed to load subtitle, degrading without interrupting playback', e)
+        return false
       }
     }
 
-    if (!content) return
+    if (requestId !== this.loadRequestId) {
+      return false
+    }
+
+    if (!content) return false
 
     // 解析字幕
     const isVtt = content.trimStart().startsWith('WEBVTT')
     this.cues = isVtt ? this.parseVTT(content) : this.parseSRT(content)
+
+    if (this.cues.length === 0) {
+      this.context?.logger.warn('[SubtitlesPlugin] Subtitle track parsed with no cues, degrading subtitles only', {
+        trackId: track.id,
+      })
+      return false
+    }
 
     if (this.enabled) {
       this.refreshCurrentCue()
@@ -447,6 +480,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
     }
     
     this.context?.logger.debug(`[SubtitlesPlugin] Loaded ${this.cues.length} cues from ${track.label}`)
+    return true
   }
 
   /**
@@ -623,8 +657,10 @@ export class SubtitlesPlugin implements PlayerPlugin {
    */
   async setTracks(tracks: SubtitleTrack[]): Promise<void> {
     this.tracks = tracks
+    this.unavailableTrackIds.clear()
 
     if (tracks.length === 0) {
+      this.loadRequestId += 1
       this.currentTrack = null
       this.cues = []
       this.activeCueIndex = -1
@@ -634,8 +670,12 @@ export class SubtitlesPlugin implements PlayerPlugin {
 
     if (this.options.autoLoad) {
       const defaultTrack = tracks.find(t => t.default) || tracks[0]
-      await this.loadTrack(defaultTrack)
-      this.enable()
+      const loaded = await this.loadTrack(defaultTrack)
+      if (loaded) {
+        this.enable()
+      } else {
+        this.disable()
+      }
     }
   }
 
@@ -659,8 +699,12 @@ export class SubtitlesPlugin implements PlayerPlugin {
   async switchTrack(trackId: string): Promise<void> {
     const track = this.tracks.find(t => t.id === trackId)
     if (track) {
-      await this.loadTrack(track)
-      this.enable()
+      const loaded = await this.loadTrack(track)
+      if (loaded) {
+        this.enable()
+      } else {
+        this.disable()
+      }
     }
   }
 
@@ -675,8 +719,12 @@ export class SubtitlesPlugin implements PlayerPlugin {
       : -1
     
     const nextIndex = (currentIndex + 1) % this.tracks.length
-    await this.loadTrack(this.tracks[nextIndex])
-    this.enable()
+    const loaded = await this.loadTrack(this.tracks[nextIndex])
+    if (loaded) {
+      this.enable()
+    } else {
+      this.disable()
+    }
   }
 
   /**
@@ -698,7 +746,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
     this.enabled = false
     this.stopSyncLoop()
     if (this.containerElement) {
-      this.containerElement.innerHTML = ''
+      this.clearRenderedCue()
       this.containerElement.style.display = 'none'
     }
   }
@@ -768,6 +816,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
   }
 
   destroy(): void {
+    this.loadRequestId += 1
     this.onDestroy()
     this.context = null
     this.tracks = []

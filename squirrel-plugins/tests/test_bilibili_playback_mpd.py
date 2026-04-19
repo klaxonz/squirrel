@@ -284,3 +284,57 @@ def test_bilibili_mpd_builder_returns_direct_base_urls_when_requested(monkeypatc
         assert 'https://cdn.example.test/video.m4s' in xml
         assert 'https://cdn.example.test/audio.m4s' in xml
         assert '/api/video/proxy?domain=bilibili.com' not in xml
+
+
+def test_bilibili_mpd_builder_preserves_backup_base_urls(monkeypatch):
+    with _stub_bilibili_modules(), _import_paths(BILIBILI_SRC):
+        module = importlib.import_module('squirrel_bilibili.mpd')
+
+        monkeypatch.setattr(
+            module,
+            'get_dash_data',
+            lambda _url: {
+                'duration': 120,
+                'video': [
+                    {
+                        'id': 80,
+                        'codecid': 7,
+                        'codecs': 'avc1.640028',
+                        'width': 1920,
+                        'height': 1080,
+                        'bandwidth': 1800000,
+                        'baseUrl': 'https://cdn.example.test/video-main.m4s',
+                        'backupUrl': [
+                            'https://cdn.example.test/video-backup-a.m4s',
+                            'https://cdn.example.test/video-backup-b.m4s',
+                        ],
+                    },
+                ],
+                'audio': [
+                    {
+                        'id': 30216,
+                        'codecs': 'mp4a.40.2',
+                        'bandwidth': 192000,
+                        'baseUrl': 'https://cdn.example.test/audio-main.m4s',
+                        'backupUrl': [
+                            'https://cdn.example.test/audio-backup-a.m4s',
+                        ],
+                    }
+                ],
+            },
+        )
+
+        xml = module.BilibiliMpdBuilder().build_mpd(
+            SimpleNamespace(id=123, url='https://www.bilibili.com/video/BV-demo')
+        )
+
+        root = ET.fromstring(xml)
+        ns = {'mpd': 'urn:mpeg:dash:schema:mpd:2011'}
+        base_urls = [node.text or '' for node in root.findall('.//mpd:BaseURL', ns)]
+
+        assert len(base_urls) == 5
+        assert any('video-main.m4s' in url for url in base_urls)
+        assert any('video-backup-a.m4s' in url for url in base_urls)
+        assert any('video-backup-b.m4s' in url for url in base_urls)
+        assert any('audio-main.m4s' in url for url in base_urls)
+        assert any('audio-backup-a.m4s' in url for url in base_urls)

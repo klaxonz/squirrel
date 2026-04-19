@@ -49,6 +49,34 @@ export class DashPlugin implements PlayerPlugin {
   private pendingHintedSelection: DashQualitySelection | null = null
   private lastKnownPlaybackQualityId: string | number | null = null
 
+  private buildErrorSignature(error: unknown): string {
+    if (!error) return ''
+    try {
+      return JSON.stringify(error).toUpperCase()
+    } catch {
+      return String(error).toUpperCase()
+    }
+  }
+
+  private isUnrecoverableDashError(signature: string): boolean {
+    return signature.includes('NOT_SUPPORTED') || signature.includes('CAPABILITY')
+  }
+
+  private isTransientDashError(signature: string): boolean {
+    return [
+      'NETWORK',
+      'TIMEOUT',
+      'FRAGMENT',
+      'SEGMENT',
+      'DOWNLOAD',
+      'BUFFER',
+      'STALL',
+      'MEDIA',
+      'DECODE',
+      'APPEND',
+    ].some((token) => signature.includes(token))
+  }
+
   /**
    * 检测是否为 DASH 源
    */
@@ -190,7 +218,15 @@ export class DashPlugin implements PlayerPlugin {
     // 错误处理
     player.on('error', (e: any) => {
       if (this.player !== player) return
-      const fatal = e?.error === 'capability' || e?.event?.type === 'critical'
+      const signature = this.buildErrorSignature({
+        code: e?.event?.id,
+        error: e?.error,
+        message: e?.event?.message,
+        details: e,
+      })
+      const transient = this.isTransientDashError(signature)
+      const fatal = this.isUnrecoverableDashError(signature)
+        || (!transient && (e?.error === 'capability' || e?.event?.type === 'critical'))
       const error: PlayerError = {
         code: `DASH_${e?.event?.id || 'UNKNOWN'}`,
         message: e?.event?.message || 'DASH playback error',
@@ -198,7 +234,13 @@ export class DashPlugin implements PlayerPlugin {
         details: e
       }
 
-      if (fatal) {
+      if (transient) {
+        this.context?.logger.warn('[DashPlugin] Transient dash error observed', {
+          code: error.code,
+          message: error.message,
+        })
+        this.context?.reportError({ ...error, fatal: false })
+      } else if (fatal) {
         this.context?.reportError(error)
       } else {
         this.context?.logger.warn('[DashPlugin] Non-fatal error', error)
@@ -268,31 +310,44 @@ export class DashPlugin implements PlayerPlugin {
     })
   }
 
-  recoverPlayback(error: PlayerError, _context: PlaybackRecoveryContext): PlaybackRecoveryAction {
-    const code = String(error.code || '').toUpperCase()
+  recoverPlayback(error: PlayerError, context: PlaybackRecoveryContext): PlaybackRecoveryAction {
+    const signature = this.buildErrorSignature({
+      code: error.code,
+      message: error.message,
+      details: error.details,
+    })
 
-    if (code.includes('NOT_SUPPORTED') || code.includes('CAPABILITY')) {
+    if (this.isUnrecoverableDashError(signature)) {
       return 'unrecoverable'
     }
 
-    if (code.includes('MEDIA') || code.includes('DECODE') || code.includes('STALL')) {
-      this.context?.logger.debug('[DashPlugin] Allowing dash.js built-in recovery for media/decode error', { code })
-      return 'handled'
-    }
+    if (this.isTransientDashError(signature)) {
+      if (context.retryCount <= 2) {
+        this.context?.logger.debug('[DashPlugin] Transient recovery handled without source reload', {
+          code: error.code,
+          retryCount: context.retryCount,
+        })
+        return 'handled'
+      }
 
-    if (code.includes('NETWORK') || code.includes('TIMEOUT')) {
       if (this.player && this.currentSource) {
         try {
           this.player.attachSource(this.currentSource)
-          this.context?.logger.debug('[DashPlugin] Recovered network error via attachSource')
+          this.context?.logger.debug('[DashPlugin] Escalated transient recovery via attachSource', {
+            code: error.code,
+            retryCount: context.retryCount,
+          })
           return 'handled'
-        } catch {}
+        } catch (recoverError) {
+          this.context?.logger.warn('[DashPlugin] Failed to escalate transient recovery via attachSource', recoverError)
+        }
       }
+
       return 'reload-source'
     }
 
     this.context?.logger.debug('[DashPlugin] Requesting source reload for recovery', {
-      code,
+      code: error.code,
       source: this.currentSource
     })
     return 'reload-source'

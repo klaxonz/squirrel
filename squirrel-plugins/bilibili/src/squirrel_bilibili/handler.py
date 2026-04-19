@@ -15,6 +15,21 @@ def _base_url(stream: dict) -> Optional[str]:
     return stream.get('baseUrl') or stream.get('base_url')
 
 
+def _backup_urls(stream: dict) -> List[str]:
+    backup_urls = stream.get('backupUrl') or stream.get('backup_url') or []
+    if isinstance(backup_urls, list):
+        return [str(url) for url in backup_urls if url]
+    return []
+
+
+def _proxy_stream_url(url: Optional[str], *, direct_playback: bool = False) -> Optional[str]:
+    if not url:
+        return None
+    if direct_playback:
+        return url
+    return f'/api/video/proxy?domain=bilibili.com&url=' + quote(url, safe='')
+
+
 def _safe_int(value: Any) -> int:
     try:
         return int(value)
