@@ -205,6 +205,121 @@ def test_download_thumbnail_retries_transport_error(monkeypatch, tmp_path):
     assert clients == []
 
 
+def test_download_thumbnail_refreshes_expiring_preview_after_410(monkeypatch, tmp_path):
+    service = ThumbnailDownloaderService()
+    stale_thumbnail_url = (
+        'https://pix-cdn77.ypncdn.com/c6251/videos/demo/video.mp4/plain/'
+        'rs:fit:1280:720/vts:354?hash=stale&validto=1'
+    )
+    fresh_thumbnail_url = (
+        'https://pix-cdn77.ypncdn.com/c6251/videos/demo/video.mp4/plain/'
+        'rs:fit:1280:720/vts:354?hash=fresh&validto=2'
+    )
+    source_url = 'https://www.youporn.com/watch/42/demo-video/'
+    requests = []
+
+    def fake_get(url, headers=None):
+        requests.append((url, headers))
+        if url == stale_thumbnail_url:
+            return SimpleNamespace(status_code=410, headers={'content-type': 'text/plain'}, content=b'', text='')
+        if url == source_url:
+            return SimpleNamespace(
+                status_code=200,
+                headers={'content-type': 'text/html'},
+                content=b'',
+                text=f'<meta property="og:image" content="{fresh_thumbnail_url}">',
+            )
+        if url == fresh_thumbnail_url:
+            return SimpleNamespace(
+                status_code=200,
+                headers={'content-type': 'image/jpeg'},
+                content=b'image-bytes',
+                text='',
+            )
+        raise AssertionError(f'unexpected url: {url}')
+
+    monkeypatch.setattr(service, '_should_download', lambda site_name: True)
+    monkeypatch.setattr(service, '_get_batch_dir', lambda video_id: str(tmp_path / 'batch_001'))
+    monkeypatch.setattr(service, '_get_extension', lambda remote_url: '.jpg')
+    monkeypatch.setattr(service, '_get_http_client', lambda: SimpleNamespace(get=fake_get))
+    monkeypatch.setattr(
+        thumbnail_downloader.os.path,
+        'exists',
+        lambda path: False,
+    )
+
+    file_path = service.download_thumbnail(
+        video_id=42,
+        thumbnail_url=stale_thumbnail_url,
+        site_name='youporn',
+        source_url=source_url,
+    )
+
+    assert file_path == str(tmp_path / 'batch_001' / '42.jpg')
+    assert [item[0] for item in requests] == [
+        stale_thumbnail_url,
+        source_url,
+        fresh_thumbnail_url,
+    ]
+
+
+def test_download_thumbnail_refreshes_expiring_preview_after_410_for_pornhub(monkeypatch, tmp_path):
+    service = ThumbnailDownloaderService()
+    stale_thumbnail_url = (
+        'https://pix-cdn77.ypncdn.com/c6251/videos/demo/video.mp4/plain/'
+        'rs:fit:1280:720/vts:354?hash=stale&validto=1'
+    )
+    fresh_thumbnail_url = (
+        'https://ei.phncdn.com/videos/demo/fresh-thumb.jpg?validto=2'
+    )
+    source_url = 'https://www.pornhub.com/view_video.php?viewkey=demo'
+    requests = []
+
+    def fake_get(url, headers=None):
+        requests.append((url, headers))
+        if url == stale_thumbnail_url:
+            return SimpleNamespace(status_code=410, headers={'content-type': 'text/plain'}, content=b'', text='')
+        if url == source_url:
+            return SimpleNamespace(
+                status_code=200,
+                headers={'content-type': 'text/html'},
+                content=b'',
+                text=f'<meta property="og:image" content="{fresh_thumbnail_url}">',
+            )
+        if url == fresh_thumbnail_url:
+            return SimpleNamespace(
+                status_code=200,
+                headers={'content-type': 'image/jpeg'},
+                content=b'image-bytes',
+                text='',
+            )
+        raise AssertionError(f'unexpected url: {url}')
+
+    monkeypatch.setattr(service, '_should_download', lambda site_name: True)
+    monkeypatch.setattr(service, '_get_batch_dir', lambda video_id: str(tmp_path / 'batch_001'))
+    monkeypatch.setattr(service, '_get_extension', lambda remote_url: '.jpg')
+    monkeypatch.setattr(service, '_get_http_client', lambda: SimpleNamespace(get=fake_get))
+    monkeypatch.setattr(
+        thumbnail_downloader.os.path,
+        'exists',
+        lambda path: False,
+    )
+
+    file_path = service.download_thumbnail(
+        video_id=88,
+        thumbnail_url=stale_thumbnail_url,
+        site_name='pornhub',
+        source_url=source_url,
+    )
+
+    assert file_path == str(tmp_path / 'batch_001' / '88.jpg')
+    assert [item[0] for item in requests] == [
+        stale_thumbnail_url,
+        source_url,
+        fresh_thumbnail_url,
+    ]
+
+
 def test_build_request_headers_uses_source_url_cookies_and_age_gate_defaults(monkeypatch):
     service = ThumbnailDownloaderService()
 

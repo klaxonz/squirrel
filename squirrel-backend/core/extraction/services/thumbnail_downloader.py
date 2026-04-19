@@ -1,11 +1,14 @@
 """
 缩略图下载服务 - 负责下载缩略图到本地
 """
-from datetime import datetime
+import html as html_lib
+import json
 import logging
 import os
+import re
 import time
 from collections import OrderedDict
+from datetime import datetime
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -29,6 +32,14 @@ _BATCH_INDEX_CACHE_TTL = 300.0
 _BATCH_INDEX_CACHE_MAX_BATCHES = 64
 _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS = 3
 _THUMBNAIL_DOWNLOAD_RETRYABLE_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
+_EXPIRING_PREVIEW_REFRESH_STATUS_CODES = {403, 404, 410}
+_LDJSON_THUMBNAIL_RE = re.compile(r'<script\s+type=["\']application/ld\+json["\']>(.*?)</script>', re.I | re.S)
+_META_THUMBNAIL_PATTERNS = (
+    re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', re.I),
+    re.compile(r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image["\']', re.I),
+)
 
 _DEFAULT_HEADERS = {
     "User-Agent": (
@@ -219,6 +230,96 @@ class ThumbnailDownloaderService:
     def _build_retry_delay(attempt: int) -> float:
         return min(2.0, 0.5 * attempt)
 
+    @staticmethod
+    def _looks_like_expiring_preview_thumbnail(url: Optional[str]) -> bool:
+        normalized = str(url or '').strip().lower()
+        return bool(normalized) and '.mp4/plain/' in normalized and 'validto=' in normalized
+
+    def _extract_thumbnail_url_from_html(self, html_text: str) -> Optional[str]:
+        for match in _LDJSON_THUMBNAIL_RE.finditer(str(html_text or '')):
+            try:
+                payload = json.loads(match.group(1).strip())
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+            pending = payload if isinstance(payload, list) else [payload]
+            while pending:
+                item = pending.pop(0)
+                if isinstance(item, list):
+                    pending.extend(item)
+                    continue
+                if not isinstance(item, dict):
+                    continue
+
+                graph = item.get('@graph')
+                if isinstance(graph, list):
+                    pending.extend(graph)
+                elif isinstance(graph, dict):
+                    pending.append(graph)
+
+                for key in ('thumbnailUrl', 'thumbnail', 'contentUrl'):
+                    value = item.get(key)
+                    if isinstance(value, str) and value.strip():
+                        return value.strip()
+                    if isinstance(value, list):
+                        for candidate in value:
+                            if isinstance(candidate, str) and candidate.strip():
+                                return candidate.strip()
+
+        for pattern in _META_THUMBNAIL_PATTERNS:
+            match = pattern.search(str(html_text or ''))
+            if not match:
+                continue
+            thumbnail_url = html_lib.unescape(match.group(1).strip())
+            if thumbnail_url:
+                return thumbnail_url
+
+        return None
+
+    def _fetch_fresh_thumbnail_url(
+        self,
+        site_name: Optional[str],
+        source_url: Optional[str],
+        current_thumbnail_url: Optional[str],
+    ) -> Optional[str]:
+        if not site_name or not source_url:
+            return None
+        if not self._looks_like_expiring_preview_thumbnail(current_thumbnail_url):
+            return None
+
+        headers = self.build_request_headers(
+            site_name,
+            source_url=source_url,
+            target_url=source_url,
+        )
+
+        try:
+            response = self._get_http_client().get(source_url, headers=headers)
+        except httpx.TransportError as exc:
+            logger.info(
+                'Failed to refresh expiring thumbnail from source page: site=%s, url=%s, error=%s',
+                site_name,
+                source_url[:120],
+                exc,
+            )
+            self._reset_http_client()
+            return None
+
+        if response.status_code != 200:
+            logger.info(
+                'Failed to refresh expiring thumbnail from source page: site=%s, '
+                'url=%s, status=%s',
+                site_name,
+                source_url[:120],
+                response.status_code,
+            )
+            return None
+
+        refreshed_thumbnail_url = self._extract_thumbnail_url_from_html(response.text)
+        if not refreshed_thumbnail_url or refreshed_thumbnail_url == current_thumbnail_url:
+            return None
+        return refreshed_thumbnail_url
+
     def _upsert_local_thumbnail_index(
         self,
         video_id: int,
@@ -334,60 +435,94 @@ class ThumbnailDownloaderService:
                 self._upsert_local_thumbnail_index(video_id, batch_name, os.path.basename(file_path), exists=True)
                 return file_path
 
-            headers = self.build_request_headers(
-                site_name,
-                source_url=source_url,
-                target_url=thumbnail_url,
-            )
-            resp: Optional[httpx.Response] = None
+            def request_thumbnail(target_url: str) -> Optional[httpx.Response]:
+                headers = self.build_request_headers(
+                    site_name,
+                    source_url=source_url,
+                    target_url=target_url,
+                )
+                resp: Optional[httpx.Response] = None
 
-            for attempt in range(1, _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS + 1):
-                try:
-                    client = self._get_http_client()
-                    resp = client.get(thumbnail_url, headers=headers)
-                except httpx.TransportError as exc:
-                    if attempt >= _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS:
-                        raise
+                for attempt in range(1, _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS + 1):
+                    try:
+                        client = self._get_http_client()
+                        resp = client.get(target_url, headers=headers)
+                    except httpx.TransportError as exc:
+                        if attempt >= _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS:
+                            raise
 
+                        logger.info(
+                            'Retrying thumbnail download after transport error: '
+                            'video_id=%s, attempt=%s/%s, url=%s, error=%s',
+                            video_id,
+                            attempt,
+                            _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS,
+                            target_url[:80],
+                            exc,
+                        )
+                        self._reset_http_client()
+                        time.sleep(self._build_retry_delay(attempt))
+                        continue
+
+                    if resp.status_code == 200:
+                        return resp
+
+                    if (
+                        self._should_retry_download_status(resp.status_code)
+                        and attempt < _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS
+                    ):
+                        logger.info(
+                            'Retrying thumbnail download after HTTP %s: '
+                            'video_id=%s, attempt=%s/%s, url=%s',
+                            resp.status_code,
+                            video_id,
+                            attempt,
+                            _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS,
+                            target_url[:80],
+                        )
+                        time.sleep(self._build_retry_delay(attempt))
+                        continue
+
+                    return resp
+
+                return resp
+
+            resp = request_thumbnail(thumbnail_url)
+            if resp is None:
+                return None
+
+            if resp.status_code != 200 and resp.status_code in _EXPIRING_PREVIEW_REFRESH_STATUS_CODES:
+                refreshed_thumbnail_url = self._fetch_fresh_thumbnail_url(
+                    site_name,
+                    source_url,
+                    thumbnail_url,
+                )
+                if refreshed_thumbnail_url and refreshed_thumbnail_url != thumbnail_url:
                     logger.info(
-                        'Retrying thumbnail download after transport error: '
-                        'video_id=%s, attempt=%s/%s, url=%s, error=%s',
+                        'Retrying thumbnail download with refreshed source URL: '
+                        'video_id=%s, status=%s, site=%s',
                         video_id,
-                        attempt,
-                        _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS,
-                        thumbnail_url[:80],
-                        exc,
-                    )
-                    self._reset_http_client()
-                    time.sleep(self._build_retry_delay(attempt))
-                    continue
-
-                if resp.status_code == 200:
-                    break
-
-                if (
-                    self._should_retry_download_status(resp.status_code)
-                    and attempt < _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS
-                ):
-                    logger.info(
-                        'Retrying thumbnail download after HTTP %s: '
-                        'video_id=%s, attempt=%s/%s, url=%s',
                         resp.status_code,
-                        video_id,
-                        attempt,
-                        _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS,
-                        thumbnail_url[:80],
+                        site_name or 'unknown',
                     )
-                    time.sleep(self._build_retry_delay(attempt))
-                    continue
+                    thumbnail_url = refreshed_thumbnail_url
+                    ext = self._get_extension(thumbnail_url)
+                    file_path = os.path.join(batch_dir, f"{video_id}{ext}")
 
+                    if os.path.exists(file_path):
+                        logger.debug(f"Thumbnail already exists: {file_path}")
+                        self._upsert_local_thumbnail_index(video_id, batch_name, os.path.basename(file_path), exists=True)
+                        return file_path
+
+                    resp = request_thumbnail(thumbnail_url)
+                    if resp is None:
+                        return None
+
+            if resp.status_code != 200:
                 logger.warning(
                     f"Failed to download thumbnail: video_id={video_id}, "
                     f"status={resp.status_code}, url={thumbnail_url[:80]}"
                 )
-                return None
-
-            if resp is None:
                 return None
 
             content_type = resp.headers.get("content-type", "")
