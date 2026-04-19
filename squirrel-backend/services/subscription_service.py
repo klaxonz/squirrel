@@ -19,6 +19,7 @@ from services.search_query import normalize_subscription_type_term, parse_search
 from services import user_config_service
 from services import subscription_sync_state_service
 from services import user_video_feed_service
+from services import search_suggestion_service
 from services.subscription_runtime_models import (
     SubscriptionImportBatchResult,
     SubscriptionImportItem,
@@ -126,11 +127,67 @@ def _load_subscription_extract_counts(session, subscription_ids: List[int]) -> D
     }
 
 
+def _load_recent_videos(session, subscription_ids: List[int], limit: int = 10) -> Dict[int, List[Dict[str, Any]]]:
+    if not subscription_ids:
+        return {}
+
+    from models.video import Video
+
+    ranked_videos = (
+        select(
+            SubscriptionVideo.subscription_id.label('subscription_id'),
+            Video.id.label('id'),
+            Video.title.label('title'),
+            Video.thumbnail.label('thumbnail'),
+            Video.duration.label('duration'),
+            Video.publish_date.label('publish_date'),
+            func.row_number().over(
+                partition_by=SubscriptionVideo.subscription_id,
+                order_by=(Video.publish_date.desc().nullslast(), Video.created_at.desc()),
+            ).label('rank'),
+        )
+        .select_from(SubscriptionVideo)
+        .join(Video, Video.id == SubscriptionVideo.video_id)
+        .where(
+            SubscriptionVideo.subscription_id.in_(subscription_ids),
+            Video.is_deleted.is_(False),
+        )
+        .subquery()
+    )
+
+    rows = session.execute(
+        select(
+            ranked_videos.c.subscription_id,
+            ranked_videos.c.id,
+            ranked_videos.c.title,
+            ranked_videos.c.thumbnail,
+            ranked_videos.c.duration,
+            ranked_videos.c.publish_date,
+        )
+        .where(ranked_videos.c.rank <= limit)
+        .order_by(ranked_videos.c.subscription_id.asc(), ranked_videos.c.rank.asc())
+    ).all()
+
+    grouped: Dict[int, List[Dict[str, Any]]] = {}
+    for row in rows:
+        sub_id = int(row.subscription_id)
+        videos = grouped.setdefault(sub_id, [])
+        videos.append({
+            'id': int(row.id),
+            'title': row.title or '',
+            'thumbnail': row.thumbnail,
+            'duration': int(row.duration or 0),
+            'publish_date': _serialize_datetime(row.publish_date),
+        })
+
+    return grouped
+
+
 def _serialize_datetime(dt: Optional[datetime]) -> str:
     return dt.strftime('%Y-%m-%d %H:%M:%S') if dt else ''
 
 
-def _serialize_subscription_list_item(row: Mapping[str, Any], total_extract: int) -> Dict[str, Any]:
+def _serialize_subscription_list_item(row: Mapping[str, Any], total_extract: int, recent_videos: List[Dict[str, Any]] = None) -> Dict[str, Any]:
     row_data = row if isinstance(row, dict) else dict(row)
     total_videos = max(int(row_data['total_videos'] or 0), total_extract)
     url = row_data['url']
@@ -156,7 +213,9 @@ def _serialize_subscription_list_item(row: Mapping[str, Any], total_extract: int
         'last_error': row_data['last_error'],
         'pending_video_count': int(row_data['pending_video_count'] or 0),
         'site': _resolve_site_slug(url),
+        'recent_videos': recent_videos or [],
     }
+
 
 
 def _detect_subscription_type(url: str) -> str:
@@ -371,12 +430,15 @@ def list_subscriptions(
         results = session.execute(statement).all()
         subscription_ids = [int(row._mapping['id']) for row in results]
         extract_count_map = _load_subscription_extract_counts(session, subscription_ids)
+        recent_videos_map = _load_recent_videos(session, subscription_ids)
 
         subscriptions = []
         for row in results:
             row_mapping = row._mapping
-            total_extract = extract_count_map.get(int(row_mapping['id']), 0)
-            subscriptions.append(_serialize_subscription_list_item(row_mapping, total_extract))
+            sub_id = int(row_mapping['id'])
+            total_extract = extract_count_map.get(sub_id, 0)
+            recent_videos = recent_videos_map.get(sub_id, [])
+            subscriptions.append(_serialize_subscription_list_item(row_mapping, total_extract, recent_videos))
 
         return subscriptions, total_count
 
@@ -435,7 +497,12 @@ def update_subscription(
 
         session.add(subscription)
         session.commit()
-        return True
+        updated = True
+    try:
+        search_suggestion_service.rebuild_users_for_subscription(subscription_id)
+    except Exception as exc:
+        logger.warning('Search suggestion subscription refresh skipped: %s', exc)
+    return updated
 
 
 def toggle_status(subscription_id: int, status: bool, field: str) -> bool:

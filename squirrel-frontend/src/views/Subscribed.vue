@@ -50,13 +50,11 @@
       </div>
 
       <div class="content-container">
-        <div v-if="loading && subscriptions.length" class="subscribed-inline-loading">
-          <LoadingIndicator :loading="true" text="正在加载订阅" size="sm" />
-        </div>
+
 
         <Transition name="fade-list">
-          <div v-if="loading && !subscriptions.length" key="skeleton" class="subscription-list subscription-list--loading">
-            <SubscriptionSkeleton v-for="i in 14" :key="i" :delay="i * 70" />
+          <div v-if="loading && !subscriptions.length" key="loading" class="subscription-list subscription-list--loading">
+            <LoadingIndicator :loading="true" text="正在加载订阅" size="sm" />
           </div>
 
           <div v-else-if="hasLoadedOnce && !loading && !subscriptions.length" key="empty" class="subscribed-empty-card">
@@ -76,87 +74,111 @@
               class="subscription-row"
               :class="{ 'is-refreshing': isResetting }"
             >
-              <!-- Left: Avatar -->
-              <div class="subscription-row__avatar-wrap" @click="getSubscriptionVideos(subscription.id)">
-                <div class="subscription-row__avatar-container">
-                  <SubscriptionAvatar
-                    :src="subscription.avatar"
-                    :name="subscription.name"
-                    size="lg"
-                    class="subscription-row__avatar"
-                  />
-                  <div v-if="getSubscriptionRefreshState(subscription.id).isRefreshing" class="subscription-row__avatar-pulse"></div>
+              <div class="subscription-row__header" @click="getSubscriptionVideos(subscription.id)">
+                <div class="subscription-row__avatar-wrap">
+                  <div class="subscription-row__avatar-container">
+                    <SubscriptionAvatar
+                      :src="subscription.avatar"
+                      :name="subscription.name"
+                      size="lg"
+                      class="subscription-row__avatar"
+                    />
+                    <div v-if="getSubscriptionRefreshState(subscription.id).isRefreshing" class="subscription-row__avatar-pulse"></div>
+                  </div>
                 </div>
-              </div>
 
-              <!-- Center: Identity & Metadata -->
-              <div class="subscription-row__main" @click="getSubscriptionVideos(subscription.id)">
-                <div class="subscription-row__name-row">
-                  <h3 class="subscription-row__name" :title="subscription.name">{{ subscription.name }}</h3>
-                  <span class="subscription-row__site-badge">
-                    {{ subscription.site || 'unknown' }}
-                  </span>
-                  <span v-if="subscription.type === 'PLAYLIST'" class="subscription-row__type-tag">播放列表</span>
-                  <span v-if="subscription.is_nsfw" class="subscription-row__nsfw-tag">NSFW</span>
-                </div>
-                <div class="subscription-row__meta">
-                  <span
-                    class="subscription-row__status-badge"
-                    :class="getStatusBadgeClass(getSubscriptionRefreshState(subscription.id).status)"
-                  >
+                <div class="subscription-row__main">
+                  <div class="subscription-row__name-row">
+                    <h3 class="subscription-row__name" :title="subscription.name">{{ subscription.name }}</h3>
+                    <span class="subscription-row__site-badge">{{ subscription.site || 'unknown' }}</span>
+                    <span v-if="subscription.type === 'PLAYLIST'" class="subscription-row__type-tag">播放列表</span>
+                    <span v-if="subscription.is_nsfw" class="subscription-row__nsfw-tag">NSFW</span>
+                  </div>
+                  <div class="subscription-row__meta">
                     <span
-                      v-if="getSubscriptionRefreshState(subscription.id).isRefreshing"
-                      class="status-badge-dot animate-pulse"
-                    ></span>
-                    {{ getStatusText(getSubscriptionRefreshState(subscription.id).status, getSubscriptionRefreshState(subscription.id).phase) }}
-                  </span>
-                  <span class="subscription-row__sep" aria-hidden="true"></span>
-                  <span class="subscription-row__date">{{ formatDate(subscription.created_at) }}</span>
+                      class="subscription-row__status-badge"
+                      :class="getStatusBadgeClass(getSubscriptionRefreshState(subscription.id).status)"
+                    >
+                      <span
+                        v-if="getSubscriptionRefreshState(subscription.id).isRefreshing"
+                        class="status-badge-dot animate-pulse"
+                      ></span>
+                      {{ getStatusText(getSubscriptionRefreshState(subscription.id).status, getSubscriptionRefreshState(subscription.id).phase) }}
+                    </span>
+                    <span class="subscription-row__sep" aria-hidden="true"></span>
+                    <span class="subscription-row__date">{{ formatDate(subscription.created_at) }}</span>
+                  </div>
+                </div>
+
+                <div class="subscription-row__stats" @click="getSubscriptionVideos(subscription.id)">
+                  <div class="subscription-row__stat-item">
+                    <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_videos }}</span>
+                    <span class="subscription-row__stat-label">视频</span>
+                  </div>
+                  <div class="subscription-row__stat-sep" aria-hidden="true"></div>
+                  <div class="subscription-row__stat-item">
+                    <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_extract }}</span>
+                    <span class="subscription-row__stat-label">已解析</span>
+                  </div>
+                </div>
+
+                <div class="subscription-row__actions">
+                  <button
+                    class="row-action-btn"
+                    :disabled="getSubscriptionRefreshState(subscription.id).isRefreshing"
+                    :title="getSubscriptionRefreshState(subscription.id).isRefreshing ? '更新中' : '刷新'"
+                    @click.stop="handleRefreshSubscription(subscription.id)"
+                  >
+                    <ArrowPathIcon class="row-action-icon" :class="{ 'is-spinning': getSubscriptionRefreshState(subscription.id).isRefreshing }" />
+                  </button>
+                  <button
+                    class="row-action-btn"
+                    title="设置"
+                    @click.stop="openSettings(subscription)"
+                  >
+                    <Cog6ToothIcon class="row-action-icon" />
+                  </button>
                 </div>
               </div>
 
-              <!-- Stats -->
-              <div class="subscription-row__stats" @click="getSubscriptionVideos(subscription.id)">
-                <div class="subscription-row__stat-item">
-                  <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_videos }}</span>
-                  <span class="subscription-row__stat-label">视频</span>
-                </div>
-                <div class="subscription-row__stat-sep" aria-hidden="true"></div>
-                <div class="subscription-row__stat-item">
-                  <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_extract }}</span>
-                  <span class="subscription-row__stat-label">已解析</span>
-                </div>
-              </div>
-
-              <!-- Actions: always visible -->
-              <div class="subscription-row__actions">
+              <div v-if="subscription.recent_videos?.length" class="subscription-row__recent-grid">
                 <button
-                  class="row-action-btn"
-                  :disabled="getSubscriptionRefreshState(subscription.id).isRefreshing"
-                  :title="getSubscriptionRefreshState(subscription.id).isRefreshing ? '更新中' : '刷新'"
-                  @click="handleRefreshSubscription(subscription.id)"
+                  v-for="video in subscription.recent_videos"
+                  :key="video.id"
+                  type="button"
+                  class="recent-video-card"
+                  @click.stop="openRecentVideo(video.id)"
                 >
-                  <ArrowPathIcon class="row-action-icon" :class="{ 'is-spinning': getSubscriptionRefreshState(subscription.id).isRefreshing }" />
-                </button>
-                <button
-                  class="row-action-btn"
-                  title="设置"
-                  @click="openSettings(subscription)"
-                >
-                  <Cog6ToothIcon class="row-action-icon" />
+                  <div class="recent-video-card__thumb-wrap">
+                    <img
+                      v-if="video.thumbnail && !hasThumbnailError(subscription.id, video.id)"
+                      :src="video.thumbnail"
+                      :alt="video.title || '视频缩略图'"
+                      class="recent-video-card__thumb"
+                      referrerpolicy="no-referrer"
+                      @error="handleThumbnailError(subscription.id, video.id)"
+                    >
+                    <div v-else class="recent-video-card__thumb-placeholder">
+                      <Icon icon="lucide:image-off" class="recent-video-card__thumb-placeholder-icon" />
+                      <span class="recent-video-card__thumb-placeholder-text">暂无封面</span>
+                    </div>
+                    <span v-if="video.duration" class="recent-video-card__duration">{{ formatDuration(video.duration) }}</span>
+                  </div>
+                  <p class="recent-video-card__title">{{ video.title || '未知视频' }}</p>
+                  <p class="recent-video-card__meta">{{ formatDate(video.publish_date) }}</p>
                 </button>
               </div>
+              <div v-else class="subscription-row__recent-empty">暂无最近视频</div>
             </article>
           </div>
         </Transition>
 
         <div
-          v-show="loading || (!allLoaded && subscriptions.length > 0)"
+          v-show="!loading && (!allLoaded && subscriptions.length > 0)"
           ref="loadingTrigger"
           class="subscribed-loading-trigger"
         >
-          <LoadingIndicator v-if="loading" :loading="true" text="加载更多" size="sm" />
-          <span v-else class="subscribed-trigger-hint">滚动加载更多</span>
+          <span class="subscribed-trigger-hint">滚动加载更多</span>
         </div>
 
         <div v-if="allLoaded && subscriptions.length" class="subscribed-bottom-copy">
@@ -273,12 +295,12 @@
 </template>
 
 <script setup>
-import { computed, inject, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import { computed, inject, nextTick, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { Icon } from '@iconify/vue'
 import { ArrowDownTrayIcon, ArrowPathIcon, Cog6ToothIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import FeedToolbar from '@/components/feed/FeedToolbar.vue'
 import LoadingIndicator from '@/components/feed/LoadingIndicator.vue'
-import SubscriptionSkeleton from '@/components/feed/SubscriptionSkeleton.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import AddChannelDialog from '@/components/dialogs/AddChannelDialog.vue'
 import ImportSubscriptionDialog from '@/components/dialogs/ImportSubscriptionDialog.vue'
@@ -298,7 +320,7 @@ import { useRefreshTriggers } from '../composables/useRefreshTriggers'
 import { useScrollPosition } from '../composables/useScrollPosition'
 import { useSubscriptionRefresh } from '../composables/useSubscriptionRefresh'
 import { useFeedFilters } from '../composables/useFeedFilters'
-import { formatDate } from '../utils/dateFormat'
+import { formatDate, formatDuration } from '../utils/dateFormat'
 import { notifySubscriptionRemoved } from '@/utils/subscriptionEvents'
 import {
   getSubscriptions as apiGetSubscriptions,
@@ -340,6 +362,16 @@ const defaultRefreshState = Object.freeze({
   isRefreshing: false,
 })
 const sortTextCollator = new Intl.Collator('zh-CN')
+const thumbnailErrorMap = reactive({})
+
+const getThumbnailErrorKey = (subscriptionId, videoId) => `${subscriptionId}-${videoId}`
+
+const hasThumbnailError = (subscriptionId, videoId) => !!thumbnailErrorMap[getThumbnailErrorKey(subscriptionId, videoId)]
+
+const handleThumbnailError = (subscriptionId, videoId) => {
+  thumbnailErrorMap[getThumbnailErrorKey(subscriptionId, videoId)] = true
+}
+
 
 const wait = (ms) => new Promise((resolve) => {
   window.setTimeout(resolve, ms)
@@ -450,6 +482,7 @@ const loadSubscriptions = async ({ force = false } = {}) => {
         ...subscription,
         total_videos: subscription.total_videos || 0,
         total_extract: subscription.total_extract || 0,
+        recent_videos: Array.isArray(subscription.recent_videos) ? subscription.recent_videos : [],
       }))
 
       mapped.forEach((subscription) => {
@@ -601,6 +634,11 @@ const unsubscribe = async (subscriptionId) => {
   unsubscribingId.value = null
 }
 
+const openRecentVideo = (videoId) => {
+  if (!videoId) return
+  router.push(`/video/${videoId}`)
+}
+
 const getSubscriptionVideos = (subscriptionId) => {
   router.push(`/subscription/${subscriptionId}/all`)
 }
@@ -737,19 +775,14 @@ onUnmounted(() => {
   padding-top: 0.75rem;
 }
 
-/* List */
 .subscription-list {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 0.9rem;
 }
 
 .subscription-list--loading {
   min-height: calc(100dvh - 12rem);
-}
-
-.subscription-list--loading .skeleton-row:first-child {
-  border-top: 1px solid hsl(var(--border) / 0.5);
 }
 
 .subscribed-inline-loading {
@@ -765,20 +798,28 @@ onUnmounted(() => {
 }
 
 .subscription-row {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid hsl(var(--border) / 0.45);
+  border-radius: var(--radius-lg);
+  background: hsl(var(--background));
+  overflow: hidden;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.subscription-row:hover {
+  background: hsl(var(--secondary) / 0.08);
+}
+
+.subscription-row__header {
   display: grid;
   grid-template-columns: 3rem 1fr auto auto;
   align-items: center;
   gap: 0 1.25rem;
-  padding: 0.875rem 0;
+  padding: 0.875rem 1rem;
   cursor: pointer;
-  transition: background 0.1s ease;
 }
 
-.subscription-row:hover {
-  background: hsl(var(--secondary) / 0.12);
-}
-
-/* Avatar */
 .subscription-row__avatar-wrap {
   flex-shrink: 0;
   display: flex;
@@ -814,7 +855,6 @@ onUnmounted(() => {
   animation: stream-pulse 1.5s ease-in-out infinite;
 }
 
-/* Main info */
 .subscription-row__main {
   min-width: 0;
 }
@@ -929,7 +969,6 @@ onUnmounted(() => {
   color: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Stats */
 .subscription-row__stats {
   display: flex;
   align-items: center;
@@ -966,12 +1005,11 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-/* Actions */
 .subscription-row__actions {
   display: flex;
   align-items: center;
   gap: 0.125rem;
-  opacity: 0.35;
+  opacity: 0.45;
   transition: opacity 0.15s ease;
 }
 
@@ -1013,7 +1051,119 @@ onUnmounted(() => {
   animation: spin 0.8s linear infinite;
 }
 
-/* Empty State */
+.subscription-row__recent-grid {
+  display: flex;
+  gap: 0.45rem;
+  padding: 0.1rem 1rem 0.75rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.subscription-row__recent-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.recent-video-card {
+  display: block;
+  width: 10.6rem;
+  min-width: 10.6rem;
+  max-width: 10.6rem;
+  box-sizing: border-box;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  padding: 0.2rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.recent-video-card:hover {
+  background: hsl(var(--secondary) / 0.22);
+}
+
+.recent-video-card__thumb-wrap {
+  position: relative;
+  width: 100%;
+  height: 6rem;
+  border-radius: calc(var(--radius-sm) - 1px);
+  overflow: hidden;
+  background: hsl(var(--secondary) / 0.6);
+}
+
+.recent-video-card__thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.recent-video-card__thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  background: hsl(var(--secondary) / 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  color: hsl(var(--muted-foreground) / 0.75);
+}
+
+.recent-video-card__thumb-placeholder-icon {
+  width: 0.8rem;
+  height: 0.8rem;
+  opacity: 0.8;
+}
+
+.recent-video-card__thumb-placeholder-text {
+  font-size: 0.5rem;
+  line-height: 1;
+}
+
+.recent-video-card__duration {
+  position: absolute;
+  right: 0.2rem;
+  bottom: 0.15rem;
+  font-size: 0.54rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgb(0 0 0 / 0.72);
+  border-radius: 3px;
+  padding: 0.02rem 0.22rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.recent-video-card__title {
+  margin: 0.28rem 0 0;
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.recent-video-card__meta {
+  margin: 0.12rem 0 0;
+  font-size: 0.56rem;
+  color: hsl(var(--muted-foreground) / 0.8);
+  line-height: 1.3;
+}
+
+.subscription-row__recent-empty {
+  margin: 0 1rem 1rem;
+  border: 1px dashed hsl(var(--border) / 0.6);
+  border-radius: var(--radius-md);
+  min-height: 2.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  color: hsl(var(--muted-foreground));
+}
+
 .subscribed-empty-card {
   min-height: 40vh;
   display: flex;
@@ -1060,7 +1210,6 @@ onUnmounted(() => {
   letter-spacing: 0.08em;
 }
 
-/* Dialog */
 .subscription-dialog__summary {
   display: flex;
   align-items: center;
@@ -1090,7 +1239,6 @@ onUnmounted(() => {
   padding: 0 1.5rem 1.5rem;
 }
 
-/* Animations */
 @keyframes stream-pulse {
   0% { transform: scale(1); opacity: 0.4; }
   50% { transform: scale(1.05); opacity: 1; }
@@ -1140,23 +1288,17 @@ onUnmounted(() => {
   letter-spacing: 0.05em;
 }
 
-/* Responsive */
-@media (max-width: 640px) {
-  .subscription-row {
+@media (max-width: 960px) {
+  .subscription-row__header {
     grid-template-columns: 2.5rem 1fr auto;
     grid-template-rows: auto auto;
     gap: 0 0.75rem;
-    padding: 0.75rem 0;
+    padding: 0.75rem;
   }
 
   .subscription-row__avatar-container {
     width: 2.25rem;
     height: 2.25rem;
-    grid-row: 1;
-  }
-
-  .subscription-row__avatar-wrap {
-    grid-row: 1;
   }
 
   .subscription-row__main {
@@ -1179,20 +1321,40 @@ onUnmounted(() => {
     justify-content: flex-start;
   }
 
-  .subscription-row__actions {
-    opacity: 0.35;
+  .subscription-row__recent-grid {
+    padding: 0 0.75rem 0.75rem;
   }
 
-  .subscription-row:hover .subscription-row__actions {
-    opacity: 1;
+  .subscription-row__recent-empty {
+    margin: 0 0.75rem 0.75rem;
   }
-
 }
 
-@media (min-width: 1024px) {
-  .toolbar-container,
-  .content-container {
-    padding: 0 2rem;
+
+.subscription-dialog__hero {
+  background: linear-gradient(180deg, hsl(var(--secondary) / 0.42), hsl(var(--background)));
+}
+
+.subscription-dialog__spinner {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-right: 0.35rem;
+  border-radius: 999px;
+  border: 2px solid hsl(var(--destructive-foreground) / 0.35);
+  border-top-color: hsl(var(--destructive-foreground));
+  animation: spin 0.8s linear infinite;
+}
+
+@media (max-width: 640px) {
+  .toolbar-right-actions {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .subscribed-empty-card__actions {
+    flex-wrap: wrap;
+    justify-content: center;
   }
 }
 
