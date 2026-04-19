@@ -17,22 +17,6 @@
           @refresh="refreshList"
         >
           <template #actions>
-            <div class="toolbar-left-actions">
-              <div class="sort-tabs" role="tablist" aria-label="排序方式">
-                <button
-                  v-for="opt in sortOptions"
-                  :key="opt.value"
-                  class="sort-tab"
-                  :class="{ 'is-active': sortBy === opt.value }"
-                  role="tab"
-                  :aria-selected="sortBy === opt.value"
-                  @click="sortBy = opt.value"
-                >
-                  {{ opt.label }}
-                </button>
-              </div>
-              <div class="toolbar-divider" aria-hidden="true"></div>
-            </div>
             <div class="toolbar-right-actions">
               <Button size="xs" class="subscribed-toolbar__button whitespace-nowrap" @click="showAddDialog = true">
                 <PlusIcon class="h-4 w-4" />
@@ -657,12 +641,6 @@ const handleRetryRefresh = async (subscriptionId) => {
   await retryRefresh(subscriptionId)
 }
 
-const sortOptions = [
-  { value: 'name', label: '名称' },
-  { value: 'site', label: '站点' },
-  { value: 'recent', label: '最近更新' },
-]
-
 const getStatusBadgeClass = (status) => {
   switch (status) {
     case 'queued': return 'badge--queued'
@@ -738,55 +716,10 @@ onUnmounted(() => {
   gap: 0.5rem;
 }
 
-.toolbar-left-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
 .toolbar-right-actions {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-}
-
-.toolbar-divider {
-  width: 1px;
-  height: 1.25rem;
-  background: hsl(var(--border) / 0.5);
-}
-
-.sort-tabs {
-  display: flex;
-  align-items: center;
-  gap: 0.125rem;
-  background: hsl(var(--secondary) / 0.3);
-  border-radius: calc(var(--radius-sm) + 2px);
-  padding: 2px;
-}
-
-.sort-tab {
-  padding: 0.2rem 0.6rem;
-  border-radius: calc(var(--radius-sm) - 1px);
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: hsl(var(--muted-foreground) / 0.7);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  letter-spacing: 0.02em;
-}
-
-.sort-tab:hover {
-  color: hsl(var(--foreground));
-  background: hsl(var(--background) / 0.5);
-}
-
-.sort-tab.is-active {
-  color: hsl(var(--foreground));
-  background: hsl(var(--background));
-  box-shadow: 0 1px 3px hsl(var(--border) / 0.4);
 }
 
 .subscribed-toolbar__button {
@@ -1254,9 +1187,6 @@ onUnmounted(() => {
     opacity: 1;
   }
 
-  .toolbar-left-actions {
-    display: none;
-  }
 }
 
 @media (min-width: 1024px) {
