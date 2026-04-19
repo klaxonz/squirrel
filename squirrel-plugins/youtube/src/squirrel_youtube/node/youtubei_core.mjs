@@ -663,20 +663,8 @@ async function resolveOAuthStatus() {
     return { status: 'error', error: state.error };
   }
 
-  // Fast path: check expiry_date before making a network request
-  const expiry = state.credentials?.expiry_date;
-  if (expiry) {
-    try {
-      const expiryMs = typeof expiry === 'number' ? expiry : Date.parse(String(expiry));
-      if (!isNaN(expiryMs) && expiryMs < Date.now() - 60_000) {
-        return { status: 'expired' };
-      }
-    } catch {
-      // Fall through to network validation
-    }
-  }
-
-  // Credentials exist in file — validate them (handles token refresh)
+  // Credentials exist in file. Always validate them through sign-in so the
+  // library can refresh access tokens when a refresh token is available.
   try {
     const yt = await Innertube.create({
       cache: new UniversalCache(false),
