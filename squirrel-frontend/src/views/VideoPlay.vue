@@ -1216,7 +1216,7 @@ watch(
       }
     });
   },
-  { immediate: true, deep: true }
+  { immediate: true }
 );
 
 const goToVideo = async (id, videoData = null) => {
