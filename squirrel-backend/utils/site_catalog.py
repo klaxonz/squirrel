@@ -321,3 +321,13 @@ class SiteCatalog:
                 return info.get("enabled", True)
 
         return True
+
+    @classmethod
+    def get_enabled_site_names(cls) -> Set[str]:
+        """Return enabled site slugs from the effective catalog."""
+        catalog = cls._get_effective_catalog() or {}
+        return {
+            str(slug).strip().lower()
+            for slug, info in catalog.items()
+            if str(slug).strip() and info.get('enabled', True)
+        }

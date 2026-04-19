@@ -96,3 +96,30 @@ def test_preview_import_route_rejects_non_object_cursor(monkeypatch):
     body = response.json()
     assert body['code'] == 400
     assert body['msg'] == '无效的预览游标: 必须为 JSON object'
+
+
+def test_get_import_sites_filters_disabled_sites_in_original_order(monkeypatch):
+    calls = {'count': 0}
+
+    def _get_enabled_site_names():
+        calls['count'] += 1
+        return {'javdb', 'bilibili'}
+
+    client = _build_client(monkeypatch)
+
+    monkeypatch.setattr(
+        'routes.subscription.subscription_service.get_runtime_supported_sites',
+        lambda _cap: [' JAVDB ', 'youtube', 'javdb', 'bilibili'],
+    )
+    monkeypatch.setattr(
+        'routes.subscription.SiteCatalog.get_enabled_site_names',
+        classmethod(lambda cls: _get_enabled_site_names()),
+    )
+
+    response = client.get('/api/subscription/import/sites')
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body['code'] == 0
+    assert body['data']['sites'] == ['javdb', 'bilibili']
+    assert calls['count'] == 1

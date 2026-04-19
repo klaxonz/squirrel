@@ -26,13 +26,25 @@ def _normalize_site_name(site: str) -> str:
     return str(site or '').strip().lower()
 
 
+def _get_normalized_supported_sites(supported_sites: List[str]) -> List[str]:
+    normalized_sites: List[str] = []
+    seen: set[str] = set()
+    for site in supported_sites:
+        normalized_site = _normalize_site_name(site)
+        if not normalized_site or normalized_site in seen:
+            continue
+        seen.add(normalized_site)
+        normalized_sites.append(normalized_site)
+    return normalized_sites
+
+
 def _get_supported_site_set(supported_sites: List[str]) -> set[str]:
-    return {_normalize_site_name(site) for site in supported_sites if _normalize_site_name(site)}
+    return set(_get_normalized_supported_sites(supported_sites))
 
 
 def _get_enabled_import_sites(supported_sites: List[str]) -> List[str]:
-    supported_site_set = _get_supported_site_set(supported_sites)
-    return [site for site in supported_site_set if SiteCatalog.is_site_enabled(site=site)]
+    enabled_sites = SiteCatalog.get_enabled_site_names()
+    return [site for site in _get_normalized_supported_sites(supported_sites) if site in enabled_sites]
 
 
 @router.post("/api/subscription/subscribe")
