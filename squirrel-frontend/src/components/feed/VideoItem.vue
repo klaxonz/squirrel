@@ -276,7 +276,9 @@ onUnmounted(() => {
   cursor: pointer;
   padding: 0.85rem;
   border-radius: 8px;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    background-color 0.24s ease,
+    box-shadow 0.24s ease;
 }
 
 .video-terminal-item:hover {
@@ -355,11 +357,6 @@ onUnmounted(() => {
   margin-top: 0.75rem;
   z-index: 1;
   position: relative;
-  transition: transform 0.3s ease;
-}
-
-.video-terminal-item:hover .video-terminal-info {
-  transform: translateX(2px);
 }
 
 .video-terminal-title {

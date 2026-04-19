@@ -121,19 +121,19 @@
                     @click="handleBack"
                     aria-label="返回"
                     title="返回"
-                  >
-                    <ArrowLeftIcon class="back-btn__icon" />
-                  </button>
-                </div>
-                <GlobalSearchBar
-                  ref="globalSearchBar"
-                  v-model="searchQuery"
-                  class="minimal-search"
-                  :placeholder="searchPlaceholder"
-                  @search="handleGlobalSearch"
-                  @clear="handleGlobalSearchClear"
-                />
-                <div class="header-right-spacer"></div>
+                    >
+                      <ArrowLeftIcon class="back-btn__icon" />
+                    </button>
+                  </div>
+                  <GlobalSearchBar
+                    ref="globalSearchBar"
+                    v-model="searchQuery"
+                    class="minimal-search"
+                    :placeholder="searchPlaceholder"
+                    @search="handleGlobalSearch"
+                    @clear="handleGlobalSearchClear"
+                  />
+                  <div class="header-right-spacer"></div>
               </div>
 
               <router-view v-slot="{ Component }">
@@ -687,24 +687,23 @@ h6 {
   position: sticky;
   top: 0;
   z-index: 50;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(2.5rem, 1fr) minmax(0, auto) minmax(2.5rem, 1fr);
   align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem 2rem 1rem 2rem;
-  background: linear-gradient(to bottom, hsl(var(--background)) 0%, hsl(var(--background) / 0.8) 60%, transparent 100%);
+  gap: 1rem;
+  padding: 1.1rem 2rem 0.9rem 2rem;
   pointer-events: none;
 }
 
 .header-left {
-  width: 40px;
-  flex-shrink: 0;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
+  min-width: 2.5rem;
 }
 
 .header-right-spacer {
-  width: 120px;
-  flex-shrink: 0;
+  min-width: 2.5rem;
 }
 
 .back-btn {
@@ -714,7 +713,7 @@ h6 {
   width: 2.5rem;
   height: 2.5rem;
   border: none;
-  border-radius: 50%;
+  border-radius: 999px;
   background: transparent;
   color: hsl(var(--muted-foreground));
   cursor: pointer;
@@ -733,6 +732,8 @@ h6 {
 
 .minimal-search {
   width: clamp(20rem, calc(100vw - 18rem), 480px);
+  max-width: 100%;
+  justify-self: center;
   pointer-events: auto;
 }
 
@@ -816,27 +817,17 @@ h6 {
 }
 
 @media (max-width: 767px) {
-  .topbar-shell {
-    padding: 0.45rem 0.65rem;
+  .minimal-header {
+    padding: 0.85rem 1rem 0.7rem;
   }
 
-  .topbar {
-    gap: 0.5rem;
-    max-width: calc(100vw - 1.3rem);
+  .header-left,
+  .header-right-spacer {
+    width: 40px;
   }
 
-  .topbar__lead {
-    flex: 1 1 auto;
-  }
-
-  .topbar__search {
-    min-width: 0;
-  }
-
-  .topbar__search--centered {
-    flex: 1 1 auto;
-    width: 100%;
-    max-width: none;
+  .minimal-search {
+    width: min(100%, 28rem);
   }
 }
 </style>

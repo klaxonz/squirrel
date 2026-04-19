@@ -347,6 +347,8 @@ defineExpose({ scrollToOffset, scrollToIndex, reset, container, range, totalHeig
   position: relative;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  overflow-anchor: none;
 }
 
 .scroll-phantom {
@@ -362,10 +364,11 @@ defineExpose({ scrollToOffset, scrollToIndex, reset, container, range, totalHeig
   left: 0;
   right: 0;
   top: 0;
+  will-change: transform;
+  overflow-anchor: none;
 }
 
 .list-item {
-  will-change: transform;
   min-width: 0;
   min-height: 0;
   height: 100%;
