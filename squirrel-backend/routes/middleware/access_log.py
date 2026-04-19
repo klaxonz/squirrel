@@ -4,7 +4,7 @@ import time
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
-logger = logging.getLogger('uvicorn.access')
+logger = logging.getLogger('squirrel.access')
 
 
 class AccessLogMiddleware:

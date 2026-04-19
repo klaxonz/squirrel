@@ -113,6 +113,10 @@ LOGGING_CONFIG = {
             'level': 'WARNING',
             'propagate': True,
         },
+        'squirrel.access': {
+            'level': 'INFO',
+            'propagate': True,
+        },
     },
     'root': {
         'handlers': ['console', 'file', 'error_file'],

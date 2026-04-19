@@ -52,7 +52,7 @@ def test_request_context_middleware_preserves_incoming_trace_id():
 
 
 def test_access_log_middleware_logs_request_with_trace_id_and_sanitized_path():
-    logger = logging.getLogger('uvicorn.access')
+    logger = logging.getLogger('squirrel.access')
     records = []
 
     class _CaptureHandler(logging.Handler):
@@ -80,3 +80,36 @@ def test_access_log_middleware_logs_request_with_trace_id_and_sanitized_path():
     assert 'path=/api/demo' in record.getMessage()
     assert 'status=200' in record.getMessage()
     assert 'secret=hidden' not in record.getMessage()
+
+
+def test_access_log_middleware_is_not_blocked_by_uvicorn_access_logger_state():
+    app_logger = logging.getLogger('squirrel.access')
+    uvicorn_logger = logging.getLogger('uvicorn.access')
+    records = []
+
+    class _CaptureHandler(logging.Handler):
+        def emit(self, record):
+            records.append(record)
+
+    handler = _CaptureHandler()
+    handler.addFilter(TraceIdFilter())
+    app_logger.addHandler(handler)
+    previous_app_level = app_logger.level
+    previous_uvicorn_propagate = uvicorn_logger.propagate
+    previous_uvicorn_handlers = list(uvicorn_logger.handlers)
+    app_logger.setLevel(logging.INFO)
+    uvicorn_logger.handlers = []
+    uvicorn_logger.propagate = False
+
+    try:
+        client = TestClient(_build_app())
+        response = client.get('/api/demo', headers={'X-Trace-Id': 'trace-log-2'})
+        assert response.status_code == 200
+    finally:
+        app_logger.removeHandler(handler)
+        app_logger.setLevel(previous_app_level)
+        uvicorn_logger.handlers = previous_uvicorn_handlers
+        uvicorn_logger.propagate = previous_uvicorn_propagate
+
+    assert records
+    assert records[-1].trace_id == 'trace-log-2'
