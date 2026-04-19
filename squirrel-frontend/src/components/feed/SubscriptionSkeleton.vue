@@ -1,28 +1,38 @@
 <template>
-  <div class="skeleton-row" :style="{ animationDelay: `${delay}ms`, '--skeleton-delay': `${delay}ms` }">
-    <div class="skeleton-avatar skeleton-surface"></div>
+  <div class="skeleton-card" :style="{ animationDelay: `${delay}ms`, '--skeleton-delay': `${delay}ms` }">
+    <div class="skeleton-header">
+      <div class="skeleton-avatar skeleton-surface"></div>
 
-    <div class="skeleton-main">
-      <div class="skeleton-name-row">
-        <div class="skeleton-name skeleton-surface"></div>
-        <div class="skeleton-badge skeleton-surface"></div>
+      <div class="skeleton-main">
+        <div class="skeleton-name-row">
+          <div class="skeleton-name skeleton-surface"></div>
+          <div class="skeleton-badge skeleton-surface"></div>
+        </div>
+        <div class="skeleton-meta">
+          <div class="skeleton-status skeleton-surface"></div>
+          <div class="skeleton-dot"></div>
+          <div class="skeleton-date skeleton-surface"></div>
+        </div>
       </div>
-      <div class="skeleton-meta">
-        <div class="skeleton-status skeleton-surface"></div>
-        <div class="skeleton-dot"></div>
-        <div class="skeleton-date skeleton-surface"></div>
+
+      <div class="skeleton-stats">
+        <div class="skeleton-stat skeleton-surface"></div>
+        <div class="skeleton-stat-sep"></div>
+        <div class="skeleton-stat skeleton-surface"></div>
+      </div>
+
+      <div class="skeleton-actions">
+        <div class="skeleton-action skeleton-surface"></div>
+        <div class="skeleton-action skeleton-surface"></div>
       </div>
     </div>
 
-    <div class="skeleton-stats">
-      <div class="skeleton-stat skeleton-surface"></div>
-      <div class="skeleton-stat-sep"></div>
-      <div class="skeleton-stat skeleton-surface"></div>
-    </div>
-
-    <div class="skeleton-actions">
-      <div class="skeleton-action skeleton-surface"></div>
-      <div class="skeleton-action skeleton-surface"></div>
+    <div class="skeleton-recent-grid">
+      <div v-for="i in 10" :key="i" class="skeleton-recent-card">
+        <div class="skeleton-recent-thumb skeleton-surface"></div>
+        <div class="skeleton-recent-title skeleton-surface"></div>
+        <div class="skeleton-recent-meta skeleton-surface"></div>
+      </div>
     </div>
   </div>
 </template>
@@ -31,24 +41,27 @@
 defineProps({
   delay: {
     type: Number,
-    default: 0
-  }
+    default: 0,
+  },
 })
 </script>
 
 <style scoped>
-.skeleton-row {
+.skeleton-card {
+  border: 1px solid hsl(var(--border) / 0.45);
+  border-radius: var(--radius-lg);
+  background: hsl(var(--background));
+  overflow: hidden;
+  animation: skeleton-appear 0.4s ease-out forwards;
+  opacity: 0;
+}
+
+.skeleton-header {
   display: grid;
   grid-template-columns: 3rem 1fr auto auto;
   align-items: center;
   gap: 0 1.25rem;
-  padding: 0.875rem 0;
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
-  position: relative;
-  overflow: hidden;
-  animation: skeleton-appear 0.4s ease-out forwards;
-  opacity: 0;
-  min-height: 4rem;
+  padding: 0.875rem 1rem;
 }
 
 @keyframes skeleton-appear {
@@ -65,12 +78,7 @@ defineProps({
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    hsl(var(--primary) / 0.03),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.03), transparent);
   transform: translateX(-100%);
   animation: shimmer 1.6s ease-in-out infinite;
   animation-delay: var(--skeleton-delay, 0ms);
@@ -88,6 +96,7 @@ defineProps({
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  min-width: 0;
 }
 
 .skeleton-name-row {
@@ -171,17 +180,58 @@ defineProps({
   border-radius: calc(var(--radius-sm) - 1px);
 }
 
+.skeleton-recent-grid {
+  display: flex;
+  gap: 0.45rem;
+  padding: 0.1rem 1rem 0.75rem;
+  overflow-x: hidden;
+}
+
+.skeleton-recent-card {
+  width: 10rem;
+  min-width: 10rem;
+  max-width: 10rem;
+  box-sizing: border-box;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: 0.2rem;
+}
+
+.skeleton-recent-thumb {
+  width: 100%;
+  height: 5.4rem;
+  border-radius: calc(var(--radius-sm) - 1px);
+  background: hsl(var(--secondary) / 0.5);
+}
+
+.skeleton-recent-title {
+  margin-top: 0.28rem;
+  height: 0.64rem;
+  width: 82%;
+  border-radius: 3px;
+  background: hsl(var(--secondary) / 0.22);
+}
+
+.skeleton-recent-meta {
+  margin-top: 0.12rem;
+  height: 0.52rem;
+  width: 46%;
+  border-radius: 3px;
+  background: hsl(var(--secondary) / 0.18);
+}
+
 @keyframes shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
 }
 
-@media (max-width: 640px) {
-  .skeleton-row {
+@media (max-width: 960px) {
+  .skeleton-header {
     grid-template-columns: 2.5rem 1fr auto;
     grid-template-rows: auto auto;
     gap: 0 0.75rem;
-    padding: 0.75rem 0;
+    padding: 0.75rem;
   }
 
   .skeleton-avatar {
@@ -203,6 +253,10 @@ defineProps({
     opacity: 1;
     padding-top: 0.25rem;
     justify-content: flex-start;
+  }
+
+  .skeleton-recent-grid {
+    padding: 0 0.75rem 0.75rem;
   }
 }
 </style>
