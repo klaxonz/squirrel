@@ -13,7 +13,7 @@
             ></div>
           </div>
           <div v-else class="plugin-toolbar-right">
-            <Button as-child variant="outline" size="xs" class="plugin-toolbar-btn">
+            <Button as-child variant="outline" size="xs" class="plugin-toolbar-btn plugin-toolbar-btn--quiet">
               <label>
                 <input type="file" accept=".zip" class="hidden" @change="handleFileChange" />
                 <CloudArrowUpIcon class="h-3.5 w-3.5" />
@@ -31,7 +31,7 @@
               <PlusCircleIcon v-else class="h-3.5 w-3.5" />
               {{ installing ? '安装中' : '安装' }}
             </Button>
-            <Button as-child variant="outline" size="xs" class="plugin-toolbar-btn">
+            <Button as-child variant="outline" size="xs" class="plugin-toolbar-btn plugin-toolbar-btn--quiet">
               <label>
                 <input type="file" accept=".txt,.json" class="hidden" @change="handleCookiesFileChange" />
                 <CloudArrowUpIcon class="h-3.5 w-3.5" />
@@ -78,6 +78,7 @@
               <span class="plugin-search__icon-skeleton skeleton-surface"></span>
               <span class="plugin-search__input-skeleton skeleton-surface"></span>
             </div>
+            <span class="plugin-search-refresh plugin-search-refresh--skeleton skeleton-surface" aria-hidden="true"></span>
           </template>
           <template v-else>
             <span class="plugin-stat">
@@ -457,11 +458,12 @@ const selectedFile = ref(null);
 const actioning = ref(null);
 const isInitialLoading = computed(() => loading.value && !plugins.value.length);
 
-const toolbarSkeletonWidths = ['8.5rem', '4.5rem', '8.5rem', '4.5rem', '5.5rem'];
+const toolbarSkeletonWidths = ['8.5rem', '8.5rem', '5.5rem'];
 const statSkeletonItems = [
   { valueWidth: '1.5rem', labelWidth: '2rem' },
   { valueWidth: '1.5rem', labelWidth: '2rem' },
   { valueWidth: '1.6rem', labelWidth: '2rem' },
+  { valueWidth: '2.5rem', labelWidth: '2rem' },
 ];
 const pluginSkeletonRows = [
   {
@@ -1192,9 +1194,24 @@ onUnmounted(() => {
   border-radius: calc(var(--radius-sm) - 1px);
 }
 
+.plugin-toolbar-skeleton__chip:last-child {
+  margin-left: 0.25rem;
+}
+
 .plugin-toolbar-btn {
   gap: 4px;
   border-radius: calc(var(--radius-sm) - 1px);
+}
+
+.plugin-toolbar-btn--quiet {
+  border-color: hsl(var(--border) / 0.6);
+  background: hsl(var(--background));
+  box-shadow: none;
+}
+
+.plugin-toolbar-btn--quiet:hover {
+  background: hsl(var(--accent) / 0.6);
+  color: hsl(var(--accent-foreground));
 }
 
 .plugin-toolbar-btn--primary {
@@ -1315,6 +1332,10 @@ onUnmounted(() => {
   width: 1.75rem;
   height: 1.75rem;
   flex-shrink: 0;
+}
+
+.plugin-search-refresh--skeleton {
+  border-radius: calc(var(--radius-sm) - 1px);
 }
 
 .plugin-content {
