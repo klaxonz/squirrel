@@ -54,6 +54,10 @@ const zhCN: LocaleConfig = {
     preset: '预设',
     opacity: '透明度',
     custom: '自定义',
+    subtitleTiming: '字幕同步',
+    subtitleTimingNormal: '正常',
+    subtitleTimingAdvance: '提前 {seconds}s',
+    subtitleTimingDelay: '延后 {seconds}s',
     
     // 播放列表
     previousVideo: '上一个',

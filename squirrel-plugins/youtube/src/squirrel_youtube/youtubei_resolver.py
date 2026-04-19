@@ -413,12 +413,16 @@ def resolve_with_youtubei(
 def resolve_captions_with_youtubei(
     video_id: str,
     lang: str | None = None,
+    fmt: str = 'srt',
     timeout_seconds: float = WORKER_TIMEOUT_SECONDS,
 ) -> dict[str, Any]:
     cookie_header = _load_youtube_cookie_header(video_id)
+    requested_fmt = str(fmt or 'srt').strip().lower()
+    worker_format = 'vtt' if requested_fmt == 'vtt' else 'srv3'
     worker_payload: dict[str, Any] = {
         'action': 'captions',
         'video_id': video_id,
+        'format': worker_format,
     }
     normalized_lang = str(lang or '').strip()
     if normalized_lang:

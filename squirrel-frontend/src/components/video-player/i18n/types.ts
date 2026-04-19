@@ -55,6 +55,10 @@ export interface LocaleMessages {
   preset: string
   opacity: string
   custom: string
+  subtitleTiming: string
+  subtitleTimingNormal: string
+  subtitleTimingAdvance: string
+  subtitleTimingDelay: string
   
   // 播放列表
   previousVideo: string

@@ -22,6 +22,7 @@ export interface SubtitleStyle {
   backgroundOpacity?: number
   position?: 'top' | 'bottom'
   textShadow?: boolean
+  timeOffset?: number
 }
 
 export interface SubtitlesPluginOptions {
@@ -79,6 +80,8 @@ export class SubtitlesPlugin implements PlayerPlugin {
   private style: SubtitleStyle
   private styleElement: HTMLStyleElement | null = null
   private containerElement: HTMLElement | null = null
+  private syncAnimationFrameId: number | null = null
+  private syncVideoFrameId: number | null = null
 
   constructor() {
     this.options = {}
@@ -108,9 +111,21 @@ export class SubtitlesPlugin implements PlayerPlugin {
     this.updateActiveCue(currentTime)
   }
 
+  onPlay(): void {
+    this.startSyncLoop()
+  }
+
+  onPause(): void {
+    this.stopSyncLoop()
+    if (this.enabled) {
+      this.refreshCurrentCue()
+    }
+  }
+
   onSeek(): void {
     // 重置活动字幕索引，让 timeupdate 重新计算
     this.activeCueIndex = -1
+    this.refreshCurrentCue()
   }
 
   /**
@@ -218,15 +233,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
   private updateActiveCue(currentTime: number): void {
     if (!this.containerElement) return
 
-    // 查找当前时间对应的字幕
-    let foundIndex = -1
-    for (let i = 0; i < this.cues.length; i++) {
-      const cue = this.cues[i]
-      if (currentTime >= cue.startTime && currentTime <= cue.endTime) {
-        foundIndex = i
-        break
-      }
-    }
+    let foundIndex = this.findCueIndex(currentTime)
 
     // 如果变化了，更新显示
     if (foundIndex !== this.activeCueIndex) {
@@ -239,6 +246,77 @@ export class SubtitlesPlugin implements PlayerPlugin {
         this.containerElement.innerHTML = ''
       }
     }
+  }
+
+  private findCueIndex(currentTime: number): number {
+    const activeCue = this.activeCueIndex >= 0 ? this.cues[this.activeCueIndex] : null
+    if (activeCue && currentTime >= activeCue.startTime && currentTime <= activeCue.endTime) {
+      return this.activeCueIndex
+    }
+
+    if (this.activeCueIndex >= 0) {
+      if (activeCue && currentTime > activeCue.endTime) {
+        return this.findCueIndexForward(this.activeCueIndex + 1, currentTime)
+      }
+
+      if (activeCue && currentTime < activeCue.startTime) {
+        return this.findCueIndexBackward(this.activeCueIndex - 1, currentTime)
+      }
+    }
+
+    return this.findCueIndexByBinarySearch(currentTime)
+  }
+
+  private findCueIndexForward(startIndex: number, currentTime: number): number {
+    for (let i = startIndex; i < this.cues.length; i++) {
+      const cue = this.cues[i]
+      if (currentTime < cue.startTime) {
+        return -1
+      }
+      if (currentTime <= cue.endTime) {
+        return i
+      }
+    }
+
+    return -1
+  }
+
+  private findCueIndexBackward(startIndex: number, currentTime: number): number {
+    for (let i = startIndex; i >= 0; i--) {
+      const cue = this.cues[i]
+      if (currentTime > cue.endTime) {
+        return -1
+      }
+      if (currentTime >= cue.startTime) {
+        return i
+      }
+    }
+
+    return -1
+  }
+
+  private findCueIndexByBinarySearch(currentTime: number): number {
+    let left = 0
+    let right = this.cues.length - 1
+
+    while (left <= right) {
+      const mid = Math.floor((left + right) / 2)
+      const cue = this.cues[mid]
+
+      if (currentTime < cue.startTime) {
+        right = mid - 1
+        continue
+      }
+
+      if (currentTime > cue.endTime) {
+        left = mid + 1
+        continue
+      }
+
+      return mid
+    }
+
+    return -1
   }
 
   /**
@@ -254,7 +332,72 @@ export class SubtitlesPlugin implements PlayerPlugin {
    */
   private refreshCurrentCue(): void {
     const currentTime = this.context?.videoElement?.currentTime ?? this.context?.state.currentTime ?? 0
-    this.updateActiveCue(currentTime)
+    const adjustedTime = Math.max(0, currentTime + (this.style.timeOffset ?? 0))
+    this.updateActiveCue(adjustedTime)
+  }
+
+  private startSyncLoop(): void {
+    const video = this.context?.videoElement
+    if (!this.enabled || !video || this.cues.length === 0) return
+    if (video.paused || video.ended) return
+
+    const enhancedVideo = video as HTMLVideoElement & {
+      requestVideoFrameCallback?: (callback: () => void) => number
+    }
+
+    if (typeof enhancedVideo.requestVideoFrameCallback === 'function') {
+      this.scheduleVideoFrameSync(enhancedVideo)
+      return
+    }
+
+    this.scheduleAnimationFrameSync(video)
+  }
+
+  private stopSyncLoop(): void {
+    if (this.syncAnimationFrameId !== null && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(this.syncAnimationFrameId)
+    }
+    this.syncAnimationFrameId = null
+
+    const video = this.context?.videoElement as (HTMLVideoElement & {
+      cancelVideoFrameCallback?: (handle: number) => void
+    }) | null
+    if (this.syncVideoFrameId !== null && typeof video?.cancelVideoFrameCallback === 'function') {
+      video.cancelVideoFrameCallback(this.syncVideoFrameId)
+    }
+    this.syncVideoFrameId = null
+  }
+
+  private scheduleVideoFrameSync(video: HTMLVideoElement & {
+    requestVideoFrameCallback?: (callback: () => void) => number
+  }): void {
+    if (this.syncVideoFrameId !== null || typeof video.requestVideoFrameCallback !== 'function') return
+
+    this.syncVideoFrameId = video.requestVideoFrameCallback(() => {
+      this.syncVideoFrameId = null
+      if (!this.enabled) return
+
+      this.refreshCurrentCue()
+      if (!video.paused && !video.ended) {
+        this.scheduleVideoFrameSync(video)
+      }
+    })
+  }
+
+  private scheduleAnimationFrameSync(video: HTMLVideoElement): void {
+    if (this.syncAnimationFrameId !== null || typeof requestAnimationFrame !== 'function') return
+
+    const tick = () => {
+      this.syncAnimationFrameId = null
+      if (!this.enabled) return
+
+      this.refreshCurrentCue()
+      if (!video.paused && !video.ended) {
+        this.syncAnimationFrameId = requestAnimationFrame(tick)
+      }
+    }
+
+    this.syncAnimationFrameId = requestAnimationFrame(tick)
   }
 
   /**
@@ -276,6 +419,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
     this.cues = []
     this.activeCueIndex = -1
     this.clearRenderedCue()
+    this.stopSyncLoop()
 
     let content = track.content
 
@@ -301,6 +445,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
 
     if (this.enabled) {
       this.refreshCurrentCue()
+      this.startSyncLoop()
     }
     
     this.context?.logger.debug(`[SubtitlesPlugin] Loaded ${this.cues.length} cues from ${track.label}`)
@@ -331,23 +476,89 @@ export class SubtitlesPlugin implements PlayerPlugin {
         const textLines: string[] = []
         i++
         while (i < lines.length && lines[i].trim() !== '') {
-          textLines.push(lines[i].trim())
+          textLines.push(lines[i])
           i++
         }
         
         if (textLines.length > 0) {
-          cues.push({
-            id: `cue-${cues.length}`,
-            startTime,
-            endTime,
-            text: textLines.join('\n').replace(/<[^>]+>/g, '') // 移除 HTML 标签
-          })
+          const expandedCues = this.expandTimedVttCue(startTime, endTime, textLines.join('\n'))
+          if (expandedCues.length > 0) {
+            cues.push(...expandedCues.map((cue, index) => ({
+              ...cue,
+              id: `cue-${cues.length + index}`,
+            })))
+          } else {
+            cues.push({
+              id: `cue-${cues.length}`,
+              startTime,
+              endTime,
+              text: this.sanitizeSubtitleText(textLines.join('\n'))
+            })
+          }
         }
       }
       i++
     }
 
     return cues
+  }
+
+  private expandTimedVttCue(startTime: number, endTime: number, rawText: string): Array<Omit<SubtitleCue, 'id'>> {
+    const timestampPattern = /<(\d{2}:\d{2}:\d{2}\.\d{3})>/g
+    if (!timestampPattern.test(rawText)) {
+      return []
+    }
+    timestampPattern.lastIndex = 0
+
+    const cues: Array<Omit<SubtitleCue, 'id'>> = []
+    let currentStart = startTime
+    let currentText = ''
+    let lastIndex = 0
+    let match: RegExpExecArray | null
+
+    while ((match = timestampPattern.exec(rawText)) !== null) {
+      const fragment = rawText.slice(lastIndex, match.index)
+      currentText += this.sanitizeVttFragment(fragment)
+
+      const nextStart = this.parseTime(match[1])
+      const sanitizedText = this.sanitizeSubtitleText(currentText)
+      if (sanitizedText && nextStart > currentStart) {
+        cues.push({
+          startTime: currentStart,
+          endTime: nextStart,
+          text: sanitizedText,
+        })
+      }
+
+      currentStart = Math.max(currentStart, nextStart)
+      lastIndex = match.index + match[0].length
+    }
+
+    currentText += this.sanitizeVttFragment(rawText.slice(lastIndex))
+    const finalText = this.sanitizeSubtitleText(currentText)
+    if (finalText && endTime > currentStart) {
+      cues.push({
+        startTime: currentStart,
+        endTime,
+        text: finalText,
+      })
+    }
+
+    return cues
+  }
+
+  private sanitizeVttFragment(text: string): string {
+    return text.replace(/<\/?c(?:\.[^>]*)?>/g, '')
+  }
+
+  private sanitizeSubtitleText(text: string): string {
+    return text
+      .replace(/<[^>]+>/g, '')
+      .replace(/\r/g, '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .join('\n')
   }
 
   /**
@@ -479,6 +690,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
       this.containerElement.style.display = ''
     }
     this.refreshCurrentCue()
+    this.startSyncLoop()
   }
 
   /**
@@ -486,6 +698,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
    */
   disable(): void {
     this.enabled = false
+    this.stopSyncLoop()
     if (this.containerElement) {
       this.containerElement.innerHTML = ''
       this.containerElement.style.display = 'none'
@@ -551,6 +764,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
   }
 
   onDestroy(): void {
+    this.stopSyncLoop()
     this.containerElement?.remove()
     this.styleElement?.remove()
   }

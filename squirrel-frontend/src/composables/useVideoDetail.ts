@@ -109,7 +109,7 @@ export default function useVideoDetail(initialVideo: VideoLike | null = null) {
       .map((candidate, index) => {
         const params = new URLSearchParams({
           video_id: String(videoId),
-          fmt: 'srt',
+          fmt: /(?:youtube\.com|youtu\.be)/i.test(snapshot.url || '') ? 'vtt' : 'srt',
         })
         if (candidate.lang) {
           params.set('lang', candidate.lang)

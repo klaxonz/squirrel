@@ -158,11 +158,12 @@ async def proxy_video(domain: str, url: str, request: Request, referer: str | No
 def get_video_subtitles(
         video_id: int = Query(..., description="视频ID"),
         lang: str | None = Query(None, description="字幕语言代码；留空时走站点默认值"),
-        fmt: str = Query("srt", description="返回格式：目前仅支持 srt"),
+        fmt: str = Query("srt", description="返回格式：支持 srt、vtt"),
         current_user: User = Depends(get_current_user)
 ):
-    if fmt.lower() != "srt":
-        raise HTTPException(status_code=400, detail="Only srt format is supported")
+    normalized_fmt = fmt.lower()
+    if normalized_fmt not in {'srt', 'vtt'}:
+        raise HTTPException(status_code=400, detail='Only srt and vtt formats are supported')
 
     video = video_service.get_video_by_id(video_id)
     if not video:
@@ -179,7 +180,7 @@ def get_video_subtitles(
                 'title': getattr(video, 'title', None),
                 'duration': getattr(video, 'duration', None),
                 'lang': lang,
-                'fmt': fmt,
+                'fmt': normalized_fmt,
             },
         )
         if not result.ok or not isinstance(result.data, dict):
@@ -193,9 +194,11 @@ def get_video_subtitles(
                 raise HTTPException(status_code=400, detail=error_message)
             raise HTTPException(status_code=400, detail='Subtitles provider not available for this domain')
         srt_text = str(result.data.get('content') or '')
-        fallback_filename = f'{video.id}.{lang}.srt' if lang else f'{video.id}.srt'
+        fallback_ext = normalized_fmt
+        fallback_filename = f'{video.id}.{lang}.{fallback_ext}' if lang else f'{video.id}.{fallback_ext}'
         filename = str(result.data.get('filename') or fallback_filename)
-        media_type = str(result.data.get('media_type') or 'text/plain; charset=utf-8')
+        fallback_media_type = 'text/vtt; charset=utf-8' if normalized_fmt == 'vtt' else 'text/plain; charset=utf-8'
+        media_type = str(result.data.get('media_type') or fallback_media_type)
         return PlainTextResponse(
             content=srt_text,
             media_type=media_type,

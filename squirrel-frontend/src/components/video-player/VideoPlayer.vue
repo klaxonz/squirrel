@@ -328,6 +328,10 @@
               <span>{{ t('position') }}</span>
               <span class="sp-menu-val">{{ subtitleStyle.position === 'top' ? t('positionTop') : t('positionBottom') }}</span>
             </div>
+            <div class="sp-menu-item" @click="settingsView = 'subtitleTiming'">
+              <span>{{ t('subtitleTiming') }}</span>
+              <span class="sp-menu-val">{{ subtitleTimingLabel }}</span>
+            </div>
           </div>
         </template>
         <template v-else-if="settingsView === 'subtitleFontSize'">
@@ -422,6 +426,22 @@
               @click="handleSubtitleStyleChange('position', 'top')"
             >
               {{ t('positionTop') }}
+            </div>
+          </div>
+        </template>
+        <template v-else-if="settingsView === 'subtitleTiming'">
+          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'subtitleStyle'">
+            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('subtitleTiming') }}
+          </div>
+          <div class="sp-menu-list">
+            <div
+              v-for="opt in subtitleTimingOptions"
+              :key="opt.value"
+              class="sp-menu-item"
+              :class="{ 'is-active': (subtitleStyle.timeOffset ?? 0) === opt.value }"
+              @click="handleSubtitleStyleChange('timeOffset', opt.value)"
+            >
+              {{ formatSubtitleTimingOption(opt.value) }}
             </div>
           </div>
         </template>
@@ -947,10 +967,22 @@ const subtitleBgOptions = [
   { value: 'rgba(80,0,0,0.8)', label: 'Red' },
   { value: 'transparent', label: 'None' },
 ]
+const subtitleTimingOptions = Array.from({ length: 21 }, (_, index) => ({
+  value: Number(((index - 10) / 10).toFixed(1)),
+}))
 const subtitleStyleLabel = (key: string, value: string, options: any[]) => {
   const opt = options.find((o) => o.value === value)
   return opt ? opt.label : value
 }
+const formatSubtitleTimingOption = (value: number) => {
+  if (value === 0) return t('subtitleTimingNormal')
+
+  const seconds = Math.abs(value).toFixed(1)
+  return value > 0
+    ? t('subtitleTimingAdvance', { seconds })
+    : t('subtitleTimingDelay', { seconds })
+}
+const subtitleTimingLabel = computed(() => formatSubtitleTimingOption(Number(subtitleStyle.value.timeOffset ?? 0)))
 const progress = computed(() => duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0)
 const COLORS = [
   'hsl(24 100% 50%)',

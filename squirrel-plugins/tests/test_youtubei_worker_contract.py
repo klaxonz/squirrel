@@ -194,12 +194,13 @@ def test_resolve_captions_with_youtubei_passes_lang_and_cookie_to_worker(monkeyp
 
     monkeypatch.setattr(resolver_module, '_get_worker_client', lambda: FakeWorkerClient())
 
-    result = resolve_captions_with_youtubei('demo-video', 'en-US', timeout_seconds=1)
+    result = resolve_captions_with_youtubei('demo-video', 'en-US', fmt='vtt', timeout_seconds=1)
 
     assert result['language_code'] == 'en'
     assert captured['input']['action'] == 'captions'
     assert captured['input']['video_id'] == 'demo-video'
     assert captured['input']['lang'] == 'en-US'
+    assert captured['input']['format'] == 'vtt'
     assert captured['input']['cookie'] == 'SAPISID=abc; SID=def'
     assert captured['timeout_seconds'] == 1
 

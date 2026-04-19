@@ -88,7 +88,7 @@ def test_youtube_subtitles_provider_converts_srv3_xml_to_srt():
     )
 
     with _stub_crawl_module(), _stub_youtube_modules() as (_video_id_module, resolver_module):
-        resolver_module.resolve_captions_with_youtubei = lambda _video_id, _lang: {
+        resolver_module.resolve_captions_with_youtubei = lambda _video_id, _lang, fmt='srt': {
             'content': srv3_xml,
             'language_code': 'en',
         }
@@ -122,7 +122,7 @@ def test_youtube_subtitles_provider_uses_resolved_language_code_in_filename():
     )
 
     with _stub_crawl_module(), _stub_youtube_modules() as (_video_id_module, resolver_module):
-        resolver_module.resolve_captions_with_youtubei = lambda _video_id, _lang: {
+        resolver_module.resolve_captions_with_youtubei = lambda _video_id, _lang, fmt='srt': {
             'content': srv3_xml,
             'language_code': 'en',
         }
@@ -138,9 +138,73 @@ def test_youtube_subtitles_provider_uses_resolved_language_code_in_filename():
     assert filename == 'demo-video.en.srt'
 
 
+def test_youtube_subtitles_provider_converts_segmented_srv3_xml_to_progressive_srt():
+    srv3_xml = (
+        '<?xml version="1.0" encoding="utf-8" ?>'
+        '<timedtext format="3"><body>'
+        '<p t="28960" d="10240" w="1"><s>to</s><s t="1040"> I&#39;m</s><s t="1440"> kick</s></p>'
+        '</body></timedtext>'
+    )
+
+    with _stub_crawl_module(), _stub_youtube_modules() as (_video_id_module, resolver_module):
+        resolver_module.resolve_captions_with_youtubei = lambda _video_id, _lang, fmt='srt': {
+            'content': srv3_xml,
+            'language_code': 'da',
+        }
+        module = _load_subtitles_module()
+        provider = module.YoutubeSubtitlesProvider()
+
+        content, filename = provider.get_subtitles(
+            SimpleNamespace(id='db-id', url='https://www.youtube.com/watch?v=demo-video'),
+            'da',
+            'srt',
+        )
+
+    assert content == (
+        '1\n'
+        '00:00:28,960 --> 00:00:30,000\n'
+        'to\n'
+        '\n'
+        '2\n'
+        '00:00:30,000 --> 00:00:30,400\n'
+        "to I'm\n"
+        '\n'
+        '3\n'
+        '00:00:30,400 --> 00:00:39,200\n'
+        "to I'm kick\n"
+    )
+    assert filename == 'demo-video.da.srt'
+
+
+def test_youtube_subtitles_provider_returns_vtt_payload_without_srt_conversion():
+    vtt_content = (
+        'WEBVTT\n\n'
+        '00:00:01.000 --> 00:00:03.000\n'
+        'hello<00:00:02.000><c> world</c>\n'
+    )
+
+    with _stub_crawl_module(), _stub_youtube_modules() as (_video_id_module, resolver_module):
+        resolver_module.resolve_captions_with_youtubei = lambda _video_id, _lang, fmt='srt': {
+            'content': vtt_content,
+            'language_code': 'en',
+            'format': 'vtt',
+        }
+        module = _load_subtitles_module()
+        provider = module.YoutubeSubtitlesProvider()
+
+        content, filename = provider.get_subtitles(
+            SimpleNamespace(id='db-id', url='https://www.youtube.com/watch?v=demo-video'),
+            'en',
+            'vtt',
+        )
+
+    assert content == vtt_content.strip()
+    assert filename == 'demo-video.en.vtt'
+
+
 def test_youtube_subtitles_provider_surfaces_worker_errors():
     with _stub_crawl_module(), _stub_youtube_modules() as (_video_id_module, resolver_module):
-        resolver_module.resolve_captions_with_youtubei = lambda _video_id, _lang: (_ for _ in ()).throw(
+        resolver_module.resolve_captions_with_youtubei = lambda _video_id, _lang, fmt='srt': (_ for _ in ()).throw(
             ValueError('No subtitles available: worker failed')
         )
         module = _load_subtitles_module()
@@ -159,9 +223,9 @@ def test_youtube_subtitles_provider_rejects_non_srt_formats():
         module = _load_subtitles_module()
         provider = module.YoutubeSubtitlesProvider()
 
-        with pytest.raises(ValueError, match='Only srt format is supported'):
+        with pytest.raises(ValueError, match='Only srt and vtt formats are supported'):
             provider.get_subtitles(
                 SimpleNamespace(id='db-id', url='https://www.youtube.com/watch?v=demo-video'),
                 'en',
-                'vtt',
+                'json3',
             )

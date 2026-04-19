@@ -32,6 +32,49 @@ def _normalize_caption_text(value: str) -> str:
     return text.strip()
 
 
+def _extract_segmented_entries(paragraph: ET.Element, start_ms: int, duration_ms: int | None) -> list[dict[str, Any]]:
+    segments: list[dict[str, Any]] = []
+    has_relative_timing = False
+    for segment in paragraph.findall('./s'):
+        raw_text = html.unescape(''.join(segment.itertext()) or '').replace('\xa0', ' ')
+        if not _normalize_caption_text(raw_text):
+            continue
+
+        relative_start_ms = _safe_int(segment.attrib.get('t'))
+        if relative_start_ms is not None:
+            has_relative_timing = True
+
+        segments.append({
+            'relative_start_ms': max(relative_start_ms or 0, 0),
+            'raw_text': raw_text,
+        })
+
+    if not segments or not has_relative_timing:
+        return []
+
+    entries: list[dict[str, Any]] = []
+    cumulative_parts: list[str] = []
+    for index, segment in enumerate(segments):
+        cumulative_parts.append(segment['raw_text'])
+        cue_start_ms = start_ms + int(segment['relative_start_ms'])
+
+        if index + 1 < len(segments):
+            next_relative_start_ms = int(segments[index + 1]['relative_start_ms'])
+            cue_duration_ms = max(0, next_relative_start_ms - int(segment['relative_start_ms']))
+        elif isinstance(duration_ms, int) and duration_ms > 0:
+            cue_duration_ms = max(0, duration_ms - int(segment['relative_start_ms']))
+        else:
+            cue_duration_ms = None
+
+        entries.append({
+            'start_ms': cue_start_ms,
+            'duration_ms': cue_duration_ms,
+            'text': _normalize_caption_text(''.join(cumulative_parts)),
+        })
+
+    return [entry for entry in entries if entry['text']]
+
+
 def _extract_timedtext_entries(xml_text: str) -> list[dict[str, Any]]:
     try:
         root = ET.fromstring(xml_text)
@@ -45,6 +88,11 @@ def _extract_timedtext_entries(xml_text: str) -> list[dict[str, Any]]:
             continue
 
         duration_ms = _safe_int(paragraph.attrib.get('d'))
+        segmented_entries = _extract_segmented_entries(paragraph, start_ms, duration_ms)
+        if segmented_entries:
+            entries.extend(segmented_entries)
+            continue
+
         text = _normalize_caption_text(''.join(paragraph.itertext()))
         if not text:
             continue
@@ -90,19 +138,24 @@ class YoutubeSubtitlesProvider:
     domain = 'youtube.com'
 
     def get_subtitles(self, video, lang: str, fmt: str = 'srt') -> Tuple[str, str]:
-        if fmt.lower() != 'srt':
-            raise ValueError('Only srt format is supported')
-        return self._do_get_subtitles(video, lang)
+        normalized_fmt = str(fmt or 'srt').strip().lower()
+        if normalized_fmt not in {'srt', 'vtt'}:
+            raise ValueError('Only srt and vtt formats are supported')
+        return self._do_get_subtitles(video, lang, normalized_fmt)
 
-    def _do_get_subtitles(self, video, lang: str) -> Tuple[str, str]:
+    def _do_get_subtitles(self, video, lang: str, fmt: str) -> Tuple[str, str]:
         video_id = extract_youtube_video_id(getattr(video, 'url', '') or '') or str(getattr(video, 'id', 'video'))
-        payload = resolve_captions_with_youtubei(video_id, lang)
-        timedtext_xml = str(payload.get('content') or '').strip()
-        if not timedtext_xml:
+        payload = resolve_captions_with_youtubei(video_id, lang, fmt=fmt)
+        content = str(payload.get('content') or '').strip()
+        if not content:
             raise ValueError('No subtitles available')
 
-        entries = _extract_timedtext_entries(timedtext_xml)
-        srt_text = _entries_to_srt(entries)
         resolved_language = str(payload.get('language_code') or lang or 'default').strip() or 'default'
+        if fmt == 'vtt':
+            filename = f'{video_id}.{resolved_language}.vtt'
+            return content, filename
+
+        entries = _extract_timedtext_entries(content)
+        srt_text = _entries_to_srt(entries)
         filename = f'{video_id}.{resolved_language}.srt'
         return srt_text, filename

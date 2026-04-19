@@ -307,14 +307,14 @@ function pickCaptionTrack(captions, requestedLanguage) {
   };
 }
 
-function buildCaptionUrl(track, requestedLanguage, translated) {
+function buildCaptionUrl(track, requestedLanguage, translated, format = 'srv3') {
   const baseUrl = track?.base_url;
   if (!baseUrl) {
     throw new Error('Subtitle track URL is missing');
   }
 
   const url = new URL(baseUrl);
-  url.searchParams.set('fmt', 'srv3');
+  url.searchParams.set('fmt', format);
   if (translated && requestedLanguage) {
     url.searchParams.set('tlang', requestedLanguage);
   }
@@ -348,6 +348,7 @@ async function resolveCaptionPayload(payload) {
 
   const cookie = typeof payload?.cookie === 'string' ? payload.cookie.trim() : '';
   const requestedLanguage = normalizeLanguageCode(payload?.lang);
+  const requestedFormat = String(payload?.format || 'srv3').trim().toLowerCase() || 'srv3';
   const runtime = await getRuntime(cookie);
   const clients = cookie ? CAPTIONS_AUTHENTICATED_CLIENTS : CAPTIONS_ANONYMOUS_CLIENTS;
   const attempts = [];
@@ -369,6 +370,7 @@ async function resolveCaptionPayload(payload) {
         selection.track,
         selection.resolved_language_code,
         selection.translated,
+        requestedFormat,
       );
       const content = await fetchCaptionXml(runtime, captionUrl);
 
@@ -381,6 +383,7 @@ async function resolveCaptionPayload(payload) {
         language_name: selection.resolved_language_name || null,
         translated: selection.translated,
         kind: selection.track?.kind || null,
+        format: requestedFormat,
         content,
         tracks: (captions.caption_tracks || []).map(normalizeCaptionTrack),
         translation_languages: (captions.translation_languages || []).map(normalizeTranslationLanguage),
