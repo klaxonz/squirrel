@@ -1,7 +1,8 @@
+import type { AxiosRequestConfig } from 'axios'
 import { ApiError, get, post } from '@/utils/request'
 
-export const getSubscriptions = async (params: Record<string, unknown> = {}) => {
-  return get('/api/subscription/list', params)
+export const getSubscriptions = async (params: Record<string, unknown> = {}, config: AxiosRequestConfig = {}) => {
+  return get('/api/subscription/list', params, config)
 }
 
 export const getSubscriptionOptions = async <T = any>() => {

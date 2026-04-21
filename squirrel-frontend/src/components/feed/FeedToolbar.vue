@@ -63,7 +63,7 @@
       @update:content-type="(v) => emit('update:contentType', v)"
       @update:nsfw="(v) => emit('update:nsfw', v)"
       @update:site="(v) => { emit('update:site', v) }"
-      @update:sort-by="(v) => { localSortBy = v; emit('update:sortBy', v) }"
+      @update:sort-by="(v) => { localSortBy = v }"
     />
   </section>
 </template>
