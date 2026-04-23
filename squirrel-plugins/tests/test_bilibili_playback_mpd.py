@@ -126,15 +126,20 @@ def test_bilibili_handler_keeps_quality_hints_across_codec_families(monkeypatch)
             item['id']: item
             for item in payload['qualities']
         }
-        assert set(qualities_by_id) == {'120', '112', '80', '64'}
-        assert qualities_by_id['120']['codec'] == 'av1'
-        assert qualities_by_id['112']['codec'] == 'hevc'
-        assert qualities_by_id['80']['codec'] == 'avc'
-        assert qualities_by_id['64']['codec'] == 'avc'
-        assert qualities_by_id['120']['index'] == 0
-        assert qualities_by_id['112']['index'] == 0
-        assert qualities_by_id['80']['index'] == 0
-        assert qualities_by_id['64']['index'] == 1
+        assert set(qualities_by_id) == {
+            'video-av1-120-2160-3200000',
+            'video-hevc-112-1080-2400000',
+            'video-avc-80-1080-1800000',
+            'video-avc-64-720-900000',
+        }
+        assert qualities_by_id['video-av1-120-2160-3200000']['codec'] == 'av1'
+        assert qualities_by_id['video-hevc-112-1080-2400000']['codec'] == 'hevc'
+        assert qualities_by_id['video-avc-80-1080-1800000']['codec'] == 'avc'
+        assert qualities_by_id['video-avc-64-720-900000']['codec'] == 'avc'
+        assert qualities_by_id['video-av1-120-2160-3200000']['index'] == 0
+        assert qualities_by_id['video-hevc-112-1080-2400000']['index'] == 0
+        assert qualities_by_id['video-avc-80-1080-1800000']['index'] == 0
+        assert qualities_by_id['video-avc-64-720-900000']['index'] == 1
 
 
 def test_bilibili_mpd_builder_splits_video_adaptation_sets_by_codec_family(monkeypatch):
@@ -241,6 +246,15 @@ def test_bilibili_mpd_builder_splits_video_adaptation_sets_by_codec_family(monke
         assert {'hevc'} in codec_families
         assert all(len(families) == 1 for families in codec_families)
 
+        representation_ids = [
+            representation.get('id')
+            for adaptation_set in video_sets
+            for representation in adaptation_set.findall('./mpd:Representation', ns)
+        ]
+        assert len(representation_ids) == len(set(representation_ids))
+        assert 'video-av1-120-2160-4200000' in representation_ids
+        assert 'video-hevc-112-1080-2600000' in representation_ids
+
 
 def test_bilibili_mpd_builder_returns_direct_base_urls_when_requested(monkeypatch):
     with _stub_bilibili_modules(), _import_paths(BILIBILI_SRC):
@@ -331,8 +345,13 @@ def test_bilibili_mpd_builder_preserves_backup_base_urls(monkeypatch):
         root = ET.fromstring(xml)
         ns = {'mpd': 'urn:mpeg:dash:schema:mpd:2011'}
         base_urls = [node.text or '' for node in root.findall('.//mpd:BaseURL', ns)]
+        representation_ids = [
+            node.get('id')
+            for node in root.findall('.//mpd:Representation', ns)
+        ]
 
         assert len(base_urls) == 5
+        assert len(representation_ids) == len(set(representation_ids))
         assert any('video-main.m4s' in url for url in base_urls)
         assert any('video-backup-a.m4s' in url for url in base_urls)
         assert any('video-backup-b.m4s' in url for url in base_urls)

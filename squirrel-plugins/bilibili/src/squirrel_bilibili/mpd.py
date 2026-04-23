@@ -5,6 +5,28 @@ from xml.etree import ElementTree as ET
 from .handler import _backup_urls, _base_url, _group_video_streams_by_codec, _proxy_stream_url, get_dash_data
 
 
+def _codec_family(stream: dict, *, fallback: str) -> str:
+    codecs = str(stream.get('codecs') or '').lower()
+    if any(token in codecs for token in ('avc1', 'avc', 'h264')):
+        return 'avc'
+    if any(token in codecs for token in ('hev1', 'hvc1', 'hevc', 'h265')):
+        return 'hevc'
+    if any(token in codecs for token in ('av01', 'av1')):
+        return 'av1'
+    if any(token in codecs for token in ('vp09', 'vp9')):
+        return 'vp9'
+    return fallback
+
+
+def _representation_id(stream: dict, *, kind: str) -> str:
+    raw_id = stream.get('id') or stream.get('bandwidth') or kind
+    codec_family = _codec_family(stream, fallback='audio' if kind == 'audio' else 'video')
+    height = stream.get('height') if kind == 'video' else None
+    bandwidth = stream.get('bandwidth')
+    parts = [kind, codec_family, raw_id, height, bandwidth]
+    return '-'.join(str(part) for part in parts if part not in (None, '', 0))
+
+
 def _append_representation_base_urls(representation: ET.Element, stream: dict, *, direct_playback: bool) -> bool:
     urls = []
     primary_url = _base_url(stream)
@@ -50,7 +72,7 @@ class BilibiliMpdBuilder:
             video_adaptation_set = ET.SubElement(period, "AdaptationSet", contentType="video", mimeType="video/mp4")
             for stream in video_streams:
                 representation = ET.SubElement(video_adaptation_set, "Representation")
-                representation.set("id", str(stream.get('id')))
+                representation.set("id", _representation_id(stream, kind='video'))
                 if 'codecs' in stream:
                     representation.set("codecs", stream['codecs'])
                 if 'width' in stream:
@@ -85,7 +107,7 @@ class BilibiliMpdBuilder:
             audio_adaptation_set = ET.SubElement(period, "AdaptationSet", contentType="audio", mimeType="audio/mp4")
             for audio_stream in audio_streams:
                 representation = ET.SubElement(audio_adaptation_set, "Representation")
-                representation.set("id", str(audio_stream.get('id')))
+                representation.set("id", _representation_id(audio_stream, kind='audio'))
                 if 'codecs' in audio_stream:
                     representation.set("codecs", audio_stream['codecs'])
                 if 'bandwidth' in audio_stream:

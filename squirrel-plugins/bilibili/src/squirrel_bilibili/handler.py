@@ -58,6 +58,14 @@ def _codec_family_from_stream(stream: dict) -> Optional[str]:
     return None
 
 
+def _representation_id_for_stream(stream: dict, kind: str) -> str:
+    codec_family = _codec_family_from_stream(stream) or ('audio' if kind == 'audio' else 'video')
+    raw_id = stream.get('id') or stream.get('bandwidth') or kind
+    height = stream.get('height') if kind == 'video' else None
+    bandwidth = stream.get('bandwidth')
+    return '-'.join(str(part) for part in (kind, codec_family, raw_id, height, bandwidth) if part not in (None, '', 0))
+
+
 def _video_stream_sort_key(stream: dict) -> tuple[int, int]:
     return (
         _safe_int(stream.get('height')),
@@ -156,7 +164,7 @@ class BilibiliHandler:
                         'height': height,
                         'bandwidth': bandwidth,
                         'codec': codec_family,
-                        'id': str(vid) if vid is not None else None,
+                        'id': _representation_id_for_stream(stream, 'video'),
                         'index': index,
                     })
 

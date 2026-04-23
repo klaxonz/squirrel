@@ -243,11 +243,14 @@ export class ShakaDashPlugin implements PlayerPlugin {
     const activeHeight = activeTrack.height || 0
     const activeBandwidth = activeTrack.bandwidth || 0
 
-    const hintedMatch = this.sourceQualityHints.find((quality) => {
-      return (quality.height || 0) === activeHeight && (quality.bitrate || 0) === activeBandwidth
+    const hintedMatches = this.sourceQualityHints.filter((quality) => {
+      const heightMatches = (quality.height || 0) === activeHeight
+      const codecMatches = this.normalizeCodecFamily(quality.codec) === this.normalizeCodecFamily(activeTrack.videoCodec)
+      return heightMatches && codecMatches
     })
-    if (hintedMatch) {
-      return hintedMatch
+    if (hintedMatches.length > 0) {
+      return [...hintedMatches]
+        .sort((left, right) => this.scoreTrackForHint(activeTrack, left) - this.scoreTrackForHint(activeTrack, right))[0]
     }
 
     return {
@@ -258,6 +261,35 @@ export class ShakaDashPlugin implements PlayerPlugin {
       bitrate: activeTrack.bandwidth || undefined,
       codec: this.normalizeCodecFamily(activeTrack.videoCodec) || undefined,
     }
+  }
+
+  private getSourceQualityHint(quality: QualitySelectionRequest): QualityLevel | null {
+    const targetId = String(quality)
+    return this.sourceQualityHints.find((hint) => String(hint.id) === targetId) || null
+  }
+
+  private scoreTrackForHint(track: ShakaVariantTrack, hint: QualityLevel): number {
+    const heightDelta = Math.abs((track.height || 0) - (hint.height || 0))
+    const widthDelta = Math.abs((track.width || 0) - (hint.width || 0))
+    const codecDelta = this.normalizeCodecFamily(track.videoCodec) === this.normalizeCodecFamily(hint.codec) ? 0 : 1
+    const bitrateDelta = Math.abs((track.bandwidth || 0) - (hint.bitrate || 0))
+    return codecDelta * 1_000_000_000 + heightDelta * 1_000_000 + widthDelta * 1_000 + bitrateDelta
+  }
+
+  private getHintedTrackCandidates(tracks: ShakaVariantTrack[], hint: QualityLevel): ShakaVariantTrack[] {
+    const hintCodec = this.normalizeCodecFamily(hint.codec)
+    const strictCandidates = tracks.filter((track) => {
+      const heightMatches = !hint.height || track.height === hint.height
+      const codecMatches = !hintCodec || this.normalizeCodecFamily(track.videoCodec) === hintCodec
+      return heightMatches && codecMatches
+    })
+
+    const candidates = strictCandidates.length > 0
+      ? strictCandidates
+      : tracks.filter((track) => !hint.height || track.height === hint.height)
+
+    return [...(candidates.length > 0 ? candidates : tracks)]
+      .sort((left, right) => this.scoreTrackForHint(left, hint) - this.scoreTrackForHint(right, hint))
   }
 
   private isAutoQuality(): boolean {
@@ -306,7 +338,10 @@ export class ShakaDashPlugin implements PlayerPlugin {
     if (tracks.length === 0) return
 
     const targetId = String(quality)
-    let candidates = tracks.filter((track) => String(track.id) === targetId)
+    const hintedQuality = this.getSourceQualityHint(quality)
+    let candidates = hintedQuality
+      ? this.getHintedTrackCandidates(tracks, hintedQuality)
+      : tracks.filter((track) => String(track.id) === targetId)
 
     if (candidates.length === 0) {
       const numericHeight = Number.parseInt(targetId.replace(/[^0-9]/g, ''), 10)
@@ -326,7 +361,9 @@ export class ShakaDashPlugin implements PlayerPlugin {
       candidates = tracks
     }
 
-    candidates.sort((left, right) => (right.bandwidth || 0) - (left.bandwidth || 0))
+    if (!hintedQuality) {
+      candidates.sort((left, right) => (right.bandwidth || 0) - (left.bandwidth || 0))
+    }
     const selected = candidates[0]
     if (!selected) return
 

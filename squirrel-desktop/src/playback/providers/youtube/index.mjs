@@ -75,6 +75,11 @@ const parseMimeParts = (mimeType) => {
   return { mime, codecs }
 }
 
+const representationGroupKey = (format, kind) => {
+  const { mime, codecs } = parseMimeParts(format?.mime_type)
+  return [kind, mime || '', codecs || ''].join('|')
+}
+
 const buildSegmentBaseXml = (format) => {
   const attributes = []
   if (format.index_range) {
@@ -129,16 +134,62 @@ const buildFallbackLocalDashManifest = (formats) => {
     return null
   }
 
-  const videoRepresentations = videoFormats
-    .map((format) => buildRepresentationXml(format, 'video'))
+  const groupFormats = (items, kind) => {
+    const grouped = new Map()
+    for (const item of items) {
+      const key = representationGroupKey(item, kind)
+      if (!grouped.has(key)) {
+        grouped.set(key, [])
+      }
+      grouped.get(key).push(item)
+    }
+    return Array.from(grouped.values())
+  }
+
+  const videoAdaptationSets = groupFormats(videoFormats, 'video')
+    .map((group) => {
+      const first = group[0]
+      const { mime, codecs } = parseMimeParts(first?.mime_type)
+      const videoRepresentations = group
+        .map((format) => buildRepresentationXml(format, 'video'))
+        .filter(Boolean)
+        .join('')
+      if (!videoRepresentations) {
+        return ''
+      }
+      const attributes = [
+        'contentType="video"',
+        'segmentAlignment="true"',
+        mime ? `mimeType="${escapeXml(mime)}"` : '',
+        codecs ? `codecs="${escapeXml(codecs)}"` : '',
+      ].filter(Boolean)
+      return `<AdaptationSet ${attributes.join(' ')}>${videoRepresentations}</AdaptationSet>`
+    })
     .filter(Boolean)
     .join('')
-  const audioRepresentations = audioFormats
-    .map((format) => buildRepresentationXml(format, 'audio'))
+  const audioAdaptationSets = groupFormats(audioFormats, 'audio')
+    .map((group) => {
+      const first = group[0]
+      const { mime, codecs } = parseMimeParts(first?.mime_type)
+      const audioRepresentations = group
+        .map((format) => buildRepresentationXml(format, 'audio'))
+        .filter(Boolean)
+        .join('')
+      if (!audioRepresentations) {
+        return ''
+      }
+      const attributes = [
+        'contentType="audio"',
+        'segmentAlignment="true"',
+        mime ? `mimeType="${escapeXml(mime)}"` : '',
+        codecs ? `codecs="${escapeXml(codecs)}"` : '',
+      ].filter(Boolean)
+      return `<AdaptationSet ${attributes.join(' ')}>${audioRepresentations}</AdaptationSet>`
+    })
     .filter(Boolean)
     .join('')
 
-  if (!videoRepresentations || !audioRepresentations) {
+  if (!videoAdaptationSets || !audioAdaptationSets) {
     return null
   }
 
@@ -146,8 +197,8 @@ const buildFallbackLocalDashManifest = (formats) => {
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" minBufferTime="PT4S">',
     '<Period start="PT0S">',
-    `<AdaptationSet contentType="video" segmentAlignment="true">${videoRepresentations}</AdaptationSet>`,
-    `<AdaptationSet contentType="audio" segmentAlignment="true">${audioRepresentations}</AdaptationSet>`,
+    videoAdaptationSets,
+    audioAdaptationSets,
     '</Period>',
     '</MPD>',
   ].join('')

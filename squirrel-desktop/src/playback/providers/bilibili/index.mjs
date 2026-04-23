@@ -336,6 +336,17 @@ const codecFamilyFromStream = (stream) => {
   return undefined
 }
 
+const representationIdForStream = (stream, kind) => {
+  const codec = codecFamilyFromStream(stream)
+    || (kind === 'audio' ? 'audio' : 'video')
+  const rawId = stream?.id ?? stream?.bandwidth ?? kind
+  const bandwidth = safeInt(stream?.bandwidth)
+  const height = kind === 'video' ? safeInt(stream?.height) : 0
+  return [kind, codec, rawId, height || null, bandwidth || null]
+    .filter((part) => part !== null && part !== undefined && part !== '')
+    .join('-')
+}
+
 const videoStreamSortKey = (stream) => {
   return [safeInt(stream?.height), safeInt(stream?.bandwidth)]
 }
@@ -347,6 +358,37 @@ const sortVideoStreams = (streams) => {
     if (rightHeight !== leftHeight) return rightHeight - leftHeight
     return rightBandwidth - leftBandwidth
   })
+}
+
+const groupVideoStreamsByCodec = (streams) => {
+  const groups = new Map()
+  for (const stream of streams) {
+    const codec = codecFamilyFromStream(stream) || 'unknown'
+    if (!groups.has(codec)) {
+      groups.set(codec, [])
+    }
+    groups.get(codec).push(stream)
+  }
+
+  const codecPriority = new Map([
+    ['avc', 0],
+    ['vp9', 1],
+    ['av1', 2],
+    ['hevc', 3],
+    ['unknown', 4],
+  ])
+
+  return Array.from(groups.entries())
+    .map(([codec, codecStreams]) => [codec, sortVideoStreams(codecStreams)])
+    .sort(([leftCodec, leftStreams], [rightCodec, rightStreams]) => {
+      const leftPriority = codecPriority.get(leftCodec) ?? codecPriority.get('unknown')
+      const rightPriority = codecPriority.get(rightCodec) ?? codecPriority.get('unknown')
+      if (leftPriority !== rightPriority) return leftPriority - rightPriority
+      const [leftHeight, leftBandwidth] = videoStreamSortKey(leftStreams[0] || {})
+      const [rightHeight, rightBandwidth] = videoStreamSortKey(rightStreams[0] || {})
+      if (rightHeight !== leftHeight) return rightHeight - leftHeight
+      return rightBandwidth - leftBandwidth
+    })
 }
 
 const buildQualities = (dashData) => {
@@ -367,7 +409,7 @@ const buildQualities = (dashData) => {
       ? `${height}p${codec ? ` ${codec.toUpperCase()}` : ''}`
       : (bandwidth ? `${Math.round(bandwidth / 1000)}kbps` : 'unknown')
     qualities.push({
-      id: String(stream?.id ?? key),
+      id: representationIdForStream(stream, 'video'),
       value: label,
       label,
       height,
@@ -400,7 +442,7 @@ const buildRepresentation = (stream, kind) => {
 
   const mimeType = stream?.mimeType || stream?.mime_type || (kind === 'audio' ? 'audio/mp4' : 'video/mp4')
   const attributes = [
-    `id="${escapeXml(stream?.id ?? stream?.bandwidth ?? urls[0])}"`,
+    `id="${escapeXml(representationIdForStream(stream, kind))}"`,
     `mimeType="${escapeXml(mimeType)}"`,
     stream?.codecs ? `codecs="${escapeXml(stream.codecs)}"` : '',
     stream?.bandwidth ? `bandwidth="${escapeXml(stream.bandwidth)}"` : '',
@@ -417,8 +459,19 @@ const buildLocalDashManifest = (dashData) => {
   const audioStreams = [...(Array.isArray(dashData?.audio) ? dashData.audio : [])]
     .sort((left, right) => safeInt(right?.bandwidth) - safeInt(left?.bandwidth))
 
-  const videoRepresentations = videoStreams
-    .map((stream) => buildRepresentation(stream, 'video'))
+  const videoAdaptationSets = groupVideoStreamsByCodec(videoStreams)
+    .map(([, codecStreams]) => {
+      const videoRepresentations = codecStreams
+        .map((stream) => buildRepresentation(stream, 'video'))
+        .filter(Boolean)
+        .join('')
+
+      if (!videoRepresentations) {
+        return ''
+      }
+
+      return `<AdaptationSet contentType="video" mimeType="video/mp4" segmentAlignment="true">${videoRepresentations}</AdaptationSet>`
+    })
     .filter(Boolean)
     .join('')
   const audioRepresentations = audioStreams
@@ -426,7 +479,7 @@ const buildLocalDashManifest = (dashData) => {
     .filter(Boolean)
     .join('')
 
-  if (!videoRepresentations || !audioRepresentations) {
+  if (!videoAdaptationSets || !audioRepresentations) {
     return null
   }
 
@@ -442,7 +495,7 @@ const buildLocalDashManifest = (dashData) => {
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<MPD ${attributes.join(' ')}>`,
     '<Period start="PT0S">',
-    `<AdaptationSet contentType="video" mimeType="video/mp4" segmentAlignment="true">${videoRepresentations}</AdaptationSet>`,
+    videoAdaptationSets,
     `<AdaptationSet contentType="audio" mimeType="audio/mp4" segmentAlignment="true">${audioRepresentations}</AdaptationSet>`,
     '</Period>',
     '</MPD>',

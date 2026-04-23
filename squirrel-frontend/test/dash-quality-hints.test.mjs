@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 
 const useVideoOperationsPath = new URL('../src/composables/useVideoOperations.ts', import.meta.url)
 const dashPluginPath = new URL('../src/components/video-player/plugins/dash/DashPlugin.ts', import.meta.url)
+const shakaDashPluginPath = new URL('../src/components/video-player/plugins/shaka-dash/ShakaDashPlugin.ts', import.meta.url)
 
 test('video operations forward backend quality hints into the player source', async () => {
   const source = await readFile(useVideoOperationsPath, 'utf8')
@@ -81,6 +82,17 @@ test('player runtime exposes codec families and codec switching controls', async
   assert.match(source, /selectedCodecFamily,/)
   assert.match(source, /currentCodecFamily,/)
   assert.match(source, /setCodecFamily,/)
+})
+
+test('shaka dash plugin resolves backend quality hints before falling back to raw variant ids', async () => {
+  const source = await readFile(shakaDashPluginPath, 'utf8')
+
+  assert.match(source, /private getSourceQualityHint\(quality: QualitySelectionRequest\): QualityLevel \| null/)
+  assert.match(source, /private scoreTrackForHint\(track: ShakaVariantTrack, hint: QualityLevel\): number/)
+  assert.match(source, /private getHintedTrackCandidates\(tracks: ShakaVariantTrack\[\], hint: QualityLevel\): ShakaVariantTrack\[\]/)
+  assert.match(source, /const hintedQuality = this\.getSourceQualityHint\(quality\)/)
+  assert.match(source, /let candidates = hintedQuality\s*\?\s*this\.getHintedTrackCandidates\(tracks, hintedQuality\)/s)
+  assert.match(source, /const hintedMatches = this\.sourceQualityHints\.filter\(\(quality\) => \{/)
 })
 
 test('video player renders a dedicated codec menu alongside the quality menu', async () => {
