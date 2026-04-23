@@ -65,7 +65,6 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
     }
 
     const hasInitialData = !!video.value && (video.value as any).id === videoId
-    const playbackPromise = getPlaybackSource(videoId, options)
     const detailPromise = !hasInitialData
       ? fetchVideoDetails(videoId as any).catch((e) => {
           Logger.error('[usePlaybackOrchestrator] fetchVideoDetails error', e)
@@ -75,6 +74,24 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
           Logger.error('[usePlaybackOrchestrator] fetchVideoDetails error', e)
           return null
         })
+    const playbackPromise = (async () => {
+      const initialPlaybackVideo = (() => {
+        if (initialVideoData && typeof (initialVideoData as any).url === 'string') {
+          return initialVideoData
+        }
+        if (hasInitialData && typeof (video.value as any)?.url === 'string') {
+          return video.value as any
+        }
+        return null
+      })()
+
+      if (initialPlaybackVideo) {
+        return getPlaybackSource(videoId, options, initialPlaybackVideo)
+      }
+
+      await detailPromise
+      return getPlaybackSource(videoId, options, video.value as any)
+    })()
 
     Promise.resolve(detailPromise).then(() => {
       Logger.debug('[usePlaybackOrchestrator] after fetchVideoDetails', {

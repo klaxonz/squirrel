@@ -26,6 +26,7 @@
     "mitt": "^3.0.1",
     "pinia": "^3.0.4",
     "reka-ui": "^2.9.2",
+    "shaka-player": "^5.1.0",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",
     "vue": "^3.4.35",

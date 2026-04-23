@@ -21,6 +21,25 @@ interface DesktopAppBridge {
   onWindowStateChange?: (listener: (state: DesktopWindowState) => void) => () => void
   reloadApp?: () => void
   openExternal?: (targetUrl: string) => Promise<boolean>
+  resolveYouTubePlayback?: (
+    targetUrl: string,
+    options?: { forceRefresh?: boolean }
+  ) => Promise<{
+    stream_type?: 'hls' | 'dash' | 'progressive'
+    mpd_url?: string | null
+    mpd_content?: string | null
+    video_url?: string | null
+    audio_url?: string | null
+    default_quality_id?: string | null
+    supports_manual_quality?: boolean
+    qualities?: Array<{
+      value: string
+      label: string
+      height?: number | null
+      bandwidth?: number | null
+      id?: string | null
+    }> | null
+  }>
   getServerUrl?: () => Promise<string>
   setServerUrl?: (url: string) => Promise<string | false>
   clearServerUrl?: () => Promise<boolean>

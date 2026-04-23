@@ -114,8 +114,9 @@ export class DashPlugin implements PlayerPlugin {
     // 检查是否为 DASH 源
     const isDash = source.type === 'dash' || 
                    (source.type === 'auto' && DashPlugin.isDashSource(source.src))
+    const wantsDashJs = source.playbackEngine !== 'shaka'
     
-    if (!isDash) {
+    if (!isDash || !wantsDashJs) {
       this.destroyPlayer()
       this.currentSource = null
       return

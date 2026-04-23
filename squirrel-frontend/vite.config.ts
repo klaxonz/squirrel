@@ -27,6 +27,10 @@ export default defineConfig({
             return 'dash-vendor'
           }
 
+          if (id.includes('shaka-player')) {
+            return 'shaka-vendor'
+          }
+
           if (id.includes('hls.js')) {
             return 'hls-vendor'
           }

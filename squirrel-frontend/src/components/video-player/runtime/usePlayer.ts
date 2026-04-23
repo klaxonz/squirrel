@@ -250,7 +250,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   })
 
   const syncCodecFamilies = (): void => {
-    const dashPlugin = engine.getPlugin<any>('dash')
+    const dashPlugin = engine.getPlugin<any>('shaka-dash') || engine.getPlugin<any>('dash')
     if (!dashPlugin) {
       codecFamilies.value = []
       selectedCodecFamily.value = 'auto'
@@ -465,7 +465,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   }
 
   const setCodecFamily = (codecFamily: string): void => {
-    const dashPlugin = engine.getPlugin<any>('dash')
+    const dashPlugin = engine.getPlugin<any>('shaka-dash') || engine.getPlugin<any>('dash')
     if (dashPlugin && typeof dashPlugin.setCodecFamily === 'function') {
       dashPlugin.setCodecFamily(codecFamily)
       syncCodecFamilies()

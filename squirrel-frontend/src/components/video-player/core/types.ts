@@ -89,6 +89,7 @@ export interface SubtitleTrack {
 export interface MediaSource {
   src: string
   type?: 'auto' | 'native' | 'hls' | 'dash'
+  playbackEngine?: 'dashjs' | 'shaka'
   key?: string
   progressKey?: string
   poster?: string

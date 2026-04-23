@@ -3,9 +3,13 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { app, BrowserWindow, clipboard, ipcMain, Menu, session, shell } from 'electron'
+import { resolveYouTubePlayback } from './playback/providers/youtube/index.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+const repoRoot = path.resolve(__dirname, '..', '..')
+const youtubeCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'youtube.txt')
+const youtubeOAuthStateFilePath = path.join(repoRoot, 'config', 'youtube_oauth.json')
 
 const APP_NAME = 'Squirrel'
 const DEFAULT_APP_URL = 'http://127.0.0.1:8001'
@@ -19,6 +23,10 @@ const DEFAULT_WINDOW_STATE = {
 }
 
 const SERVER_CONFIG_FILE = 'server-config.json'
+
+if (!process.env.YOUTUBE_OAUTH_STATE_FILE && fs.existsSync(youtubeOAuthStateFilePath)) {
+  process.env.YOUTUBE_OAUTH_STATE_FILE = youtubeOAuthStateFilePath
+}
 
 const resolveRendererUrl = () => {
   const value = String(
@@ -69,6 +77,143 @@ const saveServerConfig = (url) => {
   } catch {
     return false
   }
+}
+
+const normalizeTargetUrl = (targetUrl) => {
+  const value = String(targetUrl || '').trim()
+  if (!value) {
+    return ''
+  }
+
+  try {
+    return new URL(value).toString()
+  } catch {
+    return ''
+  }
+}
+
+const isYouTubeCookieTarget = (targetUrl) => {
+  const normalizedUrl = normalizeTargetUrl(targetUrl)
+  if (!normalizedUrl) {
+    return false
+  }
+
+  try {
+    const hostname = new URL(normalizedUrl).hostname.toLowerCase()
+    return hostname === 'youtube.com'
+      || hostname.endsWith('.youtube.com')
+      || hostname === 'youtu.be'
+      || hostname.endsWith('.googlevideo.com')
+      || hostname.endsWith('.gvt1.com')
+      || hostname.endsWith('.ytimg.com')
+  } catch {
+    return false
+  }
+}
+
+const readYoutubeCookieFileHeader = () => {
+  if (!fs.existsSync(youtubeCookieFilePath)) {
+    return ''
+  }
+
+  try {
+    const raw = fs.readFileSync(youtubeCookieFilePath, 'utf8')
+    const pairs = []
+
+    for (const rawLine of raw.split(/\r?\n/)) {
+      const line = rawLine.trim()
+      if (!line) {
+        continue
+      }
+
+      const normalizedLine = line.startsWith('#HttpOnly_')
+        ? line.slice('#HttpOnly_'.length)
+        : line
+
+      if (normalizedLine.startsWith('#')) {
+        continue
+      }
+
+      const parts = normalizedLine.split('\t')
+      if (parts.length < 7) {
+        continue
+      }
+
+      const domain = String(parts[0] || '').replace(/^\./, '').toLowerCase()
+      const name = String(parts[5] || '').trim()
+      const value = String(parts[6] || '').trim()
+
+      if (!domain.endsWith('youtube.com') || !name) {
+        continue
+      }
+
+      pairs.push(`${name}=${value}`)
+    }
+
+    return pairs.join('; ')
+  } catch {
+    return ''
+  }
+}
+
+const mergeCookieHeaders = (...cookieHeaders) => {
+  const cookieMap = new Map()
+
+  for (const header of cookieHeaders) {
+    const normalizedHeader = String(header || '').trim()
+    if (!normalizedHeader) {
+      continue
+    }
+
+    for (const segment of normalizedHeader.split(';')) {
+      const pair = segment.trim()
+      if (!pair) {
+        continue
+      }
+
+      const equalsIndex = pair.indexOf('=')
+      if (equalsIndex <= 0) {
+        continue
+      }
+
+      const name = pair.slice(0, equalsIndex).trim()
+      const value = pair.slice(equalsIndex + 1).trim()
+      if (!name) {
+        continue
+      }
+
+      cookieMap.set(name, value)
+    }
+  }
+
+  return Array.from(cookieMap.entries())
+    .map(([name, value]) => `${name}=${value}`)
+    .join('; ')
+}
+
+const buildCookieHeaderForUrl = async (targetUrl) => {
+  const normalizedUrl = normalizeTargetUrl(targetUrl)
+  if (!normalizedUrl) {
+    return ''
+  }
+
+  let sessionCookieHeader = ''
+  try {
+    const cookies = await session.defaultSession.cookies.get({ url: normalizedUrl })
+    if (Array.isArray(cookies) && cookies.length > 0) {
+      sessionCookieHeader = cookies
+        .map((cookie) => `${cookie.name}=${cookie.value}`)
+        .join('; ')
+    }
+  } catch {
+    sessionCookieHeader = ''
+  }
+
+  if (!isYouTubeCookieTarget(normalizedUrl)) {
+    return sessionCookieHeader
+  }
+
+  return mergeCookieHeaders(readYoutubeCookieFileHeader(), sessionCookieHeader)
 }
 
 // ── Escape helpers ──────────────────────────────────────────────────────────
@@ -335,6 +480,14 @@ const MEDIA_HEADER_RULES = [
     },
   },
   {
+    hosts: ['youtube.com'],
+    headers: {
+      Referer: 'https://www.youtube.com/',
+      Origin: 'https://www.youtube.com',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    },
+  },
+  {
     hosts: ['pornhub.com', 'phncdn.com'],
     headers: {
       Referer: 'https://www.pornhub.com/',
@@ -368,7 +521,7 @@ const MEDIA_HEADER_RULES = [
   },
 ]
 
-const RELAXED_CROSS_ORIGIN_HOSTS = ['surrit.com', 'jdbstatic.com']
+const RELAXED_CROSS_ORIGIN_HOSTS = ['surrit.com', 'jdbstatic.com', 'youtube.com', 'googlevideo.com', 'gvt1.com', 'ytimg.com']
 const RELAXED_RESPONSE_HEADER_NAMES = new Set([
   'cross-origin-resource-policy',
   'cross-origin-embedder-policy',
@@ -500,6 +653,20 @@ const installDesktopBridgeHandlers = () => {
 
     await shell.openExternal(normalizedUrl)
     return true
+  })
+
+  ipcMain.removeHandler('desktop:resolve-youtube-playback')
+  ipcMain.handle('desktop:resolve-youtube-playback', async (_event, targetUrl, options = {}) => {
+    const normalizedUrl = normalizeTargetUrl(targetUrl)
+    if (!normalizedUrl) {
+      throw new Error('Invalid YouTube URL')
+    }
+
+    const cookie = await buildCookieHeaderForUrl(normalizedUrl)
+    return resolveYouTubePlayback(normalizedUrl, {
+      cookie,
+      forceRefresh: options?.forceRefresh === true,
+    })
   })
 
   ipcMain.removeAllListeners('desktop:reload')

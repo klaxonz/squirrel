@@ -346,9 +346,10 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   }
 
   const getStreamController = (): any => {
+    const preferredDashPlugin = currentSource?.playbackEngine === 'shaka' ? 'shaka-dash' : 'dash'
     if (currentSourceType === 'hls') return pluginManager.get<any>('hls')
-    if (currentSourceType === 'dash') return pluginManager.get<any>('dash')
-    return pluginManager.get<any>('dash') || pluginManager.get<any>('hls')
+    if (currentSourceType === 'dash') return pluginManager.get<any>(preferredDashPlugin)
+    return pluginManager.get<any>('shaka-dash') || pluginManager.get<any>('dash') || pluginManager.get<any>('hls')
   }
 
   const buildRecoveryContext = (): PlaybackRecoveryContext => ({
@@ -1009,9 +1010,10 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     const { controllerQuality, emittedLabel, isAutoQuality } = resolveQualitySelection(quality)
 
     const getQualityController = (): any => {
+      const preferredDashPlugin = currentSource?.playbackEngine === 'shaka' ? 'shaka-dash' : 'dash'
       if (currentSourceType === 'hls') return pluginManager.get<any>('hls')
-      if (currentSourceType === 'dash') return pluginManager.get<any>('dash')
-      return pluginManager.get<any>('dash') || pluginManager.get<any>('hls')
+      if (currentSourceType === 'dash') return pluginManager.get<any>(preferredDashPlugin)
+      return pluginManager.get<any>('shaka-dash') || pluginManager.get<any>('dash') || pluginManager.get<any>('hls')
     }
 
     const controller = getQualityController()

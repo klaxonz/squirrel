@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   },
   reloadApp: () => ipcRenderer.send('desktop:reload'),
   openExternal: (targetUrl) => ipcRenderer.invoke('desktop:open-external', targetUrl),
+  resolveYouTubePlayback: (targetUrl, options) => ipcRenderer.invoke('desktop:resolve-youtube-playback', targetUrl, options),
   getWindowState: () => ipcRenderer.invoke('desktop:get-window-state'),
   minimizeWindow: () => ipcRenderer.invoke('desktop:window-action', 'minimize'),
   toggleMaximizeWindow: () => ipcRenderer.invoke('desktop:window-action', 'toggle-maximize'),

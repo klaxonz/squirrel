@@ -3,6 +3,7 @@ import type { PluginConfig } from './types'
 import { AnalyticsPlugin } from '../plugins/analytics'
 import { DashPlugin } from '../plugins/dash'
 import { HlsPlugin } from '../plugins/hls'
+import { ShakaDashPlugin } from '../plugins/shaka-dash'
 import { SubtitlesPlugin } from '../plugins/subtitles'
 
 export type DefaultPluginsOptions = {
@@ -28,6 +29,7 @@ export const createDefaultPlayerPlugins = (options: DefaultPluginsOptions = {}):
 
   if (enableDash) {
     plugins.push({ plugin: () => new DashPlugin() })
+    plugins.push({ plugin: () => new ShakaDashPlugin() })
   }
 
   if (enableSubtitles) {
@@ -40,4 +42,3 @@ export const createDefaultPlayerPlugins = (options: DefaultPluginsOptions = {}):
 
   return plugins
 }
-
