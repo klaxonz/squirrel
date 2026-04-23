@@ -459,10 +459,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, computed, reactive, inject, nextTick } from 'vue';
+import { ref, watch, computed, reactive, inject } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator';
 import usePlaybackReporting from '../composables/usePlaybackReporting';
+import useVideoActionBar from '../composables/useVideoActionBar';
+import useVideoClipMarkers from '../composables/useVideoClipMarkers';
+import useVideoPlaybackShell from '../composables/useVideoPlaybackShell';
+import useVideoPageNavigation from '../composables/useVideoPageNavigation';
+import useVideoPlaylistPanel from '../composables/useVideoPlaylistPanel';
 import { useGlobalVideoPlayer } from '@/composables/useGlobalVideoPlayer'
 import { useAppTheme } from '@/composables/useAppTheme'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
@@ -481,9 +486,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Logger } from '@/utils/logger'
-import { getRandomVideo, unsubscribe as apiUnsubscribe } from '@/api'
-import { deleteVideoClipMarker, updateVideoClipMarker } from '@/api/videoClipMarkers'
+import { unsubscribe as apiUnsubscribe } from '@/api'
 import { notifySubscriptionRemoved } from '@/utils/subscriptionEvents'
 
 
@@ -497,18 +500,17 @@ const APP_TITLE = 'Squirrel'
 const playerAdapter = new LocalStorageAdapter();
 const { effectiveTheme } = useAppTheme()
 const {
+  seekGlobalVideoPlayer,
+  playGlobalVideoPlayer,
   activateGlobalVideoPlayerSession,
   clearGlobalVideoPlayerSession,
   registerGlobalVideoPlayerTarget,
   unregisterGlobalVideoPlayerTarget,
   focusGlobalVideoPlayer,
-  seekGlobalVideoPlayer,
-  playGlobalVideoPlayer,
   globalVideoPlayerSession,
 } = useGlobalVideoPlayer()
 
 
-// 内部切换不使用 router，所以不需要从 history.state 读取初始数据
 const {
   video,
   startTime,
@@ -542,11 +544,102 @@ const {
   removeVideo,
 } = usePlaylist();
 const { flushPendingReport, onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate } = usePlaybackReporting(video, sendReport);
-const currentPlaybackTime = ref(0)
-const clipMarkers = computed(() => Array.isArray(video.value?.clip_markers) ? video.value.clip_markers : [])
-const editingClipMarkerId = ref(null)
-const clipMarkerTitleDraft = ref('')
-const isSavingClipMarkerTitle = ref(false)
+const {
+  goToVideo,
+  hasPrevVideo,
+  hasNextVideo,
+  handlePrevVideo,
+  handleNextVideo,
+  handlePrevVideoFromPlaylist,
+  handleNextVideoFromPlaylist,
+  handleAutoplayNext,
+  handlePlayRandom,
+} = useVideoPageNavigation({
+  route,
+  router,
+  video,
+  relatedVideos,
+  goToPrev,
+  goToNext,
+  onVideoEnded,
+})
+const asideTab = ref('related')
+const {
+  showPlaylistPicker,
+  playlistPickerQuery,
+  newPlaylistName,
+  isPlaylistPickerSubmitting,
+  filteredPlaylists,
+  currentVideoAlreadyInActivePlaylist,
+  ensurePlaylistData,
+  handlePlaylistPickerOpenChange,
+  handleAddToPlaylist,
+  selectActivePlaylist,
+  handleAddCurrentVideoToPlaylist,
+  handleCreatePlaylistFromPicker,
+  handleAddCurrentVideoToActivePlaylist,
+  playPlaylistItem,
+  handleRemoveVideoFromActivePlaylist,
+} = useVideoPlaylistPanel({
+  video,
+  playlists,
+  activePlaylist,
+  activePlaylistItems,
+  fetchPlaylists,
+  loadAndSetPlaylist,
+  addVideo,
+  createPlaylist,
+  removeVideo,
+  setCurrentVideo,
+  goToVideo,
+  setAsideTab: (tab) => {
+    asideTab.value = tab
+  },
+})
+const {
+  videoActions,
+  handleVideoAction,
+} = useVideoActionBar({
+  video,
+  interactionTypeLike: INTERACTION_TYPE.LIKE,
+  interactionTypeDislike: INTERACTION_TYPE.DISLIKE,
+  interactionTypeLater: INTERACTION_TYPE.LATER,
+  toggleLike,
+  deleteInteraction,
+  handleAddToPlaylist,
+  handlePlayRandom,
+})
+const {
+  currentPlaybackTime,
+  clipMarkers,
+  clipMarkerTitleDraft,
+  isSavingClipMarkerTitle,
+  handlePlaybackTimeUpdate: updateClipPlaybackTime,
+  handleClipMarkersUpdated,
+  handleClipMarkerSeek,
+  handleDeleteMarker,
+  getClipMarkerTitle,
+  isEditingClipMarker,
+  startClipMarkerTitleEdit,
+  cancelClipMarkerTitleEdit,
+  commitClipMarkerTitle,
+  handleClipRowClick,
+  getMarkerColor,
+  isClipActive,
+  getClipProgress,
+  formatClipDuration,
+} = useVideoClipMarkers({
+  video,
+  seekToTime: async (time) => {
+    const seeked = await seekGlobalVideoPlayer(time)
+    if (seeked) {
+      await playGlobalVideoPlayer()
+    }
+    try {
+      await focusGlobalVideoPlayer()
+    } catch {}
+  },
+})
 
 const parseSharedStartTime = (value) => {
   if (Array.isArray(value)) {
@@ -564,92 +657,8 @@ const resolvedInitialTime = computed(() => {
 })
 
 const handlePlaybackTimeUpdate = (currentTime) => {
-  currentPlaybackTime.value = currentTime
+  updateClipPlaybackTime(currentTime)
   onVideoTimeUpdate(currentTime)
-}
-
-const handleClipMarkersUpdated = (markers) => {
-  if (!video.value) return
-  video.value.clip_markers = markers
-}
-
-const handleClipMarkerSeek = async (time) => {
-  currentPlaybackTime.value = Number(time) || 0
-  const seeked = await seekGlobalVideoPlayer(time)
-  if (seeked) {
-    await playGlobalVideoPlayer()
-  }
-  await focusVideoPlayer()
-}
-
-const handleDeleteMarker = async (markerId) => {
-  const { error } = await deleteVideoClipMarker(markerId)
-  if (error) return
-  if (!video.value) return
-  video.value.clip_markers = (video.value.clip_markers || []).filter((m) => m.id !== markerId)
-  if (String(editingClipMarkerId.value || '') === String(markerId || '')) {
-    cancelClipMarkerTitleEdit()
-  }
-}
-
-const getClipMarkerTitle = (marker) => String(marker.title || '').trim()
-const isEditingClipMarker = (markerId) => String(editingClipMarkerId.value || '') === String(markerId || '')
-
-const focusClipMarkerTitleInput = async (markerId) => {
-  await nextTick()
-  const input = document.querySelector(`[data-clip-title-input="${markerId}"]`)
-  if (input instanceof HTMLInputElement) {
-    input.focus()
-    input.select()
-  }
-}
-
-const startClipMarkerTitleEdit = async (marker) => {
-  editingClipMarkerId.value = marker.id
-  clipMarkerTitleDraft.value = String(marker.title || '')
-  await focusClipMarkerTitleInput(marker.id)
-}
-
-const cancelClipMarkerTitleEdit = () => {
-  editingClipMarkerId.value = null
-  clipMarkerTitleDraft.value = ''
-  isSavingClipMarkerTitle.value = false
-}
-
-const commitClipMarkerTitle = async (marker) => {
-  if (!video.value || !isEditingClipMarker(marker.id) || isSavingClipMarkerTitle.value) return
-
-  const nextTitle = String(clipMarkerTitleDraft.value || '').trim() || null
-  const currentTitle = String(marker.title || '').trim() || null
-  if (currentTitle === nextTitle) {
-    cancelClipMarkerTitleEdit()
-    return
-  }
-
-  isSavingClipMarkerTitle.value = true
-  const { data, error } = await updateVideoClipMarker(marker.id, { title: nextTitle })
-  isSavingClipMarkerTitle.value = false
-
-  if (error || !data) {
-    return
-  }
-
-  video.value.clip_markers = (video.value.clip_markers || []).map((item) => (
-    String(item.id) === String(marker.id) ? data : item
-  ))
-  cancelClipMarkerTitleEdit()
-}
-
-const handleClipRowClick = (marker) => {
-  if (isEditingClipMarker(marker.id)) return
-  handleClipMarkerSeek(marker.start_time)
-}
-
-const COLORS = ['#f87171', '#fb923c', '#facc15', '#4ade80', '#34d399', '#22d3ee', '#60a5fa', '#a78bfa', '#f472b6']
-const getMarkerColor = (marker) => {
-  const markers = clipMarkers.value
-  const index = markers.findIndex((m) => m.id === marker.id)
-  return COLORS[index % COLORS.length]
 }
 
 const handlePlaylistItemImageError = (event) => {
@@ -659,136 +668,10 @@ const handlePlaylistItemImageError = (event) => {
   }
 }
 
-const isClipActive = (marker) => {
-  const t = currentPlaybackTime.value
-  return t >= marker.start_time && t <= marker.end_time
-}
-
-const getClipProgress = (marker) => {
-  const t = currentPlaybackTime.value
-  if (t < marker.start_time) return 0
-  if (t > marker.end_time) return 100
-  const total = marker.end_time - marker.start_time
-  if (!total) return 0
-  return Math.round(((t - marker.start_time) / total) * 100)
-}
-
-const formatClipDuration = (marker) => {
-  const dur = marker.duration_seconds ?? (marker.end_time - marker.start_time)
-  if (dur < 60) return `${Math.round(dur)}s`
-  const m = Math.floor(dur / 60)
-  const s = Math.round(dur % 60)
-  return s ? `${m}m ${s}s` : `${m}m`
-}
-
-const currentInteractionType = computed(() => video.value?.interaction_type ?? null);
-const isLaterActionActive = computed(() => currentInteractionType.value === INTERACTION_TYPE.LATER);
-
-const videoPrimaryActions = computed(() => {
-  const actions = [
-    {
-      key: 'like',
-      label: '喜欢',
-      icon: currentInteractionType.value === INTERACTION_TYPE.LIKE ? 'lucide:thumbs-up' : 'lucide:thumbs-up',
-      active: currentInteractionType.value === INTERACTION_TYPE.LIKE,
-      tone: 'like',
-      variant: 'primary',
-      onClick: () => video.value && handleLike(video.value, INTERACTION_TYPE.LIKE)
-    },
-    {
-      key: 'dislike',
-      label: '不喜欢',
-      icon: 'lucide:thumbs-down',
-      active: currentInteractionType.value === INTERACTION_TYPE.DISLIKE,
-      tone: 'danger',
-      variant: 'secondary',
-      onClick: () => video.value && handleLike(video.value, INTERACTION_TYPE.DISLIKE)
-    },
-    {
-      key: 'later',
-      label: '稍后看',
-      icon: isLaterActionActive.value ? 'lucide:bookmark-check' : 'lucide:bookmark-plus',
-      active: isLaterActionActive.value,
-      tone: 'later',
-      variant: 'primary',
-      onClick: () => video.value && handleLater(video.value)
-    },
-    {
-      key: 'add-playlist',
-      label: '播放列表',
-      icon: 'lucide:list-plus',
-      active: false,
-      tone: 'neutral',
-      variant: 'secondary',
-      onClick: () => handleAddToPlaylist()
-    }
-  ];
-
-  if (video.value?.url) {
-    actions.push({
-      key: 'source',
-      label: '原视频',
-      icon: 'lucide:external-link',
-      active: false,
-      tone: 'neutral',
-      variant: 'secondary',
-      href: video.value.url
-    });
-  }
-
-  return actions;
-});
-
-const videoOverflowActions = computed(() => {
-  return [
-    {
-      key: 'random',
-      label: '随机播放',
-      icon: 'lucide:shuffle',
-      active: false,
-      tone: 'neutral',
-      hint: '',
-      onClick: () => handlePlayRandom()
-    }
-  ];
-});
-
-const videoActions = computed(() => [...videoPrimaryActions.value, ...videoOverflowActions.value]);
-
 const videoPublishedText = computed(() => {
   const publishedAt = video.value?.publish_date || video.value?.uploaded_at
   return publishedAt ? formatDate(publishedAt) : ''
 });
-
-const handleVideoAction = async (action) => {
-  if (action.href || !action.onClick) return;
-  await action.onClick();
-};
-
-
-// 视频播放器引用
-const videoPlayerHostRef = ref(null);
-const videoPageRef = ref(null);
-const videoSectionRef = ref(null);
-const videoMetaRef = ref(null);
-
-
-// 宽屏模式
-const isWidescreen = ref(false);
-const toggleWidescreen = (value) => {
-  isWidescreen.value = value;
-  setWidescreenClass(isWidescreen.value);
-  syncWidescreenSidebarState(isWidescreen.value);
-};
-
-const setWidescreenClass = (enabled) => {
-  document.documentElement.classList.toggle('video-widescreen', !!enabled);
-};
-
-const syncWidescreenSidebarState = (enabled) => {
-  if (!emitter) return;
-  emitter.emit('videoWidescreenStateChanged', !!enabled);
-};
 
 
 const relatedThumbnailErrorIds = reactive(new Set());
@@ -797,22 +680,6 @@ const isVideoChannelVisible = ref(true)
 const isChannelUnsubscribing = ref(false)
 const videoChannelError = ref('')
 const VIDEO_CHANNEL_DISMISS_MS = 180
-const asideTab = ref('related')
-const showPlaylistPicker = ref(false)
-const playlistPickerQuery = ref('')
-const newPlaylistName = ref('')
-const isPlaylistPickerSubmitting = ref(false)
-
-const filteredPlaylists = computed(() => {
-  const query = playlistPickerQuery.value.trim().toLowerCase()
-  if (!query) return playlists.value
-  return playlists.value.filter((playlist) => String(playlist.name || '').toLowerCase().includes(query))
-})
-
-const currentVideoAlreadyInActivePlaylist = computed(() => {
-  if (!video.value?.id || !activePlaylist.value) return false
-  return activePlaylistItems.value.some((item) => String(item.video_id) === String(video.value.id))
-})
 
 const wait = (ms) => new Promise((resolve) => {
   window.setTimeout(resolve, ms)
@@ -823,82 +690,53 @@ const handlePlayerRetry = async () => {
   await loadAndPlayById(video.value.id, video.value, { forceRefresh: true });   
 };
 
-// 记录最近播放的视频，防止循环播放
-const recentlyPlayed = ref([]);
-
-// 是否有上一个视频（相关视频列表有数据就可以切换）
-const hasPrevVideo = computed(() => {
-  return relatedVideos.value && relatedVideos.value.length > 0;
-});
-
-// 是否有下一个视频（相关视频列表有数据就可以切换）
-const hasNextVideo = computed(() => {
-  return relatedVideos.value && relatedVideos.value.length > 0;
-});
-
-// 切换到上一个视频（从相关视频列表末尾开始找一个未播放的）
-const handlePrevVideo = async () => {
-  if (!relatedVideos.value?.length) return;
-
-  // 从末尾往前找第一个未在最近播放历史中的视频
-  for (let i = relatedVideos.value.length - 1; i >= 0; i--) {
-    const prevVideo = relatedVideos.value[i];
-    if (prevVideo?.id && !recentlyPlayed.value.includes(prevVideo.id)) {
-      await goToVideo(prevVideo.id, prevVideo);
-      return;
-    }
-  }
-
-  // 如果所有视频都播放过，就播放最后一个
-  const lastVideo = relatedVideos.value[relatedVideos.value.length - 1];
-  if (lastVideo?.id) {
-    await goToVideo(lastVideo.id, lastVideo);
-  }
-};
-
-// 切换到下一个视频（从相关视频列表开头找一个未播放的）
-const handleNextVideo = async () => {
-  if (!relatedVideos.value?.length) return;
-
-  const currentId = String(video.value?.id ?? route.params.videoId ?? '');
-
-  // 查找第一个未在最近播放历史中的视频
-  const nextVideo = relatedVideos.value.find(v => (
-    v?.id
-    && String(v.id) !== currentId
-    && !recentlyPlayed.value.includes(v.id)
-  ));
-  if (nextVideo?.id) {
-    await goToVideo(nextVideo.id, nextVideo);
-    return;
-  }
-
-  // 如果所有视频都播放过，就播放第一个
-  const firstVideo = relatedVideos.value.find(v => v?.id && String(v.id) !== currentId);
-  if (firstVideo?.id) {
-    await goToVideo(firstVideo.id, firstVideo);
-  }
-};
-
-// 从播放列表切换上一个视频
-const handlePrevVideoFromPlaylist = async () => {
-  const prevVideo = goToPrev();
-  if (prevVideo?.id) {
-    await goToVideo(prevVideo.id, prevVideo);
-  } else {
-    await handlePrevVideo();
-  }
-};
-
-// 从播放列表切换下一个视频
-const handleNextVideoFromPlaylist = async () => {
-  const nextVideo = goToNext();
-  if (nextVideo?.id) {
-    await goToVideo(nextVideo.id, nextVideo);
-  } else {
-    await handleNextVideo();
-  }
-};
+const {
+  videoPlayerHostRef,
+  videoPageRef,
+  videoSectionRef,
+  videoMetaRef,
+  isWidescreen,
+  toggleWidescreen,
+  focusVideoPlayer,
+  hasReusableGlobalPlaybackSession,
+  hydrateFromGlobalPlaybackSession,
+} = useVideoPlaybackShell({
+  route,
+  emitter,
+  playerAdapter,
+  video,
+  playbackSource,
+  subtitleTracks,
+  resolvedInitialTime,
+  clipMarkers,
+  hasPrevVideo,
+  hasNextVideo,
+  externalError,
+  isResolvingPlayback,
+  effectiveTheme,
+  relatedVideos,
+  loadingRelated,
+  hasPrev,
+  hasNext,
+  globalVideoPlayerSession,
+  activateGlobalVideoPlayerSession,
+  clearGlobalVideoPlayerSession,
+  registerGlobalVideoPlayerTarget,
+  unregisterGlobalVideoPlayerTarget,
+  focusGlobalVideoPlayer,
+  hydratePlaybackState,
+  loadAndPlayById,
+  onVideoPlay,
+  onVideoPause,
+  handleAutoplayNext,
+  handlePlaybackTimeUpdate,
+  handlePrevVideoFromPlaylist,
+  handleNextVideoFromPlaylist,
+  handlePlayerRetry,
+  handleClipMarkerSeek,
+  handleClipMarkersUpdated,
+  flushPendingReport,
+})
 
 const handleUnsubscribe = async (subscriptionId) => {
   if (!subscriptionId || isChannelUnsubscribing.value) return
@@ -920,174 +758,6 @@ const handleUnsubscribe = async (subscriptionId) => {
   isChannelUnsubscribing.value = false
 };
 
-const handleLike = async (video, interactionType) => {
-  if (video.interaction_type !== interactionType) {
-    const { error } = await toggleLike(video.id, interactionType)
-    if (!error) {
-      video.interaction_type = interactionType;
-    }
-  } else {
-    const { error } = await deleteInteraction(video.id)
-    if (!error) {
-      video.interaction_type = null;
-    }
-  }
-};
-
-const handleLater = async (video) => {
-  if (video.interaction_type !== INTERACTION_TYPE.LATER) {
-    const { error } = await toggleLike(video.id, INTERACTION_TYPE.LATER)
-    if (!error) {
-      video.interaction_type = INTERACTION_TYPE.LATER;
-    }
-  } else {
-    const { error } = await deleteInteraction(video.id)
-    if (!error) {
-      video.interaction_type = null;
-    }
-  }
-};
-
-const ensurePlaylistData = async () => {
-  await fetchPlaylists();
-  const nextPlaylistId = activePlaylist.value?.id ?? playlists.value[0]?.id;
-  if (nextPlaylistId) {
-    await loadAndSetPlaylist(nextPlaylistId);
-  }
-}
-
-const handlePlaylistPickerOpenChange = async (open) => {
-  showPlaylistPicker.value = open;
-  if (!open) {
-    playlistPickerQuery.value = '';
-    newPlaylistName.value = '';
-    isPlaylistPickerSubmitting.value = false;
-    return;
-  }
-  await fetchPlaylists();
-}
-
-const handleAddToPlaylist = async () => {
-  if (!video.value?.id) return;
-  showPlaylistPicker.value = true;
-  playlistPickerQuery.value = '';
-  newPlaylistName.value = '';
-  await fetchPlaylists();
-};
-
-const selectActivePlaylist = async (playlistId) => {
-  asideTab.value = 'playlist';
-  await loadAndSetPlaylist(playlistId);
-};
-
-const focusPlaylistTab = async (playlistId = null) => {
-  asideTab.value = 'playlist';
-  await fetchPlaylists();
-  const nextPlaylistId = playlistId ?? activePlaylist.value?.id ?? playlists.value[0]?.id;
-  if (nextPlaylistId) {
-    await loadAndSetPlaylist(nextPlaylistId);
-  }
-};
-
-const handleAddCurrentVideoToPlaylist = async (playlistId) => {
-  if (!video.value?.id || isPlaylistPickerSubmitting.value) return;
-
-  isPlaylistPickerSubmitting.value = true;
-  try {
-    const item = await addVideo(video.value.id, playlistId);
-    if (!item) return;
-
-    await focusPlaylistTab(playlistId);
-    showPlaylistPicker.value = false;
-  } finally {
-    isPlaylistPickerSubmitting.value = false;
-  }
-};
-
-const handleCreatePlaylistFromPicker = async () => {
-  const playlistName = newPlaylistName.value.trim();
-  if (!playlistName || !video.value?.id || isPlaylistPickerSubmitting.value) return;
-
-  isPlaylistPickerSubmitting.value = true;
-  try {
-    const createdPlaylist = await createPlaylist(playlistName, null);
-    if (!createdPlaylist) return;
-
-    const item = await addVideo(video.value.id, createdPlaylist.id);
-    if (!item) return;
-
-    await focusPlaylistTab(createdPlaylist.id);
-    showPlaylistPicker.value = false;
-    newPlaylistName.value = '';
-  } finally {
-    isPlaylistPickerSubmitting.value = false;
-  }
-};
-
-const handleAddCurrentVideoToActivePlaylist = async () => {
-  if (!video.value?.id || !activePlaylist.value || currentVideoAlreadyInActivePlaylist.value) return;
-  const item = await addVideo(video.value.id, activePlaylist.value.id);
-  if (!item) return;
-  await loadAndSetPlaylist(activePlaylist.value.id);
-};
-
-const playPlaylistItem = async (item) => {
-  if (!item?.video?.id) return;
-  setCurrentVideo(item.video.id);
-  await goToVideo(item.video.id, item.video);
-};
-
-const handleRemoveVideoFromActivePlaylist = async (item) => {
-  if (!activePlaylist.value) return;
-  await removeVideo(activePlaylist.value.id, item.video_id);
-};
-
-
-const handlePlayRandom = async () => {
-  const params = {};
-  
-  // 尝试多次获取，跳过最近播放过的视频
-  let attempts = 0;
-  const maxAttempts = 3;
-  
-  while (attempts < maxAttempts) {
-    const res = await getRandomVideo(params);
-    if (!res.error && res.data?.id) {
-      // 如果这个视频不在最近播放历史中，就播放它
-      if (!recentlyPlayed.value.includes(res.data.id)) {
-        await goToVideo(res.data.id, res.data);
-        return;
-      }
-    }
-    attempts++;
-  }
-  
-  // 如果尝试3次都是最近播放过的，就播放最后一个
-  const res = await getRandomVideo(params);
-  if (!res.error && res.data?.id) {
-    await goToVideo(res.data.id, res.data);
-  }
-};
-
-
-  // 聚焦到视频播放器，使键盘控制生效
-  const focusVideoPlayer = async () => {
-    try {
-      await focusGlobalVideoPlayer();
-    } catch (e) {
-      Logger.debug('Failed to focus video player', e);
-    }
-  };
-
-watch(videoPlayerHostRef, (element) => {
-  if (element) {
-    registerGlobalVideoPlayerTarget(element);
-    return;
-  }
-
-  unregisterGlobalVideoPlayerTarget();
-}, { immediate: true });
-
 watch(() => route.params.videoId, (videoId) => {
   setCurrentVideo(videoId ?? null);
 }, { immediate: true });
@@ -1095,220 +765,6 @@ watch(() => route.params.videoId, (videoId) => {
 watch(asideTab, async (tab) => {
   if (tab !== 'playlist') return;
   await ensurePlaylistData();
-});
-
-const isSameGlobalPlaybackSession = (videoId = route.params.videoId) => {
-  return String(globalVideoPlayerSession.currentVideoId || '') === String(videoId || '');
-};
-
-const hasReusableGlobalPlaybackSession = (videoId = route.params.videoId) => {
-  if (!isSameGlobalPlaybackSession(videoId)) return false;
-
-  return !!(
-    globalVideoPlayerSession.source
-    || globalVideoPlayerSession.externalError
-    || globalVideoPlayerSession.externalLoading
-    || globalVideoPlayerSession.videoSnapshot
-  );
-};
-
-const hydrateFromGlobalPlaybackSession = () => {
-  hydratePlaybackState({
-    videoSnapshot: globalVideoPlayerSession.videoSnapshot || null,
-    nextPlaybackSource: globalVideoPlayerSession.source || null,
-    nextSubtitleTracks: globalVideoPlayerSession.subtitles || [],
-    nextExternalError: globalVideoPlayerSession.externalError || null,
-    nextIsResolvingPlayback: globalVideoPlayerSession.externalLoading,
-    nextRelatedVideos: globalVideoPlayerSession.relatedVideos || [],
-    nextLoadingRelated: globalVideoPlayerSession.loadingRelated,
-  });
-};
-
-const hasActivePictureInPictureSession = () => {
-  if (globalVideoPlayerSession.pictureInPicture) {
-    return true;
-  }
-
-  if (typeof document === 'undefined') {
-    return false;
-  }
-
-  return !!document.pictureInPictureElement;
-};
-
-watch(
-  [
-    video,
-    playbackSource,
-    subtitleTracks,
-    () => video.value?.title,
-    resolvedInitialTime,
-    clipMarkers,
-    hasPrevVideo,
-    hasNextVideo,
-    externalError,
-    isWidescreen,
-    isResolvingPlayback,
-    effectiveTheme,
-    relatedVideos,
-    loadingRelated,
-    hasPrev,
-    hasNext,
-  ],
-  ([
-    nextVideo,
-    nextSource,
-    nextSubtitles,
-    nextTitle,
-    nextInitialTime,
-    nextClipMarkers,
-    nextHasPrev,
-    nextHasNext,
-    nextExternalError,
-    nextWidescreen,
-    nextExternalLoading,
-    nextTheme,
-    nextRelatedVideos,
-    nextLoadingRelated,
-    nextPlaylistPrev,
-    nextPlaylistNext,
-  ]) => {
-    const hasLocalPlaybackState = !!(
-      nextVideo
-      || nextSource
-      || nextExternalError
-      || nextExternalLoading
-    );
-
-    if (!hasLocalPlaybackState && hasReusableGlobalPlaybackSession()) {
-      return;
-    }
-
-    activateGlobalVideoPlayerSession({
-      target: videoPlayerHostRef.value,
-      source: nextSource,
-      subtitles: nextSubtitles || [],
-      clipMarkers: nextClipMarkers || [],
-      title: nextTitle || '',
-      initialTime: nextInitialTime,
-      hasPrev: nextHasPrev,
-      hasNext: nextHasNext,
-      externalError: nextExternalError,
-      widescreen: nextWidescreen,
-      externalLoading: nextExternalLoading,
-      adapter: playerAdapter,
-      theme: nextTheme,
-      currentVideoId: String(nextVideo?.id ?? route.params.videoId ?? ''),
-      videoSnapshot: nextVideo || null,
-      relatedVideos: nextRelatedVideos || [],
-      loadingRelated: nextLoadingRelated,
-      handlers: {
-        onPlay: onVideoPlay,
-        onPause: onVideoPause,
-        onEnded: handleAutoplayNext,
-        onTimeUpdate: handlePlaybackTimeUpdate,
-        onPrev: nextPlaylistPrev ? handlePrevVideoFromPlaylist : null,
-        onNext: nextPlaylistNext ? handleNextVideoFromPlaylist : null,
-        onRetry: handlePlayerRetry,
-        onWidescreenChange: toggleWidescreen,
-        onClipMarkerSelect: handleClipMarkerSeek,
-        onClipMarkersUpdated: handleClipMarkersUpdated,
-      }
-    });
-  },
-  { immediate: true }
-);
-
-const goToVideo = async (id, videoData = null) => {
-  if (!id) return;
-  const targetId = String(id);
-  if (String(video.value?.id ?? '') === targetId) return;
-  
-  // 记录当前视频到播放历史（如果有的话）
-  if (video.value?.id && !recentlyPlayed.value.includes(video.value.id)) {
-    recentlyPlayed.value.push(video.value.id);
-    // 只保留最近5个视频的历史
-    if (recentlyPlayed.value.length > 5) {
-      recentlyPlayed.value.shift();
-    }
-  }
-  
-  // 使用 Vue Router 进行导航，确保路由参数更新、后退可用，并触发依赖路由的逻辑
-  // 注意：state 只能存储可序列化的数据，避免传入响应式对象
-  if (String(route.params.videoId ?? '') !== targetId) {
-    const simpleState = videoData ? {
-      videoId: videoData.id,
-      title: videoData.title,
-      thumbnail: videoData.thumbnail,
-    } : {};
-
-    try {
-      await router.replace({ name: 'VideoPlay', params: { videoId: targetId }, query: {}, state: simpleState });
-    } catch (_) {
-      await router.replace(`/video/${targetId}`);
-    }
-  }
-};
-
-const handleAutoplayNext = async (evt) => {
-  try {
-    try { onVideoEnded(); } catch (_) {}
-    const autoplayEnabled = evt?.autoplay ?? true;
-    const autoplayNextEnabled = evt?.autoplayNext ?? true;
-    const loopEnabled = evt?.loop ?? false;
-    if (!autoplayEnabled || !autoplayNextEnabled || loopEnabled) return;
-
-    const playlistNext = goToNext();
-    if (playlistNext?.id) {
-      await goToVideo(playlistNext.id, playlistNext);
-      return;
-    }
-
-    const relatedList = Array.isArray(relatedVideos.value) ? relatedVideos.value : [];
-    if (!relatedList.length) return;
-
-    const currentId = String(video.value?.id ?? route.params.videoId ?? '');
-
-    // 查找第一个未在最近播放历史中的视频
-    const next = relatedList.find(v => (
-      v?.id
-      && String(v.id) !== currentId
-      && !recentlyPlayed.value.includes(v.id)
-    ));
-    if (next?.id) {
-      await goToVideo(next.id, next);
-      return;
-    }
-
-    // 相关视频已播完则停止
-  } catch (_) {}
-};
-
-
-
-onMounted(async () => {
-  if (hasReusableGlobalPlaybackSession()) {
-    hydrateFromGlobalPlaybackSession();
-  } else {
-    await loadAndPlayById(route.params.videoId);
-  }
-  await focusVideoPlayer();
-
-  setWidescreenClass(isWidescreen.value);
-  syncWidescreenSidebarState(isWidescreen.value);
-});
-
-watch(() => route.params.videoId, async (newId, oldId) => {
-  // 只有从外部导航进来才需要重新加载
-  // 内部切换（goToVideo）已经调用了loadAndPlayById，不需要重复加载
-  if (newId && newId !== oldId && video.value?.id !== newId) {
-    if (hasReusableGlobalPlaybackSession(newId)) {
-      hydrateFromGlobalPlaybackSession();
-    } else {
-      await loadAndPlayById(newId);
-    }
-    await focusVideoPlayer();
-  }
 });
 
 watch(
@@ -1348,17 +804,6 @@ watch(
 watch(() => relatedVideos.value, () => {
   Object.keys(relatedImagesLoaded).forEach(key => delete relatedImagesLoaded[key])
 }, { deep: true })
-
-onUnmounted(() => {
-  setWidescreenClass(false);
-  syncWidescreenSidebarState(false);
-  unregisterGlobalVideoPlayerTarget(videoPlayerHostRef.value);
-  if (hasActivePictureInPictureSession()) {
-    return;
-  }
-  void flushPendingReport();
-  clearGlobalVideoPlayerSession();
-});
 
 </script>
 

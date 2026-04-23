@@ -42,88 +42,64 @@ type DesktopWindow = Window & {
   desktopApp?: DesktopAppBridge
 }
 
-const isYouTubeUrl = (value: unknown) => {
-  const url = String(value || '').trim().toLowerCase()
-  if (!url) return false
-  return url.includes('youtube.com/') || url.includes('youtu.be/')
-}
-
-const isBilibiliUrl = (value: unknown) => {
-  const url = String(value || '').trim().toLowerCase()
-  if (!url) return false
-  return url.includes('bilibili.com/video/') || url.includes('b23.tv/')
-}
-
-const isPornhubUrl = (value: unknown) => {
-  const url = String(value || '').trim().toLowerCase()
-  if (!url) return false
-  return url.includes('pornhub.com/view_video.php') || url.includes('pornhub.com/video/') || url.includes('pornhub.com/embed/')
-}
-
-const isYouPornUrl = (value: unknown) => {
-  const url = String(value || '').trim().toLowerCase()
-  if (!url) return false
-  return url.includes('youporn.com/watch/')
-}
-
 const getDesktopBridge = () => {
   if (typeof window === 'undefined') return null
   const desktopWindow = window as DesktopWindow
   return desktopWindow.desktopApp || null
 }
 
-const resolveDesktopYouTubePlayback = async (
-  videoUrl: string,
-  options: VideoUrlOptions = {}
-): Promise<VideoUrlInfo | null> => {
-  const bridge = getDesktopBridge()
-  if (bridge?.isDesktop !== true || typeof bridge.resolveYouTubePlayback !== 'function') {
-    return null
-  }
+type DesktopResolverKey =
+  | 'resolveYouTubePlayback'
+  | 'resolveBilibiliPlayback'
+  | 'resolvePornhubPlayback'
+  | 'resolveYouPornPlayback'
 
-  return bridge.resolveYouTubePlayback(videoUrl, {
-    forceRefresh: options.forceRefresh === true,
-  })
+type DesktopPlaybackProvider = {
+  key: DesktopResolverKey
+  matches: (url: string) => boolean
+  prefersShaka?: boolean
+  debugLabel: string
 }
 
-const resolveDesktopBilibiliPlayback = async (
+const includesAny = (value: string, needles: string[]) => needles.some((needle) => value.includes(needle))
+
+const DESKTOP_PLAYBACK_PROVIDERS: DesktopPlaybackProvider[] = [
+  {
+    key: 'resolveYouTubePlayback',
+    debugLabel: 'YouTube',
+    prefersShaka: true,
+    matches: (url) => includesAny(url, ['youtube.com/', 'youtu.be/']),
+  },
+  {
+    key: 'resolveBilibiliPlayback',
+    debugLabel: 'Bilibili',
+    prefersShaka: true,
+    matches: (url) => includesAny(url, ['bilibili.com/video/', 'b23.tv/']),
+  },
+  {
+    key: 'resolvePornhubPlayback',
+    debugLabel: 'Pornhub',
+    matches: (url) => includesAny(url, ['pornhub.com/view_video.php', 'pornhub.com/video/', 'pornhub.com/embed/']),
+  },
+  {
+    key: 'resolveYouPornPlayback',
+    debugLabel: 'YouPorn',
+    matches: (url) => includesAny(url, ['youporn.com/watch/']),
+  },
+]
+
+const resolveDesktopPlayback = async (
+  provider: DesktopPlaybackProvider,
   videoUrl: string,
-  options: VideoUrlOptions = {}
+  options: VideoUrlOptions = {},
 ): Promise<VideoUrlInfo | null> => {
   const bridge = getDesktopBridge()
-  if (bridge?.isDesktop !== true || typeof bridge.resolveBilibiliPlayback !== 'function') {
+  const resolver = bridge?.[provider.key]
+  if (bridge?.isDesktop !== true || typeof resolver !== 'function') {
     return null
   }
 
-  return bridge.resolveBilibiliPlayback(videoUrl, {
-    forceRefresh: options.forceRefresh === true,
-  })
-}
-
-const resolveDesktopPornhubPlayback = async (
-  videoUrl: string,
-  options: VideoUrlOptions = {}
-): Promise<VideoUrlInfo | null> => {
-  const bridge = getDesktopBridge()
-  if (bridge?.isDesktop !== true || typeof bridge.resolvePornhubPlayback !== 'function') {
-    return null
-  }
-
-  return bridge.resolvePornhubPlayback(videoUrl, {
-    forceRefresh: options.forceRefresh === true,
-  })
-}
-
-const resolveDesktopYouPornPlayback = async (
-  videoUrl: string,
-  options: VideoUrlOptions = {}
-): Promise<VideoUrlInfo | null> => {
-  const bridge = getDesktopBridge()
-  if (bridge?.isDesktop !== true || typeof bridge.resolveYouPornPlayback !== 'function') {
-    return null
-  }
-
-  return bridge.resolveYouPornPlayback(videoUrl, {
+  return resolver(videoUrl, {
     forceRefresh: options.forceRefresh === true,
   })
 }
@@ -159,25 +135,11 @@ export default function useVideoOperations() {
       let error: any = null
       const playbackUrl = String(playbackVideo?.url || '').trim()
       const isDesktopClient = isDesktopPlaybackClient()
+      const matchedDesktopProvider = DESKTOP_PLAYBACK_PROVIDERS.find((provider) => provider.matches(playbackUrl))
 
-      if (isDesktopClient && isYouTubeUrl(playbackUrl)) {
-        Logger.debug('[getPlaybackSource] Resolving YouTube playback via desktop bridge', { videoId, forceRefresh })
-        data = await resolveDesktopYouTubePlayback(playbackUrl, { forceRefresh })
-      }
-
-      if (!data && isDesktopClient && isBilibiliUrl(playbackUrl)) {
-        Logger.debug('[getPlaybackSource] Resolving Bilibili playback via desktop bridge', { videoId, forceRefresh })
-        data = await resolveDesktopBilibiliPlayback(playbackUrl, { forceRefresh })
-      }
-
-      if (!data && isDesktopClient && isPornhubUrl(playbackUrl)) {
-        Logger.debug('[getPlaybackSource] Resolving Pornhub playback via desktop bridge', { videoId, forceRefresh })
-        data = await resolveDesktopPornhubPlayback(playbackUrl, { forceRefresh })
-      }
-
-      if (!data && isDesktopClient && isYouPornUrl(playbackUrl)) {
-        Logger.debug('[getPlaybackSource] Resolving YouPorn playback via desktop bridge', { videoId, forceRefresh })
-        data = await resolveDesktopYouPornPlayback(playbackUrl, { forceRefresh })
+      if (isDesktopClient && matchedDesktopProvider) {
+        Logger.debug(`[getPlaybackSource] Resolving ${matchedDesktopProvider.debugLabel} playback via desktop bridge`, { videoId, forceRefresh })
+        data = await resolveDesktopPlayback(matchedDesktopProvider, playbackUrl, { forceRefresh })
       }
 
       if (!data) {
@@ -218,7 +180,7 @@ export default function useVideoOperations() {
         ? URL.createObjectURL(new Blob([mpdContent], { type: 'application/dash+xml' }))
         : undefined
       const resolvedMpdUrl = localMpdUrl || mpdUrl || synthesizedMpdUrl
-      const playbackEngine = localMpdUrl && isDesktopClient && (isYouTubeUrl(playbackUrl) || isBilibiliUrl(playbackUrl))
+      const playbackEngine = localMpdUrl && isDesktopClient && matchedDesktopProvider?.prefersShaka
         ? 'shaka'
         : undefined
 
