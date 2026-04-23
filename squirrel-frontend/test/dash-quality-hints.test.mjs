@@ -95,6 +95,16 @@ test('shaka dash plugin resolves backend quality hints before falling back to ra
   assert.match(source, /const hintedMatches = this\.sourceQualityHints\.filter\(\(quality\) => \{/)
 })
 
+test('shaka dash plugin serializes player teardown before loading the next source', async () => {
+  const source = await readFile(shakaDashPluginPath, 'utf8')
+
+  assert.match(source, /private loadRequestSeq = 0/)
+  assert.match(source, /const requestSeq = \+\+this\.loadRequestSeq/)
+  assert.match(source, /await this\.destroyPlayer\(\)/)
+  assert.match(source, /if \(requestSeq !== this\.loadRequestSeq \|\| !this\.context\?\.videoElement\) return/)
+  assert.match(source, /if \(requestSeq !== this\.loadRequestSeq \|\| this\.player !== player\)/)
+})
+
 test('video player renders a dedicated codec menu alongside the quality menu', async () => {
   const source = await readFile(new URL('../src/components/video-player/VideoPlayer.vue', import.meta.url), 'utf8')
 

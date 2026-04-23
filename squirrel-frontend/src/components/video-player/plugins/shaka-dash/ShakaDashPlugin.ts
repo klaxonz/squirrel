@@ -31,6 +31,7 @@ export class ShakaDashPlugin implements PlayerPlugin {
   private selectedCodecFamily = 'auto'
   private activeCodecFamily: string | null = null
   private hasInstalledPolyfills = false
+  private loadRequestSeq = 0
 
   install(context: PluginContext, options?: ShakaDashPluginOptions): void {
     this.context = context
@@ -47,15 +48,17 @@ export class ShakaDashPlugin implements PlayerPlugin {
     const wantsShaka = source.playbackEngine === 'shaka'
 
     if (!isDash || !wantsShaka) {
-      this.destroyPlayer()
+      this.loadRequestSeq += 1
+      void this.destroyPlayer()
       this.currentSource = null
       return
     }
 
-    void this.loadSource(source.src)
+    const requestSeq = ++this.loadRequestSeq
+    void this.loadSource(source.src, requestSeq)
   }
 
-  private async loadSource(src: string): Promise<void> {
+  private async loadSource(src: string, requestSeq: number): Promise<void> {
     if (!this.context?.videoElement) return
 
     if (!this.hasInstalledPolyfills) {
@@ -63,13 +66,18 @@ export class ShakaDashPlugin implements PlayerPlugin {
       this.hasInstalledPolyfills = true
     }
 
-    this.destroyPlayer()
+    await this.destroyPlayer()
+    if (requestSeq !== this.loadRequestSeq || !this.context?.videoElement) return
     this.currentSource = src
 
     const player = new shaka.Player()
     this.player = player
 
     await player.attach(this.context.videoElement)
+    if (requestSeq !== this.loadRequestSeq || this.player !== player) {
+      await player.destroy().catch(() => {})
+      return
+    }
 
     player.configure({
       abr: {
@@ -99,6 +107,10 @@ export class ShakaDashPlugin implements PlayerPlugin {
 
     try {
       await player.load(src)
+      if (requestSeq !== this.loadRequestSeq || this.player !== player) {
+        await player.destroy().catch(() => {})
+        return
+      }
       this.updateActiveCodecFamily()
       this.updateQualities()
     } catch (error) {
@@ -385,16 +397,17 @@ export class ShakaDashPlugin implements PlayerPlugin {
   }
 
   destroy(): void {
-    this.destroyPlayer()
+    this.loadRequestSeq += 1
+    void this.destroyPlayer()
     this.context = null
     this.currentSource = null
   }
 
-  private destroyPlayer(): void {
+  private async destroyPlayer(): Promise<void> {
     const player = this.player
     this.player = null
     if (player) {
-      void player.destroy().catch(() => {})
+      await player.destroy().catch(() => {})
     }
     this.activeCodecFamily = null
   }
