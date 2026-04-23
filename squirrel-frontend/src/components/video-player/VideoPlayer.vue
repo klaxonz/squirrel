@@ -1496,11 +1496,20 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   position: absolute;
   inset: 0;
   background: #000;
+  border: none;
+  outline: none;
+  box-shadow: none;
   overflow: hidden;
   cursor: none;
   font-family: var(--sp-font-family);
   user-select: none;
   letter-spacing: 0.015em;
+}
+
+.sp-player:focus,
+.sp-player:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .sp-player.is-active {
