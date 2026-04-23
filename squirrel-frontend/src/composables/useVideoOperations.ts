@@ -54,6 +54,18 @@ const isBilibiliUrl = (value: unknown) => {
   return url.includes('bilibili.com/video/') || url.includes('b23.tv/')
 }
 
+const isPornhubUrl = (value: unknown) => {
+  const url = String(value || '').trim().toLowerCase()
+  if (!url) return false
+  return url.includes('pornhub.com/view_video.php') || url.includes('pornhub.com/video/') || url.includes('pornhub.com/embed/')
+}
+
+const isYouPornUrl = (value: unknown) => {
+  const url = String(value || '').trim().toLowerCase()
+  if (!url) return false
+  return url.includes('youporn.com/watch/')
+}
+
 const getDesktopBridge = () => {
   if (typeof window === 'undefined') return null
   const desktopWindow = window as DesktopWindow
@@ -84,6 +96,34 @@ const resolveDesktopBilibiliPlayback = async (
   }
 
   return bridge.resolveBilibiliPlayback(videoUrl, {
+    forceRefresh: options.forceRefresh === true,
+  })
+}
+
+const resolveDesktopPornhubPlayback = async (
+  videoUrl: string,
+  options: VideoUrlOptions = {}
+): Promise<VideoUrlInfo | null> => {
+  const bridge = getDesktopBridge()
+  if (bridge?.isDesktop !== true || typeof bridge.resolvePornhubPlayback !== 'function') {
+    return null
+  }
+
+  return bridge.resolvePornhubPlayback(videoUrl, {
+    forceRefresh: options.forceRefresh === true,
+  })
+}
+
+const resolveDesktopYouPornPlayback = async (
+  videoUrl: string,
+  options: VideoUrlOptions = {}
+): Promise<VideoUrlInfo | null> => {
+  const bridge = getDesktopBridge()
+  if (bridge?.isDesktop !== true || typeof bridge.resolveYouPornPlayback !== 'function') {
+    return null
+  }
+
+  return bridge.resolveYouPornPlayback(videoUrl, {
     forceRefresh: options.forceRefresh === true,
   })
 }
@@ -128,6 +168,16 @@ export default function useVideoOperations() {
       if (!data && isDesktopClient && isBilibiliUrl(playbackUrl)) {
         Logger.debug('[getPlaybackSource] Resolving Bilibili playback via desktop bridge', { videoId, forceRefresh })
         data = await resolveDesktopBilibiliPlayback(playbackUrl, { forceRefresh })
+      }
+
+      if (!data && isDesktopClient && isPornhubUrl(playbackUrl)) {
+        Logger.debug('[getPlaybackSource] Resolving Pornhub playback via desktop bridge', { videoId, forceRefresh })
+        data = await resolveDesktopPornhubPlayback(playbackUrl, { forceRefresh })
+      }
+
+      if (!data && isDesktopClient && isYouPornUrl(playbackUrl)) {
+        Logger.debug('[getPlaybackSource] Resolving YouPorn playback via desktop bridge', { videoId, forceRefresh })
+        data = await resolveDesktopYouPornPlayback(playbackUrl, { forceRefresh })
       }
 
       if (!data) {

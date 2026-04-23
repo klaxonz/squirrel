@@ -4,14 +4,20 @@ import { fileURLToPath } from 'node:url'
 
 import { app, BrowserWindow, clipboard, ipcMain, Menu, session, shell } from 'electron'
 import { resolveBilibiliPlayback } from './playback/providers/bilibili/index.mjs'
+import { resolvePornhubPlayback } from './playback/providers/pornhub/index.mjs'
+import { resolveYouPornPlayback } from './playback/providers/youporn/index.mjs'
 import { resolveYouTubePlayback } from './playback/providers/youtube/index.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const repoRoot = path.resolve(__dirname, '..', '..')
 const bilibiliCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'bilibili.txt')
+const pornhubCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'pornhub.txt')
+const youpornCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'youporn.txt')
 const youtubeCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'youtube.txt')
 const youtubeOAuthStateFilePath = path.join(repoRoot, 'config', 'youtube_oauth.json')
+const pornhubAgeGateCookieHeader = 'age_verified=1; accessAgeDisclaimerPH=1; accessAgeDisclaimerUK=1; accessPH=1'
+const youpornAgeGateCookieHeader = 'showAgeDisclaimer=1; access=1; accessPH=1'
 
 const APP_NAME = 'Squirrel'
 const DEFAULT_APP_URL = 'http://127.0.0.1:8001'
@@ -133,6 +139,38 @@ const isBilibiliCookieTarget = (targetUrl) => {
   }
 }
 
+const isPornhubCookieTarget = (targetUrl) => {
+  const normalizedUrl = normalizeTargetUrl(targetUrl)
+  if (!normalizedUrl) {
+    return false
+  }
+
+  try {
+    const hostname = new URL(normalizedUrl).hostname.toLowerCase()
+    return hostname === 'pornhub.com'
+      || hostname.endsWith('.pornhub.com')
+      || hostname.endsWith('.phncdn.com')
+  } catch {
+    return false
+  }
+}
+
+const isYouPornCookieTarget = (targetUrl) => {
+  const normalizedUrl = normalizeTargetUrl(targetUrl)
+  if (!normalizedUrl) {
+    return false
+  }
+
+  try {
+    const hostname = new URL(normalizedUrl).hostname.toLowerCase()
+    return hostname === 'youporn.com'
+      || hostname.endsWith('.youporn.com')
+      || hostname.endsWith('.ypncdn.com')
+  } catch {
+    return false
+  }
+}
+
 const readNetscapeCookieFileHeader = (cookieFilePath, domainSuffixes) => {
   if (!fs.existsSync(cookieFilePath)) {
     return ''
@@ -189,6 +227,20 @@ const readBilibiliCookieFileHeader = () => {
     'bilivideo.cn',
     'hdslb.com',
     'acgvideo.com',
+  ])
+}
+
+const readPornhubCookieFileHeader = () => {
+  return readNetscapeCookieFileHeader(pornhubCookieFilePath, [
+    'pornhub.com',
+    'phncdn.com',
+  ])
+}
+
+const readYouPornCookieFileHeader = () => {
+  return readNetscapeCookieFileHeader(youpornCookieFilePath, [
+    'youporn.com',
+    'ypncdn.com',
   ])
 }
 
@@ -253,7 +305,59 @@ const buildCookieHeaderForUrl = async (targetUrl) => {
     return mergeCookieHeaders(readBilibiliCookieFileHeader(), sessionCookieHeader)
   }
 
+  if (isPornhubCookieTarget(normalizedUrl)) {
+    return mergeCookieHeaders(readPornhubCookieFileHeader(), sessionCookieHeader)
+  }
+
+  if (isYouPornCookieTarget(normalizedUrl)) {
+    return mergeCookieHeaders(readYouPornCookieFileHeader(), sessionCookieHeader)
+  }
+
   return sessionCookieHeader
+}
+
+const buildStaticCookieHeaderForUrl = (targetUrl) => {
+  const normalizedUrl = normalizeTargetUrl(targetUrl)
+  if (!normalizedUrl) {
+    return ''
+  }
+
+  if (isYouTubeCookieTarget(normalizedUrl)) {
+    return readYoutubeCookieFileHeader()
+  }
+
+  if (isBilibiliCookieTarget(normalizedUrl)) {
+    return readBilibiliCookieFileHeader()
+  }
+
+  if (isPornhubCookieTarget(normalizedUrl)) {
+    return mergeCookieHeaders(pornhubAgeGateCookieHeader, readPornhubCookieFileHeader())
+  }
+
+  if (isYouPornCookieTarget(normalizedUrl)) {
+    return mergeCookieHeaders(youpornAgeGateCookieHeader, readYouPornCookieFileHeader())
+  }
+
+  return ''
+}
+
+const createSessionFetch = () => {
+  return async (targetUrl, options = {}) => {
+    const abortController = new AbortController()
+    const timeoutMs = Number(options?.timeoutMs) || 25000
+    const timer = setTimeout(() => abortController.abort(), timeoutMs)
+
+    try {
+      return await session.defaultSession.fetch(targetUrl, {
+        method: options?.method || 'GET',
+        headers: options?.headers || {},
+        redirect: options?.redirect || 'follow',
+        signal: abortController.signal,
+      })
+    } finally {
+      clearTimeout(timer)
+    }
+  }
 }
 
 // ── Escape helpers ──────────────────────────────────────────────────────────
@@ -574,6 +678,10 @@ const RELAXED_CROSS_ORIGIN_HOSTS = [
   'bilivideo.cn',
   'hdslb.com',
   'acgvideo.com',
+  'pornhub.com',
+  'phncdn.com',
+  'youporn.com',
+  'ypncdn.com',
 ]
 const RELAXED_RESPONSE_HEADER_NAMES = new Set([
   'cross-origin-resource-policy',
@@ -628,6 +736,16 @@ const installDesktopMediaHeaders = () => {
       ...details.requestHeaders,
       ...rule.headers,
     }
+
+    const cookieHeader = mergeCookieHeaders(
+      details.requestHeaders?.Cookie,
+      details.requestHeaders?.cookie,
+      buildStaticCookieHeaderForUrl(details.url),
+    )
+    if (cookieHeader) {
+      requestHeaders.Cookie = cookieHeader
+    }
+
     callback({ requestHeaders })
   })
 
@@ -732,6 +850,36 @@ const installDesktopBridgeHandlers = () => {
     const cookie = await buildCookieHeaderForUrl(normalizedUrl)
     return resolveBilibiliPlayback(normalizedUrl, {
       cookie,
+      forceRefresh: options?.forceRefresh === true,
+    })
+  })
+
+  ipcMain.removeHandler('desktop:resolve-pornhub-playback')
+  ipcMain.handle('desktop:resolve-pornhub-playback', async (_event, targetUrl, options = {}) => {
+    const normalizedUrl = normalizeTargetUrl(targetUrl)
+    if (!normalizedUrl) {
+      throw new Error('Invalid Pornhub URL')
+    }
+
+    const cookie = await buildCookieHeaderForUrl(normalizedUrl)
+    return resolvePornhubPlayback(normalizedUrl, {
+      cookie,
+      fetchImpl: createSessionFetch(),
+      forceRefresh: options?.forceRefresh === true,
+    })
+  })
+
+  ipcMain.removeHandler('desktop:resolve-youporn-playback')
+  ipcMain.handle('desktop:resolve-youporn-playback', async (_event, targetUrl, options = {}) => {
+    const normalizedUrl = normalizeTargetUrl(targetUrl)
+    if (!normalizedUrl) {
+      throw new Error('Invalid YouPorn URL')
+    }
+
+    const cookie = await buildCookieHeaderForUrl(normalizedUrl)
+    return resolveYouPornPlayback(normalizedUrl, {
+      cookie,
+      fetchImpl: createSessionFetch(),
       forceRefresh: options?.forceRefresh === true,
     })
   })

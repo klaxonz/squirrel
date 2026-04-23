@@ -21,50 +21,36 @@ interface DesktopAppBridge {
   onWindowStateChange?: (listener: (state: DesktopWindowState) => void) => () => void
   reloadApp?: () => void
   openExternal?: (targetUrl: string) => Promise<boolean>
-  resolveBilibiliPlayback?: (
-    targetUrl: string,
-    options?: { forceRefresh?: boolean }
-  ) => Promise<{
-    stream_type?: 'hls' | 'dash' | 'progressive'
-    mpd_url?: string | null
-    mpd_content?: string | null
-    video_url?: string | null
-    audio_url?: string | null
-    default_quality_id?: string | null
-    supports_manual_quality?: boolean
-    qualities?: Array<{
-      value: string
-      label: string
-      height?: number | null
-      bandwidth?: number | null
-      codec?: string
-      id?: string | number | null
-    }> | null
-  }>
-  resolveYouTubePlayback?: (
-    targetUrl: string,
-    options?: { forceRefresh?: boolean }
-  ) => Promise<{
-    stream_type?: 'hls' | 'dash' | 'progressive'
-    mpd_url?: string | null
-    mpd_content?: string | null
-    video_url?: string | null
-    audio_url?: string | null
-    default_quality_id?: string | null
-    supports_manual_quality?: boolean
-    qualities?: Array<{
-      value: string
-      label: string
-      height?: number | null
-      bandwidth?: number | null
-      id?: string | null
-    }> | null
-  }>
+  resolveBilibiliPlayback?: DesktopPlaybackResolver
+  resolvePornhubPlayback?: DesktopPlaybackResolver
+  resolveYouPornPlayback?: DesktopPlaybackResolver
+  resolveYouTubePlayback?: DesktopPlaybackResolver
   getServerUrl?: () => Promise<string>
   setServerUrl?: (url: string) => Promise<string | false>
   clearServerUrl?: () => Promise<boolean>
   onServerUrlChange?: (listener: (url: string) => void) => () => void
 }
+
+type DesktopPlaybackResolver = (
+  targetUrl: string,
+  options?: { forceRefresh?: boolean }
+) => Promise<{
+  stream_type?: 'hls' | 'dash' | 'progressive'
+  mpd_url?: string | null
+  mpd_content?: string | null
+  video_url?: string | null
+  audio_url?: string | null
+  default_quality_id?: string | null
+  supports_manual_quality?: boolean
+  qualities?: Array<{
+    value: string
+    label: string
+    height?: number | null
+    bandwidth?: number | null
+    codec?: string
+    id?: string | number | null
+  }> | null
+}>
 
 interface DesktopWindowState {
   isMaximized?: boolean
