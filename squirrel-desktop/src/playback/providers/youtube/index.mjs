@@ -75,6 +75,25 @@ const parseMimeParts = (mimeType) => {
   return { mime, codecs }
 }
 
+const normalizeCodecFamily = (codecString) => {
+  const normalized = String(codecString || '').toLowerCase()
+  if (!normalized) return null
+  if (normalized.includes('av01') || normalized.includes('av1')) return 'av1'
+  if (normalized.includes('vp09') || normalized.includes('vp9')) return 'vp9'
+  if (normalized.includes('avc1') || normalized.includes('avc') || normalized.includes('h264')) return 'avc'
+  if (normalized.includes('mp4a') || normalized.includes('aac')) return 'aac'
+  if (normalized.includes('opus')) return 'opus'
+  return normalized
+}
+
+const qualityBucketKey = (format, fallbackIndex) => {
+  if (typeof format?.height === 'number' && format.height > 0) {
+    return `height:${format.height}`
+  }
+  const label = String(format?.quality_label ?? format?.itag ?? fallbackIndex).trim().toLowerCase()
+  return `label:${label}`
+}
+
 const representationGroupKey = (format, kind) => {
   const { mime, codecs } = parseMimeParts(format?.mime_type)
   return [kind, mime || '', codecs || ''].join('|')
@@ -213,17 +232,20 @@ const buildQualities = (formats) => {
   const candidates = sortFormats((formats || []).filter((format) => format?.has_video))
 
   return candidates.reduce((qualities, format, index) => {
-    const id = String(format.itag ?? format.quality_label ?? index)
-    if (seen.has(id)) {
+    const bucketKey = qualityBucketKey(format, index)
+    if (seen.has(bucketKey)) {
       return qualities
     }
-    seen.add(id)
+    seen.add(bucketKey)
+    const { codecs } = parseMimeParts(format.mime_type)
+    const id = String(format.itag ?? format.quality_label ?? index)
     qualities.push({
       id,
       value: id,
       label: format.quality_label || (format.height ? `${format.height}p` : id),
       height: typeof format.height === 'number' ? format.height : null,
       bandwidth: typeof format.bitrate === 'number' ? format.bitrate : null,
+      codec: normalizeCodecFamily(codecs) || undefined,
     })
     return qualities
   }, [])

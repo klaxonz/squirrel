@@ -36,7 +36,7 @@ export class ShakaDashPlugin implements PlayerPlugin {
   install(context: PluginContext, options?: ShakaDashPluginOptions): void {
     this.context = context
     this.options = {
-      enableAutoQuality: true,
+      enableAutoQuality: false,
       ...options,
     }
   }
@@ -235,6 +235,11 @@ export class ShakaDashPlugin implements PlayerPlugin {
     const qualities = hinted.length > 0 ? hinted : this.buildQualitiesFromVariants()
     this.context.registerQualities(qualities)
     this.context.emit('qualitiesloaded', qualities)
+
+    if (!this.options.enableAutoQuality && !this.context.state.quality && qualities.length > 0) {
+      this.setQuality(qualities[0].id ?? qualities[0].label)
+      return
+    }
 
     const current = this.getCurrentQualityTrack()
     if (!current) return

@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises'
 const useVideoOperationsPath = new URL('../src/composables/useVideoOperations.ts', import.meta.url)
 const dashPluginPath = new URL('../src/components/video-player/plugins/dash/DashPlugin.ts', import.meta.url)
 const shakaDashPluginPath = new URL('../src/components/video-player/plugins/shaka-dash/ShakaDashPlugin.ts', import.meta.url)
+const youtubeProviderPath = new URL('../../squirrel-desktop/src/playback/providers/youtube/index.mjs', import.meta.url)
 
 test('video operations forward backend quality hints into the player source', async () => {
   const source = await readFile(useVideoOperationsPath, 'utf8')
@@ -95,6 +96,14 @@ test('shaka dash plugin resolves backend quality hints before falling back to ra
   assert.match(source, /const hintedMatches = this\.sourceQualityHints\.filter\(\(quality\) => \{/)
 })
 
+test('shaka dash plugin defaults to highest manual quality instead of adaptive bitrate', async () => {
+  const source = await readFile(shakaDashPluginPath, 'utf8')
+
+  assert.match(source, /enableAutoQuality:\s*false,/)
+  assert.match(source, /if \(!this\.options\.enableAutoQuality && !this\.context\.state\.quality && qualities\.length > 0\) \{/)
+  assert.match(source, /this\.setQuality\(qualities\[0\]\.id \?\? qualities\[0\]\.label\)/)
+})
+
 test('shaka dash plugin serializes player teardown before loading the next source', async () => {
   const source = await readFile(shakaDashPluginPath, 'utf8')
 
@@ -105,16 +114,13 @@ test('shaka dash plugin serializes player teardown before loading the next sourc
   assert.match(source, /if \(requestSeq !== this\.loadRequestSeq \|\| this\.player !== player\)/)
 })
 
-test('video player renders a dedicated codec menu alongside the quality menu', async () => {
+test('video player keeps codec selection internal and exposes only the quality menu', async () => {
   const source = await readFile(new URL('../src/components/video-player/VideoPlayer.vue', import.meta.url), 'utf8')
 
-  assert.match(source, /v-if="codecFamilies\.length > 1"/)
-  assert.match(source, /settingsView = 'codec'/)
-  assert.match(source, /v-else-if="settingsView === 'codec'"/)
-  assert.match(source, /handleCodecFamilySelect/)
-  assert.doesNotMatch(source, /handleCodecFamilySelect\('auto'\)/)
-  assert.doesNotMatch(source, /selectedCodecFamily === 'auto'/)
-  assert.doesNotMatch(source, /codecAutoLabel/)
+  assert.match(source, /<span>\{\{ t\('quality'\) \}\}<\/span>/)
+  assert.doesNotMatch(source, /settingsView = 'codec'/)
+  assert.doesNotMatch(source, /v-else-if="settingsView === 'codec'"/)
+  assert.doesNotMatch(source, /handleCodecFamilySelect/)
 })
 
 test('video player filters the quality menu by the selected or active codec family', async () => {
@@ -126,5 +132,17 @@ test('video player filters the quality menu by the selected or active codec fami
   assert.match(source, /:\s*currentCodecFamily\.value/)
   assert.match(source, /const displayedQualities = computed\(\(\) =>/)
   assert.match(source, /qualities\.value\.filter\(\(quality\) => getCodecFamily\(quality\.codec\) === visibleCodecFamily\.value\)/)
+  assert.match(source, /const dedupedQualities = new Map/)
+  assert.match(source, /const bucketKey = getQualityBucketKey\(quality\)/)
+  assert.match(source, /scoreQualityForDisplay\(quality\) > scoreQualityForDisplay\(existing\)/)
   assert.match(source, /v-for="q in displayedQualities"/)
+})
+
+test('youtube provider collapses duplicate codec ladders into one visible quality per resolution', async () => {
+  const source = await readFile(youtubeProviderPath, 'utf8')
+
+  assert.match(source, /const qualityBucketKey = \(format, fallbackIndex\) =>/)
+  assert.match(source, /if \(seen\.has\(bucketKey\)\)/)
+  assert.match(source, /seen\.add\(bucketKey\)/)
+  assert.match(source, /codec: normalizeCodecFamily\(codecs\) \|\| undefined/)
 })

@@ -217,10 +217,6 @@
               <span>{{ t('playbackSpeed') }}</span>
               <span class="sp-menu-val">{{ store.playbackRate }}x</span>
             </div>
-            <div v-if="codecFamilies.length > 1" class="sp-menu-item" @click="settingsView = 'codec'">
-              <span>{{ t('codec') }}</span>
-              <span class="sp-menu-val">{{ codecMenuLabel }}</span>
-            </div>
             <div v-if="displayedQualities.length > 0" class="sp-menu-item" @click="settingsView = 'quality'">
               <span>{{ t('quality') }}</span>
               <span class="sp-menu-val">{{ qualityMenuLabel }}</span>
@@ -240,22 +236,6 @@
                  class="sp-menu-item" :class="{ 'is-active': store.playbackRate === rate }"
                  @click="handleSpeedSelect(rate)">
               {{ rate }}x
-            </div>
-          </div>
-        </template>
-        <template v-else-if="settingsView === 'codec'">
-          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'main'">
-            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('codec') }}
-          </div>
-          <div class="sp-menu-list">
-            <div
-              v-for="codecFamily in codecFamilies"
-              :key="codecFamily"
-              class="sp-menu-item"
-              :class="{ 'is-active': selectedCodecFamily === codecFamily }"
-              @click="handleCodecFamilySelect(codecFamily)"
-            >
-              {{ formatCodecFamilyLabel(codecFamily) }}
             </div>
           </div>
         </template>
@@ -512,8 +492,8 @@ const {
   play, pause, seek, setVolume, toggleMute, setPlaybackRate, toggleFullscreen,
   togglePictureInPicture,
   subtitleTracks, currentSubtitle, subtitleStyle, subtitlePresets, setSubtitle, setSubtitleTracks, setSubtitleStyle, applySubtitlePreset, loadSource, theme, t,
-  qualities, codecFamilies, selectedCodecFamily, currentCodecFamily,
-  currentQualityLabel, currentQualityId, setQuality, setCodecFamily
+  qualities, selectedCodecFamily, currentCodecFamily,
+  currentQualityLabel, currentQualityId, setQuality
 } = usePlayer({
   autoplay: props.autoplay,
   adapter: props.adapter ?? undefined,
@@ -1006,17 +986,58 @@ const visibleCodecFamily = computed(() => (
     ? selectedCodecFamily.value
     : currentCodecFamily.value
 ))
-const displayedQualities = computed(() => {
-  if (!visibleCodecFamily.value) return qualities.value
-  const codecMatchedQualities = qualities.value.filter((quality) => getCodecFamily(quality.codec) === visibleCodecFamily.value)
-  return codecMatchedQualities.length > 0 ? codecMatchedQualities : qualities.value
-})
 const isInternalQualityLabel = (label: string | null | undefined) => /^level[_\s-]?\d+$/i.test(String(label || '').trim())
 const isAutoQualityLabel = (label: string | null | undefined) => ['auto', '??', '??'].includes(String(label || '').trim().toLowerCase())
 const isDisplayableQualityLabel = (label: string | null | undefined) => !isInternalQualityLabel(label) && !isAutoQualityLabel(label)
 const resolvedCurrentQuality = computed(() => {
   if (currentQualityId.value === null || currentQualityId.value === undefined) return null
   return qualities.value.find((quality) => String(quality.id) === String(currentQualityId.value)) || null
+})
+const getQualityBucketKey = (quality: { height?: number | null; label?: string | null; id?: string | number | null }) => {
+  const height = Number(quality.height || 0)
+  if (Number.isFinite(height) && height > 0) {
+    return `height:${height}`
+  }
+  const label = String(quality.label || quality.id || '').trim().toLowerCase()
+  return `label:${label}`
+}
+const scoreQualityForDisplay = (quality: { id?: string | number | null; codec?: string | null; height?: number | null; bitrate?: number | null }) => {
+  let score = 0
+  if (resolvedCurrentQuality.value && String(quality.id) === String(resolvedCurrentQuality.value.id)) {
+    score += 1_000_000_000_000
+  }
+
+  const preferredCodecFamily = visibleCodecFamily.value
+    || getCodecFamily(resolvedCurrentQuality.value?.codec)
+    || currentCodecFamily.value
+  if (preferredCodecFamily && getCodecFamily(quality.codec) === preferredCodecFamily) {
+    score += 1_000_000_000
+  }
+
+  score += Math.max(0, Number(quality.height || 0)) * 1_000_000
+  score += Math.max(0, Number(quality.bitrate || 0))
+  return score
+}
+const displayedQualities = computed(() => {
+  const codecMatchedQualities = visibleCodecFamily.value
+    ? qualities.value.filter((quality) => getCodecFamily(quality.codec) === visibleCodecFamily.value)
+    : qualities.value
+  const sourceQualities = codecMatchedQualities.length > 0 ? codecMatchedQualities : qualities.value
+  const dedupedQualities = new Map<string, typeof sourceQualities[number]>()
+
+  sourceQualities.forEach((quality) => {
+    const bucketKey = getQualityBucketKey(quality)
+    const existing = dedupedQualities.get(bucketKey)
+    if (!existing || scoreQualityForDisplay(quality) > scoreQualityForDisplay(existing)) {
+      dedupedQualities.set(bucketKey, quality)
+    }
+  })
+
+  return [...dedupedQualities.values()].sort((left, right) => {
+    const heightDelta = (Number(right.height || 0) - Number(left.height || 0))
+    if (heightDelta !== 0) return heightDelta
+    return Number(right.bitrate || 0) - Number(left.bitrate || 0)
+  })
 })
 const currentQualityText = computed(() => (
   resolvedCurrentQuality.value?.label
@@ -1028,12 +1049,6 @@ const subtitleMenuLabel = computed(() => {
   if (!store.subtitlesEnabled || !currentSubtitle.value) return t('subtitlesOff')
   return currentSubtitle.value.label
 })
-const codecMenuLabel = computed(() => (
-  selectedCodecFamily.value === 'auto'
-    ? formatCodecFamilyLabel(currentCodecFamily.value || visibleCodecFamily.value || codecFamilies.value[0] || null)
-    : formatCodecFamilyLabel(selectedCodecFamily.value)
-))
-
 let removeInitialTimeListener: (() => void) | null = null
 let removeResumeAfterSourceSwapListener: (() => void) | null = null
 let initialTimeAppliedSourceKey: string | null = null
@@ -1170,7 +1185,6 @@ const toggleQualityMenu = () => {
   showQualityMenu.value = nextVisible
 }
 const handleSpeedSelect = (rate: number) => { setPlaybackRate(rate); closeMenus() }
-const handleCodecFamilySelect = (codecFamily: string) => { setCodecFamily(codecFamily); closeMenus() }
 const handleQualitySelect = (q: any) => { setQuality(q.id); closeMenus() }
 const handleSubtitleSelect = (track: SubtitleTrack) => { setSubtitle(track); closeMenus() }
 const handleSubtitleDisable = () => { setSubtitle(null); closeMenus() }
