@@ -3,11 +3,13 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { app, BrowserWindow, clipboard, ipcMain, Menu, session, shell } from 'electron'
+import { resolveBilibiliPlayback } from './playback/providers/bilibili/index.mjs'
 import { resolveYouTubePlayback } from './playback/providers/youtube/index.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const repoRoot = path.resolve(__dirname, '..', '..')
+const bilibiliCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'bilibili.txt')
 const youtubeCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'youtube.txt')
 const youtubeOAuthStateFilePath = path.join(repoRoot, 'config', 'youtube_oauth.json')
 
@@ -111,13 +113,33 @@ const isYouTubeCookieTarget = (targetUrl) => {
   }
 }
 
-const readYoutubeCookieFileHeader = () => {
-  if (!fs.existsSync(youtubeCookieFilePath)) {
+const isBilibiliCookieTarget = (targetUrl) => {
+  const normalizedUrl = normalizeTargetUrl(targetUrl)
+  if (!normalizedUrl) {
+    return false
+  }
+
+  try {
+    const hostname = new URL(normalizedUrl).hostname.toLowerCase()
+    return hostname === 'bilibili.com'
+      || hostname.endsWith('.bilibili.com')
+      || hostname === 'b23.tv'
+      || hostname.endsWith('.bilivideo.com')
+      || hostname.endsWith('.bilivideo.cn')
+      || hostname.endsWith('.hdslb.com')
+      || hostname.endsWith('.acgvideo.com')
+  } catch {
+    return false
+  }
+}
+
+const readNetscapeCookieFileHeader = (cookieFilePath, domainSuffixes) => {
+  if (!fs.existsSync(cookieFilePath)) {
     return ''
   }
 
   try {
-    const raw = fs.readFileSync(youtubeCookieFilePath, 'utf8')
+    const raw = fs.readFileSync(cookieFilePath, 'utf8')
     const pairs = []
 
     for (const rawLine of raw.split(/\r?\n/)) {
@@ -143,7 +165,7 @@ const readYoutubeCookieFileHeader = () => {
       const name = String(parts[5] || '').trim()
       const value = String(parts[6] || '').trim()
 
-      if (!domain.endsWith('youtube.com') || !name) {
+      if (!name || !domainSuffixes.some((suffix) => domain.endsWith(suffix))) {
         continue
       }
 
@@ -154,6 +176,20 @@ const readYoutubeCookieFileHeader = () => {
   } catch {
     return ''
   }
+}
+
+const readYoutubeCookieFileHeader = () => {
+  return readNetscapeCookieFileHeader(youtubeCookieFilePath, ['youtube.com'])
+}
+
+const readBilibiliCookieFileHeader = () => {
+  return readNetscapeCookieFileHeader(bilibiliCookieFilePath, [
+    'bilibili.com',
+    'bilivideo.com',
+    'bilivideo.cn',
+    'hdslb.com',
+    'acgvideo.com',
+  ])
 }
 
 const mergeCookieHeaders = (...cookieHeaders) => {
@@ -209,11 +245,15 @@ const buildCookieHeaderForUrl = async (targetUrl) => {
     sessionCookieHeader = ''
   }
 
-  if (!isYouTubeCookieTarget(normalizedUrl)) {
-    return sessionCookieHeader
+  if (isYouTubeCookieTarget(normalizedUrl)) {
+    return mergeCookieHeaders(readYoutubeCookieFileHeader(), sessionCookieHeader)
   }
 
-  return mergeCookieHeaders(readYoutubeCookieFileHeader(), sessionCookieHeader)
+  if (isBilibiliCookieTarget(normalizedUrl)) {
+    return mergeCookieHeaders(readBilibiliCookieFileHeader(), sessionCookieHeader)
+  }
+
+  return sessionCookieHeader
 }
 
 // ── Escape helpers ──────────────────────────────────────────────────────────
@@ -464,7 +504,7 @@ const showErrorShell = (mainWindow, details) => {
 
 const MEDIA_HEADER_RULES = [
   {
-    hosts: ['bilivideo.com', 'bilibili.com', 'b23.tv'],
+    hosts: ['bilivideo.com', 'bilivideo.cn', 'bilibili.com', 'b23.tv', 'hdslb.com', 'acgvideo.com'],
     headers: {
       Referer: 'https://www.bilibili.com/',
       Origin: 'https://www.bilibili.com',
@@ -521,7 +561,20 @@ const MEDIA_HEADER_RULES = [
   },
 ]
 
-const RELAXED_CROSS_ORIGIN_HOSTS = ['surrit.com', 'jdbstatic.com', 'youtube.com', 'googlevideo.com', 'gvt1.com', 'ytimg.com']
+const RELAXED_CROSS_ORIGIN_HOSTS = [
+  'surrit.com',
+  'jdbstatic.com',
+  'youtube.com',
+  'googlevideo.com',
+  'gvt1.com',
+  'ytimg.com',
+  'bilibili.com',
+  'b23.tv',
+  'bilivideo.com',
+  'bilivideo.cn',
+  'hdslb.com',
+  'acgvideo.com',
+]
 const RELAXED_RESPONSE_HEADER_NAMES = new Set([
   'cross-origin-resource-policy',
   'cross-origin-embedder-policy',
@@ -664,6 +717,20 @@ const installDesktopBridgeHandlers = () => {
 
     const cookie = await buildCookieHeaderForUrl(normalizedUrl)
     return resolveYouTubePlayback(normalizedUrl, {
+      cookie,
+      forceRefresh: options?.forceRefresh === true,
+    })
+  })
+
+  ipcMain.removeHandler('desktop:resolve-bilibili-playback')
+  ipcMain.handle('desktop:resolve-bilibili-playback', async (_event, targetUrl, options = {}) => {
+    const normalizedUrl = normalizeTargetUrl(targetUrl)
+    if (!normalizedUrl) {
+      throw new Error('Invalid Bilibili URL')
+    }
+
+    const cookie = await buildCookieHeaderForUrl(normalizedUrl)
+    return resolveBilibiliPlayback(normalizedUrl, {
       cookie,
       forceRefresh: options?.forceRefresh === true,
     })

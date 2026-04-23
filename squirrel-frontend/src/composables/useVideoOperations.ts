@@ -48,6 +48,12 @@ const isYouTubeUrl = (value: unknown) => {
   return url.includes('youtube.com/') || url.includes('youtu.be/')
 }
 
+const isBilibiliUrl = (value: unknown) => {
+  const url = String(value || '').trim().toLowerCase()
+  if (!url) return false
+  return url.includes('bilibili.com/video/') || url.includes('b23.tv/')
+}
+
 const getDesktopBridge = () => {
   if (typeof window === 'undefined') return null
   const desktopWindow = window as DesktopWindow
@@ -64,6 +70,20 @@ const resolveDesktopYouTubePlayback = async (
   }
 
   return bridge.resolveYouTubePlayback(videoUrl, {
+    forceRefresh: options.forceRefresh === true,
+  })
+}
+
+const resolveDesktopBilibiliPlayback = async (
+  videoUrl: string,
+  options: VideoUrlOptions = {}
+): Promise<VideoUrlInfo | null> => {
+  const bridge = getDesktopBridge()
+  if (bridge?.isDesktop !== true || typeof bridge.resolveBilibiliPlayback !== 'function') {
+    return null
+  }
+
+  return bridge.resolveBilibiliPlayback(videoUrl, {
     forceRefresh: options.forceRefresh === true,
   })
 }
@@ -105,6 +125,11 @@ export default function useVideoOperations() {
         data = await resolveDesktopYouTubePlayback(playbackUrl, { forceRefresh })
       }
 
+      if (!data && isDesktopClient && isBilibiliUrl(playbackUrl)) {
+        Logger.debug('[getPlaybackSource] Resolving Bilibili playback via desktop bridge', { videoId, forceRefresh })
+        data = await resolveDesktopBilibiliPlayback(playbackUrl, { forceRefresh })
+      }
+
       if (!data) {
         // 统一通过后端获取播放链接（VideoUrlDto），后端会在 bilibili/YouTube 情况下返回 mpd_url 与可选清晰度
         Logger.debug('[getPlaybackSource] Fetching /api/video/url', { videoId, forceRefresh })
@@ -143,7 +168,7 @@ export default function useVideoOperations() {
         ? URL.createObjectURL(new Blob([mpdContent], { type: 'application/dash+xml' }))
         : undefined
       const resolvedMpdUrl = localMpdUrl || mpdUrl || synthesizedMpdUrl
-      const playbackEngine = localMpdUrl && isDesktopClient && isYouTubeUrl(playbackUrl)
+      const playbackEngine = localMpdUrl && isDesktopClient && (isYouTubeUrl(playbackUrl) || isBilibiliUrl(playbackUrl))
         ? 'shaka'
         : undefined
 
