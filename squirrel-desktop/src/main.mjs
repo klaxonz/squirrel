@@ -216,6 +216,66 @@ const readNetscapeCookieFileHeader = (cookieFilePath, domainSuffixes) => {
   }
 }
 
+const readNetscapeCookies = (cookieFilePath, domainSuffixes) => {
+  if (!fs.existsSync(cookieFilePath)) {
+    return []
+  }
+
+  try {
+    const raw = fs.readFileSync(cookieFilePath, 'utf8')
+    const cookies = []
+
+    for (const rawLine of raw.split(/\r?\n/)) {
+      const line = rawLine.trim()
+      if (!line) {
+        continue
+      }
+
+      const normalizedLine = line.startsWith('#HttpOnly_')
+        ? line.slice('#HttpOnly_'.length)
+        : line
+
+      if (normalizedLine.startsWith('#')) {
+        continue
+      }
+
+      const parts = normalizedLine.split('\t')
+      if (parts.length < 7) {
+        continue
+      }
+
+      const domain = String(parts[0] || '').trim().toLowerCase()
+      const pathValue = String(parts[2] || '/').trim() || '/'
+      const secure = String(parts[3] || '').trim().toUpperCase() === 'TRUE'
+      const expires = Number.parseInt(String(parts[4] || '0').trim(), 10)
+      const name = String(parts[5] || '').trim()
+      const value = String(parts[6] || '').trim()
+
+      if (!name || !value) {
+        continue
+      }
+
+      const normalizedDomain = domain.replace(/^\./, '')
+      if (!domainSuffixes.some((suffix) => normalizedDomain.endsWith(suffix))) {
+        continue
+      }
+
+      cookies.push({
+        domain,
+        path: pathValue,
+        secure,
+        expirationDate: Number.isFinite(expires) && expires > 0 ? expires : undefined,
+        name,
+        value,
+      })
+    }
+
+    return cookies
+  } catch {
+    return []
+  }
+}
+
 const readYoutubeCookieFileHeader = () => {
   return readNetscapeCookieFileHeader(youtubeCookieFilePath, ['youtube.com'])
 }
@@ -228,6 +288,50 @@ const readBilibiliCookieFileHeader = () => {
     'hdslb.com',
     'acgvideo.com',
   ])
+}
+
+const readBilibiliCookies = () => {
+  return readNetscapeCookies(bilibiliCookieFilePath, [
+    'bilibili.com',
+    'bilivideo.com',
+    'bilivideo.cn',
+    'hdslb.com',
+    'acgvideo.com',
+  ])
+}
+
+const clearSessionCookiesForUrl = async (targetUrl) => {
+  const normalizedUrl = normalizeTargetUrl(targetUrl)
+  if (!normalizedUrl) {
+    return
+  }
+
+  const domainMatchers = isBilibiliCookieTarget(normalizedUrl)
+    ? ['bilibili.com', 'bilivideo.com', 'bilivideo.cn', 'hdslb.com', 'acgvideo.com']
+    : []
+
+  if (domainMatchers.length === 0) {
+    return
+  }
+
+  try {
+    const cookies = await session.defaultSession.cookies.get({})
+    for (const cookie of cookies) {
+      const cookieDomain = String(cookie.domain || '').replace(/^\./, '').toLowerCase()
+      if (!domainMatchers.some((suffix) => cookieDomain.endsWith(suffix))) {
+        continue
+      }
+
+      const removalUrl = `${cookie.secure ? 'https' : 'http'}://${cookieDomain}${cookie.path || '/'}`
+      try {
+        await session.defaultSession.cookies.remove(removalUrl, cookie.name)
+      } catch {
+        // Ignore removal failures for individual cookies.
+      }
+    }
+  } catch {
+    // Ignore cookie cleanup failures.
+  }
 }
 
 const readPornhubCookieFileHeader = () => {
@@ -314,6 +418,38 @@ const buildCookieHeaderForUrl = async (targetUrl) => {
   }
 
   return sessionCookieHeader
+}
+
+const syncCookiesToSession = async (targetUrl) => {
+  const normalizedUrl = normalizeTargetUrl(targetUrl)
+  if (!normalizedUrl) {
+    return
+  }
+
+  let cookieEntries = []
+  if (isBilibiliCookieTarget(normalizedUrl)) {
+    cookieEntries = readBilibiliCookies()
+  } else {
+    return
+  }
+
+  for (const entry of cookieEntries) {
+    const host = entry.domain.replace(/^\./, '')
+    const candidateUrl = `https://${host}${entry.path || '/'}`
+    try {
+      await session.defaultSession.cookies.set({
+        url: candidateUrl,
+        name: entry.name,
+        value: entry.value,
+        domain: entry.domain.startsWith('.') ? entry.domain : undefined,
+        path: entry.path || '/',
+        secure: entry.secure,
+        expirationDate: entry.expirationDate,
+      })
+    } catch {
+      // Ignore cookie sync failures for non-critical entries.
+    }
+  }
 }
 
 const buildStaticCookieHeaderForUrl = (targetUrl) => {
@@ -847,10 +983,13 @@ const installDesktopBridgeHandlers = () => {
       throw new Error('Invalid Bilibili URL')
     }
 
-    const cookie = await buildCookieHeaderForUrl(normalizedUrl)
+    await clearSessionCookiesForUrl(normalizedUrl)
+    await syncCookiesToSession(normalizedUrl)
+    const cookie = buildStaticCookieHeaderForUrl(normalizedUrl)
     return resolveBilibiliPlayback(normalizedUrl, {
       cookie,
       forceRefresh: options?.forceRefresh === true,
+      fetchImpl: createSessionFetch(),
     })
   })
 

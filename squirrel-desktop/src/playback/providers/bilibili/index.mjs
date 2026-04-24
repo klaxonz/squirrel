@@ -1,21 +1,7 @@
-import { createHash } from 'node:crypto'
+import { resolveBilibiliApiPayload } from './request-runtime.mjs'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 const playbackCache = new Map()
-const wbiKeyCache = {
-  value: null,
-  expiresAt: 0,
-}
-
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
-const BILIBILI_REFERER = 'https://www.bilibili.com/'
-
-const WBI_MIXIN_KEY_ENC_TAB = [
-  46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
-  33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40,
-  61, 26, 17, 0, 1, 60, 51, 30, 4, 22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11,
-  36, 20, 34, 44, 52,
-]
 
 const QUALITY_HEIGHT_MAP = new Map([
   [16, 360],
@@ -72,61 +58,12 @@ const setCachedPayload = (cacheKey, value) => {
   })
 }
 
-const buildHeaders = (cookie = '', extra = {}) => {
-  const headers = {
-    Accept: 'application/json',
-    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-    Referer: BILIBILI_REFERER,
-    'User-Agent': USER_AGENT,
-    ...extra,
-  }
-
-  if (cookie) {
-    headers.Cookie = cookie
-  }
-
-  return headers
-}
-
-const fetchJson = async (url, { cookie = '', params = null, timeoutMs = 25000 } = {}) => {
-  const target = new URL(url)
-  if (params) {
-    for (const [key, value] of Object.entries(params)) {
-      if (value !== null && value !== undefined && value !== '') {
-        target.searchParams.set(key, String(value))
-      }
-    }
-  }
-
-  const abortController = new AbortController()
-  const timer = setTimeout(() => abortController.abort(), timeoutMs)
-  try {
-    const response = await fetch(target, {
-      headers: buildHeaders(cookie),
-      signal: abortController.signal,
-    })
-    const payload = await response.json()
-
-    if (!response.ok) {
-      throw new Error(`Bilibili request failed with HTTP ${response.status}`)
-    }
-
-    const code = payload?.code
-    if (code !== undefined && code !== 0) {
-      throw new Error(`${payload?.message || payload?.msg || code} (code=${code})`)
-    }
-
-    return payload?.data || payload || {}
-  } finally {
-    clearTimeout(timer)
-  }
-}
 
 const resolveRedirectUrl = async (targetUrl, cookie = '') => {
   let currentUrl = targetUrl
   for (let index = 0; index < 5; index += 1) {
     const response = await fetch(currentUrl, {
-      headers: buildHeaders(cookie),
+      headers: cookie ? { cookie } : {},
       redirect: 'manual',
     })
     const location = response.headers.get('location')
@@ -151,161 +88,8 @@ const normalizeVideoUrl = async (targetUrl, cookie = '') => {
   return normalizedUrl
 }
 
-const extractPageIndex = (targetUrl) => {
-  try {
-    const url = new URL(targetUrl)
-    const page = url.searchParams.get('p') || url.searchParams.get('page')
-    const numericPage = Number.parseInt(page || '', 10)
-    return Number.isFinite(numericPage) ? Math.max(numericPage - 1, 0) : 0
-  } catch {
-    return 0
-  }
-}
-
-const extractVideoId = (targetUrl) => {
-  const input = String(targetUrl || '')
-  const bvidMatch = input.match(/(BV[0-9A-Za-z]{10,})/)
-  if (bvidMatch?.[1]) {
-    return { bvid: bvidMatch[1], aid: null }
-  }
-
-  const avMatch = input.match(/\/av(\d+)/i)
-  if (avMatch?.[1]) {
-    return { bvid: null, aid: Number.parseInt(avMatch[1], 10) }
-  }
-
-  try {
-    const url = new URL(input)
-    const queryBvid = url.searchParams.get('bvid')
-    if (queryBvid && /^BV[0-9A-Za-z]{10,}$/.test(queryBvid)) {
-      return { bvid: queryBvid, aid: null }
-    }
-    const queryAid = url.searchParams.get('aid') || url.searchParams.get('avid')
-    const numericAid = Number.parseInt(queryAid || '', 10)
-    if (Number.isFinite(numericAid)) {
-      return { bvid: null, aid: numericAid }
-    }
-  } catch {
-    // Ignore URL parse failures.
-  }
-
-  return { bvid: null, aid: null }
-}
-
-const getMixinKey = (value) => {
-  return WBI_MIXIN_KEY_ENC_TAB
-    .map((index) => value[index] || '')
-    .join('')
-    .slice(0, 32)
-}
-
-const getWbiKeys = async (cookie = '') => {
-  if (wbiKeyCache.value && wbiKeyCache.expiresAt > Date.now()) {
-    return wbiKeyCache.value
-  }
-
-  const nav = await fetchJson('https://api.bilibili.com/x/web-interface/nav', {
-    cookie,
-    timeoutMs: 15000,
-  })
-  const imgUrl = String(nav?.wbi_img?.img_url || '')
-  const subUrl = String(nav?.wbi_img?.sub_url || '')
-  const imgKey = imgUrl.split('/').pop()?.split('.')[0] || ''
-  const subKey = subUrl.split('/').pop()?.split('.')[0] || ''
-
-  if (!imgKey || !subKey) {
-    throw new Error('Bilibili WBI keys are missing')
-  }
-
-  wbiKeyCache.value = { imgKey, subKey }
-  wbiKeyCache.expiresAt = Date.now() + 60 * 60 * 1000
-  return wbiKeyCache.value
-}
-
-const signWbiParams = async (params, cookie = '') => {
-  const { imgKey, subKey } = await getWbiKeys(cookie)
-  const mixinKey = getMixinKey(`${imgKey}${subKey}`)
-  const cleanParams = {
-    ...params,
-    wts: String(Math.round(Date.now() / 1000)),
-  }
-  const sortedEntries = Object.entries(cleanParams)
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, value]) => [
-      key,
-      String(value).replace(/[!'()*]/g, ''),
-    ])
-  const query = new URLSearchParams(sortedEntries).toString()
-  const wRid = createHash('md5').update(`${query}${mixinKey}`).digest('hex')
-  return {
-    ...Object.fromEntries(sortedEntries),
-    w_rid: wRid,
-  }
-}
-
-const fetchVideoInfo = async (targetUrl, cookie = '') => {
-  const normalizedUrl = await normalizeVideoUrl(targetUrl, cookie)
-  const pageIndex = extractPageIndex(normalizedUrl)
-  const { bvid, aid } = extractVideoId(normalizedUrl)
-
-  if (!bvid && !aid) {
-    throw new Error('URL is not a supported Bilibili video link')
-  }
-
-  const infoParams = {}
-  if (bvid) {
-    infoParams.bvid = bvid
-  } else {
-    infoParams.aid = String(aid)
-  }
-
-  const info = await fetchJson('https://api.bilibili.com/x/web-interface/view', {
-    cookie,
-    params: infoParams,
-  })
-  const pages = Array.isArray(info?.pages) ? info.pages : []
-  const pageInfo = pages[Math.min(pageIndex, Math.max(pages.length - 1, 0))] || null
-  const cid = Number.parseInt(String(pageInfo?.cid || ''), 10)
-
-  if (!Number.isFinite(cid)) {
-    throw new Error('Failed to resolve Bilibili cid')
-  }
-
-  return {
-    info,
-    context: {
-      url: normalizedUrl,
-      pageIndex,
-      bvid: info?.bvid || bvid || null,
-      aid: info?.aid || aid || null,
-      cid,
-    },
-  }
-}
-
-const fetchPlayData = async (targetUrl, cookie = '') => {
-  const { context } = await fetchVideoInfo(targetUrl, cookie)
-  const params = {
-    cid: String(context.cid),
-    qn: '127',
-    fnver: '0',
-    fnval: '4048',
-    fourk: '1',
-  }
-
-  if (context.bvid) {
-    params.bvid = context.bvid
-  } else if (context.aid) {
-    params.aid = String(context.aid)
-  }
-
-  const signedParams = await signWbiParams(params, cookie)
-  const playData = await fetchJson('https://api.bilibili.com/x/player/wbi/playurl', {
-    cookie,
-    params: signedParams,
-  })
-
-  return { playData, context }
+const fetchPlayData = async (targetUrl, { cookie = '', fetchImpl = null } = {}) => {
+  return resolveBilibiliApiPayload(targetUrl, { cookie, fetchImpl })
 }
 
 const baseUrlOf = (stream) => {
@@ -532,7 +316,7 @@ export const clearBilibiliPlaybackCache = () => {
   playbackCache.clear()
 }
 
-export async function resolveBilibiliPlayback(targetUrl, { cookie = '', forceRefresh = false } = {}) {
+export async function resolveBilibiliPlayback(targetUrl, { cookie = '', forceRefresh = false, fetchImpl = null } = {}) {
   const normalizedUrl = await normalizeVideoUrl(targetUrl, cookie)
   const cacheKey = `${normalizedUrl}|cookie=${cookie ? '1' : '0'}`
   if (!forceRefresh) {
@@ -542,7 +326,7 @@ export async function resolveBilibiliPlayback(targetUrl, { cookie = '', forceRef
     }
   }
 
-  const response = await fetchPlayData(normalizedUrl, cookie)
+  const response = await fetchPlayData(normalizedUrl, { cookie, fetchImpl })
   const payload = mapPlaybackPayload(response)
   setCachedPayload(cacheKey, payload)
   return payload

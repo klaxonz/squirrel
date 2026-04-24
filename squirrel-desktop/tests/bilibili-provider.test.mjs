@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { resolveBilibiliPlayback } from '../src/playback/providers/bilibili/index.mjs'
+import { resolveBilibiliApiPayload } from '../src/playback/providers/bilibili/request-runtime.mjs'
 
 test('desktop bilibili provider builds codec-separated video adaptation sets with unique representation ids', async () => {
   const originalFetch = globalThis.fetch
@@ -160,4 +161,108 @@ test('desktop bilibili provider builds codec-separated video adaptation sets wit
   } finally {
     globalThis.fetch = originalFetch
   }
+})
+
+test('desktop bilibili request runtime accepts injected fetch implementations', async () => {
+  const calls = []
+  const fetchImpl = async (input) => {
+    const url = new URL(String(input))
+    calls.push(url.toString())
+
+    if (url.pathname === '/x/web-interface/view') {
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            code: 0,
+            data: {
+              bvid: 'BV1LooLBUEf9',
+              aid: 116460101831801,
+              pages: [{ cid: 37789109465 }],
+            },
+          })
+        },
+      }
+    }
+
+    if (url.pathname === '/x/web-interface/nav') {
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            code: 0,
+            data: {
+              isLogin: true,
+              wbi_img: {
+                img_url: 'https://i0.hdslb.com/bfs/wbi/abcdefghijklmnopqrstuvwxyz123456.png',
+                sub_url: 'https://i0.hdslb.com/bfs/wbi/123456abcdefghijklmnopqrstuvwxyz7890.png',
+              },
+            },
+          })
+        },
+      }
+    }
+
+    if (url.pathname === '/x/player/wbi/playurl') {
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            code: 0,
+            data: {
+              quality: 80,
+              dash: {
+                duration: 76,
+                minBufferTime: 1.5,
+                video: [
+                  {
+                    id: 80,
+                    codecid: 7,
+                    codecs: 'avc1.640033',
+                    width: 1920,
+                    height: 1080,
+                    bandwidth: 456306,
+                    baseUrl: 'https://cdn.example.test/avc-1080.m4s',
+                    SegmentBase: {
+                      indexRange: '945-4768',
+                      Initialization: '0-944',
+                    },
+                  },
+                ],
+                audio: [
+                  {
+                    id: 30280,
+                    codecs: 'mp4a.40.2',
+                    bandwidth: 84522,
+                    baseUrl: 'https://cdn.example.test/audio.m4s',
+                    SegmentBase: {
+                      indexRange: '945-4768',
+                      Initialization: '0-944',
+                    },
+                  },
+                ],
+              },
+            },
+          })
+        },
+      }
+    }
+
+    throw new Error(`Unexpected injected fetch: ${url.toString()}`)
+  }
+
+  const payload = await resolveBilibiliApiPayload('https://www.bilibili.com/video/BV1LooLBUEf9', {
+    cookie: 'SESSDATA=demo',
+    fetchImpl,
+  })
+
+  assert.equal(payload.context.cid, 37789109465)
+  assert.equal(payload.playData?.quality, 80)
+  assert.equal(calls.length, 3)
+  assert.match(calls[0], /\/x\/web-interface\/view/)
+  assert.match(calls[1], /\/x\/web-interface\/nav/)
+  assert.match(calls[2], /\/x\/player\/wbi\/playurl/)
 })

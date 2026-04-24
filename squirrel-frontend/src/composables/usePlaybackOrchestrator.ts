@@ -89,8 +89,7 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
         return getPlaybackSource(videoId, options, initialPlaybackVideo)
       }
 
-      await detailPromise
-      return getPlaybackSource(videoId, options, video.value as any)
+      return getPlaybackSource(videoId, options, null)
     })()
 
     Promise.resolve(detailPromise).then(() => {

@@ -12,8 +12,10 @@ test('playback orchestrator exposes a page-level playback resolving state and st
 
   assert.match(source, /const isResolvingPlayback = ref\(false\)/)
   assert.match(source, /isResolvingPlayback\.value = true/)
-  assert.match(source, /const playbackPromise = getPlaybackSource\(videoId, options\)/)
+  assert.match(source, /const playbackPromise = \(async \(\) => \{/)
   assert.match(source, /const detailPromise = !hasInitialData/)
+  assert.match(source, /return getPlaybackSource\(videoId, options, null\)/)
+  assert.doesNotMatch(source, /await detailPromise\s*return getPlaybackSource\(videoId, options, video\.value as any\)/)
   assert.match(source, /const source = await playbackPromise/)
   assert.match(source, /if \(seq === requestSeq\.value\) \{\s*isResolvingPlayback\.value = false\s*\}/)
   assert.match(source, /isResolvingPlayback,/)
