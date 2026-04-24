@@ -73,7 +73,6 @@ const DESKTOP_PLAYBACK_PROVIDERS: DesktopPlaybackProvider[] = [
   {
     key: 'resolveBilibiliPlayback',
     debugLabel: 'Bilibili',
-    prefersShaka: true,
     matches: (url) => includesAny(url, ['bilibili.com/video/', 'b23.tv/']),
   },
   {
