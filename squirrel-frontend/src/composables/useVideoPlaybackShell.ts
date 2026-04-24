@@ -14,6 +14,7 @@ type VideoLike = {
 type PlaybackSourceLike = Record<string, unknown> | null
 type ClipMarkerLike = Record<string, unknown>
 type RelatedVideoLike = Record<string, unknown>
+type VideoSeedGetter = (videoId: unknown) => VideoLike | null
 
 type RouteLike = {
   params: Record<string, unknown>
@@ -89,6 +90,7 @@ export default function useVideoPlaybackShell({
   focusGlobalVideoPlayer,
   hydratePlaybackState,
   loadAndPlayById,
+  consumePlaybackSeed,
   onVideoPlay,
   onVideoPause,
   handleAutoplayNext,
@@ -132,7 +134,8 @@ export default function useVideoPlaybackShell({
     nextRelatedVideos: RelatedVideoLike[]
     nextLoadingRelated: boolean | undefined
   }) => void
-  loadAndPlayById: (videoId: unknown) => Promise<void>
+  loadAndPlayById: (videoId: unknown, initialVideoData?: VideoLike | null) => Promise<void>
+  consumePlaybackSeed: VideoSeedGetter
   onVideoPlay: () => void
   onVideoPause: () => void
   handleAutoplayNext: (event?: { autoplay?: boolean; autoplayNext?: boolean; loop?: boolean }) => void | Promise<void>
@@ -308,7 +311,7 @@ export default function useVideoPlaybackShell({
     if (hasReusableGlobalPlaybackSession()) {
       hydrateFromGlobalPlaybackSession()
     } else {
-      await loadAndPlayById(route.params.videoId)
+      await loadAndPlayById(route.params.videoId, consumePlaybackSeed(route.params.videoId))
     }
     await focusVideoPlayer()
 
@@ -321,7 +324,7 @@ export default function useVideoPlaybackShell({
       if (hasReusableGlobalPlaybackSession(newId)) {
         hydrateFromGlobalPlaybackSession()
       } else {
-        await loadAndPlayById(newId)
+        await loadAndPlayById(newId, consumePlaybackSeed(newId))
       }
       await focusVideoPlayer()
     }

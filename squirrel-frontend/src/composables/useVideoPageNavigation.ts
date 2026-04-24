@@ -3,6 +3,7 @@ import type { ComputedRef, Ref } from 'vue'
 import type { RouteLocationNormalizedLoaded, Router } from 'vue-router'
 
 import { getRandomVideo } from '@/api'
+import { rememberVideoPlaybackSeed } from './videoPlaybackSeed'
 
 type VideoId = string | number
 
@@ -58,6 +59,9 @@ export default function useVideoPageNavigation({
     if (String(video.value?.id ?? '') === targetId) return
 
     pushRecentlyPlayed(video.value?.id)
+    if (videoData) {
+      rememberVideoPlaybackSeed(videoData)
+    }
 
     if (String(route.params.videoId ?? '') !== targetId) {
       const simpleState = videoData ? {

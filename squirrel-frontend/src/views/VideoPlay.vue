@@ -468,6 +468,7 @@ import useVideoClipMarkers from '../composables/useVideoClipMarkers';
 import useVideoPlaybackShell from '../composables/useVideoPlaybackShell';
 import useVideoPageNavigation from '../composables/useVideoPageNavigation';
 import useVideoPlaylistPanel from '../composables/useVideoPlaylistPanel';
+import { consumeVideoPlaybackSeed, peekVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { useGlobalVideoPlayer } from '@/composables/useGlobalVideoPlayer'
 import { useAppTheme } from '@/composables/useAppTheme'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
@@ -496,6 +497,8 @@ const route = useRoute();
 const router = useRouter();
 const emitter = inject('emitter');
 const APP_TITLE = 'Squirrel'
+const getRoutePlaybackSeed = (videoId = route.params.videoId) => consumeVideoPlaybackSeed(videoId)
+const initialPlaybackSeed = peekVideoPlaybackSeed(route.params.videoId)
 
 const playerAdapter = new LocalStorageAdapter();
 const { effectiveTheme } = useAppTheme()
@@ -522,7 +525,7 @@ const {
   externalError,
   isResolvingPlayback,
   hydratePlaybackState,
-} = usePlaybackOrchestrator(null);
+} = usePlaybackOrchestrator(initialPlaybackSeed);
 const { sendReport } = useVideoHistory();
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction();
 const {
@@ -726,6 +729,7 @@ const {
   focusGlobalVideoPlayer,
   hydratePlaybackState,
   loadAndPlayById,
+  consumePlaybackSeed: getRoutePlaybackSeed,
   onVideoPlay,
   onVideoPause,
   handleAutoplayNext,
