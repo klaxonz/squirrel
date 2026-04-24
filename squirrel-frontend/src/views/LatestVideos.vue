@@ -73,6 +73,7 @@ import ChannelHeader from '@/components/feed/ChannelHeader.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { VIDEO_TABS } from '@/constants/videos'
+import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { onSubscriptionRemoved } from '@/utils/subscriptionEvents'
 
 const router = useRouter()
@@ -101,6 +102,7 @@ const handleGlobalSearch = (keyword) => {
 }
 
 const handleOpenModal = (video) => {
+  rememberVideoPlaybackSeed(video)
   router.push(`/video/${video.id}`)
 }
 
