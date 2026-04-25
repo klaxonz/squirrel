@@ -1,4 +1,4 @@
-import { resolveYoutubeiPayload } from './youtubei_core.mjs'
+import { prewarmYoutubeiRuntime, resolveYoutubeiPayload } from './youtubei_core.mjs'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 const playbackCache = new Map()
@@ -275,18 +275,6 @@ const mapPlaybackPayload = (response) => {
     }
   }
 
-  if (hasAdaptiveSet && dashManifestUrl) {
-    return {
-      stream_type: 'dash',
-      video_url: null,
-      audio_url: null,
-      mpd_url: dashManifestUrl,
-      qualities: qualities.length > 0 ? qualities : null,
-      default_quality_id: qualities[0]?.id || null,
-      supports_manual_quality: qualities.length > 1,
-    }
-  }
-
   if (hasAdaptiveSet) {
     const localDashManifest = response?.local_dash_manifest || buildFallbackLocalDashManifest(formats)
     if (localDashManifest) {
@@ -300,6 +288,18 @@ const mapPlaybackPayload = (response) => {
         default_quality_id: qualities[0]?.id || null,
         supports_manual_quality: qualities.length > 1,
       }
+    }
+  }
+
+  if (hasAdaptiveSet && dashManifestUrl) {
+    return {
+      stream_type: 'dash',
+      video_url: null,
+      audio_url: null,
+      mpd_url: dashManifestUrl,
+      qualities: qualities.length > 0 ? qualities : null,
+      default_quality_id: qualities[0]?.id || null,
+      supports_manual_quality: qualities.length > 1,
     }
   }
 
@@ -334,6 +334,10 @@ const mapPlaybackPayload = (response) => {
 
 export const clearYouTubePlaybackCache = () => {
   playbackCache.clear()
+}
+
+export const prewarmYouTubePlayback = (cookie = '') => {
+  return prewarmYoutubeiRuntime(cookie)
 }
 
 export async function resolveYouTubePlayback(targetUrl, { cookie = '', forceRefresh = false } = {}) {

@@ -7,8 +7,8 @@ import { Innertube, Platform, UniversalCache } from 'youtubei.js/web';
 
 import { SessionManager } from './build/session_manager.js';
 
-const AUTHENTICATED_PLAYBACK_CLIENTS = ['ANDROID', 'MWEB', 'WEB', 'TV'];
-const AUTHENTICATED_FULL_CLIENTS = ['ANDROID', 'MWEB', 'WEB', 'TV'];
+const AUTHENTICATED_PLAYBACK_CLIENTS = ['ANDROID', 'WEB', 'TV', 'MWEB'];
+const AUTHENTICATED_FULL_CLIENTS = ['ANDROID', 'WEB', 'TV', 'MWEB'];
 const ANONYMOUS_CLIENTS = ['ANDROID', 'WEB'];
 const CAPTIONS_ANONYMOUS_CLIENTS = ['ANDROID', 'WEB'];
 const CAPTIONS_AUTHENTICATED_CLIENTS = ['WEB', 'TV', 'MWEB'];

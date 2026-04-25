@@ -6,7 +6,7 @@ import { app, BrowserWindow, clipboard, ipcMain, Menu, session, shell } from 'el
 import { resolveBilibiliPlayback } from './playback/providers/bilibili/index.mjs'
 import { resolvePornhubPlayback } from './playback/providers/pornhub/index.mjs'
 import { resolveYouPornPlayback } from './playback/providers/youporn/index.mjs'
-import { resolveYouTubePlayback } from './playback/providers/youtube/index.mjs'
+import { prewarmYouTubePlayback, resolveYouTubePlayback } from './playback/providers/youtube/index.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -278,6 +278,15 @@ const readNetscapeCookies = (cookieFilePath, domainSuffixes) => {
 
 const readYoutubeCookieFileHeader = () => {
   return readNetscapeCookieFileHeader(youtubeCookieFilePath, ['youtube.com'])
+}
+
+const prewarmDesktopPlaybackProviders = () => {
+  setTimeout(() => {
+    const cookie = readYoutubeCookieFileHeader()
+    void prewarmYouTubePlayback(cookie).catch((error) => {
+      console.debug('[squirrel-desktop] YouTube playback prewarm skipped', error?.message || error)
+    })
+  }, 1000)
 }
 
 const readBilibiliCookieFileHeader = () => {
@@ -1376,6 +1385,7 @@ if (!hasSingleInstanceLock) {
     installDesktopBridgeHandlers()
     installDesktopMediaHeaders()
     createMainWindow()
+    prewarmDesktopPlaybackProviders()
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {

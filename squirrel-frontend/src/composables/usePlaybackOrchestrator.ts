@@ -27,6 +27,18 @@ const toRecord = (value: unknown): Record<string, any> => {
   return {}
 }
 
+type DesktopWindow = Window & {
+  desktopApp?: { isDesktop?: boolean }
+}
+
+const isDesktopPlaybackClient = () => {
+  if (typeof window === 'undefined') return false
+  const desktopWindow = window as DesktopWindow
+  if (desktopWindow.desktopApp?.isDesktop === true) return true
+  if (typeof navigator === 'undefined') return false
+  return /electron|tauri/i.test(String(navigator.userAgent || ''))
+}
+
 export default function usePlaybackOrchestrator(initialVideo: VideoLike | null = null) {
   const { video, startTime, fetchVideoDetails, maybeInjectSubtitles, setVideoSnapshot } = useVideoDetail(initialVideo)
   const { relatedVideos, loadingRelated, fetchRelatedVideos, setRelatedVideosSnapshot } = useRelatedVideos(video)
@@ -87,6 +99,13 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
 
       if (initialPlaybackVideo) {
         return getPlaybackSource(videoId, options, initialPlaybackVideo)
+      }
+
+      if (isDesktopPlaybackClient()) {
+        const detailedVideo = await detailPromise
+        if (detailedVideo && typeof (detailedVideo as any).url === 'string') {
+          return getPlaybackSource(videoId, options, detailedVideo as any)
+        }
       }
 
       return getPlaybackSource(videoId, options, null)

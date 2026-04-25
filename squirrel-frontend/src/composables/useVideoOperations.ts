@@ -57,7 +57,6 @@ type DesktopResolverKey =
 type DesktopPlaybackProvider = {
   key: DesktopResolverKey
   matches: (url: string) => boolean
-  prefersShaka?: boolean
   debugLabel: string
 }
 
@@ -67,7 +66,6 @@ const DESKTOP_PLAYBACK_PROVIDERS: DesktopPlaybackProvider[] = [
   {
     key: 'resolveYouTubePlayback',
     debugLabel: 'YouTube',
-    prefersShaka: true,
     matches: (url) => includesAny(url, ['youtube.com/', 'youtu.be/']),
   },
   {
@@ -179,14 +177,10 @@ export default function useVideoOperations() {
         ? URL.createObjectURL(new Blob([mpdContent], { type: 'application/dash+xml' }))
         : undefined
       const resolvedMpdUrl = localMpdUrl || mpdUrl || synthesizedMpdUrl
-      const playbackEngine = localMpdUrl && isDesktopClient && matchedDesktopProvider?.prefersShaka
-        ? 'shaka'
-        : undefined
 
       if (resolvedMpdUrl) return {
         src: resolvedMpdUrl,
         type: toPlayerSourceType(streamType),
-        playbackEngine,
         key,
         progressKey,
         qualities

@@ -100,8 +100,10 @@ test('shaka dash plugin defaults to highest manual quality instead of adaptive b
   const source = await readFile(shakaDashPluginPath, 'utf8')
 
   assert.match(source, /enableAutoQuality:\s*false,/)
-  assert.match(source, /if \(!this\.options\.enableAutoQuality && !this\.context\.state\.quality && qualities\.length > 0\) \{/)
+  assert.match(source, /private isSelectingQuality = false/)
+  assert.match(source, /if \(!this\.isSelectingQuality && !this\.options\.enableAutoQuality && !this\.context\.state\.quality && qualities\.length > 0\) \{/)
   assert.match(source, /this\.setQuality\(qualities\[0\]\.id \?\? qualities\[0\]\.label\)/)
+  assert.match(source, /this\.isSelectingQuality = true[\s\S]*this\.updateQualities\(\)[\s\S]*finally \{\s*this\.isSelectingQuality = false\s*\}/)
 })
 
 test('shaka dash plugin serializes player teardown before loading the next source', async () => {

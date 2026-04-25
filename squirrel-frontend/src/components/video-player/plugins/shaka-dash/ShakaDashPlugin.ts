@@ -32,6 +32,7 @@ export class ShakaDashPlugin implements PlayerPlugin {
   private activeCodecFamily: string | null = null
   private hasInstalledPolyfills = false
   private loadRequestSeq = 0
+  private isSelectingQuality = false
 
   install(context: PluginContext, options?: ShakaDashPluginOptions): void {
     this.context = context
@@ -236,7 +237,7 @@ export class ShakaDashPlugin implements PlayerPlugin {
     this.context.registerQualities(qualities)
     this.context.emit('qualitiesloaded', qualities)
 
-    if (!this.options.enableAutoQuality && !this.context.state.quality && qualities.length > 0) {
+    if (!this.isSelectingQuality && !this.options.enableAutoQuality && !this.context.state.quality && qualities.length > 0) {
       this.setQuality(qualities[0].id ?? qualities[0].label)
       return
     }
@@ -385,11 +386,14 @@ export class ShakaDashPlugin implements PlayerPlugin {
     if (!selected) return
 
     try {
+      this.isSelectingQuality = true
       this.player.selectVariantTrack(selected, true, 0)
       this.updateActiveCodecFamily()
       this.updateQualities()
     } catch (error) {
       this.context?.logger.warn('[ShakaDashPlugin] Failed to select quality', error)
+    } finally {
+      this.isSelectingQuality = false
     }
   }
 
