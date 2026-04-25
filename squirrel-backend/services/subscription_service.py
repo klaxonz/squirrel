@@ -138,6 +138,7 @@ def _load_recent_videos(session, subscription_ids: List[int], limit: int = 10) -
             SubscriptionVideo.subscription_id.label('subscription_id'),
             Video.id.label('id'),
             Video.title.label('title'),
+            Video.url.label('url'),
             Video.thumbnail.label('thumbnail'),
             Video.duration.label('duration'),
             Video.publish_date.label('publish_date'),
@@ -160,6 +161,7 @@ def _load_recent_videos(session, subscription_ids: List[int], limit: int = 10) -
             ranked_videos.c.subscription_id,
             ranked_videos.c.id,
             ranked_videos.c.title,
+            ranked_videos.c.url,
             ranked_videos.c.thumbnail,
             ranked_videos.c.duration,
             ranked_videos.c.publish_date,
@@ -175,6 +177,7 @@ def _load_recent_videos(session, subscription_ids: List[int], limit: int = 10) -
         videos.append({
             'id': int(row.id),
             'title': row.title or '',
+            'url': row.url,
             'thumbnail': row.thumbnail,
             'duration': int(row.duration or 0),
             'publish_date': _serialize_datetime(row.publish_date),

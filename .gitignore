@@ -82,11 +82,4 @@ squirrel-backend/.thumbnail-index-backfill.state
 .omx/
 .worktrees/
 .playwright-cli/
-.codex/*
-!.codex/agents/
-!.codex/agents/**
-!.codex/skills/
-!.codex/skills/**
-.codex/skills/.system/**
-!.codex/prompts/
-!.codex/prompts/**
+.codex/

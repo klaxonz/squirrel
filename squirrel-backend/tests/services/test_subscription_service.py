@@ -979,6 +979,44 @@ def test_list_subscriptions_uses_lightweight_serializer_without_dto_validation(m
     )
 
     assert total == 1
+
+
+def test_list_subscriptions_recent_videos_include_source_url(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_subscription(engine, user_ids=[1])
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            Video(
+                id=401,
+                title='Video 401',
+                url='https://www.youtube.com/watch?v=401',
+                domain='youtube.com',
+                duration=120,
+                thumbnail='https://img.example.com/401.jpg',
+                publish_date=datetime(2024, 1, 4),
+                created_at=datetime(2024, 1, 4),
+                updated_at=datetime(2024, 1, 4),
+                is_deleted=False,
+            ),
+        )
+        session.add(SubscriptionVideo(subscription_id=1, video_id=401))
+        session.commit()
+
+    monkeypatch.setattr(subscription_service.user_config_service, 'get_config', lambda _user_id: {'showNsfw': False})
+
+    subscriptions, total = subscription_service.list_subscriptions(
+        user_id=1,
+        query=None,
+        type=None,
+        nsfw='all',
+        page=1,
+        page_size=10,
+    )
+
+    assert total == 1
+    assert subscriptions[0]['recent_videos'][0]['id'] == 401
+    assert subscriptions[0]['recent_videos'][0]['url'] == 'https://www.youtube.com/watch?v=401'
     assert subscriptions == [{
         'id': 1,
         'type': 'CHANNEL',
@@ -1000,6 +1038,14 @@ def test_list_subscriptions_uses_lightweight_serializer_without_dto_validation(m
         'last_error': None,
         'pending_video_count': 3,
         'site': 'youtube',
+        'recent_videos': [{
+            'id': 401,
+            'title': 'Video 401',
+            'url': 'https://www.youtube.com/watch?v=401',
+            'thumbnail': 'https://img.example.com/401.jpg',
+            'duration': 120,
+            'publish_date': '2024-01-04 00:00:00',
+        }],
     }]
 
 
