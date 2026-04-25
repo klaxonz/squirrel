@@ -814,11 +814,10 @@ onUnmounted(() => {
   grid-template-rows: 5rem 1fr;
   height: 100%;
   box-sizing: border-box;
-  border: 1px solid hsl(var(--border) / 0.45);
-  border-radius: var(--radius-lg);
+  border-bottom: 1px solid hsl(var(--border) / 0.35);
   background: hsl(var(--background));
   overflow: hidden;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: background 0.15s ease;
 }
 
 .subscription-row:hover {
