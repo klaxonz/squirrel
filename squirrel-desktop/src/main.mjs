@@ -1012,7 +1012,6 @@ const installDesktopBridgeHandlers = () => {
     const cookie = await buildCookieHeaderForUrl(normalizedUrl)
     return resolvePornhubPlayback(normalizedUrl, {
       cookie,
-      fetchImpl: createSessionFetch(),
       forceRefresh: options?.forceRefresh === true,
     })
   })
