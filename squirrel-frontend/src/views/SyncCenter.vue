@@ -1,6 +1,6 @@
 <template>
-  <div class="sync-center-page tactical-terminal min-h-full selection:bg-primary/10">
-    <div class="toolbar-container py-4 md:py-8 relative z-10">
+  <AppPageShell class="sync-center-page tactical-terminal" variant="tactical">
+    <AppToolbarFrame class="toolbar-container relative z-10" variant="tactical">
       <div class="flex flex-col gap-4 md:gap-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <SyncControlBar
@@ -9,12 +9,14 @@
           />
 
           <section class="pipeline-tabs self-start sm:self-auto">
-            <Tabs :model-value="activePipeline" @update:model-value="handlePipelineChange">
-              <TabsList class="pipeline-tabs__list">
-                <TabsTrigger value="feed" class="pipeline-tabs__trigger font-mono">列表拉取</TabsTrigger>
-                <TabsTrigger value="extract" class="pipeline-tabs__trigger font-mono">视频提取</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <AppSegmentedControl
+              v-model="activePipeline"
+              variant="tactical"
+              class="pipeline-tabs__control"
+              :options="pipelineOptions"
+              aria-label="同步流水线切换"
+              @change="handlePipelineChange"
+            />
           </section>
         </div>
 
@@ -65,7 +67,7 @@
         </div>
 
       </div>
-    </div>
+    </AppToolbarFrame>
 
     <SyncRunDetailDrawer
       :detail-error="historyDetailError"
@@ -76,19 +78,21 @@
       :site-options="siteOptions"
       @close="handleCloseRunDrawer"
     />
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { getSyncCenterStreamUrl } from '@/api'
+import AppPageShell from '@/components/layout/AppPageShell.vue'
+import AppSegmentedControl from '@/components/layout/AppSegmentedControl.vue'
+import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue'
 import SyncActiveRunBoard from '@/components/sync-center/SyncActiveRunBoard.vue'
 import SyncControlBar from '@/components/sync-center/SyncControlBar.vue'
 import SyncQueueBoard from '@/components/sync-center/SyncQueueBoard.vue'
 import SyncRecentRunBoard from '@/components/sync-center/SyncRecentRunBoard.vue'
 import SyncRecentTaskBoard from '@/components/sync-center/SyncRecentTaskBoard.vue'
 import SyncRunDetailDrawer from '@/components/sync-center/SyncRunDetailDrawer.vue'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useExtractionCenter } from '@/composables/useExtractionCenter'
 import type { SyncCenterItem } from '@/composables/useSyncCenter'
 import { useSyncCenter } from '@/composables/useSyncCenter'
@@ -147,6 +151,10 @@ const {
 } = useExtractionCenter()
 
 const activePipeline = ref<'feed' | 'extract'>('feed')
+const pipelineOptions = [
+  { value: 'feed', label: '列表拉取' },
+  { value: 'extract', label: '视频提取' },
+]
 let dashboardStream: EventSource | null = null
 let dashboardStreamAuthChecking = false
 
@@ -469,51 +477,13 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.toolbar-container {
-  margin: 0 auto;
-  padding: 1rem 1rem 0.5rem;
-  width: 100%;
-}
-
-@media (min-width: 640px) {
-  .toolbar-container {
-    padding: 1.5rem 1.5rem 0.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .toolbar-container {
-    padding: 2rem 2rem 0.5rem;
-  }
-}
-
 .pipeline-tabs {
   display: flex;
   justify-content: flex-start;
 }
 
-.pipeline-tabs__list {
-  height: 2.2rem;
-  border: 1px solid hsl(var(--border) / 0.5);
-  background: hsl(var(--secondary) / 0.5);
-  padding: 0.2rem;
-  border-radius: 0;
-}
-
-.pipeline-tabs__trigger {
-  min-width: 8rem;
-  height: 1.8rem;
-  border-radius: 0;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.15em;
-  color: hsl(var(--muted-foreground) / 0.4);
-  transition: all 0.2s ease;
-}
-
-:deep(.pipeline-tabs__trigger[data-state='active']) {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
+.pipeline-tabs__control {
+  min-width: max-content;
 }
 
 .flow-shell {
@@ -541,13 +511,6 @@ onBeforeUnmount(() => {
   .flow-grid {
     gap: 1rem;
     max-height: calc(100vh - 12rem);
-  }
-}
-
-@media (max-width: 900px) {
-  .toolbar-container {
-    padding-left: 1rem;
-    padding-right: 1rem;
   }
 }
 </style>

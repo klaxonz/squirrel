@@ -1,7 +1,7 @@
 <template>
-  <div class="subscribed-page flex h-full flex-col bg-background text-foreground">
+  <AppPageShell class="subscribed-page">
     <section class="subscribed-shell">
-      <div class="toolbar-container">
+      <AppToolbarFrame class="toolbar-container">
         <FeedToolbar
           class="subscribed-toolbar"
           :show-tabs="false"
@@ -22,19 +22,14 @@
                 <PlusIcon class="h-4 w-4" />
                 <span>添加订阅</span>
               </Button>
-              <Button
-                size="xs"
-                variant="secondary"
-                class="subscribed-toolbar__button subscribed-toolbar__button--secondary whitespace-nowrap"
-                @click="showImportDialog = true"
-              >
+              <Button size="xs" variant="secondary" class="subscribed-toolbar__button subscribed-toolbar__button--secondary whitespace-nowrap" @click="showImportDialog = true">
                 <ArrowDownTrayIcon class="h-4 w-4" />
                 <span>导入订阅</span>
               </Button>
             </div>
           </template>
         </FeedToolbar>
-      </div>
+      </AppToolbarFrame>
     </section>
 
     <div class="channel-container">
@@ -56,15 +51,19 @@
             <LoadingIndicator :loading="true" text="正在加载订阅" size="sm" />
           </div>
 
-          <div v-else-if="hasLoadedOnce && !loading && !subscriptions.length" key="empty" class="subscribed-empty-card">
-            <p class="subscribed-empty-card__eyebrow">订阅库</p>
-            <h2 class="subscribed-empty-card__title">还没有可展示的订阅</h2>
-            <p class="subscribed-empty-card__copy">可以直接添加一个频道，或者从支持的站点批量导入。</p>
-            <div class="subscribed-empty-card__actions">
+          <AppEmptyState
+            v-else-if="hasLoadedOnce && !loading && !subscriptions.length"
+            key="empty"
+            class="subscribed-empty-card"
+            eyebrow="订阅库"
+            title="还没有可展示的订阅"
+            copy="可以直接添加一个频道，或者从支持的站点批量导入。"
+          >
+            <template #actions>
               <Button size="sm" @click="showAddDialog = true">添加订阅</Button>
               <Button size="sm" variant="secondary" @click="showImportDialog = true">导入订阅</Button>
-            </div>
-          </div>
+            </template>
+          </AppEmptyState>
 
           <div v-else key="list" class="subscription-list-wrapper">
             <VirtualList
@@ -285,7 +284,7 @@
       @close="showImportDialog = false"
       @imported="handleSubscriptionsImported"
     />
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup>
@@ -293,6 +292,9 @@ import { computed, inject, onMounted, onUnmounted, reactive, ref, shallowRef, wa
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { ArrowDownTrayIcon, ArrowPathIcon, Cog6ToothIcon, PlusIcon } from '@heroicons/vue/24/outline'
+import AppEmptyState from '@/components/layout/AppEmptyState.vue'
+import AppPageShell from '@/components/layout/AppPageShell.vue'
+import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue'
 import FeedToolbar from '@/components/feed/FeedToolbar.vue'
 import LoadingIndicator from '@/components/feed/LoadingIndicator.vue'
 import VirtualList from '@/components/feed/VirtualList.vue'
@@ -720,24 +722,21 @@ onUnmounted(() => {
   min-height: 100%;
 }
 
-.toolbar-container,
 .content-container {
   width: 100%;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 0 var(--app-page-gutter);
 }
 
 @media (min-width: 640px) {
-  .toolbar-container,
   .content-container {
-    padding: 0 1.5rem;
+    padding: 0 var(--app-page-gutter-sm);
   }
 }
 
 @media (min-width: 1024px) {
-  .toolbar-container,
   .content-container {
-    padding: 0 2rem;
+    padding: 0 var(--app-page-gutter-lg);
   }
 }
 
@@ -746,7 +745,7 @@ onUnmounted(() => {
 }
 
 .subscribed-toolbar {
-  padding: 0.75rem 0;
+  padding: var(--app-toolbar-padding-block) 0;
 }
 
 .subscribed-toolbar :deep(.toolbar-slot-actions) {
@@ -1174,44 +1173,6 @@ onUnmounted(() => {
   color: hsl(var(--muted-foreground));
 }
 
-.subscribed-empty-card {
-  min-height: 40vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  text-align: center;
-  gap: 1.25rem;
-  padding: 2rem;
-  border: 1px dashed hsl(var(--border) / 0.6);
-  border-radius: var(--radius-lg);
-}
-
-.subscribed-empty-card__eyebrow {
-  font-family: var(--font-mono, monospace);
-  font-size: 0.75rem;
-  color: hsl(var(--primary));
-  letter-spacing: 0.2em;
-}
-
-.subscribed-empty-card__title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.subscribed-empty-card__copy {
-  max-width: 22rem;
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
-  line-height: 1.6;
-}
-
-.subscribed-empty-card__actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
 .subscribed-bottom-copy {
   margin: 1rem 0 0.75rem;
   text-align: center;
@@ -1335,11 +1296,6 @@ onUnmounted(() => {
     width: 100%;
     justify-content: flex-end;
     flex-wrap: wrap;
-  }
-
-  .subscribed-empty-card__actions {
-    flex-wrap: wrap;
-    justify-content: center;
   }
 }
 

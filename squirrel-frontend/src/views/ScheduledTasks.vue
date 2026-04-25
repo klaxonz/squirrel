@@ -1,9 +1,6 @@
 <template>
-  <div class="scheduled-page bg-background text-foreground h-full flex flex-col min-h-0">
-    <div class="toolbar-container pt-4 pb-4">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      </div>
-
+  <AppPageShell class="scheduled-page">
+    <AppToolbarFrame class="toolbar-container">
       <!-- Stats Row -->
       <div class="flex items-center gap-3 mt-4 overflow-x-auto">
         <div
@@ -18,7 +15,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </AppToolbarFrame>
 
     <!-- Main Content -->
     <div class="content-container flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -68,52 +65,28 @@
 
           <div class="h-5 w-px bg-border/20 shrink-0"></div>
 
-          <!-- Status filter buttons -->
-          <div class="flex items-center gap-1 shrink-0">
-              <button
-              v-for="opt in statusOptions"
-              :key="opt.value"
-              @click="setStatusFilter(opt.value)"
-              :class="[
-                'h-8 px-3 rounded-md text-[11px] font-medium transition-all whitespace-nowrap',
-                statusFilter === opt.value
-                  ? 'bg-foreground text-background'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              ]"
-            >
-              {{ opt.label }}
-            </button>
+          <div class="scheduled-filter-scroll shrink-0">
+            <AppSegmentedControl
+              v-model="statusFilter"
+              variant="dense"
+              class="scheduled-filter-tabs"
+              :options="statusOptions"
+              aria-label="任务状态筛选"
+              @change="setStatusFilter"
+            />
           </div>
 
           <div class="h-5 w-px bg-border/20 shrink-0 hidden md:block"></div>
 
-          <!-- Type filter buttons -->
-          <div class="hidden md:flex items-center gap-1 shrink-0">
-            <button
-              v-for="opt in typeOptions"
-              :key="opt.value"
-              @click="setTypeFilter(opt.value)"
-              :class="[
-                'px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap',
-                typeFilter === opt.value
-                  ? 'bg-foreground text-background'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              ]"
-            >
-              {{ opt.label }}
-            </button>
-          </div>
-
-          <!-- Mobile type filter -->
-          <div class="md:hidden shrink-0">
-            <Select v-model="typeFilter" @update:model-value="loadTasks">
-              <SelectTrigger class="h-8 w-24 border border-border/40 bg-background text-[11px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="opt in typeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</SelectItem>
-              </SelectContent>
-            </Select>
+          <div class="scheduled-filter-scroll shrink-0">
+            <AppSegmentedControl
+              v-model="typeFilter"
+              variant="dense"
+              class="scheduled-filter-tabs scheduled-filter-tabs--compact"
+              :options="typeOptions"
+              aria-label="任务类型筛选"
+              @change="setTypeFilter"
+            />
           </div>
         </div>
       </div>
@@ -122,24 +95,22 @@
       <div class="flex-1 overflow-hidden flex flex-col min-h-0">
 
         <!-- Empty State -->
-        <div v-if="!loading && tasks.length === 0" class="flex-1 flex flex-col items-center justify-center py-20 gap-4">
-          <div class="w-12 h-12 rounded-xl border border-border/20 bg-muted/10 flex items-center justify-center">
-            <Clock class="h-5 w-5 text-muted-foreground/15" />
-          </div>
-          <div class="text-center space-y-1.5">
-            <p class="text-xs font-mono font-bold text-foreground/25 uppercase tracking-widest">无任务</p>
-            <p class="text-[9px] text-muted-foreground/15 max-w-[220px] leading-relaxed">
-              当前调度器下没有任何任务实例，点击上方按钮部署第一个任务
-            </p>
-          </div>
-          <button
-            class="mt-1 h-7 px-4 text-[9px] font-mono font-bold uppercase tracking-widest border border-border/30 text-muted-foreground/30 hover:text-foreground/50 hover:border-border/60 transition-all rounded-lg"
-            @click="showCreateDialog = true"
-          >
-            <Plus class="h-3 w-3 inline mr-1" />
-            deploy
-          </button>
-        </div>
+        <AppEmptyState
+          v-if="!loading && tasks.length === 0"
+          class="scheduled-empty-state"
+          variant="dense"
+          eyebrow="调度中心"
+          :title="hasTaskFilters ? '没有匹配的任务' : '当前没有任务'"
+          :copy="hasTaskFilters ? '调整搜索或筛选条件后再试。' : '点击上方按钮部署第一个任务。'"
+        >
+          <template #actions>
+            <Button v-if="hasTaskFilters" size="sm" variant="secondary" @click="resetFilters">清空筛选</Button>
+            <Button size="sm" @click="showCreateDialog = true">
+              <Plus class="h-3.5 w-3.5 mr-1.5" />
+              新建任务
+            </Button>
+          </template>
+        </AppEmptyState>
 
         <!-- Table -->
         <div v-else class="flex-1 overflow-auto min-h-0">
@@ -380,33 +351,33 @@
         <span class="text-xs font-semibold">{{ toast.message }}</span>
       </div>
     </Transition>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import {
-  Activity, RefreshCw, Plus, Search, Clock, Zap, AlertCircle,
+  Activity, RefreshCw, Plus, Search, Zap, AlertCircle,
   CheckCircle2, Play, Pause, Pencil, Trash2, MoreVertical,
-  ChevronLeft, ChevronRight, Loader2, X
+  Loader2, X
 } from 'lucide-vue-next'
+import AppEmptyState from '@/components/layout/AppEmptyState.vue'
+import AppPageShell from '@/components/layout/AppPageShell.vue'
+import AppSegmentedControl from '@/components/layout/AppSegmentedControl.vue'
+import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue'
 import TaskDialog from '@/components/dialogs/TaskDialog.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from '@/components/ui/select'
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
-  DialogDescription, DialogFooter, DialogClose
+  DialogDescription, DialogFooter
 } from '@/components/ui/dialog'
 import { debounce } from '../utils/debounce'
 import { Logger } from '@/utils/logger'
@@ -458,6 +429,10 @@ const showToast = (message, isError = false) => {
   toast.value = { visible: true, message, error: isError }
   toastTimer = setTimeout(() => { toast.value.visible = false }, 2800)
 }
+
+const hasTaskFilters = computed(() => {
+  return Boolean(searchQuery.value || statusFilter.value !== 'all' || typeFilter.value !== 'all')
+})
 
 // Stats
 const signals = computed(() => [
@@ -700,6 +675,14 @@ const clearSearch = () => {
   debouncedSearch()
 }
 
+const resetFilters = () => {
+  searchQuery.value = ''
+  statusFilter.value = 'all'
+  typeFilter.value = 'all'
+  currentPage.value = 1
+  loadTasks()
+}
+
 const calculateSuccessRate = (task) => {
   if (!task.run_count) return 0
   return Math.round((task.success_count / task.run_count) * 100)
@@ -730,28 +713,42 @@ onMounted(loadData)
 
 <style scoped>
 /* Container: consistent with other pages */
-.toolbar-container,
 .content-container {
   max-width: 100%;
-  padding-left: 1rem;
-  padding-right: 1rem;
+  padding-left: var(--app-page-gutter);
+  padding-right: var(--app-page-gutter);
   width: 100%;
 }
 
 @media (min-width: 640px) {
-  .toolbar-container,
   .content-container {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
+    padding-left: var(--app-page-gutter-sm);
+    padding-right: var(--app-page-gutter-sm);
   }
 }
 
 @media (min-width: 1024px) {
-  .toolbar-container,
   .content-container {
-    padding-left: 2rem;
-    padding-right: 2rem;
+    padding-left: var(--app-page-gutter-lg);
+    padding-right: var(--app-page-gutter-lg);
   }
+}
+
+.scheduled-filter-scroll {
+  overflow-x: auto;
+}
+
+.scheduled-filter-tabs {
+  min-width: max-content;
+}
+
+.scheduled-filter-tabs--compact :deep(.app-segmented-control__item) {
+  padding-inline: 0.55rem;
+}
+
+.scheduled-empty-state {
+  min-height: 22rem;
+  margin: 1rem 0;
 }
 
 /* Typography */

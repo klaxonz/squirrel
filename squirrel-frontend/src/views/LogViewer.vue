@@ -1,6 +1,6 @@
 <template>
-  <div class="log-viewer-container bg-background text-foreground h-full flex flex-col min-h-0">
-    <div class="toolbar-container pt-4 pb-4">
+  <AppPageShell class="log-viewer-container">
+    <AppToolbarFrame class="toolbar-container" compact>
       <div class="flex flex-wrap items-center justify-end gap-2">
         <div class="log-hero__pill">
           <span class="log-hero__label">总量</span>
@@ -43,7 +43,7 @@
           <span>刷新</span>
         </Button>
       </div>
-    </div>
+    </AppToolbarFrame>
 
     <div class="content-container py-2 space-y-2 flex-1 flex flex-col min-h-0 overflow-hidden">
       <div class="log-filter-area border-b border-border/40 pb-4">
@@ -111,9 +111,19 @@
           加载中...
         </div>
 
-        <div v-else-if="logs.length === 0" class="text-center py-20 text-muted-foreground">
-          暂无日志
-        </div>
+        <AppEmptyState
+          v-else-if="logs.length === 0"
+          class="log-empty-state"
+          variant="dense"
+          eyebrow="日志中心"
+          :title="hasActiveFilters ? '没有匹配的日志' : '暂无日志'"
+          :copy="hasActiveFilters ? '调整搜索条件后再试。' : '当前日志文件里还没有内容。'"
+        >
+          <template #actions>
+            <Button v-if="hasActiveFilters" size="sm" variant="secondary" @click="clearFilters">清空筛选</Button>
+            <Button size="sm" @click="loadLogs">刷新</Button>
+          </template>
+        </AppEmptyState>
 
         <DynamicScroller
           v-else
@@ -182,13 +192,16 @@
         </DynamicScroller>
       </div>
     </div>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import { ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
+import AppEmptyState from '@/components/layout/AppEmptyState.vue';
+import AppPageShell from '@/components/layout/AppPageShell.vue';
+import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue';
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -463,28 +476,25 @@ function formatFileSize(bytes) {
 </script>
 
 <style scoped>
-.toolbar-container,
 .content-container {
   max-width: var(--container-max-width, 2560px);
   margin: 0 auto;
-  padding-left: 1rem;
-  padding-right: 1rem;
+  padding-left: var(--app-page-gutter);
+  padding-right: var(--app-page-gutter);
   width: 100%;
 }
 
 @media (min-width: 640px) {
-  .toolbar-container,
   .content-container {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
+    padding-left: var(--app-page-gutter-sm);
+    padding-right: var(--app-page-gutter-sm);
   }
 }
 
 @media (min-width: 1024px) {
-  .toolbar-container,
   .content-container {
-    padding-left: 2rem;
-    padding-right: 2rem;
+    padding-left: var(--app-page-gutter-lg);
+    padding-right: var(--app-page-gutter-lg);
   }
 }
 
@@ -495,7 +505,7 @@ function formatFileSize(bytes) {
 .log-hero__label {
   font-size: 0.68rem;
   text-transform: uppercase;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--app-label-wide-letter-spacing);
   color: hsl(var(--muted-foreground));
 }
 
@@ -505,9 +515,13 @@ function formatFileSize(bytes) {
   gap: 0.5rem;
   min-height: 1.75rem;
   padding: 0 0.75rem;
-  border-radius: 0.25rem;
+  border-radius: var(--app-control-item-radius);
   background: hsl(var(--muted) / 0.5);
   font-size: 0.75rem;
+}
+
+.log-empty-state {
+  min-height: 18rem;
 }
 
 .log-toolbar-button {

@@ -1,12 +1,12 @@
 <template>
-  <div class="latest-videos flex h-full flex-col">
+  <AppPageShell class="latest-videos">
     <ChannelHeader
       v-if="subscriptionId"
       :subscription-id="subscriptionId"
     />
 
     <section class="latest-videos__toolbar-shell">
-      <div class="latest-videos__container">
+      <AppToolbarFrame class="latest-videos__container">
         <FeedToolbar
           :active-tab="activeTab"
           :nsfw="nsfw"
@@ -28,7 +28,7 @@
           @tab-dblclick="handleTabDoubleClick"
           @refresh="refreshCurrentList"
         />
-      </div>
+      </AppToolbarFrame>
     </section>
 
     <div class="video-container flex-grow relative">
@@ -59,7 +59,7 @@
         </keep-alive>
       </router-view>
     </div>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup>
@@ -68,6 +68,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useRouteTabSync } from '../composables/useRouteTabSync'
 import { useFeedFilters } from '../composables/useFeedFilters'
 import { useRefreshTriggers } from '../composables/useRefreshTriggers'
+import AppPageShell from '@/components/layout/AppPageShell.vue'
+import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue'
 import FeedToolbar from '@/components/feed/FeedToolbar.vue'
 import ChannelHeader from '@/components/feed/ChannelHeader.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'

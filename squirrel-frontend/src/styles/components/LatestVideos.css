@@ -6,7 +6,6 @@
   width: 100%;
   max-width: var(--container-max-width, 2560px);
   margin: 0 auto;
-  padding: 0 1rem;
 }
 
 .latest-videos__toolbar-shell {
@@ -15,6 +14,7 @@
 
 .latest-videos__alert {
   padding-bottom: 0.85rem;
+  padding-inline: var(--app-page-gutter);
 }
 
 .video-container {
@@ -74,14 +74,13 @@
 }
 
 @media (min-width: 640px) {
-  .latest-videos__container {
-    padding: 0 1.5rem;
+  .latest-videos__alert {
+    padding-inline: var(--app-page-gutter-sm);
   }
 }
 
 @media (min-width: 1024px) {
-  .latest-videos__container {
-    padding: 0 2rem;
+  .latest-videos__alert {
+    padding-inline: var(--app-page-gutter-lg);
   }
 }
-

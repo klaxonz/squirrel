@@ -1,7 +1,7 @@
 <template>
-  <div class="plugin-page flex h-full flex-col bg-background text-foreground">
+  <AppPageShell class="plugin-page">
     <section class="plugin-shell">
-      <div class="toolbar-container">
+      <AppToolbarFrame class="toolbar-container">
         <div class="plugin-header">
           <div v-if="isInitialLoading" class="plugin-toolbar-skeleton" aria-hidden="true">
             <div
@@ -124,7 +124,7 @@
             </Button>
           </template>
         </div>
-      </div>
+      </AppToolbarFrame>
     </section>
 
     <div class="plugin-content scrollbar-hide flex-grow overflow-y-auto">
@@ -160,6 +160,14 @@
             </tbody>
           </table>
         </div>
+
+        <AppEmptyState
+          v-else-if="!displayPlugins.length"
+          class="plugin-empty-state"
+          eyebrow="插件管理"
+          :title="searchQuery ? '没有匹配的插件' : '还没有可展示的插件'"
+          :copy="searchQuery ? '尝试更换搜索关键词。' : '导入插件后，会在这里显示运行状态、能力和站点配置。'"
+        />
 
         <div v-else class="plugin-table-wrap">
           <table class="plugin-table">
@@ -402,11 +410,14 @@
       @close="closeSiteEditor"
       @save="saveSiteEditor"
     />
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup>
 import { onMounted, onUnmounted, ref, computed } from 'vue';
+import AppEmptyState from '@/components/layout/AppEmptyState.vue';
+import AppPageShell from '@/components/layout/AppPageShell.vue';
+import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue';
 import {
   ArrowPathIcon,
   CheckCircleIcon,
@@ -1096,24 +1107,21 @@ onUnmounted(() => {
   min-height: 100%;
 }
 
-.toolbar-container,
 .content-container {
   width: 100%;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 0 var(--app-page-gutter);
 }
 
 @media (min-width: 640px) {
-  .toolbar-container,
   .content-container {
-    padding: 0 1.5rem;
+    padding: 0 var(--app-page-gutter-sm);
   }
 }
 
 @media (min-width: 1024px) {
-  .toolbar-container,
   .content-container {
-    padding: 0 2rem;
+    padding: 0 var(--app-page-gutter-lg);
   }
 }
 
@@ -1126,43 +1134,12 @@ onUnmounted(() => {
   align-items: center;
   justify-content: flex-end;
   gap: 1rem;
-  padding: 0.75rem 0;
+  padding: var(--app-toolbar-padding-block) 0;
   flex-wrap: wrap;
 }
 
-.plugin-tabs {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  background: hsl(var(--secondary) / 0.3);
-  border-radius: calc(var(--radius-sm) + 2px);
-  padding: 2px;
-}
-
-.plugin-tab {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: calc(var(--radius-sm) - 1px);
-  font-size: 12px;
-  font-weight: 500;
-  color: hsl(var(--muted-foreground) / 0.7);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.plugin-tab:hover {
-  color: hsl(var(--foreground));
-  background: hsl(var(--background) / 0.5);
-}
-
-.plugin-tab.is-active {
-  color: hsl(var(--foreground));
-  background: hsl(var(--background));
-  box-shadow: 0 1px 3px hsl(var(--border) / 0.4);
+.plugin-empty-state {
+  margin-top: 0.75rem;
 }
 
 .plugin-toolbar-right {

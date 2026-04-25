@@ -1,7 +1,7 @@
 <template>
-  <div class="history-page flex h-full flex-col bg-background text-foreground">
+  <AppPageShell class="history-page">
     <!-- Header/Toolbar -->
-    <div class="history-toolbar__container">
+    <AppToolbarFrame class="history-toolbar__container" bordered>
       <FeedToolbar
         class="history-toolbar"
         :show-tabs="false"
@@ -15,19 +15,13 @@
       >
         <template #actions>
           <div class="toolbar-left">
-            <div class="sort-tabs" role="tablist" aria-label="排序方式">
-              <button
-                v-for="opt in sortOptions"
-                :key="opt.value"
-                class="sort-tab"
-                :class="{ 'is-active': sortBy === opt.value }"
-                role="tab"
-                :aria-selected="sortBy === opt.value"
-                @click="handleSortChange(opt.value)"
-              >
-                {{ opt.label }}
-              </button>
-            </div>
+            <AppSegmentedControl
+              v-model="sortBy"
+              class="sort-tabs"
+              :options="sortOptions"
+              aria-label="排序方式"
+              @change="handleSortChange"
+            />
           </div>
 
           <div class="toolbar-right">
@@ -41,7 +35,7 @@
           </div>
         </template>
       </FeedToolbar>
-    </div>
+    </AppToolbarFrame>
 
     <!-- Clear Confirmation Dialog -->
     <Dialog :open="showClearConfirm" @update:open="showClearConfirm = $event">
@@ -68,11 +62,13 @@
           </div>
 
           <!-- Empty State -->
-          <div v-else-if="hasLoadedOnce && groupedVideos.length === 0" class="history-empty-card">
-            <p class="history-empty-card__eyebrow">历史记录</p>
-            <h2 class="history-empty-card__title">{{ searchQuery ? '未找到匹配' : '暂无记录' }}</h2>
-            <p class="history-empty-card__copy">{{ searchQuery ? '尝试更换关键词' : '你观看过的视频会出现在这里' }}</p>
-          </div>
+          <AppEmptyState
+            v-else-if="hasLoadedOnce && groupedVideos.length === 0"
+            class="history-empty-card"
+            eyebrow="历史记录"
+            :title="searchQuery ? '未找到匹配' : '暂无记录'"
+            :copy="searchQuery ? '尝试更换关键词' : '你观看过的视频会出现在这里'"
+          />
 
           <!-- History Groups -->
           <div v-else class="history-groups">
@@ -107,13 +103,17 @@
           </div>
       </div>
     </div>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup>
 import { onMounted, ref, computed, watch, inject, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
+import AppEmptyState from '@/components/layout/AppEmptyState.vue';
+import AppPageShell from '@/components/layout/AppPageShell.vue';
+import AppSegmentedControl from '@/components/layout/AppSegmentedControl.vue';
+import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue';
 import FeedToolbar from '@/components/feed/FeedToolbar.vue';
 import LoadingIndicator from '@/components/feed/LoadingIndicator.vue';
 import HistoryItem from '@/components/history/HistoryItem.vue';
@@ -333,27 +333,8 @@ onUnmounted(() => {
   min-height: 100%;
 }
 
-.history-toolbar__container {
-  width: 100%;
-  margin: 0 auto;
-  padding: 0 1rem;
-  border-bottom: 1px solid hsl(var(--accent) / 0.1);
-}
-
-@media (min-width: 640px) {
-  .history-toolbar__container {
-    padding: 0 1.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .history-toolbar__container {
-    padding: 0 2rem;
-  }
-}
-
 .history-toolbar {
-  padding: 0.75rem 0;
+  padding: var(--app-toolbar-padding-block) 0;
 }
 
 .toolbar-left {
@@ -369,40 +350,6 @@ onUnmounted(() => {
   gap: 0.5rem;
 }
 
-/* Sort Tabs */
-.sort-tabs {
-  display: flex;
-  align-items: center;
-  gap: 0.125rem;
-  background: hsl(var(--secondary) / 0.3);
-  border-radius: calc(var(--radius-sm) + 2px);
-  padding: 2px;
-}
-
-.sort-tab {
-  padding: 0.2rem 0.6rem;
-  border-radius: calc(var(--radius-sm) - 1px);
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: hsl(var(--muted-foreground) / 0.7);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  letter-spacing: 0.02em;
-}
-
-.sort-tab:hover {
-  color: hsl(var(--foreground));
-  background: hsl(var(--background) / 0.5);
-}
-
-.sort-tab.is-active {
-  color: hsl(var(--foreground));
-  background: hsl(var(--background));
-  box-shadow: 0 1px 3px hsl(var(--border) / 0.4);
-}
-
 /* Content */
 .history-content {
   flex: 1;
@@ -413,18 +360,18 @@ onUnmounted(() => {
 .history-content__inner {
   width: 100%;
   margin: 0 auto;
-  padding: 0.75rem 1rem 1.25rem;
+  padding: var(--app-content-padding-top) var(--app-page-gutter) var(--app-content-padding-bottom);
 }
 
 @media (min-width: 640px) {
   .history-content__inner {
-    padding: 0.75rem 1.5rem 1.25rem;
+    padding: var(--app-content-padding-top) var(--app-page-gutter-sm) var(--app-content-padding-bottom);
   }
 }
 
 @media (min-width: 1024px) {
   .history-content__inner {
-    padding: 0.75rem 2rem 1.25rem;
+    padding: var(--app-content-padding-top) var(--app-page-gutter-lg) var(--app-content-padding-bottom);
   }
 }
 
@@ -451,44 +398,6 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 2rem 0;
-}
-
-/* Empty Card */
-.history-empty-card {
-  min-height: 40vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  text-align: center;
-  gap: 1.25rem;
-  padding: 2rem;
-  border: 1px dashed hsl(var(--border) / 0.6);
-  border-radius: var(--radius-lg);
-}
-
-.history-empty-card__eyebrow {
-  margin: 0;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
-  color: hsl(var(--primary));
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-}
-
-.history-empty-card__title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.history-empty-card__copy {
-  margin: 0;
-  max-width: 22rem;
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
-  line-height: 1.6;
 }
 
 /* Date Group Header */

@@ -148,14 +148,14 @@ const displayChannel = computed(() => {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.4rem;
-  align-items: center;
+  align-items: flex-start;
   padding: 0;
   border-radius: var(--radius-md);
   transition: background 0.15s ease;
 }
 
 .history-item-row:hover {
-  background: hsl(var(--secondary) / 0.15);
+  background: var(--app-row-hover-bg);
 }
 
 .history-item-row__primary {
@@ -219,7 +219,7 @@ const displayChannel = computed(() => {
   left: 0;
   width: 100%;
   height: 2px;
-  background: rgba(255, 255, 255, 0.15);
+  background: hsl(var(--background) / 0.2);
   z-index: 1;
 }
 
@@ -290,6 +290,7 @@ const displayChannel = computed(() => {
   opacity: 0;
   transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
   margin-right: 0.1rem;
+  align-self: flex-start;
 }
 
 .history-item-row:hover .history-item-row__remove,

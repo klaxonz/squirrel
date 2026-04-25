@@ -1,23 +1,26 @@
 <template>
-  <div class="playlist-page flex h-full flex-col bg-background text-foreground">
+  <AppPageShell class="playlist-page">
     <div class="playlist-content scrollbar-hide">
       <div class="content-container playlist-content__inner">
         <div v-if="loading && !playlists.length" class="playlist-state playlist-state--loading">
           <LoadingIndicator :loading="true" text="正在加载播放列表" />
         </div>
 
-        <div v-else-if="!playlists.length" class="playlist-empty-card">
-          <p class="playlist-empty-card__eyebrow">播放列表</p>
-          <h2 class="playlist-empty-card__title">{{ error ? '加载失败' : '还没有播放列表' }}</h2>
-          <p v-if="!error" class="playlist-empty-card__copy">创建一个播放列表，把想看的视频收集到一起</p>
-          <div class="playlist-empty-card__actions">
+        <AppEmptyState
+          v-else-if="!playlists.length"
+          class="playlist-empty-card"
+          eyebrow="播放列表"
+          :title="error ? '加载失败' : '还没有播放列表'"
+          :copy="error ? '' : '创建一个播放列表，把想看的视频收集到一起'"
+        >
+          <template #actions>
             <Button v-if="!error" @click="openCreateModal">
               <Icon icon="lucide:plus" />
               <span>新建播放列表</span>
             </Button>
             <Button v-else @click="reloadPlaylists">重试</Button>
-          </div>
-        </div>
+          </template>
+        </AppEmptyState>
 
         <div v-else class="playlist-workspace">
           <aside class="playlist-library">
@@ -257,13 +260,15 @@
         </div>
       </div>
     </Transition>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
+import AppEmptyState from '@/components/layout/AppEmptyState.vue'
+import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import LoadingIndicator from '@/components/feed/LoadingIndicator.vue'
@@ -495,18 +500,18 @@ onMounted(async () => {
 .content-container {
   width: 100%;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 0 var(--app-page-gutter);
 }
 
 @media (min-width: 640px) {
   .content-container {
-    padding: 0 1.5rem;
+    padding: 0 var(--app-page-gutter-sm);
   }
 }
 
 @media (min-width: 1024px) {
   .content-container {
-    padding: 0 2rem;
+    padding: 0 var(--app-page-gutter-lg);
   }
 }
 
@@ -518,8 +523,8 @@ onMounted(async () => {
 
 .playlist-content__inner {
   position: relative;
-  padding-top: 0.75rem;
-  padding-bottom: 1.25rem;
+  padding-top: var(--app-content-padding-top);
+  padding-bottom: var(--app-content-padding-bottom);
 }
 
 /* ─── States ─── */
@@ -536,50 +541,6 @@ onMounted(async () => {
 
 .playlist-state {
   min-height: 18rem;
-}
-
-/* ─── Empty Card (unified with Subscribed style) ─── */
-.playlist-empty-card {
-  min-height: 40vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  text-align: center;
-  gap: 1.25rem;
-  padding: 2rem;
-  border: 1px dashed hsl(var(--border) / 0.6);
-  border-radius: var(--radius-lg);
-}
-
-.playlist-empty-card__eyebrow {
-  margin: 0;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
-  color: hsl(var(--primary));
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-}
-
-.playlist-empty-card__title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.playlist-empty-card__copy {
-  margin: 0;
-  max-width: 22rem;
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
-  line-height: 1.6;
-}
-
-.playlist-empty-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
 }
 
 /* ─── Workspace (two-column grid) ─── */
