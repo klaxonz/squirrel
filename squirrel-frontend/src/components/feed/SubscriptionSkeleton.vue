@@ -48,7 +48,6 @@ defineProps({
 
 <style scoped>
 .skeleton-card {
-  border-bottom: 1px solid hsl(var(--border) / 0.35);
   background: hsl(var(--background));
   overflow: hidden;
   animation: skeleton-appear 0.4s ease-out forwards;

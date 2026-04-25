@@ -814,7 +814,6 @@ onUnmounted(() => {
   grid-template-rows: 5rem 1fr;
   height: 100%;
   box-sizing: border-box;
-  border-bottom: 1px solid hsl(var(--border) / 0.35);
   background: hsl(var(--background));
   overflow: hidden;
   transition: background 0.15s ease;
