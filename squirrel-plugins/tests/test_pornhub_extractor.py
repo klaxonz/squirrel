@@ -166,6 +166,35 @@ def test_pornhub_extractor_rewrites_expiring_preview_thumbnail_from_page_metadat
     assert info['thumbnails'][0]['url'] == 'https://cdn.example.com/thumb.jpg?hash=fresh&validto=456'
 
 
+def test_pornhub_extractor_prefers_long_lived_page_thumbnail(monkeypatch):
+    pornhub_extractor = _load_extractor_module()
+    short_url = (
+        'https://pix-fl.phncdn.com/c6251/videos/demo/original.jpg/plain/'
+        'rs:fit:640:360?hdnea=st=1777096861~exp=1777183261~hdl=-1~hmac=short'
+    )
+    long_url = (
+        'https://pix-egi.phncdn.com/c6251/videos/demo/original.jpg/plain/'
+        'rs:fit:350:196?validfrom=1751342400&validto=4891363200&hash=long'
+    )
+
+    class _FakeResponse:
+        status_code = 200
+        text = (
+            f'<meta property="og:image" content="{short_url}">'
+            f'<meta name="twitter:image" content="{long_url}">'
+        )
+
+    monkeypatch.setattr(
+        pornhub_extractor.requests,
+        'get',
+        lambda *args, **kwargs: _FakeResponse(),
+    )
+
+    extractor = pornhub_extractor.PornhubExtractor()
+
+    assert extractor._fetch_page_thumbnail_url('https://www.pornhub.com/view_video.php?viewkey=demo') == long_url
+
+
 def test_pornhub_extractor_retries_page_thumbnail_fetch(monkeypatch):
     pornhub_extractor = _load_extractor_module()
     responses = [

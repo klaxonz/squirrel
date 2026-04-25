@@ -205,6 +205,24 @@ def test_download_thumbnail_retries_transport_error(monkeypatch, tmp_path):
     assert clients == []
 
 
+def test_extract_thumbnail_url_prefers_long_lived_preview():
+    service = ThumbnailDownloaderService()
+    short_url = (
+        'https://pix-fl.phncdn.com/c6251/videos/demo/original.jpg/plain/'
+        'rs:fit:640:360?hdnea=st=1777096861~exp=1777183261~hdl=-1~hmac=short'
+    )
+    long_url = (
+        'https://pix-egi.phncdn.com/c6251/videos/demo/original.jpg/plain/'
+        'rs:fit:350:196?validfrom=1751342400&validto=4891363200&hash=long'
+    )
+    html = (
+        f'<meta property="og:image" content="{short_url}">'
+        f'<meta name="twitter:image" content="{long_url}">'
+    )
+
+    assert service._extract_thumbnail_url_from_html(html) == long_url
+
+
 def test_download_thumbnail_refreshes_expiring_preview_after_410(monkeypatch, tmp_path):
     service = ThumbnailDownloaderService()
     stale_thumbnail_url = (
@@ -313,6 +331,61 @@ def test_download_thumbnail_refreshes_expiring_preview_after_410_for_pornhub(mon
     )
 
     assert file_path == str(tmp_path / 'batch_001' / '88.jpg')
+    assert [item[0] for item in requests] == [
+        stale_thumbnail_url,
+        source_url,
+        fresh_thumbnail_url,
+    ]
+
+
+def test_download_thumbnail_refreshes_pornhub_hdnea_preview_after_472(monkeypatch, tmp_path):
+    service = ThumbnailDownloaderService()
+    stale_thumbnail_url = (
+        'https://pix-fl.phncdn.com/videos/demo/plain/'
+        'rs:fit:640:360?hdnea=expired'
+    )
+    fresh_thumbnail_url = 'https://ei.phncdn.com/videos/demo/fresh-thumb.jpg'
+    source_url = 'https://www.pornhub.com/view_video.php?viewkey=demo'
+    requests = []
+
+    def fake_get(url, headers=None):
+        requests.append((url, headers))
+        if url == stale_thumbnail_url:
+            return SimpleNamespace(status_code=472, headers={'content-type': 'text/plain'}, content=b'', text='')
+        if url == source_url:
+            return SimpleNamespace(
+                status_code=200,
+                headers={'content-type': 'text/html'},
+                content=b'',
+                text=f'<meta property="og:image" content="{fresh_thumbnail_url}">',
+            )
+        if url == fresh_thumbnail_url:
+            return SimpleNamespace(
+                status_code=200,
+                headers={'content-type': 'image/jpeg'},
+                content=b'image-bytes',
+                text='',
+            )
+        raise AssertionError(f'unexpected url: {url}')
+
+    monkeypatch.setattr(service, '_should_download', lambda site_name: True)
+    monkeypatch.setattr(service, '_get_batch_dir', lambda video_id: str(tmp_path / 'batch_001'))
+    monkeypatch.setattr(service, '_get_extension', lambda remote_url: '.jpg')
+    monkeypatch.setattr(service, '_get_http_client', lambda: SimpleNamespace(get=fake_get))
+    monkeypatch.setattr(
+        thumbnail_downloader.os.path,
+        'exists',
+        lambda path: False,
+    )
+
+    file_path = service.download_thumbnail(
+        video_id=89,
+        thumbnail_url=stale_thumbnail_url,
+        site_name='pornhub',
+        source_url=source_url,
+    )
+
+    assert file_path == str(tmp_path / 'batch_001' / '89.jpg')
     assert [item[0] for item in requests] == [
         stale_thumbnail_url,
         source_url,

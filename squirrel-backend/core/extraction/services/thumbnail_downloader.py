@@ -32,7 +32,7 @@ _BATCH_INDEX_CACHE_TTL = 300.0
 _BATCH_INDEX_CACHE_MAX_BATCHES = 64
 _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS = 3
 _THUMBNAIL_DOWNLOAD_RETRYABLE_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
-_EXPIRING_PREVIEW_REFRESH_STATUS_CODES = {403, 404, 410}
+_EXPIRING_PREVIEW_REFRESH_STATUS_CODES = {403, 404, 410, 472}
 _LDJSON_THUMBNAIL_RE = re.compile(r'<script\s+type=["\']application/ld\+json["\']>(.*?)</script>', re.I | re.S)
 _META_THUMBNAIL_PATTERNS = (
     re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
@@ -233,9 +233,42 @@ class ThumbnailDownloaderService:
     @staticmethod
     def _looks_like_expiring_preview_thumbnail(url: Optional[str]) -> bool:
         normalized = str(url or '').strip().lower()
-        return bool(normalized) and '.mp4/plain/' in normalized and 'validto=' in normalized
+        return bool(normalized) and '/plain/' in normalized and (
+            'validto=' in normalized or 'hdnea=' in normalized
+        )
+
+    @staticmethod
+    def _thumbnail_expiry_score(url: str) -> float:
+        normalized = str(url or '').strip().lower()
+        if not normalized:
+            return -1
+        if not any(token in normalized for token in ('validto=', 'hdnea=', 'hmac=', 'hash=')):
+            return float('inf')
+
+        validto_match = re.search(r'[?&]validto=(\d+)', normalized)
+        if validto_match:
+            return float(validto_match.group(1))
+
+        hdnea_exp_match = re.search(r'(?:^|[~&])exp=(\d+)', normalized)
+        if hdnea_exp_match:
+            return float(hdnea_exp_match.group(1))
+
+        return 0
+
+    def _pick_best_thumbnail_url(self, thumbnail_urls: list[str]) -> Optional[str]:
+        unique_urls = []
+        for thumbnail_url in thumbnail_urls:
+            normalized = html_lib.unescape(str(thumbnail_url or '').strip())
+            if normalized and normalized not in unique_urls:
+                unique_urls.append(normalized)
+
+        if not unique_urls:
+            return None
+
+        return max(unique_urls, key=self._thumbnail_expiry_score)
 
     def _extract_thumbnail_url_from_html(self, html_text: str) -> Optional[str]:
+        thumbnail_urls: list[str] = []
         for match in _LDJSON_THUMBNAIL_RE.finditer(str(html_text or '')):
             try:
                 payload = json.loads(match.group(1).strip())
@@ -260,21 +293,19 @@ class ThumbnailDownloaderService:
                 for key in ('thumbnailUrl', 'thumbnail', 'contentUrl'):
                     value = item.get(key)
                     if isinstance(value, str) and value.strip():
-                        return value.strip()
+                        thumbnail_urls.append(value.strip())
                     if isinstance(value, list):
                         for candidate in value:
                             if isinstance(candidate, str) and candidate.strip():
-                                return candidate.strip()
+                                thumbnail_urls.append(candidate.strip())
 
         for pattern in _META_THUMBNAIL_PATTERNS:
-            match = pattern.search(str(html_text or ''))
-            if not match:
-                continue
-            thumbnail_url = html_lib.unescape(match.group(1).strip())
-            if thumbnail_url:
-                return thumbnail_url
+            for match in pattern.finditer(str(html_text or '')):
+                thumbnail_url = html_lib.unescape(match.group(1).strip())
+                if thumbnail_url:
+                    thumbnail_urls.append(thumbnail_url)
 
-        return None
+        return self._pick_best_thumbnail_url(thumbnail_urls)
 
     def _fetch_fresh_thumbnail_url(
         self,

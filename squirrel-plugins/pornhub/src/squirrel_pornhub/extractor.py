@@ -145,6 +145,36 @@ class PornhubExtractor(YoutubeDLExtractorBase):
             'validto=' in normalized or 'hdnea=' in normalized
         )
 
+    @staticmethod
+    def _thumbnail_expiry_score(url: str) -> float:
+        normalized = str(url or '').strip().lower()
+        if not normalized:
+            return -1
+        if not any(token in normalized for token in ('validto=', 'hdnea=', 'hmac=', 'hash=')):
+            return float('inf')
+
+        validto_match = re.search(r'[?&]validto=(\d+)', normalized)
+        if validto_match:
+            return float(validto_match.group(1))
+
+        hdnea_exp_match = re.search(r'(?:^|[~&])exp=(\d+)', normalized)
+        if hdnea_exp_match:
+            return float(hdnea_exp_match.group(1))
+
+        return 0
+
+    def _pick_best_thumbnail_url(self, thumbnail_urls: list[str]) -> Optional[str]:
+        unique_urls = []
+        for thumbnail_url in thumbnail_urls:
+            normalized = html_lib.unescape(str(thumbnail_url or '').strip())
+            if normalized and normalized not in unique_urls:
+                unique_urls.append(normalized)
+
+        if not unique_urls:
+            return None
+
+        return max(unique_urls, key=self._thumbnail_expiry_score)
+
     def _fetch_page_thumbnail_url(self, url: str) -> Optional[str]:
         page_url = str(url or '').strip()
         if not page_url:
@@ -166,14 +196,13 @@ class PornhubExtractor(YoutubeDLExtractorBase):
                 return None
 
             if response.status_code == 200:
+                thumbnail_urls = []
                 for pattern in _META_THUMBNAIL_PATTERNS:
-                    match = pattern.search(response.text)
-                    if not match:
-                        continue
-                    thumbnail_url = html_lib.unescape(match.group(1).strip())
-                    if thumbnail_url:
-                        return thumbnail_url
-                return None
+                    for match in pattern.finditer(response.text):
+                        thumbnail_url = html_lib.unescape(match.group(1).strip())
+                        if thumbnail_url:
+                            thumbnail_urls.append(thumbnail_url)
+                return self._pick_best_thumbnail_url(thumbnail_urls)
 
             if (
                 response.status_code in _PAGE_FETCH_RETRYABLE_STATUS_CODES
