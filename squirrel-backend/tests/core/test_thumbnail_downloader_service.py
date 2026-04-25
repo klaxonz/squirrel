@@ -338,6 +338,61 @@ def test_download_thumbnail_refreshes_expiring_preview_after_410_for_pornhub(mon
     ]
 
 
+def test_download_thumbnail_refreshes_pornhub_ei_video_thumb_after_410(monkeypatch, tmp_path):
+    service = ThumbnailDownloaderService()
+    stale_thumbnail_url = 'https://ei.phncdn.com/videos/202506/07/469932995/original/(m=qO7TGL0beaAaGwObaaaa)(mh=demo)0.jpg'
+    fresh_thumbnail_url = (
+        'https://pix-egi.phncdn.com/c6251/videos/demo/original.jpg/plain/'
+        'rs:fit:350:196?validfrom=1751342400&validto=4891363200&hash=fresh'
+    )
+    source_url = 'https://www.pornhub.com/view_video.php?viewkey=demo'
+    requests = []
+
+    def fake_get(url, headers=None):
+        requests.append((url, headers))
+        if url == stale_thumbnail_url:
+            return SimpleNamespace(status_code=410, headers={'content-type': 'text/plain'}, content=b'', text='')
+        if url == source_url:
+            return SimpleNamespace(
+                status_code=200,
+                headers={'content-type': 'text/html'},
+                content=b'',
+                text=f'<meta name="twitter:image" content="{fresh_thumbnail_url}">',
+            )
+        if url == fresh_thumbnail_url:
+            return SimpleNamespace(
+                status_code=200,
+                headers={'content-type': 'image/jpeg'},
+                content=b'image-bytes',
+                text='',
+            )
+        raise AssertionError(f'unexpected url: {url}')
+
+    monkeypatch.setattr(service, '_should_download', lambda site_name: True)
+    monkeypatch.setattr(service, '_get_batch_dir', lambda video_id: str(tmp_path / 'batch_001'))
+    monkeypatch.setattr(service, '_get_extension', lambda remote_url: '.jpg')
+    monkeypatch.setattr(service, '_get_http_client', lambda: SimpleNamespace(get=fake_get))
+    monkeypatch.setattr(
+        thumbnail_downloader.os.path,
+        'exists',
+        lambda path: False,
+    )
+
+    file_path = service.download_thumbnail(
+        video_id=90,
+        thumbnail_url=stale_thumbnail_url,
+        site_name='pornhub',
+        source_url=source_url,
+    )
+
+    assert file_path == str(tmp_path / 'batch_001' / '90.jpg')
+    assert [item[0] for item in requests] == [
+        stale_thumbnail_url,
+        source_url,
+        fresh_thumbnail_url,
+    ]
+
+
 def test_download_thumbnail_refreshes_pornhub_hdnea_preview_after_472(monkeypatch, tmp_path):
     service = ThumbnailDownloaderService()
     stale_thumbnail_url = (

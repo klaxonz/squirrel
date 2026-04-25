@@ -233,7 +233,11 @@ class ThumbnailDownloaderService:
     @staticmethod
     def _looks_like_expiring_preview_thumbnail(url: Optional[str]) -> bool:
         normalized = str(url or '').strip().lower()
-        return bool(normalized) and '/plain/' in normalized and (
+        if not normalized:
+            return False
+        if 'phncdn.com/videos/' in normalized:
+            return True
+        return '/plain/' in normalized and (
             'validto=' in normalized or 'hdnea=' in normalized
         )
 
