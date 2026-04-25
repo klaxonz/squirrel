@@ -196,11 +196,13 @@
 
     <Dialog :open="showSettings" @update:open="handleSettingsOpenChange">
       <DialogContent class="max-w-lg gap-0 overflow-hidden p-0">
-        <DialogHeader class="px-6 pb-2 pt-6">
-          <DialogTitle class="text-lg font-semibold tracking-[-0.02em]">订阅设置</DialogTitle>
-        </DialogHeader>
+        <div class="subscription-dialog__hero">
+          <DialogHeader class="space-y-2 px-6 pb-4 pt-6">
+            <DialogTitle class="text-xl font-semibold tracking-[-0.03em]">订阅设置</DialogTitle>
+          </DialogHeader>
+        </div>
 
-        <div v-if="selectedSubscription" class="space-y-4 px-6 pb-6">
+        <div v-if="selectedSubscription" class="space-y-5 px-6 py-5">
           <div class="subscription-dialog__summary">
             <SubscriptionAvatar
               :src="selectedSubscription.avatar"
@@ -270,7 +272,7 @@
           </div>
         </div>
 
-        <DialogFooter class="px-6 py-4 sm:justify-end">
+        <DialogFooter class="border-t border-border/70 bg-secondary/28 px-6 py-4 sm:justify-end">
           <Button size="sm" variant="ghost" :disabled="isUnsubscribing" @click="closeSettings">关闭</Button>
         </DialogFooter>
       </DialogContent>
@@ -1239,6 +1241,12 @@ onUnmounted(() => {
 .subscription-dialog__actions {
   display: grid;
   gap: 0.75rem;
+}
+
+.subscription-dialog__hero {
+  background:
+    radial-gradient(circle at top right, hsl(var(--primary) / 0.12), transparent 36%),
+    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.92));
 }
 
 .subscription-dialog__spinner {
