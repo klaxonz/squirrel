@@ -60,6 +60,9 @@ const fetchBrowserJson = async (url, { cookie = '', params = null, timeoutMs = 2
 
     const code = payload?.code
     if (code !== undefined && code !== 0) {
+      if (code === -101 && payload?.data?.wbi_img) {
+        return payload.data
+      }
       throw new Error(`${payload?.message || payload?.msg || code} (code=${code})`)
     }
 

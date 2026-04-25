@@ -187,7 +187,6 @@ export default function useVideoPlaybackShell({
       globalVideoPlayerSession.source
       || globalVideoPlayerSession.externalError
       || globalVideoPlayerSession.externalLoading
-      || globalVideoPlayerSession.videoSnapshot
     )
   }
 

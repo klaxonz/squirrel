@@ -160,7 +160,7 @@
                       :key="video.id"
                       type="button"
                       class="recent-video-card"
-                      @click.stop="openRecentVideo(video.id)"
+                      @click.stop="openRecentVideo(video)"
                     >
                       <div class="recent-video-card__thumb-wrap">
                         <img
@@ -321,6 +321,7 @@ import { useSubscriptionRefresh } from '../composables/useSubscriptionRefresh'
 import { useFeedFilters } from '../composables/useFeedFilters'
 import { formatDate, formatDuration } from '../utils/dateFormat'
 import { notifySubscriptionRemoved } from '@/utils/subscriptionEvents'
+import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import {
   getSubscriptions as apiGetSubscriptions,
   unsubscribe as apiUnsubscribe,
@@ -645,8 +646,11 @@ const unsubscribe = async (subscriptionId) => {
   unsubscribingId.value = null
 }
 
-const openRecentVideo = (videoId) => {
+const openRecentVideo = (video) => {
+  const videoId = video?.id
   if (!videoId) return
+
+  rememberVideoPlaybackSeed(video)
   router.push(`/video/${videoId}`)
 }
 

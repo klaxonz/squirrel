@@ -128,6 +128,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import useVideoHistory from '../composables/useVideoHistory';
+import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed';
 import { Logger } from '@/utils/logger';
 
 const router = useRouter();
@@ -281,6 +282,7 @@ const handleDeleteItem = async (historyId) => {
 };
 
 const handleOpenModal = (video) => {
+  rememberVideoPlaybackSeed(video);
   router.push(`/video/${video.id}`);
 };
 
