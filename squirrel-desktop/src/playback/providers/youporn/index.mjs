@@ -1,5 +1,6 @@
 import {
   DEFAULT_USER_AGENT,
+  buildHlsQualities,
   extractJsonArrayFromObjectLiteral,
   fetchPageHtml,
   findObjectLiteralAfterPattern,
@@ -64,46 +65,43 @@ const fetchRemoteDefinitions = async (targetUrl, cookie, fetchImpl = globalThis.
 }
 
 const expandMediaDefinitions = async (definitions, cookie, fetchImpl) => {
-  const expanded = []
-
-  for (const item of Array.isArray(definitions) ? definitions : []) {
+  const items = Array.isArray(definitions) ? definitions : []
+  const expandedGroups = await Promise.all(items.map(async (item) => {
     const format = String(item?.format || '').toLowerCase()
     const videoUrl = safeUrl(item?.videoUrl)
     if (!videoUrl) {
-      continue
+      return []
     }
 
     if (videoUrl.startsWith(`${YOUPORN_ORIGIN}/media/`)) {
       const remoteDefinitions = await fetchRemoteDefinitions(videoUrl, cookie, fetchImpl)
       if (remoteDefinitions.length > 0) {
-        for (const remoteItem of remoteDefinitions) {
-          expanded.push({
+        return remoteDefinitions.map((remoteItem) => ({
             ...remoteItem,
             format: String(remoteItem?.format || format).toLowerCase(),
-          })
-        }
-        continue
+          }))
       }
     }
 
-    expanded.push(item)
-  }
+    return [item]
+  }))
 
-  return expanded
+  return expandedGroups.flat()
 }
 
 const mapPlaybackPayload = (targetUrl, definitions) => {
   const hlsDefinition = pickBestDefinition(definitions, 'hls')
   if (hlsDefinition?.videoUrl) {
+    const qualities = buildHlsQualities(definitions, 'yp-hls')
     return {
       stream_type: 'hls',
       video_url: hlsDefinition.videoUrl,
       audio_url: null,
       mpd_url: null,
       mpd_content: null,
-      qualities: null,
-      default_quality_id: null,
-      supports_manual_quality: false,
+      qualities: qualities.length > 0 ? qualities : null,
+      default_quality_id: qualities[0]?.id || null,
+      supports_manual_quality: qualities.length > 1,
       metadata: {
         provider: 'youporn',
         url: targetUrl,

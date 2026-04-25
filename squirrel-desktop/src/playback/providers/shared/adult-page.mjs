@@ -257,3 +257,35 @@ export const pickBestDefinition = (definitions, format) => {
     return Number(Boolean(right?.defaultQuality)) - Number(Boolean(left?.defaultQuality))
   })[0]
 }
+
+export const buildHlsQualities = (definitions, idPrefix) => {
+  const qualities = []
+  const seen = new Set()
+
+  for (const item of Array.isArray(definitions) ? definitions : []) {
+    const format = String(item?.format || '').toLowerCase()
+    if (format !== 'hls' || !safeUrl(item?.videoUrl)) {
+      continue
+    }
+
+    const height = safeInt(item?.height || item?.quality) || null
+    const width = safeInt(item?.width) || null
+    const qualityId = `${idPrefix}:${width || 0}x${height || 0}`
+    if (seen.has(qualityId)) {
+      continue
+    }
+    seen.add(qualityId)
+
+    qualities.push({
+      id: qualityId,
+      value: qualityId,
+      label: height ? `${height}p` : qualityId,
+      height,
+      bandwidth: null,
+      codec: null,
+    })
+  }
+
+  qualities.sort((left, right) => safeInt(right.height) - safeInt(left.height))
+  return qualities
+}

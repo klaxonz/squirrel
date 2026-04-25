@@ -1,5 +1,6 @@
 import {
   DEFAULT_USER_AGENT,
+  buildHlsQualities,
   extractJsonArrayFromObjectLiteral,
   fetchPageHtml,
   findObjectLiteralAfterPattern,
@@ -7,7 +8,6 @@ import {
   mergeCookieHeaders,
   normalizeTargetUrl,
   pickBestDefinition,
-  safeInt,
   safeUrl,
   setCachedPayload,
 } from '../shared/adult-page.mjs'
@@ -39,42 +39,10 @@ const extractMediaDefinitions = (htmlText) => {
   return []
 }
 
-const buildQualities = (definitions) => {
-  const qualities = []
-  const seen = new Set()
-
-  for (const item of Array.isArray(definitions) ? definitions : []) {
-    const format = String(item?.format || '').toLowerCase()
-    if (format !== 'hls' || !safeUrl(item?.videoUrl)) {
-      continue
-    }
-
-    const height = safeInt(item?.height || item?.quality) || null
-    const width = safeInt(item?.width) || null
-    const qualityId = `ph-hls:${width || 0}x${height || 0}`
-    if (seen.has(qualityId)) {
-      continue
-    }
-    seen.add(qualityId)
-
-    qualities.push({
-      id: qualityId,
-      value: qualityId,
-      label: height ? `${height}p` : qualityId,
-      height,
-      bandwidth: null,
-      codec: null,
-    })
-  }
-
-  qualities.sort((left, right) => safeInt(right.height) - safeInt(left.height))
-  return qualities
-}
-
 const mapPlaybackPayload = (targetUrl, definitions) => {
   const hlsDefinition = pickBestDefinition(definitions, 'hls')
   if (hlsDefinition?.videoUrl) {
-    const qualities = buildQualities(definitions)
+    const qualities = buildHlsQualities(definitions, 'ph-hls')
     return {
       stream_type: 'hls',
       video_url: hlsDefinition.videoUrl,
