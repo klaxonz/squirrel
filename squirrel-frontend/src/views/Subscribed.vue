@@ -196,18 +196,11 @@
 
     <Dialog :open="showSettings" @update:open="handleSettingsOpenChange">
       <DialogContent class="max-w-lg gap-0 overflow-hidden p-0">
-        <div class="subscription-dialog__hero">
-          <DialogHeader class="space-y-2 px-6 pb-4 pt-6">
-            <DialogTitle class="text-xl font-semibold tracking-[-0.03em]">
-              {{ selectedSubscription?.name || '订阅设置' }}
-            </DialogTitle>
-            <DialogDescription>
-              调整频道设置、手动触发更新，或取消订阅。
-            </DialogDescription>
-          </DialogHeader>
-        </div>
+        <DialogHeader class="px-6 pb-2 pt-6">
+          <DialogTitle class="text-lg font-semibold tracking-[-0.02em]">订阅设置</DialogTitle>
+        </DialogHeader>
 
-        <div v-if="selectedSubscription" class="space-y-5 px-6 py-5">
+        <div v-if="selectedSubscription" class="space-y-4 px-6 pb-6">
           <div class="subscription-dialog__summary">
             <SubscriptionAvatar
               :src="selectedSubscription.avatar"
@@ -277,7 +270,7 @@
           </div>
         </div>
 
-        <DialogFooter class="border-t border-border/70 bg-secondary/24 px-6 py-4 sm:justify-end">
+        <DialogFooter class="px-6 py-4 sm:justify-end">
           <Button size="sm" variant="ghost" :disabled="isUnsubscribing" @click="closeSettings">关闭</Button>
         </DialogFooter>
       </DialogContent>
@@ -310,7 +303,6 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -1229,34 +1221,24 @@ onUnmounted(() => {
 .subscription-dialog__summary {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
-  padding: 1.5rem;
-  background: hsl(var(--secondary) / 0.1);
-  border-bottom: 1px solid hsl(var(--border) / 0.4);
+  gap: 1rem;
 }
 
 .subscription-dialog__avatar {
-  width: 3rem;
-  height: 3rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: calc(var(--radius-sm) - 1px);
-  border: 1px solid hsl(var(--border) / 0.4);
 }
 
 .subscription-dialog__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
 }
 
 .subscription-dialog__actions {
   display: grid;
   gap: 0.75rem;
-  padding: 0 1.5rem 1.5rem;
-}
-
-.subscription-dialog__hero {
-  background: linear-gradient(180deg, hsl(var(--secondary) / 0.42), hsl(var(--background)));
 }
 
 .subscription-dialog__spinner {
