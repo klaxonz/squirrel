@@ -25,7 +25,46 @@ def _github_headers() -> dict[str, str]:
     return headers
 
 
-def _build_fallback_fetcher() -> CamoufoxFetcher:
+def _make_fetcher(version: str, release: str, url: str, arch: str) -> CamoufoxFetcher:
+    version_obj = Version(release=release, version=version)
+    if not version_obj.is_supported():
+        raise RuntimeError(
+            f'Camoufox release {version}-{release} is outside the supported range.'
+        )
+
+    fetcher = CamoufoxFetcher.__new__(CamoufoxFetcher)
+    fetcher.arch = arch
+    fetcher._version_obj = version_obj
+    fetcher._url = url
+    return fetcher
+
+
+def _build_latest_redirect_fetcher() -> CamoufoxFetcher:
+    arch = CamoufoxFetcher.get_platform_arch()
+    response = requests.get(
+        f'{RELEASES_URL}/latest',
+        headers=_github_headers(),
+        timeout=20,
+        allow_redirects=False,
+    )
+    response.raise_for_status()
+
+    location = response.headers.get('Location') or response.url
+    match = re.search(r'/tag/v?(?P<version>\d+(?:\.\d+)+)-(?P<release>[^/?#]+)', location)
+    if not match:
+        raise RuntimeError(f'Unable to parse latest Camoufox release tag from {location!r}.')
+
+    version = match.group('version')
+    release = match.group('release')
+    tag = f'v{version}-{release}'
+    url = (
+        f'https://github.com/daijro/camoufox/releases/download/{tag}/'
+        f'camoufox-{version}-{release}-{OS_NAME}.{arch}.zip'
+    )
+    return _make_fetcher(version=version, release=release, url=url, arch=arch)
+
+
+def _build_html_fallback_fetcher() -> CamoufoxFetcher:
     arch = CamoufoxFetcher.get_platform_arch()
     pattern = re.compile(
         rf'href="(?P<href>/daijro/camoufox/releases/download/[^"]+/camoufox-(?P<version>.+)-(?P<release>.+)-{OS_NAME}\.{arch}\.zip)"'
@@ -35,22 +74,26 @@ def _build_fallback_fetcher() -> CamoufoxFetcher:
 
     seen_urls: set[str] = set()
     for match in pattern.finditer(response.text):
-        version = Version(release=match.group('release'), version=match.group('version'))
-        if not version.is_supported():
-            continue
-
         url = f'https://github.com{match.group("href")}'
         if url in seen_urls:
             continue
         seen_urls.add(url)
-
-        fetcher = CamoufoxFetcher.__new__(CamoufoxFetcher)
-        fetcher.arch = arch
-        fetcher._version_obj = version
-        fetcher._url = url
-        return fetcher
+        return _make_fetcher(
+            version=match.group('version'),
+            release=match.group('release'),
+            url=url,
+            arch=arch,
+        )
 
     raise RuntimeError('Unable to find a supported Camoufox release asset from the GitHub releases page.')
+
+
+def _build_fallback_fetcher() -> CamoufoxFetcher:
+    try:
+        return _build_html_fallback_fetcher()
+    except Exception as exc:
+        print(f'GitHub release page scraping failed: {exc}. Falling back to latest redirect URL.')
+        return _build_latest_redirect_fetcher()
 
 
 def _fallback_fetch() -> None:
