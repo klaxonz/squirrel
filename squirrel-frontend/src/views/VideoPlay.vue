@@ -106,17 +106,17 @@
               </div>
             </div>
             <div v-else class="video-meta-skeleton">
-              <div class="skeleton-title w-3/4 h-8 bg-muted rounded"></div>
+              <div class="skeleton-line w-3/4 h-8"></div>
               <div class="flex items-center justify-between mt-6">
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-muted"></div>
+                  <div class="skeleton-circle w-10 h-10 rounded-full"></div>
                   <div class="space-y-2">
-                    <div class="w-24 h-4 bg-muted rounded"></div>
-                    <div class="w-16 h-3 bg-muted rounded"></div>
+                    <div class="skeleton-line w-24 h-4"></div>
+                    <div class="skeleton-line w-16 h-3"></div>
                   </div>
                 </div>
                 <div class="flex gap-2">
-                  <div v-for="i in 4" :key="i" class="w-20 h-8 bg-muted rounded"></div>
+                  <div v-for="i in 4" :key="i" class="skeleton-line w-20 h-8"></div>
                 </div>
               </div>
             </div>
@@ -812,6 +812,41 @@ watch(() => relatedVideos.value, () => {
 </script>
 
 <style scoped>
+/* Skeleton */
+.skeleton-line {
+  background: hsl(var(--foreground) / 0.06);
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, hsl(var(--foreground) / 0.04), transparent);
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+.skeleton-circle {
+  background: hsl(var(--foreground) / 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-circle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, hsl(var(--foreground) / 0.04), transparent);
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
 /* 基础容器 */
 .terminal-viewport {
   background-color: hsl(var(--background));

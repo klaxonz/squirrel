@@ -3,8 +3,7 @@
     <div class="playlist-content scrollbar-hide">
       <div class="content-container playlist-content__inner">
         <div v-if="loading && !playlists.length" class="playlist-state playlist-state--loading">
-          <div class="playlist-state__spinner" aria-hidden="true"></div>
-          <span>正在加载播放列表</span>
+          <LoadingIndicator :loading="true" text="正在加载播放列表" />
         </div>
 
         <div v-else-if="!playlists.length" class="playlist-empty-card">
@@ -133,8 +132,7 @@
               </div>
 
               <div v-if="loadingItems || isHydratingSelection" class="playlist-detail__state">
-                <div class="playlist-state__spinner" aria-hidden="true"></div>
-                <span>正在加载列表内容</span>
+                <LoadingIndicator :loading="true" text="正在加载列表内容" />
               </div>
 
               <div v-else-if="!activePlaylistItems.length" class="playlist-detail__empty">
@@ -268,6 +266,7 @@ import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import LoadingIndicator from '@/components/feed/LoadingIndicator.vue'
 import {
   Dialog,
   DialogContent,
@@ -537,22 +536,6 @@ onMounted(async () => {
 
 .playlist-state {
   min-height: 18rem;
-  gap: 0.75rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.85rem;
-}
-
-.playlist-state__spinner {
-  width: 1.7rem;
-  height: 1.7rem;
-  border-radius: 999px;
-  border: 2px solid hsl(var(--border));
-  border-top-color: hsl(var(--primary));
-  animation: playlist-spin 0.8s linear infinite;
-}
-
-@keyframes playlist-spin {
-  to { transform: rotate(360deg); }
 }
 
 /* ─── Empty Card (unified with Subscribed style) ─── */

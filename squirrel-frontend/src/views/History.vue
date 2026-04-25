@@ -64,8 +64,7 @@
       <div class="history-content__inner">
           <!-- Loading State -->
           <div v-if="loading && videos.length === 0" class="history-state">
-            <div class="history-state__spinner" aria-hidden="true"></div>
-            <span>正在加载历史记录</span>
+            <LoadingIndicator :loading="true" text="正在加载历史记录" />
           </div>
 
           <!-- Empty State -->
@@ -98,8 +97,7 @@
 
             <!-- Loading More Indicator -->
             <div v-if="loading && videos.length > 0" class="history-loading">
-              <div class="history-state__spinner" aria-hidden="true"></div>
-              <span>正在加载</span>
+              <LoadingIndicator :loading="true" size="sm" />
             </div>
 
             <!-- All Loaded -->
@@ -117,6 +115,7 @@ import { onMounted, ref, computed, watch, inject, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import FeedToolbar from '@/components/feed/FeedToolbar.vue';
+import LoadingIndicator from '@/components/feed/LoadingIndicator.vue';
 import HistoryItem from '@/components/history/HistoryItem.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -438,37 +437,20 @@ onUnmounted(() => {
 }
 
 /* States */
-.history-state,
+.history-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 18rem;
+}
+
 .history-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.85rem;
-  gap: 0.75rem;
-}
-
-.history-state {
-  min-height: 18rem;
-}
-
-.history-loading {
   padding: 2rem 0;
-}
-
-.history-state__spinner {
-  width: 1.7rem;
-  height: 1.7rem;
-  border-radius: 999px;
-  border: 2px solid hsl(var(--border));
-  border-top-color: hsl(var(--primary));
-  animation: history-spin 0.8s linear infinite;
-}
-
-@keyframes history-spin {
-  to { transform: rotate(360deg); }
 }
 
 /* Empty Card */

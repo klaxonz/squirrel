@@ -5,16 +5,16 @@
         <div class="skeleton-item__avatar animate-pulse"></div>
 
         <div class="min-w-0 flex-1 space-y-2">
-          <div class="h-3 w-1/3 rounded bg-white/10 animate-pulse"></div>
-          <div class="h-2 w-1/2 rounded bg-white/5 animate-pulse"></div>
+          <div class="h-3 w-1/3 rounded animate-pulse skeleton-surface"></div>
+          <div class="h-2 w-1/2 rounded animate-pulse skeleton-surface"></div>
         </div>
       </div>
 
       <div class="skeleton-item__metrics">
-        <div v-for="j in 3" :key="j" class="h-2 w-8 rounded bg-white/5 animate-pulse"></div>
+        <div v-for="j in 3" :key="j" class="h-2 w-8 rounded animate-pulse skeleton-surface"></div>
       </div>
 
-      <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-20"></div>
+      <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-foreground/10 to-transparent opacity-20"></div>
     </div>
   </div>
 </template>
@@ -32,6 +32,10 @@ withDefaults(defineProps<{
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.skeleton-surface {
+  background: hsl(var(--foreground) / 0.05);
 }
 
 .skeleton-item {
@@ -60,7 +64,7 @@ withDefaults(defineProps<{
   width: 1.75rem;
   height: 1.75rem;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.05);
+  background: hsl(var(--foreground) / 0.05);
 }
 
 .skeleton-item__metrics {
@@ -80,7 +84,7 @@ withDefaults(defineProps<{
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.03),
+    hsl(var(--foreground) / 0.03),
     transparent
   );
   animation: sweep 3s infinite linear;

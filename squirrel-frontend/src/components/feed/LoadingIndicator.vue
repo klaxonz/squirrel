@@ -70,9 +70,9 @@ const sizeClass = computed(() => `size-${props.size}`);
 }
 
 .bounce-dot {
-  background-color: #ff4d00;
+  background-color: hsl(var(--primary));
   border-radius: 50%;
-  box-shadow: 0 0 8px #ff4d00;
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.6);
   animation: bounce 1.4s infinite ease-in-out both;
 }
 
@@ -100,7 +100,7 @@ const sizeClass = computed(() => `size-${props.size}`);
   40% { 
     transform: scale(1) translateY(-4px);
     opacity: 1;
-    box-shadow: 0 0 12px #ff4d00;
+    box-shadow: 0 0 12px hsl(var(--primary) / 0.6);
   }
 }
 </style>
