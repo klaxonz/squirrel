@@ -334,8 +334,8 @@ const emitter = inject('emitter')
 const SUBSCRIPTION_REMOVE_DELAY_MS = 120
 const SUBSCRIPTIONS_PAGE_SIZE = 100
 const VIRTUAL_LIST_PRELOAD_COUNT = 8
-const DESKTOP_SUBSCRIPTION_ROW_HEIGHT = 232
-const MOBILE_SUBSCRIPTION_ROW_HEIGHT = 248
+const DESKTOP_SUBSCRIPTION_ROW_HEIGHT = 278
+const MOBILE_SUBSCRIPTION_ROW_HEIGHT = 290
 const MIN_SPIN_MS = 800
 const CANCELED_ERROR_TYPE = 'CANCELED'
 
@@ -1071,8 +1071,8 @@ onUnmounted(() => {
 
 .subscription-row__recent-grid {
   display: flex;
-  gap: 0.45rem;
-  padding: 0.1rem 1rem 0.75rem;
+  gap: 0.5rem;
+  padding: 0.2rem 1rem 0.85rem;
   overflow-x: auto;
   overflow-y: hidden;
   min-height: 0;
@@ -1085,9 +1085,9 @@ onUnmounted(() => {
 
 .recent-video-card {
   display: block;
-  width: 10.6rem;
-  min-width: 10.6rem;
-  max-width: 10.6rem;
+  width: 13rem;
+  min-width: 13rem;
+  max-width: 13rem;
   box-sizing: border-box;
   border: none;
   background: transparent;
@@ -1105,7 +1105,7 @@ onUnmounted(() => {
 .recent-video-card__thumb-wrap {
   position: relative;
   width: 100%;
-  height: 6rem;
+  aspect-ratio: 16/9;
   border-radius: calc(var(--radius-sm) - 1px);
   overflow: hidden;
   background: hsl(var(--secondary) / 0.6);
@@ -1130,43 +1130,43 @@ onUnmounted(() => {
 }
 
 .recent-video-card__thumb-placeholder-icon {
-  width: 0.8rem;
-  height: 0.8rem;
+  width: 1rem;
+  height: 1rem;
   opacity: 0.8;
 }
 
 .recent-video-card__thumb-placeholder-text {
-  font-size: 0.5rem;
+  font-size: 0.6rem;
   line-height: 1;
 }
 
 .recent-video-card__duration {
   position: absolute;
-  right: 0.2rem;
-  bottom: 0.15rem;
-  font-size: 0.54rem;
+  right: 0.25rem;
+  bottom: 0.2rem;
+  font-size: 0.6rem;
   font-weight: 600;
   color: #fff;
   background: rgb(0 0 0 / 0.72);
   border-radius: 3px;
-  padding: 0.02rem 0.22rem;
+  padding: 0.05rem 0.28rem;
   font-variant-numeric: tabular-nums;
 }
 
 .recent-video-card__title {
-  margin: 0.28rem 0 0;
-  font-size: 0.64rem;
+  margin: 0.3rem 0 0;
+  font-size: 0.72rem;
   font-weight: 600;
   color: hsl(var(--foreground));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 .recent-video-card__meta {
-  margin: 0.12rem 0 0;
-  font-size: 0.56rem;
+  margin: 0.15rem 0 0;
+  font-size: 0.64rem;
   color: hsl(var(--muted-foreground) / 0.8);
   line-height: 1.3;
 }
