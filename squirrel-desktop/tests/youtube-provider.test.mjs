@@ -22,6 +22,21 @@ test('desktop youtube provider prefers local dash manifests before remote manife
   assert.ok(localManifestIndex < dashManifestIndex)
 })
 
+test('desktop youtube provider serializes segment ranges for local dash manifests', async () => {
+  const source = await readFile(providerPath, 'utf8')
+
+  assert.match(source, /const serializeRange = \(range\) => \{[\s\S]*?return `\$\{start\}-\$\{end\}`/)
+  assert.doesNotMatch(source, /indexRange="\$\{escapeXml\(format\.index_range\)\}"/)
+  assert.doesNotMatch(source, /Initialization range="\$\{escapeXml\(format\.init_range\)\}"/)
+})
+
+test('desktop youtube provider includes duration in generated dash manifests', async () => {
+  const source = await readFile(providerPath, 'utf8')
+
+  assert.match(source, /mediaPresentationDuration="\$\{escapeXml\(mediaPresentationDuration\)\}"/)
+  assert.match(source, /new URL\(format\?\.url \|\| ''\)\.searchParams\.get\('dur'\)/)
+})
+
 test('desktop youtube provider exposes runtime prewarm', async () => {
   const source = await readFile(providerPath, 'utf8')
 
@@ -34,4 +49,11 @@ test('desktop youtube client order defers expensive mweb po token generation', a
 
   assert.match(source, /const AUTHENTICATED_PLAYBACK_CLIENTS = \['ANDROID', 'WEB', 'TV', 'MWEB'\]/)
   assert.match(source, /const AUTHENTICATED_FULL_CLIENTS = \['ANDROID', 'WEB', 'TV', 'MWEB'\]/)
+})
+
+test('desktop youtube oauth state path is read at runtime', async () => {
+  const source = await readFile(corePath, 'utf8')
+
+  assert.match(source, /return process\.env\.YOUTUBE_OAUTH_STATE_FILE \|\| null/)
+  assert.doesNotMatch(source, /const OAUTH_STATE_FILE = process\.env\.YOUTUBE_OAUTH_STATE_FILE/)
 })

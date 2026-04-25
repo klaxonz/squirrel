@@ -1,6 +1,10 @@
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+
 import { prewarmYoutubeiRuntime, resolveYoutubeiPayload } from './youtubei_core.mjs'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
+const RESOLVE_RETRY_DELAY_MS = 500
 const playbackCache = new Map()
 
 const YOUTUBE_ID_PATTERNS = [
@@ -42,6 +46,30 @@ const setCachedPayload = (cacheKey, value) => {
     value,
     expiresAt: Date.now() + CACHE_TTL_MS,
   })
+}
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const cacheScopeForCookie = (cookie) => {
+  const normalizedCookie = String(cookie || '').trim()
+  if (!normalizedCookie) {
+    return 'anon'
+  }
+
+  return `cookie:${createHash('sha1').update(normalizedCookie).digest('hex').slice(0, 16)}`
+}
+
+const cacheScopeForOAuth = () => {
+  const stateFile = String(process.env.YOUTUBE_OAUTH_STATE_FILE || '').trim()
+  if (!stateFile) {
+    return 'oauth:none'
+  }
+
+  try {
+    return `oauth:${createHash('sha1').update(readFileSync(stateFile)).digest('hex').slice(0, 16)}`
+  } catch {
+    return 'oauth:none'
+  }
 }
 
 const sortFormats = (formats) => {
@@ -100,16 +128,27 @@ const representationGroupKey = (format, kind) => {
 }
 
 const buildSegmentBaseXml = (format) => {
-  const attributes = []
-  if (format.index_range) {
-    attributes.push(`indexRange="${escapeXml(format.index_range)}"`)
+  const serializeRange = (range) => {
+    if (!range) return ''
+    if (typeof range === 'string') return range.trim()
+    const start = range.start ?? range.begin ?? range.startMs
+    const end = range.end ?? range.finish ?? range.endMs
+    if (start === undefined || end === undefined) return ''
+    return `${start}-${end}`
   }
-  if (attributes.length === 0 && !format.init_range) {
+
+  const indexRange = serializeRange(format.index_range)
+  const initRange = serializeRange(format.init_range)
+  const attributes = []
+  if (indexRange) {
+    attributes.push(`indexRange="${escapeXml(indexRange)}"`)
+  }
+  if (attributes.length === 0 && !initRange) {
     return ''
   }
 
-  const initialization = format.init_range
-    ? `<Initialization range="${escapeXml(format.init_range)}" />`
+  const initialization = initRange
+    ? `<Initialization range="${escapeXml(initRange)}" />`
     : ''
 
   return `<SegmentBase${attributes.length > 0 ? ` ${attributes.join(' ')}` : ''}>${initialization}</SegmentBase>`
@@ -139,6 +178,24 @@ const buildRepresentationXml = (format, kind) => {
     : ''
 
   return `<Representation ${attributes.join(' ')}><BaseURL>${escapeXml(format.url)}</BaseURL>${buildSegmentBaseXml(format)}${audioChannelNode}${labelNode}</Representation>`
+}
+
+const getFormatDurationSeconds = (format) => {
+  try {
+    const duration = Number(new URL(format?.url || '').searchParams.get('dur'))
+    return Number.isFinite(duration) && duration > 0 ? duration : null
+  } catch {
+    return null
+  }
+}
+
+const formatIsoDuration = (seconds) => {
+  const duration = Number(seconds)
+  if (!Number.isFinite(duration) || duration <= 0) {
+    return ''
+  }
+
+  return `PT${Number(duration.toFixed(3))}S`
 }
 
 const buildFallbackLocalDashManifest = (formats) => {
@@ -212,9 +269,20 @@ const buildFallbackLocalDashManifest = (formats) => {
     return null
   }
 
+  const mediaPresentationDuration = formatIsoDuration(
+    Math.max(
+      ...[...videoFormats, ...audioFormats]
+        .map(getFormatDurationSeconds)
+        .filter((duration) => typeof duration === 'number')
+    )
+  )
+  const durationAttribute = mediaPresentationDuration
+    ? ` mediaPresentationDuration="${escapeXml(mediaPresentationDuration)}"`
+    : ''
+
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" minBufferTime="PT4S">',
+    `<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" minBufferTime="PT4S"${durationAttribute}>`,
     '<Period start="PT0S">',
     videoAdaptationSets,
     audioAdaptationSets,
@@ -346,21 +414,48 @@ export async function resolveYouTubePlayback(targetUrl, { cookie = '', forceRefr
     throw new Error('Invalid YouTube URL')
   }
 
-  const cacheKey = `${videoId}|cookie=${cookie ? '1' : '0'}`
+  const cacheKey = `${videoId}|${cacheScopeForCookie(cookie)}|${cacheScopeForOAuth()}`
+  const cached = getCachedPayload(cacheKey)
   if (!forceRefresh) {
-    const cached = getCachedPayload(cacheKey)
     if (cached) {
       return cached
     }
   }
 
-  const response = await resolveYoutubeiPayload({
-    video_id: videoId,
-    resolution_mode: 'all',
-    ...(cookie ? { cookie } : {}),
-  })
+  let response
+  let lastError = null
+  const maxAttempts = cached ? 1 : 2
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      response = await resolveYoutubeiPayload({
+        video_id: videoId,
+        resolution_mode: 'all',
+        ...(cookie ? { cookie } : {}),
+      })
+      if (response?.status === 'ok') {
+        break
+      }
+      lastError = null
+    } catch (error) {
+      lastError = error
+    }
+
+    if (attempt + 1 < maxAttempts) {
+      await wait(RESOLVE_RETRY_DELAY_MS)
+    }
+  }
+
+  if (lastError && !response) {
+    if (!forceRefresh && cached) {
+      return cached
+    }
+    throw lastError
+  }
 
   if (!response || response.status !== 'ok') {
+    if (!forceRefresh && cached) {
+      return cached
+    }
     const errorMessage = response?.error?.message || 'Desktop YouTube provider failed'
     throw new Error(String(errorMessage))
   }

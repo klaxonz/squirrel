@@ -15,13 +15,10 @@ const CAPTIONS_AUTHENTICATED_CLIENTS = ['WEB', 'TV', 'MWEB'];
 const YOUTUBE_WEB_ORIGIN = 'https://www.youtube.com';
 const SESSION_CACHE = new Map();
 
-// OAuth state file path (passed via environment variable from Python side)
-const OAUTH_STATE_FILE = process.env.YOUTUBE_OAUTH_STATE_FILE || '';
-
 // ── OAuth state helpers ─────────────────────────────────────────────────────
 
 function getOAuthStateFilePath() {
-  return OAUTH_STATE_FILE || null;
+  return process.env.YOUTUBE_OAUTH_STATE_FILE || null;
 }
 
 function loadOAuthState() {
