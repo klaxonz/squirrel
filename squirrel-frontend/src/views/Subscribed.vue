@@ -238,12 +238,10 @@ const activeSiteLabel = computed(() => {
 
 const filteredChannels = computed(() => {
   let res = list.value
+  // Site filtering is handled server-side via the `site` API parameter
   if (sidebarSearch.value) {
     const q = sidebarSearch.value.toLowerCase()
     res = res.filter(c => c.name.toLowerCase().includes(q))
-  }
-  if (site.value) {
-    res = res.filter(c => c.site === site.value)
   }
   return res
 })
@@ -280,12 +278,14 @@ const fetchChannels = async (isReset = false) => {
 
   try {
     const nsfwValue = nsfw.value === 'only' ? 'yes' : (['all', 'yes', 'no'].includes(nsfw.value) ? nsfw.value : 'all')
-    const { data } = await getSubscriptions({ 
-      nsfw: nsfwValue, 
-      page: channelsPage.value, 
+    const params: Record<string, unknown> = {
+      nsfw: nsfwValue,
+      page: channelsPage.value,
       pageSize: CHANNELS_PAGE_SIZE,
-      page_size: CHANNELS_PAGE_SIZE 
-    })
+      page_size: CHANNELS_PAGE_SIZE,
+    }
+    if (site.value) params.site = site.value
+    const { data } = await getSubscriptions(params)
     const items = data?.data || data?.items || []
     if (isReset) list.value = items; else list.value.push(...items)
     if (items.length < CHANNELS_PAGE_SIZE) channelsFinished.value = true
