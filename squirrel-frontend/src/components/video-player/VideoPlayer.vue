@@ -431,7 +431,7 @@ import type { VideoClipMarker } from '@/types/videoClipMarker'
 import { createVideoClipMarker, deleteVideoClipMarker, updateVideoClipMarker, uploadVideoClipMarkerPreview } from '@/api/videoClipMarkers'
 import PlayerIcon from './PlayerIcon.vue'
 
-// ????????import './themes/variables.css'
+import './themes/variables.css'
 import './themes/dark.css'
 import './themes/light.css'
 
@@ -2335,10 +2335,10 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   border: 2px solid rgba(255, 255, 255, 0.1);
   border-top-color: rgba(255, 255, 255, 0.6);
   border-radius: 50%;
-  animation: spin var(--duration-slow) linear infinite;
+  animation: sp-loader-spin 0.8s linear infinite;
 }
 
-@keyframes spin {
+@keyframes sp-loader-spin {
   to { transform: rotate(360deg); }
 }
 
