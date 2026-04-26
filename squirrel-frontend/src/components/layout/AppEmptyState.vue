@@ -1,6 +1,5 @@
 <template>
-  <section class="app-empty-state" :class="[`app-empty-state--${variant}`]">
-    <p v-if="eyebrow" class="app-empty-state__eyebrow">{{ eyebrow }}</p>
+  <section class="app-empty-state">
     <h2 class="app-empty-state__title">{{ title }}</h2>
     <p v-if="copy" class="app-empty-state__copy">{{ copy }}</p>
     <div v-if="$slots.actions" class="app-empty-state__actions">
@@ -11,10 +10,6 @@
 
 <script setup>
 defineProps({
-  eyebrow: {
-    type: String,
-    default: '',
-  },
   title: {
     type: String,
     required: true,
@@ -22,11 +17,6 @@ defineProps({
   copy: {
     type: String,
     default: '',
-  },
-  variant: {
-    type: String,
-    default: 'default',
-    validator: (value) => ['default', 'dense', 'tactical'].includes(value),
   },
 })
 </script>
@@ -45,21 +35,11 @@ defineProps({
   border-radius: var(--app-surface-radius);
 }
 
-.app-empty-state__eyebrow {
-  margin: 0;
-  font-family: var(--app-label-font);
-  font-size: var(--app-eyebrow-font-size);
-  color: hsl(var(--primary));
-  letter-spacing: var(--app-eyebrow-letter-spacing);
-  text-transform: uppercase;
-}
-
 .app-empty-state__title {
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 600;
-  letter-spacing: 0;
 }
 
 .app-empty-state__copy {
@@ -75,13 +55,5 @@ defineProps({
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.75rem;
-}
-
-.app-empty-state--dense {
-  min-height: 18rem;
-}
-
-.app-empty-state--tactical {
-  border-radius: var(--app-tactical-control-radius);
 }
 </style>

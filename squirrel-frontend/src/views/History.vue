@@ -29,7 +29,7 @@
               class="action-btn-minimal is-danger"
               @click="showClearConfirm = true"
             >
-              <Icon icon="lucide:trash-2" />
+              <Trash2 class="h-4 w-4" />
               清空历史
             </button>
           </div>
@@ -65,7 +65,6 @@
           <AppEmptyState
             v-else-if="hasLoadedOnce && groupedVideos.length === 0"
             class="history-empty-card"
-            eyebrow="历史记录"
             :title="searchQuery ? '未找到匹配' : '暂无记录'"
             :copy="searchQuery ? '尝试更换关键词' : '你观看过的视频会出现在这里'"
           />
@@ -74,7 +73,7 @@
           <div v-else class="history-groups">
             <div v-for="group in groupedVideos" :key="group.date" class="history-group">
               <h3 class="history-date-header">
-                <Icon icon="lucide:calendar" class="history-date-header__icon" />
+                <Calendar class="history-date-header__icon" />
                 <span class="history-date-header__label">{{ group.date }}</span>
                 <span class="history-date-header__meta-dot" aria-hidden="true"></span>
                 <span class="history-date-header__count">{{ group.items.length }} 条</span>
@@ -109,7 +108,7 @@
 <script setup>
 import { onMounted, ref, computed, watch, inject, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Icon } from '@iconify/vue';
+import { Trash2, Calendar } from 'lucide-vue-next';
 import AppEmptyState from '@/components/layout/AppEmptyState.vue';
 import AppPageShell from '@/components/layout/AppPageShell.vue';
 import AppSegmentedControl from '@/components/layout/AppSegmentedControl.vue';

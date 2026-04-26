@@ -1,7 +1,7 @@
 <template>
   <div
     class="app-segmented-control"
-    :class="[`app-segmented-control--${variant}`]"
+    :class="[`app-segmented-control--${size}`]"
     role="tablist"
     :aria-label="ariaLabel"
   >
@@ -34,10 +34,10 @@ const props = defineProps({
     type: String,
     default: '切换选项',
   },
-  variant: {
+  size: {
     type: String,
     default: 'default',
-    validator: (value) => ['default', 'dense', 'tactical'].includes(value),
+    validator: (value) => ['default', 'sm'].includes(value),
   },
 })
 
@@ -52,63 +52,38 @@ const selectOption = (value) => {
 
 <style scoped>
 .app-segmented-control {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.125rem;
-  background: var(--app-control-bg);
-  border-radius: var(--app-control-radius);
+  gap: 2px;
+  background: hsl(var(--secondary));
+  border-radius: var(--radius-md);
   padding: 2px;
 }
 
 .app-segmented-control__item {
-  padding: 0.2rem 0.6rem;
-  border-radius: var(--app-control-item-radius);
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-sm);
   border: none;
   background: transparent;
-  color: hsl(var(--muted-foreground) / 0.7);
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
-  font-size: 0.7rem;
+  font-size: 0.8125rem;
   font-weight: 500;
-  letter-spacing: 0;
   transition: all var(--duration-fast) var(--ease-default);
 }
 
 .app-segmented-control__item:hover {
   color: hsl(var(--foreground));
-  background: var(--app-control-hover-bg);
 }
 
 .app-segmented-control__item.is-active {
   color: hsl(var(--foreground));
-  background: var(--app-control-active-bg);
-  box-shadow: var(--app-control-shadow);
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-xs);
 }
 
-.app-segmented-control--dense {
-  gap: var(--app-dense-toolbar-gap);
-}
-
-.app-segmented-control--tactical {
-  background: hsl(var(--secondary) / 0.5);
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: var(--app-tactical-control-radius);
-  padding: 0.2rem;
-}
-
-.app-segmented-control--tactical .app-segmented-control__item {
-  min-width: 8rem;
-  height: 1.8rem;
-  border-radius: var(--app-tactical-control-radius);
-  font-family: var(--app-label-font);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0;
-  color: hsl(var(--muted-foreground) / 0.4);
-}
-
-.app-segmented-control--tactical .app-segmented-control__item.is-active {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  box-shadow: none;
+.app-segmented-control--sm .app-segmented-control__item {
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
 }
 </style>

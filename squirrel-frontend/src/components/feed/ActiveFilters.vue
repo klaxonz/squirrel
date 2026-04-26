@@ -10,9 +10,7 @@
         :title="`移除 ${chip.label} 筛选`"
       >
         {{ chip.label }}
-        <svg class="chip-remove-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor">
-          <path d="M4 4l8 8M12 4l-8 8" stroke-width="1.5" stroke-linecap="round" />
-        </svg>
+        <X class="chip-remove-icon" />
       </button>
       <button class="clear-all-btn" @click="$emit('clearAll')">
         清除全部
@@ -23,6 +21,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { X } from 'lucide-vue-next'
 import type { TimeRange, Duration, ContentType } from '@/composables/useFeedFilters'
 
 const props = defineProps<{

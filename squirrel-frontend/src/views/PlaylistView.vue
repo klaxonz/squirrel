@@ -9,13 +9,12 @@
         <AppEmptyState
           v-else-if="!playlists.length"
           class="playlist-empty-card"
-          eyebrow="播放列表"
           :title="error ? '加载失败' : '还没有播放列表'"
           :copy="error ? '' : '创建一个播放列表，把想看的视频收集到一起'"
         >
           <template #actions>
             <Button v-if="!error" @click="openCreateModal">
-              <Icon icon="lucide:plus" />
+              <Plus />
               <span>新建播放列表</span>
             </Button>
             <Button v-else @click="reloadPlaylists">重试</Button>
@@ -30,7 +29,7 @@
                 <span class="playlist-library__count">{{ playlists.length }}</span>
               </div>
               <Button size="xs" class="playlist-library__create-btn" @click="openCreateModal">
-                <Icon icon="lucide:plus" />
+                <Plus />
                 <span>新建</span>
               </Button>
             </div>
@@ -65,10 +64,10 @@
                       >
                     </template>
                     <span v-else class="playlist-cover__fallback">
-                      <Icon icon="lucide:list-video" />
+                      <ListVideo />
                     </span>
                     <span v-if="playlist.video_count" class="playlist-cover__count">
-                      <Icon icon="lucide:play" class="playlist-cover__count-icon" />
+                      <Play class="playlist-cover__count-icon" />
                       {{ playlist.video_count }}
                     </span>
                   </span>
@@ -90,7 +89,7 @@
                   title="删除播放列表"
                   @click.stop="handleDelete(playlist.id)"
                 >
-                  <Icon icon="lucide:trash-2" />
+                  <Trash2 />
                 </button>
               </article>
             </div>
@@ -118,16 +117,16 @@
                 <DropdownMenu v-if="!activePlaylist.is_default">
                   <DropdownMenuTrigger as-child>
                     <Button variant="ghost" size="icon-sm" class="playlist-detail__more-btn">
-                      <Icon icon="lucide:more-horizontal" />
+                      <MoreHorizontal />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem @click="openEditModal">
-                      <Icon icon="lucide:pencil-line" class="playlist-dropdown-icon" />
+                      <Pencil class="playlist-dropdown-icon" />
                       编辑列表
                     </DropdownMenuItem>
                     <DropdownMenuItem class="text-destructive focus:text-destructive" @click="handleDelete(activePlaylist!.id)">
-                      <Icon icon="lucide:trash-2" class="playlist-dropdown-icon" />
+                      <Trash2 class="playlist-dropdown-icon" />
                       删除列表
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -140,7 +139,7 @@
 
               <div v-else-if="!activePlaylistItems.length" class="playlist-detail__empty">
                 <div class="playlist-detail__empty-icon">
-                  <Icon icon="lucide:list-video" />
+                  <ListVideo />
                 </div>
                 <h3 class="playlist-detail__empty-title">这个列表还是空的</h3>
               </div>
@@ -156,7 +155,7 @@
                     <button type="button" class="playlist-item-row__primary" @click="playVideo(item)">
                       <div class="playlist-item-row__thumb">
                         <div class="playlist-item-row__thumb-fallback">
-                          <Icon icon="lucide:film" />
+                          <Film />
                         </div>
                         <img
                           v-if="item.video?.thumbnail"
@@ -188,7 +187,7 @@
                       title="从列表移除"
                       @click="handleRemoveVideo(item)"
                     >
-                      <Icon icon="lucide:x" />
+                      <X />
                     </button>
                   </article>
                 </TransitionGroup>
@@ -197,7 +196,7 @@
 
             <div v-else class="playlist-detail__blank">
               <div class="playlist-detail__blank-icon">
-                <Icon icon="lucide:panel-right-open" />
+                <PanelRightOpen />
               </div>
               <h3 class="playlist-detail__blank-title">选择一个播放列表</h3>
             </div>
@@ -228,7 +227,7 @@
           <div class="playlist-editor__header">
             <h3 class="playlist-editor__title">{{ editingPlaylist ? '编辑播放列表' : '新建播放列表' }}</h3>
             <button type="button" class="playlist-editor__close" @click="closeModal">
-              <Icon icon="lucide:x" />
+              <X />
             </button>
           </div>
 
@@ -266,7 +265,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Icon } from '@iconify/vue'
+import { Plus, ListVideo, Play, Trash2, MoreHorizontal, Pencil, Film, X, PanelRightOpen } from 'lucide-vue-next'
 import AppEmptyState from '@/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { Badge } from '@/components/ui/badge'

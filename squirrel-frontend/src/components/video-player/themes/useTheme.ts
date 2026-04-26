@@ -5,7 +5,7 @@
 
 import { ref, computed, watch, onMounted, onUnmounted, type Ref } from 'vue'
 
-export type ThemeName = 'dark' | 'light' | 'cyber' | 'scifi' | 'auto' | 'custom'
+export type ThemeName = 'dark' | 'light' | 'auto' | 'custom'
 
 export interface ThemeColors {
   primary?: string
@@ -113,12 +113,11 @@ export function useTheme(options: UseThemeOptions = {}): UseThemeReturn {
     if (!root) return
     
     // 移除旧主题类
-    root.classList.remove('sp-theme-dark', 'sp-theme-light', 'sp-theme-cyber', 'sp-theme-scifi')
+    root.classList.remove('sp-theme-dark', 'sp-theme-light')
     root.removeAttribute('data-sp-theme')
 
-    // 应用新主题
     const actualTheme = themeName === 'auto' ? systemTheme.value : themeName
-    if (['dark', 'light', 'cyber', 'scifi'].includes(actualTheme)) {
+    if (['dark', 'light'].includes(actualTheme)) {
       root.classList.add(`sp-theme-${actualTheme}`)
       root.setAttribute('data-sp-theme', actualTheme)
     }

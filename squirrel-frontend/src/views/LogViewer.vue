@@ -19,7 +19,7 @@
           class="log-toolbar-button"
           :title="'复制所有显示的日志 (' + logs.length + ' 条)'"
         >
-          <ClipboardDocumentIcon class="h-4 w-4" />
+          <Clipboard class="h-4 w-4" />
           {{ allCopied ? '已复制全部' : '复制全部' }}
         </Button>
         <Button
@@ -114,8 +114,6 @@
         <AppEmptyState
           v-else-if="logs.length === 0"
           class="log-empty-state"
-          variant="dense"
-          eyebrow="日志中心"
           :title="hasActiveFilters ? '没有匹配的日志' : '暂无日志'"
           :copy="hasActiveFilters ? '调整搜索条件后再试。' : '当前日志文件里还没有内容。'"
         >
@@ -183,7 +181,7 @@
                     class="h-6 w-6 p-0"
                     title="复制日志"
                   >
-                    <ClipboardDocumentIcon class="h-3.5 w-3.5" />
+                    <Clipboard class="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
@@ -198,7 +196,7 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
-import { ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
+import { Clipboard } from 'lucide-vue-next';
 import AppEmptyState from '@/components/layout/AppEmptyState.vue';
 import AppPageShell from '@/components/layout/AppPageShell.vue';
 import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue';
@@ -498,14 +496,8 @@ function formatFileSize(bytes) {
   }
 }
 
-.log-viewer-container {
-  font-family: var(--font-sans);
-}
-
 .log-hero__label {
   font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: var(--app-label-wide-letter-spacing);
   color: hsl(var(--muted-foreground));
 }
 
@@ -550,9 +542,5 @@ function formatFileSize(bytes) {
 
 .log-message {
   color: hsl(var(--foreground));
-}
-
-.text-2xs {
-  font-size: 0.65rem;
 }
 </style>

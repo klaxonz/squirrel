@@ -1,6 +1,6 @@
 <template>
-  <AppPageShell class="sync-center-page tactical-terminal" variant="tactical">
-    <AppToolbarFrame class="toolbar-container relative z-10" variant="tactical">
+  <AppPageShell class="sync-center-page" variant="compact" scrollable>
+    <AppToolbarFrame class="toolbar-container relative z-10" variant="default">
       <div class="flex flex-col gap-4 md:gap-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <SyncControlBar
@@ -11,7 +11,6 @@
           <section class="pipeline-tabs self-start sm:self-auto">
             <AppSegmentedControl
               v-model="activePipeline"
-              variant="tactical"
               class="pipeline-tabs__control"
               :options="pipelineOptions"
               aria-label="同步流水线切换"
@@ -21,13 +20,7 @@
         </div>
 
         <div class="relative">
-          <!-- 垂直导轨 -->
-          <div class="absolute inset-0 hidden xl:flex justify-between px-[33%] pointer-events-none" aria-hidden="true">
-            <div class="w-px h-full bg-gradient-to-b from-transparent via-foreground/5 to-transparent shadow-[0_0_15px_hsl(var(--foreground)/0.05)]"></div>
-            <div class="w-px h-full bg-gradient-to-b from-transparent via-foreground/5 to-transparent shadow-[0_0_15px_hsl(var(--foreground)/0.05)]"></div>
-          </div>
-
-          <section class="flow-shell relative z-10">
+          <section class="flow-shell">
             <div class="flow-grid">
               <SyncQueueBoard
                 :items="currentQueuedLaneItems"
@@ -471,12 +464,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.tactical-terminal {
-  background-color: hsl(var(--background));
-  position: relative;
-  overflow: hidden;
-}
-
 .pipeline-tabs {
   display: flex;
   justify-content: flex-start;
@@ -484,11 +471,6 @@ onBeforeUnmount(() => {
 
 .pipeline-tabs__control {
   min-width: max-content;
-}
-
-.flow-shell {
-  position: relative;
-  z-index: 10;
 }
 
 .flow-grid {

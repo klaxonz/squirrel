@@ -18,7 +18,7 @@ defineProps({
   variant: {
     type: String,
     default: 'default',
-    validator: (value) => ['default', 'dense', 'tactical', 'playback'].includes(value),
+    validator: (value) => ['default', 'compact'].includes(value),
   },
   fill: {
     type: Boolean,
@@ -49,7 +49,23 @@ defineProps({
   overflow-y: auto;
 }
 
-.app-page-shell--tactical {
-  overflow: hidden;
+.app-page-shell--default {
+  padding: 0 var(--app-page-gutter);
+}
+
+@media (min-width: 640px) {
+  .app-page-shell--default {
+    padding: 0 var(--app-page-gutter-sm);
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-page-shell--default {
+    padding: 0 var(--app-page-gutter-lg);
+  }
+}
+
+.app-page-shell--compact {
+  padding: 0;
 }
 </style>

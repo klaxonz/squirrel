@@ -15,7 +15,7 @@
             <Button as-child variant="outline" size="xs" class="plugin-toolbar-btn plugin-toolbar-btn--quiet">
               <label>
                 <input type="file" accept=".zip" class="hidden" @change="handleFileChange" />
-                <CloudArrowUpIcon class="h-3.5 w-3.5" />
+                <Upload class="h-3.5 w-3.5" />
                 <span>{{ selectedFile ? selectedFile.name : '导入插件' }}</span>
               </label>
             </Button>
@@ -26,14 +26,14 @@
               size="xs"
               class="plugin-toolbar-btn plugin-toolbar-btn--primary"
             >
-              <ArrowPathIcon v-if="installing" class="h-3.5 w-3.5 animate-spin" />
-              <PlusCircleIcon v-else class="h-3.5 w-3.5" />
+              <RefreshIcon v-if="installing" class="h-3.5 w-3.5 animate-spin" />
+              <PlusCircle v-else class="h-3.5 w-3.5" />
               {{ installing ? '安装中' : '安装' }}
             </Button>
             <Button as-child variant="outline" size="xs" class="plugin-toolbar-btn plugin-toolbar-btn--quiet">
               <label>
                 <input type="file" accept=".txt,.json" class="hidden" @change="handleCookiesFileChange" />
-                <CloudArrowUpIcon class="h-3.5 w-3.5" />
+                <Upload class="h-3.5 w-3.5" />
                 <span>{{ cookiesFileName || '导入 Cookie' }}</span>
               </label>
             </Button>
@@ -44,8 +44,8 @@
               size="xs"
               class="plugin-toolbar-btn plugin-toolbar-btn--primary"
             >
-              <ArrowPathIcon v-if="importingCookies" class="h-3.5 w-3.5 animate-spin" />
-              <PlusCircleIcon v-else class="h-3.5 w-3.5" />
+              <RefreshIcon v-if="importingCookies" class="h-3.5 w-3.5 animate-spin" />
+              <PlusCircle v-else class="h-3.5 w-3.5" />
               {{ importingCookies ? '导入中' : '导入' }}
             </Button>
             <Button
@@ -54,8 +54,8 @@
               size="xs"
               class="plugin-toolbar-btn plugin-toolbar-btn--primary"
             >
-              <ArrowPathIcon v-if="testingAll" class="h-3.5 w-3.5 animate-spin" />
-              <CheckCircleIcon v-else class="h-3.5 w-3.5" />
+              <RefreshIcon v-if="testingAll" class="h-3.5 w-3.5 animate-spin" />
+              <CheckCircle v-else class="h-3.5 w-3.5" />
               {{ testingAll ? '测试中' : '测试全部' }}
             </Button>
           </div>
@@ -105,7 +105,7 @@
             </template>
             <span v-if="lastTestedAt" class="plugin-timestamp">最近检测 {{ formatTime(lastTestedAt) }}</span>
             <div class="plugin-search">
-              <MagnifyingGlassIcon class="h-3 w-3" />
+              <Search class="h-3 w-3" />
               <input
                 v-model="searchQuery"
                 placeholder="搜索..."
@@ -120,7 +120,7 @@
               class="plugin-search-refresh"
               title="刷新"
             >
-              <ArrowPathIcon class="h-3.5 w-3.5" :class="{ 'animate-spin': reloading }" />
+              <RefreshIcon class="h-3.5 w-3.5" :class="{ 'animate-spin': reloading }" />
             </Button>
           </template>
         </div>
@@ -164,7 +164,6 @@
         <AppEmptyState
           v-else-if="!displayPlugins.length"
           class="plugin-empty-state"
-          eyebrow="插件管理"
           :title="searchQuery ? '没有匹配的插件' : '还没有可展示的插件'"
           :copy="searchQuery ? '尝试更换搜索关键词。' : '导入插件后，会在这里显示运行状态、能力和站点配置。'"
         />
@@ -193,7 +192,7 @@
                     size="sm"
                   />
                   <div v-else class="col-icon-placeholder">
-                    <CubeIcon class="h-4 w-4 text-muted-foreground/30" />
+                    <Cube class="h-4 w-4 text-muted-foreground/30" />
                   </div>
                 </td>
                 <td class="col-name">
@@ -230,14 +229,14 @@
                 </td>
                 <td class="col-site-access">
                   <div v-if="plugin.siteTesting" class="flex items-center gap-1 text-muted-foreground/40 animate-pulse">
-                    <ArrowPathIcon class="h-3 w-3 animate-spin" />
+                    <RefreshIcon class="h-3 w-3 animate-spin" />
                   </div>
                   <div
                     v-else-if="plugin.siteAccessible === true"
                     class="status-ok"
                     title="网络可达"
                   >
-                    <CheckCircleIcon class="h-3.5 w-3.5" />
+                    <CheckCircle class="h-3.5 w-3.5" />
                     <span>可达</span>
                   </div>
                   <div
@@ -245,21 +244,21 @@
                     class="status-error"
                     title="网络不可达"
                   >
-                    <XCircleIcon class="h-3.5 w-3.5" />
+                    <XCircle class="h-3.5 w-3.5" />
                     <span>不可达</span>
                   </div>
                   <span v-else class="text-muted-foreground/30">—</span>
                 </td>
                 <td class="col-site-login">
                   <div v-if="plugin.siteLoginTesting" class="flex items-center gap-1 text-muted-foreground/40 animate-pulse">
-                    <ArrowPathIcon class="h-3 w-3 animate-spin" />
+                    <RefreshIcon class="h-3 w-3 animate-spin" />
                   </div>
                   <div
                     v-else-if="plugin.siteOAuthStatus === 'authenticated'"
                     class="status-ok"
                     :title="plugin.siteOAuthAccount?.email || 'YouTube OAuth 已连接'"
                   >
-                    <LinkIcon class="h-3.5 w-3.5" />
+                    <Link class="h-3.5 w-3.5" />
                     <span>已授权</span>
                   </div>
                   <div
@@ -267,7 +266,7 @@
                     class="status-warning"
                     :title="plugin.siteLoginStatus?.user_code ? `等待完成授权，验证码：${plugin.siteLoginStatus.user_code}` : '等待完成浏览器授权'"
                   >
-                    <ArrowPathIcon class="h-3.5 w-3.5 animate-spin" />
+                    <RefreshIcon class="h-3.5 w-3.5 animate-spin" />
                     <span>待授权</span>
                   </div>
                   <div
@@ -275,7 +274,7 @@
                     class="status-warning"
                     title="YouTube OAuth 已过期"
                   >
-                    <XCircleIcon class="h-3.5 w-3.5" />
+                    <XCircle class="h-3.5 w-3.5" />
                     <span>已过期</span>
                   </div>
                   <div
@@ -283,7 +282,7 @@
                     class="status-error"
                     :title="plugin.siteLoginStatus?.message || 'YouTube OAuth 异常'"
                   >
-                    <XCircleIcon class="h-3.5 w-3.5" />
+                    <XCircle class="h-3.5 w-3.5" />
                     <span>异常</span>
                   </div>
                   <div
@@ -291,7 +290,7 @@
                     class="status-ok"
                     title="登录有效"
                   >
-                    <CheckCircleIcon class="h-3.5 w-3.5" />
+                    <CheckCircle class="h-3.5 w-3.5" />
                     <span>有效</span>
                   </div>
                   <div
@@ -299,7 +298,7 @@
                     class="status-error"
                     title="登录无效"
                   >
-                    <XCircleIcon class="h-3.5 w-3.5" />
+                    <XCircle class="h-3.5 w-3.5" />
                     <span>无效</span>
                   </div>
                   <span v-else class="text-muted-foreground/30">—</span>
@@ -313,7 +312,7 @@
                       class="action-btn"
                       title="启用"
                     >
-                      <PlayIcon class="h-3.5 w-3.5" />
+                      <Play class="h-3.5 w-3.5" />
                     </button>
                     <button
                       v-else
@@ -322,7 +321,7 @@
                       class="action-btn"
                       title="停用"
                     >
-                      <PauseIcon class="h-3.5 w-3.5" />
+                      <Pause class="h-3.5 w-3.5" />
                     </button>
                     <button
                       v-if="plugin.siteName"
@@ -331,7 +330,7 @@
                       class="action-btn"
                       title="测试"
                     >
-                      <BoltIcon class="h-3.5 w-3.5" />
+                      <Bolt class="h-3.5 w-3.5" />
                     </button>
                     <button
                       v-if="plugin.siteSupportsLogin"
@@ -340,7 +339,7 @@
                       class="action-btn"
                       title="验证登录"
                     >
-                      <KeyIcon class="h-3.5 w-3.5" />
+                      <Key class="h-3.5 w-3.5" />
                     </button>
                     <button
                       v-if="plugin.siteName === 'youtube'"
@@ -349,12 +348,12 @@
                       class="action-btn"
                       :title="plugin.siteOAuthStatus === 'authenticated' || plugin.siteOAuthStatus === 'pending' ? '解除 YouTube 授权' : '关联 YouTube 账户'"
                     >
-                      <ArrowPathIcon v-if="ytOAuthActioning" class="h-3.5 w-3.5 animate-spin" />
-                      <LinkSlashIcon
+                      <RefreshIcon v-if="ytOAuthActioning" class="h-3.5 w-3.5 animate-spin" />
+                      <Unlink
                         v-else-if="plugin.siteOAuthStatus === 'authenticated' || plugin.siteOAuthStatus === 'pending'"
                         class="h-3.5 w-3.5"
                       />
-                      <LinkIcon v-else class="h-3.5 w-3.5" />
+                      <Link v-else class="h-3.5 w-3.5" />
                     </button>
                     <button
                       v-if="plugin.siteName"
@@ -363,14 +362,14 @@
                       class="action-btn"
                       title="上传Cookie"
                     >
-                      <CookieIcon class="h-3.5 w-3.5" />
+                      <Cookie class="h-3.5 w-3.5" />
                     </button>
                     <button
                       @click="openSiteEditorByPlugin(plugin)"
                       class="action-btn"
                       title="站点配置"
                     >
-                      <CogIcon class="h-3.5 w-3.5" />
+                      <Settings class="h-3.5 w-3.5" />
                     </button>
                     <button
                       :disabled="actioning === plugin.plugin_id"
@@ -378,7 +377,7 @@
                       class="action-btn action-btn--danger"
                       title="卸载"
                     >
-                      <TrashIcon class="h-3.5 w-3.5" />
+                      <Trash2 class="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </td>
@@ -407,22 +406,23 @@ import AppEmptyState from '@/components/layout/AppEmptyState.vue';
 import AppPageShell from '@/components/layout/AppPageShell.vue';
 import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue';
 import {
-  ArrowPathIcon,
-  CheckCircleIcon,
-  CloudArrowUpIcon,
-  CogIcon,
-  CubeIcon,
-  MagnifyingGlassIcon,
-  PlusCircleIcon,
-  XCircleIcon,
-  PlayIcon,
-  PauseIcon,
-  TrashIcon,
-  BoltIcon,
-  KeyIcon,
-  LinkIcon,
-  LinkSlashIcon,
-} from '@heroicons/vue/24/outline';
+  RotateCcwIcon as RefreshIcon,
+  CheckCircleIcon as CheckCircle,
+  CloudUploadIcon as Upload,
+  SettingsIcon as Settings,
+  CookieIcon as Cookie,
+  BoxIcon as Cube,
+  SearchIcon as Search,
+  PlusCircleIcon as PlusCircle,
+  XCircleIcon as XCircle,
+  PlayIcon as Play,
+  PauseIcon as Pause,
+  Trash2Icon as Trash2,
+  BoltIcon as Bolt,
+  KeyIcon as Key,
+  LinkIcon as Link,
+  UnlinkIcon as Unlink,
+} from 'lucide-vue-next';
 import SiteIcon from '@/components/common/SiteIcon.vue'
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
 import PluginSkeleton from '@/components/settings/PluginSkeleton.vue';
@@ -1222,12 +1222,12 @@ onUnmounted(() => {
 
 .plugin-stat-skeleton__value {
   height: 0.9rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
 }
 
 .plugin-stat-skeleton__label {
   height: 0.7rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   opacity: 0.85;
 }
 
@@ -1240,7 +1240,7 @@ onUnmounted(() => {
 .plugin-timestamp--skeleton {
   width: 7.5rem;
   height: 0.85rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   margin-left: 0.25rem;
 }
 
@@ -1262,14 +1262,14 @@ onUnmounted(() => {
 .plugin-search__icon-skeleton {
   width: 0.8rem;
   height: 0.8rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   flex-shrink: 0;
 }
 
 .plugin-search__input-skeleton {
   width: 6rem;
   height: 0.72rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
 }
 
 .plugin-search-input {
@@ -1301,7 +1301,7 @@ onUnmounted(() => {
 
 .plugin-unified-panel {
   border: 1px solid hsl(var(--border) / 0.45);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   background: hsl(var(--card) / 0.45);
   overflow: hidden;
 }
@@ -1319,8 +1319,6 @@ onUnmounted(() => {
   font-size: 0.6875rem;
   font-weight: 700;
   color: hsl(var(--muted-foreground) / 0.7);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 .plugin-loading,
@@ -1379,7 +1377,7 @@ onUnmounted(() => {
   padding: 1rem 1.25rem;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border) / 0.4);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   cursor: pointer;
   transition:
     all var(--duration-normal) var(--ease-default);
@@ -1427,7 +1425,6 @@ onUnmounted(() => {
 
 .site-config-status--enabled {
   background: hsl(var(--success));
-  box-shadow: 0 0 6px hsl(var(--success) / 0.4);
 }
 
 .site-config-status--disabled {
@@ -1454,8 +1451,6 @@ onUnmounted(() => {
   font-size: 11px;
   font-weight: 600;
   color: hsl(var(--muted-foreground) / 0.6);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   white-space: nowrap;
 }
 
@@ -1466,7 +1461,7 @@ onUnmounted(() => {
 }
 
 .plugin-table tbody tr:hover {
-  background: hsl(var(--secondary) / 0.06);
+  background: hsl(var(--foreground) / 0.03);
 }
 
 .plugin-table tbody tr:last-child td {
@@ -1537,7 +1532,7 @@ onUnmounted(() => {
   white-space: pre-line;
   line-height: 1.5;
   z-index: 50;
-  box-shadow: 0 4px 12px hsl(0 0% 0% / 0.15);
+  box-shadow: var(--shadow-md);
   min-width: 100px;
   max-width: 250px;
 }

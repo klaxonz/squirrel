@@ -473,12 +473,10 @@ import {
   Network,
   Palette,
   PlayCircle,
-  Rocket,
   Settings2,
   ShieldAlert,
   ShieldCheck,
   Sun,
-  Zap,
 } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { revokeUserSessions, updateUserPassword } from '@/api'
@@ -510,8 +508,6 @@ const themeOptions: Array<{ value: AppThemeMode; label: string; description: str
   { value: 'light', label: '浅色', description: '明亮的浅色主题', icon: Sun },
   { value: 'dark', label: '深色', description: '护眼的深色主题', icon: Moon },
   { value: 'system', label: '系统', description: '跟随系统设置', icon: Monitor },
-  { value: 'cyber', label: '赛博', description: '霓虹工业风', icon: Zap },
-  { value: 'scifi', label: '科幻', description: '星际流体风格', icon: Rocket },
 ]
 
 const { themeMode, setThemeMode } = useAppTheme()
@@ -721,61 +717,6 @@ const handleRevokeSessions = async () => {
 }
 
 /* ── Header ── */
-.settings-header {
-  position: relative;
-  padding: 1.5rem 2rem 0;
-}
-
-@media (min-width: 640px) {
-  .settings-header { padding: 1.75rem 2rem 0; }
-}
-@media (min-width: 1024px) {
-  .settings-header { padding: 2.25rem 2.5rem 0; }
-}
-@media (max-width: 768px) {
-  .settings-header { padding-left: 1rem; padding-right: 1rem; }
-}
-
-.settings-header__inner {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.settings-header__eyebrow {
-  margin-bottom: 0.5rem;
-}
-
-.settings-header__badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.625rem;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.08);
-  border: 1px solid hsl(var(--primary) / 0.15);
-  border-radius: var(--radius-full);
-}
-
-.settings-header__title {
-  font-size: 1.875rem;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  color: hsl(var(--foreground));
-  margin: 0;
-  line-height: 1.1;
-}
-
-.settings-header__desc {
-  font-size: 0.8125rem;
-  color: hsl(var(--muted-foreground));
-  margin: 0.375rem 0 0;
-}
 
 .settings-header__status {
   display: flex;
@@ -788,7 +729,6 @@ const handleRevokeSessions = async () => {
   font-size: 0.75rem;
   font-weight: 600;
   color: hsl(var(--warning));
-  backdrop-filter: blur(8px);
 }
 
 .status-dot {
@@ -799,18 +739,14 @@ const handleRevokeSessions = async () => {
   animation: status-pulse 2s ease-in-out infinite;
 }
 
-.settings-header__line {
-  display: none;
-}
-
 @keyframes status-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.8); }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 /* Status pop transition */
 .status-pop-enter-active {
-  transition: all var(--duration-slow) var(--ease-bounce);
+  transition: all var(--duration-slow) var(--ease-default);
 }
 .status-pop-leave-active {
   transition: all var(--duration-normal) var(--ease-default);
@@ -818,14 +754,15 @@ const handleRevokeSessions = async () => {
 .status-pop-enter-from,
 .status-pop-leave-to {
   opacity: 0;
-  transform: scale(0.75) translateY(-6px);
+  transform: translateY(-6px);
 }
 
 /* ── Tab Navigation ── */
 .settings-tabs {
   display: flex;
-  gap: 0.125rem;
+  gap: 0.25rem;
   padding: 0.75rem var(--app-page-gutter) 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
   overflow-x: auto;
   scrollbar-width: none;
   position: relative;
@@ -850,53 +787,48 @@ const handleRevokeSessions = async () => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.875rem;
+  padding: 0.5rem 0.875rem 0.75rem;
   font-size: 0.8125rem;
   font-weight: 600;
   color: hsl(var(--muted-foreground));
   background: transparent;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: 0;
   cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
+  transition: color var(--duration-normal) var(--ease-default);
   white-space: nowrap;
-  overflow: hidden;
   user-select: none;
 }
 
-.settings-tab::before {
+.settings-tab::after {
   content: '';
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: hsl(var(--primary) / 0.07);
-  opacity: 0;
-  transition: opacity var(--duration-normal) var(--ease-default);
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: transparent;
+  border-radius: 1px 1px 0 0;
+  transition: background var(--duration-normal) var(--ease-default);
 }
 
 .settings-tab:hover {
   color: hsl(var(--foreground));
 }
 
-.settings-tab:hover::before { opacity: 1; }
-
 .settings-tab--active {
   color: hsl(var(--primary));
 }
 
-.settings-tab--active::before {
-  opacity: 1;
-  background: hsl(var(--primary) / 0.12);
+.settings-tab--active::after {
+  background: hsl(var(--primary));
 }
 
 .settings-tab__icon {
   width: 1rem;
   height: 1rem;
   flex-shrink: 0;
-  transition: transform var(--duration-normal) var(--ease-default);
 }
-
-.settings-tab:hover .settings-tab__icon { transform: scale(1.1) rotate(-3deg); }
 
 .settings-tab__badge {
   padding: 0.125rem 0.375rem;
@@ -955,12 +887,6 @@ const handleRevokeSessions = async () => {
   color: hsl(var(--primary));
   border-radius: var(--radius-lg);
   flex-shrink: 0;
-  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.06);
-  transition: box-shadow var(--duration-normal) var(--ease-default);
-}
-
-.settings-section:hover .settings-section__icon {
-  box-shadow: 0 0 0 6px hsl(var(--primary) / 0.1);
 }
 
 .settings-section__title {
@@ -995,36 +921,19 @@ const handleRevokeSessions = async () => {
   cursor: pointer;
   transition: all var(--duration-normal) var(--ease-default);
   position: relative;
-  overflow: hidden;
-}
-
-.theme-option::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.08), transparent 70%);
-  opacity: 0;
-  transition: opacity var(--duration-slow) var(--ease-default);
 }
 
 .theme-option:hover {
   border-color: hsl(var(--primary) / 0.35);
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px hsl(var(--foreground) / 0.06);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
 }
-
-.theme-option:hover::after { opacity: 1; }
 
 .theme-option--active {
   border-color: hsl(var(--primary));
   background: hsl(var(--primary) / 0.04);
-  box-shadow:
-    0 0 0 1px hsl(var(--primary) / 0.2),
-    0 4px 16px hsl(var(--primary) / 0.12);
+  box-shadow: var(--shadow-sm);
 }
-
-.theme-option--active::after { opacity: 1; }
 
 .theme-option__preview {
   width: 3.25rem;
@@ -1033,39 +942,21 @@ const handleRevokeSessions = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform var(--duration-normal) var(--ease-default);
 }
-
-.theme-option:hover .theme-option__preview { transform: scale(1.08) rotate(3deg); }
 
 .theme-option__preview--light {
   background: linear-gradient(145deg, #fafafa 0%, #e4e4e4 100%);
   color: #444;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 8px rgba(0,0,0,0.08);
 }
 
 .theme-option__preview--dark {
   background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
   color: #f0f0f0;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.3);
 }
 
 .theme-option__preview--system {
   background: linear-gradient(145deg, #fafafa 0%, #1a1a2e 100%);
   color: #888;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.theme-option__preview--cyber {
-  background: linear-gradient(145deg, #0a0a0a 0%, #1a1a1a 100%);
-  color: #FF4F00;
-  box-shadow: 0 0 12px rgba(255,79,0,0.2), inset 0 1px 0 rgba(255,255,255,0.03);
-}
-
-.theme-option__preview--scifi {
-  background: linear-gradient(145deg, #05080a 0%, #0a1628 100%);
-  color: #00E5FF;
-  box-shadow: 0 0 12px rgba(0,229,255,0.2), inset 0 1px 0 rgba(255,255,255,0.03);
 }
 
 .theme-option__preview-inner {
@@ -1076,8 +967,6 @@ const handleRevokeSessions = async () => {
 
 .theme-option__info {
   text-align: center;
-  position: relative;
-  z-index: 1;
 }
 
 .theme-option__name {
@@ -1106,7 +995,7 @@ const handleRevokeSessions = async () => {
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   border-radius: 50%;
-  animation: check-pop var(--duration-slow) var(--ease-bounce);
+  animation: check-pop var(--duration-normal) var(--ease-default);
 }
 
 @keyframes check-pop {
@@ -1120,7 +1009,6 @@ const handleRevokeSessions = async () => {
   border: 1px solid hsl(var(--border) / 0.5);
   border-radius: var(--radius-xl);
   overflow: hidden;
-  backdrop-filter: blur(12px);
   transition:
     border-color var(--duration-normal) var(--ease-default),
     box-shadow var(--duration-normal) var(--ease-default);
@@ -1128,7 +1016,7 @@ const handleRevokeSessions = async () => {
 
 .settings-card:hover {
   border-color: hsl(var(--border));
-  box-shadow: 0 4px 16px hsl(var(--foreground) / 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .settings-card--form {
@@ -1150,8 +1038,6 @@ const handleRevokeSessions = async () => {
   padding: 0.25rem 0.625rem;
   font-size: 0.6875rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
   color: hsl(var(--muted-foreground));
   background: hsl(var(--secondary));
   border-radius: var(--radius-full);
@@ -1191,23 +1077,9 @@ const handleRevokeSessions = async () => {
   gap: 1rem;
   padding: 1rem 1.25rem;
   transition: background var(--duration-fast) var(--ease-default);
-  position: relative;
-}
-
-.settings-row::before {
-  content: '';
-  position: absolute;
-  left: 1.25rem;
-  right: 1.25rem;
-  bottom: 0;
-  height: 1px;
-  background: hsl(var(--border) / 0.3);
-  opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease-default);
 }
 
 .settings-row:hover { background: hsl(var(--secondary) / 0.25); }
-.settings-row:hover::before { opacity: 1; }
 
 .settings-row__info { flex: 1; min-width: 0; }
 
@@ -1298,7 +1170,7 @@ const handleRevokeSessions = async () => {
 
 .form-field__input:focus {
   border-color: hsl(var(--primary));
-  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+  box-shadow: var(--focus-ring-sm);
 }
 
 .form-field__input::placeholder {
@@ -1394,8 +1266,7 @@ const handleRevokeSessions = async () => {
 .skeleton-line--theme-name { height: 0.875rem; width: 4rem; }
 .skeleton-line--theme-desc { height: 0.625rem; width: 6rem; }
 
-/* ── Responsive ── */
-
+/* ── Server Config ── */
 .server-url-display {
   font-size: 0.8rem;
   font-family: var(--font-mono);
@@ -1423,8 +1294,6 @@ const handleRevokeSessions = async () => {
   border: none;
   color: hsl(var(--muted-foreground));
   font-size: 0.8rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
   cursor: pointer;
   padding: 0.25rem 0;
   transition: color var(--duration-normal) var(--ease-default);
@@ -1464,7 +1333,6 @@ const handleRevokeSessions = async () => {
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
-  .settings-header,
   .settings-tabs,
   .settings-content {
     padding-left: 1rem;
@@ -1481,8 +1349,6 @@ const handleRevokeSessions = async () => {
     gap: 0.75rem;
     padding: 1rem 1.25rem;
   }
-
-  .settings-row::before { left: 1.25rem; right: 1.25rem; }
 
   .settings-card--compact {
     flex-direction: column;

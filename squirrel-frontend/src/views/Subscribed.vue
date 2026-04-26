@@ -19,11 +19,11 @@
           <template #actions>
             <div class="toolbar-right-actions">
               <Button size="xs" class="subscribed-toolbar__button whitespace-nowrap" @click="showAddDialog = true">
-                <PlusIcon class="h-4 w-4" />
+                <Plus class="h-4 w-4" />
                 <span>添加订阅</span>
               </Button>
               <Button size="xs" variant="secondary" class="subscribed-toolbar__button subscribed-toolbar__button--secondary whitespace-nowrap" @click="showImportDialog = true">
-                <ArrowDownTrayIcon class="h-4 w-4" />
+                <Download class="h-4 w-4" />
                 <span>导入订阅</span>
               </Button>
             </div>
@@ -55,7 +55,6 @@
             v-else-if="hasLoadedOnce && !loading && !subscriptions.length"
             key="empty"
             class="subscribed-empty-card"
-            eyebrow="订阅库"
             title="还没有可展示的订阅"
             copy="可以直接添加一个频道，或者从支持的站点批量导入。"
           >
@@ -141,13 +140,13 @@
                         :title="getSubscriptionRefreshState(subscription.id).isRefreshing ? '更新中' : '刷新'"
                         @click.stop="handleRefreshSubscription(subscription.id)"
                       >
-                        <ArrowPathIcon
+                        <RefreshCw
                           class="row-action-icon"
                           :class="{ 'is-spinning': getSubscriptionRefreshState(subscription.id).isRefreshing }"
                         />
                       </button>
                       <button class="row-action-btn" title="设置" @click.stop="openSettings(subscription)">
-                        <Cog6ToothIcon class="row-action-icon" />
+                        <Settings class="row-action-icon" />
                       </button>
                     </div>
                   </div>
@@ -170,7 +169,7 @@
                           @error="handleThumbnailError(subscription.id, video.id)"
                         >
                         <div v-else class="recent-video-card__thumb-placeholder">
-                          <Icon icon="lucide:image-off" class="recent-video-card__thumb-placeholder-icon" />
+                          <ImageOff class="recent-video-card__thumb-placeholder-icon" />
                           <span class="recent-video-card__thumb-placeholder-text">暂无封面</span>
                         </div>
                         <span v-if="video.duration" class="recent-video-card__duration">{{ formatDuration(video.duration) }}</span>
@@ -289,8 +288,7 @@
 <script setup>
 import { computed, inject, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Icon } from '@iconify/vue'
-import { ArrowDownTrayIcon, ArrowPathIcon, Cog6ToothIcon, PlusIcon } from '@heroicons/vue/24/outline'
+import { Download, ImageOff, RefreshCw, Settings, Plus } from 'lucide-vue-next'
 import AppEmptyState from '@/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue'
@@ -760,7 +758,7 @@ onUnmounted(() => {
 .subscribed-toolbar__button {
   gap: 0.35rem;
   padding-inline: 0.65rem;
-  border-radius: calc(var(--radius-sm) + 1px);
+  border-radius: var(--radius-md);
 }
 
 .subscribed-toolbar__button--secondary {
@@ -812,7 +810,7 @@ onUnmounted(() => {
 }
 
 .subscription-row:hover {
-  background: hsl(var(--secondary) / 0.08);
+  background: hsl(var(--foreground) / 0.03);
 }
 
 .subscription-row__header {
@@ -838,7 +836,7 @@ onUnmounted(() => {
 .subscription-row__avatar {
   width: 100%;
   height: 100%;
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: var(--radius-md);
 }
 
 .subscription-row__avatar :deep(.avatar-image) {
@@ -853,9 +851,9 @@ onUnmounted(() => {
 .subscription-row__avatar-pulse {
   position: absolute;
   inset: -3px;
-  border: 2px solid hsl(var(--primary) / 0.65);
+  border: 2px solid hsl(var(--primary) / 0.45);
   border-radius: calc(var(--radius-sm) + 2px);
-  animation: stream-pulse 1.5s ease-in-out infinite;
+  animation: stream-pulse 2s ease-in-out infinite;
 }
 
 .subscription-row__main {
@@ -937,8 +935,7 @@ onUnmounted(() => {
 .subscription-row__stat-label {
   font-size: 0.55rem;
   color: hsl(var(--muted-foreground) / 0.5);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
 
 .subscription-row__stat-sep {
@@ -969,14 +966,14 @@ onUnmounted(() => {
   height: 1.75rem;
   border: none;
   background: transparent;
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: var(--radius-md);
   cursor: pointer;
   color: hsl(var(--muted-foreground));
   transition: all var(--duration-fast) var(--ease-default);
 }
 
 .row-action-btn:hover {
-  background: hsl(var(--secondary) / 0.4);
+  background: hsl(var(--accent));
   color: hsl(var(--foreground));
 }
 
@@ -1016,7 +1013,7 @@ onUnmounted(() => {
   box-sizing: border-box;
   border: none;
   background: transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-lg);
   padding: 0.2rem;
   text-align: left;
   cursor: pointer;
@@ -1024,14 +1021,14 @@ onUnmounted(() => {
 }
 
 .recent-video-card:hover {
-  background: hsl(var(--secondary) / 0.22);
+  background: hsl(var(--foreground) / 0.03);
 }
 
 .recent-video-card__thumb-wrap {
   position: relative;
   width: 100%;
   aspect-ratio: 16/9;
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: hsl(var(--secondary) / 0.6);
 }
@@ -1073,7 +1070,7 @@ onUnmounted(() => {
   font-weight: 600;
   color: #fff;
   background: rgb(0 0 0 / 0.72);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   padding: 0.05rem 0.28rem;
   font-variant-numeric: tabular-nums;
 }
@@ -1099,7 +1096,7 @@ onUnmounted(() => {
 .subscription-row__recent-empty {
   margin: 0 1rem 1rem;
   border: 1px dashed hsl(var(--border) / 0.6);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1112,7 +1109,6 @@ onUnmounted(() => {
   text-align: center;
   color: hsl(var(--muted-foreground) / 0.35);
   font-size: 0.7rem;
-  letter-spacing: 0.08em;
 }
 
 .subscription-dialog__summary {
@@ -1124,7 +1120,7 @@ onUnmounted(() => {
 .subscription-dialog__avatar {
   width: 2.75rem;
   height: 2.75rem;
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: var(--radius-md);
 }
 
 .subscription-dialog__row {
@@ -1148,16 +1144,16 @@ onUnmounted(() => {
   width: 0.75rem;
   height: 0.75rem;
   margin-right: 0.35rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   border: 2px solid hsl(var(--destructive-foreground) / 0.35);
   border-top-color: hsl(var(--destructive-foreground));
   animation: spin var(--duration-slow) linear infinite;
 }
 
 @keyframes stream-pulse {
-  0% { transform: scale(1); opacity: 0.4; }
-  50% { transform: scale(1.05); opacity: 1; }
-  100% { transform: scale(1); opacity: 0.4; }
+  0% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.04); opacity: 0.85; }
+  100% { transform: scale(1); opacity: 0.5; }
 }
 
 @keyframes spin {

@@ -29,7 +29,7 @@
           aria-label="筛选"
           @click="filterModalOpen = true"
         >
-          <FunnelIcon class="filter-toggle-icon" />
+          <Funnel class="filter-toggle-icon" />
           <span class="filter-toggle-label">筛选</span>
           <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
         </button>
@@ -39,7 +39,7 @@
           :aria-label="isRefreshing ? 'Syncing' : 'Refresh'"
           @click="$emit('refresh')"
         >
-          <ArrowPathIcon
+          <RefreshCw
             class="refresh-icon"
             :class="{ 'is-spinning': isRefreshing }"
           />
@@ -71,9 +71,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import {
-  ArrowPathIcon,
-  FunnelIcon,
-} from '@heroicons/vue/24/outline'
+  RefreshCw,
+  Funnel,
+} from 'lucide-vue-next'
 import FilterModal from './FilterModal.vue'
 import type { TimeRange, Duration, ContentType } from '@/composables/useFeedFilters'
 import type { VideoTab } from '@/constants/videos'
@@ -208,10 +208,9 @@ watch(localSortBy, (v) => emit('update:sortBy', v))
 }
 
 .tab-label {
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .toolbar-actions {
@@ -262,11 +261,8 @@ watch(localSortBy, (v) => emit('update:sortBy', v))
 }
 
 .filter-toggle-label {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-2xs);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .filter-badge {

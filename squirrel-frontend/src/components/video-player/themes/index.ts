@@ -9,14 +9,11 @@ export {
   type UseThemeReturn
 } from './useTheme'
 
-// CSS 文件路径（用于动态导入）
 export const themeFiles = {
   variables: () => import('./variables.css'),
   base: () => import('./base.css'),
   dark: () => import('./dark.css'),
   light: () => import('./light.css'),
-  cyber: () => import('./cyber.css'),
-  scifi: () => import('./scifi.css')
 }
 
 export const presets = {
@@ -28,7 +25,7 @@ export const presets = {
       primaryActive: '#cc0000'
     }
   },
-  
+
   cyan: {
     name: 'dark' as const,
     colors: {
@@ -37,7 +34,7 @@ export const presets = {
       primaryActive: '#0091c2'
     }
   },
-  
+
   crimson: {
     name: 'dark' as const,
     colors: {
@@ -46,7 +43,7 @@ export const presets = {
       primaryActive: '#b20710'
     }
   },
-  
+
   green: {
     name: 'dark' as const,
     colors: {
@@ -55,7 +52,7 @@ export const presets = {
       primaryActive: '#388e3c'
     }
   },
-  
+
   purple: {
     name: 'dark' as const,
     colors: {

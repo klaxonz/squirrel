@@ -8,10 +8,7 @@ import { initializeAppTheme } from './composables/useAppTheme'
 import './styles/index.css'
 import './styles/layout.css'
 import './styles/themes/dark.css'
-import './styles/themes/cyber.css'
-import './styles/themes/scifi.css'
 import '@fortawesome/fontawesome-free/css/all.min.css'
-import './utils/iconify'
 
 const isDesktopShell = typeof window !== 'undefined' && window.desktopApp?.isDesktop === true
 

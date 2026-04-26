@@ -1,10 +1,10 @@
 <template>
   <div
-    class="video-terminal-item"
+    class="video-card"
     @contextmenu.prevent="showContextMenu"
     @click="handleClick"
   >
-    <div class="video-viewer-frame">
+    <div class="video-card__thumbnail">
       <img
         v-if="thumbnailSrc && !showThumbnailFallback"
         :src="thumbnailSrc"
@@ -12,61 +12,55 @@
         decoding="async"
         fetchpriority="low"
         referrerpolicy="no-referrer"
-        class="video-terminal-image"
+        class="video-card__image"
         :class="{
-          'blur-thumbnail': shouldBlurThumbnail,
-          'image-loaded': imageLoaded,
+          'video-card__image--blur': shouldBlurThumbnail,
+          'video-card__image--loaded': imageLoaded,
         }"
         :alt="video.title"
         @load="handleImageLoad"
         @error="handleThumbnailError"
       >
 
-      <!-- 电影感“无信号”占位图 -->
-      <div v-else class="video-terminal-fallback">
-        <div class="fallback-noise"></div>
-        <div class="fallback-content">
-          <span class="fallback-status">信号丢失</span>
-          <span class="fallback-id">ID: {{ videoCardId }}</span>
+      <div v-else class="video-card__fallback">
+        <div class="video-card__fallback-inner">
+          <span class="video-card__fallback-text">无封面</span>
         </div>
       </div>
 
-      <div class="video-duration-badge">{{ formatDuration(video.duration) }}</div>
+      <span class="video-card__duration">{{ formatDuration(video.duration) }}</span>
 
-      <!-- 进度条：1px 极细线 -->
       <div
         v-if="progressRatio > 0"
-        class="tech-progress-bar"
+        class="video-card__progress"
       >
         <div
-          class="tech-progress-fill"
+          class="video-card__progress-fill"
           :style="{ width: `${(progressRatio * 100).toFixed(1)}%` }"
         ></div>
       </div>
     </div>
 
-    <div class="video-terminal-info">
-      <h5 class="video-terminal-title">{{ video.title }}</h5>
-      <div class="video-terminal-meta">
-        <div class="meta-left">
-          <div v-if="displayAvatars.length" class="meta-avatar-frame">
+    <div class="video-card__info">
+      <h5 class="video-card__title">{{ video.title }}</h5>
+      <div class="video-card__meta">
+        <div class="video-card__meta-left">
+          <div v-if="displayAvatars.length" class="video-card__avatars">
             <SubscriptionAvatar
               v-for="(avatar, index) in displayAvatars"
               :key="`avatar-${index}`"
               :src="avatar.avatar"
               :name="avatar.name"
               size="xs"
-              class="meta-avatar"
+              class="video-card__avatar"
               @click.stop="goToSubscription(avatar.id)"
             />
           </div>
-          <span class="meta-channel" @click.stop="goToSubscription(primarySubscriptionId)">
+          <span class="video-card__channel" @click.stop="goToSubscription(primarySubscriptionId)">
             {{ displayNames }}
           </span>
         </div>
-        <div class="meta-right">
-          <span class="meta-date">{{ displayDateText }}</span>
-        </div>
+        <span class="video-card__date">{{ displayDateText }}</span>
       </div>
     </div>
 
@@ -84,8 +78,6 @@
     </Teleport>
   </div>
 </template>
-
-
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, toRef, watch } from 'vue'
@@ -265,51 +257,37 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* ═══════════════════════════════════════════════════════════════════════
-   Video Card - YouTube-inspired with tech aesthetic
-   Based on: UI_UX_DESIGN_STANDARDS.md
-   ═══════════════════════════════════════════════════════════════════════ */
-
-.video-terminal-item {
-  position: relative;
+.video-card {
   cursor: pointer;
-  padding: 0.75rem;
   border-radius: var(--radius-xl);
   transition:
-    background-color var(--duration-fast) var(--ease-default),
-    transform var(--duration-normal) var(--ease-default);
+    background-color var(--duration-fast) var(--ease-default);
 }
 
-.video-terminal-item:hover {
-  background: hsl(var(--foreground) / 0.04);
+.video-card:hover {
+  background: hsl(var(--foreground) / 0.03);
 }
 
-.video-viewer-frame {
+.video-card__thumbnail {
   position: relative;
   aspect-ratio: 16 / 9;
   overflow: hidden;
   background: hsl(var(--secondary));
-  border-radius: var(--radius-lg);
-  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: var(--radius-xl);
   transition:
-    border-color var(--duration-normal) var(--ease-default),
     box-shadow var(--duration-normal) var(--ease-default),
     transform var(--duration-normal) var(--ease-default);
 }
 
-.video-terminal-item:hover .video-viewer-frame {
-  border-color: hsl(var(--primary) / 0.5);
-  box-shadow:
-    0 8px 24px -8px hsl(var(--primary) / 0.25),
-    inset 0 0 12px hsl(var(--primary) / 0.05);
-  transform: scale(1.01);
+.video-card:hover .video-card__thumbnail {
+  box-shadow: 0 4px 16px hsl(var(--primary) / 0.15);
+  transform: scale(1.02);
 }
 
-.video-terminal-image {
+.video-card__image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: contrast(1.0) brightness(1.0);
   opacity: 0;
   transition:
     opacity var(--duration-slow) var(--ease-default),
@@ -317,64 +295,61 @@ onUnmounted(() => {
     filter var(--duration-normal) var(--ease-default);
 }
 
-.video-terminal-image.image-loaded {
+.video-card__image--loaded {
   opacity: 1;
 }
 
-.video-terminal-item:hover .video-terminal-image.image-loaded {
-  filter: contrast(1.05) brightness(1.08);
-  transform: scale(1.04);
+.video-card:hover .video-card__image--loaded {
+  filter: brightness(1.05);
 }
 
-.video-duration-badge {
+.video-card__image--blur {
+  filter: blur(20px);
+}
+
+.video-card__duration {
   position: absolute;
-  right: var(--space-2);
-  bottom: var(--space-2);
-  z-index: 6;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  z-index: 2;
+  padding: 1px 0.375rem;
   font-family: var(--font-mono);
-  font-size: var(--font-size-2xs);
+  font-size: 0.6875rem;
   font-weight: 500;
   color: #fff;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.8);
   border-radius: var(--radius-sm);
-  padding: 2px var(--space-1);
-  line-height: 1.2;
+  line-height: 1.4;
   pointer-events: none;
 }
 
-.tech-progress-bar {
+.video-card__progress {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
   height: 3px;
-  background: rgba(255, 255, 255, 0.15);
-  z-index: 5;
+  background: rgba(255, 255, 255, 0.2);
+  z-index: 2;
 }
 
-.tech-progress-fill {
+.video-card__progress-fill {
   height: 100%;
   background: hsl(var(--primary));
-  box-shadow: 0 0 8px hsl(var(--primary) / 0.6);
   transition: width var(--duration-fast) var(--ease-default);
 }
 
-.video-terminal-info {
-  margin-top: var(--space-3);
-  z-index: 1;
-  position: relative;
+.video-card__info {
+  margin-top: 0.75rem;
 }
 
-.video-terminal-title {
-  font-size: var(--font-size-sm);
+.video-card__title {
+  font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.4;
   height: 2.8em;
   color: hsl(var(--foreground));
-  margin-bottom: var(--space-2);
-  letter-spacing: 0.01em;
+  margin: 0 0 0.375rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -382,126 +357,84 @@ onUnmounted(() => {
   transition: color var(--duration-fast) var(--ease-default);
 }
 
-.video-terminal-item:hover .video-terminal-title {
+.video-card:hover .video-card__title {
   color: hsl(var(--primary));
 }
 
-.video-terminal-meta {
+.video-card__meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-2xs);
+  gap: 0.5rem;
+  font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
-  letter-spacing: 0.05em;
 }
 
-.meta-left {
+.video-card__meta-left {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 0.375rem;
   min-width: 0;
   flex: 1;
 }
 
-.meta-right {
-  flex-shrink: 0;
-}
-
-.meta-avatar-frame {
+.video-card__avatars {
   display: flex;
   align-items: center;
-  background: hsl(var(--secondary));
-  border: 1px solid hsl(var(--border) / 0.5);
-  padding: 1px;
-  border-radius: var(--radius-sm);
+  gap: 2px;
 }
 
-.meta-avatar {
-  width: 14px;
-  height: 14px;
-  border-radius: var(--radius-sm);
+.video-card__avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
 }
 
-.meta-avatar:deep(.avatar-image),
-.meta-avatar:deep(.avatar-placeholder) {
-  border-radius: var(--radius-sm);
+.video-card__avatar:deep(.avatar-image),
+.video-card__avatar:deep(.avatar-placeholder) {
+  border-radius: 50%;
 }
 
-.meta-avatar:deep(.avatar-image) {
-  filter: grayscale(0.5);
-  transition: filter var(--duration-fast) var(--ease-default);
-}
-
-.meta-channel {
+.video-card__channel {
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: color var(--duration-fast) var(--ease-default);
 }
 
-.video-terminal-item:hover .meta-avatar:deep(.avatar-image) {
-  filter: grayscale(0);
-}
-
-.meta-channel:hover {
+.video-card__channel:hover {
   color: hsl(var(--foreground));
 }
 
-.video-terminal-fallback {
+.video-card__fallback {
   position: absolute;
   inset: 0;
-  background: hsl(var(--muted) / 0.5);
+  background: hsl(var(--muted));
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
 }
 
-.fallback-noise {
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  opacity: 0.05;
-}
-
-.fallback-content {
-  position: relative;
+.video-card__fallback-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
-  z-index: 1;
+  gap: 0.5rem;
 }
 
-.fallback-status {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-2xs);
-  color: hsl(var(--primary));
-  letter-spacing: 0.2em;
-  font-weight: 700;
-  opacity: 0.6;
+.video-card__fallback-text {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
 }
 
-.fallback-id {
-  font-family: var(--font-mono);
-  font-size: 0.5rem;
-  color: hsl(var(--muted-foreground) / 0.4);
-  letter-spacing: 0.1em;
-}
-
-/* ── Responsive ── */
 @media (max-width: 640px) {
-  .video-terminal-item {
-    padding: 0.5rem;
+  .video-card__title {
+    font-size: 0.8125rem;
   }
 
-  .video-terminal-title {
-    font-size: var(--font-size-xs);
-    -webkit-line-clamp: 2;
-  }
-
-  .video-terminal-meta {
-    font-size: 0.55rem;
+  .video-card__meta {
+    font-size: 0.6875rem;
   }
 }
 </style>

@@ -23,10 +23,7 @@
             @click="cancelMarking"
             title="取消"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
+            <X class="float-bar__btn-icon" />
           </button>
 
           <button
@@ -35,9 +32,7 @@
             @click="setEnd"
             title="设置结束时间"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
+            <ChevronRight class="float-bar__btn-icon" />
             结束
           </button>
 
@@ -48,9 +43,7 @@
             :disabled="isSubmitting"
             title="保存片段"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
+            <Check class="float-bar__btn-icon" />
             {{ isSubmitting ? '保存...' : '保存' }}
           </button>
 
@@ -60,23 +53,13 @@
             @click="restartMarking"
             title="重新标记"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="1 4 1 10 7 10"></polyline>
-              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
-            </svg>
+            <RotateCcw class="float-bar__btn-icon" />
           </button>
         </div>
       </div>
 
       <button class="float-bar__drag-handle" @mousedown="startDrag" title="拖动调整位置">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="8" y1="6" x2="21" y2="6"></line>
-          <line x1="8" y1="12" x2="21" y2="12"></line>
-          <line x1="8" y1="18" x2="21" y2="18"></line>
-          <line x1="3" y1="6" x2="3.01" y2="6"></line>
-          <line x1="3" y1="12" x2="3.01" y2="12"></line>
-          <line x1="3" y1="18" x2="3.01" y2="18"></line>
-        </svg>
+        <GripHorizontal class="float-bar__drag-icon" />
       </button>
     </div>
   </Transition>
@@ -84,6 +67,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { X, ChevronRight, Check, RotateCcw, GripHorizontal } from 'lucide-vue-next'
 
 const props = defineProps<{
   videoId?: string | number | null

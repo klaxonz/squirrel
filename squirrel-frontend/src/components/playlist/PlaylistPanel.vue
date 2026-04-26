@@ -3,7 +3,7 @@
     <div class="playlist-panel__header">
       <h3 class="playlist-panel__title">播放列表</h3>
       <button class="playlist-panel__close-btn" @click="handleClose">
-        <Icon icon="lucide:x" />
+        <X />
       </button>
     </div>
 
@@ -26,7 +26,7 @@
             <div class="loading-spinner"></div>
           </div>
           <div v-else-if="!playlists.length" class="playlist-panel__empty">
-            <Icon icon="lucide:list-music" class="playlist-panel__empty-icon" />
+            <ListMusic class="playlist-panel__empty-icon" />
             <span>暂无播放列表</span>
           </div>
           <div v-else class="playlist-panel__scroll scrollbar-hide">
@@ -47,14 +47,14 @@
                   class="playlist-card__delete"
                   @click.stop="handleDeletePlaylist(playlist.id)"
                 >
-                  <Icon icon="lucide:trash-2" />
+                  <Trash2 />
                 </button>
               </div>
             </div>
           </div>
           <div class="playlist-panel__actions">
             <button class="playlist-panel__add-btn" @click="showCreateModal = true">
-              <Icon icon="lucide:plus" />
+              <Plus />
               <span>新建播放列表</span>
             </button>
           </div>
@@ -84,7 +84,7 @@
               <div class="loading-spinner"></div>
             </div>
             <div v-else-if="!activePlaylistItems.length" class="playlist-panel__empty">
-              <Icon icon="lucide:film" class="playlist-panel__empty-icon" />
+              <Film class="playlist-panel__empty-icon" />
               <span>播放列表为空</span>
             </div>
             <div v-else class="playlist-panel__items-list playlist-panel__scroll scrollbar-hide">
@@ -104,7 +104,7 @@
                   @dragend="handleDragEnd"
                 >
                   <div class="playlist-item-card__drag-handle">
-                    <Icon icon="lucide:grip-vertical" />
+                    <GripVertical />
                   </div>
                   <div class="playlist-item-card__thumb">
                     <img
@@ -115,7 +115,7 @@
                       @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
                     >
                     <div v-else class="playlist-item-card__thumb-fallback">
-                      <Icon icon="lucide:film" />
+                      <Film />
                     </div>
                   </div>
                   <div class="playlist-item-card__info" @click="handlePlayItem(item)">
@@ -125,7 +125,7 @@
                     </span>
                   </div>
                   <button class="playlist-item-card__remove" @click="handleRemoveVideo(item)">
-                    <Icon icon="lucide:x" />
+                    <X />
                   </button>
                 </div>
               </TransitionGroup>
@@ -170,7 +170,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
-import { Icon } from '@iconify/vue'
+import { X, ListMusic, Trash2, Plus, Film, GripVertical } from 'lucide-vue-next'
 import usePlaylist from '@/composables/usePlaylist'
 import { formatDuration } from '@/utils/dateFormat'
 

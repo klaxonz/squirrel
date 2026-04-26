@@ -3,7 +3,7 @@
     <button type="button" class="history-item-row__primary" @click="$emit('open', video)">
       <div class="history-item-row__thumb">
         <div class="history-item-row__thumb-fallback">
-          <Icon icon="lucide:film" />
+          <Film />
         </div>
         <img
           v-if="video.thumbnail"
@@ -58,7 +58,7 @@
       title="从历史记录中移除"
       @click.stop="handleDelete"
     >
-      <Icon icon="lucide:x" />
+      <X />
     </button>
 
     <Dialog :open="showDeleteConfirm" @update:open="showDeleteConfirm = $event">
@@ -80,7 +80,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { Icon } from '@iconify/vue'
+import { Film, X } from 'lucide-vue-next'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import { Button } from '@/components/ui/button'
 import {

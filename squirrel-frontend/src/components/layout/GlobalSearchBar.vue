@@ -11,10 +11,7 @@
   >
     <div class="search-inner">
       <div class="search-icon-group">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <circle cx="11" cy="11" r="7" stroke-width="1.8" />
-          <path d="m16.5 16.5 4.5 4.5" stroke-width="1.8" stroke-linecap="round" />
-        </svg>
+        <Search class="search-icon" />
         <div class="search-divider"></div>
       </div>
 
@@ -40,9 +37,7 @@
           aria-label="清除搜索"
           @click="clearSearch"
         >
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor">
-            <path d="M4 4l8 8M12 4l-8 8" stroke-width="1.5" stroke-linecap="round" />
-          </svg>
+          <X />
         </button>
         <kbd v-else class="search-hint-key">⏎</kbd>
       </div>
@@ -84,14 +79,8 @@
             @click="selectSuggestion(item.value)"
           >
             <span class="search-suggestion-item__icon" aria-hidden="true">
-              <svg v-if="item.type === 'search'" viewBox="0 0 20 20" fill="none" stroke="currentColor">
-                <circle cx="9" cy="9" r="5.5" stroke-width="1.6" />
-                <path d="m13.5 13.5 4 4" stroke-width="1.6" stroke-linecap="round" />
-              </svg>
-              <svg v-else viewBox="0 0 20 20" fill="none" stroke="currentColor">
-                <path d="M10 4.25v5.5l3.5 2.25" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
-                <circle cx="10" cy="10" r="6.5" stroke-width="1.6" />
-              </svg>
+              <Search v-if="item.type === 'search'" />
+              <Clock v-else />
             </span>
             <span class="search-suggestion-item__content">
               <span class="search-suggestion-item__label">{{ item.label }}</span>
@@ -107,9 +96,7 @@
             @mousedown.prevent
             @click.stop="removeRecentSearch(item.value)"
           >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor">
-              <path d="M4 4l8 8M12 4l-8 8" stroke-width="1.5" stroke-linecap="round" />
-            </svg>
+            <X />
           </button>
         </div>
 
@@ -128,6 +115,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { getSearchSuggestions } from '@/api/search'
+import { Search, X, Clock } from 'lucide-vue-next'
 
 const SEARCH_HISTORY_STORAGE_KEY = 'global-search-history'
 const MAX_RECENT_SEARCHES = 8

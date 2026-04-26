@@ -8,14 +8,14 @@
     <div class="context-menu__section">
       <button class="context-menu__item" @click="handleToggleRead(true)">
         <span class="context-menu__icon-wrap">
-          <CheckIcon class="context-menu__icon" />
+          <Check class="context-menu__icon" />
         </span>
         <span class="context-menu__label">标记为已读</span>
       </button>
 
       <button class="context-menu__item" @click="handleToggleRead(false)">
         <span class="context-menu__icon-wrap">
-          <XMarkIcon class="context-menu__icon" />
+          <X class="context-menu__icon" />
         </span>
         <span class="context-menu__label">标记为未读</span>
       </button>
@@ -26,15 +26,15 @@
     <div class="context-menu__section">
       <button class="context-menu__item" @click="handleLiked">
         <span class="context-menu__icon-wrap">
-          <HeartIcon
+          <Heart
             v-if="video.is_liked === 1"
             class="context-menu__icon context-menu__icon--destructive"
           />
-          <HandThumbDownIcon
+          <ThumbsDown
             v-else-if="video.is_liked === 0"
             class="context-menu__icon context-menu__icon--warning"
           />
-          <HeartIcon
+          <Heart
             v-else
             class="context-menu__icon"
           />
@@ -50,7 +50,7 @@
 
       <button class="context-menu__item" @click="handleCopyVideoLink">
         <span class="context-menu__icon-wrap">
-          <ClipboardDocumentIcon class="context-menu__icon" />
+          <Clipboard class="context-menu__icon" />
         </span>
         <span class="context-menu__label">复制链接</span>
       </button>
@@ -61,12 +61,12 @@
 <script setup>
 import { onMounted, onUnmounted } from 'vue'
 import {
-  CheckIcon,
-  ClipboardDocumentIcon,
-  HeartIcon,
-  HandThumbDownIcon,
-  XMarkIcon,
-} from '@heroicons/vue/24/outline'
+  Check,
+  Clipboard,
+  Heart,
+  ThumbsDown,
+  X,
+} from 'lucide-vue-next'
 
 const props = defineProps({
   position: {

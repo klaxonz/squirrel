@@ -18,7 +18,7 @@ export default {
           'sans-serif',
         ],
         mono: [
-          'JetBrains Mono',
+          'var(--font-mono)',
           'ui-monospace',
           'SFMono-Regular',
           'Menlo',
@@ -107,6 +107,7 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       boxShadow: {
+        xs: 'var(--shadow-xs)',
         sm: 'var(--shadow-sm)',
         md: 'var(--shadow-md)',
         lg: 'var(--shadow-lg)',
@@ -130,20 +131,18 @@ export default {
         '96': '24rem',
         field: 'var(--min-width-field, 10rem)',
       },
-      /* ── Animation Configuration ── */
       transitionTimingFunction: {
-        'default': 'cubic-bezier(0.4, 0, 0.2, 1)',
-        'in': 'cubic-bezier(0.4, 0, 1, 1)',
-        'out': 'cubic-bezier(0, 0, 0.2, 1)',
-        'bounce': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
-        'spring': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        'default': 'var(--ease-default)',
+        'in': 'var(--ease-in)',
+        'out': 'var(--ease-out)',
+        'spring': 'var(--ease-spring)',
       },
       transitionDuration: {
-        'instant': '50ms',
-        'fast': '150ms',
-        'normal': '200ms',
-        'slow': '300ms',
-        'slower': '500ms',
+        'instant': 'var(--duration-instant)',
+        'fast': 'var(--duration-fast)',
+        'normal': 'var(--duration-normal)',
+        'slow': 'var(--duration-slow)',
+        'slower': 'var(--duration-slower)',
       },
       animation: {
         'spin': 'spin var(--duration-slow, 300ms) linear infinite',
@@ -182,7 +181,6 @@ export default {
           '100%': { backgroundPosition: '-200% 0' },
         },
       },
-      /* ── Z-index Scale ── */
       zIndex: {
         'dropdown': '50',
         'sticky': '60',
@@ -209,4 +207,3 @@ export default {
     },
   ],
 } satisfies Config
-

@@ -50,7 +50,7 @@
         </VirtualList>
 
         <div v-if="props.loading" class="video-list__loading-more">
-          <LoadingIndicator :loading="true" text="LOADING" size="sm" />
+          <LoadingIndicator :loading="true" text="加载中..." size="sm" />
         </div>
       </div>
     </Transition>
@@ -233,19 +233,14 @@ defineExpose({
 }
 
 .empty-status {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-2xl);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: hsl(var(--muted-foreground) / 0.15);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground) / 0.4);
 }
 
 .empty-copy {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-2xs);
-  letter-spacing: 0.2em;
-  color: hsl(var(--muted-foreground) / 0.3);
-  text-transform: uppercase;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground) / 0.6);
 }
 
 .video-list__loading-more {
@@ -304,7 +299,7 @@ defineExpose({
   }
 
   .empty-status {
-    font-size: var(--font-size-xl);
+    font-size: 1rem;
   }
 }
 </style>

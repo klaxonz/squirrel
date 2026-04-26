@@ -1,5 +1,14 @@
 import { computed } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
+import {
+  ThumbsUp,
+  ThumbsDown,
+  BookmarkCheck,
+  BookmarkPlus,
+  ListPlus,
+  ExternalLink,
+  Shuffle,
+} from 'lucide-vue-next'
 
 type VideoId = string | number
 
@@ -15,7 +24,7 @@ type VideoLike = {
 type VideoAction = {
   key: string
   label: string
-  icon: string
+  icon: ReturnType<typeof ThumbsUp>
   active: boolean
   tone: string
   variant?: string
@@ -68,7 +77,7 @@ export default function useVideoActionBar({
       {
         key: 'like',
         label: '喜欢',
-        icon: 'lucide:thumbs-up',
+        icon: ThumbsUp,
         active: currentInteractionType.value === interactionTypeLike,
         tone: 'like',
         variant: 'primary',
@@ -80,7 +89,7 @@ export default function useVideoActionBar({
       {
         key: 'dislike',
         label: '不喜欢',
-        icon: 'lucide:thumbs-down',
+        icon: ThumbsDown,
         active: currentInteractionType.value === interactionTypeDislike,
         tone: 'danger',
         variant: 'secondary',
@@ -92,7 +101,7 @@ export default function useVideoActionBar({
       {
         key: 'later',
         label: '稍后看',
-        icon: isLaterActionActive.value ? 'lucide:bookmark-check' : 'lucide:bookmark-plus',
+        icon: isLaterActionActive.value ? BookmarkCheck : BookmarkPlus,
         active: isLaterActionActive.value,
         tone: 'later',
         variant: 'primary',
@@ -104,7 +113,7 @@ export default function useVideoActionBar({
       {
         key: 'add-playlist',
         label: '播放列表',
-        icon: 'lucide:list-plus',
+        icon: ListPlus,
         active: false,
         tone: 'neutral',
         variant: 'secondary',
@@ -116,7 +125,7 @@ export default function useVideoActionBar({
       actions.push({
         key: 'source',
         label: '原视频',
-        icon: 'lucide:external-link',
+        icon: ExternalLink,
         active: false,
         tone: 'neutral',
         variant: 'secondary',
@@ -131,7 +140,7 @@ export default function useVideoActionBar({
     {
       key: 'random',
       label: '随机播放',
-      icon: 'lucide:shuffle',
+      icon: Shuffle,
       active: false,
       tone: 'neutral',
       hint: '',

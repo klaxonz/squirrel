@@ -7,9 +7,7 @@
           <div class="modal-header">
             <span class="modal-title">筛选</span>
             <button class="modal-close" @click="close" aria-label="关闭">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" />
-              </svg>
+              <X class="modal-close-icon" />
             </button>
           </div>
 
@@ -132,6 +130,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { X } from 'lucide-vue-next'
 import { useUserSettings } from '@/composables/useUserSettings'
 import { useSites } from '@/composables/useSites'
 import type { TimeRange, Duration, ContentType } from '@/composables/useFeedFilters'
@@ -336,7 +335,7 @@ const sortOptions = [
   color: hsl(var(--destructive));
 }
 
-.modal-close svg {
+.modal-close-icon {
   width: 0.875rem;
   height: 0.875rem;
 }

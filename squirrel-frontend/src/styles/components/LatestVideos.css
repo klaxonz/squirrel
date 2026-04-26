@@ -6,6 +6,19 @@
   width: 100%;
   max-width: var(--container-max-width, 2560px);
   margin: 0 auto;
+  padding: var(--app-content-padding-top) var(--app-page-gutter) var(--app-content-padding-bottom);
+}
+
+@media (min-width: 640px) {
+  .latest-videos__container {
+    padding: var(--app-content-padding-top) var(--app-page-gutter-sm) var(--app-content-padding-bottom);
+  }
+}
+
+@media (min-width: 1024px) {
+  .latest-videos__container {
+    padding: var(--app-content-padding-top) var(--app-page-gutter-lg) var(--app-content-padding-bottom);
+  }
 }
 
 .latest-videos__toolbar-shell {
@@ -13,7 +26,7 @@
 }
 
 .latest-videos__alert {
-  padding-bottom: 0.85rem;
+  padding-bottom: var(--space-3-5);
   padding-inline: var(--app-page-gutter);
 }
 
@@ -34,7 +47,7 @@
   top: 0;
   left: 0;
   right: 0;
-  z-index: 10;
+  z-index: var(--z-sticky);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -49,7 +62,7 @@
 }
 
 .refresh-indicator.visible {
-  height: 60px;
+  height: 3.75rem;
   opacity: 1;
 }
 

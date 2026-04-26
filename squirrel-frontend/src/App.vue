@@ -20,9 +20,7 @@
               title="最小化"
               @click="minimizeDesktopWindow"
             >
-              <svg viewBox="0 0 12 12" class="desktop-window-controls__icon" aria-hidden="true">
-                <path d="M2 8.25h8" />
-              </svg>
+              <Minus class="desktop-window-controls__icon" aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -31,23 +29,8 @@
               :title="isDesktopWindowMaximized ? '还原' : '最大化'"
               @click="toggleDesktopWindowMaximize"
             >
-              <svg
-                v-if="isDesktopWindowMaximized"
-                viewBox="0 0 12 12"
-                class="desktop-window-controls__icon"
-                aria-hidden="true"
-              >
-                <path d="M4.25 2.25h5.5v5.5" />
-                <path d="M2.25 4.25h5.5v5.5h-5.5z" />
-              </svg>
-              <svg
-                v-else
-                viewBox="0 0 12 12"
-                class="desktop-window-controls__icon"
-                aria-hidden="true"
-              >
-                <path d="M2.25 2.25h7.5v7.5h-7.5z" />
-              </svg>
+              <Minimize v-if="isDesktopWindowMaximized" class="desktop-window-controls__icon" aria-hidden="true" />
+              <Maximize v-else class="desktop-window-controls__icon" aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -56,10 +39,7 @@
               title="关闭"
               @click="closeDesktopWindow"
             >
-              <svg viewBox="0 0 12 12" class="desktop-window-controls__icon" aria-hidden="true">
-                <path d="M3 3l6 6" />
-                <path d="M9 3l-6 6" />
-              </svg>
+              <X class="desktop-window-controls__icon" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -84,7 +64,7 @@
             :aria-label="isSidebarFlyoutOpen ? '关闭侧边栏' : '打开侧边栏'"
             :title="isSidebarFlyoutOpen ? '关闭侧边栏' : '打开侧边栏'"
           >
-            <Bars3Icon class="h-5 w-5" />
+            <Menu class="h-5 w-5" />
           </button>
           <transition name="sidebar-flyout">
             <div
@@ -186,7 +166,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue'
-import { Bars3Icon } from '@heroicons/vue/24/outline'
+import { Menu, Minus, Maximize, Minimize, X } from 'lucide-vue-next'
 import mitt from 'mitt'
 import { useRoute } from 'vue-router'
 import GlobalSearchBar from '@/components/layout/GlobalSearchBar.vue'
@@ -684,12 +664,12 @@ h6 {
 .shell-topbar {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: var(--z-sticky);
   display: flex;
   flex-direction: column;
-  background:
-    linear-gradient(180deg, hsl(var(--background) / 0.96) 0%, hsl(var(--background) / 0.9) 100%);
-  backdrop-filter: blur(14px);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid hsl(var(--border) / 0.4);
 }
 

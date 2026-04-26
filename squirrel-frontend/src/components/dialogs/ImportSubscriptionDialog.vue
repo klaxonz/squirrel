@@ -128,7 +128,7 @@
 
         <section v-else-if="step === 3" class="space-y-5 py-3">
           <div class="import-dialog__result-icon">
-            <CheckIcon class="h-8 w-8 text-emerald-500" />
+            <Check class="h-8 w-8 text-emerald-500" />
           </div>
 
           <div class="text-center">
@@ -192,8 +192,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { CheckIcon } from '@heroicons/vue/24/outline'
-import { Loader2 } from 'lucide-vue-next'
+import { Check, Loader2 } from 'lucide-vue-next'
 import {
   getSupportedImportSites,
   importSubscriptions,

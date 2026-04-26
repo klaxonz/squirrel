@@ -20,7 +20,7 @@ defineProps({
   variant: {
     type: String,
     default: 'default',
-    validator: (value) => ['default', 'dense', 'tactical', 'playback'].includes(value),
+    validator: (value) => ['default', 'compact'].includes(value),
   },
   bordered: {
     type: Boolean,
@@ -48,36 +48,19 @@ defineProps({
   padding-block: var(--app-toolbar-padding-block);
 }
 
-.app-toolbar-frame--compact .app-toolbar-frame__inner,
-.app-toolbar-frame--dense .app-toolbar-frame__inner {
-  padding-block: 0.75rem;
-}
-
-.app-toolbar-frame--tactical {
-  padding-inline: var(--app-tactical-page-gutter);
-}
-
-.app-toolbar-frame--tactical .app-toolbar-frame__inner {
-  padding-block: 1rem 0.5rem;
+.app-toolbar-frame--compact .app-toolbar-frame__inner {
+  padding-block: 0.5rem;
 }
 
 @media (min-width: 640px) {
   .app-toolbar-frame {
     padding-inline: var(--app-page-gutter-sm);
   }
-
-  .app-toolbar-frame--tactical {
-    padding-inline: var(--app-tactical-page-gutter-sm);
-  }
 }
 
 @media (min-width: 1024px) {
   .app-toolbar-frame {
     padding-inline: var(--app-page-gutter-lg);
-  }
-
-  .app-toolbar-frame--tactical {
-    padding-inline: var(--app-tactical-page-gutter-lg);
   }
 }
 </style>

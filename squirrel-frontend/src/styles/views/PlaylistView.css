@@ -1,7 +1,7 @@
 /*
-  SQRL Playlist View - Redesigned with Design Tokens
-  Based on: UI_UX_DESIGN_STANDARDS.md
-  Reference: Linear, Notion, YouTube
+  SQRL Playlist View
+  Style: YouTube / Bilibili inspired two-column master-detail
+  Tokens: All colors, spacing, radii via design tokens
 */
 
 /* ── Page ── */
@@ -60,7 +60,7 @@
 /* ── Workspace (two-column grid) ── */
 .playlist-workspace {
   display: grid;
-  grid-template-columns: minmax(16rem, 18.5rem) minmax(0, 1fr);
+  grid-template-columns: 17.5rem minmax(0, 1fr);
   gap: 0;
   min-height: calc(100dvh - 11rem);
 }
@@ -80,7 +80,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding-right: 1.2rem;
+  padding-right: 1.25rem;
 }
 
 .playlist-library__header {
@@ -89,7 +89,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.15rem 0 0.75rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.4);
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
 }
 
 .playlist-library__title-group {
@@ -112,7 +112,7 @@
   min-width: 1.4rem;
   height: 1.4rem;
   padding: 0 0.4rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--secondary) / 0.85);
   color: hsl(var(--muted-foreground));
   font-size: 0.65rem;
@@ -120,7 +120,7 @@
 }
 
 .playlist-library__create-btn {
-  border-radius: calc(var(--radius-sm) + 1px);
+  border-radius: var(--radius-sm);
   gap: 0.3rem;
 }
 
@@ -139,17 +139,18 @@
   gap: 0.2rem;
   align-items: flex-start;
   padding: 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   transition: background var(--duration-fast) var(--ease-default);
 }
 
 .playlist-library-row:hover {
-  background: hsl(var(--secondary) / 0.12);
+  background: hsl(var(--foreground) / 0.03);
 }
 
 .playlist-library-row.is-active {
-  background: hsl(var(--primary) / 0.06);
-  box-shadow: inset 2px 0 0 hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+  border-left: 3px solid hsl(var(--primary));
+  padding-left: 0;
 }
 
 .playlist-library-row__primary {
@@ -191,7 +192,7 @@
 
 .playlist-library-row__badge {
   flex-shrink: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
 }
 
 .playlist-library-row__description {
@@ -218,7 +219,7 @@
   width: 3.6rem;
   aspect-ratio: 16 / 12;
   overflow: hidden;
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: var(--radius-md);
   background: hsl(var(--secondary) / 0.75);
   gap: 1px;
 }
@@ -260,7 +261,7 @@
   align-items: center;
   gap: 0.15rem;
   padding: 0.05rem 0.25rem;
-  border-radius: calc(var(--radius-sm) - 2px);
+  border-radius: var(--radius-sm);
   background: hsl(var(--background) / 0.88);
   backdrop-filter: blur(4px);
   color: hsl(var(--foreground));
@@ -282,14 +283,15 @@
   width: 1.7rem;
   height: 1.7rem;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: transparent;
   color: hsl(var(--muted-foreground));
   cursor: pointer;
   opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease-default),
-              background var(--duration-fast) var(--ease-default),
-              color var(--duration-fast) var(--ease-default);
+  transition:
+    opacity var(--duration-fast) var(--ease-default),
+    background var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
   margin-top: 0.4rem;
   margin-right: 0.1rem;
 }
@@ -307,8 +309,8 @@
 /* ─── Detail (right column) ─── */
 .playlist-detail {
   min-width: 0;
-  border-left: 1px solid hsl(var(--border) / 0.4);
-  padding-left: 1.2rem;
+  border-left: 1px solid hsl(var(--border) / 0.5);
+  padding-left: 1.25rem;
 }
 
 .playlist-detail__panel {
@@ -324,7 +326,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.15rem 0 0.75rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.4);
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
 }
 
 .playlist-detail__summary {
@@ -359,7 +361,7 @@
 .playlist-detail__meta-dot {
   width: 0.2rem;
   height: 0.2rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--border));
 }
 
@@ -404,7 +406,7 @@
   justify-content: center;
   width: 3.2rem;
   height: 3.2rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--secondary) / 0.6);
   color: hsl(var(--primary));
   font-size: 1.2rem;
@@ -426,17 +428,17 @@
   align-items: center;
   padding: 0;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   transition: background var(--duration-fast) var(--ease-default);
 }
 
 .playlist-item-row:hover {
-  background: hsl(var(--secondary) / 0.15);
+  background: hsl(var(--foreground) / 0.03);
 }
 
 .playlist-item-row.is-playing {
-  background: hsl(var(--primary) / 0.06);
-  box-shadow: inset 2px 0 0 hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+  border-left: 3px solid hsl(var(--primary));
 }
 
 .playlist-item-row__primary {
@@ -457,7 +459,7 @@
   width: 7.5rem;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border-radius: calc(var(--radius-sm));
+  border-radius: var(--radius-md);
   background: hsl(var(--secondary) / 0.75);
   flex-shrink: 0;
 }
@@ -487,7 +489,7 @@
   bottom: 4px;
   right: 4px;
   padding: 0.1rem 0.35rem;
-  border-radius: calc(var(--radius-sm) - 2px);
+  border-radius: var(--radius-sm);
   background: rgb(0 0 0 / 0.75);
   color: #fff;
   font-size: 0.62rem;
@@ -526,7 +528,7 @@
 .playlist-item-row__meta-dot {
   width: 0.2rem;
   height: 0.2rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--border));
 }
 
@@ -537,14 +539,15 @@
   width: 2rem;
   height: 2rem;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: transparent;
   color: hsl(var(--muted-foreground));
   cursor: pointer;
   opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease-default),
-              background var(--duration-fast) var(--ease-default),
-              color var(--duration-fast) var(--ease-default);
+  transition:
+    opacity var(--duration-fast) var(--ease-default),
+    background var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
   margin-right: 0.1rem;
 }
 
@@ -603,12 +606,13 @@
   width: 2rem;
   height: 2rem;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: transparent;
   color: hsl(var(--muted-foreground));
   cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-default),
-              color var(--duration-fast) var(--ease-default);
+  transition:
+    background var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .playlist-editor__close:hover {
@@ -674,7 +678,7 @@
   .playlist-library {
     padding-right: 0;
     padding-bottom: 1rem;
-    border-bottom: 1px solid hsl(var(--border) / 0.4);
+    border-bottom: 1px solid hsl(var(--border) / 0.5);
   }
 
   .playlist-detail {

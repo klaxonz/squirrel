@@ -4,9 +4,9 @@
       <!-- Stats Row -->
       <div class="flex items-center gap-3 mt-4 overflow-x-auto">
         <div
-          v-for="stat in signals"
+          v-for="stat in statCards"
           :key="stat.key"
-          class="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/20 bg-muted/10 shrink-0"
+          class="stat-card"
         >
           <component :is="stat.icon" :class="['h-4 w-4 shrink-0', stat.color]" />
           <div class="flex flex-col min-w-0">
@@ -68,7 +68,7 @@
           <div class="scheduled-filter-scroll shrink-0">
             <AppSegmentedControl
               v-model="statusFilter"
-              variant="dense"
+              size="sm"
               class="scheduled-filter-tabs"
               :options="statusOptions"
               aria-label="任务状态筛选"
@@ -81,7 +81,7 @@
           <div class="scheduled-filter-scroll shrink-0">
             <AppSegmentedControl
               v-model="typeFilter"
-              variant="dense"
+              size="sm"
               class="scheduled-filter-tabs scheduled-filter-tabs--compact"
               :options="typeOptions"
               aria-label="任务类型筛选"
@@ -98,8 +98,6 @@
         <AppEmptyState
           v-if="!loading && tasks.length === 0"
           class="scheduled-empty-state"
-          variant="dense"
-          eyebrow="调度中心"
           :title="hasTaskFilters ? '没有匹配的任务' : '当前没有任务'"
           :copy="hasTaskFilters ? '调整搜索或筛选条件后再试。' : '点击上方按钮部署第一个任务。'"
         >
@@ -298,14 +296,14 @@
           <Button
             variant="ghost"
             size="sm"
-            class="h-8 px-4 text-[10px] font-bold uppercase tracking-wider"
+            class="h-8 px-4 text-[11px] font-medium"
             @click="showDeleteDialog = false"
           >
             取消
           </Button>
           <Button
             size="sm"
-            class="h-8 px-4 text-[10px] font-bold uppercase tracking-wider bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20"
+            class="h-8 px-4 text-[11px] font-medium bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20"
             @click="doDeleteTask"
           >
             确认移除
@@ -327,7 +325,7 @@
           <Button
             variant="ghost"
             size="sm"
-            class="h-8 px-4 text-[10px] font-bold uppercase tracking-wider"
+            class="h-8 px-4 text-[11px] font-medium"
             @click="showExecuteDialog = false"
           >
             取消
@@ -435,7 +433,7 @@ const hasTaskFilters = computed(() => {
 })
 
 // Stats
-const signals = computed(() => [
+const statCards = computed(() => [
   {
     key: 'total',
     label: '任务总数',
@@ -712,6 +710,18 @@ onMounted(loadData)
 </script>
 
 <style scoped>
+/* Stat cards */
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+}
+
 /* Container: consistent with other pages */
 .content-container {
   max-width: 100%;

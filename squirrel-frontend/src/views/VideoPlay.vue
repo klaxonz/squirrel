@@ -1,6 +1,6 @@
 
 <template>
-  <div ref="videoPageRef" class="video-page terminal-viewport scrollbar-hide" :class="{ 'is-widescreen': isWidescreen }">
+  <div ref="videoPageRef" class="video-page scrollbar-hide" :class="{ 'is-widescreen': isWidescreen }">
     <div :class="['video-page__container', { 'is-widescreen': isWidescreen }]">
       <!-- 左侧主内容区域 -->
       <div class="video-main">
@@ -8,17 +8,11 @@
         <div ref="videoSectionRef" class="video-section">
           <div class="video-container">
             <Transition name="fade-player" appear>
-              <div class="viewfinder-box">
-                <div class="viewfinder-corner viewfinder-corner--top-left"></div>
-                <div class="viewfinder-corner viewfinder-corner--top-right"></div>
-                <div class="viewfinder-corner viewfinder-corner--bottom-left"></div>
-                <div class="viewfinder-corner viewfinder-corner--bottom-right"></div>
-                <div
-                  v-if="video || playbackSource || isResolvingPlayback || externalError"
-                  ref="videoPlayerHostRef"
-                  class="video-player-host"
-                />
-              </div>
+              <div
+                v-if="video || playbackSource || isResolvingPlayback || externalError"
+                ref="videoPlayerHostRef"
+                class="video-player-host"
+              />
             </Transition>
           </div>
         </div>
@@ -33,7 +27,7 @@
                   {{ video?.title }}
                 </h1>
                 <div v-if="videoPublishedText" class="video-meta__publish-date" title="发布时间">
-                  <Icon icon="lucide:calendar-days" class="video-meta__publish-date-icon" />
+                  <CalendarDays class="video-meta__publish-date-icon" />
                   <span>发布于 {{ videoPublishedText }}</span>
                 </div>
               </div>
@@ -72,8 +66,8 @@
                   :title="isChannelUnsubscribing ? '正在取消订阅' : '取消订阅'"
                   @click.stop="handleUnsubscribe(video.subscriptions[0].id)"
                 >
-                  <Icon
-                    :icon="isChannelUnsubscribing ? 'lucide:loader-circle' : 'lucide:bell-off'"
+                  <component
+                    :is="isChannelUnsubscribing ? LoaderCircle : BellOff"
                     class="subscribe-btn__icon"
                     :class="{ 'is-spinning': isChannelUnsubscribing }"
                   />
@@ -89,7 +83,7 @@
                       :class="{ 'is-active': action.active, [`tone-${action.tone}`]: true }"
                       @click="handleVideoAction(action)"
                     >
-                      <Icon :icon="action.icon" class="action-btn__icon" />
+                      <component :is="action.icon" class="action-btn__icon" />
                       <span class="action-btn__label">{{ action.label }}</span>
                     </button>
                     <a
@@ -98,7 +92,7 @@
                       target="_blank"
                       class="action-btn"
                     >
-                      <Icon :icon="action.icon" class="action-btn__icon" />
+                      <component :is="action.icon" class="action-btn__icon" />
                       <span class="action-btn__label">{{ action.label }}</span>
                     </a>
                   </template>
@@ -184,15 +178,12 @@
                           @error="() => relatedThumbnailErrorIds.add(relatedVideo.id)"
                         >
                         <div v-else class="related-video-card__fallback">
-                          <div class="fallback-noise"></div>
                           <div class="fallback-content">
-                            <Icon icon="lucide:image-off" class="fallback-icon" />
+                            <ImageOff class="fallback-icon" />
                             <span class="fallback-status">暂无封面</span>
                             <span class="fallback-id">ID: {{ formatVideoCardId(relatedVideo.id) }}</span>
                           </div>
                         </div>
-                        <div class="related-video-card__scanline"></div>
-                        
                         <div class="related-video-card__duration">
                           {{ formatDuration(relatedVideo.duration) }}
                         </div>
@@ -236,7 +227,7 @@
             <Transition v-else-if="asideTab === 'clips'" name="fade-aside" mode="out-in">
               <div v-if="!clipMarkers.length" key="empty" class="clip-empty">
                 <div class="clip-empty__icon">
-                  <Icon icon="lucide:scissors" />
+                  <Scissors />
                 </div>
                 <div class="clip-empty__text">Shift + M</div>
               </div>
@@ -258,7 +249,6 @@
                       :alt="marker.title || 'preview'"
                     >
                     <div v-else class="clip-row__thumb-fallback">
-                      <div class="fallback-noise"></div>
                     </div>
                   </div>
                   <div class="clip-row__info">
@@ -283,7 +273,7 @@
                         :disabled="isSavingClipMarkerTitle"
                         @click.stop="commitClipMarkerTitle(marker)"
                         >
-                          <Icon icon="lucide:check" />
+                          <Check />
                         </button>
                       </template>
                       <template v-else>
@@ -296,7 +286,7 @@
                         title="命名"
                         @click.stop="startClipMarkerTitleEdit(marker)"
                         >
-                          <Icon icon="lucide:pencil-line" />
+                          <Pencil />
                         </button>
                       </template>
                     </div>
@@ -316,7 +306,7 @@
                     @click.stop="handleDeleteMarker(marker.id)"
                     title="delete"
                   >
-                    <Icon icon="lucide:x" />
+                    <X />
                   </button>
                 </div>
               </div>
@@ -333,7 +323,7 @@
                     </span>
                   </div>
                   <button class="playlist-aside__add-btn" @click="handleAddToPlaylist">
-                    <Icon icon="lucide:list-plus" />
+                    <ListPlus />
                     <span>加入</span>
                   </button>
                 </div>
@@ -387,7 +377,7 @@
                           @error="handlePlaylistItemImageError"
                         >
                         <div v-else class="playlist-aside__item-thumb-fallback">
-                          <Icon icon="lucide:film" />
+                          <Film />
                         </div>
                       </div>
                       <div class="playlist-aside__item-body">
@@ -399,7 +389,7 @@
                         @click.stop="handleRemoveVideoFromActivePlaylist(item)"
                         title="从播放列表移除"
                       >
-                        <Icon icon="lucide:x" />
+                        <X />
                       </button>
                     </div>
                   </div>
@@ -434,7 +424,7 @@
                 <span class="playlist-picker__item-title">{{ playlist.name }}</span>
                 <span class="playlist-picker__item-meta">{{ playlist.video_count }} 个视频</span>
               </span>
-              <Icon icon="lucide:plus" class="playlist-picker__item-icon" />
+              <Plus class="playlist-picker__item-icon" />
             </button>
             <div v-if="playlistPickerQuery.trim() && !filteredPlaylists.length" class="playlist-picker__empty">
               没有结果
@@ -474,7 +464,19 @@ import { useAppTheme } from '@/composables/useAppTheme'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import RelatedVideoSkeleton from '@/components/video-player/RelatedVideoSkeleton.vue';
 import { LocalStorageAdapter } from '@/components/video-player/core';
-import { Icon } from '@iconify/vue';
+import {
+  CalendarDays,
+  BellOff,
+  LoaderCircle,
+  ImageOff,
+  Scissors,
+  Check,
+  Pencil,
+  X,
+  ListPlus,
+  Film,
+  Plus,
+} from 'lucide-vue-next';
 import useVideoHistory from "../composables/useVideoHistory";
 import { formatDate, formatDuration, formatTime } from '../utils/dateFormat';
 import { formatVideoCardId } from '@/utils/videoCard';
@@ -815,7 +817,7 @@ watch(() => relatedVideos.value, () => {
 /* Skeleton */
 .skeleton-line {
   background: hsl(var(--foreground) / 0.06);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   position: relative;
   overflow: hidden;
 }
@@ -847,17 +849,8 @@ watch(() => relatedVideos.value, () => {
   100% { transform: translateX(100%); }
 }
 
-/* 基础容器 */
-.terminal-viewport {
-  background-color: hsl(var(--background));
-  background-image: 
-    linear-gradient(hsl(var(--foreground) / 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--foreground) / 0.02) 1px, transparent 1px);
-  background-size: 40px 40px;
-  color: hsl(var(--foreground) / 0.8);
-}
-
 .video-page {
+  background-color: hsl(var(--background));
   min-height: 100%;
 }
 
@@ -897,7 +890,7 @@ watch(() => relatedVideos.value, () => {
 .video-section {
   width: 100%;
   background: #000;
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
@@ -913,17 +906,15 @@ watch(() => relatedVideos.value, () => {
   inset: 0;
 }
 
-/* 推荐视频列表项 - 彻底移除卡片效果 */
 .related-video-card {
   position: relative;
   display: grid;
   grid-template-columns: 120px 1fr;
   gap: 0.65rem;
-  padding: 0.4rem 0;
-  background: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
+  padding: 0.4rem 0.5rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-lg);
   cursor: pointer;
   transition: all var(--duration-normal) var(--ease-default);
   align-items: flex-start;
@@ -937,8 +928,7 @@ watch(() => relatedVideos.value, () => {
 }
 
 .related-video-card:hover {
-  transform: translateX(4px);
-  background: hsl(var(--foreground) / 0.03) !important;
+  background: hsl(var(--accent) / 0.06);
 }
 
 .related-video-card__thumb-container {
@@ -948,8 +938,8 @@ watch(() => relatedVideos.value, () => {
 .related-video-card__thumb {
   position: relative;
   overflow: hidden;
-  border-radius: var(--radius-sm);
-  background: hsl(var(--background));
+  border-radius: var(--radius-md);
+  background: hsl(var(--muted));
   aspect-ratio: 16 / 9;
   width: 100%;
 }
@@ -973,17 +963,8 @@ watch(() => relatedVideos.value, () => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 32% 24%, hsl(var(--primary) / 0.14), transparent 34%),
-    linear-gradient(135deg, hsl(var(--muted) / 0.68), hsl(var(--background)));
+  background: hsl(var(--muted));
   color: hsl(var(--muted-foreground));
-}
-
-.related-video-card__fallback .fallback-noise {
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  opacity: 0.045;
 }
 
 .related-video-card__fallback .fallback-content {
@@ -1002,22 +983,21 @@ watch(() => relatedVideos.value, () => {
 }
 
 .related-video-card__fallback .fallback-status {
-  font-family: 'JetBrains Mono', monospace;
   font-size: 0.58rem;
-  font-weight: 700;
-  color: hsl(var(--foreground) / 0.66);
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
   line-height: 1;
 }
 
 .related-video-card__fallback .fallback-id {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.5rem;
-  color: hsl(var(--muted-foreground) / 0.62);
+  color: hsl(var(--muted-foreground) / 0.7);
   line-height: 1;
 }
 
 .related-video-card__title {
-  font-size: 0.82rem; /* 稍微调小字号 */
+  font-size: 0.82rem;
   font-weight: 600;
   line-height: 1.3;
   color: hsl(var(--foreground));
@@ -1037,7 +1017,7 @@ watch(() => relatedVideos.value, () => {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.7rem; /* 稍微调小字号 */
+  font-size: 0.7rem;
   color: hsl(var(--muted-foreground) / 0.8);
 }
 
@@ -1059,12 +1039,12 @@ watch(() => relatedVideos.value, () => {
   position: absolute;
   right: 0.25rem;
   bottom: 0.25rem;
-  padding: 0.05rem 0.25rem;
+  padding: 0.05rem 0.3rem;
   background: rgba(0, 0, 0, 0.8);
   color: #fff;
   font-size: 0.65rem;
-  border-radius: 2px;
-  font-family: 'JetBrains Mono', monospace;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
 }
 
 /* 宽屏/剧院模式适配 - 优化可视区域 */
@@ -1273,7 +1253,7 @@ watch(() => relatedVideos.value, () => {
   font-weight: 700;
   color: hsl(var(--primary-foreground));
   background: hsl(var(--primary));
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   line-height: 1;
 }
 
@@ -1299,11 +1279,10 @@ watch(() => relatedVideos.value, () => {
 }
 
 .clip-empty__text {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 600;
   color: hsl(var(--muted-foreground));
-  letter-spacing: 0.1em;
 }
 
 .clip-markers-list {
@@ -1347,8 +1326,7 @@ watch(() => relatedVideos.value, () => {
 }
 
 .clip-row:hover .clip-row__thumb {
-  border-color: hsl(var(--primary) / 0.4);
-  box-shadow: inset 0 0 10px hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--primary) / 0.3);
 }
 
 .clip-row__thumb-image {
@@ -1414,7 +1392,7 @@ watch(() => relatedVideos.value, () => {
 }
 
 .clip-row__range {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.72rem;
   color: hsl(var(--muted-foreground));
   transition: color var(--duration-normal) var(--ease-default);
@@ -1525,14 +1503,14 @@ watch(() => relatedVideos.value, () => {
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   border: 1px solid hsl(var(--primary) / 0.35);
   background: hsl(var(--primary) / 0.08);
   color: hsl(var(--primary));
   font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
+  transition: all var(--duration-fast) var(--ease-default);
 }
 
 .playlist-aside__add-btn,
@@ -1567,7 +1545,7 @@ watch(() => relatedVideos.value, () => {
   gap: 0.45rem;
   max-width: 100%;
   padding: 0.42rem 0.68rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   border: 1px solid hsl(var(--border) / 0.55);
   background: hsl(var(--accent) / 0.06);
   color: hsl(var(--muted-foreground));
@@ -1606,10 +1584,10 @@ watch(() => relatedVideos.value, () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--background) / 0.9);
   font-size: 0.62rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 
 .playlist-aside__items {
@@ -1646,7 +1624,7 @@ watch(() => relatedVideos.value, () => {
 
 .playlist-aside__item-index {
   font-size: 0.68rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   color: hsl(var(--muted-foreground));
   text-align: center;
 }
@@ -1694,7 +1672,7 @@ watch(() => relatedVideos.value, () => {
 .playlist-aside__item-meta {
   font-size: 0.65rem;
   color: hsl(var(--muted-foreground));
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 
 .playlist-aside__item-remove {
@@ -1876,7 +1854,7 @@ watch(() => relatedVideos.value, () => {
 .video-aside__status {
   font-size: 0.7rem;
   color: hsl(var(--primary) / 0.6);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 
 .related-videos-list {
@@ -1952,7 +1930,7 @@ watch(() => relatedVideos.value, () => {
 .video-channel__avatar {
   width: 2.5rem !important;
   height: 2.5rem !important;
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: var(--radius-full);
   border: 2px solid hsl(var(--border));
 }
 
@@ -1987,14 +1965,14 @@ watch(() => relatedVideos.value, () => {
   align-items: center;
   gap: 0.3rem;
   padding: 0.4rem 0.875rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--secondary) / 0.6);
   color: hsl(var(--foreground));
   font-size: 0.75rem;
   font-weight: 600;
   border: 1px solid hsl(var(--border) / 0.65);
   cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
+  transition: all var(--duration-fast) var(--ease-default);
   flex-shrink: 0;
 }
 
@@ -2032,61 +2010,40 @@ watch(() => relatedVideos.value, () => {
   align-items: center;
   gap: 0.35rem;
   padding: 0.4rem 0.75rem;
-  border-radius: 999px;
-  background: hsl(var(--accent) / 0.1);
-  color: hsl(var(--foreground) / 0.7);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 500;
-  border: 1px solid hsl(var(--border) / 0.4);
+  border: none;
   cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
+  transition: all var(--duration-fast) var(--ease-default);
   text-decoration: none;
   flex-shrink: 0;
 }
 
 .action-btn:hover {
-  background: hsl(var(--accent) / 0.2);
+  background: hsl(var(--accent) / 0.12);
   color: hsl(var(--foreground));
-  border-color: hsl(var(--border));
 }
 
 .action-btn.is-active {
-  background: hsl(var(--primary) / 0.12);
+  background: hsl(var(--primary) / 0.1);
   color: hsl(var(--primary));
-  border-color: hsl(var(--primary) / 0.4);
 }
 
 .action-btn__icon {
   width: 16px;
   height: 16px;
-  opacity: 0.8;
-}
-
-.action-btn.is-active .action-btn__icon {
-  opacity: 1;
 }
 
 .action-btn.tone-danger.is-active {
-  background: hsl(var(--destructive) / 0.12);
+  background: hsl(var(--destructive) / 0.1);
   color: hsl(var(--destructive));
-  border-color: hsl(var(--destructive) / 0.4);
 }
 
 .action-btn.tone-later.is-active {
-  background:
-    linear-gradient(
-      135deg,
-      hsl(var(--primary) / 0.18),
-      hsl(var(--accent) / 0.18)
-    );
-  color: hsl(var(--foreground));
-  border-color: hsl(var(--primary) / 0.45);
-  box-shadow:
-    0 0 0 1px hsl(var(--primary) / 0.14),
-    0 10px 24px hsl(var(--surface-shadow));
-}
-
-.action-btn.tone-later.is-active .action-btn__icon {
+  background: hsl(var(--primary) / 0.1);
   color: hsl(var(--primary));
 }
 

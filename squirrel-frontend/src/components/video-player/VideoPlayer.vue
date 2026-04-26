@@ -434,8 +434,6 @@ import PlayerIcon from './PlayerIcon.vue'
 // ????????import './themes/variables.css'
 import './themes/dark.css'
 import './themes/light.css'
-import './themes/cyber.css'
-import './themes/scifi.css'
 
 interface Props {
   source?: MediaSource | null
