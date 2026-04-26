@@ -1,92 +1,108 @@
 <template>
   <div class="auth-shell">
+    <!-- Server Config Link -->
     <div class="auth-topbar">
       <router-link to="/server-config" class="auth-topbar__link">
-        <span>
-          <span class="auth-topbar__eyebrow">Server</span>
-          <span class="auth-topbar__value">{{ currentServerLabel }}</span>
-        </span>
+        <span class="auth-topbar__eyebrow">Server</span>
+        <span class="auth-topbar__value">{{ currentServerLabel }}</span>
       </router-link>
     </div>
 
-    <div class="auth-divider-line"></div>
-
     <div class="auth-layout">
-      <!-- 左侧：品牌展示区 -->
+      <!-- Left Panel: Branding -->
       <aside class="auth-sidebar">
-        <div class="auth-sidebar__status">创建新身份</div>
         <h1 class="auth-sidebar__brand">SQRL</h1>
-        <p v-if="currentServerUrl" class="auth-sidebar__server">
-          已连接至 {{ currentServerUrl }}
+        <p class="auth-sidebar__tagline">
+          创建新账户。<br>
+          加入视频订阅网络。
         </p>
-        <div class="auth-sidebar__status" style="margin-top: auto; opacity: 0.1">00:00:00 // 加入网络</div>
+        <div class="auth-sidebar__status">
+          账户注册
+        </div>
+        <p v-if="currentServerUrl" class="auth-sidebar__server">
+          {{ currentServerUrl }}
+        </p>
       </aside>
 
-      <!-- 右侧：交互表单区 -->
+      <!-- Right Panel: Form -->
       <main class="auth-main">
-        <form class="auth-form-minimal" @submit.prevent="handleSubmit">
-          <Alert v-if="errorMessage" variant="destructive" class="auth-error-minimal mb-8">
-            <AlertDescription>{{ errorMessage }}</AlertDescription>
-          </Alert>
+        <form class="auth-form-unified" @submit.prevent="handleSubmit">
+          <!-- Header -->
+          <div class="auth-form-header">
+            <h2 class="auth-form-title">创建账户</h2>
+            <p class="auth-form-subtitle">填写以下信息完成注册</p>
+          </div>
 
-          <div class="auth-field-minimal">
-            <span class="auth-field-index">01</span>
+          <!-- Error Alert -->
+          <div v-if="errorMessage" class="auth-error">
+            {{ errorMessage }}
+          </div>
+
+          <!-- Nickname Field -->
+          <div class="auth-field">
+            <label for="nickname" class="auth-field__label">昵称</label>
             <input
               id="nickname"
               v-model="form.nickname"
               type="text"
               required
-              placeholder=" "
-              class="auth-input-minimal"
+              class="auth-input"
+              placeholder="Your name"
+              autocomplete="nickname"
             />
-            <label for="nickname" class="auth-label-floating">昵称</label>
           </div>
 
-          <div class="auth-field-minimal">
-            <span class="auth-field-index">02</span>
+          <!-- Email Field -->
+          <div class="auth-field">
+            <label for="email" class="auth-field__label">邮箱</label>
             <input
               id="email"
               v-model="form.email"
               type="email"
               required
-              placeholder=" "
-              class="auth-input-minimal"
+              class="auth-input"
+              placeholder="your@email.com"
+              autocomplete="email"
             />
-            <label for="email" class="auth-label-floating">邮箱</label>
           </div>
 
-          <div class="auth-field-minimal">
-            <span class="auth-field-index">03</span>
-            <input
-              id="password"
-              v-model="form.password"
-              :type="showPassword ? 'text' : 'password'"
-              required
-              placeholder=" "
-              class="auth-input-minimal"
-            />
-            <label for="password" class="auth-label-floating">密码</label>
-            <button
-              type="button"
-              class="auth-password-toggle"
-              @click="showPassword = !showPassword"
-            >
-              <component :is="showPassword ? EyeOff : Eye" class="w-4 h-4" />
-            </button>
+          <!-- Password Field -->
+          <div class="auth-field">
+            <label for="password" class="auth-field__label">密码</label>
+            <div class="auth-password-wrapper">
+              <input
+                id="password"
+                v-model="form.password"
+                :type="showPassword ? 'text' : 'password'"
+                required
+                class="auth-input"
+                placeholder="At least 8 characters"
+                autocomplete="new-password"
+              />
+              <button
+                type="button"
+                class="auth-password-toggle"
+                @click="showPassword = !showPassword"
+                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              >
+                <component :is="showPassword ? EyeOff : Eye" class="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
-          <Button type="submit" class="auth-submit-minimal" :disabled="loading">
-            {{ loading ? '初始化中...' : '注册身份' }}
-          </Button>
+          <!-- Submit Button -->
+          <button
+            type="submit"
+            class="auth-submit"
+            :disabled="loading"
+          >
+            {{ loading ? '注册中...' : '创建账户' }}
+          </button>
 
-          <div class="auth-footer-minimal">
-            <span>已完成同步？</span>
-            <router-link to="/login" class="auth-link-minimal">直接登入</router-link>
-          </div>
-
-          <div class="auth-footer-minimal">
-            <span>服务器不对？</span>
-            <router-link to="/server-config" class="auth-link-minimal">切换服务器</router-link>
+          <!-- Footer Links -->
+          <div class="auth-footer">
+            <span>已有账户？</span>
+            <router-link to="/login" class="auth-link">直接登录</router-link>
           </div>
         </form>
       </main>
@@ -99,8 +115,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUser } from '../composables/useUser'
 import { useServerConfig } from '@/composables/useServerConfig'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
 import { Eye, EyeOff } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -119,7 +133,7 @@ onMounted(async () => {
   await initServerConfig()
 })
 
-const currentServerLabel = computed(() => currentServerUrl.value || '切换服务器')
+const currentServerLabel = computed(() => currentServerUrl.value || '未配置服务器')
 
 const getErrorMessage = (error) => {
   if (!error) return '注册失败，请稍后再试。'
@@ -151,13 +165,3 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped src="../styles/views/auth-entry.css"></style>
-
-<style scoped>
-.auth-sidebar__server {
-  margin-top: 0.75rem;
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.35);
-  letter-spacing: 0.08em;
-  word-break: break-all;
-}
-</style>

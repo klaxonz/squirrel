@@ -274,7 +274,7 @@ onUnmounted(() => {
   position: relative;
   cursor: pointer;
   padding: 0.75rem;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   transition:
     background-color var(--duration-fast) var(--ease-default),
     transform var(--duration-normal) var(--ease-default);
@@ -289,7 +289,7 @@ onUnmounted(() => {
   aspect-ratio: 16 / 9;
   overflow: hidden;
   background: hsl(var(--secondary));
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   border: 1px solid hsl(var(--border) / 0.6);
   transition:
     border-color var(--duration-normal) var(--ease-default),
@@ -415,18 +415,18 @@ onUnmounted(() => {
   background: hsl(var(--secondary));
   border: 1px solid hsl(var(--border) / 0.5);
   padding: 1px;
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: var(--radius-sm);
 }
 
 .meta-avatar {
   width: 14px;
   height: 14px;
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: var(--radius-sm);
 }
 
 .meta-avatar:deep(.avatar-image),
 .meta-avatar:deep(.avatar-placeholder) {
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: var(--radius-sm);
 }
 
 .meta-avatar:deep(.avatar-image) {

@@ -148,6 +148,6 @@ const getStatusLabel = (status: string) => {
 
 <style scoped>
 .sync-run-detail-drawer__avatar {
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: var(--radius-sm);
 }
 </style>

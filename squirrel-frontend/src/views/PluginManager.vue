@@ -1148,7 +1148,7 @@ onUnmounted(() => {
 
 .plugin-toolbar-skeleton__chip {
   height: 1.75rem;
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: var(--radius-sm);
 }
 
 .plugin-toolbar-skeleton__chip:last-child {
@@ -1157,7 +1157,7 @@ onUnmounted(() => {
 
 .plugin-toolbar-btn {
   gap: 4px;
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: var(--radius-sm);
 }
 
 .plugin-toolbar-btn--quiet {
@@ -1178,7 +1178,7 @@ onUnmounted(() => {
 }
 
 .plugin-toolbar-btn--primary:hover {
-  background: hsl(var(--primary) / 0.9);
+  opacity: 0.9;
 }
 
 .plugin-stats-row {
@@ -1250,7 +1250,7 @@ onUnmounted(() => {
   gap: 6px;
   padding: 4px 8px;
   background: hsl(var(--secondary) / 0.3);
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: var(--radius-sm);
   color: hsl(var(--muted-foreground) / 0.5);
   margin-left: auto;
 }
@@ -1292,7 +1292,7 @@ onUnmounted(() => {
 }
 
 .plugin-search-refresh--skeleton {
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: var(--radius-sm);
 }
 
 .plugin-content {
@@ -1301,7 +1301,7 @@ onUnmounted(() => {
 
 .plugin-unified-panel {
   border: 1px solid hsl(var(--border) / 0.45);
-  border-radius: 0.875rem;
+  border-radius: var(--radius-xl);
   background: hsl(var(--card) / 0.45);
   overflow: hidden;
 }
@@ -1350,7 +1350,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.875rem 1.125rem;
-  border-radius: 0.875rem;
+  border-radius: var(--radius-lg);
   font-size: 0.8125rem;
   font-weight: 500;
   margin-bottom: 1rem;
@@ -1379,7 +1379,7 @@ onUnmounted(() => {
   padding: 1rem 1.25rem;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border) / 0.4);
-  border-radius: 1rem;
+  border-radius: var(--radius-xl);
   cursor: pointer;
   transition:
     all var(--duration-normal) var(--ease-default);
@@ -1415,7 +1415,7 @@ onUnmounted(() => {
 .site-config-slug {
   font-size: 0.6875rem;
   color: hsl(var(--muted-foreground) / 0.5);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 
 .site-config-status {
@@ -1504,7 +1504,7 @@ onUnmounted(() => {
   display: inline-block;
   font-size: 10px;
   padding: 2px 5px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
   background: hsl(var(--secondary));
   color: hsl(var(--muted-foreground));
@@ -1531,7 +1531,7 @@ onUnmounted(() => {
   background: hsl(var(--popover));
   color: hsl(var(--popover-foreground));
   border: 1px solid hsl(var(--border));
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   padding: 6px 10px;
   font-size: 12px;
   white-space: pre-line;
@@ -1558,7 +1558,7 @@ onUnmounted(() => {
 
 .endpoint-text {
   font-size: 11px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   color: hsl(var(--muted-foreground) / 0.5);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1612,7 +1612,7 @@ onUnmounted(() => {
   height: 1.75rem;
   border: none;
   background: transparent;
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: hsl(var(--muted-foreground));
   transition: all var(--duration-fast) var(--ease-default);

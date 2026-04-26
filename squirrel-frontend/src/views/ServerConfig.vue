@@ -1,63 +1,58 @@
 <template>
   <div class="auth-shell">
+    <!-- Back to Login -->
     <div class="auth-topbar">
       <router-link to="/login" class="auth-topbar__link">
-        <span>
-          <span class="auth-topbar__eyebrow">Auth</span>
-          <span class="auth-topbar__value">{{ currentServerLabel }}</span>
-        </span>
+        <span class="auth-topbar__eyebrow">Auth</span>
+        <span class="auth-topbar__value">{{ currentServerLabel }}</span>
       </router-link>
     </div>
 
-    <div class="auth-divider-line"></div>
-
     <div class="auth-layout">
+      <!-- Left Panel: Branding -->
       <aside class="auth-sidebar">
-        <div class="auth-sidebar__status">网络初始化</div>
         <h1 class="auth-sidebar__brand">SQRL</h1>
-        <p class="auth-sidebar__desc">连接至后端服务器</p>
-        <div class="auth-sidebar__hint">
-          <div class="hint-item">
-            <span class="hint-marker">01</span>
-            <span>输入服务器地址</span>
-          </div>
-          <div class="hint-item">
-            <span class="hint-marker">02</span>
-            <span>测试连接</span>
-          </div>
-          <div class="hint-item">
-            <span class="hint-marker">03</span>
-            <span>进入系统</span>
-          </div>
+        <p class="auth-sidebar__tagline">
+          连接至后端服务器。<br>
+          开始使用视频订阅平台。
+        </p>
+        <div class="auth-sidebar__status">
+          服务器配置
         </div>
-        <div class="auth-sidebar__status" style="margin-top: auto; opacity: 0.1">00:00:00 // 节点连接</div>
       </aside>
 
+      <!-- Right Panel: Form -->
       <main class="auth-main">
-        <form class="auth-form-minimal" @submit.prevent="handleConnect">
-          <Alert v-if="errorMessage" variant="destructive" class="auth-error-minimal mb-8">
-            <AlertDescription>{{ errorMessage }}</AlertDescription>
-          </Alert>
+        <form class="auth-form-unified" @submit.prevent="handleConnect">
+          <!-- Header -->
+          <div class="auth-form-header">
+            <h2 class="auth-form-title">连接服务器</h2>
+            <p class="auth-form-subtitle">输入后端服务器地址</p>
+          </div>
 
-          <div class="auth-field-minimal">
-            <span class="auth-field-index">01</span>
+          <!-- Error Alert -->
+          <div v-if="errorMessage" class="auth-error">
+            {{ errorMessage }}
+          </div>
+
+          <!-- Server URL Field -->
+          <div class="auth-field">
+            <label for="server-url" class="auth-field__label">服务器地址</label>
             <input
               id="server-url"
               v-model="form.serverUrl"
               type="url"
               required
-              placeholder=" "
-              class="auth-input-minimal"
+              class="auth-input"
+              placeholder="http://127.0.0.1:8001"
               :disabled="connecting"
               @input="clearStatus"
             />
-            <label for="server-url" class="auth-label-floating">服务器地址</label>
           </div>
 
-          <section class="server-shortcuts">
-            <div class="server-shortcuts__header">
-              <span class="server-shortcuts__title">常用地址</span>
-            </div>
+          <!-- Quick Server Options -->
+          <div class="server-shortcuts">
+            <span class="server-shortcuts__label">常用地址</span>
             <div class="server-chip-list">
               <button
                 v-for="url in quickServerUrls"
@@ -69,11 +64,12 @@
                 {{ url }}
               </button>
             </div>
-          </section>
+          </div>
 
-          <section v-if="recentServerUrls.length" class="server-shortcuts">
+          <!-- Recent Servers -->
+          <div v-if="recentServerUrls.length" class="server-shortcuts">
             <div class="server-shortcuts__header">
-              <span class="server-shortcuts__title">最近连接</span>
+              <span class="server-shortcuts__label">最近连接</span>
               <button type="button" class="server-shortcuts__clear" @click="handleClearRecent">
                 清空
               </button>
@@ -89,39 +85,42 @@
                 {{ url }}
               </button>
             </div>
-          </section>
-
-          <div class="auth-field-minimal">
-            <span class="auth-field-index">02</span>
-            <button
-              type="button"
-              class="test-button"
-              :disabled="!form.serverUrl.trim() || testing"
-              @click="handleTest"
-            >
-              <span v-if="testing" class="test-spinner"></span>
-              <span v-else-if="testResult !== null" :class="['test-status', testResult ? 'test-status--ok' : 'test-status--fail']">
-                {{ testResult ? '✓ 连接成功' : '✗ 连接失败' }}
-              </span>
-              <span v-else>测试连接</span>
-            </button>
           </div>
 
-          <div class="connection-feedback" :class="connectionFeedbackClass">
-            <span>{{ connectionMessage }}</span>
+          <!-- Test Connection -->
+          <button
+            type="button"
+            class="test-button"
+            :disabled="!form.serverUrl.trim() || testing"
+            @click="handleTest"
+          >
+            <span v-if="testing" class="test-spinner"></span>
+            <span v-else-if="testResult !== null" :class="['test-status', testResult ? 'test-status--ok' : 'test-status--fail']">
+              {{ testResult ? '✓ 连接成功' : '✗ 连接失败' }}
+            </span>
+            <span v-else>测试连接</span>
+          </button>
+
+          <!-- Connection Feedback -->
+          <div v-if="connectionMessage" class="connection-feedback" :class="connectionFeedbackClass">
+            {{ connectionMessage }}
           </div>
 
-          <Button
+          <!-- Submit Button -->
+          <button
             type="submit"
-            class="auth-submit-minimal"
+            class="auth-submit"
             :disabled="connecting || !form.serverUrl.trim()"
           >
             {{ connecting ? '连接中...' : '进入系统' }}
-          </Button>
+          </button>
 
-          <div class="auth-footer-minimal">
+          <!-- Footer Links -->
+          <div class="auth-footer">
             <span>本地开发？</span>
-            <button type="button" class="auth-link-minimal" @click="fillLocalhost">使用本地地址</button>
+            <button type="button" class="auth-link" @click="fillLocalhost">
+              使用本地地址
+            </button>
           </div>
         </form>
       </main>
@@ -133,8 +132,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useServerConfig } from '@/composables/useServerConfig'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
 
 const router = useRouter()
 const {
@@ -234,138 +231,110 @@ const connectionFeedbackClass = computed(() => {
 <style scoped src="../styles/views/auth-entry.css"></style>
 
 <style scoped>
-.auth-sidebar__desc {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.3);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-top: -0.5rem;
-}
-
-.auth-sidebar__hint {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-top: 2rem;
-}
-
+/* Server shortcuts - unified style */
 .server-shortcuts {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-top: -1.25rem;
+  gap: var(--space-2);
 }
 
 .server-shortcuts__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
 }
 
-.server-shortcuts__title {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.34);
-  letter-spacing: 0.28em;
+.server-shortcuts__label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .server-shortcuts__clear {
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.38);
-  font-size: 0.72rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  color: hsl(var(--muted-foreground) / 0.7);
+  font-size: var(--font-size-xs);
   cursor: pointer;
-  transition: color var(--duration-normal) var(--ease-default);
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .server-shortcuts__clear:hover {
-  color: #ff4d00;
+  color: hsl(var(--primary));
 }
 
 .server-chip-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
+  gap: var(--space-2);
 }
 
 .server-chip {
-  min-height: 2.4rem;
-  padding: 0.55rem 0.8rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.02);
-  color: rgba(255, 255, 255, 0.84);
-  font-size: 0.78rem;
-  letter-spacing: 0.05em;
+  height: 2rem;
+  padding: 0 var(--space-3);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-size: var(--font-size-xs);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition:
-    border-color var(--duration-normal) var(--ease-default),
-    background-color var(--duration-normal) var(--ease-default),
-    color var(--duration-normal) var(--ease-default);
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .server-chip:hover {
-  border-color: rgba(255, 77, 0, 0.55);
-  background: rgba(255, 77, 0, 0.08);
-  color: #fff;
+  border-color: hsl(var(--primary) / 0.5);
+  background: hsl(var(--primary) / 0.05);
+  color: hsl(var(--primary));
 }
 
 .server-chip--recent {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.74rem;
+  font-family: var(--font-mono);
 }
 
-.hint-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.35);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.hint-marker {
-  font-family: 'Courier New', monospace;
-  color: #ff4d00;
-  opacity: 0.5;
-}
-
+/* Test button - unified style */
 .test-button {
   width: 100%;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.8rem 0;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.4);
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
+  height: 2.75rem;
+  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--duration-slow) var(--ease-out);
-  text-align: left;
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .test-button:hover:not(:disabled) {
-  border-bottom-color: #ff4d00;
-  color: #ff4d00;
+  border-color: hsl(var(--primary) / 0.5);
+  background: hsl(var(--primary) / 0.05);
+  color: hsl(var(--primary));
 }
 
 .test-button:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .test-spinner {
   display: inline-block;
-  width: 12px;
-  height: 12px;
-  border: 1px solid rgba(255, 77, 0, 0.3);
-  border-top-color: #ff4d00;
+  width: 14px;
+  height: 14px;
+  border: 2px solid hsl(var(--border));
+  border-top-color: hsl(var(--primary));
   border-radius: 50%;
-  animation: spin var(--duration-slow) linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
@@ -373,47 +342,35 @@ const connectionFeedbackClass = computed(() => {
 }
 
 .test-status {
-  font-size: 0.78rem;
-  letter-spacing: 0.15em;
+  font-weight: 500;
 }
 
 .test-status--ok {
-  color: #4ade80;
+  color: hsl(var(--success));
 }
 
 .test-status--fail {
-  color: #f87171;
+  color: hsl(var(--destructive));
 }
 
 .connection-feedback {
-  margin-top: -1.5rem;
-  padding: 0.5rem 0;
-  font-size: 0.7rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.3);
-  min-height: 1.5rem;
-  transition: all var(--duration-normal) var(--ease-default);
+  font-size: var(--font-size-xs);
+  color: hsl(var(--muted-foreground));
+  min-height: var(--space-4);
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .connection-feedback--ok {
-  color: #4ade80;
+  color: hsl(var(--success));
 }
 
 .connection-feedback--fail {
-  color: #f87171;
+  color: hsl(var(--destructive));
 }
 
-@media (max-width: 1024px) {
-  .auth-sidebar__hint {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 0.5rem 1.5rem;
-  }
-
+@media (max-width: 768px) {
   .server-chip {
     width: 100%;
-    text-align: left;
   }
 }
 </style>

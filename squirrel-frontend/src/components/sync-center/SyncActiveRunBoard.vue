@@ -294,7 +294,7 @@ const getFeedMetrics = (item: SyncCenterItem): FeedMetric[] => {
   text-align: left;
   border: none;
   position: relative;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   transition: background var(--duration-normal) var(--ease-default);
   cursor: pointer;
   gap: 0.75rem;

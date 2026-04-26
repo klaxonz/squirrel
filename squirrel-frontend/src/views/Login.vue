@@ -1,90 +1,104 @@
 <template>
   <div class="auth-shell">
+    <!-- Server Config Link -->
     <div class="auth-topbar">
       <router-link to="/server-config" class="auth-topbar__link">
-        <span>
-          <span class="auth-topbar__eyebrow">Server</span>
-          <span class="auth-topbar__value">{{ currentServerLabel }}</span>
-        </span>
+        <span class="auth-topbar__eyebrow">Server</span>
+        <span class="auth-topbar__value">{{ currentServerLabel }}</span>
       </router-link>
     </div>
 
-    <div class="auth-divider-line"></div>
-
     <div class="auth-layout">
-      <!-- 左侧：品牌展示区 -->
+      <!-- Left Panel: Branding -->
       <aside class="auth-sidebar">
-        <div class="auth-sidebar__status">系统已就绪</div>
         <h1 class="auth-sidebar__brand">SQRL</h1>
-        <p v-if="currentServerUrl" class="auth-sidebar__server">
-          已连接至 {{ currentServerUrl }}
+        <p class="auth-sidebar__tagline">
+          视频订阅与管理平台。<br>
+          统一管理多平台内容。
         </p>
-        <div class="auth-sidebar__status" style="margin-top: auto; opacity: 0.1">00:00:00 // 影院系统</div>
+        <div class="auth-sidebar__status">
+          系统已就绪
+        </div>
+        <p v-if="currentServerUrl" class="auth-sidebar__server">
+          {{ currentServerUrl }}
+        </p>
       </aside>
 
-      <!-- 右侧：交互表单区 -->
+      <!-- Right Panel: Form -->
       <main class="auth-main">
-        <form class="auth-form-minimal" @submit.prevent="handleSubmit">
-          <Alert v-if="errorMessage" variant="destructive" class="auth-error-minimal mb-8">
-            <AlertDescription>{{ errorMessage }}</AlertDescription>
-          </Alert>
+        <form class="auth-form-unified" @submit.prevent="handleSubmit">
+          <!-- Header -->
+          <div class="auth-form-header">
+            <h2 class="auth-form-title">欢迎回来</h2>
+            <p class="auth-form-subtitle">登录以继续使用 Squirrel</p>
+          </div>
 
-          <div class="auth-field-minimal">
-            <span class="auth-field-index">01</span>
+          <!-- Error Alert -->
+          <div v-if="errorMessage" class="auth-error">
+            {{ errorMessage }}
+          </div>
+
+          <!-- Email Field -->
+          <div class="auth-field">
+            <label for="email" class="auth-field__label">邮箱</label>
             <input
               id="email"
               v-model="form.email"
               type="email"
               required
-              placeholder=" "
-              class="auth-input-minimal"
+              class="auth-input"
+              placeholder="your@email.com"
+              autocomplete="email"
             />
-            <label for="email" class="auth-label-floating">邮箱</label>
           </div>
 
-          <div class="auth-field-minimal">
-            <span class="auth-field-index">02</span>
-            <input
-              id="password"
-              v-model="form.password"
-              :type="showPassword ? 'text' : 'password'"
-              required
-              placeholder=" "
-              class="auth-input-minimal"
-            />
-            <label for="password" class="auth-label-floating">密码</label>
-            <button
-              type="button"
-              class="auth-password-toggle"
-              @click="showPassword = !showPassword"
-            >
-              <component :is="showPassword ? EyeOff : Eye" class="w-4 h-4" />
-            </button>
+          <!-- Password Field -->
+          <div class="auth-field">
+            <label for="password" class="auth-field__label">密码</label>
+            <div class="auth-password-wrapper">
+              <input
+                id="password"
+                v-model="form.password"
+                :type="showPassword ? 'text' : 'password'"
+                required
+                class="auth-input"
+                placeholder="Enter password"
+                autocomplete="current-password"
+              />
+              <button
+                type="button"
+                class="auth-password-toggle"
+                @click="showPassword = !showPassword"
+                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              >
+                <component :is="showPassword ? EyeOff : Eye" class="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
-          <label class="auth-option-minimal" for="remember-me">
+          <!-- Remember Me -->
+          <label class="auth-checkbox">
             <input
-              id="remember-me"
               v-model="form.rememberMe"
               type="checkbox"
-              class="auth-option-minimal__input"
+              class="auth-checkbox__input"
             />
-            <span class="auth-option-minimal__box"></span>
-            <span class="auth-option-minimal__label">记住登录</span>
+            <span class="auth-checkbox__label">记住登录状态</span>
           </label>
 
-          <Button type="submit" class="auth-submit-minimal" :disabled="loading">
-            {{ loading ? '验证中...' : '进入系统' }}
-          </Button>
+          <!-- Submit Button -->
+          <button
+            type="submit"
+            class="auth-submit"
+            :disabled="loading"
+          >
+            {{ loading ? '验证中...' : '登录' }}
+          </button>
 
-          <div class="auth-footer-minimal">
-            <span>未登记访客？</span>
-            <router-link to="/register" class="auth-link-minimal">申请访问权限</router-link>
-          </div>
-
-          <div class="auth-footer-minimal">
-            <span>服务器不对？</span>
-            <router-link to="/server-config" class="auth-link-minimal">切换服务器</router-link>
+          <!-- Footer Links -->
+          <div class="auth-footer">
+            <span>未注册？</span>
+            <router-link to="/register" class="auth-link">申请访问权限</router-link>
           </div>
         </form>
       </main>
@@ -97,8 +111,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUser } from '../composables/useUser'
 import { useServerConfig } from '@/composables/useServerConfig'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
 import { Eye, EyeOff } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -117,7 +129,7 @@ onMounted(async () => {
   await initServerConfig()
 })
 
-const currentServerLabel = computed(() => currentServerUrl.value || '切换服务器')
+const currentServerLabel = computed(() => currentServerUrl.value || '未配置服务器')
 
 const getErrorMessage = (error) => {
   if (!error) return '登录失败，请稍后再试。'
@@ -153,13 +165,3 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped src="../styles/views/auth-entry.css"></style>
-
-<style scoped>
-.auth-sidebar__server {
-  margin-top: 0.75rem;
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.35);
-  letter-spacing: 0.08em;
-  word-break: break-all;
-}
-</style>

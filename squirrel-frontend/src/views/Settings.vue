@@ -718,7 +718,6 @@ const handleRevokeSessions = async () => {
 <style scoped>
 .settings-page {
   font-feature-settings: "tnum";
-  --settings-card-radius: 1.25rem;
 }
 
 /* ── Header ── */
@@ -760,7 +759,7 @@ const handleRevokeSessions = async () => {
   color: hsl(var(--primary));
   background: hsl(var(--primary) / 0.08);
   border: 1px solid hsl(var(--primary) / 0.15);
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
 }
 
 .settings-header__title {
@@ -785,7 +784,7 @@ const handleRevokeSessions = async () => {
   padding: 0.5rem 0.875rem;
   background: hsl(var(--warning) / 0.08);
   border: 1px solid hsl(var(--warning) / 0.2);
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   font-size: 0.75rem;
   font-weight: 600;
   color: hsl(var(--warning));
@@ -857,7 +856,7 @@ const handleRevokeSessions = async () => {
   color: hsl(var(--muted-foreground));
   background: transparent;
   border: none;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--duration-normal) var(--ease-default);
   white-space: nowrap;
@@ -905,7 +904,7 @@ const handleRevokeSessions = async () => {
   font-weight: 700;
   background: hsl(var(--primary) / 0.18);
   color: hsl(var(--primary));
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   line-height: 1.4;
 }
 
@@ -954,7 +953,7 @@ const handleRevokeSessions = async () => {
   height: 2.5rem;
   background: hsl(var(--primary) / 0.1);
   color: hsl(var(--primary));
-  border-radius: 0.875rem;
+  border-radius: var(--radius-lg);
   flex-shrink: 0;
   box-shadow: 0 0 0 4px hsl(var(--primary) / 0.06);
   transition: box-shadow var(--duration-normal) var(--ease-default);
@@ -992,7 +991,7 @@ const handleRevokeSessions = async () => {
   padding: 1.25rem 1rem;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 1.25rem;
+  border-radius: var(--radius-xl);
   cursor: pointer;
   transition: all var(--duration-normal) var(--ease-default);
   position: relative;
@@ -1030,7 +1029,7 @@ const handleRevokeSessions = async () => {
 .theme-option__preview {
   width: 3.25rem;
   height: 3.25rem;
-  border-radius: 0.875rem;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1119,7 +1118,7 @@ const handleRevokeSessions = async () => {
 .settings-card {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: var(--settings-card-radius);
+  border-radius: var(--radius-xl);
   overflow: hidden;
   backdrop-filter: blur(12px);
   transition:
@@ -1155,7 +1154,7 @@ const handleRevokeSessions = async () => {
   letter-spacing: 0.08em;
   color: hsl(var(--muted-foreground));
   background: hsl(var(--secondary));
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   margin-bottom: 0.75rem;
 }
 
@@ -1190,7 +1189,7 @@ const handleRevokeSessions = async () => {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1.125rem 1.5rem;
+  padding: 1rem 1.25rem;
   transition: background var(--duration-fast) var(--ease-default);
   position: relative;
 }
@@ -1198,8 +1197,8 @@ const handleRevokeSessions = async () => {
 .settings-row::before {
   content: '';
   position: absolute;
-  left: 1.5rem;
-  right: 1.5rem;
+  left: 1.25rem;
+  right: 1.25rem;
   bottom: 0;
   height: 1px;
   background: hsl(var(--border) / 0.3);
@@ -1229,7 +1228,7 @@ const handleRevokeSessions = async () => {
 .settings-divider {
   height: 1px;
   background: hsl(var(--border) / 0.3);
-  margin: 0 1.5rem;
+  margin: 0 1.25rem;
 }
 
 /* ── Alert ── */
@@ -1238,7 +1237,7 @@ const handleRevokeSessions = async () => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.875rem 1.125rem;
-  border-radius: 0.875rem;
+  border-radius: var(--radius-lg);
   font-size: 0.8125rem;
   font-weight: 500;
   margin-bottom: 1rem;
@@ -1289,9 +1288,11 @@ const handleRevokeSessions = async () => {
   color: hsl(var(--foreground));
   background: hsl(var(--background));
   border: 1px solid hsl(var(--border));
-  border-radius: 0.75rem;
+  border-radius: var(--radius-md);
   outline: none;
-  transition: all var(--duration-fast) var(--ease-default);
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
   width: 100%;
 }
 
@@ -1357,7 +1358,7 @@ const handleRevokeSessions = async () => {
 .settings-skeleton-card {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border) / 0.4);
-  border-radius: var(--settings-card-radius);
+  border-radius: var(--radius-xl);
   overflow: hidden;
 }
 
@@ -1366,7 +1367,7 @@ const handleRevokeSessions = async () => {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1.125rem 1.5rem;
+  padding: 1rem 1.25rem;
 }
 
 .settings-skeleton-theme-grid {
@@ -1383,7 +1384,7 @@ const handleRevokeSessions = async () => {
   padding: 1.25rem 1rem;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border) / 0.4);
-  border-radius: 1.25rem;
+  border-radius: var(--radius-xl);
 }
 
 .skeleton-line--title { height: 1rem; width: 7rem; }
@@ -1397,12 +1398,12 @@ const handleRevokeSessions = async () => {
 
 .server-url-display {
   font-size: 0.8rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   color: hsl(var(--primary));
   background: hsl(var(--primary) / 0.08);
   border: 1px solid hsl(var(--primary) / 0.2);
   padding: 0.3rem 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   max-width: 100%;
   word-break: break-all;
   overflow: hidden;
@@ -1496,6 +1497,5 @@ const handleRevokeSessions = async () => {
     right: 1rem;
     bottom: 1rem;
   }
-
 }
 </style>

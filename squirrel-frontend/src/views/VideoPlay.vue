@@ -948,7 +948,7 @@ watch(() => relatedVideos.value, () => {
 .related-video-card__thumb {
   position: relative;
   overflow: hidden;
-  border-radius: 4px; /* 进一步减小圆角，更显精致 */
+  border-radius: var(--radius-sm);
   background: hsl(var(--background));
   aspect-ratio: 16 / 9;
   width: 100%;
@@ -1246,7 +1246,7 @@ watch(() => relatedVideos.value, () => {
   color: hsl(var(--muted-foreground));
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-default);
 }
@@ -1339,7 +1339,7 @@ watch(() => relatedVideos.value, () => {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: hsl(var(--secondary));
   border: 1px solid hsl(var(--border) / 0.4);
@@ -1400,7 +1400,7 @@ watch(() => relatedVideos.value, () => {
   flex: 1;
   height: 1.6rem;
   padding: 0 0.45rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   border: 1px solid hsl(var(--primary) / 0.35);
   background: hsl(var(--background));
   color: hsl(var(--foreground));
@@ -1442,7 +1442,7 @@ watch(() => relatedVideos.value, () => {
   color: hsl(var(--muted-foreground));
   background: transparent;
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   opacity: 0;
   transition: all var(--duration-fast) var(--ease-default);
@@ -1457,7 +1457,7 @@ watch(() => relatedVideos.value, () => {
   color: hsl(var(--muted-foreground));
   background: transparent;
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   opacity: 0;
   transition: all var(--duration-fast) var(--ease-default);
@@ -1624,7 +1624,7 @@ watch(() => relatedVideos.value, () => {
   gap: 0.55rem;
   align-items: center;
   padding: 0.45rem 0.5rem;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: hsl(var(--accent) / 0.04);
   border: 1px solid hsl(var(--border) / 0.4);
   cursor: pointer;
@@ -1654,7 +1654,7 @@ watch(() => relatedVideos.value, () => {
 .playlist-aside__item-thumb {
   width: 5rem;
   aspect-ratio: 16 / 9;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: hsl(var(--muted));
 }
@@ -1704,7 +1704,7 @@ watch(() => relatedVideos.value, () => {
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: hsl(var(--muted-foreground));
   opacity: 0;
@@ -1791,7 +1791,7 @@ watch(() => relatedVideos.value, () => {
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.75rem 0.85rem;
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   border: 1px solid hsl(var(--border) / 0.5);
   background: hsl(var(--accent) / 0.05);
   color: hsl(var(--foreground));
@@ -1987,7 +1987,7 @@ watch(() => relatedVideos.value, () => {
   align-items: center;
   gap: 0.3rem;
   padding: 0.4rem 0.875rem;
-  border-radius: 20px;
+  border-radius: 999px;
   background: hsl(var(--secondary) / 0.6);
   color: hsl(var(--foreground));
   font-size: 0.75rem;
@@ -2032,7 +2032,7 @@ watch(() => relatedVideos.value, () => {
   align-items: center;
   gap: 0.35rem;
   padding: 0.4rem 0.75rem;
-  border-radius: 20px;
+  border-radius: 999px;
   background: hsl(var(--accent) / 0.1);
   color: hsl(var(--foreground) / 0.7);
   font-size: 0.75rem;
