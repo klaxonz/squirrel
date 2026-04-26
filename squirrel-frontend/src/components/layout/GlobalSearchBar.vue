@@ -549,7 +549,7 @@ onUnmounted(() => {
   border: 1px solid hsl(var(--border) / 0.6);
   border-radius: var(--radius-lg);
   padding: 0.5rem 0.75rem;
-  transition: all 0.2s ease;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .search-command-bar--focused {
@@ -581,7 +581,7 @@ onUnmounted(() => {
   width: 1rem;
   height: 1rem;
   color: hsl(var(--muted-foreground) / 0.7);
-  transition: color 0.2s ease;
+  transition: color var(--duration-normal) var(--ease-default);
 }
 
 .search-command-bar--focused .search-icon {
@@ -633,7 +633,7 @@ onUnmounted(() => {
   height: 6px;
   border-radius: 50%;
   background: hsl(var(--primary));
-  animation: typing-pulse 0.8s ease-in-out infinite;
+  animation: typing-pulse var(--duration-slow) ease-in-out infinite;
 }
 
 @keyframes typing-pulse {
@@ -652,7 +652,7 @@ onUnmounted(() => {
   border: 1px solid hsl(var(--border) / 0.3);
   color: hsl(var(--muted-foreground) / 0.7);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) var(--ease-default);
 }
 
 .search-clear-btn svg {
@@ -685,7 +685,7 @@ onUnmounted(() => {
   border: 1px solid hsl(var(--border) / 0.25);
   border-radius: 3px;
   letter-spacing: 0.02em;
-  transition: all 0.2s ease;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .search-command-bar--focused .search-hint-key {
@@ -696,7 +696,9 @@ onUnmounted(() => {
 
 .search-suggestions-fade-enter-active,
 .search-suggestions-fade-leave-active {
-  transition: opacity 0.16s ease, transform 0.16s ease;
+  transition:
+    opacity var(--duration-fast) var(--ease-default),
+    transform var(--duration-fast) var(--ease-default);
 }
 
 .search-suggestions-fade-enter-from,
@@ -744,7 +746,7 @@ onUnmounted(() => {
   color: hsl(var(--muted-foreground) / 0.78);
   font-size: 0.68rem;
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .search-suggestions__clear-all:hover {
@@ -761,7 +763,7 @@ onUnmounted(() => {
 .search-suggestion-item,
 .search-suggestion-remove {
   border: 1px solid transparent;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) var(--ease-default);
 }
 
 .search-suggestion-item {

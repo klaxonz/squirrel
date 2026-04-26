@@ -1,0 +1,22 @@
+/* Dark Theme */
+.dark, [data-theme='dark'] {
+  --background: 222 47% 6%;
+  --foreground: 210 40% 98%;
+  --card: 222 47% 9%;
+  --card-foreground: 210 40% 98%;
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 217 33% 17%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --border: 217 33% 17%;
+  --input: 217 33% 17%;
+  --sidebar: 222 47% 8%;
+  --sidebar-border: 217 33% 17%;
+  --sidebar-accent: 217 33% 22%;
+  --overlay: 222 47% 2% / 0.7;
+  --overlay-soft: 222 47% 2% / 0.5;
+  --overlay-strong: 222 47% 2% / 0.85;
+}

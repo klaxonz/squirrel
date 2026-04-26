@@ -69,7 +69,7 @@ defineProps({
 .route-context-bar__crumb--link {
   color: hsl(var(--muted-foreground));
   text-decoration: none;
-  transition: color 0.15s ease;
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .route-context-bar__crumb--link:hover {

@@ -79,7 +79,7 @@ const handleValueChange = (value) => {
   font-size: 0.65rem;
   letter-spacing: 0.12em;
   color: hsl(var(--muted-foreground) / 0.6);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .filter-trigger-minimal:hover .filter-trigger-content {
@@ -116,7 +116,7 @@ const handleValueChange = (value) => {
   margin: 0.125rem 0.25rem !important;
   border-bottom: none !important;
   color: hsl(var(--muted-foreground)) !important;
-  transition: all 0.2s ease;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 :deep(.filter-item-minimal:last-child) {

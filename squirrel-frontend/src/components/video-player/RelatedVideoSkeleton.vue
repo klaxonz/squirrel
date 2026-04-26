@@ -32,7 +32,7 @@ defineProps({
   padding: 0.5rem 0;
   position: relative;
   overflow: hidden;
-  animation: skeleton-appear 0.4s ease-out forwards;
+  animation: skeleton-appear var(--duration-slower) var(--ease-default) forwards;
   opacity: 0;
 }
 

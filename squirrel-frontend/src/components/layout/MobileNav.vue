@@ -67,7 +67,10 @@ defineProps({
   padding: 0 0.5rem;
   border-radius: 0.75rem;
   color: hsl(var(--muted-foreground));
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
   border: 1px solid transparent;
 }
 

@@ -925,7 +925,7 @@ watch(() => relatedVideos.value, () => {
   border-radius: 0 !important;
   box-shadow: none !important;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.2, 0, 0.1, 1);
+  transition: all var(--duration-normal) var(--ease-default);
   align-items: flex-start;
 }
 
@@ -959,7 +959,7 @@ watch(() => relatedVideos.value, () => {
   height: 100%;
   object-fit: cover;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--duration-slow) var(--ease-default);
 }
 
 .related-video-card__image.image-loaded {
@@ -1026,7 +1026,7 @@ watch(() => relatedVideos.value, () => {
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin-bottom: 0.2rem;
-  transition: color 0.2s;
+  transition: color var(--duration-normal) var(--ease-default);
 }
 
 .related-video-card:hover .related-video-card__title {
@@ -1248,7 +1248,7 @@ watch(() => relatedVideos.value, () => {
   border: 1px solid transparent;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--duration-fast) var(--ease-default);
 }
 
 .video-aside__tab:hover {
@@ -1319,7 +1319,7 @@ watch(() => relatedVideos.value, () => {
   gap: 0.75rem;
   padding: 0.35rem 0;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.2, 0, 0.1, 1);
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .clip-row:hover {
@@ -1343,7 +1343,7 @@ watch(() => relatedVideos.value, () => {
   overflow: hidden;
   background: hsl(var(--secondary));
   border: 1px solid hsl(var(--border) / 0.4);
-  transition: all 0.2s;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .clip-row:hover .clip-row__thumb {
@@ -1417,7 +1417,7 @@ watch(() => relatedVideos.value, () => {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.72rem;
   color: hsl(var(--muted-foreground));
-  transition: color 0.2s;
+  transition: color var(--duration-normal) var(--ease-default);
 }
 
 .clip-row__progress {
@@ -1430,7 +1430,7 @@ watch(() => relatedVideos.value, () => {
 .clip-row__progress-fill {
   height: 100%;
   border-radius: 1px;
-  transition: width 0.5s linear;
+  transition: width var(--duration-slower) var(--ease-default);
 }
 
 .clip-row__del {
@@ -1445,7 +1445,7 @@ watch(() => relatedVideos.value, () => {
   border-radius: 3px;
   cursor: pointer;
   opacity: 0;
-  transition: all 0.15s;
+  transition: all var(--duration-fast) var(--ease-default);
 }
 
 .clip-row__action {
@@ -1460,7 +1460,7 @@ watch(() => relatedVideos.value, () => {
   border-radius: 3px;
   cursor: pointer;
   opacity: 0;
-  transition: all 0.15s;
+  transition: all var(--duration-fast) var(--ease-default);
   flex-shrink: 0;
 }
 
@@ -1532,7 +1532,7 @@ watch(() => relatedVideos.value, () => {
   font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .playlist-aside__add-btn,
@@ -1572,7 +1572,10 @@ watch(() => relatedVideos.value, () => {
   background: hsl(var(--accent) / 0.06);
   color: hsl(var(--muted-foreground));
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .playlist-aside__playlist-chip:hover {
@@ -1625,7 +1628,10 @@ watch(() => relatedVideos.value, () => {
   background: hsl(var(--accent) / 0.04);
   border: 1px solid hsl(var(--border) / 0.4);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .playlist-aside__item:hover {
@@ -1703,7 +1709,10 @@ watch(() => relatedVideos.value, () => {
   color: hsl(var(--muted-foreground));
   opacity: 0;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .playlist-aside__item:hover .playlist-aside__item-remove {
@@ -1787,7 +1796,10 @@ watch(() => relatedVideos.value, () => {
   background: hsl(var(--accent) / 0.05);
   color: hsl(var(--foreground));
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .playlist-picker__item:hover:not(:disabled) {
@@ -1982,7 +1994,7 @@ watch(() => relatedVideos.value, () => {
   font-weight: 600;
   border: 1px solid hsl(var(--border) / 0.65);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--duration-normal) var(--ease-default);
   flex-shrink: 0;
 }
 
@@ -2003,7 +2015,7 @@ watch(() => relatedVideos.value, () => {
 }
 
 .subscribe-btn__icon.is-spinning {
-  animation: spin 0.8s linear infinite;
+  animation: spin var(--duration-slow) linear infinite;
 }
 
 /* 操作按钮 - 靠右 */
@@ -2027,7 +2039,7 @@ watch(() => relatedVideos.value, () => {
   font-weight: 500;
   border: 1px solid hsl(var(--border) / 0.4);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--duration-normal) var(--ease-default);
   text-decoration: none;
   flex-shrink: 0;
 }
@@ -2112,14 +2124,14 @@ watch(() => relatedVideos.value, () => {
 
 /* 过渡动画 */
 .fade-player-enter-active {
-  transition: opacity 0.5s ease;
+  transition: opacity var(--duration-slow) var(--ease-default);
 }
 .fade-player-enter-from {
   opacity: 0;
 }
 
 .related-list-enter-active {
-  transition: all 0.3s ease;
+  transition: all var(--duration-slow) var(--ease-default);
 }
 .related-list-enter-from {
   opacity: 0;

@@ -13,10 +13,10 @@
     linear-gradient(180deg, hsl(var(--card)), hsl(var(--background) / 0.98));
   box-shadow: var(--shadow-sm);
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease,
-    background-color 0.2s ease;
+    transform var(--duration-normal) var(--ease-default),
+    box-shadow var(--duration-normal) var(--ease-default),
+    border-color var(--duration-normal) var(--ease-default),
+    background-color var(--duration-normal) var(--ease-default);
   break-inside: avoid;
 }
 
@@ -43,7 +43,9 @@
   height: 100%;
   object-fit: cover;
   object-position: center top;
-  transition: transform 0.3s ease, filter 0.28s ease;
+  transition:
+    transform var(--duration-normal) var(--ease-default),
+    filter var(--duration-normal) var(--ease-default);
 }
 
 .video-card:hover .video-card__image {
@@ -143,7 +145,7 @@
   height: 100%;
   border-radius: 1px;
   background: linear-gradient(90deg, hsl(var(--primary) / 0.72), hsl(var(--primary)));
-  transition: width 0.22s ease;
+  transition: width var(--duration-normal) var(--ease-default);
 }
 
 .video-info {
@@ -169,7 +171,7 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
-  transition: color 0.18s ease;
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .video-card:hover .video-title {
@@ -235,7 +237,7 @@
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: color 0.16s ease;
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .video-card__channel-name:hover {
@@ -254,7 +256,9 @@
   color: hsl(var(--muted-foreground));
   font-size: 0.625rem;
   font-weight: 600;
-  transition: background-color 0.16s ease, color 0.16s ease;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .actor-toggle:hover {
@@ -284,7 +288,10 @@
   opacity: 0;
   visibility: hidden;
   transform: translateY(6px);
-  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+  transition:
+    opacity var(--duration-fast) var(--ease-default),
+    transform var(--duration-fast) var(--ease-default),
+    visibility var(--duration-fast) var(--ease-default);
 }
 
 .channel-popup.is-visible,
@@ -308,7 +315,7 @@
   gap: 0.5rem;
   padding: 0.35rem 0.4rem;
   border-radius: calc(var(--radius-md) + 1px);
-  transition: background-color 0.16s ease;
+  transition: background-color var(--duration-fast) var(--ease-default);
 }
 
 .channel-popup__item:hover {

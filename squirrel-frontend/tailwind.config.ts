@@ -130,6 +130,69 @@ export default {
         '96': '24rem',
         field: 'var(--min-width-field, 10rem)',
       },
+      /* ── Animation Configuration ── */
+      transitionTimingFunction: {
+        'default': 'cubic-bezier(0.4, 0, 0.2, 1)',
+        'in': 'cubic-bezier(0.4, 0, 1, 1)',
+        'out': 'cubic-bezier(0, 0, 0.2, 1)',
+        'bounce': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'spring': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+      },
+      transitionDuration: {
+        'instant': '50ms',
+        'fast': '150ms',
+        'normal': '200ms',
+        'slow': '300ms',
+        'slower': '500ms',
+      },
+      animation: {
+        'spin': 'spin var(--duration-slow, 300ms) linear infinite',
+        'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'bounce': 'bounce 1s infinite',
+        'fade-in': 'fadeIn var(--duration-normal, 200ms) ease-out',
+        'fade-out': 'fadeOut var(--duration-normal, 200ms) ease-in',
+        'slide-up': 'slideUp var(--duration-normal, 200ms) ease-out',
+        'slide-down': 'slideDown var(--duration-normal, 200ms) ease-out',
+        'scale-in': 'scaleIn var(--duration-normal, 200ms) cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'skeleton': 'skeleton 1.5s ease-in-out infinite',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        fadeOut: {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(8px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        slideDown: {
+          '0%': { transform: 'translateY(-8px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        scaleIn: {
+          '0%': { transform: 'scale(0.95)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        skeleton: {
+          '0%': { backgroundPosition: '200% 0' },
+          '100%': { backgroundPosition: '-200% 0' },
+        },
+      },
+      /* ── Z-index Scale ── */
+      zIndex: {
+        'dropdown': '50',
+        'sticky': '60',
+        'fixed': '70',
+        'modal-backdrop': '80',
+        'modal': '90',
+        'popover': '100',
+        'tooltip': '110',
+        'toast': '120',
+      },
     },
   },
   plugins: [

@@ -41,22 +41,28 @@ const props = defineProps({
 <style scoped>
 .video-skeleton-item {
   position: relative;
-  padding: 1rem;
-  animation: skeleton-appear 0.5s ease-out forwards;
+  padding: var(--space-3);
+  animation: skeleton-appear var(--duration-slow) var(--ease-out) forwards;
   opacity: 0;
 }
 
 @keyframes skeleton-appear {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-2));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .video-viewer-frame-skeleton {
   position: relative;
-  aspect-ratio: 16/9;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   background: hsl(var(--foreground) / 0.03);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   border: 1px solid hsl(var(--foreground) / 0.05);
 }
 
@@ -69,10 +75,10 @@ const props = defineProps({
     hsl(var(--foreground) / 0.05),
     transparent
   );
-  animation: shimmer 1.5s infinite;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
 }
 
-@keyframes shimmer {
+@keyframes skeleton-shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
 }
@@ -80,60 +86,67 @@ const props = defineProps({
 .skeleton-overlay {
   position: absolute;
   inset: 0;
-  padding: 0.75rem;
+  padding: var(--space-3);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background: linear-gradient(to bottom, hsl(var(--background) / 0.2) 0%, transparent 30%, transparent 70%, hsl(var(--background) / 0.4) 100%);
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--background) / 0.2) 0%,
+    transparent 30%,
+    transparent 70%,
+    hsl(var(--background) / 0.4) 100%
+  );
 }
 
 .skeleton-tag {
   height: 8px;
-  background: hsl(var(--foreground) / 0.05);
-  border-radius: 2px;
+  background: hsl(var(--foreground) / 0.06);
+  border-radius: var(--radius-sm);
   width: 40px;
 }
 
 .skeleton-time {
   height: 12px;
-  background: hsl(var(--foreground) / 0.1);
-  border-radius: 2px;
+  background: hsl(var(--foreground) / 0.08);
+  border-radius: var(--radius-sm);
 }
 
 .video-terminal-info-skeleton {
-  margin-top: 0.75rem;
+  margin-top: var(--space-3);
 }
 
 .skeleton-title {
   height: 14px;
-  background: hsl(var(--foreground) / 0.07);
-  border-radius: 2px;
+  background: hsl(var(--foreground) / 0.06);
+  border-radius: var(--radius-sm);
 }
 
 .video-terminal-meta-skeleton {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .meta-left {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
   flex: 1;
 }
 
 .skeleton-avatar {
   width: 14px;
   height: 14px;
-  background: hsl(var(--foreground) / 0.07);
-  border-radius: 2px;
+  background: hsl(var(--foreground) / 0.06);
+  border-radius: var(--radius-sm);
 }
 
 .skeleton-text {
   height: 10px;
   background: hsl(var(--foreground) / 0.05);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 </style>

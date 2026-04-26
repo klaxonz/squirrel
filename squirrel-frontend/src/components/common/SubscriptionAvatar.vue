@@ -73,7 +73,7 @@ const sizeClass = computed(() => {
   height: 100%;
   object-fit: cover;
   filter: grayscale(0.4);
-  transition: filter 0.3s ease;
+  transition: filter var(--duration-normal) var(--ease-default);
 }
 
 .subscription-avatar:hover .avatar-image {

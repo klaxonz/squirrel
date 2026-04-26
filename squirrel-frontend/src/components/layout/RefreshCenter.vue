@@ -114,7 +114,7 @@ const progress = (state) => getProgressPercentage(state.processed, state.total);
 .title { font-size: var(--font-size-xs); color: hsl(var(--foreground)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sub { font-size: var(--font-size-2xs); color: hsl(var(--muted-foreground)); margin-top: 2px; }
 .bar { height: 6px; background: hsl(var(--muted)); border-radius: 999px; margin-top: 6px; overflow: hidden; }
-.progress { height: 100%; background: hsl(var(--primary)); width: 0; transition: width .4s ease; }
+.progress { height: 100%; background: hsl(var(--primary)); width: 0; transition: width var(--duration-slow) var(--ease-default); }
 </style>
 
 

@@ -326,7 +326,7 @@ const sortOptions = [
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) var(--ease-default);
   padding: 0;
 }
 
@@ -382,7 +382,7 @@ const sortOptions = [
   font-size: 0.65rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) var(--ease-default);
 }
 
 .filter-chip:hover {
@@ -417,7 +417,7 @@ const sortOptions = [
   letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) var(--ease-default);
 }
 
 .modal-btn--reset {
@@ -443,7 +443,7 @@ const sortOptions = [
 /* Transition */
 .modal-enter-active,
 .modal-leave-active {
-  transition: all 0.25s ease;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .modal-enter-from,

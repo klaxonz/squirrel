@@ -194,7 +194,7 @@ watch(() => props.subscriptionId, () => {
 .avatar-frame--link {
   display: block;
   text-decoration: none;
-  transition: transform 0.2s ease;
+  transition: transform var(--duration-normal) var(--ease-default);
 }
 
 .avatar-frame--link:hover {
@@ -340,7 +340,7 @@ watch(() => props.subscriptionId, () => {
   padding: 0;
   letter-spacing: 0.1em;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all var(--duration-normal) var(--ease-default);
   white-space: nowrap;
   width: fit-content;
   margin-top: 0.05rem;
@@ -375,7 +375,7 @@ watch(() => props.subscriptionId, () => {
 
 .channel-dismiss-enter-active,
 .channel-dismiss-leave-active {
-  transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+  transition: all var(--duration-slow) var(--ease-out);
 }
 
 .channel-dismiss-enter-from,

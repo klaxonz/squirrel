@@ -429,7 +429,10 @@ watch(() => props.show, (visible) => {
   border: 1px solid hsl(var(--border) / 0.76);
   border-radius: calc(var(--radius-xl) + 2px);
   background: hsl(var(--card) / 0.84);
-  transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+  transition:
+    transform var(--duration-normal) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
 }
 
 .import-dialog__site-card:hover {
@@ -513,7 +516,9 @@ watch(() => props.show, (visible) => {
   border: 1px solid hsl(var(--border) / 0.72);
   border-radius: 1rem;
   background: hsl(var(--card) / 0.8);
-  transition: border-color 0.18s ease, background-color 0.18s ease;
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
 }
 
 .import-dialog__list-item--selected {

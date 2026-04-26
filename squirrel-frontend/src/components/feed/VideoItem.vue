@@ -265,14 +265,19 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* ═══════════════════════════════════════════════════════════════════════
+   Video Card - YouTube-inspired with tech aesthetic
+   Based on: UI_UX_DESIGN_STANDARDS.md
+   ═══════════════════════════════════════════════════════════════════════ */
+
 .video-terminal-item {
   position: relative;
   cursor: pointer;
-  padding: 0.85rem;
-  border-radius: 8px;
+  padding: 0.75rem;
+  border-radius: var(--radius-lg);
   transition:
-    background-color 0.24s ease,
-    box-shadow 0.24s ease;
+    background-color var(--duration-fast) var(--ease-default),
+    transform var(--duration-normal) var(--ease-default);
 }
 
 .video-terminal-item:hover {
@@ -281,19 +286,23 @@ onUnmounted(() => {
 
 .video-viewer-frame {
   position: relative;
-  aspect-ratio: 16/9;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   background: hsl(var(--secondary));
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   border: 1px solid hsl(var(--border) / 0.6);
-  transition: all 0.3s ease;
+  transition:
+    border-color var(--duration-normal) var(--ease-default),
+    box-shadow var(--duration-normal) var(--ease-default),
+    transform var(--duration-normal) var(--ease-default);
 }
 
 .video-terminal-item:hover .video-viewer-frame {
   border-color: hsl(var(--primary) / 0.5);
-  box-shadow: 
-    0 12px 30px -10px hsl(var(--primary) / 0.3),
-    inset 0 0 15px hsl(var(--primary) / 0.05);
+  box-shadow:
+    0 8px 24px -8px hsl(var(--primary) / 0.25),
+    inset 0 0 12px hsl(var(--primary) / 0.05);
+  transform: scale(1.01);
 }
 
 .video-terminal-image {
@@ -302,7 +311,10 @@ onUnmounted(() => {
   object-fit: cover;
   filter: contrast(1.0) brightness(1.0);
   opacity: 0;
-  transition: opacity 0.6s ease, transform 0.4s ease, filter 0.4s ease;
+  transition:
+    opacity var(--duration-slow) var(--ease-default),
+    transform var(--duration-normal) var(--ease-default),
+    filter var(--duration-normal) var(--ease-default);
 }
 
 .video-terminal-image.image-loaded {
@@ -310,23 +322,24 @@ onUnmounted(() => {
 }
 
 .video-terminal-item:hover .video-terminal-image.image-loaded {
-  filter: contrast(1.05) brightness(1.1);
+  filter: contrast(1.05) brightness(1.08);
   transform: scale(1.04);
 }
 
 .video-duration-badge {
   position: absolute;
-  right: 0.35rem;
-  bottom: 0.35rem;
+  right: var(--space-2);
+  bottom: var(--space-2);
   z-index: 6;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
   color: #fff;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-1);
   line-height: 1.2;
   pointer-events: none;
 }
@@ -336,36 +349,37 @@ onUnmounted(() => {
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.1);
+  height: 3px;
+  background: rgba(255, 255, 255, 0.15);
   z-index: 5;
 }
 
 .tech-progress-fill {
   height: 100%;
   background: hsl(var(--primary));
-  box-shadow: 0 0 8px hsl(var(--primary));
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.6);
+  transition: width var(--duration-fast) var(--ease-default);
 }
 
 .video-terminal-info {
-  margin-top: 0.75rem;
+  margin-top: var(--space-3);
   z-index: 1;
   position: relative;
 }
 
 .video-terminal-title {
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   font-weight: 600;
   line-height: 1.4;
   height: 2.8em;
   color: hsl(var(--foreground));
-  margin-bottom: 0.4rem;
+  margin-bottom: var(--space-2);
   letter-spacing: 0.01em;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  transition: color 0.3s ease;
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .video-terminal-item:hover .video-terminal-title {
@@ -376,18 +390,17 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.6rem;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
   color: hsl(var(--muted-foreground));
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
 }
 
 .meta-left {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
   min-width: 0;
   flex: 1;
 }
@@ -418,11 +431,12 @@ onUnmounted(() => {
 
 .meta-avatar:deep(.avatar-image) {
   filter: grayscale(0.5);
-  transition: all 0.3s;
+  transition: filter var(--duration-fast) var(--ease-default);
 }
 
 .meta-channel {
-  text-transform: none;
+  font-weight: 500;
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .video-terminal-item:hover .meta-avatar:deep(.avatar-image) {
@@ -455,23 +469,39 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   z-index: 1;
 }
 
 .fallback-status {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
   color: hsl(var(--primary));
-  letter-spacing: 0.3em;
-  font-weight: 800;
+  letter-spacing: 0.2em;
+  font-weight: 700;
   opacity: 0.6;
 }
 
 .fallback-id {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.5rem;
   color: hsl(var(--muted-foreground) / 0.4);
   letter-spacing: 0.1em;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .video-terminal-item {
+    padding: 0.5rem;
+  }
+
+  .video-terminal-title {
+    font-size: var(--font-size-xs);
+    -webkit-line-clamp: 2;
+  }
+
+  .video-terminal-meta {
+    font-size: 0.55rem;
+  }
 }
 </style>

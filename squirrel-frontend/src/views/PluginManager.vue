@@ -1421,7 +1421,8 @@ onUnmounted(() => {
   border: 1px solid hsl(var(--border) / 0.4);
   border-radius: 1rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    all var(--duration-normal) var(--ease-default);
 }
 
 .site-config-item:hover {
@@ -1683,7 +1684,7 @@ onUnmounted(() => {
   border-radius: calc(var(--radius-sm) - 1px);
   cursor: pointer;
   color: hsl(var(--muted-foreground));
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) var(--ease-default);
 }
 
 .action-btn:hover {

@@ -130,7 +130,7 @@ onUnmounted(() => {
   background: hsl(var(--popover) / 0.98);
   box-shadow: var(--shadow-popover);
   backdrop-filter: blur(8px);
-  animation: context-menu-fade-in 0.18s ease-out;
+  animation: context-menu-fade-in var(--duration-fast) var(--ease-default);
 }
 
 .context-menu__section {
@@ -151,7 +151,9 @@ onUnmounted(() => {
   border-radius: calc(var(--radius-md) + 1px);
   padding: 0.5rem 0.55rem;
   color: hsl(var(--foreground));
-  transition: background-color 0.16s ease, color 0.16s ease;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .context-menu__item:hover {

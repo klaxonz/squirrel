@@ -1582,7 +1582,9 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 }
 
 .sp-hud-fade-enter-active, .sp-hud-fade-leave-active {
-  transition: opacity 0.15s, transform 0.15s cubic-bezier(0.19, 1, 0.22, 1);
+  transition:
+    opacity var(--duration-fast) var(--ease-default),
+    transform var(--duration-fast) var(--ease-default);
 }
 
 .sp-hud-fade-enter-from { opacity: 0; transform: translate(-50%, -30%) scale(0.95); }
@@ -1695,7 +1697,8 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   width: 100%;
   height: 2px;
   background: rgba(255, 255, 255, 0.12);
-  transition: height 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+  transition:
+    height var(--duration-normal) var(--ease-default);
   border-radius: 2px;
   overflow: hidden;
   position: relative;
@@ -1777,7 +1780,9 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   border-radius: 999px;
   background: color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 40%, transparent);
   box-shadow: 0 0 8px color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 30%, transparent);
-  transition: height 0.15s ease, background 0.2s ease;
+  transition:
+    height var(--duration-fast) var(--ease-default),
+    background var(--duration-normal) var(--ease-default);
 }
 
 .sp-clip-marker:hover .sp-clip-marker-track {
@@ -1795,7 +1800,9 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   border-radius: 999px;
   background: var(--marker-color, hsl(24 100% 50%));
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 6px color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 50%, transparent);
-  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  transition:
+    transform var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-normal) var(--ease-default);
 }
 
 .sp-clip-marker:hover .sp-clip-marker-dot {
@@ -1842,7 +1849,9 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   font-family: 'JetBrains Mono', monospace;
   white-space: nowrap;
   opacity: 0;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity var(--duration-normal) var(--ease-default),
+    transform var(--duration-normal) var(--ease-default);
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
   z-index: 10;
   pointer-events: none;
@@ -1884,7 +1893,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   font-size: 12px;
   line-height: 1;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--duration-fast) var(--ease-default);
 }
 
 .sp-clip-marker-tooltip__del:hover {
@@ -1931,7 +1940,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   right: 0;
   transform: scaleX(0);
   transform-origin: right;
-  transition: transform 0.2s ease;
+  transition: transform var(--duration-normal) var(--ease-default);
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
 }
 
@@ -1946,7 +1955,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   bottom: 20px;
   transform: translateX(-50%);
   pointer-events: none;
-  animation: hint-fade 0.2s ease-out;
+  animation: hint-fade var(--duration-normal) var(--ease-default);
 }
 
 @keyframes hint-fade {
@@ -1991,7 +2000,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   border: 1px solid transparent;
   border-radius: 3px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-normal) var(--ease-default);
   background: transparent;
   letter-spacing: 0.05em;
   margin-right: 4px;
@@ -2016,7 +2025,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s cubic-bezier(0.19, 1, 0.22, 1);
+  transition: all var(--duration-slow) var(--ease-out);
   position: relative;
 }
 
@@ -2029,7 +2038,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   border-radius: 6px;
   transform: scale(0.85);
   opacity: 0;
-  transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .sp-icon-btn:hover {
@@ -2080,7 +2089,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   width: 0;
   overflow: hidden;
   opacity: 0;
-  transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+  transition: all var(--duration-slow) var(--ease-out);
   height: 32px;
   display: flex;
   align-items: center;
@@ -2154,7 +2163,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   font-family: var(--sp-font-family);
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-normal) var(--ease-default);
   position: relative;
   z-index: 1;
   letter-spacing: 0.03em;
@@ -2182,7 +2191,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   background: var(--sp-switch-bg);
   border-radius: 8px;
   position: relative;
-  transition: background 0.3s;
+  transition: background var(--duration-normal) var(--ease-default);
   border: 1px solid var(--sp-border);
 }
 
@@ -2200,7 +2209,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   height: 10px;
   background: #fff;
   border-radius: 50%;
-  transition: transform 0.25s cubic-bezier(0.19, 1, 0.22, 1);
+  transition: transform var(--duration-normal) var(--ease-default);
 }
 
 .sp-simple-switch.is-on::after { transform: translateX(14px); }
@@ -2228,7 +2237,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   border-radius: 4px;
   cursor: pointer;
   border: 2px solid transparent;
-  transition: all 0.2s;
+  transition: all var(--duration-normal) var(--ease-default);
   margin: 0 auto;
 }
 
@@ -2328,7 +2337,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   border: 2px solid rgba(255, 255, 255, 0.1);
   border-top-color: rgba(255, 255, 255, 0.6);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin var(--duration-slow) linear infinite;
 }
 
 @keyframes spin {
@@ -2338,7 +2347,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 /* ?????????*/
 .sp-loading-fade-enter-active,
 .sp-loading-fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity var(--duration-slow) var(--ease-default);
 }
 
 .sp-loading-fade-enter-from,
@@ -2347,7 +2356,9 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 }
 
 .sp-ui-fade-enter-active, .sp-ui-fade-leave-active {
-  transition: opacity 0.3s cubic-bezier(0.19, 1, 0.22, 1), transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+  transition:
+    opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
 }
 
 .sp-ui-fade-enter-from, .sp-ui-fade-leave-to {

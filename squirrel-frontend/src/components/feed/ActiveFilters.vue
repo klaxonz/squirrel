@@ -132,7 +132,7 @@ const activeChips = computed(() => {
   font-weight: 500;
   letter-spacing: 0.05em;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) var(--ease-default);
 }
 
 .filter-chip:hover {
@@ -163,7 +163,7 @@ const activeChips = computed(() => {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) var(--ease-default);
 }
 
 .clear-all-btn:hover {

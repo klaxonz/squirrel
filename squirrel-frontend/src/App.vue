@@ -526,8 +526,8 @@ body {
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(circle at top, var(--app-bg-gradient-top), transparent 32%),
-    linear-gradient(180deg, var(--app-bg-gradient-bottom-start) 0%, var(--app-bg-gradient-bottom-end) 56%);
+    radial-gradient(circle at top, var(--bg-gradient-top), transparent 32%),
+    linear-gradient(180deg, var(--bg-gradient-bottom-start) 0%, var(--bg-gradient-bottom-end) 56%);
 }
 
 .app-auth-shell {
@@ -621,7 +621,7 @@ body {
   border: none;
   border-radius: 0;
   color: hsl(var(--muted-foreground));
-  transition: all 0.2s ease;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .desktop-window-controls__button:hover {
@@ -730,7 +730,7 @@ h6 {
 
 .header-breadcrumbs__item--link {
   color: hsl(var(--muted-foreground));
-  transition: color 0.15s ease;
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .header-breadcrumbs__item--link:hover {
@@ -794,7 +794,9 @@ h6 {
   border: 1px solid hsl(var(--border) / 0.8);
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
 }
 
 .sidebar-flyout-toggle:hover {
@@ -820,7 +822,7 @@ h6 {
 
 .sidebar-flyout-enter-active,
 .sidebar-flyout-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-normal) var(--ease-default);
 }
 
 .sidebar-flyout-enter-from,

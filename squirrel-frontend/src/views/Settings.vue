@@ -808,10 +808,10 @@ const handleRevokeSessions = async () => {
 
 /* Status pop transition */
 .status-pop-enter-active {
-  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all var(--duration-slow) var(--ease-bounce);
 }
 .status-pop-leave-active {
-  transition: all 0.2s ease;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 .status-pop-enter-from,
 .status-pop-leave-to {
@@ -848,7 +848,7 @@ const handleRevokeSessions = async () => {
   border: none;
   border-radius: 0.75rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--duration-normal) var(--ease-default);
   white-space: nowrap;
   overflow: hidden;
   user-select: none;
@@ -861,7 +861,7 @@ const handleRevokeSessions = async () => {
   border-radius: inherit;
   background: hsl(var(--primary) / 0.07);
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-normal) var(--ease-default);
 }
 
 .settings-tab:hover {
@@ -883,7 +883,7 @@ const handleRevokeSessions = async () => {
   width: 1rem;
   height: 1rem;
   flex-shrink: 0;
-  transition: transform 0.2s ease;
+  transition: transform var(--duration-normal) var(--ease-default);
 }
 
 .settings-tab:hover .settings-tab__icon { transform: scale(1.1) rotate(-3deg); }
@@ -916,7 +916,7 @@ const handleRevokeSessions = async () => {
 }
 
 .settings-panel {
-  animation: panel-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: panel-enter var(--duration-slow) var(--ease-out);
 }
 
 @keyframes panel-enter {
@@ -947,7 +947,7 @@ const handleRevokeSessions = async () => {
   border-radius: 0.875rem;
   flex-shrink: 0;
   box-shadow: 0 0 0 4px hsl(var(--primary) / 0.06);
-  transition: box-shadow 0.25s ease;
+  transition: box-shadow var(--duration-normal) var(--ease-default);
 }
 
 .settings-section:hover .settings-section__icon {
@@ -984,7 +984,7 @@ const handleRevokeSessions = async () => {
   border: 1px solid hsl(var(--border) / 0.5);
   border-radius: 1.25rem;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all var(--duration-normal) var(--ease-default);
   position: relative;
   overflow: hidden;
 }
@@ -996,7 +996,7 @@ const handleRevokeSessions = async () => {
   border-radius: inherit;
   background: radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.08), transparent 70%);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--duration-slow) var(--ease-default);
 }
 
 .theme-option:hover {
@@ -1024,7 +1024,7 @@ const handleRevokeSessions = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.25s ease;
+  transition: transform var(--duration-normal) var(--ease-default);
 }
 
 .theme-option:hover .theme-option__preview { transform: scale(1.08) rotate(3deg); }
@@ -1097,7 +1097,7 @@ const handleRevokeSessions = async () => {
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   border-radius: 50%;
-  animation: check-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: check-pop var(--duration-slow) var(--ease-bounce);
 }
 
 @keyframes check-pop {
@@ -1112,7 +1112,9 @@ const handleRevokeSessions = async () => {
   border-radius: var(--settings-card-radius);
   overflow: hidden;
   backdrop-filter: blur(12px);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color var(--duration-normal) var(--ease-default),
+    box-shadow var(--duration-normal) var(--ease-default);
 }
 
 .settings-card:hover {
@@ -1179,7 +1181,7 @@ const handleRevokeSessions = async () => {
   justify-content: space-between;
   gap: 1rem;
   padding: 1.125rem 1.5rem;
-  transition: background 0.15s ease;
+  transition: background var(--duration-fast) var(--ease-default);
   position: relative;
 }
 
@@ -1192,7 +1194,7 @@ const handleRevokeSessions = async () => {
   height: 1px;
   background: hsl(var(--border) / 0.3);
   opacity: 0;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--duration-fast) var(--ease-default);
 }
 
 .settings-row:hover { background: hsl(var(--secondary) / 0.25); }
@@ -1230,7 +1232,7 @@ const handleRevokeSessions = async () => {
   font-size: 0.8125rem;
   font-weight: 500;
   margin-bottom: 1rem;
-  animation: alert-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: alert-enter var(--duration-slow) var(--ease-out);
   border-width: 1px;
 }
 
@@ -1279,7 +1281,7 @@ const handleRevokeSessions = async () => {
   border: 1px solid hsl(var(--border));
   border-radius: 0.75rem;
   outline: none;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) var(--ease-default);
   width: 100%;
 }
 
@@ -1350,10 +1352,10 @@ const handleRevokeSessions = async () => {
 }
 
 .toast-enter-active {
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all var(--duration-slower) var(--ease-out);
 }
 .toast-leave-active {
-  transition: all 0.25s ease;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 .toast-enter-from {
   opacity: 0;
@@ -1366,7 +1368,7 @@ const handleRevokeSessions = async () => {
 
 /* ── Skeleton Loading ── */
 .settings-skeleton {
-  animation: skeleton-fade-in 0.4s ease;
+  animation: skeleton-fade-in var(--duration-slower) var(--ease-default);
 }
 
 @keyframes skeleton-fade-in {
@@ -1511,7 +1513,7 @@ const handleRevokeSessions = async () => {
   text-transform: uppercase;
   cursor: pointer;
   padding: 0.25rem 0;
-  transition: color 0.2s ease;
+  transition: color var(--duration-normal) var(--ease-default);
   text-align: left;
 }
 
@@ -1531,7 +1533,7 @@ const handleRevokeSessions = async () => {
   border: 1px solid hsl(var(--muted-foreground) / 0.3);
   border-top-color: hsl(var(--primary));
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin var(--duration-slow) linear infinite;
 }
 
 @keyframes spin {

@@ -350,7 +350,7 @@ defineExpose({ startMark, confirmMark, setEndMode, startMarking, hideBar, mode, 
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .float-bar__btn--cancel {
@@ -418,7 +418,7 @@ defineExpose({ startMark, confirmMark, setEndMode, startMarking, hideBar, mode, 
   backdrop-filter: blur(8px);
   color: hsl(var(--muted-foreground));
   cursor: grab;
-  transition: all 0.2s ease;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .float-bar__drag-handle:hover {
@@ -434,7 +434,7 @@ defineExpose({ startMark, confirmMark, setEndMode, startMarking, hideBar, mode, 
 /* Transition */
 .float-bar-enter-active,
 .float-bar-leave-active {
-  transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+  transition: all var(--duration-slow) var(--ease-out);
 }
 
 .float-bar-enter-from,

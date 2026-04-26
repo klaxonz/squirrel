@@ -96,7 +96,7 @@ const actionCount = computed(() => Math.max(1, props.actions))
 
 <style scoped>
 .plugin-skeleton-item {
-  animation: skeleton-appear 0.4s ease-out forwards;
+  animation: skeleton-appear var(--duration-slower) var(--ease-default) forwards;
   opacity: 0;
   background: hsl(var(--card) / 0.1);
 }

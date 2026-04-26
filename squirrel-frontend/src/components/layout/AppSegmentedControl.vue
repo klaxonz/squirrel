@@ -70,7 +70,7 @@ const selectOption = (value) => {
   font-size: 0.7rem;
   font-weight: 500;
   letter-spacing: 0;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) var(--ease-default);
 }
 
 .app-segmented-control__item:hover {

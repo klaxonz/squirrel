@@ -44,7 +44,7 @@ const props = defineProps({
   padding: 1.25rem 1rem;
   color: hsl(var(--sidebar-foreground) / 0.5);
   text-decoration: none;
-  transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+  transition: all var(--duration-slow) var(--ease-out);
   border-bottom: 1px solid hsl(var(--sidebar-border) / 0.3);
   overflow: hidden;
 }
@@ -82,7 +82,7 @@ const props = defineProps({
 .menu-icon {
   width: 1.25rem;
   height: 1.25rem;
-  transition: all 0.3s ease;
+  transition: all var(--duration-slow) var(--ease-out);
 }
 
 .is-active .menu-icon {
@@ -123,7 +123,7 @@ const props = defineProps({
   width: 2px;
   background: var(--neon-primary);
   opacity: 0;
-  transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+  transition: all var(--duration-slow) var(--ease-out);
   box-shadow: 0 0 15px var(--neon-primary);
 }
 

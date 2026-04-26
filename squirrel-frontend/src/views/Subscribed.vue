@@ -809,7 +809,7 @@ onUnmounted(() => {
   box-sizing: border-box;
   background: hsl(var(--background));
   overflow: hidden;
-  transition: background 0.15s ease;
+  transition: background var(--duration-fast) var(--ease-default);
 }
 
 .subscription-row:hover {
@@ -844,7 +844,7 @@ onUnmounted(() => {
 
 .subscription-row__avatar :deep(.avatar-image) {
   filter: grayscale(0.15);
-  transition: filter 0.2s ease;
+  transition: filter var(--duration-normal) var(--ease-default);
 }
 
 .subscription-row:hover .subscription-row__avatar :deep(.avatar-image) {
@@ -1019,7 +1019,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.125rem;
   opacity: 0.45;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--duration-fast) var(--ease-default);
 }
 
 .subscription-row:hover .subscription-row__actions,
@@ -1038,7 +1038,7 @@ onUnmounted(() => {
   border-radius: calc(var(--radius-sm) - 1px);
   cursor: pointer;
   color: hsl(var(--muted-foreground));
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) var(--ease-default);
 }
 
 .row-action-btn:hover {
@@ -1057,7 +1057,7 @@ onUnmounted(() => {
 }
 
 .row-action-icon.is-spinning {
-  animation: spin 0.8s linear infinite;
+  animation: spin var(--duration-slow) linear infinite;
 }
 
 .subscription-row__recent-grid {
@@ -1086,7 +1086,7 @@ onUnmounted(() => {
   padding: 0.2rem;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background var(--duration-fast) var(--ease-default);
 }
 
 .recent-video-card:hover {
@@ -1217,7 +1217,7 @@ onUnmounted(() => {
   border-radius: 999px;
   border: 2px solid hsl(var(--destructive-foreground) / 0.35);
   border-top-color: hsl(var(--destructive-foreground));
-  animation: spin 0.8s linear infinite;
+  animation: spin var(--duration-slow) linear infinite;
 }
 
 @keyframes stream-pulse {
@@ -1233,7 +1233,7 @@ onUnmounted(() => {
 
 .fade-list-enter-active,
 .fade-list-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity var(--duration-normal) var(--ease-default);
 }
 
 .fade-list-enter-from,

@@ -84,7 +84,7 @@ const sizeClass = computed(() => `size-${props.size}`);
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity var(--duration-normal) var(--ease-default);
 }
 
 .fade-enter-from,

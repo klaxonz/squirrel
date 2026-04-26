@@ -278,7 +278,7 @@ const connectionFeedbackClass = computed(() => {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: color var(--duration-normal) var(--ease-default);
 }
 
 .server-shortcuts__clear:hover {
@@ -300,7 +300,10 @@ const connectionFeedbackClass = computed(() => {
   font-size: 0.78rem;
   letter-spacing: 0.05em;
   cursor: pointer;
-  transition: border-color 0.25s ease, background-color 0.25s ease, color 0.25s ease;
+  transition:
+    border-color var(--duration-normal) var(--ease-default),
+    background-color var(--duration-normal) var(--ease-default),
+    color var(--duration-normal) var(--ease-default);
 }
 
 .server-chip:hover {
@@ -341,7 +344,7 @@ const connectionFeedbackClass = computed(() => {
   text-transform: uppercase;
   letter-spacing: 0.2em;
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: all var(--duration-slow) var(--ease-out);
   text-align: left;
 }
 
@@ -362,7 +365,7 @@ const connectionFeedbackClass = computed(() => {
   border: 1px solid rgba(255, 77, 0, 0.3);
   border-top-color: #ff4d00;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin var(--duration-slow) linear infinite;
 }
 
 @keyframes spin {
@@ -390,7 +393,7 @@ const connectionFeedbackClass = computed(() => {
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.3);
   min-height: 1.5rem;
-  transition: all 0.3s ease;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .connection-feedback--ok {

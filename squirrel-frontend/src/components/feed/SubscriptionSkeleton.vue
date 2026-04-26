@@ -50,7 +50,7 @@ defineProps({
 .skeleton-card {
   background: hsl(var(--background));
   overflow: hidden;
-  animation: skeleton-appear 0.4s ease-out forwards;
+  animation: skeleton-appear var(--duration-slower) var(--ease-default) forwards;
   opacity: 0;
 }
 

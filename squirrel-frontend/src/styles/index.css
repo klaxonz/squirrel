@@ -1,37 +1,74 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Squirrel Design System - Design Tokens
+   Reference: YouTube, Notion, Linear, Stripe
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Base layer: variables, global selectors, and body defaults */
+/* ── Base Reset ──────────────────────────────────────────────────────────── */
 @layer base {
   :root {
-    --mobile-nav-height: 80px;
-    /* Layout */
-    --sidebar-width: 11rem;
-    --sidebar-collapsed-width: 3.35rem;
-    --sidebar-icon-size: 1rem;
-    --sidebar-item-container-padding: 0.375rem;
-    --sidebar-collapsed-item-padding: calc(
-      (var(--sidebar-collapsed-width, 4rem) - (2 * var(--sidebar-item-container-padding, 0.5rem)) - var(--sidebar-icon-size, 1.25rem)) / 2
-    );
+    /* ── Font ─────────────────────────────────────────────────────────────── */
+    --font-sans: 'IBM Plex Sans', 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
 
-    /* Design Tokens - Font */
-    --font-sans: 'IBM Plex Sans', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-    --font-size-4xs: 0.625rem;
-    --font-size-3xs: 0.6875rem;
-    --font-size-2xs: 0.75rem;
+    /* ── Font Size ────────────────────────────────────────────────────────── */
     --font-size-xs: 0.8125rem;
     --font-size-sm: 0.875rem;
-    --font-size-md: 0.9375rem;
     --font-size-base: 1rem;
     --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
     --font-size-2xl: 1.5rem;
+    --font-size-2xs: 0.75rem;
 
-    /* Shadows */
+    /* ── Spacing Scale ────────────────────────────────────────────────────── */
+    --space-0-5: 0.125rem;
+    --space-1: 0.25rem;
+    --space-1-5: 0.375rem;
+    --space-2: 0.5rem;
+    --space-2-5: 0.625rem;
+    --space-3: 0.75rem;
+    --space-3-5: 0.875rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-7: 1.75rem;
+    --space-8: 2rem;
+    --space-9: 2.25rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-14: 3.5rem;
+    --space-16: 4rem;
+
+    /* ── Animation ────────────────────────────────────────────────────────── */
+    --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    --duration-instant: 50ms;
+    --duration-fast: 150ms;
+    --duration-normal: 200ms;
+    --duration-slow: 300ms;
+    --duration-slower: 500ms;
+
+    /* ── Z-index ──────────────────────────────────────────────────────────── */
+    --z-dropdown: 50;
+    --z-sticky: 60;
+    --z-fixed: 70;
+    --z-modal-backdrop: 80;
+    --z-modal: 90;
+    --z-popover: 100;
+    --z-tooltip: 110;
+    --z-toast: 120;
+
+    /* ── Shadows ──────────────────────────────────────────────────────────── */
     --shadow-sm: 0 1px 2px hsl(28 16% 24% / 0.04), 0 4px 10px hsl(28 16% 24% / 0.04);
     --shadow-md: 0 8px 18px hsl(28 16% 24% / 0.06), 0 2px 6px hsl(28 16% 24% / 0.04);
     --shadow-lg: 0 14px 28px hsl(28 16% 24% / 0.08), 0 4px 10px hsl(28 16% 24% / 0.05);
@@ -41,7 +78,11 @@
     --shadow-float: 0 24px 48px hsl(28 16% 24% / 0.16), 0 8px 20px hsl(28 16% 24% / 0.1);
     --shadow-drop-sm: 0 6px 14px hsl(28 16% 24% / 0.08);
 
-    /* Overlays */
+    /* ── Focus ────────────────────────────────────────────────────────────── */
+    --focus-ring: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring));
+    --focus-ring-sm: 0 0 0 2px hsl(var(--background)), 0 0 0 3px hsl(var(--ring));
+
+    /* ── Overlay ─────────────────────────────────────────────────────────── */
     --overlay-dark-50: rgba(31, 39, 48, 0.5);
     --overlay-dark-70: rgba(19, 25, 32, 0.7);
     --overlay-dark-75: rgba(17, 23, 29, 0.75);
@@ -50,12 +91,12 @@
     --overlay-light-15: rgba(233, 214, 190, 0.18);
     --overlay-light-30: rgba(233, 214, 190, 0.34);
 
-    /* Scrollbars */
+    /* ── Scrollbar ───────────────────────────────────────────────────────── */
     --scrollbar-track: transparent;
     --scrollbar-thumb: #8f7a68;
     --scrollbar-thumb-hover: #b08e73;
 
-    /* Border Radius */
+    /* ── Border Radius ───────────────────────────────────────────────────── */
     --radius-sm: 0.375rem;
     --radius-md: 0.4375rem;
     --radius-lg: 0.625rem;
@@ -63,51 +104,7 @@
     --radius-2xl: 0.95rem;
     --radius-full: 9999px;
 
-    /* App UI Standards */
-    --app-page-gutter: 1rem;
-    --app-page-gutter-sm: 1.5rem;
-    --app-page-gutter-lg: 2rem;
-    --app-toolbar-padding-block: 1rem;
-    --app-content-padding-top: 0.75rem;
-    --app-content-padding-bottom: 1.25rem;
-    --app-empty-min-height: 40vh;
-    --app-empty-padding: 2rem;
-    --app-empty-gap: 1.25rem;
-    --app-empty-copy-width: 22rem;
-    --app-empty-border-alpha: 0.6;
-    --app-eyebrow-font-size: 0.75rem;
-    --app-eyebrow-letter-spacing: 0.2em;
-    --app-surface-radius: var(--radius-lg);
-    --app-feature-card-radius: 1.25rem;
-    --app-control-radius: calc(var(--radius-sm) + 2px);
-    --app-control-item-radius: calc(var(--radius-sm) - 1px);
-    --app-control-bg: hsl(var(--secondary) / 0.3);
-    --app-control-hover-bg: hsl(var(--background) / 0.5);
-    --app-control-active-bg: hsl(var(--background));
-    --app-control-shadow: 0 1px 3px hsl(var(--border) / 0.4);
-    --app-hairline-alpha: 0.5;
-    --app-label-font: 'JetBrains Mono', 'Courier New', monospace;
-    --app-label-xs: 0.6rem;
-    --app-label-sm: 0.6875rem;
-    --app-label-letter-spacing: 0.12em;
-    --app-label-wide-letter-spacing: 0.2em;
-    --app-status-dot-size: 0.375rem;
-    --app-row-hover-bg: hsl(var(--secondary) / 0.15);
-    --app-dense-row-min-height: 2.75rem;
-    --app-dense-cell-padding-y: 0.5rem;
-    --app-dense-cell-padding-x: 0.75rem;
-    --app-dense-toolbar-gap: 0.25rem;
-    --app-tactical-page-gutter: var(--app-page-gutter);
-    --app-tactical-page-gutter-sm: var(--app-page-gutter-sm);
-    --app-tactical-page-gutter-lg: var(--app-page-gutter-lg);
-    --app-tactical-control-radius: 0;
-    --app-tactical-title-letter-spacing: 0.1em;
-    --app-tactical-kicker-letter-spacing: 0.3em;
-    --app-tactical-row-radius: 6px;
-    --app-tactical-row-hover-bg: hsl(var(--background));
-    --app-playback-panel-radius: 4px;
-    --app-playback-pill-radius: 999px;
-    --app-playback-control-bg: hsl(var(--accent) / 0.1);
+    /* ── Color Roles ─────────────────────────────────────────────────────── */
     --background: 210 40% 98%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
@@ -137,250 +134,27 @@
     --overlay-strong: 222 47% 11% / 0.2;
     --surface-glow: 24 100% 50% / 0.05;
     --surface-shadow: 222 47% 11% / 0.05;
+
+    /* ── Charts ───────────────────────────────────────────────────────────── */
     --chart-1: 24 68% 50%;
     --chart-2: 198 36% 41%;
     --chart-3: 153 28% 41%;
     --chart-4: 38 72% 56%;
     --chart-5: 349 47% 52%;
+
+    /* ── Radius (alias) ───────────────────────────────────────────────────── */
     --radius: 0.65rem;
 
-    /* Theme-specific Background Gradients */
-    --app-bg-gradient-top: hsl(var(--primary) / 0.12);
-    --app-bg-gradient-bottom-start: hsl(var(--secondary) / 0.3);
-    --app-bg-gradient-bottom-end: hsl(var(--background));
-
-    /* Cyber Industrial Theme */
-    --cyber-orange: #FF4F00;
-    --cyber-cyan: #00E5FF;
-    --cyber-amber: #FFB300;
-    --cyber-green: #00FF41;
-    --cyber-border: rgba(255, 255, 255, 0.1);
-
-    /* Sci-Fi Fluid Theme */
-    --sci-fi-cyan: oklch(75% 0.15 200);
-    --sci-fi-amber: oklch(75% 0.15 60);
-    --sci-fi-orange: oklch(70% 0.2 40);
-    --sci-fi-green: oklch(75% 0.2 150);
+    /* ── Background Gradients ─────────────────────────────────────────────── */
+    --bg-gradient-top: hsl(var(--primary) / 0.12);
+    --bg-gradient-bottom-start: hsl(var(--secondary) / 0.3);
+    --bg-gradient-bottom-end: hsl(var(--background));
   }
 
-  /* Theme Definitions */
-  [data-theme='light'] {
-    --background: 30 10% 96%;
-    --foreground: 222 47% 11%;
-    --card: 30 10% 98%;
-    --card-foreground: 222 47% 11%;
-    --popover: 30 10% 98%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 24 100% 50%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 30 10% 92%;
-    --secondary-foreground: 222 47% 11.2%;
-    --muted: 30 10% 90%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 30 10% 92%;
-    --accent-foreground: 222 47% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 30 8% 88%;
-    --input: 30 8% 88%;
-    --ring: 24 100% 50%;
-    --sidebar: 30 10% 94%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-border: 30 8% 88%;
-    --sidebar-accent: 30 10% 90%;
-    --sidebar-accent-foreground: 24 100% 50%;
-    --overlay: 222 47% 11% / 0.1;
-    --overlay-soft: 222 47% 11% / 0.05;
-    --overlay-strong: 222 47% 11% / 0.2;
-    --success: 142.1 70.6% 45.3%;
-    --success-foreground: 210 40% 98%;
-    --warning: 37.9 97.2% 53.9%;
-    --warning-foreground: 222 47% 11%;
-    --error: 0 84.2% 60.2%;
-    --error-foreground: 210 40% 98%;
-    --app-bg-gradient-top: hsl(var(--primary) / 0.12);
-    --app-bg-gradient-bottom-start: hsl(var(--secondary) / 0.3);
-    --app-bg-gradient-bottom-end: hsl(var(--background));
-  }
-
-  .dark, [data-theme='dark'] {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 24 100% 50%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 24 100% 50%;
-    --sidebar: 222 47% 8%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-accent: 217 33% 22%;
-    --sidebar-accent-foreground: 24 100% 50%;
-    --overlay: 222 47% 2% / 0.7;
-    --overlay-soft: 222 47% 2% / 0.5;
-    --overlay-strong: 222 47% 2% / 0.85;
-    --success: 142.1 70.6% 45.3%;
-    --success-foreground: 210 40% 98%;
-    --warning: 37.9 97.2% 53.9%;
-    --warning-foreground: 222 47% 11%;
-    --error: 0 84.2% 60.2%;
-    --error-foreground: 210 40% 98%;
-    --app-bg-gradient-top: hsl(var(--primary) / 0.08);
-    --app-bg-gradient-bottom-start: hsl(var(--secondary) / 0.1);
-    --app-bg-gradient-bottom-end: hsl(var(--background));
-  }
-
-  [data-theme='cyber'] {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 100%;
-    --card: 0 0% 7%;
-    --card-foreground: 0 0% 100%;
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 18 100% 50%; /* Cyber Orange */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 186 100% 50%; /* Cyber Cyan */
-    --accent-foreground: 0 0% 0%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 18 100% 50%;
-    --sidebar: 0 0% 5%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 18 100% 50%;
-    --overlay: 0 0% 0% / 0.8;
-    --overlay-soft: 0 0% 0% / 0.6;
-    --overlay-strong: 0 0% 0% / 0.95;
-    --success: 145 100% 50%; /* Cyber Green */
-    --success-foreground: 0 0% 0%;
-    --warning: 42 100% 50%; /* Cyber Amber */
-    --warning-foreground: 0 0% 0%;
-    --error: 0 100% 50%;
-    --error-foreground: 0 0% 100%;
-    --app-bg-gradient-top: rgba(255, 79, 0, 0.05);
-    --app-bg-gradient-bottom-start: rgba(0, 229, 255, 0.03);
-    --app-bg-gradient-bottom-end: #0a0a0a;
-  }
-
-  [data-theme='scifi'] {
-    --background: 220 40% 4%;
-    --foreground: 180 100% 90%;
-    --card: 220 40% 7%;
-    --card-foreground: 180 100% 90%;
-    --popover: 220 40% 7%;
-    --popover-foreground: 180 100% 90%;
-    --primary: 190 100% 50%; /* Sci-Fi Cyan */
-    --primary-foreground: 220 40% 4%;
-    --secondary: 220 30% 12%;
-    --secondary-foreground: 180 100% 90%;
-    --muted: 220 30% 12%;
-    --muted-foreground: 220 20% 60%;
-    --accent: 40 100% 50%; /* Sci-Fi Amber */
-    --accent-foreground: 220 40% 4%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 220 30% 18%;
-    --input: 220 30% 18%;
-    --ring: 190 100% 50%;
-    --sidebar: 220 40% 5%;
-    --sidebar-foreground: 180 100% 90%;
-    --sidebar-border: 220 30% 18%;
-    --sidebar-accent: 220 30% 20%;
-    --sidebar-accent-foreground: 190 100% 50%;
-    --overlay: 220 40% 2% / 0.8;
-    --overlay-soft: 220 40% 2% / 0.6;
-    --overlay-strong: 220 40% 2% / 0.95;
-    --success: 150 100% 50%;
-    --success-foreground: 220 40% 4%;
-    --warning: 60 100% 50%;
-    --warning-foreground: 220 40% 4%;
-    --error: 0 100% 50%;
-    --error-foreground: 0 0% 100%;
-    --app-bg-gradient-top: rgba(0, 229, 255, 0.04);
-    --app-bg-gradient-bottom-start: rgba(255, 179, 0, 0.02);
-    --app-bg-gradient-bottom-end: #05080a;
-  }
-}
-
-/* Component layer: structural classes and media queries */
-@layer components {
-  /* 页面容器基础样式 */
-  .page-container {
-    @apply flex flex-col h-full text-foreground;
-    background: transparent;
-    pointer-events: auto;
-  }
-
-  /* 内容区域基础样式 */
-  .content-container {
-    @apply flex-grow;
-    height: 100%;
-    pointer-events: auto;
-  }
-
-  /* 移动端内容区域高度调整 */
-  @media (max-width: 768px) {
-    .content-container {
-      height: calc(100% - var(--mobile-nav-height));
-      padding-bottom: 0;
-    }
-  }
-
-  /* 确保所有可点击元素都能正常工作 */
-  button, a, [role="button"], [tabindex="0"] {
-    pointer-events: auto !important;
-    cursor: pointer;
-  }
-}
-
-/* Utility layer: small helpers and custom utilities */
-@layer utilities {
-  .text-2xs {
-    font-size: var(--font-size-2xs);
-    line-height: 1rem;
-  }
-
-  /* 隐藏滚动条 */
-  .scrollbar-hide {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-
-  .scrollbar {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-@layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -391,63 +165,33 @@
   }
 }
 
-/* Cyber Industrial Animations & Utilities */
+/* ── Utilities ────────────────────────────────────────────────────────────── */
 @layer utilities {
-  @keyframes cyber-pulse-amber {
-    0%, 100% { box-shadow: 0 0 4px var(--cyber-amber); opacity: 1; }
-    50% { box-shadow: 0 0 12px var(--cyber-amber); opacity: 0.6; }
+  .text-2xs {
+    font-size: 0.75rem;
+    line-height: 1rem;
   }
 
-  @keyframes cyber-pulse-cyan {
-    0%, 100% { box-shadow: 0 0 4px var(--cyber-cyan); opacity: 1; }
-    50% { box-shadow: 0 0 10px var(--cyber-cyan); opacity: 0.5; }
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
-  .glow-amber {
-    animation: cyber-pulse-amber 2s infinite;
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 
-  .glow-cyan {
-    animation: cyber-pulse-cyan 2s infinite;
+  .scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar::-webkit-scrollbar {
+    display: none;
   }
 
   .font-dot {
     font-family: 'JetBrains Mono', 'Courier New', monospace;
     letter-spacing: 0.05em;
-  }
-
-  /* Laser Scan Animation */
-  @keyframes laser-scan {
-    0% { transform: translateX(-150%) skewX(-25deg); opacity: 0; }
-    20% { opacity: 0.8; }
-    80% { opacity: 0.8; }
-    100% { transform: translateX(250%) skewX(-25deg); opacity: 0; }
-  }
-
-  .animate-scan {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .animate-scan::after {
-    content: "";
-    position: absolute;
-    inset: -50% 0;
-    width: 60px;
-    background: linear-gradient(90deg, transparent, var(--sci-fi-orange), transparent);
-    filter: blur(12px);
-    opacity: 0;
-    pointer-events: none;
-    z-index: 20;
-  }
-
-  .animate-scan:hover::after {
-    animation: laser-scan 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  }
-
-  .glass-panel {
-    background: oklch(100% 0 0 / 0.02);
-    backdrop-filter: blur(4px);
-    border: 1px solid oklch(100% 0 0 / 0.05);
   }
 }

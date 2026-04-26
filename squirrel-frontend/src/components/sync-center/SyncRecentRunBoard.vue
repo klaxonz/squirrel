@@ -262,7 +262,7 @@ const getStatusChipClass = (status: string) => {
 .board-list::-webkit-scrollbar {
   width: 4px;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-normal) var(--ease-default);
 }
 
 .board-list:hover::-webkit-scrollbar {
@@ -290,7 +290,7 @@ const getStatusChipClass = (status: string) => {
   border: none;
   position: relative;
   border-radius: 6px;
-  transition: background 0.2s ease;
+  transition: background var(--duration-normal) var(--ease-default);
   cursor: pointer;
   gap: 0.75rem;
 }
@@ -371,7 +371,7 @@ const getStatusChipClass = (status: string) => {
 .lane-card-enter-active,
 .lane-card-leave-active,
 .lane-card-move {
-  transition: all 0.2s ease;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .lane-card-enter-from {

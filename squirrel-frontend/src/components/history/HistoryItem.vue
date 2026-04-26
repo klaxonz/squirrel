@@ -151,7 +151,7 @@ const displayChannel = computed(() => {
   align-items: flex-start;
   padding: 0;
   border-radius: var(--radius-md);
-  transition: background 0.15s ease;
+  transition: background var(--duration-fast) var(--ease-default);
 }
 
 .history-item-row:hover {
@@ -288,7 +288,10 @@ const displayChannel = computed(() => {
   color: hsl(var(--muted-foreground));
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  transition:
+    opacity var(--duration-fast) var(--ease-default),
+    background var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
   margin-right: 0.1rem;
   align-self: flex-start;
 }

@@ -327,7 +327,7 @@ watch(() => props.isOpen, async (open) => {
   background: hsl(var(--background));
   border-left: 1px solid hsl(var(--border) / 0.5);
   transform: translateX(100%);
-  transition: transform 0.3s cubic-bezier(0.2, 0, 0.1, 1);
+  transition: transform var(--duration-normal) var(--ease-default);
   z-index: 100;
   display: flex;
   flex-direction: column;
@@ -364,7 +364,7 @@ watch(() => props.isOpen, async (open) => {
   color: hsl(var(--muted-foreground));
   cursor: pointer;
   border-radius: 4px;
-  transition: all 0.2s;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .playlist-panel__close-btn:hover {
@@ -392,7 +392,7 @@ watch(() => props.isOpen, async (open) => {
   font-weight: 500;
   cursor: pointer;
   border-bottom: 2px solid transparent;
-  transition: all 0.2s;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .playlist-panel__tab:hover {
@@ -459,7 +459,7 @@ watch(() => props.isOpen, async (open) => {
   border: 2px solid hsl(var(--border));
   border-top-color: hsl(var(--primary));
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin var(--duration-slow) linear infinite;
 }
 
 @keyframes spin {
@@ -480,7 +480,7 @@ watch(() => props.isOpen, async (open) => {
   padding: 0.625rem 0.75rem;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-normal) var(--ease-default);
   border: 1px solid transparent;
 }
 
@@ -526,7 +526,7 @@ watch(() => props.isOpen, async (open) => {
   cursor: pointer;
   border-radius: 4px;
   opacity: 0;
-  transition: all 0.2s;
+  transition: all var(--duration-normal) var(--ease-default);
   flex-shrink: 0;
 }
 
@@ -562,7 +562,7 @@ watch(() => props.isOpen, async (open) => {
   font-weight: 500;
   cursor: pointer;
   border-radius: 6px;
-  transition: all 0.2s;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .playlist-panel__add-btn:hover {
@@ -612,7 +612,7 @@ watch(() => props.isOpen, async (open) => {
   font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--duration-normal) var(--ease-default);
 }
 
 .playlist-panel__items-add-current:hover {
@@ -635,7 +635,7 @@ watch(() => props.isOpen, async (open) => {
   padding: 0.375rem 0.5rem;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-normal) var(--ease-default);
   border: 1px solid transparent;
 }
 
@@ -660,7 +660,7 @@ watch(() => props.isOpen, async (open) => {
   color: hsl(var(--muted-foreground));
   cursor: grab;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity var(--duration-normal) var(--ease-default);
 }
 
 .playlist-item-card:hover .playlist-item-card__drag-handle {
@@ -726,7 +726,7 @@ watch(() => props.isOpen, async (open) => {
   cursor: pointer;
   border-radius: 4px;
   opacity: 0;
-  transition: all 0.2s;
+  transition: all var(--duration-normal) var(--ease-default);
   flex-shrink: 0;
 }
 
@@ -741,7 +741,7 @@ watch(() => props.isOpen, async (open) => {
 
 .playlist-item-enter-active,
 .playlist-item-leave-active {
-  transition: all 0.3s ease;
+  transition: all var(--duration-slow) var(--ease-out);
 }
 
 .playlist-item-enter-from,
@@ -799,7 +799,7 @@ watch(() => props.isOpen, async (open) => {
   color: hsl(var(--foreground));
   font-size: 0.85rem;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color var(--duration-normal) var(--ease-default);
   box-sizing: border-box;
 }
 
@@ -820,7 +820,7 @@ watch(() => props.isOpen, async (open) => {
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-normal) var(--ease-default);
   border: 1px solid transparent;
 }
 
@@ -845,7 +845,7 @@ watch(() => props.isOpen, async (open) => {
 
 .modal-fade-enter-active,
 .modal-fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-normal) var(--ease-default);
 }
 
 .modal-fade-enter-from,
