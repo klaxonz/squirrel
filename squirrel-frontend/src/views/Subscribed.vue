@@ -55,7 +55,7 @@
       </div>
 
       <!-- Channels List (Infinite Scroll) -->
-      <div id="channels-scroll-container" class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-0.5">
+      <div ref="channelsContainer" class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-0.5">
         <button
           v-for="sub in filteredChannels"
           :key="sub.id"
@@ -122,7 +122,7 @@
         </div>
       </header>
 
-      <div id="subscription-scroll-container" class="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8" ref="feedContainer">
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8" ref="feedContainer">
         <div class="max-w-[1600px] mx-auto">
           <div v-if="viewMode === 'feed'" class="space-y-12">
             <div v-if="!feedItems.length && !loadingFeed" class="flex flex-col items-center justify-center py-32 text-center animate-in fade-in zoom-in duration-700">
@@ -198,6 +198,7 @@ const activeChannelId = ref<string | number | null>(null)
 const showAddDialog = ref(false)
 const showImportDialog = ref(false)
 const feedContainer = ref<HTMLElement | null>(null)
+const channelsContainer = ref<HTMLElement | null>(null)
 
 // Data State (Channels)
 const list = ref<any[]>([])
@@ -319,19 +320,24 @@ const fetchFeed = async (isReset = false) => {
   }
 }
 
-const resetFeedScroll = () => {
-  if (feedContainer.value) feedContainer.value.scrollTop = 0
+const scrollToTop = (el: HTMLElement | null) => {
+  if (el) el.scrollTop = 0
+}
+
+const resetAllScroll = () => {
+  scrollToTop(feedContainer.value)
+  nextTick(() => scrollToTop(channelsContainer.value))
 }
 
 const handleChannelClick = (id: string | number) => {
   activeChannelId.value = activeChannelId.value === id ? null : id
   viewMode.value = 'feed'; fetchFeed(true)
-  resetFeedScroll()
+  scrollToTop(feedContainer.value)
 }
 
 const handleRefresh = () => {
   fetchChannels(true); fetchFeed(true)
-  resetFeedScroll()
+  resetAllScroll()
 }
 const handleOpenVideo = (video: any) => { rememberVideoPlaybackSeed(video); router.push(`/video/${video.id}`) }
 
@@ -341,8 +347,8 @@ const initObservers = () => {
   channelsObserver?.disconnect()
   gridObserver?.disconnect()
 
-  const scrollContainer = document.getElementById('subscription-scroll-container')
-  const channelsContainer = document.getElementById('channels-scroll-container')
+  const scrollContainer = feedContainer.value
+  const channelsEl = channelsContainer.value
 
   // 1. Feed Observer
   feedObserver = new IntersectionObserver((entries) => {
@@ -353,7 +359,7 @@ const initObservers = () => {
   // 2. Channels Sidebar Observer
   channelsObserver = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting && !loadingChannels.value && !loadingMoreChannels.value && !channelsFinished.value) fetchChannels()
-  }, { root: channelsContainer, rootMargin: '200px' })
+  }, { root: channelsEl, rootMargin: '200px' })
   if (channelsTrigger.value) channelsObserver.observe(channelsTrigger.value)
 
   // 3. Grid Mode Observer
@@ -375,7 +381,9 @@ watch(viewMode, () => {
   nextTick(() => initObservers())
 })
 
-watch([nsfw, site], () => { fetchChannels(true); fetchFeed(true); resetFeedScroll() })
+watch([nsfw, site], () => { fetchChannels(true); fetchFeed(true); resetAllScroll() })
+
+watch(sidebarSearch, () => { nextTick(() => scrollToTop(channelsContainer.value)) })
 onUnmounted(() => { feedObserver?.disconnect(); channelsObserver?.disconnect(); gridObserver?.disconnect() })
 </script>
 
