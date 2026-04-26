@@ -23,16 +23,18 @@ const forwardedProps = useForwardProps(delegatedProps)
     v-bind="forwardedProps"
     :class="
       cn(
-        'relative flex w-full cursor-pointer select-none items-center py-2.5 pl-6 pr-3 text-[0.7rem] font-medium uppercase tracking-[0.12em] outline-none transition-all duration-300 focus:bg-accent/10 data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-primary/10 data-[state=checked]:to-transparent data-[state=checked]:text-foreground',
+        'relative flex w-full cursor-pointer select-none items-center py-2 px-3 rounded-md text-[13px] font-medium text-muted-foreground outline-none transition-all duration-200 focus:bg-accent focus:text-foreground data-[state=checked]:text-foreground data-[state=checked]:font-bold',
         props.class,
       )
     "
   >
-    <SelectItemIndicator class="absolute left-0 top-0 bottom-0 w-[2px] bg-primary shadow-[0_0_12px_hsl(var(--primary))]" />
-
     <SelectItemText>
       <slot />
     </SelectItemText>
+
+    <SelectItemIndicator class="absolute right-3 flex items-center justify-center">
+      <Check class="w-3.5 h-3.5" stroke-width="3" />
+    </SelectItemIndicator>
   </SelectItem>
 
 </template>

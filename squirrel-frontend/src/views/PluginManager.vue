@@ -1,393 +1,314 @@
 <template>
-  <AppPageShell class="plugin-page">
-    <section class="plugin-shell">
-      <AppToolbarFrame class="toolbar-container">
-        <div class="plugin-header">
-          <div v-if="isInitialLoading" class="plugin-toolbar-skeleton" aria-hidden="true">
-            <div
-              v-for="(width, index) in toolbarSkeletonWidths"
-              :key="`${width}-${index}`"
-              class="plugin-toolbar-skeleton__chip skeleton-surface"
-              :style="{ width }"
-            ></div>
+  <AppPageShell class="plugin-page bg-slate-50/50">
+    <!-- Header Area -->
+    <div class="w-full bg-white">
+      <div class="w-full max-w-[1400px] mx-auto px-6 py-10">
+        <div class="flex items-center justify-between">
+          <div class="space-y-1">
+            <h1 class="text-xl font-semibold text-slate-900 tracking-tight">插件管理</h1>
+            <p class="text-sm text-slate-500">扩展系统能力，管理站点数据采集与身份验证</p>
           </div>
-          <div v-else class="plugin-toolbar-right">
-            <Button as-child variant="outline" size="xs" class="plugin-toolbar-btn plugin-toolbar-btn--quiet">
-              <label>
+          <div class="flex items-center gap-3">
+            <!-- Import Plugin -->
+            <Button as-child variant="outline" class="h-9 px-4 text-sm font-medium border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer">
+              <label class="cursor-pointer flex items-center">
                 <input type="file" accept=".zip" class="hidden" @change="handleFileChange" />
-                <Upload class="h-3.5 w-3.5" />
+                <Upload class="h-4 w-4 mr-2 text-slate-500" />
                 <span>{{ selectedFile ? selectedFile.name : '导入插件' }}</span>
               </label>
             </Button>
             <Button
               v-if="selectedFile"
-              :disabled="!selectedFile || installing"
+              :disabled="installing"
               @click="handleInstall"
-              size="xs"
-              class="plugin-toolbar-btn plugin-toolbar-btn--primary"
+              class="h-9 px-4 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
             >
-              <RefreshIcon v-if="installing" class="h-3.5 w-3.5 animate-spin" />
-              <PlusCircle v-else class="h-3.5 w-3.5" />
-              {{ installing ? '安装中' : '安装' }}
+              <RefreshCw v-if="installing" class="h-4 w-4 mr-2 animate-spin" />
+              <PlusCircle v-else class="h-4 w-4 mr-2" />
+              安装
             </Button>
-            <Button as-child variant="outline" size="xs" class="plugin-toolbar-btn plugin-toolbar-btn--quiet">
-              <label>
+
+            <!-- Import Cookies -->
+            <Button as-child variant="outline" class="h-9 px-4 text-sm font-medium border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer">
+              <label class="cursor-pointer flex items-center">
                 <input type="file" accept=".txt,.json" class="hidden" @change="handleCookiesFileChange" />
-                <Upload class="h-3.5 w-3.5" />
+                <Cookie class="h-4 w-4 mr-2 text-slate-500" />
                 <span>{{ cookiesFileName || '导入 Cookie' }}</span>
               </label>
             </Button>
             <Button
               v-if="selectedCookiesFile"
               @click="handleImportAllCookies"
-              :disabled="!selectedCookiesFile || importingCookies"
-              size="xs"
-              class="plugin-toolbar-btn plugin-toolbar-btn--primary"
+              :disabled="importingCookies"
+              class="h-9 px-4 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
             >
-              <RefreshIcon v-if="importingCookies" class="h-3.5 w-3.5 animate-spin" />
-              <PlusCircle v-else class="h-3.5 w-3.5" />
-              {{ importingCookies ? '导入中' : '导入' }}
+              <RefreshCw v-if="importingCookies" class="h-4 w-4 mr-2 animate-spin" />
+              <CheckCircle v-else class="h-4 w-4 mr-2" />
+              导入
             </Button>
+
+            <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
             <Button
               @click="handleTestAll"
-              :disabled="testingAll || loadingSites"
-              size="xs"
-              class="plugin-toolbar-btn plugin-toolbar-btn--primary"
+              :disabled="testingAll"
+              variant="outline"
+              class="h-9 px-4 text-sm font-medium border-slate-200 hover:bg-slate-50 transition-colors"
             >
-              <RefreshIcon v-if="testingAll" class="h-3.5 w-3.5 animate-spin" />
-              <CheckCircle v-else class="h-3.5 w-3.5" />
-              {{ testingAll ? '测试中' : '测试全部' }}
+              <RefreshCw v-if="testingAll" class="h-4 w-4 mr-2 animate-spin" />
+              <Zap v-else class="h-4 w-4 mr-2 text-amber-500" />
+              测试全部
             </Button>
           </div>
         </div>
 
-        <div class="plugin-stats-row">
-          <template v-if="isInitialLoading">
-            <div
-              v-for="(item, index) in statSkeletonItems"
-              :key="`stat-${index}`"
-              class="plugin-stat-skeleton"
-              aria-hidden="true"
-            >
-              <span class="plugin-stat-skeleton__value skeleton-surface" :style="{ width: item.valueWidth }"></span>
-              <span class="plugin-stat-skeleton__label skeleton-surface" :style="{ width: item.labelWidth }"></span>
-            </div>
-            <span class="plugin-timestamp plugin-timestamp--skeleton skeleton-surface" aria-hidden="true"></span>
-            <div class="plugin-search plugin-search--skeleton" aria-hidden="true">
-              <span class="plugin-search__icon-skeleton skeleton-surface"></span>
-              <span class="plugin-search__input-skeleton skeleton-surface"></span>
-            </div>
-            <span class="plugin-search-refresh plugin-search-refresh--skeleton skeleton-surface" aria-hidden="true"></span>
-          </template>
-          <template v-else>
-            <span class="plugin-stat">
-              <span class="plugin-stat__value">{{ pluginSummary.total }}</span>
-              <span class="plugin-stat__label">已安装</span>
-            </span>
-            <span class="plugin-stat-sep"></span>
-            <span class="plugin-stat">
-              <span class="plugin-stat__value text-success">{{ pluginSummary.running }}</span>
-              <span class="plugin-stat__label">运行中</span>
-            </span>
-            <template v-if="pluginSummary.attention > 0">
-              <span class="plugin-stat-sep"></span>
-              <span class="plugin-stat">
-                <span class="plugin-stat__value text-warning">{{ pluginSummary.attention }}</span>
-                <span class="plugin-stat__label">需关注</span>
-              </span>
-            </template>
-            <template v-if="connectivitySummary.total > 0">
-              <span class="plugin-stat-sep"></span>
-              <span class="plugin-stat">
-                <span class="plugin-stat__value">{{ connectivitySummary.accessible }}/{{ connectivitySummary.total }}</span>
-                <span class="plugin-stat__label">已检测</span>
-              </span>
-            </template>
-            <span v-if="lastTestedAt" class="plugin-timestamp">最近检测 {{ formatTime(lastTestedAt) }}</span>
-            <div class="plugin-search">
-              <Search class="h-3 w-3" />
-              <input
-                v-model="searchQuery"
-                placeholder="搜索..."
-                class="plugin-search-input"
-              />
-            </div>
-            <Button
-              :disabled="reloading || loading"
-              @click="handleReload"
-              size="icon-xs"
-              variant="ghost"
-              class="plugin-search-refresh"
-              title="刷新"
-            >
-              <RefreshIcon class="h-3.5 w-3.5" :class="{ 'animate-spin': reloading }" />
-            </Button>
-          </template>
-        </div>
-      </AppToolbarFrame>
-    </section>
-
-    <div class="plugin-content scrollbar-hide flex-grow overflow-y-auto">
-      <div class="content-container">
-        <div v-if="isInitialLoading" class="plugin-skeleton-wrap plugin-table-wrap">
-          <table class="sq-table plugin-table">
-            <thead>
-              <tr>
-                <th class="col-icon"></th>
-                <th class="col-name">名称</th>
-                <th class="col-status">状态</th>
-                <th class="col-caps">能力</th>
-                <th class="col-endpoint">端点</th>
-                <th class="col-site-access">网络</th>
-                <th class="col-site-login">登录</th>
-                <th class="col-actions"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <PluginSkeleton
-                v-for="(row, index) in pluginSkeletonRows"
-                :key="`plugin-skeleton-${index}`"
-                :delay="index * 60"
-                :name-width="row.nameWidth"
-                :meta-width="row.metaWidth"
-                :status-width="row.statusWidth"
-                :caps="row.caps"
-                :endpoint-width="row.endpointWidth"
-                :network-width="row.networkWidth"
-                :login-width="row.loginWidth"
-                :actions="row.actions"
-              />
-            </tbody>
-          </table>
-        </div>
-
-        <AppEmptyState
-          v-else-if="!displayPlugins.length"
-          class="plugin-empty-state"
-          :title="searchQuery ? '没有匹配的插件' : '还没有可展示的插件'"
-          :copy="searchQuery ? '尝试更换搜索关键词。' : '导入插件后，会在这里显示运行状态、能力和站点配置。'"
-        />
-
-        <div v-else class="plugin-table-wrap">
-          <table class="sq-table plugin-table">
-            <thead>
-              <tr>
-                <th class="col-icon"></th>
-                <th class="col-name">名称</th>
-                <th class="col-status">状态</th>
-                <th class="col-caps">能力</th>
-                <th class="col-endpoint">端点</th>
-                <th class="col-site-access">网络</th>
-                <th class="col-site-login">登录</th>
-                <th class="col-actions"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="plugin in displayPlugins" :key="plugin.plugin_id">
-                <td class="col-icon">
-                  <SiteIcon
-                    v-if="plugin.primarySite"
-                    :icon-url="plugin.primarySite.icon_url"
-                    :label="plugin.primarySite.site_name || plugin.display_name"
-                    size="sm"
-                  />
-                  <div v-else class="col-icon-placeholder">
-                    <Cube class="h-4 w-4 text-muted-foreground/30" />
-                  </div>
-                </td>
-                <td class="col-name">
-                  <span class="name-primary">{{ plugin.display_name }}</span>
-                </td>
-                <td class="col-status">
-                  <Badge v-if="!plugin.enabled" variant="muted">停用</Badge>
-                  <Badge v-else-if="plugin.active_runtime?.state === 'running'" variant="success">运行</Badge>
-                  <Badge v-else-if="plugin.health?.healthy === false || plugin.active_runtime?.state === 'failed'" variant="error">异常</Badge>
-                  <Badge v-else variant="muted">加载中</Badge>
-                </td>
-                <td class="col-caps">
-                  <span v-if="!plugin.capabilities.length" class="text-muted-foreground/30">—</span>
-                  <span v-else class="caps-inline">
-                    <span
-                      v-for="(cap, idx) in plugin.capabilities.slice(0, 2)"
-                      :key="cap.name"
-                      class="cap-wrapper"
-                    >
-                      <span class="cap-tag">{{ cap.name }}</span>
-                      <span class="cap-tooltip">{{ plugin.capabilities.map(c => c.name).join('\n') }}</span>
-                      <span v-if="idx < Math.min(plugin.capabilities.length, 2) - 1"> </span>
-                    </span>
-                    <span v-if="plugin.capabilities.length > 2" class="cap-wrapper">
-                      <span class="cap-more" :data-count="plugin.capabilities.length - 2">
-                        +{{ plugin.capabilities.length - 2 }}
-                      </span>
-                      <span class="cap-tooltip">{{ plugin.capabilities.map(c => c.name).join('\n') }}</span>
-                    </span>
-                  </span>
-                </td>
-                <td class="col-endpoint">
-                  <span class="endpoint-text">{{ plugin.active_runtime?.endpoint || '—' }}</span>
-                </td>
-                <td class="col-site-access">
-                  <div v-if="plugin.siteTesting" class="flex items-center gap-1 text-muted-foreground/40 animate-pulse">
-                    <RefreshIcon class="h-3 w-3 animate-spin" />
-                  </div>
-                  <div
-                    v-else-if="plugin.siteAccessible === true"
-                    class="status-ok"
-                    title="网络可达"
-                  >
-                    <CheckCircle class="h-3.5 w-3.5" />
-                    <span>可达</span>
-                  </div>
-                  <div
-                    v-else-if="plugin.siteAccessible === false"
-                    class="status-error"
-                    title="网络不可达"
-                  >
-                    <XCircle class="h-3.5 w-3.5" />
-                    <span>不可达</span>
-                  </div>
-                  <span v-else class="text-muted-foreground/30">—</span>
-                </td>
-                <td class="col-site-login">
-                  <div v-if="plugin.siteLoginTesting" class="flex items-center gap-1 text-muted-foreground/40 animate-pulse">
-                    <RefreshIcon class="h-3 w-3 animate-spin" />
-                  </div>
-                  <div
-                    v-else-if="plugin.siteOAuthStatus === 'authenticated'"
-                    class="status-ok"
-                    :title="plugin.siteOAuthAccount?.email || 'YouTube OAuth 已连接'"
-                  >
-                    <Link class="h-3.5 w-3.5" />
-                    <span>已授权</span>
-                  </div>
-                  <div
-                    v-else-if="plugin.siteOAuthStatus === 'pending'"
-                    class="status-warning"
-                    :title="plugin.siteLoginStatus?.user_code ? `等待完成授权，验证码：${plugin.siteLoginStatus.user_code}` : '等待完成浏览器授权'"
-                  >
-                    <RefreshIcon class="h-3.5 w-3.5 animate-spin" />
-                    <span>待授权</span>
-                  </div>
-                  <div
-                    v-else-if="plugin.siteOAuthStatus === 'expired'"
-                    class="status-warning"
-                    title="YouTube OAuth 已过期"
-                  >
-                    <XCircle class="h-3.5 w-3.5" />
-                    <span>已过期</span>
-                  </div>
-                  <div
-                    v-else-if="plugin.siteOAuthStatus === 'error'"
-                    class="status-error"
-                    :title="plugin.siteLoginStatus?.message || 'YouTube OAuth 异常'"
-                  >
-                    <XCircle class="h-3.5 w-3.5" />
-                    <span>异常</span>
-                  </div>
-                  <div
-                    v-else-if="plugin.siteLoginStatus?.logged_in"
-                    class="status-ok"
-                    title="登录有效"
-                  >
-                    <CheckCircle class="h-3.5 w-3.5" />
-                    <span>有效</span>
-                  </div>
-                  <div
-                    v-else-if="plugin.siteLoginStatus"
-                    class="status-error"
-                    title="登录无效"
-                  >
-                    <XCircle class="h-3.5 w-3.5" />
-                    <span>无效</span>
-                  </div>
-                  <span v-else class="text-muted-foreground/30">—</span>
-                </td>
-                <td class="col-actions">
-                  <div class="actions-cell">
-                    <button
-                      v-if="!plugin.enabled"
-                      :disabled="actioning === plugin.plugin_id"
-                      @click="handleEnable(plugin)"
-                      class="action-btn"
-                      title="启用"
-                    >
-                      <Play class="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      v-else
-                      :disabled="actioning === plugin.plugin_id"
-                      @click="handleDisable(plugin)"
-                      class="action-btn"
-                      title="停用"
-                    >
-                      <Pause class="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      v-if="plugin.siteName"
-                      @click="handleTestSingleBySite(plugin.siteName)"
-                      :disabled="plugin.siteTesting || testingAll"
-                      class="action-btn"
-                      title="测试"
-                    >
-                      <Bolt class="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      v-if="plugin.siteSupportsLogin"
-                      @click="handleTestLoginBySite(plugin.siteName)"
-                      :disabled="plugin.siteLoginTesting || testingAll"
-                      class="action-btn"
-                      title="验证登录"
-                    >
-                      <Key class="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      v-if="plugin.siteName === 'youtube'"
-                      @click="plugin.siteOAuthStatus === 'authenticated' || plugin.siteOAuthStatus === 'pending' ? handleRevokeYouTubeOAuth() : handleStartYouTubeOAuth()"
-                      :disabled="ytOAuthActioning || testingAll"
-                      class="action-btn"
-                      :title="plugin.siteOAuthStatus === 'authenticated' || plugin.siteOAuthStatus === 'pending' ? '解除 YouTube 授权' : '关联 YouTube 账户'"
-                    >
-                      <RefreshIcon v-if="ytOAuthActioning" class="h-3.5 w-3.5 animate-spin" />
-                      <Unlink
-                        v-else-if="plugin.siteOAuthStatus === 'authenticated' || plugin.siteOAuthStatus === 'pending'"
-                        class="h-3.5 w-3.5"
-                      />
-                      <Link v-else class="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      v-if="plugin.siteName"
-                      @click="handleUploadCookiesBySite(plugin.siteName)"
-                      :disabled="plugin.cookieUploading || testingAll"
-                      class="action-btn"
-                      title="上传Cookie"
-                    >
-                      <Cookie class="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      @click="openSiteEditorByPlugin(plugin)"
-                      class="action-btn"
-                      title="站点配置"
-                    >
-                      <Settings class="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      :disabled="actioning === plugin.plugin_id"
-                      @click="handleUninstall(plugin)"
-                      class="action-btn action-btn--danger"
-                      title="卸载"
-                    >
-                      <Trash2 class="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- Compact Stats -->
+        <div class="flex items-center gap-8 mt-8">
+          <div class="flex items-center gap-3">
+            <div class="w-2 h-2 rounded-full bg-slate-400"></div>
+            <span class="text-sm font-medium text-slate-600">已安装</span>
+            <span class="text-sm font-bold text-slate-900 tabular-nums">{{ pluginSummary.total }}</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+            <span class="text-sm font-medium text-slate-600">运行中</span>
+            <span class="text-sm font-bold text-slate-900 tabular-nums">{{ pluginSummary.running }}</span>
+          </div>
+          <div v-if="pluginSummary.attention > 0" class="flex items-center gap-3">
+            <div class="w-2 h-2 rounded-full bg-rose-500"></div>
+            <span class="text-sm font-medium text-slate-600">需关注</span>
+            <span class="text-sm font-bold text-slate-900 tabular-nums">{{ pluginSummary.attention }}</span>
+          </div>
+          <div v-if="connectivitySummary.total > 0" class="flex items-center gap-3">
+            <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+            <span class="text-sm font-medium text-slate-600">网络连通</span>
+            <span class="text-sm font-bold text-slate-900 tabular-nums">{{ connectivitySummary.accessible }}/{{ connectivitySummary.total }}</span>
+          </div>
+          <span v-if="lastTestedAt" class="text-xs text-slate-400 ml-auto">最近检测：{{ formatTime(lastTestedAt) }}</span>
         </div>
       </div>
     </div>
 
+    <!-- Main Content Area -->
+    <div class="w-full max-w-[1400px] mx-auto px-6 py-6">
+      <!-- Search Bar -->
+      <div class="flex items-center justify-between gap-4 mb-6 w-full">
+        <div class="relative w-72 shrink-0">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            v-model="searchQuery"
+            placeholder="搜索插件名称、站点或描述..."
+            class="h-9 pl-9 pr-8 bg-white border-slate-200 rounded-lg text-sm focus-visible:ring-slate-200 shadow-none w-full"
+          />
+          <button
+            v-if="searchQuery"
+            @click="searchQuery = ''"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
+          >
+            <X class="h-4 w-4" />
+          </button>
+        </div>
+        
+        <Button
+          :disabled="reloading || loading"
+          variant="ghost"
+          @click="handleReload"
+          class="h-9 px-3 text-slate-500 hover:text-slate-900"
+        >
+          <RefreshCw :class="['h-4 w-4 mr-2', reloading ? 'animate-spin' : '']" />
+          重载插件库
+        </Button>
+      </div>
+
+      <!-- Plugin List -->
+      <div class="w-full bg-white rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(0,0,0,0.05)] flex flex-col">
+        <!-- List Header -->
+        <div class="grid grid-cols-[1fr_100px_180px_100px_100px_200px] gap-4 px-6 py-4 bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider w-full">
+          <div>插件详情</div>
+          <div class="text-center">状态</div>
+          <div>核心能力</div>
+          <div class="text-center">网络</div>
+          <div class="text-center">登录</div>
+          <div class="text-right">操作</div>
+        </div>
+
+        <!-- List Content -->
+        <div class="divide-y divide-slate-200/40 w-full">
+          <div v-if="isInitialLoading" class="w-full p-12 space-y-4">
+            <div v-for="i in 5" :key="i" class="h-16 w-full bg-slate-50 animate-pulse rounded-lg"></div>
+          </div>
+
+          <AppEmptyState
+            v-else-if="!displayPlugins.length"
+            :title="searchQuery ? '没有匹配的插件' : '暂无插件'"
+            :copy="searchQuery ? '尝试更换搜索关键词' : '导入插件压缩包以开始使用'"
+            class="w-full py-20"
+          />
+
+          <div
+            v-for="plugin in displayPlugins"
+            :key="plugin.plugin_id"
+            class="grid grid-cols-[1fr_100px_180px_100px_100px_200px] gap-4 px-6 py-5 items-center hover:bg-slate-50 transition-colors group w-full"
+          >
+            <!-- Plugin Info -->
+            <div class="flex items-center gap-4 min-w-0">
+              <div class="shrink-0">
+                <SiteIcon
+                  v-if="plugin.primarySite"
+                  :icon-url="plugin.primarySite.icon_url"
+                  :label="plugin.primarySite.site_name || plugin.display_name"
+                  size="md"
+                  class="rounded-lg border border-slate-100 shadow-sm"
+                />
+                <div v-else class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-300 border border-slate-200">
+                  <Cube class="h-5 w-5" />
+                </div>
+              </div>
+              <div class="min-w-0">
+                <h3 class="font-semibold text-slate-900 text-sm truncate">{{ plugin.display_name }}</h3>
+                <p class="text-xs text-slate-500 line-clamp-1 mt-0.5">{{ plugin.description || '暂无描述' }}</p>
+              </div>
+            </div>
+
+            <!-- Status -->
+            <div class="flex justify-center">
+              <div :class="[
+                'px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wider',
+                !plugin.enabled ? 'bg-slate-100 border-slate-200 text-slate-500' :
+                plugin.active_runtime?.state === 'running' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                (plugin.health?.healthy === false || plugin.active_runtime?.state === 'failed') ? 'bg-rose-50 border-rose-100 text-rose-700' :
+                'bg-blue-50 border-blue-100 text-blue-700'
+              ]">
+                {{ !plugin.enabled ? '停用' : plugin.active_runtime?.state === 'running' ? '运行' : '异常' }}
+              </div>
+            </div>
+
+            <!-- Capabilities -->
+            <div class="flex flex-wrap gap-1">
+              <span
+                v-for="cap in plugin.capabilities.slice(0, 3)"
+                :key="cap.name"
+                class="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-medium text-slate-500"
+              >
+                {{ cap.name }}
+              </span>
+              <span v-if="plugin.capabilities.length > 3" class="text-[10px] text-slate-400 font-medium ml-1">
+                +{{ plugin.capabilities.length - 3 }}
+              </span>
+            </div>
+
+            <!-- Network -->
+            <div class="flex justify-center">
+              <div v-if="plugin.siteTesting" class="animate-spin text-slate-300">
+                <RefreshCw class="h-4 w-4" />
+              </div>
+              <div v-else-if="plugin.siteAccessible === true" class="text-emerald-500" title="网络连通正常">
+                <CheckCircle class="h-5 w-5" />
+              </div>
+              <div v-else-if="plugin.siteAccessible === false" class="text-rose-500" title="网络连接失败">
+                <XCircle class="h-5 w-5" />
+              </div>
+              <span v-else class="text-slate-200">—</span>
+            </div>
+
+            <!-- Login -->
+            <div class="flex justify-center">
+              <div v-if="plugin.siteLoginTesting" class="animate-spin text-slate-300">
+                <RefreshCw class="h-4 w-4" />
+              </div>
+              <div v-else-if="plugin.siteOAuthStatus === 'authenticated' || plugin.siteLoginStatus?.logged_in" class="text-emerald-500" title="身份验证有效">
+                <Key class="h-5 w-5" />
+              </div>
+              <div v-else-if="plugin.siteOAuthStatus === 'pending'" class="text-amber-500 animate-pulse" title="等待授权">
+                <RefreshCw class="h-5 w-5" />
+              </div>
+              <div v-else-if="plugin.siteLoginStatus" class="text-rose-500" title="身份验证失效">
+                <XCircle class="h-5 w-5" />
+              </div>
+              <span v-else class="text-slate-200">—</span>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-end gap-1">
+              <!-- Toggle Enable -->
+              <Button
+                variant="ghost"
+                size="icon"
+                @click="plugin.enabled ? handleDisable(plugin) : handleEnable(plugin)"
+                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 transition-colors"
+                :title="plugin.enabled ? '停用插件' : '启用插件'"
+              >
+                <Pause v-if="plugin.enabled" class="h-4 w-4" />
+                <Play v-else class="h-4 w-4 fill-current" />
+              </Button>
+
+              <!-- Test Site -->
+              <Button
+                v-if="plugin.siteName"
+                variant="ghost"
+                size="icon"
+                @click="handleTestSingleBySite(plugin.siteName)"
+                :disabled="plugin.siteTesting"
+                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-amber-500 transition-colors"
+                title="连通性测试"
+              >
+                <Bolt class="h-4 w-4" />
+              </Button>
+
+              <!-- Login Check -->
+              <Button
+                v-if="plugin.siteSupportsLogin"
+                variant="ghost"
+                size="icon"
+                @click="handleTestLoginBySite(plugin.siteName)"
+                :disabled="plugin.siteLoginTesting"
+                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-blue-500 transition-colors"
+                title="验证登录状态"
+              >
+                <Key class="h-4 w-4" />
+              </Button>
+
+              <!-- YouTube OAuth special -->
+              <Button
+                v-if="plugin.siteName === 'youtube'"
+                variant="ghost"
+                size="icon"
+                @click="plugin.siteOAuthStatus === 'authenticated' || plugin.siteOAuthStatus === 'pending' ? handleRevokeYouTubeOAuth() : handleStartYouTubeOAuth()"
+                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 transition-colors"
+                title="YouTube 授权管理"
+              >
+                <Link v-if="plugin.siteOAuthStatus === 'authenticated'" class="h-4 w-4 text-emerald-500" />
+                <Unlink v-else class="h-4 w-4" />
+              </Button>
+
+              <!-- Site Config -->
+              <Button
+                variant="ghost"
+                size="icon"
+                @click="openSiteEditorByPlugin(plugin)"
+                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-colors"
+                title="站点配置"
+              >
+                <Settings class="h-4 w-4" />
+              </Button>
+
+              <!-- Uninstall -->
+              <Button
+                variant="ghost"
+                size="icon"
+                @click="handleUninstall(plugin)"
+                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors"
+                title="卸载插件"
+              >
+                <Trash2 class="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Site Editor Dialog -->
     <SiteConfigEditorDialog
       :visible="siteEditorVisible"
       :site="editingSite"
@@ -404,30 +325,29 @@
 import { onMounted, onUnmounted, ref, computed } from 'vue';
 import AppEmptyState from '@/components/layout/AppEmptyState.vue';
 import AppPageShell from '@/components/layout/AppPageShell.vue';
-import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue';
 import {
-  RotateCcwIcon as RefreshIcon,
-  CheckCircleIcon as CheckCircle,
-  CloudUploadIcon as Upload,
-  SettingsIcon as Settings,
-  CookieIcon as Cookie,
-  BoxIcon as Cube,
-  SearchIcon as Search,
-  PlusCircleIcon as PlusCircle,
-  XCircleIcon as XCircle,
-  PlayIcon as Play,
-  PauseIcon as Pause,
-  Trash2Icon as Trash2,
-  BoltIcon as Bolt,
-  KeyIcon as Key,
-  LinkIcon as Link,
-  UnlinkIcon as Unlink,
+  RotateCcw as RefreshCw,
+  CheckCircle2 as CheckCircle,
+  Upload,
+  Settings,
+  Cookie,
+  Box as Cube,
+  Search,
+  PlusCircle,
+  XCircle,
+  Play,
+  Pause,
+  Trash2,
+  Bolt,
+  Key,
+  Link,
+  Unlink,
+  Zap,
+  X
 } from 'lucide-vue-next';
 import SiteIcon from '@/components/common/SiteIcon.vue'
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
-import PluginSkeleton from '@/components/settings/PluginSkeleton.vue';
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Logger } from '@/utils/logger'
 import { mergeLoginStatusResult, shouldRefreshLoginStatusesAfterCookieImport } from '@/utils/plugin-login-status'
 import { useSiteCatalog } from '@/composables/useSites';
@@ -456,76 +376,6 @@ const plugins = ref([]);
 const selectedFile = ref(null);
 const actioning = ref(null);
 const isInitialLoading = computed(() => loading.value && !plugins.value.length);
-
-const toolbarSkeletonWidths = ['8.5rem', '8.5rem', '5.5rem'];
-const statSkeletonItems = [
-  { valueWidth: '1.5rem', labelWidth: '2rem' },
-  { valueWidth: '1.5rem', labelWidth: '2rem' },
-  { valueWidth: '1.6rem', labelWidth: '2rem' },
-  { valueWidth: '2.5rem', labelWidth: '2rem' },
-];
-const pluginSkeletonRows = [
-  {
-    nameWidth: '8.5rem',
-    metaWidth: '5rem',
-    statusWidth: '3rem',
-    caps: ['2.5rem', '3.25rem'],
-    endpointWidth: '8.5rem',
-    networkWidth: '2.5rem',
-    loginWidth: '3rem',
-    actions: 6,
-  },
-  {
-    nameWidth: '7rem',
-    metaWidth: '4.25rem',
-    statusWidth: '3.5rem',
-    caps: ['3rem', '2.25rem', '2rem'],
-    endpointWidth: '7rem',
-    networkWidth: '2.75rem',
-    loginWidth: '2.5rem',
-    actions: 5,
-  },
-  {
-    nameWidth: '9rem',
-    metaWidth: '5.75rem',
-    statusWidth: '2.75rem',
-    caps: ['2.75rem'],
-    endpointWidth: '9.5rem',
-    networkWidth: '3rem',
-    loginWidth: '3.5rem',
-    actions: 6,
-  },
-  {
-    nameWidth: '7.75rem',
-    metaWidth: '4.75rem',
-    statusWidth: '3.25rem',
-    caps: ['3.25rem', '2.5rem'],
-    endpointWidth: '7.5rem',
-    networkWidth: '2.5rem',
-    loginWidth: '2.75rem',
-    actions: 4,
-  },
-  {
-    nameWidth: '8.25rem',
-    metaWidth: '5.25rem',
-    statusWidth: '3rem',
-    caps: ['2.75rem', '2.75rem', '2rem'],
-    endpointWidth: '8rem',
-    networkWidth: '2.75rem',
-    loginWidth: '3rem',
-    actions: 6,
-  },
-  {
-    nameWidth: '6.75rem',
-    metaWidth: '4rem',
-    statusWidth: '2.75rem',
-    caps: ['2.25rem', '3rem'],
-    endpointWidth: '6.5rem',
-    networkWidth: '2.25rem',
-    loginWidth: '2.75rem',
-    actions: 5,
-  },
-];
 
 const loadingSites = ref(false);
 const testingAll = ref(false);
@@ -603,7 +453,6 @@ const siteCatalogMap = computed(() => siteCatalog.value || {});
 const searchQuery = ref('');
 
 const displayPlugins = computed(() => {
-  // Build maps for site connectivity and catalog info
   const resultsMap = new Map();
   if (connectivityResults.value.length > 0 && connectivityResults.value[0]?.results) {
     connectivityResults.value[0].results.forEach(result => {
@@ -614,11 +463,9 @@ const displayPlugins = computed(() => {
   const loginTestingMap = loginStatusTesting.value || {};
 
   let list = (plugins.value || []).map((plugin) => {
-    // Find associated site info
     const primarySite = plugin.sites?.[0] || null;
     const siteName = primarySite?.site_name || primarySite?.name || '';
     const siteResult = resultsMap.get(siteName) || {};
-    const catalogInfo = siteCatalogMap.value[siteName?.toLowerCase()] || null;
     const loginStatus = loginResultMap[siteName];
 
     return {
@@ -670,195 +517,6 @@ const connectivitySummary = computed(() => {
   return connectivityResults.value[0]?.summary || { total: 0, accessible: 0, failed: 0, success_rate: 0 };
 });
 
-const handleCookiesFileChange = (event) => {
-  const file = event.target.files?.[0];
-  selectedCookiesFile.value = file || null;
-  cookiesFileName.value = file ? file.name : '';
-};
-
-const handleImportAllCookies = async () => {
-  if (!selectedCookiesFile.value || importingCookies.value) return;
-  importingCookies.value = true;
-  const result = await importAllSiteCookies(selectedCookiesFile.value);
-  if (result.error) {
-    Logger.error('Failed to import cookies for all sites', result.error);
-  } else if (shouldRefreshLoginStatusesAfterCookieImport(result.data)) {
-    if (supportedSites.value.length === 0) {
-      await fetchSupportedSites();
-    }
-    clearLoginStatusCache();
-    await testLoginForAllSupportedSites();
-    saveResultsToCache();
-  }
-  importingCookies.value = false;
-};
-
-const setLoginTesting = (siteName, value) => {
-  if (!siteName) return;
-  loginStatusTesting.value = {
-    ...loginStatusTesting.value,
-    [siteName]: value
-  };
-};
-
-const stopYouTubeOAuthPolling = () => {
-  if (ytOAuthPollTimer !== null) {
-    clearInterval(ytOAuthPollTimer);
-    ytOAuthPollTimer = null;
-  }
-};
-
-const upsertYouTubeOAuthStatus = (payload = {}) => {
-  const current = loginStatusResults.value?.youtube || {};
-  upsertLoginStatus('youtube', {
-    ...current,
-    oauth_status: payload.status || 'not_configured',
-    oauth_account: payload.account || null,
-    verification_url: payload.verification_url || null,
-    user_code: payload.user_code || null,
-    message: payload.error || current.message || '',
-    checked_at: new Date().toISOString(),
-  });
-};
-
-const pollYouTubeOAuthStatus = async () => {
-  const { data, error } = await getYouTubeOAuthStatus();
-  if (error || !data) {
-    upsertYouTubeOAuthStatus({
-      status: 'error',
-      error: error?.message || 'OAuth 状态查询失败',
-    });
-    stopYouTubeOAuthPolling();
-    saveResultsToCache();
-    return;
-  }
-
-  upsertYouTubeOAuthStatus(data);
-  if (data.status !== 'pending') {
-    stopYouTubeOAuthPolling();
-  }
-  saveResultsToCache();
-};
-
-const startYouTubeOAuthPolling = () => {
-  stopYouTubeOAuthPolling();
-  ytOAuthPollTimer = setInterval(pollYouTubeOAuthStatus, 3000);
-};
-
-const showYouTubeOAuthPendingNotice = (payload) => {
-  if (payload?.verification_url) {
-    window.open(payload.verification_url, '_blank', 'noopener,noreferrer');
-  }
-
-  const lines = ['请在浏览器中完成 YouTube 授权。'];
-  if (payload?.user_code) {
-    lines.push(`验证码：${payload.user_code}`);
-  }
-  if (payload?.verification_url) {
-    lines.push(`链接：${payload.verification_url}`);
-  }
-  alert(lines.join('\n'));
-};
-
-const handleStartYouTubeOAuth = async () => {
-  ytOAuthActioning.value = true;
-  try {
-    const { data, error } = await setupYouTubeOAuth();
-    if (error || !data) {
-      upsertYouTubeOAuthStatus({
-        status: 'error',
-        error: error?.message || 'OAuth 启动失败',
-      });
-      saveResultsToCache();
-      return;
-    }
-
-    upsertYouTubeOAuthStatus(data);
-    saveResultsToCache();
-
-    if (data.status === 'pending') {
-      showYouTubeOAuthPendingNotice(data);
-      startYouTubeOAuthPolling();
-    }
-  } finally {
-    ytOAuthActioning.value = false;
-  }
-};
-
-const handleRevokeYouTubeOAuth = async () => {
-  ytOAuthActioning.value = true;
-  stopYouTubeOAuthPolling();
-  try {
-    const { data, error } = await revokeYouTubeOAuth();
-    if (error || !data?.revoked) {
-      upsertYouTubeOAuthStatus({
-        status: 'error',
-        error: error?.message || '撤销授权失败',
-      });
-      saveResultsToCache();
-      return;
-    }
-
-    upsertYouTubeOAuthStatus({
-      status: 'not_configured',
-      account: null,
-      verification_url: null,
-      user_code: null,
-      error: null,
-    });
-    saveResultsToCache();
-  } finally {
-    ytOAuthActioning.value = false;
-  }
-};
-
-const upsertLoginStatus = (siteName, payload) => {
-  if (!siteName) return;
-  loginStatusResults.value = {
-    ...loginStatusResults.value,
-    [siteName]: mergeLoginStatusResult(loginStatusResults.value?.[siteName], payload)
-  };
-};
-
-const loadSiteCatalog = async () => {
-  try {
-    await loadCatalog();
-  } catch (error) {
-    Logger.error('Failed to load site config', error);
-  }
-};
-
-const closeSiteEditor = () => {
-  siteEditorVisible.value = false;
-  editingSite.value = null;
-  siteEditorError.value = '';
-};
-
-const saveSiteEditor = async ({ slug, sitePayload }) => {
-  siteEditorError.value = '';
-  siteEditorSaving.value = true;
-  try {
-    await saveCatalog({
-      [slug]: sitePayload,
-    });
-    siteEditorVisible.value = false;
-  } catch (error) {
-    Logger.error('Failed to save site config', error);
-    siteEditorError.value = error?.message || '保存站点配置失败';
-  } finally {
-    siteEditorSaving.value = false;
-  }
-};
-
-const fetchPlugins = async () => {
-  loading.value = true;
-  const { data, error } = await getPlugins();
-  if (!error) {
-    plugins.value = data || [];
-  }
-  loading.value = false;
-};
-
 const handleFileChange = (event) => {
   const [file] = event.target.files || [];
   selectedFile.value = file || null;
@@ -875,100 +533,54 @@ const handleInstall = async () => {
   installing.value = false;
 };
 
+const handleCookiesFileChange = (event) => {
+  const file = event.target.files?.[0];
+  selectedCookiesFile.value = file || null;
+  cookiesFileName.value = file ? file.name : '';
+};
+
+const handleImportAllCookies = async () => {
+  if (!selectedCookiesFile.value || importingCookies.value) return;
+  importingCookies.value = true;
+  const result = await importAllSiteCookies(selectedCookiesFile.value);
+  if (result.error) {
+    Logger.error('Failed to import cookies', result.error);
+  } else if (shouldRefreshLoginStatusesAfterCookieImport(result.data)) {
+    if (supportedSites.value.length === 0) await fetchSupportedSites();
+    clearLoginStatusCache();
+    await testLoginForAllSupportedSites();
+    saveResultsToCache();
+  }
+  importingCookies.value = false;
+};
+
 const handleReload = async () => {
   reloading.value = true;
   const res = await reloadPlugins();
-  if (!res.error) {
-    await fetchPlugins();
-  }
+  if (!res.error) await fetchPlugins();
   reloading.value = false;
 };
 
 const handleEnable = async (plugin) => {
   actioning.value = plugin.plugin_id;
   const res = await enablePlugin(plugin.plugin_id);
-  if (!res.error) {
-    await fetchPlugins();
-  }
+  if (!res.error) await fetchPlugins();
   actioning.value = null;
 };
 
 const handleDisable = async (plugin) => {
   actioning.value = plugin.plugin_id;
   const res = await disablePlugin(plugin.plugin_id);
-  if (!res.error) {
-    await fetchPlugins();
-  }
+  if (!res.error) await fetchPlugins();
   actioning.value = null;
 };
 
 const handleUninstall = async (plugin) => {
+  if (!confirm(`确定要卸载插件「${plugin.display_name}」吗？`)) return;
   actioning.value = plugin.plugin_id;
   const res = await uninstallPlugin(plugin.plugin_id);
-  if (!res.error) {
-    await fetchPlugins();
-  }
+  if (!res.error) await fetchPlugins();
   actioning.value = null;
-};
-
-const formatTime = (value) => {
-  if (!value) return '—';
-  try {
-    return new Date(value).toLocaleString('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch (error) {
-    return value;
-  }
-};
-
-const fetchSupportedSites = async () => {
-  loadingSites.value = true;
-  const { data, error } = await getSupportedSites();
-  if (!error && data) {
-    supportedSites.value = data.sites || [];
-  }
-  loadingSites.value = false;
-};
-
-const setCookieUploading = (siteName, value) => {
-  cookieUploading.value = {
-    ...cookieUploading.value,
-    [siteName]: value
-  };
-};
-
-const testLoginForAllSupportedSites = async () => {
-  const targets = supportedSites.value.filter(site => site.supports_login_status);
-  if (!targets.length) return;
-
-  await Promise.all(
-    targets.map(async (site) => {
-      const siteName = site.site_name || site.name;
-      if (!siteName) return;
-
-      setLoginTesting(siteName, true);
-      try {
-        const result = await testSiteLoginStatus(siteName);
-        if (!result.error && result.data) {
-          upsertLoginStatus(siteName, result.data);
-        } else {
-          upsertLoginStatus(siteName, {
-            site_name: siteName,
-            logged_in: false,
-            message: result.error?.message || '检测失败',
-            supported: false,
-            checked_at: new Date().toISOString(),
-          });
-        }
-      } finally {
-        setLoginTesting(siteName, false);
-      }
-    })
-  );
 };
 
 const handleTestAll = async () => {
@@ -985,7 +597,6 @@ const handleTestAll = async () => {
   }
 };
 
-// Handlers for plugin-integrated site actions
 const handleTestSingleBySite = async (siteName) => {
   if (!siteName) return;
   const result = await testSiteConnectivity(siteName);
@@ -995,18 +606,15 @@ const handleTestSingleBySite = async (siteName) => {
     }
     const results = connectivityResults.value[0].results;
     const existingIndex = results.findIndex(r => r.site_name === siteName);
-    if (existingIndex !== -1) {
-      results[existingIndex] = result.data;
-    } else {
-      results.push(result.data);
-    }
+    if (existingIndex !== -1) results[existingIndex] = result.data;
+    else results.push(result.data);
+    
     const accessible = results.filter(r => r.accessible).length;
-    const failed = results.filter(r => !r.accessible).length;
     connectivityResults.value[0].summary = {
       total: results.length,
       accessible,
-      failed,
-      success_rate: results.length > 0 ? Math.round((accessible / results.length) * 100 * 100) / 100 : 0
+      failed: results.length - accessible,
+      success_rate: results.length > 0 ? Math.round((accessible / results.length) * 100) : 0
     };
     saveResultsToCache();
   }
@@ -1014,58 +622,34 @@ const handleTestSingleBySite = async (siteName) => {
 
 const handleTestLoginBySite = async (siteName) => {
   if (!siteName) return;
-  setLoginTesting(siteName, true);
+  loginStatusTesting.value[siteName] = true;
   try {
     const { data, error } = await testSiteLoginStatus(siteName);
-    if (!error && data) {
-      upsertLoginStatus(siteName, data);
-    } else {
+    if (!error && data) upsertLoginStatus(siteName, data);
+    else {
       upsertLoginStatus(siteName, {
         site_name: siteName,
         logged_in: false,
         message: error?.message || '检测失败',
-        supported: false,
         checked_at: new Date().toISOString(),
       });
     }
   } finally {
-    setLoginTesting(siteName, false);
+    loginStatusTesting.value[siteName] = false;
     saveResultsToCache();
   }
 };
 
-const handleUploadCookiesBySite = (siteName) => {
-  if (!siteName) return;
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.txt,.json';
-
-  input.onchange = async (event) => {
-    const files = event.target.files || [];
-    if (!files.length) return;
-
-    const file = files[0];
-    setCookieUploading(siteName, true);
-    try {
-      const result = await uploadSiteCookies(siteName, file);
-      if (!result.error && result.data?.login_status) {
-        upsertLoginStatus(siteName, result.data.login_status);
-        saveResultsToCache();
-      }
-    } finally {
-      setCookieUploading(siteName, false);
-    }
-    input.value = '';
+const upsertLoginStatus = (siteName, payload) => {
+  loginStatusResults.value = {
+    ...loginStatusResults.value,
+    [siteName]: mergeLoginStatusResult(loginStatusResults.value?.[siteName], payload)
   };
-
-  input.click();
 };
 
 const openSiteEditorByPlugin = (plugin) => {
   const siteName = plugin.siteName;
   if (!siteName) return;
-
-  // Find or create site info from catalog
   const catalogInfo = siteCatalogMap.value[siteName?.toLowerCase()] || {};
   editingSite.value = {
     slug: siteName,
@@ -1075,584 +659,89 @@ const openSiteEditorByPlugin = (plugin) => {
     domains: catalogInfo.domains || [],
     iconUrl: catalogInfo.icon_url || '',
   };
-  siteEditorError.value = '';
   siteEditorVisible.value = true;
+};
+
+const closeSiteEditor = () => {
+  siteEditorVisible.value = false;
+  editingSite.value = null;
+};
+
+const saveSiteEditor = async ({ slug, sitePayload }) => {
+  siteEditorSaving.value = true;
+  try {
+    await saveCatalog({ [slug]: sitePayload });
+    siteEditorVisible.value = false;
+  } catch (error) {
+    Logger.error('Failed to save site config', error);
+  } finally {
+    siteEditorSaving.value = false;
+  }
+};
+
+const fetchPlugins = async () => {
+  loading.value = true;
+  const { data, error } = await getPlugins();
+  if (!error) plugins.value = data || [];
+  loading.value = false;
+};
+
+const fetchSupportedSites = async () => {
+  const { data, error } = await getSupportedSites();
+  if (!error && data) supportedSites.value = data.sites || [];
+};
+
+const testLoginForAllSupportedSites = async () => {
+  const targets = supportedSites.value.filter(site => site.supports_login_status);
+  await Promise.all(targets.map(site => handleTestLoginBySite(site.site_name || site.name)));
+};
+
+const formatTime = (value) => {
+  if (!value) return '—';
+  return new Date(value).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+};
+
+// YouTube OAuth Handlers
+const handleStartYouTubeOAuth = async () => {
+  const { data, error } = await setupYouTubeOAuth();
+  if (!error && data) {
+    if (data.verification_url) window.open(data.verification_url, '_blank');
+    if (data.status === 'pending') startYouTubeOAuthPolling();
+  }
+};
+
+const handleRevokeYouTubeOAuth = async () => {
+  await revokeYouTubeOAuth();
+  stopYouTubeOAuthPolling();
+  fetchPlugins();
+};
+
+const startYouTubeOAuthPolling = () => {
+  stopYouTubeOAuthPolling();
+  ytOAuthPollTimer = setInterval(async () => {
+    const { data } = await getYouTubeOAuthStatus();
+    if (data?.status !== 'pending') stopYouTubeOAuthPolling();
+  }, 3000);
+};
+
+const stopYouTubeOAuthPolling = () => {
+  if (ytOAuthPollTimer) clearInterval(ytOAuthPollTimer);
+  ytOAuthPollTimer = null;
 };
 
 onMounted(() => {
   fetchPlugins();
-  loadSiteCatalog();
+  loadCatalog();
   loadResultsFromCache();
   fetchSupportedSites();
 });
 
-onUnmounted(() => {
-  stopYouTubeOAuthPolling();
-});
+onUnmounted(stopYouTubeOAuthPolling);
 </script>
 
 <style scoped>
 .plugin-page {
-  min-height: 100%;
-}
-
-.content-container {
-  width: 100%;
-  margin: 0 auto;
-  padding: 0 var(--app-page-gutter);
-}
-
-@media (min-width: 640px) {
-  .content-container {
-    padding: 0 var(--app-page-gutter-sm);
-  }
-}
-
-@media (min-width: 1024px) {
-  .content-container {
-    padding: 0 var(--app-page-gutter-lg);
-  }
-}
-
-.plugin-shell {
-  padding-top: 0.5rem;
-}
-
-.plugin-header {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 1rem;
-  padding: var(--app-toolbar-padding-block) 0;
-  flex-wrap: wrap;
-}
-
-.plugin-empty-state {
-  margin-top: 0.75rem;
-}
-
-.plugin-toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.plugin-toolbar-skeleton {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  width: 100%;
-}
-
-.plugin-toolbar-skeleton__chip {
-  height: 1.75rem;
-  border-radius: var(--radius-sm);
-}
-
-.plugin-toolbar-skeleton__chip:last-child {
-  margin-left: 0.25rem;
-}
-
-.plugin-toolbar-btn {
-  gap: 4px;
-  border-radius: var(--radius-sm);
-}
-
-.plugin-toolbar-btn--quiet {
-  border-color: hsl(var(--border) / 0.6);
-  background: hsl(var(--background));
-  box-shadow: none;
-}
-
-.plugin-toolbar-btn--quiet:hover {
-  background: hsl(var(--accent) / 0.6);
-  color: hsl(var(--accent-foreground));
-}
-
-.plugin-toolbar-btn--primary {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  border-color: hsl(var(--primary));
-}
-
-.plugin-toolbar-btn--primary:hover {
-  opacity: 0.9;
-}
-
-.plugin-stats-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
-}
-
-.plugin-stat {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-
-.plugin-stat__value {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-}
-
-.plugin-stat__label {
-  font-size: 0.65rem;
-  color: hsl(var(--muted-foreground) / 0.6);
-}
-
-.plugin-stat-sep {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: hsl(var(--border));
-}
-
-.plugin-stat-skeleton {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-
-.plugin-stat-skeleton__value {
-  height: 0.9rem;
-  border-radius: var(--radius-full);
-}
-
-.plugin-stat-skeleton__label {
-  height: 0.7rem;
-  border-radius: var(--radius-full);
-  opacity: 0.85;
-}
-
-.plugin-timestamp {
-  font-size: 0.65rem;
-  color: hsl(var(--muted-foreground) / 0.4);
-  margin-left: auto;
-}
-
-.plugin-timestamp--skeleton {
-  width: 7.5rem;
-  height: 0.85rem;
-  border-radius: var(--radius-full);
-  margin-left: 0.25rem;
-}
-
-.plugin-search {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  background: hsl(var(--secondary) / 0.3);
-  border-radius: var(--radius-sm);
-  color: hsl(var(--muted-foreground) / 0.5);
-  margin-left: auto;
-}
-
-.plugin-search--skeleton {
-  min-width: 8.75rem;
-}
-
-.plugin-search__icon-skeleton {
-  width: 0.8rem;
-  height: 0.8rem;
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-}
-
-.plugin-search__input-skeleton {
-  width: 6rem;
-  height: 0.72rem;
-  border-radius: var(--radius-full);
-}
-
-.plugin-search-input {
-  background: transparent;
-  border: none;
-  outline: none;
-  font-size: 12px;
-  color: hsl(var(--foreground));
-  width: 120px;
-}
-
-.plugin-search-input::placeholder {
-  color: hsl(var(--muted-foreground) / 0.4);
-}
-
-.plugin-search-refresh {
-  width: 1.75rem;
-  height: 1.75rem;
-  flex-shrink: 0;
-}
-
-.plugin-search-refresh--skeleton {
-  border-radius: var(--radius-sm);
-}
-
-.plugin-content {
-  padding-top: 0.5rem;
-}
-
-.plugin-unified-panel {
-  border: 1px solid hsl(var(--border) / 0.45);
-  border-radius: var(--radius-lg);
-  background: hsl(var(--card) / 0.45);
-  overflow: hidden;
-}
-
-.plugin-unified-section {
-  padding: 0.5rem 0;
-}
-
-.plugin-unified-section + .plugin-unified-section {
-  border-top: 1px solid hsl(var(--border) / 0.35);
-}
-
-.plugin-unified-section__head {
-  padding: 0.5rem 0.75rem 0.375rem;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  color: hsl(var(--muted-foreground) / 0.7);
-}
-
-.plugin-loading,
-.plugin-empty {
-  display: none;
-}
-
-.plugin-skeleton-wrap {
-  display: block;
-}
-
-.plugin-inline-loading,
-.plugin-inline-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 7rem;
-  gap: 0.625rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
-}
-
-/* Alert */
-.plugin-alert {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.875rem 1.125rem;
-  border-radius: var(--radius-lg);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  margin-bottom: 1rem;
-  border-width: 1px;
-}
-
-.plugin-alert--error {
-  background: hsl(var(--destructive) / 0.08);
-  color: hsl(var(--destructive));
-  border-color: hsl(var(--destructive) / 0.2);
-}
-
-/* Site Config Grid */
-.site-config-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 0;
-  padding: 0 0.75rem 0.5rem;
-}
-
-.site-config-item {
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  padding: 1rem 1.25rem;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border) / 0.4);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition:
-    all var(--duration-normal) var(--ease-default);
-}
-
-.site-config-item:hover {
-  border-color: hsl(var(--primary) / 0.3);
-  background: hsl(var(--secondary) / 0.2);
-}
-
-.site-config-icon {
-  flex-shrink: 0;
-  border: 1px solid hsl(var(--border) / 0.3);
-}
-
-.site-config-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-
-.site-config-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  truncate: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.site-config-slug {
-  font-size: 0.6875rem;
-  color: hsl(var(--muted-foreground) / 0.5);
-  font-family: var(--font-mono);
-}
-
-.site-config-status {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.site-config-status--enabled {
-  background: hsl(var(--success));
-}
-
-.site-config-status--disabled {
-  background: hsl(var(--muted-foreground) / 0.2);
-}
-
-/* Table */
-.plugin-table-wrap {
-  overflow-x: auto;
-  padding: 0 0.5rem;
-}
-
-.plugin-table {
-  /* Column widths and overrides only — base styles from .sq-table */
-}
-
-.plugin-table thead tr {
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
-}
-
-.plugin-table th {
-  padding: 0.5rem 0.75rem;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  color: hsl(var(--muted-foreground) / 0.6);
-  white-space: nowrap;
-}
-
-.plugin-table td {
-  padding: 0.625rem 0.75rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.25);
-  vertical-align: middle;
-}
-
-.plugin-table tbody tr:hover {
-  background: hsl(var(--foreground) / 0.03);
-}
-
-.plugin-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-/* Column widths */
-.col-icon { width: 2.5rem; text-align: center; }
-.col-name { min-width: 160px; }
-.col-status { min-width: 70px; }
-.col-caps { min-width: 120px; }
-.col-endpoint { min-width: 180px; }
-.col-site-access { min-width: 90px; }
-.col-site-login { min-width: 80px; }
-.col-latency { width: 70px; text-align: center; }
-.col-domains { min-width: 140px; }
-.col-actions { width: 120px; text-align: right; }
-
-/* Cell styles */
-.name-primary {
-  font-weight: 600;
-  color: hsl(var(--foreground));
-}
-
-/* Caps cell */
-.caps-inline {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: 2px;
-  white-space: nowrap;
-}
-
-.cap-tag {
-  display: inline-block;
-  font-size: 10px;
-  padding: 2px 5px;
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-  background: hsl(var(--secondary));
-  color: hsl(var(--muted-foreground));
-}
-
-.cap-more {
-  font-size: 10px;
-  color: hsl(var(--muted-foreground) / 0.5);
-  margin-left: 2px;
-}
-
-.cap-wrapper {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-
-.cap-tooltip {
-  display: none;
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: hsl(var(--popover));
-  color: hsl(var(--popover-foreground));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-md);
-  padding: 6px 10px;
-  font-size: 12px;
-  white-space: pre-line;
-  line-height: 1.5;
-  z-index: 50;
-  box-shadow: var(--shadow-md);
-  min-width: 100px;
-  max-width: 250px;
-}
-
-.cap-wrapper:hover .cap-tooltip {
-  display: block;
-}
-
-.cap-tooltip::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 5px solid transparent;
-  border-top-color: hsl(var(--popover));
-}
-
-.endpoint-text {
-  font-size: 11px;
-  font-family: var(--font-mono);
-  color: hsl(var(--muted-foreground) / 0.5);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 180px;
-  display: block;
-}
-
-.col-icon-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Status */
-.status-ok,
-.status-error,
-.status-warning {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.status-ok {
-  color: hsl(var(--success));
-}
-
-.status-error {
-  color: hsl(var(--destructive));
-}
-
-.status-warning {
-  color: hsl(var(--warning));
-}
-
-/* Actions */
-.actions-cell {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 2px;
-}
-
-.action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  color: hsl(var(--muted-foreground));
-  transition: all var(--duration-fast) var(--ease-default);
-}
-
-.action-btn:hover {
-  background: hsl(var(--secondary) / 0.4);
-  color: hsl(var(--foreground));
-}
-
-.action-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.3;
-}
-
-.action-btn--danger:hover {
-  background: hsl(var(--destructive) / 0.1);
-  color: hsl(var(--destructive));
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .plugin-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .plugin-toolbar-skeleton,
-  .plugin-toolbar-right {
-    justify-content: flex-end;
-  }
-
-  .plugin-stats-row {
-    gap: 0.5rem;
-  }
-
-  .plugin-timestamp--skeleton,
-  .plugin-search,
-  .plugin-search--skeleton {
-    margin-left: 0;
-  }
-
-  .col-endpoint,
-  .col-caps {
-    display: none;
-  }
+  min-height: 100vh;
+  scrollbar-gutter: stable;
 }
 </style>

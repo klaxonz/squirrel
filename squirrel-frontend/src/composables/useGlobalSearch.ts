@@ -1,19 +1,17 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
-
-type EmitterLike = {
-  emit: (eventName: string, ...args: unknown[]) => void
-}
+import { useUIStore } from '@/stores/ui'
 
 const getStringMeta = (meta: Record<string, unknown>, key: string) => {
   const value = meta[key]
   return typeof value === 'string' ? value : null
 }
 
-export function useGlobalSearch(emitter?: EmitterLike) {
+export function useGlobalSearch() {
   const route = useRoute()
   const router = useRouter()
+  const uiStore = useUIStore()
 
   const searchQuery = ref('')
   const persistedQueryByKey = ref<Record<string, string>>({})
@@ -61,10 +59,7 @@ export function useGlobalSearch(emitter?: EmitterLike) {
       } catch (_) {}
     }
 
-    const type = getStringMeta(route.meta, 'search')
-    const searchEvent = getStringMeta(route.meta, 'searchEvent')
-    const eventName = searchEvent ?? (type ? `search:${type}` : 'search:global')
-    emitter?.emit(eventName, searchQuery.value)
+    uiStore.triggerSearch(searchQuery.value)
   }
 
   const handleClear = () => {

@@ -1,9 +1,12 @@
 <template>
   <div class="playlist-panel" :class="{ 'is-open': isOpen }">
     <div class="playlist-panel__header">
-      <h3 class="playlist-panel__title">播放列表</h3>
+      <div class="header-content">
+        <h3 class="playlist-panel__title">播放列表</h3>
+        <span v-if="playlists.length" class="playlist-panel__count">{{ playlists.length }}</span>
+      </div>
       <button class="playlist-panel__close-btn" @click="handleClose">
-        <X />
+        <X :size="20" />
       </button>
     </div>
 
@@ -19,80 +22,84 @@
       </button>
     </div>
 
-    <div class="playlist-panel__content">
-      <template v-if="activeTab === 'playlists'">
-        <div class="playlist-panel__section">
-          <div v-if="loading" class="playlist-panel__loading">
+    <div class="playlist-panel__content scrollbar-hide">
+      <Transition name="fade-slide" mode="out-in">
+        <!-- Playlists List -->
+        <div v-if="activeTab === 'playlists'" key="playlists" class="playlist-panel__section">
+          <div v-if="loading" class="playlist-panel__state">
             <div class="loading-spinner"></div>
           </div>
-          <div v-else-if="!playlists.length" class="playlist-panel__empty">
-            <ListMusic class="playlist-panel__empty-icon" />
+          <div v-else-if="!playlists.length" class="playlist-panel__state">
+            <ListMusic class="state-icon" />
             <span>暂无播放列表</span>
           </div>
-          <div v-else class="playlist-panel__scroll scrollbar-hide">
-            <div class="playlist-panel__list">
-              <div
-                v-for="playlist in playlists"
-                :key="playlist.id"
-                class="playlist-card"
-                :class="{ 'is-active': activePlaylist?.id === playlist.id }"
-                @click="selectPlaylist(playlist.id)"
-              >
-                <div class="playlist-card__info">
-                  <span class="playlist-card__name">{{ playlist.name }}</span>
-                  <span class="playlist-card__count">{{ playlist.video_count }} 个视频</span>
-                </div>
-                <button
-                  v-if="!playlist.is_default"
-                  class="playlist-card__delete"
-                  @click.stop="handleDeletePlaylist(playlist.id)"
-                >
-                  <Trash2 />
-                </button>
+          <div v-else class="playlist-panel__list">
+            <div
+              v-for="playlist in playlists"
+              :key="playlist.id"
+              class="playlist-card"
+              :class="{ 'is-active': activePlaylist?.id === playlist.id }"
+              @click="selectPlaylist(playlist.id)"
+            >
+              <div class="playlist-card__cover">
+                <ListMusic v-if="!playlist.video_count" :size="16" />
+                <Play v-else :size="16" fill="currentColor" />
               </div>
+              <div class="playlist-card__info">
+                <span class="playlist-card__name">{{ playlist.name }}</span>
+                <span class="playlist-card__meta">{{ playlist.video_count }} 个视频</span>
+              </div>
+              <button
+                v-if="!playlist.is_default"
+                class="playlist-card__delete"
+                @click.stop="handleDeletePlaylist(playlist.id)"
+              >
+                <Trash2 :size="14" />
+              </button>
             </div>
           </div>
-          <div class="playlist-panel__actions">
+          <div class="playlist-panel__footer">
             <button class="playlist-panel__add-btn" @click="showCreateModal = true">
-              <Plus />
+              <Plus :size="16" />
               <span>新建播放列表</span>
             </button>
           </div>
         </div>
-      </template>
 
-      <template v-else-if="activeTab === 'items'">
-        <div class="playlist-panel__section">
-          <div v-if="!activePlaylist" class="playlist-panel__empty">
-            <span>请先选择一个播放列表</span>
+        <!-- Playlist Items -->
+        <div v-else-if="activeTab === 'items'" key="items" class="playlist-panel__section">
+          <div v-if="!activePlaylist" class="playlist-panel__state">
+            <PanelRightOpen class="state-icon" />
+            <span>请先选择一个列表</span>
           </div>
           <template v-else>
             <div class="playlist-panel__items-header">
-              <div class="playlist-panel__items-summary">
-                <span class="playlist-panel__items-name">{{ activePlaylist.name }}</span>
-                <span class="playlist-panel__items-count">{{ activePlaylistItems.length }} 个视频</span>
+              <div class="items-header__info">
+                <h4 class="items-header__name">{{ activePlaylist.name }}</h4>
+                <span class="items-header__meta">{{ activePlaylistItems.length }} 个视频</span>
               </div>
               <button
                 v-if="videoId && !currentVideoAlreadyInActivePlaylist"
-                class="playlist-panel__items-add-current"
+                class="playlist-panel__add-current"
                 @click="addVideo(videoId, activePlaylist.id)"
               >
                 添加当前视频
               </button>
             </div>
-            <div v-if="loadingItems" class="playlist-panel__loading">
+
+            <div v-if="loadingItems" class="playlist-panel__state">
               <div class="loading-spinner"></div>
             </div>
-            <div v-else-if="!activePlaylistItems.length" class="playlist-panel__empty">
-              <Film class="playlist-panel__empty-icon" />
-              <span>播放列表为空</span>
+            <div v-else-if="!activePlaylistItems.length" class="playlist-panel__state">
+              <Film class="state-icon" />
+              <span>列表还是空的</span>
             </div>
-            <div v-else class="playlist-panel__items-list playlist-panel__scroll scrollbar-hide">
-              <TransitionGroup name="playlist-item">
+            <div v-else class="playlist-panel__items-list">
+              <TransitionGroup name="list-stagger">
                 <div
                   v-for="(item, index) in activePlaylistItems"
                   :key="item.id"
-                  class="playlist-item-card"
+                  class="item-row"
                   :class="{
                     'is-playing': currentVideoId && String(item.video_id) === String(currentVideoId),
                     'is-dragging': draggingIndex === index
@@ -103,63 +110,56 @@
                   @drop="handleDrop($event, index)"
                   @dragend="handleDragEnd"
                 >
-                  <div class="playlist-item-card__drag-handle">
-                    <GripVertical />
+                  <div class="item-row__drag">
+                    <GripVertical :size="14" />
                   </div>
-                  <div class="playlist-item-card__thumb">
+                  <div class="item-row__thumb">
                     <img
                       v-if="item.video?.thumbnail"
                       :src="item.video.thumbnail"
                       referrerpolicy="no-referrer"
-                      :alt="item.video.title"
                       @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
                     >
-                    <div v-else class="playlist-item-card__thumb-fallback">
-                      <Film />
-                    </div>
+                    <div v-else class="thumb-fallback"><Film :size="16" /></div>
                   </div>
-                  <div class="playlist-item-card__info" @click="handlePlayItem(item)">
-                    <span class="playlist-item-card__title">{{ item.video?.title || '未知视频' }}</span>
-                    <span class="playlist-item-card__duration">
-                      {{ formatDuration(item.video?.duration) }}
-                    </span>
+                  <div class="item-row__info" @click="handlePlayItem(item)">
+                    <span class="item-row__title">{{ item.video?.title || '未知视频' }}</span>
+                    <span class="item-row__duration">{{ formatDuration(item.video?.duration) }}</span>
                   </div>
-                  <button class="playlist-item-card__remove" @click="handleRemoveVideo(item)">
-                    <X />
+                  <button class="item-row__remove" @click="handleRemoveVideo(item)">
+                    <X :size="14" />
                   </button>
                 </div>
               </TransitionGroup>
             </div>
           </template>
         </div>
-      </template>
+      </Transition>
     </div>
 
+    <!-- Create Modal -->
     <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
-          <div class="modal-box">
-            <h3 class="modal-box__title">新建播放列表</h3>
-            <div class="modal-box__field">
-              <label class="modal-box__label">名称</label>
-              <input
-                v-model="newPlaylistName"
-                class="modal-box__input"
-                placeholder="输入播放列表名称"
-                @keyup.enter="handleCreatePlaylist"
-              >
+      <Transition name="fade">
+        <div v-if="showCreateModal" class="playlist-modal-overlay" @click.self="showCreateModal = false">
+          <div class="playlist-modal">
+            <h3 class="playlist-modal__title">新建播放列表</h3>
+            <div class="playlist-modal__form">
+              <div class="form-field">
+                <label>名称</label>
+                <input
+                  v-model="newPlaylistName"
+                  placeholder="输入名称..."
+                  @keyup.enter="handleCreatePlaylist"
+                >
+              </div>
+              <div class="form-field">
+                <label>描述（可选）</label>
+                <input v-model="newPlaylistDesc" placeholder="输入描述...">
+              </div>
             </div>
-            <div class="modal-box__field">
-              <label class="modal-box__label">描述（可选）</label>
-              <input
-                v-model="newPlaylistDesc"
-                class="modal-box__input"
-                placeholder="输入描述"
-              >
-            </div>
-            <div class="modal-box__actions">
-              <button class="modal-box__btn modal-box__btn--cancel" @click="showCreateModal = false">取消</button>
-              <button class="modal-box__btn modal-box__btn--confirm" @click="handleCreatePlaylist">创建</button>
+            <div class="playlist-modal__actions">
+              <button class="btn-cancel" @click="showCreateModal = false">取消</button>
+              <button class="btn-confirm" :disabled="!newPlaylistName.trim()" @click="handleCreatePlaylist">创建</button>
             </div>
           </div>
         </div>
@@ -170,7 +170,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
-import { X, ListMusic, Trash2, Plus, Film, GripVertical } from 'lucide-vue-next'
+import { X, ListMusic, Trash2, Plus, Film, GripVertical, Play, PanelRightOpen } from 'lucide-vue-next'
 import usePlaylist from '@/composables/usePlaylist'
 import { formatDuration } from '@/utils/dateFormat'
 
@@ -322,15 +322,16 @@ watch(() => props.isOpen, async (open) => {
   right: 0;
   top: 0;
   bottom: 0;
-  width: 360px;
+  width: 400px;
   max-width: 100vw;
   background: hsl(var(--background));
-  border-left: 1px solid hsl(var(--border) / 0.5);
+  border-left: 1px solid hsl(var(--border) / 0.4);
   transform: translateX(100%);
-  transition: transform var(--duration-normal) var(--ease-default);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 100;
   display: flex;
   flex-direction: column;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.1);
 }
 
 .playlist-panel.is-open {
@@ -338,33 +339,40 @@ watch(() => props.isOpen, async (open) => {
 }
 
 .playlist-panel__header {
-  flex-shrink: 0;
+  padding: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .playlist-panel__title {
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 700;
-  color: hsl(var(--foreground));
   margin: 0;
 }
 
-.playlist-panel__close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border: none;
-  background: transparent;
+.playlist-panel__count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: hsl(var(--secondary));
+  padding: 0.125rem 0.5rem;
+  border-radius: 99px;
   color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all var(--duration-normal) var(--ease-default);
+}
+
+.playlist-panel__close-btn {
+  color: hsl(var(--muted-foreground));
+  transition: color 0.2s;
+  padding: 0.5rem;
+  margin: -0.5rem;
+  border-radius: 50%;
 }
 
 .playlist-panel__close-btn:hover {
@@ -373,26 +381,19 @@ watch(() => props.isOpen, async (open) => {
 }
 
 .playlist-panel__tabs {
-  position: sticky;
-  top: 0;
-  z-index: 10;
   display: flex;
-  background: hsl(var(--background));
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
-  flex-shrink: 0;
+  padding: 0.5rem 1.5rem 0;
+  gap: 1.5rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
 }
 
 .playlist-panel__tab {
-  flex: 1;
-  padding: 0.625rem;
-  border: none;
-  background: transparent;
+  padding: 0.75rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8rem;
-  font-weight: 500;
-  cursor: pointer;
   border-bottom: 2px solid transparent;
-  transition: all var(--duration-normal) var(--ease-default);
+  transition: all 0.2s;
 }
 
 .playlist-panel__tab:hover {
@@ -406,82 +407,59 @@ watch(() => props.isOpen, async (open) => {
 
 .playlist-panel__content {
   flex: 1;
-  min-height: 0;
-  padding: 0.75rem;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  overflow-y: auto;
+  padding: 1rem 1.5rem;
 }
 
 .playlist-panel__section {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
+  min-height: 100%;
 }
 
-.playlist-panel__scroll {
+.playlist-panel__state {
   flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.playlist-panel__scroll::-webkit-scrollbar {
-  display: none;
-}
-
-.playlist-panel__loading,
-.playlist-panel__empty {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 2rem;
+  gap: 1rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8rem;
+  font-size: 0.875rem;
+  padding: 4rem 0;
 }
 
-.playlist-panel__empty-icon {
-  width: 2rem;
-  height: 2rem;
-  opacity: 0.5;
+.state-icon {
+  width: 32px;
+  height: 32px;
+  opacity: 0.2;
 }
 
 .loading-spinner {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 24px;
+  height: 24px;
   border: 2px solid hsl(var(--border));
   border-top-color: hsl(var(--primary));
   border-radius: 50%;
-  animation: spin var(--duration-slow) linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .playlist-panel__list {
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
-  padding-bottom: 0.5rem;
+  gap: 0.5rem;
 }
 
 .playlist-card {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.625rem 0.75rem;
-  border-radius: 6px;
+  gap: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
   cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
-  border: 1px solid transparent;
+  transition: all 0.2s;
 }
 
 .playlist-card:hover {
@@ -490,44 +468,51 @@ watch(() => props.isOpen, async (open) => {
 
 .playlist-card.is-active {
   background: hsl(var(--primary) / 0.1);
-  border-color: hsl(var(--primary) / 0.3);
+  color: hsl(var(--primary));
+}
+
+.playlist-card__cover {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  background: hsl(var(--secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--muted-foreground));
+}
+
+.playlist-card.is-active .playlist-card__cover {
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--primary));
 }
 
 .playlist-card__info {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
-  min-width: 0;
 }
 
 .playlist-card__name {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: hsl(var(--foreground));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.playlist-card__count {
-  font-size: 0.7rem;
+.playlist-card__meta {
+  font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
 }
 
 .playlist-card__delete {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: none;
-  background: transparent;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
   color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  border-radius: 4px;
   opacity: 0;
-  transition: all var(--duration-normal) var(--ease-default);
-  flex-shrink: 0;
+  transition: all 0.2s;
 }
 
 .playlist-card:hover .playlist-card__delete {
@@ -539,319 +524,263 @@ watch(() => props.isOpen, async (open) => {
   color: hsl(var(--destructive));
 }
 
-.playlist-panel__actions {
-  flex-shrink: 0;
-  padding: 0.75rem 0;
-  border-top: 1px solid hsl(var(--border) / 0.3);
-  margin-top: 0.5rem;
-  background: linear-gradient(180deg, hsl(var(--background) / 0.65), hsl(var(--background)));
-  backdrop-filter: blur(10px);
+.playlist-panel__footer {
+  margin-top: auto;
+  padding-top: 1.5rem;
 }
 
 .playlist-panel__add-btn {
+  width: 100%;
+  padding: 0.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.375rem;
-  width: 100%;
-  padding: 0.5rem;
+  gap: 0.5rem;
   border: 1px dashed hsl(var(--border));
-  background: transparent;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8rem;
-  font-weight: 500;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: all var(--duration-normal) var(--ease-default);
+  transition: all 0.2s;
 }
 
 .playlist-panel__add-btn:hover {
-  border-color: hsl(var(--primary) / 0.5);
+  border-color: hsl(var(--primary));
   color: hsl(var(--primary));
   background: hsl(var(--primary) / 0.05);
 }
 
+/* Items List */
 .playlist-panel__items-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.5rem 0;
-  margin-bottom: 0.5rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.3);
+  margin-bottom: 1.5rem;
 }
 
-.playlist-panel__items-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  min-width: 0;
+.items-header__name {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
 }
 
-.playlist-panel__items-name {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.playlist-panel__items-count {
-  font-size: 0.7rem;
+.items-header__meta {
+  font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
 }
 
-.playlist-panel__items-add-current {
-  flex-shrink: 0;
-  padding: 0.35rem 0.7rem;
-  border-radius: 999px;
-  border: 1px solid hsl(var(--primary) / 0.35);
-  background: hsl(var(--primary) / 0.08);
+.playlist-panel__add-current {
+  font-size: 0.75rem;
+  font-weight: 700;
   color: hsl(var(--primary));
-  font-size: 0.72rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
+  background: hsl(var(--primary) / 0.1);
+  padding: 0.375rem 0.75rem;
+  border-radius: 99px;
+  transition: all 0.2s;
 }
 
-.playlist-panel__items-add-current:hover {
-  background: hsl(var(--primary) / 0.15);
-  border-color: hsl(var(--primary) / 0.5);
+.playlist-panel__add-current:hover {
+  background: hsl(var(--primary) / 0.2);
 }
 
 .playlist-panel__items-list {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding-bottom: 0.5rem;
-}
-
-.playlist-item-card {
-  display: grid;
-  grid-template-columns: 1.5rem 5rem 1fr 1.5rem;
-  align-items: center;
   gap: 0.5rem;
-  padding: 0.375rem 0.5rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
-  border: 1px solid transparent;
 }
 
-.playlist-item-card:hover {
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.item-row:hover {
   background: hsl(var(--accent) / 0.08);
 }
 
-.playlist-item-card.is-playing {
-  background: hsl(var(--primary) / 0.1);
-  border-color: hsl(var(--primary) / 0.3);
+.item-row.is-playing {
+  background: hsl(var(--primary) / 0.05);
+  color: hsl(var(--primary));
 }
 
-.playlist-item-card.is-dragging {
-  opacity: 0.5;
-  background: hsl(var(--accent) / 0.15);
-}
-
-.playlist-item-card__drag-handle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.item-row__drag {
   color: hsl(var(--muted-foreground));
-  cursor: grab;
   opacity: 0;
-  transition: opacity var(--duration-normal) var(--ease-default);
+  cursor: grab;
 }
 
-.playlist-item-card:hover .playlist-item-card__drag-handle {
+.item-row:hover .item-row__drag {
   opacity: 1;
 }
 
-.playlist-item-card__thumb {
-  width: 5rem;
+.item-row__thumb {
+  width: 80px;
   aspect-ratio: 16 / 9;
   border-radius: 4px;
   overflow: hidden;
-  background: hsl(var(--muted));
+  background: hsl(var(--secondary));
   flex-shrink: 0;
 }
 
-.playlist-item-card__thumb img {
+.item-row__thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.playlist-item-card__thumb-fallback {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: hsl(var(--muted-foreground));
-}
-
-.playlist-item-card__info {
+.item-row__info {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
-  min-width: 0;
 }
 
-.playlist-item-card__title {
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: hsl(var(--foreground));
+.item-row__title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.playlist-item-card__duration {
-  font-size: 0.65rem;
+.item-row__duration {
+  font-size: 0.6875rem;
   color: hsl(var(--muted-foreground));
-  font-family: 'JetBrains Mono', monospace;
 }
 
-.playlist-item-card__remove {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border: none;
-  background: transparent;
+.item-row__remove {
+  padding: 0.5rem;
   color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  border-radius: 4px;
   opacity: 0;
-  transition: all var(--duration-normal) var(--ease-default);
-  flex-shrink: 0;
 }
 
-.playlist-item-card:hover .playlist-item-card__remove {
+.item-row:hover .item-row__remove {
   opacity: 1;
 }
 
-.playlist-item-card__remove:hover {
-  background: hsl(var(--destructive) / 0.1);
+.item-row__remove:hover {
   color: hsl(var(--destructive));
 }
 
-.playlist-item-enter-active,
-.playlist-item-leave-active {
-  transition: all var(--duration-slow) var(--ease-out);
-}
-
-.playlist-item-enter-from,
-.playlist-item-leave-to {
-  opacity: 0;
-  transform: translateX(10px);
-}
-
 /* Modal */
-.modal-overlay {
+.playlist-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 200;
-  padding: 1rem;
 }
 
-.modal-box {
+.playlist-modal {
   background: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
-  border-radius: 8px;
-  padding: 1.5rem;
+  border: 1px solid hsl(var(--border) / 0.4);
+  border-radius: 1rem;
+  padding: 2rem;
   width: 100%;
-  max-width: 360px;
+  max-width: 400px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
 }
 
-.modal-box__title {
-  font-size: 1rem;
+.playlist-modal__title {
+  font-size: 1.25rem;
   font-weight: 700;
-  color: hsl(var(--foreground));
-  margin: 0 0 1rem;
+  margin: 0 0 1.5rem;
 }
 
-.modal-box__field {
-  margin-bottom: 1rem;
-}
-
-.modal-box__label {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: hsl(var(--muted-foreground));
-  margin-bottom: 0.375rem;
-}
-
-.modal-box__input {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid hsl(var(--border));
-  border-radius: 6px;
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-size: 0.85rem;
-  outline: none;
-  transition: border-color var(--duration-normal) var(--ease-default);
-  box-sizing: border-box;
-}
-
-.modal-box__input:focus {
-  border-color: hsl(var(--primary));
-}
-
-.modal-box__actions {
+.playlist-modal__form {
   display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
-  justify-content: flex-end;
-  margin-top: 1.25rem;
 }
 
-.modal-box__btn {
-  padding: 0.4rem 1rem;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
+.form-field label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.form-field input {
+  background: hsl(var(--secondary) / 0.5);
   border: 1px solid transparent;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  transition: all 0.2s;
 }
 
-.modal-box__btn--cancel {
+.form-field input:focus {
+  background: hsl(var(--background));
+  border-color: hsl(var(--primary));
+  outline: none;
+}
+
+.playlist-modal__actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+}
+
+.playlist-modal__actions button {
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-cancel {
   background: transparent;
   color: hsl(var(--muted-foreground));
-  border-color: hsl(var(--border));
 }
 
-.modal-box__btn--cancel:hover {
+.btn-cancel:hover {
   background: hsl(var(--accent) / 0.1);
 }
 
-.modal-box__btn--confirm {
+.btn-confirm {
   background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
+  color: white;
 }
 
-.modal-box__btn--confirm:hover {
+.btn-confirm:hover {
   background: hsl(var(--primary) / 0.9);
 }
 
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity var(--duration-normal) var(--ease-default);
+.btn-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
+/* Transitions */
+.fade-slide-enter-active, .fade-slide-leave-active { transition: all 0.3s ease; }
+.fade-slide-enter-from { opacity: 0; transform: translateY(10px); }
+.fade-slide-leave-to { opacity: 0; transform: translateY(-10px); }
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+@media (max-width: 640px) {
+  .playlist-panel { width: 100vw; }
 }
+</style>
 
 @media (max-width: 640px) {
   .playlist-panel {

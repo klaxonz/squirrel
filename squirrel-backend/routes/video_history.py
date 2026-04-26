@@ -43,8 +43,9 @@ def get_history_list(
         nsfw: str = Query(None, description="NSFW筛选: all/yes/no"),
         site: str = Query(None, description="站点筛选"),
         page: int = Query(1, ge=1),
-        page_size: int = Query(20, ge=1, le=100),
+        page_size: int = Query(20, ge=1, le=200),
         user: User = Depends(get_current_user)
+
 ):
     filters = {
         "video_id": video_id,

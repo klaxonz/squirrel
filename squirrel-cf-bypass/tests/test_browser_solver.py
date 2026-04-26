@@ -109,6 +109,28 @@ def test_build_camoufox_kwargs_applies_bypass_friendly_settings():
     assert kwargs['config']['navigator.userAgent'] == 'Mozilla/5.0 DemoUA'
 
 
+def test_build_camoufox_kwargs_reuses_cached_browser_identity():
+    solver = BrowserSolver()
+    record = ClearanceRecord(
+        cookies={'cf_clearance': 'demo'},
+        user_agent='Mozilla/5.0 DemoUA',
+        created_at=0.0,
+        expires_at=1.0,
+        browser_config={
+            'navigator.userAgent': 'Mozilla/5.0 DemoUA',
+            'navigator.platform': 'Win32',
+            'window.outerWidth': 1920,
+        },
+        browser_os='windows',
+    )
+
+    kwargs = solver._build_camoufox_kwargs(proxy=None, cached_record=record)
+
+    assert kwargs['os'] == 'windows'
+    assert kwargs['config']['navigator.platform'] == 'Win32'
+    assert kwargs['config']['window.outerWidth'] == 1920
+
+
 def test_fetch_html_prefers_interstitial_solver_for_managed_challenge(monkeypatch):
     calls = {}
 

@@ -29,6 +29,7 @@ type ApiErrorLike = { type?: string | null }
 type VideoListParams = {
   page: number
   pageSize: number
+  page_size: number
   query: string
   subscription_id: VideoId | null
   category: string
@@ -100,6 +101,7 @@ export default function useLatestVideos(initial: InitialState = {}) {
   const createRequestParams = (): VideoListParams => ({
     page: currentPage.value,
     pageSize: PAGE_SIZE,
+    page_size: PAGE_SIZE,
     query: searchQuery.value || '',
     subscription_id: subscriptionId.value,
     category: category.value,

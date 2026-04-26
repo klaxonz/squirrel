@@ -1,46 +1,77 @@
 <template>
-  <section class="toolbar-minimal">
-    <div class="toolbar-inner">
-      <div v-if="showTabs || $slots.actions || $slots.default" class="toolbar-primary">
-        <div v-if="showTabs" class="toolbar-tabs">
-          <button
-            v-for="tab in tabs"
-            :key="tab.value"
-            class="tab-item-minimal"
-            :class="{ 'is-active': localActiveTab === tab.value }"
-            @click="localActiveTab = tab.value"
-          >
-            <span class="tab-label">{{ tab.label }}</span>
-          </button>
-        </div>
-
-        <div v-if="$slots.actions" class="toolbar-slot-actions">
-          <slot name="actions" />
-        </div>
-
-        <slot />
+  <section class="feed-toolbar">
+    <div class="toolbar-container">
+      <!-- Left: Navigation Tabs -->
+      <div v-if="showTabs" class="nav-group">
+        <button
+          v-for="tab in tabs"
+          :key="tab.value"
+          class="nav-tab"
+          :class="{ 'is-active': localActiveTab === tab.value }"
+          @click="localActiveTab = tab.value"
+        >
+          {{ tab.label }}
+        </button>
       </div>
 
-      <div class="toolbar-actions">
+      <div class="flex-1" />
+
+      <!-- Right: Filter Actions -->
+      <div class="filter-group">
+        <!-- Site Select -->
+        <div class="property-pill">
+          <span class="property-label">站点</span>
+          <Select :model-value="site || 'all'" @update:model-value="handleSiteChange">
+            <SelectTrigger class="property-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部站点</SelectItem>
+              <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <!-- Sort Select -->
+        <div v-if="showSort" class="property-pill">
+          <span class="property-label">排序</span>
+          <Select v-model="localSortBy">
+            <SelectTrigger class="property-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <!-- Advanced Filter -->
         <button
           v-if="showFilter"
-          class="filter-toggle-btn"
-          :class="{ 'is-active': filterModalOpen || hasActiveFilters }"
-          aria-label="筛选"
+          type="button"
+          class="icon-action-btn"
+          :class="{ 'is-active': activeFilterCount > 0 }"
           @click="filterModalOpen = true"
         >
-          <Funnel class="filter-toggle-icon" />
-          <span class="filter-toggle-label">筛选</span>
-          <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
+          <Funnel class="w-3.5 h-3.5" />
+          <span v-if="activeFilterCount > 0" class="active-dot" />
         </button>
+        
+        <div class="w-px h-3 bg-border/40 mx-1.5" />
+
+        <!-- Refresh -->
         <button
           v-if="showRefresh"
-          class="refresh-minimal"
-          :aria-label="isRefreshing ? 'Syncing' : 'Refresh'"
+          type="button"
+          class="icon-action-btn"
           @click="$emit('refresh')"
         >
           <RefreshCw
-            class="refresh-icon"
+            class="w-3.5 h-3.5"
             :class="{ 'is-spinning': isRefreshing }"
           />
         </button>
@@ -48,7 +79,9 @@
     </div>
 
     <FilterModal
-      v-model="filterModalOpen"
+      v-if="filterModalOpen"
+      :model-value="filterModalOpen"
+      @update:modelValue="filterModalOpen = $event"
       :time-range="timeRange"
       :duration="duration"
       :content-type="contentType"
@@ -62,81 +95,43 @@
       @update:duration="(v) => emit('update:duration', v)"
       @update:content-type="(v) => emit('update:contentType', v)"
       @update:nsfw="(v) => emit('update:nsfw', v)"
-      @update:site="(v) => { emit('update:site', v) }"
-      @update:sort-by="(v) => { localSortBy = v }"
+      @update:site="(v) => emit('update:site', v)"
+      @update:sort-by="(v) => localSortBy = v"
     />
   </section>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import {
-  RefreshCw,
-  Funnel,
-} from 'lucide-vue-next'
+import { ref, computed, watch, onMounted } from 'vue'
+import { RefreshCw, Funnel } from 'lucide-vue-next'
 import FilterModal from './FilterModal.vue'
 import type { TimeRange, Duration, ContentType } from '@/composables/useFeedFilters'
 import type { VideoTab } from '@/constants/videos'
+import { useSites } from '@/composables/useSites'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const props = withDefaults(defineProps<{
-  activeTab?: string
-  nsfw?: string
-  sortBy?: string
-  site?: string
-  subscriptionId?: string | number
-  tabs?: VideoTab[]
-  isRefreshing?: boolean
-  showTabs?: boolean
-  showSort?: boolean
-  showRefresh?: boolean
-  showFilter?: boolean
-  timeRange?: TimeRange
-  duration?: Duration
-  contentType?: ContentType
-  siteLabel?: string
-  /** Controls which filter sections FilterModal shows: 'video' (full) or 'subscription' (minimal) */
-  filterScope?: 'video' | 'subscription'
+  activeTab?: string, nsfw?: string, sortBy?: string, site?: string, subscriptionId?: string | number,
+  tabs?: VideoTab[], isRefreshing?: boolean, showTabs?: boolean, showSort?: boolean, showRefresh?: boolean,
+  showFilter?: boolean, timeRange?: TimeRange, duration?: Duration, contentType?: ContentType,
+  siteLabel?: string, filterScope?: 'video' | 'subscription'
 }>(), {
-  activeTab: 'all',
-  nsfw: 'all',
-  sortBy: 'publish_date',
-  tabs: () => [],
-  isRefreshing: false,
-  showTabs: true,
-  showSort: true,
-  showRefresh: true,
-  showFilter: true,
-  timeRange: 'all',
-  duration: 'all',
-  contentType: 'all',
-  filterScope: 'video',
+  activeTab: 'all', nsfw: 'all', sortBy: 'publish_date', tabs: () => [], isRefreshing: false,
+  showTabs: true, showSort: true, showRefresh: true, showFilter: true,
+  timeRange: 'all', duration: 'all', contentType: 'all', filterScope: 'video',
 })
 
 const emit = defineEmits([
-  'update:activeTab',
-  'update:nsfw',
-  'update:sortBy',
-  'update:site',
-  'update:timeRange',
-  'update:duration',
-  'update:contentType',
-  'tab-dblclick',
-  'refresh',
+  'update:activeTab', 'update:nsfw', 'update:sortBy', 'update:site',
+  'update:timeRange', 'update:duration', 'update:contentType', 'refresh',
 ])
 
+const { options: siteOptions, fetchSites } = useSites()
 const localActiveTab = ref(props.activeTab)
 const localSortBy = ref(props.sortBy)
 const filterModalOpen = ref(false)
 
-const hasActiveFilters = computed(() => {
-  return (
-    (props.site != null && props.site !== '')
-    || (props.nsfw != null && props.nsfw !== 'all')
-    || (props.timeRange != null && props.timeRange !== 'all')
-    || (props.duration != null && props.duration !== 'all')
-    || (props.contentType != null && props.contentType !== 'all')
-  )
-})
+const handleSiteChange = (val: any) => emit('update:site', val === 'all' ? '' : val)
 
 const activeFilterCount = computed(() => {
   let c = 0
@@ -148,202 +143,148 @@ const activeFilterCount = computed(() => {
   return c
 })
 
-// Sync props → local
 watch(() => props.activeTab, (v) => { localActiveTab.value = v })
 watch(() => props.sortBy, (v) => { localSortBy.value = v })
-// Sync local → emit
 watch(localActiveTab, (v) => emit('update:activeTab', v))
 watch(localSortBy, (v) => emit('update:sortBy', v))
+
+onMounted(() => { fetchSites() })
+
+const sortOptions = [
+  { value: 'publish_date', label: '上传日期' },
+  { value: 'created_at', label: '抓取日期' },
+]
 </script>
 
 <style scoped>
-.toolbar-minimal {
+.feed-toolbar {
   display: flex;
   flex-direction: column;
+  background: hsl(var(--background));
 }
 
-.toolbar-inner {
+.toolbar-container {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-2) var(--space-4);
+  height: 3.5rem;
+  padding: 0 1.5rem;
+  gap: 1.25rem;
 }
 
-.toolbar-primary {
+.nav-group {
   display: flex;
   align-items: center;
-  gap: var(--space-5);
-  min-width: 0;
-  flex: 1 1 auto;
+  gap: 1.75rem;
+  height: 100%;
 }
 
-.toolbar-tabs {
-  display: flex;
-  gap: var(--space-5);
-}
-
-.tab-item-minimal {
-  background: transparent;
-  border: none;
+.nav-tab {
+  height: 100%;
   display: flex;
   align-items: center;
-  gap: var(--space-1);
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  transition:
-    color var(--duration-fast) var(--ease-default),
-    border-color var(--duration-fast) var(--ease-default);
-  padding: var(--space-2) 0;
-  border-bottom: 2px solid transparent;
-}
-
-.tab-item-minimal:hover {
-  color: hsl(var(--foreground));
-}
-
-.tab-item-minimal.is-active {
-  color: hsl(var(--foreground));
-  border-bottom-color: hsl(var(--primary));
-}
-
-.tab-label {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.toolbar-slot-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
-.filter-toggle-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  background: transparent;
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: var(--radius-md);
-  padding: var(--space-1) var(--space-3);
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  transition:
-    border-color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground) / 0.4);
+  transition: all 0.2s;
   position: relative;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  letter-spacing: -0.01em;
 }
 
-.filter-toggle-btn:hover {
-  border-color: hsl(var(--border));
-  color: hsl(var(--foreground));
-  background: hsl(var(--secondary) / 0.4);
-}
-
-.filter-toggle-btn.is-active {
-  background: hsl(var(--primary) / 0.1);
-  border-color: hsl(var(--primary) / 0.5);
-  color: hsl(var(--foreground));
-}
-
-.filter-toggle-icon {
-  width: 14px;
-  height: 14px;
-}
-
-.filter-toggle-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.filter-badge {
+.nav-tab:hover { color: hsl(var(--foreground) / 0.8); }
+.nav-tab.is-active { color: hsl(var(--foreground)); }
+.nav-tab.is-active::after {
+  content: '';
   position: absolute;
-  top: -6px;
-  right: -6px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 var(--space-1);
-  border-radius: var(--radius-full);
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  font-family: var(--font-mono);
+  bottom: 0;
+  left: -2px;
+  right: -2px;
+  height: 2px;
+  background: hsl(var(--foreground));
+  border-radius: 2px;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.property-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.125rem;
+  padding: 0 0.5rem 0 0.875rem;
+  background: hsl(var(--accent) / 0.3);
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
+}
+
+.property-pill:hover { background: hsl(var(--accent) / 0.6); }
+
+.property-label {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 800;
+  color: hsl(var(--muted-foreground) / 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+
+.property-trigger {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  height: auto !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: hsl(var(--foreground) / 0.9) !important;
+  width: auto !important;
+  min-width: 40px;
+  gap: 0.25rem;
+}
+
+.icon-action-btn {
+  width: 2.125rem;
+  height: 2.125rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  line-height: 1;
-}
-
-.refresh-minimal {
-  background: transparent;
-  border: none;
-  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  color: hsl(var(--muted-foreground) / 0.6);
+  transition: all 0.2s;
   cursor: pointer;
-  transition:
-    opacity var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
-  display: flex;
-  align-items: center;
-  border-radius: var(--radius-sm);
+  background: none;
+  border: none;
+  position: relative;
 }
 
-.refresh-minimal:hover {
-  background: hsl(var(--secondary) / 0.5);
+.icon-action-btn:hover {
+  background: hsl(var(--accent) / 0.6);
+  color: hsl(var(--foreground));
 }
 
-.refresh-icon {
-  width: 16px;
-  height: 16px;
-  opacity: 0.6;
-  transition:
-    opacity var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default),
-    transform var(--duration-fast) var(--ease-default);
-  color: hsl(var(--muted-foreground));
+.icon-action-btn.is-active {
+  color: hsl(var(--foreground));
+  background: hsl(var(--foreground) / 0.05);
 }
 
-.refresh-minimal:hover .refresh-icon {
-  opacity: 1;
-  color: hsl(var(--primary));
+.active-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  background: hsl(var(--primary));
+  border-radius: 50%;
+  border: 2px solid hsl(var(--background));
 }
 
-.is-spinning {
-  animation: spin 1s linear infinite;
-  opacity: 1;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* Responsive */
-@media (max-width: 640px) {
-  .toolbar-inner {
-    padding: var(--space-2);
-    gap: var(--space-2);
-  }
-
-  .toolbar-tabs {
-    gap: var(--space-3);
-  }
-
-  .tab-label {
-    font-size: var(--font-size-2xs);
-  }
-
-  .filter-toggle-label {
-    display: none;
-  }
-}
+.is-spinning { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 </style>

@@ -1,98 +1,83 @@
 <template>
-  <div ref="detachedHostRef" class="global-video-player-detached-host" aria-hidden="true"></div>
+  <div ref="detachedHostRef" class="fixed -top-[9999px] -left-[9999px] w-px h-px overflow-hidden pointer-events-none" aria-hidden="true" />
 
-  <Teleport v-if="globalVideoPlayerSession.active && teleportTarget" :to="teleportTarget">
+  <Teleport v-if="playerStore.session.active && teleportTarget" :to="teleportTarget">
     <VideoPlayer
-      v-if="globalVideoPlayerSession.source || globalVideoPlayerSession.externalLoading || globalVideoPlayerSession.externalError"
+      v-if="playerStore.session.source || playerStore.session.externalLoading || playerStore.session.externalError"
       ref="playerRef"
-      :source="globalVideoPlayerSession.source"
-      :subtitles="globalVideoPlayerSession.subtitles"
-      :clip-markers="globalVideoPlayerSession.clipMarkers"
-      :video-id="globalVideoPlayerSession.currentVideoId || null"
-      :title="globalVideoPlayerSession.title"
-      :initialTime="globalVideoPlayerSession.initialTime"
-      :has-prev="globalVideoPlayerSession.hasPrev"
-      :has-next="globalVideoPlayerSession.hasNext"
-      :external-error="globalVideoPlayerSession.externalError"
-      :widescreen="globalVideoPlayerSession.widescreen"
-      :external-loading="globalVideoPlayerSession.externalLoading"
-      :adapter="globalVideoPlayerSession.adapter"
-      :theme="globalVideoPlayerSession.theme"
+      v-bind="playerProps"
       :i18n-options="{ persist: true, storageKey: 'sp-locale', applyToDocument: true, useGlobal: true }"
       :enable-global-shortcuts="true"
       :enable-click-outside-close-menu="true"
       :enable-window-resize="true"
-      @play="globalVideoPlayerSession.handlers.onPlay?.()"
-      @pause="globalVideoPlayerSession.handlers.onPause?.()"
-      @ended="globalVideoPlayerSession.handlers.onEnded?.($event)"
-      @timeupdate="globalVideoPlayerSession.handlers.onTimeUpdate?.($event)"
-      @prev="globalVideoPlayerSession.handlers.onPrev?.()"
-      @next="globalVideoPlayerSession.handlers.onNext?.()"
-      @widescreenChange="globalVideoPlayerSession.handlers.onWidescreenChange?.($event)"
-      @retry="globalVideoPlayerSession.handlers.onRetry?.()"
-      @clipmarkerselect="globalVideoPlayerSession.handlers.onClipMarkerSelect?.($event)"
-      @clipmarkersupdated="globalVideoPlayerSession.handlers.onClipMarkersUpdated?.($event)"
-      @enterpictureinpicture="handleEnterPictureInPicture"
-      @leavepictureinpicture="handleLeavePictureInPicture"
+      @play="handlePlay"
+      @pause="handlePause"
+      @ended="handleEnded"
+      @timeupdate="handleTimeUpdate"
+      @prev="handlePrev"
+      @next="handleNext"
+      @widescreenChange="handleWidescreenChange"
+      @retry="handleRetry"
+      @clipmarkerselect="handleClipMarkerSelect"
+      @clipmarkersupdated="handleClipMarkersUpdated"
+      @enterpictureinpicture="playerStore.session.pictureInPicture = true"
+      @leavepictureinpicture="handleLeavePiP"
     />
   </Teleport>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-
-import { useGlobalVideoPlayer } from '@/composables/useGlobalVideoPlayer'
+import { usePlayerStore } from '@/stores/player'
 import VideoPlayer from './VideoPlayer.vue'
+import type { ThemeName } from './themes'
 
-const detachedHostRef = ref(null)
+const playerStore = usePlayerStore()
+const detachedHostRef = ref<HTMLElement | null>(null)
 const playerRef = ref(null)
-
 const route = useRoute()
 const router = useRouter()
 
-const {
-  globalVideoPlayerSession,
-  registerGlobalVideoPlayerInstance,
-  setGlobalVideoPlayerPictureInPicture,
-} = useGlobalVideoPlayer()
+const teleportTarget = computed(() => playerStore.session.target || detachedHostRef.value)
 
-const teleportTarget = computed(() => globalVideoPlayerSession.target || detachedHostRef.value)
+const playerProps = computed(() => ({
+  source: playerStore.session.source as any,
+  subtitles: playerStore.session.subtitles as any[],
+  clipMarkers: playerStore.session.clipMarkers as any[],
+  videoId: playerStore.session.currentVideoId || null,
+  title: playerStore.session.title,
+  initialTime: playerStore.session.initialTime,
+  hasPrev: playerStore.session.hasPrev,
+  hasNext: playerStore.session.hasNext,
+  externalError: playerStore.session.externalError,
+  widescreen: playerStore.session.widescreen,
+  externalLoading: playerStore.session.externalLoading,
+  adapter: playerStore.session.adapter as any,
+  theme: (playerStore.session.theme || 'dark') as ThemeName
+}))
+
+// Event Handlers with safety checks
+const handlePlay = () => playerStore.session.handlers.onPlay?.()
+const handlePause = () => playerStore.session.handlers.onPause?.()
+const handleEnded = (e: any) => playerStore.session.handlers.onEnded?.(e)
+const handleTimeUpdate = (t: number) => playerStore.session.handlers.onTimeUpdate?.(t)
+const handlePrev = () => playerStore.session.handlers.onPrev?.()
+const handleNext = () => playerStore.session.handlers.onNext?.()
+const handleWidescreenChange = (v: boolean) => playerStore.session.handlers.onWidescreenChange?.(v)
+const handleRetry = () => playerStore.session.handlers.onRetry?.()
+const handleClipMarkerSelect = (t: number) => playerStore.session.handlers.onClipMarkerSelect?.(t)
+const handleClipMarkersUpdated = (m: any[]) => playerStore.session.handlers.onClipMarkersUpdated?.(m)
 
 watch(playerRef, (instance) => {
-  registerGlobalVideoPlayerInstance(instance)
+  playerStore.playerRef = instance
 }, { immediate: true })
 
-const handleEnterPictureInPicture = () => {
-  setGlobalVideoPlayerPictureInPicture(true)
-}
-
-const handleLeavePictureInPicture = async () => {
-  setGlobalVideoPlayerPictureInPicture(false)
-
-  const currentVideoId = String(globalVideoPlayerSession.currentVideoId || '')
-  if (!currentVideoId || globalVideoPlayerSession.target) {
-    return
+async function handleLeavePiP() {
+  playerStore.session.pictureInPicture = false
+  const vid = playerStore.session.currentVideoId
+  if (vid && !playerStore.session.target && route.name !== 'VideoPlay') {
+    router.push({ name: 'VideoPlay', params: { videoId: vid } })
   }
-
-  if (route.name === 'VideoPlay' && String(route.params.videoId || '') === currentVideoId) {
-    return
-  }
-
-  try {
-    await router.push({ name: 'VideoPlay', params: { videoId: currentVideoId } })
-  } catch {}
 }
 </script>
-
-<style scoped>
-.global-video-player-detached-host {
-  position: fixed;
-  top: -9999px;
-  left: -9999px;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  pointer-events: none;
-}
-</style>

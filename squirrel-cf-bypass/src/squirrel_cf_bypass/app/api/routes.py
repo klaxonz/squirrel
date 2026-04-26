@@ -22,15 +22,17 @@ async def clear_cache(request: Request):
 async def html(request: Request, url: str):
     headers = {key.lower(): value for key, value in request.headers.items()}
     proxy = headers.get('x-proxy')
+    bypass_cache = headers.get('x-bypass-cache', '').lower() in {'1', 'true', 'yes', 'on'}
     custom_headers = {
         key: value
         for key, value in headers.items()
-        if key not in {'host', 'x-proxy'}
+        if key not in {'host', 'x-proxy', 'x-bypass-cache'}
     }
     result = await request.app.state.bypass_service.fetch_html(
         url,
         proxy=proxy,
         custom_headers=custom_headers or None,
+        bypass_cache=bypass_cache,
     )
     if result is None:
         raise HTTPException(status_code=502, detail='Failed to bypass Cloudflare protection')
@@ -41,6 +43,7 @@ async def html(request: Request, url: str):
             'x-cf-bypasser-cookies': str(len(result.cookies)),
             'x-cf-bypasser-user-agent': result.user_agent,
             'x-cf-bypasser-final-url': result.final_url,
+            'x-cf-bypasser-source': result.source or 'solver',
         },
     )
 

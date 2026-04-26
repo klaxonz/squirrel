@@ -1,329 +1,106 @@
 <template>
-  <article class="history-item-row">
-    <button type="button" class="history-item-row__primary" @click="$emit('open', video)">
-      <div class="history-item-row__thumb">
-        <div class="history-item-row__thumb-fallback">
-          <Film />
-        </div>
-        <img
-          v-if="video.thumbnail"
-          :src="video.thumbnail"
-          referrerpolicy="no-referrer"
-          :alt="video.title"
-          @error="handleThumbnailError"
+  <div
+    class="group relative flex flex-row gap-4 p-3 rounded-2xl transition-all duration-300 hover:bg-accent/50 cursor-pointer"
+    @click="$emit('open', video)"
+  >
+    <!-- 缩略图区域 -->
+    <div class="relative flex-shrink-0 w-48 md:w-56 aspect-video rounded-xl overflow-hidden shadow-sm ring-1 ring-border/5">
+      <img
+        v-if="video.thumbnail"
+        :src="video.thumbnail"
+        referrerpolicy="no-referrer"
+        class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+        :alt="video.title"
+      />
+      <div v-else class="w-full h-full bg-muted flex items-center justify-center">
+        <Film class="w-8 h-8 text-muted-foreground/20" />
+      </div>
+
+      <!-- 播放进度 -->
+      <div v-if="video.progress > 0" class="absolute bottom-0 left-0 right-0 h-1 bg-black/20 overflow-hidden">
+        <div
+          class="h-full bg-primary transition-all duration-500 shadow-[0_0_8px_rgba(var(--primary),0.6)]"
+          :style="{ width: `${video.progress * 100}%` }"
         />
-        <span v-if="video.duration" class="history-item-row__duration">
-          {{ formatDuration(video.duration) }}
-        </span>
-        <div v-if="video.progress > 0" class="history-item-row__progress">
-          <div
-            class="history-item-row__progress-fill"
-            :style="{ width: `${video.progress * 100}%` }"
-          ></div>
+      </div>
+
+      <!-- 时长 -->
+      <div v-if="video.duration" class="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] font-bold text-white tabular-nums ring-1 ring-white/10">
+        {{ formatDuration(video.duration) }}
+      </div>
+
+      <!-- 快捷删除 -->
+      <button
+        class="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive flex items-center justify-center shadow-lg"
+        @click.stop="handleDelete"
+      >
+        <Trash2 class="w-4 h-4" />
+      </button>
+    </div>
+
+    <!-- 信息区域 -->
+    <div class="flex flex-col flex-1 min-w-0 py-1">
+      <h3 class="text-base font-bold leading-snug line-clamp-2 group-hover:text-primary transition-colors tracking-tight">
+        {{ video.title }}
+      </h3>
+
+      <div class="mt-auto flex flex-col gap-1.5">
+        <!-- 频道/作者 -->
+        <div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <div v-if="displayAvatars.length" class="flex -space-x-1.5">
+            <img
+              v-for="(avatar, i) in displayAvatars"
+              :key="i"
+              :src="avatar.avatar"
+              class="w-5 h-5 rounded-full ring-2 ring-background object-cover"
+              :title="avatar.name"
+            />
+          </div>
+          <span class="truncate hover:text-foreground transition-colors">{{ displayChannel || '未知作者' }}</span>
+        </div>
+
+        <!-- 元数据 -->
+        <div class="flex items-center gap-2 text-[12px] text-muted-foreground/60 font-medium">
+          <span v-if="video.site" class="px-1.5 py-0.5 rounded bg-secondary text-[10px] font-black uppercase tracking-wider text-muted-foreground/80">
+            {{ video.site }}
+          </span>
+          <span class="w-1 h-1 rounded-full bg-border" />
+          <span>{{ formatDate(video.played_at) }}</span>
+          <template v-if="video.progress > 0">
+            <span class="w-1 h-1 rounded-full bg-border" />
+            <span class="text-primary/70 font-bold">已观看 {{ (video.progress * 100).toFixed(0) }}%</span>
+          </template>
         </div>
       </div>
-
-      <div class="history-item-row__body">
-        <span class="history-item-row__title">{{ video.title }}</span>
-        <span class="history-item-row__meta">
-          <template v-if="displayAvatars.length">
-            <SubscriptionAvatar
-              v-for="(avatar, index) in displayAvatars"
-              :key="`avatar-${index}`"
-              :src="avatar.avatar"
-              :name="avatar.name"
-              size="xs"
-              class="history-item-row__avatar"
-            />
-          </template>
-
-          <span v-if="displayChannel">{{ displayChannel }}</span>
-
-          <span class="history-item-row__meta-dot" aria-hidden="true"></span>
-
-          <span v-if="video.progress > 0" class="history-item-row__progress-text">
-            {{ (video.progress * 100).toFixed(0) }}%
-          </span>
-
-          <span class="history-item-row__meta-dot" aria-hidden="true"></span>
-
-          <span>{{ formatDate(video.played_at) }}</span>
-        </span>
-      </div>
-    </button>
-
-    <button
-      type="button"
-      class="history-item-row__remove"
-      title="从历史记录中移除"
-      @click.stop="handleDelete"
-    >
-      <X />
-    </button>
-
-    <Dialog :open="showDeleteConfirm" @update:open="showDeleteConfirm = $event">
-      <DialogContent class="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>移除历史记录</DialogTitle>
-          <DialogDescription>
-            确定要移除这条播放记录吗？
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter class="gap-2">
-          <Button variant="secondary" size="sm" @click="showDeleteConfirm = false">取消</Button>
-          <Button variant="destructive" size="sm" @click="confirmDelete">确认移除</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  </article>
+    </div>
+  </div>
 </template>
 
-<script setup>
-import { computed, ref } from 'vue'
-import { Film, X } from 'lucide-vue-next'
-import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { Film, Trash2 } from 'lucide-vue-next'
 import { formatDate, formatDuration } from '@/utils/dateFormat'
 
-const props = defineProps({
-  video: {
-    type: Object,
-    required: true
-  }
-})
+const props = defineProps<{
+  video: any
+}>()
 
 const emit = defineEmits(['open', 'delete'])
 
-const showDeleteConfirm = ref(false)
-
-const handleThumbnailError = (e) => {
-  e.target.style.display = 'none'
-}
-
 const handleDelete = () => {
-  showDeleteConfirm.value = true
-}
-
-const confirmDelete = () => {
-  emit('delete', props.video.history_id ?? props.video.id)
-  showDeleteConfirm.value = false
+  emit('delete', props.video.history_id || props.video.id)
 }
 
 const displayAvatars = computed(() => {
-  let avatars = props.video.subscriptions?.map((s) => ({
-    id: s.id,
+  const sources = props.video.subscriptions || props.video.actors || []
+  return sources.slice(0, 3).map((s: any) => ({
     name: s.name,
-    avatar: s.avatar,
-  })) || []
-
-  if (!avatars.length && props.video.actors) {
-    avatars = props.video.actors.map((a) => ({
-      id: a.id,
-      name: a.name,
-      avatar: a.avatar,
-    }))
-  }
-
-  return avatars.slice(0, 3)
+    avatar: s.avatar
+  }))
 })
 
 const displayChannel = computed(() => {
-  if (props.video.subscriptions?.length) {
-    return props.video.subscriptions.map(s => s.name).join(' / ')
-  }
-  return ''
+  const sources = props.video.subscriptions || props.video.actors || []
+  return sources.map((s: any) => s.name).join(' / ')
 })
 </script>
-
-<style scoped>
-.history-item-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.4rem;
-  align-items: flex-start;
-  padding: 0;
-  border-radius: var(--radius-md);
-  transition: background var(--duration-fast) var(--ease-default);
-}
-
-.history-item-row:hover {
-  background: var(--app-row-hover-bg);
-}
-
-.history-item-row__primary {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 7.5rem minmax(0, 1fr);
-  gap: 0.7rem;
-  align-items: center;
-  border: none;
-  background: transparent;
-  text-align: left;
-  padding: 0.5rem 0.4rem;
-  cursor: pointer;
-}
-
-.history-item-row__thumb {
-  position: relative;
-  width: 7.5rem;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border-radius: var(--radius-sm);
-  background: hsl(var(--secondary) / 0.75);
-  flex-shrink: 0;
-}
-
-.history-item-row__thumb-fallback {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: hsl(var(--muted-foreground));
-  font-size: 1.1rem;
-}
-
-.history-item-row__thumb img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.history-item-row__duration {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  padding: 0.1rem 0.35rem;
-  border-radius: calc(var(--radius-sm) - 2px);
-  background: rgb(0 0 0 / 0.75);
-  color: #fff;
-  font-size: 0.62rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.3;
-}
-
-.history-item-row__progress {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: hsl(var(--background) / 0.2);
-  z-index: 1;
-}
-
-.history-item-row__progress-fill {
-  height: 100%;
-  background: hsl(var(--primary));
-  box-shadow: 0 0 6px hsl(var(--primary) / 0.8);
-}
-
-.history-item-row__body {
-  min-width: 0;
-  display: grid;
-  gap: 0.25rem;
-  align-content: center;
-}
-
-.history-item-row__title {
-  color: hsl(var(--foreground));
-  font-size: 0.84rem;
-  font-weight: 600;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.history-item-row__meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.66rem;
-}
-
-.history-item-row__meta-dot {
-  width: 0.2rem;
-  height: 0.2rem;
-  border-radius: 999px;
-  background: hsl(var(--border));
-}
-
-.history-item-row__avatar {
-  width: 1rem;
-  height: 1rem;
-  border-radius: calc(var(--radius-sm) - 1px);
-  margin-right: -0.25rem;
-  border: 1px solid hsl(var(--background));
-}
-
-.history-item-row__progress-text {
-  color: hsl(var(--primary) / 0.8);
-  font-weight: 500;
-}
-
-.history-item-row__remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  opacity: 0;
-  transition:
-    opacity var(--duration-fast) var(--ease-default),
-    background var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
-  margin-right: 0.1rem;
-  align-self: flex-start;
-}
-
-.history-item-row:hover .history-item-row__remove,
-.history-item-row__remove:focus-visible {
-  opacity: 1;
-}
-
-.history-item-row__remove:hover {
-  background: hsl(var(--destructive) / 0.1);
-  color: hsl(var(--destructive));
-}
-
-@media (max-width: 767px) {
-  .history-item-row__primary {
-    grid-template-columns: 5.5rem minmax(0, 1fr);
-    gap: 0.5rem;
-  }
-
-  .history-item-row__thumb {
-    width: 5.5rem;
-  }
-
-  .history-item-row__remove {
-    opacity: 1;
-  }
-}
-
-@media (hover: none) {
-  .history-item-row__remove {
-    opacity: 1;
-  }
-}
-</style>

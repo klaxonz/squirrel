@@ -1,26 +1,17 @@
 <template>
-  <div
-    ref="rootRef"
-    class="search-command-bar"
-    :class="{
-      'search-command-bar--focused': isFocused,
-      'search-command-bar--open': showSuggestions,
-    }"
-    @focusin="handleFocusIn"
-    @focusout="handleFocusOut"
-  >
-    <div class="search-inner">
-      <div class="search-icon-group">
-        <Search class="search-icon" />
-        <div class="search-divider"></div>
-      </div>
-
+  <div ref="rootRef" class="relative w-full max-w-[560px]" @focusin="isFocused = true" @focusout="handleFocusOut">
+    <!-- Search Input Field -->
+    <div 
+      class="flex items-center h-9 px-3 rounded-lg bg-accent/30 border border-border/20 transition-all duration-300 group focus-within:bg-background focus-within:border-primary/20 focus-within:ring-4 focus-within:ring-primary/5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]"
+    >
+      <Search class="w-3.5 h-3.5 text-muted-foreground/40 group-focus-within:text-primary transition-colors mr-2.5" stroke-width="2.5" />
+      
       <input
         ref="inputRef"
         v-model="inputValue"
         type="text"
         :placeholder="placeholder"
-        class="search-field"
+        class="flex-1 bg-transparent border-none text-[13px] font-medium outline-none placeholder:text-muted-foreground/30"
         @input="handleInput"
         @keydown.down.prevent="moveActiveSuggestion(1)"
         @keydown.up.prevent="moveActiveSuggestion(-1)"
@@ -28,832 +19,219 @@
         @keydown.esc.prevent="handleEscape"
       />
 
-      <div class="search-actions">
-        <span v-if="isTyping" class="search-status-dot"></span>
-        <button
-          v-if="inputValue"
-          type="button"
-          class="search-clear-btn"
-          aria-label="清除搜索"
-          @click="clearSearch"
-        >
-          <X />
+      <div class="flex items-center gap-2 ml-2">
+        <!-- Loading Spinner -->
+        <div v-if="isTyping" class="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        
+        <!-- Clear Button -->
+        <button v-if="inputValue" @click="clearSearch" class="p-1 rounded-md hover:bg-muted text-muted-foreground/60 transition-colors">
+          <X class="w-3 h-3" />
         </button>
-        <kbd v-else class="search-hint-key">⏎</kbd>
+        
+        <!-- Kbd Hint (Linear Style) -->
+        <div v-else class="hidden md:flex items-center gap-1 px-1.5 py-0.5 rounded border border-border/60 bg-muted/50 text-[10px] font-bold text-muted-foreground/40 tracking-tighter">
+          <span class="text-[11px] leading-none">⌘</span>K
+        </div>
       </div>
     </div>
 
-    <transition name="search-suggestions-fade">
-      <div
-        v-if="showSuggestions"
-        class="search-suggestions"
-        role="listbox"
-        aria-label="搜索提示"
-      >
-        <div class="search-suggestions__header">
-          <span class="search-suggestions__title">{{ suggestionTitle }}</span>
-          <button
-            v-if="recentSearches.length"
-            type="button"
-            class="search-suggestions__clear-all"
-            @mousedown.prevent
-            @click="clearRecentSearches"
-          >
-            清空
-          </button>
+    <!-- Suggestions Dropdown -->
+    <transition 
+      enter-active-class="transition duration-200 ease-out" 
+      enter-from-class="opacity-0 translate-y-1" 
+      enter-to-class="opacity-100 translate-y-0" 
+      leave-active-class="transition duration-150 ease-in" 
+      leave-from-class="opacity-100 translate-y-0" 
+      leave-to-class="opacity-0 translate-y-1"
+    >
+      <div v-if="showSuggestions" class="absolute top-full left-0 right-0 mt-2 p-1.5 bg-popover border border-border/60 rounded-2xl shadow-2xl z-50 flex flex-col gap-0.5">
+        <div class="flex items-center justify-between px-2 py-1.5 mb-1">
+          <span class="text-[10px] font-bold tracking-widest uppercase text-muted-foreground/50">{{ suggestionTitle }}</span>
+          <button v-if="recentSearches.length" @click="clearRecentSearches" class="text-[10px] font-bold text-muted-foreground/40 hover:text-destructive transition-colors uppercase">Clear</button>
         </div>
 
-        <div
-          v-for="(item, index) in suggestionItems"
-          :key="item.id"
-          class="search-suggestion-row"
-          :class="{ 'search-suggestion-row--active': index === activeSuggestionIndex }"
-        >
+        <div v-for="(item, index) in suggestionItems" :key="item.id" class="flex gap-1">
           <button
-            type="button"
-            class="search-suggestion-item"
-            :class="{ 'search-suggestion-item--active': index === activeSuggestionIndex }"
-            :aria-selected="index === activeSuggestionIndex"
-            @mousedown.prevent
+            class="flex-1 flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all"
+            :class="index === activeSuggestionIndex ? 'bg-secondary text-foreground' : 'hover:bg-secondary/50 text-muted-foreground/80'"
             @mouseenter="activeSuggestionIndex = index"
             @click="selectSuggestion(item.value)"
           >
-            <span class="search-suggestion-item__icon" aria-hidden="true">
-              <Search v-if="item.type === 'search'" />
-              <Clock v-else />
-            </span>
-            <span class="search-suggestion-item__content">
-              <span class="search-suggestion-item__label">{{ item.label }}</span>
-              <span v-if="item.meta" class="search-suggestion-item__meta">{{ item.meta }}</span>
-            </span>
+            <component :is="item.type === 'search' ? Search : Clock" class="w-4 h-4 opacity-50" />
+            <div class="flex flex-col min-w-0">
+              <span class="text-[13px] font-medium truncate">{{ item.label }}</span>
+              <span v-if="item.meta" class="text-[10px] opacity-50 truncate">{{ item.meta }}</span>
+            </div>
           </button>
-
-          <button
-            v-if="item.type === 'recent'"
-            type="button"
-            class="search-suggestion-remove"
-            aria-label="删除这条搜索历史"
-            @mousedown.prevent
-            @click.stop="removeRecentSearch(item.value)"
-          >
-            <X />
+          <button v-if="item.type === 'recent'" @click.stop="removeRecentSearch(item.value)" class="w-8 flex items-center justify-center rounded-xl hover:bg-destructive/10 hover:text-destructive text-muted-foreground/40 transition-colors">
+            <X class="w-3.5 h-3.5" />
           </button>
         </div>
-
-        <p v-if="showSearchFallback" class="search-suggestions__empty">
-          回车搜索“{{ trimmedInputValue }}”
-        </p>
-
-        <p v-else-if="!suggestionItems.length" class="search-suggestions__empty">
-          暂无历史
-        </p>
+        
+        <div v-if="!suggestionItems.length" class="p-8 text-center text-[12px] text-muted-foreground/40 font-medium">No recent searches</div>
       </div>
     </transition>
   </div>
 </template>
 
-<script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { getSearchSuggestions } from '@/api/search'
+<script setup lang="ts">
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { Search, X, Clock } from 'lucide-vue-next'
-
-const SEARCH_HISTORY_STORAGE_KEY = 'global-search-history'
-const MAX_RECENT_SEARCHES = 8
-const MAX_REMOTE_SUGGESTIONS = 6
+import { getSearchSuggestions } from '@/api/search'
+import { useUIStore } from '@/stores/ui'
 
 const props = defineProps({
-  modelValue: {
-    type: String,
-    default: '',
-  },
-  placeholder: {
-    type: String,
-    default: '搜索',
-  },
-  debounceMs: {
-    type: Number,
-    default: 500,
-  },
-  historyScopeKey: {
-    type: String,
-    default: 'GLOBAL',
-  },
-  historyScopeLabel: {
-    type: String,
-    default: '当前页',
-  },
-  suggestionScope: {
-    type: String,
-    default: 'home',
-  },
+  modelValue: { type: String, default: '' },
+  placeholder: { type: String, default: 'Search or type a command...' },
+  suggestionScope: { type: String, default: 'home' }
 })
 
 const emit = defineEmits(['update:modelValue', 'search', 'clear'])
+const uiStore = useUIStore()
 
-const inputValue = ref(props.modelValue)
-const inputRef = ref(null)
-const rootRef = ref(null)
+const inputValue = ref(uiStore.searchQuery)
 const isFocused = ref(false)
 const isTyping = ref(false)
 const isPanelOpen = ref(false)
 const activeSuggestionIndex = ref(-1)
-const recentSearches = ref([])
-const remoteSuggestions = ref([])
+const recentSearches = ref<string[]>([])
+const remoteSuggestions = ref<any[]>([])
+const rootRef = ref<HTMLElement | null>(null)
+const inputRef = ref<HTMLInputElement | null>(null)
 
-let typingTimeout = null
-let suggestionTimeout = null
-let latestSuggestionRequestId = 0
+let typingTimeout: any = null
+let suggestionTimeout: any = null
 
-const normalizedScopeKey = computed(() => String(props.historyScopeKey || 'GLOBAL'))
-const normalizedScopeLabel = computed(() => String(props.historyScopeLabel || props.placeholder || '当前页'))
-const normalizedSuggestionScope = computed(() => String(props.suggestionScope || 'home'))
 const trimmedInputValue = computed(() => inputValue.value.trim())
+const showSuggestions = computed(() => isPanelOpen.value && isFocused.value)
 
-const normalizeRecentSearches = (items) => {
-  const result = []
-  const seen = new Set()
-
-  for (const item of Array.isArray(items) ? items : []) {
-    const normalized = String(item || '').trim()
-    const normalizedKey = normalized.toLowerCase()
-    if (!normalized || seen.has(normalizedKey)) {
-      continue
-    }
-    seen.add(normalizedKey)
-    result.push(normalized)
-    if (result.length >= MAX_RECENT_SEARCHES) {
-      break
-    }
-  }
-
-  return result
-}
-
-const readStoredHistory = () => {
-  if (typeof window === 'undefined') {
-    return {}
-  }
-
-  try {
-    const raw = window.localStorage.getItem(SEARCH_HISTORY_STORAGE_KEY)
-    if (!raw) {
-      return {}
-    }
-
-    const parsed = JSON.parse(raw)
-    return parsed && typeof parsed === 'object' ? parsed : {}
-  } catch (_) {
-    return {}
-  }
-}
-
-const writeStoredHistory = (nextItems) => {
-  recentSearches.value = nextItems
-
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  const nextHistory = readStoredHistory()
-  if (nextItems.length) {
-    nextHistory[normalizedScopeKey.value] = nextItems
-  } else {
-    delete nextHistory[normalizedScopeKey.value]
-  }
-
-  if (Object.keys(nextHistory).length) {
-    window.localStorage.setItem(SEARCH_HISTORY_STORAGE_KEY, JSON.stringify(nextHistory))
-    return
-  }
-
-  window.localStorage.removeItem(SEARCH_HISTORY_STORAGE_KEY)
-}
-
-const loadRecentSearches = () => {
-  const history = readStoredHistory()
-  recentSearches.value = normalizeRecentSearches(history[normalizedScopeKey.value])
-}
-
-const persistRecentSearch = (value) => {
-  const normalized = String(value || '').trim()
-  if (!normalized) {
-    return
-  }
-
-  const normalizedKey = normalized.toLowerCase()
-  const nextItems = [
-    normalized,
-    ...recentSearches.value.filter((item) => item.toLowerCase() !== normalizedKey),
-  ].slice(0, MAX_RECENT_SEARCHES)
-
-  writeStoredHistory(nextItems)
-}
-
-const filteredRecentSearches = computed(() => {
-  const keyword = trimmedInputValue.value.toLowerCase()
-  const exactMatch = trimmedInputValue.value.toLowerCase()
-
-  if (!keyword) {
-    return recentSearches.value.slice(0, MAX_RECENT_SEARCHES)
-  }
-
-  return recentSearches.value
-    .filter((item) => {
-      const itemKey = item.toLowerCase()
-      return itemKey.includes(keyword) && itemKey !== exactMatch
-    })
-    .slice(0, MAX_RECENT_SEARCHES - 1)
+watch(() => uiStore.searchQuery, (newVal) => {
+  if (newVal !== inputValue.value) inputValue.value = newVal
 })
 
 const suggestionItems = computed(() => {
-  const items = []
+  const items: any[] = []
   const seen = new Set()
-
-  remoteSuggestions.value.forEach((item) => {
-    const value = String(item?.value || '').trim()
-    const dedupeKey = value.toLowerCase()
-    if (!value || seen.has(dedupeKey)) {
-      return
-    }
-
-    seen.add(dedupeKey)
-    items.push({
-      id: `remote-${item.type}-${value}`,
-      type: item.type || 'search',
-      value,
-      label: String(item.label || value),
-      meta: String(item.meta || `在${normalizedScopeLabel.value}中搜索`),
-    })
-  })
-
-  filteredRecentSearches.value.forEach((item, index) => {
-    const dedupeKey = item.toLowerCase()
-    if (!seen.has(dedupeKey)) {
-      seen.add(dedupeKey)
-      items.push({
-        id: `recent-${index}-${item}`,
-        type: 'recent',
-        value: item,
-        label: item,
-        meta: '',
-      })
+  
+  remoteSuggestions.value.forEach(s => {
+    if (!seen.has(s.value.toLowerCase())) {
+      seen.add(s.value.toLowerCase())
+      items.push({ id: `r-${s.value}`, type: 'search', value: s.value, label: s.label || s.value, meta: s.meta })
     }
   })
 
-  return items.slice(0, MAX_RECENT_SEARCHES)
-})
-
-const hasRemoteSuggestions = computed(() => remoteSuggestions.value.length > 0)
-
-const suggestionTitle = computed(() => {
-  if (trimmedInputValue.value && hasRemoteSuggestions.value) {
-    return '猜你想搜'
-  }
-  if (trimmedInputValue.value) {
-    return filteredRecentSearches.value.length ? '相关历史' : '直接搜索'
-  }
-  return '最近搜索'
-})
-
-const showSuggestions = computed(() => {
-  return isPanelOpen.value && isFocused.value
-})
-
-const showSearchFallback = computed(() => {
-  return !!trimmedInputValue.value && !hasRemoteSuggestions.value && !filteredRecentSearches.value.length
-})
-
-watch(
-  () => props.modelValue,
-  (value) => {
-    if (value !== inputValue.value) {
-      inputValue.value = value || ''
+  recentSearches.value.forEach(s => {
+    if (!seen.has(s.toLowerCase())) {
+      seen.add(s.toLowerCase())
+      items.push({ id: `h-${s}`, type: 'recent', value: s, label: s })
     }
-  },
-)
+  })
 
-watch(
-  normalizedScopeKey,
-  () => {
-    loadRecentSearches()
-    activeSuggestionIndex.value = -1
-  },
-  { immediate: true },
-)
-
-watch(suggestionItems, (items) => {
-  if (!items.length) {
-    activeSuggestionIndex.value = -1
-    return
-  }
-
-  if (activeSuggestionIndex.value >= items.length) {
-    activeSuggestionIndex.value = items.length - 1
-  }
+  return items.slice(0, 8)
 })
 
-const focusInput = () => {
-  inputRef.value?.focus?.()
-}
-
-const openSuggestionPanel = () => {
-  isPanelOpen.value = true
-}
-
-const closeSuggestionPanel = () => {
-  isPanelOpen.value = false
-  activeSuggestionIndex.value = -1
-}
-
-const handleFocusIn = () => {
-  isFocused.value = true
-  openSuggestionPanel()
-}
-
-const handleFocusOut = (event) => {
-  if (rootRef.value?.contains(event.relatedTarget)) {
-    return
-  }
-
-  isFocused.value = false
-  closeSuggestionPanel()
-}
+const suggestionTitle = computed(() => trimmedInputValue.value ? 'Suggestions' : 'Recent')
 
 const handleInput = () => {
+  uiStore.searchQuery = inputValue.value
   emit('update:modelValue', inputValue.value)
-  openSuggestionPanel()
-  activeSuggestionIndex.value = -1
-
+  isPanelOpen.value = true
   isTyping.value = true
-  if (typingTimeout) clearTimeout(typingTimeout)
-  typingTimeout = setTimeout(() => {
-    isTyping.value = false
-  }, 400)
-
-  if (suggestionTimeout) clearTimeout(suggestionTimeout)
-  suggestionTimeout = setTimeout(() => {
-    void loadRemoteSuggestions()
-  }, props.debounceMs)
+  clearTimeout(typingTimeout)
+  typingTimeout = setTimeout(() => isTyping.value = false, 400)
+  
+  clearTimeout(suggestionTimeout)
+  suggestionTimeout = setTimeout(loadRemoteSuggestions, 300)
 }
 
-const handleSearch = ({ persist = false } = {}) => {
-  isTyping.value = false
-  if (persist) {
-    persistRecentSearch(inputValue.value)
+async function loadRemoteSuggestions() {
+  if (!trimmedInputValue.value) {
+    remoteSuggestions.value = []
+    return
   }
-  emit('search')
-  closeSuggestionPanel()
+  const { data } = await getSearchSuggestions({ query: trimmedInputValue.value, scope: props.suggestionScope })
+  remoteSuggestions.value = data?.items || []
 }
 
-const clearSearch = () => {
+function handleEnterKey() {
+  if (activeSuggestionIndex.value >= 0) {
+    selectSuggestion(suggestionItems.value[activeSuggestionIndex.value].value)
+  } else {
+    handleSearch()
+  }
+}
+
+function selectSuggestion(val: string) {
+  inputValue.value = val
+  uiStore.searchQuery = val
+  emit('update:modelValue', val)
+  handleSearch()
+}
+
+function handleSearch() {
+  if (trimmedInputValue.value) {
+    const next = [trimmedInputValue.value, ...recentSearches.value.filter(s => s !== trimmedInputValue.value)].slice(0, 10)
+    recentSearches.value = next
+    localStorage.setItem('search-history', JSON.stringify(next))
+  }
+  uiStore.triggerSearch(inputValue.value)
+  emit('search')
+  isPanelOpen.value = false
+  inputRef.value?.blur()
+}
+
+function clearSearch() {
   inputValue.value = ''
+  uiStore.searchQuery = ''
   emit('update:modelValue', '')
   emit('clear')
-  remoteSuggestions.value = []
-  openSuggestionPanel()
-  focusInput()
+  inputRef.value?.focus()
 }
 
-const selectSuggestion = (value) => {
-  inputValue.value = value || ''
-  emit('update:modelValue', inputValue.value)
-  handleSearch({ persist: true })
-  focusInput()
+function clearRecentSearches() {
+  recentSearches.value = []
+  localStorage.removeItem('search-history')
 }
 
-const removeRecentSearch = (value) => {
-  const normalizedValue = String(value || '').trim().toLowerCase()
-  const nextItems = recentSearches.value.filter((item) => item.toLowerCase() !== normalizedValue)
-  writeStoredHistory(nextItems)
+function removeRecentSearch(val: string) {
+  recentSearches.value = recentSearches.value.filter(s => s !== val)
+  localStorage.setItem('search-history', JSON.stringify(recentSearches.value))
 }
 
-const clearRecentSearches = () => {
-  writeStoredHistory([])
+function handleFocusOut(e: FocusEvent) {
+  if (!rootRef.value?.contains(e.relatedTarget as Node)) {
+    isFocused.value = false
+    isPanelOpen.value = false
+  }
+}
+
+function moveActiveSuggestion(dir: number) {
+  isPanelOpen.value = true
+  const len = suggestionItems.value.length
+  if (len === 0) return
+  activeSuggestionIndex.value = (activeSuggestionIndex.value + dir + len) % len
+}
+
+function handleEscape() {
+  isPanelOpen.value = false
   activeSuggestionIndex.value = -1
+  inputRef.value?.blur()
 }
 
-const moveActiveSuggestion = (direction) => {
-  if (!suggestionItems.value.length) {
-    return
+const handleGlobalKeydown = (e: KeyboardEvent) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault()
+    inputRef.value?.focus()
   }
-
-  openSuggestionPanel()
-
-  if (activeSuggestionIndex.value < 0) {
-    activeSuggestionIndex.value = direction > 0 ? 0 : suggestionItems.value.length - 1
-    return
-  }
-
-  activeSuggestionIndex.value =
-    (activeSuggestionIndex.value + direction + suggestionItems.value.length) % suggestionItems.value.length
 }
-
-const handleEnterKey = () => {
-  const activeItem = suggestionItems.value[activeSuggestionIndex.value]
-  if (activeItem) {
-    selectSuggestion(activeItem.value)
-    return
-  }
-
-  handleSearch({ persist: true })
-}
-
-const handleEscape = () => {
-  if (showSuggestions.value) {
-    closeSuggestionPanel()
-    return
-  }
-
-  clearSearch()
-}
-
-const handleDocumentPointerDown = (event) => {
-  if (rootRef.value?.contains(event.target)) {
-    return
-  }
-
-  isFocused.value = false
-  closeSuggestionPanel()
-}
-
-const loadRemoteSuggestions = async () => {
-  const query = trimmedInputValue.value
-  const requestId = ++latestSuggestionRequestId
-
-  if (!query) {
-    remoteSuggestions.value = []
-    isTyping.value = false
-    return
-  }
-
-  const { data, error } = await getSearchSuggestions({
-    query,
-    scope: normalizedSuggestionScope.value,
-    limit: MAX_REMOTE_SUGGESTIONS,
-  })
-
-  if (requestId !== latestSuggestionRequestId || query !== trimmedInputValue.value) {
-    return
-  }
-
-  if (error) {
-    remoteSuggestions.value = []
-    isTyping.value = false
-    return
-  }
-
-  remoteSuggestions.value = Array.isArray(data?.items) ? data.items : []
-  isTyping.value = false
-}
-
-defineExpose({
-  focus: () => {
-    focusInput()
-  },
-  clear: clearSearch,
-  setQuery: (query) => {
-    inputValue.value = query || ''
-    emit('update:modelValue', inputValue.value)
-  },
-})
 
 onMounted(() => {
-  document.addEventListener('pointerdown', handleDocumentPointerDown)
+  const saved = localStorage.getItem('search-history')
+  if (saved) recentSearches.value = JSON.parse(saved)
+  window.addEventListener('keydown', handleGlobalKeydown)
 })
 
 onUnmounted(() => {
-  if (typingTimeout) clearTimeout(typingTimeout)
-  if (suggestionTimeout) clearTimeout(suggestionTimeout)
-  document.removeEventListener('pointerdown', handleDocumentPointerDown)
+  window.removeEventListener('keydown', handleGlobalKeydown)
 })
 </script>
-
-<style scoped>
-.search-command-bar {
-  position: relative;
-  display: flex;
-  align-items: center;
-  background: hsl(var(--secondary) / 0.5);
-  border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: var(--radius-lg);
-  padding: 0.5rem 0.75rem;
-  transition: all var(--duration-normal) var(--ease-default);
-}
-
-.search-command-bar--focused {
-  background: hsl(var(--secondary) / 0.8);
-  border-color: hsl(var(--primary) / 0.5);
-  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
-}
-
-.search-command-bar--open {
-  z-index: 30;
-}
-
-.search-inner {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-}
-
-.search-icon-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-.search-icon {
-  width: 1rem;
-  height: 1rem;
-  color: hsl(var(--muted-foreground) / 0.7);
-  transition: color var(--duration-normal) var(--ease-default);
-}
-
-.search-command-bar--focused .search-icon {
-  color: hsl(var(--primary));
-}
-
-.search-divider {
-  width: 1px;
-  height: 1rem;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    hsl(var(--border) / 0.5) 30%,
-    hsl(var(--border) / 0.5) 70%,
-    transparent
-  );
-}
-
-.search-field {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: hsl(var(--foreground));
-  font-size: 0.8125rem;
-  font-family: 'JetBrains Mono', 'Courier New', monospace;
-  letter-spacing: 0.03em;
-  outline: none;
-  padding: 0.125rem 0;
-  width: 100%;
-  min-width: 0;
-}
-
-.search-field::placeholder {
-  color: hsl(var(--muted-foreground) / 0.45);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.6875rem;
-}
-
-.search-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-.search-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: hsl(var(--primary));
-  animation: typing-pulse var(--duration-slow) ease-in-out infinite;
-}
-
-@keyframes typing-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.7); }
-}
-
-.search-clear-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  border-radius: var(--radius-sm);
-  background: hsl(var(--muted) / 0.5);
-  border: 1px solid hsl(var(--border) / 0.3);
-  color: hsl(var(--muted-foreground) / 0.7);
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-default);
-}
-
-.search-clear-btn svg {
-  width: 10px;
-  height: 10px;
-}
-
-.search-clear-btn:hover {
-  background: hsl(var(--destructive) / 0.15);
-  border-color: hsl(var(--destructive) / 0.3);
-  color: hsl(var(--destructive));
-}
-
-.search-clear-btn:active {
-  transform: scale(0.92);
-}
-
-.search-hint-key {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.5rem;
-  height: 1.25rem;
-  padding: 0 0.25rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.5rem;
-  font-weight: 600;
-  color: hsl(var(--muted-foreground) / 0.4);
-  background: hsl(var(--background) / 0.4);
-  border: 1px solid hsl(var(--border) / 0.25);
-  border-radius: 3px;
-  letter-spacing: 0.02em;
-  transition: all var(--duration-normal) var(--ease-default);
-}
-
-.search-command-bar--focused .search-hint-key {
-  color: hsl(var(--primary) / 0.7);
-  border-color: hsl(var(--primary) / 0.3);
-  background: hsl(var(--primary) / 0.05);
-}
-
-.search-suggestions-fade-enter-active,
-.search-suggestions-fade-leave-active {
-  transition:
-    opacity var(--duration-fast) var(--ease-default),
-    transform var(--duration-fast) var(--ease-default);
-}
-
-.search-suggestions-fade-enter-from,
-.search-suggestions-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
-
-.search-suggestions {
-  position: absolute;
-  top: calc(100% + 0.55rem);
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.45rem;
-  border-radius: calc(var(--radius-lg) + 0.05rem);
-  border: 1px solid hsl(var(--border) / 0.7);
-  background:
-    linear-gradient(180deg, hsl(var(--background) / 0.98) 0%, hsl(var(--background) / 0.95) 100%);
-  backdrop-filter: blur(18px);
-  box-shadow:
-    0 24px 60px -28px hsl(var(--foreground) / 0.45),
-    0 10px 24px -18px hsl(var(--foreground) / 0.22);
-}
-
-.search-suggestions__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 0.1rem 0.15rem;
-}
-
-.search-suggestions__title {
-  color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.search-suggestions__clear-all {
-  border: none;
-  background: transparent;
-  color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.68rem;
-  cursor: pointer;
-  transition: color var(--duration-fast) var(--ease-default);
-}
-
-.search-suggestions__clear-all:hover {
-  color: hsl(var(--destructive));
-}
-
-.search-suggestion-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.25rem;
-  align-items: stretch;
-}
-
-.search-suggestion-item,
-.search-suggestion-remove {
-  border: 1px solid transparent;
-  transition: all var(--duration-fast) var(--ease-default);
-}
-
-.search-suggestion-item {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  width: 100%;
-  padding: 0.56rem 0.65rem;
-  border-radius: calc(var(--radius) - 0.05rem);
-  background: hsl(var(--secondary) / 0.42);
-  color: hsl(var(--foreground));
-  cursor: pointer;
-  text-align: left;
-}
-
-.search-suggestion-item--active,
-.search-suggestion-item:hover {
-  background: hsl(var(--accent));
-  border-color: hsl(var(--primary) / 0.18);
-  transform: translateY(-1px);
-}
-
-.search-suggestion-item__icon {
-  display: inline-flex;
-  width: 1rem;
-  height: 1rem;
-  flex: 0 0 auto;
-  color: hsl(var(--primary));
-}
-
-.search-suggestion-item__icon svg {
-  width: 100%;
-  height: 100%;
-}
-
-.search-suggestion-item__content {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 0.08rem;
-}
-
-.search-suggestion-item__label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.8rem;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.search-suggestion-item__meta {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: hsl(var(--muted-foreground) / 0.8);
-  font-size: 0.66rem;
-  line-height: 1.15;
-}
-
-.search-suggestion-remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.8rem;
-  border-radius: calc(var(--radius) - 0.05rem);
-  background: hsl(var(--secondary) / 0.36);
-  color: hsl(var(--muted-foreground) / 0.82);
-  cursor: pointer;
-}
-
-.search-suggestion-remove svg {
-  width: 0.7rem;
-  height: 0.7rem;
-}
-
-.search-suggestion-remove:hover {
-  background: hsl(var(--destructive) / 0.12);
-  color: hsl(var(--destructive));
-}
-
-.search-suggestions__empty {
-  margin: 0;
-  padding: 0.55rem 0.45rem 0.35rem;
-  color: hsl(var(--muted-foreground) / 0.8);
-  font-size: 0.72rem;
-  text-align: center;
-}
-
-@media (max-width: 767px) {
-  .search-suggestions {
-    top: calc(100% + 0.45rem);
-    padding: 0.38rem;
-  }
-
-  .search-suggestion-item {
-    padding: 0.5rem 0.58rem;
-  }
-
-  .search-suggestion-item__meta {
-    display: none;
-  }
-}
-</style>

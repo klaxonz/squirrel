@@ -64,9 +64,10 @@ type ActivateSessionPayload = {
   }
 }
 
+import { useUIStore } from '@/stores/ui'
+
 export default function useVideoPlaybackShell({
   route,
-  emitter,
   playerAdapter,
   video,
   playbackSource,
@@ -103,7 +104,6 @@ export default function useVideoPlaybackShell({
   flushPendingReport,
 }: {
   route: RouteLike
-  emitter?: { emit: (event: string, payload: unknown) => void } | null
   playerAdapter: unknown
   video: Ref<VideoLike | null>
   playbackSource: Ref<PlaybackSourceLike>
@@ -147,6 +147,7 @@ export default function useVideoPlaybackShell({
   handleClipMarkersUpdated: (markers: ClipMarkerLike[]) => void
   flushPendingReport: () => Promise<void>
 }) {
+  const uiStore = useUIStore()
   const videoPlayerHostRef = ref<HTMLElement | null>(null)
   const videoPageRef = ref<HTMLElement | null>(null)
   const videoSectionRef = ref<HTMLElement | null>(null)
@@ -158,8 +159,7 @@ export default function useVideoPlaybackShell({
   }
 
   const syncWidescreenSidebarState = (enabled: boolean) => {
-    if (!emitter) return
-    emitter.emit('videoWidescreenStateChanged', !!enabled)
+    uiStore.setVideoWidescreen(!!enabled)
   }
 
   const toggleWidescreen = (value: boolean) => {

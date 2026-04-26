@@ -1,64 +1,73 @@
 <template>
-  <div class="auth-shell">
-    <!-- Back to Login -->
-    <div class="auth-topbar">
-      <router-link to="/login" class="auth-topbar__link">
-        <span class="auth-topbar__eyebrow">Auth</span>
-        <span class="auth-topbar__value">{{ currentServerLabel }}</span>
-      </router-link>
+  <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+    <!-- Logo/Brand Area -->
+    <div class="mb-10 text-center space-y-2">
+      <div class="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+        <Network class="w-6 h-6 text-white" />
+      </div>
+      <h1 class="text-2xl font-bold text-slate-900 tracking-tight">SQRL 核心配置</h1>
+      <p class="text-sm text-slate-500">连接至您的后端服务引擎</p>
     </div>
 
-    <div class="auth-layout">
-      <!-- Left Panel: Branding -->
-      <aside class="auth-sidebar">
-        <h1 class="auth-sidebar__brand">SQRL</h1>
-        <p class="auth-sidebar__tagline">
-          连接至后端服务器。<br>
-          开始使用视频订阅平台。
-        </p>
-        <div class="auth-sidebar__status">
-          服务器配置
+    <!-- Main Config Card -->
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.1),0_10px_20px_-5px_rgba(0,0,0,0.04)] border border-slate-200 overflow-hidden">
+      <form class="p-8 space-y-8" @submit.prevent="handleConnect">
+        <!-- Error Alert -->
+        <div v-if="errorMessage" class="p-4 rounded-lg bg-rose-50 border border-rose-100 flex items-center gap-3 text-sm text-rose-700 animate-in fade-in zoom-in-95">
+          <AlertCircle class="w-4 h-4 shrink-0" />
+          {{ errorMessage }}
         </div>
-      </aside>
 
-      <!-- Right Panel: Form -->
-      <main class="auth-main">
-        <form class="auth-form-unified" @submit.prevent="handleConnect">
-          <!-- Header -->
-          <div class="auth-form-header">
-            <h2 class="auth-form-title">连接服务器</h2>
-            <p class="auth-form-subtitle">输入后端服务器地址</p>
-          </div>
-
-          <!-- Error Alert -->
-          <div v-if="errorMessage" class="auth-error">
-            {{ errorMessage }}
-          </div>
-
-          <!-- Server URL Field -->
-          <div class="auth-field">
-            <label for="server-url" class="auth-field__label">服务器地址</label>
-            <input
+        <!-- Server URL Field -->
+        <div class="space-y-2">
+          <label for="server-url" class="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">服务器 API 地址</label>
+          <div class="relative group">
+            <Input
               id="server-url"
               v-model="form.serverUrl"
               type="url"
               required
-              class="auth-input"
+              class="h-12 pl-4 pr-24 bg-white border-slate-200 rounded-xl text-base focus-visible:ring-slate-200 shadow-none w-full transition-all"
               placeholder="http://127.0.0.1:8001"
               :disabled="connecting"
               @input="clearStatus"
             />
+            <div class="absolute right-2 top-1/2 -translate-y-1/2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                :disabled="!form.serverUrl.trim() || testing"
+                @click="handleTest"
+                class="h-8 px-3 text-xs font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+              >
+                <RefreshCw v-if="testing" class="w-3.5 h-3.5 animate-spin mr-1.5" />
+                {{ testing ? '测试中' : '测试连接' }}
+              </Button>
+            </div>
           </div>
+          
+          <!-- Test Result Feedback -->
+          <div v-if="connectionMessage" :class="[
+            'text-[11px] font-bold mt-2 px-2 flex items-center gap-1.5',
+            testResult ? 'text-emerald-600' : 'text-rose-600'
+          ]">
+            <CheckCircle2 v-if="testResult" class="w-3 h-3" />
+            <AlertCircle v-else class="w-3 h-3" />
+            {{ connectionMessage }}
+          </div>
+        </div>
 
-          <!-- Quick Server Options -->
-          <div class="server-shortcuts">
-            <span class="server-shortcuts__label">常用地址</span>
-            <div class="server-chip-list">
+        <!-- Quick Options -->
+        <div class="space-y-4">
+          <div v-if="quickServerUrls.length" class="space-y-2">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">常用地址</span>
+            <div class="flex flex-wrap gap-2">
               <button
                 v-for="url in quickServerUrls"
                 :key="url"
                 type="button"
-                class="server-chip"
+                class="px-3 py-1.5 rounded-lg border border-slate-100 bg-slate-50 text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-100 transition-all"
                 @click="applyServerUrl(url)"
               >
                 {{ url }}
@@ -66,72 +75,72 @@
             </div>
           </div>
 
-          <!-- Recent Servers -->
-          <div v-if="recentServerUrls.length" class="server-shortcuts">
-            <div class="server-shortcuts__header">
-              <span class="server-shortcuts__label">最近连接</span>
-              <button type="button" class="server-shortcuts__clear" @click="handleClearRecent">
+          <div v-if="recentServerUrls.length" class="space-y-2">
+            <div class="flex items-center justify-between px-1">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">最近连接</span>
+              <button type="button" class="text-[10px] font-bold text-slate-400 hover:text-rose-500 uppercase tracking-widest" @click="handleClearRecent">
                 清空
               </button>
             </div>
-            <div class="server-chip-list">
+            <div class="flex flex-wrap gap-2">
               <button
                 v-for="url in recentServerUrls"
                 :key="url"
                 type="button"
-                class="server-chip server-chip--recent"
+                class="px-3 py-1.5 rounded-lg border border-slate-100 bg-slate-50 text-xs font-mono text-slate-500 hover:border-slate-300 hover:bg-slate-100 transition-all"
                 @click="applyServerUrl(url)"
               >
                 {{ url }}
               </button>
             </div>
           </div>
+        </div>
 
-          <!-- Test Connection -->
-          <button
-            type="button"
-            class="test-button"
-            :disabled="!form.serverUrl.trim() || testing"
-            @click="handleTest"
-          >
-            <span v-if="testing" class="test-spinner"></span>
-            <span v-else-if="testResult !== null" :class="['test-status', testResult ? 'test-status--ok' : 'test-status--fail']">
-              {{ testResult ? '✓ 连接成功' : '✗ 连接失败' }}
-            </span>
-            <span v-else>测试连接</span>
-          </button>
-
-          <!-- Connection Feedback -->
-          <div v-if="connectionMessage" class="connection-feedback" :class="connectionFeedbackClass">
-            {{ connectionMessage }}
-          </div>
-
-          <!-- Submit Button -->
-          <button
+        <!-- Submit -->
+        <div class="pt-2">
+          <Button
             type="submit"
-            class="auth-submit"
+            class="w-full h-12 bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-bold text-base shadow-lg shadow-slate-900/10 transition-all"
             :disabled="connecting || !form.serverUrl.trim()"
           >
-            {{ connecting ? '连接中...' : '进入系统' }}
-          </button>
+            <span v-if="connecting" class="flex items-center gap-2">
+              <RefreshCw class="w-4 h-4 animate-spin" />
+              正在连接...
+            </span>
+            <span v-else>确认并进入系统</span>
+          </Button>
+        </div>
+      </form>
 
-          <!-- Footer Links -->
-          <div class="auth-footer">
-            <span>本地开发？</span>
-            <button type="button" class="auth-link" @click="fillLocalhost">
-              使用本地地址
-            </button>
-          </div>
-        </form>
-      </main>
+      <!-- Footer -->
+      <div class="px-8 py-5 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-2">
+        <span class="text-xs text-slate-400">本地开发？</span>
+        <button type="button" class="text-xs font-bold text-slate-600 hover:text-slate-900 underline underline-offset-4" @click="fillLocalhost">
+          快速切换至 Localhost
+        </button>
+      </div>
     </div>
+
+    <!-- Back link -->
+    <router-link to="/login" class="mt-8 flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-slate-600 transition-colors">
+      <ArrowLeft class="w-4 h-4" /> 返回登录页面
+    </router-link>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { 
+  Network, 
+  AlertCircle, 
+  CheckCircle2, 
+  RefreshCw, 
+  ArrowLeft 
+} from 'lucide-vue-next'
 import { useServerConfig } from '@/composables/useServerConfig'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 const router = useRouter()
 const {
@@ -173,10 +182,8 @@ const applyServerUrl = (url) => {
 
 onMounted(async () => {
   await initServerConfig()
-  form.value.serverUrl = getServerUrl()
+  form.value.serverUrl = getServerUrl() || ''
 })
-
-const currentServerLabel = computed(() => getServerUrl() || '返回登录')
 
 const handleClearRecent = () => {
   clearRecentServerUrls()
@@ -185,17 +192,15 @@ const handleClearRecent = () => {
 
 const handleTest = async () => {
   if (!form.value.serverUrl.trim()) return
-
   testing.value = true
   clearStatus()
-
   try {
     const result = await testServerConnection(form.value.serverUrl)
     testResult.value = result.ok
-    connectionMessage.value = result.message
+    connectionMessage.value = result.ok ? '后端服务响应正常' : '无法连接至该地址'
   } catch {
     testResult.value = false
-    connectionMessage.value = '测试失败'
+    connectionMessage.value = '测试失败，请检查网络'
   } finally {
     testing.value = false
   }
@@ -203,17 +208,14 @@ const handleTest = async () => {
 
 const handleConnect = async () => {
   if (!form.value.serverUrl.trim()) return
-
   connecting.value = true
   errorMessage.value = ''
-
   try {
     const ok = await setServerUrl(form.value.serverUrl)
     if (!ok) {
       errorMessage.value = '无效的服务器地址，请检查格式'
       return
     }
-
     await router.replace('/login')
   } catch {
     errorMessage.value = '连接失败，请重试'
@@ -221,156 +223,10 @@ const handleConnect = async () => {
     connecting.value = false
   }
 }
-
-const connectionFeedbackClass = computed(() => {
-  if (!connectionMessage.value) return ''
-  return testResult.value === true ? 'connection-feedback--ok' : 'connection-feedback--fail'
-})
 </script>
 
-<style scoped src="../styles/views/auth-entry.css"></style>
-
 <style scoped>
-/* Server shortcuts - unified style */
-.server-shortcuts {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.server-shortcuts__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.server-shortcuts__label {
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  color: hsl(var(--muted-foreground));
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.server-shortcuts__clear {
-  border: none;
-  background: transparent;
-  color: hsl(var(--muted-foreground) / 0.7);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-  transition: color var(--duration-fast) var(--ease-default);
-}
-
-.server-shortcuts__clear:hover {
-  color: hsl(var(--primary));
-}
-
-.server-chip-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.server-chip {
-  height: 2rem;
-  padding: 0 var(--space-3);
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-size: var(--font-size-xs);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition:
-    border-color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
-}
-
-.server-chip:hover {
-  border-color: hsl(var(--primary) / 0.5);
-  background: hsl(var(--primary) / 0.05);
-  color: hsl(var(--primary));
-}
-
-.server-chip--recent {
-  font-family: var(--font-mono);
-}
-
-/* Test button - unified style */
-.test-button {
-  width: 100%;
-  height: 2.75rem;
-  background: hsl(var(--secondary));
-  border: 1px solid hsl(var(--border));
-  color: hsl(var(--muted-foreground));
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition:
-    border-color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.test-button:hover:not(:disabled) {
-  border-color: hsl(var(--primary) / 0.5);
-  background: hsl(var(--primary) / 0.05);
-  color: hsl(var(--primary));
-}
-
-.test-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.test-spinner {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid hsl(var(--border));
-  border-top-color: hsl(var(--primary));
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.test-status {
-  font-weight: 500;
-}
-
-.test-status--ok {
-  color: hsl(var(--success));
-}
-
-.test-status--fail {
-  color: hsl(var(--destructive));
-}
-
-.connection-feedback {
-  font-size: var(--font-size-xs);
-  color: hsl(var(--muted-foreground));
-  min-height: var(--space-4);
-  transition: color var(--duration-fast) var(--ease-default);
-}
-
-.connection-feedback--ok {
-  color: hsl(var(--success));
-}
-
-.connection-feedback--fail {
-  color: hsl(var(--destructive));
-}
-
-@media (max-width: 768px) {
-  .server-chip {
-    width: 100%;
-  }
+.animate-in {
+  animation-duration: 0.3s;
 }
 </style>

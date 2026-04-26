@@ -388,7 +388,7 @@
   background: var(--sp-bg-overlay);
   border-radius: var(--sp-radius-full);
   z-index: var(--sp-z-overlay);
-  animation: sp-fade-scale var(--duration-slow) var(--ease-default) forwards;
+  animation: sp-fade-scale var(--sp-transition-slow) forwards;
 }
 
 .sp-play-indicator-icon {

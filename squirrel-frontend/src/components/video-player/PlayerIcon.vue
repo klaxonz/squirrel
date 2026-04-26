@@ -36,6 +36,7 @@ import {
   X,
   AlertCircle,
   LoaderCircle,
+  RectangleHorizontal,
 } from 'lucide-vue-next'
 import type { IconName } from './core/useIcons'
 
@@ -43,7 +44,7 @@ const props = defineProps<{
   name: IconName
 }>()
 
-const iconMap: Record<IconName, ReturnType<typeof Play>> = {
+const iconMap: Record<string, any> = {
   play: Play,
   pause: Pause,
   stop: Square,
@@ -59,8 +60,8 @@ const iconMap: Record<IconName, ReturnType<typeof Play>> = {
   volumeOff: VolumeOff,
   fullscreen: Maximize,
   fullscreenExit: Minimize,
-  widescreen: Maximize,
-  widescreenExit: Minimize,
+  widescreen: RectangleHorizontal, // 修正：宽屏使用横向矩形
+  widescreenExit: Square,          // 修正：退出宽屏使用正方形
   pip: PictureInPicture2,
   pipExit: PictureInPicture,
   settings: Settings,
@@ -81,3 +82,10 @@ const iconMap: Record<IconName, ReturnType<typeof Play>> = {
 
 const iconComponent = computed(() => iconMap[props.name] || AlertCircle)
 </script>
+
+<style scoped>
+.sp-icon {
+  width: 100%;
+  height: 100%;
+}
+</style>

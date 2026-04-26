@@ -1,1237 +1,380 @@
 <template>
-  <AppPageShell class="subscribed-page">
-    <section class="subscribed-shell">
-      <AppToolbarFrame class="toolbar-container">
-        <FeedToolbar
-          class="subscribed-toolbar"
-          :show-tabs="false"
-          :tabs="[]"
-          :nsfw="nsfw"
-          :site="site"
-          :sort-by="sortBy"
-          :is-refreshing="isRefreshing"
-          :filter-scope="'subscription'"
-          @update:nsfw="(value) => { nsfw = value }"
-          @update:site="(value) => { site = value }"
-          @update:sortBy="(value) => { sortBy = value }"
-          @refresh="refreshList"
-        >
-          <template #actions>
-            <div class="toolbar-right-actions">
-              <Button size="xs" class="subscribed-toolbar__button whitespace-nowrap" @click="showAddDialog = true">
-                <Plus class="h-4 w-4" />
-                <span>添加订阅</span>
-              </Button>
-              <Button size="xs" variant="secondary" class="subscribed-toolbar__button subscribed-toolbar__button--secondary whitespace-nowrap" @click="showImportDialog = true">
-                <Download class="h-4 w-4" />
-                <span>导入订阅</span>
-              </Button>
-            </div>
-          </template>
-        </FeedToolbar>
-      </AppToolbarFrame>
-    </section>
-
-    <div class="channel-container">
-      <div v-if="loadError" class="content-container content-container--alert">
-        <Alert variant="destructive" class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <AlertTitle>加载失败</AlertTitle>
-            <AlertDescription class="break-words">
-              {{ `加载失败：${loadError?.message || loadError}` }}
-            </AlertDescription>
+  <div class="flex h-full bg-background overflow-hidden selection:bg-primary/10">
+    <!-- 1. Left Sidebar: Channels Navigation -->
+    <aside 
+      class="hidden lg:flex flex-col w-[280px] border-r border-border/40 bg-card/30 backdrop-blur-sm transition-all duration-300 relative z-20"
+    >
+      <!-- Sidebar Header -->
+      <div class="p-4 border-b border-border/40 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+            <Library class="w-4 h-4" />
           </div>
-          <Button variant="secondary" size="sm" class="rounded-full" @click="refreshList">重试</Button>
-        </Alert>
+          <span class="font-bold text-[15px] tracking-tight">我的订阅</span>
+        </div>
+        <Button variant="ghost" size="icon" class="h-8 w-8 rounded-lg hover:bg-accent/50" @click="showAddDialog = true">
+          <Plus class="w-4 h-4" />
+        </Button>
       </div>
 
-      <div class="content-container content-container--fill">
-        <Transition name="fade-list">
-          <div v-if="loading && !subscriptions.length" key="loading" class="subscription-list subscription-list--loading">
-            <LoadingIndicator :loading="true" text="正在加载订阅" size="sm" />
-          </div>
-
-          <AppEmptyState
-            v-else-if="hasLoadedOnce && !loading && !subscriptions.length"
-            key="empty"
-            class="subscribed-empty-card"
-            title="还没有可展示的订阅"
-            copy="可以直接添加一个频道，或者从支持的站点批量导入。"
+      <!-- Sidebar Search & Filter -->
+      <div class="p-3 space-y-2 shrink-0 border-b border-border/10">
+        <div class="relative group">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+          <input 
+            v-model="sidebarSearch"
+            placeholder="搜索订阅..." 
+            class="w-full h-9 pl-9 pr-3 rounded-xl bg-accent/30 border-transparent text-[13px] transition-all focus:bg-background focus:ring-2 focus:ring-primary/20 outline-none"
+          />
+        </div>
+        
+        <div class="relative group/filter" ref="siteFilterRef">
+          <button
+            @click="showSiteDropdown = !showSiteDropdown"
+            class="w-full h-8 flex items-center justify-between px-2.5 rounded-lg text-[11px] font-bold transition-all border border-border/20 hover:border-border/50 hover:bg-accent/20"
+            :class="site ? 'bg-primary/5 text-primary border-primary/20' : 'text-muted-foreground'"
           >
-            <template #actions>
-              <Button size="sm" @click="showAddDialog = true">添加订阅</Button>
-              <Button size="sm" variant="secondary" @click="showImportDialog = true">导入订阅</Button>
-            </template>
-          </AppEmptyState>
+            <div class="flex items-center gap-2">
+              <Filter class="w-3 h-3" />
+              <span>{{ activeSiteLabel }}</span>
+            </div>
+            <ChevronDown class="w-3 h-3 transition-transform duration-300" :class="{ 'rotate-180': showSiteDropdown }" />
+          </button>
 
-          <div v-else key="list" class="subscription-list-wrapper">
-            <VirtualList
-              class="subscription-virtual-list scrollbar-hide"
-              :items="sortedSubscriptions"
-              :item-size="subscriptionItemSize"
-              key-field="id"
-              :buffer="480"
-              buffer-mode="px"
-              :prerender="12"
-              :range-change-throttle-ms="30"
-              :bottom-padding="allLoaded && subscriptions.length ? 72 : 24"
-              cache-key="subscribed-page"
-              @range-change="handleVisibleRangeChange"
-            >
-              <template #item="{ item: subscription }">
-                <article class="subscription-row" :class="{ 'is-refreshing': isResetting }">
-                  <div class="subscription-row__header" @click="getSubscriptionVideos(subscription.id)">
-                    <div class="subscription-row__avatar-wrap">
-                      <div class="subscription-row__avatar-container">
-                        <SubscriptionAvatar
-                          :src="subscription.avatar"
-                          :name="subscription.name"
-                          size="lg"
-                          class="subscription-row__avatar"
-                        />
-                        <div
-                          v-if="getSubscriptionRefreshState(subscription.id).isRefreshing"
-                          class="subscription-row__avatar-pulse"
-                        ></div>
-                      </div>
-                    </div>
-
-                    <div class="subscription-row__main">
-                      <div class="subscription-row__name-row">
-                        <h3 class="subscription-row__name" :title="subscription.name">{{ subscription.name }}</h3>
-                        <Badge class="subscription-row__site-badge">{{ subscription.site || 'unknown' }}</Badge>
-                        <Badge v-if="subscription.type === 'PLAYLIST'" variant="secondary" class="subscription-row__type-tag">播放列表</Badge>
-                        <Badge v-if="subscription.is_nsfw" variant="destructive" class="subscription-row__nsfw-tag">NSFW</Badge>
-                      </div>
-                      <div class="subscription-row__meta">
-                        <Badge
-                          :variant="getStatusVariant(getSubscriptionRefreshState(subscription.id).status)"
-                        >
-                          <span
-                            v-if="getSubscriptionRefreshState(subscription.id).isRefreshing"
-                            class="status-badge-dot animate-pulse"
-                          ></span>
-                          {{ getStatusText(
-                            getSubscriptionRefreshState(subscription.id).status,
-                            getSubscriptionRefreshState(subscription.id).phase,
-                          ) }}
-                        </Badge>
-                        <span class="subscription-row__sep" aria-hidden="true"></span>
-                        <span class="subscription-row__date">{{ formatDate(subscription.created_at) }}</span>
-                      </div>
-                    </div>
-
-                    <div class="subscription-row__stats" @click="getSubscriptionVideos(subscription.id)">
-                      <div class="subscription-row__stat-item">
-                        <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_videos }}</span>
-                        <span class="subscription-row__stat-label">视频</span>
-                      </div>
-                      <div class="subscription-row__stat-sep" aria-hidden="true"></div>
-                      <div class="subscription-row__stat-item">
-                        <span class="subscription-row__stat-value tabular-nums">{{ subscription.total_extract }}</span>
-                        <span class="subscription-row__stat-label">已解析</span>
-                      </div>
-                    </div>
-
-                    <div class="subscription-row__actions">
-                      <button
-                        class="row-action-btn"
-                        :disabled="getSubscriptionRefreshState(subscription.id).isRefreshing"
-                        :title="getSubscriptionRefreshState(subscription.id).isRefreshing ? '更新中' : '刷新'"
-                        @click.stop="handleRefreshSubscription(subscription.id)"
-                      >
-                        <RefreshCw
-                          class="row-action-icon"
-                          :class="{ 'is-spinning': getSubscriptionRefreshState(subscription.id).isRefreshing }"
-                        />
-                      </button>
-                      <button class="row-action-btn" title="设置" @click.stop="openSettings(subscription)">
-                        <Settings class="row-action-icon" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div v-if="subscription.recent_videos?.length" class="subscription-row__recent-grid">
-                    <button
-                      v-for="video in subscription.recent_videos"
-                      :key="video.id"
-                      type="button"
-                      class="recent-video-card"
-                      @click.stop="openRecentVideo(video)"
-                    >
-                      <div class="recent-video-card__thumb-wrap">
-                        <img
-                          v-if="video.thumbnail && !hasThumbnailError(subscription.id, video.id)"
-                          :src="video.thumbnail"
-                          :alt="video.title || '视频缩略图'"
-                          class="recent-video-card__thumb"
-                          referrerpolicy="no-referrer"
-                          @error="handleThumbnailError(subscription.id, video.id)"
-                        >
-                        <div v-else class="recent-video-card__thumb-placeholder">
-                          <ImageOff class="recent-video-card__thumb-placeholder-icon" />
-                          <span class="recent-video-card__thumb-placeholder-text">暂无封面</span>
-                        </div>
-                        <span v-if="video.duration" class="recent-video-card__duration">{{ formatDuration(video.duration) }}</span>
-                      </div>
-                      <p class="recent-video-card__title">{{ video.title || '未知视频' }}</p>
-                      <p class="recent-video-card__meta">{{ formatDate(video.publish_date) }}</p>
-                    </button>
-                  </div>
-                  <div v-else class="subscription-row__recent-empty">暂无最近视频</div>
-                </article>
-              </template>
-            </VirtualList>
+          <div v-if="showSiteDropdown" class="absolute top-full left-0 right-0 mt-1 bg-popover border border-border/50 rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div class="max-h-[280px] overflow-y-auto custom-scrollbar">
+              <button @click="site = ''; showSiteDropdown = false" class="w-full flex items-center px-3 py-2 text-[12px] font-medium hover:bg-accent transition-colors" :class="!site ? 'text-primary' : 'text-foreground/70'">全部来源</button>
+              <div class="h-px bg-border/10 my-1 mx-2" />
+              <button v-for="opt in siteOptionsList" :key="opt.value" @click="site = opt.value; showSiteDropdown = false" class="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] font-medium hover:bg-accent transition-colors text-left" :class="site === opt.value ? 'text-primary bg-primary/5' : 'text-foreground/70'">
+                <SiteIcon :site="opt.value" class="w-3.5 h-3.5 rounded-sm" />
+                <span class="flex-1 truncate">{{ opt.label }}</span>
+              </button>
+            </div>
           </div>
-        </Transition>
-
-        <div v-if="allLoaded && subscriptions.length" class="subscribed-bottom-copy">
-          {{ subscriptions.length }} 个订阅 · 已经到底啦
         </div>
       </div>
-    </div>
 
-    <Dialog :open="showSettings" @update:open="handleSettingsOpenChange">
-      <DialogContent class="max-w-lg gap-0 overflow-hidden p-0">
-        <div class="subscription-dialog__hero">
-          <DialogHeader class="space-y-2 px-6 pb-4 pt-6">
-            <DialogTitle class="text-xl font-semibold tracking-[-0.03em]">订阅设置</DialogTitle>
-          </DialogHeader>
+      <!-- Channels List (Infinite Scroll) -->
+      <div id="channels-scroll-container" class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-0.5">
+        <button
+          v-for="sub in filteredChannels"
+          :key="sub.id"
+          @click="handleChannelClick(sub.id)"
+          class="w-full flex items-center gap-3 p-2 rounded-xl transition-all group relative overflow-hidden"
+          :class="activeChannelId === sub.id ? 'bg-primary/10 text-primary' : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground'"
+        >
+          <div class="relative shrink-0">
+            <SubscriptionAvatar :src="sub.avatar" :name="sub.name" size="sm" class="w-7 h-7 rounded-lg object-cover ring-1 ring-border/20" />
+            <div v-if="sub.unread_count > 0" class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary rounded-full border-2 border-background" />
+          </div>
+          <span class="flex-1 text-[13px] font-medium truncate text-left">{{ sub.name }}</span>
+          <SiteTag :site="sub.site" class="opacity-0 group-hover:opacity-100 transition-opacity scale-75 origin-right" />
+        </button>
+
+        <!-- Channel Loading States -->
+        <div v-if="loadingChannels" class="space-y-2 p-2">
+          <div v-for="i in 5" :key="i" class="h-10 w-full bg-accent/20 animate-pulse rounded-xl" />
+        </div>
+        
+        <div ref="channelsTrigger" class="h-10 w-full flex items-center justify-center">
+          <div v-if="loadingMoreChannels" class="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
         </div>
 
-        <div v-if="selectedSubscription" class="space-y-5 px-6 py-5">
-          <div class="subscription-dialog__summary">
-            <SubscriptionAvatar
-              :src="selectedSubscription.avatar"
-              :name="selectedSubscription.name"
-              size="lg"
-              class="subscription-dialog__avatar"
-            />
+        <div v-if="channelsFinished && !filteredChannels.length" class="py-10 text-center space-y-2">
+          <Inbox class="w-8 h-8 mx-auto text-muted-foreground/20" />
+          <p class="text-[12px] text-muted-foreground/40 font-medium">暂无匹配订阅</p>
+        </div>
+      </div>
 
-            <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap items-center gap-2">
-                <p class="truncate text-sm font-semibold text-foreground">{{ selectedSubscription.name }}</p>
-                <Badge v-if="selectedSubscription.type === 'PLAYLIST'" variant="secondary">播放列表</Badge>
-                <Badge v-if="selectedSubscription.is_nsfw" variant="destructive">NSFW</Badge>
+      <!-- Sidebar Footer -->
+      <div class="p-4 border-t border-border/40 space-y-2">
+        <Button variant="outline" class="w-full justify-start h-10 rounded-xl border-border/40 hover:bg-accent/50" @click="showImportDialog = true">
+          <Download class="w-4 h-4 mr-2.5 text-muted-foreground" />
+          <span class="text-[13px] font-semibold">导入订阅</span>
+        </Button>
+      </div>
+    </aside>
+
+    <!-- 2. Main Content: Video Feed -->
+    <main class="flex-1 flex flex-col min-w-0 bg-background/50 relative">
+      <header class="sticky top-0 z-30 w-full bg-background/80 backdrop-blur-xl border-b border-border/40 shrink-0">
+        <div class="px-6 h-16 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <h2 class="text-[18px] font-black tracking-tight text-foreground truncate max-w-[300px]">
+              {{ activeChannelName || '订阅动态' }}
+            </h2>
+            <div v-if="loadingFeed" class="flex gap-1">
+              <div class="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]" />
+              <div class="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]" />
+              <div class="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" />
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="flex bg-accent/30 rounded-xl p-1 shrink-0">
+              <button @click="viewMode = 'feed'" class="px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all" :class="viewMode === 'feed' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">最近发布</button>
+              <button @click="viewMode = 'grid'" class="px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all" :class="viewMode === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">频道概览</button>
+            </div>
+            <div class="w-px h-6 bg-border/20 mx-1 hidden md:block" />
+            <button class="h-9 px-4 rounded-xl text-[11px] font-bold transition-all border flex items-center gap-2 shrink-0" :class="nsfw === 'all' ? 'bg-accent/20 text-muted-foreground/60 border-transparent' : 'bg-destructive/10 text-destructive border-destructive/20'" @click="nsfw = nsfw === 'all' ? 'yes' : 'all'"><div class="w-2 h-2 rounded-full" :class="nsfw === 'all' ? 'bg-muted-foreground/20' : 'bg-destructive animate-pulse'" />成年内容</button>
+            <Button variant="ghost" size="icon" class="h-9 w-9 rounded-xl hover:bg-accent/50" @click="handleRefresh"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loadingFeed }" /></Button>
+          </div>
+        </div>
+      </header>
+
+      <div id="subscription-scroll-container" class="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8" ref="feedContainer">
+        <div class="max-w-[1600px] mx-auto">
+          <div v-if="viewMode === 'feed'" class="space-y-12">
+            <div v-if="!feedItems.length && !loadingFeed" class="flex flex-col items-center justify-center py-32 text-center animate-in fade-in zoom-in duration-700">
+              <div class="w-20 h-20 rounded-3xl bg-accent/20 flex items-center justify-center mb-6"><Inbox class="w-10 h-10 text-muted-foreground/20" /></div>
+              <h3 class="text-xl font-bold mb-2">空空如也</h3>
+              <p class="text-muted-foreground text-sm max-w-[280px]">订阅更多频道以获取最新的视频资讯动态。</p>
+            </div>
+
+            <div v-for="group in videoGroups" :key="group.title" class="space-y-6">
+              <div class="flex items-center gap-4">
+                <h3 class="text-[13px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">{{ group.title }}</h3>
+                <div class="h-px flex-1 bg-gradient-to-r from-border/40 to-transparent" />
               </div>
-              <p class="mt-1 text-xs text-muted-foreground">
-                {{ selectedRefreshState.status === 'failed'
-                  ? '最近一次同步失败'
-                  : getStatusText(selectedRefreshState.status, selectedRefreshState.phase) || '等待同步' }}
-              </p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 gap-x-6 gap-y-10">
+                <VideoItem v-for="video in group.videos" :key="video.id" :video="video" show-avatar @openModal="handleOpenVideo" />
+              </div>
             </div>
+
+            <div v-if="loadingMoreFeed" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 gap-6 mt-10">
+              <VideoSkeleton v-for="i in 8" :key="i" />
+            </div>
+            <div ref="feedTrigger" class="h-20" />
           </div>
 
-          <div class="subscription-dialog__row">
-            <div>
-              <p class="text-sm font-medium text-foreground">标记为敏感内容</p>
-              <p class="mt-1 text-xs text-muted-foreground">用于控制缩略图模糊和过滤行为。</p>
+          <div v-else class="space-y-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-6">
+              <SubscriptionCard v-for="sub in filteredChannels" :key="sub.id" :subscription="sub" @click="handleChannelClick(sub.id)" />
             </div>
-            <Switch
-              :checked="!!selectedSubscription.is_nsfw"
-              @update:checked="(value) => { selectedSubscription.is_nsfw = !!value; updateNsfwStatus(!!value) }"
-            />
-          </div>
-
-          <div class="subscription-dialog__actions">
-            <Button class="w-full" :disabled="selectedRefreshState.isRefreshing" @click="handleRefreshSubscription(selectedSubscription.id)">
-              {{ selectedRefreshState.isRefreshing
-                ? getStatusText(selectedRefreshState.status, selectedRefreshState.phase) || '更新中'
-                : '手动更新' }}
-            </Button>
-
-            <Button
-              v-if="selectedRefreshState.status === 'failed'"
-              variant="secondary"
-              class="w-full"
-              @click="handleRetryRefresh(selectedSubscription.id)"
-            >
-              重试更新
-            </Button>
-
-            <Alert v-if="selectedRefreshState.status === 'failed'" variant="destructive">
-              <AlertDescription>
-                {{ selectedRefreshState.lastError || '更新失败' }}
-              </AlertDescription>
-            </Alert>
-
-            <Button
-              variant="destructive"
-              class="w-full"
-              :disabled="selectedRefreshState.isRefreshing || isUnsubscribing"
-              @click="unsubscribe(selectedSubscription.id)"
-            >
-              <span v-if="isUnsubscribing" class="subscription-dialog__spinner" aria-hidden="true"></span>
-              <span>{{ isUnsubscribing ? '取消中' : '取消订阅' }}</span>
-            </Button>
-
-            <p v-if="unsubscribeError" class="text-xs text-destructive">{{ unsubscribeError }}</p>
+            <div v-if="loadingChannels && !list.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-6">
+              <SubscriptionCardSkeleton v-for="i in 12" :key="i" />
+            </div>
+            <div v-if="!channelsFinished" ref="gridMoreTrigger" class="h-20" />
           </div>
         </div>
+      </div>
+    </main>
 
-        <DialogFooter class="border-t border-border/70 bg-secondary/28 px-6 py-4 sm:justify-end">
-          <Button size="sm" variant="ghost" :disabled="isUnsubscribing" @click="closeSettings">关闭</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-
-    <AddChannelDialog :show="showAddDialog" @added="handleChannelAdded" @close="showAddDialog = false" />
-
-    <ImportSubscriptionDialog
-      :show="showImportDialog"
-      @close="showImportDialog = false"
-      @imported="handleSubscriptionsImported"
-    />
-  </AppPageShell>
+    <AddChannelDialog :show="showAddDialog" @added="handleRefresh" @close="showAddDialog = false" />
+    <ImportSubscriptionDialog :show="showImportDialog" @close="showImportDialog = false" @imported="handleRefresh" />
+  </div>
 </template>
 
-<script setup>
-import { computed, inject, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
+<script setup lang="ts">
+import { ref, computed, watch, onUnmounted, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { Download, ImageOff, RefreshCw, Settings, Plus } from 'lucide-vue-next'
-import AppEmptyState from '@/components/layout/AppEmptyState.vue'
-import AppPageShell from '@/components/layout/AppPageShell.vue'
-import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue'
-import FeedToolbar from '@/components/feed/FeedToolbar.vue'
-import LoadingIndicator from '@/components/feed/LoadingIndicator.vue'
-import VirtualList from '@/components/feed/VirtualList.vue'
+import { onClickOutside } from '@vueuse/core'
+import { Library, Plus, Download, RefreshCw, Search, Inbox, ChevronDown, Filter } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
+import SubscriptionCard from '@/components/feed/SubscriptionCard.vue'
+import SubscriptionCardSkeleton from '@/components/feed/SubscriptionCardSkeleton.vue'
+import VideoItem from '@/components/feed/VideoItem.vue'
+import VideoSkeleton from '@/components/feed/VideoSkeleton.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
+import SiteTag from '@/components/common/SiteTag.vue'
+import SiteIcon from '@/components/common/SiteIcon.vue'
 import AddChannelDialog from '@/components/dialogs/AddChannelDialog.vue'
 import ImportSubscriptionDialog from '@/components/dialogs/ImportSubscriptionDialog.vue'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Switch } from '@/components/ui/switch'
-import { useRefreshTriggers } from '../composables/useRefreshTriggers'
-import { useSubscriptionRefresh } from '../composables/useSubscriptionRefresh'
 import { useFeedFilters } from '../composables/useFeedFilters'
-import { formatDate, formatDuration } from '../utils/dateFormat'
-import { notifySubscriptionRemoved } from '@/utils/subscriptionEvents'
+import { useSites } from '../composables/useSites'
+import { getSubscriptions, getVideoList } from '@/api'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
-import {
-  getSubscriptions as apiGetSubscriptions,
-  unsubscribe as apiUnsubscribe,
-  updateNsfwStatus as apiUpdateNsfwStatus,
-} from '@/api'
 
 const router = useRouter()
-const emitter = inject('emitter')
+const { nsfw, site } = useFeedFilters()
+const { options: siteOptions, fetchSites } = useSites()
 
-const SUBSCRIPTION_REMOVE_DELAY_MS = 120
-const SUBSCRIPTIONS_PAGE_SIZE = 100
-const VIRTUAL_LIST_PRELOAD_COUNT = 8
-const DESKTOP_SUBSCRIPTION_ROW_HEIGHT = 278
-const MOBILE_SUBSCRIPTION_ROW_HEIGHT = 290
-const MIN_SPIN_MS = 800
-const CANCELED_ERROR_TYPE = 'CANCELED'
-
-const isRefreshing = ref(false)
-const isResetting = ref(false)
-const isCompactLayout = ref(typeof window !== 'undefined' ? window.innerWidth <= 960 : false)
-const subscriptions = shallowRef([])
-const loadError = ref(null)
-const loading = ref(false)
-const hasLoadedOnce = ref(false)
-const allLoaded = ref(false)
-const currentPage = ref(1)
-const searchQuery = ref('')
-const { nsfw, site, sortBy } = useFeedFilters()
-
-const showSettings = ref(false)
-const selectedSubscription = ref(null)
+// UI State
+const viewMode = ref<'feed' | 'grid'>('feed')
+const sidebarSearch = ref('')
+const showSiteDropdown = ref(false)
+const siteFilterRef = ref<HTMLElement | null>(null)
+const activeChannelId = ref<string | number | null>(null)
 const showAddDialog = ref(false)
 const showImportDialog = ref(false)
-const unsubscribeError = ref('')
-const unsubscribingId = ref(null)
-const spinTimer = ref(null)
-const spinStartAt = ref(0)
-const defaultRefreshState = Object.freeze({
-  status: 'idle',
-  phase: null,
-  lastError: null,
-  isRefreshing: false,
-})
-const sortTextCollator = new Intl.Collator('zh-CN')
-const thumbnailErrorMap = reactive({})
-let latestLoadRequestId = 0
-let listAbortController = null
 
-const subscriptionItemSize = computed(() => (
-  isCompactLayout.value ? MOBILE_SUBSCRIPTION_ROW_HEIGHT : DESKTOP_SUBSCRIPTION_ROW_HEIGHT
-))
+// Data State (Channels)
+const list = ref<any[]>([])
+const loadingChannels = ref(false)
+const loadingMoreChannels = ref(false)
+const channelsFinished = ref(false)
+const channelsPage = ref(1)
+const CHANNELS_PAGE_SIZE = 100
 
-const getThumbnailErrorKey = (subscriptionId, videoId) => `${subscriptionId}-${videoId}`
-const hasThumbnailError = (subscriptionId, videoId) => !!thumbnailErrorMap[getThumbnailErrorKey(subscriptionId, videoId)]
-const handleThumbnailError = (subscriptionId, videoId) => {
-  thumbnailErrorMap[getThumbnailErrorKey(subscriptionId, videoId)] = true
-}
+// Data State (Feed)
+const feedItems = ref<any[]>([])
+const loadingFeed = ref(false)
+const loadingMoreFeed = ref(false)
+const feedFinished = ref(false)
+const feedPage = ref(1)
+const FEED_PAGE_SIZE = 48 // Increased for better dense layout
 
-const wait = (ms) => new Promise((resolve) => {
-  window.setTimeout(resolve, ms)
-})
+// Observers
+const feedTrigger = ref<HTMLElement | null>(null)
+const channelsTrigger = ref<HTMLElement | null>(null)
+const gridMoreTrigger = ref<HTMLElement | null>(null)
+let feedObserver: IntersectionObserver | null = null
+let channelsObserver: IntersectionObserver | null = null
+let gridObserver: IntersectionObserver | null = null
 
-const {
-  refreshStates,
-  getRefreshState,
-  triggerRefresh,
-  retryRefresh,
-  getStatusText,
-  cleanup: cleanupRefresh,
-  setSubscriptionMeta,
-} = useSubscriptionRefresh()
+onClickOutside(siteFilterRef, () => { showSiteDropdown.value = false })
 
-const sortedSubscriptions = computed(() => {
-  if (subscriptions.value.length < 2) {
-    return subscriptions.value
-  }
-
-  const sorted = [...subscriptions.value]
-
-  if (sortBy.value === 'name') {
-    sorted.sort((a, b) => sortTextCollator.compare(a.name || '', b.name || ''))
-    return sorted
-  }
-
-  if (sortBy.value === 'site') {
-    sorted.sort((a, b) => sortTextCollator.compare(a.site || '', b.site || ''))
-    return sorted
-  }
-
-  if (sortBy.value === 'recent') {
-    sorted.sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime())
-  }
-
-  return sorted
+const activeChannelName = computed(() => {
+  if (!activeChannelId.value) return ''
+  return list.value.find(c => c.id === activeChannelId.value)?.name || ''
 })
 
-const selectedRefreshState = computed(() => {
-  if (!selectedSubscription.value) {
-    return defaultRefreshState
-  }
-
-  return refreshStates.get(selectedSubscription.value.id) || defaultRefreshState
+const siteOptionsList = computed(() => siteOptions.value || [])
+const activeSiteLabel = computed(() => {
+  if (!site.value) return '全部来源'
+  return siteOptionsList.value.find(opt => opt.value === site.value)?.label || '未知来源'
 })
 
-const isUnsubscribing = computed(() => unsubscribingId.value === selectedSubscription.value?.id)
-const getSubscriptionRefreshState = (subscriptionId) => refreshStates.get(subscriptionId) || defaultRefreshState
-
-const updateLayoutMode = () => {
-  isCompactLayout.value = window.innerWidth <= 960
-}
-
-const clearSpinTimer = () => {
-  if (spinTimer.value) {
-    clearTimeout(spinTimer.value)
-    spinTimer.value = null
+const filteredChannels = computed(() => {
+  let res = list.value
+  if (sidebarSearch.value) {
+    const q = sidebarSearch.value.toLowerCase()
+    res = res.filter(c => c.name.toLowerCase().includes(q))
   }
-}
-
-const createSubscriptionParams = () => ({
-  query: searchQuery.value,
-  nsfw: nsfw.value,
-  site: site.value,
-  page: currentPage.value,
-  page_size: SUBSCRIPTIONS_PAGE_SIZE,
+  if (site.value) {
+    res = res.filter(c => c.site === site.value)
+  }
+  return res
 })
 
-const normalizeSubscription = (subscription) => ({
-  ...subscription,
-  total_videos: subscription.total_videos || 0,
-  total_extract: subscription.total_extract || 0,
-  recent_videos: Array.isArray(subscription.recent_videos) ? subscription.recent_videos : [],
-})
-
-const patchSubscription = (subscriptionId, patch) => {
-  const index = subscriptions.value.findIndex((subscription) => subscription.id === subscriptionId)
-  if (index === -1) {
-    return
-  }
-
-  const nextSubscriptions = [...subscriptions.value]
-  nextSubscriptions[index] = {
-    ...nextSubscriptions[index],
-    ...patch,
-  }
-  subscriptions.value = nextSubscriptions
-
-  if (selectedSubscription.value?.id === subscriptionId) {
-    selectedSubscription.value = {
-      ...selectedSubscription.value,
-      ...patch,
+const videoGroups = computed(() => {
+  const groups: Record<string, any[]> = {}
+  feedItems.value.forEach(video => {
+    const publishDate = video.publish_date || video.created_at
+    if (!publishDate) return
+    const date = new Date(publishDate)
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1)
+    let title = ''
+    const videoDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    if (videoDate.getTime() === today.getTime()) title = '今天'
+    else if (videoDate.getTime() === yesterday.getTime()) title = '昨天'
+    else {
+      const diffDays = Math.floor((today.getTime() - videoDate.getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays < 7) title = '本周'
+      else if (diffDays < 30) title = '本月'
+      else title = `${date.getFullYear()}年${date.getMonth() + 1}月`
     }
-  }
-}
-
-const applySubscriptionPage = (mappedSubscriptions, requestedPage) => {
-  mappedSubscriptions.forEach((subscription) => {
-    getRefreshState(subscription.id)
-    setSubscriptionMeta(subscription.id, { name: subscription.name, avatar: subscription.avatar })
+    if (!groups[title]) groups[title] = []
+    groups[title].push(video)
   })
+  return Object.entries(groups).map(([title, videos]) => ({ title, videos }))
+})
 
-  if (requestedPage === 1) {
-    subscriptions.value = mappedSubscriptions
-    return
-  }
-
-  const existingIds = new Set(subscriptions.value.map((subscription) => subscription.id))
-  const deduped = mappedSubscriptions.filter((subscription) => !existingIds.has(subscription.id))
-  subscriptions.value = [...subscriptions.value, ...deduped]
-}
-
-const resetSubscriptionState = ({ clearItems = true } = {}) => {
-  currentPage.value = 1
-  allLoaded.value = false
-  loadError.value = null
-
-  if (clearItems) {
-    hasLoadedOnce.value = false
-    subscriptions.value = []
-  }
-}
-
-const loadSubscriptions = async ({ force = false } = {}) => {
-  if ((loading.value && !force) || (allLoaded.value && !force)) {
-    return
-  }
-
-  const requestId = ++latestLoadRequestId
-  const requestedPage = currentPage.value
-
-  loading.value = true
-  listAbortController?.abort()
-  listAbortController = new AbortController()
+const fetchChannels = async (isReset = false) => {
+  if (loadingChannels.value || (loadingMoreChannels.value && !isReset) || (channelsFinished.value && !isReset)) return
+  if (isReset) { channelsPage.value = 1; channelsFinished.value = false; loadingChannels.value = true } 
+  else { loadingMoreChannels.value = true }
 
   try {
-    const { data, error } = await apiGetSubscriptions(createSubscriptionParams(), {
-      signal: listAbortController.signal,
+    const nsfwValue = nsfw.value === 'only' ? 'yes' : (['all', 'yes', 'no'].includes(nsfw.value) ? nsfw.value : 'all')
+    const { data } = await getSubscriptions({ 
+      nsfw: nsfwValue, 
+      page: channelsPage.value, 
+      pageSize: CHANNELS_PAGE_SIZE,
+      page_size: CHANNELS_PAGE_SIZE 
     })
-
-    if (requestId !== latestLoadRequestId) {
-      return
-    }
-
-    if (error?.type === CANCELED_ERROR_TYPE) {
-      return
-    }
-
-    if (error) {
-      loadError.value = error || '获取订阅列表失败'
-      return
-    }
-
-    const newSubscriptions = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
-    const mappedSubscriptions = newSubscriptions.map((subscription) => normalizeSubscription(subscription))
-
-    applySubscriptionPage(mappedSubscriptions, requestedPage)
-    loadError.value = null
-    currentPage.value = requestedPage + 1
-    allLoaded.value = newSubscriptions.length < SUBSCRIPTIONS_PAGE_SIZE
+    const items = data?.data || data?.items || []
+    if (isReset) list.value = items; else list.value.push(...items)
+    if (items.length < CHANNELS_PAGE_SIZE) channelsFinished.value = true
+    else channelsPage.value++
   } finally {
-    if (requestId === latestLoadRequestId) {
-      hasLoadedOnce.value = true
-      loading.value = false
-      listAbortController = null
-    }
+    loadingChannels.value = false; loadingMoreChannels.value = false
   }
 }
 
-const loadMore = () => {
-  if (loading.value || allLoaded.value) {
-    return
-  }
-  loadSubscriptions()
-}
-
-const handleVisibleRangeChange = ({ end }) => {
-  if (!sortedSubscriptions.value.length || loading.value || allLoaded.value) {
-    return
-  }
-
-  if (end >= sortedSubscriptions.value.length - VIRTUAL_LIST_PRELOAD_COUNT) {
-    loadMore()
-  }
-}
-
-useRefreshTriggers({ onRefresh: refreshList })
-
-async function refreshList() {
-  clearSpinTimer()
-  isRefreshing.value = true
-  isResetting.value = true
-  resetSubscriptionState({ clearItems: false })
-  spinStartAt.value = Date.now()
+const fetchFeed = async (isReset = false) => {
+  if (loadingFeed.value || (loadingMoreFeed.value && !isReset) || (feedFinished.value && !isReset)) return
+  if (isReset) { feedPage.value = 1; feedFinished.value = false; loadingFeed.value = true } 
+  else { loadingMoreFeed.value = true }
 
   try {
-    await loadSubscriptions({ force: true })
+    const nsfwValue = nsfw.value === 'only' ? 'yes' : (['all', 'yes', 'no'].includes(nsfw.value) ? nsfw.value : 'all')
+    const { data } = await getVideoList({
+      page: feedPage.value,
+      pageSize: FEED_PAGE_SIZE,
+      page_size: FEED_PAGE_SIZE,
+      nsfw: nsfwValue,
+      subscription_id: activeChannelId.value || undefined,
+      sort_by: 'publish_date'
+    })
+    const items = data?.data || data?.items || []
+    if (isReset) feedItems.value = items; else feedItems.value.push(...items)
+    if (items.length < FEED_PAGE_SIZE) feedFinished.value = true
+    else feedPage.value++
   } finally {
-    const elapsed = Date.now() - spinStartAt.value
-    const remain = Math.max(0, MIN_SPIN_MS - elapsed)
-    clearSpinTimer()
-    spinTimer.value = setTimeout(() => {
-      isRefreshing.value = false
-      isResetting.value = false
-      clearSpinTimer()
-    }, remain)
+    loadingFeed.value = false; loadingMoreFeed.value = false
   }
 }
 
-const handleGlobalSearch = async (query) => {
-  searchQuery.value = query || ''
-  resetSubscriptionState()
-  await loadSubscriptions({ force: true })
-  isRefreshing.value = false
+const handleChannelClick = (id: string | number) => {
+  activeChannelId.value = activeChannelId.value === id ? null : id
+  viewMode.value = 'feed'; fetchFeed(true)
 }
 
-watch([nsfw, site], async () => {
-  resetSubscriptionState()
-  await loadSubscriptions({ force: true })
+const handleRefresh = () => { fetchChannels(true); fetchFeed(true) }
+const handleOpenVideo = (video: any) => { rememberVideoPlaybackSeed(video); router.push(`/video/${video.id}`) }
+
+const initObservers = () => {
+  // Cleanup existing
+  feedObserver?.disconnect()
+  channelsObserver?.disconnect()
+  gridObserver?.disconnect()
+
+  const scrollContainer = document.getElementById('subscription-scroll-container')
+  const channelsContainer = document.getElementById('channels-scroll-container')
+
+  // 1. Feed Observer
+  feedObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && !loadingFeed.value && !loadingMoreFeed.value && !feedFinished.value) fetchFeed()
+  }, { root: scrollContainer, rootMargin: '800px' })
+  if (feedTrigger.value) feedObserver.observe(feedTrigger.value)
+
+  // 2. Channels Sidebar Observer
+  channelsObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && !loadingChannels.value && !loadingMoreChannels.value && !channelsFinished.value) fetchChannels()
+  }, { root: channelsContainer, rootMargin: '200px' })
+  if (channelsTrigger.value) channelsObserver.observe(channelsTrigger.value)
+
+  // 3. Grid Mode Observer
+  if (viewMode.value === 'grid') {
+    gridObserver = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !loadingChannels.value && !loadingMoreChannels.value && !channelsFinished.value) fetchChannels()
+    }, { root: scrollContainer, rootMargin: '400px' })
+    if (gridMoreTrigger.value) gridObserver.observe(gridMoreTrigger.value)
+  }
+}
+
+onMounted(async () => {
+  fetchSites(); fetchChannels(true); await fetchFeed(true)
+  nextTick(() => initObservers())
 })
 
-const openSettings = (subscription) => {
-  selectedSubscription.value = { ...subscription }
-  setSubscriptionMeta(subscription.id, { name: subscription.name, avatar: subscription.avatar })
-  showSettings.value = true
-}
-
-const closeSettings = () => {
-  showSettings.value = false
-  selectedSubscription.value = null
-  unsubscribeError.value = ''
-}
-
-const handleSettingsOpenChange = (open) => {
-  if (unsubscribingId.value) {
-    return
-  }
-
-  if (!open) {
-    closeSettings()
-  }
-}
-
-const unsubscribe = async (subscriptionId) => {
-  if (!subscriptionId || unsubscribingId.value) {
-    return
-  }
-
-  unsubscribeError.value = ''
-  unsubscribingId.value = subscriptionId
-
-  const { error } = await apiUnsubscribe(subscriptionId)
-
-  if (error) {
-    unsubscribeError.value = error?.message || '取消订阅失败'
-    unsubscribingId.value = null
-    return
-  }
-
-  closeSettings()
-  notifySubscriptionRemoved(subscriptionId)
-  await wait(SUBSCRIPTION_REMOVE_DELAY_MS)
-  subscriptions.value = subscriptions.value.filter((subscription) => subscription.id !== subscriptionId)
-  unsubscribingId.value = null
-}
-
-const openRecentVideo = (video) => {
-  const videoId = video?.id
-  if (!videoId) return
-
-  rememberVideoPlaybackSeed(video)
-  router.push(`/video/${videoId}`)
-}
-
-const getSubscriptionVideos = (subscriptionId) => {
-  router.push(`/subscription/${subscriptionId}/all`)
-}
-
-const reloadSubscriptions = () => {
-  resetSubscriptionState()
-  loadSubscriptions({ force: true })
-}
-
-const handleChannelAdded = () => {
-  reloadSubscriptions()
-}
-
-const handleSubscriptionsImported = () => {
-  reloadSubscriptions()
-}
-
-const updateNsfwStatus = async (isNsfw) => {
-  const subscriptionId = selectedSubscription.value?.id
-  if (!subscriptionId) {
-    return
-  }
-
-  const { error } = await apiUpdateNsfwStatus(subscriptionId, isNsfw)
-
-  if (!error) {
-    patchSubscription(subscriptionId, { is_nsfw: isNsfw })
-    return
-  }
-
-  patchSubscription(subscriptionId, { is_nsfw: !isNsfw })
-}
-
-const handleRefreshSubscription = async (subscriptionId) => {
-  await triggerRefresh(subscriptionId)
-}
-
-const handleRetryRefresh = async (subscriptionId) => {
-  await retryRefresh(subscriptionId)
-}
-
-const getStatusVariant = (status) => {
-  switch (status) {
-    case 'queued': return 'secondary'
-    case 'in_progress': return 'default'
-    case 'completed': return 'success'
-    case 'failed': return 'error'
-    default: return 'muted'
-  }
-}
-
-onMounted(() => {
-  updateLayoutMode()
-  window.addEventListener('resize', updateLayoutMode)
-  loadSubscriptions()
-  emitter?.on?.('search:subscribed', handleGlobalSearch)
+// Re-init observers when view mode changes to bind new triggers
+watch(viewMode, () => {
+  nextTick(() => initObservers())
 })
 
-onUnmounted(() => {
-  clearSpinTimer()
-  listAbortController?.abort()
-  window.removeEventListener('resize', updateLayoutMode)
-  emitter?.off?.('search:subscribed', handleGlobalSearch)
-  cleanupRefresh()
-})
+watch([nsfw, site], () => { fetchChannels(true); fetchFeed(true) })
+onUnmounted(() => { feedObserver?.disconnect(); channelsObserver?.disconnect(); gridObserver?.disconnect() })
 </script>
 
 <style scoped>
-.subscribed-page {
-  min-height: 100%;
-}
-
-.content-container {
-  width: 100%;
-  margin: 0 auto;
-  padding: 0 var(--app-page-gutter);
-}
-
-@media (min-width: 640px) {
-  .content-container {
-    padding: 0 var(--app-page-gutter-sm);
-  }
-}
-
-@media (min-width: 1024px) {
-  .content-container {
-    padding: 0 var(--app-page-gutter-lg);
-  }
-}
-
-.subscribed-shell {
-  padding-top: 0.5rem;
-}
-
-.subscribed-toolbar {
-  padding: var(--app-toolbar-padding-block) 0;
-}
-
-.subscribed-toolbar :deep(.toolbar-slot-actions) {
-  gap: 0.5rem;
-}
-
-.toolbar-right-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.subscribed-toolbar__button {
-  gap: 0.35rem;
-  padding-inline: 0.65rem;
-  border-radius: var(--radius-md);
-}
-
-.subscribed-toolbar__button--secondary {
-  border-color: hsl(var(--border) / 0.55);
-  background: hsl(var(--background) / 0.65);
-}
-
-.channel-container {
-  flex: 1;
-  min-height: 0;
-  padding-top: 0.75rem;
-}
-
-.content-container--fill {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-}
-
-.subscription-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-}
-
-.subscription-list--loading {
-  min-height: calc(100dvh - 12rem);
-}
-
-.subscription-list-wrapper {
-  flex: 1;
-  min-height: 0;
-}
-
-.subscription-virtual-list {
-  height: calc(100dvh - 10.75rem);
-  min-height: 24rem;
-  padding-bottom: 0.5rem;
-}
-
-.subscription-row {
-  display: grid;
-  grid-template-rows: 5rem 1fr;
-  height: 100%;
-  box-sizing: border-box;
-  background: hsl(var(--background));
-  overflow: hidden;
-  transition: background var(--duration-fast) var(--ease-default);
-}
-
-.subscription-row:hover {
-  background: hsl(var(--foreground) / 0.03);
-}
-
-.subscription-row__header {
-  display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 0 1.25rem;
-  padding: 0.875rem 1rem;
-  cursor: pointer;
-}
-
-.subscription-row__avatar-wrap {
-  display: flex;
-  justify-content: center;
-}
-
-.subscription-row__avatar-container {
-  position: relative;
-  width: 2.75rem;
-  height: 2.75rem;
-}
-
-.subscription-row__avatar {
-  width: 100%;
-  height: 100%;
-  border-radius: var(--radius-md);
-}
-
-.subscription-row__avatar :deep(.avatar-image) {
-  filter: grayscale(0.15);
-  transition: filter var(--duration-normal) var(--ease-default);
-}
-
-.subscription-row:hover .subscription-row__avatar :deep(.avatar-image) {
-  filter: grayscale(0);
-}
-
-.subscription-row__avatar-pulse {
-  position: absolute;
-  inset: -3px;
-  border: 2px solid hsl(var(--primary) / 0.45);
-  border-radius: calc(var(--radius-sm) + 2px);
-  animation: stream-pulse 2s ease-in-out infinite;
-}
-
-.subscription-row__main {
-  min-width: 0;
-}
-
-.subscription-row__name-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.3rem;
-}
-
-.subscription-row__name {
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.subscription-row__nsfw-tag {
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-.subscription-row__meta {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.status-badge-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  flex-shrink: 0;
-}
-
-.subscription-row__sep {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: hsl(var(--border));
-  flex-shrink: 0;
-}
-
-.subscription-row__date {
-  font-size: 0.65rem;
-  color: hsl(var(--muted-foreground) / 0.5);
-}
-
-.subscription-row__stats {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 0 0.5rem;
-}
-
-.subscription-row__stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  min-width: 2.5rem;
-}
-
-.subscription-row__stat-value {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  line-height: 1;
-}
-
-.subscription-row__stat-label {
-  font-size: 0.55rem;
-  color: hsl(var(--muted-foreground) / 0.5);
-  letter-spacing: 0.02em;
-}
-
-.subscription-row__stat-sep {
-  width: 1px;
-  height: 1.5rem;
-  background: hsl(var(--border) / 0.5);
-  flex-shrink: 0;
-}
-
-.subscription-row__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.125rem;
-  opacity: 0.45;
-  transition: opacity var(--duration-fast) var(--ease-default);
-}
-
-.subscription-row:hover .subscription-row__actions,
-.subscription-row__actions:focus-within {
-  opacity: 1;
-}
-
-.row-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  color: hsl(var(--muted-foreground));
-  transition: all var(--duration-fast) var(--ease-default);
-}
-
-.row-action-btn:hover {
-  background: hsl(var(--accent));
-  color: hsl(var(--foreground));
-}
-
-.row-action-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
-.row-action-icon {
-  width: 0.875rem;
-  height: 0.875rem;
-}
-
-.row-action-icon.is-spinning {
-  animation: spin var(--duration-slow) linear infinite;
-}
-
-.subscription-row__recent-grid {
-  display: flex;
-  gap: 0.5rem;
-  padding: 0.2rem 1rem 0.85rem;
-  overflow-x: auto;
-  overflow-y: hidden;
-  min-height: 0;
-  scrollbar-width: none;
-}
-
-.subscription-row__recent-grid::-webkit-scrollbar {
-  display: none;
-}
-
-.recent-video-card {
-  display: block;
-  width: 13rem;
-  min-width: 13rem;
-  max-width: 13rem;
-  box-sizing: border-box;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-lg);
-  padding: 0.2rem;
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-default);
-}
-
-.recent-video-card:hover {
-  background: hsl(var(--foreground) / 0.03);
-}
-
-.recent-video-card__thumb-wrap {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16/9;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: hsl(var(--secondary) / 0.6);
-}
-
-.recent-video-card__thumb {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.recent-video-card__thumb-placeholder {
-  width: 100%;
-  height: 100%;
-  background: hsl(var(--secondary) / 0.9);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.15rem;
-  color: hsl(var(--muted-foreground) / 0.75);
-}
-
-.recent-video-card__thumb-placeholder-icon {
-  width: 1rem;
-  height: 1rem;
-  opacity: 0.8;
-}
-
-.recent-video-card__thumb-placeholder-text {
-  font-size: 0.6rem;
-  line-height: 1;
-}
-
-.recent-video-card__duration {
-  position: absolute;
-  right: 0.25rem;
-  bottom: 0.2rem;
-  font-size: 0.6rem;
-  font-weight: 600;
-  color: #fff;
-  background: rgb(0 0 0 / 0.72);
-  border-radius: var(--radius-sm);
-  padding: 0.05rem 0.28rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.recent-video-card__title {
-  margin: 0.3rem 0 0;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.35;
-}
-
-.recent-video-card__meta {
-  margin: 0.15rem 0 0;
-  font-size: 0.64rem;
-  color: hsl(var(--muted-foreground) / 0.8);
-  line-height: 1.3;
-}
-
-.subscription-row__recent-empty {
-  margin: 0 1rem 1rem;
-  border: 1px dashed hsl(var(--border) / 0.6);
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.68rem;
-  color: hsl(var(--muted-foreground));
-}
-
-.subscribed-bottom-copy {
-  margin: 1rem 0 0.75rem;
-  text-align: center;
-  color: hsl(var(--muted-foreground) / 0.35);
-  font-size: 0.7rem;
-}
-
-.subscription-dialog__summary {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.subscription-dialog__avatar {
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: var(--radius-md);
-}
-
-.subscription-dialog__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.subscription-dialog__actions {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.subscription-dialog__hero {
-  background:
-    radial-gradient(circle at top right, hsl(var(--primary) / 0.12), transparent 36%),
-    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.92));
-}
-
-.subscription-dialog__spinner {
-  width: 0.75rem;
-  height: 0.75rem;
-  margin-right: 0.35rem;
-  border-radius: var(--radius-full);
-  border: 2px solid hsl(var(--destructive-foreground) / 0.35);
-  border-top-color: hsl(var(--destructive-foreground));
-  animation: spin var(--duration-slow) linear infinite;
-}
-
-@keyframes stream-pulse {
-  0% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.04); opacity: 0.85; }
-  100% { transform: scale(1); opacity: 0.5; }
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.fade-list-enter-active,
-.fade-list-leave-active {
-  transition: opacity var(--duration-normal) var(--ease-default);
-}
-
-.fade-list-enter-from,
-.fade-list-leave-to {
-  opacity: 0;
-}
-
-@media (max-width: 960px) {
-  .subscription-virtual-list {
-    height: calc(100dvh - 11.5rem);
-  }
-
-  .subscription-row {
-    grid-template-rows: 5.5rem 1fr;
-  }
-
-  .subscription-row__header {
-    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
-    gap: 0 0.75rem;
-    padding: 0.75rem;
-  }
-
-  .subscription-row__avatar-container {
-    width: 2.25rem;
-    height: 2.25rem;
-  }
-
-  .subscription-row__main {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .subscription-row__stats {
-    grid-column: 3;
-    grid-row: 1;
-    gap: 0.75rem;
-    padding: 0;
-  }
-
-  .subscription-row__actions {
-    grid-column: 2 / 4;
-    grid-row: 2;
-    opacity: 1;
-    padding-top: 0.25rem;
-    justify-content: flex-start;
-  }
-
-  .subscription-row__recent-grid {
-    padding: 0 0.75rem 0.75rem;
-  }
-
-  .subscription-row__recent-empty {
-    margin: 0 0.75rem 0.75rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .toolbar-right-actions {
-    width: 100%;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-  }
-}
-
-@media (hover: none) {
-  .subscription-row__actions {
-    opacity: 1;
-  }
-}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(var(--primary), 0.1); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(var(--primary), 0.2); }
 </style>

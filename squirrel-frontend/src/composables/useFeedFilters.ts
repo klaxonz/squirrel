@@ -20,9 +20,9 @@ export function useFeedFilters({ subscriptionIdRef }: { subscriptionIdRef?: Ref<
   const filters = computed(() => ({
     tab: activeTab.value,
     q: searchQuery.value,
-    sid: subscriptionIdRef?.value,
-    sort: sortBy.value,
-    nsfw: nsfw.value,
+    subscription_id: subscriptionIdRef?.value,
+    sort_by: sortBy.value,
+    nsfw: nsfw.value === 'only' ? 'yes' : nsfw.value,
     site: subscriptionIdRef?.value ? undefined : site.value,
     timeRange: timeRange.value,
     duration: duration.value,

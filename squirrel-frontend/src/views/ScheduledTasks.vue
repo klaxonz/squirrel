@@ -1,264 +1,211 @@
 <template>
-  <AppPageShell class="scheduled-page">
-    <AppToolbarFrame class="toolbar-container">
-      <!-- Stats Row -->
-      <div class="flex items-center gap-3 mt-4 overflow-x-auto">
-        <div
-          v-for="stat in statCards"
-          :key="stat.key"
-          class="stat-card"
-        >
-          <component :is="stat.icon" :class="['h-4 w-4 shrink-0', stat.color]" />
-          <div class="flex flex-col min-w-0">
-            <span class="text-[10px] text-muted-foreground leading-none">{{ stat.label }}</span>
-            <span class="text-sm font-semibold tabular-nums text-foreground leading-tight mt-0.5">{{ stat.value }}</span>
+  <AppPageShell class="scheduled-page bg-slate-50/50">
+    <!-- Header Area (Linear/Apple Style) -->
+    <div class="w-full bg-white">
+      <div class="w-full max-w-[1400px] mx-auto px-6 py-10">
+        <div class="flex items-center justify-between">
+          <div class="space-y-1">
+            <h1 class="text-xl font-semibold text-slate-900 tracking-tight">定时任务</h1>
+            <p class="text-sm text-slate-500">管理自动化数据采集与系统同步任务</p>
           </div>
-        </div>
-      </div>
-    </AppToolbarFrame>
-
-    <!-- Main Content -->
-    <div class="content-container flex-1 flex flex-col min-h-0 overflow-hidden">
-
-      <!-- Search & Filter Bar -->
-      <div class="px-4 py-3 border-b border-border/30">
-        <div class="flex items-center gap-3 flex-wrap">
-          <!-- Search with border -->
-          <div class="relative flex-1 min-w-[180px] border border-border/60 rounded-lg bg-background">
-            <Search class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
-            <Input
-              v-model="searchQuery"
-              @input="debouncedSearch"
-              placeholder="搜索任务名称、描述或异常..."
-              class="pl-8 pr-8 bg-transparent border-none h-8 text-[11px] focus-visible:ring-0 placeholder:text-muted-foreground/30 shadow-none"
-            />
-            <button
-              v-if="searchQuery"
-              @click="clearSearch"
-              class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-foreground transition-colors"
-            >
-              <X class="h-3 w-3" />
-            </button>
-          </div>
-
-          <div class="flex items-center gap-1.5 shrink-0">
+          <div class="flex items-center gap-3">
             <Button
               variant="outline"
-              size="sm"
-              class="h-8 px-3 text-[11px] font-medium border-border/40 text-muted-foreground hover:text-foreground hover:border-border/80 transition-all shadow-none"
-              :disabled="loading"
               @click="refreshData"
+              class="h-9 px-4 text-sm font-medium border-slate-200 hover:bg-slate-50 transition-colors"
             >
-              <RefreshCw :class="['h-3.5 w-3.5 mr-1.5', loading ? 'animate-spin' : '']" />
+              <RefreshCw :class="['h-4 w-4 mr-2 text-slate-500', loading ? 'animate-spin' : '']" />
               刷新
             </Button>
-
             <Button
-              size="sm"
-              class="h-8 px-4 text-[11px] font-medium transition-all shadow-none"
               @click="showCreateDialog = true"
+              class="h-9 px-4 text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 transition-colors shadow-sm"
             >
-              <Plus class="h-3.5 w-3.5 mr-1.5" />
+              <Plus class="h-4 w-4 mr-2" />
               新建任务
             </Button>
           </div>
+        </div>
 
-          <div class="h-5 w-px bg-border/20 shrink-0"></div>
-
-          <div class="scheduled-filter-scroll shrink-0">
-            <AppSegmentedControl
-              v-model="statusFilter"
-              size="sm"
-              class="scheduled-filter-tabs"
-              :options="statusOptions"
-              aria-label="任务状态筛选"
-              @change="setStatusFilter"
-            />
-          </div>
-
-          <div class="h-5 w-px bg-border/20 shrink-0 hidden md:block"></div>
-
-          <div class="scheduled-filter-scroll shrink-0">
-            <AppSegmentedControl
-              v-model="typeFilter"
-              size="sm"
-              class="scheduled-filter-tabs scheduled-filter-tabs--compact"
-              :options="typeOptions"
-              aria-label="任务类型筛选"
-              @change="setTypeFilter"
-            />
+        <!-- Compact Stats (Notion Style) -->
+        <div class="flex items-center gap-8 mt-8">
+          <div v-for="stat in statCards" :key="stat.key" class="flex items-center gap-3">
+            <div :class="['w-2 h-2 rounded-full', stat.dotColor]"></div>
+            <span class="text-sm font-medium text-slate-600">{{ stat.label }}</span>
+            <span class="text-sm font-bold text-slate-900 tabular-nums">{{ stat.value }}</span>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Table Area -->
-      <div class="flex-1 overflow-hidden flex flex-col min-h-0">
+    <!-- Main Content Area -->
+    <div class="w-full max-w-[1400px] mx-auto px-6 py-6">
+      <!-- Filter & Search Bar (Linear Style) -->
+      <div class="flex items-center justify-between gap-4 mb-6 w-full">
+        <div class="flex items-center gap-1 p-1 bg-slate-200/50 rounded-lg shrink-0">
+          <button
+            v-for="opt in statusOptions"
+            :key="opt.value"
+            @click="setStatusFilter(opt.value)"
+            :class="[
+              'px-4 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap',
+              statusFilter === opt.value 
+                ? 'bg-white text-slate-900 shadow-sm' 
+                : 'text-slate-500 hover:text-slate-700'
+            ]"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
 
-        <!-- Empty State -->
-        <AppEmptyState
-          v-if="!loading && tasks.length === 0"
-          class="scheduled-empty-state"
-          :title="hasTaskFilters ? '没有匹配的任务' : '当前没有任务'"
-          :copy="hasTaskFilters ? '调整搜索或筛选条件后再试。' : '点击上方按钮部署第一个任务。'"
-        >
-          <template #actions>
-            <Button v-if="hasTaskFilters" size="sm" variant="secondary" @click="resetFilters">清空筛选</Button>
-            <Button size="sm" @click="showCreateDialog = true">
-              <Plus class="h-3.5 w-3.5 mr-1.5" />
-              新建任务
-            </Button>
-          </template>
-        </AppEmptyState>
+        <div class="relative w-72 shrink-0">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            v-model="searchQuery"
+            @input="debouncedSearch"
+            placeholder="搜索任务..."
+            class="h-9 pl-9 pr-8 bg-white border-slate-200 rounded-lg text-sm focus-visible:ring-slate-200 shadow-none w-full"
+          />
+          <button
+            v-if="searchQuery"
+            @click="clearSearch"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
+          >
+            <X class="h-4 w-4" />
+          </button>
+        </div>
+      </div>
 
-        <!-- Table -->
-        <div v-else class="flex-1 overflow-auto min-h-0">
-          <table class="sq-table w-full text-left">
-            <thead>
-              <tr class="sticky top-0 z-10 bg-background">
-                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-left">任务</th>
-                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-center w-20">状态</th>
-                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-center w-20">频率</th>
-                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-left w-36">上次执行</th>
-                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-left w-36">下次计划</th>
-                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-center w-16">执行数</th>
-                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-center w-16">成功率</th>
-                <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-right w-12"></th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-border/10 last:border-b-0">
-              <!-- Loading Skeleton -->
-              <template v-if="loading && tasks.length === 0">
-                <tr v-for="i in 6" :key="i" class="animate-pulse">
-                  <td class="px-4 py-4"><div class="h-3 w-32 bg-muted/30 rounded"></div></td>
-                  <td class="px-4 py-4"><div class="h-3 w-12 bg-muted/20 rounded mx-auto"></div></td>
-                  <td class="px-4 py-4"><div class="h-3 w-10 bg-muted/20 rounded mx-auto"></div></td>
-                  <td class="px-4 py-4"><div class="h-3 w-20 bg-muted/20 rounded"></div></td>
-                  <td class="px-4 py-4"><div class="h-3 w-20 bg-muted/20 rounded"></div></td>
-                  <td class="px-4 py-4"><div class="h-3 w-10 bg-muted/20 rounded mx-auto"></div></td>
-                  <td class="px-4 py-4"><div class="h-3 w-10 bg-muted/20 rounded mx-auto"></div></td>
-                  <td class="px-4 py-4"><div class="h-5 w-5 bg-muted/20 rounded ml-auto"></div></td>
-                </tr>
-              </template>
+      <!-- Task List (Linear Table Style) -->
+      <div class="w-full bg-white rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(0,0,0,0.05)] flex flex-col">
+        <!-- List Header -->
+        <div class="grid grid-cols-[1fr_120px_140px_160px_100px] gap-4 px-6 py-4 bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider w-full">
+          <div>任务详情</div>
+          <div class="text-center">状态</div>
+          <div>执行频率</div>
+          <div>下次运行</div>
+          <div class="text-right">操作</div>
+        </div>
 
-              <!-- Data Rows -->
-              <tr
-                v-for="task in tasks"
-                :key="task.id"
-                class="hover:bg-muted/30 transition-all"
+        <!-- List Content -->
+        <div class="divide-y divide-slate-200/40 w-full">
+          <div v-if="loading && tasks.length === 0" class="w-full p-12 space-y-4">
+            <div v-for="i in 5" :key="i" class="h-12 w-full bg-slate-50 animate-pulse rounded-lg"></div>
+          </div>
+
+          <AppEmptyState
+            v-else-if="tasks.length === 0"
+            :title="hasTaskFilters ? '未找到相关任务' : '暂无定时任务'"
+            :copy="hasTaskFilters ? '请尝试调整筛选条件' : '点击右上方按钮创建自动化任务'"
+            class="w-full py-20"
+          />
+
+          <div
+            v-for="task in tasks"
+            :key="task.id"
+            class="grid grid-cols-[1fr_120px_140px_160px_100px] gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors group w-full"
+          >
+            <!-- Task Info -->
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="font-semibold text-slate-900 text-sm truncate">{{ task.name }}</span>
+                <div v-if="task.status === 'running'" class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50 text-[10px] font-bold text-blue-600 uppercase">
+                  <span class="w-1 h-1 rounded-full bg-blue-600 animate-pulse"></span>
+                  运行中
+                </div>
+              </div>
+              <p class="text-xs text-slate-500 line-clamp-1 mt-1">{{ task.description || '暂无描述' }}</p>
+            </div>
+
+            <!-- Status Badge -->
+            <div class="flex justify-center">
+              <div :class="[
+                'px-2.5 py-1 rounded-md text-[11px] font-bold border',
+                task.status === 'enabled' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                task.status === 'disabled' ? 'bg-slate-100 border-slate-200 text-slate-500' :
+                task.status === 'error' ? 'bg-rose-50 border-rose-100 text-rose-700' :
+                'bg-blue-50 border-blue-100 text-blue-700'
+              ]">
+                {{ getStatusText(task.status) }}
+              </div>
+            </div>
+
+            <!-- Interval -->
+            <div class="text-sm text-slate-600 font-medium flex items-center gap-2">
+              <Clock class="h-3.5 w-3.5 text-slate-400" />
+              {{ task.interval }} {{ getUnitFull(task.unit) }}
+            </div>
+
+            <!-- Schedule -->
+            <div class="text-xs text-slate-500 tabular-nums">
+              {{ formatDateTime(task.next_run_at) || '—' }}
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-end gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                @click="executeTask(task)"
+                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-all"
+                title="立即执行"
               >
-                <!-- Task Info -->
-                <td class="px-4 py-4 align-middle">
-                  <div class="flex flex-col gap-0.5">
-                    <div class="flex items-center gap-2">
-                      <span class="font-medium text-foreground text-[12px]">{{ task.name }}</span>
-                      <span class="px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">{{ getTypeText(task.task_type) }}</span>
-                    </div>
-                    <p class="text-[11px] text-muted-foreground line-clamp-1">{{ task.description || '无描述' }}</p>
-                    <div v-if="task.last_error" class="flex items-center gap-1 text-[10px] text-destructive" :title="task.last_error">
-                      <AlertCircle class="h-3 w-3 shrink-0" />
-                      <span class="truncate">{{ task.last_error }}</span>
-                    </div>
-                  </div>
-                </td>
-
-                <!-- Status -->
-                <td class="px-4 py-4 align-middle text-center">
-                  <span class="text-[11px] text-foreground">{{ getStatusText(task.status) }}</span>
-                </td>
-
-                <!-- Frequency -->
-                <td class="px-4 py-4 align-middle text-center">
-                  <span class="text-[12px] font-medium text-foreground tabular-nums">{{ task.interval }}{{ getUnitShort(task.unit) }}</span>
-                </td>
-
-                <!-- Last Run -->
-                <td class="px-4 py-4 align-middle">
-                  <span class="text-[11px] text-muted-foreground tabular-nums">{{ formatDateTime(task.last_run_at) || '—' }}</span>
-                </td>
-
-                <!-- Next Run -->
-                <td class="px-4 py-4 align-middle">
-                  <span class="text-[11px] text-foreground tabular-nums">{{ formatDateTime(task.next_run_at) || '—' }}</span>
-                </td>
-
-                <!-- Run Count -->
-                <td class="px-4 py-4 align-middle text-center">
-                  <span class="text-[11px] text-muted-foreground tabular-nums">{{ task.run_count || 0 }}</span>
-                </td>
-
-                <!-- Success Rate -->
-                <td class="px-4 py-4 align-middle text-center">
-                  <span class="text-[11px] font-medium text-foreground tabular-nums">{{ calculateSuccessRate(task) }}%</span>
-                </td>
-
-                <!-- Actions -->
-                <td class="px-4 py-4 align-middle text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger as-child>
-                      <Button variant="ghost" size="sm" class="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 shrink-0">
-                        <MoreVertical class="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" class="w-40 bg-background border border-border/40">
-                      <DropdownMenuItem @click="executeTask(task)" :disabled="executingTaskId === task.id" class="gap-2 px-3 py-2 cursor-pointer">
-                        <Play class="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                        <span class="text-[11px]">{{ executingTaskId === task.id ? '触发中...' : '立即触发' }}</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem @click="editTask(task)" class="gap-2 px-3 py-2 cursor-pointer">
-                        <Pencil class="h-3.5 w-3.5 shrink-0" />
-                        <span class="text-[11px]">编辑配置</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem v-if="task.is_active" @click="disableTask(task.id)" class="gap-2 px-3 py-2 cursor-pointer">
-                        <Pause class="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                        <span class="text-[11px]">暂停调度</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem v-else @click="enableTask(task.id)" class="gap-2 px-3 py-2 cursor-pointer">
-                        <Zap class="h-3.5 w-3.5 text-primary shrink-0" />
-                        <span class="text-[11px]">恢复调度</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        @click="confirmDeleteTask(task)"
-                        :disabled="task.task_type === 'system' || deletingTaskId === task.id"
-                        class="gap-2 px-3 py-2 cursor-pointer text-destructive"
-                      >
-                        <Loader2 v-if="deletingTaskId === task.id" class="h-3.5 w-3.5 animate-spin shrink-0" />
-                        <Trash2 v-else class="h-3.5 w-3.5 shrink-0" />
-                        <span class="text-[11px]">{{ deletingTaskId === task.id ? '删除中...' : '移除任务' }}</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                <Play class="h-4 w-4 fill-current" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                @click="editTask(task)"
+                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-all"
+                title="编辑"
+              >
+                <Pencil class="h-4 w-4" />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child>
+                  <button class="h-8 w-8 flex items-center justify-center rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-all">
+                    <MoreHorizontal class="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" class="w-40 p-1 bg-white border border-slate-200 shadow-xl rounded-lg">
+                  <DropdownMenuItem v-if="task.is_active" @click="disableTask(task.id)" class="px-3 py-2 text-sm text-amber-600 rounded-md cursor-pointer hover:bg-amber-50">
+                    <Pause class="h-3.5 w-3.5 mr-2" />
+                    暂停任务
+                  </DropdownMenuItem>
+                  <DropdownMenuItem v-else @click="enableTask(task.id)" class="px-3 py-2 text-sm text-blue-600 rounded-md cursor-pointer hover:bg-blue-50">
+                    <Zap class="h-3.5 w-3.5 mr-2" />
+                    恢复任务
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator class="bg-slate-100" />
+                  <DropdownMenuItem @click="confirmDeleteTask(task)" class="px-3 py-2 text-sm text-rose-600 rounded-md cursor-pointer hover:bg-rose-50">
+                    <Trash2 class="h-3.5 w-3.5 mr-2" />
+                    删除任务
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
         </div>
 
         <!-- Pagination -->
-        <div v-if="totalPages > 0" class="flex items-center justify-between px-4 py-3 border-t border-border/20">
-          <p class="text-[11px] text-muted-foreground">
-            共 {{ statistics.total_tasks }} 个任务
-          </p>
+        <div v-if="totalPages > 1" class="px-6 py-5 bg-slate-50/30 border-t border-slate-100/50 flex items-center justify-between">
+          <span class="text-xs text-slate-400 font-medium">第 {{ currentPage }} / {{ totalPages }} 页</span>
           <div class="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              class="h-8 px-3 text-[11px]"
-              :disabled="currentPage <= 1 || loading"
+              :disabled="currentPage <= 1"
               @click="goToPage(currentPage - 1)"
+              class="h-8 px-3 text-xs border-slate-200 bg-white"
             >
               上一页
             </Button>
-            <span class="text-[11px] text-muted-foreground px-2">
-              {{ currentPage }} / {{ totalPages }}
-            </span>
             <Button
               variant="outline"
               size="sm"
-              class="h-8 px-3 text-[11px]"
-              :disabled="currentPage >= totalPages || loading"
+              :disabled="currentPage >= totalPages"
               @click="goToPage(currentPage + 1)"
+              class="h-8 px-3 text-xs border-slate-200 bg-white"
             >
               下一页
             </Button>
@@ -267,7 +214,7 @@
       </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Dialogs -->
     <TaskDialog
       v-if="showCreateDialog"
       :task-classes="taskClasses"
@@ -283,70 +230,48 @@
       @save="handleUpdateTask"
     />
 
-    <!-- Delete Confirm Dialog -->
+    <!-- Confirmations -->
     <Dialog v-model:open="showDeleteDialog">
-      <DialogContent class="max-w-sm">
-        <DialogHeader>
-          <DialogTitle class="text-base font-bold">确认移除任务</DialogTitle>
-          <DialogDescription class="text-[11px] text-muted-foreground/50">
-            确定要移除任务 <strong class="text-foreground/60">"{{ deletingTask?.name }}"</strong> 吗？此操作不可撤销。
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter class="gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            class="h-8 px-4 text-[11px] font-medium"
-            @click="showDeleteDialog = false"
-          >
-            取消
-          </Button>
-          <Button
-            size="sm"
-            class="h-8 px-4 text-[11px] font-medium bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20"
-            @click="doDeleteTask"
-          >
-            确认移除
-          </Button>
-        </DialogFooter>
+      <DialogContent class="max-w-[400px] p-0 overflow-hidden rounded-xl border-slate-200">
+        <div class="p-6">
+          <h3 class="text-lg font-semibold text-slate-900">确认删除任务</h3>
+          <p class="text-sm text-slate-500 mt-2 leading-relaxed">
+            确定要删除任务 <span class="font-bold text-slate-900">"{{ deletingTask?.name }}"</span> 吗？此操作将停止所有调度并清除任务记录。
+          </p>
+        </div>
+        <div class="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-200">
+          <Button variant="ghost" @click="showDeleteDialog = false" class="h-9 px-4 text-sm font-medium">取消</Button>
+          <Button @click="doDeleteTask" class="h-9 px-4 text-sm font-medium bg-rose-600 text-white hover:bg-rose-700">确认删除</Button>
+        </div>
       </DialogContent>
     </Dialog>
 
-    <!-- Execute Confirm Dialog -->
     <Dialog v-model:open="showExecuteDialog">
-      <DialogContent class="max-w-sm">
-        <DialogHeader>
-          <DialogTitle class="text-base font-bold">确认立即触发</DialogTitle>
-          <DialogDescription class="text-[11px] text-muted-foreground/50">
-            任务 <strong class="text-foreground/60">"{{ executingTask?.name }}"</strong> 将跳过调度周期立即执行，是否继续？
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter class="gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            class="h-8 px-4 text-[11px] font-medium"
-            @click="showExecuteDialog = false"
-          >
-            取消
-          </Button>
-          <Button
-            size="sm"
-            class="h-8 px-4 text-[11px] font-medium"
-            @click="doExecuteTask"
-          >
-            立即执行
-          </Button>
-        </DialogFooter>
+      <DialogContent class="max-w-[400px] p-0 overflow-hidden rounded-xl border-slate-200">
+        <div class="p-6">
+          <h3 class="text-lg font-semibold text-slate-900">立即触发任务</h3>
+          <p class="text-sm text-slate-500 mt-2 leading-relaxed">
+            任务 <span class="font-bold text-slate-900">"{{ executingTask?.name }}"</span> 将立即进入执行队列。
+          </p>
+        </div>
+        <div class="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-200">
+          <Button variant="ghost" @click="showExecuteDialog = false" class="h-9 px-4 text-sm font-medium">取消</Button>
+          <Button @click="doExecuteTask" class="h-9 px-4 text-sm font-medium bg-slate-900 text-white hover:bg-slate-800">开始执行</Button>
+        </div>
       </DialogContent>
     </Dialog>
 
     <!-- Feedback Toast -->
     <Transition name="toast">
-      <div v-if="toast.visible" class="toast" :class="[toast.error ? 'toast--error' : 'toast--success', 'save-toast']">
-        <CheckCircle2 v-if="!toast.error" class="h-4 w-4 shrink-0" />
-        <AlertCircle v-else class="h-4 w-4 shrink-0" />
-        <span class="text-xs font-semibold">{{ toast.message }}</span>
+      <div v-if="toast.visible" class="fixed bottom-6 right-6 z-50">
+        <div :class="[
+          'flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium transition-all',
+          toast.error ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-slate-900 border-slate-800 text-white'
+        ]">
+          <CheckCircle2 v-if="!toast.error" class="h-4 w-4 text-emerald-400" />
+          <AlertCircle v-else class="h-4 w-4 text-rose-400" />
+          {{ toast.message }}
+        </div>
       </div>
     </Transition>
   </AppPageShell>
@@ -356,13 +281,11 @@
 import { computed, ref, onMounted } from 'vue'
 import {
   Activity, RefreshCw, Plus, Search, Zap, AlertCircle,
-  CheckCircle2, Play, Pause, Pencil, Trash2, MoreVertical,
-  Loader2, X
+  CheckCircle2, Play, Pause, Pencil, Trash2, MoreHorizontal,
+  Clock, X
 } from 'lucide-vue-next'
 import AppEmptyState from '@/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
-import AppSegmentedControl from '@/components/layout/AppSegmentedControl.vue'
-import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue'
 import TaskDialog from '@/components/dialogs/TaskDialog.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -374,8 +297,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-  DialogDescription, DialogFooter
+  Dialog, DialogContent
 } from '@/components/ui/dialog'
 import { debounce } from '../utils/debounce'
 import { Logger } from '@/utils/logger'
@@ -408,7 +330,6 @@ const currentPage = ref(1)
 const totalPages = ref(1)
 const searchQuery = ref('')
 const statusFilter = ref('all')
-const typeFilter = ref('all')
 const showCreateDialog = ref(false)
 const editingTask = ref(null)
 
@@ -425,102 +346,33 @@ let toastTimer = null
 const showToast = (message, isError = false) => {
   if (toastTimer) clearTimeout(toastTimer)
   toast.value = { visible: true, message, error: isError }
-  toastTimer = setTimeout(() => { toast.value.visible = false }, 2800)
+  toastTimer = setTimeout(() => { toast.value.visible = false }, 3000)
 }
 
 const hasTaskFilters = computed(() => {
-  return Boolean(searchQuery.value || statusFilter.value !== 'all' || typeFilter.value !== 'all')
+  return Boolean(searchQuery.value || statusFilter.value !== 'all')
 })
 
 // Stats
 const statCards = computed(() => [
-  {
-    key: 'total',
-    label: '任务总数',
-    value: statistics.value.total_tasks,
-    icon: Activity,
-    color: 'text-muted-foreground'
-  },
-  {
-    key: 'active',
-    label: '活跃',
-    value: statistics.value.active_tasks,
-    icon: Zap,
-    color: 'text-foreground'
-  },
-  {
-    key: 'running',
-    label: '运行中',
-    value: statistics.value.running_tasks,
-    icon: Loader2,
-    color: 'text-muted-foreground'
-  },
-  {
-    key: 'error',
-    label: '异常',
-    value: statistics.value.error_tasks,
-    icon: AlertCircle,
-    color: 'text-destructive'
-  },
-  {
-    key: 'today',
-    label: '今日完成',
-    value: statistics.value.today_executions,
-    icon: CheckCircle2,
-    color: 'text-foreground'
-  },
+  { key: 'total', label: '全部', value: statistics.value.total_tasks, dotColor: 'bg-slate-400' },
+  { key: 'active', label: '活跃', value: statistics.value.active_tasks, dotColor: 'bg-blue-500' },
+  { key: 'running', label: '运行', value: statistics.value.running_tasks, dotColor: 'bg-emerald-500' },
+  { key: 'error', label: '异常', value: statistics.value.error_tasks, dotColor: 'bg-rose-500' },
+  { key: 'today', label: '今日执行', value: statistics.value.today_executions, dotColor: 'bg-amber-500' },
 ])
 
 const statusOptions = [
   { value: 'all', label: '全部' },
   { value: 'enabled', label: '就绪' },
   { value: 'disabled', label: '暂停' },
-  { value: 'running', label: '运行' },
+  { value: 'running', label: '运行中' },
   { value: 'error', label: '异常' }
 ]
-
-const typeOptions = [
-  { value: 'all', label: '全部' },
-  { value: 'system', label: '核心' },
-  { value: 'user', label: '用户' },
-  { value: 'plugin', label: '插件' }
-]
-
-// Pagination: visible page buttons
-const visiblePages = computed(() => {
-  const total = totalPages.value
-  const current = currentPage.value
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, i) => i + 1)
-  }
-  const pages = []
-  if (current <= 4) {
-    for (let i = 1; i <= 5; i++) pages.push(i)
-    pages.push('...')
-    pages.push(total)
-  } else if (current >= total - 3) {
-    pages.push(1)
-    pages.push('...')
-    for (let i = total - 4; i <= total; i++) pages.push(i)
-  } else {
-    pages.push(1)
-    pages.push('...')
-    for (let i = current - 1; i <= current + 1; i++) pages.push(i)
-    pages.push('...')
-    pages.push(total)
-  }
-  return pages
-})
 
 // Filter setters
 const setStatusFilter = (val) => {
   statusFilter.value = val
-  currentPage.value = 1
-  loadTasks()
-}
-
-const setTypeFilter = (val) => {
-  typeFilter.value = val
   currentPage.value = 1
   loadTasks()
 }
@@ -551,8 +403,7 @@ const loadTasks = async () => {
       page: currentPage.value,
       page_size: 15,
       search: searchQuery.value || undefined,
-      status: statusFilter.value === 'all' ? undefined : statusFilter.value,
-      task_type: typeFilter.value === 'all' ? undefined : typeFilter.value
+      status: statusFilter.value === 'all' ? undefined : statusFilter.value
     })
 
     if (!result.error && result.data) {
@@ -581,10 +432,10 @@ const doExecuteTask = async () => {
   const result = await apiExecuteTaskNow(executingTask.value.id)
   executingTaskId.value = null
   if (!result.error) {
-    showToast(`任务「${executingTask.value.name}」已触发`)
-    setTimeout(() => refreshData(), 600)
+    showToast(`任务「${executingTask.value.name}」已开始执行`)
+    setTimeout(() => refreshData(), 800)
   } else {
-    showToast('触发失败', true)
+    showToast('执行失败', true)
   }
 }
 
@@ -599,7 +450,7 @@ const handleCreateTask = async (taskData) => {
     showToast('任务创建成功')
     await refreshData()
   } else {
-    showToast('创建失败：' + (result.message || '未知错误'), true)
+    showToast('创建失败', true)
   }
 }
 
@@ -615,7 +466,6 @@ const handleUpdateTask = async (taskData) => {
 }
 
 const confirmDeleteTask = (task) => {
-  if (task.task_type === 'system') return
   deletingTask.value = task
   showDeleteDialog.value = true
 }
@@ -627,7 +477,7 @@ const doDeleteTask = async () => {
   const result = await apiDeleteTask(deletingTask.value.id)
   deletingTaskId.value = null
   if (!result.error) {
-    showToast(`任务「${deletingTask.value.name}」已移除`)
+    showToast(`任务已删除`)
     await refreshData()
   } else {
     showToast('删除失败', true)
@@ -638,20 +488,20 @@ const doDeleteTask = async () => {
 const enableTask = async (id) => {
   const result = await apiEnableTask(id)
   if (!result.error) {
-    showToast('任务已恢复调度')
+    showToast('任务已恢复')
     await refreshData()
   } else {
-    showToast('操作失败', true)
+    showToast('恢复失败', true)
   }
 }
 
 const disableTask = async (id) => {
   const result = await apiDisableTask(id)
   if (!result.error) {
-    showToast('任务已暂停调度')
+    showToast('任务已暂停')
     await refreshData()
   } else {
-    showToast('操作失败', true)
+    showToast('暂停失败', true)
   }
 }
 
@@ -676,7 +526,6 @@ const clearSearch = () => {
 const resetFilters = () => {
   searchQuery.value = ''
   statusFilter.value = 'all'
-  typeFilter.value = 'all'
   currentPage.value = 1
   loadTasks()
 }
@@ -686,23 +535,19 @@ const calculateSuccessRate = (task) => {
   return Math.round((task.success_count / task.run_count) * 100)
 }
 
-const getUnitShort = (unit) => {
-  return { seconds: 's', minutes: 'm', hours: 'h', days: 'd' }[unit] || unit
+const getUnitFull = (unit) => {
+  return { seconds: '秒', minutes: '分钟', hours: '小时', days: '天' }[unit] || unit
 }
 
 const getStatusText = (status) => {
   return { enabled: '就绪', disabled: '暂停', running: '运行中', error: '异常' }[status] || status
 }
 
-const getTypeText = (type) => {
-  return { system: '核心', user: '用户', plugin: '插件' }[type] || type
-}
-
 const formatDateTime = (val) => {
   if (!val) return null
   const date = new Date(val)
   return date.toLocaleString('zh-CN', {
-    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
+    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
   })
 }
 
@@ -710,75 +555,22 @@ onMounted(loadData)
 </script>
 
 <style scoped>
-/* Stat cards */
-.stat-card {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: var(--radius-lg);
-  flex-shrink: 0;
+.scheduled-page {
+  min-height: 100vh;
+  scrollbar-gutter: stable;
 }
 
-/* Container: consistent with other pages */
-.content-container {
-  max-width: 100%;
-  padding-left: var(--app-page-gutter);
-  padding-right: var(--app-page-gutter);
-  width: 100%;
-}
-
-@media (min-width: 640px) {
-  .content-container {
-    padding-left: var(--app-page-gutter-sm);
-    padding-right: var(--app-page-gutter-sm);
-  }
-}
-
-@media (min-width: 1024px) {
-  .content-container {
-    padding-left: var(--app-page-gutter-lg);
-    padding-right: var(--app-page-gutter-lg);
-  }
-}
-
-.scheduled-filter-scroll {
-  overflow-x: auto;
-}
-
-.scheduled-filter-tabs {
-  min-width: max-content;
-}
-
-.scheduled-filter-tabs--compact :deep(.app-segmented-control__item) {
-  padding-inline: 0.55rem;
-}
-
-.scheduled-empty-state {
-  min-height: 22rem;
-  margin: 1rem 0;
-}
-
-/* Typography */
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-}
-
-/* Toast */
-.save-toast {
-  position: fixed;
-  bottom: 1.75rem;
-  right: 1.75rem;
-}
 .toast-enter-active,
 .toast-leave-active {
-  transition: all var(--duration-slow) var(--ease-out);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .toast-enter-from,
 .toast-leave-to {
   opacity: 0;
-  transform: translateY(0.75rem) scale(0.95);
+  transform: translateY(1rem);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 </style>

@@ -1,12 +1,11 @@
 <template>
-  <AppPageShell class="latest-videos">
-    <ChannelHeader
-      v-if="subscriptionId"
-      :subscription-id="subscriptionId"
-    />
+  <div class="min-h-full bg-background">
+    <!-- Channel Header -->
+    <ChannelHeader v-if="subscriptionId" :subscription-id="subscriptionId" />
 
-    <section class="latest-videos__toolbar-shell">
-      <AppToolbarFrame class="latest-videos__container">
+    <!-- Sticky Toolbar -->
+    <div class="sticky top-0 z-30 bg-background border-b border-border/20">
+      <div class="max-w-[2400px] mx-auto">
         <FeedToolbar
           :active-tab="activeTab"
           :nsfw="nsfw"
@@ -15,33 +14,22 @@
           :subscription-id="subscriptionId"
           :tabs="tabs"
           :is-refreshing="isRefreshing"
-          :time-range="timeRange"
-          :duration="duration"
-          :content-type="contentType"
-          @update:activeTab="(value) => activeTab = value"
-          @update:nsfw="(value) => nsfw = value"
-          @update:sortBy="(value) => sortBy = value"
-          @update:site="(value) => site = value"
-          @update:timeRange="(value) => timeRange = value"
-          @update:duration="(value) => duration = value"
-          @update:contentType="(value) => contentType = value"
-          @tab-dblclick="handleTabDoubleClick"
+          @update:activeTab="activeTab = $event"
+          @update:nsfw="nsfw = $event"
+          @update:sortBy="sortBy = $event"
+          @update:site="site = $event"
           @refresh="refreshCurrentList"
         />
-      </AppToolbarFrame>
-    </section>
+      </div>
+    </div>
 
-    <div class="video-container flex-grow relative">
-      <div v-if="loadError" class="latest-videos__container latest-videos__alert">
-        <Alert variant="destructive" class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <AlertTitle>加载失败</AlertTitle>
-            <AlertDescription class="break-words">
-              {{ `加载失败：${loadError?.message || loadError}` }}
-            </AlertDescription>
-          </div>
-          <Button variant="secondary" size="sm" class="rounded-full" @click="refreshCurrentList">重试</Button>
-        </Alert>
+    <!-- Main Content Area -->
+    <div class="max-w-[2400px] mx-auto">
+      <div v-if="loadError" class="px-6 pt-6">
+        <div class="bg-destructive/5 border border-destructive/20 rounded-2xl p-4 flex items-center justify-between">
+          <p class="text-sm text-destructive font-medium">{{ loadError?.message || loadError }}</p>
+          <button @click="refreshCurrentList" class="text-xs font-bold uppercase tracking-widest px-4 py-2 bg-destructive text-white rounded-full">Retry</button>
+        </div>
       </div>
 
       <router-view v-slot="{ Component }">
@@ -49,106 +37,73 @@
           <component
             :is="Component"
             :filters="childFilters"
-            class="absolute inset-0"
             ref="videoChildRef"
             @goToSubscription="goToChannelDetail"
             @openModal="handleOpenModal"
-            @error="(error) => (loadError = error)"
-            @loading-change="(value) => (isRefreshing = !!value)"
+            @error="loadError = $event"
+            @loading-change="isRefreshing = !!$event"
           />
         </keep-alive>
       </router-view>
     </div>
-  </AppPageShell>
+  </div>
 </template>
 
-<script setup>
-import { computed, inject, onActivated, onDeactivated, onMounted, onUnmounted, ref } from 'vue'
+<script setup lang="ts">
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useUIStore } from '@/stores/ui'
 import { useRouteTabSync } from '../composables/useRouteTabSync'
 import { useFeedFilters } from '../composables/useFeedFilters'
 import { useRefreshTriggers } from '../composables/useRefreshTriggers'
-import AppPageShell from '@/components/layout/AppPageShell.vue'
-import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue'
 import FeedToolbar from '@/components/feed/FeedToolbar.vue'
 import ChannelHeader from '@/components/feed/ChannelHeader.vue'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
 import { VIDEO_TABS } from '@/constants/videos'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { onSubscriptionRemoved } from '@/utils/subscriptionEvents'
 
 const router = useRouter()
 const route = useRoute()
-const emitter = inject('emitter')
+const uiStore = useUIStore()
 
-const subscriptionId = computed(() => route.params.id)
-const { activeTab, nsfw, sortBy, site, searchQuery, timeRange, duration, contentType, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId })
+const subscriptionId = computed(() => route.params.id as string)
+const { activeTab, nsfw, sortBy, site, searchQuery, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId })
 
 const tabs = ref(VIDEO_TABS)
 const isRefreshing = ref(false)
-const loadError = ref(null)
-const videoChildRef = ref(null)
-let stopSubscriptionRemovedListener = null
+const loadError = ref<any>(null)
+const videoChildRef = ref<any>(null)
 
 const childFilters = computed(() => filters.value)
 
 const refreshCurrentList = () => {
-  isRefreshing.value = true
   loadError.value = null
   videoChildRef.value?.refresh?.()
 }
 
-const handleGlobalSearch = (keyword) => {
-  searchQuery.value = keyword
-}
-
-const handleOpenModal = (video) => {
+const handleOpenModal = (video: any) => {
   rememberVideoPlaybackSeed(video)
   router.push(`/video/${video.id}`)
 }
 
-const goToChannelDetail = (targetSubscriptionId) => {
-  router.push(`/subscription/${targetSubscriptionId}/all`)
-}
+const goToChannelDetail = (id: string) => router.push(`/subscription/${id}/all`)
 
-const handleTabDoubleClick = (tab) => {
-  if (tab === activeTab.value) {
-    isRefreshing.value = true
-    videoChildRef.value?.refresh?.()
-  }
-}
-
-const handleSubscriptionRemoved = (subscriptionId) => {
-  const removedId = String(subscriptionId || '')
-  if (!removedId) return
-
-  if (String(route.params.id || '') === removedId) {
-    router.replace({ name: 'AllVideos' })
-  }
+const handleTabDoubleClick = (tab: string) => {
+  if (tab === activeTab.value) refreshCurrentList()
 }
 
 useRefreshTriggers({ onRefresh: refreshCurrentList })
 useRouteTabSync(router, route, activeTab, subscriptionId)
 
-onActivated(() => {
-  emitter?.on?.('search:home', handleGlobalSearch)
-})
-
-onDeactivated(() => {
-  emitter?.off?.('search:home', handleGlobalSearch)
+watch(() => uiStore.searchTrigger, () => {
+  if (route.meta.search === 'home' || !route.meta.search) {
+    searchQuery.value = uiStore.searchQuery
+  }
 })
 
 onMounted(() => {
-  stopSubscriptionRemovedListener = onSubscriptionRemoved(({ subscriptionId }) => {
-    handleSubscriptionRemoved(subscriptionId)
+  onSubscriptionRemoved(({ subscriptionId }) => {
+    if (String(route.params.id || '') === String(subscriptionId)) router.replace({ name: 'AllVideos' })
   })
 })
-
-onUnmounted(() => {
-  stopSubscriptionRemovedListener?.()
-  stopSubscriptionRemovedListener = null
-})
 </script>
-
-<style scoped src="../styles/components/LatestVideos.css"></style>

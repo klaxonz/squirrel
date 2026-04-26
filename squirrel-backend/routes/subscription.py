@@ -94,7 +94,7 @@ def list_subscriptions(
         nsfw: str = Query("all", description="NSFW 过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
         site: str = Query(None, description="站点过滤：例如 youtube、bilibili 等（支持别名）"),
         page: int = Query(1, ge=1, description="页码"),
-        page_size: int = Query(10, ge=1, le=100, description="每页数量"),
+        page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
         current_user: User = Depends(get_current_user)
 ):
     domains: List[str] | None = None

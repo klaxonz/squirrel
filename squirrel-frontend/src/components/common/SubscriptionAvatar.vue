@@ -22,7 +22,7 @@ import { computed, ref, watch } from 'vue'
 const props = withDefaults(defineProps<{
   src?: string | null
   name?: string
-  size?: 'xs' | 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full'
 }>(), {
   size: 'md'
 })
@@ -47,6 +47,8 @@ const sizeClass = computed(() => {
     'avatar--sm': props.size === 'sm',
     'avatar--md': props.size === 'md',
     'avatar--lg': props.size === 'lg',
+    'avatar--xl': props.size === 'xl',
+    'avatar--full': props.size === 'full',
   }
 })
 </script>
@@ -67,6 +69,8 @@ const sizeClass = computed(() => {
 .avatar--sm { width: 1.5rem; height: 1.5rem; }
 .avatar--md { width: 1.75rem; height: 1.75rem; }
 .avatar--lg { width: 2rem; height: 2rem; }
+.avatar--xl { width: 3rem; height: 3rem; }
+.avatar--full { width: 100%; height: 100%; border-radius: inherit; }
 
 .avatar-image {
   width: 100%;

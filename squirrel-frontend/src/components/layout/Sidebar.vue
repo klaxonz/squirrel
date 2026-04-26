@@ -1,127 +1,66 @@
 <template>
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <router-link to="/" class="sidebar-brand">SQRL</router-link>
+  <aside class="w-[var(--sidebar-width)] h-full flex flex-col bg-sidebar border-r border-border/40 select-none">
+    <!-- Brand Section (Minimalist Style) -->
+    <div class="h-14 flex items-center px-4 mb-2">
+      <router-link to="/" class="flex items-center gap-2 group">
+        <div class="w-6 h-6 bg-foreground rounded-md flex items-center justify-center transition-transform group-hover:scale-105 group-active:scale-95 shadow-sm">
+          <Zap class="w-3.5 h-3.5 text-background fill-current" />
+        </div>
+        <span class="text-[14px] font-bold tracking-tight text-foreground">Squirrel</span>
+      </router-link>
     </div>
 
-    <nav class="sidebar-nav flex-1 overflow-y-auto scrollbar-hide">
-      <div
-        v-for="group in NAV_GROUPS"
-        :key="group.key"
-        class="sidebar-group"
-      >
-        <div class="sidebar-group-label">{{ group.label }}</div>
-        <SidebarMenuItem
-          v-for="item in group.items"
-          :key="item.path"
-          :item="item"
-          :is-active="isNavigationItemActive(item, $route)"
-        />
+    <!-- Navigation Groups -->
+    <nav class="flex-1 overflow-y-auto px-2 space-y-6 scrollbar-hide pb-8">
+      <div v-for="group in NAV_GROUPS" :key="group.key">
+        <div class="px-3 mb-1.5 flex items-center justify-between">
+          <span class="text-[10px] font-bold tracking-widest text-muted-foreground/40 uppercase">
+            {{ group.label }}
+          </span>
+        </div>
+        <div class="space-y-0.5">
+          <SidebarMenuItem
+            v-for="item in group.items"
+            :key="item.path"
+            :item="item"
+            :is-active="isNavigationItemActive(item, $route)"
+          />
+        </div>
       </div>
     </nav>
 
-    <div class="sidebar-footer">
-      <button @click="handleLogout" class="sidebar-logout">
-        <LogOut class="sidebar-logout-icon" />
-        <span class="sidebar-logout-label">退出</span>
-      </button>
+    <!-- User Section (Integrated Style) -->
+    <div class="p-3 border-t border-border/40 mt-auto">
+      <div class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer group" @click="handleLogout">
+        <div class="relative w-8 h-8 shrink-0">
+          <div class="w-full h-full rounded-full bg-secondary flex items-center justify-center border border-border/50">
+            <User class="w-4 h-4 text-muted-foreground" />
+          </div>
+        </div>
+        
+        <div class="flex-1 min-w-0">
+          <p class="text-[12px] font-semibold truncate text-foreground/80">Guest</p>
+          <p class="text-[10px] text-muted-foreground/60 truncate">Basic Plan</p>
+        </div>
+        
+        <LogOut class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
     </div>
   </aside>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { LogOut } from 'lucide-vue-next'
-import { useUser } from '@/composables/useUser'
+import { LogOut, User, Zap } from 'lucide-vue-next'
+import { useUserStore } from '@/stores/user'
 import SidebarMenuItem from './SidebarMenuItem.vue'
 import { NAV_GROUPS, isNavigationItemActive } from '@/constants/sidebar'
 
 const router = useRouter()
-const { logout } = useUser()
+const userStore = useUserStore()
 
 const handleLogout = async () => {
-  await logout()
+  await userStore.logout()
   router.push('/login')
 }
 </script>
-
-<style scoped>
-.sidebar {
-  width: var(--sidebar-width);
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background: hsl(var(--sidebar));
-  border-right: 1px solid hsl(var(--sidebar-border) / 0.5);
-}
-
-.sidebar-header {
-  padding: 1.5rem 1.25rem 1.25rem;
-}
-
-.sidebar-brand {
-  font-size: 1.5rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: hsl(var(--primary));
-  text-decoration: none;
-}
-
-.sidebar-nav {
-  padding: 0 0.5rem 1.5rem;
-}
-
-.sidebar-group {
-  margin-bottom: 1.5rem;
-}
-
-.sidebar-group:last-child {
-  margin-bottom: 0;
-}
-
-.sidebar-group-label {
-  padding: 0 0.75rem;
-  margin-bottom: 0.375rem;
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: hsl(var(--sidebar-foreground) / 0.35);
-}
-
-.sidebar-footer {
-  padding: 0.5rem;
-  border-top: 1px solid hsl(var(--sidebar-border) / 0.5);
-}
-
-.sidebar-logout {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-md);
-  color: hsl(var(--sidebar-foreground) / 0.5);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-default);
-}
-
-.sidebar-logout:hover {
-  background: hsl(var(--sidebar-accent));
-  color: hsl(var(--sidebar-foreground));
-}
-
-.sidebar-logout-icon {
-  width: 1.125rem;
-  height: 1.125rem;
-  flex-shrink: 0;
-}
-
-.sidebar-logout-label {
-  line-height: 1;
-}
-</style>

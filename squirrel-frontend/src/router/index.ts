@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { DEFAULT_SETTINGS_TAB, SETTINGS_TABS } from '@/constants/sidebar'
-import { useUser } from '../composables/useUser'
+import { useUserStore } from '../stores/user'
 import { useServerConfig } from '../composables/useServerConfig'
 import { Logger } from '@/utils/logger'
 
@@ -247,6 +247,7 @@ const routes = [
     meta: {
       requiresAuth: false,
       title: '服务器配置',
+      layout: 'empty',
     },
   },
   {
@@ -256,6 +257,7 @@ const routes = [
     meta: {
       requiresAuth: false,
       title: '登录',
+      layout: 'auth',
     },
   },
   {
@@ -265,6 +267,7 @@ const routes = [
     meta: {
       requiresAuth: false,
       title: '注册',
+      layout: 'auth',
     },
   },
   {
@@ -281,7 +284,7 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  const { getCurrentUser, hasResolvedAuth, isAuthenticated } = useUser()
+  const userStore = useUserStore()
   const { getServerUrl, initServerConfig } = useServerConfig()
 
   await initServerConfig()
@@ -294,19 +297,19 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  if (!hasResolvedAuth.value) {
-    const result = await getCurrentUser()
+  if (!userStore.hasResolvedAuth) {
+    const result = await userStore.fetchCurrentUser()
     if (result.error?.status && result.error.status !== 401) {
       Logger.error('Failed to get user info', result.error)
     }
   }
 
-  if (to.meta.requiresAuth !== false && !isAuthenticated.value) {
+  if (to.meta.requiresAuth !== false && !userStore.isAuthenticated) {
     next('/login')
     return
   }
 
-  if ((to.path === '/login' || to.path === '/register') && isAuthenticated.value) {
+  if ((to.path === '/login' || to.path === '/register') && userStore.isAuthenticated) {
     next('/')
     return
   }

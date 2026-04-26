@@ -8,6 +8,8 @@ class ClearanceRecord:
     user_agent: str
     created_at: float
     expires_at: float
+    browser_config: dict[str, Any] | None = None
+    browser_os: str | None = None
 
 
 @dataclass(slots=True)
@@ -17,6 +19,9 @@ class HtmlResult:
     status_code: int
     cookies: dict[str, str]
     user_agent: str
+    browser_config: dict[str, Any] | None = None
+    browser_os: str | None = None
+    source: str | None = None
 
 
 @dataclass(slots=True)

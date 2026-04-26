@@ -1,152 +1,30 @@
 <template>
-  <div class="video-skeleton-item" :style="{ animationDelay: `${delay}ms` }">
-    <div class="video-viewer-frame-skeleton">
-      <div class="shimmer" :style="{ animationDelay: `${delay}ms` }"></div>
-      <div class="skeleton-overlay">
-        <div class="flex justify-between items-start w-full">
-          <div class="skeleton-tag"></div>
-        </div>
-        <div class="flex justify-between items-end w-full">
-          <div class="skeleton-tag w-12"></div>
-          <div class="skeleton-time w-10"></div>
-        </div>
-      </div>
+  <div class="flex flex-col gap-3" :style="{ animationDelay: `${delay}ms` }">
+    <div class="relative aspect-video rounded-xl bg-muted overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-r from-transparent via-foreground/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
     </div>
-
-    <div class="video-terminal-info-skeleton">
-      <div class="skeleton-title w-full"></div>
-      <div class="skeleton-title w-2/3 mt-2"></div>
-      <div class="video-terminal-meta-skeleton mt-4">
-        <div class="meta-left">
-          <div class="skeleton-avatar"></div>
-          <div class="skeleton-text w-20"></div>
-        </div>
-        <div class="meta-right">
-          <div class="skeleton-text w-12"></div>
+    <div class="flex gap-3 px-1">
+      <div class="w-9 h-9 rounded-full bg-muted shrink-0" />
+      <div class="flex-1 space-y-2">
+        <div class="h-4 bg-muted rounded-md w-full" />
+        <div class="h-3 bg-muted rounded-md w-2/3" />
+        <div class="flex gap-2 pt-1">
+          <div class="h-3 bg-muted rounded-md w-16" />
+          <div class="h-3 bg-muted rounded-md w-12" />
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
-const props = defineProps({
-  delay: {
-    type: Number,
-    default: 0,
-  },
-})
+<script setup lang="ts">
+defineProps<{
+  delay?: number
+}>()
 </script>
 
 <style scoped>
-.video-skeleton-item {
-  position: relative;
-  padding: var(--space-3);
-  animation: skeleton-appear var(--duration-slow) var(--ease-out) forwards;
-  opacity: 0;
-}
-
-@keyframes skeleton-appear {
-  from {
-    opacity: 0;
-    transform: translateY(var(--space-2));
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.video-viewer-frame-skeleton {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  background: hsl(var(--foreground) / 0.03);
-  border-radius: var(--radius-md);
-  border: 1px solid hsl(var(--foreground) / 0.05);
-}
-
-.shimmer {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    hsl(var(--foreground) / 0.05),
-    transparent
-  );
-  animation: skeleton-shimmer 1.5s ease-in-out infinite;
-}
-
-@keyframes skeleton-shimmer {
-  0% { transform: translateX(-100%); }
+@keyframes shimmer {
   100% { transform: translateX(100%); }
-}
-
-.skeleton-overlay {
-  position: absolute;
-  inset: 0;
-  padding: var(--space-3);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  background: linear-gradient(
-    to bottom,
-    hsl(var(--background) / 0.2) 0%,
-    transparent 30%,
-    transparent 70%,
-    hsl(var(--background) / 0.4) 100%
-  );
-}
-
-.skeleton-tag {
-  height: 8px;
-  background: hsl(var(--foreground) / 0.06);
-  border-radius: var(--radius-sm);
-  width: 40px;
-}
-
-.skeleton-time {
-  height: 12px;
-  background: hsl(var(--foreground) / 0.08);
-  border-radius: var(--radius-sm);
-}
-
-.video-terminal-info-skeleton {
-  margin-top: var(--space-3);
-}
-
-.skeleton-title {
-  height: 14px;
-  background: hsl(var(--foreground) / 0.06);
-  border-radius: var(--radius-sm);
-}
-
-.video-terminal-meta-skeleton {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-}
-
-.meta-left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex: 1;
-}
-
-.skeleton-avatar {
-  width: 14px;
-  height: 14px;
-  background: hsl(var(--foreground) / 0.06);
-  border-radius: var(--radius-sm);
-}
-
-.skeleton-text {
-  height: 10px;
-  background: hsl(var(--foreground) / 0.05);
-  border-radius: var(--radius-sm);
 }
 </style>

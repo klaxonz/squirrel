@@ -108,8 +108,10 @@ class BrowserSolver:
         from playwright_captcha.utils.camoufox_add_init_script.add_init_script import get_addon_path
 
         user_agent = getattr(cached_record, 'user_agent', None)
-        selected_os = self._resolve_browser_os(user_agent)
-        browser_config = self._build_browser_config(user_agent=user_agent, selected_os=selected_os)
+        selected_os = getattr(cached_record, 'browser_os', None) or self._resolve_browser_os(user_agent)
+        browser_config = getattr(cached_record, 'browser_config', None)
+        if browser_config is None:
+            browser_config = self._build_browser_config(user_agent=user_agent, selected_os=selected_os)
 
         return {
             'headless': True,
@@ -126,6 +128,17 @@ class BrowserSolver:
             'block_webrtc': True,
             'enable_cache': False,
         }
+
+    @staticmethod
+    def _extract_browser_identity(camoufox_kwargs: dict) -> tuple[dict | None, str | None]:
+        config = camoufox_kwargs.get('config')
+        if isinstance(config, dict):
+            browser_config = dict(config)
+            browser_config.pop('forceScopeAccess', None)
+        else:
+            browser_config = None
+        browser_os = camoufox_kwargs.get('os')
+        return browser_config, browser_os if isinstance(browser_os, str) else None
 
     async def _restore_cached_cookies(self, context, url: str, record) -> None:
         cookies = [
@@ -284,7 +297,9 @@ class BrowserSolver:
         from playwright_captcha import ClickSolver
         from playwright_captcha import FrameworkType
 
-        camoufox = AsyncCamoufox(**self._build_camoufox_kwargs(proxy=proxy, cached_record=cached_record))
+        camoufox_kwargs = self._build_camoufox_kwargs(proxy=proxy, cached_record=cached_record)
+        browser_config, browser_os = self._extract_browser_identity(camoufox_kwargs)
+        camoufox = AsyncCamoufox(**camoufox_kwargs)
         async with camoufox as browser:
             context_kwargs = {'proxy': {'server': proxy}} if proxy else {}
             context = await browser.new_context(**context_kwargs)
@@ -351,4 +366,7 @@ class BrowserSolver:
                 status_code=200,
                 cookies=cookies,
                 user_agent=user_agent,
+                browser_config=browser_config,
+                browser_os=browser_os,
+                source='solver',
             )

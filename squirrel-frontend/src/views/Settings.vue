@@ -1,136 +1,102 @@
 <template>
-  <AppPageShell class="settings-page">
-
-    <!-- Tab Navigation -->
-    <nav class="settings-tabs" role="tablist">
-      <button
-        v-for="tab in tabs"
-        :key="tab.key"
-        role="tab"
-        :aria-selected="currentTab === tab.key"
-        :aria-controls="`panel-${tab.key}`"
-        class="settings-tab"
-        :class="{ 'settings-tab--active': currentTab === tab.key }"
-        @click="navigateToTab(tab.path)"
-      >
-        <component :is="tab.icon" class="settings-tab__icon" />
-        <span class="settings-tab__label">{{ tab.label }}</span>
-        <span v-if="tab.badge" class="settings-tab__badge">{{ tab.badge }}</span>
-      </button>
-      <Transition name="status-pop">
-        <div v-if="hasUnsavedChanges" class="settings-header__status">
-          <span class="status-dot"></span>
-          <span class="status-text">有未保存的更改</span>
+  <AppPageShell class="settings-page bg-slate-50/50">
+    <!-- Header Area -->
+    <div class="w-full bg-white">
+      <div class="w-full max-w-[1400px] mx-auto px-6 py-10">
+        <div class="flex items-center justify-between">
+          <div class="space-y-1">
+            <h1 class="text-xl font-semibold text-slate-900 tracking-tight">系统设置</h1>
+            <p class="text-sm text-slate-500">管理个人偏好、安全选项与系统核心配置</p>
+          </div>
+          
+          <Transition name="status-pop">
+            <div v-if="hasUnsavedChanges" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-100 text-[11px] font-bold text-amber-600 uppercase tracking-wider">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              未保存的更改
+            </div>
+          </Transition>
         </div>
-      </Transition>
-    </nav>
 
-    <!-- Content Panel -->
-    <main class="content-container settings-content">
-      <!-- Skeleton loading state -->
-      <div v-if="pageLoading" class="settings-skeleton">
-        <div class="skeleton-section">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="skeleton-surface skeleton-icon"></div>
-            <div class="flex flex-col gap-2">
-              <div class="skeleton-surface skeleton-text skeleton-line--title"></div>
-              <div class="skeleton-surface skeleton-text skeleton-line--desc"></div>
-            </div>
-          </div>
-          <div class="settings-skeleton-card">
-            <div v-for="i in 5" :key="i" class="settings-skeleton-row">
-              <div class="flex flex-col gap-2">
-                <div class="skeleton-surface skeleton-text skeleton-line--row-title"></div>
-                <div class="skeleton-surface skeleton-text skeleton-line--row-desc"></div>
-              </div>
-              <div class="skeleton-surface skeleton-switch"></div>
-            </div>
-          </div>
+        <!-- Tab Navigation (Linear Style) -->
+        <div class="flex items-center gap-1 mt-10 p-1 bg-slate-100/50 rounded-lg w-fit">
+          <button
+            v-for="tab in tabs"
+            :key="tab.key"
+            @click="navigateToTab(tab.path)"
+            :class="[
+              'px-4 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-2',
+              currentTab === tab.key 
+                ? 'bg-white text-slate-900 shadow-sm' 
+                : 'text-slate-500 hover:text-slate-700'
+            ]"
+          >
+            <component :is="tab.icon" class="w-3.5 h-3.5" />
+            {{ tab.label }}
+            <span v-if="tab.badge" class="px-1.5 py-0.5 rounded-full bg-slate-100 text-[10px]">{{ tab.badge }}</span>
+          </button>
         </div>
-        <div class="skeleton-section">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="skeleton-surface skeleton-icon"></div>
-            <div class="flex flex-col gap-2">
-              <div class="skeleton-surface skeleton-text skeleton-line--title"></div>
-              <div class="skeleton-surface skeleton-text skeleton-line--desc"></div>
-            </div>
-          </div>
-          <div class="settings-skeleton-theme-grid">
-            <div v-for="i in 5" :key="i" class="settings-skeleton-theme-item">
-              <div class="skeleton-surface skeleton-theme-preview"></div>
-              <div class="skeleton-surface skeleton-text skeleton-line--theme-name"></div>
-              <div class="skeleton-surface skeleton-text skeleton-line--theme-desc"></div>
-            </div>
-          </div>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="w-full max-w-[1400px] mx-auto px-6 py-8">
+      <!-- Skeleton Loading -->
+      <div v-if="pageLoading" class="space-y-8">
+        <div v-for="i in 2" :key="i" class="space-y-4">
+          <div class="h-4 w-24 bg-slate-200 animate-pulse rounded"></div>
+          <div class="h-48 w-full bg-white rounded-xl border border-slate-200 animate-pulse"></div>
         </div>
       </div>
 
-      <div
-        v-else-if="currentTab === 'appearance'"
-        role="tabpanel"
-        :id="`panel-appearance`"
-        class="settings-panel"
-      >
-        <!-- Section: Theme -->
-        <section class="settings-section">
-          <div class="settings-section__header">
-            <div class="settings-section__icon">
-              <Palette class="h-5 w-5" />
-            </div>
-            <div class="settings-section__meta">
-              <h2 class="settings-section__title">主题</h2>
-              <p class="settings-section__desc">选择界面外观</p>
-            </div>
+      <div v-else class="max-w-3xl space-y-12">
+        <!-- Appearance Tab -->
+        <div v-if="currentTab === 'appearance'" class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div class="space-y-1">
+            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">界面外观</h2>
+            <p class="text-xs text-slate-500">选择您偏好的视觉主题</p>
           </div>
 
-          <div class="theme-grid">
+          <div class="grid grid-cols-3 gap-4">
             <button
               v-for="option in themeOptions"
               :key="option.value"
-              type="button"
-              class="theme-option"
-              :class="{ 'theme-option--active': themeMode === option.value }"
               @click="setThemeMode(option.value)"
+              :class="[
+                'group relative flex flex-col items-center gap-4 p-6 rounded-xl border transition-all text-center',
+                themeMode === option.value 
+                  ? 'bg-white border-slate-900 shadow-md' 
+                  : 'bg-white border-slate-200 hover:border-slate-300'
+              ]"
             >
-              <div class="theme-option__preview" :class="`theme-option__preview--${option.value}`">
-                <div class="theme-option__preview-inner">
-                  <component :is="option.icon" class="h-4 w-4" />
-                </div>
+              <div :class="[
+                'w-12 h-12 rounded-lg flex items-center justify-center transition-colors',
+                themeMode === option.value ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'
+              ]">
+                <component :is="option.icon" class="w-6 h-6" />
               </div>
-              <div class="theme-option__info">
-                <span class="theme-option__name">{{ option.label }}</span>
-                <span class="theme-option__type">{{ option.description }}</span>
+              <div class="space-y-1">
+                <div class="text-sm font-bold text-slate-900">{{ option.label }}</div>
+                <div class="text-[11px] text-slate-400">{{ option.description }}</div>
               </div>
-              <div v-if="themeMode === option.value" class="theme-option__check">
-                <Check class="h-3.5 w-3.5" />
+              <div v-if="themeMode === option.value" class="absolute top-3 right-3 text-slate-900">
+                <CheckCircle2 class="w-4 h-4" />
               </div>
             </button>
           </div>
-        </section>
-      </div>
+        </div>
 
-      <div
-        v-if="currentTab === 'content'"
-        role="tabpanel"
-        :id="`panel-content`"
-        class="settings-panel"
-      >
-        <section class="settings-section">
-          <div class="settings-section__header">
-            <div class="settings-section__icon">
-              <ShieldCheck class="h-5 w-5" />
-            </div>
-            <div class="settings-section__meta">
-              <h2 class="settings-section__title">内容与隐私</h2>
-              <p class="settings-section__desc">控制内容展示偏好</p>
-            </div>
+        <!-- Content Tab -->
+        <div v-if="currentTab === 'content'" class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div class="space-y-1">
+            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">内容与隐私</h2>
+            <p class="text-xs text-slate-500">控制内容展示与过滤偏好</p>
           </div>
 
-          <div class="settings-card">
-            <div class="settings-row">
-              <div class="settings-row__info">
-                <h3 class="settings-row__title">显示敏感内容</h3>
-                <p class="settings-row__desc">启用后在平台显示标记为敏感的内容</p>
+          <div class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(0,0,0,0.05)] divide-y divide-slate-100">
+            <div class="flex items-center justify-between p-6">
+              <div class="space-y-1">
+                <div class="text-sm font-semibold text-slate-900">显示敏感内容</div>
+                <div class="text-xs text-slate-500">启用后在平台显示标记为敏感的内容</div>
               </div>
               <Switch
                 :checked="!!settings.showNsfw"
@@ -138,13 +104,10 @@
                 @update:checked="(value: boolean) => { settings.showNsfw = !!value; onUserSettingChange() }"
               />
             </div>
-
-            <div class="settings-divider"></div>
-
-            <div class="settings-row">
-              <div class="settings-row__info">
-                <h3 class="settings-row__title">自动模糊封面</h3>
-                <p class="settings-row__desc">对敏感内容缩略图应用模糊效果</p>
+            <div class="flex items-center justify-between p-6">
+              <div class="space-y-1">
+                <div class="text-sm font-semibold text-slate-900">自动模糊封面</div>
+                <div class="text-xs text-slate-500">对敏感内容缩略图应用模糊效果</div>
               </div>
               <Switch
                 :checked="Boolean(systemConfig?.blur_nsfw_thumbnails)"
@@ -153,308 +116,171 @@
               />
             </div>
           </div>
-        </section>
-      </div>
+        </div>
 
-      <div
-        v-if="currentTab === 'playback'"
-        role="tabpanel"
-        :id="`panel-playback`"
-        class="settings-panel"
-      >
-        <section class="settings-section">
-          <div class="settings-section__header">
-            <div class="settings-section__icon">
-              <PlayCircle class="h-5 w-5" />
-            </div>
-            <div class="settings-section__meta">
-              <h2 class="settings-section__title">播放控制</h2>
-              <p class="settings-section__desc">管理媒体播放行为</p>
-            </div>
+        <!-- Playback Tab -->
+        <div v-if="currentTab === 'playback'" class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div class="space-y-1">
+            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">播放行为</h2>
+            <p class="text-xs text-slate-500">管理媒体播放器的默认行为</p>
           </div>
 
-          <div class="settings-card">
-            <div class="settings-row">
-              <div class="settings-row__info">
-                <h3 class="settings-row__title">自动播放</h3>
-                <p class="settings-row__desc">进入详情页时自动开始播放</p>
+          <div class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(0,0,0,0.05)] divide-y divide-slate-100">
+            <div v-for="item in [
+              { key: 'autoplay', title: '自动播放', desc: '进入详情页时自动开始播放' },
+              { key: 'autoplayNext', title: '自动续播', desc: '当前播放完成后自动播放下一项' },
+              { key: 'loop', title: '循环播放', desc: '播放完成后重新开始当前项目' }
+            ]" :key="item.key" class="flex items-center justify-between p-6">
+              <div class="space-y-1">
+                <div class="text-sm font-semibold text-slate-900">{{ item.title }}</div>
+                <div class="text-xs text-slate-500">{{ item.desc }}</div>
               </div>
               <Switch
-                :checked="!!settings.autoplay"
+                :checked="!!(settings as any)[item.key]"
                 :disabled="userSaving"
-                @update:checked="(value: boolean) => { settings.autoplay = !!value; onUserSettingChange() }"
-              />
-            </div>
-
-            <div class="settings-divider"></div>
-
-            <div class="settings-row">
-              <div class="settings-row__info">
-                <h3 class="settings-row__title">自动播放下一个</h3>
-                <p class="settings-row__desc">当前播放完成后自动播放下一项</p>
-              </div>
-              <Switch
-                :checked="!!settings.autoplayNext"
-                :disabled="userSaving"
-                @update:checked="(value: boolean) => { settings.autoplayNext = !!value; onUserSettingChange() }"
-              />
-            </div>
-
-            <div class="settings-divider"></div>
-
-            <div class="settings-row">
-              <div class="settings-row__info">
-                <h3 class="settings-row__title">循环播放</h3>
-                <p class="settings-row__desc">播放完成后重新开始当前项目</p>
-              </div>
-              <Switch
-                :checked="!!settings.loop"
-                :disabled="userSaving"
-                @update:checked="(value: boolean) => { settings.loop = !!value; onUserSettingChange() }"
+                @update:checked="(value: boolean) => { (settings as any)[item.key] = !!value; onUserSettingChange() }"
               />
             </div>
           </div>
-        </section>
-      </div>
+        </div>
 
-      <div
-        v-if="currentTab === 'security'"
-        role="tabpanel"
-        :id="`panel-security`"
-        class="settings-panel"
-      >
-        <section class="settings-section">
-          <div class="settings-section__header">
-            <div class="settings-section__icon">
-              <KeyRound class="h-5 w-5" />
+        <!-- Security Tab -->
+        <div v-if="currentTab === 'security'" class="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div class="space-y-6">
+            <div class="space-y-1">
+              <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">账户安全</h2>
+              <p class="text-xs text-slate-500">保护您的账户免受未经授权的访问</p>
             </div>
-            <div class="settings-section__meta">
-              <h2 class="settings-section__title">账户安全</h2>
-              <p class="settings-section__desc">密码与会话管理</p>
+
+            <div v-if="securityError" class="p-4 rounded-lg bg-rose-50 border border-rose-100 flex items-center gap-3 text-sm text-rose-700">
+              <AlertCircle class="w-4 h-4" /> {{ securityError }}
             </div>
-          </div>
-
-          <div v-if="securityError" class="settings-alert settings-alert--error">
-            <AlertCircle class="h-4 w-4" />
-            <span>{{ securityError }}</span>
-          </div>
-
-          <div v-if="securitySuccess" class="settings-alert settings-alert--success">
-            <CheckCircle2 class="h-4 w-4" />
-            <span>{{ securitySuccess }}</span>
-          </div>
-
-          <div class="settings-card settings-card--form">
-            <div class="settings-card__label">
-              <ShieldAlert class="h-4 w-4" />
-              <span>修改密码</span>
+            <div v-if="securitySuccess" class="p-4 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center gap-3 text-sm text-emerald-700">
+              <CheckCircle2 class="w-4 h-4" /> {{ securitySuccess }}
             </div>
-            <p class="settings-card__note">修改密码后，系统会自动使其他设备上的会话失效。</p>
 
-            <form class="security-form" @submit.prevent="handlePasswordUpdate">
-              <div class="form-field">
-                <label class="form-field__label">当前密码</label>
-                <input
-                  v-model="securityForm.currentPassword"
-                  type="password"
-                  autocomplete="current-password"
-                  class="form-field__input"
-                  :disabled="passwordSubmitting"
-                  placeholder="输入当前密码"
-                />
-              </div>
-
-              <div class="form-field">
-                <label class="form-field__label">新密码</label>
-                <input
-                  v-model="securityForm.newPassword"
-                  type="password"
-                  autocomplete="new-password"
-                  class="form-field__input"
-                  :disabled="passwordSubmitting"
-                  placeholder="输入新密码（至少8位）"
-                />
-              </div>
-
-              <div class="form-field">
-                <label class="form-field__label">确认密码</label>
-                <input
-                  v-model="securityForm.confirmPassword"
-                  type="password"
-                  autocomplete="new-password"
-                  class="form-field__input"
-                  :disabled="passwordSubmitting"
-                  placeholder="再次输入新密码"
-                />
-              </div>
-
-              <div class="form-actions">
-                <Button
-                  type="submit"
-                  :disabled="passwordSubmitting"
-                  size="sm"
-                >
-                  {{ passwordSubmitting ? '更新中...' : '更新密码' }}
+            <div class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(0,0,0,0.05)] p-8">
+              <h3 class="text-sm font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <ShieldAlert class="w-4 h-4 text-slate-400" /> 修改登录密码
+              </h3>
+              <form @submit.prevent="handlePasswordUpdate" class="space-y-6 max-w-md">
+                <div v-for="field in [
+                  { key: 'currentPassword', label: '当前密码', placeholder: '输入旧密码', type: 'password' },
+                  { key: 'newPassword', label: '新密码', placeholder: '至少 8 位字符', type: 'password' },
+                  { key: 'confirmPassword', label: '确认新密码', placeholder: '再次输入新密码', type: 'password' }
+                ]" :key="field.key" class="space-y-2">
+                  <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ field.label }}</label>
+                  <Input
+                    v-model="(securityForm as any)[field.key]"
+                    :type="field.type"
+                    :placeholder="field.placeholder"
+                    :disabled="passwordSubmitting"
+                    class="h-10 bg-white border-slate-200 rounded-lg text-sm focus-visible:ring-slate-200 shadow-none"
+                  />
+                </div>
+                <Button type="submit" :disabled="passwordSubmitting" class="bg-slate-900 text-white hover:bg-slate-800">
+                  {{ passwordSubmitting ? '正在更新...' : '更新密码' }}
                 </Button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
 
-          <div class="settings-card settings-card--compact">
-            <div class="settings-card__copy">
-              <div class="settings-card__label settings-card__label--inline">
-                <LogOut class="h-4 w-4" />
-                <span>撤销会话</span>
-              </div>
-              <h3 class="settings-card__title">注销其他设备</h3>
-              <p class="settings-card__desc">使其他浏览器或设备上的登录态失效</p>
+          <div class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(0,0,0,0.05)] p-8 flex items-center justify-between">
+            <div class="space-y-1">
+              <div class="text-sm font-semibold text-slate-900">注销其他会话</div>
+              <div class="text-xs text-slate-500">使除当前设备外所有已登录的设备失效</div>
             </div>
-            <Button
-              variant="outline"
-              :disabled="sessionSubmitting"
-              size="sm"
-              @click="handleRevokeSessions"
-            >
-              {{ sessionSubmitting ? '处理中...' : '撤销会话' }}
+            <Button variant="outline" :disabled="sessionSubmitting" @click="handleRevokeSessions" class="border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors">
+              <LogOut class="w-4 h-4 mr-2" /> 撤销所有会话
             </Button>
           </div>
-        </section>
-      </div>
+        </div>
 
-      <div
-        v-if="currentTab === 'system'"
-        role="tabpanel"
-        :id="`panel-system`"
-        class="settings-panel"
-      >
-        <section class="settings-section">
-          <div class="settings-section__header">
-            <div class="settings-section__icon">
-              <Settings2 class="h-5 w-5" />
-            </div>
-            <div class="settings-section__meta">
-              <h2 class="settings-section__title">系统引擎</h2>
-              <p class="settings-section__desc">后台调度与工作进程</p>
-            </div>
+        <!-- System Tab -->
+        <div v-if="currentTab === 'system'" class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div class="space-y-1">
+            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">系统引擎</h2>
+            <p class="text-xs text-slate-500">控制后台核心服务的运行状态</p>
           </div>
 
-          <div class="settings-card">
-            <div class="settings-row">
-              <div class="settings-row__info">
-                <h3 class="settings-row__title">任务调度器</h3>
-                <p class="settings-row__desc">后台任务编排与状态同步引擎</p>
+          <div class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(0,0,0,0.05)] divide-y divide-slate-100">
+            <div v-for="item in [
+              { key: 'enable_scheduler', title: '任务调度器', desc: '管理所有定时采集与同步任务的引擎' },
+              { key: 'enable_worker', title: '异步工作流', desc: '处理高并发数据抓取与分发的执行单元' }
+            ]" :key="item.key" class="flex items-center justify-between p-6">
+              <div class="space-y-1">
+                <div class="text-sm font-semibold text-slate-900">{{ item.title }}</div>
+                <div class="text-xs text-slate-500">{{ item.desc }}</div>
               </div>
               <Switch
-                :checked="Boolean(systemConfig?.enable_scheduler)"
+                :checked="Boolean((systemConfig as any)?.[item.key])"
                 :disabled="systemLoading || systemSaving"
-                @update:checked="(value: boolean) => onSystemToggle('enable_scheduler', !!value)"
-              />
-            </div>
-
-            <div class="settings-divider"></div>
-
-            <div class="settings-row">
-              <div class="settings-row__info">
-                <h3 class="settings-row__title">异步工作流</h3>
-                <p class="settings-row__desc">用于采集任务的高并发处理引擎</p>
-              </div>
-              <Switch
-                :checked="Boolean(systemConfig?.enable_worker)"
-                :disabled="systemLoading || systemSaving"
-                @update:checked="(value: boolean) => onSystemToggle('enable_worker', !!value)"
+                @update:checked="(value: boolean) => onSystemToggle(item.key, !!value)"
               />
             </div>
           </div>
-        </section>
-      </div>
+        </div>
 
-      <div
-        v-if="currentTab === 'server'"
-        role="tabpanel"
-        :id="`panel-server`"
-        class="settings-panel"
-      >
-        <section class="settings-section">
-          <div class="settings-section__header">
-            <div class="settings-section__icon">
-              <Network class="h-5 w-5" />
-            </div>
-            <div class="settings-section__meta">
-              <h2 class="settings-section__title">服务器连接</h2>
-              <p class="settings-section__desc">配置后端服务器地址</p>
-            </div>
+        <!-- Server Tab -->
+        <div v-if="currentTab === 'server'" class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div class="space-y-1">
+            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">服务器配置</h2>
+            <p class="text-xs text-slate-500">管理与后端 API 的连接地址</p>
           </div>
 
-          <div class="settings-card">
-            <div class="settings-row">
-              <div class="settings-row__info">
-                <h3 class="settings-row__title">当前服务器</h3>
-                <p class="settings-row__desc">当前连接的后端服务器地址</p>
+          <div class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(0,0,0,0.05)] p-8 space-y-8">
+            <div class="flex items-center justify-between">
+              <div class="space-y-1">
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">当前连接</div>
+                <div class="text-sm font-mono font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-md border border-blue-100">
+                  {{ currentServerUrl || '未配置' }}
+                </div>
               </div>
-              <div class="server-url-display">
-                {{ currentServerUrl || '未配置' }}
-              </div>
-            </div>
-
-            <div class="settings-divider"></div>
-
-            <div class="settings-row settings-row--column">
-              <div class="settings-row__info">
-                <h3 class="settings-row__title">修改服务器地址</h3>
-                <p class="settings-row__desc">输入新的服务器地址后点击保存</p>
+              <div v-if="serverTestResult !== null" :class="[
+                'text-[11px] font-bold px-3 py-1.5 rounded-full border',
+                serverTestResult ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-rose-50 border-rose-100 text-rose-600'
+              ]">
+                {{ serverTestResult ? '连接正常' : '连接失败: ' + serverTestMessage }}
               </div>
             </div>
 
-            <div class="server-config-form">
-              <div class="form-field">
-                <label class="form-field__label">服务器地址</label>
-                <input
-                  v-model="serverForm.url"
-                  type="url"
-                  class="form-field__input"
-                  placeholder="http://127.0.0.1:8001"
-                  :disabled="serverSaving"
-                />
+            <div class="space-y-4 max-w-md">
+              <div class="space-y-2">
+                <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">修改服务器地址</label>
+                <div class="flex gap-2">
+                  <Input
+                    v-model="serverForm.url"
+                    type="url"
+                    placeholder="http://127.0.0.1:8001"
+                    :disabled="serverSaving"
+                    class="h-10 bg-white border-slate-200 rounded-lg text-sm focus-visible:ring-slate-200 shadow-none"
+                  />
+                  <Button variant="outline" :disabled="serverTesting || !serverForm.url.trim()" @click="handleTestServer" class="h-10 border-slate-200">
+                    <RefreshCw v-if="serverTesting" class="w-4 h-4 animate-spin" />
+                    <span v-else>测试</span>
+                  </Button>
+                </div>
               </div>
-
-              <div class="form-field">
-                <button
-                  type="button"
-                  class="test-button-inline"
-                  :disabled="!serverForm.url.trim() || serverTesting"
-                  @click="handleTestServer"
-                >
-                  <span v-if="serverTesting" class="test-spinner"></span>
-                  <span v-else-if="serverTestResult !== null" :class="serverTestResult ? 'text-success' : 'text-destructive'">
-                    {{ serverTestResult ? '✓ 连接成功' : '✗ ' + serverTestMessage }}
-                  </span>
-                  <span v-else>测试连接</span>
-                </button>
-              </div>
-
-              <div class="form-actions">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  :disabled="serverSaving || !serverForm.url.trim()"
-                  @click="handleSaveServer"
-                >
-                  {{ serverSaving ? '保存中...' : '保存并重连' }}
-                </Button>
-              </div>
+              <Button :disabled="serverSaving || !serverForm.url.trim()" @click="handleSaveServer" class="bg-slate-900 text-white hover:bg-slate-800">
+                {{ serverSaving ? '正在保存...' : '保存并重连' }}
+              </Button>
             </div>
           </div>
-        </section>
+        </div>
       </div>
-    </main>
+    </div>
 
-    <!-- Save Feedback Toast -->
+    <!-- Feedback Toast -->
     <Transition name="toast">
-      <div v-if="saveToastVisible" class="toast save-toast" :class="saveToastClass">
-        <CheckCircle2 v-if="!saveToastError" class="h-4 w-4" />
-        <AlertCircle v-else class="h-4 w-4" />
-        <span>{{ saveToastMessage }}</span>
+      <div v-if="saveToastVisible" class="fixed bottom-6 right-6 z-50">
+        <div :class="[
+          'flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium transition-all',
+          saveToastError ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-slate-900 border-slate-800 text-white'
+        ]">
+          <CheckCircle2 v-if="!saveToastError" class="h-4 w-4 text-emerald-400" />
+          <AlertCircle v-else class="h-4 w-4 text-rose-400" />
+          {{ saveToastMessage }}
+        </div>
       </div>
     </Transition>
   </AppPageShell>
@@ -464,7 +290,6 @@
 import { computed, onMounted, ref } from 'vue'
 import {
   AlertCircle,
-  Check,
   CheckCircle2,
   KeyRound,
   LogOut,
@@ -477,12 +302,15 @@ import {
   ShieldAlert,
   ShieldCheck,
   Sun,
+  RefreshCw,
+  X
 } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { revokeUserSessions, updateUserPassword } from '@/api'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
 import {
   DEFAULT_SETTINGS_TAB,
   SETTINGS_TABS,
@@ -505,9 +333,9 @@ const currentTab = computed<SettingsTabKey>(() => {
 })
 
 const themeOptions: Array<{ value: AppThemeMode; label: string; description: string; icon: any }> = [
-  { value: 'light', label: '浅色', description: '明亮的浅色主题', icon: Sun },
-  { value: 'dark', label: '深色', description: '护眼的深色主题', icon: Moon },
-  { value: 'system', label: '系统', description: '跟随系统设置', icon: Monitor },
+  { value: 'light', label: '浅色', description: '明亮主题', icon: Sun },
+  { value: 'dark', label: '深色', description: '护眼模式', icon: Moon },
+  { value: 'system', label: '系统', description: '自动跟随', icon: Monitor },
 ]
 
 const { themeMode, setThemeMode } = useAppTheme()
@@ -541,21 +369,16 @@ const serverTestMessage = ref('')
 const saveToastVisible = ref(false)
 const saveToastMessage = ref('')
 const saveToastError = ref(false)
-const saveToastClass = computed(() => saveToastError.value ? 'toast--error' : 'toast--success')
 const hasUnsavedChanges = ref(false)
 
 let saveToastTimer: ReturnType<typeof setTimeout> | null = null
 
 const showSaveToast = (message: string, isError = false) => {
-  if (saveToastTimer) {
-    clearTimeout(saveToastTimer)
-  }
+  if (saveToastTimer) clearTimeout(saveToastTimer)
   saveToastMessage.value = message
   saveToastError.value = isError
   saveToastVisible.value = true
-  saveToastTimer = setTimeout(() => {
-    saveToastVisible.value = false
-  }, 3000)
+  saveToastTimer = setTimeout(() => { saveToastVisible.value = false }, 3000)
 }
 
 const resetSecurityFeedback = () => {
@@ -563,17 +386,8 @@ const resetSecurityFeedback = () => {
   securitySuccess.value = ''
 }
 
-const getErrorMessage = (error: any, fallback: string) => {
-  if (!error) return fallback
-  if (typeof error === 'string') return error
-  if (typeof error?.message === 'string') return error.message
-  return fallback
-}
-
 const navigateToTab = (path: string) => {
-  if (route.path !== path) {
-    router.push(path)
-  }
+  if (route.path !== path) router.push(path)
 }
 
 onMounted(async () => {
@@ -582,9 +396,7 @@ onMounted(async () => {
   await Promise.all([
     loadUserSettings(),
     loadSystemConfig().then(result => {
-      if (result.error) {
-        Logger.error('Failed to load system config', result.error)
-      }
+      if (result.error) Logger.error('Failed to load system config', result.error)
     }),
   ])
   serverForm.value.url = currentServerUrl.value || ''
@@ -596,9 +408,9 @@ const onUserSettingChange = async () => {
   hasUnsavedChanges.value = true
   try {
     await saveUserSettings()
-    showSaveToast('已保存')
+    showSaveToast('设置已更新')
   } catch (err) {
-    showSaveToast('保存失败', true)
+    showSaveToast('更新失败', true)
   } finally {
     userSaving.value = false
     hasUnsavedChanges.value = false
@@ -609,10 +421,9 @@ const onSystemToggle = async (key: string, val: boolean) => {
   systemSaving.value = true
   const result = await updateSystemConfig({ [key]: val })
   if (result.error) {
-    showSaveToast('保存失败', true);
-    Logger.error('Failed to update system config', result.error);
+    showSaveToast('更新失败', true)
   } else {
-    showSaveToast('已保存');
+    showSaveToast('系统配置已更新')
   }
   systemSaving.value = false
 }
@@ -621,15 +432,13 @@ const handleTestServer = async () => {
   if (!serverForm.value.url.trim()) return
   serverTesting.value = true
   serverTestResult.value = null
-  serverTestMessage.value = ''
-
   try {
     const result = await testServerConnection(serverForm.value.url)
     serverTestResult.value = result.ok
     serverTestMessage.value = result.message
   } catch {
     serverTestResult.value = false
-    serverTestMessage.value = '测试失败'
+    serverTestMessage.value = '无法连接'
   } finally {
     serverTesting.value = false
   }
@@ -638,14 +447,13 @@ const handleTestServer = async () => {
 const handleSaveServer = async () => {
   if (!serverForm.value.url.trim()) return
   serverSaving.value = true
-
   try {
     const ok = await setServerUrl(serverForm.value.url)
     if (!ok) {
       showSaveToast('无效的服务器地址', true)
       return
     }
-    showSaveToast('已保存，正在重新连接...')
+    showSaveToast('服务器已更新')
     serverForm.value.url = currentServerUrl.value || ''
   } catch {
     showSaveToast('保存失败', true)
@@ -656,22 +464,18 @@ const handleSaveServer = async () => {
 
 const handlePasswordUpdate = async () => {
   resetSecurityFeedback()
-
   if (!securityForm.value.currentPassword || !securityForm.value.newPassword || !securityForm.value.confirmPassword) {
-    securityError.value = '请完整填写密码信息'
+    securityError.value = '请填写完整信息'
     return
   }
-
   if (securityForm.value.newPassword.length < 8) {
-    securityError.value = '新密码至少需要 8 位'
+    securityError.value = '新密码至少 8 位'
     return
   }
-
   if (securityForm.value.newPassword !== securityForm.value.confirmPassword) {
-    securityError.value = '两次输入的新密码不一致'
+    securityError.value = '两次输入不一致'
     return
   }
-
   passwordSubmitting.value = true
   try {
     const result = await updateUserPassword({
@@ -679,16 +483,11 @@ const handlePasswordUpdate = async () => {
       new_password: securityForm.value.newPassword,
     })
     if (result.error) {
-      securityError.value = getErrorMessage(result.error, '密码更新失败')
+      securityError.value = result.error.message || '更新失败'
       return
     }
-
-    securitySuccess.value = '密码已更新，其他设备会话已失效'
-    securityForm.value = {
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    }
+    securitySuccess.value = '密码更新成功'
+    securityForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
   } finally {
     passwordSubmitting.value = false
   }
@@ -700,11 +499,10 @@ const handleRevokeSessions = async () => {
   try {
     const result = await revokeUserSessions()
     if (result.error) {
-      securityError.value = getErrorMessage(result.error, '撤销会话失败')
+      securityError.value = '撤销失败'
       return
     }
-
-    securitySuccess.value = '其他设备上的登录态已失效'
+    securitySuccess.value = '其他会话已撤销'
   } finally {
     sessionSubmitting.value = false
   }
@@ -713,655 +511,23 @@ const handleRevokeSessions = async () => {
 
 <style scoped>
 .settings-page {
-  font-feature-settings: "tnum";
+  min-height: 100vh;
+  scrollbar-gutter: stable;
 }
 
-/* ── Header ── */
-
-.settings-header__status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.875rem;
-  background: hsl(var(--warning) / 0.08);
-  border: 1px solid hsl(var(--warning) / 0.2);
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: hsl(var(--warning));
+.status-pop-enter-active, .status-pop-leave-active {
+  transition: all 0.3s ease;
 }
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: hsl(var(--warning));
-  animation: status-pulse 2s ease-in-out infinite;
-}
-
-@keyframes status-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-/* Status pop transition */
-.status-pop-enter-active {
-  transition: all var(--duration-slow) var(--ease-default);
-}
-.status-pop-leave-active {
-  transition: all var(--duration-normal) var(--ease-default);
-}
-.status-pop-enter-from,
-.status-pop-leave-to {
+.status-pop-enter-from, .status-pop-leave-to {
   opacity: 0;
-  transform: translateY(-6px);
+  transform: translateY(-4px);
 }
 
-/* ── Tab Navigation ── */
-.settings-tabs {
-  display: flex;
-  gap: 0.25rem;
-  padding: 0.75rem var(--app-page-gutter) 0;
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
-  overflow-x: auto;
-  scrollbar-width: none;
-  position: relative;
+.toast-enter-active, .toast-leave-active {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
-@media (min-width: 640px) {
-  .settings-tabs { padding-left: var(--app-page-gutter-sm); padding-right: var(--app-page-gutter-sm); }
-}
-
-@media (min-width: 1024px) {
-  .settings-tabs { padding-left: var(--app-page-gutter-lg); padding-right: var(--app-page-gutter-lg); }
-}
-
-@media (max-width: 640px) {
-  .settings-tabs { padding-left: var(--app-page-gutter); padding-right: var(--app-page-gutter); }
-}
-
-.settings-tabs::-webkit-scrollbar { display: none; }
-
-.settings-tab {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.875rem 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: hsl(var(--muted-foreground));
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  cursor: pointer;
-  transition: color var(--duration-normal) var(--ease-default);
-  white-space: nowrap;
-  user-select: none;
-}
-
-.settings-tab::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-  background: transparent;
-  border-radius: 1px 1px 0 0;
-  transition: background var(--duration-normal) var(--ease-default);
-}
-
-.settings-tab:hover {
-  color: hsl(var(--foreground));
-}
-
-.settings-tab--active {
-  color: hsl(var(--primary));
-}
-
-.settings-tab--active::after {
-  background: hsl(var(--primary));
-}
-
-.settings-tab__icon {
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
-}
-
-.settings-tab__badge {
-  padding: 0.125rem 0.375rem;
-  font-size: 0.625rem;
-  font-weight: 700;
-  background: hsl(var(--primary) / 0.18);
-  color: hsl(var(--primary));
-  border-radius: var(--radius-full);
-  line-height: 1.4;
-}
-
-/* ── Content ── */
-.settings-content {
-  padding: 1.5rem 0 3rem;
-  max-width: 1200px;
-}
-
-@media (max-width: 768px) {
-  .settings-content { padding-top: 1rem; padding-bottom: 2rem; }
-}
-@media (min-width: 640px) {
-  .settings-content { padding-top: 1.5rem; }
-}
-@media (min-width: 1024px) {
-  .settings-content { padding-top: 2rem; }
-}
-
-.settings-panel {
-  animation: panel-enter var(--duration-slow) var(--ease-out);
-}
-
-@keyframes panel-enter {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ── Section ── */
-.settings-section {
-  margin-bottom: 2rem;
-}
-
-.settings-section__header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.settings-section__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  background: hsl(var(--primary) / 0.1);
-  color: hsl(var(--primary));
-  border-radius: var(--radius-lg);
-  flex-shrink: 0;
-}
-
-.settings-section__title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: hsl(var(--foreground));
-  margin: 0;
-}
-
-.settings-section__desc {
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
-  margin: 0.125rem 0 0;
-}
-
-/* ── Theme Grid ── */
-.theme-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 0.75rem;
-}
-
-.theme-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1.25rem 1rem;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: var(--radius-xl);
-  cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
-  position: relative;
-}
-
-.theme-option:hover {
-  border-color: hsl(var(--primary) / 0.35);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
-}
-
-.theme-option--active {
-  border-color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.04);
-  box-shadow: var(--shadow-sm);
-}
-
-.theme-option__preview {
-  width: 3.25rem;
-  height: 3.25rem;
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.theme-option__preview--light {
-  background: linear-gradient(145deg, #fafafa 0%, #e4e4e4 100%);
-  color: #444;
-}
-
-.theme-option__preview--dark {
-  background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
-  color: #f0f0f0;
-}
-
-.theme-option__preview--system {
-  background: linear-gradient(145deg, #fafafa 0%, #1a1a2e 100%);
-  color: #888;
-}
-
-.theme-option__preview-inner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.theme-option__info {
-  text-align: center;
-}
-
-.theme-option__name {
-  display: block;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: hsl(var(--foreground));
-}
-
-.theme-option__type {
-  display: block;
-  font-size: 0.6875rem;
-  color: hsl(var(--muted-foreground));
-  margin-top: 0.125rem;
-}
-
-.theme-option__check {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  width: 1.25rem;
-  height: 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  border-radius: 50%;
-  animation: check-pop var(--duration-normal) var(--ease-default);
-}
-
-@keyframes check-pop {
-  from { transform: scale(0); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-/* ── Settings Card ── */
-.settings-card {
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  transition:
-    border-color var(--duration-normal) var(--ease-default),
-    box-shadow var(--duration-normal) var(--ease-default);
-}
-
-.settings-card:hover {
-  border-color: hsl(var(--border));
-  box-shadow: var(--shadow-sm);
-}
-
-.settings-card--form {
-  padding: 1.5rem;
-}
-
-.settings-card--compact {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
-}
-
-.settings-card__label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.625rem;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  color: hsl(var(--muted-foreground));
-  background: hsl(var(--secondary));
-  border-radius: var(--radius-full);
-  margin-bottom: 0.75rem;
-}
-
-.settings-card__label--inline { margin-bottom: 0.5rem; }
-
-.settings-card__note {
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
-  margin: 0 0 1rem;
-  line-height: 1.5;
-}
-
-.settings-card__copy { flex: 1; }
-
-.settings-card__title {
-  font-size: 0.9375rem;
-  font-weight: 700;
-  color: hsl(var(--foreground));
-  margin: 0;
-}
-
-.settings-card__desc {
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
-  margin: 0.25rem 0 0;
-  line-height: 1.4;
-}
-
-/* ── Settings Row ── */
-.settings-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
-  transition: background var(--duration-fast) var(--ease-default);
-}
-
-.settings-row:hover { background: hsl(var(--secondary) / 0.25); }
-
-.settings-row__info { flex: 1; min-width: 0; }
-
-.settings-row__title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  margin: 0;
-}
-
-.settings-row__desc {
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
-  margin: 0.125rem 0 0;
-  line-height: 1.4;
-}
-
-.settings-divider {
-  height: 1px;
-  background: hsl(var(--border) / 0.3);
-  margin: 0 1.25rem;
-}
-
-/* ── Alert ── */
-.settings-alert {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.875rem 1.125rem;
-  border-radius: var(--radius-lg);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  margin-bottom: 1rem;
-  animation: alert-enter var(--duration-slow) var(--ease-out);
-  border-width: 1px;
-}
-
-@keyframes alert-enter {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.settings-alert--error {
-  background: hsl(var(--destructive) / 0.08);
-  color: hsl(var(--destructive));
-  border-color: hsl(var(--destructive) / 0.2);
-}
-
-.settings-alert--success {
-  background: hsl(var(--success) / 0.08);
-  color: hsl(var(--success));
-  border-color: hsl(var(--success) / 0.2);
-}
-
-/* ── Security Form ── */
-.security-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.form-field__label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: hsl(var(--muted-foreground));
-}
-
-.form-field__input {
-  height: 2.75rem;
-  padding: 0 1rem;
-  font-size: 0.875rem;
-  color: hsl(var(--foreground));
-  background: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-md);
-  outline: none;
-  transition:
-    border-color var(--duration-fast) var(--ease-default),
-    box-shadow var(--duration-fast) var(--ease-default);
-  width: 100%;
-}
-
-.form-field__input:focus {
-  border-color: hsl(var(--primary));
-  box-shadow: var(--focus-ring-sm);
-}
-
-.form-field__input::placeholder {
-  color: hsl(var(--muted-foreground) / 0.45);
-}
-
-.form-field__input:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 0.5rem;
-}
-
-/* ── Toast ── */
-.save-toast {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-}
-
-@media (max-width: 640px) {
-  .save-toast {
-    left: 1rem;
-    right: 1rem;
-    bottom: 1rem;
-  }
-}
-
-.toast-enter-active {
-  transition: all var(--duration-slower) var(--ease-out);
-}
-.toast-leave-active {
-  transition: all var(--duration-normal) var(--ease-default);
-}
-.toast-enter-from {
+.toast-enter-from, .toast-leave-to {
   opacity: 0;
-  transform: translateY(1.5rem) scale(0.9);
-}
-.toast-leave-to {
-  opacity: 0;
-  transform: translateY(0.5rem) scale(0.95);
-}
-
-/* ── Skeleton Loading ── */
-.settings-skeleton {
-  animation: sq-fade-in var(--duration-slower) var(--ease-default);
-}
-
-.skeleton-section {
-  margin-bottom: 2.5rem;
-}
-
-.settings-skeleton-card {
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border) / 0.4);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-}
-
-.settings-skeleton-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
-}
-
-.settings-skeleton-theme-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 0.75rem;
-}
-
-.settings-skeleton-theme-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 1.25rem 1rem;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border) / 0.4);
-  border-radius: var(--radius-xl);
-}
-
-.skeleton-line--title { height: 1rem; width: 7rem; }
-.skeleton-line--desc { height: 0.75rem; width: 9rem; }
-.skeleton-line--row-title { height: 0.875rem; width: 10rem; }
-.skeleton-line--row-desc { height: 0.75rem; width: 14rem; }
-.skeleton-line--theme-name { height: 0.875rem; width: 4rem; }
-.skeleton-line--theme-desc { height: 0.625rem; width: 6rem; }
-
-/* ── Server Config ── */
-.server-url-display {
-  font-size: 0.8rem;
-  font-family: var(--font-mono);
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.08);
-  border: 1px solid hsl(var(--primary) / 0.2);
-  padding: 0.3rem 0.75rem;
-  border-radius: var(--radius-sm);
-  max-width: 100%;
-  word-break: break-all;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.server-config-form {
-  padding: 0.5rem 1.5rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.test-button-inline {
-  background: transparent;
-  border: none;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.8rem;
-  cursor: pointer;
-  padding: 0.25rem 0;
-  transition: color var(--duration-normal) var(--ease-default);
-  text-align: left;
-}
-
-.test-button-inline:hover:not(:disabled) {
-  color: hsl(var(--primary));
-}
-
-.test-button-inline:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.test-spinner {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border: 1px solid hsl(var(--muted-foreground) / 0.3);
-  border-top-color: hsl(var(--primary));
-  border-radius: 50%;
-  animation: spin var(--duration-slow) linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.text-success {
-  color: hsl(var(--success));
-}
-
-.text-destructive {
-  color: hsl(var(--destructive));
-}
-
-/* ── Responsive ── */
-@media (max-width: 768px) {
-  .settings-tabs,
-  .settings-content {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-
-  .theme-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .settings-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 1rem 1.25rem;
-  }
-
-  .settings-card--compact {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 1rem 1.25rem;
-  }
-
-  .settings-divider { margin: 0 1.25rem; }
-
-  .save-toast {
-    left: 1rem;
-    right: 1rem;
-    bottom: 1rem;
-  }
+  transform: translateY(1rem);
 }
 </style>

@@ -2367,6 +2367,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 .sp-icon-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+  filter: grayscale(1);
 }
 
 </style>

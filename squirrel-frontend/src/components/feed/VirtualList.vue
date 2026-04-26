@@ -84,7 +84,8 @@ const emit = defineEmits(['scroll', 'range-change', 'reach-start', 'reach-end'])
 
 const container = ref(null);
 const scrollTop = ref(0);
-const containerHeight = ref(0);
+const containerHeight = ref(typeof window !== 'undefined' ? window.innerHeight : 1000); 
+
 const itemsRef = shallowRef(props.items);
 
 const instanceId = ref(Symbol('virtual-list-instance'));
@@ -126,8 +127,8 @@ const restoreScrollPosition = () => {
   scrollToOffset(targetPos);
 };
 
-const columnCount = computed(() => Math.max(1, props.gridItems));
-const rowHeight = computed(() => Math.max(1, Math.floor(props.itemSize || 0)));
+const columnCount = computed(() => Math.max(1, props.gridItems || 1));
+const rowHeight = computed(() => Math.max(1, Math.floor(props.itemSize || 300)));
 const rowCount = computed(() => Math.ceil(itemsRef.value.length / columnCount.value));
 
 const itemStyle = computed(() => ({

@@ -1,80 +1,34 @@
 <template>
   <router-link
     :to="item.path"
-    class="sidebar-item"
-    :class="{ 'sidebar-item--active': isActive }"
+    class="flex items-center gap-2.5 px-3 h-8 rounded-md text-[13px] transition-all duration-200 outline-none group"
+    :class="[
+      isActive 
+        ? 'bg-accent text-foreground font-medium shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]' 
+        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+    ]"
   >
+    <!-- Icon - Simple and clean -->
     <component
       :is="item.icon"
-      class="sidebar-item-icon"
-      aria-hidden="true"
+      class="w-4 h-4 shrink-0 transition-transform duration-200 group-active:scale-90"
+      :class="[
+        isActive ? 'text-foreground' : 'text-muted-foreground/60 group-hover:text-foreground'
+      ]"
+      stroke-width="2"
     />
-    <span class="sidebar-item-label">{{ item.name }}</span>
+
+    <span class="truncate tracking-tight">{{ item.name }}</span>
   </router-link>
 </template>
 
-<script setup>
-defineProps({
+<script setup lang="ts">
+defineProps<{
   item: {
-    type: Object,
-    required: true,
-  },
-  isActive: {
-    type: Boolean,
-    default: false,
-  },
-})
+    path: string
+    name: string
+    icon: any
+  }
+  isActive: boolean
+}>()
 </script>
-
-<style scoped>
-.sidebar-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  height: var(--sidebar-item-height);
-  padding: 0 0.75rem;
-  border-radius: var(--radius-md);
-  color: hsl(var(--sidebar-foreground) / 0.6);
-  text-decoration: none;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  transition: all var(--duration-fast) var(--ease-default);
-}
-
-.sidebar-item:hover {
-  background: hsl(var(--sidebar-accent));
-  color: hsl(var(--sidebar-foreground));
-}
-
-.sidebar-item--active {
-  background: hsl(var(--primary) / 0.08);
-  color: hsl(var(--primary));
-  font-weight: 600;
-}
-
-.sidebar-item--active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 60%;
-  border-radius: 0 2px 2px 0;
-  background: hsl(var(--primary));
-}
-
-.sidebar-item-icon {
-  width: 1.125rem;
-  height: 1.125rem;
-  flex-shrink: 0;
-}
-
-.sidebar-item-label {
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-</style>
