@@ -100,14 +100,13 @@
                     <div class="subscription-row__main">
                       <div class="subscription-row__name-row">
                         <h3 class="subscription-row__name" :title="subscription.name">{{ subscription.name }}</h3>
-                        <span class="subscription-row__site-badge">{{ subscription.site || 'unknown' }}</span>
-                        <span v-if="subscription.type === 'PLAYLIST'" class="subscription-row__type-tag">播放列表</span>
-                        <span v-if="subscription.is_nsfw" class="subscription-row__nsfw-tag">NSFW</span>
+                        <Badge class="subscription-row__site-badge">{{ subscription.site || 'unknown' }}</Badge>
+                        <Badge v-if="subscription.type === 'PLAYLIST'" variant="secondary" class="subscription-row__type-tag">播放列表</Badge>
+                        <Badge v-if="subscription.is_nsfw" variant="destructive" class="subscription-row__nsfw-tag">NSFW</Badge>
                       </div>
                       <div class="subscription-row__meta">
-                        <span
-                          class="subscription-row__status-badge"
-                          :class="getStatusBadgeClass(getSubscriptionRefreshState(subscription.id).status)"
+                        <Badge
+                          :variant="getStatusVariant(getSubscriptionRefreshState(subscription.id).status)"
                         >
                           <span
                             v-if="getSubscriptionRefreshState(subscription.id).isRefreshing"
@@ -117,7 +116,7 @@
                             getSubscriptionRefreshState(subscription.id).status,
                             getSubscriptionRefreshState(subscription.id).phase,
                           ) }}
-                        </span>
+                        </Badge>
                         <span class="subscription-row__sep" aria-hidden="true"></span>
                         <span class="subscription-row__date">{{ formatDate(subscription.created_at) }}</span>
                       </div>
@@ -691,13 +690,13 @@ const handleRetryRefresh = async (subscriptionId) => {
   await retryRefresh(subscriptionId)
 }
 
-const getStatusBadgeClass = (status) => {
+const getStatusVariant = (status) => {
   switch (status) {
-    case 'queued': return 'badge--queued'
-    case 'in_progress': return 'badge--progress'
-    case 'completed': return 'badge--completed'
-    case 'failed': return 'badge--failed'
-    default: return 'badge--idle'
+    case 'queued': return 'secondary'
+    case 'in_progress': return 'default'
+    case 'completed': return 'success'
+    case 'failed': return 'error'
+    default: return 'muted'
   }
 }
 
@@ -881,80 +880,15 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.subscription-row__site-badge,
-.subscription-row__type-tag,
 .subscription-row__nsfw-tag {
   flex-shrink: 0;
-  border-radius: 3px;
-}
-
-.subscription-row__site-badge {
-  font-size: 0.6rem;
-  font-weight: 600;
-  color: hsl(var(--primary) / 0.75);
-  padding: 0.1rem 0.35rem;
-  background: hsl(var(--primary) / 0.08);
-  letter-spacing: 0.04em;
-  text-transform: lowercase;
-}
-
-.subscription-row__type-tag {
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: hsl(var(--muted-foreground) / 0.7);
-  padding: 0.08rem 0.3rem;
-  background: hsl(var(--secondary) / 0.45);
-}
-
-.subscription-row__nsfw-tag {
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: hsl(var(--destructive) / 0.85);
-  padding: 0.08rem 0.3rem;
-  background: hsl(var(--destructive) / 0.1);
+  margin-left: auto;
 }
 
 .subscription-row__meta {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-}
-
-.subscription-row__status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.65rem;
-  font-weight: 500;
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-}
-
-.badge--idle {
-  color: hsl(var(--muted-foreground) / 0.6);
-  background: hsl(var(--secondary) / 0.25);
-}
-
-.badge--queued {
-  color: hsl(var(--muted-foreground));
-  background: hsl(var(--secondary) / 0.4);
-}
-
-.badge--progress {
-  color: hsl(var(--primary) / 0.9);
-  background: hsl(var(--primary) / 0.1);
-}
-
-.badge--completed {
-  color: hsl(142 70% 40% / 0.9);
-  background: hsl(142 70% 40% / 0.1);
-}
-
-.badge--failed {
-  color: hsl(var(--destructive) / 0.85);
-  background: hsl(var(--destructive) / 0.1);
 }
 
 .status-badge-dot {

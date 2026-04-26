@@ -15,6 +15,11 @@ export const badgeVariants = cva(
         destructive:
           'border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/15',
         outline: 'border-border/75 bg-card/80 text-foreground',
+        /* Status indicators — pill shape, no hover */
+        success: 'border-success/25 bg-success/10 text-success',
+        warning: 'border-warning/25 bg-warning/10 text-warning',
+        error: 'border-destructive/25 bg-destructive/10 text-destructive',
+        muted: 'border-border/60 bg-secondary/60 text-muted-foreground',
       },
     },
     defaultVariants: {

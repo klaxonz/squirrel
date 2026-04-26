@@ -114,9 +114,9 @@
 
         <!-- Table -->
         <div v-else class="flex-1 overflow-auto min-h-0">
-          <table class="w-full text-left border-collapse">
+          <table class="sq-table w-full text-left">
             <thead>
-              <tr class="sticky top-0 z-10 bg-background border-b border-border/30">
+              <tr class="sticky top-0 z-10 bg-background">
                 <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-left">任务</th>
                 <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-center w-20">状态</th>
                 <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-center w-20">频率</th>
@@ -127,7 +127,7 @@
                 <th class="px-4 py-3 text-[11px] font-medium text-muted-foreground text-right w-12"></th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-border/10">
+            <tbody class="divide-y divide-border/10 last:border-b-0">
               <!-- Loading Skeleton -->
               <template v-if="loading && tasks.length === 0">
                 <tr v-for="i in 6" :key="i" class="animate-pulse">
@@ -345,7 +345,7 @@
 
     <!-- Feedback Toast -->
     <Transition name="toast">
-      <div v-if="toast.visible" :class="['save-toast', toast.error ? 'save-toast--error' : 'save-toast--success']">
+      <div v-if="toast.visible" class="toast" :class="[toast.error ? 'toast--error' : 'toast--success', 'save-toast']">
         <CheckCircle2 v-if="!toast.error" class="h-4 w-4 shrink-0" />
         <AlertCircle v-else class="h-4 w-4 shrink-0" />
         <span class="text-xs font-semibold">{{ toast.message }}</span>
@@ -761,23 +761,6 @@ onMounted(loadData)
   position: fixed;
   bottom: 1.75rem;
   right: 1.75rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1rem;
-  border-radius: 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  box-shadow: 0 8px 32px hsl(var(--foreground) / 0.15);
-  z-index: 200;
-}
-.save-toast--error {
-  background: hsl(var(--destructive));
-  color: hsl(var(--destructive-foreground));
-}
-.save-toast--success {
-  background: hsl(var(--foreground));
-  color: hsl(var(--background));
 }
 .toast-enter-active,
 .toast-leave-active {

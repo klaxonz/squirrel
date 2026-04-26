@@ -130,7 +130,7 @@
     <div class="plugin-content scrollbar-hide flex-grow overflow-y-auto">
       <div class="content-container">
         <div v-if="isInitialLoading" class="plugin-skeleton-wrap plugin-table-wrap">
-          <table class="plugin-table">
+          <table class="sq-table plugin-table">
             <thead>
               <tr>
                 <th class="col-icon"></th>
@@ -170,7 +170,7 @@
         />
 
         <div v-else class="plugin-table-wrap">
-          <table class="plugin-table">
+          <table class="sq-table plugin-table">
             <thead>
               <tr>
                 <th class="col-icon"></th>
@@ -200,22 +200,10 @@
                   <span class="name-primary">{{ plugin.display_name }}</span>
                 </td>
                 <td class="col-status">
-                  <span
-                    v-if="!plugin.enabled"
-                    class="badge badge--off"
-                  >停用</span>
-                  <span
-                    v-else-if="plugin.active_runtime?.state === 'running'"
-                    class="badge badge--ok"
-                  >运行</span>
-                  <span
-                    v-else-if="plugin.health?.healthy === false || plugin.active_runtime?.state === 'failed'"
-                    class="badge badge--error"
-                  >异常</span>
-                  <span
-                    v-else
-                    class="badge badge--loading"
-                  >加载中</span>
+                  <Badge v-if="!plugin.enabled" variant="muted">停用</Badge>
+                  <Badge v-else-if="plugin.active_runtime?.state === 'running'" variant="success">运行</Badge>
+                  <Badge v-else-if="plugin.health?.healthy === false || plugin.active_runtime?.state === 'failed'" variant="error">异常</Badge>
+                  <Badge v-else variant="muted">加载中</Badge>
                 </td>
                 <td class="col-caps">
                   <span v-if="!plugin.capabilities.length" class="text-muted-foreground/30">—</span>
@@ -439,6 +427,7 @@ import SiteIcon from '@/components/common/SiteIcon.vue'
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
 import PluginSkeleton from '@/components/settings/PluginSkeleton.vue';
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Logger } from '@/utils/logger'
 import { mergeLoginStatusResult, shouldRefreshLoginStatusesAfterCookieImport } from '@/utils/plugin-login-status'
 import { useSiteCatalog } from '@/composables/useSites';
@@ -1343,35 +1332,6 @@ onUnmounted(() => {
   display: block;
 }
 
-.skeleton-surface {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(
-    180deg,
-    hsl(var(--foreground) / 0.06),
-    hsl(var(--foreground) / 0.03)
-  );
-  border: 1px solid hsl(var(--border) / 0.12);
-}
-
-.skeleton-surface::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    hsl(var(--foreground) / 0.05),
-    transparent
-  );
-  animation: plugin-skeleton-shimmer 1.8s infinite;
-}
-
-@keyframes plugin-skeleton-shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
 .plugin-inline-loading,
 .plugin-inline-empty {
   display: flex;
@@ -1481,9 +1441,7 @@ onUnmounted(() => {
 }
 
 .plugin-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
+  /* Column widths and overrides only — base styles from .sq-table */
 }
 
 .plugin-table thead tr {
@@ -1613,33 +1571,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-/* Badge */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 3px;
-  letter-spacing: 0.03em;
-}
-
-.badge--ok {
-  color: hsl(var(--foreground));
-}
-
-.badge--error {
-  color: hsl(var(--foreground));
-}
-
-.badge--off {
-  color: hsl(var(--muted-foreground));
-}
-
-.badge--loading {
-  color: hsl(var(--muted-foreground));
 }
 
 /* Status */

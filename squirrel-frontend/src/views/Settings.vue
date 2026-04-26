@@ -1,5 +1,6 @@
 <template>
-  <div class="settings-page bg-background text-foreground min-h-full">
+  <AppPageShell class="settings-page">
+
     <!-- Tab Navigation -->
     <nav class="settings-tabs" role="tablist">
       <button
@@ -25,40 +26,40 @@
     </nav>
 
     <!-- Content Panel -->
-    <main class="settings-content">
+    <main class="content-container settings-content">
       <!-- Skeleton loading state -->
       <div v-if="pageLoading" class="settings-skeleton">
         <div class="skeleton-section">
-          <div class="skeleton-header">
-            <div class="skeleton-icon"></div>
-            <div class="skeleton-text-group">
-              <div class="skeleton-line skeleton-line--title"></div>
-              <div class="skeleton-line skeleton-line--desc"></div>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="skeleton-surface skeleton-icon"></div>
+            <div class="flex flex-col gap-2">
+              <div class="skeleton-surface skeleton-text skeleton-line--title"></div>
+              <div class="skeleton-surface skeleton-text skeleton-line--desc"></div>
             </div>
           </div>
-          <div class="skeleton-card">
-            <div v-for="i in 5" :key="i" class="skeleton-row">
-              <div class="skeleton-row__text">
-                <div class="skeleton-line skeleton-line--row-title"></div>
-                <div class="skeleton-line skeleton-line--row-desc"></div>
+          <div class="settings-skeleton-card">
+            <div v-for="i in 5" :key="i" class="settings-skeleton-row">
+              <div class="flex flex-col gap-2">
+                <div class="skeleton-surface skeleton-text skeleton-line--row-title"></div>
+                <div class="skeleton-surface skeleton-text skeleton-line--row-desc"></div>
               </div>
-              <div class="skeleton-switch"></div>
+              <div class="skeleton-surface skeleton-switch"></div>
             </div>
           </div>
         </div>
         <div class="skeleton-section">
-          <div class="skeleton-header">
-            <div class="skeleton-icon"></div>
-            <div class="skeleton-text-group">
-              <div class="skeleton-line skeleton-line--title"></div>
-              <div class="skeleton-line skeleton-line--desc"></div>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="skeleton-surface skeleton-icon"></div>
+            <div class="flex flex-col gap-2">
+              <div class="skeleton-surface skeleton-text skeleton-line--title"></div>
+              <div class="skeleton-surface skeleton-text skeleton-line--desc"></div>
             </div>
           </div>
-          <div class="skeleton-theme-grid">
-            <div v-for="i in 5" :key="i" class="skeleton-theme-item">
-              <div class="skeleton-theme-preview"></div>
-              <div class="skeleton-line skeleton-line--theme-name"></div>
-              <div class="skeleton-line skeleton-line--theme-desc"></div>
+          <div class="settings-skeleton-theme-grid">
+            <div v-for="i in 5" :key="i" class="settings-skeleton-theme-item">
+              <div class="skeleton-surface skeleton-theme-preview"></div>
+              <div class="skeleton-surface skeleton-text skeleton-line--theme-name"></div>
+              <div class="skeleton-surface skeleton-text skeleton-line--theme-desc"></div>
             </div>
           </div>
         </div>
@@ -448,14 +449,15 @@
       </div>
     </main>
 
-    <!-- Save Feedback Toast -->    <Transition name="toast">
-      <div v-if="saveToastVisible" class="save-toast" :class="saveToastClass">
+    <!-- Save Feedback Toast -->
+    <Transition name="toast">
+      <div v-if="saveToastVisible" class="toast save-toast" :class="saveToastClass">
         <CheckCircle2 v-if="!saveToastError" class="h-4 w-4" />
         <AlertCircle v-else class="h-4 w-4" />
         <span>{{ saveToastMessage }}</span>
       </div>
     </Transition>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">
@@ -480,6 +482,7 @@ import {
 } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { revokeUserSessions, updateUserPassword } from '@/api'
+import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -542,7 +545,7 @@ const serverTestMessage = ref('')
 const saveToastVisible = ref(false)
 const saveToastMessage = ref('')
 const saveToastError = ref(false)
-const saveToastClass = computed(() => saveToastError.value ? 'save-toast--error' : 'save-toast--success')
+const saveToastClass = computed(() => saveToastError.value ? 'toast--error' : 'toast--success')
 const hasUnsavedChanges = ref(false)
 
 let saveToastTimer: ReturnType<typeof setTimeout> | null = null
@@ -823,14 +826,22 @@ const handleRevokeSessions = async () => {
 .settings-tabs {
   display: flex;
   gap: 0.125rem;
-  padding: 0.75rem 2rem 0;
+  padding: 0.75rem var(--app-page-gutter) 0;
   overflow-x: auto;
   scrollbar-width: none;
   position: relative;
 }
 
-@media (max-width: 768px) {
-  .settings-tabs { padding-left: 1rem; padding-right: 1rem; }
+@media (min-width: 640px) {
+  .settings-tabs { padding-left: var(--app-page-gutter-sm); padding-right: var(--app-page-gutter-sm); }
+}
+
+@media (min-width: 1024px) {
+  .settings-tabs { padding-left: var(--app-page-gutter-lg); padding-right: var(--app-page-gutter-lg); }
+}
+
+@media (max-width: 640px) {
+  .settings-tabs { padding-left: var(--app-page-gutter); padding-right: var(--app-page-gutter); }
 }
 
 .settings-tabs::-webkit-scrollbar { display: none; }
@@ -900,19 +911,18 @@ const handleRevokeSessions = async () => {
 
 /* ── Content ── */
 .settings-content {
-  padding: 1.5rem 2rem 3rem;
+  padding: 1.5rem 0 3rem;
   max-width: 1200px;
-  margin: 0 auto;
 }
 
 @media (max-width: 768px) {
-  .settings-content { padding-left: 1rem; padding-right: 1rem; }
+  .settings-content { padding-top: 1rem; padding-bottom: 2rem; }
 }
 @media (min-width: 640px) {
-  .settings-content { padding-left: 1.5rem; padding-right: 1.5rem; }
+  .settings-content { padding-top: 1.5rem; }
 }
 @media (min-width: 1024px) {
-  .settings-content { padding-left: 2rem; padding-right: 2rem; }
+  .settings-content { padding-top: 2rem; }
 }
 
 .settings-panel {
@@ -1310,45 +1320,14 @@ const handleRevokeSessions = async () => {
   position: fixed;
   bottom: 2rem;
   right: 2rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.125rem;
-  border-radius: 0.875rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  box-shadow:
-    0 4px 6px -1px hsl(var(--foreground) / 0.08),
-    0 10px 40px hsl(var(--foreground) / 0.12);
-  z-index: 100;
-  overflow: hidden;
 }
 
-.save-toast::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 3px;
-  background: currentColor;
-  opacity: 0.3;
-  animation: toast-progress 3s linear forwards;
-  width: 100%;
-}
-
-@keyframes toast-progress {
-  from { transform: scaleX(1); transform-origin: left; }
-  to { transform: scaleX(0); transform-origin: left; }
-}
-
-.save-toast--error {
-  background: hsl(var(--destructive));
-  color: hsl(var(--destructive-foreground));
-}
-
-.save-toast--success {
-  background: hsl(var(--foreground));
-  color: hsl(var(--background));
+@media (max-width: 640px) {
+  .save-toast {
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+  }
 }
 
 .toast-enter-active {
@@ -1368,48 +1347,21 @@ const handleRevokeSessions = async () => {
 
 /* ── Skeleton Loading ── */
 .settings-skeleton {
-  animation: skeleton-fade-in var(--duration-slower) var(--ease-default);
-}
-
-@keyframes skeleton-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  animation: sq-fade-in var(--duration-slower) var(--ease-default);
 }
 
 .skeleton-section {
   margin-bottom: 2.5rem;
 }
 
-.skeleton-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.skeleton-icon {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.875rem;
-  background: hsl(var(--muted-foreground) / 0.08);
-  animation: skeleton-shimmer 1.6s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-.skeleton-text-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.skeleton-card {
+.settings-skeleton-card {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border) / 0.4);
   border-radius: var(--settings-card-radius);
   overflow: hidden;
 }
 
-.skeleton-row {
+.settings-skeleton-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1417,29 +1369,13 @@ const handleRevokeSessions = async () => {
   padding: 1.125rem 1.5rem;
 }
 
-.skeleton-row__text {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.skeleton-switch {
-  width: 2.75rem;
-  height: 1.5rem;
-  border-radius: 9999px;
-  background: hsl(var(--muted-foreground) / 0.1);
-  animation: skeleton-shimmer 1.6s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-.skeleton-theme-grid {
+.settings-skeleton-theme-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 0.75rem;
 }
 
-.skeleton-theme-item {
+.settings-skeleton-theme-item {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1450,20 +1386,6 @@ const handleRevokeSessions = async () => {
   border-radius: 1.25rem;
 }
 
-.skeleton-theme-preview {
-  width: 3.25rem;
-  height: 3.25rem;
-  border-radius: 0.875rem;
-  background: hsl(var(--muted-foreground) / 0.08);
-  animation: skeleton-shimmer 1.6s ease-in-out infinite;
-}
-
-.skeleton-line {
-  border-radius: 0.375rem;
-  background: hsl(var(--muted-foreground) / 0.08);
-  animation: skeleton-shimmer 1.6s ease-in-out infinite;
-}
-
 .skeleton-line--title { height: 1rem; width: 7rem; }
 .skeleton-line--desc { height: 0.75rem; width: 9rem; }
 .skeleton-line--row-title { height: 0.875rem; width: 10rem; }
@@ -1471,16 +1393,7 @@ const handleRevokeSessions = async () => {
 .skeleton-line--theme-name { height: 0.875rem; width: 4rem; }
 .skeleton-line--theme-desc { height: 0.625rem; width: 6rem; }
 
-@keyframes skeleton-shimmer {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
-.settings-row--column {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.25rem;
-}
+/* ── Responsive ── */
 
 .server-url-display {
   font-size: 0.8rem;

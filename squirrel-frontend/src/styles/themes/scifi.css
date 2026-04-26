@@ -15,6 +15,9 @@
   --muted-foreground: 220 20% 60%;
   --accent: 40 100% 50%;
   --accent-foreground: 220 40% 4%;
+  --destructive: 0 80% 55%;
+  --success: 145 80% 50%;
+  --warning: 38 100% 55%;
   --border: 220 30% 18%;
   --input: 220 30% 18%;
   --sidebar: 220 40% 5%;
