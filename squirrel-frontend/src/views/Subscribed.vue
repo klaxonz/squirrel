@@ -197,6 +197,7 @@ const siteFilterRef = ref<HTMLElement | null>(null)
 const activeChannelId = ref<string | number | null>(null)
 const showAddDialog = ref(false)
 const showImportDialog = ref(false)
+const feedContainer = ref<HTMLElement | null>(null)
 
 // Data State (Channels)
 const list = ref<any[]>([])
@@ -318,12 +319,20 @@ const fetchFeed = async (isReset = false) => {
   }
 }
 
+const resetFeedScroll = () => {
+  if (feedContainer.value) feedContainer.value.scrollTop = 0
+}
+
 const handleChannelClick = (id: string | number) => {
   activeChannelId.value = activeChannelId.value === id ? null : id
   viewMode.value = 'feed'; fetchFeed(true)
+  resetFeedScroll()
 }
 
-const handleRefresh = () => { fetchChannels(true); fetchFeed(true) }
+const handleRefresh = () => {
+  fetchChannels(true); fetchFeed(true)
+  resetFeedScroll()
+}
 const handleOpenVideo = (video: any) => { rememberVideoPlaybackSeed(video); router.push(`/video/${video.id}`) }
 
 const initObservers = () => {
@@ -366,7 +375,7 @@ watch(viewMode, () => {
   nextTick(() => initObservers())
 })
 
-watch([nsfw, site], () => { fetchChannels(true); fetchFeed(true) })
+watch([nsfw, site], () => { fetchChannels(true); fetchFeed(true); resetFeedScroll() })
 onUnmounted(() => { feedObserver?.disconnect(); channelsObserver?.disconnect(); gridObserver?.disconnect() })
 </script>
 
