@@ -52,4 +52,7 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+  .overflow-anchor-none {
+    overflow-anchor: none;
+  }
 }

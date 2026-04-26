@@ -281,6 +281,13 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior(to, from, savedPosition) {
+    // Restore scroll on browser back/forward navigation;
+    // otherwise reset to top. Combined with history.scrollRestoration = 'manual',
+    // savedPosition is null on initial page load, preventing auto-scroll.
+    if (savedPosition) return savedPosition
+    return { top: 0 }
+  },
 })
 
 router.beforeEach(async (to, from, next) => {

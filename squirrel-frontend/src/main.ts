@@ -11,6 +11,12 @@ import './styles/themes/dark.css'
 import '@fortawesome/fontawesome-free/css/all.min.css'
 
 const bootstrap = async () => {
+  // Prevent browser from restoring scroll position on page load,
+  // which causes the subtle auto-scroll issue.
+  if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual'
+  }
+
   const app = createApp(App)
   const pinia = createPinia()
 

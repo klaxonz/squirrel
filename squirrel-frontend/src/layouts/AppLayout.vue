@@ -16,7 +16,7 @@
         <AppHeader class="shrink-0 z-40 border-b border-border/40" />
         
         <!-- 5. Scrollable Content Area -->
-        <div class="flex-1 overflow-y-auto overflow-x-hidden relative scrollbar" id="app-main-scroll">
+        <div class="flex-1 overflow-y-auto overflow-x-hidden relative scrollbar overflow-anchor-none" id="app-main-scroll">
           <GlobalVideoPlayerHost />
           <slot />
           
