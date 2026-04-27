@@ -1,26 +1,9 @@
-import type { Component } from 'vue'
 import type {
   RouteLocationNormalizedLoaded,
   RouteLocationRaw,
   RouteRecordName,
 } from 'vue-router'
-import {
-  RefreshCw,
-  Bookmark,
-  Clock,
-  Cpu,
-  FileText,
-  Home,
-  List,
-  KeyRound,
-  Network,
-  Palette,
-  PlayCircle,
-  Puzzle,
-  Settings2,
-  Settings as SettingsIcon,
-  ShieldCheck,
-} from 'lucide-vue-next'
+import type { AppIconName } from '@/icons/app-icons'
 
 export type AppNavKey =
   | 'videos'
@@ -39,7 +22,7 @@ export interface NavigationItem {
   title: string
   mobileLabel?: string
   path: string
-  icon: Component
+  icon: AppIconName
   group: 'content' | 'operations' | 'system'
   showOnMobile?: boolean
   activePrefixes?: string[]
@@ -59,7 +42,7 @@ export interface SettingsTabItem {
   label: string
   path: string
   routeName: string
-  icon: Component
+  icon: AppIconName
   badge?: string
 }
 
@@ -82,42 +65,42 @@ export const SETTINGS_TABS: SettingsTabItem[] = [
     label: '外观',
     path: '/settings/appearance',
     routeName: 'SettingsAppearance',
-    icon: Palette,
+    icon: 'appearance',
   },
   {
     key: 'content',
     label: '内容',
     path: '/settings/content',
     routeName: 'SettingsContent',
-    icon: ShieldCheck,
+    icon: 'content',
   },
   {
     key: 'playback',
     label: '播放',
     path: '/settings/playback',
     routeName: 'SettingsPlayback',
-    icon: PlayCircle,
+    icon: 'playback',
   },
   {
     key: 'security',
     label: '安全',
     path: '/settings/security',
     routeName: 'SettingsSecurity',
-    icon: KeyRound,
+    icon: 'security',
   },
   {
     key: 'system',
     label: '系统',
     path: '/settings/system',
     routeName: 'SettingsSystem',
-    icon: Settings2,
+    icon: 'settingsNav',
   },
   {
     key: 'server',
     label: '服务器',
     path: '/settings/server',
     routeName: 'SettingsServer',
-    icon: Network,
+    icon: 'server',
   },
 ]
 
@@ -132,7 +115,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '内容总览',
     mobileLabel: '首页',
     path: '/videos/all',
-    icon: Home,
+    icon: 'home',
     group: 'content',
     showOnMobile: true,
     activePrefixes: ['/videos', '/video/'],
@@ -153,7 +136,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '订阅中心',
     mobileLabel: '订阅',
     path: '/subscribed',
-    icon: Bookmark,
+    icon: 'subscriptions',
     group: 'content',
     showOnMobile: true,
     activePrefixes: ['/subscribed', '/subscription/'],
@@ -175,7 +158,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '历史记录',
     mobileLabel: '历史',
     path: '/history',
-    icon: Clock,
+    icon: 'history',
     group: 'content',
     showOnMobile: true,
     activeRouteNames: ['History'],
@@ -186,7 +169,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '播放列表',
     mobileLabel: '播放列表',
     path: '/playlists',
-    icon: List,
+    icon: 'playlists',
     group: 'content',
     showOnMobile: true,
     activeRouteNames: ['Playlists'],
@@ -197,7 +180,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '同步中心',
     mobileLabel: '采集',
     path: '/sync-center',
-    icon: RefreshCw,
+    icon: 'sync',
     group: 'operations',
     showOnMobile: true,
     activeRouteNames: ['SyncCenter'],
@@ -208,7 +191,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '计划任务',
     mobileLabel: '定时',
     path: '/scheduled-tasks',
-    icon: Cpu,
+    icon: 'scheduledTasks',
     group: 'operations',
     showOnMobile: false,
     activeRouteNames: ['ScheduledTasks'],
@@ -219,7 +202,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '插件管理',
     mobileLabel: '插件',
     path: '/plugins',
-    icon: Puzzle,
+    icon: 'plugins',
     group: 'system',
     showOnMobile: false,
     activeRouteNames: ['Plugins'],
@@ -230,7 +213,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '日志查看器',
     mobileLabel: '日志',
     path: '/logs',
-    icon: FileText,
+    icon: 'logs',
     group: 'system',
     showOnMobile: true,
     activeRouteNames: ['Logs'],
@@ -241,7 +224,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '系统设置',
     mobileLabel: '设置',
     path: SETTINGS_TABS.find((tab) => tab.key === DEFAULT_SETTINGS_TAB)?.path || '/settings/appearance',
-    icon: Settings2,
+    icon: 'settingsNav',
     group: 'system',
     showOnMobile: true,
     activePrefixes: ['/settings'],

@@ -71,7 +71,7 @@
                 @click="showPassword = !showPassword"
                 :aria-label="showPassword ? 'Hide password' : 'Show password'"
               >
-                <component :is="showPassword ? EyeOff : Eye" class="h-4 w-4" />
+                <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -109,9 +109,9 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { useUser } from '../composables/useUser'
 import { useServerConfig } from '@/composables/useServerConfig'
-import { Eye, EyeOff } from 'lucide-vue-next'
 
 const router = useRouter()
 const { login } = useUser()

@@ -4,7 +4,7 @@
     <div class="h-14 flex items-center px-4 mb-2">
       <router-link to="/" class="flex items-center gap-2 group">
         <div class="w-6 h-6 bg-foreground rounded-md flex items-center justify-center transition-transform group-hover:scale-105 group-active:scale-95 shadow-sm">
-          <Zap class="w-3.5 h-3.5 text-background fill-current" />
+          <AppIcon name="brand" class="w-3.5 h-3.5 text-background fill-current" />
         </div>
         <span class="text-[14px] font-bold tracking-tight text-foreground">Squirrel</span>
       </router-link>
@@ -34,7 +34,7 @@
       <div class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer group" @click="handleLogout">
         <div class="relative w-8 h-8 shrink-0">
           <div class="w-full h-full rounded-full bg-secondary flex items-center justify-center border border-border/50">
-            <User class="w-4 h-4 text-muted-foreground" />
+            <AppIcon name="user" class="w-4 h-4 text-muted-foreground" />
           </div>
         </div>
         
@@ -43,7 +43,7 @@
           <p class="text-[10px] text-muted-foreground/60 truncate">Basic Plan</p>
         </div>
         
-        <LogOut class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        <AppIcon name="logout" class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
     </div>
   </aside>
@@ -51,7 +51,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { LogOut, User, Zap } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { useUserStore } from '@/stores/user'
 import SidebarMenuItem from './SidebarMenuItem.vue'
 import { NAV_GROUPS, isNavigationItemActive } from '@/constants/sidebar'

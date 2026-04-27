@@ -16,7 +16,7 @@
     
     <div class="flex items-center gap-1">
       <button class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-all active:scale-95 relative group">
-        <Bell class="w-4 h-4" />
+        <AppIcon name="notification" class="w-4 h-4" />
         <span class="absolute top-2 right-2 w-1.5 h-1.5 bg-destructive rounded-full border border-background shadow-sm" />
       </button>
       
@@ -35,7 +35,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Bell } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import RouteContextBar from '@/components/layout/RouteContextBar.vue'
 import GlobalSearchBar from '@/components/layout/GlobalSearchBar.vue'
 import { resolveRouteContext } from '@/constants/sidebar'

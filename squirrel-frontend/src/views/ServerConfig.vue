@@ -3,7 +3,7 @@
     <!-- Logo/Brand Area -->
     <div class="mb-10 text-center space-y-2">
       <div class="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-        <Network class="w-6 h-6 text-white" />
+        <AppIcon name="server" class="w-6 h-6 text-white" />
       </div>
       <h1 class="text-2xl font-bold text-slate-900 tracking-tight">SQRL 核心配置</h1>
       <p class="text-sm text-slate-500">连接至您的后端服务引擎</p>
@@ -14,7 +14,7 @@
       <form class="p-8 space-y-8" @submit.prevent="handleConnect">
         <!-- Error Alert -->
         <div v-if="errorMessage" class="p-4 rounded-lg bg-rose-50 border border-rose-100 flex items-center gap-3 text-sm text-rose-700 animate-in fade-in zoom-in-95">
-          <AlertCircle class="w-4 h-4 shrink-0" />
+          <AppIcon name="warning" class="w-4 h-4 shrink-0" />
           {{ errorMessage }}
         </div>
 
@@ -41,7 +41,7 @@
                 @click="handleTest"
                 class="h-8 px-3 text-xs font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
               >
-                <RefreshCw v-if="testing" class="w-3.5 h-3.5 animate-spin mr-1.5" />
+                <AppIcon v-if="testing" name="refresh" class="w-3.5 h-3.5 animate-spin mr-1.5" />
                 {{ testing ? '测试中' : '测试连接' }}
               </Button>
             </div>
@@ -52,8 +52,8 @@
             'text-[11px] font-bold mt-2 px-2 flex items-center gap-1.5',
             testResult ? 'text-emerald-600' : 'text-rose-600'
           ]">
-            <CheckCircle2 v-if="testResult" class="w-3 h-3" />
-            <AlertCircle v-else class="w-3 h-3" />
+            <AppIcon v-if="testResult" name="statusSuccess" class="w-3 h-3" />
+            <AppIcon v-else name="warning" class="w-3 h-3" />
             {{ connectionMessage }}
           </div>
         </div>
@@ -104,7 +104,7 @@
             :disabled="connecting || !form.serverUrl.trim()"
           >
             <span v-if="connecting" class="flex items-center gap-2">
-              <RefreshCw class="w-4 h-4 animate-spin" />
+              <AppIcon name="refresh" class="w-4 h-4 animate-spin" />
               正在连接...
             </span>
             <span v-else>确认并进入系统</span>
@@ -123,7 +123,7 @@
 
     <!-- Back link -->
     <router-link to="/login" class="mt-8 flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-slate-600 transition-colors">
-      <ArrowLeft class="w-4 h-4" /> 返回登录页面
+      <AppIcon name="back" class="w-4 h-4" /> 返回登录页面
     </router-link>
   </div>
 </template>
@@ -131,13 +131,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { 
-  Network, 
-  AlertCircle, 
-  CheckCircle2, 
-  RefreshCw, 
-  ArrowLeft 
-} from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { useServerConfig } from '@/composables/useServerConfig'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

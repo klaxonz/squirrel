@@ -10,24 +10,30 @@
         class="w-10 h-8 flex items-center justify-center hover:bg-accent hover:text-foreground transition-colors group"
         :class="{ 'hover:bg-red-600 hover:text-white': btn.type === 'close' }"
       >
-        <component :is="btn.icon" class="w-3.5 h-3.5" />
+        <AppIcon :name="btn.icon" class="w-3.5 h-3.5" />
       </button>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
-import { Minus, Maximize, Minimize, X } from 'lucide-vue-next'
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import AppIcon from '@/components/common/AppIcon.vue'
+import type { AppIconName } from '@/icons/app-icons'
 
 const desktop = (window as any).desktopApp
 const isMaximized = ref(false)
 
-const controls = [
-  { icon: Minus, action: () => desktop?.minimizeWindow(), label: 'Minimize' },
-  { icon: isMaximized.value ? Minimize : Maximize, action: toggleMaximize, label: 'Maximize' },
-  { icon: X, action: () => desktop?.closeWindow(), label: 'Close', type: 'close' }
-]
+const controls = computed<Array<{
+  icon: AppIconName
+  action: () => Promise<void> | void
+  label: string
+  type?: 'close'
+}>>(() => ([
+  { icon: 'minimizeWindow', action: () => desktop?.minimizeWindow(), label: 'Minimize' },
+  { icon: isMaximized.value ? 'restoreWindow' : 'maximizeWindow', action: toggleMaximize, label: 'Maximize' },
+  { icon: 'close', action: () => desktop?.closeWindow(), label: 'Close', type: 'close' },
+]))
 
 async function toggleMaximize() {
   isMaximized.value = await desktop?.toggleMaximizeWindow()

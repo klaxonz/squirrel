@@ -3,7 +3,6 @@ import type { DialogContentEmits, DialogContentProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import type { SheetVariants } from "."
 import { reactiveOmit } from "@vueuse/core"
-import { X } from "lucide-vue-next"
 import {
   DialogClose,
   DialogContent,
@@ -11,6 +10,7 @@ import {
   DialogPortal,
   useForwardPropsEmits,
 } from "reka-ui"
+import AppIcon from '@/components/common/AppIcon.vue'
 import { cn } from "@/lib/utils"
 import { sheetVariants } from "."
 
@@ -46,7 +46,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
       <DialogClose
         class="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/60 bg-background text-muted-foreground opacity-90 ring-offset-background transition-colors duration-150 hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 disabled:pointer-events-none"
       >
-        <X class="w-4 h-4" />
+        <AppIcon name="close" class="w-4 h-4" />
       </DialogClose>
     </DialogContent>
   </DialogPortal>

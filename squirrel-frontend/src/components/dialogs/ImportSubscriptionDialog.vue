@@ -60,7 +60,7 @@
           </div>
 
           <div v-if="loadingPreview && !loadedCount" class="import-dialog__loader">
-            <Loader2 class="h-6 w-6 animate-spin text-primary" />
+            <AppIcon name="loadingSpinner" class="h-6 w-6 animate-spin text-primary" />
             <span class="text-sm text-muted-foreground">正在读取订阅列表...</span>
           </div>
 
@@ -119,7 +119,7 @@
 
             <div v-if="previewData.has_more" class="flex justify-center pt-2">
               <Button size="sm" variant="outline" :disabled="loadingMorePreview" @click="loadMorePreview">
-                <Loader2 v-if="loadingMorePreview" class="h-4 w-4 animate-spin" />
+                <AppIcon v-if="loadingMorePreview" name="loadingSpinner" class="h-4 w-4 animate-spin" />
                 {{ loadingMorePreview ? '加载中...' : '加载更多' }}
               </Button>
             </div>
@@ -128,7 +128,7 @@
 
         <section v-else-if="step === 3" class="space-y-5 py-3">
           <div class="import-dialog__result-icon">
-            <Check class="h-8 w-8 text-emerald-500" />
+            <AppIcon name="check" class="h-8 w-8 text-emerald-500" />
           </div>
 
           <div class="text-center">
@@ -169,7 +169,7 @@
       <DialogFooter class="border-t border-border/70 bg-secondary/24 px-6 py-4 sm:justify-end">
         <Button v-if="step === 1" size="sm" variant="ghost" :disabled="loadingPreview" @click="handleClose">取消</Button>
         <Button v-if="step === 1" size="sm" :disabled="!selectedSite || loadingPreview" @click="handlePreview">
-          <Loader2 v-if="loadingPreview" class="h-4 w-4 animate-spin" />
+          <AppIcon v-if="loadingPreview" name="loadingSpinner" class="h-4 w-4 animate-spin" />
           预览订阅
         </Button>
 
@@ -180,7 +180,7 @@
           :disabled="importing || selectedCount === 0"
           @click="handleImport"
         >
-          <Loader2 v-if="importing" class="h-4 w-4 animate-spin" />
+          <AppIcon v-if="importing" name="loadingSpinner" class="h-4 w-4 animate-spin" />
           {{ importing ? '导入中...' : `确认导入 (${selectedCount})` }}
         </Button>
 
@@ -192,7 +192,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { Check, Loader2 } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import {
   getSupportedImportSites,
   importSubscriptions,

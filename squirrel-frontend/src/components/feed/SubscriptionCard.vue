@@ -47,7 +47,7 @@
       <div class="flex items-center justify-between">
         <span class="text-[10px] font-black text-muted-foreground/40 uppercase tracking-widest">最近发布</span>
         <div class="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground/30">
-          <Clock class="w-2.5 h-2.5" />
+          <AppIcon name="time" class="w-2.5 h-2.5" />
           <span>{{ lastUpdatedText }}</span>
         </div>
       </div>
@@ -75,7 +75,7 @@
     <div class="mt-4 pt-4 border-t border-border/10 flex items-center justify-between opacity-40 group-hover:opacity-100 transition-opacity duration-500">
       <div class="flex items-center gap-4">
         <div class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider">
-          <Library class="w-3.5 h-3.5" />
+          <AppIcon name="library" class="w-3.5 h-3.5" />
           <span>{{ subscription.total_videos }} 视频</span>
         </div>
       </div>
@@ -86,7 +86,7 @@
         class="h-7 w-7 rounded-lg hover:bg-accent/50"
         @click.stop="$emit('more')"
       >
-        <MoreHorizontal class="w-4 h-4" />
+        <AppIcon name="more" class="w-4 h-4" />
       </Button>
     </div>
   </div>
@@ -94,7 +94,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Library, Clock, MoreHorizontal } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { Button } from '@/components/ui/button'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import SiteTag from '@/components/common/SiteTag.vue'

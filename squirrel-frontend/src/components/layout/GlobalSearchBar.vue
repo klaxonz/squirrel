@@ -4,7 +4,7 @@
     <div 
       class="flex items-center h-9 px-3 rounded-lg bg-accent/30 border border-border/20 transition-all duration-300 group focus-within:bg-background focus-within:border-primary/20 focus-within:ring-4 focus-within:ring-primary/5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]"
     >
-      <Search class="w-3.5 h-3.5 text-muted-foreground/40 group-focus-within:text-primary transition-colors mr-2.5" stroke-width="2.5" />
+      <AppIcon name="search" class="w-3.5 h-3.5 text-muted-foreground/40 group-focus-within:text-primary transition-colors mr-2.5" :stroke-width="2.5" />
       
       <input
         ref="inputRef"
@@ -25,7 +25,7 @@
         
         <!-- Clear Button -->
         <button v-if="inputValue" @click="clearSearch" class="p-1 rounded-md hover:bg-muted text-muted-foreground/60 transition-colors">
-          <X class="w-3 h-3" />
+          <AppIcon name="close" class="w-3 h-3" />
         </button>
         
         <!-- Kbd Hint (Linear Style) -->
@@ -57,14 +57,14 @@
             @mouseenter="activeSuggestionIndex = index"
             @click="selectSuggestion(item.value)"
           >
-            <component :is="item.type === 'search' ? Search : Clock" class="w-4 h-4 opacity-50" />
+            <AppIcon :name="item.type === 'search' ? 'search' : 'history'" class="w-4 h-4 opacity-50" />
             <div class="flex flex-col min-w-0">
               <span class="text-[13px] font-medium truncate">{{ item.label }}</span>
               <span v-if="item.meta" class="text-[10px] opacity-50 truncate">{{ item.meta }}</span>
             </div>
           </button>
           <button v-if="item.type === 'recent'" @click.stop="removeRecentSearch(item.value)" class="w-8 flex items-center justify-center rounded-xl hover:bg-destructive/10 hover:text-destructive text-muted-foreground/40 transition-colors">
-            <X class="w-3.5 h-3.5" />
+            <AppIcon name="close" class="w-3.5 h-3.5" />
           </button>
         </div>
         
@@ -76,7 +76,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
-import { Search, X, Clock } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { getSearchSuggestions } from '@/api/search'
 import { useUIStore } from '@/stores/ui'
 

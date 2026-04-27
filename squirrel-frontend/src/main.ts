@@ -8,7 +8,6 @@ import { vueErrorHandler, unhandledRejectionHandler } from './utils/errorHandler
 import './styles/index.css'
 import './styles/layout.css'
 import './styles/themes/dark.css'
-import '@fortawesome/fontawesome-free/css/all.min.css'
 
 const bootstrap = async () => {
   // Prevent browser from restoring scroll position on page load,

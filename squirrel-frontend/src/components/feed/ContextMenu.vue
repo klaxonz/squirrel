@@ -8,14 +8,14 @@
     <div class="context-menu__section">
       <button class="context-menu__item" @click="handleToggleRead(true)">
         <span class="context-menu__icon-wrap">
-          <Check class="context-menu__icon" />
+          <AppIcon name="check" class="context-menu__icon" />
         </span>
         <span class="context-menu__label">标记为已读</span>
       </button>
 
       <button class="context-menu__item" @click="handleToggleRead(false)">
         <span class="context-menu__icon-wrap">
-          <X class="context-menu__icon" />
+          <AppIcon name="close" class="context-menu__icon" />
         </span>
         <span class="context-menu__label">标记为未读</span>
       </button>
@@ -26,16 +26,19 @@
     <div class="context-menu__section">
       <button class="context-menu__item" @click="handleLiked">
         <span class="context-menu__icon-wrap">
-          <Heart
+          <AppIcon
             v-if="video.is_liked === 1"
+            name="heart"
             class="context-menu__icon context-menu__icon--destructive"
           />
-          <ThumbsDown
+          <AppIcon
             v-else-if="video.is_liked === 0"
+            name="dislike"
             class="context-menu__icon context-menu__icon--warning"
           />
-          <Heart
+          <AppIcon
             v-else
+            name="heart"
             class="context-menu__icon"
           />
         </span>
@@ -50,7 +53,7 @@
 
       <button class="context-menu__item" @click="handleCopyVideoLink">
         <span class="context-menu__icon-wrap">
-          <Clipboard class="context-menu__icon" />
+          <AppIcon name="clipboard" class="context-menu__icon" />
         </span>
         <span class="context-menu__label">复制链接</span>
       </button>
@@ -60,13 +63,7 @@
 
 <script setup>
 import { onMounted, onUnmounted } from 'vue'
-import {
-  Check,
-  Clipboard,
-  Heart,
-  ThumbsDown,
-  X,
-} from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
   position: {

@@ -35,18 +35,6 @@ export default defineConfig({
             return 'hls-vendor'
           }
 
-          if (id.includes('@fortawesome')) {
-            return 'fontawesome-vendor'
-          }
-
-          if (id.includes('@heroicons')) {
-            return 'heroicons-vendor'
-          }
-
-          if (id.includes('@iconify')) {
-            return 'iconify-vendor'
-          }
-
           if (id.includes('lodash') || id.includes('axios') || id.includes('vue-virtual-scroller')) {
             return 'app-utils-vendor'
           }

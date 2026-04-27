@@ -3,7 +3,7 @@
     <div class="empty-shell">
       <div class="empty-content">
         <span class="empty-icon">
-          <Info :size="16" class="opacity-20" />
+          <AppIcon name="info" class="h-4 w-4 opacity-20" />
         </span>
         <p class="empty-title">{{ title }}</p>
         <p class="empty-message">{{ message }}</p>
@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { Info } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 withDefaults(defineProps<{
   title?: string
   message: string

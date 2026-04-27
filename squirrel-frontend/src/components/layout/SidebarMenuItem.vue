@@ -9,13 +9,12 @@
     ]"
   >
     <!-- Icon - Simple and clean -->
-    <component
-      :is="item.icon"
+    <AppIcon
+      :name="item.icon"
       class="w-4 h-4 shrink-0 transition-transform duration-200 group-active:scale-90"
       :class="[
         isActive ? 'text-foreground' : 'text-muted-foreground/60 group-hover:text-foreground'
       ]"
-      stroke-width="2"
     />
 
     <span class="truncate tracking-tight">{{ item.name }}</span>
@@ -23,11 +22,14 @@
 </template>
 
 <script setup lang="ts">
+import AppIcon from '@/components/common/AppIcon.vue'
+import type { AppIconName } from '@/icons/app-icons'
+
 defineProps<{
   item: {
     path: string
     name: string
-    icon: any
+    icon: AppIconName
   }
   isActive: boolean
 }>()

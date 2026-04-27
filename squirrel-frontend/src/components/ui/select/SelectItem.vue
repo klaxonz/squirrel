@@ -2,13 +2,13 @@
 import type { SelectItemProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import { reactiveOmit } from "@vueuse/core"
-import { Check } from "lucide-vue-next"
 import {
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
   useForwardProps,
 } from "reka-ui"
+import AppIcon from '@/components/common/AppIcon.vue'
 import { cn } from "@/lib/utils"
 
 const props = defineProps<SelectItemProps & { class?: HTMLAttributes["class"] }>()
@@ -33,7 +33,7 @@ const forwardedProps = useForwardProps(delegatedProps)
     </SelectItemText>
 
     <SelectItemIndicator class="absolute right-3 flex items-center justify-center">
-      <Check class="w-3.5 h-3.5" stroke-width="3" />
+      <AppIcon name="check" class="w-3.5 h-3.5" :stroke-width="3" />
     </SelectItemIndicator>
   </SelectItem>
 

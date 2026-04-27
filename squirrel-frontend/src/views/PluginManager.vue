@@ -13,7 +13,7 @@
             <Button as-child variant="outline" class="h-9 px-4 text-sm font-medium border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer">
               <label class="cursor-pointer flex items-center">
                 <input type="file" accept=".zip" class="hidden" @change="handleFileChange" />
-                <Upload class="h-4 w-4 mr-2 text-slate-500" />
+                <AppIcon name="upload" class="h-4 w-4 mr-2 text-slate-500" />
                 <span>{{ selectedFile ? selectedFile.name : '导入插件' }}</span>
               </label>
             </Button>
@@ -23,8 +23,8 @@
               @click="handleInstall"
               class="h-9 px-4 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
             >
-              <RefreshCw v-if="installing" class="h-4 w-4 mr-2 animate-spin" />
-              <PlusCircle v-else class="h-4 w-4 mr-2" />
+              <AppIcon v-if="installing" name="refresh" class="h-4 w-4 mr-2 animate-spin" />
+              <AppIcon v-else name="plusCircle" class="h-4 w-4 mr-2" />
               安装
             </Button>
 
@@ -32,7 +32,7 @@
             <Button as-child variant="outline" class="h-9 px-4 text-sm font-medium border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer">
               <label class="cursor-pointer flex items-center">
                 <input type="file" accept=".txt,.json" class="hidden" @change="handleCookiesFileChange" />
-                <Cookie class="h-4 w-4 mr-2 text-slate-500" />
+                <AppIcon name="cookie" class="h-4 w-4 mr-2 text-slate-500" />
                 <span>{{ cookiesFileName || '导入 Cookie' }}</span>
               </label>
             </Button>
@@ -42,8 +42,8 @@
               :disabled="importingCookies"
               class="h-9 px-4 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
             >
-              <RefreshCw v-if="importingCookies" class="h-4 w-4 mr-2 animate-spin" />
-              <CheckCircle v-else class="h-4 w-4 mr-2" />
+              <AppIcon v-if="importingCookies" name="refresh" class="h-4 w-4 mr-2 animate-spin" />
+              <AppIcon v-else name="statusSuccess" class="h-4 w-4 mr-2" />
               导入
             </Button>
 
@@ -55,8 +55,8 @@
               variant="outline"
               class="h-9 px-4 text-sm font-medium border-slate-200 hover:bg-slate-50 transition-colors"
             >
-              <RefreshCw v-if="testingAll" class="h-4 w-4 mr-2 animate-spin" />
-              <Zap v-else class="h-4 w-4 mr-2 text-amber-500" />
+              <AppIcon v-if="testingAll" name="refresh" class="h-4 w-4 mr-2 animate-spin" />
+              <AppIcon v-else name="sync" class="h-4 w-4 mr-2 text-amber-500" />
               测试全部
             </Button>
           </div>
@@ -94,7 +94,7 @@
       <!-- Search Bar -->
       <div class="flex items-center justify-between gap-4 mb-6 w-full">
         <div class="relative w-72 shrink-0">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <AppIcon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             v-model="searchQuery"
             placeholder="搜索插件名称、站点或描述..."
@@ -105,7 +105,7 @@
             @click="searchQuery = ''"
             class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
           >
-            <X class="h-4 w-4" />
+            <AppIcon name="close" class="h-4 w-4" />
           </button>
         </div>
         
@@ -115,7 +115,7 @@
           @click="handleReload"
           class="h-9 px-3 text-slate-500 hover:text-slate-900"
         >
-          <RefreshCw :class="['h-4 w-4 mr-2', reloading ? 'animate-spin' : '']" />
+          <AppIcon name="refresh" :class="['h-4 w-4 mr-2', reloading ? 'animate-spin' : '']" />
           重载插件库
         </Button>
       </div>
@@ -161,7 +161,7 @@
                   class="rounded-lg border border-slate-100 shadow-sm"
                 />
                 <div v-else class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-300 border border-slate-200">
-                  <Cube class="h-5 w-5" />
+                  <AppIcon name="cube" class="h-5 w-5" />
                 </div>
               </div>
               <div class="min-w-0">
@@ -200,13 +200,13 @@
             <!-- Network -->
             <div class="flex justify-center">
               <div v-if="plugin.siteTesting" class="animate-spin text-slate-300">
-                <RefreshCw class="h-4 w-4" />
+                <AppIcon name="refresh" class="h-4 w-4" />
               </div>
               <div v-else-if="plugin.siteAccessible === true" class="text-emerald-500" title="网络连通正常">
-                <CheckCircle class="h-5 w-5" />
+                <AppIcon name="statusSuccess" class="h-5 w-5" />
               </div>
               <div v-else-if="plugin.siteAccessible === false" class="text-rose-500" title="网络连接失败">
-                <XCircle class="h-5 w-5" />
+                <AppIcon name="xCircle" class="h-5 w-5" />
               </div>
               <span v-else class="text-slate-200">—</span>
             </div>
@@ -214,16 +214,16 @@
             <!-- Login -->
             <div class="flex justify-center">
               <div v-if="plugin.siteLoginTesting" class="animate-spin text-slate-300">
-                <RefreshCw class="h-4 w-4" />
+                <AppIcon name="refresh" class="h-4 w-4" />
               </div>
               <div v-else-if="plugin.siteOAuthStatus === 'authenticated' || plugin.siteLoginStatus?.logged_in" class="text-emerald-500" title="身份验证有效">
-                <Key class="h-5 w-5" />
+                <AppIcon name="security" class="h-5 w-5" />
               </div>
               <div v-else-if="plugin.siteOAuthStatus === 'pending'" class="text-amber-500 animate-pulse" title="等待授权">
-                <RefreshCw class="h-5 w-5" />
+                <AppIcon name="refresh" class="h-5 w-5" />
               </div>
               <div v-else-if="plugin.siteLoginStatus" class="text-rose-500" title="身份验证失效">
-                <XCircle class="h-5 w-5" />
+                <AppIcon name="xCircle" class="h-5 w-5" />
               </div>
               <span v-else class="text-slate-200">—</span>
             </div>
@@ -238,8 +238,8 @@
                 class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 transition-colors"
                 :title="plugin.enabled ? '停用插件' : '启用插件'"
               >
-                <Pause v-if="plugin.enabled" class="h-4 w-4" />
-                <Play v-else class="h-4 w-4 fill-current" />
+                <AppIcon v-if="plugin.enabled" name="pause" class="h-4 w-4" />
+                <AppIcon v-else name="play" class="h-4 w-4 fill-current" />
               </Button>
 
               <!-- Test Site -->
@@ -252,7 +252,7 @@
                 class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-amber-500 transition-colors"
                 title="连通性测试"
               >
-                <Bolt class="h-4 w-4" />
+                <AppIcon name="bolt" class="h-4 w-4" />
               </Button>
 
               <!-- Login Check -->
@@ -265,7 +265,7 @@
                 class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-blue-500 transition-colors"
                 title="验证登录状态"
               >
-                <Key class="h-4 w-4" />
+                <AppIcon name="security" class="h-4 w-4" />
               </Button>
 
               <!-- YouTube OAuth special -->
@@ -277,8 +277,8 @@
                 class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 transition-colors"
                 title="YouTube 授权管理"
               >
-                <Link v-if="plugin.siteOAuthStatus === 'authenticated'" class="h-4 w-4 text-emerald-500" />
-                <Unlink v-else class="h-4 w-4" />
+                <AppIcon v-if="plugin.siteOAuthStatus === 'authenticated'" name="link" class="h-4 w-4 text-emerald-500" />
+                <AppIcon v-else name="unlink" class="h-4 w-4" />
               </Button>
 
               <!-- Site Config -->
@@ -289,7 +289,7 @@
                 class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-colors"
                 title="站点配置"
               >
-                <Settings class="h-4 w-4" />
+                <AppIcon name="settingsPanel" class="h-4 w-4" />
               </Button>
 
               <!-- Uninstall -->
@@ -300,7 +300,7 @@
                 class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors"
                 title="卸载插件"
               >
-                <Trash2 class="h-4 w-4" />
+                <AppIcon name="trash" class="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -325,26 +325,7 @@
 import { onMounted, onUnmounted, ref, computed } from 'vue';
 import AppEmptyState from '@/components/layout/AppEmptyState.vue';
 import AppPageShell from '@/components/layout/AppPageShell.vue';
-import {
-  RotateCcw as RefreshCw,
-  CheckCircle2 as CheckCircle,
-  Upload,
-  Settings,
-  Cookie,
-  Box as Cube,
-  Search,
-  PlusCircle,
-  XCircle,
-  Play,
-  Pause,
-  Trash2,
-  Bolt,
-  Key,
-  Link,
-  Unlink,
-  Zap,
-  X
-} from 'lucide-vue-next';
+import AppIcon from '@/components/common/AppIcon.vue';
 import SiteIcon from '@/components/common/SiteIcon.vue'
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
 import { Button } from '@/components/ui/button'

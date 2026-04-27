@@ -8,19 +8,19 @@
       <div class="p-4 border-b border-border/40 flex items-center justify-between shrink-0">
         <div class="flex items-center gap-2.5">
           <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-            <Library class="w-4 h-4" />
+            <AppIcon name="library" class="w-4 h-4" />
           </div>
           <span class="font-bold text-[15px] tracking-tight">我的订阅</span>
         </div>
         <Button variant="ghost" size="icon" class="h-8 w-8 rounded-lg hover:bg-accent/50" @click="showAddDialog = true">
-          <Plus class="w-4 h-4" />
+          <AppIcon name="plus" class="w-4 h-4" />
         </Button>
       </div>
 
       <!-- Sidebar Search & Filter -->
       <div class="p-3 space-y-2 shrink-0 border-b border-border/10">
         <div class="relative group">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+          <AppIcon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
           <input 
             v-model="sidebarSearch"
             placeholder="搜索订阅..." 
@@ -35,10 +35,10 @@
             :class="site ? 'bg-primary/5 text-primary border-primary/20' : 'text-muted-foreground'"
           >
             <div class="flex items-center gap-2">
-              <Filter class="w-3 h-3" />
+              <AppIcon name="filter" class="w-3 h-3" />
               <span>{{ activeSiteLabel }}</span>
             </div>
-            <ChevronDown class="w-3 h-3 transition-transform duration-300" :class="{ 'rotate-180': showSiteDropdown }" />
+            <AppIcon name="chevronRight" class="w-3 h-3 transition-transform duration-300" :class="{ 'rotate-90': !showSiteDropdown, 'rotate-180': showSiteDropdown }" />
           </button>
 
           <div v-if="showSiteDropdown" class="absolute top-full left-0 right-0 mt-1 bg-popover border border-border/50 rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -81,7 +81,7 @@
         </div>
 
         <div v-if="channelsFinished && !filteredChannels.length" class="py-10 text-center space-y-2">
-          <Inbox class="w-8 h-8 mx-auto text-muted-foreground/20" />
+          <AppIcon name="inbox" class="w-8 h-8 mx-auto text-muted-foreground/20" />
           <p class="text-[12px] text-muted-foreground/40 font-medium">暂无匹配订阅</p>
         </div>
       </div>
@@ -89,7 +89,7 @@
       <!-- Sidebar Footer -->
       <div class="p-4 border-t border-border/40 space-y-2">
         <Button variant="outline" class="w-full justify-start h-10 rounded-xl border-border/40 hover:bg-accent/50" @click="showImportDialog = true">
-          <Download class="w-4 h-4 mr-2.5 text-muted-foreground" />
+          <AppIcon name="download" class="w-4 h-4 mr-2.5 text-muted-foreground" />
           <span class="text-[13px] font-semibold">导入订阅</span>
         </Button>
       </div>
@@ -117,7 +117,7 @@
             </div>
             <div class="w-px h-6 bg-border/20 mx-1 hidden md:block" />
             <button class="h-9 px-4 rounded-xl text-[11px] font-bold transition-all border flex items-center gap-2 shrink-0" :class="nsfw === 'all' ? 'bg-accent/20 text-muted-foreground/60 border-transparent' : 'bg-destructive/10 text-destructive border-destructive/20'" @click="nsfw = nsfw === 'all' ? 'yes' : 'all'"><div class="w-2 h-2 rounded-full" :class="nsfw === 'all' ? 'bg-muted-foreground/20' : 'bg-destructive animate-pulse'" />成年内容</button>
-            <Button variant="ghost" size="icon" class="h-9 w-9 rounded-xl hover:bg-accent/50" @click="handleRefresh"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loadingFeed }" /></Button>
+            <Button variant="ghost" size="icon" class="h-9 w-9 rounded-xl hover:bg-accent/50" @click="handleRefresh"><AppIcon name="refresh" class="w-4 h-4" :class="{ 'animate-spin': loadingFeed }" /></Button>
           </div>
         </div>
       </header>
@@ -126,7 +126,7 @@
         <div class="max-w-[1600px] mx-auto">
           <div v-if="viewMode === 'feed'" class="space-y-12">
             <div v-if="!feedItems.length && !loadingFeed" class="flex flex-col items-center justify-center py-32 text-center animate-in fade-in zoom-in duration-700">
-              <div class="w-20 h-20 rounded-3xl bg-accent/20 flex items-center justify-center mb-6"><Inbox class="w-10 h-10 text-muted-foreground/20" /></div>
+              <div class="w-20 h-20 rounded-3xl bg-accent/20 flex items-center justify-center mb-6"><AppIcon name="inbox" class="w-10 h-10 text-muted-foreground/20" /></div>
               <h3 class="text-xl font-bold mb-2">空空如也</h3>
               <p class="text-muted-foreground text-sm max-w-[280px]">订阅更多频道以获取最新的视频资讯动态。</p>
             </div>
@@ -169,7 +169,7 @@
 import { ref, computed, watch, onUnmounted, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { onClickOutside } from '@vueuse/core'
-import { Library, Plus, Download, RefreshCw, Search, Inbox, ChevronDown, Filter } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { Button } from '@/components/ui/button'
 import SubscriptionCard from '@/components/feed/SubscriptionCard.vue'
 import SubscriptionCardSkeleton from '@/components/feed/SubscriptionCardSkeleton.vue'

@@ -10,7 +10,7 @@
         :title="`移除 ${chip.label} 筛选`"
       >
         {{ chip.label }}
-        <X class="chip-remove-icon" />
+        <AppIcon name="close" class="chip-remove-icon" />
       </button>
       <button class="clear-all-btn" @click="$emit('clearAll')">
         清除全部
@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { X } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import type { TimeRange, Duration, ContentType } from '@/composables/useFeedFilters'
 
 const props = defineProps<{

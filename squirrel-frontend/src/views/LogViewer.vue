@@ -19,7 +19,7 @@
           class="log-toolbar-button"
           :title="'复制所有显示的日志 (' + logs.length + ' 条)'"
         >
-          <Clipboard class="h-4 w-4" />
+          <AppIcon name="clipboard" class="h-4 w-4" />
           {{ allCopied ? '已复制全部' : '复制全部' }}
         </Button>
         <Button
@@ -181,7 +181,7 @@
                     class="h-6 w-6 p-0"
                     title="复制日志"
                   >
-                    <Clipboard class="h-3.5 w-3.5" />
+                    <AppIcon name="clipboard" class="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
@@ -196,7 +196,7 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
-import { Clipboard } from 'lucide-vue-next';
+import AppIcon from '@/components/common/AppIcon.vue';
 import AppEmptyState from '@/components/layout/AppEmptyState.vue';
 import AppPageShell from '@/components/layout/AppPageShell.vue';
 import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue';

@@ -33,7 +33,7 @@
       <DialogFooter class="border-t border-border/70 bg-secondary/28 px-6 py-4 sm:justify-end">
         <Button size="sm" variant="ghost" :disabled="loading" @click="emit('close')">取消</Button>
         <Button size="sm" :disabled="!channelUrl || loading" @click="handleSubmit">
-          <Loader2 v-if="loading" class="h-4 w-4 animate-spin" />
+          <AppIcon v-if="loading" name="loadingSpinner" class="h-4 w-4 animate-spin" />
           确认添加
         </Button>
       </DialogFooter>
@@ -43,7 +43,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { Loader2 } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { subscribe } from '@/api'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'

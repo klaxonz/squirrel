@@ -2,8 +2,8 @@
 import type { RangeCalendarPrevProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import { reactiveOmit } from "@vueuse/core"
-import { ChevronLeft } from "lucide-vue-next"
 import { RangeCalendarPrev, useForwardProps } from "reka-ui"
+import AppIcon from '@/components/common/AppIcon.vue'
 import { cn } from "@/lib/utils"
 import { buttonVariants } from '@/components/ui/button'
 
@@ -24,7 +24,7 @@ const forwardedProps = useForwardProps(delegatedProps)
     v-bind="forwardedProps"
   >
     <slot>
-      <ChevronLeft class="h-4 w-4" />
+      <AppIcon name="chevronLeft" class="h-4 w-4" />
     </slot>
   </RangeCalendarPrev>
 </template>

@@ -11,13 +11,13 @@
       loading="lazy"
       @error="loadFailed = true"
     >
-    <Globe v-else aria-hidden="true" :class="iconClass" />
+    <AppIcon v-else name="siteFallback" aria-hidden="true" :class="iconClass" />
   </span>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Globe } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = withDefaults(defineProps<{
   iconUrl?: string | null

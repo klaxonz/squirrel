@@ -7,13 +7,14 @@
       class="mobile-nav-item"
       :class="{ 'mobile-nav-item--active': isNavigationItemActive(route, $route) }"
     >
-      <component :is="route.icon" class="mobile-nav-item-icon" />
+      <AppIcon :name="route.icon" class="mobile-nav-item-icon" />
       <span class="mobile-nav-item-label">{{ route.mobileLabel || route.name }}</span>
     </router-link>
   </nav>
 </template>
 
 <script setup>
+import AppIcon from '@/components/common/AppIcon.vue'
 import { isNavigationItemActive } from '@/constants/sidebar'
 
 defineProps({

@@ -8,7 +8,7 @@
           @click="close" 
           class="w-7 h-7 flex items-center justify-center rounded hover:bg-accent transition-all active:scale-90"
         >
-          <X class="w-3.5 h-3.5 text-muted-foreground" />
+          <AppIcon name="close" class="w-3.5 h-3.5 text-muted-foreground" />
         </button>
       </div>
 
@@ -50,7 +50,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { X } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { useUserSettings } from '@/composables/useUserSettings'
 import type { TimeRange, Duration, ContentType } from '@/composables/useFeedFilters'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'

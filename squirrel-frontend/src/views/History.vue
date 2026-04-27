@@ -5,7 +5,7 @@
       <header class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
         <div class="flex items-center gap-4">
           <div class="p-3 rounded-2xl bg-primary/10 text-primary">
-            <History class="w-6 h-6" />
+            <AppIcon name="history" class="w-6 h-6" />
           </div>
           <div class="space-y-1">
             <h1 class="text-2xl font-bold tracking-tight text-foreground">播放历史</h1>
@@ -20,7 +20,7 @@
             class="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-[13px] text-destructive bg-destructive/5 hover:bg-destructive/10 transition-all active:scale-95"
             @click="showClearConfirm = true"
           >
-            <Trash2 class="w-3.5 h-3.5" />
+            <AppIcon name="trash" class="w-3.5 h-3.5" />
             清空历史
           </button>
         </div>
@@ -40,7 +40,7 @@
 
           <div v-else-if="groupedVideos.length === 0" class="flex flex-col items-center justify-center py-32 text-center">
             <div class="w-24 h-24 rounded-[2rem] bg-secondary flex items-center justify-center mb-8 rotate-12 shadow-inner">
-              <Clock class="w-10 h-10 text-muted-foreground/30 -rotate-12" />
+              <AppIcon name="time" class="w-10 h-10 text-muted-foreground/30 -rotate-12" />
             </div>
             <h2 class="text-2xl font-black tracking-tight mb-3">空空如也</h2>
             <p class="text-muted-foreground max-w-xs font-medium leading-relaxed">
@@ -107,7 +107,7 @@
     <Dialog :open="showClearConfirm" @update:open="showClearConfirm = $event">
       <DialogContent class="max-w-[400px] rounded-[2.5rem] p-10">
         <div class="w-20 h-20 rounded-3xl bg-destructive/10 text-destructive flex items-center justify-center mb-8 rotate-3">
-          <Trash2 class="w-10 h-10" />
+          <AppIcon name="trash" class="w-10 h-10" />
         </div>
         <DialogHeader class="text-left space-y-3">
           <DialogTitle class="text-2xl font-black tracking-tight">确认清空所有历史记录？</DialogTitle>
@@ -137,7 +137,7 @@
 <script setup lang="ts">
 import { onMounted, ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Trash2, Clock, History, Search } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import HistoryItem from '@/components/history/HistoryItem.vue'
 import LoadingIndicator from '@/components/feed/LoadingIndicator.vue'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'

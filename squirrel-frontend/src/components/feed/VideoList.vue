@@ -26,7 +26,7 @@
     <!-- Empty State -->
     <div v-if="!loading && videos.length === 0" class="flex flex-col items-center justify-center min-h-[60vh] text-center p-10">
       <div class="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mb-6">
-        <Inbox class="w-10 h-10 text-muted-foreground/30" />
+        <AppIcon name="inbox" class="w-10 h-10 text-muted-foreground/30" />
       </div>
       <h3 class="text-xl font-bold text-foreground/60">No content found</h3>
       <p class="text-muted-foreground mt-2">Try adjusting your filters or search terms.</p>
@@ -39,7 +39,7 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
-import { Inbox } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import VideoItem from './VideoItem.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
 

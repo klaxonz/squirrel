@@ -57,7 +57,7 @@
           :class="{ 'is-active': activeFilterCount > 0 }"
           @click="filterModalOpen = true"
         >
-          <Funnel class="w-3.5 h-3.5" />
+          <AppIcon name="filter" class="w-3.5 h-3.5" />
           <span v-if="activeFilterCount > 0" class="active-dot" />
         </button>
         
@@ -70,7 +70,8 @@
           class="icon-action-btn"
           @click="$emit('refresh')"
         >
-          <RefreshCw
+          <AppIcon
+            name="refresh"
             class="w-3.5 h-3.5"
             :class="{ 'is-spinning': isRefreshing }"
           />
@@ -103,7 +104,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { RefreshCw, Funnel } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import FilterModal from './FilterModal.vue'
 import type { TimeRange, Duration, ContentType } from '@/composables/useFeedFilters'
 import type { VideoTab } from '@/constants/videos'

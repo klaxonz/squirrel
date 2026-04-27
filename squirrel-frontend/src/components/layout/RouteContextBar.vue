@@ -11,8 +11,9 @@
       <span v-else class="text-[12px] font-semibold text-foreground/80">
         {{ item.label }}
       </span>
-      <ChevronRight
+      <AppIcon
         v-if="index < breadcrumbs.length - 1"
+        name="breadcrumb"
         class="w-3 h-3 text-muted-foreground/30 shrink-0"
         aria-hidden="true"
       />
@@ -21,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { ChevronRight } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import type { BreadcrumbItem } from '@/constants/sidebar'
 
 defineProps<{

@@ -14,7 +14,7 @@
         >
           <template #actions>
             <Button v-if="!error" size="lg" class="rounded-full px-8" @click="openCreateModal">
-              <Plus class="mr-2" />
+              <AppIcon name="plus" class="mr-2" />
               <span>新建播放列表</span>
             </Button>
             <Button v-else variant="outline" @click="reloadPlaylists">重试</Button>
@@ -27,7 +27,7 @@
             <div class="sidebar-header">
               <h2 class="sidebar-title">媒体库</h2>
               <Button variant="ghost" size="icon" class="sidebar-add-btn" @click="openCreateModal">
-                <Plus />
+                <AppIcon name="plus" />
               </Button>
             </div>
 
@@ -49,7 +49,7 @@
                     >
                   </template>
                   <div v-else class="sidebar-item__fallback">
-                    <ListVideo />
+                    <AppIcon name="playlistVideo" />
                   </div>
                 </div>
                 <div class="sidebar-item__info">
@@ -95,7 +95,7 @@
                         >
                       </div>
                       <div v-else class="playlist-header__fallback">
-                        <ListVideo :size="48" />
+                        <AppIcon name="playlistVideo" class="h-12 w-12" />
                       </div>
                     </div>
 
@@ -115,24 +115,24 @@
 
                       <div class="playlist-header__actions">
                         <Button size="lg" class="rounded-full px-8 shadow-lg shadow-primary/20" @click="playAll">
-                          <Play class="mr-2 fill-current" />
+                          <AppIcon name="play" class="mr-2 fill-current" />
                           <span>播放全部</span>
                         </Button>
                         
                         <DropdownMenu v-if="!activePlaylist.is_default">
                           <DropdownMenuTrigger as-child>
                             <Button variant="secondary" size="icon" class="rounded-full">
-                              <MoreHorizontal />
+                              <AppIcon name="more" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start" class="w-48">
                             <DropdownMenuItem @click="openEditModal">
-                              <Pencil class="mr-2 h-4 w-4" />
+                              <AppIcon name="pencil" class="mr-2 h-4 w-4" />
                               编辑列表
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem class="text-destructive focus:text-destructive" @click="handleDelete(activePlaylist!.id)">
-                              <Trash2 class="mr-2 h-4 w-4" />
+                              <AppIcon name="trash" class="mr-2 h-4 w-4" />
                               删除列表
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -150,7 +150,7 @@
 
                   <div v-else-if="!activePlaylistItems.length" class="playlist-items-empty">
                     <div class="empty-visual">
-                      <ListVideo :size="64" />
+                      <AppIcon name="playlistVideo" class="h-16 w-16" />
                     </div>
                     <h3>这里空空如也</h3>
                     <p>快去添加一些精彩视频吧</p>
@@ -175,7 +175,7 @@
                       >
                         <div class="video-row__index">
                           <span class="index-num">{{ index + 1 }}</span>
-                          <Play class="play-icon fill-current" />
+                          <AppIcon name="play" class="play-icon fill-current" />
                         </div>
 
                         <div class="video-row__main">
@@ -186,7 +186,7 @@
                               referrerpolicy="no-referrer"
                               @error="handlePlaylistItemImageError"
                             >
-                            <div v-else class="thumb-fallback"><Film /></div>
+                            <div v-else class="thumb-fallback"><AppIcon name="film" /></div>
                             <span v-if="item.video?.duration" class="video-row__duration">
                               {{ formatDuration(item.video.duration) }}
                             </span>
@@ -211,7 +211,7 @@
                             class="h-8 w-8 rounded-full opacity-0"
                             @click.stop="handleRemoveVideo(item)"
                           >
-                            <X class="h-4 w-4" />
+                            <AppIcon name="close" class="h-4 w-4" />
                           </Button>
                         </div>
                       </article>
@@ -224,7 +224,7 @@
               <div v-else class="playlist-blank-state">
                 <div class="blank-visual">
                   <div class="visual-circle"></div>
-                  <PanelRightOpen :size="48" />
+                  <AppIcon name="panelOpen" class="h-12 w-12" />
                 </div>
                 <h2>选择一个播放列表</h2>
                 <p>查看并管理你收藏的视频内容</p>
@@ -278,7 +278,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, ListVideo, Play, Trash2, MoreHorizontal, Pencil, Film, X, PanelRightOpen } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import AppEmptyState from '@/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { Badge } from '@/components/ui/badge'

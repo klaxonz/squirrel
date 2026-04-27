@@ -17,7 +17,7 @@
           @click="$emit('close')"
           class="h-8 w-8 rounded-md hover:bg-slate-100 transition-colors"
         >
-          <X class="w-4 h-4 text-slate-400" />
+          <AppIcon name="close" class="w-4 h-4 text-slate-400" />
         </Button>
       </div>
 
@@ -129,7 +129,7 @@
                 placeholder='{ "key": "value" }'
               />
               <div v-if="jsonError" class="absolute bottom-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded bg-rose-500/10 border border-rose-500/20 text-rose-600 text-[10px] font-bold">
-                <AlertTriangle class="w-3 h-3" />
+                <AppIcon name="alert" class="w-3 h-3" />
                 格式错误
               </div>
             </div>
@@ -151,7 +151,7 @@
           :disabled="loading || !!jsonError"
           class="h-9 px-6 text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 transition-colors shadow-sm"
         >
-          <Loader2 v-if="loading" class="mr-2 h-4 w-4 animate-spin" />
+          <AppIcon v-if="loading" name="loadingSpinner" class="mr-2 h-4 w-4 animate-spin" />
           {{ isEditing ? '保存修改' : '创建任务' }}
         </Button>
       </div>
@@ -161,7 +161,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import { X, AlertTriangle, Loader2 } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'

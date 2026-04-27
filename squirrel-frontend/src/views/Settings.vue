@@ -30,7 +30,7 @@
                 : 'text-slate-500 hover:text-slate-700'
             ]"
           >
-            <component :is="tab.icon" class="w-3.5 h-3.5" />
+            <AppIcon :name="tab.icon" class="w-3.5 h-3.5" />
             {{ tab.label }}
             <span v-if="tab.badge" class="px-1.5 py-0.5 rounded-full bg-slate-100 text-[10px]">{{ tab.badge }}</span>
           </button>
@@ -72,14 +72,14 @@
                 'w-12 h-12 rounded-lg flex items-center justify-center transition-colors',
                 themeMode === option.value ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'
               ]">
-                <component :is="option.icon" class="w-6 h-6" />
+                <AppIcon :name="option.icon" class="w-6 h-6" />
               </div>
               <div class="space-y-1">
                 <div class="text-sm font-bold text-slate-900">{{ option.label }}</div>
                 <div class="text-[11px] text-slate-400">{{ option.description }}</div>
               </div>
               <div v-if="themeMode === option.value" class="absolute top-3 right-3 text-slate-900">
-                <CheckCircle2 class="w-4 h-4" />
+                <AppIcon name="statusSuccess" class="w-4 h-4" />
               </div>
             </button>
           </div>
@@ -153,15 +153,15 @@
             </div>
 
             <div v-if="securityError" class="p-4 rounded-lg bg-rose-50 border border-rose-100 flex items-center gap-3 text-sm text-rose-700">
-              <AlertCircle class="w-4 h-4" /> {{ securityError }}
+              <AppIcon name="warning" class="w-4 h-4" /> {{ securityError }}
             </div>
             <div v-if="securitySuccess" class="p-4 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center gap-3 text-sm text-emerald-700">
-              <CheckCircle2 class="w-4 h-4" /> {{ securitySuccess }}
+              <AppIcon name="statusSuccess" class="w-4 h-4" /> {{ securitySuccess }}
             </div>
 
             <div class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(0,0,0,0.05)] p-8">
               <h3 class="text-sm font-bold text-slate-900 mb-6 flex items-center gap-2">
-                <ShieldAlert class="w-4 h-4 text-slate-400" /> 修改登录密码
+                <AppIcon name="securityAlert" class="w-4 h-4 text-slate-400" /> 修改登录密码
               </h3>
               <form @submit.prevent="handlePasswordUpdate" class="space-y-6 max-w-md">
                 <div v-for="field in [
@@ -191,7 +191,7 @@
               <div class="text-xs text-slate-500">使除当前设备外所有已登录的设备失效</div>
             </div>
             <Button variant="outline" :disabled="sessionSubmitting" @click="handleRevokeSessions" class="border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors">
-              <LogOut class="w-4 h-4 mr-2" /> 撤销所有会话
+              <AppIcon name="logout" class="w-4 h-4 mr-2" /> 撤销所有会话
             </Button>
           </div>
         </div>
@@ -256,7 +256,7 @@
                     class="h-10 bg-white border-slate-200 rounded-lg text-sm focus-visible:ring-slate-200 shadow-none"
                   />
                   <Button variant="outline" :disabled="serverTesting || !serverForm.url.trim()" @click="handleTestServer" class="h-10 border-slate-200">
-                    <RefreshCw v-if="serverTesting" class="w-4 h-4 animate-spin" />
+                    <AppIcon v-if="serverTesting" name="refresh" class="w-4 h-4 animate-spin" />
                     <span v-else>测试</span>
                   </Button>
                 </div>
@@ -277,8 +277,8 @@
           'flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium transition-all',
           saveToastError ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-slate-900 border-slate-800 text-white'
         ]">
-          <CheckCircle2 v-if="!saveToastError" class="h-4 w-4 text-emerald-400" />
-          <AlertCircle v-else class="h-4 w-4 text-rose-400" />
+          <AppIcon v-if="!saveToastError" name="statusSuccess" class="h-4 w-4 text-emerald-400" />
+          <AppIcon v-else name="warning" class="h-4 w-4 text-rose-400" />
           {{ saveToastMessage }}
         </div>
       </div>
@@ -288,25 +288,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import {
-  AlertCircle,
-  CheckCircle2,
-  KeyRound,
-  LogOut,
-  Monitor,
-  Moon,
-  Network,
-  Palette,
-  PlayCircle,
-  Settings2,
-  ShieldAlert,
-  ShieldCheck,
-  Sun,
-  RefreshCw,
-  X
-} from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { revokeUserSessions, updateUserPassword } from '@/api'
+import AppIcon from '@/components/common/AppIcon.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -317,6 +301,7 @@ import {
   getSettingsTabByRouteName,
   type SettingsTabKey,
 } from '@/constants/sidebar'
+import type { AppIconName } from '@/icons/app-icons'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { useServerConfig } from '@/composables/useServerConfig'
 import type { AppThemeMode } from '@/lib/theme'
@@ -332,10 +317,10 @@ const currentTab = computed<SettingsTabKey>(() => {
   return getSettingsTabByRouteName(route.name)?.key || DEFAULT_SETTINGS_TAB
 })
 
-const themeOptions: Array<{ value: AppThemeMode; label: string; description: string; icon: any }> = [
-  { value: 'light', label: '浅色', description: '明亮主题', icon: Sun },
-  { value: 'dark', label: '深色', description: '护眼模式', icon: Moon },
-  { value: 'system', label: '系统', description: '自动跟随', icon: Monitor },
+const themeOptions: Array<{ value: AppThemeMode; label: string; description: string; icon: AppIconName }> = [
+  { value: 'light', label: '浅色', description: '明亮主题', icon: 'themeLight' },
+  { value: 'dark', label: '深色', description: '护眼模式', icon: 'themeDark' },
+  { value: 'system', label: '系统', description: '自动跟随', icon: 'themeSystem' },
 ]
 
 const { themeMode, setThemeMode } = useAppTheme()

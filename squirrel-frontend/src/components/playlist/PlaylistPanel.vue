@@ -6,7 +6,7 @@
         <span v-if="playlists.length" class="playlist-panel__count">{{ playlists.length }}</span>
       </div>
       <button class="playlist-panel__close-btn" @click="handleClose">
-        <X :size="20" />
+        <AppIcon name="close" class="h-5 w-5" />
       </button>
     </div>
 
@@ -30,7 +30,7 @@
             <div class="loading-spinner"></div>
           </div>
           <div v-else-if="!playlists.length" class="playlist-panel__state">
-            <ListMusic class="state-icon" />
+            <AppIcon name="playlistMusic" class="state-icon" />
             <span>暂无播放列表</span>
           </div>
           <div v-else class="playlist-panel__list">
@@ -42,8 +42,8 @@
               @click="selectPlaylist(playlist.id)"
             >
               <div class="playlist-card__cover">
-                <ListMusic v-if="!playlist.video_count" :size="16" />
-                <Play v-else :size="16" fill="currentColor" />
+                <AppIcon v-if="!playlist.video_count" name="playlistMusic" class="h-4 w-4" />
+                <AppIcon v-else name="play" class="h-4 w-4 fill-current" />
               </div>
               <div class="playlist-card__info">
                 <span class="playlist-card__name">{{ playlist.name }}</span>
@@ -54,13 +54,13 @@
                 class="playlist-card__delete"
                 @click.stop="handleDeletePlaylist(playlist.id)"
               >
-                <Trash2 :size="14" />
+                <AppIcon name="trash" class="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
           <div class="playlist-panel__footer">
             <button class="playlist-panel__add-btn" @click="showCreateModal = true">
-              <Plus :size="16" />
+              <AppIcon name="plus" class="h-4 w-4" />
               <span>新建播放列表</span>
             </button>
           </div>
@@ -69,7 +69,7 @@
         <!-- Playlist Items -->
         <div v-else-if="activeTab === 'items'" key="items" class="playlist-panel__section">
           <div v-if="!activePlaylist" class="playlist-panel__state">
-            <PanelRightOpen class="state-icon" />
+            <AppIcon name="panelOpen" class="state-icon" />
             <span>请先选择一个列表</span>
           </div>
           <template v-else>
@@ -91,7 +91,7 @@
               <div class="loading-spinner"></div>
             </div>
             <div v-else-if="!activePlaylistItems.length" class="playlist-panel__state">
-              <Film class="state-icon" />
+              <AppIcon name="film" class="state-icon" />
               <span>列表还是空的</span>
             </div>
             <div v-else class="playlist-panel__items-list">
@@ -111,7 +111,7 @@
                   @dragend="handleDragEnd"
                 >
                   <div class="item-row__drag">
-                    <GripVertical :size="14" />
+                    <AppIcon name="gripVertical" class="h-3.5 w-3.5" />
                   </div>
                   <div class="item-row__thumb">
                     <img
@@ -120,14 +120,14 @@
                       referrerpolicy="no-referrer"
                       @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
                     >
-                    <div v-else class="thumb-fallback"><Film :size="16" /></div>
+                    <div v-else class="thumb-fallback"><AppIcon name="film" class="h-4 w-4" /></div>
                   </div>
                   <div class="item-row__info" @click="handlePlayItem(item)">
                     <span class="item-row__title">{{ item.video?.title || '未知视频' }}</span>
                     <span class="item-row__duration">{{ formatDuration(item.video?.duration) }}</span>
                   </div>
                   <button class="item-row__remove" @click="handleRemoveVideo(item)">
-                    <X :size="14" />
+                    <AppIcon name="close" class="h-3.5 w-3.5" />
                   </button>
                 </div>
               </TransitionGroup>
@@ -170,7 +170,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
-import { X, ListMusic, Trash2, Plus, Film, GripVertical, Play, PanelRightOpen } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import usePlaylist from '@/composables/usePlaylist'
 import { formatDuration } from '@/utils/dateFormat'
 

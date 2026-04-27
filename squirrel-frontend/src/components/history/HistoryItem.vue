@@ -13,7 +13,7 @@
         :alt="video.title"
       />
       <div v-else class="w-full h-full bg-muted flex items-center justify-center">
-        <Film class="w-8 h-8 text-muted-foreground/20" />
+        <AppIcon name="film" class="w-8 h-8 text-muted-foreground/20" />
       </div>
 
       <!-- 播放进度 -->
@@ -34,7 +34,7 @@
         class="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive flex items-center justify-center shadow-lg"
         @click.stop="handleDelete"
       >
-        <Trash2 class="w-4 h-4" />
+        <AppIcon name="trash" class="w-4 h-4" />
       </button>
     </div>
 
@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Film, Trash2 } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import { formatDate, formatDuration } from '@/utils/dateFormat'
 
 const props = defineProps<{

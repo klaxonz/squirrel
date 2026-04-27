@@ -23,7 +23,7 @@
       >
 
       <div v-else class="absolute inset-0 flex items-center justify-center bg-accent/20">
-        <ImageOff class="w-6 h-6 text-muted-foreground/10" />
+        <AppIcon name="imageOff" class="w-6 h-6 text-muted-foreground/10" />
       </div>
 
       <!-- Overlays -->
@@ -85,7 +85,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, toRef } from 'vue'
-import { ImageOff } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import ContextMenu from './ContextMenu.vue'
 import useVideoHistory from '@/composables/useVideoHistory'

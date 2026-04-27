@@ -104,7 +104,7 @@
 
         <Transition name="fade">
           <div v-if="resolvedError" class="mt-4 p-2.5 rounded text-destructive text-xs flex items-center gap-2">
-            <AlertCircle class="h-3.5 w-3.5 shrink-0" />
+            <AppIcon name="warning" class="h-3.5 w-3.5 shrink-0" />
             {{ resolvedError }}
           </div>
         </Transition>
@@ -123,7 +123,7 @@
           :disabled="saving"
           @click="handleSave"
         >
-          <Loader2 v-if="saving" class="h-3 w-3 animate-spin mr-1.5" />
+          <AppIcon v-if="saving" name="loadingSpinner" class="h-3 w-3 animate-spin mr-1.5" />
           {{ saving ? '保存中...' : '保存' }}
         </button>
       </div>
@@ -134,7 +134,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 
-import { AlertCircle, Loader2 } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import SiteIcon from '@/components/common/SiteIcon.vue'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'

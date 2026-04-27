@@ -14,14 +14,14 @@
               @click="refreshData"
               class="h-9 px-4 text-sm font-medium border-slate-200 hover:bg-slate-50 transition-colors"
             >
-              <RefreshCw :class="['h-4 w-4 mr-2 text-slate-500', loading ? 'animate-spin' : '']" />
+              <AppIcon name="refresh" :class="['h-4 w-4 mr-2 text-slate-500', loading ? 'animate-spin' : '']" />
               刷新
             </Button>
             <Button
               @click="showCreateDialog = true"
               class="h-9 px-4 text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 transition-colors shadow-sm"
             >
-              <Plus class="h-4 w-4 mr-2" />
+              <AppIcon name="plus" class="h-4 w-4 mr-2" />
               新建任务
             </Button>
           </div>
@@ -59,7 +59,7 @@
         </div>
 
         <div class="relative w-72 shrink-0">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <AppIcon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             v-model="searchQuery"
             @input="debouncedSearch"
@@ -71,7 +71,7 @@
             @click="clearSearch"
             class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
           >
-            <X class="h-4 w-4" />
+            <AppIcon name="close" class="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -132,7 +132,7 @@
 
             <!-- Interval -->
             <div class="text-sm text-slate-600 font-medium flex items-center gap-2">
-              <Clock class="h-3.5 w-3.5 text-slate-400" />
+              <AppIcon name="time" class="h-3.5 w-3.5 text-slate-400" />
               {{ task.interval }} {{ getUnitFull(task.unit) }}
             </div>
 
@@ -150,7 +150,7 @@
                 class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-all"
                 title="立即执行"
               >
-                <Play class="h-4 w-4 fill-current" />
+                <AppIcon name="play" class="h-4 w-4 fill-current" />
               </Button>
               <Button
                 variant="ghost"
@@ -159,26 +159,26 @@
                 class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-all"
                 title="编辑"
               >
-                <Pencil class="h-4 w-4" />
+                <AppIcon name="pencil" class="h-4 w-4" />
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
                   <button class="h-8 w-8 flex items-center justify-center rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-all">
-                    <MoreHorizontal class="h-4 w-4" />
+                    <AppIcon name="more" class="h-4 w-4" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" class="w-40 p-1 bg-white border border-slate-200 shadow-xl rounded-lg">
                   <DropdownMenuItem v-if="task.is_active" @click="disableTask(task.id)" class="px-3 py-2 text-sm text-amber-600 rounded-md cursor-pointer hover:bg-amber-50">
-                    <Pause class="h-3.5 w-3.5 mr-2" />
+                    <AppIcon name="pause" class="h-3.5 w-3.5 mr-2" />
                     暂停任务
                   </DropdownMenuItem>
                   <DropdownMenuItem v-else @click="enableTask(task.id)" class="px-3 py-2 text-sm text-blue-600 rounded-md cursor-pointer hover:bg-blue-50">
-                    <Zap class="h-3.5 w-3.5 mr-2" />
+                    <AppIcon name="sync" class="h-3.5 w-3.5 mr-2" />
                     恢复任务
                   </DropdownMenuItem>
                   <DropdownMenuSeparator class="bg-slate-100" />
                   <DropdownMenuItem @click="confirmDeleteTask(task)" class="px-3 py-2 text-sm text-rose-600 rounded-md cursor-pointer hover:bg-rose-50">
-                    <Trash2 class="h-3.5 w-3.5 mr-2" />
+                    <AppIcon name="trash" class="h-3.5 w-3.5 mr-2" />
                     删除任务
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -268,8 +268,8 @@
           'flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium transition-all',
           toast.error ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-slate-900 border-slate-800 text-white'
         ]">
-          <CheckCircle2 v-if="!toast.error" class="h-4 w-4 text-emerald-400" />
-          <AlertCircle v-else class="h-4 w-4 text-rose-400" />
+          <AppIcon v-if="!toast.error" name="statusSuccess" class="h-4 w-4 text-emerald-400" />
+          <AppIcon v-else name="warning" class="h-4 w-4 text-rose-400" />
           {{ toast.message }}
         </div>
       </div>
@@ -279,11 +279,7 @@
 
 <script setup>
 import { computed, ref, onMounted } from 'vue'
-import {
-  Activity, RefreshCw, Plus, Search, Zap, AlertCircle,
-  CheckCircle2, Play, Pause, Pencil, Trash2, MoreHorizontal,
-  Clock, X
-} from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import AppEmptyState from '@/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import TaskDialog from '@/components/dialogs/TaskDialog.vue'

@@ -23,7 +23,7 @@
             @click="cancelMarking"
             title="取消"
           >
-            <X class="float-bar__btn-icon" />
+            <AppIcon name="close" class="float-bar__btn-icon" />
           </button>
 
           <button
@@ -32,7 +32,7 @@
             @click="setEnd"
             title="设置结束时间"
           >
-            <ChevronRight class="float-bar__btn-icon" />
+            <AppIcon name="chevronRight" class="float-bar__btn-icon" />
             结束
           </button>
 
@@ -43,7 +43,7 @@
             :disabled="isSubmitting"
             title="保存片段"
           >
-            <Check class="float-bar__btn-icon" />
+            <AppIcon name="check" class="float-bar__btn-icon" />
             {{ isSubmitting ? '保存...' : '保存' }}
           </button>
 
@@ -53,13 +53,13 @@
             @click="restartMarking"
             title="重新标记"
           >
-            <RotateCcw class="float-bar__btn-icon" />
+            <AppIcon name="replay" class="float-bar__btn-icon" />
           </button>
         </div>
       </div>
 
       <button class="float-bar__drag-handle" @mousedown="startDrag" title="拖动调整位置">
-        <GripHorizontal class="float-bar__drag-icon" />
+        <AppIcon name="gripHorizontal" class="float-bar__drag-icon" />
       </button>
     </div>
   </Transition>
@@ -67,7 +67,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { X, ChevronRight, Check, RotateCcw, GripHorizontal } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps<{
   videoId?: string | number | null

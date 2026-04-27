@@ -42,16 +42,16 @@
                   :class="{ 'text-foreground bg-background shadow-sm ring-1 ring-border/10': action.active, 'text-muted-foreground': !action.active }"
                   @click="handleVideoAction(action)"
                 >
-                  <component :is="action.icon" class="w-4 h-4" :stroke-width="action.active ? 2.5 : 2" />
+                  <AppIcon :name="action.icon" class="w-4 h-4" :stroke-width="action.active ? 2.5 : 2" />
                   <span v-if="action.label && action.key === 'like'">{{ action.label }}</span>
                 </button>
               </div>
               
               <button class="w-9 h-9 flex items-center justify-center rounded-full bg-accent/40 hover:bg-accent/60 transition-all active:scale-95 ring-1 ring-border/20 text-muted-foreground hover:text-foreground">
-                <Share2 class="w-4 h-4" />
+                <AppIcon name="share" class="w-4 h-4" />
               </button>
               <button class="w-9 h-9 flex items-center justify-center rounded-full bg-accent/40 hover:bg-accent/60 transition-all active:scale-95 ring-1 ring-border/20 text-muted-foreground hover:text-foreground">
-                <MoreHorizontal class="w-4 h-4" />
+                <AppIcon name="more" class="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -106,7 +106,7 @@
               </article>
             </div>
             <div v-else-if="asideTab === 'clips'" class="flex flex-col items-center justify-center py-20 text-muted-foreground">
-              <Scissors class="w-10 h-10 mb-4 opacity-20" />
+              <AppIcon name="clip" class="w-10 h-10 mb-4 opacity-20" />
               <p class="text-sm font-medium">Press Shift + M to create a clip</p>
             </div>
           </Transition>
@@ -119,7 +119,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Share2, MoreHorizontal, Scissors } from 'lucide-vue-next'
+import AppIcon from '@/components/common/AppIcon.vue'
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator'
 import usePlaybackReporting from '../composables/usePlaybackReporting'
 import useVideoActionBar from '../composables/useVideoActionBar'
