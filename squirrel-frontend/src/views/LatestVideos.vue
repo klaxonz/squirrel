@@ -28,7 +28,7 @@
       <div v-if="loadError" class="px-6 pt-6">
         <div class="bg-destructive/5 border border-destructive/20 rounded-2xl p-4 flex items-center justify-between">
           <p class="text-sm text-destructive font-medium">{{ loadError?.message || loadError }}</p>
-          <button @click="refreshCurrentList" class="text-xs font-bold uppercase tracking-widest px-4 py-2 bg-destructive text-white rounded-full">Retry</button>
+          <button @click="refreshCurrentList" class="text-xs font-bold uppercase tracking-widest px-4 py-2 bg-destructive text-white rounded-full">重试</button>
         </div>
       </div>
 

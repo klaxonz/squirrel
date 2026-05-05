@@ -65,7 +65,7 @@ const contentTypeLabels: Record<string, string> = {
 
 const nsfwLabels: Record<string, string> = {
   all: '',
-  yes: '仅 NSFW',
+  yes: '仅敏感内容',
   no: '仅安全内容',
 }
 

@@ -27,10 +27,10 @@
                 <SubscriptionAvatar :src="primarySubscription.avatar" :name="primarySubscription.name" size="lg" class="w-10 h-10 ring-1 ring-border/20 group-hover:ring-primary/50 transition-all shadow-sm" />
                 <div class="flex flex-col -space-y-0.5">
                   <span class="font-bold text-[15px] group-hover:text-primary transition-colors tracking-tight">{{ primarySubscription.name }}</span>
-                  <span class="text-[12px] text-muted-foreground/60 font-medium">{{ primarySubscription.total_videos || 0 }} videos</span>
+                  <span class="text-[12px] text-muted-foreground/60 font-medium">{{ primarySubscription.total_videos || 0 }} 项视频</span>
                 </div>
               </div>
-              <button class="px-4 py-2 bg-foreground text-background text-[13px] font-bold rounded-full hover:opacity-90 active:scale-95 transition-all shadow-sm">Subscribe</button>
+              <button class="px-4 py-2 bg-foreground text-background text-[13px] font-bold rounded-full hover:opacity-90 active:scale-95 transition-all shadow-sm">订阅</button>
             </div>
 
             <div class="flex items-center gap-2">

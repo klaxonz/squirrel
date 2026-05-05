@@ -21,7 +21,7 @@
             :disabled="loading"
           />
           <p class="text-xs leading-5 text-muted-foreground">
-            支持：YouTube 频道/播放列表、Bilibili 用户空间/合集/收藏夹。
+            支持：视频网站频道/播放列表、哔哩哔哩用户空间/合集/收藏夹。
           </p>
         </div>
 

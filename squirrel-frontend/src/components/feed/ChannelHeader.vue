@@ -15,7 +15,7 @@
             >
               <SubscriptionAvatar
                 :src="detail?.avatar || null"
-                :name="detail?.name || 'UNKNOWN_CHANNEL'"
+                :name="detail?.name || '未知频道'"
                 size="lg"
                 class="channel-avatar-card"
               />
@@ -24,7 +24,7 @@
             <div v-else class="avatar-frame">
               <SubscriptionAvatar
                 :src="detail?.avatar || null"
-                :name="detail?.name || 'UNKNOWN_CHANNEL'"
+                :name="detail?.name || '未知频道'"
                 size="lg"
                 class="channel-avatar-card"
               />
@@ -41,9 +41,9 @@
                     rel="noopener noreferrer"
                     class="channel-title-link"
                   >
-                    <h2 class="channel-title-minimal">{{ detail?.name || 'UNKNOWN_CHANNEL' }}</h2>
+                    <h2 class="channel-title-minimal">{{ detail?.name || '未知频道' }}</h2>
                   </a>
-                  <h2 v-else class="channel-title-minimal">{{ detail?.name || 'UNKNOWN_CHANNEL' }}</h2>
+                  <h2 v-else class="channel-title-minimal">{{ detail?.name || '未知频道' }}</h2>
                   <button
                     type="button"
                     class="unsubscribe-minimal unsubscribe-minimal--tag"
@@ -54,7 +54,7 @@
                   </button>
                 </div>
 
-                <span v-if="detail?.is_nsfw" class="nsfw-tag nsfw-tag--muted">NSFW</span>
+                <span v-if="detail?.is_nsfw" class="nsfw-tag nsfw-tag--muted">敏感</span>
               </div>
             </div>
         </div>
@@ -442,5 +442,4 @@ watch(() => props.subscriptionId, () => {
   }
 }
 </style>
-
 

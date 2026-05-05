@@ -87,7 +87,7 @@
             <label 
               v-for="meta in [
                 { key: 'metadataNsfw', label: '默认标记为敏感内容' },
-                { key: 'metadataRequiresCookies', label: '需要 Cookie 才可抓取' },
+                { key: 'metadataRequiresCookies', label: '需要登录凭据才可抓取' },
                 { key: 'metadataRequiresLogin', label: '需要登录状态' },
                 { key: 'metadataPlayerUrlCache', label: '启用播放链接缓存' },
                 { key: 'metadataOfflineThumbnailsDownload', label: '解析时下载封面到本地' },

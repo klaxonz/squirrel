@@ -225,7 +225,7 @@
         <div v-if="currentTab === 'server'" class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div class="space-y-1">
             <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">服务器配置</h2>
-            <p class="text-xs text-slate-500">管理与后端 API 的连接地址</p>
+            <p class="text-xs text-slate-500">管理与后端接口的连接地址</p>
           </div>
 
           <div class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(0,0,0,0.05)] p-8 space-y-8">

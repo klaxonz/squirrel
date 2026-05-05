@@ -47,9 +47,9 @@ test('video detail builds lazy subtitle endpoints through per-site candidate lis
 
   assert.match(source, /pattern: \/bilibili\\\.com\/i/)
   assert.match(source, /pattern: \/\(\?:youtube\\\.com\|youtu\\\.be\)\/i/)
-  assert.match(source, /\{ id: 'yt-en', language: 'English', lang: 'en' \}/)
-  assert.match(source, /\{ id: 'yt-en-US', language: 'English \(US\)', lang: 'en-US' \}/)
-  assert.match(source, /\{ id: 'yt-default', language: 'Default' \}/)
+  assert.match(source, /\{ id: 'yt-en', language: '英语', lang: 'en' \}/)
+  assert.match(source, /\{ id: 'yt-en-US', language: '美式英语', lang: 'en-US' \}/)
+  assert.match(source, /\{ id: 'yt-default', language: '默认' \}/)
   assert.match(source, /const candidates = getSubtitleCandidates\(snapshot\.url\)/)
   assert.match(source, /const params = new URLSearchParams\(\{\s*video_id: String\(videoId\),\s*fmt: 'srt',\s*\}\)/)
   assert.match(source, /if \(candidate\.lang\) \{\s*params\.set\('lang', candidate\.lang\)\s*\}/)

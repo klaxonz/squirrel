@@ -57,7 +57,7 @@ function detectBrowserLocale(): LocaleCode {
   const langCode = browserLang.split('-')[0]
   const matched = Object.keys(builtInLocales).find(k => k.startsWith(langCode))
   
-  return (matched as LocaleCode) || 'en-US'
+  return (matched as LocaleCode) || 'zh-CN'
 }
 
 /**
@@ -66,7 +66,7 @@ function detectBrowserLocale(): LocaleCode {
 export function useI18n(options: UseI18nOptions = {}): UseI18nReturn {
   const { 
     locale: initialLocale,
-    fallbackLocale = 'en-US',
+    fallbackLocale = 'zh-CN',
     persist = false,
     storageKey = 'sp-locale',
     applyToDocument = false,
@@ -96,7 +96,7 @@ export function useI18n(options: UseI18nOptions = {}): UseI18nReturn {
   const messages = computed(() => {
     const locale = localeRef.value
     const config = customLocalesRef.value[locale] || builtInLocales[locale] || builtInLocales[fallbackLocale]
-    return config?.messages || builtInLocales['en-US'].messages
+    return config?.messages || builtInLocales['zh-CN'].messages
   })
 
   /**

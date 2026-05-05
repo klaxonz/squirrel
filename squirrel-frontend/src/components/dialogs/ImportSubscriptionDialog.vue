@@ -242,11 +242,11 @@ const importing = ref(false)
 const requestError = ref('')
 
 const siteConfig = {
-  bilibili: { name: 'Bilibili' },
-  youtube: { name: 'YouTube' },
-  pornhub: { name: 'Pornhub' },
-  youporn: { name: 'YouPorn' },
-  javdb: { name: 'JavDB' },
+  bilibili: { name: '哔哩哔哩' },
+  youtube: { name: '油管' },
+  pornhub: { name: '成人站点一' },
+  youporn: { name: '成人站点二' },
+  javdb: { name: '影片数据库' },
 }
 
 const getSiteCatalogItem = (site) => siteCatalog.value?.[site?.toLowerCase?.() || site] || null

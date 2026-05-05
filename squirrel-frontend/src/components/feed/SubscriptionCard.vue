@@ -32,7 +32,7 @@
           <div class="flex items-center justify-between">
             <SiteTag :site="subscription.site" class="scale-90 origin-left" />
             <div v-if="subscription.is_nsfw" class="px-1.5 py-0.5 rounded-md bg-destructive/10 text-destructive text-[8px] font-black uppercase tracking-wider border border-destructive/20">
-              NSFW
+              敏感
             </div>
           </div>
           <h3 class="font-bold text-[15px] leading-tight text-foreground line-clamp-2 group-hover:text-primary transition-colors tracking-tight">

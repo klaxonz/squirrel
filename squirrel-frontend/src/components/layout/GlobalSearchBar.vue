@@ -47,7 +47,7 @@
       <div v-if="showSuggestions" class="absolute top-full left-0 right-0 mt-2 p-1.5 bg-popover border border-border/60 rounded-2xl shadow-2xl z-50 flex flex-col gap-0.5">
         <div class="flex items-center justify-between px-2 py-1.5 mb-1">
           <span class="text-[10px] font-bold tracking-widest uppercase text-muted-foreground/50">{{ suggestionTitle }}</span>
-          <button v-if="recentSearches.length" @click="clearRecentSearches" class="text-[10px] font-bold text-muted-foreground/40 hover:text-destructive transition-colors uppercase">Clear</button>
+          <button v-if="recentSearches.length" @click="clearRecentSearches" class="text-[10px] font-bold text-muted-foreground/40 hover:text-destructive transition-colors uppercase">清空</button>
         </div>
 
         <div v-for="(item, index) in suggestionItems" :key="item.id" class="flex gap-1">
@@ -68,7 +68,7 @@
           </button>
         </div>
         
-        <div v-if="!suggestionItems.length" class="p-8 text-center text-[12px] text-muted-foreground/40 font-medium">No recent searches</div>
+        <div v-if="!suggestionItems.length" class="p-8 text-center text-[12px] text-muted-foreground/40 font-medium">暂无搜索记录</div>
       </div>
     </transition>
   </div>
@@ -82,7 +82,7 @@ import { useUIStore } from '@/stores/ui'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
-  placeholder: { type: String, default: 'Search or type a command...' },
+  placeholder: { type: String, default: '搜索或输入命令...' },
   suggestionScope: { type: String, default: 'home' }
 })
 
@@ -130,7 +130,7 @@ const suggestionItems = computed(() => {
   return items.slice(0, 8)
 })
 
-const suggestionTitle = computed(() => trimmedInputValue.value ? 'Suggestions' : 'Recent')
+const suggestionTitle = computed(() => trimmedInputValue.value ? '搜索建议' : '最近搜索')
 
 const handleInput = () => {
   uiStore.searchQuery = inputValue.value

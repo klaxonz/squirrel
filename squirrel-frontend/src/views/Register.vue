@@ -3,7 +3,7 @@
     <!-- Server Config Link -->
     <div class="auth-topbar">
       <router-link to="/server-config" class="auth-topbar__link">
-        <span class="auth-topbar__eyebrow">Server</span>
+        <span class="auth-topbar__eyebrow">服务器</span>
         <span class="auth-topbar__value">{{ currentServerLabel }}</span>
       </router-link>
     </div>
@@ -11,7 +11,7 @@
     <div class="auth-layout">
       <!-- Left Panel: Branding -->
       <aside class="auth-sidebar">
-        <h1 class="auth-sidebar__brand">SQRL</h1>
+        <h1 class="auth-sidebar__brand">松鼠</h1>
         <p class="auth-sidebar__tagline">
           创建新账户。<br>
           加入视频订阅网络。
@@ -47,7 +47,7 @@
               type="text"
               required
               class="auth-input"
-              placeholder="Your name"
+              placeholder="请输入昵称"
               autocomplete="nickname"
             />
           </div>
@@ -61,7 +61,7 @@
               type="email"
               required
               class="auth-input"
-              placeholder="your@email.com"
+              placeholder="请输入邮箱"
               autocomplete="email"
             />
           </div>
@@ -76,14 +76,14 @@
                 :type="showPassword ? 'text' : 'password'"
                 required
                 class="auth-input"
-                placeholder="At least 8 characters"
+                placeholder="至少输入 8 位字符"
                 autocomplete="new-password"
               />
               <button
                 type="button"
                 class="auth-password-toggle"
                 @click="showPassword = !showPassword"
-                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                :aria-label="showPassword ? '隐藏密码' : '显示密码'"
               >
                 <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
               </button>

@@ -53,7 +53,7 @@
               v-model="filters.keyword"
               @keyup.enter="applyFilters"
               type="text"
-              placeholder="搜索日志内容、trace_id..."
+              placeholder="搜索日志内容、追踪编号..."
               class="h-8 text-xs bg-muted/30 border-none focus-visible:ring-1"
             />
           </div>
@@ -226,11 +226,11 @@ const filters = ref({
 
 const levelOptions = [
   { value: '', label: '全部级别' },
-  { value: 'DEBUG', label: 'DEBUG' },
-  { value: 'INFO', label: 'INFO' },
-  { value: 'WARNING', label: 'WARNING' },
-  { value: 'ERROR', label: 'ERROR' },
-  { value: 'CRITICAL', label: 'CRITICAL' }
+  { value: 'DEBUG', label: '调试' },
+  { value: 'INFO', label: '信息' },
+  { value: 'WARNING', label: '警告' },
+  { value: 'ERROR', label: '错误' },
+  { value: 'CRITICAL', label: '严重' }
 ];
 
 const fileOptions = computed(() => {
@@ -339,7 +339,7 @@ function copyLog(logItem) {
   // 添加日志元信息
   logText += `时间: ${logItem.timestamp}\n`;
   if (logItem.trace_id) {
-    logText += `Trace ID: ${logItem.trace_id}\n`;
+    logText += `追踪编号: ${logItem.trace_id}\n`;
   }
   logText += `级别: ${logItem.level}\n`;
   logText += `日志器: ${logItem.logger}\n`;

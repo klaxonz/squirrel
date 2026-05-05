@@ -33,7 +33,7 @@ const subtitleCandidatesByDomain: Array<{ pattern: RegExp; candidates: SubtitleC
   {
     pattern: /bilibili\.com/i,
     candidates: [
-      { id: 'bili-ai-zh', language: '简体中文(AI)', lang: 'ai-zh' },
+      { id: 'bili-ai-zh', language: '简体中文（自动）', lang: 'ai-zh' },
       { id: 'bili-zh-CN', language: '简体中文', lang: 'zh-CN' },
       { id: 'bili-zh', language: '中文', lang: 'zh' },
     ],
@@ -41,9 +41,9 @@ const subtitleCandidatesByDomain: Array<{ pattern: RegExp; candidates: SubtitleC
   {
     pattern: /(?:youtube\.com|youtu\.be)/i,
     candidates: [
-      { id: 'yt-default', language: 'Default' },
-      { id: 'yt-en', language: 'English', lang: 'en' },
-      { id: 'yt-en-US', language: 'English (US)', lang: 'en-US' },
+      { id: 'yt-default', language: '默认' },
+      { id: 'yt-en', language: '英语', lang: 'en' },
+      { id: 'yt-en-US', language: '美式英语', lang: 'en-US' },
     ],
   },
 ]

@@ -54,7 +54,7 @@
             </div>
             <div class="grid grid-cols-1 gap-y-3 px-1">
               <div class="flex items-center justify-between py-1 border-b border-border/10">
-                <span class="text-[11px] font-semibold text-muted-foreground/50">运行 ID</span>
+                <span class="text-[11px] font-semibold text-muted-foreground/50">运行编号</span>
                 <span class="text-[11px] font-mono font-medium text-foreground/70">{{ run.run_id }}</span>
               </div>
               <div class="flex items-center justify-between py-1 border-b border-border/10">
@@ -66,7 +66,7 @@
                 <span class="text-[11px] font-medium text-foreground/70 tabular-nums">{{ run.started_at }}</span>
               </div>
               <div class="flex items-center justify-between py-1 border-b border-border/10">
-                <span class="text-[11px] font-semibold text-muted-foreground/50">追踪 ID</span>
+                <span class="text-[11px] font-semibold text-muted-foreground/50">追踪编号</span>
                 <span class="text-[11px] font-mono text-muted-foreground/60">{{ run.trace_id || '—' }}</span>
               </div>
             </div>

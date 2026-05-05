@@ -125,7 +125,7 @@ export default function useVideoOperations() {
     playbackVideo: PlaybackVideoLike | null = null
   ): Promise<MediaSource> => {
     const { forceRefresh = false } = options
-    if (!videoId) throw Object.assign(new Error('无效的视频ID'), { code: 'BAD_REQUEST' })
+    if (!videoId) throw Object.assign(new Error('无效的视频编号'), { code: 'BAD_REQUEST' })
 
     try {
       let data: VideoUrlInfo | null | undefined

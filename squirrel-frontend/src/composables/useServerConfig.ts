@@ -200,7 +200,7 @@ export const clearRecentServerUrls = () => {
 export const testServerConnection = async (url: string): Promise<{ ok: boolean; message: string }> => {
   const baseUrl = normalizeServerUrl(url)
   if (!baseUrl) {
-    return { ok: false, message: '无效的 URL 格式' }
+    return { ok: false, message: '无效的地址格式' }
   }
 
   try {

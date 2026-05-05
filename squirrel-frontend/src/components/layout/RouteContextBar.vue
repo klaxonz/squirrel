@@ -1,5 +1,5 @@
 <template>
-  <nav v-if="breadcrumbs.length" class="flex items-center gap-1.5 px-2 overflow-hidden whitespace-nowrap select-none" aria-label="Breadcrumb">
+  <nav v-if="breadcrumbs.length" class="flex items-center gap-1.5 px-2 overflow-hidden whitespace-nowrap select-none" aria-label="路径导航">
     <template v-for="(item, index) in breadcrumbs" :key="`${item.label}-${index}`">
       <router-link
         v-if="item.to"

@@ -28,8 +28,8 @@
       <div class="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mb-6">
         <AppIcon name="inbox" class="w-10 h-10 text-muted-foreground/30" />
       </div>
-      <h3 class="text-xl font-bold text-foreground/60">No content found</h3>
-      <p class="text-muted-foreground mt-2">Try adjusting your filters or search terms.</p>
+      <h3 class="text-xl font-bold text-foreground/60">未找到内容</h3>
+      <p class="text-muted-foreground mt-2">请调整筛选条件或搜索关键词后再试。</p>
     </div>
 
     <!-- Infinite Scroll Trigger -->

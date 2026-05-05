@@ -110,7 +110,7 @@ onMounted(async () => { await loadUserSettings() })
 const timeRangeOptions = [{ value: 'all', label: '不限' }, { value: 'today', label: '今天' }, { value: 'week', label: '本周' }, { value: 'month', label: '本月' }]
 const durationOptions = [{ value: 'all', label: '不限' }, { value: 'short', label: '短片' }, { value: 'medium', label: '常规' }, { value: 'long', label: '长片' }]
 const contentTypeOptions = [{ value: 'all', label: '全部' }, { value: 'CHANNEL', label: '频道' }, { value: 'PLAYLIST', label: '列表' }]
-const nsfwOptions = [{ value: 'all', label: '全部' }, { value: 'yes', label: 'NSFW' }, { value: 'no', label: '安全' }]
+const nsfwOptions = [{ value: 'all', label: '全部' }, { value: 'yes', label: '敏感' }, { value: 'no', label: '安全' }]
 const sortOptions = [{ value: 'publish_date', label: '上传' }, { value: 'created_at', label: '添加' }]
 </script>
 

@@ -44,22 +44,22 @@ export interface SubtitlePreset {
 export const BUILT_IN_PRESETS: SubtitlePreset[] = [
   {
     id: 'default',
-    label: 'Default',
+    label: '默认',
     style: { fontSize: 'medium', color: '#ffffff', backgroundColor: 'rgba(0,0,0,0.8)', backgroundOpacity: 0.8, position: 'bottom', textShadow: true },
   },
   {
     id: 'high-contrast',
-    label: 'High Contrast',
+    label: '高对比',
     style: { fontSize: 'large', color: '#ffff00', backgroundColor: '#000000', backgroundOpacity: 1, position: 'bottom', textShadow: false },
   },
   {
     id: 'subtle',
-    label: 'Subtle',
+    label: '柔和',
     style: { fontSize: 'small', color: 'rgba(255,255,255,0.8)', backgroundColor: 'rgba(0,0,0,0.5)', backgroundOpacity: 0.5, position: 'bottom', textShadow: false },
   },
   {
     id: 'top-outline',
-    label: 'Top Outline',
+    label: '顶部描边',
     style: { fontSize: 'medium', color: '#ffffff', backgroundColor: 'transparent', backgroundOpacity: 0, position: 'top', textShadow: true },
   },
 ]

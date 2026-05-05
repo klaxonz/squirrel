@@ -3,7 +3,7 @@
     <!-- Server Config Link -->
     <div class="auth-topbar">
       <router-link to="/server-config" class="auth-topbar__link">
-        <span class="auth-topbar__eyebrow">Server</span>
+        <span class="auth-topbar__eyebrow">服务器</span>
         <span class="auth-topbar__value">{{ currentServerLabel }}</span>
       </router-link>
     </div>
@@ -11,7 +11,7 @@
     <div class="auth-layout">
       <!-- Left Panel: Branding -->
       <aside class="auth-sidebar">
-        <h1 class="auth-sidebar__brand">SQRL</h1>
+        <h1 class="auth-sidebar__brand">松鼠</h1>
         <p class="auth-sidebar__tagline">
           视频订阅与管理平台。<br>
           统一管理多平台内容。
@@ -30,7 +30,7 @@
           <!-- Header -->
           <div class="auth-form-header">
             <h2 class="auth-form-title">欢迎回来</h2>
-            <p class="auth-form-subtitle">登录以继续使用 Squirrel</p>
+            <p class="auth-form-subtitle">登录以继续使用松鼠</p>
           </div>
 
           <!-- Error Alert -->
@@ -47,7 +47,7 @@
               type="email"
               required
               class="auth-input"
-              placeholder="your@email.com"
+              placeholder="请输入邮箱"
               autocomplete="email"
             />
           </div>
@@ -62,14 +62,14 @@
                 :type="showPassword ? 'text' : 'password'"
                 required
                 class="auth-input"
-                placeholder="Enter password"
+                placeholder="请输入密码"
                 autocomplete="current-password"
               />
               <button
                 type="button"
                 class="auth-password-toggle"
                 @click="showPassword = !showPassword"
-                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                :aria-label="showPassword ? '隐藏密码' : '显示密码'"
               >
                 <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
               </button>

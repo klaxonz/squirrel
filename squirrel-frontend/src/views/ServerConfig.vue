@@ -5,7 +5,7 @@
       <div class="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
         <AppIcon name="server" class="w-6 h-6 text-white" />
       </div>
-      <h1 class="text-2xl font-bold text-slate-900 tracking-tight">SQRL 核心配置</h1>
+      <h1 class="text-2xl font-bold text-slate-900 tracking-tight">松鼠核心配置</h1>
       <p class="text-sm text-slate-500">连接至您的后端服务引擎</p>
     </div>
 
@@ -20,7 +20,7 @@
 
         <!-- Server URL Field -->
         <div class="space-y-2">
-          <label for="server-url" class="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">服务器 API 地址</label>
+          <label for="server-url" class="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">服务器接口地址</label>
           <div class="relative group">
             <Input
               id="server-url"
@@ -116,7 +116,7 @@
       <div class="px-8 py-5 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-2">
         <span class="text-xs text-slate-400">本地开发？</span>
         <button type="button" class="text-xs font-bold text-slate-600 hover:text-slate-900 underline underline-offset-4" @click="fillLocalhost">
-          快速切换至 Localhost
+          快速切换至本机地址
         </button>
       </div>
     </div>

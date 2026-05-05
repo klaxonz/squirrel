@@ -120,13 +120,13 @@
 
           <!-- Section: Params -->
           <div class="space-y-2">
-            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">任务参数 (JSON)</label>
+            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">任务参数</label>
             <div class="relative">
               <Textarea
                 v-model="taskParamsJson"
                 rows="4"
                 class="font-mono text-xs bg-slate-900 text-slate-300 rounded-lg border-none focus-visible:ring-2 focus-visible:ring-slate-200 py-4 px-5"
-                placeholder='{ "key": "value" }'
+                placeholder='{ "名称": "内容" }'
               />
               <div v-if="jsonError" class="absolute bottom-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded bg-rose-500/10 border border-rose-500/20 text-rose-600 text-[10px] font-bold">
                 <AppIcon name="alert" class="w-3 h-3" />

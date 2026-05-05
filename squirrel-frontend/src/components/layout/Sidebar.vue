@@ -6,7 +6,7 @@
         <div class="w-6 h-6 bg-foreground rounded-md flex items-center justify-center transition-transform group-hover:scale-105 group-active:scale-95 shadow-sm">
           <AppIcon name="brand" class="w-3.5 h-3.5 text-background fill-current" />
         </div>
-        <span class="text-[14px] font-bold tracking-tight text-foreground">Squirrel</span>
+        <span class="text-[14px] font-bold tracking-tight text-foreground">松鼠</span>
       </router-link>
     </div>
 
@@ -39,8 +39,8 @@
         </div>
         
         <div class="flex-1 min-w-0">
-          <p class="text-[12px] font-semibold truncate text-foreground/80">Guest</p>
-          <p class="text-[10px] text-muted-foreground/60 truncate">Basic Plan</p>
+          <p class="text-[12px] font-semibold truncate text-foreground/80">访客</p>
+          <p class="text-[10px] text-muted-foreground/60 truncate">基础方案</p>
         </div>
         
         <AppIcon name="logout" class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />

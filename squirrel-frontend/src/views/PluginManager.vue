@@ -33,7 +33,7 @@
               <label class="cursor-pointer flex items-center">
                 <input type="file" accept=".txt,.json" class="hidden" @change="handleCookiesFileChange" />
                 <AppIcon name="cookie" class="h-4 w-4 mr-2 text-slate-500" />
-                <span>{{ cookiesFileName || '导入 Cookie' }}</span>
+                <span>{{ cookiesFileName || '导入登录凭据' }}</span>
               </label>
             </Button>
             <Button
@@ -275,7 +275,7 @@
                 size="icon"
                 @click="plugin.siteOAuthStatus === 'authenticated' || plugin.siteOAuthStatus === 'pending' ? handleRevokeYouTubeOAuth() : handleStartYouTubeOAuth()"
                 class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 transition-colors"
-                title="YouTube 授权管理"
+                title="授权管理"
               >
                 <AppIcon v-if="plugin.siteOAuthStatus === 'authenticated'" name="link" class="h-4 w-4 text-emerald-500" />
                 <AppIcon v-else name="unlink" class="h-4 w-4" />

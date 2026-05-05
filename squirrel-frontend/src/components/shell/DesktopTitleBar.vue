@@ -30,9 +30,9 @@ const controls = computed<Array<{
   label: string
   type?: 'close'
 }>>(() => ([
-  { icon: 'minimizeWindow', action: () => desktop?.minimizeWindow(), label: 'Minimize' },
-  { icon: isMaximized.value ? 'restoreWindow' : 'maximizeWindow', action: toggleMaximize, label: 'Maximize' },
-  { icon: 'close', action: () => desktop?.closeWindow(), label: 'Close', type: 'close' },
+  { icon: 'minimizeWindow', action: () => desktop?.minimizeWindow(), label: '最小化' },
+  { icon: isMaximized.value ? 'restoreWindow' : 'maximizeWindow', action: toggleMaximize, label: '最大化' },
+  { icon: 'close', action: () => desktop?.closeWindow(), label: '关闭', type: 'close' },
 ]))
 
 async function toggleMaximize() {

@@ -126,7 +126,7 @@ export const testAllSitesConnectivity = async (timeout = 10) => {
 
 export const importAllSiteCookies = async (file: File | null | undefined) => {
   if (!file) {
-    return { data: null, error: new ApiError('请选择 Cookie 文件') }
+    return { data: null, error: new ApiError('请选择登录凭据文件') }
   }
 
   const formData = new FormData()
@@ -143,7 +143,7 @@ export const uploadSiteCookies = async (
   target: string = 'default'
 ) => {
   if (!file) {
-    return { data: null, error: new ApiError('请选择 Cookie 文件') }
+    return { data: null, error: new ApiError('请选择登录凭据文件') }
   }
 
   const formData = new FormData()
