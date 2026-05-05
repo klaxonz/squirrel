@@ -331,6 +331,77 @@ def test_fetch_html_waits_for_auto_bypass_before_solver(monkeypatch):
     assert 'solver_init' not in calls
 
 
+def test_fetch_html_reuses_cached_browser_context(monkeypatch):
+    calls = {'camoufox': 0, 'goto': []}
+
+    class FakePage:
+        def __init__(self):
+            self.url = ''
+
+        async def goto(self, url, wait_until, timeout):
+            self.url = url
+            calls['goto'].append(url)
+
+        async def title(self):
+            return 'Ready'
+
+        async def content(self):
+            return f'<html>{self.url}</html>'
+
+        async def evaluate(self, expression):
+            assert expression == 'navigator.userAgent'
+            return 'FakeUA/1.0'
+
+        def locator(self, selector):
+            return FakeLocator(0)
+
+    class FakeLocator:
+        def __init__(self, count):
+            self._count = count
+
+        async def count(self):
+            return self._count
+
+    class FakeContext:
+        def __init__(self):
+            self.page = FakePage()
+
+        async def new_page(self):
+            return self.page
+
+        async def cookies(self):
+            return [{'name': 'cf_clearance', 'value': 'token'}]
+
+    class FakeBrowser:
+        def __init__(self):
+            self.context = FakeContext()
+
+        async def new_context(self, **kwargs):
+            return self.context
+
+    class FakeAsyncCamoufox:
+        def __init__(self, **kwargs):
+            calls['camoufox'] += 1
+            self.browser = FakeBrowser()
+
+        async def __aenter__(self):
+            return self.browser
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(camoufox.async_api, 'AsyncCamoufox', FakeAsyncCamoufox)
+
+    solver = BrowserSolver()
+    first = asyncio.run(solver.fetch_html('https://missav.ai/search/ABP-123'))
+    second = asyncio.run(solver.fetch_html('https://missav.ai/abp-123'))
+
+    assert first.source == 'solver'
+    assert second.source == 'browser-cache'
+    assert calls['camoufox'] == 1
+    assert calls['goto'] == ['https://missav.ai/search/ABP-123', 'https://missav.ai/abp-123']
+
+
 def test_fetch_html_uses_manual_turnstile_click_fallback(monkeypatch):
     calls = {'ups': 0}
 

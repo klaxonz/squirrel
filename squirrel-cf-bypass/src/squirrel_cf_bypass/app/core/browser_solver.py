@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import random
+from urllib.parse import urlparse
 
 from squirrel_cf_bypass.app.core.models import HtmlResult
 
@@ -27,6 +28,22 @@ COOKIE_SET_WAIT = 2.0
 
 class BrowserSolver:
     ready = True
+
+    def __init__(self):
+        self._browser_entries = {}
+        self._locks = {}
+
+    @staticmethod
+    def _key(url: str, proxy: str | None) -> tuple[str, str | None]:
+        hostname = str(urlparse(url).hostname or '').strip().lower()
+        return hostname, proxy or None
+
+    def _lock_for(self, key: tuple[str, str | None]) -> asyncio.Lock:
+        lock = self._locks.get(key)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._locks[key] = lock
+        return lock
 
     @staticmethod
     def _resolve_browser_os(user_agent: str | None) -> str:
@@ -285,6 +302,66 @@ class BrowserSolver:
 
         return False
 
+    async def _read_result_from_page(self, context, page, browser_config, browser_os, source: str) -> HtmlResult:
+        cookies = {
+            cookie['name']: cookie['value']
+            for cookie in await context.cookies()
+        }
+        user_agent = await page.evaluate('navigator.userAgent')
+        return HtmlResult(
+            html=await page.content(),
+            final_url=page.url,
+            status_code=200,
+            cookies=cookies,
+            user_agent=user_agent,
+            browser_config=browser_config,
+            browser_os=browser_os,
+            source=source,
+        )
+
+    async def _close_entry(self, key: tuple[str, str | None]) -> None:
+        entry = self._browser_entries.pop(key, None)
+        if not entry:
+            return
+        manager = entry.get('manager')
+        if manager is not None:
+            await manager.__aexit__(None, None, None)
+
+    async def clear_runtime_state(self) -> None:
+        keys = list(self._browser_entries)
+        for key in keys:
+            await self._close_entry(key)
+
+    async def _fetch_with_entry(self, key, url: str, custom_headers: dict[str, str] | None):
+        entry = self._browser_entries.get(key)
+        if not entry:
+            return None
+
+        page = entry['page']
+        context = entry['context']
+        if custom_headers:
+            await page.set_extra_http_headers(custom_headers)
+
+        try:
+            await page.goto(url, wait_until='domcontentloaded', timeout=15000)
+            if not await self._wait_for_page_ready(page):
+                title = await page.title()
+                html = await page.content()
+                if self._is_challenge_page(title, html):
+                    await self._close_entry(key)
+                    return None
+            return await self._read_result_from_page(
+                context,
+                page,
+                entry.get('browser_config'),
+                entry.get('browser_os'),
+                'browser-cache',
+            )
+        except Exception:
+            logger.warning('Cached browser context failed for %s', url, exc_info=True)
+            await self._close_entry(key)
+            return None
+
     async def fetch_html(
         self,
         url: str,
@@ -297,10 +374,16 @@ class BrowserSolver:
         from playwright_captcha import ClickSolver
         from playwright_captcha import FrameworkType
 
-        camoufox_kwargs = self._build_camoufox_kwargs(proxy=proxy, cached_record=cached_record)
-        browser_config, browser_os = self._extract_browser_identity(camoufox_kwargs)
-        camoufox = AsyncCamoufox(**camoufox_kwargs)
-        async with camoufox as browser:
+        key = self._key(url, proxy)
+        async with self._lock_for(key):
+            cached_result = await self._fetch_with_entry(key, url, custom_headers)
+            if cached_result is not None:
+                return cached_result
+
+            camoufox_kwargs = self._build_camoufox_kwargs(proxy=proxy, cached_record=cached_record)
+            browser_config, browser_os = self._extract_browser_identity(camoufox_kwargs)
+            camoufox = AsyncCamoufox(**camoufox_kwargs)
+            browser = await camoufox.__aenter__()
             context_kwargs = {'proxy': {'server': proxy}} if proxy else {}
             context = await browser.new_context(**context_kwargs)
             page = await context.new_page()
@@ -309,9 +392,14 @@ class BrowserSolver:
             if custom_headers:
                 await page.set_extra_http_headers(custom_headers)
 
-            await page.goto(url, wait_until='domcontentloaded', timeout=15000)
-            title = await page.title()
-            html = await page.content()
+            try:
+                await page.goto(url, wait_until='domcontentloaded', timeout=15000)
+                title = await page.title()
+                html = await page.content()
+            except Exception:
+                logger.warning('Browser navigation failed for %s', url, exc_info=True)
+                await camoufox.__aexit__(None, None, None)
+                return None
 
             if self._is_challenge_page(title, html):
                 if await self._wait_for_page_ready(page):
@@ -343,6 +431,7 @@ class BrowserSolver:
                                 )
                         except Exception:
                             logger.warning('Captcha solving failed for %s', url, exc_info=True)
+                            await camoufox.__aexit__(None, None, None)
                             return None
 
                     await self._wait_for_page_ready(page)
@@ -351,22 +440,18 @@ class BrowserSolver:
                         title = await page.title()
                         html = await page.content()
                     except Exception:
+                        await camoufox.__aexit__(None, None, None)
                         return None
                 if self._is_challenge_page(title, html):
+                    await camoufox.__aexit__(None, None, None)
                     return None
 
-            cookies = {
-                cookie['name']: cookie['value']
-                for cookie in await context.cookies()
+            self._browser_entries[key] = {
+                'manager': camoufox,
+                'browser': browser,
+                'context': context,
+                'page': page,
+                'browser_config': browser_config,
+                'browser_os': browser_os,
             }
-            user_agent = await page.evaluate('navigator.userAgent')
-            return HtmlResult(
-                html=html,
-                final_url=page.url,
-                status_code=200,
-                cookies=cookies,
-                user_agent=user_agent,
-                browser_config=browser_config,
-                browser_os=browser_os,
-                source='solver',
-            )
+            return await self._read_result_from_page(context, page, browser_config, browser_os, 'solver')

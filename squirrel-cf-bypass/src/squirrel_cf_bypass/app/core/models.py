@@ -10,6 +10,7 @@ class ClearanceRecord:
     expires_at: float
     browser_config: dict[str, Any] | None = None
     browser_os: str | None = None
+    http_usable: bool = True
 
 
 @dataclass(slots=True)

@@ -53,6 +53,7 @@ def test_html_route_forwards_request_headers_to_solver():
             'Referer': 'https://javdb.com/',
             'Origin': 'https://javdb.com',
             'X-Proxy': 'http://127.0.0.1:7890',
+            'X-Bypass-Cache': 'true',
         },
     )
 
@@ -62,6 +63,7 @@ def test_html_route_forwards_request_headers_to_solver():
     assert solver.calls[0]['custom_headers']['referer'] == 'https://javdb.com/'
     assert solver.calls[0]['custom_headers']['origin'] == 'https://javdb.com'
     assert 'host' not in solver.calls[0]['custom_headers']
+    assert 'x-bypass-cache' not in solver.calls[0]['custom_headers']
 
 
 def test_html_route_uses_cached_clearance_without_solver(monkeypatch):
@@ -118,9 +120,65 @@ def test_html_route_uses_cached_clearance_without_solver(monkeypatch):
     assert session_calls[0]['headers']['referer'] == 'https://javdb.com/'
 
 
+def test_html_route_seeds_cache_from_provided_cookies(monkeypatch):
+    session_calls = []
+
+    class CookieSession:
+        async def get(self, url, headers=None, allow_redirects=False):
+            session_calls.append({
+                'url': url,
+                'headers': headers,
+                'allow_redirects': allow_redirects,
+            })
+
+            class Response:
+                status_code = 200
+                text = '<html>provided</html>'
+                url = 'https://javdb.com/page'
+                cookies = {'cf_clearance': 'refreshed'}
+
+            return Response()
+
+    monkeypatch.setattr(
+        'squirrel_cf_bypass.app.core.service.AsyncSession',
+        lambda **kwargs: CookieSession(),
+    )
+
+    solver = FakeSolver()
+    app = create_app(solver=solver)
+    client = TestClient(app)
+
+    response = client.get(
+        '/html',
+        params={'url': 'https://javdb.com/page'},
+        headers={
+            'Cookie': 'cf_clearance=provided; _jdb_session=session',
+            'User-Agent': 'Provided UA',
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.text == '<html>provided</html>'
+    assert response.headers['x-cf-bypasser-source'] == 'provided-cookie'
+    assert solver.calls == []
+    assert session_calls[0]['allow_redirects'] is True
+    assert session_calls[0]['headers']['cookie'] == 'cf_clearance=provided; _jdb_session=session'
+    cached = app.state.bypass_service._cache.get('javdb.com', None)
+    assert cached.cookies == {'cf_clearance': 'refreshed', '_jdb_session': 'session'}
+    assert cached.user_agent == 'Provided UA'
+
+
 def test_html_route_invalidates_challenge_cache_and_falls_back_to_solver(monkeypatch):
+    session_calls = []
+
     class ChallengeSession:
         async def get(self, url, headers=None, allow_redirects=False):
+            session_calls.append({
+                'url': url,
+                'headers': headers,
+                'allow_redirects': allow_redirects,
+            })
+
             class Response:
                 status_code = 403
                 text = '<html><title>Just a moment...</title></html>'
@@ -158,6 +216,15 @@ def test_html_route_invalidates_challenge_cache_and_falls_back_to_solver(monkeyp
     assert solver.calls[0]['cached_record'].browser_config == {'navigator.userAgent': 'Stale UA'}
     assert solver.calls[0]['cached_record'].browser_os == 'windows'
     assert app.state.bypass_service._cache.get('javdb.com', None).cookies == {'cf_clearance': 'demo'}
+    assert app.state.bypass_service._cache.get('javdb.com', None).http_usable is False
+    assert len(session_calls) == 1
+
+    response = client.get('/html', params={'url': 'https://javdb.com/page'})
+
+    assert response.status_code == 200
+    assert len(solver.calls) == 2
+    assert solver.calls[1]['cached_record'] is not None
+    assert len(session_calls) == 1
 
 
 def test_html_route_can_force_cache_bypass():

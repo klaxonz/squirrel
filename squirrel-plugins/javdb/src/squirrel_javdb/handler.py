@@ -72,6 +72,14 @@ class JavdbHandler:
 
     def _get_jav_video_stream_once(self, no: str) -> tuple[str, str]:
         try:
+            direct_url = f'https://missav.ai/{no.lower()}'
+            html = fetch_html(direct_url)
+            if self._looks_like_challenge_page(html):
+                raise NetworkError(f'MissAV mirror challenge blocked playback detail lookup: {direct_url}', context={'url': direct_url})
+            parts = self._extract_parts_from_html_content(html)
+            if parts:
+                return self._format_stream_url(parts), direct_url
+
             url = f'https://missav.ai/search/{no}'
             html = fetch_html(url)
             if self._looks_like_challenge_page(html):
@@ -122,17 +130,7 @@ class JavdbHandler:
                     )
                     continue
 
-                url_path = parts.split('m3u8|')[1].split('|playlist|source')[0]
-                url_words = url_path.split('|')
-                video_index = url_words.index('video')
-                protocol = url_words[video_index - 1]
-                video_format = url_words[video_index + 1]
-                m3u8_url_path = '-'.join((url_words[0:5])[::-1])
-                base_url_path = '.'.join((url_words[5:video_index - 1])[::-1])
-                formatted_url = '{0}://{1}/{2}/{3}/{4}.m3u8'.format(
-                    protocol, base_url_path, m3u8_url_path, video_format, url_words[video_index]
-                )
-                return formatted_url, target_url
+                return self._format_stream_url(parts), target_url
 
             if last_detail_error is not None:
                 raise last_detail_error
@@ -148,6 +146,19 @@ class JavdbHandler:
     def _get_jav_video_url(self, no: str) -> Optional[str]:
         stream_info = self._get_jav_video_stream(no)
         return stream_info[0] if stream_info else None
+
+    @staticmethod
+    def _format_stream_url(parts: str) -> str:
+        url_path = parts.split('m3u8|')[1].split('|playlist|source')[0]
+        url_words = url_path.split('|')
+        video_index = url_words.index('video')
+        protocol = url_words[video_index - 1]
+        video_format = url_words[video_index + 1]
+        m3u8_url_path = '-'.join((url_words[0:5])[::-1])
+        base_url_path = '.'.join((url_words[5:video_index - 1])[::-1])
+        return '{0}://{1}/{2}/{3}/{4}.m3u8'.format(
+            protocol, base_url_path, m3u8_url_path, video_format, url_words[video_index]
+        )
 
     def _extract_parts_from_html_content(self, html_content: str) -> Optional[str]:
         soup = BeautifulSoup(html_content, 'html.parser')

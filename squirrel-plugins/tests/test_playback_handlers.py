@@ -327,12 +327,8 @@ class PlaybackHandlerTests(unittest.TestCase):
             module = _load_javdb_handler_module()
 
             responses.extend([
-                _FakeResponse('search-page'),
                 _FakeResponse('detail-page'),
             ])
-            soups['search-page'] = _FakeSoup(select_map={
-                'div.thumbnail': [_FakeThumbnail('/en/ABP-123')],
-            })
             soups['detail-page'] = _FakeSoup(find_all_map={
                 'script': [
                     _FakeScriptTag(text="'m3u8|one|two|three|four|five|com|example|cdn|videos|https|video|master|playlist|source'"),
@@ -344,7 +340,7 @@ class PlaybackHandlerTests(unittest.TestCase):
             self.assertIsNone(payload['audio_url'])
             parsed = urlparse(payload['video_url'])
             query = parse_qs(parsed.query)
-            self.assertEqual(unquote(query['referer'][0]), 'https://missav.ai/en/ABP-123')
+            self.assertEqual(unquote(query['referer'][0]), 'https://missav.ai/abp-123')
             self.assertEqual(unquote(query['url'][0]), 'https://videos.cdn.example.com/five-four-three-two-one/master/video.m3u8')
             self.assertEqual(
                 request_calls[0]['kwargs'],
@@ -355,7 +351,13 @@ class PlaybackHandlerTests(unittest.TestCase):
         with _stub_javdb_handler_dependencies() as (responses, soups, ParseError, _network_error, _request_calls):
             module = _load_javdb_handler_module()
 
-            responses.append(_FakeResponse('search-page'))
+            responses.extend([
+                _FakeResponse('direct-page-empty'),
+                _FakeResponse('search-page'),
+            ])
+            soups['direct-page-empty'] = _FakeSoup(find_all_map={
+                'script': [_FakeScriptTag(text="console.log('missing stream')")],
+            })
             soups['search-page'] = _FakeSoup(select_map={'div.thumbnail': []})
 
             with self.assertRaises(ParseError):
@@ -366,10 +368,15 @@ class PlaybackHandlerTests(unittest.TestCase):
             module = _load_javdb_handler_module()
 
             responses.extend([
+                _FakeResponse('direct-page-empty'),
                 _FakeResponse('search-page-empty'),
+                _FakeResponse('direct-page-empty'),
                 _FakeResponse('search-page-ok'),
                 _FakeResponse('detail-page'),
             ])
+            soups['direct-page-empty'] = _FakeSoup(find_all_map={
+                'script': [_FakeScriptTag(text="console.log('missing stream')")],
+            })
             soups['search-page-empty'] = _FakeSoup(select_map={'div.thumbnail': []})
             soups['search-page-ok'] = _FakeSoup(select_map={
                 'div.thumbnail': [_FakeThumbnail('https://missav.ai/abp-123')],
@@ -386,7 +393,9 @@ class PlaybackHandlerTests(unittest.TestCase):
             self.assertEqual(
                 [call['url'] for call in request_calls],
                 [
+                    'https://missav.ai/abp-123',
                     'https://missav.ai/search/ABP-123',
+                    'https://missav.ai/abp-123',
                     'https://missav.ai/search/ABP-123',
                     'https://missav.ai/abp-123',
                 ],
@@ -397,10 +406,14 @@ class PlaybackHandlerTests(unittest.TestCase):
             module = _load_javdb_handler_module()
 
             responses.extend([
+                _FakeResponse('direct-page-empty'),
                 _FakeResponse('search-page'),
                 _FakeResponse('detail-page-no-stream'),
                 _FakeResponse('detail-page-ok'),
             ])
+            soups['direct-page-empty'] = _FakeSoup(find_all_map={
+                'script': [_FakeScriptTag(text="console.log('missing stream')")],
+            })
             soups['search-page'] = _FakeSoup(select_map={
                 'div.thumbnail': [
                     _FakeThumbnail('https://missav.ai/abf-304'),
@@ -425,6 +438,7 @@ class PlaybackHandlerTests(unittest.TestCase):
             self.assertEqual(
                 [call['url'] for call in request_calls],
                 [
+                    'https://missav.ai/abf-304',
                     'https://missav.ai/search/ABF-304',
                     'https://missav.ai/abf-304',
                     'https://missav.ai/abf-304-alt',
