@@ -22,8 +22,7 @@
 - 生产构建：`npm run build`
 - 类型检查：`npm run typecheck`
 - 构建+类型检查：`npm run build:check`
-- 前端回归测试使用 Node 内置 test runner，例如：`node --test test/example.test.mjs`。
-- 当前没有统一 `npm test` 脚本；需要按相关测试文件精准运行。
+- 前端不再维护、不新增、不运行测试。
 
 ### 桌面端（Electron）
 - 安装依赖：`npm install`（在 `squirrel-desktop` 目录）。
@@ -100,7 +99,7 @@
 - Tailwind 工具类大量使用；全局样式在 `src/styles`。
 - 颜色优先使用 CSS 变量（如 `--bg-tertiary`）。
 - 类型定义放在 `src/types` 或共享类型文件中。
-- 现有 `test/*.mjs` 多为静态/回归测试，改动相关逻辑时优先补充或更新邻近测试。
+- 前端改动不要求补充或更新测试。
 
 ### 视频播放与桌面端边界
 - 桌面端是薄壳，但视频播放解析优先在桌面端完成。
@@ -131,8 +130,7 @@
 ### 前端快速流程
 1. `npm install`
 2. `npm run typecheck`
-3. `node --test test/<related>.test.mjs`
-4. `npm run build` 或 `npm run build:check`
+3. `npm run build` 或 `npm run build:check`
 
 ### 桌面端快速流程
 1. `npm install`
