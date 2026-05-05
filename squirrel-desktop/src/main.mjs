@@ -1201,26 +1201,6 @@ const installMainWindowBehaviors = (mainWindow) => {
     sendDesktopWindowState(mainWindow)
   }
 
-  const debugDesktopChrome = async () => {
-    if (app.isPackaged) {
-      return
-    }
-
-    try {
-      const debugState = await mainWindow.webContents.executeJavaScript(`(() => ({
-        hasDesktopApp: Boolean(window.desktopApp),
-        desktopAppKeys: Object.keys(window.desktopApp || {}),
-        isDesktopShell: Boolean(window.desktopApp?.isDesktop),
-        titlebarExists: Boolean(document.querySelector('.desktop-titlebar')),
-        controlsExists: Boolean(document.querySelector('.desktop-window-controls')),
-        titlebarText: document.querySelector('.desktop-titlebar')?.innerText || '',
-      }))()`, true)
-      console.log('[squirrel-desktop] Chrome debug', debugState)
-    } catch (error) {
-      console.error('[squirrel-desktop] Failed to inspect desktop chrome', error)
-    }
-  }
-
   mainWindow.on('page-title-updated', (event, title) => {
     event.preventDefault()
     mainWindow.setTitle(formatWindowTitle(title))
@@ -1230,7 +1210,6 @@ const installMainWindowBehaviors = (mainWindow) => {
   mainWindow.on('unmaximize', syncDesktopWindowState)
   mainWindow.webContents.on('did-finish-load', () => {
     syncDesktopWindowState()
-    void debugDesktopChrome()
   })
 
   mainWindow.webContents.on('before-input-event', (event, input) => {

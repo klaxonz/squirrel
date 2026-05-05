@@ -1,7 +1,5 @@
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.sync.set({ backendHost: "http://localhost:8000" }, () => {
-    console.log("Default backend host set");
-  });
+  chrome.storage.sync.set({ backendHost: "http://localhost:8000" });
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
