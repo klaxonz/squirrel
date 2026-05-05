@@ -1,19 +1,13 @@
 <template>
-  <AppPageShell class="plugin-page bg-slate-50/50">
-    <!-- Header Area -->
-    <div class="w-full bg-white">
-      <div class="w-full max-w-[1400px] mx-auto px-6 py-10">
-        <div class="flex items-center justify-between">
-          <div class="space-y-1">
-            <h1 class="text-xl font-semibold text-slate-900 tracking-tight">插件管理</h1>
-            <p class="text-sm text-slate-500">扩展系统能力，管理站点数据采集与身份验证</p>
-          </div>
-          <div class="flex items-center gap-3">
-            <!-- Import Plugin -->
-            <Button as-child variant="outline" class="h-9 px-4 text-sm font-medium border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer">
+  <AppPageShell class="plugin-page" variant="compact" scrollable>
+    <AppToolbarFrame bordered>
+      <PageHeader title="插件管理" description="扩展系统能力，管理站点数据采集与身份验证">
+        <template #actions>
+          <div class="flex flex-wrap items-center justify-end gap-3">
+            <Button as-child variant="outline" class="h-9 px-4 text-sm font-medium cursor-pointer">
               <label class="cursor-pointer flex items-center">
                 <input type="file" accept=".zip" class="hidden" @change="handleFileChange" />
-                <AppIcon name="upload" class="h-4 w-4 mr-2 text-slate-500" />
+                <AppIcon name="upload" class="h-4 w-4 mr-2" />
                 <span>{{ selectedFile ? selectedFile.name : '导入插件' }}</span>
               </label>
             </Button>
@@ -21,7 +15,7 @@
               v-if="selectedFile"
               :disabled="installing"
               @click="handleInstall"
-              class="h-9 px-4 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              class="h-9 px-4 text-sm font-medium"
             >
               <AppIcon v-if="installing" name="refresh" class="h-4 w-4 mr-2 animate-spin" />
               <AppIcon v-else name="plusCircle" class="h-4 w-4 mr-2" />
@@ -29,10 +23,10 @@
             </Button>
 
             <!-- Import Cookies -->
-            <Button as-child variant="outline" class="h-9 px-4 text-sm font-medium border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer">
+            <Button as-child variant="outline" class="h-9 px-4 text-sm font-medium cursor-pointer">
               <label class="cursor-pointer flex items-center">
                 <input type="file" accept=".txt,.json" class="hidden" @change="handleCookiesFileChange" />
-                <AppIcon name="cookie" class="h-4 w-4 mr-2 text-slate-500" />
+                <AppIcon name="cookie" class="h-4 w-4 mr-2" />
                 <span>{{ cookiesFileName || '导入登录凭据' }}</span>
               </label>
             </Button>
@@ -40,70 +34,67 @@
               v-if="selectedCookiesFile"
               @click="handleImportAllCookies"
               :disabled="importingCookies"
-              class="h-9 px-4 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              class="h-9 px-4 text-sm font-medium"
             >
               <AppIcon v-if="importingCookies" name="refresh" class="h-4 w-4 mr-2 animate-spin" />
               <AppIcon v-else name="statusSuccess" class="h-4 w-4 mr-2" />
               导入
             </Button>
 
-            <div class="h-6 w-px bg-slate-200 mx-1"></div>
+            <div class="h-6 w-px bg-border mx-1"></div>
 
             <Button
               @click="handleTestAll"
               :disabled="testingAll"
               variant="outline"
-              class="h-9 px-4 text-sm font-medium border-slate-200 hover:bg-slate-50 transition-colors"
+              class="h-9 px-4 text-sm font-medium"
             >
               <AppIcon v-if="testingAll" name="refresh" class="h-4 w-4 mr-2 animate-spin" />
-              <AppIcon v-else name="sync" class="h-4 w-4 mr-2 text-amber-500" />
+              <AppIcon v-else name="sync" class="h-4 w-4 mr-2" />
               测试全部
             </Button>
           </div>
-        </div>
+        </template>
+      </PageHeader>
 
-        <!-- Compact Stats -->
-        <div class="flex items-center gap-8 mt-8">
-          <div class="flex items-center gap-3">
-            <div class="w-2 h-2 rounded-full bg-slate-400"></div>
-            <span class="text-sm font-medium text-slate-600">已安装</span>
-            <span class="text-sm font-bold text-slate-900 tabular-nums">{{ pluginSummary.total }}</span>
+      <div class="app-stat-strip">
+          <div class="app-stat-item">
+            <span class="app-status-dot app-status-dot--muted"></span>
+            <span>已安装</span>
+            <span class="app-stat-value">{{ pluginSummary.total }}</span>
           </div>
-          <div class="flex items-center gap-3">
-            <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-            <span class="text-sm font-medium text-slate-600">运行中</span>
-            <span class="text-sm font-bold text-slate-900 tabular-nums">{{ pluginSummary.running }}</span>
+          <div class="app-stat-item">
+            <span class="app-status-dot bg-emerald-500"></span>
+            <span>运行中</span>
+            <span class="app-stat-value">{{ pluginSummary.running }}</span>
           </div>
-          <div v-if="pluginSummary.attention > 0" class="flex items-center gap-3">
-            <div class="w-2 h-2 rounded-full bg-rose-500"></div>
-            <span class="text-sm font-medium text-slate-600">需关注</span>
-            <span class="text-sm font-bold text-slate-900 tabular-nums">{{ pluginSummary.attention }}</span>
+          <div v-if="pluginSummary.attention > 0" class="app-stat-item">
+            <span class="app-status-dot bg-rose-500"></span>
+            <span>需关注</span>
+            <span class="app-stat-value">{{ pluginSummary.attention }}</span>
           </div>
-          <div v-if="connectivitySummary.total > 0" class="flex items-center gap-3">
-            <div class="w-2 h-2 rounded-full bg-blue-500"></div>
-            <span class="text-sm font-medium text-slate-600">网络连通</span>
-            <span class="text-sm font-bold text-slate-900 tabular-nums">{{ connectivitySummary.accessible }}/{{ connectivitySummary.total }}</span>
+          <div v-if="connectivitySummary.total > 0" class="app-stat-item">
+            <span class="app-status-dot bg-blue-500"></span>
+            <span>网络连通</span>
+            <span class="app-stat-value">{{ connectivitySummary.accessible }}/{{ connectivitySummary.total }}</span>
           </div>
-          <span v-if="lastTestedAt" class="text-xs text-slate-400 ml-auto">最近检测：{{ formatTime(lastTestedAt) }}</span>
+          <span v-if="lastTestedAt" class="text-xs text-muted-foreground ml-auto">最近检测：{{ formatTime(lastTestedAt) }}</span>
         </div>
-      </div>
-    </div>
+    </AppToolbarFrame>
 
-    <!-- Main Content Area -->
-    <div class="w-full max-w-[1400px] mx-auto px-6 py-6">
-      <!-- Search Bar -->
-      <div class="flex items-center justify-between gap-4 mb-6 w-full">
+    <div class="app-page-content">
+      <div class="app-page-toolbar">
         <div class="relative w-72 shrink-0">
-          <AppIcon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <AppIcon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             v-model="searchQuery"
             placeholder="搜索插件名称、站点或描述..."
-            class="h-9 pl-9 pr-8 bg-white border-slate-200 rounded-lg text-sm focus-visible:ring-slate-200 shadow-none w-full"
+            class="h-9 pl-9 pr-8 text-sm shadow-none w-full"
           />
           <button
             v-if="searchQuery"
             @click="searchQuery = ''"
-            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-muted-foreground"
           >
             <AppIcon name="close" class="h-4 w-4" />
           </button>
@@ -113,17 +104,15 @@
           :disabled="reloading || loading"
           variant="ghost"
           @click="handleReload"
-          class="h-9 px-3 text-slate-500 hover:text-slate-900"
+          class="h-9 px-3"
         >
           <AppIcon name="refresh" :class="['h-4 w-4 mr-2', reloading ? 'animate-spin' : '']" />
           重载插件库
         </Button>
       </div>
 
-      <!-- Plugin List -->
-      <div class="w-full bg-white rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(0,0,0,0.05)] flex flex-col">
-        <!-- List Header -->
-        <div class="grid grid-cols-[1fr_100px_180px_100px_100px_200px] gap-4 px-6 py-4 bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider w-full">
+      <div class="app-surface w-full overflow-x-auto flex flex-col">
+        <div class="plugin-grid app-table-head gap-4 px-6 py-4 w-full">
           <div>插件详情</div>
           <div class="text-center">状态</div>
           <div>核心能力</div>
@@ -133,9 +122,9 @@
         </div>
 
         <!-- List Content -->
-        <div class="divide-y divide-slate-200/40 w-full">
-          <div v-if="isInitialLoading" class="w-full p-12 space-y-4">
-            <div v-for="i in 5" :key="i" class="h-16 w-full bg-slate-50 animate-pulse rounded-lg"></div>
+        <div class="divide-y divide-border/60 w-full">
+          <div v-if="isInitialLoading" class="w-full p-12 flex flex-col gap-4">
+            <div v-for="i in 5" :key="i" class="h-16 w-full bg-muted/40 animate-pulse rounded-lg"></div>
           </div>
 
           <AppEmptyState
@@ -148,7 +137,7 @@
           <div
             v-for="plugin in displayPlugins"
             :key="plugin.plugin_id"
-            class="grid grid-cols-[1fr_100px_180px_100px_100px_200px] gap-4 px-6 py-5 items-center hover:bg-slate-50 transition-colors group w-full"
+            class="plugin-grid app-table-row gap-4 px-6 py-5 items-center group w-full"
           >
             <!-- Plugin Info -->
             <div class="flex items-center gap-4 min-w-0">
@@ -158,15 +147,15 @@
                   :icon-url="plugin.primarySite.icon_url"
                   :label="plugin.primarySite.site_name || plugin.display_name"
                   size="md"
-                  class="rounded-lg border border-slate-100 shadow-sm"
+                  class="rounded-lg border border-border/60 shadow-sm"
                 />
-                <div v-else class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-300 border border-slate-200">
+                <div v-else class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground/60 border border-border">
                   <AppIcon name="cube" class="h-5 w-5" />
                 </div>
               </div>
               <div class="min-w-0">
-                <h3 class="font-semibold text-slate-900 text-sm truncate">{{ plugin.display_name }}</h3>
-                <p class="text-xs text-slate-500 line-clamp-1 mt-0.5">{{ plugin.description || '暂无描述' }}</p>
+                <h3 class="font-semibold text-foreground text-sm truncate">{{ plugin.display_name }}</h3>
+                <p class="text-xs text-muted-foreground line-clamp-1 mt-0.5">{{ plugin.description || '暂无描述' }}</p>
               </div>
             </div>
 
@@ -174,7 +163,7 @@
             <div class="flex justify-center">
               <div :class="[
                 'px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wider',
-                !plugin.enabled ? 'bg-slate-100 border-slate-200 text-slate-500' :
+                !plugin.enabled ? 'bg-muted border-border text-muted-foreground' :
                 plugin.active_runtime?.state === 'running' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
                 (plugin.health?.healthy === false || plugin.active_runtime?.state === 'failed') ? 'bg-rose-50 border-rose-100 text-rose-700' :
                 'bg-blue-50 border-blue-100 text-blue-700'
@@ -188,18 +177,18 @@
               <span
                 v-for="cap in plugin.capabilities.slice(0, 3)"
                 :key="cap.name"
-                class="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-medium text-slate-500"
+                class="px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-muted-foreground"
               >
                 {{ cap.name }}
               </span>
-              <span v-if="plugin.capabilities.length > 3" class="text-[10px] text-slate-400 font-medium ml-1">
+              <span v-if="plugin.capabilities.length > 3" class="text-[10px] text-muted-foreground font-medium ml-1">
                 +{{ plugin.capabilities.length - 3 }}
               </span>
             </div>
 
             <!-- Network -->
             <div class="flex justify-center">
-              <div v-if="plugin.siteTesting" class="animate-spin text-slate-300">
+              <div v-if="plugin.siteTesting" class="animate-spin text-muted-foreground/60">
                 <AppIcon name="refresh" class="h-4 w-4" />
               </div>
               <div v-else-if="plugin.siteAccessible === true" class="text-emerald-500" title="网络连通正常">
@@ -208,12 +197,12 @@
               <div v-else-if="plugin.siteAccessible === false" class="text-rose-500" title="网络连接失败">
                 <AppIcon name="xCircle" class="h-5 w-5" />
               </div>
-              <span v-else class="text-slate-200">—</span>
+              <span v-else class="text-muted-foreground/35">—</span>
             </div>
 
             <!-- Login -->
             <div class="flex justify-center">
-              <div v-if="plugin.siteLoginTesting" class="animate-spin text-slate-300">
+              <div v-if="plugin.siteLoginTesting" class="animate-spin text-muted-foreground/60">
                 <AppIcon name="refresh" class="h-4 w-4" />
               </div>
               <div v-else-if="plugin.siteOAuthStatus === 'authenticated' || plugin.siteLoginStatus?.logged_in" class="text-emerald-500" title="身份验证有效">
@@ -225,7 +214,7 @@
               <div v-else-if="plugin.siteLoginStatus" class="text-rose-500" title="身份验证失效">
                 <AppIcon name="xCircle" class="h-5 w-5" />
               </div>
-              <span v-else class="text-slate-200">—</span>
+              <span v-else class="text-muted-foreground/35">—</span>
             </div>
 
             <!-- Actions -->
@@ -235,7 +224,7 @@
                 variant="ghost"
                 size="icon"
                 @click="plugin.enabled ? handleDisable(plugin) : handleEnable(plugin)"
-                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 transition-colors"
+                class="h-8 w-8 rounded-md hover:bg-muted text-muted-foreground transition-colors"
                 :title="plugin.enabled ? '停用插件' : '启用插件'"
               >
                 <AppIcon v-if="plugin.enabled" name="pause" class="h-4 w-4" />
@@ -249,7 +238,7 @@
                 size="icon"
                 @click="handleTestSingleBySite(plugin.siteName)"
                 :disabled="plugin.siteTesting"
-                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-amber-500 transition-colors"
+                class="h-8 w-8 rounded-md hover:bg-muted text-muted-foreground hover:text-amber-500 transition-colors"
                 title="连通性测试"
               >
                 <AppIcon name="bolt" class="h-4 w-4" />
@@ -262,7 +251,7 @@
                 size="icon"
                 @click="handleTestLoginBySite(plugin.siteName)"
                 :disabled="plugin.siteLoginTesting"
-                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-blue-500 transition-colors"
+                class="h-8 w-8 rounded-md hover:bg-muted text-muted-foreground hover:text-blue-500 transition-colors"
                 title="验证登录状态"
               >
                 <AppIcon name="security" class="h-4 w-4" />
@@ -274,7 +263,7 @@
                 variant="ghost"
                 size="icon"
                 @click="plugin.siteOAuthStatus === 'authenticated' || plugin.siteOAuthStatus === 'pending' ? handleRevokeYouTubeOAuth() : handleStartYouTubeOAuth()"
-                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 transition-colors"
+                class="h-8 w-8 rounded-md hover:bg-muted text-muted-foreground transition-colors"
                 title="授权管理"
               >
                 <AppIcon v-if="plugin.siteOAuthStatus === 'authenticated'" name="link" class="h-4 w-4 text-emerald-500" />
@@ -286,7 +275,7 @@
                 variant="ghost"
                 size="icon"
                 @click="openSiteEditorByPlugin(plugin)"
-                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-colors"
+                class="h-8 w-8 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 title="站点配置"
               >
                 <AppIcon name="settingsPanel" class="h-4 w-4" />
@@ -297,7 +286,7 @@
                 variant="ghost"
                 size="icon"
                 @click="handleUninstall(plugin)"
-                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors"
+                class="h-8 w-8 rounded-md hover:bg-muted text-muted-foreground hover:text-rose-600 transition-colors"
                 title="卸载插件"
               >
                 <AppIcon name="trash" class="h-4 w-4" />
@@ -325,6 +314,8 @@
 import { onMounted, onUnmounted, ref, computed } from 'vue';
 import AppEmptyState from '@/components/layout/AppEmptyState.vue';
 import AppPageShell from '@/components/layout/AppPageShell.vue';
+import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
 import AppIcon from '@/components/common/AppIcon.vue';
 import SiteIcon from '@/components/common/SiteIcon.vue'
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue';
@@ -722,7 +713,13 @@ onUnmounted(stopYouTubeOAuthPolling);
 
 <style scoped>
 .plugin-page {
-  min-height: 100vh;
+  min-height: 100%;
   scrollbar-gutter: stable;
+}
+
+.plugin-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1fr) 100px 180px 100px 100px 200px;
+  min-width: 980px;
 }
 </style>

@@ -32,9 +32,9 @@ defineProps({
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.875rem;
+  gap: 1rem;
   width: 100%;
-  padding: 0.125rem 0 0.625rem;
+  padding: 0.25rem 0;
 }
 
 .page-header__copy {
@@ -52,10 +52,10 @@ defineProps({
 
 .page-header__title {
   margin: 0;
-  font-size: clamp(0.95rem, 0.9rem + 0.25vw, 1.125rem);
-  line-height: 1.2;
+  font-size: 1.125rem;
+  line-height: 1.25;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
   color: hsl(var(--foreground));
 }
 

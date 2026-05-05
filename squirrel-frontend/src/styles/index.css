@@ -28,7 +28,7 @@
   body {
     @apply text-foreground;
     font-family: var(--font-sans);
-    letter-spacing: -0.011em;
+    letter-spacing: 0;
   }
 
   /* 全局滚动条美化（非侵入式） */

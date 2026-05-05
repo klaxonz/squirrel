@@ -1,85 +1,71 @@
 <template>
-  <AppPageShell class="scheduled-page bg-slate-50/50">
-    <!-- Header Area (Linear/Apple Style) -->
-    <div class="w-full bg-white">
-      <div class="w-full max-w-[1400px] mx-auto px-6 py-10">
-        <div class="flex items-center justify-between">
-          <div class="space-y-1">
-            <h1 class="text-xl font-semibold text-slate-900 tracking-tight">定时任务</h1>
-            <p class="text-sm text-slate-500">管理自动化数据采集与系统同步任务</p>
-          </div>
+  <AppPageShell class="scheduled-page" variant="compact" scrollable>
+    <AppToolbarFrame bordered>
+      <PageHeader title="定时任务" description="管理自动化数据采集与系统同步任务">
+        <template #actions>
           <div class="flex items-center gap-3">
             <Button
               variant="outline"
               @click="refreshData"
-              class="h-9 px-4 text-sm font-medium border-slate-200 hover:bg-slate-50 transition-colors"
+              class="h-9 px-4 text-sm font-medium"
             >
-              <AppIcon name="refresh" :class="['h-4 w-4 mr-2 text-slate-500', loading ? 'animate-spin' : '']" />
+              <AppIcon name="refresh" :class="['h-4 w-4 mr-2', loading ? 'animate-spin' : '']" />
               刷新
             </Button>
             <Button
               @click="showCreateDialog = true"
-              class="h-9 px-4 text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 transition-colors shadow-sm"
+              class="h-9 px-4 text-sm font-medium"
             >
               <AppIcon name="plus" class="h-4 w-4 mr-2" />
               新建任务
             </Button>
           </div>
-        </div>
+        </template>
+      </PageHeader>
 
-        <!-- Compact Stats (Notion Style) -->
-        <div class="flex items-center gap-8 mt-8">
-          <div v-for="stat in statCards" :key="stat.key" class="flex items-center gap-3">
-            <div :class="['w-2 h-2 rounded-full', stat.dotColor]"></div>
-            <span class="text-sm font-medium text-slate-600">{{ stat.label }}</span>
-            <span class="text-sm font-bold text-slate-900 tabular-nums">{{ stat.value }}</span>
-          </div>
+      <div class="app-stat-strip">
+        <div v-for="stat in statCards" :key="stat.key" class="app-stat-item">
+          <span :class="['app-status-dot', stat.dotColor]"></span>
+          <span>{{ stat.label }}</span>
+          <span class="app-stat-value">{{ stat.value }}</span>
         </div>
       </div>
-    </div>
+    </AppToolbarFrame>
 
-    <!-- Main Content Area -->
-    <div class="w-full max-w-[1400px] mx-auto px-6 py-6">
-      <!-- Filter & Search Bar (Linear Style) -->
-      <div class="flex items-center justify-between gap-4 mb-6 w-full">
-        <div class="flex items-center gap-1 p-1 bg-slate-200/50 rounded-lg shrink-0">
+    <div class="app-page-content">
+      <div class="app-page-toolbar">
+        <div class="app-tab-list shrink-0">
           <button
             v-for="opt in statusOptions"
             :key="opt.value"
             @click="setStatusFilter(opt.value)"
-            :class="[
-              'px-4 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap',
-              statusFilter === opt.value 
-                ? 'bg-white text-slate-900 shadow-sm' 
-                : 'text-slate-500 hover:text-slate-700'
-            ]"
+            class="app-tab-button"
+            :class="{ 'is-active': statusFilter === opt.value }"
           >
             {{ opt.label }}
           </button>
         </div>
 
         <div class="relative w-72 shrink-0">
-          <AppIcon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <AppIcon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             v-model="searchQuery"
             @input="debouncedSearch"
             placeholder="搜索任务..."
-            class="h-9 pl-9 pr-8 bg-white border-slate-200 rounded-lg text-sm focus-visible:ring-slate-200 shadow-none w-full"
+            class="h-9 pl-9 pr-8 text-sm shadow-none w-full"
           />
           <button
             v-if="searchQuery"
             @click="clearSearch"
-            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-muted-foreground"
           >
             <AppIcon name="close" class="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      <!-- Task List (Linear Table Style) -->
-      <div class="w-full bg-white rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(0,0,0,0.05)] flex flex-col">
-        <!-- List Header -->
-        <div class="grid grid-cols-[1fr_120px_140px_160px_100px] gap-4 px-6 py-4 bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider w-full">
+      <div class="app-surface w-full overflow-x-auto flex flex-col">
+        <div class="scheduled-task-grid app-table-head gap-4 px-6 py-4 w-full">
           <div>任务详情</div>
           <div class="text-center">状态</div>
           <div>执行频率</div>
@@ -88,9 +74,9 @@
         </div>
 
         <!-- List Content -->
-        <div class="divide-y divide-slate-200/40 w-full">
-          <div v-if="loading && tasks.length === 0" class="w-full p-12 space-y-4">
-            <div v-for="i in 5" :key="i" class="h-12 w-full bg-slate-50 animate-pulse rounded-lg"></div>
+        <div class="divide-y divide-border/60 w-full">
+          <div v-if="loading && tasks.length === 0" class="w-full p-12 flex flex-col gap-4">
+            <div v-for="i in 5" :key="i" class="h-12 w-full bg-muted/40 animate-pulse rounded-lg"></div>
           </div>
 
           <AppEmptyState
@@ -103,18 +89,18 @@
           <div
             v-for="task in tasks"
             :key="task.id"
-            class="grid grid-cols-[1fr_120px_140px_160px_100px] gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors group w-full"
+            class="scheduled-task-grid app-table-row gap-4 px-6 py-4 items-center group w-full"
           >
             <!-- Task Info -->
             <div class="min-w-0">
               <div class="flex items-center gap-2">
-                <span class="font-semibold text-slate-900 text-sm truncate">{{ task.name }}</span>
+                <span class="font-semibold text-foreground text-sm truncate">{{ task.name }}</span>
                 <div v-if="task.status === 'running'" class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50 text-[10px] font-bold text-blue-600 uppercase">
                   <span class="w-1 h-1 rounded-full bg-blue-600 animate-pulse"></span>
                   运行中
                 </div>
               </div>
-              <p class="text-xs text-slate-500 line-clamp-1 mt-1">{{ task.description || '暂无描述' }}</p>
+              <p class="text-xs text-muted-foreground line-clamp-1 mt-1">{{ task.description || '暂无描述' }}</p>
             </div>
 
             <!-- Status Badge -->
@@ -122,7 +108,7 @@
               <div :class="[
                 'px-2.5 py-1 rounded-md text-[11px] font-bold border',
                 task.status === 'enabled' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                task.status === 'disabled' ? 'bg-slate-100 border-slate-200 text-slate-500' :
+                task.status === 'disabled' ? 'bg-muted border-border text-muted-foreground' :
                 task.status === 'error' ? 'bg-rose-50 border-rose-100 text-rose-700' :
                 'bg-blue-50 border-blue-100 text-blue-700'
               ]">
@@ -131,13 +117,13 @@
             </div>
 
             <!-- Interval -->
-            <div class="text-sm text-slate-600 font-medium flex items-center gap-2">
-              <AppIcon name="time" class="h-3.5 w-3.5 text-slate-400" />
+            <div class="text-sm text-muted-foreground font-medium flex items-center gap-2">
+              <AppIcon name="time" class="h-3.5 w-3.5 text-muted-foreground" />
               {{ task.interval }} {{ getUnitFull(task.unit) }}
             </div>
 
             <!-- Schedule -->
-            <div class="text-xs text-slate-500 tabular-nums">
+            <div class="text-xs text-muted-foreground tabular-nums">
               {{ formatDateTime(task.next_run_at) || '—' }}
             </div>
 
@@ -147,7 +133,7 @@
                 variant="ghost"
                 size="icon"
                 @click="executeTask(task)"
-                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-all"
+                class="h-8 w-8 rounded-md hover:bg-muted text-muted-foreground hover:text-blue-600 transition-all"
                 title="立即执行"
               >
                 <AppIcon name="play" class="h-4 w-4 fill-current" />
@@ -156,18 +142,18 @@
                 variant="ghost"
                 size="icon"
                 @click="editTask(task)"
-                class="h-8 w-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-all"
+                class="h-8 w-8 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
                 title="编辑"
               >
                 <AppIcon name="pencil" class="h-4 w-4" />
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button class="h-8 w-8 flex items-center justify-center rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-all">
+                  <button class="h-8 w-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-all">
                     <AppIcon name="more" class="h-4 w-4" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="w-40 p-1 bg-white border border-slate-200 shadow-xl rounded-lg">
+                <DropdownMenuContent align="end" class="w-40 p-1 bg-card border border-border shadow-xl rounded-lg">
                   <DropdownMenuItem v-if="task.is_active" @click="disableTask(task.id)" class="px-3 py-2 text-sm text-amber-600 rounded-md cursor-pointer hover:bg-amber-50">
                     <AppIcon name="pause" class="h-3.5 w-3.5 mr-2" />
                     暂停任务
@@ -176,7 +162,7 @@
                     <AppIcon name="sync" class="h-3.5 w-3.5 mr-2" />
                     恢复任务
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator class="bg-slate-100" />
+                  <DropdownMenuSeparator class="bg-muted" />
                   <DropdownMenuItem @click="confirmDeleteTask(task)" class="px-3 py-2 text-sm text-rose-600 rounded-md cursor-pointer hover:bg-rose-50">
                     <AppIcon name="trash" class="h-3.5 w-3.5 mr-2" />
                     删除任务
@@ -188,15 +174,15 @@
         </div>
 
         <!-- Pagination -->
-        <div v-if="totalPages > 1" class="px-6 py-5 bg-slate-50/30 border-t border-slate-100/50 flex items-center justify-between">
-          <span class="text-xs text-slate-400 font-medium">第 {{ currentPage }} / {{ totalPages }} 页</span>
+        <div v-if="totalPages > 1" class="px-6 py-5 bg-muted/30 border-t border-border/50 flex items-center justify-between">
+          <span class="text-xs text-muted-foreground font-medium">第 {{ currentPage }} / {{ totalPages }} 页</span>
           <div class="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               :disabled="currentPage <= 1"
               @click="goToPage(currentPage - 1)"
-              class="h-8 px-3 text-xs border-slate-200 bg-white"
+              class="h-8 px-3 text-xs border-border bg-card"
             >
               上一页
             </Button>
@@ -205,7 +191,7 @@
               size="sm"
               :disabled="currentPage >= totalPages"
               @click="goToPage(currentPage + 1)"
-              class="h-8 px-3 text-xs border-slate-200 bg-white"
+              class="h-8 px-3 text-xs border-border bg-card"
             >
               下一页
             </Button>
@@ -232,14 +218,14 @@
 
     <!-- Confirmations -->
     <Dialog v-model:open="showDeleteDialog">
-      <DialogContent class="max-w-[400px] p-0 overflow-hidden rounded-xl border-slate-200">
+      <DialogContent class="max-w-[400px] p-0 overflow-hidden rounded-xl border-border">
         <div class="p-6">
-          <h3 class="text-lg font-semibold text-slate-900">确认删除任务</h3>
-          <p class="text-sm text-slate-500 mt-2 leading-relaxed">
-            确定要删除任务 <span class="font-bold text-slate-900">"{{ deletingTask?.name }}"</span> 吗？此操作将停止所有调度并清除任务记录。
+          <h3 class="text-lg font-semibold text-foreground">确认删除任务</h3>
+          <p class="text-sm text-muted-foreground mt-2 leading-relaxed">
+            确定要删除任务 <span class="font-bold text-foreground">"{{ deletingTask?.name }}"</span> 吗？此操作将停止所有调度并清除任务记录。
           </p>
         </div>
-        <div class="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-200">
+        <div class="flex items-center justify-end gap-3 px-6 py-4 bg-muted/40 border-t border-border">
           <Button variant="ghost" @click="showDeleteDialog = false" class="h-9 px-4 text-sm font-medium">取消</Button>
           <Button @click="doDeleteTask" class="h-9 px-4 text-sm font-medium bg-rose-600 text-white hover:bg-rose-700">确认删除</Button>
         </div>
@@ -247,16 +233,16 @@
     </Dialog>
 
     <Dialog v-model:open="showExecuteDialog">
-      <DialogContent class="max-w-[400px] p-0 overflow-hidden rounded-xl border-slate-200">
+      <DialogContent class="max-w-[400px] p-0 overflow-hidden rounded-xl border-border">
         <div class="p-6">
-          <h3 class="text-lg font-semibold text-slate-900">立即触发任务</h3>
-          <p class="text-sm text-slate-500 mt-2 leading-relaxed">
-            任务 <span class="font-bold text-slate-900">"{{ executingTask?.name }}"</span> 将立即进入执行队列。
+          <h3 class="text-lg font-semibold text-foreground">立即触发任务</h3>
+          <p class="text-sm text-muted-foreground mt-2 leading-relaxed">
+            任务 <span class="font-bold text-foreground">"{{ executingTask?.name }}"</span> 将立即进入执行队列。
           </p>
         </div>
-        <div class="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-200">
+        <div class="flex items-center justify-end gap-3 px-6 py-4 bg-muted/40 border-t border-border">
           <Button variant="ghost" @click="showExecuteDialog = false" class="h-9 px-4 text-sm font-medium">取消</Button>
-          <Button @click="doExecuteTask" class="h-9 px-4 text-sm font-medium bg-slate-900 text-white hover:bg-slate-800">开始执行</Button>
+          <Button @click="doExecuteTask" class="h-9 px-4 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90">开始执行</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -266,7 +252,7 @@
       <div v-if="toast.visible" class="fixed bottom-6 right-6 z-50">
         <div :class="[
           'flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium transition-all',
-          toast.error ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-slate-900 border-slate-800 text-white'
+          toast.error ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-primary border-primary text-primary-foreground'
         ]">
           <AppIcon v-if="!toast.error" name="statusSuccess" class="h-4 w-4 text-emerald-400" />
           <AppIcon v-else name="warning" class="h-4 w-4 text-rose-400" />
@@ -282,6 +268,8 @@ import { computed, ref, onMounted } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import AppEmptyState from '@/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
+import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue'
+import PageHeader from '@/components/layout/PageHeader.vue'
 import TaskDialog from '@/components/dialogs/TaskDialog.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -351,7 +339,7 @@ const hasTaskFilters = computed(() => {
 
 // Stats
 const statCards = computed(() => [
-  { key: 'total', label: '全部', value: statistics.value.total_tasks, dotColor: 'bg-slate-400' },
+  { key: 'total', label: '全部', value: statistics.value.total_tasks, dotColor: 'app-status-dot--muted' },
   { key: 'active', label: '活跃', value: statistics.value.active_tasks, dotColor: 'bg-blue-500' },
   { key: 'running', label: '运行', value: statistics.value.running_tasks, dotColor: 'bg-emerald-500' },
   { key: 'error', label: '异常', value: statistics.value.error_tasks, dotColor: 'bg-rose-500' },
@@ -552,8 +540,14 @@ onMounted(loadData)
 
 <style scoped>
 .scheduled-page {
-  min-height: 100vh;
+  min-height: 100%;
   scrollbar-gutter: stable;
+}
+
+.scheduled-task-grid {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) 120px 140px 160px 100px;
+  min-width: 820px;
 }
 
 .toast-enter-active,

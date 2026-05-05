@@ -1,11 +1,11 @@
 <template>
-  <div class="min-h-full bg-background">
+  <AppPageShell class="latest-videos-page" variant="compact" scrollable>
     <!-- Channel Header -->
     <ChannelHeader v-if="subscriptionId" :subscription-id="subscriptionId" />
 
     <!-- Sticky Toolbar -->
-    <div class="sticky top-0 z-30 bg-background border-b border-border/20">
-      <div class="max-w-[2400px] mx-auto">
+    <div class="sticky top-0 z-30 bg-background">
+      <AppToolbarFrame bordered compact>
         <FeedToolbar
           :active-tab="activeTab"
           :nsfw="nsfw"
@@ -20,11 +20,11 @@
           @update:site="site = $event"
           @refresh="refreshCurrentList"
         />
-      </div>
+      </AppToolbarFrame>
     </div>
 
     <!-- Main Content Area -->
-    <div class="max-w-[2400px] mx-auto">
+    <div class="app-page-content">
       <div v-if="loadError" class="px-6 pt-6">
         <div class="bg-destructive/5 border border-destructive/20 rounded-2xl p-4 flex items-center justify-between">
           <p class="text-sm text-destructive font-medium">{{ loadError?.message || loadError }}</p>
@@ -46,7 +46,7 @@
         </keep-alive>
       </router-view>
     </div>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">
@@ -58,6 +58,8 @@ import { useFeedFilters } from '../composables/useFeedFilters'
 import { useRefreshTriggers } from '../composables/useRefreshTriggers'
 import FeedToolbar from '@/components/feed/FeedToolbar.vue'
 import ChannelHeader from '@/components/feed/ChannelHeader.vue'
+import AppPageShell from '@/components/layout/AppPageShell.vue'
+import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue'
 import { VIDEO_TABS } from '@/constants/videos'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { onSubscriptionRemoved } from '@/utils/subscriptionEvents'
@@ -107,3 +109,9 @@ onMounted(() => {
   })
 })
 </script>
+
+<style scoped>
+.latest-videos-page {
+  --app-page-max-width: 2400px;
+}
+</style>

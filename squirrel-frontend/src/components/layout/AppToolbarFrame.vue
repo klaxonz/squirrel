@@ -45,6 +45,9 @@ defineProps({
 }
 
 .app-toolbar-frame__inner {
+  width: 100%;
+  max-width: var(--app-page-max-width);
+  margin: 0 auto;
   padding-block: var(--app-toolbar-padding-block);
 }
 
