@@ -439,7 +439,7 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 → ...
 **Pros**: Consistent design language, can adjust along the way
 **Cons**: Longer total time
 
-### Option B: Parallel (Using team/ultrawork)
+### Option B: Parallel
 
 Split work across multiple agents working on different phases simultaneously.
 
@@ -499,7 +499,7 @@ Should we:
 # Create feature branch
 git checkout -b redesign/v1
 
-# Or let me set up team agents
+# Coordinate separate work streams manually
 ```
 
 ### If using sequential execution (Option A):

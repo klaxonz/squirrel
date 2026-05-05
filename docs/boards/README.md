@@ -77,15 +77,11 @@
 - 影响范围
 - 关联 issue / PR / 修复提交
 
-## 与 OMX 的关系
+## 使用建议
 
-本仓库已经补充为 **project-scope OMX** 项目，后续可把已进入 `Ready` 的需求转入：
-
-- `.omx/plans/prd-*.md`
-- `.omx/plans/test-spec-*.md`
+已进入 `Ready` 的需求可以直接关联 GitHub issue、PRD 文档或实现 PR。
 
 也就是说：
 
 - 看板负责 **收集与排期**
-- OMX 计划文档负责 **落地实现**
-
+- 关联文档和 PR 负责 **记录实现与验收**
