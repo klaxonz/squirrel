@@ -1,33 +1,43 @@
 <template>
-  <section class="feed-toolbar">
-    <div class="toolbar-container">
+  <section class="flex flex-col bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div class="flex items-center h-14 px-4 sm:px-6 gap-4 sm:gap-6 border-b border-border/40">
+      
       <!-- Left: Navigation Tabs -->
-      <div v-if="showTabs" class="nav-group">
+      <nav v-if="showTabs" class="flex items-center h-full space-x-1 overflow-x-auto scrollbar-hide -mb-px">
         <button
           v-for="tab in tabs"
           :key="tab.value"
-          class="nav-tab"
-          :class="{ 'is-active': localActiveTab === tab.value }"
+          class="relative h-full px-3 text-[13px] font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          :class="[
+            localActiveTab === tab.value 
+              ? 'text-foreground' 
+              : 'text-muted-foreground hover:text-foreground/80'
+          ]"
           @click="localActiveTab = tab.value"
         >
           {{ tab.label }}
+          <div 
+            v-if="localActiveTab === tab.value"
+            class="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full"
+          ></div>
         </button>
-      </div>
+      </nav>
 
-      <div class="flex-1" />
+      <div class="flex-1 min-w-0" />
 
       <!-- Right: Filter Actions -->
-      <div class="filter-group">
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        
         <!-- Site Select -->
-        <div class="property-pill">
-          <span class="property-label">站点</span>
+        <div class="flex items-center bg-muted/40 hover:bg-muted/60 border border-border/40 rounded-lg px-2.5 h-8 transition-colors">
+          <span class="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mr-1.5 select-none hidden sm:inline-block">站点</span>
           <Select :model-value="site || 'all'" @update:model-value="handleSiteChange">
-            <SelectTrigger class="property-trigger">
+            <SelectTrigger class="h-auto p-0 border-0 bg-transparent shadow-none hover:bg-transparent focus:ring-0 text-xs font-medium text-foreground gap-1.5">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">全部站点</SelectItem>
-              <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value">
+              <SelectItem value="all" class="text-xs">全部站点</SelectItem>
+              <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">
                 {{ opt.label }}
               </SelectItem>
             </SelectContent>
@@ -35,45 +45,51 @@
         </div>
 
         <!-- Sort Select -->
-        <div v-if="showSort" class="property-pill">
-          <span class="property-label">排序</span>
+        <div v-if="showSort" class="hidden sm:flex items-center bg-muted/40 hover:bg-muted/60 border border-border/40 rounded-lg px-2.5 h-8 transition-colors">
+          <span class="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mr-1.5 select-none">排序</span>
           <Select v-model="localSortBy">
-            <SelectTrigger class="property-trigger">
+            <SelectTrigger class="h-auto p-0 border-0 bg-transparent shadow-none hover:bg-transparent focus:ring-0 text-xs font-medium text-foreground gap-1.5">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+              <SelectItem v-for="opt in sortOptions" :key="opt.value" :value="opt.value" class="text-xs">
                 {{ opt.label }}
               </SelectItem>
             </SelectContent>
           </Select>
         </div>
 
+        <div class="w-px h-4 bg-border/50 mx-1 hidden sm:block" />
+
         <!-- Advanced Filter -->
         <button
           v-if="showFilter"
           type="button"
-          class="icon-action-btn"
-          :class="{ 'is-active': activeFilterCount > 0 }"
+          class="relative w-8 h-8 flex items-center justify-center rounded-lg transition-colors border border-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          :class="[
+            activeFilterCount > 0 
+              ? 'bg-primary/10 text-primary border-primary/20' 
+              : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground border-border/40'
+          ]"
           @click="filterModalOpen = true"
+          title="高级筛选"
         >
-          <AppIcon name="filter" class="w-3.5 h-3.5" />
-          <span v-if="activeFilterCount > 0" class="active-dot" />
+          <AppIcon name="filter" class="w-4 h-4" />
+          <span v-if="activeFilterCount > 0" class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full ring-2 ring-background"></span>
         </button>
-        
-        <div class="w-px h-3 bg-border/40 mx-1.5" />
 
         <!-- Refresh -->
         <button
           v-if="showRefresh"
           type="button"
-          class="icon-action-btn"
+          class="w-8 h-8 flex items-center justify-center rounded-lg transition-colors border border-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary text-muted-foreground hover:bg-muted/60 hover:text-foreground border-border/40"
           @click="$emit('refresh')"
+          title="刷新内容"
         >
           <AppIcon
             name="refresh"
-            class="w-3.5 h-3.5"
-            :class="{ 'is-spinning': isRefreshing }"
+            class="w-4 h-4"
+            :class="{ 'animate-spin': isRefreshing }"
           />
         </button>
       </div>
@@ -156,136 +172,3 @@ const sortOptions = [
   { value: 'created_at', label: '抓取日期' },
 ]
 </script>
-
-<style scoped>
-.feed-toolbar {
-  display: flex;
-  flex-direction: column;
-  background: hsl(var(--background));
-}
-
-.toolbar-container {
-  display: flex;
-  align-items: center;
-  height: 3.5rem;
-  padding: 0 1.5rem;
-  gap: 1.25rem;
-}
-
-.nav-group {
-  display: flex;
-  align-items: center;
-  gap: 1.75rem;
-  height: 100%;
-}
-
-.nav-tab {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  font-weight: 600;
-  color: hsl(var(--muted-foreground) / 0.4);
-  transition: all 0.2s;
-  position: relative;
-  cursor: pointer;
-  background: none;
-  border: none;
-  padding: 0;
-  letter-spacing: -0.01em;
-}
-
-.nav-tab:hover { color: hsl(var(--foreground) / 0.8); }
-.nav-tab.is-active { color: hsl(var(--foreground)); }
-.nav-tab.is-active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: -2px;
-  right: -2px;
-  height: 2px;
-  background: hsl(var(--foreground));
-  border-radius: 2px;
-}
-
-.filter-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.property-pill {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  height: 2.125rem;
-  padding: 0 0.5rem 0 0.875rem;
-  background: hsl(var(--accent) / 0.3);
-  border-radius: var(--radius-md);
-  transition: all 0.2s;
-}
-
-.property-pill:hover { background: hsl(var(--accent) / 0.6); }
-
-.property-label {
-  font-size: 10px;
-  font-weight: 800;
-  color: hsl(var(--muted-foreground) / 0.3);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  user-select: none;
-}
-
-.property-trigger {
-  background: none !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  height: auto !important;
-  font-size: 12px !important;
-  font-weight: 700 !important;
-  color: hsl(var(--foreground) / 0.9) !important;
-  width: auto !important;
-  min-width: 40px;
-  gap: 0.25rem;
-}
-
-.icon-action-btn {
-  width: 2.125rem;
-  height: 2.125rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-md);
-  color: hsl(var(--muted-foreground) / 0.6);
-  transition: all 0.2s;
-  cursor: pointer;
-  background: none;
-  border: none;
-  position: relative;
-}
-
-.icon-action-btn:hover {
-  background: hsl(var(--accent) / 0.6);
-  color: hsl(var(--foreground));
-}
-
-.icon-action-btn.is-active {
-  color: hsl(var(--foreground));
-  background: hsl(var(--foreground) / 0.05);
-}
-
-.active-dot {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 7px;
-  height: 7px;
-  background: hsl(var(--primary));
-  border-radius: 50%;
-  border: 2px solid hsl(var(--background));
-}
-
-.is-spinning { animation: spin 1s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-</style>

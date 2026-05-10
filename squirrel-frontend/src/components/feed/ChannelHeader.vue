@@ -1,80 +1,77 @@
 <template>
   <transition name="channel-dismiss">
-    <div v-if="isVisible" class="channel-terminal-header">
-      <div class="header-overlay"></div>
-      <div class="latest-videos__container channel-header__container">
-        <div class="header-content">
-          <div class="channel-main-info">
+    <div v-if="isVisible" class="relative bg-background border-b border-border/40 overflow-hidden">
+      <div class="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        
+        <div class="flex items-center gap-4 min-w-0">
+          <!-- Avatar -->
+          <a
+            v-if="detail?.url"
+            :href="detail.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden border border-border/50 shadow-sm transition-transform hover:scale-105"
+          >
+            <SubscriptionAvatar
+              :src="detail?.avatar || null"
+              :name="detail?.name || '未知频道'"
+              size="lg"
+              class="w-full h-full"
+            />
+          </a>
+          <div v-else class="shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden border border-border/50 shadow-sm">
+            <SubscriptionAvatar
+              :src="detail?.avatar || null"
+              :name="detail?.name || '未知频道'"
+              size="lg"
+              class="w-full h-full"
+            />
+          </div>
 
-            <a
-              v-if="detail?.url"
-              :href="detail.url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="avatar-frame avatar-frame--link"
-            >
-              <SubscriptionAvatar
-                :src="detail?.avatar || null"
-                :name="detail?.name || '未知频道'"
-                size="lg"
-                class="channel-avatar-card"
-              />
-              <div class="avatar-scan"></div>
-            </a>
-            <div v-else class="avatar-frame">
-              <SubscriptionAvatar
-                :src="detail?.avatar || null"
-                :name="detail?.name || '未知频道'"
-                size="lg"
-                class="channel-avatar-card"
-              />
-              <div class="avatar-scan"></div>
+          <!-- Info -->
+          <div class="flex flex-col gap-1 min-w-0">
+            <div class="flex items-center gap-2 min-w-0">
+              <a
+                v-if="detail?.url"
+                :href="detail.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="hover:text-primary transition-colors min-w-0"
+              >
+                <h2 class="text-base sm:text-lg font-bold text-foreground truncate tracking-tight">{{ detail?.name || '未知频道' }}</h2>
+              </a>
+              <h2 v-else class="text-base sm:text-lg font-bold text-foreground truncate tracking-tight">{{ detail?.name || '未知频道' }}</h2>
+              
+              <span v-if="detail?.is_nsfw" class="shrink-0 px-1.5 py-0.5 text-[10px] font-bold tracking-widest uppercase border border-primary/50 text-primary rounded-md">NSFW</span>
             </div>
-
-            <div class="channel-text-minimal">
-              <div class="channel-top-row">
-                <div class="channel-title-row">
-                  <a
-                    v-if="detail?.url"
-                    :href="detail.url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="channel-title-link"
-                  >
-                    <h2 class="channel-title-minimal">{{ detail?.name || '未知频道' }}</h2>
-                  </a>
-                  <h2 v-else class="channel-title-minimal">{{ detail?.name || '未知频道' }}</h2>
-                  <button
-                    type="button"
-                    class="unsubscribe-minimal unsubscribe-minimal--tag"
-                    :disabled="isUnsubscribing"
-                    @click="handleUnsubscribe"
-                  >
-                    {{ isUnsubscribing ? '取消中...' : '取消订阅' }}
-                  </button>
-                </div>
-
-                <span v-if="detail?.is_nsfw" class="nsfw-tag nsfw-tag--muted">敏感</span>
-              </div>
-            </div>
-        </div>
-
-          <div class="channel-side-meta">
-            <div class="channel-stats-minimal">
-              <div class="stat-item">
-                <span class="stat-label">总数</span>
-                <span class="stat-value">{{ detail?.total_videos || 0 }}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">解析</span>
-                <span class="stat-value">{{ detail?.total_extract || 0 }}</span>
-              </div>
-            </div>
+            
+            <p v-if="detail?.description" class="text-xs text-muted-foreground/80 line-clamp-1 sm:line-clamp-2 max-w-2xl leading-relaxed">
+              {{ detail.description }}
+            </p>
           </div>
         </div>
 
-        <div v-if="detail?.description" class="channel-desc-minimal">
-          <p>{{ detail.description }}</p>
+        <!-- Stats & Actions -->
+        <div class="flex items-center gap-6 sm:gap-8 shrink-0 ml-[4rem] sm:ml-0">
+          <div class="flex items-center gap-4 sm:gap-6">
+            <div class="flex flex-col items-center">
+              <span class="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1">总数</span>
+              <span class="text-sm font-semibold font-mono text-foreground/80">{{ detail?.total_videos || 0 }}</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <span class="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1">解析</span>
+              <span class="text-sm font-semibold font-mono text-foreground/80">{{ detail?.total_extract || 0 }}</span>
+            </div>
+          </div>
+          
+          <button
+            type="button"
+            class="px-3 py-1.5 text-xs font-semibold rounded-md border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+            :disabled="isUnsubscribing"
+            @click="handleUnsubscribe"
+          >
+            {{ isUnsubscribing ? '取消中...' : '取消订阅' }}
+          </button>
         </div>
       </div>
     </div>
@@ -138,241 +135,6 @@ watch(() => props.subscriptionId, () => {
 </script>
 
 <style scoped>
-.channel-terminal-header {
-  position: relative;
-  padding: 0;
-  background: transparent;
-  overflow: hidden;
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
-}
-
-.channel-header__container {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: var(--container-max-width, 2560px);
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-.header-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to right, hsl(var(--primary) / 0.02) 0%, transparent 50%);
-  pointer-events: none;
-}
-
-.header-content {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0 1rem;
-}
-
-.channel-main-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex: 1;
-  min-width: 0;
-}
-
-.avatar-frame {
-  position: relative;
-  width: 52px;
-  height: 52px;
-  flex-shrink: 0;
-  border-radius: calc(var(--radius-sm) - 1px);
-  overflow: hidden;
-}
-
-.avatar-frame--link {
-  display: block;
-  text-decoration: none;
-  transition: transform var(--duration-normal) var(--ease-default);
-}
-
-.avatar-frame--link:hover {
-  transform: translateY(-1px);
-}
-
-.channel-avatar-card {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.channel-avatar-card.avatar--lg {
-  width: 100%;
-  height: 100%;
-}
-
-.channel-avatar-card:deep(.subscription-avatar) {
-  border-radius: calc(var(--radius-sm) - 1px);
-}
-
-.channel-avatar-card:deep(.avatar-image) {
-  filter: grayscale(0.5);
-}
-
-.avatar-scan {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: hsl(var(--primary));
-  opacity: 0.3;
-  animation: scan-avatar 3s linear infinite;
-}
-
-@keyframes scan-avatar {
-  0% { top: 0; }
-  100% { top: 100%; }
-}
-
-.channel-text-minimal {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  min-width: 0;
-  flex: 1;
-}
-
-.channel-top-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.28rem;
-  min-width: 0;
-}
-
-.channel-title-row {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  min-width: 0;
-}
-
-.channel-title-link {
-  min-width: 0;
-  text-decoration: none;
-}
-
-.channel-side-meta {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-shrink: 0;
-}
-
-.channel-title-minimal {
-  font-size: 1.15rem;
-  line-height: 1.15;
-  font-weight: 800;
-  color: hsl(var(--foreground));
-  letter-spacing: -0.02em;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.channel-title-link:hover .channel-title-minimal {
-  color: hsl(var(--primary));
-}
-
-.nsfw-tag {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.55rem;
-  color: hsl(var(--primary));
-  border: 1px solid hsl(var(--primary));
-  padding: 2px 6px;
-  width: fit-content;
-  flex-shrink: 0;
-}
-
-.nsfw-tag--muted {
-  border: none;
-  padding: 0;
-  color: hsl(var(--primary) / 0.7);
-}
-
-.channel-stats-minimal {
-  display: flex;
-  gap: 0.9rem;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.7rem;
-  white-space: nowrap;
-}
-
-.stat-label {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.58rem;
-  line-height: 1;
-  color: hsl(var(--muted-foreground) / 0.4);
-  letter-spacing: 0.1em;
-}
-
-.stat-value {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 1.02rem;
-  line-height: 1.05;
-  color: hsl(var(--foreground) / 0.6);
-}
-
-.unsubscribe-minimal {
-  background: transparent;
-  border: none;
-  color: hsl(var(--primary) / 0.7);
-  font-size: 0.54rem;
-  padding: 0;
-  letter-spacing: 0.1em;
-  cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
-  white-space: nowrap;
-  width: fit-content;
-  margin-top: 0.05rem;
-  text-align: left;
-}
-
-.unsubscribe-minimal--tag {
-  border: 1px solid hsl(var(--primary));
-  color: hsl(var(--primary));
-  padding: 2px 6px;
-  margin-top: 0;
-}
-
-.unsubscribe-minimal:hover {
-  color: hsl(var(--primary));
-}
-
-.channel-desc-minimal {
-  margin-top: 0.45rem;
-  max-width: 600px;
-  font-size: 0.66rem;
-  color: hsl(var(--muted-foreground) / 0.6);
-  line-height: 1.42;
-}
-
-.channel-desc-minimal p {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
 .channel-dismiss-enter-active,
 .channel-dismiss-leave-active {
   transition: all var(--duration-slow) var(--ease-out);
@@ -383,63 +145,4 @@ watch(() => props.subscriptionId, () => {
   opacity: 0;
   transform: translateY(-20px);
 }
-
-@media (max-width: 900px) {
-  .channel-title-minimal {
-    font-size: 1.05rem;
-  }
-}
-
-@media (min-width: 640px) {
-  .channel-header__container {
-    padding: 0 1.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .channel-header__container {
-    padding: 0 2rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .header-content {
-    flex-direction: column;
-    gap: 0.45rem;
-  }
-
-  .channel-main-info {
-    width: 100%;
-    align-items: flex-start;
-  }
-
-  .channel-side-meta {
-    width: 100%;
-    justify-content: flex-start;
-    padding-left: calc(46px + 0.75rem);
-  }
-
-  .avatar-frame {
-    width: 46px;
-    height: 46px;
-  }
-
-  .channel-title-row {
-    width: 100%;
-  }
-
-  .channel-stats-minimal {
-    justify-content: flex-start;
-  }
-
-  .channel-title-minimal {
-    white-space: normal;
-  }
-
-  .channel-desc-minimal {
-    margin-top: 0.4rem;
-    font-size: 0.64rem;
-  }
-}
 </style>
-

@@ -77,11 +77,4 @@ onUnmounted(() => observer?.disconnect())
 </script>
 
 <style scoped>
-@keyframes progress-slide {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-.animate-progress-slide {
-  animation: progress-slide 1.5s infinite linear;
-}
 </style>

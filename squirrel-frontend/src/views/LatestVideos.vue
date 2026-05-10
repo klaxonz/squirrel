@@ -4,23 +4,21 @@
     <ChannelHeader v-if="subscriptionId" :subscription-id="subscriptionId" />
 
     <!-- Sticky Toolbar -->
-    <div class="sticky top-0 z-30 bg-background">
-      <AppToolbarFrame bordered compact>
-        <FeedToolbar
-          :active-tab="activeTab"
-          :nsfw="nsfw"
-          :sort-by="sortBy"
-          :site="site"
-          :subscription-id="subscriptionId"
-          :tabs="tabs"
-          :is-refreshing="isRefreshing"
-          @update:activeTab="activeTab = $event"
-          @update:nsfw="nsfw = $event"
-          @update:sortBy="sortBy = $event"
-          @update:site="site = $event"
-          @refresh="refreshCurrentList"
-        />
-      </AppToolbarFrame>
+    <div class="sticky top-0 z-30">
+      <FeedToolbar
+        :active-tab="activeTab"
+        :nsfw="nsfw"
+        :sort-by="sortBy"
+        :site="site"
+        :subscription-id="subscriptionId"
+        :tabs="tabs"
+        :is-refreshing="isRefreshing"
+        @update:activeTab="activeTab = $event"
+        @update:nsfw="nsfw = $event"
+        @update:sortBy="sortBy = $event"
+        @update:site="site = $event"
+        @refresh="refreshCurrentList"
+      />
     </div>
 
     <!-- Main Content Area -->
