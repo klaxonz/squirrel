@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     COOKIECLOUD_UUID: str = ''
     COOKIECLOUD_PASSWORD: str = ''
     JWT_SECRET_KEY: str = 'change-me-in-env'
+    CORS_ALLOW_ORIGINS: str = 'http://localhost:5173,http://127.0.0.1:5173'
     SQUIRREL_YOUTUBE_POT_PROVIDER_MODE: str = 'auto'
     SQUIRREL_YOUTUBE_POT_PROVIDER_BASE_URL: str = ''
     SQUIRREL_YOUTUBE_POT_PROVIDER_SERVER_HOME: str = ''
@@ -108,6 +109,10 @@ class Settings(BaseSettings):
         if self.CLIP_MARKER_PREVIEWS_PATH:
             return Path(self.CLIP_MARKER_PREVIEWS_PATH)
         return self.static_dir / "clip-markers"
+
+    @property
+    def cors_allow_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.CORS_ALLOW_ORIGINS.split(',') if origin.strip()]
 
 
 @lru_cache()

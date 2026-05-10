@@ -76,16 +76,6 @@ def create_app() -> FastAPI:
             content={"code": -1, "msg": "服务器内部错误"}
         )
 
-    # 配置 CORS 中间件
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*", "Authorization", "X-Trace-Id"],
-        expose_headers=["X-Trace-Id"],
-    )
-
     # 配置认证中间件
     app.add_middleware(AuthMiddleware)
 
@@ -107,6 +97,16 @@ def create_app() -> FastAPI:
 
     # 请求上下文必须最外层，确保所有后续日志都能读取 trace_id。
     app.add_middleware(RequestContextMiddleware)
+
+    # Configure CORS after auth middleware so it wraps preflight and error responses.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_allow_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*", "Authorization", "X-Trace-Id"],
+        expose_headers=["X-Trace-Id"],
+    )
 
     # 注册路由
     app.include_router(health_router)  # 健康检查路由（无需认证）
