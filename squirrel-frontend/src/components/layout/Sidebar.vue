@@ -69,7 +69,8 @@ const userDisplayName = computed(() => {
 })
 
 const userEmail = computed(() => {
-  return userStore.currentUser?.email || '请先登录'
+  if (!userStore.currentUser) return '请先登录'
+  return userStore.currentUser.email || '高级会员'
 })
 
 const userInitial = computed(() => {
