@@ -44,6 +44,13 @@ export const useUserStore = defineStore('user', () => {
     return result
   }
 
+  const register = async (data: any) => {
+    loading.value = true
+    const result = await registerUser(data)
+    loading.value = false
+    return result
+  }
+
   const logout = async () => {
     await logoutUser()
     clearState()
@@ -57,6 +64,7 @@ export const useUserStore = defineStore('user', () => {
     error,
     fetchCurrentUser,
     login,
+    register,
     logout,
     clearState
   }

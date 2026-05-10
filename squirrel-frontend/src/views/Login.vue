@@ -124,11 +124,11 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
-import { useUser } from '../composables/useUser'
+import { useUserStore } from '@/stores/user'
 import { useServerConfig } from '@/composables/useServerConfig'
 
 const router = useRouter()
-const { login } = useUser()
+const userStore = useUserStore()
 const { initServerConfig, serverUrl: currentServerUrl } = useServerConfig()
 const loading = ref(false)
 const showPassword = ref(false)
@@ -159,7 +159,7 @@ const handleSubmit = async () => {
   errorMessage.value = ''
 
   try {
-    const result = await login({
+    const result = await userStore.login({
       email: form.value.email,
       password: form.value.password,
       remember_me: form.value.rememberMe,
