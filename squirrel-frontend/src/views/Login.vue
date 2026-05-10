@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-[100dvh] flex flex-col justify-center items-center bg-zinc-50 dark:bg-zinc-950 p-4 sm:p-8 relative">
+  <div class="min-h-full flex flex-col justify-center items-center bg-zinc-50 dark:bg-zinc-950 p-4 sm:p-8 relative">
     
     <!-- Server Config Pill -->
     <div class="absolute top-4 right-4 sm:top-8 sm:right-8 z-20">
