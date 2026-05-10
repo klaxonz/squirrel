@@ -1,29 +1,26 @@
 <template>
   <div class="min-h-[100dvh] bg-background flex text-foreground">
     <!-- Left Panel: Branding (Hidden on mobile) -->
-    <aside class="hidden lg:flex lg:w-1/2 xl:w-5/12 bg-muted flex-col justify-between p-12 border-r border-border relative overflow-hidden">
-      <!-- Optional decorative gradient background -->
-      <div class="absolute inset-0 bg-gradient-to-br from-primary/10 via-background/5 to-background pointer-events-none"></div>
+    <aside class="hidden lg:flex lg:w-1/2 xl:w-5/12 bg-zinc-950 text-zinc-50 flex-col justify-between p-12 relative overflow-hidden">
+      <!-- Decorative gradient background -->
+      <div class="absolute inset-0 bg-gradient-to-br from-primary/20 via-zinc-950/50 to-zinc-950 pointer-events-none"></div>
       
       <div class="relative z-10">
         <h1 class="text-4xl font-bold tracking-tight mb-4 flex items-center gap-3">
           <AppIcon name="brand" class="h-8 w-8 text-primary" />
           松鼠
         </h1>
-        <p class="text-lg text-muted-foreground max-w-md leading-relaxed">
+        <p class="text-lg text-zinc-400 max-w-md leading-relaxed">
           视频订阅与管理平台。<br>
           统一管理多平台内容，打造您的专属内容库。
         </p>
       </div>
 
       <div class="relative z-10">
-        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/80 backdrop-blur border border-border/50 text-sm font-medium shadow-sm">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/80 backdrop-blur border border-zinc-800 text-sm font-medium shadow-sm">
           <div class="h-2 w-2 rounded-full bg-success"></div>
           系统已就绪
         </div>
-        <p v-if="currentServerUrl" class="mt-4 text-sm text-muted-foreground font-mono bg-background/50 inline-block px-2 py-1 rounded">
-          {{ currentServerUrl }}
-        </p>
       </div>
     </aside>
 
