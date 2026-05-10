@@ -1,140 +1,145 @@
 <template>
-  <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-    <!-- Logo/Brand Area -->
-    <div class="mb-10 text-center space-y-2">
-      <div class="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-        <AppIcon name="server" class="w-6 h-6 text-white" />
-      </div>
-      <h1 class="text-2xl font-bold text-slate-900 tracking-tight">松鼠核心配置</h1>
-      <p class="text-sm text-slate-500">连接至您的后端服务引擎</p>
-    </div>
-
-    <!-- Main Config Card -->
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.1),0_10px_20px_-5px_rgba(0,0,0,0.04)] border border-slate-200 overflow-hidden">
-      <form class="p-8 space-y-8" @submit.prevent="handleConnect">
-        <!-- Error Alert -->
-        <div v-if="errorMessage" class="p-4 rounded-lg bg-rose-50 border border-rose-100 flex items-center gap-3 text-sm text-rose-700 animate-in fade-in zoom-in-95">
-          <AppIcon name="warning" class="w-4 h-4 shrink-0" />
-          {{ errorMessage }}
-        </div>
-
-        <!-- Server URL Field -->
-        <div class="space-y-2">
-          <label for="server-url" class="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">服务器接口地址</label>
-          <div class="relative group">
-            <Input
-              id="server-url"
-              v-model="form.serverUrl"
-              type="url"
-              required
-              class="h-12 pl-4 pr-24 bg-white border-slate-200 rounded-xl text-base focus-visible:ring-slate-200 shadow-none w-full transition-all"
-              placeholder="http://127.0.0.1:8001"
-              :disabled="connecting"
-              @input="clearStatus"
-            />
-            <div class="absolute right-2 top-1/2 -translate-y-1/2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                :disabled="!form.serverUrl.trim() || testing"
-                @click="handleTest"
-                class="h-8 px-3 text-xs font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
-              >
-                <AppIcon v-if="testing" name="refresh" class="w-3.5 h-3.5 animate-spin mr-1.5" />
-                {{ testing ? '测试中' : '测试连接' }}
-              </Button>
-            </div>
+  <div class="min-h-full flex flex-col justify-center items-center bg-zinc-50 dark:bg-zinc-950 p-4 sm:p-8 relative">
+    
+    <!-- Main Content Container -->
+    <main class="w-full max-w-[400px] bg-white dark:bg-zinc-900 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] border border-border relative z-10 animate-in fade-in zoom-in-95 duration-300">
+      
+      <div class="p-6 sm:p-8">
+        <!-- Header Area -->
+        <header class="flex flex-col items-center text-center mb-8">
+          <div class="h-12 w-12 bg-primary text-primary-foreground shadow-sm rounded-xl flex items-center justify-center mb-5">
+            <AppIcon name="server" class="h-6 w-6" />
           </div>
-          
-          <!-- Test Result Feedback -->
-          <div v-if="connectionMessage" :class="[
-            'text-[11px] font-bold mt-2 px-2 flex items-center gap-1.5',
-            testResult ? 'text-emerald-600' : 'text-rose-600'
-          ]">
-            <AppIcon v-if="testResult" name="statusSuccess" class="w-3 h-3" />
-            <AppIcon v-else name="warning" class="w-3 h-3" />
-            {{ connectionMessage }}
-          </div>
-        </div>
+          <h1 class="text-2xl font-semibold tracking-tight text-foreground mb-1.5">松鼠核心配置</h1>
+          <p class="text-sm text-muted-foreground">连接至您的后端服务引擎</p>
+        </header>
 
-        <!-- Quick Options -->
-        <div class="space-y-4">
-          <div v-if="quickServerUrls.length" class="space-y-2">
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">常用地址</span>
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="url in quickServerUrls"
-                :key="url"
-                type="button"
-                class="px-3 py-1.5 rounded-lg border border-slate-100 bg-slate-50 text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-100 transition-all"
-                @click="applyServerUrl(url)"
-              >
-                {{ url }}
-              </button>
-            </div>
-          </div>
-
-          <div v-if="recentServerUrls.length" class="space-y-2">
-            <div class="flex items-center justify-between px-1">
-              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">最近连接</span>
-              <button type="button" class="text-[10px] font-bold text-slate-400 hover:text-rose-500 uppercase tracking-widest" @click="handleClearRecent">
-                清空
-              </button>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="url in recentServerUrls"
-                :key="url"
-                type="button"
-                class="px-3 py-1.5 rounded-lg border border-slate-100 bg-slate-50 text-xs font-mono text-slate-500 hover:border-slate-300 hover:bg-slate-100 transition-all"
-                @click="applyServerUrl(url)"
-              >
-                {{ url }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Submit -->
-        <div class="pt-2">
-          <Button
-            type="submit"
-            class="w-full h-12 bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-bold text-base shadow-lg shadow-slate-900/10 transition-all"
-            :disabled="connecting || !form.serverUrl.trim()"
+        <form @submit.prevent="handleConnect" class="space-y-5">
+          <!-- Error Alert -->
+          <div 
+            v-if="errorMessage" 
+            class="p-3 text-sm text-error bg-error/10 border border-error/20 rounded-md flex items-start gap-2.5 animate-in slide-in-from-top-1"
           >
-            <span v-if="connecting" class="flex items-center gap-2">
-              <AppIcon name="refresh" class="w-4 h-4 animate-spin" />
-              正在连接...
-            </span>
-            <span v-else>确认并进入系统</span>
-          </Button>
-        </div>
-      </form>
+            <AppIcon name="error" class="h-4 w-4 shrink-0 mt-0.5" />
+            <span class="leading-relaxed">{{ errorMessage }}</span>
+          </div>
 
-      <!-- Footer -->
-      <div class="px-8 py-5 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-2">
-        <span class="text-xs text-slate-400">本地开发？</span>
-        <button type="button" class="text-xs font-bold text-slate-600 hover:text-slate-900 underline underline-offset-4" @click="fillLocalhost">
+          <!-- Server URL Field -->
+          <div class="space-y-2">
+            <label for="server-url" class="text-sm font-medium leading-none">
+              服务器接口地址
+            </label>
+            <div class="relative">
+              <input
+                id="server-url"
+                v-model="form.serverUrl"
+                type="url"
+                required
+                class="flex h-10 w-full rounded-md border border-input bg-transparent pl-3 pr-24 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+                placeholder="http://127.0.0.1:8001"
+                :disabled="connecting"
+                @input="clearStatus"
+              />
+              <div class="absolute right-1 top-1/2 -translate-y-1/2">
+                <button
+                  type="button"
+                  :disabled="!form.serverUrl.trim() || testing"
+                  @click="handleTest"
+                  class="h-8 px-3 flex items-center justify-center text-xs font-medium rounded-md text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <AppIcon v-if="testing" name="refresh" class="w-3.5 h-3.5 animate-spin mr-1.5" />
+                  {{ testing ? '测试中' : '测试连接' }}
+                </button>
+              </div>
+            </div>
+            
+            <!-- Test Result Feedback -->
+            <div v-if="connectionMessage" :class="[
+              'text-xs font-medium mt-1.5 flex items-center gap-1.5',
+              testResult ? 'text-success' : 'text-error'
+            ]">
+              <AppIcon :name="testResult ? 'statusSuccess' : 'warning'" class="w-3.5 h-3.5" />
+              {{ connectionMessage }}
+            </div>
+          </div>
+
+          <!-- Quick Options -->
+          <div class="space-y-4 pt-1">
+            <div v-if="quickServerUrls.length" class="space-y-2.5">
+              <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">常用地址</span>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="url in quickServerUrls"
+                  :key="url"
+                  type="button"
+                  class="px-2.5 py-1 rounded-md border border-border bg-muted/50 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-muted transition-colors"
+                  @click="applyServerUrl(url)"
+                >
+                  {{ url }}
+                </button>
+              </div>
+            </div>
+
+            <div v-if="recentServerUrls.length" class="space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">最近连接</span>
+                <button type="button" class="text-xs font-medium text-muted-foreground hover:text-error transition-colors" @click="handleClearRecent">
+                  清空
+                </button>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="url in recentServerUrls"
+                  :key="url"
+                  type="button"
+                  class="px-2.5 py-1 rounded-md border border-border bg-muted/50 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-muted transition-colors truncate max-w-[200px]"
+                  @click="applyServerUrl(url)"
+                  :title="url"
+                >
+                  {{ url }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="pt-4">
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 w-full shadow-sm"
+              :disabled="connecting || !form.serverUrl.trim()"
+            >
+              <span v-if="connecting" class="flex items-center gap-2">
+                <AppIcon name="loadingSpinner" class="w-4 h-4 animate-spin" />
+                正在连接...
+              </span>
+              <span v-else>确认并进入系统</span>
+            </button>
+          </div>
+        </form>
+      </div>
+      
+      <!-- Card Footer -->
+      <div class="p-4 sm:p-6 bg-zinc-50/50 dark:bg-zinc-900/50 border-t border-border text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+        <span class="text-sm text-muted-foreground">本地开发？</span>
+        <button type="button" class="text-sm font-medium text-foreground hover:text-primary transition-colors underline decoration-border underline-offset-4 hover:decoration-primary" @click="fillLocalhost">
           快速切换至本机地址
         </button>
       </div>
-    </div>
+    </main>
 
     <!-- Back link -->
-    <router-link to="/login" class="mt-8 flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-slate-600 transition-colors">
+    <router-link to="/login" class="mt-8 flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors relative z-10">
       <AppIcon name="back" class="w-4 h-4" /> 返回登录页面
     </router-link>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { useServerConfig } from '@/composables/useServerConfig'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 
 const router = useRouter()
 const {
@@ -218,9 +223,3 @@ const handleConnect = async () => {
   }
 }
 </script>
-
-<style scoped>
-.animate-in {
-  animation-duration: 0.3s;
-}
-</style>
