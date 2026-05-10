@@ -45,10 +45,10 @@
         </div>
 
         <!-- Sort Select -->
-        <div v-if="showSort" class="hidden sm:flex items-center bg-muted/40 hover:bg-muted/60 border border-border/40 rounded-lg px-2.5 h-8 transition-colors">
+        <div v-if="showSort" class="hidden sm:flex items-center bg-muted/40 hover:bg-muted/60 border border-border/40 rounded-lg px-2.5 h-8 transition-colors shrink-0 whitespace-nowrap">
           <span class="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mr-1.5 select-none">排序</span>
           <Select v-model="localSortBy">
-            <SelectTrigger class="h-auto p-0 border-0 bg-transparent shadow-none hover:bg-transparent focus:ring-0 text-xs font-medium text-foreground gap-1.5">
+            <SelectTrigger class="h-auto p-0 border-0 bg-transparent shadow-none hover:bg-transparent focus:ring-0 text-xs font-medium text-foreground gap-1.5 whitespace-nowrap min-w-0">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

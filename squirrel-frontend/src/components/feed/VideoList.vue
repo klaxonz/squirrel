@@ -1,10 +1,5 @@
 <template>
   <div class="w-full">
-    <!-- Top Progress Bar (Fixed relative to content) -->
-    <div v-if="refreshing" class="sticky top-0 left-0 right-0 h-0.5 bg-primary/20 z-50 overflow-hidden">
-      <div class="h-full bg-primary animate-progress-slide" />
-    </div>
-
     <!-- Grid Container -->
     <div v-if="videos.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-x-5 gap-y-10 p-6">
       <VideoItem
