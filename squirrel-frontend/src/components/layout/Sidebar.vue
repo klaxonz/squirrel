@@ -1,24 +1,24 @@
 <template>
-  <aside class="w-[var(--sidebar-width)] h-full flex flex-col bg-sidebar border-r border-border/40 select-none">
-    <!-- Brand Section (Minimalist Style) -->
-    <div class="h-14 flex items-center px-4 mb-2">
-      <router-link to="/" class="flex items-center gap-2 group">
-        <div class="w-6 h-6 bg-foreground rounded-md flex items-center justify-center transition-transform group-hover:scale-105 group-active:scale-95 shadow-sm">
-          <AppIcon name="brand" class="w-3.5 h-3.5 text-background fill-current" />
+  <aside class="w-[var(--sidebar-width)] h-full flex flex-col bg-zinc-50/50 dark:bg-zinc-950/30 border-r border-border select-none">
+    <!-- Brand Section (Premium Minimalist) -->
+    <div class="h-16 flex items-center px-4 mt-2 mb-4">
+      <router-link to="/" class="flex items-center gap-3 px-2 group w-full">
+        <div class="w-8 h-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center shadow-[0_2px_10px_rgb(0,0,0,0.1)] transition-transform duration-300 group-hover:scale-105 group-active:scale-95">
+          <AppIcon name="brand" class="w-4 h-4" />
         </div>
-        <span class="text-[14px] font-bold tracking-tight text-foreground">松鼠</span>
+        <span class="text-[15px] font-bold tracking-tight text-foreground">松鼠</span>
       </router-link>
     </div>
 
     <!-- Navigation Groups -->
-    <nav class="flex-1 overflow-y-auto px-2 space-y-6 scrollbar-hide pb-8">
+    <nav class="flex-1 overflow-y-auto px-3 space-y-6 scrollbar-hide pb-8">
       <div v-for="group in NAV_GROUPS" :key="group.key">
-        <div class="px-3 mb-1.5 flex items-center justify-between">
-          <span class="text-[10px] font-bold tracking-widest text-muted-foreground/40 uppercase">
+        <div class="px-2 mb-2 flex items-center justify-between">
+          <span class="text-[11px] font-semibold tracking-wider text-muted-foreground/60 uppercase">
             {{ group.label }}
           </span>
         </div>
-        <div class="space-y-0.5">
+        <div class="space-y-1">
           <SidebarMenuItem
             v-for="item in group.items"
             :key="item.path"
@@ -29,11 +29,11 @@
       </div>
     </nav>
 
-    <!-- User Section (Integrated Style) -->
-    <div class="p-3 border-t border-border/40 mt-auto">
-      <div class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer group" @click="handleLogout">
-        <div class="relative w-8 h-8 shrink-0">
-          <div class="w-full h-full rounded-full bg-secondary flex items-center justify-center border border-border/50 text-xs font-bold text-foreground overflow-hidden uppercase">
+    <!-- User Section (Premium Style) -->
+    <div class="p-4 border-t border-border mt-auto bg-zinc-100/50 dark:bg-zinc-900/30">
+      <div class="flex items-center gap-3 p-2 -m-2 rounded-xl hover:bg-white dark:hover:bg-zinc-800 transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-border" @click="handleLogout">
+        <div class="relative w-9 h-9 shrink-0">
+          <div class="w-full h-full rounded-full bg-white dark:bg-zinc-700 flex items-center justify-center border border-border shadow-sm text-xs font-bold text-foreground overflow-hidden uppercase group-hover:border-primary/30 transition-colors">
             <template v-if="userInitial">
               {{ userInitial }}
             </template>
@@ -42,11 +42,13 @@
         </div>
         
         <div class="flex-1 min-w-0">
-          <p class="text-[12px] font-semibold truncate text-foreground/80">{{ userDisplayName }}</p>
-          <p class="text-[10px] text-muted-foreground/60 truncate">{{ userEmail }}</p>
+          <p class="text-[13px] font-semibold truncate text-foreground leading-tight">{{ userDisplayName }}</p>
+          <p class="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">{{ userEmail }}</p>
         </div>
         
-        <AppIcon name="logout" class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div class="w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity bg-muted/50 group-hover:bg-muted">
+          <AppIcon name="logout" class="w-3.5 h-3.5" />
+        </div>
       </div>
     </div>
   </aside>

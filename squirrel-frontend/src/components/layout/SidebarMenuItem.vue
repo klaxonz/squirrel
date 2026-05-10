@@ -1,19 +1,25 @@
 <template>
   <router-link
     :to="item.path"
-    class="flex items-center gap-2.5 px-3 h-8 rounded-md text-[13px] transition-all duration-200 outline-none group"
+    class="flex items-center gap-3 px-3 h-9 rounded-lg text-[13px] transition-all duration-200 outline-none group relative"
     :class="[
       isActive 
-        ? 'bg-accent text-foreground font-medium shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]' 
-        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+        ? 'bg-white dark:bg-zinc-800 text-foreground font-medium shadow-sm border border-border/80' 
+        : 'text-muted-foreground hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 hover:text-foreground border border-transparent'
     ]"
   >
-    <!-- Icon - Simple and clean -->
+    <!-- Active Indicator Pill -->
+    <div 
+      v-if="isActive" 
+      class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-primary rounded-r-full"
+    ></div>
+
+    <!-- Icon -->
     <AppIcon
       :name="item.icon"
       class="w-4 h-4 shrink-0 transition-transform duration-200 group-active:scale-90"
       :class="[
-        isActive ? 'text-foreground' : 'text-muted-foreground/60 group-hover:text-foreground'
+        isActive ? 'text-primary' : 'text-muted-foreground/80 group-hover:text-foreground'
       ]"
     />
 
