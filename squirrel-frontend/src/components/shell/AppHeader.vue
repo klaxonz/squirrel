@@ -19,15 +19,6 @@
         <AppIcon name="notification" class="w-4 h-4" />
         <span class="absolute top-2 right-2 w-1.5 h-1.5 bg-destructive rounded-full border border-background shadow-sm" />
       </button>
-      
-      <div class="w-px h-4 bg-border/40 mx-2" />
-      
-      <button class="flex items-center gap-2 p-1 rounded-md hover:bg-accent transition-all active:scale-95 group">
-        <div class="w-6 h-6 rounded-md bg-gradient-to-br from-indigo-500/80 to-purple-600/80 flex items-center justify-center text-[10px] font-bold text-white shadow-sm ring-1 ring-white/10 group-hover:ring-white/20">
-          访
-        </div>
-        <span class="text-[12px] font-medium text-foreground/70 group-hover:text-foreground hidden sm:inline">访客</span>
-      </button>
     </div>
   </header>
 </template>

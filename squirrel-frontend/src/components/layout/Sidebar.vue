@@ -33,14 +33,17 @@
     <div class="p-3 border-t border-border/40 mt-auto">
       <div class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer group" @click="handleLogout">
         <div class="relative w-8 h-8 shrink-0">
-          <div class="w-full h-full rounded-full bg-secondary flex items-center justify-center border border-border/50">
-            <AppIcon name="user" class="w-4 h-4 text-muted-foreground" />
+          <div class="w-full h-full rounded-full bg-secondary flex items-center justify-center border border-border/50 text-xs font-bold text-foreground overflow-hidden uppercase">
+            <template v-if="userInitial">
+              {{ userInitial }}
+            </template>
+            <AppIcon v-else name="user" class="w-4 h-4 text-muted-foreground" />
           </div>
         </div>
         
         <div class="flex-1 min-w-0">
-          <p class="text-[12px] font-semibold truncate text-foreground/80">访客</p>
-          <p class="text-[10px] text-muted-foreground/60 truncate">基础方案</p>
+          <p class="text-[12px] font-semibold truncate text-foreground/80">{{ userDisplayName }}</p>
+          <p class="text-[10px] text-muted-foreground/60 truncate">{{ userEmail }}</p>
         </div>
         
         <AppIcon name="logout" class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -50,6 +53,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { useUserStore } from '@/stores/user'
@@ -58,6 +62,20 @@ import { NAV_GROUPS, isNavigationItemActive } from '@/constants/sidebar'
 
 const router = useRouter()
 const userStore = useUserStore()
+
+const userDisplayName = computed(() => {
+  if (!userStore.currentUser) return '未登录'
+  return userStore.currentUser.nickname || userStore.currentUser.email?.split('@')[0] || '用户'
+})
+
+const userEmail = computed(() => {
+  return userStore.currentUser?.email || '请先登录'
+})
+
+const userInitial = computed(() => {
+  const name = userDisplayName.value
+  return name && name !== '未登录' ? name.charAt(0) : ''
+})
 
 const handleLogout = async () => {
   await userStore.logout()
