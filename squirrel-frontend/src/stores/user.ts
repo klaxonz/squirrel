@@ -39,6 +39,7 @@ export const useUserStore = defineStore('user', () => {
     if (!result.error) {
       currentUser.value = result.data || null
       isAuthenticated.value = true
+      hasResolvedAuth.value = true
     }
     loading.value = false
     return result
