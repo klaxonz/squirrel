@@ -1,122 +1,87 @@
 <template>
-  <AppPageShell class="history-page" variant="compact" scrollable>
-    <AppToolbarFrame bordered>
-      <PageHeader title="播放历史" description="回顾最近观看的内容，同步所有设备进度。">
-        <template #actions>
-          <button 
-            class="flex items-center gap-2 px-4 py-2 rounded-md font-semibold text-[13px] text-destructive bg-destructive/5 hover:bg-destructive/10 transition-colors"
-            @click="showClearConfirm = true"
-          >
-            <AppIcon name="trash" class="w-3.5 h-3.5" />
-            清空历史
-          </button>
-        </template>
-      </PageHeader>
-    </AppToolbarFrame>
+  <AppPageShell variant="compact">
+    <header class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4 lg:px-6">
+      <div class="min-w-0">
+        <h1 class="truncate text-base font-semibold">播放历史</h1>
+        <p class="mt-0.5 text-xs text-muted-foreground">{{ videos.length }} 条记录</p>
+      </div>
 
-    <div class="app-page-content history-page__content">
-      <main class="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-10">
-        <!-- 列表区域 -->
-        <div class="flex flex-col gap-12">
-          <div v-if="loading && videos.length === 0" class="flex flex-col gap-10">
-            <div v-for="i in 2" :key="i" class="flex flex-col gap-6">
-              <div class="h-8 bg-muted w-32 rounded-xl animate-pulse" />
-              <div class="flex flex-col gap-4">
-                <div v-for="j in 3" :key="j" class="h-32 bg-muted rounded-lg animate-pulse" />
-              </div>
+      <div class="flex items-center gap-2">
+        <div v-if="loading" class="hidden gap-1 sm:flex">
+          <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.3s]" />
+          <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.15s]" />
+          <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" />
+        </div>
+        <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" @click="loadData">
+          <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+        </Button>
+        <button 
+          v-if="videos.length"
+          class="flex h-9 items-center gap-2 rounded-md border border-destructive/20 bg-destructive/10 px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/15"
+          @click="showClearConfirm = true"
+        >
+          <AppIcon name="trash" class="h-4 w-4" />
+          清空
+        </button>
+      </div>
+    </header>
+
+    <div class="flex-1 overflow-y-auto custom-scrollbar">
+      <main class="mx-auto w-full max-w-[1200px] p-4 lg:p-6">
+        <div v-if="loading && videos.length === 0" class="space-y-8">
+          <div v-for="i in 2" :key="i" class="space-y-3">
+            <div class="h-7 w-20 animate-pulse rounded-md bg-accent/40" />
+            <div class="space-y-2">
+              <div v-for="j in 3" :key="j" class="h-28 animate-pulse rounded-lg bg-accent/30" />
             </div>
-          </div>
-
-          <div v-else-if="groupedVideos.length === 0" class="flex flex-col items-center justify-center py-32 text-center">
-            <div class="size-20 rounded-lg bg-secondary flex items-center justify-center mb-6">
-              <AppIcon name="time" class="w-9 h-9 text-muted-foreground/30" />
-            </div>
-            <h2 class="text-xl font-semibold mb-3">空空如也</h2>
-            <p class="text-muted-foreground max-w-xs font-medium leading-relaxed">
-              你还没有任何播放记录。开始探索你感兴趣的内容吧。
-            </p>
-          </div>
-
-          <div v-else class="flex flex-col gap-16">
-            <section v-for="group in groupedVideos" :key="group.date" class="flex flex-col gap-6">
-              <div class="sticky top-0 z-10 py-4 bg-background/80 backdrop-blur-md flex items-center gap-6">
-                <h3 class="text-base font-semibold">{{ group.date }}</h3>
-                <div class="h-px bg-border/50 flex-1" />
-                <span class="text-[10px] font-semibold bg-secondary px-3 py-1 rounded-full text-muted-foreground">
-                  {{ group.items.length }} 条记录
-                </span>
-              </div>
-
-              <div class="grid gap-2">
-                <HistoryItem 
-                  v-for="video in group.items" 
-                  :key="video.history_id || video.id"
-                  :video="video"
-                  @open="handleOpenVideo"
-                  @delete="handleDeleteItem"
-                />
-              </div>
-            </section>
-          </div>
-
-          <div v-if="loading && videos.length > 0" class="flex justify-center py-12">
-            <LoadingIndicator :loading="true" size="md" />
           </div>
         </div>
 
-        <!-- 侧边栏：统计与筛选 (未来扩展) -->
-        <aside class="hidden lg:flex flex-col gap-10">
-          <div class="app-surface p-6 flex flex-col gap-6">
-            <h4 class="text-sm font-semibold uppercase text-muted-foreground">数据概览</h4>
-            <div class="flex flex-col gap-4">
-              <div class="flex justify-between items-end">
-                <span class="text-muted-foreground font-medium">累计观看</span>
-                <span class="text-2xl font-black tabular-nums">{{ videos.length }}</span>
-              </div>
-              <div class="h-1 bg-border rounded-full overflow-hidden">
-                <div class="h-full bg-primary w-2/3" />
-              </div>
-            </div>
-            <p class="text-[12px] text-muted-foreground/60 leading-relaxed font-medium">
-              系统将保留过去 90 天内的播放记录，以便你随时找回感兴趣的内容。
-            </p>
-          </div>
+        <div v-else-if="groupedVideos.length === 0" class="flex min-h-[24rem] flex-col items-center justify-center text-center">
+          <AppIcon name="time" class="h-9 w-9 text-muted-foreground/30" />
+          <h2 class="mt-4 text-sm font-semibold">暂无历史记录</h2>
+          <p class="mt-1 text-sm text-muted-foreground">观看过的视频会显示在这里。</p>
+        </div>
 
-          <div class="px-2 flex flex-col gap-4">
-            <h4 class="text-sm font-semibold uppercase text-muted-foreground">隐私说明</h4>
-            <p class="text-xs text-muted-foreground/50 leading-loose">
-              播放记录仅存储在你的私有账户中。你可以随时选择暂停记录或清空所有数据。清空后，所有同步的设备都将立即失效且无法撤销。
-            </p>
-          </div>
-        </aside>
+        <div v-else class="space-y-10">
+          <section v-for="group in groupedVideos" :key="group.date" class="space-y-3">
+            <div class="sticky top-0 z-10 flex h-9 items-center justify-between bg-background">
+              <h3 class="text-xs font-semibold text-muted-foreground">{{ group.date }}</h3>
+              <span class="text-xs text-muted-foreground">{{ group.items.length }} 条</span>
+            </div>
+
+            <div class="space-y-2">
+              <HistoryItem 
+                v-for="video in group.items" 
+                :key="video.history_id || video.id"
+                :video="video"
+                @open="handleOpenVideo"
+                @delete="handleDeleteItem"
+              />
+            </div>
+          </section>
+        </div>
+
+        <div v-if="loading && videos.length > 0" class="flex justify-center py-10">
+          <div class="h-5 w-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+        </div>
       </main>
     </div>
 
-    <!-- 确认清空弹窗 -->
     <Dialog :open="showClearConfirm" @update:open="showClearConfirm = $event">
-      <DialogContent class="max-w-[400px] rounded-lg p-8">
-        <div class="size-16 rounded-lg bg-destructive/10 text-destructive flex items-center justify-center mb-6">
-          <AppIcon name="trash" class="w-8 h-8" />
-        </div>
-        <DialogHeader class="text-left flex flex-col gap-3">
-          <DialogTitle class="text-xl font-semibold">确认清空所有历史记录？</DialogTitle>
-          <DialogDescription class="text-base text-muted-foreground font-medium leading-relaxed">
+      <DialogContent class="max-w-sm overflow-hidden rounded-lg p-0">
+        <DialogHeader class="border-b border-border/50 p-5 text-left">
+          <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-destructive/10 text-destructive">
+            <AppIcon name="trash" class="h-5 w-5" />
+          </div>
+          <DialogTitle class="text-base font-semibold">清空所有历史记录？</DialogTitle>
+          <DialogDescription class="text-sm leading-relaxed text-muted-foreground">
             此操作将永久移除你账户下的所有观看记录，包括各端同步的进度信息。该操作不可撤销。
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter class="flex flex-col gap-3 mt-10">
-          <button 
-            class="w-full py-3 rounded-md bg-destructive text-white font-semibold hover:opacity-90 transition-opacity" 
-            @click="handleClearHistory"
-          >
-            确认清空
-          </button>
-          <button 
-            class="w-full py-3 rounded-md bg-secondary font-semibold hover:bg-secondary/80 transition-colors" 
-            @click="showClearConfirm = false"
-          >
-            取消
-          </button>
+        <DialogFooter class="gap-2 bg-muted/30 p-4">
+          <Button variant="outline" class="h-9 rounded-md" @click="showClearConfirm = false">取消</Button>
+          <Button class="h-9 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90" @click="handleClearHistory">确认清空</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -124,14 +89,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
-import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue'
-import PageHeader from '@/components/layout/PageHeader.vue'
 import HistoryItem from '@/components/history/HistoryItem.vue'
-import LoadingIndicator from '@/components/feed/LoadingIndicator.vue'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import useVideoHistory from '../composables/useVideoHistory'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
@@ -143,20 +106,15 @@ const { getWatchHistory, clearHistory, deleteHistoryEntry } = useVideoHistory()
 const videos = ref<any[]>([])
 const loading = ref(false)
 const showClearConfirm = ref(false)
-const searchQuery = ref('')
 
 const loadData = async () => {
   loading.value = true
   try {
-    const data = await getWatchHistory(1, { query: searchQuery.value, pageSize: 100 })
+    const data = await getWatchHistory(1, { pageSize: 100 })
     videos.value = data.items || []
   } finally {
     loading.value = false
   }
-}
-
-const handleSearch = () => {
-  loadData()
 }
 
 const handleClearHistory = async () => {
@@ -187,3 +145,10 @@ const groupedVideos = computed(() => {
 
 onMounted(() => loadData())
 </script>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(var(--primary), 0.1); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(var(--primary), 0.2); }
+</style>

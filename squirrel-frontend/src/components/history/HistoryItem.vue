@@ -1,74 +1,67 @@
 <template>
   <div
-    class="group relative flex flex-row gap-4 p-3 rounded-2xl transition-all duration-300 hover:bg-accent/50 cursor-pointer"
+    class="group flex cursor-pointer gap-3 rounded-lg border border-transparent p-2 transition-colors hover:border-border/50 hover:bg-accent/40"
     @click="$emit('open', video)"
   >
-    <!-- 缩略图区域 -->
-    <div class="relative flex-shrink-0 w-48 md:w-56 aspect-video rounded-xl overflow-hidden shadow-sm ring-1 ring-border/5">
+    <div class="relative aspect-video w-40 flex-shrink-0 overflow-hidden rounded-md bg-muted md:w-48">
       <img
         v-if="video.thumbnail"
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
-        class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+        class="h-full w-full object-cover"
         :alt="video.title"
       />
-      <div v-else class="w-full h-full bg-muted flex items-center justify-center">
-        <AppIcon name="film" class="w-8 h-8 text-muted-foreground/20" />
+      <div v-else class="flex h-full w-full items-center justify-center">
+        <AppIcon name="film" class="h-7 w-7 text-muted-foreground/30" />
       </div>
 
-      <!-- 播放进度 -->
-      <div v-if="video.progress > 0" class="absolute bottom-0 left-0 right-0 h-1 bg-black/20 overflow-hidden">
+      <div v-if="video.progress > 0" class="absolute bottom-0 left-0 right-0 h-0.5 overflow-hidden bg-black/20">
         <div
-          class="h-full bg-primary transition-all duration-500 shadow-[0_0_8px_rgba(var(--primary),0.6)]"
+          class="h-full bg-primary"
           :style="{ width: `${video.progress * 100}%` }"
         />
       </div>
 
-      <!-- 时长 -->
-      <div v-if="video.duration" class="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] font-bold text-white tabular-nums ring-1 ring-white/10">
+      <div v-if="video.duration" class="absolute bottom-1.5 right-1.5 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-medium text-white tabular-nums">
         {{ formatDuration(video.duration) }}
       </div>
 
-      <!-- 快捷删除 -->
       <button
-        class="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive flex items-center justify-center shadow-lg"
+        class="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-md bg-background/90 text-muted-foreground opacity-0 shadow-sm transition-colors group-hover:opacity-100 hover:bg-destructive hover:text-white"
         @click.stop="handleDelete"
       >
-        <AppIcon name="trash" class="w-4 h-4" />
+        <AppIcon name="trash" class="h-4 w-4" />
       </button>
     </div>
 
-    <!-- 信息区域 -->
-    <div class="flex flex-col flex-1 min-w-0 py-1">
-      <h3 class="text-base font-bold leading-snug line-clamp-2 group-hover:text-primary transition-colors tracking-tight">
+    <div class="flex min-w-0 flex-1 flex-col py-0.5">
+      <h3 class="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
         {{ video.title }}
       </h3>
 
-      <div class="mt-auto flex flex-col gap-1.5">
-        <!-- 频道/作者 -->
-        <div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+      <div class="mt-auto space-y-1.5">
+        <div class="flex items-center gap-2 text-sm text-muted-foreground">
           <div v-if="displayAvatars.length" class="flex -space-x-1.5">
             <img
               v-for="(avatar, i) in displayAvatars"
               :key="i"
               :src="avatar.avatar"
-              class="w-5 h-5 rounded-full ring-2 ring-background object-cover"
+              class="h-5 w-5 rounded-full object-cover ring-2 ring-background"
               :title="avatar.name"
             />
           </div>
-          <span class="truncate hover:text-foreground transition-colors">{{ displayChannel || '未知作者' }}</span>
+          <span class="truncate">{{ displayChannel || '未知作者' }}</span>
         </div>
 
-        <!-- 元数据 -->
-        <div class="flex items-center gap-2 text-[12px] text-muted-foreground/60 font-medium">
-          <span v-if="video.site" class="px-1.5 py-0.5 rounded bg-secondary text-[10px] font-black uppercase tracking-wider text-muted-foreground/80">
+        <div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span v-if="video.site" class="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
             {{ video.site }}
           </span>
-          <span class="w-1 h-1 rounded-full bg-border" />
+          <span class="h-1 w-1 rounded-full bg-border" />
           <span>{{ formatDate(video.played_at) }}</span>
           <template v-if="video.progress > 0">
-            <span class="w-1 h-1 rounded-full bg-border" />
-            <span class="text-primary/70 font-bold">已观看 {{ (video.progress * 100).toFixed(0) }}%</span>
+            <span class="h-1 w-1 rounded-full bg-border" />
+            <span>已观看 {{ (video.progress * 100).toFixed(0) }}%</span>
           </template>
         </div>
       </div>
