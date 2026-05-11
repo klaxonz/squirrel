@@ -31,29 +31,27 @@
       <div class="flex items-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap">
         
         <!-- Site Select -->
-        <div class="flex items-center bg-muted/40 hover:bg-muted/60 border border-border/40 rounded-lg px-2.5 h-8 transition-colors shrink-0 whitespace-nowrap">
-          <span class="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mr-1.5 select-none hidden sm:inline-block shrink-0">站点</span>
-          <Select :model-value="site || 'all'" @update:model-value="handleSiteChange">
-            <SelectTrigger class="h-auto p-0 border-0 bg-transparent shadow-none hover:bg-transparent focus:ring-0 text-xs font-medium text-foreground gap-1.5 shrink-0 whitespace-nowrap flex-nowrap">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" class="text-xs">全部站点</SelectItem>
-              <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">
-                {{ opt.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select :model-value="site || 'all'" @update:model-value="handleSiteChange">
+          <SelectTrigger class="h-8 w-auto min-w-0 shrink-0 flex-nowrap whitespace-nowrap border-border/40 bg-muted/40 px-2.5 py-0 text-xs font-medium text-foreground shadow-none hover:bg-muted/60 focus:ring-primary/20">
+            <span class="hidden shrink-0 select-none text-[10px] font-semibold uppercase text-muted-foreground/60 sm:inline-block">站点</span>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent class="min-w-44">
+            <SelectItem value="all" class="text-xs">全部站点</SelectItem>
+            <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">
+              {{ opt.label }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
 
         <!-- Sort Select -->
-        <div v-if="showSort" class="hidden sm:flex items-center bg-muted/40 hover:bg-muted/60 border border-border/40 rounded-lg px-2.5 h-8 transition-colors shrink-0 whitespace-nowrap">
-          <span class="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mr-1.5 select-none shrink-0">排序</span>
+        <div v-if="showSort" class="hidden sm:block shrink-0">
           <Select v-model="localSortBy">
-            <SelectTrigger class="h-auto p-0 border-0 bg-transparent shadow-none hover:bg-transparent focus:ring-0 text-xs font-medium text-foreground gap-1.5 shrink-0 whitespace-nowrap flex-nowrap">
+            <SelectTrigger class="h-8 w-auto min-w-0 flex-nowrap whitespace-nowrap border-border/40 bg-muted/40 px-2.5 py-0 text-xs font-medium text-foreground shadow-none hover:bg-muted/60 focus:ring-primary/20">
+              <span class="shrink-0 select-none text-[10px] font-semibold uppercase text-muted-foreground/60">排序</span>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent class="min-w-36">
               <SelectItem v-for="opt in sortOptions" :key="opt.value" :value="opt.value" class="text-xs">
                 {{ opt.label }}
               </SelectItem>

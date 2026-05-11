@@ -43,12 +43,13 @@
                   <SelectValue placeholder="选择任务执行逻辑" />
                 </SelectTrigger>
                 <SelectContent class="border-slate-200 bg-white rounded-lg shadow-xl">
-                  <template v-for="(group, groupName) in groupedTaskClasses" :key="groupName">
+                  <SelectGroup v-for="(group, groupName) in groupedTaskClasses" :key="groupName">
                     <SelectLabel class="text-[10px] font-bold text-slate-400 px-3 py-2 mt-1">{{ groupName }}</SelectLabel>
                     <SelectItem
                       v-for="(taskClass, className) in group"
                       :key="className"
                       :value="className"
+                      :text-value="taskClass.name"
                       class="py-2 px-3 focus:bg-slate-50 cursor-pointer rounded-md mx-1 text-sm text-slate-700"
                     >
                       <div class="flex flex-col">
@@ -56,7 +57,7 @@
                         <span class="text-[11px] text-slate-400 truncate max-w-[300px]">{{ taskClass.description || '暂无描述' }}</span>
                       </div>
                     </SelectItem>
-                  </template>
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
@@ -167,7 +168,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { 
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectLabel 
+  Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, SelectLabel 
 } from '@/components/ui/select'
 import { Logger } from '@/utils/logger'
 
