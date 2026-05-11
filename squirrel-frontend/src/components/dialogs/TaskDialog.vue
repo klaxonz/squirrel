@@ -1,60 +1,52 @@
 <template>
-  <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-    <div class="bg-white border border-slate-200 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
-      <!-- Modal Header -->
-      <div class="px-8 pt-8 pb-6 flex items-start justify-between border-b border-slate-50">
-        <div class="space-y-1">
-          <h2 class="text-lg font-semibold text-slate-900">
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+    <div class="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-lg border border-border/50 bg-background shadow-lg">
+      <div class="flex shrink-0 items-start justify-between border-b border-border/50 p-5">
+        <div class="min-w-0">
+          <h2 class="text-base font-semibold text-foreground">
             {{ isEditing ? '编辑任务' : '新建任务' }}
           </h2>
-          <p class="text-xs text-slate-500">
-            配置自动化任务的执行逻辑与调度参数
+          <p class="mt-1 text-sm text-muted-foreground">
+            配置任务逻辑、调度间隔和运行参数。
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          @click="$emit('close')"
-          class="h-8 w-8 rounded-md hover:bg-slate-100 transition-colors"
-        >
-          <AppIcon name="close" class="w-4 h-4 text-slate-400" />
+        <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" @click="$emit('close')">
+          <AppIcon name="close" class="h-4 w-4" />
         </Button>
       </div>
 
-      <!-- Modal Body -->
-      <div class="flex-1 overflow-y-auto px-8 py-6 custom-scrollbar">
-        <form @submit.prevent="handleSubmit" class="space-y-8">
-          <!-- Section: Basic -->
-          <div class="space-y-5">
+      <div class="flex-1 overflow-y-auto custom-scrollbar">
+        <form class="space-y-6 p-5" @submit.prevent="handleSubmit">
+          <section class="space-y-4">
             <div class="space-y-2">
-              <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">任务名称</label>
+              <label class="text-xs font-medium text-muted-foreground">任务名称</label>
               <Input
                 v-model="formData.name"
                 required
-                placeholder="输入任务名称..."
-                class="h-10 bg-white border-slate-200 rounded-lg text-sm focus-visible:ring-slate-200 shadow-none"
+                placeholder="输入任务名称"
+                class="h-9 rounded-md border-border/50 text-sm shadow-none"
               />
             </div>
 
             <div class="space-y-2">
-              <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">逻辑类</label>
+              <label class="text-xs font-medium text-muted-foreground">逻辑类</label>
               <Select v-model="formData.task_class" :disabled="isEditing">
-                <SelectTrigger class="h-10 bg-white border-slate-200 rounded-lg text-sm shadow-none">
+                <SelectTrigger class="h-9 rounded-md border-border/50 bg-background text-sm shadow-none">
                   <SelectValue placeholder="选择任务执行逻辑" />
                 </SelectTrigger>
-                <SelectContent class="border-slate-200 bg-white rounded-lg shadow-xl">
+                <SelectContent class="rounded-lg border-border/50 bg-background shadow-lg">
                   <SelectGroup v-for="(group, groupName) in groupedTaskClasses" :key="groupName">
-                    <SelectLabel class="text-[10px] font-bold text-slate-400 px-3 py-2 mt-1">{{ groupName }}</SelectLabel>
+                    <SelectLabel class="px-3 py-2 text-xs font-medium text-muted-foreground">{{ groupName }}</SelectLabel>
                     <SelectItem
                       v-for="(taskClass, className) in group"
                       :key="className"
                       :value="className"
                       :text-value="taskClass.name"
-                      class="py-2 px-3 focus:bg-slate-50 cursor-pointer rounded-md mx-1 text-sm text-slate-700"
+                      class="mx-1 rounded-md px-3 py-2 text-sm"
                     >
-                      <div class="flex flex-col">
+                      <div class="flex min-w-0 flex-col">
                         <span class="font-medium">{{ taskClass.name }}</span>
-                        <span class="text-[11px] text-slate-400 truncate max-w-[300px]">{{ taskClass.description || '暂无描述' }}</span>
+                        <span v-if="taskClass.description" class="max-w-[300px] truncate text-xs text-muted-foreground">{{ taskClass.description }}</span>
                       </div>
                     </SelectItem>
                   </SelectGroup>
@@ -63,97 +55,86 @@
             </div>
 
             <div class="space-y-2">
-              <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">描述</label>
+              <label class="text-xs font-medium text-muted-foreground">描述</label>
               <Textarea
                 v-model="formData.description"
-                placeholder="简要说明任务用途..."
-                class="min-h-[80px] bg-white border-slate-200 rounded-lg text-sm focus-visible:ring-slate-200 shadow-none py-3 px-4"
+                placeholder="简要说明任务用途"
+                class="min-h-20 rounded-md border-border/50 text-sm shadow-none"
               />
             </div>
-          </div>
+          </section>
 
-          <!-- Section: Strategy -->
-          <div class="grid grid-cols-3 gap-4 p-5 bg-slate-50 rounded-xl border border-slate-100">
+          <section class="space-y-4 border-t border-border/50 pt-5">
+            <div class="grid gap-4 md:grid-cols-3">
             <div class="space-y-2">
-              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">执行间隔</label>
+              <label class="text-xs font-medium text-muted-foreground">执行间隔</label>
               <Input
                 v-model.number="formData.interval"
                 type="number"
                 min="1"
-                class="h-9 bg-white border-slate-200 rounded-md text-sm font-bold tabular-nums shadow-none"
+                class="h-9 rounded-md border-border/50 text-sm tabular-nums shadow-none"
               />
             </div>
             <div class="space-y-2">
-              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">单位</label>
+              <label class="text-xs font-medium text-muted-foreground">单位</label>
               <Select v-model="formData.unit">
-                <SelectTrigger class="h-9 bg-white border-slate-200 rounded-md text-sm shadow-none">
+                <SelectTrigger class="h-9 rounded-md border-border/50 bg-background text-sm shadow-none">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent class="rounded-lg">
-                  <SelectItem value="seconds" class="text-xs">秒</SelectItem>
-                  <SelectItem value="minutes" class="text-xs">分钟</SelectItem>
-                  <SelectItem value="hours" class="text-xs">小时</SelectItem>
-                  <SelectItem value="days" class="text-xs">天</SelectItem>
+                <SelectContent class="rounded-lg border-border/50 bg-background">
+                  <SelectItem value="seconds">秒</SelectItem>
+                  <SelectItem value="minutes">分钟</SelectItem>
+                  <SelectItem value="hours">小时</SelectItem>
+                  <SelectItem value="days">天</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div class="space-y-2">
-              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">最大重试</label>
+              <label class="text-xs font-medium text-muted-foreground">最大重试</label>
               <Input
                 v-model.number="formData.max_retries"
                 type="number"
                 min="0"
-                class="h-9 bg-white border-slate-200 rounded-md text-sm font-bold tabular-nums shadow-none"
+                class="h-9 rounded-md border-border/50 text-sm tabular-nums shadow-none"
               />
             </div>
-          </div>
-
-          <div class="flex items-center gap-8 px-2">
-            <div class="flex items-center gap-3">
-              <Switch v-model:checked="formData.is_active" />
-              <span class="text-xs font-semibold text-slate-700">启用调度</span>
             </div>
-            <div class="flex items-center gap-3">
-              <Switch v-model:checked="formData.start_immediately" />
-              <span class="text-xs font-semibold text-slate-700">立即执行一次</span>
-            </div>
-          </div>
 
-          <!-- Section: Params -->
-          <div class="space-y-2">
-            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">任务参数</label>
+            <div class="grid gap-2">
+              <label class="flex h-10 items-center justify-between rounded-md border border-border/50 px-3">
+                <span class="text-sm font-medium text-foreground">启用调度</span>
+                <Switch v-model:checked="formData.is_active" />
+              </label>
+              <label class="flex h-10 items-center justify-between rounded-md border border-border/50 px-3">
+                <span class="text-sm font-medium text-foreground">立即执行一次</span>
+                <Switch v-model:checked="formData.start_immediately" />
+              </label>
+            </div>
+          </section>
+
+          <section class="space-y-2 border-t border-border/50 pt-5">
+            <label class="text-xs font-medium text-muted-foreground">任务参数</label>
             <div class="relative">
               <Textarea
                 v-model="taskParamsJson"
-                rows="4"
-                class="font-mono text-xs bg-slate-900 text-slate-300 rounded-lg border-none focus-visible:ring-2 focus-visible:ring-slate-200 py-4 px-5"
+                rows="5"
+                class="font-mono rounded-md border-border/50 bg-muted/30 px-4 py-3 text-xs text-foreground shadow-none"
                 placeholder='{ "名称": "内容" }'
               />
-              <div v-if="jsonError" class="absolute bottom-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded bg-rose-500/10 border border-rose-500/20 text-rose-600 text-[10px] font-bold">
-                <AppIcon name="alert" class="w-3 h-3" />
+              <div v-if="jsonError" class="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-md border border-destructive/20 bg-background px-2 py-1 text-xs font-medium text-destructive">
+                <AppIcon name="alert" class="h-3 w-3" />
                 格式错误
               </div>
             </div>
-          </div>
+          </section>
         </form>
       </div>
 
-      <!-- Modal Footer -->
-      <div class="px-8 py-5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
-        <Button
-          variant="ghost"
-          @click="$emit('close')"
-          class="h-9 px-4 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
-        >
-          取消
-        </Button>
-        <Button
-          @click="handleSubmit"
-          :disabled="loading || !!jsonError"
-          class="h-9 px-6 text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 transition-colors shadow-sm"
-        >
-          <AppIcon v-if="loading" name="loadingSpinner" class="mr-2 h-4 w-4 animate-spin" />
-          {{ isEditing ? '保存修改' : '创建任务' }}
+      <div class="flex shrink-0 items-center justify-end gap-2 border-t border-border/50 bg-muted/30 p-4">
+        <Button variant="outline" class="h-9 rounded-md" @click="$emit('close')">取消</Button>
+        <Button class="h-9 rounded-md" :disabled="loading || !!jsonError" @click="handleSubmit">
+          <AppIcon v-if="loading" name="loadingSpinner" class="h-4 w-4 animate-spin" />
+          {{ isEditing ? '保存' : '创建' }}
         </Button>
       </div>
     </div>
@@ -167,8 +148,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { 
-  Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, SelectLabel 
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SelectLabel
 } from '@/components/ui/select'
 import { Logger } from '@/utils/logger'
 
@@ -261,14 +248,12 @@ watch(() => props.task, initializeForm, { deep: true })
 </script>
 
 <style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
-  border-radius: 10px;
+.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(var(--primary), 0.1); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(var(--primary), 0.2); }
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 </style>
