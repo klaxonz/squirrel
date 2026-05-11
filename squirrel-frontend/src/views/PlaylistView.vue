@@ -1,274 +1,274 @@
 <template>
-  <AppPageShell class="playlist-page">
-    <div class="playlist-content scrollbar-hide">
-      <div class="content-container playlist-content__inner">
-        <div v-if="loading && !playlists.length" class="playlist-state playlist-state--loading">
-          <LoadingIndicator :loading="true" text="正在加载播放列表" />
+  <AppPageShell variant="compact">
+    <div class="flex h-full overflow-hidden bg-background text-foreground">
+      <aside class="hidden w-72 shrink-0 flex-col border-r border-border/50 bg-background lg:flex">
+        <div class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4">
+          <div class="min-w-0">
+            <h1 class="truncate text-sm font-semibold">播放列表</h1>
+            <p class="mt-0.5 text-xs text-muted-foreground">{{ playlists.length }} 个列表</p>
+          </div>
+          <Button variant="ghost" size="icon" class="h-8 w-8 rounded-md" @click="openCreateModal">
+            <AppIcon name="plus" class="h-4 w-4" />
+          </Button>
         </div>
 
-        <AppEmptyState
-          v-else-if="!playlists.length"
-          class="playlist-empty-card"
-          :title="error ? '加载失败' : '开启你的视听之旅'"
-          :copy="error ? '' : '创建一个播放列表，把心动的视频收集在一起'"
-        >
-          <template #actions>
-            <Button v-if="!error" size="lg" class="rounded-full px-8" @click="openCreateModal">
-              <AppIcon name="plus" class="mr-2" />
-              <span>新建播放列表</span>
-            </Button>
-            <Button v-else variant="outline" @click="reloadPlaylists">重试</Button>
-          </template>
-        </AppEmptyState>
+        <nav class="flex-1 space-y-1 overflow-y-auto p-2 custom-scrollbar">
+          <button
+            v-for="playlist in playlists"
+            :key="playlist.id"
+            class="group flex h-12 w-full items-center gap-2.5 rounded-md px-2 text-left transition-colors"
+            :class="String(activePlaylist?.id) === String(playlist.id) ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
+            @click="selectPlaylist(playlist.id)"
+          >
+            <div class="h-8 w-8 shrink-0 overflow-hidden rounded-md bg-muted">
+              <img
+                v-if="getPlaylistThumbnails(playlist).length"
+                :src="getPlaylistThumbnails(playlist)[0]"
+                referrerpolicy="no-referrer"
+                class="h-full w-full object-cover"
+              >
+              <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground">
+                <AppIcon name="playlistVideo" class="h-4 w-4" />
+              </div>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="truncate text-sm font-medium">{{ playlist.name }}</div>
+              <div class="mt-0.5 text-xs text-muted-foreground">{{ playlist.video_count }} 个视频</div>
+            </div>
+          </button>
+        </nav>
+      </aside>
 
-        <div v-else class="playlist-layout">
-          <!-- Sidebar: Library -->
-          <aside class="playlist-sidebar">
-            <div class="sidebar-header">
-              <h2 class="sidebar-title">媒体库</h2>
-              <Button variant="ghost" size="icon" class="sidebar-add-btn" @click="openCreateModal">
-                <AppIcon name="plus" />
-              </Button>
+      <main class="flex min-w-0 flex-1 flex-col bg-background">
+        <header class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4 lg:px-6">
+          <div class="min-w-0">
+            <h2 class="truncate text-base font-semibold">{{ activePlaylist?.name || '播放列表' }}</h2>
+            <p class="mt-0.5 text-xs text-muted-foreground">
+              {{ activePlaylist ? `${activePlaylistItems.length} 个视频 · ${activePlaylistDurationLabel}` : `${playlists.length} 个列表` }}
+            </p>
+          </div>
+
+          <div class="flex shrink-0 items-center gap-1">
+            <Button v-if="activePlaylistItems.length" size="sm" class="h-8 rounded-md px-3" @click="playAll">
+              <AppIcon name="play" class="h-4 w-4 fill-current" />
+              播放全部
+            </Button>
+            <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" @click="reloadPlaylists">
+              <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': loading || isHydratingSelection }" />
+            </Button>
+            <DropdownMenu v-if="activePlaylist && !activePlaylist.is_default">
+              <DropdownMenuTrigger as-child>
+                <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md">
+                  <AppIcon name="more" class="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" class="w-40">
+                <DropdownMenuItem @click="openEditModal">
+                  <AppIcon name="pencil" class="mr-2 h-4 w-4" />
+                  编辑列表
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem class="text-destructive focus:text-destructive" @click="handleDelete(activePlaylist.id)">
+                  <AppIcon name="trash" class="mr-2 h-4 w-4" />
+                  删除列表
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md lg:hidden" @click="openCreateModal">
+              <AppIcon name="plus" class="h-4 w-4" />
+            </Button>
+          </div>
+        </header>
+
+        <div v-if="playlists.length" class="border-b border-border/50 p-2 lg:hidden">
+          <div class="flex gap-2 overflow-x-auto custom-scrollbar">
+            <button
+              v-for="playlist in playlists"
+              :key="playlist.id"
+              class="h-8 shrink-0 rounded-md px-3 text-sm font-medium transition-colors"
+              :class="String(activePlaylist?.id) === String(playlist.id) ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
+              @click="selectPlaylist(playlist.id)"
+            >
+              {{ playlist.name }}
+            </button>
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scrollbar">
+          <div class="mx-auto w-full max-w-[1200px] p-4 lg:p-6">
+            <div v-if="loading && !playlists.length" class="space-y-4">
+              <div class="h-28 animate-pulse rounded-lg bg-accent/30" />
+              <div class="space-y-2">
+                <div v-for="i in 6" :key="i" class="h-16 animate-pulse rounded-lg bg-accent/25" />
+              </div>
             </div>
 
-            <nav class="sidebar-nav scrollbar-hide">
-              <button
-                v-for="playlist in playlists"
-                :key="playlist.id"
-                class="sidebar-item"
-                :class="{ 'is-active': String(activePlaylist?.id) === String(playlist.id) }"
-                @click="selectPlaylist(playlist.id)"
-              >
-                <div class="sidebar-item__cover">
-                  <template v-if="getPlaylistThumbnails(playlist).length">
-                    <img
-                      :src="getPlaylistThumbnails(playlist)[0]"
-                      referrerpolicy="no-referrer"
-                      class="sidebar-item__img"
-                      @error="handleCoverImageError"
-                    >
-                  </template>
-                  <div v-else class="sidebar-item__fallback">
-                    <AppIcon name="playlistVideo" />
-                  </div>
-                </div>
-                <div class="sidebar-item__info">
-                  <span class="sidebar-item__name">{{ playlist.name }}</span>
-                  <span class="sidebar-item__meta">{{ playlist.video_count }} 个视频</span>
-                </div>
-              </button>
-            </nav>
-          </aside>
+            <div v-else-if="!playlists.length" class="flex min-h-[24rem] flex-col items-center justify-center text-center">
+              <AppIcon name="playlistVideo" class="h-9 w-9 text-muted-foreground/30" />
+              <h2 class="mt-4 text-sm font-semibold">{{ error ? '加载失败' : '暂无播放列表' }}</h2>
+              <p v-if="!error" class="mt-1 text-sm text-muted-foreground">创建播放列表后会显示在这里。</p>
+              <Button v-if="!error" class="mt-4 h-9 rounded-md px-3" @click="openCreateModal">
+                <AppIcon name="plus" class="h-4 w-4" />
+                新建播放列表
+              </Button>
+              <Button v-else variant="outline" class="mt-4 h-9 rounded-md px-3" @click="reloadPlaylists">重试</Button>
+            </div>
 
-          <!-- Main Content: Detail -->
-          <main class="playlist-main">
-            <Transition name="fade-slide" mode="out-in">
-              <div v-if="activePlaylist" :key="activePlaylist.id" class="playlist-detail-view">
-                <!-- Header Section -->
-                <header class="playlist-header">
-                  <div class="playlist-header__bg">
+            <div v-else-if="activePlaylist" class="space-y-6">
+              <section class="flex flex-col gap-4 border-b border-border/50 pb-6 sm:flex-row sm:items-end">
+                <div class="h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
+                  <div v-if="getPlaylistThumbnails(activePlaylist).length >= 4" class="grid h-full w-full grid-cols-2 grid-rows-2 gap-px">
                     <img
-                      v-if="activePlaylistItems[0]?.video?.thumbnail"
-                      :src="activePlaylistItems[0].video.thumbnail"
+                      v-for="(thumb, i) in getPlaylistThumbnails(activePlaylist).slice(0, 4)"
+                      :key="i"
+                      :src="thumb"
                       referrerpolicy="no-referrer"
-                      class="playlist-header__bg-img"
+                      class="h-full w-full object-cover"
                     >
                   </div>
-                  
-                  <div class="playlist-header__content">
-                    <div class="playlist-header__cover">
-                      <!-- 只有当缩略图 >= 4 时才显示拼贴，否则显示单张大图 -->
-                      <div v-if="getPlaylistThumbnails(activePlaylist).length >= 4" class="playlist-mosaic">
-                        <img
-                          v-for="(thumb, i) in getPlaylistThumbnails(activePlaylist).slice(0, 4)"
-                          :key="i"
-                          :src="thumb"
-                          referrerpolicy="no-referrer"
-                          class="playlist-mosaic__img"
-                        >
-                      </div>
-                      <div v-else-if="getPlaylistThumbnails(activePlaylist).length > 0" class="playlist-header__single">
-                        <img
-                          :src="getPlaylistThumbnails(activePlaylist)[0]"
-                          referrerpolicy="no-referrer"
-                          class="playlist-header__single-img"
-                        >
-                      </div>
-                      <div v-else class="playlist-header__fallback">
-                        <AppIcon name="playlistVideo" class="h-12 w-12" />
-                      </div>
-                    </div>
-
-                    <div class="playlist-header__info">
-                      <div class="playlist-header__type">播放列表</div>
-                      <h1 class="playlist-header__title">{{ activePlaylist.name }}</h1>
-                      <p v-if="activePlaylist.description" class="playlist-header__desc">
-                        {{ activePlaylist.description }}
-                      </p>
-                      <div class="playlist-header__meta">
-                        <span class="playlist-header__author">我的媒体库</span>
-                        <span class="playlist-header__dot">•</span>
-                        <span>{{ activePlaylistItems.length }} 个视频</span>
-                        <span class="playlist-header__dot">•</span>
-                        <span>{{ activePlaylistDurationLabel }}</span>
-                      </div>
-
-                      <div class="playlist-header__actions">
-                        <Button size="lg" class="rounded-full px-8 shadow-lg shadow-primary/20" @click="playAll">
-                          <AppIcon name="play" class="mr-2 fill-current" />
-                          <span>播放全部</span>
-                        </Button>
-                        
-                        <DropdownMenu v-if="!activePlaylist.is_default">
-                          <DropdownMenuTrigger as-child>
-                            <Button variant="secondary" size="icon" class="rounded-full">
-                              <AppIcon name="more" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" class="w-48">
-                            <DropdownMenuItem @click="openEditModal">
-                              <AppIcon name="pencil" class="mr-2 h-4 w-4" />
-                              编辑列表
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem class="text-destructive focus:text-destructive" @click="handleDelete(activePlaylist!.id)">
-                              <AppIcon name="trash" class="mr-2 h-4 w-4" />
-                              删除列表
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
+                  <img
+                    v-else-if="getPlaylistThumbnails(activePlaylist).length > 0"
+                    :src="getPlaylistThumbnails(activePlaylist)[0]"
+                    referrerpolicy="no-referrer"
+                    class="h-full w-full object-cover"
+                  >
+                  <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground">
+                    <AppIcon name="playlistVideo" class="h-8 w-8" />
                   </div>
-                </header>
+                </div>
 
-                <!-- List Section -->
-                <div class="playlist-items-container">
-                  <div v-if="loadingItems || isHydratingSelection" class="playlist-items-loading">
-                    <LoadingIndicator :loading="true" />
+                <div class="min-w-0 flex-1">
+                  <div class="text-xs font-medium text-muted-foreground">播放列表</div>
+                  <h1 class="mt-1 truncate text-lg font-semibold">{{ activePlaylist.name }}</h1>
+                  <p v-if="activePlaylist.description" class="mt-2 line-clamp-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                    {{ activePlaylist.description }}
+                  </p>
+                  <div class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span>我的媒体库</span>
+                    <span class="h-1 w-1 rounded-full bg-border" />
+                    <span>{{ activePlaylistItems.length }} 个视频</span>
+                    <span class="h-1 w-1 rounded-full bg-border" />
+                    <span>{{ activePlaylistDurationLabel }}</span>
+                  </div>
+                </div>
+              </section>
+
+              <div v-if="loadingItems || isHydratingSelection" class="space-y-2">
+                <div v-for="i in 6" :key="i" class="h-16 animate-pulse rounded-lg bg-accent/25" />
+              </div>
+
+              <div v-else-if="!activePlaylistItems.length" class="flex min-h-[20rem] flex-col items-center justify-center text-center">
+                <AppIcon name="playlistVideo" class="h-9 w-9 text-muted-foreground/30" />
+                <h3 class="mt-4 text-sm font-semibold">暂无视频</h3>
+                <p class="mt-1 text-sm text-muted-foreground">添加到列表的视频会显示在这里。</p>
+              </div>
+
+              <div v-else class="space-y-1">
+                <div class="hidden h-8 grid-cols-[2rem_minmax(0,1fr)_8rem_8rem_3rem] items-center gap-3 border-b border-border/50 px-2 text-xs font-medium text-muted-foreground md:grid">
+                  <div>#</div>
+                  <div>标题</div>
+                  <div>来源</div>
+                  <div>添加时间</div>
+                  <div />
+                </div>
+
+                <article
+                  v-for="(item, index) in activePlaylistItems"
+                  :key="item.id"
+                  class="group grid cursor-pointer grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-3 rounded-lg border border-transparent px-2 py-2 transition-colors hover:border-border/50 hover:bg-accent/40 md:grid-cols-[2rem_minmax(0,1fr)_8rem_8rem_3rem]"
+                  :class="{ 'text-primary': currentVideoId && String(item.video_id) === String(currentVideoId) }"
+                  @click="playVideo(item)"
+                >
+                  <div class="flex items-center justify-center text-sm text-muted-foreground">
+                    <span class="group-hover:hidden">{{ index + 1 }}</span>
+                    <AppIcon name="play" class="hidden h-4 w-4 fill-current text-foreground group-hover:block" />
                   </div>
 
-                  <div v-else-if="!activePlaylistItems.length" class="playlist-items-empty">
-                    <div class="empty-visual">
-                      <AppIcon name="playlistVideo" class="h-16 w-16" />
-                    </div>
-                    <h3>这里空空如也</h3>
-                    <p>快去添加一些精彩视频吧</p>
-                  </div>
-
-                  <div v-else class="playlist-items-list">
-                    <div class="list-header">
-                      <div class="list-header__index">#</div>
-                      <div class="list-header__title">标题</div>
-                      <div class="list-header__site">来源</div>
-                      <div class="list-header__date">添加时间</div>
-                      <div class="list-header__actions"></div>
-                    </div>
-
-                    <TransitionGroup name="list-stagger">
-                      <article
-                        v-for="(item, index) in activePlaylistItems"
-                        :key="item.id"
-                        class="video-row"
-                        :class="{ 'is-playing': currentVideoId && String(item.video_id) === String(currentVideoId) }"
-                        @click="playVideo(item)"
+                  <div class="flex min-w-0 items-center gap-3">
+                    <div class="relative aspect-video w-20 shrink-0 overflow-hidden rounded-md bg-muted">
+                      <img
+                        v-if="item.video?.thumbnail"
+                        :src="item.video.thumbnail"
+                        referrerpolicy="no-referrer"
+                        class="h-full w-full object-cover"
                       >
-                        <div class="video-row__index">
-                          <span class="index-num">{{ index + 1 }}</span>
-                          <AppIcon name="play" class="play-icon fill-current" />
-                        </div>
-
-                        <div class="video-row__main">
-                          <div class="video-row__thumb">
-                            <img
-                              v-if="item.video?.thumbnail"
-                              :src="item.video.thumbnail"
-                              referrerpolicy="no-referrer"
-                              @error="handlePlaylistItemImageError"
-                            >
-                            <div v-else class="thumb-fallback"><AppIcon name="film" /></div>
-                            <span v-if="item.video?.duration" class="video-row__duration">
-                              {{ formatDuration(item.video.duration) }}
-                            </span>
-                          </div>
-                          <div class="video-row__info">
-                            <span class="video-row__title">{{ item.video?.title || '未知视频' }}</span>
-                          </div>
-                        </div>
-
-                        <div class="video-row__site">
-                          <Badge variant="outline" class="font-normal">{{ item.video?.site || '未知' }}</Badge>
-                        </div>
-
-                        <div class="video-row__date">
-                          {{ formatDate(item.added_at) }}
-                        </div>
-
-                        <div class="video-row__actions">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            class="h-8 w-8 rounded-full opacity-0"
-                            @click.stop="handleRemoveVideo(item)"
-                          >
-                            <AppIcon name="close" class="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </article>
-                    </TransitionGroup>
+                      <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground">
+                        <AppIcon name="film" class="h-5 w-5" />
+                      </div>
+                      <span v-if="item.video?.duration" class="absolute bottom-1 right-1 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-medium text-white tabular-nums">
+                        {{ formatDuration(item.video.duration) }}
+                      </span>
+                    </div>
+                    <div class="min-w-0">
+                      <div class="truncate text-sm font-medium text-foreground">{{ item.video?.title || '未知视频' }}</div>
+                      <div class="mt-1 text-xs text-muted-foreground md:hidden">
+                        {{ item.video?.site || '未知' }} · {{ formatDate(item.added_at) }}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <!-- Blank State -->
-              <div v-else class="playlist-blank-state">
-                <div class="blank-visual">
-                  <div class="visual-circle"></div>
-                  <AppIcon name="panelOpen" class="h-12 w-12" />
-                </div>
-                <h2>选择一个播放列表</h2>
-                <p>查看并管理你收藏的视频内容</p>
+                  <div class="hidden truncate text-sm text-muted-foreground md:block">{{ item.video?.site || '未知' }}</div>
+                  <div class="hidden text-sm text-muted-foreground md:block">{{ formatDate(item.added_at) }}</div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    class="h-8 w-8 rounded-md opacity-0 transition-opacity group-hover:opacity-100"
+                    @click.stop="handleRemoveVideo(item)"
+                  >
+                    <AppIcon name="close" class="h-4 w-4" />
+                  </Button>
+                </article>
               </div>
-            </Transition>
-          </main>
+            </div>
+
+            <div v-else class="flex min-h-[24rem] flex-col items-center justify-center text-center">
+              <AppIcon name="panelOpen" class="h-9 w-9 text-muted-foreground/30" />
+              <h2 class="mt-4 text-sm font-semibold">选择播放列表</h2>
+              <p class="mt-1 text-sm text-muted-foreground">选择左侧列表后查看内容。</p>
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
 
-    <!-- Modals & Dialogs (Keep existing logic but refine visuals if needed) -->
     <Dialog :open="showDeleteConfirm" @update:open="handleDeleteConfirmOpenChange">
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>删除播放列表</DialogTitle>
-          <DialogDescription>
-            {{ deleteTargetPlaylist ? `确定要删除 "${deleteTargetPlaylist.name}" 吗？此操作将永久移除该列表，但不会删除视频本身。` : '确定要删除这个播放列表吗？' }}
+      <DialogContent class="max-w-sm overflow-hidden rounded-lg p-0">
+        <DialogHeader class="border-b border-border/50 p-5 text-left">
+          <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-destructive/10 text-destructive">
+            <AppIcon name="trash" class="h-5 w-5" />
+          </div>
+          <DialogTitle class="text-base font-semibold">删除播放列表？</DialogTitle>
+          <DialogDescription class="text-sm leading-relaxed text-muted-foreground">
+            {{ deleteTargetPlaylist ? `确定要删除 "${deleteTargetPlaylist.name}" 吗？此操作不会删除视频本身。` : '确定要删除这个播放列表吗？' }}
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter>
-          <Button variant="ghost" @click="closeDeleteConfirm">取消</Button>
-          <Button variant="destructive" @click="confirmDelete">确认删除</Button>
+        <DialogFooter class="gap-2 bg-muted/30 p-4">
+          <Button variant="outline" class="h-9 rounded-md" @click="closeDeleteConfirm">取消</Button>
+          <Button variant="destructive" class="h-9 rounded-md" @click="confirmDelete">确认删除</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
 
     <Dialog :open="editorOpen" @update:open="handleEditorOpenChange">
-      <DialogContent class="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>{{ editingPlaylist ? '编辑列表信息' : '创建新列表' }}</DialogTitle>
+      <DialogContent class="max-w-sm overflow-hidden rounded-lg p-0">
+        <DialogHeader class="border-b border-border/50 p-5 text-left">
+          <DialogTitle class="text-base font-semibold">{{ editingPlaylist ? '编辑列表' : '新建播放列表' }}</DialogTitle>
         </DialogHeader>
-        <div class="grid gap-4 py-4">
-          <div class="grid gap-2">
+        <div class="space-y-4 p-5">
+          <div class="space-y-2">
             <label for="name" class="text-sm font-medium">列表名称</label>
             <Input id="name" v-model="formName" placeholder="例如：我的最爱" @keyup.enter="handleSave" />
           </div>
-          <div class="grid gap-2">
+          <div class="space-y-2">
             <label for="description" class="text-sm font-medium">描述</label>
-            <Textarea id="description" v-model="formDesc" placeholder="添加一些关于这个列表的说明..." rows="3" />
+            <Textarea id="description" v-model="formDesc" placeholder="添加一些关于这个列表的说明" rows="3" />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="ghost" @click="closeModal">取消</Button>
-          <Button :disabled="!formName.trim()" @click="handleSave">保存更改</Button>
+        <DialogFooter class="gap-2 bg-muted/30 p-4">
+          <Button variant="outline" class="h-9 rounded-md" @click="closeModal">取消</Button>
+          <Button class="h-9 rounded-md" :disabled="!formName.trim()" @click="handleSave">
+            {{ editingPlaylist ? '保存' : '创建' }}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -279,11 +279,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
-import AppEmptyState from '@/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import LoadingIndicator from '@/components/feed/LoadingIndicator.vue'
 import {
   Dialog,
   DialogContent,
@@ -346,27 +343,19 @@ const getPlaylistThumbnails = (playlist: Playlist): string[] => {
   const cached = playlistThumbnails.value.get(playlist.id)
   if (cached) return cached
 
-  // If this is the active playlist, we use the active items which are already loaded
   const items = activePlaylist.value && String(activePlaylist.value.id) === String(playlist.id)
     ? activePlaylistItems.value
     : []
-  
-  // If we have items, use them. Otherwise, try to find thumbnails from anywhere else? 
-  // For now, just use what we have in active items or empty.
+
   const thumbs = items
     .map(item => item.video?.thumbnail)
-    .filter((t): t is string => !!t)
+    .filter((thumbnail): thumbnail is string => !!thumbnail)
     .slice(0, 4)
-  
+
   if (thumbs.length > 0) {
     playlistThumbnails.value.set(playlist.id, thumbs)
   }
   return thumbs
-}
-
-const handleCoverImageError = (event: Event) => {
-  const target = event.target as HTMLImageElement | null
-  if (target) target.style.display = 'none'
 }
 
 const closeModal = () => {
@@ -440,7 +429,7 @@ const reloadPlaylists = async () => {
 
 const selectPlaylist = async (playlistId: number | string) => {
   if (activePlaylist.value && String(activePlaylist.value.id) === String(playlistId)) return
-  
+
   isHydratingSelection.value = true
   try {
     await loadAndSetPlaylist(playlistId)
@@ -510,14 +499,14 @@ const handleRemoveVideo = async (item: PlaylistItem) => {
   await removeVideo(activePlaylist.value.id, item.video_id)
 }
 
-const handlePlaylistItemImageError = (event: Event) => {
-  const target = event.target as HTMLImageElement | null
-  if (target) target.style.display = 'none'
-}
-
 onMounted(async () => {
   await reloadPlaylists()
 })
 </script>
 
-<style scoped src="../styles/views/PlaylistView.css"></style>
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(var(--primary), 0.1); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(var(--primary), 0.2); }
+</style>
