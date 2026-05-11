@@ -29,7 +29,7 @@
       <!-- Overlays -->
       <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       
-      <span class="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black text-[10px] font-bold text-white rounded-md shadow-sm ring-1 ring-white/10">
+      <span class="absolute bottom-2 right-2 inline-flex h-5 items-center rounded-md bg-black/60 px-1.5 text-[10px] font-semibold tabular-nums text-white shadow-sm backdrop-blur-md">
         {{ formatDuration(video.duration) }}
       </span>
 
