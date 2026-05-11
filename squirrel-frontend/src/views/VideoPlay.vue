@@ -56,10 +56,22 @@
             </div>
           </div>
 
-          <div class="p-4 bg-accent/20 rounded-xl ring-1 ring-border/10 group">
-            <p class="text-[14px] leading-relaxed text-foreground/80 whitespace-pre-wrap">
-              {{ (video as any).description || 'No description available.' }}
+          <div v-if="videoDescription" class="!mt-0 p-4 bg-accent/20 rounded-xl ring-1 ring-border/10 group">
+            <p
+              ref="descriptionTextRef"
+              class="text-[14px] leading-relaxed text-foreground/80 whitespace-pre-wrap"
+              :class="{ 'line-clamp-3': !descriptionExpanded }"
+            >
+              {{ videoDescription }}
             </p>
+            <button
+              v-if="hasLongDescription"
+              type="button"
+              class="mt-3 text-[13px] font-bold text-foreground hover:text-primary transition-colors"
+              @click="descriptionExpanded = !descriptionExpanded"
+            >
+              {{ descriptionExpanded ? '收起' : '展开' }}
+            </button>
           </div>
         </div>
         
@@ -117,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator'
@@ -179,6 +191,10 @@ const { goToVideo, handleAutoplayNext, handlePrevVideoFromPlaylist, handleNextVi
 } as any)
 
 const asideTab = ref('related')
+const descriptionExpanded = ref(false)
+const descriptionTextRef = ref<HTMLElement | null>(null)
+const hasDescriptionOverflow = ref(false)
+let descriptionResizeObserver: ResizeObserver | null = null
 const { videoActions, handleVideoAction } = useVideoActionBar({
   video,
   interactionTypeLike: INTERACTION_TYPE.LIKE,
@@ -201,6 +217,48 @@ const { handlePlaybackTimeUpdate, handleClipMarkerSeek, handleClipMarkersUpdated
 const videoPublishedText = computed(() => {
   const d = video.value?.publish_date || video.value?.uploaded_at
   return d ? formatDate(d as any) : ''
+})
+
+const videoDescription = computed(() => String((video.value as any)?.description || '').trim())
+
+const hasLongDescription = computed(() => hasDescriptionOverflow.value)
+
+const syncDescriptionOverflow = async () => {
+  await nextTick()
+  const el = descriptionTextRef.value
+  hasDescriptionOverflow.value = !!el && el.scrollHeight > el.clientHeight + 1
+}
+
+watch(() => video.value?.id, () => {
+  descriptionExpanded.value = false
+  void syncDescriptionOverflow()
+})
+
+watch(videoDescription, () => {
+  descriptionExpanded.value = false
+  void syncDescriptionOverflow()
+})
+
+watch(descriptionTextRef, (el) => {
+  descriptionResizeObserver?.disconnect()
+  descriptionResizeObserver = null
+
+  if (el) {
+    descriptionResizeObserver = new ResizeObserver(() => {
+      if (!descriptionExpanded.value) void syncDescriptionOverflow()
+    })
+    descriptionResizeObserver.observe(el)
+  }
+
+  void syncDescriptionOverflow()
+})
+
+onMounted(() => {
+  void syncDescriptionOverflow()
+})
+
+onBeforeUnmount(() => {
+  descriptionResizeObserver?.disconnect()
 })
 
 const primarySubscription = computed(() => {
