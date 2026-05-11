@@ -4,8 +4,8 @@
       <!-- Main Content -->
       <div class="space-y-6 min-w-0">
         <!-- Player Section -->
-        <div class="relative aspect-video rounded-2xl overflow-hidden bg-black shadow-2xl ring-1 ring-white/10">
-          <div ref="videoPlayerHostRef" class="absolute inset-0" />
+        <div class="relative aspect-video overflow-hidden rounded-2xl bg-black shadow-2xl">
+          <div ref="videoPlayerHostRef" class="absolute inset-0 overflow-hidden rounded-2xl" />
         </div>
 
         <!-- Video Header Info -->
