@@ -1,17 +1,20 @@
 <template>
-  <div class="p-4 rounded-3xl bg-card border border-border/50 shadow-sm space-y-4">
-    <div class="flex items-start gap-4">
-      <div class="w-20 h-20 rounded-2xl bg-accent/20 animate-pulse" />
-      <div class="flex-1 space-y-3 py-1">
-        <div class="h-5 w-2/3 bg-accent/20 rounded-lg animate-pulse" />
-        <div class="flex gap-3">
-          <div class="h-3 w-16 bg-accent/10 rounded-md animate-pulse" />
-          <div class="h-3 w-20 bg-accent/10 rounded-md animate-pulse" />
+  <div class="space-y-3 rounded-lg border border-border/50 bg-background p-3">
+    <div class="flex items-start gap-3">
+      <div class="h-11 w-11 animate-pulse rounded-md bg-accent/40" />
+      <div class="flex-1 space-y-2 py-0.5">
+        <div class="h-4 w-2/3 animate-pulse rounded-md bg-accent/40" />
+        <div class="flex gap-2">
+          <div class="h-3 w-14 animate-pulse rounded bg-accent/30" />
+          <div class="h-3 w-16 animate-pulse rounded bg-accent/30" />
         </div>
       </div>
     </div>
-    <div class="grid grid-cols-3 gap-1.5 pt-2">
-      <div v-for="i in 3" :key="i" class="aspect-video rounded-lg bg-accent/10 animate-pulse" />
+    <div class="grid grid-cols-3 gap-1.5">
+      <div v-for="i in 3" :key="i" class="aspect-video animate-pulse rounded-md bg-accent/30" />
+    </div>
+    <div class="border-t border-border/50 pt-2">
+      <div class="h-3 w-20 animate-pulse rounded bg-accent/30" />
     </div>
   </div>
 </template>
