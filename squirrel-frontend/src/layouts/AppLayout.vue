@@ -13,7 +13,7 @@
       <!-- 3. Main Container -->
       <main class="flex-1 min-w-0 flex flex-col relative">
         <!-- 4. App Header (Fixed Height) -->
-        <AppHeader class="shrink-0 z-40 border-b border-border/40" />
+        <AppHeader class="shrink-0 z-40" />
         
         <!-- 5. Scrollable Content Area -->
         <div class="flex-1 overflow-y-auto overflow-x-hidden relative scrollbar overflow-anchor-none" id="app-main-scroll">

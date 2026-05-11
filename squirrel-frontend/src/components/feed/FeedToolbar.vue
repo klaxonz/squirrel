@@ -1,13 +1,13 @@
 <template>
   <section class="flex flex-col bg-background">
-    <div class="flex items-center h-14 px-4 sm:px-6 gap-4 sm:gap-6 border-b border-border/40">
+    <div class="flex items-center h-14 px-4 sm:px-6 gap-4 sm:gap-6">
       
       <!-- Left: Navigation Tabs -->
-      <nav v-if="showTabs" class="flex items-center h-full space-x-1 overflow-x-auto scrollbar-hide -mb-px shrink-0">
+      <nav v-if="showTabs" class="flex items-center h-full space-x-1 overflow-x-auto scrollbar-hide shrink-0">
         <button
           v-for="tab in tabs"
           :key="tab.value"
-          class="relative h-full px-3 text-[13px] font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 shrink-0"
+          class="h-full px-3 flex items-center text-[13px] font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 shrink-0"
           :class="[
             localActiveTab === tab.value 
               ? 'text-foreground' 
@@ -15,11 +15,13 @@
           ]"
           @click="localActiveTab = tab.value"
         >
-          {{ tab.label }}
-          <div 
-            v-if="localActiveTab === tab.value"
-            class="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full"
-          ></div>
+          <span class="relative inline-flex items-center leading-6">
+            {{ tab.label }}
+            <span
+              v-if="localActiveTab === tab.value"
+              class="absolute -bottom-1 left-0 right-0 h-[2px] bg-primary rounded-full"
+            />
+          </span>
         </button>
       </nav>
 

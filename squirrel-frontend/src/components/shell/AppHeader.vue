@@ -1,5 +1,5 @@
 <template>
-  <header class="h-14 sticky top-0 z-40 flex items-center px-6 gap-4 bg-background border-b border-border/40">
+  <header class="h-14 sticky top-0 z-40 flex items-center px-6 gap-4 bg-background">
     <div class="flex items-center gap-4 flex-1 min-w-0">
       <div v-if="!showSearch" class="flex items-center overflow-hidden">
         <RouteContextBar 
