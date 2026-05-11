@@ -75,7 +75,12 @@ const routes = [
     path: '/videos',
     name: 'LatestVideos',
     component: LatestVideos,
-    meta: createSearchMeta('首页', { navKey: 'videos', sectionLabel: '首页' }),
+    meta: createSearchMeta('首页', {
+      navKey: 'videos',
+      sectionLabel: '首页',
+      keepAlive: true,
+      keepAliveComponent: 'LatestVideos',
+    }),
     children: [
       createVideoTabRoute('all', 'AllVideos', '全部视频', { navKey: 'videos', sectionLabel: '首页' }),
       createVideoTabRoute('unread', 'UnreadVideos', '未读视频', { navKey: 'videos', sectionLabel: '首页' }),
@@ -97,6 +102,8 @@ const routes = [
     meta: createSearchMeta('订阅中心', {
       navKey: 'subscribed',
       sectionLabel: '订阅',
+      keepAlive: true,
+      keepAliveComponent: 'Subscribed',
       search: 'subscribed',
       searchEvent: 'search:subscribed',
       searchPlaceholder: '搜索订阅源',
@@ -165,6 +172,8 @@ const routes = [
     meta: createSearchMeta('频道', {
       navKey: 'subscribed',
       sectionLabel: '订阅',
+      keepAlive: true,
+      keepAliveComponent: 'LatestVideos',
       contextParentLabel: '频道',
     }),
     children: [

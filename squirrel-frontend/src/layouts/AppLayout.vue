@@ -16,7 +16,11 @@
         <AppHeader class="shrink-0 z-40" />
         
         <!-- 5. Scrollable Content Area -->
-        <div class="flex-1 overflow-y-auto overflow-x-hidden relative scrollbar overflow-anchor-none" id="app-main-scroll">
+        <div
+          ref="mainScrollRef"
+          class="flex-1 overflow-y-auto overflow-x-hidden relative scrollbar overflow-anchor-none"
+          id="app-main-scroll"
+        >
           <GlobalVideoPlayerHost />
           <slot />
           
@@ -32,7 +36,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import DesktopTitleBar from '@/components/shell/DesktopTitleBar.vue'
 import AppSidebar from '@/components/shell/AppSidebar.vue'
 import AppHeader from '@/components/shell/AppHeader.vue'
@@ -41,8 +46,48 @@ import GlobalVideoPlayerHost from '@/components/video-player/GlobalVideoPlayerHo
 import { isMobile } from '@/composables/useMobile'
 import { useThemeStore } from '@/stores/theme'
 
+type ScrollRouteState = {
+  fullPath: string
+  keepAlive: boolean
+}
+
+const scrollPositions = new Map<string, number>()
 const isDesktop = (window as any).desktopApp?.isDesktop === true
 const themeStore = useThemeStore()
+const route = useRoute()
+const mainScrollRef = ref<HTMLElement | null>(null)
+let activeScrollRoute: ScrollRouteState = {
+  fullPath: route.fullPath,
+  keepAlive: route.meta.keepAlive === true,
+}
+let previousHistoryPosition = Number(window.history.state?.position ?? 0)
+
+const getScrollRouteState = (): ScrollRouteState => ({
+  fullPath: route.fullPath,
+  keepAlive: route.meta.keepAlive === true,
+})
+
+const restoreScrollForRoute = async (scrollRoute: ScrollRouteState, restoreSavedPosition: boolean) => {
+  await nextTick()
+  const scrollEl = mainScrollRef.value
+  if (!scrollEl) return
+
+  scrollEl.scrollTop = scrollRoute.keepAlive && restoreSavedPosition
+    ? scrollPositions.get(scrollRoute.fullPath) ?? 0
+    : 0
+}
+
+watch(() => route.fullPath, async () => {
+  const currentHistoryPosition = Number(window.history.state?.position ?? previousHistoryPosition)
+  const scrollEl = mainScrollRef.value
+  if (scrollEl && activeScrollRoute.keepAlive) {
+    scrollPositions.set(activeScrollRoute.fullPath, scrollEl.scrollTop)
+  }
+
+  activeScrollRoute = getScrollRouteState()
+  await restoreScrollForRoute(activeScrollRoute, currentHistoryPosition < previousHistoryPosition)
+  previousHistoryPosition = currentHistoryPosition
+})
 
 onMounted(() => {
   themeStore.init()

@@ -1,7 +1,7 @@
 <template>
   <component :is="layout">
     <router-view v-slot="{ Component }">
-      <keep-alive :include="['LatestVideos', 'Subscribed']">
+      <keep-alive :include="keepAliveIncludes">
         <component :is="Component" />
       </keep-alive>
     </router-view>
@@ -10,12 +10,20 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppLayout from './layouts/AppLayout.vue'
 import AuthLayout from './layouts/AuthLayout.vue'
 import EmptyLayout from './layouts/EmptyLayout.vue'
 
 const route = useRoute()
+const router = useRouter()
+
+const keepAliveIncludes = Array.from(new Set(
+  router
+    .getRoutes()
+    .map((routeRecord) => routeRecord.meta.keepAliveComponent)
+    .filter((componentName): componentName is string => typeof componentName === 'string'),
+))
 
 const layouts = {
   default: AppLayout,

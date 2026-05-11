@@ -185,6 +185,8 @@ import { useSites } from '../composables/useSites'
 import { getSubscriptions, getVideoList } from '@/api'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 
+defineOptions({ name: 'Subscribed' })
+
 const router = useRouter()
 const { nsfw, site } = useFeedFilters()
 const { options: siteOptions, fetchSites } = useSites()

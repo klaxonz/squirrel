@@ -5,7 +5,6 @@
     :allLoaded="allLoaded"
     :showAvatar="false"
     :sortBy="sortBy"
-    :scroll-cache-key="listScrollCacheKey"
     :refreshing="loading && videos.length > 0"
     @loadMore="loadMore"
     @openModal="(video) => emit('openModal', video, videos)"
@@ -60,8 +59,6 @@ const {
   duration: currentFilters.value.duration,
   contentType: currentFilters.value.contentType,
 })
-
-const listScrollCacheKey = computed(() => Object.values(currentFilters.value).join('|'))
 
 watch(currentFilters, (f) => {
   activeTab.value = f.tab

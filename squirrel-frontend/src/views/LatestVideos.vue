@@ -1,5 +1,5 @@
 <template>
-  <AppPageShell class="latest-videos-page" variant="compact" scrollable>
+  <AppPageShell class="latest-videos-page" variant="compact" :fill="false">
     <!-- Channel Header -->
     <ChannelHeader v-if="subscriptionId" :subscription-id="subscriptionId" />
 
@@ -48,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUIStore } from '@/stores/ui'
 import { useRouteTabSync } from '../composables/useRouteTabSync'
@@ -61,6 +61,8 @@ import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue'
 import { VIDEO_TABS } from '@/constants/videos'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { onSubscriptionRemoved } from '@/utils/subscriptionEvents'
+
+defineOptions({ name: 'LatestVideos' })
 
 const router = useRouter()
 const route = useRoute()
