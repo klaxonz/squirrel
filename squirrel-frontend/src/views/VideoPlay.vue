@@ -11,7 +11,7 @@
         <!-- Video Header Info -->
         <div v-if="video" class="space-y-6">
           <div class="space-y-2">
-            <h1 class="text-xl md:text-2xl font-bold tracking-tight leading-[1.2] text-foreground">
+            <h1 class="text-lg md:text-xl font-semibold tracking-tight leading-[1.3] text-foreground">
               {{ video.title }}
             </h1>
             <div class="flex items-center gap-2 text-sm text-muted-foreground/60 font-medium">
@@ -30,7 +30,7 @@
                   <span class="text-[12px] text-muted-foreground/60 font-medium">{{ primarySubscription.total_videos || 0 }} 项视频</span>
                 </div>
               </div>
-              <button class="px-4 py-2 bg-foreground text-background text-[13px] font-bold rounded-full hover:opacity-90 active:scale-95 transition-all shadow-sm">订阅</button>
+              <button class="h-7 px-3 bg-foreground text-background text-xs font-semibold rounded-full hover:opacity-90 active:scale-95 transition-all shadow-sm">订阅</button>
             </div>
 
             <div class="flex items-center gap-2">
@@ -92,13 +92,13 @@
       <div class="space-y-6">
         <div class="flex p-0.5 bg-accent/30 rounded-lg ring-1 ring-border/20">
           <button 
-            v-for="tab in ['related', 'clips', 'playlist']" 
-            :key="tab"
-            @click="asideTab = tab"
+            v-for="tab in asideTabs"
+            :key="tab.key"
+            @click="asideTab = tab.key"
             class="flex-1 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all"
-            :class="asideTab === tab ? 'bg-background text-foreground shadow-sm ring-1 ring-border/10' : 'text-muted-foreground hover:text-foreground'"
+            :class="asideTab === tab.key ? 'bg-background text-foreground shadow-sm ring-1 ring-border/10' : 'text-muted-foreground hover:text-foreground'"
           >
-            {{ tab }}
+            {{ tab.label }}
           </button>
         </div>
 
@@ -191,6 +191,11 @@ const { goToVideo, handleAutoplayNext, handlePrevVideoFromPlaylist, handleNextVi
 } as any)
 
 const asideTab = ref('related')
+const asideTabs = [
+  { key: 'related', label: '相关' },
+  { key: 'clips', label: '片段' },
+  { key: 'playlist', label: '列表' },
+]
 const descriptionExpanded = ref(false)
 const descriptionTextRef = ref<HTMLElement | null>(null)
 const hasDescriptionOverflow = ref(false)
