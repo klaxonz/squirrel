@@ -65,24 +65,24 @@
         <button
           v-if="showFilter"
           type="button"
-          class="relative w-8 h-8 flex items-center justify-center rounded-lg transition-colors border border-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+          class="relative flex size-8 shrink-0 items-center justify-center rounded-lg border transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary"
           :class="[
             activeFilterCount > 0 
               ? 'bg-primary/10 text-primary border-primary/20' 
               : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground border-border/40'
           ]"
           @click="filterModalOpen = true"
-          title="高级筛选"
+          :title="activeFilterCount > 0 ? '筛选已启用' : '筛选'"
+          :aria-label="activeFilterCount > 0 ? '筛选已启用' : '筛选'"
         >
-          <AppIcon name="filter" class="w-4 h-4 shrink-0" />
-          <span v-if="activeFilterCount > 0" class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full ring-2 ring-background"></span>
+          <AppIcon name="filter" class="size-4 shrink-0" />
         </button>
 
         <!-- Refresh -->
         <button
           v-if="showRefresh"
           type="button"
-          class="w-8 h-8 flex items-center justify-center rounded-lg transition-colors border border-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary text-muted-foreground hover:bg-muted/60 hover:text-foreground border-border/40 shrink-0"
+          class="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/40 text-muted-foreground transition-colors outline-none hover:bg-muted/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
           @click="$emit('refresh')"
           title="刷新内容"
         >
@@ -152,9 +152,10 @@ const handleSiteChange = (val: any) => emit('update:site', val === 'all' ? '' : 
 
 const activeFilterCount = computed(() => {
   let c = 0
+  if (localSortBy.value !== 'publish_date') c++
   if (props.timeRange !== 'all') c++
   if (props.duration !== 'all') c++
-  if (props.contentType !== 'all') c++
+  if (!props.subscriptionId && props.contentType !== 'all') c++
   if (props.nsfw !== 'all') c++
   if (props.site) c++
   return c

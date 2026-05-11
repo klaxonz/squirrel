@@ -1,19 +1,24 @@
 <template>
-  <div v-if="activeChips.length > 0" class="active-filters">
-    <span class="active-filters__label">已选：</span>
-    <div class="active-filters__chips">
+  <div v-if="activeChips.length > 0" class="flex min-w-0 flex-wrap items-center gap-2">
+    <span class="shrink-0 text-xs font-medium text-muted-foreground">已筛选</span>
+    <div class="flex min-w-0 flex-wrap items-center gap-1.5">
       <button
         v-for="chip in activeChips"
         :key="chip.key"
-        class="filter-chip"
-        @click="$emit('remove', chip.key)"
+        type="button"
+        class="inline-flex h-7 max-w-[12rem] items-center gap-1.5 rounded-md border border-border/50 bg-muted/35 px-2.5 text-xs font-medium text-foreground transition-colors hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
         :title="`移除 ${chip.label} 筛选`"
+        @click="$emit('remove', chip.key)"
       >
-        {{ chip.label }}
-        <AppIcon name="close" class="chip-remove-icon" />
+        <span class="truncate">{{ chip.label }}</span>
+        <AppIcon name="close" class="size-3 shrink-0 opacity-60" />
       </button>
-      <button class="clear-all-btn" @click="$emit('clearAll')">
-        清除全部
+      <button
+        type="button"
+        class="inline-flex h-7 items-center rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        @click="$emit('clearAll')"
+      >
+        清除
       </button>
     </div>
   </div>
@@ -33,7 +38,7 @@ const props = defineProps<{
   siteLabel?: string
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   remove: [key: string]
   clearAll: []
 }>()
@@ -48,15 +53,15 @@ const timeRangeLabels: Record<TimeRange, string> = {
 
 const durationLabels: Record<Duration, string> = {
   all: '',
-  short: '短视频',
-  medium: '中视频',
-  long: '长视频',
+  short: '短片',
+  medium: '常规',
+  long: '长片',
 }
 
 const contentTypeLabels: Record<string, string> = {
   all: '',
   CHANNEL: '频道',
-  PLAYLIST: '播放列表',
+  PLAYLIST: '列表',
   ACTRESS: '女優',
   MOVIE: '电影',
   TV_SERIES: '剧集',
@@ -65,108 +70,19 @@ const contentTypeLabels: Record<string, string> = {
 
 const nsfwLabels: Record<string, string> = {
   all: '',
-  yes: '仅敏感内容',
-  no: '仅安全内容',
+  yes: '敏感',
+  no: '安全',
 }
 
 const activeChips = computed(() => {
-  const chips: { key: string; label: string }[] = []
+  const chips: { key: string, label: string }[] = []
 
-  if (props.site && props.siteLabel) {
-    chips.push({ key: 'site', label: props.siteLabel })
-  }
-  if (props.nsfw && props.nsfw !== 'all') {
-    chips.push({ key: 'nsfw', label: nsfwLabels[props.nsfw] || props.nsfw })
-  }
-  if (props.timeRange && props.timeRange !== 'all') {
-    chips.push({ key: 'timeRange', label: timeRangeLabels[props.timeRange] })
-  }
-  if (props.duration && props.duration !== 'all') {
-    chips.push({ key: 'duration', label: durationLabels[props.duration] })
-  }
-  if (props.contentType && props.contentType !== 'all') {
-    chips.push({ key: 'contentType', label: contentTypeLabels[props.contentType] || props.contentType })
-  }
+  if (props.site && props.siteLabel) chips.push({ key: 'site', label: props.siteLabel })
+  if (props.nsfw && props.nsfw !== 'all') chips.push({ key: 'nsfw', label: nsfwLabels[props.nsfw] || props.nsfw })
+  if (props.timeRange && props.timeRange !== 'all') chips.push({ key: 'timeRange', label: timeRangeLabels[props.timeRange] })
+  if (props.duration && props.duration !== 'all') chips.push({ key: 'duration', label: durationLabels[props.duration] })
+  if (props.contentType && props.contentType !== 'all') chips.push({ key: 'contentType', label: contentTypeLabels[props.contentType] || props.contentType })
 
   return chips
 })
 </script>
-
-<style scoped>
-.active-filters {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.active-filters__label {
-  font-family: 'JetBrains Mono', 'Courier New', monospace;
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground) / 0.4);
-  flex-shrink: 0;
-}
-
-.active-filters__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-  align-items: center;
-}
-
-.filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.2rem 0.5rem 0.2rem 0.625rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid hsl(var(--primary) / 0.35);
-  background: hsl(var(--primary) / 0.08);
-  color: hsl(var(--foreground));
-  font-family: 'JetBrains Mono', 'Courier New', monospace;
-  font-size: 0.6rem;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-default);
-}
-
-.filter-chip:hover {
-  background: hsl(var(--destructive) / 0.1);
-  border-color: hsl(var(--destructive) / 0.4);
-  color: hsl(var(--destructive));
-}
-
-.chip-remove-icon {
-  width: 10px;
-  height: 10px;
-  opacity: 0.6;
-}
-
-.filter-chip:hover .chip-remove-icon {
-  opacity: 1;
-}
-
-.clear-all-btn {
-  padding: 0.2rem 0.5rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid hsl(var(--border) / 0.3);
-  background: transparent;
-  color: hsl(var(--muted-foreground) / 0.5);
-  font-family: 'JetBrains Mono', 'Courier New', monospace;
-  font-size: 0.55rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-default);
-}
-
-.clear-all-btn:hover {
-  border-color: hsl(var(--destructive) / 0.4);
-  color: hsl(var(--destructive));
-}
-</style>
