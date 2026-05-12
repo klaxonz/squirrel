@@ -190,12 +190,12 @@
                         v-if="item.video?.thumbnail"
                         :src="item.video.thumbnail"
                         referrerpolicy="no-referrer"
-                        class="h-full w-full object-cover"
+                        class="h-full w-full object-contain"
                       >
                       <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground">
                         <AppIcon name="film" class="h-5 w-5" />
                       </div>
-                      <span v-if="item.video?.duration" class="absolute bottom-1 right-1 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-medium text-white tabular-nums">
+                      <span v-if="item.video?.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium text-white tabular-nums backdrop-blur-sm">
                         {{ formatDuration(item.video.duration) }}
                       </span>
                     </div>

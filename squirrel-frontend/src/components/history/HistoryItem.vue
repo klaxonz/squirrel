@@ -8,7 +8,7 @@
         v-if="video.thumbnail"
         :src="video.thumbnail"
         referrerpolicy="no-referrer"
-        class="h-full w-full object-cover"
+        class="h-full w-full object-contain"
         :alt="video.title"
       />
       <div v-else class="flex h-full w-full items-center justify-center">
@@ -22,7 +22,7 @@
         />
       </div>
 
-      <div v-if="video.duration" class="absolute bottom-1.5 right-1.5 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-medium text-white tabular-nums">
+      <div v-if="video.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium text-white tabular-nums backdrop-blur-sm">
         {{ formatDuration(video.duration) }}
       </div>
 

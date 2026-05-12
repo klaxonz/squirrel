@@ -106,9 +106,9 @@
           <Transition name="fade" mode="out-in">
             <div v-if="asideTab === 'related'" class="space-y-4">
               <article v-for="related in relatedVideos" :key="related.id" class="flex gap-3 group cursor-pointer" @click="goToVideo(related.id, related)">
-                <div class="relative w-40 aspect-video shrink-0 rounded-lg overflow-hidden bg-accent/20 ring-1 ring-border/10 group-hover:ring-border/30 transition-all">
-                  <img v-if="related.thumbnail" :src="(related.thumbnail as string)" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  <span class="absolute bottom-1 right-1 px-1 py-0.5 bg-black text-[10px] font-bold text-white rounded-[4px] ring-1 ring-white/10 opacity-0 group-hover:opacity-100 transition-opacity">{{ formatDuration(related.duration as number) }}</span>
+                <div class="relative w-40 aspect-video shrink-0 overflow-hidden rounded-md bg-muted transition-colors group-hover:bg-muted/80">
+                  <img v-if="related.thumbnail" :src="(related.thumbnail as string)" class="h-full w-full object-contain" />
+                  <span v-if="related.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium text-white tabular-nums backdrop-blur-sm">{{ formatDuration(related.duration as number) }}</span>
                 </div>
                 <div class="flex-1 min-w-0 flex flex-col gap-0.5">
                   <h4 class="text-[13px] font-semibold line-clamp-2 leading-[1.3] group-hover:text-primary transition-colors tracking-tight text-foreground/90">{{ related.title }}</h4>

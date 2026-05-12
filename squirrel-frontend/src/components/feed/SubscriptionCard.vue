@@ -47,7 +47,7 @@
           <img
             v-if="video.thumbnail"
             :src="video.thumbnail"
-            class="h-full w-full object-cover"
+            class="h-full w-full object-contain"
             loading="lazy"
           />
         </div>

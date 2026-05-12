@@ -5,14 +5,14 @@
     @click="handleClick"
   >
     <!-- Thumbnail Container -->
-    <div class="relative aspect-video overflow-hidden rounded-xl bg-accent/30 ring-1 ring-border/20 transition-all duration-500 group-hover:ring-border/50 shadow-sm group-hover:shadow-lg group-hover:-translate-y-0.5">
+    <div class="relative aspect-video overflow-hidden rounded-lg bg-muted transition-colors group-hover:bg-muted/80">
       <img
         v-if="thumbnailSrc && !showThumbnailFallback"
         :src="thumbnailSrc"
         loading="lazy"
         decoding="async"
         referrerpolicy="no-referrer"
-        class="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+        class="h-full w-full object-contain transition-opacity duration-200"
         :class="[
           shouldBlurThumbnail ? 'blur-2xl scale-110' : '',
           imageLoaded ? 'opacity-100' : 'opacity-0'
@@ -22,19 +22,17 @@
         @error="showThumbnailFallback = true"
       >
 
-      <div v-else class="absolute inset-0 flex items-center justify-center bg-accent/20">
-        <AppIcon name="imageOff" class="w-6 h-6 text-muted-foreground/10" />
+      <div v-else class="absolute inset-0 flex items-center justify-center bg-muted">
+        <AppIcon name="imageOff" class="h-6 w-6 text-muted-foreground/20" />
       </div>
 
       <!-- Overlays -->
-      <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      
-      <span class="absolute bottom-2 right-2 inline-flex h-5 items-center rounded-md bg-black/60 px-1.5 text-[10px] font-semibold tabular-nums text-white shadow-sm backdrop-blur-md">
+      <span v-if="video.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium tabular-nums text-white backdrop-blur-sm">
         {{ formatDuration(video.duration) }}
       </span>
 
-      <div v-if="progressRatio > 0" class="absolute bottom-0 left-0 right-0 h-1 bg-white/10 overflow-hidden">
-        <div class="h-full bg-primary/80 transition-all duration-500" :style="{ width: `${progressRatio * 100}%` }" />
+      <div v-if="progressRatio > 0" class="absolute bottom-0 left-0 right-0 h-0.5 overflow-hidden bg-black/20">
+        <div class="h-full bg-primary transition-all duration-500" :style="{ width: `${progressRatio * 100}%` }" />
       </div>
     </div>
 
