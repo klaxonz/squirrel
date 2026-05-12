@@ -57,12 +57,12 @@ const sizeClass = computed(() => {
 .subscription-avatar {
   position: relative;
   overflow: hidden;
-  background: transparent;
+  background: hsl(var(--muted));
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: 9999px;
 }
 
 .avatar--xs { width: 1.25rem; height: 1.25rem; }
@@ -76,12 +76,6 @@ const sizeClass = computed(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: grayscale(0.4);
-  transition: filter var(--duration-normal) var(--ease-default);
-}
-
-.subscription-avatar:hover .avatar-image {
-  filter: grayscale(0);
 }
 
 .avatar-placeholder {
@@ -95,11 +89,11 @@ const sizeClass = computed(() => {
 }
 
 .placeholder-char {
-  font-weight: 900;
+  font-weight: 700;
   font-size: 0.7em;
-  color: hsl(var(--foreground) / 0.2);
+  color: hsl(var(--muted-foreground));
   z-index: 1;
-  letter-spacing: -0.05em;
+  letter-spacing: 0;
 }
 
 .placeholder-grid {

@@ -24,7 +24,7 @@
           <div class="flex flex-wrap items-center justify-between gap-4 py-1">
             <div class="flex items-center gap-6">
               <div v-if="primarySubscription" class="flex items-center gap-3 group cursor-pointer" @click="goToChannelDetail(primarySubscription.id)">
-                <SubscriptionAvatar :src="primarySubscription.avatar" :name="primarySubscription.name" size="lg" class="w-10 h-10 ring-1 ring-border/20 group-hover:ring-primary/50 transition-all shadow-sm" />
+                <SubscriptionAvatar :src="primarySubscription.avatar" :name="primarySubscription.name" size="xl" />
                 <div class="flex flex-col -space-y-0.5">
                   <span class="font-bold text-[15px] group-hover:text-primary transition-colors tracking-tight">{{ primarySubscription.name }}</span>
                   <span class="text-[12px] text-muted-foreground/60 font-medium">{{ primarySubscription.total_videos || 0 }} 项视频</span>
@@ -79,7 +79,7 @@
         <div v-else class="space-y-4 animate-pulse">
           <div class="h-8 bg-muted rounded-lg w-3/4" />
           <div class="flex items-center gap-4">
-            <div class="w-12 h-12 bg-muted rounded-full" />
+            <div class="h-12 w-12 rounded-full bg-muted" />
             <div class="space-y-2">
               <div class="h-4 bg-muted rounded w-32" />
               <div class="h-3 bg-muted rounded w-20" />

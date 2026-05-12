@@ -42,8 +42,7 @@
         <SubscriptionAvatar
           :src="displayAvatars[0].avatar"
           :name="displayAvatars[0].name"
-          size="sm"
-          class="w-8 h-8 rounded-full ring-1 ring-border/20 shadow-sm transition-transform group-hover:scale-105"
+          size="lg"
           @click.stop="goToSubscription(displayAvatars[0].id)"
         />
       </div>

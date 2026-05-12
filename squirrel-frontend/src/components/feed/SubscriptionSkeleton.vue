@@ -87,7 +87,7 @@ defineProps({
   height: 2.75rem;
   background: hsl(var(--secondary) / 0.25);
   border: 1px solid hsl(var(--border) / 0.3);
-  border-radius: calc(var(--radius-sm) - 1px);
+  border-radius: 9999px;
 }
 
 .skeleton-main {

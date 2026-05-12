@@ -4,7 +4,7 @@
       <div class="absolute inset-0 bg-gradient-to-r from-transparent via-foreground/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
     </div>
     <div class="flex gap-3 px-1">
-      <div class="w-9 h-9 rounded-full bg-muted shrink-0" />
+      <div class="h-9 w-9 shrink-0 rounded-full bg-muted" />
       <div class="flex-1 space-y-2">
         <div class="h-4 bg-muted rounded-md w-full" />
         <div class="h-3 bg-muted rounded-md w-2/3" />

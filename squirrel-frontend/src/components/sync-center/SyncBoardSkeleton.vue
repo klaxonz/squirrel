@@ -65,6 +65,7 @@ withDefaults(defineProps<{
   height: 1.75rem;
   flex-shrink: 0;
   background: hsl(var(--foreground) / 0.05);
+  border-radius: 9999px;
 }
 
 .skeleton-item__metrics {

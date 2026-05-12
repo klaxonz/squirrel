@@ -10,21 +10,19 @@
             :href="detail.url"
             target="_blank"
             rel="noopener noreferrer"
-            class="shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden border border-border/50 shadow-sm transition-transform hover:scale-105"
+            class="shrink-0 h-12 w-12 overflow-hidden rounded-full sm:h-14 sm:w-14"
           >
             <SubscriptionAvatar
               :src="detail?.avatar || null"
               :name="detail?.name || '未知频道'"
-              size="lg"
-              class="w-full h-full"
+              size="full"
             />
           </a>
-          <div v-else class="shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden border border-border/50 shadow-sm">
+          <div v-else class="shrink-0 h-12 w-12 overflow-hidden rounded-full sm:h-14 sm:w-14">
             <SubscriptionAvatar
               :src="detail?.avatar || null"
               :name="detail?.name || '未知频道'"
-              size="lg"
-              class="w-full h-full"
+              size="full"
             />
           </div>
 

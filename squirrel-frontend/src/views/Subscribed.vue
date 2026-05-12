@@ -55,7 +55,7 @@
           :class="activeChannelId === sub.id ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
         >
           <div class="relative shrink-0">
-            <SubscriptionAvatar :src="sub.avatar" :name="sub.name" size="sm" class="h-7 w-7 rounded-md object-cover" />
+            <SubscriptionAvatar :src="sub.avatar" :name="sub.name" size="md" />
             <div v-if="sub.unread_count > 0" class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
           </div>
           <span class="flex-1 truncate font-medium">{{ sub.name }}</span>

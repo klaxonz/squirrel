@@ -3,7 +3,7 @@
     :videos="videos"
     :loading="loading"
     :allLoaded="allLoaded"
-    :showAvatar="false"
+    :showAvatar="showChannelAvatar"
     :sortBy="sortBy"
     :refreshing="loading && videos.length > 0"
     @loadMore="loadMore"
@@ -43,6 +43,7 @@ const currentFilters = computed(() => ({
   duration: props.filters?.duration ?? 'all',
   contentType: props.filters?.contentType ?? 'all',
 }))
+const showChannelAvatar = computed(() => !currentFilters.value.subscription_id)
 
 const {
   videos, loading, allLoaded, loadMore, handleSearch,
