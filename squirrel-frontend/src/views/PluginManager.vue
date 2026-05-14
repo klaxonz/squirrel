@@ -458,7 +458,7 @@ const CAPABILITY_LABELS = {
   resolve_proxy_config: '代理配置',
   rewrite_proxy_playlist: '代理播放',
 }
-const DESKTOP_LOGIN_SITES = new Set(['youtube', 'bilibili', 'pornhub', 'youporn'])
+const DESKTOP_LOGIN_SITES = new Set(['bilibili', 'pornhub', 'youporn'])
 const isDesktopApp = computed(() => window.desktopApp?.isDesktop === true)
 
 const clearLoginStatusCache = () => {
@@ -892,16 +892,57 @@ const formatTime = (value) => {
   return new Date(value).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
+const openExternalUrl = async (targetUrl) => {
+  const url = String(targetUrl || '').trim()
+  if (!url) return
+  const bridge = getDesktopBridge()
+  if (bridge?.isDesktop === true && typeof bridge.openExternal === 'function') {
+    await bridge.openExternal(url)
+    return
+  }
+  window.open(url, '_blank')
+}
+
 const handleStartYouTubeOAuth = async () => {
+  const bridge = getDesktopBridge()
+  if (bridge?.isDesktop === true && typeof bridge.openSiteLogin === 'function') {
+    const result = await bridge.openSiteLogin('youtube')
+    if (result) {
+      upsertLoginStatus('youtube', result)
+      await openExternalUrl(result.verification_url)
+      if (result.user_code) showToast(`YouTube TV 授权码: ${result.user_code}`)
+      if (result.oauth_status === 'pending') startYouTubeOAuthPolling()
+    }
+    return
+  }
+
   const { data, error } = await setupYouTubeOAuth()
   if (!error && data) {
-    if (data.verification_url) window.open(data.verification_url, '_blank')
+    if (data.verification_url) await openExternalUrl(data.verification_url)
+    if (data.user_code) showToast(`YouTube TV 授权码: ${data.user_code}`)
+    upsertLoginStatus('youtube', {
+      site_name: 'youtube',
+      supported: true,
+      logged_in: data.status === 'authenticated',
+      message: data.status === 'pending' ? 'TV 授权中' : (data.status === 'authenticated' ? 'TV 授权有效' : '未配置 TV 授权'),
+      checked_at: new Date().toISOString(),
+      oauth_status: data.status,
+      oauth_account: data.account || null,
+      verification_url: data.verification_url || null,
+      user_code: data.user_code || null,
+    })
     if (data.status === 'pending') startYouTubeOAuthPolling()
   }
 }
 
 const handleRevokeYouTubeOAuth = async () => {
-  await revokeYouTubeOAuth()
+  const bridge = getDesktopBridge()
+  if (bridge?.isDesktop === true && typeof bridge.clearSiteSession === 'function') {
+    const result = await bridge.clearSiteSession('youtube')
+    if (result) upsertLoginStatus('youtube', result)
+  } else {
+    await revokeYouTubeOAuth()
+  }
   stopYouTubeOAuthPolling()
   fetchPlugins()
 }
@@ -909,7 +950,28 @@ const handleRevokeYouTubeOAuth = async () => {
 const startYouTubeOAuthPolling = () => {
   stopYouTubeOAuthPolling()
   ytOAuthPollTimer = setInterval(async () => {
+    const bridge = getDesktopBridge()
+    if (bridge?.isDesktop === true && typeof bridge.getSiteLoginStatus === 'function') {
+      const result = await bridge.getSiteLoginStatus('youtube')
+      if (result) upsertLoginStatus('youtube', result)
+      if (result?.oauth_status !== 'pending') stopYouTubeOAuthPolling()
+      return
+    }
+
     const { data } = await getYouTubeOAuthStatus()
+    if (data) {
+      upsertLoginStatus('youtube', {
+        site_name: 'youtube',
+        supported: true,
+        logged_in: data.status === 'authenticated',
+        message: data.status === 'pending' ? 'TV 授权中' : (data.status === 'authenticated' ? 'TV 授权有效' : '未配置 TV 授权'),
+        checked_at: new Date().toISOString(),
+        oauth_status: data.status,
+        oauth_account: data.account || null,
+        verification_url: data.verification_url || null,
+        user_code: data.user_code || null,
+      })
+    }
     if (data?.status !== 'pending') stopYouTubeOAuthPolling()
   }, 3000)
 }

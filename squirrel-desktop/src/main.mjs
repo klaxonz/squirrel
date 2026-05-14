@@ -6,7 +6,13 @@ import { app, BrowserWindow, clipboard, ipcMain, Menu, session, shell } from 'el
 import { clearBilibiliPlaybackCache, resolveBilibiliPlayback } from './playback/providers/bilibili/index.mjs'
 import { resolvePornhubPlayback } from './playback/providers/pornhub/index.mjs'
 import { resolveYouPornPlayback } from './playback/providers/youporn/index.mjs'
-import { prewarmYouTubePlayback, resolveYouTubePlayback } from './playback/providers/youtube/index.mjs'
+import {
+  prewarmYouTubePlayback,
+  resolveYouTubeOAuthRevoke,
+  resolveYouTubeOAuthSetup,
+  resolveYouTubeOAuthStatus,
+  resolveYouTubePlayback,
+} from './playback/providers/youtube/index.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -325,6 +331,53 @@ const buildPornhubDesktopLoginStatus = async (profile, cookies) => {
   }
 }
 
+const buildYouTubeDesktopLoginStatusFromOAuth = (profile, oauthState) => {
+  const status = String(oauthState?.status || 'not_configured')
+  const loggedIn = status === 'authenticated' || status === 'already_authenticated'
+  const messages = {
+    authenticated: 'TV 授权有效',
+    already_authenticated: 'TV 授权有效',
+    pending: 'TV 授权中',
+    expired: 'TV 授权已过期',
+    error: `TV 授权异常: ${oauthState?.error || 'Unknown error'}`,
+    not_configured: '未配置 TV 授权',
+    done: 'TV 授权已清除',
+  }
+
+  return {
+    site_name: profile.siteName,
+    supported: true,
+    logged_in: loggedIn,
+    message: messages[status] || `TV 授权状态: ${status}`,
+    checked_at: new Date().toISOString(),
+    source: 'desktop',
+    cookie_count: 0,
+    oauth_status: status === 'already_authenticated' ? 'authenticated' : status,
+    oauth_account: oauthState?.account || null,
+    verification_url: oauthState?.verification_url || null,
+    user_code: oauthState?.user_code || null,
+  }
+}
+
+const buildYouTubeDesktopLoginStatus = async (profile) => {
+  try {
+    return buildYouTubeDesktopLoginStatusFromOAuth(profile, await resolveYouTubeOAuthStatus())
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error || 'Unknown error')
+    return {
+      site_name: profile.siteName,
+      supported: true,
+      logged_in: false,
+      message: `TV 授权检测失败: ${message}`,
+      checked_at: new Date().toISOString(),
+      source: 'desktop',
+      cookie_count: 0,
+      oauth_status: 'error',
+      oauth_account: null,
+    }
+  }
+}
+
 const buildDesktopSiteLoginStatus = async (siteName) => {
   const profile = getSiteLoginProfile(siteName)
   if (!profile) {
@@ -337,6 +390,10 @@ const buildDesktopSiteLoginStatus = async (siteName) => {
       source: 'desktop',
       cookie_count: 0,
     }
+  }
+
+  if (profile.siteName === 'youtube') {
+    return buildYouTubeDesktopLoginStatus(profile)
   }
 
   const cookies = await getDesktopSiteCookies(profile)
@@ -389,6 +446,11 @@ const clearDesktopSiteSession = async (siteName) => {
     return buildDesktopSiteLoginStatus(siteName)
   }
 
+  if (profile.siteName === 'youtube') {
+    await resolveYouTubeOAuthRevoke()
+    return buildDesktopSiteLoginStatus(profile.siteName)
+  }
+
   await clearDesktopSiteStorage(profile)
   await removeDesktopSiteCookies(profile)
   if (profile.siteName === 'bilibili') {
@@ -401,6 +463,10 @@ const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
   const profile = getSiteLoginProfile(siteName)
   if (!profile) {
     return buildDesktopSiteLoginStatus(siteName)
+  }
+
+  if (profile.siteName === 'youtube') {
+    return buildYouTubeDesktopLoginStatusFromOAuth(profile, await resolveYouTubeOAuthSetup())
   }
 
   const loginWindow = new BrowserWindow({

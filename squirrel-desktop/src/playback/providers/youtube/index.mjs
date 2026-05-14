@@ -404,6 +404,19 @@ export const clearYouTubePlaybackCache = () => {
   playbackCache.clear()
 }
 
+export const resolveYouTubeOAuthSetup = () => {
+  return resolveYoutubeiPayload({ action: 'oauth-setup' })
+}
+
+export const resolveYouTubeOAuthStatus = () => {
+  return resolveYoutubeiPayload({ action: 'oauth-status' })
+}
+
+export const resolveYouTubeOAuthRevoke = () => {
+  clearYouTubePlaybackCache()
+  return resolveYoutubeiPayload({ action: 'oauth-revoke' })
+}
+
 export const prewarmYouTubePlayback = (cookie = '') => {
   return prewarmYoutubeiRuntime(cookie)
 }

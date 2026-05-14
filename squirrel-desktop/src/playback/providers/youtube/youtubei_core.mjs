@@ -13,6 +13,7 @@ const ANONYMOUS_CLIENTS = ['ANDROID', 'WEB'];
 const CAPTIONS_ANONYMOUS_CLIENTS = ['ANDROID', 'WEB'];
 const CAPTIONS_AUTHENTICATED_CLIENTS = ['WEB', 'TV', 'MWEB'];
 const YOUTUBE_WEB_ORIGIN = 'https://www.youtube.com';
+const YOUTUBE_TV_ACTIVATION_URL = 'https://www.youtube.com/activate';
 const SESSION_CACHE = new Map();
 
 // ── OAuth state helpers ─────────────────────────────────────────────────────
@@ -651,7 +652,7 @@ async function resolveOAuthSetup() {
       return {
         action: 'oauth-setup',
         status: 'pending',
-        verification_url: state.verification_url,
+        verification_url: YOUTUBE_TV_ACTIVATION_URL,
         user_code: state.user_code,
       };
     }
@@ -673,13 +674,13 @@ async function resolveOAuthSetup() {
     yt.session.on('auth-pending', (data) => {
       saveOAuthState({
         pending: true,
-        verification_url: data.verification_url,
+        verification_url: YOUTUBE_TV_ACTIVATION_URL,
         user_code: data.user_code,
       });
       resolve({
         action: 'oauth-setup',
         status: 'pending',
-        verification_url: data.verification_url,
+        verification_url: YOUTUBE_TV_ACTIVATION_URL,
         user_code: data.user_code,
       });
     });
@@ -729,7 +730,7 @@ async function resolveOAuthStatus() {
     if (state?.pending) {
       return {
         status: 'pending',
-        verification_url: state.verification_url,
+        verification_url: YOUTUBE_TV_ACTIVATION_URL,
         user_code: state.user_code,
       };
     }

@@ -63,6 +63,14 @@ interface DesktopSiteLoginStatus {
   checked_at: string
   source: 'desktop'
   cookie_count: number
+  oauth_status?: string
+  oauth_account?: {
+    name?: string | null
+    email?: string | null
+    avatar?: string | null
+  } | null
+  verification_url?: string | null
+  user_code?: string | null
 }
 
 interface DesktopWindowState {

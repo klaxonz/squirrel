@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises'
 
 const providerPath = new URL('../src/playback/providers/youtube/index.mjs', import.meta.url)
 const corePath = new URL('../src/playback/providers/youtube/youtubei_core.mjs', import.meta.url)
+const mainPath = new URL('../src/main.mjs', import.meta.url)
+const pluginCorePath = new URL('../../squirrel-plugins/youtube/src/squirrel_youtube/node/youtubei_core.mjs', import.meta.url)
 
 test('desktop youtube provider keeps complete dash payload for direct playback', async () => {
   const source = await readFile(providerPath, 'utf8')
@@ -44,6 +46,21 @@ test('desktop youtube provider exposes runtime prewarm', async () => {
   assert.match(source, /export const prewarmYouTubePlayback = \(cookie = ''\) => \{[\s\S]*?return prewarmYoutubeiRuntime\(cookie\)/)
 })
 
+test('desktop youtube provider exposes tv oauth actions', async () => {
+  const source = await readFile(providerPath, 'utf8')
+
+  assert.match(source, /export const resolveYouTubeOAuthSetup = \(\) => \{[\s\S]*?action: 'oauth-setup'/)
+  assert.match(source, /export const resolveYouTubeOAuthStatus = \(\) => \{[\s\S]*?action: 'oauth-status'/)
+  assert.match(source, /export const resolveYouTubeOAuthRevoke = \(\) => \{[\s\S]*?action: 'oauth-revoke'/)
+})
+
+test('desktop youtube login status uses tv oauth instead of cookie checks', async () => {
+  const source = await readFile(mainPath, 'utf8')
+
+  assert.match(source, /if \(profile\.siteName === 'youtube'\) \{[\s\S]*?return buildYouTubeDesktopLoginStatus\(profile\)/)
+  assert.match(source, /const buildYouTubeDesktopLoginStatus = async \(profile\) => \{[\s\S]*?resolveYouTubeOAuthStatus\(\)/)
+})
+
 test('desktop youtube client order defers expensive mweb po token generation', async () => {
   const source = await readFile(corePath, 'utf8')
 
@@ -56,4 +73,14 @@ test('desktop youtube oauth state path is read at runtime', async () => {
 
   assert.match(source, /return process\.env\.YOUTUBE_OAUTH_STATE_FILE \|\| null/)
   assert.doesNotMatch(source, /const OAUTH_STATE_FILE = process\.env\.YOUTUBE_OAUTH_STATE_FILE/)
+})
+
+test('youtube tv oauth opens the youtube activation page', async () => {
+  const desktopSource = await readFile(corePath, 'utf8')
+  const pluginSource = await readFile(pluginCorePath, 'utf8')
+
+  assert.match(desktopSource, /const YOUTUBE_TV_ACTIVATION_URL = 'https:\/\/www\.youtube\.com\/activate'/)
+  assert.match(pluginSource, /const YOUTUBE_TV_ACTIVATION_URL = 'https:\/\/www\.youtube\.com\/activate'/)
+  assert.doesNotMatch(desktopSource, /verification_url: data\.verification_url/)
+  assert.doesNotMatch(pluginSource, /verification_url: data\.verification_url/)
 })
