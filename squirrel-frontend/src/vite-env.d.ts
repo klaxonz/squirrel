@@ -25,6 +25,9 @@ interface DesktopAppBridge {
   resolvePornhubPlayback?: DesktopPlaybackResolver
   resolveYouPornPlayback?: DesktopPlaybackResolver
   resolveYouTubePlayback?: DesktopPlaybackResolver
+  getSiteLoginStatus?: (siteName: string) => Promise<DesktopSiteLoginStatus>
+  openSiteLogin?: (siteName: string) => Promise<DesktopSiteLoginStatus>
+  clearSiteSession?: (siteName: string) => Promise<DesktopSiteLoginStatus>
   getServerUrl?: () => Promise<string>
   setServerUrl?: (url: string) => Promise<string | false>
   clearServerUrl?: () => Promise<boolean>
@@ -51,6 +54,16 @@ type DesktopPlaybackResolver = (
     id?: string | number | null
   }> | null
 }>
+
+interface DesktopSiteLoginStatus {
+  site_name: string
+  supported: boolean
+  logged_in: boolean
+  message: string
+  checked_at: string
+  source: 'desktop'
+  cookie_count: number
+}
 
 interface DesktopWindowState {
   isMaximized?: boolean

@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { app, BrowserWindow, clipboard, ipcMain, Menu, session, shell } from 'electron'
-import { resolveBilibiliPlayback } from './playback/providers/bilibili/index.mjs'
+import { clearBilibiliPlaybackCache, resolveBilibiliPlayback } from './playback/providers/bilibili/index.mjs'
 import { resolvePornhubPlayback } from './playback/providers/pornhub/index.mjs'
 import { resolveYouPornPlayback } from './playback/providers/youporn/index.mjs'
 import { prewarmYouTubePlayback, resolveYouTubePlayback } from './playback/providers/youtube/index.mjs'
@@ -11,13 +11,30 @@ import { prewarmYouTubePlayback, resolveYouTubePlayback } from './playback/provi
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const repoRoot = path.resolve(__dirname, '..', '..')
-const bilibiliCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'bilibili.txt')
 const pornhubCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'pornhub.txt')
 const youpornCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'youporn.txt')
 const youtubeCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'youtube.txt')
 const youtubeOAuthStateFilePath = path.join(repoRoot, 'config', 'youtube_oauth.json')
+const pornhubOrigin = 'https://www.pornhub.com'
+const pornhubReferer = `${pornhubOrigin}/`
 const pornhubAgeGateCookieHeader = 'age_verified=1; accessAgeDisclaimerPH=1; accessAgeDisclaimerUK=1; accessPH=1'
 const youpornAgeGateCookieHeader = 'showAgeDisclaimer=1; access=1; accessPH=1'
+const pornhubLoggedInPattern = /"loggedIn(?:Context)?":\s*true/i
+const pornhubLoggedOutPattern = /"loggedIn(?:Context)?":\s*false/i
+const pornhubUsernamePattern = /"username"\s*:\s*"([^"]+)"/i
+const pornhubDataUsernamePattern = /data-username="([^"]+)"/i
+const pornhubProfileLinkPattern = /<a[^>]+class="username"[^>]+href="\/users\/([^"/?#]+)"/i
+const pornhubProfileBlockPattern = /<div[^>]+class="profile"[\s\S]*?class="js_userName"[^>]*>([^<]+)</i
+const pornhubProfileStatusPattern = /class="userUserStatus[^"]*">\s*See Your Profile/i
+const SITE_SESSION_STORAGE_TYPES = [
+  'cookies',
+  'filesystem',
+  'indexdb',
+  'localstorage',
+  'serviceworkers',
+  'cachestorage',
+  'websql',
+]
 
 const APP_NAME = 'Squirrel'
 const DEFAULT_APP_URL = 'http://127.0.0.1:8001'
@@ -171,6 +188,324 @@ const isYouPornCookieTarget = (targetUrl) => {
   }
 }
 
+const SITE_LOGIN_PROFILES = {
+  youtube: {
+    label: 'YouTube',
+    loginUrl: 'https://accounts.google.com/ServiceLogin?service=youtube&continue=https%3A%2F%2Fwww.youtube.com%2F',
+    cookieHosts: ['youtube.com', 'google.com'],
+    allowedHosts: ['youtube.com', 'google.com', 'accounts.google.com', 'gstatic.com', 'googleusercontent.com'],
+    storageOrigins: ['https://www.youtube.com', 'https://m.youtube.com', 'https://accounts.google.com', 'https://google.com'],
+    signedInCookieNames: ['SID', 'SAPISID', 'APISID', '__Secure-1PSID', '__Secure-3PSID'],
+  },
+  bilibili: {
+    label: 'Bilibili',
+    loginUrl: 'https://passport.bilibili.com/login',
+    cookieHosts: ['bilibili.com'],
+    allowedHosts: ['bilibili.com', 'passport.bilibili.com', 'geetest.com'],
+    storageOrigins: ['https://www.bilibili.com', 'https://passport.bilibili.com', 'https://bilibili.com'],
+    signedInCookieNames: ['SESSDATA'],
+  },
+  pornhub: {
+    label: 'Pornhub',
+    loginUrl: 'https://www.pornhub.com/login',
+    cookieHosts: ['pornhub.com'],
+    allowedHosts: ['pornhub.com'],
+    storageOrigins: ['https://www.pornhub.com', 'https://pornhub.com'],
+    signedInCookieNames: [],
+  },
+  youporn: {
+    label: 'YouPorn',
+    loginUrl: 'https://www.youporn.com/login',
+    cookieHosts: ['youporn.com'],
+    allowedHosts: ['youporn.com'],
+    storageOrigins: ['https://www.youporn.com', 'https://youporn.com'],
+    signedInCookieNames: [],
+  },
+}
+
+const normalizeSiteName = (siteName) => String(siteName || '').trim().toLowerCase()
+
+const getSiteLoginProfile = (siteName) => {
+  const normalizedSite = normalizeSiteName(siteName)
+  return SITE_LOGIN_PROFILES[normalizedSite] ? { siteName: normalizedSite, ...SITE_LOGIN_PROFILES[normalizedSite] } : null
+}
+
+const hostMatchesLoginProfile = (hostname, hosts) => {
+  const normalizedHost = String(hostname || '').replace(/^\./, '').toLowerCase()
+  return hosts.some((host) => normalizedHost === host || normalizedHost.endsWith(`.${host}`))
+}
+
+const getDesktopSiteCookies = async (profile, hosts = profile.cookieHosts) => {
+  const cookies = await session.defaultSession.cookies.get({})
+  return cookies.filter((cookie) => hostMatchesLoginProfile(cookie.domain, hosts))
+}
+
+const extractPornhubDesktopUsername = (body) => {
+  const match = pornhubProfileLinkPattern.exec(body)
+    || pornhubUsernamePattern.exec(body)
+    || pornhubDataUsernamePattern.exec(body)
+  const username = String(match?.[1] || '').trim()
+  return username || null
+}
+
+const checkPornhubDesktopPageLogin = async (cookieHeader) => {
+  const response = await session.defaultSession.fetch(pornhubReferer, {
+    headers: {
+      'Accept-Language': 'en-US,en;q=0.9',
+      Origin: pornhubOrigin,
+      Referer: pornhubReferer,
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+      Cookie: cookieHeader,
+    },
+    redirect: 'follow',
+  })
+  const body = await response.text()
+  const finalUrl = response.url || pornhubReferer
+
+  if (response.status === 401) {
+    return { logged_in: false, message: `被拒绝访问 (status=${response.status})` }
+  }
+  if ([403, 429, 500, 502, 503, 504].includes(response.status)) {
+    return { logged_in: false, message: `检测失败: 被拒绝访问 (status=${response.status})` }
+  }
+  if (finalUrl.includes('/login') || finalUrl.includes('/users/login')) {
+    return { logged_in: false, message: '被重定向到登录页' }
+  }
+
+  const profileMatch = pornhubProfileBlockPattern.exec(body)
+  const username = String(profileMatch?.[1] || '').trim() || extractPornhubDesktopUsername(body)
+  if (profileMatch || pornhubProfileStatusPattern.test(body)) {
+    return { logged_in: true, username, message: '桌面会话有效' }
+  }
+  if (pornhubLoggedInPattern.test(body) || (pornhubProfileLinkPattern.test(body) && username)) {
+    return { logged_in: true, username, message: '桌面会话有效' }
+  }
+
+  return {
+    logged_in: false,
+    message: pornhubLoggedOutPattern.test(body) ? '未登录' : '未检测到登录标记',
+  }
+}
+
+const buildPornhubDesktopLoginStatus = async (profile, cookies) => {
+  const cookieHeader = cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join('; ')
+  if (!cookieHeader) {
+    return {
+      site_name: profile.siteName,
+      supported: true,
+      logged_in: false,
+      message: '未发现桌面登录会话',
+      checked_at: new Date().toISOString(),
+      source: 'desktop',
+      cookie_count: cookies.length,
+    }
+  }
+
+  try {
+    const status = await checkPornhubDesktopPageLogin(mergeCookieHeaders(pornhubAgeGateCookieHeader, cookieHeader))
+    return {
+      site_name: profile.siteName,
+      supported: true,
+      ...status,
+      checked_at: new Date().toISOString(),
+      source: 'desktop',
+      cookie_count: cookies.length,
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error || 'Unknown error')
+    return {
+      site_name: profile.siteName,
+      supported: true,
+      logged_in: false,
+      message: `检测失败: ${message}`,
+      checked_at: new Date().toISOString(),
+      source: 'desktop',
+      cookie_count: cookies.length,
+    }
+  }
+}
+
+const buildDesktopSiteLoginStatus = async (siteName) => {
+  const profile = getSiteLoginProfile(siteName)
+  if (!profile) {
+    return {
+      site_name: normalizeSiteName(siteName),
+      supported: false,
+      logged_in: false,
+      message: '桌面端暂不支持该站点登录',
+      checked_at: new Date().toISOString(),
+      source: 'desktop',
+      cookie_count: 0,
+    }
+  }
+
+  const cookies = await getDesktopSiteCookies(profile)
+  if (profile.siteName === 'pornhub') {
+    return buildPornhubDesktopLoginStatus(profile, cookies)
+  }
+
+  const cookieNames = new Set(cookies.map((cookie) => cookie.name))
+  const canConfirmLogin = profile.signedInCookieNames.length > 0
+  const hasSignedInCookie = canConfirmLogin
+    && profile.signedInCookieNames.some((name) => cookieNames.has(name))
+
+  return {
+    site_name: profile.siteName,
+    supported: true,
+    logged_in: hasSignedInCookie,
+    message: hasSignedInCookie
+      ? '桌面会话有效'
+      : (canConfirmLogin ? '未发现桌面登录会话' : '该站点无法自动确认桌面登录态'),
+    checked_at: new Date().toISOString(),
+    source: 'desktop',
+    cookie_count: cookies.length,
+  }
+}
+
+const removeDesktopSiteCookies = async (profile) => {
+  const hosts = Array.from(new Set([...profile.cookieHosts, ...profile.allowedHosts]))
+  const cookies = await getDesktopSiteCookies(profile, hosts)
+  for (const cookie of cookies) {
+    const domain = String(cookie.domain || '').replace(/^\./, '')
+    const protocol = cookie.secure ? 'https' : 'http'
+    await session.defaultSession.cookies.remove(`${protocol}://${domain}${cookie.path || '/'}`, cookie.name)
+  }
+  await session.defaultSession.cookies.flushStore()
+}
+
+const clearDesktopSiteStorage = async (profile) => {
+  for (const origin of profile.storageOrigins || []) {
+    await session.defaultSession.clearStorageData({
+      origin,
+      storages: SITE_SESSION_STORAGE_TYPES,
+    })
+  }
+  session.defaultSession.flushStorageData()
+}
+
+const clearDesktopSiteSession = async (siteName) => {
+  const profile = getSiteLoginProfile(siteName)
+  if (!profile) {
+    return buildDesktopSiteLoginStatus(siteName)
+  }
+
+  await clearDesktopSiteStorage(profile)
+  await removeDesktopSiteCookies(profile)
+  if (profile.siteName === 'bilibili') {
+    clearBilibiliPlaybackCache()
+  }
+  return buildDesktopSiteLoginStatus(profile.siteName)
+}
+
+const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
+  const profile = getSiteLoginProfile(siteName)
+  if (!profile) {
+    return buildDesktopSiteLoginStatus(siteName)
+  }
+
+  const loginWindow = new BrowserWindow({
+    width: 1120,
+    height: 820,
+    minWidth: 900,
+    minHeight: 640,
+    title: `${APP_NAME} - ${profile.label} Login`,
+    parent: parentWindow && !parentWindow.isDestroyed() ? parentWindow : undefined,
+    modal: false,
+    webPreferences: {
+      session: session.defaultSession,
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+    },
+  })
+
+  loginWindow.webContents.setWindowOpenHandler(({ url }) => {
+    const normalizedUrl = normalizeTargetUrl(url)
+    if (!normalizedUrl) {
+      return { action: 'deny' }
+    }
+
+    const hostname = new URL(normalizedUrl).hostname
+    if (!hostMatchesLoginProfile(hostname, profile.allowedHosts)) {
+      return { action: 'deny' }
+    }
+
+    loginWindow.loadURL(normalizedUrl)
+    return { action: 'deny' }
+  })
+
+  loginWindow.webContents.on('will-navigate', (event, url) => {
+    const normalizedUrl = normalizeTargetUrl(url)
+    if (!normalizedUrl) {
+      event.preventDefault()
+      return
+    }
+
+    const hostname = new URL(normalizedUrl).hostname
+    if (!hostMatchesLoginProfile(hostname, profile.allowedHosts)) {
+      event.preventDefault()
+    }
+  })
+
+  await loginWindow.loadURL(profile.loginUrl)
+  loginWindow.show()
+
+  return new Promise((resolve, reject) => {
+    const canAutoConfirmLogin = profile.signedInCookieNames.length > 0 || profile.siteName === 'pornhub'
+    let settled = false
+    let loginCheckTimer = null
+
+    const clearLoginWatchers = () => {
+      if (loginCheckTimer) {
+        clearInterval(loginCheckTimer)
+        loginCheckTimer = null
+      }
+      session.defaultSession.cookies.removeListener('changed', handleCookieChanged)
+    }
+
+    const resolveWithStatus = (status) => {
+      if (settled) return
+      settled = true
+      clearLoginWatchers()
+      if (profile.siteName === 'bilibili') {
+        clearBilibiliPlaybackCache()
+      }
+      resolve(status)
+    }
+
+    const checkLoginStatus = () => {
+      buildDesktopSiteLoginStatus(profile.siteName)
+        .then((status) => {
+          if (!status.logged_in) return
+          if (!loginWindow.isDestroyed()) {
+            loginWindow.close()
+          }
+          resolveWithStatus(status)
+        })
+        .catch(reject)
+    }
+
+    function handleCookieChanged(_event, cookie) {
+      if (hostMatchesLoginProfile(cookie?.domain, profile.cookieHosts)) {
+        checkLoginStatus()
+      }
+    }
+
+    if (canAutoConfirmLogin) {
+      session.defaultSession.cookies.on('changed', handleCookieChanged)
+      checkLoginStatus()
+      loginCheckTimer = setInterval(checkLoginStatus, 1200)
+    }
+
+    loginWindow.once('closed', () => {
+      if (settled) return
+      buildDesktopSiteLoginStatus(profile.siteName)
+        .then(resolveWithStatus)
+        .catch(reject)
+    })
+  })
+}
+
 const readNetscapeCookieFileHeader = (cookieFilePath, domainSuffixes) => {
   if (!fs.existsSync(cookieFilePath)) {
     return ''
@@ -216,66 +551,6 @@ const readNetscapeCookieFileHeader = (cookieFilePath, domainSuffixes) => {
   }
 }
 
-const readNetscapeCookies = (cookieFilePath, domainSuffixes) => {
-  if (!fs.existsSync(cookieFilePath)) {
-    return []
-  }
-
-  try {
-    const raw = fs.readFileSync(cookieFilePath, 'utf8')
-    const cookies = []
-
-    for (const rawLine of raw.split(/\r?\n/)) {
-      const line = rawLine.trim()
-      if (!line) {
-        continue
-      }
-
-      const normalizedLine = line.startsWith('#HttpOnly_')
-        ? line.slice('#HttpOnly_'.length)
-        : line
-
-      if (normalizedLine.startsWith('#')) {
-        continue
-      }
-
-      const parts = normalizedLine.split('\t')
-      if (parts.length < 7) {
-        continue
-      }
-
-      const domain = String(parts[0] || '').trim().toLowerCase()
-      const pathValue = String(parts[2] || '/').trim() || '/'
-      const secure = String(parts[3] || '').trim().toUpperCase() === 'TRUE'
-      const expires = Number.parseInt(String(parts[4] || '0').trim(), 10)
-      const name = String(parts[5] || '').trim()
-      const value = String(parts[6] || '').trim()
-
-      if (!name || !value) {
-        continue
-      }
-
-      const normalizedDomain = domain.replace(/^\./, '')
-      if (!domainSuffixes.some((suffix) => normalizedDomain.endsWith(suffix))) {
-        continue
-      }
-
-      cookies.push({
-        domain,
-        path: pathValue,
-        secure,
-        expirationDate: Number.isFinite(expires) && expires > 0 ? expires : undefined,
-        name,
-        value,
-      })
-    }
-
-    return cookies
-  } catch {
-    return []
-  }
-}
-
 const readYoutubeCookieFileHeader = () => {
   return readNetscapeCookieFileHeader(youtubeCookieFilePath, ['youtube.com'])
 }
@@ -287,60 +562,6 @@ const prewarmDesktopPlaybackProviders = () => {
       console.debug('[squirrel-desktop] YouTube playback prewarm skipped', error?.message || error)
     })
   }, 1000)
-}
-
-const readBilibiliCookieFileHeader = () => {
-  return readNetscapeCookieFileHeader(bilibiliCookieFilePath, [
-    'bilibili.com',
-    'bilivideo.com',
-    'bilivideo.cn',
-    'hdslb.com',
-    'acgvideo.com',
-  ])
-}
-
-const readBilibiliCookies = () => {
-  return readNetscapeCookies(bilibiliCookieFilePath, [
-    'bilibili.com',
-    'bilivideo.com',
-    'bilivideo.cn',
-    'hdslb.com',
-    'acgvideo.com',
-  ])
-}
-
-const clearSessionCookiesForUrl = async (targetUrl) => {
-  const normalizedUrl = normalizeTargetUrl(targetUrl)
-  if (!normalizedUrl) {
-    return
-  }
-
-  const domainMatchers = isBilibiliCookieTarget(normalizedUrl)
-    ? ['bilibili.com', 'bilivideo.com', 'bilivideo.cn', 'hdslb.com', 'acgvideo.com']
-    : []
-
-  if (domainMatchers.length === 0) {
-    return
-  }
-
-  try {
-    const cookies = await session.defaultSession.cookies.get({})
-    for (const cookie of cookies) {
-      const cookieDomain = String(cookie.domain || '').replace(/^\./, '').toLowerCase()
-      if (!domainMatchers.some((suffix) => cookieDomain.endsWith(suffix))) {
-        continue
-      }
-
-      const removalUrl = `${cookie.secure ? 'https' : 'http'}://${cookieDomain}${cookie.path || '/'}`
-      try {
-        await session.defaultSession.cookies.remove(removalUrl, cookie.name)
-      } catch {
-        // Ignore removal failures for individual cookies.
-      }
-    }
-  } catch {
-    // Ignore cookie cleanup failures.
-  }
 }
 
 const readPornhubCookieFileHeader = () => {
@@ -392,98 +613,53 @@ const mergeCookieHeaders = (...cookieHeaders) => {
     .join('; ')
 }
 
+const getCookieProfileForUrl = (targetUrl) => {
+  if (isYouTubeCookieTarget(targetUrl)) return getSiteLoginProfile('youtube')
+  if (isBilibiliCookieTarget(targetUrl)) return getSiteLoginProfile('bilibili')
+  if (isPornhubCookieTarget(targetUrl)) return getSiteLoginProfile('pornhub')
+  if (isYouPornCookieTarget(targetUrl)) return getSiteLoginProfile('youporn')
+  return null
+}
+
+const buildSessionCookieHeaderForUrl = async (targetUrl) => {
+  const profile = getCookieProfileForUrl(targetUrl)
+  try {
+    const cookies = profile
+      ? await getDesktopSiteCookies(profile)
+      : await session.defaultSession.cookies.get({ url: targetUrl })
+    return cookies
+      .map((cookie) => `${cookie.name}=${cookie.value}`)
+      .join('; ')
+  } catch {
+    return ''
+  }
+}
+
 const buildCookieHeaderForUrl = async (targetUrl) => {
   const normalizedUrl = normalizeTargetUrl(targetUrl)
   if (!normalizedUrl) {
     return ''
   }
 
-  let sessionCookieHeader = ''
-  try {
-    const cookies = await session.defaultSession.cookies.get({ url: normalizedUrl })
-    if (Array.isArray(cookies) && cookies.length > 0) {
-      sessionCookieHeader = cookies
-        .map((cookie) => `${cookie.name}=${cookie.value}`)
-        .join('; ')
-    }
-  } catch {
-    sessionCookieHeader = ''
-  }
+  const sessionCookieHeader = await buildSessionCookieHeaderForUrl(normalizedUrl)
 
   if (isYouTubeCookieTarget(normalizedUrl)) {
     return mergeCookieHeaders(readYoutubeCookieFileHeader(), sessionCookieHeader)
   }
 
   if (isBilibiliCookieTarget(normalizedUrl)) {
-    return mergeCookieHeaders(readBilibiliCookieFileHeader(), sessionCookieHeader)
+    return sessionCookieHeader
   }
 
   if (isPornhubCookieTarget(normalizedUrl)) {
-    return mergeCookieHeaders(readPornhubCookieFileHeader(), sessionCookieHeader)
+    return mergeCookieHeaders(pornhubAgeGateCookieHeader, readPornhubCookieFileHeader(), sessionCookieHeader)
   }
 
   if (isYouPornCookieTarget(normalizedUrl)) {
-    return mergeCookieHeaders(readYouPornCookieFileHeader(), sessionCookieHeader)
+    return mergeCookieHeaders(youpornAgeGateCookieHeader, readYouPornCookieFileHeader(), sessionCookieHeader)
   }
 
   return sessionCookieHeader
-}
-
-const syncCookiesToSession = async (targetUrl) => {
-  const normalizedUrl = normalizeTargetUrl(targetUrl)
-  if (!normalizedUrl) {
-    return
-  }
-
-  let cookieEntries = []
-  if (isBilibiliCookieTarget(normalizedUrl)) {
-    cookieEntries = readBilibiliCookies()
-  } else {
-    return
-  }
-
-  for (const entry of cookieEntries) {
-    const host = entry.domain.replace(/^\./, '')
-    const candidateUrl = `https://${host}${entry.path || '/'}`
-    try {
-      await session.defaultSession.cookies.set({
-        url: candidateUrl,
-        name: entry.name,
-        value: entry.value,
-        domain: entry.domain.startsWith('.') ? entry.domain : undefined,
-        path: entry.path || '/',
-        secure: entry.secure,
-        expirationDate: entry.expirationDate,
-      })
-    } catch {
-      // Ignore cookie sync failures for non-critical entries.
-    }
-  }
-}
-
-const buildStaticCookieHeaderForUrl = (targetUrl) => {
-  const normalizedUrl = normalizeTargetUrl(targetUrl)
-  if (!normalizedUrl) {
-    return ''
-  }
-
-  if (isYouTubeCookieTarget(normalizedUrl)) {
-    return readYoutubeCookieFileHeader()
-  }
-
-  if (isBilibiliCookieTarget(normalizedUrl)) {
-    return readBilibiliCookieFileHeader()
-  }
-
-  if (isPornhubCookieTarget(normalizedUrl)) {
-    return mergeCookieHeaders(pornhubAgeGateCookieHeader, readPornhubCookieFileHeader())
-  }
-
-  if (isYouPornCookieTarget(normalizedUrl)) {
-    return mergeCookieHeaders(youpornAgeGateCookieHeader, readYouPornCookieFileHeader())
-  }
-
-  return ''
 }
 
 const createSessionFetch = () => {
@@ -882,16 +1058,21 @@ const installDesktopMediaHeaders = () => {
       ...rule.headers,
     }
 
-    const cookieHeader = mergeCookieHeaders(
-      details.requestHeaders?.Cookie,
-      details.requestHeaders?.cookie,
-      buildStaticCookieHeaderForUrl(details.url),
-    )
-    if (cookieHeader) {
-      requestHeaders.Cookie = cookieHeader
-    }
+    void buildCookieHeaderForUrl(details.url).then((desktopCookieHeader) => {
+      const cookieHeader = mergeCookieHeaders(
+        details.requestHeaders?.Cookie,
+        details.requestHeaders?.cookie,
+        desktopCookieHeader,
+      )
+      if (cookieHeader) {
+        requestHeaders.Cookie = cookieHeader
+        delete requestHeaders.cookie
+      }
 
-    callback({ requestHeaders })
+      callback({ requestHeaders })
+    }).catch(() => {
+      callback({ requestHeaders })
+    })
   })
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
@@ -992,9 +1173,7 @@ const installDesktopBridgeHandlers = () => {
       throw new Error('Invalid Bilibili URL')
     }
 
-    await clearSessionCookiesForUrl(normalizedUrl)
-    await syncCookiesToSession(normalizedUrl)
-    const cookie = buildStaticCookieHeaderForUrl(normalizedUrl)
+    const cookie = await buildCookieHeaderForUrl(normalizedUrl)
     return resolveBilibiliPlayback(normalizedUrl, {
       cookie,
       forceRefresh: options?.forceRefresh === true,
@@ -1012,6 +1191,7 @@ const installDesktopBridgeHandlers = () => {
     const cookie = await buildCookieHeaderForUrl(normalizedUrl)
     return resolvePornhubPlayback(normalizedUrl, {
       cookie,
+      fetchImpl: createSessionFetch(),
       forceRefresh: options?.forceRefresh === true,
     })
   })
@@ -1029,6 +1209,21 @@ const installDesktopBridgeHandlers = () => {
       fetchImpl: createSessionFetch(),
       forceRefresh: options?.forceRefresh === true,
     })
+  })
+
+  ipcMain.removeHandler('desktop:get-site-login-status')
+  ipcMain.handle('desktop:get-site-login-status', async (_event, siteName) => {
+    return buildDesktopSiteLoginStatus(siteName)
+  })
+
+  ipcMain.removeHandler('desktop:open-site-login')
+  ipcMain.handle('desktop:open-site-login', async (event, siteName) => {
+    return openDesktopSiteLoginWindow(siteName, BrowserWindow.fromWebContents(event.sender))
+  })
+
+  ipcMain.removeHandler('desktop:clear-site-session')
+  ipcMain.handle('desktop:clear-site-session', async (_event, siteName) => {
+    return clearDesktopSiteSession(siteName)
   })
 
   ipcMain.removeAllListeners('desktop:reload')

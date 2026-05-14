@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+
 import { resolveBilibiliApiPayload } from './request-runtime.mjs'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
@@ -58,6 +60,14 @@ const setCachedPayload = (cacheKey, value) => {
   })
 }
 
+const cacheScopeForCookie = (cookie) => {
+  const normalizedCookie = String(cookie || '').trim()
+  if (!normalizedCookie) {
+    return 'anonymous'
+  }
+
+  return `cookie:${createHash('sha1').update(normalizedCookie).digest('hex').slice(0, 16)}`
+}
 
 const resolveRedirectUrl = async (targetUrl, cookie = '') => {
   let currentUrl = targetUrl
@@ -286,6 +296,24 @@ const buildLocalDashManifest = (dashData) => {
   ].join('')
 }
 
+const summarizeUnplayablePayload = (playData) => {
+  const dashVideoCount = Array.isArray(playData?.dash?.video) ? playData.dash.video.length : 0
+  const dashAudioCount = Array.isArray(playData?.dash?.audio) ? playData.dash.audio.length : 0
+  const durlCount = Array.isArray(playData?.durl) ? playData.durl.length : 0
+  const supportFormats = Array.isArray(playData?.support_formats)
+    ? playData.support_formats.map((item) => item?.new_description || item?.display_desc || item?.quality).filter(Boolean).slice(0, 5)
+    : []
+
+  return [
+    `quality=${playData?.quality ?? 'unknown'}`,
+    `dashVideo=${dashVideoCount}`,
+    `dashAudio=${dashAudioCount}`,
+    `durl=${durlCount}`,
+    supportFormats.length ? `formats=${supportFormats.join(', ')}` : null,
+    playData?.message ? `message=${playData.message}` : null,
+  ].filter(Boolean).join('; ')
+}
+
 const mapPlaybackPayload = ({ playData, context }) => {
   const dashData = playData?.dash
   const localDashManifest = dashData ? buildLocalDashManifest(dashData) : null
@@ -309,7 +337,7 @@ const mapPlaybackPayload = ({ playData, context }) => {
     }
   }
 
-  throw new Error('Bilibili provider did not return a playable DASH payload')
+  throw new Error(`Bilibili provider did not return a playable payload: ${summarizeUnplayablePayload(playData)}`)
 }
 
 export const clearBilibiliPlaybackCache = () => {
@@ -318,7 +346,7 @@ export const clearBilibiliPlaybackCache = () => {
 
 export async function resolveBilibiliPlayback(targetUrl, { cookie = '', forceRefresh = false, fetchImpl = null } = {}) {
   const normalizedUrl = await normalizeVideoUrl(targetUrl, cookie)
-  const cacheKey = `${normalizedUrl}|cookie=${cookie ? '1' : '0'}`
+  const cacheKey = `${normalizedUrl}|${cacheScopeForCookie(cookie)}`
   if (!forceRefresh) {
     const cached = getCachedPayload(cacheKey)
     if (cached) {

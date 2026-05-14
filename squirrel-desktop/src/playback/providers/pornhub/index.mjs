@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+
 import {
   DEFAULT_USER_AGENT,
   buildHlsQualities,
@@ -18,6 +20,15 @@ const AGE_GATE_COOKIE_HEADER = 'age_verified=1; accessAgeDisclaimerPH=1; accessA
 
 const buildCookieHeader = (cookie) => {
   return mergeCookieHeaders(AGE_GATE_COOKIE_HEADER, cookie)
+}
+
+const cacheScopeForCookie = (cookie) => {
+  const normalizedCookie = String(cookie || '').trim()
+  if (!normalizedCookie) {
+    return 'anonymous'
+  }
+
+  return `cookie:${createHash('sha1').update(normalizedCookie).digest('hex').slice(0, 16)}`
 }
 
 const extractMediaDefinitions = (htmlText) => {
@@ -86,7 +97,7 @@ export async function resolvePornhubPlayback(targetUrl, { cookie = '', forceRefr
     throw new Error('Invalid Pornhub URL')
   }
 
-  const cacheKey = `${normalizedUrl}|cookie=${cookie ? '1' : '0'}`
+  const cacheKey = `${normalizedUrl}|${cacheScopeForCookie(cookie)}`
   if (!forceRefresh) {
     const cached = getCachedPayload(cacheKey)
     if (cached) {

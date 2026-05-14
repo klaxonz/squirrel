@@ -265,6 +265,42 @@
                     >
                       <AppIcon name="security" class="h-4 w-4" />
                     </Button>
+                    <DropdownMenu v-if="isDesktopApp && plugin.siteDesktopLoginSupported">
+                      <DropdownMenuTrigger as-child>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          class="h-8 w-8 rounded-md text-muted-foreground"
+                          :disabled="plugin.siteLoginTesting"
+                          :title="plugin.siteLoginStatus?.logged_in ? '桌面会话已登录' : '桌面会话'"
+                        >
+                          <AppIcon
+                            :name="plugin.siteLoginStatus?.logged_in ? 'statusSuccess' : 'user'"
+                            class="h-4 w-4"
+                            :class="{ 'text-emerald-500': plugin.siteLoginStatus?.logged_in }"
+                          />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" class="w-44">
+                        <DropdownMenuItem @click="handleDesktopSiteLogin(plugin.siteName)">
+                          <AppIcon name="user" class="h-4 w-4" />
+                          <span>{{ plugin.siteLoginStatus?.logged_in ? '重新登录' : '打开桌面登录' }}</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem @click="handleTestLoginBySite(plugin.siteName)">
+                          <AppIcon name="refresh" class="h-4 w-4" />
+                          <span>刷新登录状态</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          :disabled="!plugin.siteLoginStatus?.logged_in"
+                          class="text-destructive focus:text-destructive"
+                          @click="handleClearDesktopSiteSession(plugin.siteName)"
+                        >
+                          <AppIcon name="logout" class="h-4 w-4" />
+                          <span>清除桌面会话</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button
                       v-if="plugin.siteName === 'youtube'"
                       variant="ghost"
@@ -312,6 +348,19 @@
         @save="saveSiteEditor"
       />
 
+      <Transition name="toast">
+        <div v-if="toast.visible" class="fixed bottom-6 right-6 z-50">
+          <div
+            class="flex items-center gap-2 rounded-md border px-4 py-3 text-sm shadow-lg"
+            :class="toast.error ? 'border-destructive/20 bg-background text-destructive' : 'border-border/50 bg-foreground text-background'"
+          >
+            <AppIcon v-if="toast.error" name="warning" class="h-4 w-4" />
+            <AppIcon v-else name="statusSuccess" class="h-4 w-4" />
+            <span>{{ toast.message }}</span>
+          </div>
+        </div>
+      </Transition>
+
       <Dialog v-model:open="showUninstallDialog">
         <DialogContent class="max-w-sm overflow-hidden rounded-lg p-0">
           <DialogHeader class="border-b border-border/50 p-5 text-left">
@@ -341,6 +390,13 @@ import SiteIcon from '@/components/common/SiteIcon.vue'
 import SiteConfigEditorDialog from '@/components/settings/SiteConfigEditorDialog.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Dialog,
   DialogContent,
@@ -402,6 +458,8 @@ const CAPABILITY_LABELS = {
   resolve_proxy_config: '代理配置',
   rewrite_proxy_playlist: '代理播放',
 }
+const DESKTOP_LOGIN_SITES = new Set(['youtube', 'bilibili', 'pornhub', 'youporn'])
+const isDesktopApp = computed(() => window.desktopApp?.isDesktop === true)
 
 const clearLoginStatusCache = () => {
   loginStatusResults.value = {}
@@ -451,6 +509,8 @@ const loadResultsFromCache = () => {
 const selectedCookiesFile = ref(null)
 const cookiesFileName = ref('')
 const importingCookies = ref(false)
+const toast = ref({ visible: false, message: '', error: false })
+let toastTimer = null
 
 const editingSite = ref(null)
 const siteEditorVisible = ref(false)
@@ -461,6 +521,12 @@ const uninstallTarget = ref(null)
 
 const siteCatalogMap = computed(() => siteCatalog.value || {})
 const searchQuery = ref('')
+
+const showToast = (message, isError = false) => {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value = { visible: true, message, error: isError }
+  toastTimer = setTimeout(() => { toast.value.visible = false }, 3000)
+}
 
 const enrichedPlugins = computed(() => {
   const resultsMap = new Map()
@@ -491,6 +557,7 @@ const enrichedPlugins = computed(() => {
       siteOAuthAccount: loginStatus?.oauth_account || null,
       siteLoginTesting: !!loginTestingMap[siteName],
       siteSupportsLogin: primarySite?.supports_login_status ?? false,
+      siteDesktopLoginSupported: DESKTOP_LOGIN_SITES.has(String(siteName || '').toLowerCase()),
     }
   })
 })
@@ -644,6 +711,17 @@ const handleTestLoginBySite = async (siteName) => {
   if (!siteName) return
   loginStatusTesting.value[siteName] = true
   try {
+    const bridge = getDesktopBridge()
+    if (
+      bridge?.isDesktop === true
+      && DESKTOP_LOGIN_SITES.has(String(siteName || '').toLowerCase())
+      && typeof bridge.getSiteLoginStatus === 'function'
+    ) {
+      const result = await bridge.getSiteLoginStatus(siteName)
+      if (result) upsertLoginStatus(siteName, result)
+      return
+    }
+
     const { data, error } = await testSiteLoginStatus(siteName)
     if (!error && data) upsertLoginStatus(siteName, data)
     else {
@@ -654,6 +732,67 @@ const handleTestLoginBySite = async (siteName) => {
         checked_at: new Date().toISOString(),
       })
     }
+  } finally {
+    loginStatusTesting.value[siteName] = false
+    saveResultsToCache()
+  }
+}
+
+const getDesktopBridge = () => window.desktopApp || null
+
+const handleDesktopSiteLogin = async (siteName) => {
+  if (!siteName) return
+  const bridge = getDesktopBridge()
+  if (bridge?.isDesktop !== true || typeof bridge.openSiteLogin !== 'function') return
+
+  loginStatusTesting.value[siteName] = true
+  try {
+    showToast('桌面登录窗口已打开，手机确认后会自动完成')
+    const result = await bridge.openSiteLogin(siteName)
+    if (result) {
+      upsertLoginStatus(siteName, result)
+      showToast(result.logged_in ? '桌面登录成功' : (result.message || '未检测到桌面登录态'), !result.logged_in)
+    }
+  } catch (error) {
+    Logger.error('Failed to open desktop site login', error)
+    upsertLoginStatus(siteName, {
+      site_name: siteName,
+      supported: true,
+      logged_in: false,
+      message: '桌面登录窗口打开失败',
+      checked_at: new Date().toISOString(),
+      source: 'desktop',
+    })
+    showToast('桌面登录窗口打开失败', true)
+  } finally {
+    loginStatusTesting.value[siteName] = false
+    saveResultsToCache()
+  }
+}
+
+const handleClearDesktopSiteSession = async (siteName) => {
+  if (!siteName) return
+  const bridge = getDesktopBridge()
+  if (bridge?.isDesktop !== true || typeof bridge.clearSiteSession !== 'function') return
+
+  loginStatusTesting.value[siteName] = true
+  try {
+    const result = await bridge.clearSiteSession(siteName)
+    if (result) {
+      upsertLoginStatus(siteName, result)
+      showToast('桌面会话已清除')
+    }
+  } catch (error) {
+    Logger.error('Failed to clear desktop site session', error)
+    upsertLoginStatus(siteName, {
+      site_name: siteName,
+      supported: true,
+      logged_in: false,
+      message: '清除桌面会话失败',
+      checked_at: new Date().toISOString(),
+      source: 'desktop',
+    })
+    showToast('清除桌面会话失败', true)
   } finally {
     loginStatusTesting.value[siteName] = false
     saveResultsToCache()
@@ -737,8 +876,11 @@ const getNetworkText = (plugin) => {
 }
 
 const getLoginText = (plugin) => {
-  if (plugin.siteOAuthStatus === 'authenticated' || plugin.siteLoginStatus?.logged_in) return '有效'
+  if (plugin.siteOAuthStatus === 'authenticated') return '有效'
   if (plugin.siteOAuthStatus === 'pending') return '授权中'
+  if (plugin.siteLoginStatus?.supported === false) return '不支持'
+  if (plugin.siteLoginStatus?.source === 'desktop') return plugin.siteLoginStatus?.logged_in ? '桌面已登录' : '桌面未登录'
+  if (plugin.siteLoginStatus?.logged_in) return '有效'
   if (plugin.siteLoginStatus) return '失效'
   return '未检测'
 }
@@ -788,6 +930,17 @@ onUnmounted(stopYouTubeOAuthPolling)
 </script>
 
 <style scoped>
+.toast-enter-active,
+.toast-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(0.5rem);
+}
+
 .plugin-grid {
   display: grid;
   grid-template-columns: minmax(18rem, 1fr) 7rem 12rem 7rem 7rem 15rem;

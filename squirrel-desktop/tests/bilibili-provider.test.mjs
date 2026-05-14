@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { resolveBilibiliPlayback } from '../src/playback/providers/bilibili/index.mjs'
+import { clearBilibiliPlaybackCache, resolveBilibiliPlayback } from '../src/playback/providers/bilibili/index.mjs'
 import { resolveBilibiliApiPayload } from '../src/playback/providers/bilibili/request-runtime.mjs'
 
 test('desktop bilibili provider builds codec-separated video adaptation sets with unique representation ids', async () => {
@@ -265,4 +265,135 @@ test('desktop bilibili request runtime accepts injected fetch implementations', 
   assert.match(calls[0], /\/x\/web-interface\/view/)
   assert.match(calls[1], /\/x\/web-interface\/nav/)
   assert.match(calls[2], /\/x\/player\/wbi\/playurl/)
+})
+
+test('desktop bilibili provider does not reuse anonymous cache after login cookies change', async () => {
+  clearBilibiliPlaybackCache()
+
+  const calls = []
+  const fetchImpl = async (input, options = {}) => {
+    const url = new URL(String(input))
+    const cookie = String(options?.headers?.cookie || '')
+    calls.push({ path: url.pathname, cookie })
+
+    if (url.pathname === '/x/web-interface/view') {
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            code: 0,
+            data: {
+              bvid: 'BV1CacheTest1',
+              aid: 30001,
+              pages: [{ cid: 40002 }],
+            },
+          })
+        },
+      }
+    }
+
+    if (url.pathname === '/x/web-interface/nav') {
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            code: 0,
+            data: {
+              wbi_img: {
+                img_url: 'https://i0.hdslb.com/bfs/wbi/abcdefghijklmnopqrstuvwxyz123456.png',
+                sub_url: 'https://i0.hdslb.com/bfs/wbi/123456abcdefghijklmnopqrstuvwxyz7890.png',
+              },
+            },
+          })
+        },
+      }
+    }
+
+    if (url.pathname === '/x/player/wbi/playurl') {
+      const loggedIn = cookie.includes('SESSDATA=')
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            code: 0,
+            data: loggedIn
+              ? {
+                  quality: 80,
+                  dash: {
+                    duration: 76,
+                    video: [
+                      {
+                        id: 80,
+                        codecid: 7,
+                        codecs: 'avc1.640033',
+                        width: 1920,
+                        height: 1080,
+                        bandwidth: 456306,
+                        baseUrl: 'https://cdn.example.test/login-video.m4s',
+                      },
+                    ],
+                    audio: [
+                      {
+                        id: 30280,
+                        codecs: 'mp4a.40.2',
+                        bandwidth: 84522,
+                        baseUrl: 'https://cdn.example.test/login-audio.m4s',
+                      },
+                    ],
+                  },
+                }
+              : {
+                  quality: 32,
+                  dash: {
+                    duration: 76,
+                    video: [
+                      {
+                        id: 32,
+                        codecid: 7,
+                        codecs: 'avc1.64001f',
+                        width: 852,
+                        height: 480,
+                        bandwidth: 220000,
+                        baseUrl: 'https://cdn.example.test/anonymous-video.m4s',
+                      },
+                    ],
+                    audio: [
+                      {
+                        id: 30280,
+                        codecs: 'mp4a.40.2',
+                        bandwidth: 84522,
+                        baseUrl: 'https://cdn.example.test/anonymous-audio.m4s',
+                      },
+                    ],
+                  },
+                },
+          })
+        },
+      }
+    }
+
+    throw new Error(`Unexpected injected fetch: ${url.toString()}`)
+  }
+
+  const anonymousPayload = await resolveBilibiliPlayback('https://www.bilibili.com/video/BV1CacheTest1', {
+    cookie: 'buvid3=guest',
+    forceRefresh: true,
+    fetchImpl,
+  })
+  const loggedInPayload = await resolveBilibiliPlayback('https://www.bilibili.com/video/BV1CacheTest1', {
+    cookie: 'buvid3=guest; SESSDATA=demo',
+    fetchImpl,
+  })
+
+  const playurlCalls = calls.filter((call) => call.path === '/x/player/wbi/playurl')
+  assert.equal(loggedInPayload.stream_type, 'dash')
+  assert.equal(anonymousPayload.default_quality_id, 'video-avc-32-480-220000')
+  assert.equal(loggedInPayload.default_quality_id, 'video-avc-80-1080-456306')
+  assert.equal(playurlCalls.length, 2)
+  assert.equal(playurlCalls[1].cookie.includes('SESSDATA=demo'), true)
+
+  clearBilibiliPlaybackCache()
 })

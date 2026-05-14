@@ -53,6 +53,46 @@ test('desktop pornhub provider exposes sorted hls qualities', async () => {
   assert.equal(payload.supports_manual_quality, true)
 })
 
+test('desktop pornhub provider does not reuse cached payload across cookie sessions', async () => {
+  const anonymousHtml = `
+    <script>
+      var flashvars_123 = {
+        "mediaDefinitions": [
+          { "format": "hls", "quality": "480", "height": 480, "width": 854, "videoUrl": "https://cdn.example.test/anonymous.m3u8" }
+        ]
+      };
+    </script>
+  `
+  const sessionHtml = `
+    <script>
+      var flashvars_123 = {
+        "mediaDefinitions": [
+          { "format": "hls", "quality": "1080", "height": 1080, "width": 1920, "videoUrl": "https://cdn.example.test/session.m3u8" }
+        ]
+      };
+    </script>
+  `
+  const requests = []
+  const fetchImpl = async (_targetUrl, options = {}) => {
+    const cookie = String(options?.headers?.Cookie || '')
+    requests.push(cookie)
+    return htmlResponse(cookie.includes('session=demo') ? sessionHtml : anonymousHtml)
+  }
+
+  const anonymousPayload = await resolvePornhubPlayback(
+    'https://www.pornhub.com/view_video.php?viewkey=session-cache',
+    { forceRefresh: true, fetchImpl },
+  )
+  const sessionPayload = await resolvePornhubPlayback(
+    'https://www.pornhub.com/view_video.php?viewkey=session-cache',
+    { cookie: 'session=demo', fetchImpl },
+  )
+
+  assert.equal(anonymousPayload.video_url, 'https://cdn.example.test/anonymous.m3u8')
+  assert.equal(sessionPayload.video_url, 'https://cdn.example.test/session.m3u8')
+  assert.equal(requests.length, 2)
+})
+
 test('desktop youporn provider expands remote definitions in parallel and exposes hls qualities', async () => {
   const html = `
     <script>
