@@ -1,13 +1,23 @@
 <template>
   <div ref="videoPageRef" class="min-h-screen bg-background" :class="{ 'px-0': isWidescreen }">
-    <div class="max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr,400px] gap-8 p-6 lg:p-10">
-      <!-- Main Content -->
-      <div class="space-y-6 min-w-0">
-        <!-- Player Section -->
-        <div class="relative aspect-video overflow-hidden rounded-2xl bg-black shadow-2xl">
-          <div ref="videoPlayerHostRef" class="absolute inset-0 overflow-hidden rounded-2xl" />
-        </div>
+    <div
+      class="mx-auto grid grid-cols-1 transition-[max-width,padding] duration-200"
+      :class="isWidescreen ? 'max-w-none lg:grid-cols-[1fr,400px] gap-8 p-6 lg:p-8' : 'max-w-[1800px] lg:grid-cols-[1fr,400px] gap-8 p-6 lg:p-10'"
+    >
+      <!-- Player Section -->
+      <div
+        class="relative aspect-video overflow-hidden bg-black shadow-2xl"
+        :class="isWidescreen ? 'lg:col-span-2 rounded-xl' : 'lg:col-start-1 lg:row-start-1 rounded-2xl'"
+      >
+        <div
+          ref="videoPlayerHostRef"
+          class="absolute inset-0 overflow-hidden"
+          :class="isWidescreen ? 'rounded-xl' : 'rounded-2xl'"
+        />
+      </div>
 
+      <!-- Main Content -->
+      <div class="min-w-0 space-y-6" :class="{ 'lg:col-start-1 lg:row-start-2': !isWidescreen }">
         <!-- Video Header Info -->
         <div v-if="video" class="space-y-6">
           <div class="space-y-2">
@@ -89,7 +99,10 @@
       </div>
 
       <!-- Sidebar Content (Related/Clips/Playlist) -->
-      <div class="space-y-6">
+      <div
+        class="space-y-6"
+        :class="isWidescreen ? 'lg:col-start-2 lg:row-start-2' : 'lg:col-start-2 lg:row-start-1 lg:row-span-2'"
+      >
         <div class="flex p-0.5 bg-accent/30 rounded-lg ring-1 ring-border/20">
           <button 
             v-for="tab in asideTabs"
