@@ -105,3 +105,14 @@ test('desktop youtube subtitles are resolved through the electron bridge', async
   assert.match(frontendSource, /content,/)
   assert.match(frontendSource, /url: `\/api\/video\/subtitles\?\$\{params\.toString\(\)\}`/)
 })
+
+test('desktop youtube auth does not merge cookies into playback requests', async () => {
+  const source = await readFile(mainPath, 'utf8')
+
+  assert.doesNotMatch(source, /youtubeCookieFilePath/)
+  assert.doesNotMatch(source, /readYoutubeCookieFileHeader/)
+  assert.doesNotMatch(source, /isYouTubeCookieTarget/)
+  assert.doesNotMatch(source, /prewarmYouTubePlayback\(cookie\)/)
+  assert.doesNotMatch(source, /resolveYouTubePlayback\(normalizedUrl,\s*\{\s*cookie/s)
+  assert.doesNotMatch(source, /resolveYouTubeSubtitles\(normalizedUrl,\s*\{\s*cookie/s)
+})

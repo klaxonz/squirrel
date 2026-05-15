@@ -20,7 +20,6 @@ const __dirname = path.dirname(__filename)
 const repoRoot = path.resolve(__dirname, '..', '..')
 const pornhubCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'pornhub.txt')
 const youpornCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'youporn.txt')
-const youtubeCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'youtube.txt')
 const youtubeOAuthStateFilePath = path.join(repoRoot, 'config', 'youtube_oauth.json')
 const pornhubOrigin = 'https://www.pornhub.com'
 const pornhubReferer = `${pornhubOrigin}/`
@@ -121,25 +120,6 @@ const normalizeTargetUrl = (targetUrl) => {
     return new URL(value).toString()
   } catch {
     return ''
-  }
-}
-
-const isYouTubeCookieTarget = (targetUrl) => {
-  const normalizedUrl = normalizeTargetUrl(targetUrl)
-  if (!normalizedUrl) {
-    return false
-  }
-
-  try {
-    const hostname = new URL(normalizedUrl).hostname.toLowerCase()
-    return hostname === 'youtube.com'
-      || hostname.endsWith('.youtube.com')
-      || hostname === 'youtu.be'
-      || hostname.endsWith('.googlevideo.com')
-      || hostname.endsWith('.gvt1.com')
-      || hostname.endsWith('.ytimg.com')
-  } catch {
-    return false
   }
 }
 
@@ -618,14 +598,9 @@ const readNetscapeCookieFileHeader = (cookieFilePath, domainSuffixes) => {
   }
 }
 
-const readYoutubeCookieFileHeader = () => {
-  return readNetscapeCookieFileHeader(youtubeCookieFilePath, ['youtube.com'])
-}
-
 const prewarmDesktopPlaybackProviders = () => {
   setTimeout(() => {
-    const cookie = readYoutubeCookieFileHeader()
-    void prewarmYouTubePlayback(cookie).catch((error) => {
+    void prewarmYouTubePlayback().catch((error) => {
       console.debug('[squirrel-desktop] YouTube playback prewarm skipped', error?.message || error)
     })
   }, 1000)
@@ -681,7 +656,6 @@ const mergeCookieHeaders = (...cookieHeaders) => {
 }
 
 const getCookieProfileForUrl = (targetUrl) => {
-  if (isYouTubeCookieTarget(targetUrl)) return getSiteLoginProfile('youtube')
   if (isBilibiliCookieTarget(targetUrl)) return getSiteLoginProfile('bilibili')
   if (isPornhubCookieTarget(targetUrl)) return getSiteLoginProfile('pornhub')
   if (isYouPornCookieTarget(targetUrl)) return getSiteLoginProfile('youporn')
@@ -709,10 +683,6 @@ const buildCookieHeaderForUrl = async (targetUrl) => {
   }
 
   const sessionCookieHeader = await buildSessionCookieHeaderForUrl(normalizedUrl)
-
-  if (isYouTubeCookieTarget(normalizedUrl)) {
-    return mergeCookieHeaders(readYoutubeCookieFileHeader(), sessionCookieHeader)
-  }
 
   if (isBilibiliCookieTarget(normalizedUrl)) {
     return sessionCookieHeader
@@ -1226,9 +1196,7 @@ const installDesktopBridgeHandlers = () => {
       throw new Error('Invalid YouTube URL')
     }
 
-    const cookie = await buildCookieHeaderForUrl(normalizedUrl)
     return resolveYouTubePlayback(normalizedUrl, {
-      cookie,
       forceRefresh: options?.forceRefresh === true,
     })
   })
@@ -1240,9 +1208,7 @@ const installDesktopBridgeHandlers = () => {
       throw new Error('Invalid YouTube URL')
     }
 
-    const cookie = await buildCookieHeaderForUrl(normalizedUrl)
     return resolveYouTubeSubtitles(normalizedUrl, {
-      cookie,
       lang: String(options?.lang || '').trim(),
       format: String(options?.format || 'vtt').trim().toLowerCase(),
     })

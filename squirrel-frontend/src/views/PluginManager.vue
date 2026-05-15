@@ -349,7 +349,48 @@
       />
 
       <Transition name="toast">
-        <div v-if="toast.visible" class="fixed bottom-6 right-6 z-50">
+        <div
+          v-if="youtubeOAuthPrompt.visible"
+          class="fixed bottom-6 right-6 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-md border border-border/60 bg-background p-4 text-foreground shadow-xl"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2 text-sm font-semibold">
+                <AppIcon name="link" class="h-4 w-4" />
+                <span>YouTube TV 授权</span>
+              </div>
+              <p class="mt-1 text-xs text-muted-foreground">在授权页输入此代码</p>
+            </div>
+            <Button variant="ghost" size="icon" class="h-7 w-7 rounded-md text-muted-foreground" title="关闭" @click="hideYouTubeOAuthPrompt">
+              <AppIcon name="close" class="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div class="mt-3 flex items-center gap-2">
+            <div class="min-w-0 flex-1 select-all rounded-md border border-border/50 bg-muted px-3 py-2 font-mono text-lg font-semibold text-foreground">
+              {{ youtubeOAuthPrompt.userCode }}
+            </div>
+            <Button variant="outline" size="icon" class="h-10 w-10 rounded-md" title="复制授权码" @click="copyYouTubeOAuthCode">
+              <AppIcon name="clipboard" class="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div class="mt-3 flex items-center justify-between gap-2">
+            <span class="text-xs text-muted-foreground">{{ youtubeOAuthPrompt.copied ? '已复制' : '等待授权完成' }}</span>
+            <Button variant="outline" class="h-8 rounded-md text-xs" @click="openExternalUrl(youtubeOAuthPrompt.verificationUrl)">
+              <AppIcon name="externalLink" class="h-3.5 w-3.5" />
+              打开授权页
+            </Button>
+          </div>
+        </div>
+      </Transition>
+
+      <Transition name="toast">
+        <div
+          v-if="toast.visible"
+          class="fixed right-6 z-50"
+          :class="youtubeOAuthPrompt.visible ? 'bottom-56' : 'bottom-6'"
+        >
           <div
             class="flex items-center gap-2 rounded-md border px-4 py-3 text-sm shadow-lg"
             :class="toast.error ? 'border-destructive/20 bg-background text-destructive' : 'border-border/50 bg-foreground text-background'"
@@ -510,7 +551,15 @@ const selectedCookiesFile = ref(null)
 const cookiesFileName = ref('')
 const importingCookies = ref(false)
 const toast = ref({ visible: false, message: '', error: false })
+const youtubeOAuthPrompt = ref({
+  visible: false,
+  verificationUrl: '',
+  userCode: '',
+  copied: false,
+  dismissedCode: '',
+})
 let toastTimer = null
+let youtubeOAuthCopyTimer = null
 
 const editingSite = ref(null)
 const siteEditorVisible = ref(false)
@@ -526,6 +575,40 @@ const showToast = (message, isError = false) => {
   if (toastTimer) clearTimeout(toastTimer)
   toast.value = { visible: true, message, error: isError }
   toastTimer = setTimeout(() => { toast.value.visible = false }, 3000)
+}
+
+const showYouTubeOAuthPrompt = ({ verificationUrl = '', userCode = '' } = {}) => {
+  const code = String(userCode || '').trim()
+  if (!code) {
+    hideYouTubeOAuthPrompt()
+    return
+  }
+  if (!youtubeOAuthPrompt.value.visible && youtubeOAuthPrompt.value.dismissedCode === code) {
+    return
+  }
+  youtubeOAuthPrompt.value = {
+    visible: true,
+    verificationUrl: String(verificationUrl || '').trim(),
+    userCode: code,
+    copied: false,
+    dismissedCode: '',
+  }
+}
+
+const hideYouTubeOAuthPrompt = () => {
+  youtubeOAuthPrompt.value.dismissedCode = youtubeOAuthPrompt.value.userCode
+  youtubeOAuthPrompt.value.visible = false
+}
+
+const copyYouTubeOAuthCode = async () => {
+  const code = String(youtubeOAuthPrompt.value.userCode || '').trim()
+  if (!code) return
+  await navigator.clipboard.writeText(code)
+  youtubeOAuthPrompt.value.copied = true
+  if (youtubeOAuthCopyTimer) clearTimeout(youtubeOAuthCopyTimer)
+  youtubeOAuthCopyTimer = setTimeout(() => {
+    youtubeOAuthPrompt.value.copied = false
+  }, 2000)
 }
 
 const enrichedPlugins = computed(() => {
@@ -904,13 +987,17 @@ const openExternalUrl = async (targetUrl) => {
 }
 
 const handleStartYouTubeOAuth = async () => {
+  youtubeOAuthPrompt.value.dismissedCode = ''
   const bridge = getDesktopBridge()
   if (bridge?.isDesktop === true && typeof bridge.openSiteLogin === 'function') {
     const result = await bridge.openSiteLogin('youtube')
     if (result) {
       upsertLoginStatus('youtube', result)
       await openExternalUrl(result.verification_url)
-      if (result.user_code) showToast(`YouTube TV 授权码: ${result.user_code}`)
+      showYouTubeOAuthPrompt({
+        verificationUrl: result.verification_url,
+        userCode: result.user_code,
+      })
       if (result.oauth_status === 'pending') startYouTubeOAuthPolling()
     }
     return
@@ -919,7 +1006,10 @@ const handleStartYouTubeOAuth = async () => {
   const { data, error } = await setupYouTubeOAuth()
   if (!error && data) {
     if (data.verification_url) await openExternalUrl(data.verification_url)
-    if (data.user_code) showToast(`YouTube TV 授权码: ${data.user_code}`)
+    showYouTubeOAuthPrompt({
+      verificationUrl: data.verification_url || '',
+      userCode: data.user_code || '',
+    })
     upsertLoginStatus('youtube', {
       site_name: 'youtube',
       supported: true,
@@ -936,6 +1026,7 @@ const handleStartYouTubeOAuth = async () => {
 }
 
 const handleRevokeYouTubeOAuth = async () => {
+  hideYouTubeOAuthPrompt()
   const bridge = getDesktopBridge()
   if (bridge?.isDesktop === true && typeof bridge.clearSiteSession === 'function') {
     const result = await bridge.clearSiteSession('youtube')
@@ -954,12 +1045,28 @@ const startYouTubeOAuthPolling = () => {
     if (bridge?.isDesktop === true && typeof bridge.getSiteLoginStatus === 'function') {
       const result = await bridge.getSiteLoginStatus('youtube')
       if (result) upsertLoginStatus('youtube', result)
-      if (result?.oauth_status !== 'pending') stopYouTubeOAuthPolling()
+      if (result?.oauth_status === 'pending') {
+        showYouTubeOAuthPrompt({
+          verificationUrl: result.verification_url,
+          userCode: result.user_code,
+        })
+      } else {
+        hideYouTubeOAuthPrompt()
+        stopYouTubeOAuthPolling()
+      }
       return
     }
 
     const { data } = await getYouTubeOAuthStatus()
     if (data) {
+      if (data.status === 'pending') {
+        showYouTubeOAuthPrompt({
+          verificationUrl: data.verification_url || '',
+          userCode: data.user_code || '',
+        })
+      } else {
+        hideYouTubeOAuthPrompt()
+      }
       upsertLoginStatus('youtube', {
         site_name: 'youtube',
         supported: true,
@@ -981,6 +1088,12 @@ const stopYouTubeOAuthPolling = () => {
   ytOAuthPollTimer = null
 }
 
+const cleanupYouTubeOAuthUi = () => {
+  stopYouTubeOAuthPolling()
+  if (youtubeOAuthCopyTimer) clearTimeout(youtubeOAuthCopyTimer)
+  youtubeOAuthCopyTimer = null
+}
+
 onMounted(() => {
   fetchPlugins()
   loadCatalog()
@@ -988,7 +1101,7 @@ onMounted(() => {
   fetchSupportedSites()
 })
 
-onUnmounted(stopYouTubeOAuthPolling)
+onUnmounted(cleanupYouTubeOAuthUi)
 </script>
 
 <style scoped>
