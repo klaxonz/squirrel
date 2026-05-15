@@ -1504,6 +1504,7 @@ const installDesktopBridgeHandlers = () => {
       query: options?.query,
       site: options?.site || 'all',
       limit: options?.limit || 20,
+      page: options?.page || 1,
       fetchImpl: createSessionFetch(),
       buildCookieHeader: buildCookieHeaderForUrl,
     })

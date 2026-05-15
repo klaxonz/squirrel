@@ -1,4 +1,4 @@
-import { clampLimit, fetchText, normalizeQuery, normalizeUrl, parseDuration, stripHtml, uniqueByUrl } from './shared.mjs'
+import { clampLimit, clampPage, fetchText, normalizeQuery, normalizeUrl, parseDuration, stripHtml, uniqueByUrl } from './shared.mjs'
 
 const SITE = 'pornhub'
 const ORIGIN = 'https://www.pornhub.com'
@@ -8,13 +8,15 @@ const extractAttribute = (source, name) => {
   return match ? match[1] : ''
 }
 
-export const searchPornhubVideos = async ({ query, limit, fetchImpl, buildCookieHeader }) => {
+export const searchPornhubVideos = async ({ query, limit, page, fetchImpl, buildCookieHeader }) => {
   const keyword = normalizeQuery(query)
   if (!keyword) return []
 
   const resultLimit = clampLimit(limit)
+  const resultPage = clampPage(page)
   const targetUrl = new URL('/video/search', ORIGIN)
   targetUrl.searchParams.set('search', keyword)
+  targetUrl.searchParams.set('page', String(resultPage))
 
   const cookie = await buildCookieHeader(targetUrl.toString())
   const html = await fetchText(fetchImpl, targetUrl.toString(), {

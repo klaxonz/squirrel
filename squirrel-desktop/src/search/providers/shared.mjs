@@ -13,6 +13,12 @@ export const clampLimit = (limit, defaultLimit = 20) => {
   return Math.max(1, Math.min(Math.floor(value), 50))
 }
 
+export const clampPage = (page) => {
+  const value = Number(page)
+  if (!Number.isFinite(value)) return 1
+  return Math.max(1, Math.floor(value))
+}
+
 export const normalizeQuery = (query) => {
   return String(query || '').trim()
 }

@@ -1,17 +1,18 @@
-import { clampLimit, normalizeQuery, normalizeUrl, parseDuration, stripHtml, uniqueByUrl } from './shared.mjs'
+import { clampLimit, clampPage, normalizeQuery, normalizeUrl, parseDuration, stripHtml, uniqueByUrl } from './shared.mjs'
 
 const SITE = 'bilibili'
 const ORIGIN = 'https://www.bilibili.com'
 
-export const searchBilibiliVideos = async ({ query, limit, fetchImpl, buildCookieHeader }) => {
+export const searchBilibiliVideos = async ({ query, limit, page, fetchImpl, buildCookieHeader }) => {
   const keyword = normalizeQuery(query)
   if (!keyword) return []
 
   const resultLimit = clampLimit(limit)
+  const resultPage = clampPage(page)
   const apiUrl = new URL('https://api.bilibili.com/x/web-interface/search/type')
   apiUrl.searchParams.set('search_type', 'video')
   apiUrl.searchParams.set('keyword', keyword)
-  apiUrl.searchParams.set('page', '1')
+  apiUrl.searchParams.set('page', String(resultPage))
   apiUrl.searchParams.set('page_size', String(resultLimit))
 
   const cookie = await buildCookieHeader(ORIGIN)

@@ -132,6 +132,12 @@ watch(subscriptionId, (value) => {
   }
 })
 
+watch(searchMode, (value) => {
+  if (value === 'remote') {
+    site.value = undefined
+  }
+})
+
 onMounted(() => {
   onSubscriptionRemoved(({ subscriptionId }) => {
     if (String(route.params.id || '') === String(subscriptionId)) router.replace({ name: 'AllVideos' })

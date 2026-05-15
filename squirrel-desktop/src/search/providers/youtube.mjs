@@ -25,11 +25,13 @@ const collectVideoRenderers = (node, output) => {
   Object.values(node).forEach((value) => collectVideoRenderers(value, output))
 }
 
-export const searchYouTubeVideos = async ({ query, limit, fetchImpl, buildCookieHeader }) => {
+export const searchYouTubeVideos = async ({ query, limit, page, fetchImpl, buildCookieHeader }) => {
   const keyword = normalizeQuery(query)
   if (!keyword) return []
 
   const resultLimit = clampLimit(limit)
+  if (Number(page || 1) > 1) return []
+
   const targetUrl = new URL('/results', ORIGIN)
   targetUrl.searchParams.set('search_query', keyword)
 

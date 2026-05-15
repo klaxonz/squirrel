@@ -17,10 +17,15 @@
     </div>
 
     <div v-else>
+      <div class="flex items-center justify-between px-6 pt-4 text-xs font-medium text-muted-foreground">
+        <span>当前站点：{{ activeSiteLabel }}</span>
+        <span v-if="items.length">{{ items.length }} 个结果</span>
+      </div>
+
       <div v-if="errorMessage" class="px-6 pt-6">
         <div class="flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 p-4">
           <p class="text-sm font-medium text-destructive">{{ errorMessage }}</p>
-          <button class="rounded-lg bg-destructive px-4 py-2 text-xs font-bold uppercase tracking-widest text-white" @click="load">
+          <button class="rounded-lg bg-destructive px-4 py-2 text-xs font-bold uppercase tracking-widest text-white" @click="refresh">
             重试
           </button>
         </div>
@@ -80,12 +85,15 @@
         <h3 class="text-xl font-bold text-foreground/60">未找到远端结果</h3>
         <p class="mt-2 text-muted-foreground">换个关键词或站点再试。</p>
       </div>
+
     </div>
+
+    <div ref="loadMoreTrigger" class="h-20 w-full" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
 import { formatDuration } from '@/utils/dateFormat'
@@ -119,10 +127,15 @@ const emit = defineEmits(['loading-change', 'error'])
 const isDesktop = window.desktopApp?.isDesktop === true
 const items = ref<RemoteSearchItem[]>([])
 const loading = ref(false)
+const allLoaded = ref(false)
+const currentPage = ref(1)
 const errorMessage = ref('')
+const loadMoreTrigger = ref<HTMLElement | null>(null)
 const trimmedQuery = computed(() => String(props.query || '').trim())
+const activeSiteLabel = computed(() => props.site ? siteLabel(props.site) : '全部站点')
 
 let requestToken = 0
+let observer: IntersectionObserver | null = null
 
 const siteLabel = (site: string) => {
   const labels: Record<string, string> = {
@@ -147,10 +160,18 @@ const setLoading = (value: boolean) => {
   emit('loading-change', value)
 }
 
-const load = async () => {
+const appendUniqueItems = (nextItems: RemoteSearchItem[]) => {
+  const seen = new Set(items.value.map((item) => item.url))
+  const uniqueItems = nextItems.filter((item) => {
+    if (!item.url || seen.has(item.url)) return false
+    seen.add(item.url)
+    return true
+  })
+  items.value = items.value.concat(uniqueItems)
+}
+
+const loadPage = async (page: number) => {
   const query = trimmedQuery.value
-  items.value = []
-  errorMessage.value = ''
 
   if (!query || !isDesktop) {
     setLoading(false)
@@ -171,9 +192,17 @@ const load = async () => {
       query,
       site: props.site || 'all',
       limit: props.limit,
+      page,
     })
     if (currentToken !== requestToken) return
-    items.value = Array.isArray(result?.items) ? result.items : []
+    const nextItems = Array.isArray(result?.items) ? result.items : []
+    if (page === 1) {
+      items.value = nextItems
+    } else {
+      appendUniqueItems(nextItems)
+    }
+    currentPage.value = page
+    allLoaded.value = result?.has_more === false || nextItems.length < props.limit
     if (Array.isArray(result?.errors) && result.errors.length > 0 && items.value.length === 0) {
       errorMessage.value = result.errors.join('；')
       emit('error', new Error(errorMessage.value))
@@ -187,12 +216,41 @@ const load = async () => {
   }
 }
 
+const refresh = async () => {
+  items.value = []
+  currentPage.value = 1
+  allLoaded.value = false
+  errorMessage.value = ''
+  await loadPage(1)
+}
+
+const loadMore = async () => {
+  if (loading.value || allLoaded.value || !items.value.length) return
+  await loadPage(currentPage.value + 1)
+}
+
 const openResult = async (item: RemoteSearchItem) => {
   if (!item.url) return
   await window.desktopApp?.openExternal?.(item.url)
 }
 
-watch(() => [props.query, props.site], load, { immediate: true })
+watch(() => [props.query, props.site], refresh, { immediate: true })
 
-defineExpose({ refresh: load })
+onMounted(() => {
+  const root = document.getElementById('app-main-scroll')
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      loadMore()
+    }
+  }, {
+    root,
+    rootMargin: '600px',
+  })
+
+  if (loadMoreTrigger.value) observer.observe(loadMoreTrigger.value)
+})
+
+onUnmounted(() => observer?.disconnect())
+
+defineExpose({ refresh })
 </script>

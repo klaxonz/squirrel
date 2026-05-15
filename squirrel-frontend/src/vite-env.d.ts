@@ -74,6 +74,7 @@ type DesktopRemoteSearchResolver = (
     query: string
     site?: string
     limit?: number
+    page?: number
   }
 ) => Promise<{
   items: Array<{
@@ -91,6 +92,8 @@ type DesktopRemoteSearchResolver = (
   }>
   errors?: string[]
   sites?: string[]
+  page?: number
+  has_more?: boolean
 }>
 
 interface DesktopSiteLoginStatus {

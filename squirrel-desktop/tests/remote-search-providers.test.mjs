@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { searchBilibiliVideos } from '../src/search/providers/bilibili.mjs'
+import { searchRemoteVideos } from '../src/search/providers/index.mjs'
 import { searchJavdbVideos } from '../src/search/providers/javdb.mjs'
 import { searchPornhubVideos } from '../src/search/providers/pornhub.mjs'
 import { searchYouPornVideos } from '../src/search/providers/youporn.mjs'
@@ -20,31 +21,37 @@ const htmlResponse = (html) => new Response(html, {
 const buildCookieHeader = async () => 'SESSDATA=test'
 
 test('desktop bilibili remote search maps api results', async () => {
+  let requestedUrl = ''
   const items = await searchBilibiliVideos({
     query: 'demo',
     limit: 5,
+    page: 2,
     buildCookieHeader,
-    fetchImpl: async () => jsonResponse({
-      data: {
-        result: [
-          {
-            bvid: 'BV1demo',
-            title: '<em class="keyword">Demo</em> Video',
-            arcurl: 'https://www.bilibili.com/video/BV1demo',
-            pic: '//i0.hdslb.com/demo.jpg',
-            duration: '01:02',
-            pubdate: 1700000000,
-            author: 'Uploader',
-          },
-        ],
-      },
-    }),
+    fetchImpl: async (url) => {
+      requestedUrl = url
+      return jsonResponse({
+        data: {
+          result: [
+            {
+              bvid: 'BV1demo',
+              title: '<em class="keyword">Demo</em> Video',
+              arcurl: 'https://www.bilibili.com/video/BV1demo',
+              pic: '//i0.hdslb.com/demo.jpg',
+              duration: '01:02',
+              pubdate: 1700000000,
+              author: 'Uploader',
+            },
+          ],
+        },
+      })
+    },
   })
 
   assert.equal(items.length, 1)
   assert.equal(items[0].site, 'bilibili')
   assert.equal(items[0].title, 'Demo Video')
   assert.equal(items[0].duration, 62)
+  assert.equal(new URL(requestedUrl).searchParams.get('page'), '2')
 })
 
 test('desktop youtube remote search extracts video renderers', async () => {
@@ -84,6 +91,20 @@ test('desktop youtube remote search extracts video renderers', async () => {
   assert.equal(items[0].site, 'youtube')
   assert.equal(items[0].url, 'https://www.youtube.com/watch?v=abc123')
   assert.equal(items[0].duration, 63)
+})
+
+test('desktop youtube remote search does not repeat first page for page requests', async () => {
+  const items = await searchYouTubeVideos({
+    query: 'demo',
+    limit: 5,
+    page: 2,
+    buildCookieHeader,
+    fetchImpl: async () => {
+      throw new Error('fetch should not be called for page 2')
+    },
+  })
+
+  assert.deepEqual(items, [])
 })
 
 test('desktop pornhub remote search parses video list items', async () => {
@@ -147,4 +168,74 @@ test('desktop javdb remote search parses movie items', async () => {
   assert.equal(items[0].site, 'javdb')
   assert.equal(items[0].title, 'Demo JAVDB')
   assert.equal(items[0].url, 'https://javdb.com/v/demo')
+})
+
+test('desktop remote search response carries pagination metadata', async () => {
+  const result = await searchRemoteVideos({
+    query: 'demo',
+    site: 'bilibili',
+    limit: 1,
+    page: 3,
+    buildCookieHeader,
+    fetchImpl: async () => jsonResponse({
+      data: {
+        result: [
+          {
+            bvid: 'BV1demo',
+            title: 'Demo Video',
+            arcurl: 'https://www.bilibili.com/video/BV1demo',
+          },
+        ],
+      },
+    }),
+  })
+
+  assert.equal(result.page, 3)
+  assert.equal(result.has_more, true)
+  assert.equal(result.items.length, 1)
+})
+
+test('desktop remote search interleaves all site results before limiting', async () => {
+  const result = await searchRemoteVideos({
+    query: 'demo',
+    site: 'all',
+    limit: 3,
+    page: 1,
+    buildCookieHeader,
+    fetchImpl: async (url) => {
+      const targetUrl = new URL(url)
+      if (targetUrl.hostname.includes('bilibili')) {
+        return jsonResponse({
+          data: {
+            result: [
+              { bvid: 'BV1', title: 'Bilibili 1', arcurl: 'https://www.bilibili.com/video/BV1' },
+              { bvid: 'BV2', title: 'Bilibili 2', arcurl: 'https://www.bilibili.com/video/BV2' },
+              { bvid: 'BV3', title: 'Bilibili 3', arcurl: 'https://www.bilibili.com/video/BV3' },
+            ],
+          },
+        })
+      }
+      if (targetUrl.hostname.includes('javdb')) {
+        return htmlResponse(`
+          <div class="item">
+            <a href="/v/javdb-demo">
+              <img src="https://javdb.com/demo.jpg">
+              <div class="video-title">JavDB 1</div>
+            </a>
+          </div>
+        `)
+      }
+      if (targetUrl.hostname.includes('pornhub')) {
+        return htmlResponse(`
+          <li class="pcVideoListItem videoblock" data-video-vkey="ph-demo">
+            <a href="/view_video.php?viewkey=ph-demo" title="Pornhub 1" data-title="Pornhub 1"></a>
+          </li>
+        `)
+      }
+      return htmlResponse('')
+    },
+  })
+
+  assert.equal(result.items.length, 3)
+  assert.deepEqual(result.items.map((item) => item.site), ['bilibili', 'javdb', 'pornhub'])
 })
