@@ -36,7 +36,7 @@ def test_build_site_info_includes_icon_url():
     }
 
 
-def test_normalize_plugin_item_includes_site_icon_url_from_catalog(monkeypatch):
+def test_normalize_plugin_item_includes_site_icon_url_from_catalog():
     manifest = PluginManifest(
         plugin_id='youtube',
         version='1.0.0',
@@ -58,13 +58,11 @@ def test_normalize_plugin_item_includes_site_icon_url_from_catalog(monkeypatch):
     )
     snapshot = SimpleNamespace(runtimes=[])
 
-    monkeypatch.setattr(
-        plugin_service,
-        'get_effective_site_catalog',
-        lambda: {'youtube': {'icon_url': '/api/plugins/sites/youtube/icon'}},
+    normalized = plugin_service._normalize_plugin_item(
+        record,
+        snapshot,
+        {'youtube': {'icon_url': '/api/plugins/sites/youtube/icon'}},
     )
-
-    normalized = plugin_service._normalize_plugin_item(record, snapshot)
 
     assert normalized['sites'] == [{
         'site_name': 'youtube',

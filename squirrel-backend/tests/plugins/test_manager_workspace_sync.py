@@ -39,7 +39,7 @@ def _create_enabled_record(repo_root: Path, plugin_id: str, domain: str) -> Plug
     )
 
 
-def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path):
+def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path, monkeypatch):
     repo_root = tmp_path / 'repo'
     backend_root = repo_root / 'squirrel-backend'
     backend_root.mkdir(parents=True, exist_ok=True)
@@ -137,6 +137,19 @@ def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path):
     assert [item['name'] for item in record.manifest['capabilities']] == ['check_login_status', 'resolve_playback']
     assert record.manifest['capabilities'][0]['timeout_ms'] == 30000
     assert record.granted_permissions == ['network:http', 'cookies:read:site/javdb']
+
+    upserted_plugin_ids = []
+    original_upsert = store.upsert
+
+    def track_upsert(record):
+        upserted_plugin_ids.append(record.plugin_id)
+        return original_upsert(record)
+
+    monkeypatch.setattr(store, 'upsert', track_upsert)
+
+    manager.discover_plugins()
+
+    assert upserted_plugin_ids == []
 
 
 def test_manager_gateway_rebuilds_enabled_registrations_on_route_miss(tmp_path):

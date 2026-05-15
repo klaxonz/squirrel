@@ -44,12 +44,10 @@ class PluginManager:
         return self._gateway
 
     def list_plugins(self) -> List[PluginInstallRecord]:
-        self.discover_plugins()
-        return self._store.list_records()
+        return self.discover_plugins()
 
     def discover_plugins(self) -> List[PluginInstallRecord]:
-        self._discover_local_runtime_plugins()
-        return self._store.list_records()
+        return self._discover_local_runtime_plugins()
 
     def get_plugin(self, plugin_id: str) -> Optional[PluginInstallRecord]:
         self.discover_plugins()
@@ -151,9 +149,9 @@ class PluginManager:
         )
 
     def get_snapshot(self) -> PluginManagerSnapshot:
-        self.discover_plugins()
+        records = self.discover_plugins()
         return PluginManagerSnapshot(
-            records=self._store.list_records(),
+            records=records,
             runtimes=self._supervisor.list_handles(),
             registrations=self._gateway.list_registrations(),
         )
@@ -211,11 +209,11 @@ class PluginManager:
         return self.bootstrap_enabled_plugins()
 
     def _refresh_gateway_registrations(self) -> None:
-        self.discover_plugins()
+        records = self.discover_plugins()
         existing_plugin_ids = {registration.plugin_id for registration in self._gateway.list_registrations()}
         active_plugin_ids: set[str] = set()
 
-        for record in self._store.list_records():
+        for record in records:
             active_plugin_ids.add(record.plugin_id)
             if not record.enabled:
                 self._gateway.unregister_plugin(record.plugin_id)
@@ -229,10 +227,11 @@ class PluginManager:
         for plugin_id in existing_plugin_ids - active_plugin_ids:
             self._gateway.unregister_plugin(plugin_id)
 
-    def _discover_local_runtime_plugins(self) -> None:
+    def _discover_local_runtime_plugins(self) -> List[PluginInstallRecord]:
+        records_by_id = {record.plugin_id: record for record in self._store.list_records()}
         plugins_root = self._paths.workspace_plugins_dir
         if not plugins_root.exists():
-            return
+            return sorted(records_by_id.values(), key=lambda record: record.plugin_id.lower())
 
         for metadata_path in plugins_root.glob('*/plugin-runtime.json'):
             try:
@@ -245,11 +244,12 @@ class PluginManager:
 
                 plugin_root = metadata_path.parent
                 runtime_path = plugin_root / 'src'
-                existing = self._store.get_record(manifest.plugin_id)
+                existing = records_by_id.get(manifest.plugin_id)
                 if existing is not None:
                     if existing.metadata.get('source') != 'workspace':
                         continue
 
+                    before = existing.to_dict()
                     existing.version = manifest.version
                     existing.install_path = str(plugin_root)
                     existing.entrypoint = entrypoint
@@ -258,9 +258,12 @@ class PluginManager:
                     existing.package_path = str(metadata_path)
                     existing.runtime_path = str(runtime_path if runtime_path.exists() else plugin_root)
                     existing.metadata = {'source': 'workspace'}
-                    self._store.upsert(existing)
+                    after = existing.to_dict()
+                    after['updated_at'] = before.get('updated_at')
+                    if after != before:
+                        records_by_id[existing.plugin_id] = self._store.upsert(existing)
 
-                    if existing.enabled:
+                    if existing.enabled and after != before:
                         self._gateway.unregister_plugin(existing.plugin_id)
                         self._gateway.register_manifest(
                             plugin_id=existing.plugin_id,
@@ -282,9 +285,10 @@ class PluginManager:
                     runtime_path=str(runtime_path if runtime_path.exists() else plugin_root),
                     metadata={'source': 'workspace'},
                 )
-                self._store.upsert(record)
+                records_by_id[record.plugin_id] = self._store.upsert(record)
             except Exception:
                 continue
+        return sorted(records_by_id.values(), key=lambda record: record.plugin_id.lower())
 
 
 _plugin_manager: Optional[PluginManager] = None

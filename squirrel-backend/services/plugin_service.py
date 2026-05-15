@@ -32,9 +32,8 @@ def _normalize_plugin_site(site_item: Dict[str, Any], catalog: Dict[str, dict]) 
     return payload
 
 
-def _normalize_plugin_item(record, snapshot) -> Dict[str, Any]:
+def _normalize_plugin_item(record, snapshot, catalog: Dict[str, dict]) -> Dict[str, Any]:
     manifest = PluginManifest.from_dict(record.manifest)
-    catalog = get_effective_site_catalog()
     runtime_handle = next(
         (
             item for item in snapshot.runtimes
@@ -114,7 +113,7 @@ def install_from_upload(file) -> InstallResult:
             refreshed = manager.get_plugin(record.plugin_id)
             if refreshed is None:
                 return False, 'plugin was installed but no install record was found'
-            return True, _normalize_plugin_item(refreshed, snapshot)
+            return True, _normalize_plugin_item(refreshed, snapshot, get_effective_site_catalog())
     except Exception as exc:
         logger.error('install plugin failed: %s', exc, exc_info=True)
         return False, str(exc)
@@ -123,8 +122,9 @@ def install_from_upload(file) -> InstallResult:
 def list_plugins() -> List[Dict[str, Any]]:
     manager = get_plugin_manager()
     snapshot = manager.get_snapshot()
+    catalog = get_effective_site_catalog()
     return [
-        _normalize_plugin_item(record, snapshot)
+        _normalize_plugin_item(record, snapshot, catalog)
         for record in snapshot.records
     ]
 
