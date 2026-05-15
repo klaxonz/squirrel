@@ -191,6 +191,7 @@ const sidebarSearch = ref('')
 const showSiteDropdown = ref(false)
 const siteFilterRef = ref<HTMLElement | null>(null)
 const activeChannelId = ref<string | number | null>(null)
+const activeChannelNameCache = ref('')
 const showAddDialog = ref(false)
 const showImportDialog = ref(false)
 const feedContainer = ref<HTMLElement | null>(null)
@@ -203,6 +204,8 @@ const loadingMoreChannels = ref(false)
 const channelsFinished = ref(false)
 const channelsPage = ref(1)
 const CHANNELS_PAGE_SIZE = 100
+let channelsRequestToken = 0
+let sidebarSearchTimer: number | null = null
 
 // Data State (Feed)
 const feedItems = ref<any[]>([])
@@ -225,7 +228,7 @@ onClickOutside(siteFilterRef, () => { showSiteDropdown.value = false })
 
 const activeChannelName = computed(() => {
   if (!activeChannelId.value) return ''
-  return list.value.find(c => c.id === activeChannelId.value)?.name || ''
+  return list.value.find(c => c.id === activeChannelId.value)?.name || activeChannelNameCache.value
 })
 
 const siteOptionsList = computed(() => siteOptions.value || [])
@@ -235,13 +238,7 @@ const activeSiteLabel = computed(() => {
 })
 
 const filteredChannels = computed(() => {
-  let res = list.value
-  // Site filtering is handled server-side via the `site` API parameter
-  if (sidebarSearch.value) {
-    const q = sidebarSearch.value.toLowerCase()
-    res = res.filter(c => c.name.toLowerCase().includes(q))
-  }
-  return res
+  return list.value
 })
 
 const videoGroups = computed(() => {
@@ -270,26 +267,33 @@ const videoGroups = computed(() => {
 })
 
 const fetchChannels = async (isReset = false) => {
-  if (loadingChannels.value || (loadingMoreChannels.value && !isReset) || (channelsFinished.value && !isReset)) return
-  if (isReset) { channelsPage.value = 1; channelsFinished.value = false; loadingChannels.value = true } 
+  if (!isReset && (loadingChannels.value || loadingMoreChannels.value || channelsFinished.value)) return
+  if (isReset) { channelsPage.value = 1; channelsFinished.value = false; loadingChannels.value = true; loadingMoreChannels.value = false } 
   else { loadingMoreChannels.value = true }
 
+  const requestToken = ++channelsRequestToken
+  const requestPage = channelsPage.value
   try {
     const nsfwValue = nsfw.value === 'only' ? 'yes' : (['all', 'yes', 'no'].includes(nsfw.value) ? nsfw.value : 'all')
     const params: Record<string, unknown> = {
       nsfw: nsfwValue,
-      page: channelsPage.value,
+      page: requestPage,
       pageSize: CHANNELS_PAGE_SIZE,
       page_size: CHANNELS_PAGE_SIZE,
     }
     if (site.value) params.site = site.value
+    const query = sidebarSearch.value.trim()
+    if (query) params.query = query
     const { data } = await getSubscriptions(params)
+    if (requestToken !== channelsRequestToken) return
     const items = data?.data || data?.items || []
     if (isReset) list.value = items; else list.value.push(...items)
     if (items.length < CHANNELS_PAGE_SIZE) channelsFinished.value = true
-    else channelsPage.value++
+    else channelsPage.value = requestPage + 1
   } finally {
-    loadingChannels.value = false; loadingMoreChannels.value = false
+    if (requestToken === channelsRequestToken) {
+      loadingChannels.value = false; loadingMoreChannels.value = false
+    }
   }
 }
 
@@ -333,7 +337,13 @@ const resetAllScroll = () => {
 }
 
 const handleChannelClick = (id: string | number) => {
-  activeChannelId.value = activeChannelId.value === id ? null : id
+  if (activeChannelId.value === id) {
+    activeChannelId.value = null
+    activeChannelNameCache.value = ''
+  } else {
+    activeChannelId.value = id
+    activeChannelNameCache.value = list.value.find(c => c.id === id)?.name || ''
+  }
   viewMode.value = 'feed'; fetchFeed(true)
   scrollToTop(feedContainer.value)
 }
@@ -386,8 +396,17 @@ watch(viewMode, () => {
 
 watch([nsfw, site], () => { fetchChannels(true); fetchFeed(true); resetAllScroll() })
 
-watch(sidebarSearch, () => { nextTick(() => scrollToTop(channelsContainer.value)) })
-onUnmounted(() => { feedObserver?.disconnect(); channelsObserver?.disconnect(); gridObserver?.disconnect() })
+watch(sidebarSearch, () => {
+  if (sidebarSearchTimer !== null) window.clearTimeout(sidebarSearchTimer)
+  sidebarSearchTimer = window.setTimeout(() => {
+    fetchChannels(true)
+    nextTick(() => scrollToTop(channelsContainer.value))
+  }, 250)
+})
+onUnmounted(() => {
+  if (sidebarSearchTimer !== null) window.clearTimeout(sidebarSearchTimer)
+  feedObserver?.disconnect(); channelsObserver?.disconnect(); gridObserver?.disconnect()
+})
 </script>
 
 <style scoped>
