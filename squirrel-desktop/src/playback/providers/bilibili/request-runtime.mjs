@@ -164,7 +164,7 @@ export async function resolveBilibiliApiPayload(targetUrl, { cookie = '', fetchI
     fnver: '0',
     fnval: '4048',
     fourk: '1',
-    ...(bvid ? { bvid } : { aid: String(aid) }),
+    ...(bvid ? { bvid } : { avid: String(aid) }),
     wts: String(Math.round(Date.now() / 1000)),
   }
 

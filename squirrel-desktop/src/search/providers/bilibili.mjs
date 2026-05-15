@@ -2,6 +2,7 @@ import { clampLimit, clampPage, normalizeQuery, normalizeUrl, parseDuration, str
 
 const SITE = 'bilibili'
 const ORIGIN = 'https://www.bilibili.com'
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36'
 
 export const searchBilibiliVideos = async ({ query, limit, page, fetchImpl, buildCookieHeader }) => {
   const keyword = normalizeQuery(query)
@@ -19,7 +20,10 @@ export const searchBilibiliVideos = async ({ query, limit, page, fetchImpl, buil
   const response = await fetchImpl(apiUrl.toString(), {
     headers: {
       Accept: 'application/json, text/plain, */*',
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
       Referer: `${ORIGIN}/`,
+      Origin: ORIGIN,
+      'User-Agent': USER_AGENT,
       ...(cookie ? { Cookie: cookie } : {}),
     },
   })

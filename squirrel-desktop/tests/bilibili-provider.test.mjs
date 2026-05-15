@@ -267,6 +267,82 @@ test('desktop bilibili request runtime accepts injected fetch implementations', 
   assert.match(calls[2], /\/x\/player\/wbi\/playurl/)
 })
 
+test('desktop bilibili request runtime uses avid for av links', async () => {
+  const calls = []
+  const fetchImpl = async (input) => {
+    const url = new URL(String(input))
+    calls.push(url)
+
+    if (url.pathname === '/x/web-interface/view') {
+      assert.equal(url.searchParams.get('aid'), '48388138')
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            code: 0,
+            data: {
+              bvid: '',
+              aid: 48388138,
+              pages: [{ cid: 86420001 }],
+            },
+          })
+        },
+      }
+    }
+
+    if (url.pathname === '/x/web-interface/nav') {
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            code: 0,
+            data: {
+              wbi_img: {
+                img_url: 'https://i0.hdslb.com/bfs/wbi/abcdefghijklmnopqrstuvwxyz123456.png',
+                sub_url: 'https://i0.hdslb.com/bfs/wbi/123456abcdefghijklmnopqrstuvwxyz7890.png',
+              },
+            },
+          })
+        },
+      }
+    }
+
+    if (url.pathname === '/x/player/wbi/playurl') {
+      assert.equal(url.searchParams.get('avid'), '48388138')
+      assert.equal(url.searchParams.get('aid'), null)
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            code: 0,
+            data: {
+              quality: 80,
+              dash: {
+                duration: 76,
+                video: [],
+                audio: [],
+              },
+            },
+          })
+        },
+      }
+    }
+
+    throw new Error(`Unexpected injected fetch: ${url.toString()}`)
+  }
+
+  const payload = await resolveBilibiliApiPayload('http://www.bilibili.com/video/av48388138', {
+    fetchImpl,
+  })
+
+  assert.equal(payload.context.aid, 48388138)
+  assert.equal(payload.context.cid, 86420001)
+  assert.equal(calls.length, 3)
+})
+
 test('desktop bilibili provider does not reuse anonymous cache after login cookies change', async () => {
   clearBilibiliPlaybackCache()
 
