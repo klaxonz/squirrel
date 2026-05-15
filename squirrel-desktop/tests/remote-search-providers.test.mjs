@@ -144,18 +144,53 @@ test('desktop youporn remote search parses watch links', async () => {
     limit: 5,
     buildCookieHeader,
     fetchImpl: async () => htmlResponse(`
-      <div class="video-box">
-        <img data-src="https://fi.ypncdn.com/demo.jpg" alt="Demo YP">
+      <article class="video-box pc js_video-box" aria-label="Demo YP">
+        <a href="/watch/123/demo/" data-testid="plw_video_thumbnail_link">
+          <img
+            data-src="https://fi.ypncdn.com/demo.jpg"
+            src="data:image/png;base64,placeholder"
+            alt="Demo YP"
+            data-mediabook="https://ev.ypncdn.com/demo.mp4?hash=abc&amp;validto=123"
+          >
+        </a>
         <span class="duration">05:06</span>
-        <a href="/watch/123/demo/" title="Demo YP">Demo YP</a>
-      </div>
+        <a href="/watch/123/demo/" class="video-title-text"><span>Demo YP</span></a>
+      </article>
     `),
   })
 
   assert.equal(items.length, 1)
   assert.equal(items[0].site, 'youporn')
   assert.equal(items[0].url, 'https://www.youporn.com/watch/123/demo/')
+  assert.equal(items[0].thumbnail, 'https://fi.ypncdn.com/demo.jpg')
   assert.equal(items[0].duration, 306)
+})
+
+test('desktop youporn remote search keeps dynamic cdn thumbnails', async () => {
+  const items = await searchYouPornVideos({
+    query: 'demo',
+    limit: 5,
+    buildCookieHeader,
+    fetchImpl: async () => htmlResponse(`
+      <article class="video-box pc js_video-box" aria-label="Dynamic YP">
+        <a href="/watch/456/dynamic/" data-testid="plw_video_thumbnail_link">
+          <img
+            data-src="https://pix-cdn77.ypncdn.com/c6251/videos/202601/26/37456675/240P_1000K_37456675.mp4/plain/rs:fit:320:180/vts:167?hash=abc&amp;validto=123"
+            src="data:image/png;base64,placeholder"
+            alt="Dynamic YP"
+          >
+        </a>
+        <span class="duration">03:43</span>
+        <a href="/watch/456/dynamic/" class="video-title-text"><span>Dynamic YP</span></a>
+      </article>
+    `),
+  })
+
+  assert.equal(items.length, 1)
+  assert.equal(
+    items[0].thumbnail,
+    'https://pix-cdn77.ypncdn.com/c6251/videos/202601/26/37456675/240P_1000K_37456675.mp4/plain/rs:fit:320:180/vts:167?hash=abc&validto=123'
+  )
 })
 
 test('desktop javdb remote search parses movie items', async () => {
