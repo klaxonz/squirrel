@@ -219,6 +219,11 @@ const { handlePlaybackTimeUpdate, handleClipMarkerSeek, handleClipMarkersUpdated
   }
 } as any)
 
+const handleVideoTimeUpdate = (currentTime: number) => {
+  onVideoTimeUpdate(currentTime)
+  handlePlaybackTimeUpdate(currentTime)
+}
+
 const videoPublishedText = computed(() => {
   const d = video.value?.publish_date || video.value?.uploaded_at
   return d ? formatDate(d as any) : ''
@@ -291,7 +296,7 @@ const {
   loadAndPlayById: loadAndPlayById as any,
   consumePlaybackSeed: (id: any) => consumeVideoPlaybackSeed(id as string),
   onVideoPlay, onVideoPause, handleAutoplayNext: handleAutoplayNext as any, 
-  handlePlaybackTimeUpdate,
+  handlePlaybackTimeUpdate: handleVideoTimeUpdate,
   handlePrevVideoFromPlaylist: handlePrevVideoFromPlaylist as any, 
   handleNextVideoFromPlaylist: handleNextVideoFromPlaylist as any,
   handlePlayerRetry: () => {

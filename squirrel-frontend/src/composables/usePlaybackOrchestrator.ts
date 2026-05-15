@@ -127,6 +127,7 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
 
     try {
       const source = await playbackPromise
+      await detailPromise
       if (seq !== requestSeq.value) return
 
       const v: any = video.value || initialVideoData || {}

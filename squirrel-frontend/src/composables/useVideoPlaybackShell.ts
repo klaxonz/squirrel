@@ -320,6 +320,7 @@ export default function useVideoPlaybackShell({
 
   watch(() => route.params.videoId, async (newId, oldId) => {
     if (newId && newId !== oldId && video.value?.id !== newId) {
+      void flushPendingReport()
       if (hasReusableGlobalPlaybackSession(newId)) {
         hydrateFromGlobalPlaybackSession()
       } else {
