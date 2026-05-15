@@ -23,13 +23,23 @@ def ensure_system_tasks(task_classes: Iterable[type] | None = None) -> None:
         if not classes:
             return
 
+        task_class_names = [f"{task_cls.__module__}.{task_cls.__name__}" for task_cls in classes]
+        default_names = [task_cls.__name__[:100] for task_cls in classes]
+        system_names = [f"system_{name}"[:100] for name in default_names]
+
         with get_session() as session:
             existing_system_tasks = session.query(ScheduledTask).filter(
-                ScheduledTask.task_type == TaskType.SYSTEM.value
+                ScheduledTask.task_type == TaskType.SYSTEM.value,
+                ScheduledTask.task_class.in_(task_class_names),
             ).all()
             existing_by_class = {task.task_class: task for task in existing_system_tasks}
 
-            existing_names = {name for (name,) in session.query(ScheduledTask.name).all()}
+            existing_names = {
+                name
+                for (name,) in session.query(ScheduledTask.name)
+                .filter(ScheduledTask.name.in_(default_names + system_names))
+                .all()
+            }
 
             created_count = 0
 

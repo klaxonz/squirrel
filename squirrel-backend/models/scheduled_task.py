@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Dict, Any
 
-from sqlalchemy import Integer, DateTime, Boolean, VARCHAR, TEXT, JSON
+from sqlalchemy import Integer, DateTime, Boolean, Index, VARCHAR, TEXT, JSON
 from sqlalchemy.orm import mapped_column, Mapped
 from models import Base
 from models.mixins.serializer import SerializerMixin
@@ -26,6 +26,11 @@ class TaskStatus(str, Enum):
 class ScheduledTask(Base, SerializerMixin):
     """定时任务配置模型"""
     __tablename__ = 'scheduled_task'
+    __table_args__ = (
+        Index('ix_scheduled_task_status_created', 'status', 'created_at'),
+        Index('ix_scheduled_task_type_created', 'task_type', 'created_at'),
+        Index('ix_scheduled_task_created_at', 'created_at'),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(VARCHAR(100), nullable=False, unique=True, comment="任务名称")
@@ -64,6 +69,10 @@ class ScheduledTask(Base, SerializerMixin):
 class TaskExecutionLog(Base, SerializerMixin):
     """任务执行日志模型"""
     __tablename__ = 'task_execution_log'
+    __table_args__ = (
+        Index('ix_task_execution_log_started_at', 'started_at'),
+        Index('ix_task_execution_log_task_started', 'task_id', 'started_at'),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     task_id: Mapped[int] = mapped_column(Integer, nullable=False, comment="任务ID")

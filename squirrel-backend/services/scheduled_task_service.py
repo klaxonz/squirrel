@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
-from sqlalchemy import or_, and_, desc
+from sqlalchemy import or_, and_, desc, func
 
 from core.database import get_session
 from models.scheduled_task import ScheduledTask, TaskExecutionLog, TaskStatus, TaskType
@@ -42,13 +42,15 @@ class ScheduledTaskService:
             if task_type:
                 db_tasks = db_tasks.filter(ScheduledTask.task_type == task_type)
 
-            db_tasks = db_tasks.order_by(desc(ScheduledTask.created_at)).all()
-            all_tasks = [task.to_dict() for task in db_tasks]
-
-        total = len(all_tasks)
-        start_idx = (page - 1) * page_size
-        end_idx = start_idx + page_size
-        paginated_tasks = all_tasks[start_idx:end_idx]
+            total = db_tasks.with_entities(func.count(ScheduledTask.id)).scalar() or 0
+            paginated_tasks = [
+                task.to_dict()
+                for task in db_tasks
+                .order_by(desc(ScheduledTask.created_at))
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+                .all()
+            ]
 
         return {
             "page": page,

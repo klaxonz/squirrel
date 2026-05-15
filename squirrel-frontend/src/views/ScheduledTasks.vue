@@ -368,13 +368,12 @@ const loadData = async () => {
   try {
     const [statsResult, classesResult] = await Promise.all([
       getTaskStatistics(),
-      getAvailableTaskClasses()
+      getAvailableTaskClasses(),
+      loadTasks()
     ])
 
     if (!statsResult.error) statistics.value = statsResult.data
     if (!classesResult.error) taskClasses.value = classesResult.data
-
-    await loadTasks()
   } catch (error) {
     Logger.error('ScheduledTasks: Initial load failed', error)
   } finally {
