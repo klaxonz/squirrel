@@ -46,26 +46,26 @@
       leave-from-class="opacity-100 translate-y-0" 
       leave-to-class="opacity-0 translate-y-1"
     >
-      <div v-if="showSuggestions" class="absolute top-full left-0 right-0 mt-2 p-1.5 bg-popover border border-border/60 rounded-2xl shadow-2xl z-50 flex flex-col gap-0.5">
+      <div v-if="showSuggestions" class="absolute top-full left-0 right-0 z-50 mt-2 flex flex-col gap-0.5 rounded-xl border border-border/60 bg-popover p-1.5 text-popover-foreground shadow-[0_18px_50px_-20px_rgba(0,0,0,0.35),0_8px_24px_-16px_rgba(0,0,0,0.25)]">
         <div class="flex items-center justify-between px-2 py-1.5 mb-1">
           <span class="text-[10px] font-bold tracking-widest uppercase text-muted-foreground/50">{{ suggestionTitle }}</span>
           <button v-if="recentSearches.length" @click="clearRecentSearches" class="text-[10px] font-bold text-muted-foreground/40 hover:text-destructive transition-colors uppercase">清空</button>
         </div>
 
-        <div v-for="(item, index) in suggestionItems" :key="item.id" class="flex gap-1">
+        <div v-for="(item, index) in suggestionItems" :key="item.id" class="flex min-w-0 gap-1">
           <button
-            class="flex-1 flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all"
+            class="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2 text-left transition-all"
             :class="index === activeSuggestionIndex ? 'bg-secondary text-foreground' : 'hover:bg-secondary/50 text-muted-foreground/80'"
             @mouseenter="activeSuggestionIndex = index"
             @click="selectSuggestion(item.value)"
           >
-            <AppIcon :name="item.type === 'search' ? 'search' : 'history'" class="w-4 h-4 opacity-50" />
-            <div class="flex flex-col min-w-0">
-              <span class="text-[13px] font-medium truncate">{{ item.label }}</span>
-              <span v-if="item.meta" class="text-[10px] opacity-50 truncate">{{ item.meta }}</span>
+            <AppIcon :name="item.type === 'search' ? 'search' : 'history'" class="h-4 w-4 shrink-0 opacity-50" />
+            <div class="flex min-w-0 flex-1 flex-col">
+              <span class="block max-w-full truncate text-[13px] font-medium">{{ item.label }}</span>
+              <span v-if="item.meta" class="block max-w-full truncate text-[10px] opacity-50">{{ item.meta }}</span>
             </div>
           </button>
-          <button v-if="item.type === 'recent'" @click.stop="removeRecentSearch(item.value)" class="w-8 flex items-center justify-center rounded-xl hover:bg-destructive/10 hover:text-destructive text-muted-foreground/40 transition-colors">
+          <button v-if="item.type === 'recent'" @click.stop="removeRecentSearch(item.value)" class="flex w-8 shrink-0 items-center justify-center rounded-xl text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive">
             <AppIcon name="close" class="w-3.5 h-3.5" />
           </button>
         </div>
