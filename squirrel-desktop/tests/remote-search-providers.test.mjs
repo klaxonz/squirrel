@@ -19,6 +19,16 @@ const htmlResponse = (html) => new Response(html, {
 })
 
 const buildCookieHeader = async () => 'SESSDATA=test'
+const loadJavdbDocumentHtml = async () => `
+  <div class="item">
+    <a href="/v/demo">
+      <img src="https://javdb.com/demo.jpg">
+      <div class="video-title"><strong>DEMO-001</strong> Demo JAVDB</div>
+      <div class="score"><span class="value">7.5</span></div>
+      <div class="meta">2026-01-02</div>
+    </a>
+  </div>
+`
 
 test('desktop bilibili remote search maps api results', async () => {
   let requestedUrl = ''
@@ -152,22 +162,14 @@ test('desktop javdb remote search parses movie items', async () => {
   const items = await searchJavdbVideos({
     query: 'demo',
     limit: 5,
-    buildCookieHeader,
-    fetchImpl: async () => htmlResponse(`
-      <div class="item">
-        <a href="/v/demo">
-          <img src="https://javdb.com/demo.jpg">
-          <div class="video-title">Demo JAVDB</div>
-          <div class="score">7.5</div>
-        </a>
-      </div>
-    `),
+    loadDocumentHtml: loadJavdbDocumentHtml,
   })
 
   assert.equal(items.length, 1)
   assert.equal(items[0].site, 'javdb')
-  assert.equal(items[0].title, 'Demo JAVDB')
+  assert.equal(items[0].title, 'DEMO-001 Demo JAVDB')
   assert.equal(items[0].url, 'https://javdb.com/v/demo')
+  assert.equal(items[0].publish_date, '2026-01-02')
 })
 
 test('desktop remote search response carries pagination metadata', async () => {
@@ -177,6 +179,7 @@ test('desktop remote search response carries pagination metadata', async () => {
     limit: 1,
     page: 3,
     buildCookieHeader,
+    loadDocumentHtml: loadJavdbDocumentHtml,
     fetchImpl: async () => jsonResponse({
       data: {
         result: [
@@ -196,12 +199,24 @@ test('desktop remote search response carries pagination metadata', async () => {
 })
 
 test('desktop remote search interleaves all site results before limiting', async () => {
+  const javdbDocumentOptions = []
   const result = await searchRemoteVideos({
     query: 'demo',
     site: 'all',
     limit: 3,
     page: 1,
     buildCookieHeader,
+    loadDocumentHtml: async (_url, options) => {
+      javdbDocumentOptions.push(options)
+      return `
+        <div class="item">
+          <a href="/v/javdb-demo">
+            <img src="https://javdb.com/demo.jpg">
+            <div class="video-title">JavDB 1</div>
+          </a>
+        </div>
+      `
+    },
     fetchImpl: async (url) => {
       const targetUrl = new URL(url)
       if (targetUrl.hostname.includes('bilibili')) {
@@ -214,16 +229,6 @@ test('desktop remote search interleaves all site results before limiting', async
             ],
           },
         })
-      }
-      if (targetUrl.hostname.includes('javdb')) {
-        return htmlResponse(`
-          <div class="item">
-            <a href="/v/javdb-demo">
-              <img src="https://javdb.com/demo.jpg">
-              <div class="video-title">JavDB 1</div>
-            </a>
-          </div>
-        `)
       }
       if (targetUrl.hostname.includes('pornhub')) {
         return htmlResponse(`
@@ -238,4 +243,54 @@ test('desktop remote search interleaves all site results before limiting', async
 
   assert.equal(result.items.length, 3)
   assert.deepEqual(result.items.map((item) => item.site), ['bilibili', 'javdb', 'pornhub'])
+  assert.equal(javdbDocumentOptions[0].timeoutMs, 30000)
+})
+
+test('desktop remote search does not wait forever for a stalled site', async () => {
+  const result = await searchRemoteVideos({
+    query: 'demo',
+    site: 'all',
+    limit: 3,
+    page: 1,
+    providerTimeoutMs: 20,
+    buildCookieHeader,
+    loadDocumentHtml: async () => new Promise(() => {}),
+    fetchImpl: async (url) => {
+      const targetUrl = new URL(url)
+      if (targetUrl.hostname.includes('bilibili')) {
+        return jsonResponse({
+          data: {
+            result: [
+              { bvid: 'BV1', title: 'Bilibili 1', arcurl: 'https://www.bilibili.com/video/BV1' },
+            ],
+          },
+        })
+      }
+      return htmlResponse('')
+    },
+  })
+
+  assert.deepEqual(result.items.map((item) => item.site), ['bilibili'])
+  assert.ok(result.errors.some((message) => message.includes('javdb search timed out')))
+})
+
+test('desktop javdb site search requests automatic challenge solving window time', async () => {
+  const documentOptions = []
+  const result = await searchRemoteVideos({
+    query: 'demo',
+    site: 'javdb',
+    limit: 5,
+    page: 1,
+    buildCookieHeader,
+    fetchImpl: async () => htmlResponse(''),
+    loadDocumentHtml: async (_url, options) => {
+      documentOptions.push(options)
+      return loadJavdbDocumentHtml()
+    },
+  })
+
+  assert.equal(result.items.length, 1)
+  assert.equal(result.items[0].site, 'javdb')
+  assert.equal(documentOptions[0].timeoutMs, 30000)
+  assert.equal(documentOptions[0].challengeTimeoutMs, 60000)
 })

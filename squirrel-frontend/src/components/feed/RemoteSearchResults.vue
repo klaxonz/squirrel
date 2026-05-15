@@ -17,11 +17,6 @@
     </div>
 
     <div v-else>
-      <div class="flex items-center justify-between px-6 pt-4 text-xs font-medium text-muted-foreground">
-        <span>当前站点：{{ activeSiteLabel }}</span>
-        <span v-if="items.length">{{ items.length }} 个结果</span>
-      </div>
-
       <div v-if="errorMessage" class="px-6 pt-6">
         <div class="flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 p-4">
           <p class="text-sm font-medium text-destructive">{{ errorMessage }}</p>
@@ -124,6 +119,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits(['loading-change', 'error'])
 
+const REMOTE_SEARCH_TIMEOUT_MS = 95000
 const isDesktop = window.desktopApp?.isDesktop === true
 const items = ref<RemoteSearchItem[]>([])
 const loading = ref(false)
@@ -132,7 +128,6 @@ const currentPage = ref(1)
 const errorMessage = ref('')
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 const trimmedQuery = computed(() => String(props.query || '').trim())
-const activeSiteLabel = computed(() => props.site ? siteLabel(props.site) : '全部站点')
 
 let requestToken = 0
 let observer: IntersectionObserver | null = null
@@ -187,13 +182,19 @@ const loadPage = async (page: number) => {
 
   const currentToken = ++requestToken
   setLoading(true)
+  let timer: ReturnType<typeof setTimeout> | undefined
   try {
-    const result = await bridge.searchRemoteVideos({
-      query,
-      site: props.site || 'all',
-      limit: props.limit,
-      page,
-    })
+    const result = await Promise.race([
+      bridge.searchRemoteVideos({
+        query,
+        site: props.site || 'all',
+        limit: props.limit,
+        page,
+      }),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('远端搜索超时')), REMOTE_SEARCH_TIMEOUT_MS)
+      }),
+    ])
     if (currentToken !== requestToken) return
     const nextItems = Array.isArray(result?.items) ? result.items : []
     if (page === 1) {
@@ -212,6 +213,7 @@ const loadPage = async (page: number) => {
     errorMessage.value = error?.message || '远端搜索失败'
     emit('error', error)
   } finally {
+    clearTimeout(timer)
     if (currentToken === requestToken) setLoading(false)
   }
 }

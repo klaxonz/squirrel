@@ -1,4 +1,4 @@
-import { clampLimit, clampPage, fetchText, normalizeQuery, normalizeUrl, parseDuration, stripHtml, uniqueByUrl } from './shared.mjs'
+import { clampLimit, clampPage, normalizeQuery, normalizeUrl, parseDuration, stripHtml, uniqueByUrl } from './shared.mjs'
 
 const SITE = 'javdb'
 const ORIGIN = 'https://javdb.com'
@@ -8,9 +8,12 @@ const extractAttribute = (source, name) => {
   return match ? match[1] : ''
 }
 
-export const searchJavdbVideos = async ({ query, limit, page, fetchImpl, buildCookieHeader }) => {
+export const searchJavdbVideos = async ({ query, limit, page, loadDocumentHtml }) => {
   const keyword = normalizeQuery(query)
   if (!keyword) return []
+  if (typeof loadDocumentHtml !== 'function') {
+    throw new Error('JavDB search requires browser document loading')
+  }
 
   const resultLimit = clampLimit(limit)
   const resultPage = clampPage(page)
@@ -19,20 +22,17 @@ export const searchJavdbVideos = async ({ query, limit, page, fetchImpl, buildCo
   targetUrl.searchParams.set('f', 'all')
   targetUrl.searchParams.set('page', String(resultPage))
 
-  const cookie = await buildCookieHeader(targetUrl.toString())
-  const html = await fetchText(fetchImpl, targetUrl.toString(), {
-    headers: {
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      Referer: `${ORIGIN}/`,
-      ...(cookie ? { Cookie: cookie } : {}),
-    },
+  const html = await loadDocumentHtml(targetUrl.toString(), {
+    timeoutMs: 30000,
+    challengeTimeoutMs: 60000,
   })
 
   const blocks = html.match(/<div[^>]+class=["'][^"']*item[^"']*["'][\s\S]*?<\/a>\s*<\/div>/gi) || []
   return uniqueByUrl(blocks.map((block) => {
     const hrefMatch = block.match(/href=["']([^"']*\/v\/[^"']+)["']/i)
-    const titleMatch = block.match(/class=["'][^"']*video-title[^"']*["'][^>]*>\s*([^<]+)/i)
-    const scoreMatch = block.match(/class=["'][^"']*score[^"']*["'][^>]*>\s*([^<]+)/i)
+    const titleMatch = block.match(/class=["'][^"']*video-title[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)
+    const scoreMatch = block.match(/class=["'][^"']*score[^"']*["'][\s\S]*?class=["'][^"']*value[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)
+    const metaMatch = block.match(/class=["'][^"']*meta[^"']*["'][^>]*>\s*([^<]+)/i)
     return {
       source: 'remote',
       site: SITE,
@@ -41,7 +41,7 @@ export const searchJavdbVideos = async ({ query, limit, page, fetchImpl, buildCo
       url: normalizeUrl(hrefMatch?.[1] || '', ORIGIN),
       thumbnail: normalizeUrl(extractAttribute(block, 'src'), ORIGIN),
       duration: parseDuration(''),
-      publish_date: null,
+      publish_date: stripHtml(metaMatch?.[1]) || null,
       uploader: stripHtml(scoreMatch?.[1]),
       description: '',
     }

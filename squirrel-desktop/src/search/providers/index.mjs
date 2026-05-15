@@ -13,6 +13,9 @@ const PROVIDERS = {
   youtube: searchYouTubeVideos,
 }
 
+const SEARCH_TIMEOUT_MS = 30000
+const JAVDB_SEARCH_TIMEOUT_MS = 90000
+
 const SITE_ALIASES = {
   all: 'all',
   bili: 'bilibili',
@@ -35,6 +38,21 @@ const normalizeSite = (site) => {
 }
 
 export const listRemoteSearchSites = () => Object.keys(PROVIDERS)
+
+const searchProviderWithTimeout = async (siteName, options, timeoutMs, timeoutOverridden) => {
+  let timer
+  const siteTimeoutMs = siteName === 'javdb' && !timeoutOverridden ? JAVDB_SEARCH_TIMEOUT_MS : timeoutMs
+  try {
+    return await Promise.race([
+      PROVIDERS[siteName](options),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${siteName} search timed out`)), siteTimeoutMs)
+      }),
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+}
 
 const interleaveSiteItems = (siteResults, limit) => {
   const output = []
@@ -61,7 +79,16 @@ const interleaveSiteItems = (siteResults, limit) => {
   return output
 }
 
-export const searchRemoteVideos = async ({ query, site = 'all', limit = 20, page = 1, fetchImpl, buildCookieHeader }) => {
+export const searchRemoteVideos = async ({
+  query,
+  site = 'all',
+  limit = 20,
+  page = 1,
+  fetchImpl,
+  buildCookieHeader,
+  loadDocumentHtml,
+  providerTimeoutMs,
+}) => {
   const keyword = normalizeQuery(query)
   if (!keyword) {
     return { items: [], errors: [], sites: [] }
@@ -77,6 +104,9 @@ export const searchRemoteVideos = async ({ query, site = 'all', limit = 20, page
   const normalizedSite = normalizeSite(site)
   const resultLimit = clampLimit(limit)
   const resultPage = clampPage(page)
+  const parsedProviderTimeoutMs = Number(providerTimeoutMs)
+  const hasProviderTimeoutMs = Number.isFinite(parsedProviderTimeoutMs) && parsedProviderTimeoutMs > 0
+  const searchTimeoutMs = hasProviderTimeoutMs ? parsedProviderTimeoutMs : SEARCH_TIMEOUT_MS
   const siteNames = normalizedSite === 'all' ? Object.keys(PROVIDERS) : [normalizedSite]
   const unknownSite = siteNames.find((siteName) => !PROVIDERS[siteName])
   if (unknownSite) {
@@ -85,13 +115,14 @@ export const searchRemoteVideos = async ({ query, site = 'all', limit = 20, page
 
   const settled = await Promise.allSettled(siteNames.map(async (siteName) => ({
     site: siteName,
-    items: await PROVIDERS[siteName]({
+    items: await searchProviderWithTimeout(siteName, {
       query: keyword,
       limit: resultLimit,
       page: resultPage,
       fetchImpl,
       buildCookieHeader,
-    }),
+      loadDocumentHtml,
+    }, searchTimeoutMs, hasProviderTimeoutMs),
   })))
 
   const siteResults = []
