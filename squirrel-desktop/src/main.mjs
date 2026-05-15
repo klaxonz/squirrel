@@ -18,9 +18,45 @@ import {
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const repoRoot = path.resolve(__dirname, '..', '..')
+const javdbCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'javdb.txt')
 const pornhubCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'pornhub.txt')
 const youpornCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'youporn.txt')
 const youtubeOAuthStateFilePath = path.join(repoRoot, 'config', 'youtube_oauth.json')
+const desktopChromeVersion = process.versions.chrome || '124.0.0.0'
+const desktopChromeMajorVersion = desktopChromeVersion.split('.')[0] || '124'
+const desktopChromeUserAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${desktopChromeVersion} Safari/537.36`
+const desktopChromeAcceptLanguage = 'en-US,en;q=0.9'
+const desktopChromeClientHints = {
+  'sec-ch-ua': `"Chromium";v="${desktopChromeMajorVersion}", "Google Chrome";v="${desktopChromeMajorVersion}", "Not-A.Brand";v="99"`,
+  'sec-ch-ua-mobile': '?0',
+  'sec-ch-ua-platform': '"Windows"',
+}
+const desktopChromeUserAgentMetadata = {
+  brands: [
+    { brand: 'Chromium', version: desktopChromeMajorVersion },
+    { brand: 'Google Chrome', version: desktopChromeMajorVersion },
+    { brand: 'Not-A.Brand', version: '99' },
+  ],
+  fullVersion: desktopChromeVersion,
+  fullVersionList: [
+    { brand: 'Chromium', version: desktopChromeVersion },
+    { brand: 'Google Chrome', version: desktopChromeVersion },
+    { brand: 'Not-A.Brand', version: '99.0.0.0' },
+  ],
+  platform: 'Windows',
+  platformVersion: '10.0.0',
+  architecture: 'x86',
+  model: '',
+  mobile: false,
+  bitness: '64',
+  wow64: false,
+}
+const javdbOrigin = 'https://javdb.com'
+const javdbReferer = `${javdbOrigin}/`
+const javdbLoginCheckUrl = `${javdbOrigin}/users/collection_actors`
+const javdbLoginRedirectPattern = /\/users\/(?:sign_in|login)|\/(?:sign_in|login)/i
+const javdbLoginPagePattern = /<title>\s*sign in\s*\|\s*javdb|action="\/users\/sign_in"|name="user\[(?:login|email)\]"/i
+const javdbErrorPagePattern = /<title>\s*just a moment|cf-error-details|error code 502|bad gateway/i
 const pornhubOrigin = 'https://www.pornhub.com'
 const pornhubReferer = `${pornhubOrigin}/`
 const pornhubAgeGateCookieHeader = 'age_verified=1; accessAgeDisclaimerPH=1; accessAgeDisclaimerUK=1; accessPH=1'
@@ -123,6 +159,20 @@ const normalizeTargetUrl = (targetUrl) => {
   }
 }
 
+const isJavdbCookieTarget = (targetUrl) => {
+  const normalizedUrl = normalizeTargetUrl(targetUrl)
+  if (!normalizedUrl) {
+    return false
+  }
+
+  try {
+    const hostname = new URL(normalizedUrl).hostname.toLowerCase()
+    return hostname === 'javdb.com' || hostname.endsWith('.javdb.com')
+  } catch {
+    return false
+  }
+}
+
 const isBilibiliCookieTarget = (targetUrl) => {
   const normalizedUrl = normalizeTargetUrl(targetUrl)
   if (!normalizedUrl) {
@@ -192,6 +242,18 @@ const SITE_LOGIN_PROFILES = {
     storageOrigins: ['https://www.bilibili.com', 'https://passport.bilibili.com', 'https://bilibili.com'],
     signedInCookieNames: ['SESSDATA'],
   },
+  javdb: {
+    label: 'JavDB',
+    loginUrl: 'https://javdb.com/users/sign_in',
+    userAgent: desktopChromeUserAgent,
+    userAgentMetadata: desktopChromeUserAgentMetadata,
+    acceptLanguage: desktopChromeAcceptLanguage,
+    platform: 'Windows',
+    cookieHosts: ['javdb.com'],
+    allowedHosts: ['javdb.com'],
+    storageOrigins: ['https://javdb.com'],
+    signedInCookieNames: [],
+  },
   pornhub: {
     label: 'Pornhub',
     loginUrl: 'https://www.pornhub.com/login',
@@ -210,7 +272,34 @@ const SITE_LOGIN_PROFILES = {
   },
 }
 
-const normalizeSiteName = (siteName) => String(siteName || '').trim().toLowerCase()
+const SITE_LOGIN_ALIASES = {
+  'b23.tv': 'bilibili',
+  'bilibili.com': 'bilibili',
+  'javdb.com': 'javdb',
+  'pornhub.com': 'pornhub',
+  'youtu.be': 'youtube',
+  'youtube.com': 'youtube',
+  'youporn.com': 'youporn',
+}
+
+const normalizeSiteName = (siteName) => {
+  const rawValue = String(siteName || '').trim().toLowerCase()
+  if (!rawValue) {
+    return ''
+  }
+
+  let normalizedSite = rawValue.replace(/^\./, '')
+  try {
+    normalizedSite = new URL(rawValue.includes('://') ? rawValue : `https://${rawValue}`).hostname
+      .toLowerCase()
+      .replace(/^www\./, '')
+      .replace(/^\./, '')
+  } catch {
+    normalizedSite = normalizedSite.replace(/^www\./, '')
+  }
+
+  return SITE_LOGIN_ALIASES[normalizedSite] || normalizedSite
+}
 
 const getSiteLoginProfile = (siteName) => {
   const normalizedSite = normalizeSiteName(siteName)
@@ -225,6 +314,115 @@ const hostMatchesLoginProfile = (hostname, hosts) => {
 const getDesktopSiteCookies = async (profile, hosts = profile.cookieHosts) => {
   const cookies = await session.defaultSession.cookies.get({})
   return cookies.filter((cookie) => hostMatchesLoginProfile(cookie.domain, hosts))
+}
+
+const buildCookieHeaderFromCookies = (cookies) => {
+  return cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join('; ')
+}
+
+const writeJavdbCookieFile = (cookies) => {
+  const javdbCookies = cookies.filter((cookie) => hostMatchesLoginProfile(cookie.domain, ['javdb.com']))
+  if (!javdbCookies.length) {
+    return
+  }
+
+  fs.mkdirSync(path.dirname(javdbCookieFilePath), { recursive: true })
+  const lines = ['# Netscape HTTP Cookie File']
+  for (const cookie of javdbCookies) {
+    const domain = String(cookie.domain || '').trim() || 'javdb.com'
+    const includeSubdomains = domain.startsWith('.') ? 'TRUE' : 'FALSE'
+    const cookiePath = String(cookie.path || '/').trim() || '/'
+    const secure = cookie.secure ? 'TRUE' : 'FALSE'
+    const expires = Number.isFinite(cookie.expirationDate) ? Math.floor(cookie.expirationDate) : 0
+    const prefix = cookie.httpOnly ? '#HttpOnly_' : ''
+    lines.push([
+      `${prefix}${domain}`,
+      includeSubdomains,
+      cookiePath,
+      secure,
+      String(expires),
+      cookie.name,
+      cookie.value,
+    ].join('\t'))
+  }
+  fs.writeFileSync(javdbCookieFilePath, `${lines.join('\n')}\n`, 'utf8')
+}
+
+const checkJavdbDesktopPageLogin = async (cookieHeader) => {
+  const response = await session.defaultSession.fetch(javdbLoginCheckUrl, {
+    headers: {
+      'Accept-Language': desktopChromeAcceptLanguage,
+      Origin: javdbOrigin,
+      Referer: javdbReferer,
+      'User-Agent': desktopChromeUserAgent,
+      Cookie: cookieHeader,
+    },
+    redirect: 'manual',
+  })
+  const body = await response.text()
+  const location = response.headers.get('Location') || response.headers.get('location') || ''
+  const finalUrl = response.url || javdbLoginCheckUrl
+
+  if (response.status === 401) {
+    return { logged_in: false, message: `认证失败 (status=${response.status})` }
+  }
+  if ([403, 404, 429, 500, 502, 503, 504].includes(response.status)) {
+    return { logged_in: false, message: `检测失败: 被拒绝访问 (status=${response.status})` }
+  }
+  if ([301, 302, 303, 307, 308].includes(response.status) && javdbLoginRedirectPattern.test(location)) {
+    return { logged_in: false, message: '被重定向到登录页' }
+  }
+  if (javdbLoginRedirectPattern.test(finalUrl) || javdbLoginPagePattern.test(body)) {
+    return { logged_in: false, message: '返回内容显示为登录页' }
+  }
+  if (javdbErrorPagePattern.test(body)) {
+    return { logged_in: false, message: '检测失败: 返回内容显示为站点错误页' }
+  }
+
+  return { logged_in: true, message: '桌面会话有效' }
+}
+
+const buildJavdbDesktopLoginStatus = async (profile, cookies) => {
+  const sessionCookieHeader = buildCookieHeaderFromCookies(cookies)
+  const fileCookieHeader = readJavdbCookieFileHeader()
+  const cookieHeader = mergeCookieHeaders(fileCookieHeader, sessionCookieHeader)
+  if (!cookieHeader) {
+    return {
+      site_name: profile.siteName,
+      supported: true,
+      logged_in: false,
+      message: '未发现桌面登录会话',
+      checked_at: new Date().toISOString(),
+      source: 'desktop',
+      cookie_count: cookies.length,
+    }
+  }
+
+  try {
+    const status = await checkJavdbDesktopPageLogin(cookieHeader)
+    if (status.logged_in && sessionCookieHeader) {
+      writeJavdbCookieFile(cookies)
+    }
+    return {
+      site_name: profile.siteName,
+      supported: true,
+      ...status,
+      checked_at: new Date().toISOString(),
+      source: 'desktop',
+      cookie_count: cookies.length,
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error || 'Unknown error')
+    return {
+      site_name: profile.siteName,
+      supported: true,
+      logged_in: false,
+      message: `检测失败: ${message}`,
+      checked_at: new Date().toISOString(),
+      source: 'desktop',
+      cookie_count: cookies.length,
+    }
+  }
 }
 
 const extractPornhubDesktopUsername = (body) => {
@@ -378,6 +576,9 @@ const buildDesktopSiteLoginStatus = async (siteName) => {
   }
 
   const cookies = await getDesktopSiteCookies(profile)
+  if (profile.siteName === 'javdb') {
+    return buildJavdbDesktopLoginStatus(profile, cookies)
+  }
   if (profile.siteName === 'pornhub') {
     return buildPornhubDesktopLoginStatus(profile, cookies)
   }
@@ -437,6 +638,9 @@ const clearDesktopSiteSession = async (siteName) => {
   if (profile.siteName === 'bilibili') {
     clearBilibiliPlaybackCache()
   }
+  if (profile.siteName === 'javdb' && fs.existsSync(javdbCookieFilePath)) {
+    fs.rmSync(javdbCookieFilePath)
+  }
   return buildDesktopSiteLoginStatus(profile.siteName)
 }
 
@@ -466,6 +670,19 @@ const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
     },
   })
 
+  if (profile.userAgent) {
+    loginWindow.webContents.setUserAgent(profile.userAgent)
+  }
+  if (profile.userAgentMetadata) {
+    loginWindow.webContents.debugger.attach('1.3')
+    await loginWindow.webContents.debugger.sendCommand('Network.setUserAgentOverride', {
+      userAgent: profile.userAgent,
+      acceptLanguage: profile.acceptLanguage,
+      platform: profile.platform,
+      userAgentMetadata: profile.userAgentMetadata,
+    })
+  }
+
   loginWindow.webContents.setWindowOpenHandler(({ url }) => {
     const normalizedUrl = normalizeTargetUrl(url)
     if (!normalizedUrl) {
@@ -477,7 +694,7 @@ const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
       return { action: 'deny' }
     }
 
-    loginWindow.loadURL(normalizedUrl)
+    loginWindow.loadURL(normalizedUrl, profile.userAgent ? { userAgent: profile.userAgent } : undefined)
     return { action: 'deny' }
   })
 
@@ -494,11 +711,13 @@ const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
     }
   })
 
-  await loginWindow.loadURL(profile.loginUrl)
+  await loginWindow.loadURL(profile.loginUrl, profile.userAgent ? { userAgent: profile.userAgent } : undefined)
   loginWindow.show()
 
   return new Promise((resolve, reject) => {
-    const canAutoConfirmLogin = profile.signedInCookieNames.length > 0 || profile.siteName === 'pornhub'
+    const canAutoConfirmLogin = profile.signedInCookieNames.length > 0
+      || profile.siteName === 'javdb'
+      || profile.siteName === 'pornhub'
     let settled = false
     let loginCheckTimer = null
 
@@ -606,6 +825,10 @@ const prewarmDesktopPlaybackProviders = () => {
   }, 1000)
 }
 
+const readJavdbCookieFileHeader = () => {
+  return readNetscapeCookieFileHeader(javdbCookieFilePath, ['javdb.com'])
+}
+
 const readPornhubCookieFileHeader = () => {
   return readNetscapeCookieFileHeader(pornhubCookieFilePath, [
     'pornhub.com',
@@ -656,6 +879,7 @@ const mergeCookieHeaders = (...cookieHeaders) => {
 }
 
 const getCookieProfileForUrl = (targetUrl) => {
+  if (isJavdbCookieTarget(targetUrl)) return getSiteLoginProfile('javdb')
   if (isBilibiliCookieTarget(targetUrl)) return getSiteLoginProfile('bilibili')
   if (isPornhubCookieTarget(targetUrl)) return getSiteLoginProfile('pornhub')
   if (isYouPornCookieTarget(targetUrl)) return getSiteLoginProfile('youporn')
@@ -683,6 +907,10 @@ const buildCookieHeaderForUrl = async (targetUrl) => {
   }
 
   const sessionCookieHeader = await buildSessionCookieHeaderForUrl(normalizedUrl)
+
+  if (isJavdbCookieTarget(normalizedUrl)) {
+    return mergeCookieHeaders(readJavdbCookieFileHeader(), sessionCookieHeader)
+  }
 
   if (isBilibiliCookieTarget(normalizedUrl)) {
     return sessionCookieHeader
@@ -966,6 +1194,14 @@ const showErrorShell = (mainWindow, details) => {
 
 const MEDIA_HEADER_RULES = [
   {
+    hosts: ['javdb.com'],
+    headers: {
+      'Accept-Language': desktopChromeAcceptLanguage,
+      'User-Agent': desktopChromeUserAgent,
+      ...desktopChromeClientHints,
+    },
+  },
+  {
     hosts: ['bilivideo.com', 'bilivideo.cn', 'bilibili.com', 'b23.tv', 'hdslb.com', 'acgvideo.com'],
     headers: {
       Referer: 'https://www.bilibili.com/',
@@ -1018,12 +1254,14 @@ const MEDIA_HEADER_RULES = [
     headers: {
       Referer: 'https://javdb.com/',
       Origin: 'https://javdb.com',
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'User-Agent': desktopChromeUserAgent,
+      ...desktopChromeClientHints,
     },
   },
 ]
 
 const RELAXED_CROSS_ORIGIN_HOSTS = [
+  'javdb.com',
   'surrit.com',
   'jdbstatic.com',
   'youtube.com',

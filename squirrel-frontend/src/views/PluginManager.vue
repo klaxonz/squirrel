@@ -499,8 +499,32 @@ const CAPABILITY_LABELS = {
   resolve_proxy_config: '代理配置',
   rewrite_proxy_playlist: '代理播放',
 }
-const DESKTOP_LOGIN_SITES = new Set(['bilibili', 'pornhub', 'youporn'])
+const DESKTOP_LOGIN_SITES = new Set(['bilibili', 'javdb', 'pornhub', 'youporn'])
+const DESKTOP_LOGIN_SITE_ALIASES = {
+  'b23.tv': 'bilibili',
+  'bilibili.com': 'bilibili',
+  'javdb.com': 'javdb',
+  'pornhub.com': 'pornhub',
+  'youporn.com': 'youporn',
+}
 const isDesktopApp = computed(() => window.desktopApp?.isDesktop === true)
+
+const normalizeDesktopLoginSite = (siteName) => {
+  const rawValue = String(siteName || '').trim().toLowerCase()
+  if (!rawValue) return ''
+  let normalizedSite = rawValue.replace(/^\./, '')
+  try {
+    normalizedSite = new URL(rawValue.includes('://') ? rawValue : `https://${rawValue}`).hostname
+      .toLowerCase()
+      .replace(/^www\./, '')
+      .replace(/^\./, '')
+  } catch {
+    normalizedSite = normalizedSite.replace(/^www\./, '')
+  }
+  return DESKTOP_LOGIN_SITE_ALIASES[normalizedSite] || normalizedSite
+}
+
+const supportsDesktopLoginSite = (siteName) => DESKTOP_LOGIN_SITES.has(normalizeDesktopLoginSite(siteName))
 
 const clearLoginStatusCache = () => {
   loginStatusResults.value = {}
@@ -640,7 +664,7 @@ const enrichedPlugins = computed(() => {
       siteOAuthAccount: loginStatus?.oauth_account || null,
       siteLoginTesting: !!loginTestingMap[siteName],
       siteSupportsLogin: primarySite?.supports_login_status ?? false,
-      siteDesktopLoginSupported: DESKTOP_LOGIN_SITES.has(String(siteName || '').toLowerCase()),
+      siteDesktopLoginSupported: supportsDesktopLoginSite(siteName),
     }
   })
 })
@@ -797,7 +821,7 @@ const handleTestLoginBySite = async (siteName) => {
     const bridge = getDesktopBridge()
     if (
       bridge?.isDesktop === true
-      && DESKTOP_LOGIN_SITES.has(String(siteName || '').toLowerCase())
+      && supportsDesktopLoginSite(siteName)
       && typeof bridge.getSiteLoginStatus === 'function'
     ) {
       const result = await bridge.getSiteLoginStatus(siteName)
