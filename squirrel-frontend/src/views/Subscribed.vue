@@ -211,6 +211,7 @@ const loadingMoreFeed = ref(false)
 const feedFinished = ref(false)
 const feedPage = ref(1)
 const FEED_PAGE_SIZE = 48 // Increased for better dense layout
+let feedRequestToken = 0
 
 // Observers
 const feedTrigger = ref<HTMLElement | null>(null)
@@ -246,7 +247,7 @@ const filteredChannels = computed(() => {
 const videoGroups = computed(() => {
   const groups: Record<string, any[]> = {}
   feedItems.value.forEach(video => {
-    const publishDate = video.publish_date || video.created_at
+    const publishDate = video.uploaded_at || video.created_at
     if (!publishDate) return
     const date = new Date(publishDate)
     const now = new Date()
@@ -293,26 +294,32 @@ const fetchChannels = async (isReset = false) => {
 }
 
 const fetchFeed = async (isReset = false) => {
-  if (loadingFeed.value || (loadingMoreFeed.value && !isReset) || (feedFinished.value && !isReset)) return
-  if (isReset) { feedPage.value = 1; feedFinished.value = false; loadingFeed.value = true } 
+  if (!isReset && (loadingFeed.value || loadingMoreFeed.value || feedFinished.value)) return
+  if (isReset) { feedPage.value = 1; feedFinished.value = false; loadingFeed.value = true; loadingMoreFeed.value = false } 
   else { loadingMoreFeed.value = true }
 
+  const requestToken = ++feedRequestToken
+  const requestPage = feedPage.value
   try {
     const nsfwValue = nsfw.value === 'only' ? 'yes' : (['all', 'yes', 'no'].includes(nsfw.value) ? nsfw.value : 'all')
     const { data } = await getVideoList({
-      page: feedPage.value,
+      page: requestPage,
       pageSize: FEED_PAGE_SIZE,
       page_size: FEED_PAGE_SIZE,
       nsfw: nsfwValue,
+      site: site.value || undefined,
       subscription_id: activeChannelId.value || undefined,
       sort_by: 'publish_date'
     })
+    if (requestToken !== feedRequestToken) return
     const items = data?.data || data?.items || []
     if (isReset) feedItems.value = items; else feedItems.value.push(...items)
     if (items.length < FEED_PAGE_SIZE) feedFinished.value = true
-    else feedPage.value++
+    else feedPage.value = requestPage + 1
   } finally {
-    loadingFeed.value = false; loadingMoreFeed.value = false
+    if (requestToken === feedRequestToken) {
+      loadingFeed.value = false; loadingMoreFeed.value = false
+    }
   }
 }
 
