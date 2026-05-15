@@ -13,8 +13,6 @@
         :subscription-id="subscriptionId"
         :tabs="tabs"
         :is-refreshing="isRefreshing"
-        :search-mode="searchMode"
-        :show-search-mode="showSearchMode"
         :show-tabs="searchMode === 'local'"
         :show-sort="searchMode === 'local'"
         :show-filter="searchMode === 'local'"
@@ -22,7 +20,6 @@
         @update:nsfw="nsfw = $event"
         @update:sortBy="sortBy = $event"
         @update:site="site = $event"
-        @update:searchMode="searchMode = $event"
         @refresh="refreshCurrentList"
       />
     </div>
@@ -91,11 +88,12 @@ const isRefreshing = ref(false)
 const loadError = ref<any>(null)
 const videoChildRef = ref<any>(null)
 const remoteSearchRef = ref<any>(null)
-const searchMode = ref<'local' | 'remote'>('local')
-const isDesktop = window.desktopApp?.isDesktop === true
+const searchMode = computed({
+  get: () => uiStore.homeSearchMode,
+  set: (value: 'local' | 'remote') => uiStore.setHomeSearchMode(value),
+})
 
 const childFilters = computed(() => filters.value)
-const showSearchMode = computed(() => isDesktop && !subscriptionId.value)
 
 const refreshCurrentList = () => {
   loadError.value = null
