@@ -89,8 +89,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
+import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { formatDuration } from '@/utils/dateFormat'
 
 type RemoteSearchItem = {
@@ -120,6 +122,13 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits(['loading-change', 'error'])
 
 const REMOTE_SEARCH_TIMEOUT_MS = 95000
+const REMOTE_PLAYABLE_SITE_PATTERNS: Record<string, RegExp> = {
+  bilibili: /(?:bilibili\.com\/video\/|b23\.tv\/)/i,
+  pornhub: /pornhub\.com\/(?:view_video\.php|video\/|embed\/)/i,
+  youtube: /(?:youtube\.com\/|youtu\.be\/)/i,
+  youporn: /youporn\.com\/watch\//i,
+}
+const router = useRouter()
 const isDesktop = window.desktopApp?.isDesktop === true
 const items = ref<RemoteSearchItem[]>([])
 const loading = ref(false)
@@ -231,9 +240,48 @@ const loadMore = async () => {
   await loadPage(currentPage.value + 1)
 }
 
+const hashRemoteUrl = (url: string) => {
+  let hash = 0
+  for (let index = 0; index < url.length; index += 1) {
+    hash = Math.imul(31, hash) + url.charCodeAt(index)
+    hash |= 0
+  }
+  return Math.abs(hash).toString(36)
+}
+
+const buildRemoteVideoSeed = (item: RemoteSearchItem) => {
+  const url = String(item.url || '').trim()
+  const id = `remote-${item.site}-${hashRemoteUrl(url)}`
+  return {
+    id,
+    source: 'remote',
+    site: item.site,
+    title: item.title,
+    url,
+    thumbnail: item.thumbnail || '',
+    duration: item.duration || null,
+    publish_date: item.publish_date || null,
+    uploaded_at: item.publish_date || null,
+    description: item.description || '',
+    subscriptions: item.uploader ? [{ name: item.uploader }] : [],
+  }
+}
+
+const canPlayRemoteResult = (item: RemoteSearchItem) => {
+  const pattern = REMOTE_PLAYABLE_SITE_PATTERNS[item.site]
+  return !!pattern && pattern.test(String(item.url || ''))
+}
+
 const openResult = async (item: RemoteSearchItem) => {
   if (!item.url) return
-  await window.desktopApp?.openExternal?.(item.url)
+  if (!canPlayRemoteResult(item)) {
+    await window.desktopApp?.openExternal?.(item.url)
+    return
+  }
+
+  const videoSeed = buildRemoteVideoSeed(item)
+  rememberVideoPlaybackSeed(videoSeed)
+  await router.push({ name: 'VideoPlay', params: { videoId: videoSeed.id } })
 }
 
 watch(() => [props.query, props.site], refresh, { immediate: true })
