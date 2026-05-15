@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   resolveYouPornPlayback: (targetUrl, options) => ipcRenderer.invoke('desktop:resolve-youporn-playback', targetUrl, options),
   resolveYouTubePlayback: (targetUrl, options) => ipcRenderer.invoke('desktop:resolve-youtube-playback', targetUrl, options),
   resolveYouTubeSubtitles: (targetUrl, options) => ipcRenderer.invoke('desktop:resolve-youtube-subtitles', targetUrl, options),
+  searchRemoteVideos: (options) => ipcRenderer.invoke('desktop:search-remote-videos', options),
   getSiteLoginStatus: (siteName) => ipcRenderer.invoke('desktop:get-site-login-status', siteName),
   openSiteLogin: (siteName) => ipcRenderer.invoke('desktop:open-site-login', siteName),
   clearSiteSession: (siteName) => ipcRenderer.invoke('desktop:clear-site-session', siteName),

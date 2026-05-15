@@ -13,10 +13,16 @@
         :subscription-id="subscriptionId"
         :tabs="tabs"
         :is-refreshing="isRefreshing"
+        :search-mode="searchMode"
+        :show-search-mode="showSearchMode"
+        :show-tabs="searchMode === 'local'"
+        :show-sort="searchMode === 'local'"
+        :show-filter="searchMode === 'local'"
         @update:activeTab="activeTab = $event"
         @update:nsfw="nsfw = $event"
         @update:sortBy="sortBy = $event"
         @update:site="site = $event"
+        @update:searchMode="searchMode = $event"
         @refresh="refreshCurrentList"
       />
     </div>
@@ -30,7 +36,16 @@
         </div>
       </div>
 
-      <router-view v-slot="{ Component }">
+      <RemoteSearchResults
+        v-if="searchMode === 'remote'"
+        ref="remoteSearchRef"
+        :query="searchQuery"
+        :site="site"
+        @error="loadError = $event"
+        @loading-change="isRefreshing = !!$event"
+      />
+
+      <router-view v-else v-slot="{ Component }">
         <keep-alive :max="10">
           <component
             :is="Component"
@@ -56,8 +71,8 @@ import { useFeedFilters } from '../composables/useFeedFilters'
 import { useRefreshTriggers } from '../composables/useRefreshTriggers'
 import FeedToolbar from '@/components/feed/FeedToolbar.vue'
 import ChannelHeader from '@/components/feed/ChannelHeader.vue'
+import RemoteSearchResults from '@/components/feed/RemoteSearchResults.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
-import AppToolbarFrame from '@/components/layout/AppToolbarFrame.vue'
 import { VIDEO_TABS } from '@/constants/videos'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { onSubscriptionRemoved } from '@/utils/subscriptionEvents'
@@ -75,11 +90,19 @@ const tabs = ref(VIDEO_TABS)
 const isRefreshing = ref(false)
 const loadError = ref<any>(null)
 const videoChildRef = ref<any>(null)
+const remoteSearchRef = ref<any>(null)
+const searchMode = ref<'local' | 'remote'>('local')
+const isDesktop = window.desktopApp?.isDesktop === true
 
 const childFilters = computed(() => filters.value)
+const showSearchMode = computed(() => isDesktop && !subscriptionId.value)
 
 const refreshCurrentList = () => {
   loadError.value = null
+  if (searchMode.value === 'remote') {
+    remoteSearchRef.value?.refresh?.()
+    return
+  }
   videoChildRef.value?.refresh?.()
 }
 
@@ -100,6 +123,12 @@ useRouteTabSync(router, route, activeTab, subscriptionId)
 watch(() => uiStore.searchTrigger, () => {
   if (route.meta.search === 'home' || !route.meta.search) {
     searchQuery.value = uiStore.searchQuery
+  }
+})
+
+watch(subscriptionId, (value) => {
+  if (value && searchMode.value === 'remote') {
+    searchMode.value = 'local'
   }
 })
 

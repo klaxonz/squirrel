@@ -14,6 +14,7 @@ import {
   resolveYouTubePlayback,
   resolveYouTubeSubtitles,
 } from './playback/providers/youtube/index.mjs'
+import { searchRemoteVideos } from './search/providers/index.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -1494,6 +1495,17 @@ const installDesktopBridgeHandlers = () => {
       cookie,
       fetchImpl: createSessionFetch(),
       forceRefresh: options?.forceRefresh === true,
+    })
+  })
+
+  ipcMain.removeHandler('desktop:search-remote-videos')
+  ipcMain.handle('desktop:search-remote-videos', async (_event, options = {}) => {
+    return searchRemoteVideos({
+      query: options?.query,
+      site: options?.site || 'all',
+      limit: options?.limit || 20,
+      fetchImpl: createSessionFetch(),
+      buildCookieHeader: buildCookieHeaderForUrl,
     })
   })
 

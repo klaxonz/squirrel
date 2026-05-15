@@ -26,6 +26,7 @@ interface DesktopAppBridge {
   resolveYouPornPlayback?: DesktopPlaybackResolver
   resolveYouTubePlayback?: DesktopPlaybackResolver
   resolveYouTubeSubtitles?: DesktopSubtitleResolver
+  searchRemoteVideos?: DesktopRemoteSearchResolver
   getSiteLoginStatus?: (siteName: string) => Promise<DesktopSiteLoginStatus>
   openSiteLogin?: (siteName: string) => Promise<DesktopSiteLoginStatus>
   clearSiteSession?: (siteName: string) => Promise<DesktopSiteLoginStatus>
@@ -66,6 +67,30 @@ type DesktopSubtitleResolver = (
   language_name?: string | null
   translated?: boolean
   kind?: string | null
+}>
+
+type DesktopRemoteSearchResolver = (
+  options: {
+    query: string
+    site?: string
+    limit?: number
+  }
+) => Promise<{
+  items: Array<{
+    source: 'remote'
+    site: string
+    id?: string | number | null
+    title: string
+    url: string
+    thumbnail?: string | null
+    duration?: number | null
+    publish_date?: string | null
+    published_text?: string | null
+    uploader?: string | null
+    description?: string | null
+  }>
+  errors?: string[]
+  sites?: string[]
 }>
 
 interface DesktopSiteLoginStatus {

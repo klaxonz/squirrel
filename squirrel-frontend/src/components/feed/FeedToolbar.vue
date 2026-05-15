@@ -3,6 +3,19 @@
     <div class="flex items-center h-14 px-4 sm:px-6 gap-4 sm:gap-6">
       
       <!-- Left: Navigation Tabs -->
+      <div v-if="showSearchMode" class="flex h-8 shrink-0 items-center rounded-lg border border-border/40 bg-muted/30 p-0.5">
+        <button
+          v-for="option in searchModeOptions"
+          :key="option.value"
+          type="button"
+          class="h-7 rounded-md px-3 text-xs font-medium transition-colors"
+          :class="searchMode === option.value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+          @click="emit('update:searchMode', option.value)"
+        >
+          {{ option.label }}
+        </button>
+      </div>
+
       <nav v-if="showTabs" class="flex items-center h-full space-x-1 overflow-x-auto scrollbar-hide shrink-0">
         <button
           v-for="tab in tabs"
@@ -131,16 +144,18 @@ const props = withDefaults(defineProps<{
   activeTab?: string, nsfw?: string, sortBy?: string, site?: string, subscriptionId?: string | number,
   tabs?: VideoTab[], isRefreshing?: boolean, showTabs?: boolean, showSort?: boolean, showRefresh?: boolean,
   showFilter?: boolean, timeRange?: TimeRange, duration?: Duration, contentType?: ContentType,
-  siteLabel?: string, filterScope?: 'video' | 'subscription'
+  siteLabel?: string, filterScope?: 'video' | 'subscription', searchMode?: 'local' | 'remote', showSearchMode?: boolean
 }>(), {
   activeTab: 'all', nsfw: 'all', sortBy: 'publish_date', tabs: () => [], isRefreshing: false,
   showTabs: true, showSort: true, showRefresh: true, showFilter: true,
   timeRange: 'all', duration: 'all', contentType: 'all', filterScope: 'video',
+  searchMode: 'local', showSearchMode: false,
 })
 
 const emit = defineEmits([
   'update:activeTab', 'update:nsfw', 'update:sortBy', 'update:site',
   'update:timeRange', 'update:duration', 'update:contentType', 'refresh',
+  'update:searchMode',
 ])
 
 const { options: siteOptions, fetchSites } = useSites()
@@ -172,4 +187,9 @@ const sortOptions = [
   { value: 'publish_date', label: '上传日期' },
   { value: 'created_at', label: '抓取日期' },
 ]
+
+const searchModeOptions = [
+  { value: 'local', label: '本地' },
+  { value: 'remote', label: '远端' },
+] as const
 </script>

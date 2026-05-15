@@ -13,6 +13,8 @@
         :placeholder="placeholder"
         class="flex-1 bg-transparent border-none text-[13px] font-medium outline-none placeholder:text-muted-foreground/30"
         @input="handleInput"
+        @compositionstart="isComposing = true"
+        @compositionend="handleCompositionEnd"
         @keydown.down.prevent="moveActiveSuggestion(1)"
         @keydown.up.prevent="moveActiveSuggestion(-1)"
         @keydown.enter.prevent="handleEnterKey"
@@ -92,6 +94,7 @@ const uiStore = useUIStore()
 const inputValue = ref(uiStore.searchQuery)
 const isFocused = ref(false)
 const isTyping = ref(false)
+const isComposing = ref(false)
 const isPanelOpen = ref(false)
 const activeSuggestionIndex = ref(-1)
 const recentSearches = ref<string[]>([])
@@ -135,6 +138,7 @@ const suggestionTitle = computed(() => trimmedInputValue.value ? '搜索建议' 
 const handleInput = () => {
   uiStore.searchQuery = inputValue.value
   emit('update:modelValue', inputValue.value)
+  activeSuggestionIndex.value = -1
   isPanelOpen.value = true
   isTyping.value = true
   clearTimeout(typingTimeout)
@@ -149,11 +153,16 @@ async function loadRemoteSuggestions() {
     remoteSuggestions.value = []
     return
   }
-  const { data } = await getSearchSuggestions({ query: trimmedInputValue.value, scope: props.suggestionScope })
-  remoteSuggestions.value = data?.items || []
+  try {
+    const { data } = await getSearchSuggestions({ query: trimmedInputValue.value, scope: props.suggestionScope })
+    remoteSuggestions.value = data?.items || []
+  } catch (_) {
+    remoteSuggestions.value = []
+  }
 }
 
 function handleEnterKey() {
+  if (isComposing.value) return
   if (activeSuggestionIndex.value >= 0) {
     selectSuggestion(suggestionItems.value[activeSuggestionIndex.value].value)
   } else {
@@ -185,7 +194,13 @@ function clearSearch() {
   uiStore.searchQuery = ''
   emit('update:modelValue', '')
   emit('clear')
+  uiStore.triggerSearch('')
   inputRef.value?.focus()
+}
+
+function handleCompositionEnd() {
+  isComposing.value = false
+  handleInput()
 }
 
 function clearRecentSearches() {
