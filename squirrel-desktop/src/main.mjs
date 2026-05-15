@@ -12,6 +12,7 @@ import {
   resolveYouTubeOAuthSetup,
   resolveYouTubeOAuthStatus,
   resolveYouTubePlayback,
+  resolveYouTubeSubtitles,
 } from './playback/providers/youtube/index.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -1229,6 +1230,21 @@ const installDesktopBridgeHandlers = () => {
     return resolveYouTubePlayback(normalizedUrl, {
       cookie,
       forceRefresh: options?.forceRefresh === true,
+    })
+  })
+
+  ipcMain.removeHandler('desktop:resolve-youtube-subtitles')
+  ipcMain.handle('desktop:resolve-youtube-subtitles', async (_event, targetUrl, options = {}) => {
+    const normalizedUrl = normalizeTargetUrl(targetUrl)
+    if (!normalizedUrl) {
+      throw new Error('Invalid YouTube URL')
+    }
+
+    const cookie = await buildCookieHeaderForUrl(normalizedUrl)
+    return resolveYouTubeSubtitles(normalizedUrl, {
+      cookie,
+      lang: String(options?.lang || '').trim(),
+      format: String(options?.format || 'vtt').trim().toLowerCase(),
     })
   })
 

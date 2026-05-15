@@ -6,6 +6,7 @@ const providerPath = new URL('../src/playback/providers/youtube/index.mjs', impo
 const corePath = new URL('../src/playback/providers/youtube/youtubei_core.mjs', import.meta.url)
 const mainPath = new URL('../src/main.mjs', import.meta.url)
 const pluginCorePath = new URL('../../squirrel-plugins/youtube/src/squirrel_youtube/node/youtubei_core.mjs', import.meta.url)
+const frontendDetailPath = new URL('../../squirrel-frontend/src/composables/useVideoDetail.ts', import.meta.url)
 
 test('desktop youtube provider keeps complete dash payload for direct playback', async () => {
   const source = await readFile(providerPath, 'utf8')
@@ -83,4 +84,24 @@ test('youtube tv oauth opens the youtube activation page', async () => {
   assert.match(pluginSource, /const YOUTUBE_TV_ACTIVATION_URL = 'https:\/\/www\.youtube\.com\/activate'/)
   assert.doesNotMatch(desktopSource, /verification_url: data\.verification_url/)
   assert.doesNotMatch(pluginSource, /verification_url: data\.verification_url/)
+})
+
+test('youtube captions treat tv oauth as an authenticated session', async () => {
+  const desktopSource = await readFile(corePath, 'utf8')
+  const pluginSource = await readFile(pluginCorePath, 'utf8')
+
+  assert.match(desktopSource, /const hasAuth = runtime\.authMode === 'oauth' \|\| runtime\.authMode === 'cookie';[\s\S]*?const clients = hasAuth \? CAPTIONS_AUTHENTICATED_CLIENTS : CAPTIONS_ANONYMOUS_CLIENTS;/)
+  assert.match(pluginSource, /const hasAuth = runtime\.authMode === 'oauth' \|\| runtime\.authMode === 'cookie';[\s\S]*?const clients = hasAuth \? CAPTIONS_AUTHENTICATED_CLIENTS : CAPTIONS_ANONYMOUS_CLIENTS;/)
+})
+
+test('desktop youtube subtitles are resolved through the electron bridge', async () => {
+  const providerSource = await readFile(providerPath, 'utf8')
+  const mainSource = await readFile(mainPath, 'utf8')
+  const frontendSource = await readFile(frontendDetailPath, 'utf8')
+
+  assert.match(providerSource, /export async function resolveYouTubeSubtitles/)
+  assert.match(mainSource, /desktop:resolve-youtube-subtitles/)
+  assert.match(frontendSource, /bridge\.resolveYouTubeSubtitles\(videoUrl/)
+  assert.match(frontendSource, /content,/)
+  assert.match(frontendSource, /url: `\/api\/video\/subtitles\?\$\{params\.toString\(\)\}`/)
 })

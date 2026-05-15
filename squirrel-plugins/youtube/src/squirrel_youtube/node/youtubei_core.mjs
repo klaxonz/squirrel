@@ -351,7 +351,8 @@ async function resolveCaptionPayload(payload) {
   const requestedLanguage = normalizeLanguageCode(payload?.lang);
   const requestedFormat = String(payload?.format || 'srv3').trim().toLowerCase() || 'srv3';
   const runtime = await getRuntime(cookie);
-  const clients = cookie ? CAPTIONS_AUTHENTICATED_CLIENTS : CAPTIONS_ANONYMOUS_CLIENTS;
+  const hasAuth = runtime.authMode === 'oauth' || runtime.authMode === 'cookie';
+  const clients = hasAuth ? CAPTIONS_AUTHENTICATED_CLIENTS : CAPTIONS_ANONYMOUS_CLIENTS;
   const attempts = [];
 
   for (const client of clients) {

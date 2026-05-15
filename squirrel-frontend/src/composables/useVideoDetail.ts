@@ -8,7 +8,7 @@ type VideoSubtitle = {
   id: string
   label?: string
   language: string
-  url: string
+  url?: string
   content?: string
   default?: boolean
 }
@@ -51,6 +51,51 @@ const subtitleCandidatesByDomain: Array<{ pattern: RegExp; candidates: SubtitleC
 const getSubtitleCandidates = (url: string | undefined): SubtitleCandidate[] => {
   if (!url) return []
   return subtitleCandidatesByDomain.find(({ pattern }) => pattern.test(url))?.candidates || []
+}
+
+const isYouTubeUrl = (url: string | undefined) => /(?:youtube\.com|youtu\.be)/i.test(url || '')
+
+const getDesktopBridge = () => {
+  if (typeof window === 'undefined') return null
+  return window.desktopApp || null
+}
+
+const buildDesktopYouTubeSubtitleTracks = async (
+  videoUrl: string,
+  candidates: SubtitleCandidate[],
+): Promise<VideoSubtitle[]> => {
+  const bridge = getDesktopBridge()
+  if (bridge?.isDesktop !== true || typeof bridge.resolveYouTubeSubtitles !== 'function') {
+    return []
+  }
+
+  const tracks: VideoSubtitle[] = []
+  for (const [index, candidate] of candidates.entries()) {
+    try {
+      const payload = await bridge.resolveYouTubeSubtitles(videoUrl, {
+        lang: candidate.lang,
+        format: 'vtt',
+      })
+      const content = String(payload?.content || '').trim()
+      if (!content) continue
+
+      tracks.push({
+        id: candidate.id,
+        label: candidate.language,
+        language: candidate.language,
+        content,
+        default: index === 0,
+      })
+    } catch {
+      // Skip unavailable desktop subtitle tracks.
+    }
+  }
+  return tracks
+}
+
+const canResolveDesktopYouTubeSubtitles = () => {
+  const bridge = getDesktopBridge()
+  return bridge?.isDesktop === true && typeof bridge.resolveYouTubeSubtitles === 'function'
 }
 
 export default function useVideoDetail(initialVideo: VideoLike | null = null) {
@@ -104,12 +149,21 @@ export default function useVideoDetail(initialVideo: VideoLike | null = null) {
     if (!candidates.length) return
 
     const existingSubtitles = Array.isArray(snapshot.subtitles) ? snapshot.subtitles : []
-    const subtitlePlaceholders = candidates
+    const missingCandidates = candidates
       .filter((candidate) => !existingSubtitles.some((subtitle) => subtitle.id === candidate.id))
+
+    if (isYouTubeUrl(snapshot.url) && canResolveDesktopYouTubeSubtitles()) {
+      const desktopTracks = await buildDesktopYouTubeSubtitleTracks(snapshot.url || '', missingCandidates)
+      if (!desktopTracks.length) return
+      snapshot.subtitles = [...existingSubtitles, ...desktopTracks]
+      return
+    }
+
+    const subtitlePlaceholders = missingCandidates
       .map((candidate, index) => {
         const params = new URLSearchParams({
           video_id: String(videoId),
-          fmt: /(?:youtube\.com|youtu\.be)/i.test(snapshot.url || '') ? 'vtt' : 'srt',
+          fmt: isYouTubeUrl(snapshot.url) ? 'vtt' : 'srt',
         })
         if (candidate.lang) {
           params.set('lang', candidate.lang)

@@ -417,6 +417,33 @@ export const resolveYouTubeOAuthRevoke = () => {
   return resolveYoutubeiPayload({ action: 'oauth-revoke' })
 }
 
+export async function resolveYouTubeSubtitles(targetUrl, { cookie = '', lang = '', format = 'vtt' } = {}) {
+  const videoId = extractYouTubeVideoId(targetUrl)
+  if (!videoId) {
+    throw new Error('Invalid YouTube URL')
+  }
+
+  const payload = await resolveYoutubeiPayload({
+    action: 'captions',
+    video_id: videoId,
+    format,
+    ...(lang ? { lang } : {}),
+    ...(cookie ? { cookie } : {}),
+  })
+  if (payload?.status !== 'ok' || !payload?.content) {
+    throw new Error('Desktop YouTube provider did not return subtitle content')
+  }
+
+  return {
+    content: payload.content,
+    format: payload.format || format,
+    language_code: payload.language_code || null,
+    language_name: payload.language_name || null,
+    translated: payload.translated === true,
+    kind: payload.kind || null,
+  }
+}
+
 export const prewarmYouTubePlayback = (cookie = '') => {
   return prewarmYoutubeiRuntime(cookie)
 }

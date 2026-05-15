@@ -25,6 +25,7 @@ interface DesktopAppBridge {
   resolvePornhubPlayback?: DesktopPlaybackResolver
   resolveYouPornPlayback?: DesktopPlaybackResolver
   resolveYouTubePlayback?: DesktopPlaybackResolver
+  resolveYouTubeSubtitles?: DesktopSubtitleResolver
   getSiteLoginStatus?: (siteName: string) => Promise<DesktopSiteLoginStatus>
   openSiteLogin?: (siteName: string) => Promise<DesktopSiteLoginStatus>
   clearSiteSession?: (siteName: string) => Promise<DesktopSiteLoginStatus>
@@ -53,6 +54,18 @@ type DesktopPlaybackResolver = (
     codec?: string
     id?: string | number | null
   }> | null
+}>
+
+type DesktopSubtitleResolver = (
+  targetUrl: string,
+  options?: { lang?: string; format?: 'vtt' }
+) => Promise<{
+  content: string
+  format?: string | null
+  language_code?: string | null
+  language_name?: string | null
+  translated?: boolean
+  kind?: string | null
 }>
 
 interface DesktopSiteLoginStatus {
