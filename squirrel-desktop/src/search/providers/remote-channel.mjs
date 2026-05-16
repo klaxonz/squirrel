@@ -134,6 +134,41 @@ const collectYouTubeVideoRenderers = (node, output) => {
   Object.values(node).forEach((value) => collectYouTubeVideoRenderers(value, output))
 }
 
+const collectYouTubeLockupViewModels = (node, output) => {
+  if (!node || typeof node !== 'object') return
+  if (node.lockupViewModel) {
+    output.push(node.lockupViewModel)
+    return
+  }
+  if (Array.isArray(node)) {
+    node.forEach((item) => collectYouTubeLockupViewModels(item, output))
+    return
+  }
+  Object.values(node).forEach((value) => collectYouTubeLockupViewModels(value, output))
+}
+
+const findYouTubeContinuationToken = (node) => {
+  if (!node || typeof node !== 'object') return ''
+  const token = node?.continuationCommand?.token
+    || node?.nextContinuationData?.continuation
+    || node?.reloadContinuationData?.continuation
+  if (token) return String(token)
+
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const nestedToken = findYouTubeContinuationToken(item)
+      if (nestedToken) return nestedToken
+    }
+    return ''
+  }
+
+  for (const value of Object.values(node)) {
+    const nestedToken = findYouTubeContinuationToken(value)
+    if (nestedToken) return nestedToken
+  }
+  return ''
+}
+
 const buildYouTubeVideosUrl = (channelUrl) => {
   const url = new URL(channelUrl)
   if (!url.pathname.endsWith('/videos')) {
@@ -184,10 +219,171 @@ const mapYouTubeVideo = (renderer, profile) => {
   }
 }
 
-const getYouTubeChannel = async ({ url, limit, page, fetchImpl, buildCookieHeader, profile }) => {
+const findYouTubeWatchVideoId = (node) => {
+  if (!node || typeof node !== 'object') return ''
+  const videoId = node?.watchEndpoint?.videoId
+  if (videoId) return String(videoId)
+
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const nestedVideoId = findYouTubeWatchVideoId(item)
+      if (nestedVideoId) return nestedVideoId
+    }
+    return ''
+  }
+
+  for (const value of Object.values(node)) {
+    const nestedVideoId = findYouTubeWatchVideoId(value)
+    if (nestedVideoId) return nestedVideoId
+  }
+  return ''
+}
+
+const extractYouTubeLockupDuration = (lockup) => {
+  const badges = lockup?.contentImage?.thumbnailViewModel?.overlays
+    ?.flatMap((overlay) => overlay?.thumbnailBottomOverlayViewModel?.badges || [])
+    || []
+  for (const badge of badges) {
+    const duration = parseDuration(badge?.thumbnailBadgeViewModel?.text)
+    if (duration) return duration
+  }
+  return null
+}
+
+const extractYouTubeLockupPublishedText = (lockup) => {
+  const rows = lockup?.metadata?.lockupMetadataViewModel?.metadata?.contentMetadataViewModel?.metadataRows || []
+  const parts = rows.flatMap((row) => row?.metadataParts || [])
+  const texts = parts.map((part) => part?.text?.content || '').filter(Boolean)
+  return texts[texts.length - 1] || ''
+}
+
+const mapYouTubeLockup = (lockup, profile) => {
+  const videoId = findYouTubeWatchVideoId(lockup)
+  return {
+    source: 'remote',
+    site: 'youtube',
+    id: videoId,
+    title: lockup?.metadata?.lockupMetadataViewModel?.title?.content || '',
+    url: videoId ? `${YOUTUBE_ORIGIN}/watch?v=${encodeURIComponent(videoId)}` : '',
+    thumbnail: pickThumbnail(lockup?.contentImage?.thumbnailViewModel?.image?.sources),
+    duration: extractYouTubeLockupDuration(lockup),
+    publish_date: null,
+    published_text: extractYouTubeLockupPublishedText(lockup),
+    uploader: profile.name,
+    uploader_url: profile.url,
+    uploader_avatar: profile.avatar,
+    subscriptions: [profile],
+    description: '',
+  }
+}
+
+const mapYouTubeItems = (payload, profile) => {
+  const renderers = []
+  const lockups = []
+  collectYouTubeVideoRenderers(payload, renderers)
+  collectYouTubeLockupViewModels(payload, lockups)
+  return uniqueByUrl([
+    ...renderers.map((renderer) => mapYouTubeVideo(renderer, profile)),
+    ...lockups.map((lockup) => mapYouTubeLockup(lockup, profile)),
+  ]).filter((item) => item.id && item.title && item.url)
+}
+
+const extractYouTubeApiKey = (html) => {
+  return String(html.match(/"INNERTUBE_API_KEY"\s*:\s*"([^"]+)"/)?.[1] || '').trim()
+}
+
+const extractYouTubeContext = (html) => {
+  const jsonText = findBalancedJson(html, 'INNERTUBE_CONTEXT')
+  if (!jsonText) throw new Error('YouTube context payload not found')
+  return JSON.parse(jsonText)
+}
+
+const buildYouTubeCursor = (continuation, apiKey, context) => {
+  if (!continuation) return null
+  const client = context?.client || {}
+  return {
+    continuation,
+    api_key: apiKey,
+    client: {
+      clientName: client.clientName || 'WEB',
+      clientVersion: client.clientVersion || '',
+      hl: client.hl || 'en',
+      gl: client.gl || 'US',
+      userAgent: client.userAgent || DESKTOP_USER_AGENT,
+      visitorData: client.visitorData || '',
+    },
+  }
+}
+
+const buildYouTubeContinuationContext = (cursor) => {
+  const client = cursor?.client || cursor?.context?.client || {}
+  return {
+    client: {
+      clientName: client.clientName || 'WEB',
+      clientVersion: client.clientVersion || '',
+      hl: client.hl || 'en',
+      gl: client.gl || 'US',
+      userAgent: client.userAgent || DESKTOP_USER_AGENT,
+      visitorData: client.visitorData || '',
+    },
+  }
+}
+
+const fetchYouTubeContinuation = async ({ cursor, fetchImpl, buildCookieHeader }) => {
+  const continuation = String(cursor?.continuation || '').trim()
+  const apiKey = String(cursor?.api_key || '').trim()
+  if (!continuation || !apiKey) {
+    throw new Error('YouTube continuation cursor is missing')
+  }
+
+  const cookie = await buildCookieHeader(YOUTUBE_ORIGIN)
+  const context = buildYouTubeContinuationContext(cursor)
+  const response = await fetchImpl(`${YOUTUBE_ORIGIN}/youtubei/v1/browse?key=${encodeURIComponent(apiKey)}`, {
+    method: 'POST',
+    headers: {
+      Accept: '*/*',
+      'Content-Type': 'application/json',
+      Origin: YOUTUBE_ORIGIN,
+      Referer: `${YOUTUBE_ORIGIN}/`,
+      'Sec-Fetch-Mode': 'same-origin',
+      'Sec-Fetch-Site': 'same-origin',
+      'User-Agent': context.client.userAgent || DESKTOP_USER_AGENT,
+      'X-Youtube-Bootstrap-Logged-In': 'false',
+      'X-YouTube-Client-Name': '1',
+      'X-YouTube-Client-Version': String(context?.client?.clientVersion || ''),
+      ...(cookie ? { Cookie: cookie } : {}),
+    },
+    body: JSON.stringify({
+      context,
+      continuation,
+    }),
+  })
+  if (!response.ok) throw new Error(`YouTube channel continuation failed: ${response.status}`)
+  return response.json()
+}
+
+const getYouTubeChannel = async ({ url, limit, page, cursor, fetchImpl, buildCookieHeader, profile }) => {
   const resultLimit = clampLimit(limit)
-  if (clampPage(page) > 1) {
-    return { profile: { ...profile, site: 'youtube' }, items: [], page: clampPage(page), has_more: false }
+  const resultPage = clampPage(page)
+
+  if (resultPage > 1) {
+    const payload = await fetchYouTubeContinuation({ cursor, fetchImpl, buildCookieHeader })
+    const channelProfile = {
+      ...profile,
+      type: 'CHANNEL',
+      site: 'youtube',
+      is_nsfw: false,
+    }
+    const continuation = findYouTubeContinuationToken(payload)
+    const items = mapYouTubeItems(payload, channelProfile)
+
+    return {
+      profile: channelProfile,
+      items: items.slice(0, resultLimit),
+      page: resultPage,
+      has_more: !!continuation,
+      next_cursor: continuation ? { ...cursor, continuation } : null,
+    }
   }
 
   const channelUrl = normalizeChannelUrl(url)
@@ -204,18 +400,18 @@ const getYouTubeChannel = async ({ url, limit, page, fetchImpl, buildCookieHeade
   if (!jsonText) throw new Error('YouTube channel payload not found')
 
   const initialData = JSON.parse(jsonText)
+  const apiKey = extractYouTubeApiKey(html)
+  const context = extractYouTubeContext(html)
   const channelProfile = extractYouTubeProfile(initialData, channelUrl, profile)
-  const renderers = []
-  collectYouTubeVideoRenderers(initialData, renderers)
-
-  const items = uniqueByUrl(renderers.map((renderer) => mapYouTubeVideo(renderer, channelProfile)))
-    .filter((item) => item.id && item.title && item.url)
+  const continuation = findYouTubeContinuationToken(initialData)
+  const items = mapYouTubeItems(initialData, channelProfile)
 
   return {
     profile: channelProfile,
     items: items.slice(0, resultLimit),
     page: 1,
-    has_more: items.length > resultLimit,
+    has_more: !!continuation,
+    next_cursor: buildYouTubeCursor(continuation, apiKey, context),
   }
 }
 
@@ -443,6 +639,7 @@ export const getRemoteChannel = async ({
   url,
   limit = 30,
   page = 1,
+  cursor = null,
   profile = {},
   fetchImpl,
   buildCookieHeader,
@@ -459,6 +656,7 @@ export const getRemoteChannel = async ({
     url: channelUrl,
     limit,
     page,
+    cursor,
     profile,
     fetchImpl,
     buildCookieHeader,
@@ -470,5 +668,6 @@ export const getRemoteChannel = async ({
     items: result.items,
     page: result.page,
     has_more: result.has_more,
+    next_cursor: result.next_cursor || null,
   }
 }

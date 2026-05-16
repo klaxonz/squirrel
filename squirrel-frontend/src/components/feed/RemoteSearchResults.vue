@@ -289,7 +289,7 @@ const loadPage = async (page: number) => {
       appendUniqueItems(nextItems)
     }
     currentPage.value = page
-    allLoaded.value = result?.has_more === false || nextItems.length < props.limit
+    allLoaded.value = result?.has_more === false
     if (Array.isArray(result?.errors) && result.errors.length > 0 && items.value.length === 0) {
       errorMessage.value = result.errors.join('；')
       emit('error', new Error(errorMessage.value))

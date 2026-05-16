@@ -150,6 +150,7 @@ const profile = ref<RemoteProfile>({
 const loading = ref(false)
 const allLoaded = ref(false)
 const currentPage = ref(1)
+const nextCursor = ref<unknown>(null)
 const errorMessage = ref('')
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 
@@ -219,6 +220,7 @@ const loadPage = async (page: number) => {
       url: channelUrl.value,
       limit: 30,
       page,
+      cursor: page > 1 ? nextCursor.value : undefined,
       profile: routeProfile.value,
     })
     if (currentToken !== requestToken) return
@@ -228,6 +230,7 @@ const loadPage = async (page: number) => {
     if (page === 1) items.value = nextItems
     else appendUniqueItems(nextItems)
     currentPage.value = page
+    nextCursor.value = result.next_cursor || null
     allLoaded.value = result.has_more === false
   } catch (error: any) {
     if (currentToken !== requestToken) return
@@ -241,6 +244,7 @@ const refresh = async () => {
   items.value = []
   profile.value = routeProfile.value
   currentPage.value = 1
+  nextCursor.value = null
   allLoaded.value = false
   await loadPage(1)
 }

@@ -113,17 +113,21 @@ export const searchRemoteVideos = async ({
     throw new Error(`Remote search site is not supported: ${unknownSite}`)
   }
 
-  const settled = await Promise.allSettled(siteNames.map(async (siteName) => ({
-    site: siteName,
-    items: await searchProviderWithTimeout(siteName, {
+  const settled = await Promise.allSettled(siteNames.map(async (siteName) => {
+    const providerResult = await searchProviderWithTimeout(siteName, {
       query: keyword,
       limit: resultLimit,
       page: resultPage,
       fetchImpl,
       buildCookieHeader,
       loadDocumentHtml,
-    }, searchTimeoutMs, hasProviderTimeoutMs),
-  })))
+    }, searchTimeoutMs, hasProviderTimeoutMs)
+    return {
+      site: siteName,
+      items: Array.isArray(providerResult) ? providerResult : providerResult?.items,
+      has_more: Array.isArray(providerResult) ? undefined : providerResult?.has_more,
+    }
+  }))
 
   const siteResults = []
   const errors = []
@@ -132,6 +136,7 @@ export const searchRemoteVideos = async ({
       siteResults.push({
         site: result.value.site,
         items: Array.isArray(result.value.items) ? result.value.items : [],
+        has_more: result.value.has_more,
       })
       continue
     }
@@ -141,7 +146,9 @@ export const searchRemoteVideos = async ({
   const dedupedItems = normalizedSite === 'all'
     ? interleaveSiteItems(siteResults, resultLimit)
     : uniqueByUrl(siteResults.flatMap((siteResult) => siteResult.items)).slice(0, resultLimit)
-  const hasMore = siteResults.some((siteResult) => siteResult.items.length >= resultLimit)
+  const hasMore = siteResults.some((siteResult) => (
+    siteResult.has_more === undefined ? siteResult.items.length >= resultLimit : siteResult.has_more === true
+  ))
 
   return {
     items: dedupedItems,

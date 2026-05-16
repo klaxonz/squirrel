@@ -912,6 +912,7 @@ const createSessionFetch = () => {
       return await session.defaultSession.fetch(targetUrl, {
         method: options?.method || 'GET',
         headers: options?.headers || {},
+        body: options?.body,
         redirect: options?.redirect || 'follow',
         signal: abortController.signal,
       })
@@ -1650,6 +1651,7 @@ const installDesktopBridgeHandlers = () => {
       url: options?.url,
       limit: options?.limit || 30,
       page: options?.page || 1,
+      cursor: options?.cursor || null,
       profile: options?.profile || {},
       fetchImpl: createSessionFetch(),
       buildCookieHeader: buildCookieHeaderForUrl,

@@ -122,6 +122,7 @@ type DesktopRemoteChannelResolver = (
     url: string
     limit?: number
     page?: number
+    cursor?: unknown
     profile?: {
       id?: string | number | null
       type?: string | null
@@ -146,6 +147,7 @@ type DesktopRemoteChannelResolver = (
   items: Awaited<ReturnType<DesktopRemoteSearchResolver>>['items']
   page?: number
   has_more?: boolean
+  next_cursor?: unknown
 }>
 
 interface DesktopSiteLoginStatus {

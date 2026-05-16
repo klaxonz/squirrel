@@ -131,13 +131,17 @@ test('desktop youtube remote search extracts video renderers', async () => {
     },
   }
 
-  const items = await searchYouTubeVideos({
+  const result = await searchYouTubeVideos({
     query: 'demo',
     limit: 5,
     buildCookieHeader,
-    fetchImpl: async () => htmlResponse(`<script>var ytInitialData = ${JSON.stringify(initialData)};</script>`),
+    fetchImpl: async () => htmlResponse(`
+      <script>ytcfg.set({"INNERTUBE_API_KEY":"test-key","INNERTUBE_CONTEXT":{"client":{"clientName":"WEB","clientVersion":"1.0"}}});</script>
+      <script>var ytInitialData = ${JSON.stringify(initialData)};</script>
+    `),
   })
 
+  const items = result.items
   assert.equal(items.length, 1)
   assert.equal(items[0].site, 'youtube')
   assert.equal(items[0].url, 'https://www.youtube.com/watch?v=abc123')
@@ -152,20 +156,194 @@ test('desktop youtube remote search extracts video renderers', async () => {
     avatar: 'https://yt3.ggpht.com/demo-avatar=s88-c-k-c0x00ffffff-no-rj',
     is_nsfw: false,
   }])
+  assert.equal(result.has_more, false)
 })
 
-test('desktop youtube remote search does not repeat first page for page requests', async () => {
-  const items = await searchYouTubeVideos({
+test('desktop youtube remote search extracts lockup view models', async () => {
+  const initialData = {
+    contents: {
+      twoColumnSearchResultsRenderer: {
+        primaryContents: {
+          sectionListRenderer: {
+            contents: [
+              {
+                itemSectionRenderer: {
+                  contents: [
+                    {
+                      lockupViewModel: {
+                        contentImage: {
+                          thumbnailViewModel: {
+                            image: {
+                              sources: [{ url: 'https://i.ytimg.com/vi/lock123/hqdefault.jpg' }],
+                            },
+                            overlays: [
+                              {
+                                thumbnailBottomOverlayViewModel: {
+                                  badges: [
+                                    { thumbnailBadgeViewModel: { text: '05:41' } },
+                                  ],
+                                },
+                              },
+                            ],
+                          },
+                        },
+                        metadata: {
+                          lockupMetadataViewModel: {
+                            title: { content: 'Lockup YouTube Video' },
+                            metadata: {
+                              contentMetadataViewModel: {
+                                metadataRows: [
+                                  {
+                                    metadataParts: [
+                                      {
+                                        text: {
+                                          content: 'Demo Channel',
+                                          commandRuns: [
+                                            {
+                                              text: 'Demo Channel',
+                                              onTap: {
+                                                innertubeCommand: {
+                                                  browseEndpoint: { browseId: 'UCdemo', canonicalBaseUrl: '/@demo' },
+                                                  commandMetadata: { webCommandMetadata: { url: '/@demo' } },
+                                                },
+                                              },
+                                            },
+                                          ],
+                                        },
+                                      },
+                                      { text: { content: '3 days ago' } },
+                                    ],
+                                  },
+                                ],
+                              },
+                            },
+                          },
+                        },
+                        rendererContext: {
+                          commandContext: {
+                            onTap: {
+                              innertubeCommand: {
+                                watchEndpoint: { videoId: 'lock123' },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+  }
+
+  const result = await searchYouTubeVideos({
     query: 'demo',
     limit: 5,
+    buildCookieHeader,
+    fetchImpl: async () => htmlResponse(`
+      <script>ytcfg.set({"INNERTUBE_API_KEY":"test-key","INNERTUBE_CONTEXT":{"client":{"clientName":"WEB","clientVersion":"1.0"}}});</script>
+      <script>var ytInitialData = ${JSON.stringify(initialData)};</script>
+    `),
+  })
+
+  assert.equal(result.items.length, 1)
+  assert.equal(result.items[0].title, 'Lockup YouTube Video')
+  assert.equal(result.items[0].url, 'https://www.youtube.com/watch?v=lock123')
+  assert.equal(result.items[0].duration, 341)
+  assert.equal(result.items[0].published_text, '3 days ago')
+  assert.equal(result.items[0].uploader_url, 'https://www.youtube.com/@demo')
+})
+
+test('desktop youtube remote search loads continuation pages', async () => {
+  const requests = []
+  const initialData = {
+    contents: {
+      twoColumnSearchResultsRenderer: {
+        primaryContents: {
+          sectionListRenderer: {
+            contents: [
+              {
+                itemSectionRenderer: {
+                  contents: [
+                    {
+                      videoRenderer: {
+                        videoId: 'abc123',
+                        title: { runs: [{ text: 'First Page Video' }] },
+                      },
+                    },
+                  ],
+                },
+              },
+              {
+                continuationItemRenderer: {
+                  continuationEndpoint: {
+                    continuationCommand: { token: 'CONTINUATION_1' },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+  }
+  const continuationData = {
+    onResponseReceivedCommands: [
+      {
+        appendContinuationItemsAction: {
+          continuationItems: [
+            {
+              itemSectionRenderer: {
+                contents: [
+                  {
+                    videoRenderer: {
+                      videoId: 'def456',
+                      title: { runs: [{ text: 'Second Page Video' }] },
+                      lengthText: { simpleText: '02:34' },
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              continuationItemRenderer: {
+                continuationEndpoint: {
+                  continuationCommand: { token: 'CONTINUATION_2' },
+                },
+              },
+            },
+          ],
+        },
+      },
+    ],
+  }
+
+  const result = await searchYouTubeVideos({
+    query: 'demo',
+    limit: 1,
     page: 2,
     buildCookieHeader,
-    fetchImpl: async () => {
-      throw new Error('fetch should not be called for page 2')
+    fetchImpl: async (url, options = {}) => {
+      requests.push({ url, options })
+      if (String(url).includes('/youtubei/v1/search')) return jsonResponse(continuationData)
+      return htmlResponse(`
+        <script>ytcfg.set({"INNERTUBE_API_KEY":"test-key","INNERTUBE_CONTEXT":{"client":{"clientName":"WEB","clientVersion":"1.0"}}});</script>
+        <script>var ytInitialData = ${JSON.stringify(initialData)};</script>
+      `)
     },
   })
 
-  assert.deepEqual(items, [])
+  assert.equal(requests[1].url, 'https://www.youtube.com/youtubei/v1/search?key=test-key')
+  assert.equal(requests[1].options.method, 'POST')
+  assert.equal(JSON.parse(requests[1].options.body).continuation, 'CONTINUATION_1')
+  assert.equal(result.items.length, 1)
+  assert.equal(result.items[0].url, 'https://www.youtube.com/watch?v=def456')
+  assert.equal(result.items[0].duration, 154)
+  assert.equal(result.has_more, true)
 })
 
 test('desktop pornhub remote search parses video list items', async () => {
@@ -501,6 +679,13 @@ test('desktop youtube remote channel parses channel page videos', async () => {
                 richGridRenderer: {
                   contents: [
                     {
+                      continuationItemRenderer: {
+                        continuationEndpoint: {
+                          continuationCommand: { token: 'CONTINUATION_1' },
+                        },
+                      },
+                    },
+                    {
                       richItemRenderer: {
                         content: {
                           videoRenderer: {
@@ -531,7 +716,10 @@ test('desktop youtube remote channel parses channel page videos', async () => {
     buildCookieHeader,
     fetchImpl: async (url) => {
       requestedUrl = url
-      return htmlResponse(`<script>var ytInitialData = ${JSON.stringify(initialData)};</script>`)
+      return htmlResponse(`
+        <script>ytcfg.set({"INNERTUBE_API_KEY":"test-key","INNERTUBE_CONTEXT":{"client":{"clientName":"WEB","clientVersion":"1.0"}}});</script>
+        <script>var ytInitialData = ${JSON.stringify(initialData)};</script>
+      `)
     },
   })
 
@@ -543,4 +731,154 @@ test('desktop youtube remote channel parses channel page videos', async () => {
   assert.equal(result.items[0].url, 'https://www.youtube.com/watch?v=abc123')
   assert.equal(result.items[0].duration, 184)
   assert.deepEqual(result.items[0].subscriptions, [result.profile])
+  assert.equal(result.has_more, true)
+  assert.equal(result.next_cursor.continuation, 'CONTINUATION_1')
+})
+
+test('desktop youtube remote channel parses lockup view model videos', async () => {
+  const initialData = {
+    metadata: {
+      channelMetadataRenderer: {
+        title: 'Modern Channel',
+        externalId: 'UCmodern',
+      },
+    },
+    contents: {
+      richGridRenderer: {
+        contents: [
+          {
+            richItemRenderer: {
+              content: {
+                lockupViewModel: {
+                  contentImage: {
+                    thumbnailViewModel: {
+                      image: {
+                        sources: [{ url: 'https://i.ytimg.com/vi/lock123/hqdefault.jpg' }],
+                      },
+                      overlays: [
+                        {
+                          thumbnailBottomOverlayViewModel: {
+                            badges: [
+                              { thumbnailBadgeViewModel: { text: '01:17' } },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                  metadata: {
+                    lockupMetadataViewModel: {
+                      title: { content: 'Modern Channel Video' },
+                      metadata: {
+                        contentMetadataViewModel: {
+                          metadataRows: [
+                            {
+                              metadataParts: [
+                                { text: { content: '2.5K views' } },
+                                { text: { content: '8 days ago' } },
+                              ],
+                            },
+                          ],
+                        },
+                      },
+                    },
+                  },
+                  rendererContext: {
+                    commandContext: {
+                      onTap: {
+                        innertubeCommand: {
+                          watchEndpoint: { videoId: 'lock123' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+    },
+  }
+
+  const result = await getRemoteChannel({
+    site: 'youtube',
+    url: 'https://www.youtube.com/@modern',
+    limit: 5,
+    buildCookieHeader,
+    fetchImpl: async () => htmlResponse(`
+      <script>ytcfg.set({"INNERTUBE_API_KEY":"test-key","INNERTUBE_CONTEXT":{"client":{"clientName":"WEB","clientVersion":"1.0"}}});</script>
+      <script>var ytInitialData = ${JSON.stringify(initialData)};</script>
+    `),
+  })
+
+  assert.equal(result.profile.id, 'UCmodern')
+  assert.equal(result.items.length, 1)
+  assert.equal(result.items[0].title, 'Modern Channel Video')
+  assert.equal(result.items[0].url, 'https://www.youtube.com/watch?v=lock123')
+  assert.equal(result.items[0].duration, 77)
+  assert.equal(result.items[0].published_text, '8 days ago')
+})
+
+test('desktop youtube remote channel loads continuation videos', async () => {
+  const requests = []
+  const result = await getRemoteChannel({
+    site: 'youtube',
+    url: 'https://www.youtube.com/@demo',
+    limit: 5,
+    page: 2,
+    cursor: {
+      continuation: 'CONTINUATION_1',
+      api_key: 'test-key',
+      context: { client: { clientName: 'WEB', clientVersion: '1.0' } },
+    },
+    profile: {
+      id: 'UCdemo',
+      name: 'Demo Channel',
+      url: 'https://www.youtube.com/@demo',
+      avatar: '',
+    },
+    buildCookieHeader,
+    fetchImpl: async (url, options = {}) => {
+      requests.push({ url, options })
+      return jsonResponse({
+        onResponseReceivedActions: [
+          {
+            appendContinuationItemsAction: {
+              continuationItems: [
+                {
+                  richItemRenderer: {
+                    content: {
+                      videoRenderer: {
+                        videoId: 'def456',
+                        title: { runs: [{ text: 'Continuation Video' }] },
+                        thumbnail: { thumbnails: [{ url: 'https://i.ytimg.com/vi/def456/hqdefault.jpg' }] },
+                        lengthText: { simpleText: '04:05' },
+                      },
+                    },
+                  },
+                },
+                {
+                  continuationItemRenderer: {
+                    continuationEndpoint: {
+                      continuationCommand: { token: 'CONTINUATION_2' },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      })
+    },
+  })
+
+  assert.equal(requests[0].url, 'https://www.youtube.com/youtubei/v1/browse?key=test-key')
+  assert.equal(requests[0].options.method, 'POST')
+  assert.equal(JSON.parse(requests[0].options.body).continuation, 'CONTINUATION_1')
+  assert.equal(result.items.length, 1)
+  assert.equal(result.items[0].url, 'https://www.youtube.com/watch?v=def456')
+  assert.equal(result.items[0].duration, 245)
+  assert.equal(result.has_more, true)
+  assert.equal(result.next_cursor.continuation, 'CONTINUATION_2')
 })
