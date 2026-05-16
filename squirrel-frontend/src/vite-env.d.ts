@@ -28,6 +28,7 @@ interface DesktopAppBridge {
   resolveYouTubePlayback?: DesktopPlaybackResolver
   resolveYouTubeSubtitles?: DesktopSubtitleResolver
   searchRemoteVideos?: DesktopRemoteSearchResolver
+  getRemoteChannel?: DesktopRemoteChannelResolver
   getSiteLoginStatus?: (siteName: string) => Promise<DesktopSiteLoginStatus>
   openSiteLogin?: (siteName: string) => Promise<DesktopSiteLoginStatus>
   clearSiteSession?: (siteName: string) => Promise<DesktopSiteLoginStatus>
@@ -111,6 +112,38 @@ type DesktopRemoteSearchResolver = (
   }>
   errors?: string[]
   sites?: string[]
+  page?: number
+  has_more?: boolean
+}>
+
+type DesktopRemoteChannelResolver = (
+  options: {
+    site: string
+    url: string
+    limit?: number
+    page?: number
+    profile?: {
+      id?: string | number | null
+      type?: string | null
+      name?: string | null
+      url?: string | null
+      avatar?: string | null
+      is_nsfw?: boolean | null
+    }
+  }
+) => Promise<{
+  site: string
+  profile: {
+    id?: string | number | null
+    type?: string | null
+    name: string
+    url: string
+    avatar?: string | null
+    description?: string | null
+    site?: string | null
+    is_nsfw?: boolean | null
+  }
+  items: Awaited<ReturnType<DesktopRemoteSearchResolver>>['items']
   page?: number
   has_more?: boolean
 }>

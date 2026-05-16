@@ -16,6 +16,7 @@ import {
   resolveYouTubePlayback,
   resolveYouTubeSubtitles,
 } from './playback/providers/youtube/index.mjs'
+import { getRemoteChannel } from './search/providers/remote-channel.mjs'
 import { searchRemoteVideos } from './search/providers/index.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -1639,6 +1640,19 @@ const installDesktopBridgeHandlers = () => {
       fetchImpl: createSessionFetch(),
       buildCookieHeader: buildCookieHeaderForUrl,
       loadDocumentHtml: loadDocumentHtmlWithBrowserWindow,
+    })
+  })
+
+  ipcMain.removeHandler('desktop:get-remote-channel')
+  ipcMain.handle('desktop:get-remote-channel', async (_event, options = {}) => {
+    return getRemoteChannel({
+      site: options?.site,
+      url: options?.url,
+      limit: options?.limit || 30,
+      page: options?.page || 1,
+      profile: options?.profile || {},
+      fetchImpl: createSessionFetch(),
+      buildCookieHeader: buildCookieHeaderForUrl,
     })
   })
 

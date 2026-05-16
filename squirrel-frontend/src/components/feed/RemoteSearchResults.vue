@@ -27,12 +27,15 @@
       </div>
 
       <div v-if="items.length > 0" class="grid grid-cols-1 gap-x-5 gap-y-10 p-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6">
-        <button
+        <article
           v-for="item in items"
           :key="item.site + ':' + item.url"
-          type="button"
           class="group flex min-w-0 cursor-pointer flex-col gap-2.5 text-left"
+          role="button"
+          tabindex="0"
           @click="openResult(item)"
+          @keydown.enter.prevent="openResult(item)"
+          @keydown.space.prevent="openResult(item)"
         >
           <div class="relative aspect-video overflow-hidden rounded-lg bg-muted transition-colors group-hover:bg-muted/80">
             <img
@@ -57,13 +60,28 @@
               {{ item.title }}
             </h3>
             <div class="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground/80">
-              <SubscriptionAvatar
-                v-if="primarySubscription(item)"
-                :src="primarySubscription(item)?.avatar"
-                :name="primarySubscription(item)?.name"
-                size="xs"
-              />
-              <span class="truncate">{{ primarySubscription(item)?.name || item.uploader || siteLabel(item.site) }}</span>
+              <button
+                v-if="primarySubscription(item)?.url"
+                type="button"
+                class="flex min-w-0 items-center gap-1.5 text-left transition-colors hover:text-foreground"
+                @click.stop="openRemoteChannel(item, primarySubscription(item))"
+              >
+                <SubscriptionAvatar
+                  :src="primarySubscription(item)?.avatar"
+                  :name="primarySubscription(item)?.name"
+                  size="xs"
+                />
+                <span class="truncate">{{ primarySubscription(item)?.name }}</span>
+              </button>
+              <template v-else>
+                <SubscriptionAvatar
+                  v-if="primarySubscription(item)"
+                  :src="primarySubscription(item)?.avatar"
+                  :name="primarySubscription(item)?.name"
+                  size="xs"
+                />
+                <span class="truncate">{{ primarySubscription(item)?.name || item.uploader || siteLabel(item.site) }}</span>
+              </template>
               <span class="shrink-0 rounded-[4px] bg-accent/50 px-1 py-0 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
                 {{ siteLabel(item.site) }}
               </span>
@@ -75,7 +93,7 @@
               {{ displayDate(item) }}
             </div>
           </div>
-        </button>
+        </article>
       </div>
 
       <div v-if="loading" class="grid grid-cols-1 gap-x-5 gap-y-10 p-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6">
@@ -200,6 +218,22 @@ const primarySubscription = (item: RemoteSearchItem) => {
 const actorText = (item: RemoteSearchItem) => {
   const actors = normalizeProfiles(item.actors).map((actor) => actor.name).slice(0, 3)
   return actors.length ? actors.join(' / ') : ''
+}
+
+const openRemoteChannel = async (item: RemoteSearchItem, profile: RemoteProfile | null) => {
+  const url = String(profile?.url || '').trim()
+  if (!url) return
+  await router.push({
+    name: 'RemoteChannelDetail',
+    query: {
+      site: item.site,
+      url,
+      id: profile?.id != null ? String(profile.id) : undefined,
+      name: profile?.name || undefined,
+      avatar: profile?.avatar || undefined,
+      is_nsfw: profile?.is_nsfw === true ? 'true' : undefined,
+    },
+  })
 }
 
 const setLoading = (value: boolean) => {

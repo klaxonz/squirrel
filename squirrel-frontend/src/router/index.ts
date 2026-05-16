@@ -10,6 +10,7 @@ const Settings = () => import('../views/Settings.vue')
 const VideoTab = () => import('@/components/feed/VideoTab.vue')
 const History = () => import('../views/History.vue')
 const VideoPlay = () => import('../views/VideoPlay.vue')
+const RemoteChannelDetail = () => import('../views/RemoteChannelDetail.vue')
 const PlaylistView = () => import('../views/PlaylistView.vue')
 const Login = () => import('../views/Login.vue')
 const Register = () => import('../views/Register.vue')
@@ -213,6 +214,17 @@ const routes = [
         contextParentLabel: '频道',
       }),
     ],
+  },
+  {
+    path: '/remote-channel',
+    name: 'RemoteChannelDetail',
+    component: RemoteChannelDetail,
+    meta: createNoSearchMeta('远端频道', {
+      navKey: 'videos',
+      sectionLabel: '首页',
+      scrollable: true,
+      hideScrollbar: true,
+    }),
   },
   {
     path: '/history',

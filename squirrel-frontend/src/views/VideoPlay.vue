@@ -37,7 +37,7 @@
             
             <div class="flex flex-wrap items-center justify-between gap-4 py-1">
               <div class="flex items-center gap-6">
-                <div v-if="primarySubscription" class="flex items-center gap-3 group cursor-pointer" @click="goToChannelDetail(primarySubscription.id)">
+                <div v-if="primarySubscription" class="flex items-center gap-3 group cursor-pointer" @click="openChannelDetail(primarySubscription)">
                   <SubscriptionAvatar :src="primarySubscription.avatar" :name="primarySubscription.name" size="xl" />
                   <div class="flex flex-col -space-y-0.5">
                     <span class="font-bold text-[15px] group-hover:text-primary transition-colors tracking-tight">{{ primarySubscription.name }}</span>
@@ -325,7 +325,27 @@ const {
   flushPendingReport
 } as any)
 
-const goToChannelDetail = (id: any) => router.push(`/subscription/${id}/all`)
+const openChannelDetail = async (profile: any) => {
+  if ((video.value as any)?.source === 'remote') {
+    const url = String(profile?.url || '').trim()
+    if (url) {
+      await router.push({
+        name: 'RemoteChannelDetail',
+        query: {
+          site: String((video.value as any)?.site || ''),
+          url,
+          id: profile?.id != null ? String(profile.id) : undefined,
+          name: profile?.name || undefined,
+          avatar: profile?.avatar || undefined,
+          is_nsfw: profile?.is_nsfw === true ? 'true' : undefined,
+        },
+      })
+    }
+    return
+  }
+
+  if (profile?.id) router.push(`/subscription/${profile.id}/all`)
+}
 </script>
 
 <style scoped>

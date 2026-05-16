@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
+import { getRemoteChannel } from '../src/search/providers/remote-channel.mjs'
 import { searchBilibiliVideos } from '../src/search/providers/bilibili.mjs'
 import { searchRemoteVideos } from '../src/search/providers/index.mjs'
 import { searchJavdbVideos } from '../src/search/providers/javdb.mjs'
@@ -414,4 +415,132 @@ test('desktop javdb site search requests automatic challenge solving window time
   assert.equal(result.items[0].site, 'javdb')
   assert.equal(documentOptions[0].timeoutMs, 30000)
   assert.equal(documentOptions[0].challengeTimeoutMs, 60000)
+})
+
+test('desktop bilibili remote channel returns profile and videos', async () => {
+  const requestedUrls = []
+  const result = await getRemoteChannel({
+    site: 'bilibili',
+    url: 'https://space.bilibili.com/12345',
+    limit: 5,
+    page: 2,
+    buildCookieHeader,
+    fetchImpl: async (url) => {
+      requestedUrls.push(url)
+      if (url.includes('/x/web-interface/card')) {
+        return jsonResponse({
+          data: {
+            card: {
+              name: 'Demo Uploader',
+              face: '//i0.hdslb.com/avatar.jpg',
+              sign: 'Demo channel',
+            },
+          },
+        })
+      }
+      if (url.includes('/x/web-interface/nav')) {
+        return jsonResponse({
+          data: {
+            wbi_img: {
+              img_url: 'https://i0.hdslb.com/bfs/wbi/0123456789abcdef0123456789abcdef.png',
+              sub_url: 'https://i0.hdslb.com/bfs/wbi/fedcba9876543210fedcba9876543210.png',
+            },
+          },
+        })
+      }
+
+      return jsonResponse({
+        data: {
+          page: {
+            count: 20,
+          },
+          list: {
+            vlist: [
+              {
+                bvid: 'BVchannel',
+                title: 'Channel Video',
+                pic: '//i0.hdslb.com/video.jpg',
+                length: '02:03',
+                created: 1700000000,
+              },
+            ],
+          },
+        },
+      })
+    },
+  })
+
+  assert.equal(result.site, 'bilibili')
+  assert.equal(result.profile.name, 'Demo Uploader')
+  assert.equal(result.profile.avatar, 'https://i0.hdslb.com/avatar.jpg')
+  assert.equal(result.profile.description, 'Demo channel')
+  assert.equal(result.items.length, 1)
+  assert.equal(result.items[0].url, 'https://www.bilibili.com/video/BVchannel')
+  assert.equal(result.items[0].duration, 123)
+  assert.equal(result.has_more, true)
+  const videoRequestUrl = new URL(requestedUrls.find((url) => url.includes('/x/space/wbi/arc/search')))
+  assert.equal(videoRequestUrl.searchParams.get('pn'), '2')
+  assert.equal(videoRequestUrl.searchParams.has('w_rid'), true)
+})
+
+test('desktop youtube remote channel parses channel page videos', async () => {
+  const initialData = {
+    metadata: {
+      channelMetadataRenderer: {
+        title: 'Demo Channel',
+        externalId: 'UCdemo',
+        description: 'Demo description',
+      },
+    },
+    contents: {
+      twoColumnBrowseResultsRenderer: {
+        tabs: [
+          {
+            tabRenderer: {
+              content: {
+                richGridRenderer: {
+                  contents: [
+                    {
+                      richItemRenderer: {
+                        content: {
+                          videoRenderer: {
+                            videoId: 'abc123',
+                            title: { runs: [{ text: 'Channel Video' }] },
+                            thumbnail: { thumbnails: [{ url: 'https://i.ytimg.com/vi/abc123/hqdefault.jpg' }] },
+                            lengthText: { simpleText: '03:04' },
+                            publishedTimeText: { simpleText: '1 day ago' },
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        ],
+      },
+    },
+  }
+
+  let requestedUrl = ''
+  const result = await getRemoteChannel({
+    site: 'youtube',
+    url: 'https://www.youtube.com/@demo',
+    limit: 5,
+    buildCookieHeader,
+    fetchImpl: async (url) => {
+      requestedUrl = url
+      return htmlResponse(`<script>var ytInitialData = ${JSON.stringify(initialData)};</script>`)
+    },
+  })
+
+  assert.equal(requestedUrl, 'https://www.youtube.com/@demo/videos')
+  assert.equal(result.profile.id, 'UCdemo')
+  assert.equal(result.profile.name, 'Demo Channel')
+  assert.equal(result.profile.description, 'Demo description')
+  assert.equal(result.items.length, 1)
+  assert.equal(result.items[0].url, 'https://www.youtube.com/watch?v=abc123')
+  assert.equal(result.items[0].duration, 184)
+  assert.deepEqual(result.items[0].subscriptions, [result.profile])
 })
