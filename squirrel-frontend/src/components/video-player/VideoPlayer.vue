@@ -135,7 +135,7 @@
                      @pointermove="onVolumePointerMove"
                      @pointerup="onVolumePointerUp">
                   <div class="sp-volume-bar">
-                    <div class="sp-volume-fill" :style="{ width: `${isMuted ? 0 : volume}%` }">
+                    <div class="sp-volume-fill" :style="{ width: `${isMuted ? 0 : volumeFillPercent}%` }">
                       <div class="sp-volume-glow"></div>
                     </div>
                   </div>
@@ -484,6 +484,8 @@ const emit = defineEmits([
   'prev',
   'next',
 ])
+
+const MAX_VOLUME = 200
 
 const {
   store, videoElement, containerElement, isPlaying, currentTime, duration, volume, isMuted, isFullscreen,
@@ -868,6 +870,7 @@ const previewPercent = ref(0)
 const isScrubbing = ref(false)
 const isVolumeScrubbing = ref(false)
 const lastPointerType = ref('mouse')
+const pendingUserVolumeHud = ref<number | null>(null)
 const pendingWidescreenValue = ref<boolean | null>(null)
 const shouldResumeAfterSourceSwap = ref(false)
 const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
@@ -889,6 +892,9 @@ const showCentralHud = (type: string, value: string, icon: IconName, percent: nu
 
 watch(volume, (newVol, oldVol) => {
   if (Math.abs(newVol - oldVol) < 0.1) return
+  const expectedVolume = pendingUserVolumeHud.value
+  pendingUserVolumeHud.value = null
+  if (expectedVolume === null || Math.abs(newVol - expectedVolume) > 0.1) return
   showCentralHud('volume', `${Math.round(newVol)}%`, volumeIconName.value, newVol)
 })
 
@@ -979,6 +985,7 @@ const getMarkerTimeText = (marker: { start_time?: number; startTime?: number; en
     : `${formatTime(startTime)} ??${formatTime(endTime)}`
 }
 const volumeIconName = computed(() => (isMuted.value || volume.value === 0) ? 'volumeOff' : volume.value < 50 ? 'volumeLow' : 'volumeHigh')
+const volumeFillPercent = computed(() => (isMuted.value ? 0 : Math.min(100, (volume.value / MAX_VOLUME) * 100)))
 const visibleCodecFamily = computed(() => (
   selectedCodecFamily.value !== 'auto'
     ? selectedCodecFamily.value
@@ -1377,9 +1384,13 @@ const onProgressPointerLeave = () => { if (!isScrubbing.value) previewTime.value
 const onVolumePointerDown = (e: PointerEvent) => { isVolumeScrubbing.value = true; updateVol(e) }
 const onVolumePointerMove = (e: PointerEvent) => { if (isVolumeScrubbing.value) updateVol(e) }
 const onVolumePointerUp = () => { isVolumeScrubbing.value = false }
+const setUserVolume = (value: number) => {
+  pendingUserVolumeHud.value = value
+  setVolume(value)
+}
 const updateVol = (e: PointerEvent) => {
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  setVolume(Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)))
+  setUserVolume(Math.max(0, Math.min(MAX_VOLUME, ((e.clientX - rect.left) / rect.width) * MAX_VOLUME)))
 }
 
 const handleKeyDown = (e: KeyboardEvent) => {
@@ -1387,8 +1398,8 @@ const handleKeyDown = (e: KeyboardEvent) => {
   if (e.key === 'f') toggleFullscreen()
   if (e.key === 'ArrowLeft') { seek(currentTime.value - 10); showCentralHud('seek', '-10s', 'skipBackward') }
   if (e.key === 'ArrowRight') { seek(currentTime.value + 10); showCentralHud('seek', '+10s', 'skipForward') }
-  if (e.key === 'ArrowUp') { setVolume(Math.min(100, volume.value + 5)) }
-  if (e.key === 'ArrowDown') { setVolume(Math.max(0, volume.value - 5)) }
+  if (e.key === 'ArrowUp') { setUserVolume(Math.min(MAX_VOLUME, volume.value + 5)) }
+  if (e.key === 'ArrowDown') { setUserVolume(Math.max(0, volume.value - 5)) }
   if (e.key === 'm' || e.key === 'M') {
     if (document.activeElement?.tagName === 'INPUT') return
     e.preventDefault()

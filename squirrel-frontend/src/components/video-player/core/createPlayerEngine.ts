@@ -95,6 +95,8 @@ export type PlayerEngine = {
   off: EventEmitter<PlayerEvents>['off']
 }
 
+const MAX_VOLUME = 200
+
 const detectSourceType = (src: string): 'hls' | 'dash' | 'native' => {
   const url = src.toLowerCase()
   if (url.includes('.m3u8') || url.includes('format=m3u8')) return 'hls'
@@ -111,6 +113,10 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   let videoElement: HTMLVideoElement | null = null
   let containerElement: HTMLElement | null = null
+  let audioContext: AudioContext | null = null
+  let audioSourceNode: MediaElementAudioSourceNode | null = null
+  let audioGainNode: GainNode | null = null
+  let audioGainElement: HTMLVideoElement | null = null
 
   let inited = false
   let destroyed = false
@@ -120,7 +126,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   let autoplay = !!options.autoplay
   let autoplayNext = options.autoplayNext !== false
   let muted = !!options.muted
-  let volume = typeof options.volume === 'number' ? options.volume : 100
+  let volume = typeof options.volume === 'number' ? Math.max(0, Math.min(MAX_VOLUME, options.volume)) : 100
   let loop = !!options.loop
   let playbackRate = typeof options.playbackRate === 'number' ? options.playbackRate : 1
 
@@ -220,7 +226,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       currentTime: video?.currentTime ?? 0,
       duration: video?.duration ?? 0,
       buffered: bufferedProgress,
-      volume: video?.volume ?? (volume / 100),
+      volume: volume / 100,
       muted: video?.muted ?? muted,
       playbackRate: video?.playbackRate ?? playbackRate,
       fullscreen: typeof document !== 'undefined' ? !!document.fullscreenElement : false,
@@ -230,9 +236,30 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     }
   }
 
+  const applyAudioGain = (el: HTMLVideoElement): void => {
+    if (!audioContext) {
+      audioContext = new AudioContext()
+    }
+    if (!audioGainNode || audioGainElement !== el) {
+      audioSourceNode?.disconnect()
+      audioGainNode?.disconnect()
+      audioSourceNode = audioContext.createMediaElementSource(el)
+      audioGainNode = audioContext.createGain()
+      audioSourceNode.connect(audioGainNode)
+      audioGainNode.connect(audioContext.destination)
+      audioGainElement = el
+    }
+    el.volume = 1
+    audioGainNode.gain.value = Math.max(0, Math.min(MAX_VOLUME, volume)) / 100
+  }
+
   const applyMediaSettings = (el: HTMLVideoElement | null): void => {
     if (!el) return
-    el.volume = Math.max(0, Math.min(1, volume / 100))
+    if (volume > 100 || audioGainNode) {
+      applyAudioGain(el)
+    } else {
+      el.volume = Math.max(0, Math.min(1, volume / 100))
+    }
     el.muted = muted
     el.playbackRate = playbackRate
     el.loop = loop
@@ -256,7 +283,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     if (hasAutoplay) autoplay = !!next.autoplay
     if (hasAutoplayNext) autoplayNext = !!next.autoplayNext
     if (hasLoop) loop = !!next.loop
-    if (hasVolume) volume = next.volume as number
+    if (hasVolume) volume = Math.max(0, Math.min(MAX_VOLUME, next.volume as number))
     if (hasMuted) muted = next.muted as boolean
     if (hasPlaybackRate) playbackRate = next.playbackRate as number
 
@@ -711,7 +738,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       }
     }
     const onVolumeChange = () => {
-      const v = video.volume * 100
+      const v = audioGainNode ? volume : video.volume * 100
       volume = v
       muted = video.muted
       void adapter.saveConfig({ volume: v, muted: video.muted })
@@ -848,6 +875,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     if (typeof document !== 'undefined') {
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
     }
+    audioSourceNode?.disconnect()
+    audioGainNode?.disconnect()
+    void audioContext?.close()
 
     flushProgress()
 
@@ -881,6 +911,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   const play = async (): Promise<void> => {
     if (!videoElement) return
     try {
+      if (audioContext?.state === 'suspended') {
+        await audioContext.resume()
+      }
       await videoElement.play()
     } catch (e) {
       logger.warn('[PlayerEngine] Play failed', e)
@@ -901,13 +934,13 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   }
 
   const setVolume = (vol: number): void => {
-    const v = Math.max(0, Math.min(100, vol))
+    const v = Math.max(0, Math.min(MAX_VOLUME, vol))
     const shouldUnmute = v > 0 && muted
     volume = v
     if (shouldUnmute) muted = false
 
     if (videoElement) {
-      videoElement.volume = v / 100
+      applyMediaSettings(videoElement)
       if (shouldUnmute) {
         videoElement.muted = false
       }

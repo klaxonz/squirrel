@@ -58,6 +58,8 @@ export type PlayerRuntimeStore = {
   resetForNewVideo: () => void
 }
 
+const MAX_VOLUME = 200
+
 export function createPlayerRuntimeStore(): PlayerRuntimeStore {
   const store = reactive<any>({
     playing: false,
@@ -108,7 +110,7 @@ export function createPlayerRuntimeStore(): PlayerRuntimeStore {
   }
 
   store.setVolume = (value: number): void => {
-    store.volume = Math.max(0, Math.min(100, value))
+    store.volume = Math.max(0, Math.min(MAX_VOLUME, value))
   }
 
   store.setMuted = (value: boolean): void => {
