@@ -4,95 +4,100 @@
       class="mx-auto grid grid-cols-1 transition-[max-width,padding] duration-200"
       :class="isWidescreen ? 'max-w-none lg:grid-cols-[1fr,400px] gap-8 p-6 lg:p-8' : 'max-w-[1800px] lg:grid-cols-[1fr,400px] gap-8 p-6 lg:p-10'"
     >
-      <!-- Player Section -->
       <div
-        class="relative aspect-video overflow-hidden bg-black shadow-2xl"
-        :class="isWidescreen ? 'lg:col-span-2 rounded-xl' : 'lg:col-start-1 lg:row-start-1 rounded-2xl'"
+        class="min-w-0 space-y-6"
+        :class="isWidescreen ? 'lg:contents' : 'lg:col-start-1 lg:row-start-1'"
       >
+        <!-- Player Section -->
         <div
-          ref="videoPlayerHostRef"
-          class="absolute inset-0 overflow-hidden"
-          :class="isWidescreen ? 'rounded-xl' : 'rounded-2xl'"
-        />
-      </div>
+          class="relative aspect-video overflow-hidden bg-black shadow-2xl"
+          :class="isWidescreen ? 'lg:col-span-2 rounded-xl' : 'rounded-2xl'"
+        >
+          <div
+            ref="videoPlayerHostRef"
+            class="absolute inset-0 overflow-hidden"
+            :class="isWidescreen ? 'rounded-xl' : 'rounded-2xl'"
+          />
+        </div>
 
-      <!-- Main Content -->
-      <div class="min-w-0 space-y-6" :class="{ 'lg:col-start-1 lg:row-start-2': !isWidescreen }">
-        <!-- Video Header Info -->
-        <div v-if="video" class="space-y-6">
-          <div class="space-y-2">
-            <h1 class="text-lg md:text-xl font-semibold tracking-tight leading-[1.3] text-foreground">
-              {{ video.title }}
-            </h1>
-            <div class="flex items-center gap-2 text-sm text-muted-foreground/60 font-medium">
-              <span>{{ videoPublishedText }}</span>
-              <span>·</span>
-              <span v-if="(video as any)?.site" class="uppercase tracking-widest text-[10px] bg-accent/50 text-muted-foreground px-1.5 py-0.5 rounded-[4px] font-bold">{{ (video as any).site }}</span>
+        <!-- Main Content -->
+        <div class="min-w-0 space-y-6" :class="{ 'lg:col-start-1 lg:row-start-2': isWidescreen }">
+          <!-- Video Header Info -->
+          <div v-if="video" class="space-y-6">
+            <div class="space-y-2">
+              <h1 class="text-lg md:text-xl font-semibold tracking-tight leading-[1.3] text-foreground">
+                {{ video.title }}
+              </h1>
+              <div class="flex items-center gap-2 text-sm text-muted-foreground/60 font-medium">
+                <span>{{ videoPublishedText }}</span>
+                <span>·</span>
+                <span v-if="(video as any)?.site" class="uppercase tracking-widest text-[10px] bg-accent/50 text-muted-foreground px-1.5 py-0.5 rounded-[4px] font-bold">{{ (video as any).site }}</span>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap items-center justify-between gap-4 py-1">
+              <div class="flex items-center gap-6">
+                <div v-if="primarySubscription" class="flex items-center gap-3 group cursor-pointer" @click="goToChannelDetail(primarySubscription.id)">
+                  <SubscriptionAvatar :src="primarySubscription.avatar" :name="primarySubscription.name" size="xl" />
+                  <div class="flex flex-col -space-y-0.5">
+                    <span class="font-bold text-[15px] group-hover:text-primary transition-colors tracking-tight">{{ primarySubscription.name }}</span>
+                    <span class="text-[12px] text-muted-foreground/60 font-medium">{{ primarySubscription.total_videos || 0 }} 项视频</span>
+                  </div>
+                </div>
+                <button class="h-7 px-3 bg-foreground text-background text-xs font-semibold rounded-full hover:opacity-90 active:scale-95 transition-all shadow-sm">订阅</button>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <div class="flex bg-accent/40 rounded-full p-0.5 ring-1 ring-border/20">
+                  <button 
+                    v-for="action in videoActions.filter(a => ['like', 'dislike'].includes(a.key))" 
+                    :key="action.key"
+                    class="flex items-center gap-2 px-4 py-1.5 rounded-full hover:bg-accent/60 transition-all text-[13px] font-semibold"
+                    :class="{ 'text-foreground bg-background shadow-sm ring-1 ring-border/10': action.active, 'text-muted-foreground': !action.active }"
+                    @click="handleVideoAction(action)"
+                  >
+                    <AppIcon :name="action.icon" class="w-4 h-4" :stroke-width="action.active ? 2.5 : 2" />
+                    <span v-if="action.label && action.key === 'like'">{{ action.label }}</span>
+                  </button>
+                </div>
+                
+                <button class="w-9 h-9 flex items-center justify-center rounded-full bg-accent/40 hover:bg-accent/60 transition-all active:scale-95 ring-1 ring-border/20 text-muted-foreground hover:text-foreground">
+                  <AppIcon name="share" class="w-4 h-4" />
+                </button>
+                <button class="w-9 h-9 flex items-center justify-center rounded-full bg-accent/40 hover:bg-accent/60 transition-all active:scale-95 ring-1 ring-border/20 text-muted-foreground hover:text-foreground">
+                  <AppIcon name="more" class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div v-if="videoDescription" class="!mt-0 p-4 bg-accent/20 rounded-xl ring-1 ring-border/10 group">
+              <p
+                ref="descriptionTextRef"
+                class="text-[14px] leading-relaxed text-foreground/80 whitespace-pre-wrap"
+                :class="{ 'line-clamp-3': !descriptionExpanded }"
+              >
+                {{ videoDescription }}
+              </p>
+              <button
+                v-if="hasLongDescription"
+                type="button"
+                class="mt-3 text-[13px] font-bold text-foreground hover:text-primary transition-colors"
+                @click="descriptionExpanded = !descriptionExpanded"
+              >
+                {{ descriptionExpanded ? '收起' : '展开' }}
+              </button>
             </div>
           </div>
           
-          <div class="flex flex-wrap items-center justify-between gap-4 py-1">
-            <div class="flex items-center gap-6">
-              <div v-if="primarySubscription" class="flex items-center gap-3 group cursor-pointer" @click="goToChannelDetail(primarySubscription.id)">
-                <SubscriptionAvatar :src="primarySubscription.avatar" :name="primarySubscription.name" size="xl" />
-                <div class="flex flex-col -space-y-0.5">
-                  <span class="font-bold text-[15px] group-hover:text-primary transition-colors tracking-tight">{{ primarySubscription.name }}</span>
-                  <span class="text-[12px] text-muted-foreground/60 font-medium">{{ primarySubscription.total_videos || 0 }} 项视频</span>
-                </div>
+          <!-- Skeleton -->
+          <div v-else class="space-y-4 animate-pulse">
+            <div class="h-8 bg-muted rounded-lg w-3/4" />
+            <div class="flex items-center gap-4">
+              <div class="h-12 w-12 rounded-full bg-muted" />
+              <div class="space-y-2">
+                <div class="h-4 bg-muted rounded w-32" />
+                <div class="h-3 bg-muted rounded w-20" />
               </div>
-              <button class="h-7 px-3 bg-foreground text-background text-xs font-semibold rounded-full hover:opacity-90 active:scale-95 transition-all shadow-sm">订阅</button>
-            </div>
-
-            <div class="flex items-center gap-2">
-              <div class="flex bg-accent/40 rounded-full p-0.5 ring-1 ring-border/20">
-                <button 
-                  v-for="action in videoActions.filter(a => ['like', 'dislike'].includes(a.key))" 
-                  :key="action.key"
-                  class="flex items-center gap-2 px-4 py-1.5 rounded-full hover:bg-accent/60 transition-all text-[13px] font-semibold"
-                  :class="{ 'text-foreground bg-background shadow-sm ring-1 ring-border/10': action.active, 'text-muted-foreground': !action.active }"
-                  @click="handleVideoAction(action)"
-                >
-                  <AppIcon :name="action.icon" class="w-4 h-4" :stroke-width="action.active ? 2.5 : 2" />
-                  <span v-if="action.label && action.key === 'like'">{{ action.label }}</span>
-                </button>
-              </div>
-              
-              <button class="w-9 h-9 flex items-center justify-center rounded-full bg-accent/40 hover:bg-accent/60 transition-all active:scale-95 ring-1 ring-border/20 text-muted-foreground hover:text-foreground">
-                <AppIcon name="share" class="w-4 h-4" />
-              </button>
-              <button class="w-9 h-9 flex items-center justify-center rounded-full bg-accent/40 hover:bg-accent/60 transition-all active:scale-95 ring-1 ring-border/20 text-muted-foreground hover:text-foreground">
-                <AppIcon name="more" class="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div v-if="videoDescription" class="!mt-0 p-4 bg-accent/20 rounded-xl ring-1 ring-border/10 group">
-            <p
-              ref="descriptionTextRef"
-              class="text-[14px] leading-relaxed text-foreground/80 whitespace-pre-wrap"
-              :class="{ 'line-clamp-3': !descriptionExpanded }"
-            >
-              {{ videoDescription }}
-            </p>
-            <button
-              v-if="hasLongDescription"
-              type="button"
-              class="mt-3 text-[13px] font-bold text-foreground hover:text-primary transition-colors"
-              @click="descriptionExpanded = !descriptionExpanded"
-            >
-              {{ descriptionExpanded ? '收起' : '展开' }}
-            </button>
-          </div>
-        </div>
-        
-        <!-- Skeleton -->
-        <div v-else class="space-y-4 animate-pulse">
-          <div class="h-8 bg-muted rounded-lg w-3/4" />
-          <div class="flex items-center gap-4">
-            <div class="h-12 w-12 rounded-full bg-muted" />
-            <div class="space-y-2">
-              <div class="h-4 bg-muted rounded w-32" />
-              <div class="h-3 bg-muted rounded w-20" />
             </div>
           </div>
         </div>
@@ -101,7 +106,7 @@
       <!-- Sidebar Content (Related/Clips/Playlist) -->
       <div
         class="space-y-6"
-        :class="isWidescreen ? 'lg:col-start-2 lg:row-start-2' : 'lg:col-start-2 lg:row-start-1 lg:row-span-2'"
+        :class="isWidescreen ? 'lg:col-start-2 lg:row-start-2' : 'lg:col-start-2 lg:row-start-1'"
       >
         <div class="flex p-0.5 bg-accent/30 rounded-lg ring-1 ring-border/20">
           <button 
