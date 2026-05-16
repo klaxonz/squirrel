@@ -2,6 +2,7 @@ import {
   clampLimit,
   fetchText,
   findBalancedJson,
+  normalizeUrl,
   normalizeQuery,
   parseDuration,
   pickText,
@@ -23,6 +24,30 @@ const collectVideoRenderers = (node, output) => {
     return
   }
   Object.values(node).forEach((value) => collectVideoRenderers(value, output))
+}
+
+const extractOwnerProfile = (renderer) => {
+  const ownerText = renderer?.ownerText || renderer?.longBylineText || renderer?.shortBylineText
+  const name = pickText(ownerText)
+  const ownerRun = Array.isArray(ownerText?.runs) ? ownerText.runs.find((run) => run?.navigationEndpoint) : null
+  const browseEndpoint = ownerRun?.navigationEndpoint?.browseEndpoint
+  const webUrl = ownerRun?.navigationEndpoint?.commandMetadata?.webCommandMetadata?.url
+    || browseEndpoint?.canonicalBaseUrl
+    || ''
+  const avatar = pickThumbnail(
+    renderer?.channelThumbnailSupportedRenderers?.channelThumbnailWithLinkRenderer?.thumbnail?.thumbnails
+  )
+
+  if (!name) return null
+
+  return {
+    id: browseEndpoint?.browseId || null,
+    type: 'CHANNEL',
+    name,
+    url: normalizeUrl(webUrl, ORIGIN),
+    avatar,
+    is_nsfw: false,
+  }
 }
 
 export const searchYouTubeVideos = async ({ query, limit, page, fetchImpl, buildCookieHeader }) => {
@@ -55,6 +80,7 @@ export const searchYouTubeVideos = async ({ query, limit, page, fetchImpl, build
 
   return uniqueByUrl(renderers.map((renderer) => {
     const videoId = String(renderer?.videoId || '').trim()
+    const ownerProfile = extractOwnerProfile(renderer)
     return {
       source: 'remote',
       site: SITE,
@@ -65,7 +91,10 @@ export const searchYouTubeVideos = async ({ query, limit, page, fetchImpl, build
       duration: parseDuration(pickText(renderer?.lengthText)),
       publish_date: null,
       published_text: pickText(renderer?.publishedTimeText),
-      uploader: pickText(renderer?.ownerText),
+      uploader: ownerProfile?.name || pickText(renderer?.ownerText),
+      uploader_url: ownerProfile?.url || '',
+      uploader_avatar: ownerProfile?.avatar || '',
+      subscriptions: ownerProfile ? [ownerProfile] : [],
       description: pickText(renderer?.detailedMetadataSnippets?.[0]?.snippetText),
     }
   })).filter((item) => item.id && item.title && item.url).slice(0, resultLimit)

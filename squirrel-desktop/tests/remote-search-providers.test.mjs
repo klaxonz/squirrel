@@ -26,6 +26,7 @@ const loadJavdbDocumentHtml = async () => `
       <div class="video-title"><strong>DEMO-001</strong> Demo JAVDB</div>
       <div class="score"><span class="value">7.5</span></div>
       <div class="meta">2026-01-02</div>
+      <a href="/actors/demo-actor">Demo Actor</a>
     </a>
   </div>
 `
@@ -38,6 +39,18 @@ test('desktop bilibili remote search maps api results', async () => {
     page: 2,
     buildCookieHeader,
     fetchImpl: async (url) => {
+      if (url.includes('/x/web-interface/card')) {
+        return jsonResponse({
+          data: {
+            card: {
+              mid: '12345',
+              name: 'Uploader',
+              face: '//i0.hdslb.com/avatar.jpg',
+            },
+          },
+        })
+      }
+
       requestedUrl = url
       return jsonResponse({
         data: {
@@ -50,6 +63,8 @@ test('desktop bilibili remote search maps api results', async () => {
               duration: '01:02',
               pubdate: 1700000000,
               author: 'Uploader',
+              mid: 12345,
+              upic: '',
             },
           ],
         },
@@ -61,6 +76,16 @@ test('desktop bilibili remote search maps api results', async () => {
   assert.equal(items[0].site, 'bilibili')
   assert.equal(items[0].title, 'Demo Video')
   assert.equal(items[0].duration, 62)
+  assert.equal(items[0].uploader_url, 'https://space.bilibili.com/12345')
+  assert.equal(items[0].uploader_avatar, 'https://i0.hdslb.com/avatar.jpg')
+  assert.deepEqual(items[0].subscriptions, [{
+    id: 12345,
+    type: 'CHANNEL',
+    name: 'Uploader',
+    url: 'https://space.bilibili.com/12345',
+    avatar: 'https://i0.hdslb.com/avatar.jpg',
+    is_nsfw: false,
+  }])
   assert.equal(new URL(requestedUrl).searchParams.get('page'), '2')
 })
 
@@ -78,7 +103,22 @@ test('desktop youtube remote search extracts video renderers', async () => {
                     title: { runs: [{ text: 'Demo YouTube Video' }] },
                     thumbnail: { thumbnails: [{ url: 'https://i.ytimg.com/vi/abc123/hqdefault.jpg' }] },
                     lengthText: { simpleText: '1:03' },
-                    ownerText: { runs: [{ text: 'Demo Channel' }] },
+                    ownerText: {
+                      runs: [{
+                        text: 'Demo Channel',
+                        navigationEndpoint: {
+                          browseEndpoint: { browseId: 'UCdemo', canonicalBaseUrl: '/@demo' },
+                          commandMetadata: { webCommandMetadata: { url: '/@demo' } },
+                        },
+                      }],
+                    },
+                    channelThumbnailSupportedRenderers: {
+                      channelThumbnailWithLinkRenderer: {
+                        thumbnail: {
+                          thumbnails: [{ url: 'https://yt3.ggpht.com/demo-avatar=s88-c-k-c0x00ffffff-no-rj' }],
+                        },
+                      },
+                    },
                     publishedTimeText: { simpleText: '2 days ago' },
                   },
                 },
@@ -101,6 +141,16 @@ test('desktop youtube remote search extracts video renderers', async () => {
   assert.equal(items[0].site, 'youtube')
   assert.equal(items[0].url, 'https://www.youtube.com/watch?v=abc123')
   assert.equal(items[0].duration, 63)
+  assert.equal(items[0].uploader_url, 'https://www.youtube.com/@demo')
+  assert.equal(items[0].uploader_avatar, 'https://yt3.ggpht.com/demo-avatar=s88-c-k-c0x00ffffff-no-rj')
+  assert.deepEqual(items[0].subscriptions, [{
+    id: 'UCdemo',
+    type: 'CHANNEL',
+    name: 'Demo Channel',
+    url: 'https://www.youtube.com/@demo',
+    avatar: 'https://yt3.ggpht.com/demo-avatar=s88-c-k-c0x00ffffff-no-rj',
+    is_nsfw: false,
+  }])
 })
 
 test('desktop youtube remote search does not repeat first page for page requests', async () => {
@@ -127,6 +177,8 @@ test('desktop pornhub remote search parses video list items', async () => {
         <a href="/view_video.php?viewkey=ph-demo" title="Demo PH" data-title="Demo PH">
           <img data-mediumthumb="https://ei.phncdn.com/demo.jpg">
         </a>
+        <div class="usernameWrap"><a href="/users/demo-channel">Demo Channel</a></div>
+        <a href="/pornstar/demo-actor">Demo Actor</a>
         <var class="duration">04:05</var>
       </li>
     `),
@@ -136,6 +188,19 @@ test('desktop pornhub remote search parses video list items', async () => {
   assert.equal(items[0].site, 'pornhub')
   assert.equal(items[0].title, 'Demo PH')
   assert.equal(items[0].duration, 245)
+  assert.deepEqual(items[0].subscriptions, [{
+    type: 'CHANNEL',
+    name: 'Demo Channel',
+    url: 'https://www.pornhub.com/users/demo-channel',
+    avatar: '',
+    is_nsfw: true,
+  }])
+  assert.deepEqual(items[0].actors, [{
+    type: 'ACTOR',
+    name: 'Demo Actor',
+    url: 'https://www.pornhub.com/pornstar/demo-actor',
+    avatar: '',
+  }])
 })
 
 test('desktop youporn remote search parses watch links', async () => {
@@ -155,6 +220,8 @@ test('desktop youporn remote search parses watch links', async () => {
         </a>
         <span class="duration">05:06</span>
         <a href="/watch/123/demo/" class="video-title-text"><span>Demo YP</span></a>
+        <a href="/channels/demo-channel/">Demo Channel</a>
+        <a href="/pornstar/demo-actor/">Demo Actor</a>
       </article>
     `),
   })
@@ -164,6 +231,19 @@ test('desktop youporn remote search parses watch links', async () => {
   assert.equal(items[0].url, 'https://www.youporn.com/watch/123/demo/')
   assert.equal(items[0].thumbnail, 'https://fi.ypncdn.com/demo.jpg')
   assert.equal(items[0].duration, 306)
+  assert.deepEqual(items[0].subscriptions, [{
+    type: 'CHANNEL',
+    name: 'Demo Channel',
+    url: 'https://www.youporn.com/channels/demo-channel/',
+    avatar: '',
+    is_nsfw: true,
+  }])
+  assert.deepEqual(items[0].actors, [{
+    type: 'ACTOR',
+    name: 'Demo Actor',
+    url: 'https://www.youporn.com/pornstar/demo-actor/',
+    avatar: '',
+  }])
 })
 
 test('desktop youporn remote search keeps dynamic cdn thumbnails', async () => {
@@ -205,6 +285,12 @@ test('desktop javdb remote search parses movie items', async () => {
   assert.equal(items[0].title, 'DEMO-001 Demo JAVDB')
   assert.equal(items[0].url, 'https://javdb.com/v/demo')
   assert.equal(items[0].publish_date, '2026-01-02')
+  assert.deepEqual(items[0].actors, [{
+    type: 'ACTOR',
+    name: 'Demo Actor',
+    url: 'https://javdb.com/actors/demo-actor',
+    avatar: '',
+  }])
 })
 
 test('desktop remote search response carries pagination metadata', async () => {

@@ -8,6 +8,27 @@ const extractAttribute = (source, name) => {
   return match ? match[1] : ''
 }
 
+const extractActorLinks = (block) => {
+  const actors = []
+  const seen = new Set()
+  const linkPattern = /<a\b[^>]*href=["']([^"']*\/actors?\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi
+  let match
+  while ((match = linkPattern.exec(block))) {
+    const url = normalizeUrl(match[1], ORIGIN)
+    const name = stripHtml(match[2])
+    const key = `${name}:${url}`
+    if (!name || !url || seen.has(key)) continue
+    seen.add(key)
+    actors.push({
+      type: 'ACTOR',
+      name,
+      url,
+      avatar: '',
+    })
+  }
+  return actors
+}
+
 export const searchJavdbVideos = async ({ query, limit, page, loadDocumentHtml }) => {
   const keyword = normalizeQuery(query)
   if (!keyword) return []
@@ -33,6 +54,7 @@ export const searchJavdbVideos = async ({ query, limit, page, loadDocumentHtml }
     const titleMatch = block.match(/class=["'][^"']*video-title[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)
     const scoreMatch = block.match(/class=["'][^"']*score[^"']*["'][\s\S]*?class=["'][^"']*value[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)
     const metaMatch = block.match(/class=["'][^"']*meta[^"']*["'][^>]*>\s*([^<]+)/i)
+    const actors = extractActorLinks(block)
     return {
       source: 'remote',
       site: SITE,
@@ -43,6 +65,7 @@ export const searchJavdbVideos = async ({ query, limit, page, loadDocumentHtml }
       duration: parseDuration(''),
       publish_date: stripHtml(metaMatch?.[1]) || null,
       uploader: stripHtml(scoreMatch?.[1]),
+      actors,
       description: '',
     }
   })).filter((item) => item.title && item.url).slice(0, resultLimit)

@@ -8,6 +8,28 @@ const extractAttribute = (source, name) => {
   return match ? match[1] : ''
 }
 
+const collectProfileLinks = (block, hrefPattern, type) => {
+  const profiles = []
+  const seen = new Set()
+  const linkPattern = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi
+  let match
+  while ((match = linkPattern.exec(block))) {
+    if (!hrefPattern.test(match[1])) continue
+    const url = normalizeUrl(match[1], ORIGIN)
+    const name = stripHtml(match[2])
+    const key = `${name}:${url}`
+    if (!name || !url || seen.has(key)) continue
+    seen.add(key)
+    profiles.push({
+      type,
+      name,
+      url,
+      avatar: '',
+    })
+  }
+  return profiles
+}
+
 export const searchPornhubVideos = async ({ query, limit, page, fetchImpl, buildCookieHeader }) => {
   const keyword = normalizeQuery(query)
   if (!keyword) return []
@@ -35,7 +57,16 @@ export const searchPornhubVideos = async ({ query, limit, page, fetchImpl, build
       || extractAttribute(block, 'data-src')
       || extractAttribute(block, 'src')
     const durationMatch = block.match(/class=["'][^"']*duration[^"']*["'][^>]*>\s*([^<]+)/i)
-    const uploaderMatch = block.match(/class=["'][^"']*usernameWrap[^"']*["'][\s\S]*?>([\s\S]*?)<\/a>/i)
+    const uploaderLink = block.match(/class=["'][^"']*usernameWrap[^"']*["'][\s\S]*?<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i)
+    const uploader = stripHtml(uploaderLink?.[2])
+    const uploaderUrl = normalizeUrl(uploaderLink?.[1] || '', ORIGIN)
+    const subscription = uploader ? {
+      type: 'CHANNEL',
+      name: uploader,
+      url: uploaderUrl,
+      avatar: '',
+      is_nsfw: true,
+    } : null
     return {
       source: 'remote',
       site: SITE,
@@ -45,7 +76,11 @@ export const searchPornhubVideos = async ({ query, limit, page, fetchImpl, build
       thumbnail: normalizeUrl(thumbnail, ORIGIN),
       duration: parseDuration(durationMatch?.[1]),
       publish_date: null,
-      uploader: stripHtml(uploaderMatch?.[1]),
+      uploader,
+      uploader_url: uploaderUrl,
+      uploader_avatar: '',
+      subscriptions: subscription ? [subscription] : [],
+      actors: collectProfileLinks(block, /\/(?:pornstar|model)\//i, 'ACTOR'),
       description: '',
     }
   })).filter((item) => item.title && item.url).slice(0, resultLimit)

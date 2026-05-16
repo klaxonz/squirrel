@@ -32,6 +32,28 @@ const extractThumbnail = (block) => {
   return ''
 }
 
+const collectProfileLinks = (block, hrefPattern, type) => {
+  const profiles = []
+  const seen = new Set()
+  const linkPattern = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi
+  let match
+  while ((match = linkPattern.exec(block))) {
+    if (!hrefPattern.test(match[1])) continue
+    const url = normalizeUrl(match[1], ORIGIN)
+    const name = stripHtml(match[2])
+    const key = `${name}:${url}`
+    if (!name || !url || seen.has(key)) continue
+    seen.add(key)
+    profiles.push({
+      type,
+      name,
+      url,
+      avatar: '',
+    })
+  }
+  return profiles
+}
+
 export const searchYouPornVideos = async ({ query, limit, page, fetchImpl, buildCookieHeader }) => {
   const keyword = normalizeQuery(query)
   if (!keyword) return []
@@ -60,6 +82,11 @@ export const searchYouPornVideos = async ({ query, limit, page, fetchImpl, build
     const title = extractTitle(block)
     const thumbnail = extractThumbnail(block)
     const durationMatch = block.match(/class=["'][^"']*duration[^"']*["'][^>]*>\s*([^<]+)/i)
+    const subscriptions = collectProfileLinks(block, /\/(?:channels|users)\//i, 'CHANNEL')
+      .map((profile) => ({
+        ...profile,
+        is_nsfw: true,
+      }))
     items.push({
       source: 'remote',
       site: SITE,
@@ -69,7 +96,11 @@ export const searchYouPornVideos = async ({ query, limit, page, fetchImpl, build
       thumbnail,
       duration: parseDuration(durationMatch?.[1]),
       publish_date: null,
-      uploader: '',
+      uploader: subscriptions[0]?.name || '',
+      uploader_url: subscriptions[0]?.url || '',
+      uploader_avatar: '',
+      subscriptions,
+      actors: collectProfileLinks(block, /\/(?:pornstar|model)\//i, 'ACTOR'),
       description: '',
     })
   }

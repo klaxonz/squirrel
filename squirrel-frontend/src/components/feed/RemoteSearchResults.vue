@@ -57,10 +57,19 @@
               {{ item.title }}
             </h3>
             <div class="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground/80">
-              <span class="truncate">{{ item.uploader || siteLabel(item.site) }}</span>
+              <SubscriptionAvatar
+                v-if="primarySubscription(item)"
+                :src="primarySubscription(item)?.avatar"
+                :name="primarySubscription(item)?.name"
+                size="xs"
+              />
+              <span class="truncate">{{ primarySubscription(item)?.name || item.uploader || siteLabel(item.site) }}</span>
               <span class="shrink-0 rounded-[4px] bg-accent/50 px-1 py-0 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
                 {{ siteLabel(item.site) }}
               </span>
+            </div>
+            <div v-if="actorText(item)" class="truncate text-[11px] font-medium text-muted-foreground/60">
+              {{ actorText(item) }}
             </div>
             <div class="text-[11px] font-medium text-muted-foreground/50">
               {{ displayDate(item) }}
@@ -91,9 +100,19 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
+import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { formatDuration } from '@/utils/dateFormat'
+
+type RemoteProfile = {
+  id?: string | number | null
+  type?: string | null
+  name: string
+  url?: string | null
+  avatar?: string | null
+  is_nsfw?: boolean | null
+}
 
 type RemoteSearchItem = {
   source: 'remote'
@@ -106,6 +125,10 @@ type RemoteSearchItem = {
   publish_date?: string | null
   published_text?: string | null
   uploader?: string | null
+  uploader_url?: string | null
+  uploader_avatar?: string | null
+  subscriptions?: RemoteProfile[]
+  actors?: RemoteProfile[]
   description?: string | null
 }
 
@@ -158,6 +181,25 @@ const displayDate = (item: RemoteSearchItem) => {
   if (!item.publish_date) return ''
   const date = new Date(item.publish_date)
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString()
+}
+
+const normalizeProfiles = (profiles: RemoteProfile[] | undefined) => {
+  if (!Array.isArray(profiles)) return []
+  return profiles.filter((profile) => profile?.name).map((profile) => ({
+    ...profile,
+    name: String(profile.name || '').trim(),
+    url: profile.url || '',
+    avatar: profile.avatar || '',
+  }))
+}
+
+const primarySubscription = (item: RemoteSearchItem) => {
+  return normalizeProfiles(item.subscriptions)[0] || null
+}
+
+const actorText = (item: RemoteSearchItem) => {
+  const actors = normalizeProfiles(item.actors).map((actor) => actor.name).slice(0, 3)
+  return actors.length ? actors.join(' / ') : ''
 }
 
 const setLoading = (value: boolean) => {
@@ -253,6 +295,15 @@ const hashRemoteUrl = (url: string) => {
 const buildRemoteVideoSeed = (item: RemoteSearchItem) => {
   const url = String(item.url || '').trim()
   const id = `remote-${item.site}-${hashRemoteUrl(url)}`
+  const subscriptions = normalizeProfiles(item.subscriptions)
+  const actors = normalizeProfiles(item.actors)
+  const uploaderSubscription = item.uploader ? {
+    type: 'CHANNEL',
+    name: item.uploader,
+    url: item.uploader_url || '',
+    avatar: item.uploader_avatar || '',
+  } : null
+
   return {
     id,
     source: 'remote',
@@ -264,7 +315,8 @@ const buildRemoteVideoSeed = (item: RemoteSearchItem) => {
     publish_date: item.publish_date || null,
     uploaded_at: item.publish_date || null,
     description: item.description || '',
-    subscriptions: item.uploader ? [{ name: item.uploader }] : [],
+    subscriptions: subscriptions.length ? subscriptions : (uploaderSubscription ? [uploaderSubscription] : []),
+    actors,
   }
 }
 

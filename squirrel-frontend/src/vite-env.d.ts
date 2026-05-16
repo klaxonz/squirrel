@@ -89,6 +89,24 @@ type DesktopRemoteSearchResolver = (
     publish_date?: string | null
     published_text?: string | null
     uploader?: string | null
+    uploader_url?: string | null
+    uploader_avatar?: string | null
+    subscriptions?: Array<{
+      id?: string | number | null
+      type?: string | null
+      name: string
+      url?: string | null
+      avatar?: string | null
+      is_nsfw?: boolean | null
+    }>
+    actors?: Array<{
+      id?: string | number | null
+      type?: string | null
+      name: string
+      url?: string | null
+      avatar?: string | null
+      is_nsfw?: boolean | null
+    }>
     description?: string | null
   }>
   errors?: string[]
