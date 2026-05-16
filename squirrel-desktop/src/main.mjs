@@ -3,7 +3,9 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { app, BrowserWindow, clipboard, ipcMain, Menu, session, shell } from 'electron'
+import { CamoufoxDocumentLoader } from './cloudflare/camoufox-document-loader.mjs'
 import { clearBilibiliPlaybackCache, resolveBilibiliPlayback } from './playback/providers/bilibili/index.mjs'
+import { resolveJavdbPlayback } from './playback/providers/javdb/index.mjs'
 import { resolvePornhubPlayback } from './playback/providers/pornhub/index.mjs'
 import { resolveYouPornPlayback } from './playback/providers/youporn/index.mjs'
 import {
@@ -19,7 +21,6 @@ import { searchRemoteVideos } from './search/providers/index.mjs'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const repoRoot = path.resolve(__dirname, '..', '..')
-const javdbCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'javdb.txt')
 const pornhubCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'pornhub.txt')
 const youpornCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'youporn.txt')
 const youtubeOAuthStateFilePath = path.join(repoRoot, 'config', 'youtube_oauth.json')
@@ -31,6 +32,24 @@ const desktopChromeClientHints = {
   'sec-ch-ua': `"Chromium";v="${desktopChromeMajorVersion}", "Google Chrome";v="${desktopChromeMajorVersion}", "Not-A.Brand";v="99"`,
   'sec-ch-ua-mobile': '?0',
   'sec-ch-ua-platform': '"Windows"',
+}
+const desktopChromeUserAgentMetadata = {
+  brands: [
+    { brand: 'Chromium', version: desktopChromeMajorVersion },
+    { brand: 'Google Chrome', version: desktopChromeMajorVersion },
+    { brand: 'Not-A.Brand', version: '99' },
+  ],
+  fullVersionList: [
+    { brand: 'Chromium', version: desktopChromeVersion },
+    { brand: 'Google Chrome', version: desktopChromeVersion },
+    { brand: 'Not-A.Brand', version: '99.0.0.0' },
+  ],
+  fullVersion: desktopChromeVersion,
+  platform: 'Windows',
+  platformVersion: '10.0.0',
+  architecture: 'x86',
+  model: '',
+  mobile: false,
 }
 const javdbOrigin = 'https://javdb.com'
 const javdbReferer = `${javdbOrigin}/`
@@ -154,6 +173,20 @@ const isJavdbCookieTarget = (targetUrl) => {
   }
 }
 
+const isMissavDocumentTarget = (targetUrl) => {
+  const normalizedUrl = normalizeTargetUrl(targetUrl)
+  if (!normalizedUrl) {
+    return false
+  }
+
+  try {
+    const hostname = new URL(normalizedUrl).hostname.toLowerCase()
+    return hostname === 'missav.ai' || hostname.endsWith('.missav.ai')
+  } catch {
+    return false
+  }
+}
+
 const isBilibiliCookieTarget = (targetUrl) => {
   const normalizedUrl = normalizeTargetUrl(targetUrl)
   if (!normalizedUrl) {
@@ -227,6 +260,7 @@ const SITE_LOGIN_PROFILES = {
     label: 'JavDB',
     loginUrl: 'https://javdb.com/users/sign_in',
     userAgent: desktopChromeUserAgent,
+    userAgentMetadata: desktopChromeUserAgentMetadata,
     acceptLanguage: desktopChromeAcceptLanguage,
     platform: 'Windows',
     cookieHosts: ['javdb.com'],
@@ -300,34 +334,6 @@ const buildCookieHeaderFromCookies = (cookies) => {
   return cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join('; ')
 }
 
-const writeJavdbCookieFile = (cookies) => {
-  const javdbCookies = cookies.filter((cookie) => hostMatchesLoginProfile(cookie.domain, ['javdb.com']))
-  if (!javdbCookies.length) {
-    return
-  }
-
-  fs.mkdirSync(path.dirname(javdbCookieFilePath), { recursive: true })
-  const lines = ['# Netscape HTTP Cookie File']
-  for (const cookie of javdbCookies) {
-    const domain = String(cookie.domain || '').trim() || 'javdb.com'
-    const includeSubdomains = domain.startsWith('.') ? 'TRUE' : 'FALSE'
-    const cookiePath = String(cookie.path || '/').trim() || '/'
-    const secure = cookie.secure ? 'TRUE' : 'FALSE'
-    const expires = Number.isFinite(cookie.expirationDate) ? Math.floor(cookie.expirationDate) : 0
-    const prefix = cookie.httpOnly ? '#HttpOnly_' : ''
-    lines.push([
-      `${prefix}${domain}`,
-      includeSubdomains,
-      cookiePath,
-      secure,
-      String(expires),
-      cookie.name,
-      cookie.value,
-    ].join('\t'))
-  }
-  fs.writeFileSync(javdbCookieFilePath, `${lines.join('\n')}\n`, 'utf8')
-}
-
 const checkJavdbDesktopPageLogin = async (cookieHeader) => {
   const response = await session.defaultSession.fetch(javdbLoginCheckUrl, {
     headers: {
@@ -363,9 +369,7 @@ const checkJavdbDesktopPageLogin = async (cookieHeader) => {
 }
 
 const buildJavdbDesktopLoginStatus = async (profile, cookies) => {
-  const sessionCookieHeader = buildCookieHeaderFromCookies(cookies)
-  const fileCookieHeader = readJavdbCookieFileHeader()
-  const cookieHeader = mergeCookieHeaders(fileCookieHeader, sessionCookieHeader)
+  const cookieHeader = buildCookieHeaderFromCookies(cookies)
   if (!cookieHeader) {
     return {
       site_name: profile.siteName,
@@ -380,9 +384,6 @@ const buildJavdbDesktopLoginStatus = async (profile, cookies) => {
 
   try {
     const status = await checkJavdbDesktopPageLogin(cookieHeader)
-    if (status.logged_in && sessionCookieHeader) {
-      writeJavdbCookieFile(cookies)
-    }
     return {
       site_name: profile.siteName,
       supported: true,
@@ -618,9 +619,6 @@ const clearDesktopSiteSession = async (siteName) => {
   if (profile.siteName === 'bilibili') {
     clearBilibiliPlaybackCache()
   }
-  if (profile.siteName === 'javdb' && fs.existsSync(javdbCookieFilePath)) {
-    fs.rmSync(javdbCookieFilePath)
-  }
   return buildDesktopSiteLoginStatus(profile.siteName)
 }
 
@@ -805,10 +803,6 @@ const prewarmDesktopPlaybackProviders = () => {
   }, 1000)
 }
 
-const readJavdbCookieFileHeader = () => {
-  return readNetscapeCookieFileHeader(javdbCookieFilePath, ['javdb.com'])
-}
-
 const readPornhubCookieFileHeader = () => {
   return readNetscapeCookieFileHeader(pornhubCookieFilePath, [
     'pornhub.com',
@@ -858,19 +852,6 @@ const mergeCookieHeaders = (...cookieHeaders) => {
     .join('; ')
 }
 
-const isJavdbCloudflareChallengeHtml = (html) => {
-  const source = String(html || '')
-  if (/<title>\s*JavDB\b/i.test(source)) {
-    return false
-  }
-  return /<title>[^<]*(?:Attention Required|Just a moment)[^<]*<\/title>|please complete the captcha|cf-error-details|cf-turnstile|challenges\.cloudflare\.com\/turnstile/i
-    .test(source)
-}
-
-const isJavdbAgeGateHtml = (html) => {
-  return /over18-modal|href=["'][^"']*\/over18\?respond=1/i.test(String(html || ''))
-}
-
 const getCookieProfileForUrl = (targetUrl) => {
   if (isJavdbCookieTarget(targetUrl)) return getSiteLoginProfile('javdb')
   if (isBilibiliCookieTarget(targetUrl)) return getSiteLoginProfile('bilibili')
@@ -902,7 +883,7 @@ const buildCookieHeaderForUrl = async (targetUrl) => {
   const sessionCookieHeader = await buildSessionCookieHeaderForUrl(normalizedUrl)
 
   if (isJavdbCookieTarget(normalizedUrl)) {
-    return mergeCookieHeaders(readJavdbCookieFileHeader(), sessionCookieHeader)
+    return sessionCookieHeader
   }
 
   if (isBilibiliCookieTarget(normalizedUrl)) {
@@ -939,10 +920,26 @@ const createSessionFetch = () => {
   }
 }
 
-const JAVDB_AUTO_BYPASS_WAIT_MS = 5000
-const CHALLENGE_CHECK_INTERVAL_MS = 500
 const DOCUMENT_READ_TIMEOUT_MS = 10000
-const TURNSTILE_CLICK_INTERVAL_MS = 2000
+let camoufoxDocumentLoader = null
+
+const getCamoufoxDocumentLoader = () => {
+  if (!camoufoxDocumentLoader) {
+    camoufoxDocumentLoader = new CamoufoxDocumentLoader({
+      electronSession: session.defaultSession,
+      userDataDir: path.join(app.getPath('userData'), 'camoufox-documents'),
+    })
+  }
+  return camoufoxDocumentLoader
+}
+
+const closeCamoufoxDocumentLoader = async () => {
+  const loader = camoufoxDocumentLoader
+  camoufoxDocumentLoader = null
+  if (loader) {
+    await loader.close()
+  }
+}
 
 const waitForDocumentNavigation = async (browserWindow, targetUrl, userAgent, timeoutMs) => {
   let settled = false
@@ -992,128 +989,6 @@ const readBrowserWindowHtml = async (browserWindow) => {
   }
 }
 
-const waitForDocumentAutoBypass = async (browserWindow, timeoutMs = JAVDB_AUTO_BYPASS_WAIT_MS) => {
-  const deadline = Date.now() + timeoutMs
-  while (Date.now() < deadline) {
-    if (browserWindow.isDestroyed()) {
-      throw new Error('JavDB document window was closed')
-    }
-
-    try {
-      const html = await readBrowserWindowHtml(browserWindow)
-      const currentUrl = browserWindow.webContents.getURL()
-      if (!isJavdbCloudflareChallengeHtml(html) && !javdbLoginRedirectPattern.test(currentUrl)) {
-        return html
-      }
-    } catch {
-      // Page is still navigating.
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, CHALLENGE_CHECK_INTERVAL_MS))
-  }
-
-  return ''
-}
-
-const findJavdbTurnstileClickPoint = async (browserWindow) => {
-  try {
-    return await browserWindow.webContents.executeJavaScript(`
-(() => {
-  const isVisible = (rect) => rect && rect.width >= 20 && rect.height >= 20;
-  const fromRect = (rect) => ({ x: rect.left + rect.width * 0.3, y: rect.top + rect.height * 0.5 });
-  const selectors = [
-    'iframe[src*="challenges.cloudflare.com"]',
-    'iframe[title*="challenge" i]',
-    'iframe[title*="turnstile" i]',
-    'input[name="cf-turnstile-response"]',
-    '.cf-turnstile',
-    '[data-sitekey]',
-  ];
-
-  for (const selector of selectors) {
-    for (const node of document.querySelectorAll(selector)) {
-      let current = node;
-      while (current) {
-        const rect = current.getBoundingClientRect();
-        if (isVisible(rect)) return fromRect(rect);
-        current = current.parentElement;
-      }
-    }
-  }
-  return null;
-})()
-`, true)
-  } catch {
-    return null
-  }
-}
-
-const attemptJavdbTurnstileClick = async (browserWindow) => {
-  const point = await findJavdbTurnstileClickPoint(browserWindow)
-  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) {
-    return false
-  }
-
-  const x = Math.round(point.x)
-  const y = Math.round(point.y)
-  browserWindow.webContents.focus()
-  browserWindow.webContents.sendInputEvent({ type: 'mouseMove', x: x - 12, y })
-  browserWindow.webContents.sendInputEvent({ type: 'mouseMove', x, y })
-  browserWindow.webContents.sendInputEvent({ type: 'mouseDown', x, y, button: 'left', clickCount: 1 })
-  browserWindow.webContents.sendInputEvent({ type: 'mouseUp', x, y, button: 'left', clickCount: 1 })
-  return true
-}
-
-const waitForJavdbChallengeAutoResolution = async (browserWindow, timeoutMs) => {
-  if (browserWindow.isDestroyed()) {
-    throw new Error('JavDB document window was closed')
-  }
-
-  const deadline = Date.now() + timeoutMs
-  let lastHtml = ''
-  let lastClickAt = 0
-  while (Date.now() < deadline) {
-    if (browserWindow.isDestroyed()) {
-      throw new Error('JavDB document window was closed')
-    }
-
-    try {
-      lastHtml = await readBrowserWindowHtml(browserWindow)
-      const currentUrl = browserWindow.webContents.getURL()
-      if (!isJavdbCloudflareChallengeHtml(lastHtml) && !javdbLoginRedirectPattern.test(currentUrl)) {
-        return lastHtml
-      }
-      if (Date.now() - lastClickAt >= TURNSTILE_CLICK_INTERVAL_MS) {
-        const clicked = await attemptJavdbTurnstileClick(browserWindow)
-        if (clicked) {
-          lastClickAt = Date.now()
-        }
-      }
-    } catch {
-      // Page is still navigating.
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, CHALLENGE_CHECK_INTERVAL_MS))
-  }
-
-  throw new Error('JavDB Cloudflare auto verification timed out')
-}
-
-const resolveJavdbAgeGate = async (browserWindow, userAgent, timeoutMs) => {
-  const href = String(await browserWindow.webContents.executeJavaScript(`
-(() => {
-  const link = document.querySelector('.over18-modal a[href*="/over18?respond=1"], a[href*="/over18?respond=1"]');
-  return link ? link.getAttribute('href') : '';
-})()
-`, true) || '').trim()
-  if (!href) {
-    throw new Error('JavDB age gate confirmation link was not found')
-  }
-
-  await waitForDocumentNavigation(browserWindow, new URL(href, javdbOrigin).toString(), userAgent, timeoutMs)
-  return readBrowserWindowHtml(browserWindow)
-}
-
 const createDocumentBrowserWindow = async (profile) => {
   const documentWindow = new BrowserWindow({
     width: 1280,
@@ -1131,48 +1006,27 @@ const createDocumentBrowserWindow = async (profile) => {
 
   const userAgent = profile?.userAgent || desktopChromeUserAgent
   documentWindow.webContents.setUserAgent(userAgent)
+  documentWindow.webContents.debugger.attach('1.3')
+  await documentWindow.webContents.debugger.sendCommand('Network.setUserAgentOverride', {
+    userAgent,
+    acceptLanguage: profile?.acceptLanguage || desktopChromeAcceptLanguage,
+    platform: profile?.platform || 'Windows',
+    userAgentMetadata: profile?.userAgentMetadata || desktopChromeUserAgentMetadata,
+  })
 
   return { documentWindow, userAgent }
 }
 
-const loadDocumentHtmlWithBrowserWindow = async (targetUrl, options = {}) => {
-  const normalizedUrl = normalizeTargetUrl(targetUrl)
-  if (!normalizedUrl) {
-    throw new Error('Invalid document URL')
-  }
-
+const loadDocumentHtmlWithBrowserWindowOnce = async (normalizedUrl, options = {}) => {
   const profile = getCookieProfileForUrl(normalizedUrl)
   const timeoutMs = Number(options?.timeoutMs) || 30000
-  const challengeTimeoutMs = Number(options?.challengeTimeoutMs) || 120000
 
-  const entry = await createDocumentBrowserWindow(profile)
-  const { documentWindow, userAgent } = entry
+  const { documentWindow, userAgent } = await createDocumentBrowserWindow(profile)
 
   try {
-    try {
-      await waitForDocumentNavigation(documentWindow, normalizedUrl, userAgent, timeoutMs)
-    } catch (error) {
-      if (!isJavdbCookieTarget(normalizedUrl) || !String(error?.message || '').includes('timed out')) {
-        throw error
-      }
-    }
-
-    let html = await readBrowserWindowHtml(documentWindow)
-    if (isJavdbCookieTarget(normalizedUrl) && isJavdbAgeGateHtml(html)) {
-      html = await resolveJavdbAgeGate(documentWindow, userAgent, timeoutMs)
-    }
-    if (isJavdbCookieTarget(normalizedUrl) && isJavdbCloudflareChallengeHtml(html)) {
-      const autoBypassedHtml = await waitForDocumentAutoBypass(documentWindow)
-      if (autoBypassedHtml) {
-        html = autoBypassedHtml
-      } else {
-        html = await waitForJavdbChallengeAutoResolution(documentWindow, challengeTimeoutMs)
-      }
-    }
-    const finalUrl = documentWindow.webContents.getURL()
-    if (isJavdbCookieTarget(normalizedUrl) && javdbLoginRedirectPattern.test(finalUrl)) {
-      throw new Error('JavDB desktop session is not logged in')
-    }
+    await waitForDocumentNavigation(documentWindow, normalizedUrl, userAgent, timeoutMs)
+    const html = await readBrowserWindowHtml(documentWindow)
+    await session.defaultSession.cookies.flushStore()
     return String(html || '')
   } finally {
     if (!documentWindow.isDestroyed() && documentWindow.webContents.isLoading()) {
@@ -1182,6 +1036,22 @@ const loadDocumentHtmlWithBrowserWindow = async (targetUrl, options = {}) => {
       documentWindow.close()
     }
   }
+}
+
+const loadDocumentHtmlWithBrowserWindow = async (targetUrl, options = {}) => {
+  const normalizedUrl = normalizeTargetUrl(targetUrl)
+  if (!normalizedUrl) {
+    throw new Error('Invalid document URL')
+  }
+
+  if (isJavdbCookieTarget(normalizedUrl) || isMissavDocumentTarget(normalizedUrl)) {
+    return getCamoufoxDocumentLoader().loadHtml(normalizedUrl, {
+      timeoutMs: options?.timeoutMs,
+      challengeTimeoutMs: options?.challengeTimeoutMs,
+    })
+  }
+
+  return loadDocumentHtmlWithBrowserWindowOnce(normalizedUrl, options)
 }
 
 // ── Escape helpers ──────────────────────────────────────────────────────────
@@ -1433,6 +1303,14 @@ const showErrorShell = (mainWindow, details) => {
 const MEDIA_HEADER_RULES = [
   {
     hosts: ['javdb.com'],
+    headers: {
+      'Accept-Language': desktopChromeAcceptLanguage,
+      'User-Agent': desktopChromeUserAgent,
+      ...desktopChromeClientHints,
+    },
+  },
+  {
+    hosts: ['missav.ai'],
     headers: {
       'Accept-Language': desktopChromeAcceptLanguage,
       'User-Agent': desktopChromeUserAgent,
@@ -1718,6 +1596,21 @@ const installDesktopBridgeHandlers = () => {
       cookie,
       fetchImpl: createSessionFetch(),
       forceRefresh: options?.forceRefresh === true,
+    })
+  })
+
+  ipcMain.removeHandler('desktop:resolve-javdb-playback')
+  ipcMain.handle('desktop:resolve-javdb-playback', async (_event, targetUrl, options = {}) => {
+    const normalizedUrl = normalizeTargetUrl(targetUrl)
+    if (!normalizedUrl) {
+      throw new Error('Invalid JavDB URL')
+    }
+
+    return resolveJavdbPlayback(normalizedUrl, {
+      forceRefresh: options?.forceRefresh === true,
+      title: options?.title,
+      videoNo: options?.videoNo,
+      loadDocumentHtml: loadDocumentHtmlWithBrowserWindow,
     })
   })
 
@@ -2059,6 +1952,9 @@ const createMainWindow = () => {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
   })
+  mainWindow.on('closed', () => {
+    void closeCamoufoxDocumentLoader()
+  })
 
   if (windowState.isMaximized) {
     mainWindow.maximize()
@@ -2114,6 +2010,7 @@ if (!hasSingleInstanceLock) {
 }
 
 app.on('window-all-closed', () => {
+  void closeCamoufoxDocumentLoader()
   if (process.platform !== 'darwin') {
     app.quit()
   }

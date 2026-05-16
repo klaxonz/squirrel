@@ -22,6 +22,7 @@ interface DesktopAppBridge {
   reloadApp?: () => void
   openExternal?: (targetUrl: string) => Promise<boolean>
   resolveBilibiliPlayback?: DesktopPlaybackResolver
+  resolveJavdbPlayback?: DesktopPlaybackResolver
   resolvePornhubPlayback?: DesktopPlaybackResolver
   resolveYouPornPlayback?: DesktopPlaybackResolver
   resolveYouTubePlayback?: DesktopPlaybackResolver
@@ -38,7 +39,7 @@ interface DesktopAppBridge {
 
 type DesktopPlaybackResolver = (
   targetUrl: string,
-  options?: { forceRefresh?: boolean }
+  options?: { forceRefresh?: boolean; title?: string; videoNo?: string }
 ) => Promise<{
   stream_type?: 'hls' | 'dash' | 'progressive'
   mpd_url?: string | null

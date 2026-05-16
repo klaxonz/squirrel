@@ -1,0 +1,199 @@
+import { getCachedPayload, normalizeTargetUrl, setCachedPayload } from '../shared/adult-page.mjs'
+
+const MISSAV_ORIGIN = 'https://missav.ai'
+
+const stripHtml = (value) => String(value || '').replace(/<[^>]*>/g, '').trim()
+
+const extractVideoNo = (text) => {
+  const normalized = String(text || '').trim()
+  const match = normalized.match(/\b([A-Za-z]{2,10}-\d{2,})\b/)
+  if (match?.[1]) {
+    return match[1].toUpperCase()
+  }
+  return normalized.split(/\s+/)[0]?.toUpperCase() || ''
+}
+
+const extractJavdbTitle = (htmlText) => {
+  const titleBlocks = [...String(htmlText || '').matchAll(/<div[^>]+class=["'][^"']*\btitle\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi)]
+  for (const block of titleBlocks) {
+    const strongParts = [...block[1].matchAll(/<strong[^>]*>([\s\S]*?)<\/strong>/gi)]
+      .map((match) => stripHtml(match[1]))
+      .filter(Boolean)
+    if (strongParts.length > 0) {
+      return strongParts.join(' ')
+    }
+  }
+
+  const title = String(htmlText || '').match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || ''
+  return stripHtml(title)
+}
+
+const looksLikeChallengePage = (htmlText) => {
+  return /just a moment|cf_chl_|cf-turnstile|challenges\.cloudflare\.com/i.test(String(htmlText || '').toLowerCase())
+}
+
+const extractPartsFromHtml = (htmlText) => {
+  for (const script of String(htmlText || '').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) {
+    const scriptText = script[1] || ''
+    if (!scriptText.includes('m3u8|')) continue
+
+    const match = scriptText.match(/'([^']*m3u8\|[^']*)'/)
+    if (match?.[1]) {
+      return match[1]
+    }
+  }
+  return ''
+}
+
+const extractMissavSearchLinks = (htmlText, baseUrl) => {
+  const links = []
+  for (const block of String(htmlText || '').matchAll(/<div[^>]+class=["'][^"']*\bthumbnail\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi)) {
+    const href = block[1].match(/<a\b[^>]*href=["']([^"']+)["']/i)?.[1]
+    if (!href) continue
+    const resolvedUrl = new URL(href, baseUrl).toString()
+    if (!links.includes(resolvedUrl)) {
+      links.push(resolvedUrl)
+    }
+  }
+  return links
+}
+
+const formatStreamUrl = (parts) => {
+  const urlPath = String(parts || '').split('m3u8|')[1]?.split('|playlist|source')[0] || ''
+  const urlWords = urlPath.split('|')
+  const videoIndex = urlWords.indexOf('video')
+  if (videoIndex < 6) {
+    throw new Error('MissAV stream metadata is invalid')
+  }
+
+  const protocol = urlWords[videoIndex - 1]
+  const videoFormat = urlWords[videoIndex + 1]
+  const m3u8UrlPath = urlWords.slice(0, 5).reverse().join('-')
+  const baseUrlPath = urlWords.slice(5, videoIndex - 1).reverse().join('.')
+  return `${protocol}://${baseUrlPath}/${m3u8UrlPath}/${videoFormat}/${urlWords[videoIndex]}.m3u8`
+}
+
+const loadMissavHtml = async (targetUrl, loadDocumentHtml) => {
+  const htmlText = await loadDocumentHtml(targetUrl, {
+    timeoutMs: 30000,
+    challengeTimeoutMs: 90000,
+  })
+  if (looksLikeChallengePage(htmlText)) {
+    throw new Error('MissAV challenge blocked playback lookup')
+  }
+  return htmlText
+}
+
+const resolveMissavDetailStream = (htmlText, detailUrl, videoNo) => {
+  const parts = extractPartsFromHtml(htmlText)
+  if (!parts) {
+    throw new Error(`MissAV detail page is missing stream metadata for ${videoNo}`)
+  }
+
+  return {
+    streamUrl: formatStreamUrl(parts),
+    referer: detailUrl,
+  }
+}
+
+const resolveMissavStream = async (videoNo, loadDocumentHtml) => {
+  const directUrl = `${MISSAV_ORIGIN}/${videoNo.toLowerCase()}`
+  const directHtml = await loadMissavHtml(directUrl, loadDocumentHtml)
+  const directParts = extractPartsFromHtml(directHtml)
+  if (directParts) {
+    return {
+      streamUrl: formatStreamUrl(directParts),
+      referer: directUrl,
+    }
+  }
+
+  const searchUrl = `${MISSAV_ORIGIN}/search/${videoNo}`
+  const searchHtml = await loadMissavHtml(searchUrl, loadDocumentHtml)
+  const links = extractMissavSearchLinks(searchHtml, searchUrl)
+  if (links.length === 0) {
+    throw new Error(`No MissAV search results found for ${videoNo}`)
+  }
+
+  for (const detailUrl of links) {
+    const detailHtml = await loadMissavHtml(detailUrl, loadDocumentHtml)
+    const parts = extractPartsFromHtml(detailHtml)
+    if (parts) {
+      return {
+        streamUrl: formatStreamUrl(parts),
+        referer: detailUrl,
+      }
+    }
+  }
+
+  throw new Error(`MissAV detail pages are missing stream metadata for ${videoNo}`)
+}
+
+const mapPlaybackPayload = ({ streamUrl, referer, videoNo, targetUrl }) => ({
+  stream_type: 'hls',
+  video_url: streamUrl,
+  audio_url: null,
+  mpd_url: null,
+  mpd_content: null,
+  qualities: null,
+  default_quality_id: null,
+  supports_manual_quality: false,
+  metadata: {
+    provider: 'javdb',
+    video_no: videoNo,
+    source_url: targetUrl,
+    referer,
+  },
+})
+
+export async function resolveJavdbPlayback(targetUrl, {
+  forceRefresh = false,
+  loadDocumentHtml,
+  title: sourceTitle = '',
+  videoNo: sourceVideoNo = '',
+} = {}) {
+  const normalizedUrl = normalizeTargetUrl(targetUrl)
+  if (!normalizedUrl || !new URL(normalizedUrl).hostname.endsWith('javdb.com')) {
+    throw new Error('Invalid JavDB URL')
+  }
+  if (typeof loadDocumentHtml !== 'function') {
+    throw new Error('JavDB playback requires browser document loading')
+  }
+
+  const cacheKey = normalizedUrl
+  if (!forceRefresh) {
+    const cached = getCachedPayload(cacheKey)
+    if (cached) {
+      return cached
+    }
+  }
+
+  let videoNo = extractVideoNo(sourceVideoNo || sourceTitle)
+  if (!videoNo) {
+    const javdbHtml = await loadDocumentHtml(normalizedUrl, {
+      timeoutMs: 30000,
+      challengeTimeoutMs: 90000,
+    })
+    const title = extractJavdbTitle(javdbHtml)
+    videoNo = extractVideoNo(title)
+  }
+  if (!videoNo) {
+    throw new Error('JavDB video number was not found')
+  }
+
+  const stream = await resolveMissavStream(videoNo, loadDocumentHtml)
+  const payload = mapPlaybackPayload({
+    ...stream,
+    videoNo,
+    targetUrl: normalizedUrl,
+  })
+  setCachedPayload(cacheKey, payload)
+  return payload
+}
+
+export const __testing = {
+  extractVideoNo,
+  extractJavdbTitle,
+  extractPartsFromHtml,
+  extractMissavSearchLinks,
+  formatStreamUrl,
+}

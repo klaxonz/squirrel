@@ -124,6 +124,7 @@ const emit = defineEmits(['loading-change', 'error'])
 const REMOTE_SEARCH_TIMEOUT_MS = 95000
 const REMOTE_PLAYABLE_SITE_PATTERNS: Record<string, RegExp> = {
   bilibili: /(?:bilibili\.com\/video\/|b23\.tv\/)/i,
+  javdb: /javdb\.com\/(?:v|video)\//i,
   pornhub: /pornhub\.com\/(?:view_video\.php|video\/|embed\/)/i,
   youtube: /(?:youtube\.com\/|youtu\.be\/)/i,
   youporn: /youporn\.com\/watch\//i,

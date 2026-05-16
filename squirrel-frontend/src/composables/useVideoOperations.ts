@@ -10,6 +10,7 @@ type VideoUrlOptions = {
 
 type PlaybackVideoLike = {
   url?: string | null
+  title?: string | null
 }
 
 type ApiResult<T> = { data?: T | null; error?: any }
@@ -48,9 +49,12 @@ const getDesktopBridge = () => {
   return desktopWindow.desktopApp || null
 }
 
+const DESKTOP_PLAYBACK_TIMEOUT_MS = 120000
+
 type DesktopResolverKey =
   | 'resolveYouTubePlayback'
   | 'resolveBilibiliPlayback'
+  | 'resolveJavdbPlayback'
   | 'resolvePornhubPlayback'
   | 'resolveYouPornPlayback'
 
@@ -74,6 +78,11 @@ const DESKTOP_PLAYBACK_PROVIDERS: DesktopPlaybackProvider[] = [
     matches: (url) => includesAny(url, ['bilibili.com/video/', 'b23.tv/']),
   },
   {
+    key: 'resolveJavdbPlayback',
+    debugLabel: 'JavDB',
+    matches: (url) => includesAny(url, ['javdb.com/v/', 'javdb.com/video/']),
+  },
+  {
     key: 'resolvePornhubPlayback',
     debugLabel: 'Pornhub',
     matches: (url) => includesAny(url, ['pornhub.com/view_video.php', 'pornhub.com/video/', 'pornhub.com/embed/']),
@@ -89,6 +98,7 @@ const resolveDesktopPlayback = async (
   provider: DesktopPlaybackProvider,
   videoUrl: string,
   options: VideoUrlOptions = {},
+  playbackVideo: PlaybackVideoLike | null = null,
 ): Promise<VideoUrlInfo | null> => {
   const bridge = getDesktopBridge()
   const resolver = bridge?.[provider.key]
@@ -96,9 +106,20 @@ const resolveDesktopPlayback = async (
     return null
   }
 
-  return resolver(videoUrl, {
-    forceRefresh: options.forceRefresh === true,
-  })
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      resolver(videoUrl, {
+        forceRefresh: options.forceRefresh === true,
+        title: playbackVideo?.title || undefined,
+      }),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${provider.debugLabel} desktop playback timed out`)), DESKTOP_PLAYBACK_TIMEOUT_MS)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
 }
 
 const isDesktopPlaybackClient = () => {
@@ -136,7 +157,7 @@ export default function useVideoOperations() {
 
       if (isDesktopClient && matchedDesktopProvider) {
         Logger.debug(`[getPlaybackSource] Resolving ${matchedDesktopProvider.debugLabel} playback via desktop bridge`, { videoId, forceRefresh })
-        data = await resolveDesktopPlayback(matchedDesktopProvider, playbackUrl, { forceRefresh })
+        data = await resolveDesktopPlayback(matchedDesktopProvider, playbackUrl, { forceRefresh }, playbackVideo)
       }
 
       if (!data) {
