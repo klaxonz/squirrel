@@ -92,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
@@ -150,7 +150,7 @@ const profile = ref<RemoteProfile>({
 const loading = ref(false)
 const allLoaded = ref(false)
 const currentPage = ref(1)
-const nextCursor = ref<unknown>(null)
+const nextCursor = shallowRef<unknown>(null)
 const errorMessage = ref('')
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 
@@ -220,7 +220,7 @@ const loadPage = async (page: number) => {
       url: channelUrl.value,
       limit: 30,
       page,
-      cursor: page > 1 ? nextCursor.value : undefined,
+      cursor: page > 1 && nextCursor.value ? { ...(nextCursor.value as Record<string, unknown>) } : undefined,
       profile: routeProfile.value,
     })
     if (currentToken !== requestToken) return
