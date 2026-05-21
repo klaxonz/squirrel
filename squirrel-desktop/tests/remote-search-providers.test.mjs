@@ -498,7 +498,7 @@ test('desktop remote search response carries pagination metadata', async () => {
   assert.equal(result.items.length, 1)
 })
 
-test('desktop remote search interleaves all site results before limiting', async () => {
+test('desktop all-site remote search interleaves lightweight site results before limiting', async () => {
   const javdbDocumentOptions = []
   const result = await searchRemoteVideos({
     query: 'demo',
@@ -542,8 +542,9 @@ test('desktop remote search interleaves all site results before limiting', async
   })
 
   assert.equal(result.items.length, 3)
-  assert.deepEqual(result.items.map((item) => item.site), ['bilibili', 'javdb', 'pornhub'])
-  assert.equal(javdbDocumentOptions[0].timeoutMs, 30000)
+  assert.deepEqual(result.items.map((item) => item.site), ['bilibili', 'pornhub', 'bilibili'])
+  assert.equal(javdbDocumentOptions.length, 0)
+  assert.deepEqual(result.sites, ['bilibili', 'youtube', 'pornhub', 'youporn'])
 })
 
 test('desktop remote search does not wait forever for a stalled site', async () => {
@@ -571,7 +572,92 @@ test('desktop remote search does not wait forever for a stalled site', async () 
   })
 
   assert.deepEqual(result.items.map((item) => item.site), ['bilibili'])
-  assert.ok(result.errors.some((message) => message.includes('javdb search timed out')))
+  assert.equal(result.has_more, false)
+  assert.equal(result.partial, false)
+})
+
+test('desktop all-site remote search returns initial ready sites without waiting for slow sites', async () => {
+  const startedAt = Date.now()
+  const result = await searchRemoteVideos({
+    query: 'demo',
+    site: 'all',
+    limit: 3,
+    page: 1,
+    providerTimeoutMs: 10000,
+    buildCookieHeader,
+    loadDocumentHtml: async () => new Promise(() => {}),
+    fetchImpl: async (url) => {
+      const targetUrl = new URL(url)
+      if (targetUrl.hostname.includes('bilibili')) {
+        return jsonResponse({
+          data: {
+            result: [
+              { bvid: 'BV1', title: 'Bilibili 1', arcurl: 'https://www.bilibili.com/video/BV1' },
+            ],
+          },
+        })
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10000))
+      return htmlResponse('')
+    },
+  })
+
+  assert.ok(Date.now() - startedAt < 5000)
+  assert.deepEqual(result.items.map((item) => item.site), ['bilibili'])
+  assert.equal(result.has_more, false)
+  assert.equal(result.partial, true)
+  assert.deepEqual(result.pending_sites, ['youtube', 'pornhub', 'youporn'])
+})
+
+test('desktop all-site remote search keeps later pages on lightweight sites', async () => {
+  const javdbDocumentOptions = []
+  await searchRemoteVideos({
+    query: 'demo',
+    site: 'all',
+    limit: 3,
+    page: 2,
+    providerTimeoutMs: 20,
+    buildCookieHeader,
+    loadDocumentHtml: async (_url, options) => {
+      javdbDocumentOptions.push(options)
+      return loadJavdbDocumentHtml()
+    },
+    fetchImpl: async () => htmlResponse(''),
+  })
+
+  assert.equal(javdbDocumentOptions.length, 0)
+})
+
+test('desktop all-site remote search returns later ready pages without waiting for slow sites', async () => {
+  const startedAt = Date.now()
+  const result = await searchRemoteVideos({
+    query: 'demo',
+    site: 'all',
+    limit: 3,
+    page: 2,
+    providerTimeoutMs: 10000,
+    buildCookieHeader,
+    loadDocumentHtml: async () => new Promise(() => {}),
+    fetchImpl: async (url) => {
+      const targetUrl = new URL(url)
+      if (targetUrl.hostname.includes('bilibili')) {
+        return jsonResponse({
+          data: {
+            result: [
+              { bvid: 'BV2', title: 'Bilibili 2', arcurl: 'https://www.bilibili.com/video/BV2' },
+            ],
+          },
+        })
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10000))
+      return htmlResponse('')
+    },
+  })
+
+  assert.ok(Date.now() - startedAt < 5000)
+  assert.deepEqual(result.items.map((item) => item.site), ['bilibili'])
+  assert.equal(result.partial, true)
+  assert.deepEqual(result.pending_sites, ['youtube', 'pornhub', 'youporn'])
 })
 
 test('desktop javdb site search requests automatic challenge solving window time', async () => {

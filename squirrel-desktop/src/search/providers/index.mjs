@@ -13,8 +13,18 @@ const PROVIDERS = {
   youtube: searchYouTubeVideos,
 }
 
+const ALL_SITE_NAMES = [
+  'bilibili',
+  'youtube',
+  'pornhub',
+  'youporn',
+]
+
 const SEARCH_TIMEOUT_MS = 30000
 const JAVDB_SEARCH_TIMEOUT_MS = 90000
+const ALL_SEARCH_WAIT_MS = 1800
+const ALL_SEARCH_READY_GRACE_MS = 250
+const ALL_SEARCH_MIN_READY_ITEMS = 12
 
 const SITE_ALIASES = {
   all: 'all',
@@ -79,6 +89,45 @@ const interleaveSiteItems = (siteResults, limit) => {
   return output
 }
 
+const countCompletedItems = (siteResults) => {
+  return siteResults.reduce((total, siteResult) => {
+    return total + (Array.isArray(siteResult.items) ? siteResult.items.length : 0)
+  }, 0)
+}
+
+const waitForAllSiteResults = async (searchTasks, waitMs, readyGraceMs, minReadyItems) => {
+  const pending = new Set(searchTasks)
+  const completed = []
+  const errors = []
+  const deadline = Date.now() + waitMs
+  let readyDeadline = null
+
+  while (pending.size > 0) {
+    const activeDeadline = readyDeadline ? Math.min(deadline, readyDeadline) : deadline
+    if (Date.now() >= activeDeadline) break
+    const timeoutMs = activeDeadline - Date.now()
+    const result = await Promise.race([
+      ...Array.from(pending).map((task) => task.promise),
+      new Promise((resolve) => {
+        setTimeout(() => resolve(null), timeoutMs)
+      }),
+    ])
+    if (!result) break
+
+    pending.delete(result.task)
+    if (result.status === 'fulfilled') {
+      completed.push(result.value)
+      if (!readyDeadline && countCompletedItems(completed) >= minReadyItems) {
+        readyDeadline = Date.now() + readyGraceMs
+      }
+    } else {
+      errors.push(String(result.reason?.message || result.reason || 'Remote search failed'))
+    }
+  }
+
+  return { completed, errors, pendingCount: pending.size }
+}
+
 export const searchRemoteVideos = async ({
   query,
   site = 'all',
@@ -107,14 +156,15 @@ export const searchRemoteVideos = async ({
   const parsedProviderTimeoutMs = Number(providerTimeoutMs)
   const hasProviderTimeoutMs = Number.isFinite(parsedProviderTimeoutMs) && parsedProviderTimeoutMs > 0
   const searchTimeoutMs = hasProviderTimeoutMs ? parsedProviderTimeoutMs : SEARCH_TIMEOUT_MS
-  const siteNames = normalizedSite === 'all' ? Object.keys(PROVIDERS) : [normalizedSite]
+  const siteNames = normalizedSite === 'all' ? ALL_SITE_NAMES : [normalizedSite]
   const unknownSite = siteNames.find((siteName) => !PROVIDERS[siteName])
   if (unknownSite) {
     throw new Error(`Remote search site is not supported: ${unknownSite}`)
   }
 
-  const settled = await Promise.allSettled(siteNames.map(async (siteName) => {
-    const providerResult = await searchProviderWithTimeout(siteName, {
+  const searchTasks = siteNames.map((siteName) => {
+    const task = {}
+    task.promise = searchProviderWithTimeout(siteName, {
       query: keyword,
       limit: resultLimit,
       page: resultPage,
@@ -122,27 +172,54 @@ export const searchRemoteVideos = async ({
       buildCookieHeader,
       loadDocumentHtml,
     }, searchTimeoutMs, hasProviderTimeoutMs)
-    return {
-      site: siteName,
-      items: Array.isArray(providerResult) ? providerResult : providerResult?.items,
-      has_more: Array.isArray(providerResult) ? undefined : providerResult?.has_more,
-    }
-  }))
+      .then((providerResult) => ({
+        task,
+        status: 'fulfilled',
+        value: {
+          site: siteName,
+          items: Array.isArray(providerResult) ? providerResult : providerResult?.items,
+          has_more: Array.isArray(providerResult) ? undefined : providerResult?.has_more,
+        },
+      }))
+      .catch((reason) => ({
+        task,
+        status: 'rejected',
+        reason,
+      }))
+    return task
+  })
+
+  const settled = normalizedSite === 'all'
+    ? await waitForAllSiteResults(
+      searchTasks,
+      ALL_SEARCH_WAIT_MS,
+      ALL_SEARCH_READY_GRACE_MS,
+      Math.min(ALL_SEARCH_MIN_READY_ITEMS, resultLimit),
+    )
+    : await Promise.all(searchTasks.map((task) => task.promise)).then((results) => ({
+        completed: results
+          .filter((result) => result.status === 'fulfilled')
+          .map((result) => result.value),
+        errors: results
+          .filter((result) => result.status === 'rejected')
+          .map((result) => String(result.reason?.message || result.reason || 'Remote search failed')),
+        pendingCount: 0,
+      }))
 
   const siteResults = []
-  const errors = []
-  for (const result of settled) {
-    if (result.status === 'fulfilled') {
-      siteResults.push({
-        site: result.value.site,
-        items: Array.isArray(result.value.items) ? result.value.items : [],
-        has_more: result.value.has_more,
-      })
-      continue
-    }
-    errors.push(String(result.reason?.message || result.reason || 'Remote search failed'))
+  const errors = [...settled.errors]
+  const completedBySite = new Map(settled.completed.map((result) => [result.site, result]))
+  for (const siteName of siteNames) {
+    const result = completedBySite.get(siteName)
+    if (!result) continue
+    siteResults.push({
+      site: result.site,
+      items: Array.isArray(result.items) ? result.items : [],
+      has_more: result.has_more,
+    })
   }
 
+  const hasPendingSites = settled.pendingCount > 0
   const dedupedItems = normalizedSite === 'all'
     ? interleaveSiteItems(siteResults, resultLimit)
     : uniqueByUrl(siteResults.flatMap((siteResult) => siteResult.items)).slice(0, resultLimit)
@@ -154,6 +231,8 @@ export const searchRemoteVideos = async ({
     items: dedupedItems,
     errors,
     sites: siteNames,
+    pending_sites: hasPendingSites ? siteNames.filter((siteName) => !completedBySite.has(siteName)) : [],
+    partial: hasPendingSites,
     page: resultPage,
     has_more: hasMore,
   }

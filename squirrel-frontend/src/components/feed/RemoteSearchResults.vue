@@ -283,13 +283,14 @@ const loadPage = async (page: number) => {
     ])
     if (currentToken !== requestToken) return
     const nextItems = Array.isArray(result?.items) ? result.items : []
+    const previousCount = items.value.length
     if (page === 1) {
       items.value = nextItems
     } else {
       appendUniqueItems(nextItems)
     }
     currentPage.value = page
-    allLoaded.value = result?.has_more === false
+    allLoaded.value = result?.has_more === false || (page > 1 && items.value.length === previousCount)
     if (Array.isArray(result?.errors) && result.errors.length > 0 && items.value.length === 0) {
       errorMessage.value = result.errors.join('；')
       emit('error', new Error(errorMessage.value))

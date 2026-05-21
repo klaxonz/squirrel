@@ -210,6 +210,10 @@ const mapYouTubeSearchItems = (payload) => {
   ]).filter((item) => item.id && item.title && item.url)
 }
 
+const mapYouTubeListItems = (items) => {
+  return mapYouTubeSearchItems(items.filter((item) => !item?.continuationItemRenderer))
+}
+
 const extractApiKey = (html) => {
   return String(html.match(/"INNERTUBE_API_KEY"\s*:\s*"([^"]+)"/)?.[1] || '').trim()
 }
@@ -229,7 +233,9 @@ const findContinuationToken = (items) => {
 }
 
 const getInitialContinuationItems = (payload) => {
-  return payload?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents || []
+  return payload?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents
+    || payload?.contents?.sectionListRenderer?.contents
+    || []
 }
 
 const getResponseContinuationItems = (payload) => {
@@ -337,21 +343,29 @@ export const searchYouTubeVideos = async ({ query, limit, page, fetchImpl, build
   const initialData = JSON.parse(jsonText)
   const apiKey = extractApiKey(html)
   const context = extractContext(html)
-  let payload = initialData
-  let cursor = buildCursor(findContinuationToken(getInitialContinuationItems(initialData)), apiKey, context)
-  let items = mapYouTubeSearchItems(payload)
+  const initialItems = getInitialContinuationItems(initialData)
+  let cursor = buildCursor(findContinuationToken(initialItems), apiKey, context)
+  let items = mapYouTubeListItems(initialItems)
   const startIndex = (resultPage - 1) * resultLimit
   const endIndex = resultPage * resultLimit
 
+  if (resultPage === 1) {
+    return {
+      items: items.slice(0, resultLimit),
+      has_more: !!cursor,
+    }
+  }
+
   while (items.length < endIndex && cursor) {
-    payload = await fetchContinuation({
+    const payload = await fetchContinuation({
       cursor,
       fetchImpl,
       buildCookieHeader,
       keyword,
     })
-    items = uniqueByUrl([...items, ...mapYouTubeSearchItems(payload)])
-    cursor = buildCursor(findContinuationToken(getResponseContinuationItems(payload)), cursor.api_key, { client: cursor.client })
+    const continuationItems = getResponseContinuationItems(payload)
+    items = uniqueByUrl([...items, ...mapYouTubeListItems(continuationItems)])
+    cursor = buildCursor(findContinuationToken(continuationItems), cursor.api_key, { client: cursor.client })
   }
 
   return {
