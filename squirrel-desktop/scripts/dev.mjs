@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -7,6 +8,7 @@ const __dirname = path.dirname(__filename)
 
 const desktopDir = path.resolve(__dirname, '..')
 const frontendDir = path.resolve(desktopDir, '..', 'squirrel-frontend')
+const desktopSrcDir = path.resolve(desktopDir, 'src')
 
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const backendUrl = String(process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8001').trim()
@@ -16,6 +18,9 @@ const shouldUseShell = process.platform === 'win32'
 
 let frontendProcess = null
 let electronProcess = null
+let desktopWatcher = null
+let restartTimer = null
+let restartingElectron = false
 let shuttingDown = false
 let shutdownPromise = null
 
@@ -114,6 +119,14 @@ const shutdown = (exitCode = 0) => {
 
   shuttingDown = true
   shutdownPromise = (async () => {
+    if (desktopWatcher) {
+      desktopWatcher.close()
+      desktopWatcher = null
+    }
+    if (restartTimer) {
+      clearTimeout(restartTimer)
+      restartTimer = null
+    }
     await Promise.allSettled([
       terminate(electronProcess),
       terminate(frontendProcess),
@@ -122,6 +135,64 @@ const shutdown = (exitCode = 0) => {
   })()
 
   return shutdownPromise
+}
+
+const startElectron = () => {
+  electronProcess = spawnNpm(
+    ['run', 'start'],
+    {
+      cwd: desktopDir,
+      env: {
+        ...process.env,
+        DESKTOP_RENDERER_URL: rendererUrl,
+        DESKTOP_APP_URL: backendUrl,
+      },
+      stdio: 'inherit',
+    }
+  )
+
+  electronProcess.on('exit', (code) => {
+    electronProcess = null
+    if (shuttingDown || restartingElectron) {
+      return
+    }
+
+    void shutdown(code ?? 0)
+  })
+}
+
+const restartElectron = async () => {
+  if (shuttingDown || restartingElectron) {
+    return
+  }
+
+  restartingElectron = true
+  console.log('[squirrel-desktop] Desktop source changed, restarting Electron')
+  await terminate(electronProcess)
+  electronProcess = null
+  startElectron()
+  restartingElectron = false
+}
+
+const scheduleElectronRestart = () => {
+  if (restartTimer) {
+    clearTimeout(restartTimer)
+  }
+  restartTimer = setTimeout(() => {
+    restartTimer = null
+    void restartElectron()
+  }, 250)
+}
+
+const watchDesktopSource = () => {
+  desktopWatcher = fs.watch(desktopSrcDir, { recursive: true }, (_eventType, filename) => {
+    const changedFile = String(filename || '')
+    if (!changedFile || !/\.(?:cjs|mjs|js|json)$/.test(changedFile)) {
+      return
+    }
+
+    scheduleElectronRestart()
+  })
 }
 
 const start = async () => {
@@ -145,22 +216,8 @@ const start = async () => {
 
   await waitForServer(rendererUrl)
 
-  electronProcess = spawnNpm(
-    ['run', 'start'],
-    {
-      cwd: desktopDir,
-      env: {
-        ...process.env,
-        DESKTOP_RENDERER_URL: rendererUrl,
-        DESKTOP_APP_URL: backendUrl,
-      },
-      stdio: 'inherit',
-    }
-  )
-
-  electronProcess.on('exit', (code) => {
-    void shutdown(code ?? 0)
-  })
+  startElectron()
+  watchDesktopSource()
 }
 
 process.on('SIGINT', () => {
