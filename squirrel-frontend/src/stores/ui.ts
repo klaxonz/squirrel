@@ -9,6 +9,7 @@ export const useUIStore = defineStore('ui', () => {
   const searchQuery = ref('')
   const searchTrigger = ref(0)
   const homeSearchMode = ref<'local' | 'remote'>('local')
+  const viewMode = ref<'grid' | 'list'>('grid')
 
   const toggleSidebar = () => {
     isSidebarOpen.value = !isSidebarOpen.value
@@ -23,6 +24,10 @@ export const useUIStore = defineStore('ui', () => {
 
   const setHomeSearchMode = (mode: 'local' | 'remote') => {
     homeSearchMode.value = mode
+  }
+
+  const setViewMode = (mode: 'grid' | 'list') => {
+    viewMode.value = mode
   }
 
   const setVideoWidescreen = (enabled: boolean) => {
@@ -43,9 +48,11 @@ export const useUIStore = defineStore('ui', () => {
     searchQuery,
     searchTrigger,
     homeSearchMode,
+    viewMode,
     toggleSidebar,
     triggerSearch,
     setHomeSearchMode,
+    setViewMode,
     setVideoWidescreen
   }
 })

@@ -26,6 +26,13 @@
 
     <!-- Main Content Area -->
     <div class="app-page-content">
+
+      <!-- Continue Watching (Only on Home "All" tab) -->
+      <ContinueWatching
+        v-if="!subscriptionId && searchMode === 'local' && activeTab === 'all' && !searchQuery"
+        @openModal="handleOpenModal"
+      />
+
       <div v-if="loadError" class="px-6 pt-6">
         <div class="bg-destructive/5 border border-destructive/20 rounded-2xl p-4 flex items-center justify-between">
           <p class="text-sm text-destructive font-medium">{{ loadError?.message || loadError }}</p>
@@ -69,6 +76,7 @@ import { useRefreshTriggers } from '../composables/useRefreshTriggers'
 import FeedToolbar from '@/components/feed/FeedToolbar.vue'
 import ChannelHeader from '@/components/feed/ChannelHeader.vue'
 import RemoteSearchResults from '@/components/feed/RemoteSearchResults.vue'
+import ContinueWatching from '@/components/feed/ContinueWatching.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { VIDEO_TABS } from '@/constants/videos'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'

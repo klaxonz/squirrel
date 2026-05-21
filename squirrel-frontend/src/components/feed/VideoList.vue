@@ -1,21 +1,28 @@
 <template>
   <div class="w-full">
-    <!-- Grid Container -->
-    <div v-if="videos.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-x-5 gap-y-10 p-6">
+    <!-- List/Grid Container -->
+    <div v-if="videos.length > 0"
+         :class="uiStore.viewMode === 'grid'
+           ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-x-5 gap-y-10 p-6'
+           : 'flex flex-col gap-4 p-6 max-w-4xl mx-auto'">
       <VideoItem
         v-for="video in videos"
         :key="video.id"
         :video="video"
         :show-avatar="showAvatar"
         :sort-by="sortBy"
+        :layout="uiStore.viewMode"
         @goToSubscription="$emit('goToSubscription', $event)"
         @openModal="$emit('openModal', video)"
       />
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-x-5 gap-y-10 p-6">
-      <VideoSkeleton v-for="i in 12" :key="i" :delay="i * 50" />
+    <div v-if="loading"
+         :class="uiStore.viewMode === 'grid'
+           ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-x-5 gap-y-10 p-6'
+           : 'flex flex-col gap-4 p-6 max-w-4xl mx-auto'">
+      <VideoSkeleton v-for="i in 12" :key="i" :delay="i * 50" :layout="uiStore.viewMode" />
     </div>
 
     <!-- Empty State -->
@@ -37,6 +44,9 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import VideoItem from './VideoItem.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
+import { useUIStore } from '@/stores/ui'
+
+const uiStore = useUIStore()
 
 const props = defineProps<{
   videos: any[]
@@ -55,16 +65,16 @@ let observer: IntersectionObserver | null = null
 onMounted(() => {
   // Use the specific scroll container as root
   const root = document.getElementById('app-main-scroll')
-  
+
   observer = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting && !props.loading && !props.allLoaded) {
       emit('loadMore')
     }
-  }, { 
+  }, {
     root: root,
-    rootMargin: '600px' 
+    rootMargin: '600px'
   })
-  
+
   if (loadMoreTrigger.value) observer.observe(loadMoreTrigger.value)
 })
 

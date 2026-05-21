@@ -1,5 +1,5 @@
 <template>
-  <section class="flex flex-col bg-background">
+  <section class="flex flex-col bg-background relative z-10 transition-transform duration-300" :class="{ '-translate-y-full': isHidden }">
     <div class="flex items-center h-14 px-4 sm:px-6 gap-4 sm:gap-6">
       <nav v-if="showTabs" class="flex items-center h-full space-x-1 overflow-x-auto scrollbar-hide shrink-0">
         <button
@@ -7,8 +7,8 @@
           :key="tab.value"
           class="h-full px-3 flex items-center text-[13px] font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 shrink-0"
           :class="[
-            localActiveTab === tab.value 
-              ? 'text-foreground' 
+            localActiveTab === tab.value
+              ? 'text-foreground'
               : 'text-muted-foreground hover:text-foreground/80'
           ]"
           @click="localActiveTab = tab.value"
@@ -27,7 +27,29 @@
 
       <!-- Right: Filter Actions -->
       <div class="flex items-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap">
-        
+
+        <!-- View Mode Toggle -->
+        <div class="hidden sm:flex bg-muted/40 p-0.5 rounded-lg border border-border/40 shrink-0">
+          <button
+            class="flex items-center justify-center p-1.5 rounded-md transition-colors"
+            :class="uiStore.viewMode === 'grid' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
+            @click="uiStore.setViewMode('grid')"
+            title="网格视图"
+          >
+            <AppIcon name="layoutGrid" class="w-4 h-4" />
+          </button>
+          <button
+            class="flex items-center justify-center p-1.5 rounded-md transition-colors"
+            :class="uiStore.viewMode === 'list' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
+            @click="uiStore.setViewMode('list')"
+            title="列表视图"
+          >
+            <AppIcon name="list" class="w-4 h-4" />
+          </button>
+        </div>
+
+        <div class="w-px h-4 bg-border/50 mx-1 hidden sm:block shrink-0" />
+
         <!-- Site Select -->
         <Select :model-value="site || 'all'" @update:model-value="handleSiteChange">
           <SelectTrigger class="h-8 w-auto min-w-0 shrink-0 flex-nowrap whitespace-nowrap border-border/40 bg-muted/40 px-2.5 py-0 text-xs font-medium text-foreground shadow-none hover:bg-muted/60 focus:ring-primary/20">
@@ -65,8 +87,8 @@
           type="button"
           class="relative flex size-8 shrink-0 items-center justify-center rounded-lg border transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary"
           :class="[
-            activeFilterCount > 0 
-              ? 'bg-primary/10 text-primary border-primary/20' 
+            activeFilterCount > 0
+              ? 'bg-primary/10 text-primary border-primary/20'
               : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground border-border/40'
           ]"
           @click="filterModalOpen = true"
@@ -117,13 +139,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import FilterModal from './FilterModal.vue'
 import type { TimeRange, Duration, ContentType } from '@/composables/useFeedFilters'
 import type { VideoTab } from '@/constants/videos'
 import { useSites } from '@/composables/useSites'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useUIStore } from '@/stores/ui'
 
 const props = withDefaults(defineProps<{
   activeTab?: string, nsfw?: string, sortBy?: string, site?: string, subscriptionId?: string | number,
@@ -164,7 +187,36 @@ watch(() => props.sortBy, (v) => { localSortBy.value = v })
 watch(localActiveTab, (v) => emit('update:activeTab', v))
 watch(localSortBy, (v) => emit('update:sortBy', v))
 
-onMounted(() => { fetchSites() })
+const uiStore = useUIStore()
+const isHidden = ref(false)
+let lastScrollY = 0
+
+const handleScroll = () => {
+  const scrollContainer = document.getElementById('app-main-scroll')
+  if (!scrollContainer) return
+  const currentScrollY = scrollContainer.scrollTop || 0
+  if (currentScrollY > lastScrollY && currentScrollY > 100) {
+    isHidden.value = true
+  } else if (currentScrollY < lastScrollY) {
+    isHidden.value = false
+  }
+  lastScrollY = currentScrollY
+}
+
+onMounted(() => {
+  fetchSites()
+  const scrollContainer = document.getElementById('app-main-scroll')
+  if (scrollContainer) {
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
+  }
+})
+
+onUnmounted(() => {
+  const scrollContainer = document.getElementById('app-main-scroll')
+  if (scrollContainer) {
+    scrollContainer.removeEventListener('scroll', handleScroll)
+  }
+})
 
 const sortOptions = [
   { value: 'publish_date', label: '上传日期' },
