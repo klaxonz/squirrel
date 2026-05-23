@@ -59,7 +59,7 @@
               <div class="flex items-center gap-2">
                 <div class="flex bg-accent/40 rounded-full p-0.5 ring-1 ring-border/20">
                   <button 
-                    v-for="action in videoActions.filter(a => ['like', 'dislike'].includes(a.key))" 
+                    v-for="action in primaryVisibleActions"
                     :key="action.key"
                     class="flex items-center gap-2 px-4 py-1.5 rounded-full hover:bg-accent/60 transition-all text-[13px] font-semibold"
                     :class="{ 'text-foreground bg-background shadow-sm ring-1 ring-border/10': action.active, 'text-muted-foreground': !action.active }"
@@ -174,7 +174,7 @@ import useVideoHistory from "../composables/useVideoHistory"
 import { formatDate, formatDuration } from '../utils/dateFormat'
 import useVideoInteraction from '../composables/useVideoInteraction'
 import usePlaylist from '../composables/usePlaylist'
-import { getSubscriptionStatus, subscribe, unsubscribe } from '@/api'
+import { getSubscriptionStatus, saveRemoteVideo, subscribe, unsubscribe } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -233,6 +233,56 @@ const isSubscribed = ref(false)
 const isSubscribing = ref(false)
 const subscriptionId = ref<number | null>(null)
 let descriptionResizeObserver: ResizeObserver | null = null
+const remoteSaveByUrl = new Map<string, Promise<any>>()
+
+const ensureLocalVideo = async (targetVideo: any) => {
+  if (!targetVideo || targetVideo.source !== 'remote') return targetVideo
+
+  const url = String(targetVideo.url || '').trim()
+  if (!url) return null
+
+  let savePromise = remoteSaveByUrl.get(url)
+  if (!savePromise) {
+    savePromise = saveRemoteVideo({
+      site: targetVideo.site || undefined,
+      url,
+      title: targetVideo.title || url,
+      thumbnail: targetVideo.thumbnail || undefined,
+      duration: targetVideo.duration ?? undefined,
+      publish_date: targetVideo.publish_date || targetVideo.uploaded_at || undefined,
+      uploaded_at: targetVideo.uploaded_at || targetVideo.publish_date || undefined,
+      description: targetVideo.description || undefined,
+      subscriptions: Array.isArray(targetVideo.subscriptions) ? targetVideo.subscriptions : [],
+      actors: Array.isArray(targetVideo.actors) ? targetVideo.actors : [],
+    }).then(({ data, error }: any) => {
+      if (error || !data?.id) return null
+      return data
+    })
+    remoteSaveByUrl.set(url, savePromise)
+  }
+
+  const savedVideo = await savePromise
+  if (!savedVideo?.id) return null
+
+  if (video.value && String((video.value as any).url || '') === url) {
+    video.value = {
+      ...(video.value as any),
+      id: String(savedVideo.id),
+      interaction_type: savedVideo.interaction_type ?? (video.value as any).interaction_type ?? null,
+      last_position: savedVideo.last_position ?? (video.value as any).last_position,
+      clip_markers: savedVideo.clip_markers ?? (video.value as any).clip_markers,
+      source: 'local',
+      site: (video.value as any).site || savedVideo.site,
+      url,
+    } as any
+    if (String(route.params.videoId || '') !== String(savedVideo.id)) {
+      await router.replace({ name: 'VideoPlay', params: { videoId: savedVideo.id } })
+    }
+  }
+
+  return video.value || savedVideo
+}
+
 const { videoActions, handleVideoAction } = useVideoActionBar({
   video,
   interactionTypeLike: INTERACTION_TYPE.LIKE,
@@ -240,6 +290,7 @@ const { videoActions, handleVideoAction } = useVideoActionBar({
   interactionTypeLater: INTERACTION_TYPE.LATER,
   toggleLike: (id: any, type: any) => toggleLike(id, type as any) as any, 
   deleteInteraction: deleteInteraction as any, 
+  ensureLocalVideo: ensureLocalVideo as any,
   handleAddToPlaylist: () => Promise.resolve() as any,
   handlePlayRandom: () => Promise.resolve() as any
 } as any)
@@ -263,6 +314,11 @@ const videoPublishedText = computed(() => {
 })
 
 const videoDescription = computed(() => String((video.value as any)?.description || '').trim())
+const isRemoteVideo = computed(() => (video.value as any)?.source === 'remote')
+const primaryVisibleActions = computed(() => {
+  const keys = isRemoteVideo.value ? ['later', 'like', 'dislike'] : ['like', 'dislike']
+  return videoActions.value.filter((action) => keys.includes(action.key))
+})
 
 const hasLongDescription = computed(() => hasDescriptionOverflow.value)
 

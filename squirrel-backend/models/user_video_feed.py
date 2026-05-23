@@ -16,6 +16,7 @@ class UserVideoFeed(Base, SerializerMixin):
         Index('ix_user_video_feed_user_created_video', 'user_id', 'video_created_at', 'video_id'),
         Index('ix_user_video_feed_user_sub_publish', 'user_id', 'subscription_id', 'publish_date'),
         Index('ix_user_video_feed_user_nsfw_publish', 'user_id', 'is_nsfw', 'publish_date'),
+        Index('ix_user_video_feed_user_domain_publish_video', 'user_id', 'domain', 'publish_date', 'video_id'),
         Index('ix_user_video_feed_video_id', 'video_id'),
     )
 

@@ -4,7 +4,7 @@ from fastapi.responses import PlainTextResponse
 import common.response as response
 from core.exceptions.video_exceptions import UnsupportedDomainError, VideoUrlExtractionError
 from models.user import User
-from schemas.video.request.video import SortBy
+from schemas.video.request.video import RemoteVideoSaveRequest, SortBy
 from services import video_service
 from services.site_catalog_service import save_site_overrides
 from typing import List
@@ -21,6 +21,21 @@ router = APIRouter(tags=['频道视频接口'])
 
 def _video_domain(url: str) -> str:
     return normalize_domain(url) or ''
+
+
+@router.post("/api/video/remote/save")
+def save_remote_video(
+        data: RemoteVideoSaveRequest,
+        current_user: User = Depends(get_current_user)
+):
+    try:
+        video = video_service.save_remote_video(data.model_dump())
+        return response.success(video_service.get_video(current_user.id, video.id))
+    except ValueError as exc:
+        return response.param_error(str(exc))
+    except Exception:
+        logger.exception("Failed to save remote video")
+        return response.server_error("保存远端视频失败")
 
 
 @router.get("/api/video/url")

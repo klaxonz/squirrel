@@ -10,6 +10,7 @@ type VideoLike = {
   id?: VideoId
   url?: string | null
   interaction_type?: InteractionType
+  source?: string | null
   [key: string]: unknown
 }
 
@@ -32,6 +33,7 @@ export default function useVideoActionBar({
   interactionTypeLater,
   toggleLike,
   deleteInteraction,
+  ensureLocalVideo,
   handleAddToPlaylist,
   handlePlayRandom,
 }: {
@@ -41,6 +43,7 @@ export default function useVideoActionBar({
   interactionTypeLater: string | number
   toggleLike: (videoId: VideoId, interactionType: string | number) => Promise<{ error?: unknown }>
   deleteInteraction: (videoId: VideoId) => Promise<{ error?: unknown }>
+  ensureLocalVideo?: (video: VideoLike) => Promise<VideoLike | null>
   handleAddToPlaylist: () => Promise<void>
   handlePlayRandom: () => Promise<void>
 }) {
@@ -48,19 +51,22 @@ export default function useVideoActionBar({
   const isLaterActionActive = computed(() => currentInteractionType.value === interactionTypeLater)
 
   const updateVideoInteraction = async (targetVideo: VideoLike, nextInteractionType: string | number | null) => {
-    if (targetVideo.id == null) return
+    const localVideo = ensureLocalVideo && targetVideo.source === 'remote'
+      ? await ensureLocalVideo(targetVideo)
+      : targetVideo
+    if (!localVideo?.id) return
 
-    if (nextInteractionType !== null && targetVideo.interaction_type !== nextInteractionType) {
-      const { error } = await toggleLike(targetVideo.id, nextInteractionType)
+    if (nextInteractionType !== null && localVideo.interaction_type !== nextInteractionType) {
+      const { error } = await toggleLike(localVideo.id, nextInteractionType)
       if (!error) {
-        targetVideo.interaction_type = nextInteractionType
+        localVideo.interaction_type = nextInteractionType
       }
       return
     }
 
-    const { error } = await deleteInteraction(targetVideo.id)
+    const { error } = await deleteInteraction(localVideo.id)
     if (!error) {
-      targetVideo.interaction_type = null
+      localVideo.interaction_type = null
     }
   }
 

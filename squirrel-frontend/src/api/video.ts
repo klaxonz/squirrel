@@ -1,5 +1,5 @@
 import type { AxiosRequestConfig } from 'axios'
-import { get } from '@/utils/request'
+import { get, post } from '@/utils/request'
 
 export const getVideoDetail = async (videoId: string | number) => {
   return get('/api/video/detail', { video_id: videoId })
@@ -39,4 +39,8 @@ export const getVideoUrlInfo = async (
     ...(forceRefresh ? { force_refresh: true } : {}),
     ...(clientType ? { client_type: clientType } : {}),
   })
+}
+
+export const saveRemoteVideo = async (data: Record<string, unknown>) => {
+  return post('/api/video/remote/save', data)
 }

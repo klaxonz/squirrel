@@ -126,6 +126,47 @@ def _seed_video(engine, *, video_id=1, url='https://www.bilibili.com/video/BV1xx
         session.commit()
 
 
+def test_save_remote_video_creates_local_video(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+
+    video = video_service.save_remote_video({
+        'site': 'youtube',
+        'url': 'https://www.youtube.com/watch?v=remote-demo',
+        'title': 'Remote Demo',
+        'thumbnail': 'https://img.example.com/remote.jpg',
+        'duration': 240,
+        'publish_date': '2024-05-01T12:30:00Z',
+        'description': 'Saved from remote search',
+        'subscriptions': [{'name': 'Remote Channel', 'url': 'https://www.youtube.com/@remote'}],
+        'actors': [{'name': 'Remote Actor'}],
+    })
+
+    assert video.id is not None
+    assert video.title == 'Remote Demo'
+    assert video.url == 'https://www.youtube.com/watch?v=remote-demo'
+    assert video.domain == 'youtube.com'
+    assert video.thumbnail == 'https://img.example.com/remote.jpg'
+    assert video.duration == 240
+    assert video.description == 'Saved from remote search'
+    assert video.extra_data['source'] == 'remote'
+    assert video.extra_data['site'] == 'youtube'
+    assert video.extra_data['subscriptions'][0]['name'] == 'Remote Channel'
+
+
+def test_save_remote_video_reuses_existing_url(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_video(engine, video_id=42, url='https://www.youtube.com/watch?v=existing')
+
+    video = video_service.save_remote_video({
+        'site': 'youtube',
+        'url': 'https://www.youtube.com/watch?v=existing',
+        'title': 'New Remote Title',
+    })
+
+    assert video.id == 42
+    assert video.title == 'Test video'
+
+
 def test_get_video_url_reads_playback_from_plugin_gateway(monkeypatch):
     engine = _setup_test_env(monkeypatch)
     _seed_video(engine)
@@ -388,6 +429,11 @@ def test_get_video_url_unwraps_cookie_bound_desktop_sites_to_direct_links(monkey
 
 def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
     engine = _setup_test_env(monkeypatch)
+    statements = []
+
+    @event.listens_for(engine, 'before_cursor_execute')
+    def _capture_sql(conn, cursor, statement, parameters, context, executemany):
+        statements.append(' '.join(str(statement).split()))
 
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
@@ -507,6 +553,12 @@ def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
     assert [video['id'] for video in videos] == [101, 100]
     assert videos[0]['last_position'] == 91
     assert {sub['id'] for sub in videos[0]['subscriptions']} == {1, 2}
+    feed_page_statements = [
+        statement for statement in statements
+        if 'FROM user_video_feed' in statement and ' LIMIT ' in statement
+    ]
+    assert feed_page_statements
+    assert all('GROUP BY' not in statement for statement in feed_page_statements)
 
 
 def test_list_videos_returns_remote_thumbnail_urls_directly(monkeypatch):
@@ -577,6 +629,112 @@ def test_list_videos_returns_remote_thumbnail_urls_directly(monkeypatch):
 
     assert total is None
     assert videos[0]['thumbnail'] == 'https://img.example.com/111.jpg'
+
+
+def test_list_videos_filters_domains_from_user_video_feed(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    statements = []
+
+    @event.listens_for(engine, 'before_cursor_execute')
+    def _capture_sql(conn, cursor, statement, parameters, context, executemany):
+        statements.append(' '.join(str(statement).split()))
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add_all([
+            Subscription(
+                id=1,
+                type='CHANNEL',
+                name='Bilibili Feed',
+                url='https://space.bilibili.com/1',
+                avatar='https://img.example.com/a.jpg',
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            UserSubscription(
+                id=1,
+                user_id=7,
+                subscription_id=1,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            Video(
+                id=121,
+                title='Bilibili video',
+                url='https://www.bilibili.com/video/BV121',
+                domain='bilibili.com',
+                duration=180,
+                thumbnail='https://img.example.com/121.jpg',
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+                is_deleted=False,
+            ),
+            Video(
+                id=122,
+                title='Youtube video',
+                url='https://www.youtube.com/watch?v=122',
+                domain='youtube.com',
+                duration=180,
+                thumbnail='https://img.example.com/122.jpg',
+                publish_date=datetime(2024, 1, 4, 12, 0, 0),
+                created_at=datetime(2024, 1, 4, 12, 0, 0),
+                updated_at=datetime(2024, 1, 4, 12, 0, 0),
+                is_deleted=False,
+            ),
+            UserVideoFeed(
+                user_id=7,
+                subscription_id=1,
+                video_id=121,
+                publish_date=datetime(2024, 1, 3, 12, 0, 0),
+                video_created_at=datetime(2024, 1, 3, 12, 0, 0),
+                domain='bilibili.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 3, 12, 0, 0),
+                updated_at=datetime(2024, 1, 3, 12, 0, 0),
+            ),
+            UserVideoFeed(
+                user_id=7,
+                subscription_id=1,
+                video_id=122,
+                publish_date=datetime(2024, 1, 4, 12, 0, 0),
+                video_created_at=datetime(2024, 1, 4, 12, 0, 0),
+                domain='youtube.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 4, 12, 0, 0),
+                updated_at=datetime(2024, 1, 4, 12, 0, 0),
+            ),
+        ])
+        session.commit()
+
+    videos, total = video_service.list_videos(
+        user_id=7,
+        query=None,
+        subscription_id=None,
+        category='all',
+        sort_by='publish_date',
+        nsfw='all',
+        domains=['bilibili.com', 'b23.tv'],
+        page=1,
+        page_size=10,
+        with_total=False,
+    )
+
+    page_statements = [
+        statement for statement in statements
+        if 'FROM user_video_feed' in statement and ' LIMIT ' in statement
+    ]
+
+    assert total is None
+    assert [video['id'] for video in videos] == [121]
+    assert page_statements
+    assert all('EXISTS (SELECT 1 FROM subscription_video' not in statement for statement in page_statements)
+    assert any('user_video_feed.domain IN' in statement for statement in page_statements)
 
 
 def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkeypatch):

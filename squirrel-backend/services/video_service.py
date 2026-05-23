@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 from time import perf_counter
 from typing import Any, List, Tuple, Optional, Dict
@@ -13,7 +13,6 @@ from core.database import get_session
 from services.video_query import (
     build_base_video_query,
     category_predicate,
-    time_range_predicate,
     duration_predicate,
 )
 from services.search_query import normalize_subscription_type_term, parse_search_query
@@ -23,6 +22,7 @@ from core.exceptions.video_exceptions import UnsupportedDomainError, VideoUrlExt
 from models.creator import Creator
 from models.links import SubscriptionVideo, UserSubscription, VideoCreator
 from models.subscription import Subscription
+from models.user_video_feed import UserVideoFeed
 from models.video import Video
 from models.video_clip_marker import VideoClipMarker
 from models.video_history import VideoHistory
@@ -204,6 +204,57 @@ def create_video(url: str, title: str, publish_date: datetime, thumbnail: str, d
         return video
 
 
+def _parse_optional_datetime(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+
+    normalized = str(value).strip()
+    if not normalized:
+        return None
+
+    try:
+        return datetime.fromisoformat(normalized.replace('Z', '+00:00'))
+    except ValueError:
+        return None
+
+
+def save_remote_video(data: dict) -> Video:
+    url = str(data.get('url') or '').strip()
+    title = str(data.get('title') or '').strip()
+    if not url:
+        raise ValueError('url is required')
+    if not title:
+        raise ValueError('title is required')
+
+    with get_session() as session:
+        video = session.scalars(select(Video).where(Video.url == url)).first()
+        if video:
+            return video
+
+        publish_date = _parse_optional_datetime(data.get('publish_date') or data.get('uploaded_at'))
+        extra_data = {
+            'source': 'remote',
+            'site': data.get('site') or None,
+            'subscriptions': data.get('subscriptions') or [],
+            'actors': data.get('actors') or [],
+        }
+
+        video = Video(
+            url=url,
+            domain=url_helper.normalize_domain(url),
+            title=title,
+            publish_date=publish_date,
+            thumbnail=data.get('thumbnail') or None,
+            duration=data.get('duration'),
+            description=data.get('description') or None,
+            extra_data=extra_data,
+        )
+        session.add(video)
+        session.commit()
+        session.refresh(video)
+        return video
+
+
 
 def get_random_video(
         user_id: int,
@@ -340,14 +391,14 @@ def _normalize_domains(domains: Optional[List[str]]) -> list[str]:
         domain for domain in {url_helper.normalize_domain(item) for item in domains if item}
         if domain
     ]
-def _feed_category_predicate(user_id: int, category: str):
+def _feed_category_predicate(user_id: int, category: str, *, video_id_column=Video.id, publish_date_column=Video.publish_date):
     published = and_(
-        Video.publish_date.is_not(None),
-        Video.publish_date <= func.now(),
+        publish_date_column.is_not(None),
+        publish_date_column <= func.now(),
     )
 
     if category == 'preview':
-        return Video.publish_date > func.now()
+        return publish_date_column > func.now()
     if category == 'read':
         return and_(
             published,
@@ -355,7 +406,7 @@ def _feed_category_predicate(user_id: int, category: str):
                 select(1).where(
                     and_(
                         VideoHistory.user_id == user_id,
-                        VideoHistory.video_id == Video.id,
+                        VideoHistory.video_id == video_id_column,
                     )
                 )
             ),
@@ -367,7 +418,7 @@ def _feed_category_predicate(user_id: int, category: str):
                 select(1).where(
                     and_(
                         VideoHistory.user_id == user_id,
-                        VideoHistory.video_id == Video.id,
+                        VideoHistory.video_id == video_id_column,
                     )
                 )
             ),
@@ -379,7 +430,7 @@ def _feed_category_predicate(user_id: int, category: str):
                 select(1).where(
                     and_(
                         VideoInteraction.user_id == user_id,
-                        VideoInteraction.video_id == Video.id,
+                        VideoInteraction.video_id == video_id_column,
                         VideoInteraction.interaction_type == 1,
                     )
                 )
@@ -392,7 +443,7 @@ def _feed_category_predicate(user_id: int, category: str):
                 select(1).where(
                     and_(
                         VideoInteraction.user_id == user_id,
-                        VideoInteraction.video_id == Video.id,
+                        VideoInteraction.video_id == video_id_column,
                         VideoInteraction.interaction_type == 3,
                     )
                 )
@@ -400,6 +451,25 @@ def _feed_category_predicate(user_id: int, category: str):
         )
 
     return published
+
+
+def _feed_time_range_predicates(time_range: str):
+    if time_range == 'all':
+        return []
+    now = func.now()
+    if time_range == 'today':
+        return [UserVideoFeed.publish_date >= func.date(now)]
+    if time_range == 'week':
+        start = now - timedelta(days=now.extract('dow') - 1)
+        return [UserVideoFeed.publish_date >= func.date(start)]
+    if time_range == 'month':
+        return [
+            func.extract('year', UserVideoFeed.publish_date) == func.extract('year', now),
+            func.extract('month', UserVideoFeed.publish_date) == func.extract('month', now),
+        ]
+    if time_range == 'year':
+        return [func.extract('year', UserVideoFeed.publish_date) == func.extract('year', now)]
+    return []
 
 
 def _build_active_subscriptions_query(
@@ -438,20 +508,7 @@ def _build_active_subscriptions_query(
     return active_subscriptions.subquery('active_subscriptions')
 
 
-def _video_access_exists_clause(active_subscriptions, *, content_type: str = 'all'):
-    conditions = [SubscriptionVideo.video_id == Video.id]
-    if content_type != 'all':
-        conditions.append(active_subscriptions.c.subscription_type == content_type)
-
-    return exists(
-        select(1)
-        .select_from(SubscriptionVideo)
-        .join(active_subscriptions, SubscriptionVideo.subscription_id == active_subscriptions.c.subscription_id)
-        .where(*conditions)
-    )
-
-
-def _title_search_conditions(parsed_query) -> list[Any]:
+def _title_search_conditions(parsed_query, *, domain_column=Video.domain) -> list[Any]:
     conditions: list[Any] = []
 
     for term in parsed_query.text_terms:
@@ -461,7 +518,7 @@ def _title_search_conditions(parsed_query) -> list[Any]:
         conditions.append(_contains(Video.title, term))
 
     for term in parsed_query.get('domain'):
-        conditions.append(_contains(Video.domain, term))
+        conditions.append(_contains(domain_column, term))
 
     return conditions
 
@@ -479,15 +536,18 @@ def _subscription_search_query(
 ):
     subscription_query = (
         select(
-            SubscriptionVideo.video_id.label('video_id'),
-            Video.publish_date.label('publish_date'),
-            Video.created_at.label('video_created_at'),
+            UserVideoFeed.video_id.label('video_id'),
+            UserVideoFeed.publish_date.label('publish_date'),
+            UserVideoFeed.video_created_at.label('video_created_at'),
             literal(60).label('search_rank'),
         )
         .select_from(active_subscriptions)
-        .join(SubscriptionVideo, SubscriptionVideo.subscription_id == active_subscriptions.c.subscription_id)
-        .join(Video, Video.id == SubscriptionVideo.video_id)
-        .where(Video.is_deleted.is_(False))
+        .join(UserVideoFeed, UserVideoFeed.subscription_id == active_subscriptions.c.subscription_id)
+        .join(Video, Video.id == UserVideoFeed.video_id)
+        .where(
+            UserVideoFeed.user_id == user_id,
+            Video.is_deleted.is_(False),
+        )
     )
 
     subscription_terms = parsed_query.get('subscription')
@@ -502,12 +562,17 @@ def _subscription_search_query(
 
     normalized_domains = _normalize_domains(domains)
     if normalized_domains:
-        subscription_query = subscription_query.where(Video.domain.in_(normalized_domains))
+        subscription_query = subscription_query.where(UserVideoFeed.domain.in_(normalized_domains))
 
     if category:
-        subscription_query = subscription_query.where(_feed_category_predicate(user_id, category))
+        subscription_query = subscription_query.where(_feed_category_predicate(
+            user_id,
+            category,
+            video_id_column=UserVideoFeed.video_id,
+            publish_date_column=UserVideoFeed.publish_date,
+        ))
 
-    for cond in time_range_predicate(time_range):
+    for cond in _feed_time_range_predicates(time_range):
         subscription_query = subscription_query.where(cond)
     for cond in duration_predicate(duration):
         subscription_query = subscription_query.where(cond)
@@ -530,6 +595,79 @@ def _subscription_search_query(
         .group_by(feed_source.c.video_id)
         .order_by(search_rank.desc(), sort_value.desc(), feed_source.c.video_id.desc())
     )
+
+
+def _build_feed_rows_query(
+    *,
+    user_id: int,
+    show_nsfw: bool,
+    subscription_id: Optional[int],
+    category: Optional[str],
+    sort_by: str,
+    nsfw: str,
+    domains: Optional[List[str]],
+):
+    active_subscriptions = _build_active_subscriptions_query(
+        user_id=user_id,
+        subscription_id=subscription_id,
+        nsfw=nsfw,
+        show_nsfw=show_nsfw,
+    )
+    query_stmt = (
+        select(
+            UserVideoFeed.video_id.label('video_id'),
+            UserVideoFeed.publish_date.label('publish_date'),
+            UserVideoFeed.video_created_at.label('video_created_at'),
+        )
+        .select_from(UserVideoFeed)
+        .join(active_subscriptions, UserVideoFeed.subscription_id == active_subscriptions.c.subscription_id)
+        .join(Video, Video.id == UserVideoFeed.video_id)
+        .where(
+            UserVideoFeed.user_id == user_id,
+            Video.is_deleted.is_(False),
+        )
+    )
+
+    if category:
+        query_stmt = query_stmt.where(_feed_category_predicate(
+            user_id,
+            category,
+            video_id_column=UserVideoFeed.video_id,
+            publish_date_column=UserVideoFeed.publish_date,
+        ))
+
+    normalized_domains = _normalize_domains(domains)
+    if normalized_domains:
+        query_stmt = query_stmt.where(UserVideoFeed.domain.in_(normalized_domains))
+
+    if sort_by == 'created_at':
+        return query_stmt.order_by(UserVideoFeed.video_created_at.desc(), UserVideoFeed.video_id.desc())
+    return query_stmt.order_by(UserVideoFeed.publish_date.desc(), UserVideoFeed.video_id.desc())
+
+
+def _fetch_feed_page_video_ids(session, feed_rows_query, *, offset: int, page_size: int) -> list[int]:
+    video_ids: list[int] = []
+    seen_video_ids: set[int] = set()
+    row_offset = 0
+    batch_size = max(page_size * 4, 100)
+
+    while len(video_ids) < page_size:
+        rows = session.execute(feed_rows_query.limit(batch_size).offset(row_offset)).all()
+        if not rows:
+            break
+
+        row_offset += len(rows)
+        for row in rows:
+            if row.video_id in seen_video_ids:
+                continue
+            seen_video_ids.add(row.video_id)
+            if len(seen_video_ids) <= offset:
+                continue
+            video_ids.append(row.video_id)
+            if len(video_ids) >= page_size:
+                break
+
+    return video_ids
 
 
 def _build_list_query(
@@ -586,38 +724,62 @@ def _build_list_query(
 
     query_stmt = (
         select(
-            Video.id.label('video_id'),
-            Video.publish_date.label('publish_date'),
-            Video.created_at.label('video_created_at'),
+            UserVideoFeed.video_id.label('video_id'),
+            UserVideoFeed.publish_date.label('publish_date'),
+            UserVideoFeed.video_created_at.label('video_created_at'),
             literal(0).label('search_rank'),
         )
-        .select_from(Video)
+        .select_from(UserVideoFeed)
+        .join(active_subscriptions, UserVideoFeed.subscription_id == active_subscriptions.c.subscription_id)
+        .join(Video, Video.id == UserVideoFeed.video_id)
         .where(
+            UserVideoFeed.user_id == user_id,
             Video.is_deleted.is_(False),
-            _video_access_exists_clause(active_subscriptions, content_type=content_type),
         )
     )
 
+    if content_type != 'all':
+        query_stmt = query_stmt.where(active_subscriptions.c.subscription_type == content_type)
+
     if category:
-        query_stmt = query_stmt.where(_feed_category_predicate(user_id, category))
+        query_stmt = query_stmt.where(_feed_category_predicate(
+            user_id,
+            category,
+            video_id_column=UserVideoFeed.video_id,
+            publish_date_column=UserVideoFeed.publish_date,
+        ))
 
     normalized_domains = _normalize_domains(domains)
     if normalized_domains:
-        query_stmt = query_stmt.where(Video.domain.in_(normalized_domains))
+        query_stmt = query_stmt.where(UserVideoFeed.domain.in_(normalized_domains))
 
-    for cond in time_range_predicate(time_range):
+    for cond in _feed_time_range_predicates(time_range):
         query_stmt = query_stmt.where(cond)
     for cond in duration_predicate(duration):
         query_stmt = query_stmt.where(cond)
 
-    search_conditions = _title_search_conditions(parsed_query)
+    search_conditions = _title_search_conditions(parsed_query, domain_column=UserVideoFeed.domain)
     for cond in search_conditions:
         query_stmt = query_stmt.where(cond)
 
-    sort_value = Video.created_at.label('sort_value') if sort_by == 'created_at' else Video.publish_date.label('sort_value')
-    order_by = [sort_value.desc(), Video.id.desc()]
+    feed_source = query_stmt.subquery('feed_source')
+    if sort_by == 'created_at':
+        sort_value = func.max(feed_source.c.video_created_at).label('sort_value')
+    else:
+        sort_value = func.max(feed_source.c.publish_date).label('sort_value')
+    search_rank = func.max(feed_source.c.search_rank).label('search_rank')
 
-    return query_stmt.add_columns(sort_value).order_by(*order_by)
+    return (
+        select(
+            feed_source.c.video_id,
+            func.max(feed_source.c.publish_date).label('publish_date'),
+            func.max(feed_source.c.video_created_at).label('video_created_at'),
+            search_rank,
+            sort_value,
+        )
+        .group_by(feed_source.c.video_id)
+        .order_by(search_rank.desc(), sort_value.desc(), feed_source.c.video_id.desc())
+    )
 def list_videos(
         user_id: int,
         query: str,
@@ -640,38 +802,65 @@ def list_videos(
 
     with get_session() as session:
         build_query_started_at = perf_counter()
-        base_ids_query = _build_list_query(
-            user_id=user_id,
-            show_nsfw=show_nsfw,
-            subscription_id=subscription_id,
-            query=query,
-            category=category,
-            sort_by=sort_by,
-            nsfw=nsfw,
-            domains=domains,
-            time_range=time_range,
-            duration=duration,
-            content_type=content_type,
+        use_feed_row_pagination = (
+            not query
+            and duration == 'all'
+            and time_range == 'all'
+            and content_type == 'all'
+            and category in (None, 'all', 'preview')
         )
+        if use_feed_row_pagination:
+            base_ids_query = _build_feed_rows_query(
+                user_id=user_id,
+                show_nsfw=show_nsfw,
+                subscription_id=subscription_id,
+                category=category,
+                sort_by=sort_by,
+                nsfw=nsfw,
+                domains=domains,
+            )
+        else:
+            base_ids_query = _build_list_query(
+                user_id=user_id,
+                show_nsfw=show_nsfw,
+                subscription_id=subscription_id,
+                query=query,
+                category=category,
+                sort_by=sort_by,
+                nsfw=nsfw,
+                domains=domains,
+                time_range=time_range,
+                duration=duration,
+                content_type=content_type,
+            )
         build_query_ms = _elapsed_ms(build_query_started_at)
 
         video_ids_started_at = perf_counter()
-        video_ids = [
-            row.video_id
-            for row in session.execute(
-                base_ids_query
-                .limit(page_size)
-                .offset(offset)
-            ).all()
-        ]
+        if use_feed_row_pagination:
+            video_ids = _fetch_feed_page_video_ids(session, base_ids_query, offset=offset, page_size=page_size)
+        else:
+            video_ids = [
+                row.video_id
+                for row in session.execute(
+                    base_ids_query
+                    .limit(page_size)
+                    .offset(offset)
+                ).all()
+            ]
         video_ids_ms = _elapsed_ms(video_ids_started_at)
 
         total_count = None
         if with_total:
             total_count_started_at = perf_counter()
-            total_count = session.execute(
-                select(func.count()).select_from(base_ids_query.order_by(None).subquery())
-            ).scalar() or 0
+            count_source = base_ids_query.order_by(None).subquery()
+            if use_feed_row_pagination:
+                total_count = session.execute(
+                    select(func.count(func.distinct(count_source.c.video_id))).select_from(count_source)
+                ).scalar() or 0
+            else:
+                total_count = session.execute(
+                    select(func.count()).select_from(count_source)
+                ).scalar() or 0
             total_count_ms = _elapsed_ms(total_count_started_at)
         else:
             total_count_ms = 0.0
