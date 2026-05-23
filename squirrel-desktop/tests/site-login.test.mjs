@@ -49,3 +49,15 @@ test('frontend exposes javdb desktop login controls', async () => {
   assert.match(source, /'javdb\.com': 'javdb'/)
   assert.match(source, /siteDesktopLoginSupported: supportsDesktopLoginSite\(siteName\)/)
 })
+
+test('desktop youporn login verifies the session page', async () => {
+  const source = await readFile(mainPath, 'utf8')
+
+  assert.match(source, /youporn:\s*\{[\s\S]*?loginUrl: 'https:\/\/www\.youporn\.com\/login'[\s\S]*?cookieHosts: \['youporn\.com'\]/)
+  assert.equal(source.includes('const youpornLoggedInPattern = /isLoggedInUser\\s*=\\s*true/i'), true)
+  assert.equal(source.includes('const youpornLoggedOutPattern = /isLoggedInUser\\s*=\\s*false/i'), true)
+  assert.match(source, /const checkYouPornDesktopPageLogin = async \(cookieHeader\) => \{[\s\S]*?session\.defaultSession\.fetch\(youpornReferer/)
+  assert.match(source, /const buildYouPornDesktopLoginStatus = async \(profile, cookies\) => \{[\s\S]*?checkYouPornDesktopPageLogin\(mergeCookieHeaders\(youpornAgeGateCookieHeader, cookieHeader\)\)/)
+  assert.match(source, /if \(profile\.siteName === 'youporn'\) \{[\s\S]*?return buildYouPornDesktopLoginStatus\(profile, cookies\)/)
+  assert.match(source, /const canAutoConfirmLogin = profile\.signedInCookieNames\.length > 0[\s\S]*?\|\| profile\.siteName === 'youporn'/)
+})

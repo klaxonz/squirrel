@@ -60,6 +60,8 @@ const javdbLoginPagePattern = /<title>\s*sign in\s*\|\s*javdb|action="\/users\/s
 const javdbErrorPagePattern = /<title>\s*just a moment|cf-error-details|error code 502|bad gateway/i
 const pornhubOrigin = 'https://www.pornhub.com'
 const pornhubReferer = `${pornhubOrigin}/`
+const youpornOrigin = 'https://www.youporn.com'
+const youpornReferer = `${youpornOrigin}/`
 const pornhubAgeGateCookieHeader = 'age_verified=1; accessAgeDisclaimerPH=1; accessAgeDisclaimerUK=1; accessPH=1'
 const youpornAgeGateCookieHeader = 'showAgeDisclaimer=1; access=1; accessPH=1'
 const pornhubLoggedInPattern = /"loggedIn(?:Context)?":\s*true/i
@@ -69,6 +71,10 @@ const pornhubDataUsernamePattern = /data-username="([^"]+)"/i
 const pornhubProfileLinkPattern = /<a[^>]+class="username"[^>]+href="\/users\/([^"/?#]+)"/i
 const pornhubProfileBlockPattern = /<div[^>]+class="profile"[\s\S]*?class="js_userName"[^>]*>([^<]+)</i
 const pornhubProfileStatusPattern = /class="userUserStatus[^"]*">\s*See Your Profile/i
+const youpornLoggedInPattern = /isLoggedInUser\s*=\s*true/i
+const youpornLoggedOutPattern = /isLoggedInUser\s*=\s*false/i
+const youpornUsernamePattern = /liu_username\s*=\s*'([^']*)'/i
+const youpornProfileLinkPattern = /href="\/users\/([^"/?#]+)"/i
 const SITE_SESSION_STORAGE_TYPES = [
   'cookies',
   'filesystem',
@@ -492,6 +498,88 @@ const buildPornhubDesktopLoginStatus = async (profile, cookies) => {
   }
 }
 
+const extractYouPornDesktopUsername = (body) => {
+  const match = youpornUsernamePattern.exec(body) || youpornProfileLinkPattern.exec(body)
+  const username = String(match?.[1] || '').trim()
+  return username || null
+}
+
+const checkYouPornDesktopPageLogin = async (cookieHeader) => {
+  const response = await session.defaultSession.fetch(youpornReferer, {
+    headers: {
+      'Accept-Language': 'en-US,en;q=0.9',
+      Origin: youpornOrigin,
+      Referer: youpornReferer,
+      'User-Agent': desktopChromeUserAgent,
+      Cookie: cookieHeader,
+    },
+    redirect: 'follow',
+  })
+  const body = await response.text()
+  const finalUrl = response.url || youpornReferer
+
+  if (response.status === 401) {
+    return { logged_in: false, message: `被拒绝访问 (status=${response.status})` }
+  }
+  if ([403, 429, 500, 502, 503, 504].includes(response.status)) {
+    return { logged_in: false, message: `检测失败: 被拒绝访问 (status=${response.status})` }
+  }
+  if (finalUrl.includes('/login')) {
+    return { logged_in: false, message: '被重定向到登录页' }
+  }
+
+  const username = extractYouPornDesktopUsername(body)
+  if (youpornLoggedInPattern.test(body)) {
+    return { logged_in: true, username, message: '桌面会话有效' }
+  }
+  if (youpornLoggedOutPattern.test(body)) {
+    return { logged_in: false, message: '未登录' }
+  }
+
+  return {
+    logged_in: false,
+    message: '未检测到登录标记',
+  }
+}
+
+const buildYouPornDesktopLoginStatus = async (profile, cookies) => {
+  const cookieHeader = buildCookieHeaderFromCookies(cookies)
+  if (!cookieHeader) {
+    return {
+      site_name: profile.siteName,
+      supported: true,
+      logged_in: false,
+      message: '未发现桌面登录会话',
+      checked_at: new Date().toISOString(),
+      source: 'desktop',
+      cookie_count: cookies.length,
+    }
+  }
+
+  try {
+    const status = await checkYouPornDesktopPageLogin(mergeCookieHeaders(youpornAgeGateCookieHeader, cookieHeader))
+    return {
+      site_name: profile.siteName,
+      supported: true,
+      ...status,
+      checked_at: new Date().toISOString(),
+      source: 'desktop',
+      cookie_count: cookies.length,
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error || 'Unknown error')
+    return {
+      site_name: profile.siteName,
+      supported: true,
+      logged_in: false,
+      message: `检测失败: ${message}`,
+      checked_at: new Date().toISOString(),
+      source: 'desktop',
+      cookie_count: cookies.length,
+    }
+  }
+}
+
 const buildYouTubeDesktopLoginStatusFromOAuth = (profile, oauthState) => {
   const status = String(oauthState?.status || 'not_configured')
   const loggedIn = status === 'authenticated' || status === 'already_authenticated'
@@ -563,6 +651,9 @@ const buildDesktopSiteLoginStatus = async (siteName) => {
   }
   if (profile.siteName === 'pornhub') {
     return buildPornhubDesktopLoginStatus(profile, cookies)
+  }
+  if (profile.siteName === 'youporn') {
+    return buildYouPornDesktopLoginStatus(profile, cookies)
   }
 
   const cookieNames = new Set(cookies.map((cookie) => cookie.name))
@@ -697,6 +788,7 @@ const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
     const canAutoConfirmLogin = profile.signedInCookieNames.length > 0
       || profile.siteName === 'javdb'
       || profile.siteName === 'pornhub'
+      || profile.siteName === 'youporn'
     let settled = false
     let loginCheckTimer = null
 
