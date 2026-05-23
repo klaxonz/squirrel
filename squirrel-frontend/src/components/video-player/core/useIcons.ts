@@ -3,6 +3,7 @@ export type IconName =
   | 'pause'
   | 'stop'
   | 'replay'
+  | 'rotate'
   | 'skipForward'
   | 'skipBackward'
   | 'previous'

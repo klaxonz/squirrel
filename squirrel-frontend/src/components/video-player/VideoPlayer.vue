@@ -7,6 +7,8 @@
     @pointerleave="onPointerLeave"
     @pointermove="onPointerMove"
     @pointerdown="handlePointerDown"
+    @click.self="handleVideoClick"
+    @dblclick.self="toggleFullscreen"
     @focus="markPlayerActive"
     @keydown="handleKeyDown"
     tabindex="0"
@@ -18,6 +20,7 @@
     <video
       ref="videoRef"
       class="sp-video"
+      :style="videoRotationStyle"
       :muted="store.muted"
       :autoplay="store.autoplay"
       :loop="store.loop"
@@ -217,6 +220,10 @@
               <span>{{ t('playbackSpeed') }}</span>
               <span class="sp-menu-val">{{ store.playbackRate }}x</span>
             </div>
+            <div class="sp-menu-item" @click="settingsView = 'rotation'">
+              <span>{{ t('rotate') }}</span>
+              <span class="sp-menu-val">{{ videoRotation }}°</span>
+            </div>
             <div v-if="displayedQualities.length > 0" class="sp-menu-item" @click="settingsView = 'quality'">
               <span>{{ t('quality') }}</span>
               <span class="sp-menu-val">{{ qualityMenuLabel }}</span>
@@ -248,6 +255,22 @@
                  class="sp-menu-item" :class="{ 'is-active': isQualityActive(q) }"
                  @click="handleQualitySelect(q)">
               {{ q.label }}
+            </div>
+          </div>
+        </template>
+        <template v-else-if="settingsView === 'rotation'">
+          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'main'">
+            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('rotate') }}
+          </div>
+          <div class="sp-menu-list">
+            <div
+              v-for="rotation in rotationOptions"
+              :key="rotation"
+              class="sp-menu-item"
+              :class="{ 'is-active': videoRotation === rotation }"
+              @click="handleRotationSelect(rotation)"
+            >
+              {{ rotation }}°
             </div>
           </div>
         </template>
@@ -878,6 +901,28 @@ const centralHud = ref<{ visible: boolean; type: string; value: string; icon: Ic
   visible: false, type: '', value: '', icon: 'play', percent: 0 
 })
 const showLoadingOverlay = computed(() => (store.loading || props.externalLoading) && !errorState.value.show)
+const videoRotation = ref(0)
+const videoRotationScale = ref(1)
+const videoRotationStyle = computed(() => ({
+  transform: `rotate(${videoRotation.value}deg) scale(${videoRotationScale.value})`,
+}))
+let videoRotationResizeObserver: ResizeObserver | null = null
+
+const updateVideoRotationScale = () => {
+  const container = containerRef.value
+  if (!container || videoRotation.value % 180 === 0) {
+    videoRotationScale.value = 1
+    return
+  }
+
+  const rect = container.getBoundingClientRect()
+  if (rect.width <= 0 || rect.height <= 0) {
+    videoRotationScale.value = 1
+    return
+  }
+
+  videoRotationScale.value = Math.min(rect.width / rect.height, rect.height / rect.width)
+}
 
 // Loading state control
 const onLoadingEnter = () => {}
@@ -899,6 +944,7 @@ watch(volume, (newVol, oldVol) => {
 })
 
 const playbackRates = [0.5, 0.75, 1, 1.25, 1.5, 2]
+const rotationOptions = [0, 90, 180, 270]
 const fontSizeOptions = [
   { value: 'small', label: '1' },
   { value: 'medium', label: '2' },
@@ -1195,6 +1241,15 @@ const handleSubtitleSelect = (track: SubtitleTrack) => { setSubtitle(track); clo
 const handleSubtitleDisable = () => { setSubtitle(null); closeMenus() }
 const handleSubtitleStyleChange = (key: string, value: any) => { setSubtitleStyle({ [key]: value }) }
 const handlePresetSelect = (presetId: string) => { applySubtitlePreset(presetId); closeMenus() }
+const rotateVideo = () => {
+  videoRotation.value = (videoRotation.value + 90) % 360
+  showCentralHud('rotation', `${videoRotation.value}°`, 'rotate')
+}
+const handleRotationSelect = (rotation: number) => {
+  videoRotation.value = rotation
+  showCentralHud('rotation', `${videoRotation.value}°`, 'rotate')
+  closeMenus()
+}
 const handleOpacityChange = (e: PointerEvent) => {
   if (!opacityRailRef.value) return
   const rect = opacityRailRef.value.getBoundingClientRect()
@@ -1396,6 +1451,11 @@ const updateVol = (e: PointerEvent) => {
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.key === ' ') { e.preventDefault(); togglePlay() }
   if (e.key === 'f') toggleFullscreen()
+  if (e.key === 'r' || e.key === 'R') {
+    if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return
+    e.preventDefault()
+    rotateVideo()
+  }
   if (e.key === 'ArrowLeft') { seek(currentTime.value - 10); showCentralHud('seek', '-10s', 'skipBackward') }
   if (e.key === 'ArrowRight') { seek(currentTime.value + 10); showCentralHud('seek', '+10s', 'skipForward') }
   if (e.key === 'ArrowUp') { setUserVolume(Math.min(MAX_VOLUME, volume.value + 5)) }
@@ -1487,6 +1547,22 @@ watch(isScrubbing, (scrubbing) => {
   syncHideTimer()
 })
 
+watch(videoRotation, updateVideoRotationScale)
+watch(() => props.videoId, () => {
+  videoRotation.value = 0
+})
+watch(containerRef, (container) => {
+  videoRotationResizeObserver?.disconnect()
+  videoRotationResizeObserver = null
+
+  if (container) {
+    videoRotationResizeObserver = new ResizeObserver(updateVideoRotationScale)
+    videoRotationResizeObserver.observe(container)
+  }
+
+  updateVideoRotationScale()
+}, { immediate: true })
+
 onMounted(() => { window.addEventListener('keydown', handleKeyDown) })
 onMounted(() => {
   window.addEventListener('pointermove', onWindowMarkerPointerMove)
@@ -1500,6 +1576,7 @@ onUnmounted(() => {
   clearHideTimer()
   clearInitialTimeListener()
   clearResumeAfterSourceSwapListener()
+  videoRotationResizeObserver?.disconnect()
   releaseMarkerPointerCapture()
   releaseProgressPointerCapture()
   window.removeEventListener('pointermove', onWindowMarkerPointerMove)
@@ -1540,9 +1617,13 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 }
 
 .sp-video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
+  transform-origin: center center;
+  transition: transform var(--duration-normal) var(--ease-default);
 }
 
 /* ????????*/

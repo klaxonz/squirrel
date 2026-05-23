@@ -20,6 +20,7 @@ const iconMap: Record<IconName, AppIconName> = {
   pause: 'pause',
   stop: 'stop',
   replay: 'replay',
+  rotate: 'rotate',
   skipForward: 'skipForward',
   skipBackward: 'skipBackward',
   previous: 'previous',

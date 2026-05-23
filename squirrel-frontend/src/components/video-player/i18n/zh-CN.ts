@@ -8,6 +8,7 @@ const zhCN: LocaleConfig = {
     play: '播放',
     pause: '暂停',
     replay: '重播',
+    rotate: '旋转',
     stop: '停止',
     
     // 音量

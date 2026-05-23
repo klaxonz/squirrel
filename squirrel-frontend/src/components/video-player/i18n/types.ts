@@ -9,6 +9,7 @@ export interface LocaleMessages {
   play: string
   pause: string
   replay: string
+  rotate: string
   stop: string
   
   // 音量
