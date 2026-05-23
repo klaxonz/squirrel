@@ -66,18 +66,7 @@
           @click="openResult(item)"
         >
           <div class="relative aspect-video overflow-hidden rounded-lg bg-muted transition-colors group-hover:bg-muted/80">
-            <img
-              v-if="item.thumbnail"
-              :src="item.thumbnail"
-              :alt="item.title"
-              loading="lazy"
-              decoding="async"
-              referrerpolicy="no-referrer"
-              class="h-full w-full object-contain"
-            >
-            <div v-else class="absolute inset-0 flex items-center justify-center bg-muted">
-              <AppIcon name="imageOff" class="h-6 w-6 text-muted-foreground/20" />
-            </div>
+            <VideoThumbnail :src="item.thumbnail" :alt="item.title" />
             <span v-if="item.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium tabular-nums text-white backdrop-blur-sm">
               {{ formatDuration(item.duration) }}
             </span>
@@ -127,6 +116,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import VideoSkeleton from '@/components/feed/VideoSkeleton.vue'
+import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { formatDuration } from '@/utils/dateFormat'

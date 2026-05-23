@@ -10,25 +10,13 @@
       'relative overflow-hidden rounded-lg bg-muted transition-colors group-hover:bg-muted/80',
       layout === 'list' ? 'w-48 shrink-0 md:w-64 aspect-video' : 'aspect-video w-full'
     ]">
-      <img
-        v-if="thumbnailSrc && !showThumbnailFallback"
+      <VideoThumbnail
         :src="thumbnailSrc"
-        loading="lazy"
-        decoding="async"
-        referrerpolicy="no-referrer"
-        class="h-full w-full object-cover md:object-contain transition-all duration-300 group-hover:scale-105 group-hover:brightness-110"
-        :class="[
-          shouldBlurThumbnail ? 'blur-2xl scale-110' : '',
-          imageLoaded ? 'opacity-100' : 'opacity-0'
-        ]"
         :alt="video.title"
-        @load="imageLoaded = true"
-        @error="showThumbnailFallback = true"
-      >
-
-      <div v-else class="absolute inset-0 flex items-center justify-center bg-muted">
-        <AppIcon name="imageOff" class="h-6 w-6 text-muted-foreground/20" />
-      </div>
+        fit="responsive"
+        interactive
+        :blur="shouldBlurThumbnail"
+      />
 
       <!-- Quick Actions (Hover) -->
       <div class="absolute top-1.5 right-1.5 flex flex-col gap-1.5 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-10">
@@ -138,6 +126,7 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import ContextMenu from './ContextMenu.vue'
+import VideoThumbnail from './VideoThumbnail.vue'
 import useVideoHistory from '@/composables/useVideoHistory'
 import useVideoInteraction from '@/composables/useVideoInteraction'
 import { useSystemConfig } from '@/composables/useSystemConfig'
@@ -157,8 +146,6 @@ const { clearHistory, sendReport } = useVideoHistory()
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction()
 
 const showMenu = ref(false)
-const imageLoaded = ref(false)
-const showThumbnailFallback = ref(false)
 const menuPosition = ref({ x: 0, y: 0 })
 
 const thumbnailSrc = computed(() => String(props.video?.thumbnail || '').trim())
