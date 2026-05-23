@@ -85,16 +85,6 @@
               <span class="shrink-0 rounded-[4px] bg-accent/50 px-1 py-0 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
                 {{ siteLabel(item.site) }}
               </span>
-              <button
-                v-if="primarySubscription(item)?.url"
-                type="button"
-                class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-                :class="remoteSubscriptionState(primarySubscription(item)?.url || '').subscribed ? 'bg-secondary text-foreground ring-1 ring-border/40' : 'bg-foreground text-background hover:opacity-90'"
-                :disabled="remoteSubscriptionState(primarySubscription(item)?.url || '').loading"
-                @click.stop="toggleRemoteSubscription(primarySubscription(item)?.url || '')"
-              >
-                {{ remoteSubscriptionButtonText(primarySubscription(item)?.url || '') }}
-              </button>
             </div>
             <div v-if="actorText(item)" class="truncate text-[11px] font-medium text-muted-foreground/60">
               {{ actorText(item) }}
@@ -132,7 +122,6 @@ import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { formatDuration } from '@/utils/dateFormat'
-import { getSubscriptionStatus, subscribe, unsubscribe } from '@/api'
 
 type RemoteProfile = {
   id?: string | number | null
@@ -191,12 +180,6 @@ const errorMessage = ref('')
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 const trimmedQuery = computed(() => String(props.query || '').trim())
 const searchKey = computed(() => `${trimmedQuery.value}::${props.site || 'all'}::${props.limit}`)
-const subscriptionStatusMap = ref<Record<string, {
-  checked: boolean
-  loading: boolean
-  subscribed: boolean
-  subscriptionId: number | null
-}>>({})
 
 let requestToken = 0
 let observer: IntersectionObserver | null = null
@@ -240,94 +223,6 @@ const primarySubscription = (item: RemoteSearchItem) => {
     url: item.uploader_url,
     avatar: item.uploader_avatar || '',
   }
-}
-
-const remoteSubscriptionState = (url: string) => {
-  return subscriptionStatusMap.value[url] || {
-    checked: false,
-    loading: false,
-    subscribed: false,
-    subscriptionId: null,
-  }
-}
-
-const setRemoteSubscriptionState = (url: string, patch: Partial<ReturnType<typeof remoteSubscriptionState>>) => {
-  subscriptionStatusMap.value[url] = {
-    ...remoteSubscriptionState(url),
-    ...patch,
-  }
-}
-
-const remoteSubscriptionButtonText = (url: string) => {
-  const state = remoteSubscriptionState(url)
-  if (state.loading) return state.subscribed ? '取消中' : '订阅中'
-  if (!state.checked) return '检查中'
-  return state.subscribed ? '取消' : '订阅'
-}
-
-const syncSubscriptionStatuses = async (targetItems: RemoteSearchItem[]) => {
-  const urls = Array.from(new Set(
-    targetItems
-      .map((item) => String(primarySubscription(item)?.url || '').trim())
-      .filter((url) => url && !remoteSubscriptionState(url).checked && !remoteSubscriptionState(url).loading)
-  ))
-
-  await Promise.all(urls.map(async (url) => {
-    setRemoteSubscriptionState(url, { loading: true })
-    const { data, error } = await getSubscriptionStatus(url)
-    if (error) {
-      setRemoteSubscriptionState(url, { loading: false })
-      return
-    }
-    setRemoteSubscriptionState(url, {
-      checked: true,
-      loading: false,
-      subscribed: data?.is_subscribed === true,
-      subscriptionId: data?.subscription_id ?? null,
-    })
-  }))
-}
-
-const refreshRemoteSubscriptionStatus = async (url: string) => {
-  const { data, error } = await getSubscriptionStatus(url)
-  if (error) {
-    setRemoteSubscriptionState(url, { checked: true, loading: false })
-    return
-  }
-
-  setRemoteSubscriptionState(url, {
-    checked: true,
-    loading: false,
-    subscribed: data?.is_subscribed === true,
-    subscriptionId: data?.subscription_id ?? null,
-  })
-}
-
-const toggleRemoteSubscription = async (url: string) => {
-  if (!url) return
-  const state = remoteSubscriptionState(url)
-  if (state.loading) return
-
-  setRemoteSubscriptionState(url, { loading: true })
-  const result = state.subscribed && state.subscriptionId
-    ? await unsubscribe(state.subscriptionId)
-    : await subscribe(url)
-
-  if (result.error) {
-    setRemoteSubscriptionState(url, { loading: false, checked: true })
-    return
-  }
-
-  if (!state.subscribed) {
-    setRemoteSubscriptionState(url, {
-      checked: true,
-      loading: false,
-      subscribed: result.data?.is_subscribed === true,
-      subscriptionId: result.data?.subscription_id ?? null,
-    })
-  }
-
-  await refreshRemoteSubscriptionStatus(url)
 }
 
 const actorText = (item: RemoteSearchItem) => {
@@ -402,9 +297,8 @@ const loadPage = async (page: number) => {
     const previousCount = items.value.length
     if (page === 1) {
       items.value = nextItems
-      void syncSubscriptionStatuses(nextItems)
     } else {
-      void syncSubscriptionStatuses(appendUniqueItems(nextItems))
+      appendUniqueItems(nextItems)
     }
     currentPage.value = page
     allLoaded.value = result?.has_more === false || (page > 1 && items.value.length === previousCount)
