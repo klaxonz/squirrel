@@ -138,7 +138,7 @@ def test_unsubscribe_by_id_deactivates_subscription_when_last_user_leaves(monkey
     assert sync_state.queued_at is None
     assert sync_state.locked_at is None
     assert sync_state.pending_video_count == 0
-    assert sync_state.last_error == 'no_active_subscribers'
+    assert sync_state.last_error == 'manual_unsubscribe'
 
 
 def test_unsubscribe_by_id_removes_user_feed_rows(monkeypatch):
@@ -171,7 +171,7 @@ def test_unsubscribe_by_id_removes_user_feed_rows(monkeypatch):
     assert remaining_rows == []
 
 
-def test_unsubscribe_by_id_keeps_subscription_active_when_other_users_remain(monkeypatch):
+def test_unsubscribe_by_id_deactivates_subscription_even_when_other_users_remain(monkeypatch):
     engine = _setup_test_env(monkeypatch)
     _seed_subscription(engine, user_ids=[1, 2])
 
@@ -186,10 +186,45 @@ def test_unsubscribe_by_id_keeps_subscription_active_when_other_users_remain(mon
         sync_state = session.query(SubscriptionSyncState).filter_by(subscription_id=1).one()
 
     assert removed_link.is_deleted is True
-    assert remaining_link.is_deleted is False
-    assert subscription.is_deleted is False
-    assert sync_state.sync_status == 'queued'
-    assert sync_state.pending_video_count == 3
+    assert remaining_link.is_deleted is True
+    assert subscription.is_deleted is True
+    assert sync_state.sync_status == 'idle'
+    assert sync_state.pending_video_count == 0
+
+
+def test_check_subscription_status_returns_true_when_server_has_active_subscription(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_subscription(engine, user_ids=[2])
+
+    result = subscription_service.check_subscription_status(
+        user_id=1,
+        url='https://www.youtube.com/channel/1',
+    )
+
+    assert result == {
+        'is_subscribed': True,
+        'subscription_id': 1,
+    }
+
+
+def test_check_subscription_status_returns_false_when_subscription_is_deleted(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_subscription(engine, user_ids=[1])
+
+    with Session(engine, expire_on_commit=False) as session:
+        subscription = session.get(Subscription, 1)
+        subscription.is_deleted = True
+        session.commit()
+
+    result = subscription_service.check_subscription_status(
+        user_id=1,
+        url='https://www.youtube.com/channel/1',
+    )
+
+    assert result == {
+        'is_subscribed': False,
+        'subscription_id': None,
+    }
 
 
 def test_preview_user_subscriptions_reads_items_from_plugin_gateway(monkeypatch):

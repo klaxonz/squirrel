@@ -19,6 +19,7 @@ const YOUTUBE_ORIGIN = 'https://www.youtube.com'
 const PORNHUB_ORIGIN = 'https://www.pornhub.com'
 const YOUPORN_ORIGIN = 'https://www.youporn.com'
 const DESKTOP_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36'
+const BILIBILI_WEB_LOCATION_SPACE = '1550101'
 const WBI_MIXIN_KEY_ENC_TAB = [
   46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
   33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40,
@@ -88,12 +89,7 @@ const getMixinKey = (value) => {
     .slice(0, 32)
 }
 
-const signBilibiliWbiParams = async (params, { fetchImpl, cookie }) => {
-  const nav = await fetchBilibiliJson(fetchImpl, 'https://api.bilibili.com/x/web-interface/nav', cookie)
-  const imgUrl = String(nav?.wbi_img?.img_url || '')
-  const subUrl = String(nav?.wbi_img?.sub_url || '')
-  const imgKey = imgUrl.split('/').pop()?.split('.')[0] || ''
-  const subKey = subUrl.split('/').pop()?.split('.')[0] || ''
+const signBilibiliWbiParams = (params, { imgKey, subKey }) => {
   if (!imgKey || !subKey) throw new Error('Bilibili WBI keys are missing')
 
   const mixinKey = getMixinKey(`${imgKey}${subKey}`)
@@ -422,6 +418,92 @@ const extractBilibiliMid = (targetUrl) => {
   return match[1]
 }
 
+const readBilibiliSpacePageValue = async ({ mid, page, loadDocumentHtml, script, evaluatePage }) => {
+  if (typeof loadDocumentHtml !== 'function') {
+    throw new Error('Bilibili remote channel requires browser document loading')
+  }
+
+  const spaceUrl = new URL(`https://space.bilibili.com/${mid}/video`)
+  if (page > 1) spaceUrl.searchParams.set('pn', String(page))
+
+  return loadDocumentHtml(spaceUrl.toString(), {
+    timeoutMs: 45000,
+    evaluateScript: script,
+    evaluatePage,
+  })
+}
+
+const fetchBilibiliSpacePageJson = async ({ mid, page, baseParams, imgKey, subKey, loadDocumentHtml }) => {
+  const result = await readBilibiliSpacePageValue({
+    mid,
+    page,
+    loadDocumentHtml,
+    evaluatePage: async (evaluate) => {
+      const riskParams = await evaluate(`
+        (async () => {
+          const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+          for (let index = 0; index < 80; index += 1) {
+            if (window.__biliUserFp__) break;
+            await delay(100);
+          }
+          const result = {};
+          if (window.__biliUserFp__?.queryUserLog) {
+            const values = window.__biliUserFp__.queryUserLog(${JSON.stringify(baseParams)});
+            if (values?.[0]) result.dm_img_list = values[0];
+            if (values?.[1]) result.dm_img_str = values[1];
+            if (values?.[2]) result.dm_cover_img_str = values[2];
+            if (values?.[3]) result.dm_img_inter = values[3];
+          }
+          if (window._render_data_?.access_id) result.w_webid = window._render_data_.access_id;
+          return result;
+        })()
+      `)
+      const normalizedRiskParams = !riskParams || typeof riskParams !== 'object'
+        ? {}
+        : Object.fromEntries(Object.entries(riskParams)
+          .map(([key, value]) => [key, String(value || '').trim()])
+          .filter(([, value]) => value))
+      const signedParams = signBilibiliWbiParams({
+        ...baseParams,
+        ...normalizedRiskParams,
+      }, {
+        imgKey,
+        subKey,
+      })
+      const videosUrl = new URL('https://api.bilibili.com/x/space/wbi/arc/search')
+      for (const [key, value] of Object.entries(signedParams)) {
+        videosUrl.searchParams.set(key, value)
+      }
+
+      return evaluate(`
+        (async () => {
+          const response = await fetch(${JSON.stringify(videosUrl.toString())}, {
+            credentials: 'include',
+            headers: {
+              accept: 'application/json, text/plain, */*',
+            },
+          });
+          return {
+            status: response.status,
+            text: await response.text(),
+          };
+        })()
+      `)
+    },
+  })
+
+  const status = Number(result?.status)
+  if (!Number.isFinite(status) || status < 200 || status >= 300) {
+    throw new Error(`Bilibili request failed: ${status || 'unknown'}`)
+  }
+
+  const payload = JSON.parse(String(result?.text || '{}'))
+  if (payload?.code !== undefined && payload.code !== 0) {
+    throw new Error(`${payload?.message || payload?.msg || payload.code} (code=${payload.code})`)
+  }
+  return payload?.data || {}
+}
+
 const mapBilibiliVideo = (row, profile) => ({
   source: 'remote',
   site: 'bilibili',
@@ -438,7 +520,7 @@ const mapBilibiliVideo = (row, profile) => ({
   description: stripHtml(row?.description || ''),
 })
 
-const getBilibiliChannel = async ({ url, limit, page, fetchImpl, buildCookieHeader, profile }) => {
+const getBilibiliChannel = async ({ url, limit, page, fetchImpl, buildCookieHeader, loadDocumentHtml, profile }) => {
   const resultLimit = clampLimit(limit)
   const resultPage = clampPage(page)
   const channelUrl = normalizeChannelUrl(url)
@@ -460,20 +542,30 @@ const getBilibiliChannel = async ({ url, limit, page, fetchImpl, buildCookieHead
     is_nsfw: false,
   }
 
-  const videosUrl = new URL('https://api.bilibili.com/x/space/wbi/arc/search')
-  const signedParams = await signBilibiliWbiParams({
+  const nav = await fetchBilibiliJson(fetchImpl, 'https://api.bilibili.com/x/web-interface/nav', cookie)
+  const imgUrl = String(nav?.wbi_img?.img_url || '')
+  const subUrl = String(nav?.wbi_img?.sub_url || '')
+  const imgKey = imgUrl.split('/').pop()?.split('.')[0] || ''
+  const subKey = subUrl.split('/').pop()?.split('.')[0] || ''
+  if (!imgKey || !subKey) throw new Error('Bilibili WBI keys are missing')
+
+  const baseParams = {
     mid,
     pn: String(resultPage),
     ps: String(resultLimit),
     order: 'pubdate',
-  }, {
-    fetchImpl,
-    cookie,
-  })
-  for (const [key, value] of Object.entries(signedParams)) {
-    videosUrl.searchParams.set(key, value)
+    platform: 'web',
+    web_location: BILIBILI_WEB_LOCATION_SPACE,
+    order_avoided: 'true',
   }
-  const videosPayload = await fetchBilibiliJson(fetchImpl, videosUrl.toString(), cookie)
+  const videosPayload = await fetchBilibiliSpacePageJson({
+    mid,
+    page: resultPage,
+    baseParams,
+    imgKey,
+    subKey,
+    loadDocumentHtml,
+  })
   const rows = Array.isArray(videosPayload?.list?.vlist) ? videosPayload.list.vlist : []
   const totalCount = Number(videosPayload?.page?.count)
   const hasTotalCount = Number.isFinite(totalCount) && totalCount >= 0
@@ -643,6 +735,7 @@ export const getRemoteChannel = async ({
   profile = {},
   fetchImpl,
   buildCookieHeader,
+  loadDocumentHtml,
 }) => {
   if (typeof fetchImpl !== 'function') throw new Error('Channel fetch implementation is required')
   if (typeof buildCookieHeader !== 'function') throw new Error('Channel cookie resolver is required')
@@ -660,6 +753,7 @@ export const getRemoteChannel = async ({
     profile,
     fetchImpl,
     buildCookieHeader,
+    loadDocumentHtml,
   })
 
   return {

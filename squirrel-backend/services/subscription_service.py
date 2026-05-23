@@ -638,61 +638,45 @@ def unsubscribe_by_id(user_id: int, subscription_id: int) -> bool:
         if not subscription:
             return False
 
-        user_subscription = session.scalars(
-            select(UserSubscription).where(
-                UserSubscription.user_id == user_id,
-                UserSubscription.subscription_id == subscription.id,
-                UserSubscription.is_deleted.is_(False),
-            )
-        ).first()
-
-        if not user_subscription:
-            return False
-
-        user_subscription.is_deleted = True
-
-        remaining_active_subscription = session.scalars(
+        active_user_subscriptions = session.scalars(
             select(UserSubscription).where(
                 UserSubscription.subscription_id == subscription.id,
                 UserSubscription.is_deleted.is_(False),
             )
-        ).first()
+        ).all()
 
-        should_deactivate_subscription = remaining_active_subscription is None
-        if should_deactivate_subscription:
-            subscription.is_deleted = True
+        for user_subscription in active_user_subscriptions:
+            user_subscription.is_deleted = True
 
+        subscription.is_deleted = True
         session.commit()
 
-    user_video_feed_service.remove_user_subscription_feed(user_id, subscription_id)
-
-    if should_deactivate_subscription:
-        subscription_sync_state_service.deactivate_sync_states(
-            subscription_id,
-            reason='no_active_subscribers',
-        )
+    user_video_feed_service.remove_subscription_feed(subscription_id)
+    subscription_sync_state_service.deactivate_sync_states(
+        subscription_id,
+        reason='manual_unsubscribe',
+    )
 
     return True
 
 
-def check_subscription_status(user_id: int, url: str) -> bool:
+def check_subscription_status(user_id: int, url: str) -> Dict[str, Any]:
     if not url:
-        return False
+        return {
+            'is_subscribed': False,
+            'subscription_id': None,
+        }
     with get_session() as session:
         subscription = session.scalars(
-            select(Subscription).where(Subscription.url == url)
+            select(Subscription).where(
+                Subscription.url == url,
+                Subscription.is_deleted.is_(False),
+            )
         ).first()
-        if subscription:
-            user_subscription = session.scalars(
-                select(UserSubscription).where(
-                    UserSubscription.user_id == user_id,
-                    UserSubscription.subscription_id == subscription.id,
-                    UserSubscription.is_deleted.is_(False)
-                )
-            ).first()
-            if user_subscription:
-                return True
-    return False
+        return {
+            'is_subscribed': subscription is not None,
+            'subscription_id': subscription.id if subscription else None,
+        }
 
 
 def get_user_subscription_nsfw(user_id: int, subscription_id: int) -> Optional[bool]:

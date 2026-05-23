@@ -93,6 +93,15 @@ def remove_user_subscription_feed(user_id: int, subscription_id: int) -> None:
         )
 
 
+def remove_subscription_feed(subscription_id: int) -> None:
+    with get_session() as session:
+        session.execute(
+            delete(UserVideoFeed).where(
+                UserVideoFeed.subscription_id == subscription_id,
+            )
+        )
+
+
 def update_user_subscription_nsfw(user_id: int, subscription_id: int, is_nsfw: bool) -> None:
     with get_session() as session:
         rows = session.scalars(

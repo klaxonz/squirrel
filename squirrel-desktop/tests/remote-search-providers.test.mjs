@@ -683,12 +683,53 @@ test('desktop javdb site search requests automatic challenge solving window time
 
 test('desktop bilibili remote channel returns profile and videos', async () => {
   const requestedUrls = []
+  const documentUrls = []
   const result = await getRemoteChannel({
     site: 'bilibili',
     url: 'https://space.bilibili.com/12345',
     limit: 5,
     page: 2,
     buildCookieHeader,
+    loadDocumentHtml: async (url, options = {}) => {
+      documentUrls.push(url)
+      assert.equal(typeof options.evaluatePage, 'function')
+      return options.evaluatePage(async (script) => {
+        if (!script.includes('/x/space/wbi/arc/search')) {
+          return {
+            dm_img_list: '[]',
+            dm_img_str: 'img-demo',
+            dm_cover_img_str: 'cover-demo',
+            dm_img_inter: '{"demo":true}',
+            w_webid: 'webid-demo',
+          }
+        }
+
+        const match = script.match(/fetch\("([^"]+)"/)
+        if (match?.[1]) requestedUrls.push(match[1])
+        return {
+          status: 200,
+          text: JSON.stringify({
+            code: 0,
+            data: {
+              page: {
+                count: 20,
+              },
+              list: {
+                vlist: [
+                  {
+                    bvid: 'BVchannel',
+                    title: 'Channel Video',
+                    pic: '//i0.hdslb.com/video.jpg',
+                    length: '02:03',
+                    created: 1700000000,
+                  },
+                ],
+              },
+            },
+          }),
+        }
+      })
+    },
     fetchImpl: async (url) => {
       requestedUrls.push(url)
       if (url.includes('/x/web-interface/card')) {
@@ -712,25 +753,7 @@ test('desktop bilibili remote channel returns profile and videos', async () => {
           },
         })
       }
-
-      return jsonResponse({
-        data: {
-          page: {
-            count: 20,
-          },
-          list: {
-            vlist: [
-              {
-                bvid: 'BVchannel',
-                title: 'Channel Video',
-                pic: '//i0.hdslb.com/video.jpg',
-                length: '02:03',
-                created: 1700000000,
-              },
-            ],
-          },
-        },
-      })
+      throw new Error(`Unexpected request: ${url}`)
     },
   })
 
@@ -742,8 +765,13 @@ test('desktop bilibili remote channel returns profile and videos', async () => {
   assert.equal(result.items[0].url, 'https://www.bilibili.com/video/BVchannel')
   assert.equal(result.items[0].duration, 123)
   assert.equal(result.has_more, true)
+  assert.equal(documentUrls.length, 1)
   const videoRequestUrl = new URL(requestedUrls.find((url) => url.includes('/x/space/wbi/arc/search')))
   assert.equal(videoRequestUrl.searchParams.get('pn'), '2')
+  assert.equal(videoRequestUrl.searchParams.get('dm_img_str'), 'img-demo')
+  assert.equal(videoRequestUrl.searchParams.get('dm_cover_img_str'), 'cover-demo')
+  assert.equal(videoRequestUrl.searchParams.get('dm_img_inter'), '{"demo":true}')
+  assert.equal(videoRequestUrl.searchParams.get('w_webid'), 'webid-demo')
   assert.equal(videoRequestUrl.searchParams.has('w_rid'), true)
 })
 

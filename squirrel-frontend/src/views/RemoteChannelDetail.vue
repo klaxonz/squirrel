@@ -24,6 +24,16 @@
               {{ profile.description }}
             </p>
           </div>
+          <button
+            v-if="channelUrl"
+            type="button"
+            class="h-9 min-w-20 rounded-full px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+            :class="isSubscriptionChecked && isSubscribed ? 'bg-secondary text-foreground ring-1 ring-border/40' : 'bg-foreground text-background hover:opacity-90'"
+            :disabled="isCheckingSubscription || isSubscribing"
+            @click="handleSubscribe"
+          >
+            {{ subscriptionButtonText }}
+          </button>
         </div>
       </section>
 
@@ -92,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
@@ -100,6 +110,7 @@ import VideoSkeleton from '@/components/feed/VideoSkeleton.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { formatDuration } from '@/utils/dateFormat'
+import { getSubscriptionStatus, subscribe, unsubscribe } from '@/api'
 
 type RemoteProfile = {
   id?: string | number | null
@@ -153,9 +164,15 @@ const currentPage = ref(1)
 const nextCursor = shallowRef<unknown>(null)
 const errorMessage = ref('')
 const loadMoreTrigger = ref<HTMLElement | null>(null)
+const isCheckingSubscription = ref(false)
+const isSubscriptionChecked = ref(false)
+const isSubscribed = ref(false)
+const isSubscribing = ref(false)
+const subscriptionId = ref<number | null>(null)
 
 let requestToken = 0
 let observer: IntersectionObserver | null = null
+let scrollRoot: HTMLElement | null = null
 
 const queryValue = (key: string) => {
   const value = route.query[key]
@@ -172,6 +189,12 @@ const siteLabel = computed(() => {
     youporn: 'YouPorn',
   }
   return labels[site.value] || site.value
+})
+
+const subscriptionButtonText = computed(() => {
+  if (isCheckingSubscription.value) return '检查中'
+  if (isSubscribing.value) return '订阅中'
+  return isSubscriptionChecked.value && isSubscribed.value ? '取消订阅' : '订阅'
 })
 
 const routeProfile = computed(() => ({
@@ -213,16 +236,22 @@ const loadPage = async (page: number) => {
   const currentToken = ++requestToken
   loading.value = true
   errorMessage.value = ''
+  let timer: ReturnType<typeof setTimeout> | undefined
 
   try {
-    const result = await window.desktopApp.getRemoteChannel({
-      site: site.value,
-      url: channelUrl.value,
-      limit: 30,
-      page,
-      cursor: page > 1 && nextCursor.value ? { ...(nextCursor.value as Record<string, unknown>) } : undefined,
-      profile: routeProfile.value,
-    })
+    const result = await Promise.race([
+      window.desktopApp.getRemoteChannel({
+        site: site.value,
+        url: channelUrl.value,
+        limit: 30,
+        page,
+        cursor: page > 1 && nextCursor.value ? { ...(nextCursor.value as Record<string, unknown>) } : undefined,
+        profile: routeProfile.value,
+      }),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('远端频道加载超时')), 60000)
+      }),
+    ])
     if (currentToken !== requestToken) return
 
     profile.value = result.profile || routeProfile.value
@@ -236,7 +265,12 @@ const loadPage = async (page: number) => {
     if (currentToken !== requestToken) return
     errorMessage.value = error?.message || '远端频道加载失败'
   } finally {
+    clearTimeout(timer)
     if (currentToken === requestToken) loading.value = false
+    if (currentToken === requestToken) {
+      await nextTick()
+      checkNearBottom()
+    }
   }
 }
 
@@ -252,6 +286,57 @@ const refresh = async () => {
 const loadMore = async () => {
   if (loading.value || allLoaded.value || !items.value.length) return
   await loadPage(currentPage.value + 1)
+}
+
+const checkNearBottom = () => {
+  if (!scrollRoot || loading.value || allLoaded.value || errorMessage.value || !items.value.length) return
+  const remaining = scrollRoot.scrollHeight - scrollRoot.scrollTop - scrollRoot.clientHeight
+  if (remaining <= 900) {
+    void loadMore()
+  }
+}
+
+const refreshSubscriptionStatus = async (url: string) => {
+  isSubscribed.value = false
+  isSubscriptionChecked.value = false
+  subscriptionId.value = null
+  if (!url) return
+
+  isCheckingSubscription.value = true
+  const { data, error } = await getSubscriptionStatus(url)
+  isCheckingSubscription.value = false
+
+  if (url !== channelUrl.value) return
+  if (error) return
+
+  isSubscribed.value = data?.is_subscribed === true
+  subscriptionId.value = data?.subscription_id ?? null
+  isSubscriptionChecked.value = true
+}
+
+watch(channelUrl, async (url) => {
+  await refreshSubscriptionStatus(url)
+}, { immediate: true })
+
+const handleSubscribe = async () => {
+  const url = channelUrl.value
+  if (!url || isSubscribing.value) return
+
+  isSubscribing.value = true
+  const result = isSubscribed.value && subscriptionId.value
+    ? await unsubscribe(subscriptionId.value)
+    : await subscribe(url)
+  isSubscribing.value = false
+
+  if (result.error) return
+
+  if (!isSubscribed.value) {
+    isSubscribed.value = result.data?.is_subscribed === true
+    subscriptionId.value = result.data?.subscription_id ?? null
+    isSubscriptionChecked.value = true
+  }
+
+  await refreshSubscriptionStatus(url)
 }
 
 const hashRemoteUrl = (url: string) => {
@@ -297,16 +382,21 @@ const openResult = async (item: RemoteSearchItem) => {
 watch(() => [route.query.site, route.query.url], refresh, { immediate: true })
 
 onMounted(() => {
-  const root = document.getElementById('app-main-scroll')
+  scrollRoot = document.getElementById('app-main-scroll')
   observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting) loadMore()
+    if (entries[0].isIntersecting) void loadMore()
   }, {
-    root,
+    root: scrollRoot,
     rootMargin: '600px',
   })
 
   if (loadMoreTrigger.value) observer.observe(loadMoreTrigger.value)
+  scrollRoot?.addEventListener('scroll', checkNearBottom, { passive: true })
 })
 
-onUnmounted(() => observer?.disconnect())
+onUnmounted(() => {
+  observer?.disconnect()
+  scrollRoot?.removeEventListener('scroll', checkNearBottom)
+  scrollRoot = null
+})
 </script>

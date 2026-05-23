@@ -20,7 +20,11 @@ export const unsubscribe = async (subscriptionId: string | number) => {
 }
 
 export const subscribe = async (url: string) => {
-  return post('/api/subscription/subscribe', { url })
+  return post<{ is_subscribed: boolean, subscription_id: number | null }>('/api/subscription/subscribe', { url })
+}
+
+export const getSubscriptionStatus = async (url: string) => {
+  return get<{ is_subscribed: boolean, subscription_id: number | null }>('/api/subscription/status', { url })
 }
 
 export const updateNsfwStatus = async (subscriptionId: string | number, isNsfw: boolean) => {

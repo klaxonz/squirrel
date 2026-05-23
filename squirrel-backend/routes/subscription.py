@@ -53,8 +53,11 @@ def subscribe_content(req: SubscribeRequest, current_user: User = Depends(get_cu
     if not SiteCatalog.is_site_enabled(domain=domain):
         return response.param_error("站点插件未启用，无法订阅")
 
-    subscription_service.create_subscribe_message(req.url, current_user.id)
-    return response.success()
+    subscription = subscription_service.handle_subscribe_request(req.url, current_user.id)
+    return response.success({
+        'subscription_id': subscription.id,
+        'is_subscribed': True,
+    })
 
 
 @router.post("/api/subscription/unsubscribe")
@@ -68,10 +71,7 @@ def get_subscription_status(
         url: str = Query(None),
         current_user: User = Depends(get_current_user)
 ):
-    is_subscribed = subscription_service.check_subscription_status(current_user.id, url)
-    return response.success({
-        "is_subscribed": is_subscribed
-    })
+    return response.success(subscription_service.check_subscription_status(current_user.id, url))
 
 
 @router.get("/api/subscription/detail/{subscription_id}")

@@ -991,6 +991,20 @@ const readBrowserWindowHtml = async (browserWindow) => {
   }
 }
 
+const readBrowserWindowValue = async (browserWindow, script, timeoutMs = DOCUMENT_READ_TIMEOUT_MS) => {
+  let timer
+  try {
+    return await Promise.race([
+      browserWindow.webContents.executeJavaScript(script, true),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Document script timed out')), timeoutMs)
+      }),
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 const createDocumentBrowserWindow = async (profile) => {
   const documentWindow = new BrowserWindow({
     width: 1280,
@@ -1008,13 +1022,6 @@ const createDocumentBrowserWindow = async (profile) => {
 
   const userAgent = profile?.userAgent || desktopChromeUserAgent
   documentWindow.webContents.setUserAgent(userAgent)
-  documentWindow.webContents.debugger.attach('1.3')
-  await documentWindow.webContents.debugger.sendCommand('Network.setUserAgentOverride', {
-    userAgent,
-    acceptLanguage: profile?.acceptLanguage || desktopChromeAcceptLanguage,
-    platform: profile?.platform || 'Windows',
-    userAgentMetadata: profile?.userAgentMetadata || desktopChromeUserAgentMetadata,
-  })
 
   return { documentWindow, userAgent }
 }
@@ -1027,6 +1034,16 @@ const loadDocumentHtmlWithBrowserWindowOnce = async (normalizedUrl, options = {}
 
   try {
     await waitForDocumentNavigation(documentWindow, normalizedUrl, userAgent, timeoutMs)
+    if (typeof options?.evaluatePage === 'function') {
+      const value = await options.evaluatePage((script) => readBrowserWindowValue(documentWindow, script, timeoutMs))
+      await session.defaultSession.cookies.flushStore()
+      return value
+    }
+    if (typeof options?.evaluateScript === 'string' && options.evaluateScript.trim()) {
+      const value = await readBrowserWindowValue(documentWindow, options.evaluateScript, timeoutMs)
+      await session.defaultSession.cookies.flushStore()
+      return value
+    }
     const html = await readBrowserWindowHtml(documentWindow)
     await session.defaultSession.cookies.flushStore()
     return String(html || '')
@@ -1320,7 +1337,7 @@ const MEDIA_HEADER_RULES = [
     },
   },
   {
-    hosts: ['bilivideo.com', 'bilivideo.cn', 'bilibili.com', 'b23.tv', 'hdslb.com', 'acgvideo.com'],
+    hosts: ['bilivideo.com', 'bilivideo.cn', 'hdslb.com', 'acgvideo.com'],
     headers: {
       Referer: 'https://www.bilibili.com/',
       Origin: 'https://www.bilibili.com',
@@ -1655,6 +1672,7 @@ const installDesktopBridgeHandlers = () => {
       profile: options?.profile || {},
       fetchImpl: createSessionFetch(),
       buildCookieHeader: buildCookieHeaderForUrl,
+      loadDocumentHtml: loadDocumentHtmlWithBrowserWindow,
     })
   })
 

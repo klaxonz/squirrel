@@ -44,7 +44,16 @@
                     <span class="text-[12px] text-muted-foreground/60 font-medium">{{ primarySubscription.total_videos || 0 }} 项视频</span>
                   </div>
                 </div>
-                <button class="h-7 px-3 bg-foreground text-background text-xs font-semibold rounded-full hover:opacity-90 active:scale-95 transition-all shadow-sm">订阅</button>
+                <button
+                  v-if="primarySubscriptionUrl"
+                  type="button"
+                  class="h-7 min-w-16 px-3 text-xs font-semibold rounded-full transition-all shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                  :class="isSubscriptionChecked && isSubscribed ? 'bg-secondary text-foreground ring-1 ring-border/40' : 'bg-foreground text-background hover:opacity-90 active:scale-95'"
+                  :disabled="isCheckingSubscription || isSubscribing"
+                  @click="handleSubscribe"
+                >
+                  {{ subscriptionButtonText }}
+                </button>
               </div>
 
               <div class="flex items-center gap-2">
@@ -165,6 +174,7 @@ import useVideoHistory from "../composables/useVideoHistory"
 import { formatDate, formatDuration } from '../utils/dateFormat'
 import useVideoInteraction from '../composables/useVideoInteraction'
 import usePlaylist from '../composables/usePlaylist'
+import { getSubscriptionStatus, subscribe, unsubscribe } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -217,6 +227,11 @@ const asideTabs = [
 const descriptionExpanded = ref(false)
 const descriptionTextRef = ref<HTMLElement | null>(null)
 const hasDescriptionOverflow = ref(false)
+const isCheckingSubscription = ref(false)
+const isSubscriptionChecked = ref(false)
+const isSubscribed = ref(false)
+const isSubscribing = ref(false)
+const subscriptionId = ref<number | null>(null)
 let descriptionResizeObserver: ResizeObserver | null = null
 const { videoActions, handleVideoAction } = useVideoActionBar({
   video,
@@ -294,6 +309,57 @@ const primarySubscription = computed(() => {
   if (!v) return null
   return v.subscriptions?.[0] || v.actors?.[0] || null
 })
+
+const primarySubscriptionUrl = computed(() => String((primarySubscription.value as any)?.url || '').trim())
+
+const subscriptionButtonText = computed(() => {
+  if (isCheckingSubscription.value) return '检查中'
+  if (isSubscribing.value) return '订阅中'
+  return isSubscriptionChecked.value && isSubscribed.value ? '取消订阅' : '订阅'
+})
+
+const refreshSubscriptionStatus = async (url: string) => {
+  isSubscribed.value = false
+  isSubscriptionChecked.value = false
+  subscriptionId.value = null
+  if (!url) return
+
+  isCheckingSubscription.value = true
+  const { data, error } = await getSubscriptionStatus(url)
+  isCheckingSubscription.value = false
+
+  if (url !== primarySubscriptionUrl.value) return
+  if (error) return
+
+  isSubscribed.value = data?.is_subscribed === true
+  subscriptionId.value = data?.subscription_id ?? null
+  isSubscriptionChecked.value = true
+}
+
+watch(primarySubscriptionUrl, async (url) => {
+  await refreshSubscriptionStatus(url)
+}, { immediate: true })
+
+const handleSubscribe = async () => {
+  const url = primarySubscriptionUrl.value
+  if (!url || isSubscribing.value) return
+
+  isSubscribing.value = true
+  const result = isSubscribed.value && subscriptionId.value
+    ? await unsubscribe(subscriptionId.value)
+    : await subscribe(url)
+  isSubscribing.value = false
+
+  if (result.error) return
+
+  if (!isSubscribed.value) {
+    isSubscribed.value = result.data?.is_subscribed === true
+    subscriptionId.value = result.data?.subscription_id ?? null
+    isSubscriptionChecked.value = true
+  }
+
+  await refreshSubscriptionStatus(url)
+}
 
 const {
   videoPlayerHostRef,
