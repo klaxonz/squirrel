@@ -222,6 +222,8 @@ const routes = [
     meta: createNoSearchMeta('远端频道', {
       navKey: 'videos',
       sectionLabel: '首页',
+      keepAlive: true,
+      keepAliveComponent: 'RemoteChannelDetail',
       scrollable: true,
       hideScrollbar: true,
     }),

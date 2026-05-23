@@ -102,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onActivated, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
@@ -173,6 +173,7 @@ const subscriptionId = ref<number | null>(null)
 let requestToken = 0
 let observer: IntersectionObserver | null = null
 let scrollRoot: HTMLElement | null = null
+let loadedChannelKey = ''
 
 const queryValue = (key: string) => {
   const value = route.query[key]
@@ -205,6 +206,7 @@ const routeProfile = computed(() => ({
   avatar: queryValue('avatar'),
   is_nsfw: queryValue('is_nsfw') === 'true',
 }))
+const channelKey = computed(() => `${site.value}::${channelUrl.value}`)
 
 const displayDate = (item: RemoteSearchItem) => {
   if (item.published_text) return item.published_text
@@ -280,6 +282,7 @@ const refresh = async () => {
   currentPage.value = 1
   nextCursor.value = null
   allLoaded.value = false
+  loadedChannelKey = channelKey.value
   await loadPage(1)
 }
 
@@ -379,7 +382,16 @@ const openResult = async (item: RemoteSearchItem) => {
   await router.push({ name: 'VideoPlay', params: { videoId: videoSeed.id } })
 }
 
-watch(() => [route.query.site, route.query.url], refresh, { immediate: true })
+watch(channelKey, (nextChannelKey) => {
+  if (route.name !== 'RemoteChannelDetail') return
+  if (nextChannelKey === loadedChannelKey) return
+  refresh()
+}, { immediate: true })
+
+onActivated(() => {
+  if (channelKey.value === loadedChannelKey) return
+  refresh()
+})
 
 onMounted(() => {
   scrollRoot = document.getElementById('app-main-scroll')

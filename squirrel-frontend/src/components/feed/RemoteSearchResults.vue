@@ -125,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
@@ -190,6 +190,7 @@ const currentPage = ref(1)
 const errorMessage = ref('')
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 const trimmedQuery = computed(() => String(props.query || '').trim())
+const searchKey = computed(() => `${trimmedQuery.value}::${props.site || 'all'}::${props.limit}`)
 const subscriptionStatusMap = ref<Record<string, {
   checked: boolean
   loading: boolean
@@ -199,6 +200,7 @@ const subscriptionStatusMap = ref<Record<string, {
 
 let requestToken = 0
 let observer: IntersectionObserver | null = null
+let loadedSearchKey = ''
 
 const siteLabel = (site: string) => {
   const labels: Record<string, string> = {
@@ -425,6 +427,7 @@ const refresh = async () => {
   currentPage.value = 1
   allLoaded.value = false
   errorMessage.value = ''
+  loadedSearchKey = searchKey.value
   await loadPage(1)
 }
 
@@ -487,7 +490,15 @@ const openResult = async (item: RemoteSearchItem) => {
   await router.push({ name: 'VideoPlay', params: { videoId: videoSeed.id } })
 }
 
-watch(() => [props.query, props.site], refresh, { immediate: true })
+watch(searchKey, (nextSearchKey) => {
+  if (nextSearchKey === loadedSearchKey) return
+  refresh()
+}, { immediate: true })
+
+onActivated(() => {
+  if (searchKey.value === loadedSearchKey) return
+  refresh()
+})
 
 onMounted(() => {
   const root = document.getElementById('app-main-scroll')

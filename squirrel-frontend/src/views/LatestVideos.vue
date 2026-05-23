@@ -40,14 +40,15 @@
         </div>
       </div>
 
-      <RemoteSearchResults
-        v-if="searchMode === 'remote'"
-        ref="remoteSearchRef"
-        :query="searchQuery"
-        :site="site"
-        @error="loadError = $event"
-        @loading-change="isRefreshing = !!$event"
-      />
+      <keep-alive v-if="searchMode === 'remote'">
+        <RemoteSearchResults
+          ref="remoteSearchRef"
+          :query="searchQuery"
+          :site="site"
+          @error="loadError = $event"
+          @loading-change="isRefreshing = !!$event"
+        />
+      </keep-alive>
 
       <router-view v-else v-slot="{ Component }">
         <keep-alive :max="10">
