@@ -88,14 +88,36 @@
       <header class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4 lg:px-6">
         <div class="flex min-w-0 items-center gap-3">
           <div class="min-w-0">
-            <h2 class="max-w-[360px] truncate text-base font-semibold">
-              {{ activeChannelName || '订阅动态' }}
-            </h2>
+            <div class="flex min-w-0 items-center gap-2">
+              <h2 class="max-w-[360px] truncate text-base font-semibold">
+                {{ activeChannelName || '订阅动态' }}
+              </h2>
+              <div v-if="canOpenRemoteChannel" class="flex shrink-0 rounded-md border border-border/50 bg-muted p-0.5">
+                <button
+                  type="button"
+                  class="inline-flex h-7 items-center gap-1.5 rounded-[5px] px-2.5 text-xs font-medium transition-colors"
+                  :class="channelDataMode === 'local' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                  @click="openLocalChannel"
+                >
+                  <AppIcon name="library" class="h-3.5 w-3.5" />
+                  本地
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex h-7 items-center gap-1.5 rounded-[5px] px-2.5 text-xs font-medium transition-colors"
+                  :class="channelDataMode === 'remote' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                  @click="openRemoteChannel"
+                >
+                  <AppIcon name="siteFallback" class="h-3.5 w-3.5" />
+                  远端
+                </button>
+              </div>
+            </div>
             <p class="mt-0.5 text-xs text-muted-foreground">
-              {{ viewMode === 'feed' ? `${feedItems.length} 个视频` : `${filteredChannels.length} 个频道` }}
+              {{ headerSubtitle }}
             </p>
           </div>
-          <div v-if="loadingFeed" class="flex gap-1">
+          <div v-if="headerLoading" class="flex gap-1">
             <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.3s]" />
             <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.15s]" />
             <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" />
@@ -104,22 +126,33 @@
 
         <div class="flex items-center gap-2">
           <div class="flex shrink-0 rounded-md bg-muted p-0.5">
-            <button @click="viewMode = 'feed'" class="h-8 rounded-[6px] px-3 text-sm font-medium transition-colors" :class="viewMode === 'feed' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">最近发布</button>
-            <button @click="viewMode = 'grid'" class="h-8 rounded-[6px] px-3 text-sm font-medium transition-colors" :class="viewMode === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">频道</button>
+            <button @click="showLocalFeed" class="h-8 rounded-[6px] px-3 text-sm font-medium transition-colors" :class="channelDataMode === 'local' && viewMode === 'feed' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">最近发布</button>
+            <button @click="showLocalGrid" class="h-8 rounded-[6px] px-3 text-sm font-medium transition-colors" :class="channelDataMode === 'local' && viewMode === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">频道</button>
           </div>
           <button class="hidden h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors md:flex" :class="nsfw === 'all' ? 'border-border/50 text-muted-foreground hover:bg-accent/60' : 'border-destructive/20 bg-destructive/10 text-destructive'" @click="nsfw = nsfw === 'all' ? 'yes' : 'all'">
             <span class="h-2 w-2 rounded-full" :class="nsfw === 'all' ? 'bg-muted-foreground/30' : 'bg-destructive'" />
             成年内容
           </button>
           <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" @click="handleRefresh">
-            <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': loadingFeed }" />
+            <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': headerLoading }" />
           </Button>
         </div>
       </header>
 
       <div ref="feedContainer" class="flex-1 overflow-y-auto custom-scrollbar">
         <div class="mx-auto w-full max-w-[1600px] p-4 lg:p-6">
-          <div v-if="viewMode === 'feed'" class="space-y-10">
+          <RemoteChannelVideoGrid
+            v-if="channelDataMode === 'remote'"
+            :items="remoteItems"
+            :loading="remoteLoading"
+            :all-loaded="remoteAllLoaded"
+            :error="remoteError"
+            :scroll-root="feedContainer"
+            @open="openRemoteResult"
+            @load-more="loadMoreRemote"
+          />
+
+          <div v-else-if="viewMode === 'feed'" class="space-y-10">
             <div v-if="!feedItems.length && !loadingFeed" class="flex min-h-[24rem] flex-col items-center justify-center text-center">
               <AppIcon name="inbox" class="h-9 w-9 text-muted-foreground/30" />
               <h3 class="mt-4 text-sm font-semibold">暂无内容</h3>
@@ -160,13 +193,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onUnmounted, onMounted, nextTick, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { onClickOutside } from '@vueuse/core'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { Button } from '@/components/ui/button'
 import SubscriptionCard from '@/components/feed/SubscriptionCard.vue'
 import SubscriptionCardSkeleton from '@/components/feed/SubscriptionCardSkeleton.vue'
+import RemoteChannelVideoGrid from '@/components/feed/RemoteChannelVideoGrid.vue'
 import VideoItem from '@/components/feed/VideoItem.vue'
 import VideoSkeleton from '@/components/feed/VideoSkeleton.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
@@ -181,12 +215,49 @@ import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 
 defineOptions({ name: 'Subscribed' })
 
+type RemoteProfile = {
+  id?: string | number | null
+  type?: string | null
+  name: string
+  url?: string | null
+  avatar?: string | null
+  description?: string | null
+  site?: string | null
+  is_nsfw?: boolean | null
+}
+
+type RemoteSearchItem = {
+  source: 'remote'
+  site: string
+  id?: string | number | null
+  title: string
+  url: string
+  thumbnail?: string | null
+  duration?: number | null
+  publish_date?: string | null
+  published_text?: string | null
+  uploader?: string | null
+  uploader_url?: string | null
+  uploader_avatar?: string | null
+  subscriptions?: RemoteProfile[]
+  actors?: RemoteProfile[]
+  description?: string | null
+}
+
+const REMOTE_PLAYABLE_SITE_PATTERNS: Record<string, RegExp> = {
+  bilibili: /(?:bilibili\.com\/video\/|b23\.tv\/)/i,
+  pornhub: /pornhub\.com\/(?:view_video\.php|video\/|embed\/)/i,
+  youtube: /(?:youtube\.com\/|youtu\.be\/)/i,
+  youporn: /youporn\.com\/watch\//i,
+}
+
 const router = useRouter()
 const { nsfw, site } = useFeedFilters()
 const { options: siteOptions, fetchSites } = useSites()
 
 // UI State
 const viewMode = ref<'feed' | 'grid'>('feed')
+const channelDataMode = ref<'local' | 'remote'>('local')
 const sidebarSearch = ref('')
 const showSiteDropdown = ref(false)
 const siteFilterRef = ref<HTMLElement | null>(null)
@@ -215,6 +286,14 @@ const feedFinished = ref(false)
 const feedPage = ref(1)
 const FEED_PAGE_SIZE = 48 // Increased for better dense layout
 let feedRequestToken = 0
+const remoteItems = ref<RemoteSearchItem[]>([])
+const remoteLoading = ref(false)
+const remoteAllLoaded = ref(false)
+const remotePage = ref(1)
+const remoteNextCursor = shallowRef<unknown>(null)
+const remoteError = ref('')
+let remoteRequestToken = 0
+let loadedRemoteChannelKey = ''
 
 // Observers
 const feedTrigger = ref<HTMLElement | null>(null)
@@ -229,6 +308,24 @@ onClickOutside(siteFilterRef, () => { showSiteDropdown.value = false })
 const activeChannelName = computed(() => {
   if (!activeChannelId.value) return ''
   return list.value.find(c => c.id === activeChannelId.value)?.name || activeChannelNameCache.value
+})
+const activeChannel = computed(() => {
+  if (!activeChannelId.value) return null
+  return list.value.find(c => c.id === activeChannelId.value) || null
+})
+const canOpenRemoteChannel = computed(() => {
+  return window.desktopApp?.isDesktop === true && !!activeChannel.value?.site && !!activeChannel.value?.url
+})
+const remoteChannelKey = computed(() => {
+  const channel = activeChannel.value
+  return channel ? `${channel.site || ''}::${channel.url || ''}` : ''
+})
+const headerSubtitle = computed(() => {
+  if (channelDataMode.value === 'remote') return `${remoteItems.value.length} 个远端视频`
+  return viewMode.value === 'feed' ? `${feedItems.value.length} 个视频` : `${filteredChannels.value.length} 个频道`
+})
+const headerLoading = computed(() => {
+  return channelDataMode.value === 'remote' ? remoteLoading.value : loadingFeed.value
 })
 
 const siteOptionsList = computed(() => siteOptions.value || [])
@@ -344,15 +441,161 @@ const handleChannelClick = (id: string | number) => {
     activeChannelId.value = id
     activeChannelNameCache.value = list.value.find(c => c.id === id)?.name || ''
   }
+  channelDataMode.value = 'local'
   viewMode.value = 'feed'; fetchFeed(true)
   scrollToTop(feedContainer.value)
 }
 
 const handleRefresh = () => {
-  fetchChannels(true); fetchFeed(true)
+  fetchChannels(true)
+  if (channelDataMode.value === 'remote') fetchRemoteChannel(true)
+  else fetchFeed(true)
   resetAllScroll()
 }
 const handleOpenVideo = (video: any) => { rememberVideoPlaybackSeed(video); router.push(`/video/${video.id}`) }
+const showLocalFeed = () => {
+  channelDataMode.value = 'local'
+  viewMode.value = 'feed'
+}
+const showLocalGrid = () => {
+  channelDataMode.value = 'local'
+  viewMode.value = 'grid'
+}
+const openLocalChannel = () => {
+  channelDataMode.value = 'local'
+}
+const openRemoteChannel = async () => {
+  const channel = activeChannel.value
+  if (!canOpenRemoteChannel.value || !channel) return
+
+  channelDataMode.value = 'remote'
+  if (loadedRemoteChannelKey !== remoteChannelKey.value) await fetchRemoteChannel(true)
+  scrollToTop(feedContainer.value)
+}
+
+const appendUniqueRemoteItems = (nextItems: RemoteSearchItem[]) => {
+  const seen = new Set(remoteItems.value.map((item) => item.url))
+  const uniqueItems = nextItems.filter((item) => {
+    if (!item.url || seen.has(item.url)) return false
+    seen.add(item.url)
+    return true
+  })
+  remoteItems.value = remoteItems.value.concat(uniqueItems)
+}
+
+const fetchRemoteChannel = async (isReset = false) => {
+  const channel = activeChannel.value
+  if (!channel || !canOpenRemoteChannel.value) return
+
+  if (!window.desktopApp?.isDesktop || typeof window.desktopApp?.getRemoteChannel !== 'function') {
+    remoteError.value = '当前桌面端不支持远端频道'
+    return
+  }
+  if (!isReset && (remoteLoading.value || remoteAllLoaded.value)) return
+
+  if (isReset) {
+    remoteItems.value = []
+    remotePage.value = 1
+    remoteNextCursor.value = null
+    remoteAllLoaded.value = false
+    remoteError.value = ''
+    loadedRemoteChannelKey = remoteChannelKey.value
+  }
+
+  const requestToken = ++remoteRequestToken
+  const requestPage = isReset ? 1 : remotePage.value + 1
+  remoteLoading.value = true
+  let timer: ReturnType<typeof setTimeout> | undefined
+
+  try {
+    const result = await Promise.race([
+      window.desktopApp.getRemoteChannel({
+        site: channel.site,
+        url: channel.url,
+        limit: 30,
+        page: requestPage,
+        cursor: requestPage > 1 && remoteNextCursor.value ? { ...(remoteNextCursor.value as Record<string, unknown>) } : undefined,
+        profile: {
+          id: channel.id != null ? String(channel.id) : null,
+          type: 'CHANNEL',
+          name: channel.name || '',
+          url: channel.url,
+          avatar: channel.avatar || '',
+          is_nsfw: channel.is_nsfw === true,
+        },
+      }),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('远端频道加载超时')), 60000)
+      }),
+    ])
+    if (requestToken !== remoteRequestToken) return
+
+    const nextItems = Array.isArray(result.items) ? result.items : []
+    if (requestPage === 1) remoteItems.value = nextItems
+    else appendUniqueRemoteItems(nextItems)
+    remotePage.value = requestPage
+    remoteNextCursor.value = result.next_cursor || null
+    remoteAllLoaded.value = result.has_more === false
+  } catch (error: any) {
+    if (requestToken !== remoteRequestToken) return
+    remoteError.value = error?.message || '远端频道加载失败'
+  } finally {
+    clearTimeout(timer)
+    if (requestToken === remoteRequestToken) remoteLoading.value = false
+  }
+}
+
+const loadMoreRemote = async () => {
+  await fetchRemoteChannel(false)
+}
+
+const hashRemoteUrl = (url: string) => {
+  let hash = 0
+  for (let index = 0; index < url.length; index += 1) {
+    hash = Math.imul(31, hash) + url.charCodeAt(index)
+    hash |= 0
+  }
+  return Math.abs(hash).toString(36)
+}
+
+const buildRemoteVideoSeed = (item: RemoteSearchItem) => {
+  const channel = activeChannel.value
+  const url = String(item.url || '').trim()
+  return {
+    id: `remote-${item.site}-${hashRemoteUrl(url)}`,
+    source: 'remote',
+    site: item.site,
+    title: item.title,
+    url,
+    thumbnail: item.thumbnail || '',
+    duration: item.duration || null,
+    publish_date: item.publish_date || null,
+    uploaded_at: item.publish_date || null,
+    description: item.description || '',
+    subscriptions: item.subscriptions?.length ? item.subscriptions : [{
+      id: channel?.id ?? null,
+      type: 'CHANNEL',
+      name: channel?.name || '',
+      url: channel?.url || '',
+      avatar: channel?.avatar || '',
+      is_nsfw: channel?.is_nsfw === true,
+    }],
+    actors: item.actors || [],
+  }
+}
+
+const canPlayRemoteResult = (item: RemoteSearchItem) => {
+  const pattern = REMOTE_PLAYABLE_SITE_PATTERNS[item.site]
+  return !!pattern && pattern.test(String(item.url || ''))
+}
+
+const openRemoteResult = async (item: RemoteSearchItem) => {
+  if (!item.url || !canPlayRemoteResult(item)) return
+
+  const videoSeed = buildRemoteVideoSeed(item)
+  rememberVideoPlaybackSeed(videoSeed)
+  await router.push({ name: 'VideoPlay', params: { videoId: videoSeed.id } })
+}
 
 const initObservers = () => {
   // Cleanup existing
@@ -395,6 +638,16 @@ watch(viewMode, () => {
 })
 
 watch([nsfw, site], () => { fetchChannels(true); fetchFeed(true); resetAllScroll() })
+
+watch(remoteChannelKey, () => {
+  remoteItems.value = []
+  remotePage.value = 1
+  remoteNextCursor.value = null
+  remoteAllLoaded.value = false
+  remoteError.value = ''
+  loadedRemoteChannelKey = ''
+  if (channelDataMode.value === 'remote') fetchRemoteChannel(true)
+})
 
 watch(sidebarSearch, () => {
   if (sidebarSearchTimer !== null) window.clearTimeout(sidebarSearchTimer)

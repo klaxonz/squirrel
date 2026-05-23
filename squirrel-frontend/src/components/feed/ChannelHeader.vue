@@ -61,6 +61,27 @@
               <span class="text-sm font-semibold font-mono text-foreground/80">{{ detail?.total_extract || 0 }}</span>
             </div>
           </div>
+
+          <div v-if="canOpenRemote" class="flex rounded-lg border border-border/40 bg-muted/40 p-0.5">
+            <button
+              type="button"
+              class="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold transition-colors"
+              :class="mode === 'local' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+              @click="emit('update:mode', 'local')"
+            >
+              <AppIcon name="library" class="h-3.5 w-3.5" />
+              本地
+            </button>
+            <button
+              type="button"
+              class="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold transition-colors"
+              :class="mode === 'remote' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+              @click="emit('update:mode', 'remote')"
+            >
+              <AppIcon name="siteFallback" class="h-3.5 w-3.5" />
+              远端
+            </button>
+          </div>
           
           <button
             type="button"
@@ -77,14 +98,18 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import { getSubscriptionDetail, unsubscribe as apiUnsubscribe } from '@/api'
 import { notifySubscriptionRemoved } from '@/utils/subscriptionEvents'
 
 const props = defineProps({
-  subscriptionId: { type: [String, Number], required: true }
-});
+  subscriptionId: { type: [String, Number], required: true },
+  mode: { type: String, default: 'local' },
+})
+
+const emit = defineEmits(['update:mode', 'loaded'])
 
 const detail = ref(null);
 const loading = ref(false);
@@ -92,6 +117,11 @@ const isVisible = ref(true)
 const isUnsubscribing = ref(false)
 const unsubscribeError = ref('')
 const DISMISS_MS = 180
+const isDesktop = window.desktopApp?.isDesktop === true
+
+const canOpenRemote = computed(() => {
+  return isDesktop && !!detail.value?.site && !!detail.value?.url
+})
 
 const wait = (ms) => new Promise((resolve) => {
   window.setTimeout(resolve, ms)
@@ -101,7 +131,10 @@ const fetchDetail = async () => {
   if (!props.subscriptionId) return;
   loading.value = true;
   const { data, error } = await getSubscriptionDetail(props.subscriptionId);
-  if (!error) detail.value = data;
+  if (!error) {
+    detail.value = data;
+    emit('loaded', data)
+  }
   loading.value = false;
 };
 
@@ -129,7 +162,7 @@ watch(() => props.subscriptionId, () => {
   isUnsubscribing.value = false
   unsubscribeError.value = ''
   fetchDetail()
-}, { immediate: true });
+}, { immediate: true })
 </script>
 
 <style scoped>

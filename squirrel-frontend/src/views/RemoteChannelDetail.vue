@@ -24,16 +24,36 @@
               {{ profile.description }}
             </p>
           </div>
-          <button
-            v-if="channelUrl"
-            type="button"
-            class="h-9 min-w-20 rounded-full px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-            :class="isSubscriptionChecked && isSubscribed ? 'bg-secondary text-foreground ring-1 ring-border/40' : 'bg-foreground text-background hover:opacity-90'"
-            :disabled="isCheckingSubscription || isSubscribing"
-            @click="handleSubscribe"
-          >
-            {{ subscriptionButtonText }}
-          </button>
+          <div class="flex items-center gap-3">
+            <div v-if="localSubscriptionRoute" class="flex rounded-lg border border-border/40 bg-muted/40 p-0.5">
+              <button
+                type="button"
+                class="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                @click="openLocalChannel"
+              >
+                <AppIcon name="library" class="h-3.5 w-3.5" />
+                本地
+              </button>
+              <button
+                type="button"
+                class="inline-flex h-8 items-center gap-1.5 rounded-md bg-background px-3 text-xs font-semibold text-foreground shadow-sm"
+                disabled
+              >
+                <AppIcon name="siteFallback" class="h-3.5 w-3.5" />
+                远端
+              </button>
+            </div>
+            <button
+              v-if="channelUrl"
+              type="button"
+              class="h-9 min-w-20 rounded-full px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+              :class="isSubscriptionChecked && isSubscribed ? 'bg-secondary text-foreground ring-1 ring-border/40' : 'bg-foreground text-background hover:opacity-90'"
+              :disabled="isCheckingSubscription || isSubscribing"
+              @click="handleSubscribe"
+            >
+              {{ subscriptionButtonText }}
+            </button>
+          </div>
         </div>
       </section>
 
@@ -197,6 +217,13 @@ const subscriptionButtonText = computed(() => {
   if (isSubscribing.value) return '订阅中'
   return isSubscriptionChecked.value && isSubscribed.value ? '取消订阅' : '订阅'
 })
+const localSubscriptionRoute = computed(() => {
+  if (!isSubscriptionChecked.value || !isSubscribed.value || !subscriptionId.value) return null
+  return {
+    name: 'SubscriptionAllVideos',
+    params: { id: String(subscriptionId.value) },
+  }
+})
 
 const routeProfile = computed(() => ({
   id: queryValue('id') || null,
@@ -340,6 +367,11 @@ const handleSubscribe = async () => {
   }
 
   await refreshSubscriptionStatus(url)
+}
+
+const openLocalChannel = async () => {
+  if (!localSubscriptionRoute.value) return
+  await router.push(localSubscriptionRoute.value)
 }
 
 const hashRemoteUrl = (url: string) => {
