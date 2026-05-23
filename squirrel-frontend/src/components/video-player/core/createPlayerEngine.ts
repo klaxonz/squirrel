@@ -170,6 +170,21 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   let waitingRecoveryTimer: ReturnType<typeof setTimeout> | null = null
   let waitingRecoverySuppressedUntil = 0
 
+  const releaseVideoElementMedia = (video: HTMLVideoElement | null): void => {
+    if (!video) return
+
+    try {
+      video.pause()
+    } catch {}
+
+    video.removeAttribute('src')
+    video.removeAttribute('poster')
+
+    try {
+      video.load()
+    } catch {}
+  }
+
   const resetProgressState = (): void => {
     if (saveTimer) {
       clearTimeout(saveTimer)
@@ -607,9 +622,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     markSourceLoadingStarted()
     pluginHandlingError = false
 
-    try {
-      videoElement.pause()
-    } catch {}
+    releaseVideoElementMedia(videoElement)
 
     currentSourceKey = nextKey
     currentSource = source
@@ -623,9 +636,6 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       videoElement.src = src
       videoElement.load()
     }
-
-    videoElement.poster = ''
-    videoElement.removeAttribute('poster')
 
     if (autoplay) {
       autoPlayOnReady = true
@@ -880,19 +890,21 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     void audioContext?.close()
 
     flushProgress()
-
     pluginManager.destroy()
+    releaseVideoElementMedia(videoElement)
     events.destroy()
   }
 
   const attachVideoElement = (el: HTMLVideoElement | null): void => {
     if (videoElement === el) return
+    const previousVideoElement = videoElement
 
     if (removeVideoListeners) {
       removeVideoListeners()
     }
 
     clearWaitingRecovery()
+    releaseVideoElementMedia(previousVideoElement)
     videoElement = el
     setupVideoListeners()
     applyMediaSettings(videoElement)

@@ -1923,6 +1923,12 @@ const installMainWindowBehaviors = (mainWindow) => {
   })
 
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[squirrel-desktop] Renderer process gone', {
+      reason: details?.reason,
+      exitCode: details?.exitCode,
+      url: mainWindow.webContents.getURL(),
+    })
+
     void showErrorShell(mainWindow, {
       errorCode: details.reason,
       errorDescription: 'Renderer process exited unexpectedly',
@@ -2048,4 +2054,14 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('child-process-gone', (_event, details) => {
+  console.error('[squirrel-desktop] Child process gone', {
+    type: details?.type,
+    reason: details?.reason,
+    exitCode: details?.exitCode,
+    serviceName: details?.serviceName,
+    name: details?.name,
+  })
 })
