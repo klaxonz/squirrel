@@ -1,5 +1,5 @@
 <template>
-  <div ref="rootRef" class="relative w-full max-w-[560px]" @focusin="isFocused = true" @focusout="handleFocusOut">
+  <div ref="rootRef" class="relative w-full max-w-[560px]" @focusin="handleFocusIn" @focusout="handleFocusOut">
     <!-- Search Input Field -->
     <div 
       class="flex items-center h-9 px-3 rounded-lg bg-accent/30 border border-border/20 transition-all duration-300 group focus-within:bg-background focus-within:border-primary/20 focus-within:ring-4 focus-within:ring-primary/5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]"
@@ -211,6 +211,14 @@ function clearRecentSearches() {
 function removeRecentSearch(val: string) {
   recentSearches.value = recentSearches.value.filter(s => s !== val)
   localStorage.setItem('search-history', JSON.stringify(recentSearches.value))
+}
+
+function handleFocusIn(e: FocusEvent) {
+  if (rootRef.value?.contains(e.relatedTarget as Node)) return
+  isFocused.value = true
+  isPanelOpen.value = true
+  activeSuggestionIndex.value = -1
+  if (trimmedInputValue.value) loadRemoteSuggestions()
 }
 
 function handleFocusOut(e: FocusEvent) {
