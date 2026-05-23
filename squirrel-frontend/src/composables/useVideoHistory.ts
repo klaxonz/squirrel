@@ -33,6 +33,11 @@ type SendReportOptions = {
   retryOnFailure?: boolean
 }
 
+const toPersistedVideoId = (videoId: VideoId) => {
+  const numericId = Number(videoId)
+  return Number.isSafeInteger(numericId) && numericId > 0 ? numericId : null
+}
+
 export default function useVideoHistory() {
   const localHistory = reactive(new Map<VideoId, ReportData>()) as Map<VideoId, ReportData>
   const pendingUpdates = ref<ReportData[]>([])
@@ -49,6 +54,7 @@ export default function useVideoHistory() {
       includeMetadata = false,
       retryOnFailure = true
     } = options
+    const persistedVideoId = toPersistedVideoId(video_id)
 
     const connection = (navigator as any).connection as ReportConnection | undefined
 
@@ -73,8 +79,16 @@ export default function useVideoHistory() {
 
     updateLocalHistory(video_id, reportData)
 
+    if (persistedVideoId == null) {
+      removePendingUpdate(video_id)
+      return true
+    }
+
     if (syncStatus.isOnline || force) {
-      const { error } = (await updateVideoHistory(reportData)) as ApiResult<unknown>
+      const { error } = (await updateVideoHistory({
+        ...reportData,
+        video_id: persistedVideoId,
+      })) as ApiResult<unknown>
       if (!error) {
         syncStatus.lastSyncTime = Date.now()
         syncStatus.failedAttempts = 0
@@ -103,7 +117,26 @@ export default function useVideoHistory() {
       return false
     }
 
-    const { error } = (await batchUpdateVideoHistory(reports)) as ApiResult<unknown>
+    const persistedReports = reports
+      .map((report) => {
+        const persistedVideoId = toPersistedVideoId(report.video_id)
+        return persistedVideoId == null
+          ? null
+          : {
+              ...report,
+              video_id: persistedVideoId,
+            }
+      })
+      .filter((report): report is ReportData & { video_id: number } => report != null)
+
+    if (persistedReports.length === 0) {
+      reports.forEach((report) => {
+        removePendingUpdate(report.video_id)
+      })
+      return true
+    }
+
+    const { error } = (await batchUpdateVideoHistory(persistedReports)) as ApiResult<unknown>
 
     if (!error) {
       syncStatus.lastSyncTime = Date.now()
