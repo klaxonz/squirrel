@@ -39,6 +39,11 @@
         v-if="!subscriptionId && searchMode === 'local' && activeTab === 'all' && !searchQuery"
         @openModal="handleOpenModal"
       />
+      <SpecialFollowVideos
+        v-if="!subscriptionId && searchMode === 'local' && activeTab === 'all' && !searchQuery"
+        @openModal="handleOpenModal"
+        @goToSubscription="goToChannelDetail"
+      />
 
       <div v-if="loadError" class="px-6 pt-6">
         <div class="bg-destructive/5 border border-destructive/20 rounded-2xl p-4 flex items-center justify-between">
@@ -97,6 +102,7 @@ import ChannelHeader from '@/components/feed/ChannelHeader.vue'
 import RemoteChannelVideoGrid from '@/components/feed/RemoteChannelVideoGrid.vue'
 import RemoteSearchResults from '@/components/feed/RemoteSearchResults.vue'
 import ContinueWatching from '@/components/feed/ContinueWatching.vue'
+import SpecialFollowVideos from '@/components/feed/SpecialFollowVideos.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { VIDEO_TABS } from '@/constants/videos'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'

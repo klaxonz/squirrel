@@ -25,7 +25,7 @@
 
     <div
       ref="scrollContainer"
-      class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x scroll-smooth"
+      class="no-scrollbar flex gap-4 overflow-x-auto pb-4 snap-x scroll-smooth"
       @scroll="updateScrollState"
     >
       <div
