@@ -2,8 +2,8 @@
   <AppPageShell variant="compact">
     <header class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4 lg:px-6">
       <div class="min-w-0">
-        <h1 class="truncate text-base font-semibold">播放历史</h1>
-        <p class="mt-0.5 text-xs text-muted-foreground">{{ videos.length }} 条记录</p>
+        <h1 class="truncate text-base font-semibold">{{ pageTitle }}</h1>
+        <p class="mt-0.5 text-xs text-muted-foreground">{{ displayVideos.length }} 条记录</p>
       </div>
 
       <div class="flex items-center gap-2">
@@ -15,8 +15,11 @@
         <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" @click="loadData">
           <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': loading }" />
         </Button>
+        <Button v-if="isContinueMode" variant="ghost" class="h-9 rounded-md px-3 text-sm" @click="router.push({ name: 'History' })">
+          全部历史
+        </Button>
         <button 
-          v-if="videos.length"
+          v-if="videos.length && !isContinueMode"
           class="flex h-9 items-center gap-2 rounded-md border border-destructive/20 bg-destructive/10 px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/15"
           @click="showClearConfirm = true"
         >
@@ -39,8 +42,8 @@
 
         <div v-else-if="groupedVideos.length === 0" class="flex min-h-[24rem] flex-col items-center justify-center text-center">
           <AppIcon name="time" class="h-9 w-9 text-muted-foreground/30" />
-          <h2 class="mt-4 text-sm font-semibold">暂无历史记录</h2>
-          <p class="mt-1 text-sm text-muted-foreground">观看过的视频会显示在这里。</p>
+          <h2 class="mt-4 text-sm font-semibold">{{ emptyTitle }}</h2>
+          <p class="mt-1 text-sm text-muted-foreground">{{ emptyDescription }}</p>
         </div>
 
         <div v-else class="space-y-10">
@@ -90,7 +93,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import HistoryItem from '@/components/history/HistoryItem.vue'
@@ -101,11 +104,32 @@ import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { formatDate } from '../utils/dateFormat'
 
 const router = useRouter()
+const route = useRoute()
 const { getWatchHistory, clearHistory, deleteHistoryEntry } = useVideoHistory()
 
 const videos = ref<any[]>([])
 const loading = ref(false)
 const showClearConfirm = ref(false)
+const isContinueMode = computed(() => route.query.mode === 'continue')
+const pageTitle = computed(() => isContinueMode.value ? '继续观看' : '播放历史')
+const emptyTitle = computed(() => isContinueMode.value ? '暂无继续观看' : '暂无历史记录')
+const emptyDescription = computed(() => isContinueMode.value ? '未看完的视频会显示在这里。' : '观看过的视频会显示在这里。')
+
+const getProgress = (video: any) => {
+  const progress = Number(video.progress)
+  if (Number.isFinite(progress) && progress > 0) return Math.min(1, progress)
+
+  const duration = Number(video.duration || 0)
+  return duration > 0 ? Math.min(1, Number(video.last_position || 0) / duration) : 0
+}
+
+const displayVideos = computed(() => {
+  if (!isContinueMode.value) return videos.value
+  return videos.value.filter((video) => {
+    const progress = getProgress(video)
+    return progress > 0.01 && progress < 0.95
+  })
+})
 
 const loadData = async () => {
   loading.value = true
@@ -135,7 +159,7 @@ const handleOpenVideo = (video: any) => {
 
 const groupedVideos = computed(() => {
   const groups: Record<string, any[]> = {}
-  videos.value.forEach(v => {
+  displayVideos.value.forEach(v => {
     const date = v.played_at ? formatDate(v.played_at) : '未知时间'
     if (!groups[date]) groups[date] = []
     groups[date].push(v)

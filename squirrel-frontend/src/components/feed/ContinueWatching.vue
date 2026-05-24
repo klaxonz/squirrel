@@ -5,7 +5,16 @@
         <AppIcon name="time" class="size-5 text-primary" />
         继续观看
       </h2>
-      <div class="flex gap-1 opacity-0 transition-opacity duration-200" :class="{ 'opacity-100': canScrollLeft || canScrollRight, 'group-hover/container:opacity-100': true }">
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+          @click="$emit('viewMore')"
+        >
+          查看更多
+          <AppIcon name="chevronRight" class="size-3.5" />
+        </button>
+        <div class="flex gap-1 opacity-0 transition-opacity duration-200" :class="{ 'opacity-100': canScrollLeft || canScrollRight, 'group-hover/container:opacity-100': true }">
         <button
           class="size-8 flex items-center justify-center rounded-full bg-background/80 hover:bg-muted border border-border shadow-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           :disabled="!canScrollLeft"
@@ -20,6 +29,7 @@
         >
           <AppIcon name="chevronRight" class="size-4 text-foreground/70" />
         </button>
+        </div>
       </div>
     </div>
 
@@ -67,7 +77,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import useVideoHistory from '@/composables/useVideoHistory'
 import { formatDuration } from '@/utils/dateFormat'
 
-const emit = defineEmits(['openModal'])
+const emit = defineEmits(['openModal', 'viewMore'])
 
 const { getWatchHistory } = useVideoHistory()
 const historyItems = ref<any[]>([])

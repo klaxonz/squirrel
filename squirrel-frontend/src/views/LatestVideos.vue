@@ -17,6 +17,7 @@
         :nsfw="nsfw"
         :sort-by="sortBy"
         :site="site"
+        :special="special"
         :subscription-id="subscriptionId"
         :tabs="tabs"
         :is-refreshing="isRefreshing"
@@ -27,6 +28,7 @@
         @update:nsfw="nsfw = $event"
         @update:sortBy="sortBy = $event"
         @update:site="site = $event"
+        @update:special="setSpecialFilter"
         @refresh="refreshCurrentList"
       />
     </div>
@@ -38,11 +40,13 @@
       <ContinueWatching
         v-if="!subscriptionId && searchMode === 'local' && activeTab === 'all' && !searchQuery"
         @openModal="handleOpenModal"
+        @viewMore="goToContinueWatching"
       />
       <SpecialFollowVideos
         v-if="!subscriptionId && searchMode === 'local' && activeTab === 'all' && !searchQuery"
         @openModal="handleOpenModal"
         @goToSubscription="goToChannelDetail"
+        @viewMore="goToSpecialFollowVideos"
       />
 
       <div v-if="loadError" class="px-6 pt-6">
@@ -151,7 +155,7 @@ const route = useRoute()
 const uiStore = useUIStore()
 
 const subscriptionId = computed(() => route.params.id as string)
-const { activeTab, nsfw, sortBy, site, searchQuery, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId })
+const { activeTab, nsfw, sortBy, site, searchQuery, special, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId })
 
 const tabs = ref(VIDEO_TABS)
 const isRefreshing = ref(false)
@@ -205,6 +209,18 @@ const handleOpenModal = (video: any) => {
 }
 
 const goToChannelDetail = (id: string) => router.push(`/subscription/${id}/all`)
+
+const goToContinueWatching = () => router.push({ name: 'History', query: { mode: 'continue' } })
+
+const goToSpecialFollowVideos = () => router.push({ name: 'AllVideos', query: { special: 'yes' } })
+
+const setSpecialFilter = (value: string) => {
+  special.value = value === 'yes' ? 'yes' : 'all'
+  const query = { ...route.query }
+  if (special.value === 'yes') query.special = 'yes'
+  else delete query.special
+  router.replace({ query })
+}
 
 const handleTabDoubleClick = (tab: string) => {
   if (tab === activeTab.value) refreshCurrentList()
@@ -383,6 +399,10 @@ watch(searchMode, (value) => {
     site.value = undefined
   }
 })
+
+watch(() => route.query.special, (value) => {
+  special.value = !subscriptionId.value && value === 'yes' ? 'yes' : 'all'
+}, { immediate: true })
 
 onMounted(() => {
   onSubscriptionRemoved(({ subscriptionId }) => {

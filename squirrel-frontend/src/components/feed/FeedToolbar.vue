@@ -50,6 +50,18 @@
 
         <div class="w-px h-4 bg-border/50 mx-1 hidden sm:block shrink-0" />
 
+        <button
+          v-if="special === 'yes'"
+          type="button"
+          class="hidden h-8 shrink-0 items-center gap-1.5 rounded-md border border-amber-400/30 bg-amber-400/10 px-2.5 text-xs font-medium text-amber-600 transition-colors hover:bg-amber-400/15 sm:flex"
+          title="清除特别关注过滤"
+          @click="emit('update:special', 'all')"
+        >
+          <AppIcon name="star" class="h-3.5 w-3.5 fill-current" />
+          特别关注
+          <AppIcon name="close" class="h-3 w-3" />
+        </button>
+
         <!-- Site Select -->
         <Select :model-value="site || 'all'" @update:model-value="handleSiteChange">
           <SelectTrigger class="h-8 w-auto min-w-0 shrink-0 flex-nowrap whitespace-nowrap border-border/40 bg-muted/40 px-2.5 py-0 text-xs font-medium text-foreground shadow-none hover:bg-muted/60 focus:ring-primary/20">
@@ -152,16 +164,16 @@ const props = withDefaults(defineProps<{
   activeTab?: string, nsfw?: string, sortBy?: string, site?: string, subscriptionId?: string | number,
   tabs?: VideoTab[], isRefreshing?: boolean, showTabs?: boolean, showSort?: boolean, showRefresh?: boolean,
   showFilter?: boolean, timeRange?: TimeRange, duration?: Duration, contentType?: ContentType,
-  siteLabel?: string, filterScope?: 'video' | 'subscription'
+  special?: string, siteLabel?: string, filterScope?: 'video' | 'subscription'
 }>(), {
   activeTab: 'all', nsfw: 'all', sortBy: 'publish_date', tabs: () => [], isRefreshing: false,
   showTabs: true, showSort: true, showRefresh: true, showFilter: true,
-  timeRange: 'all', duration: 'all', contentType: 'all', filterScope: 'video',
+  timeRange: 'all', duration: 'all', contentType: 'all', special: 'all', filterScope: 'video',
 })
 
 const emit = defineEmits([
   'update:activeTab', 'update:nsfw', 'update:sortBy', 'update:site',
-  'update:timeRange', 'update:duration', 'update:contentType', 'refresh',
+  'update:timeRange', 'update:duration', 'update:contentType', 'update:special', 'refresh',
 ])
 
 const { options: siteOptions, fetchSites } = useSites()
@@ -177,6 +189,7 @@ const activeFilterCount = computed(() => {
   if (props.timeRange !== 'all') c++
   if (props.duration !== 'all') c++
   if (!props.subscriptionId && props.contentType !== 'all') c++
+  if (!props.subscriptionId && props.special !== 'all') c++
   if (props.nsfw !== 'all') c++
   if (props.site) c++
   return c

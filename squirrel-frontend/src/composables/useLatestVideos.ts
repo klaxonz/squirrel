@@ -21,6 +21,7 @@ type InitialState = {
   timeRange?: string
   duration?: string
   contentType?: string
+  special?: string
 }
 
 type ApiResult<T> = { data?: T | null; error?: unknown | null }
@@ -39,6 +40,7 @@ type VideoListParams = {
   time_range: string
   duration: string
   content_type: string
+  special: string
 }
 
 const PAGE_SIZE = 50
@@ -92,6 +94,7 @@ export default function useLatestVideos(initial: InitialState = {}) {
   const timeRange = ref(initial.timeRange ?? 'all')
   const duration = ref(initial.duration ?? 'all')
   const contentType = ref(initial.contentType ?? 'all')
+  const special = ref(initial.special ?? 'all')
 
   const category = computed(() => activeTab.value)
 
@@ -111,6 +114,7 @@ export default function useLatestVideos(initial: InitialState = {}) {
     time_range: timeRange.value,
     duration: duration.value,
     content_type: contentType.value,
+    special: special.value,
   })
 
   const finishRequest = (): void => {
@@ -192,6 +196,7 @@ export default function useLatestVideos(initial: InitialState = {}) {
     timeRange,
     duration,
     contentType,
+    special,
     isResetting,
   }
 }

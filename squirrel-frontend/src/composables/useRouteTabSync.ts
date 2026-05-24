@@ -39,8 +39,7 @@ export function useRouteTabSync(
     pushPathFromTab(tab)
   })
 
-  watch(() => route.fullPath, (newPath) => {
+  watch(() => route.path, (newPath) => {
     setTabFromPath(newPath)
   })
 }
-

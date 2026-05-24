@@ -4,6 +4,7 @@ import type { Ref } from 'vue'
 export type TimeRange = 'all' | 'today' | 'week' | 'month' | 'year'
 export type Duration = 'all' | 'short' | 'medium' | 'long'
 export type ContentType = 'all' | 'CHANNEL' | 'PLAYLIST' | 'ACTRESS' | 'MOVIE' | 'TV_SERIES' | 'ACTOR'
+export type SpecialFollowFilter = 'all' | 'yes'
 
 type SubscriptionId = string | number | null | undefined
 
@@ -16,6 +17,7 @@ export function useFeedFilters({ subscriptionIdRef }: { subscriptionIdRef?: Ref<
   const timeRange = ref<TimeRange>('all')
   const duration = ref<Duration>('all')
   const contentType = ref<ContentType>('all')
+  const special = ref<SpecialFollowFilter>('all')
 
   const filters = computed(() => ({
     tab: activeTab.value,
@@ -27,6 +29,7 @@ export function useFeedFilters({ subscriptionIdRef }: { subscriptionIdRef?: Ref<
     timeRange: timeRange.value,
     duration: duration.value,
     contentType: contentType.value,
+    special: special.value,
   }))
 
   return {
@@ -38,8 +41,8 @@ export function useFeedFilters({ subscriptionIdRef }: { subscriptionIdRef?: Ref<
     timeRange,
     duration,
     contentType,
+    special,
     filters,
   }
 }
-
 

@@ -5,7 +5,16 @@
         <AppIcon name="star" class="size-5 fill-current text-amber-500" />
         特别关注
       </h2>
-      <div class="flex gap-1 opacity-0 transition-opacity duration-200 group-hover/container:opacity-100" :class="{ 'opacity-100': canScrollLeft || canScrollRight }">
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+          @click="emit('viewMore')"
+        >
+          查看更多
+          <AppIcon name="chevronRight" class="size-3.5" />
+        </button>
+        <div class="flex gap-1 opacity-0 transition-opacity duration-200 group-hover/container:opacity-100" :class="{ 'opacity-100': canScrollLeft || canScrollRight }">
         <button
           class="flex size-8 items-center justify-center rounded-full border border-border bg-background/80 shadow-sm transition-all hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
           :disabled="!canScrollLeft"
@@ -20,6 +29,7 @@
         >
           <AppIcon name="chevronRight" class="size-4 text-foreground/70" />
         </button>
+        </div>
       </div>
     </div>
 
@@ -81,7 +91,7 @@ import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import { formatDuration } from '@/utils/dateFormat'
 
-const emit = defineEmits(['openModal', 'goToSubscription'])
+const emit = defineEmits(['openModal', 'goToSubscription', 'viewMore'])
 
 const items = ref<any[]>([])
 const scrollContainer = ref<HTMLElement | null>(null)

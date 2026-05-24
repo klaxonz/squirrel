@@ -30,6 +30,7 @@ const props = defineProps<{
   timeRange?: string
   duration?: string
   contentType?: string
+  special?: string
 }>()
 
 const currentFilters = computed(() => ({
@@ -42,13 +43,14 @@ const currentFilters = computed(() => ({
   timeRange: props.filters?.timeRange ?? 'all',
   duration: props.filters?.duration ?? 'all',
   contentType: props.filters?.contentType ?? 'all',
+  special: props.filters?.special ?? 'all',
 }))
 const showChannelAvatar = computed(() => !currentFilters.value.subscription_id)
 
 const {
   videos, loading, allLoaded, loadMore, handleSearch,
   searchQuery, activeTab, subscriptionId, sortBy, site, nsfw,
-  timeRange, duration, contentType, error
+  timeRange, duration, contentType, special, error
 } = useLatestVideos({
   activeTab: currentFilters.value.tab,
   searchQuery: currentFilters.value.q,
@@ -59,6 +61,7 @@ const {
   timeRange: currentFilters.value.timeRange,
   duration: currentFilters.value.duration,
   contentType: currentFilters.value.contentType,
+  special: currentFilters.value.special,
 })
 
 watch(currentFilters, (f) => {
@@ -71,6 +74,7 @@ watch(currentFilters, (f) => {
   timeRange.value = f.timeRange
   duration.value = f.duration
   contentType.value = f.contentType
+  special.value = f.special
   handleSearch()
 }, { deep: true, immediate: true })
 
