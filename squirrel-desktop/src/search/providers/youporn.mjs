@@ -2,6 +2,7 @@ import { clampLimit, clampPage, decodeHtml, fetchText, normalizeQuery, normalize
 
 const SITE = 'youporn'
 const ORIGIN = 'https://www.youporn.com'
+const PROFILE_AVATAR_CACHE = new Map()
 
 const extractAttribute = (source, name) => {
   const match = source.match(new RegExp(`${name}=["']([^"']+)["']`, 'i'))
@@ -54,6 +55,58 @@ const collectProfileLinks = (block, hrefPattern, type) => {
   return profiles
 }
 
+const extractUploaderProfile = (block) => {
+  const uploaderName = extractAttribute(block, 'data-uploader-name')
+  if (!uploaderName) return null
+
+  const linkPattern = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi
+  let match
+  while ((match = linkPattern.exec(block))) {
+    if (/\/watch\//i.test(match[1])) continue
+    const name = stripHtml(match[2])
+    if (name !== uploaderName) continue
+    const url = normalizeUrl(match[1], ORIGIN)
+    if (!url) return null
+    return {
+      name,
+      url,
+    }
+  }
+
+  return {
+    name: uploaderName,
+    url: '',
+  }
+}
+
+const extractProfileAvatar = (html) => {
+  const logoImage = html.match(
+    /<div[^>]+class=["'][^"']*\bheader-banner-wrapper\b[^"']*["'][^>]*>[\s\S]*?<div[^>]+class=["'][^"']*\b(?:logo|avatar)-wrapper\b[^"']*["'][^>]*>[\s\S]*?(<img\b[^>]*>)/i
+  )?.[1] || ''
+  return normalizeUrl(
+    extractAttribute(logoImage, 'data-src') || extractAttribute(logoImage, 'src'),
+    ORIGIN
+  )
+}
+
+export const loadYouPornProfileAvatar = async ({ profileUrl, fetchImpl, buildCookieHeader }) => {
+  const url = normalizeUrl(profileUrl, ORIGIN)
+  if (!url) return ''
+  if (PROFILE_AVATAR_CACHE.has(url)) return PROFILE_AVATAR_CACHE.get(url)
+
+  const cookie = await buildCookieHeader(url)
+  const html = await fetchText(fetchImpl, url, {
+    headers: {
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      Referer: `${ORIGIN}/`,
+      ...(cookie ? { Cookie: cookie } : {}),
+    },
+  })
+  const avatar = extractProfileAvatar(html)
+  PROFILE_AVATAR_CACHE.set(url, avatar)
+  return avatar
+}
+
 export const searchYouPornVideos = async ({ query, limit, page, fetchImpl, buildCookieHeader }) => {
   const keyword = normalizeQuery(query)
   if (!keyword) return []
@@ -82,7 +135,8 @@ export const searchYouPornVideos = async ({ query, limit, page, fetchImpl, build
     const title = extractTitle(block)
     const thumbnail = extractThumbnail(block)
     const durationMatch = block.match(/class=["'][^"']*duration[^"']*["'][^>]*>\s*([^<]+)/i)
-    const subscriptions = collectProfileLinks(block, /\/(?:channels|users)\//i, 'CHANNEL')
+    const uploader = extractUploaderProfile(block)
+    const subscriptions = collectProfileLinks(block, /\/(?:channel|channels|user|users)\//i, 'CHANNEL')
       .map((profile) => ({
         ...profile,
         is_nsfw: true,
@@ -96,8 +150,8 @@ export const searchYouPornVideos = async ({ query, limit, page, fetchImpl, build
       thumbnail,
       duration: parseDuration(durationMatch?.[1]),
       publish_date: null,
-      uploader: subscriptions[0]?.name || '',
-      uploader_url: subscriptions[0]?.url || '',
+      uploader: uploader?.name || '',
+      uploader_url: uploader?.url || '',
       uploader_avatar: '',
       subscriptions,
       actors: collectProfileLinks(block, /\/(?:pornstar|model)\//i, 'ACTOR'),

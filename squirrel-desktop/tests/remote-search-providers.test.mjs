@@ -6,7 +6,7 @@ import { searchBilibiliVideos } from '../src/search/providers/bilibili.mjs'
 import { searchRemoteVideos } from '../src/search/providers/index.mjs'
 import { searchJavdbVideos } from '../src/search/providers/javdb.mjs'
 import { searchPornhubVideos } from '../src/search/providers/pornhub.mjs'
-import { searchYouPornVideos } from '../src/search/providers/youporn.mjs'
+import { loadYouPornProfileAvatar, searchYouPornVideos } from '../src/search/providers/youporn.mjs'
 import { searchYouTubeVideos } from '../src/search/providers/youtube.mjs'
 
 const jsonResponse = (payload) => new Response(JSON.stringify(payload), {
@@ -388,21 +388,21 @@ test('desktop youporn remote search parses watch links', async () => {
     limit: 5,
     buildCookieHeader,
     fetchImpl: async () => htmlResponse(`
-      <article class="video-box pc js_video-box" aria-label="Demo YP">
-        <a href="/watch/123/demo/" data-testid="plw_video_thumbnail_link">
-          <img
-            data-src="https://fi.ypncdn.com/demo.jpg"
-            src="data:image/png;base64,placeholder"
-            alt="Demo YP"
-            data-mediabook="https://ev.ypncdn.com/demo.mp4?hash=abc&amp;validto=123"
-          >
-        </a>
-        <span class="duration">05:06</span>
-        <a href="/watch/123/demo/" class="video-title-text"><span>Demo YP</span></a>
-        <a href="/channels/demo-channel/">Demo Channel</a>
-        <a href="/pornstar/demo-actor/">Demo Actor</a>
-      </article>
-    `),
+        <article class="video-box pc js_video-box" data-uploader-name="Demo Channel" aria-label="Demo YP">
+          <a href="/watch/123/demo/" data-testid="plw_video_thumbnail_link">
+            <img
+              data-src="https://fi.ypncdn.com/demo.jpg"
+              src="data:image/png;base64,placeholder"
+              alt="Demo YP"
+              data-mediabook="https://ev.ypncdn.com/demo.mp4?hash=abc&amp;validto=123"
+            >
+          </a>
+          <span class="duration">05:06</span>
+          <a href="/watch/123/demo/" class="video-title-text"><span>Demo YP</span></a>
+          <a href="/channel/demo-channel/">Demo Channel</a>
+          <a href="/pornstar/demo-actor/">Demo Actor</a>
+        </article>
+      `),
   })
 
   assert.equal(items.length, 1)
@@ -410,19 +410,85 @@ test('desktop youporn remote search parses watch links', async () => {
   assert.equal(items[0].url, 'https://www.youporn.com/watch/123/demo/')
   assert.equal(items[0].thumbnail, 'https://fi.ypncdn.com/demo.jpg')
   assert.equal(items[0].duration, 306)
+  assert.equal(items[0].uploader, 'Demo Channel')
+  assert.equal(items[0].uploader_url, 'https://www.youporn.com/channel/demo-channel/')
   assert.deepEqual(items[0].subscriptions, [{
     type: 'CHANNEL',
     name: 'Demo Channel',
-    url: 'https://www.youporn.com/channels/demo-channel/',
+    url: 'https://www.youporn.com/channel/demo-channel/',
     avatar: '',
     is_nsfw: true,
   }])
+  assert.equal(items[0].uploader_avatar, '')
   assert.deepEqual(items[0].actors, [{
     type: 'ACTOR',
     name: 'Demo Actor',
     url: 'https://www.youporn.com/pornstar/demo-actor/',
     avatar: '',
   }])
+})
+
+test('desktop youporn remote search parses non-channel uploaders', async () => {
+  const items = await searchYouPornVideos({
+    query: 'demo',
+    limit: 5,
+    buildCookieHeader,
+    fetchImpl: async () => htmlResponse(`
+        <article
+          class="video-box pc js_video-box"
+          data-uploader-type="amateur"
+          data-uploader-name="Demo Uploader"
+          aria-label="Demo Amateur YP"
+        >
+          <a href="/watch/321/demo-amateur/" data-testid="plw_video_thumbnail_link">
+            <img data-src="https://fi.ypncdn.com/demo-amateur.jpg" alt="Demo Amateur YP">
+          </a>
+          <span class="duration">02:03</span>
+          <a href="/watch/321/demo-amateur/" class="video-title-text"><span>Demo Amateur YP</span></a>
+          <a href="/amateur/demo-uploader/">Demo Uploader</a>
+        </article>
+      `),
+  })
+
+  assert.equal(items.length, 1)
+  assert.equal(items[0].uploader, 'Demo Uploader')
+  assert.equal(items[0].uploader_url, 'https://www.youporn.com/amateur/demo-uploader/')
+  assert.equal(items[0].uploader_avatar, '')
+  assert.deepEqual(items[0].subscriptions, [])
+})
+
+test('desktop youporn profile avatar parser handles channel and amateur wrappers', async () => {
+  const channelAvatar = await loadYouPornProfileAvatar({
+    profileUrl: 'https://www.youporn.com/channel/demo-channel/',
+    buildCookieHeader,
+    fetchImpl: async () => htmlResponse(`
+      <div class="header-banner-wrapper">
+        <div class="logo-wrapper">
+          <img alt="Demo Channel" src="https://fi1-ph.ypncdn.com/pics/sites/000/056/162/avatar1595606809/200x200.jpg">
+        </div>
+      </div>
+    `),
+  })
+  const amateurAvatar = await loadYouPornProfileAvatar({
+    profileUrl: 'https://www.youporn.com/amateur/demo-uploader/',
+    buildCookieHeader,
+    fetchImpl: async () => htmlResponse(`
+      <div class="header-banner-wrapper">
+        <div class="avatar-wrapper">
+          <img alt="Demo Uploader" data-src="https://fi1-ph.ypncdn.com/pics/users/000/056/162/avatar1595606809/200x200.jpg">
+        </div>
+      </div>
+    `),
+  })
+
+  assert.equal(
+    channelAvatar,
+    'https://fi1-ph.ypncdn.com/pics/sites/000/056/162/avatar1595606809/200x200.jpg'
+  )
+  assert.equal(
+    amateurAvatar,
+    'https://fi1-ph.ypncdn.com/pics/users/000/056/162/avatar1595606809/200x200.jpg'
+  )
 })
 
 test('desktop youporn remote search keeps dynamic cdn thumbnails', async () => {
@@ -995,4 +1061,34 @@ test('desktop youtube remote channel loads continuation videos', async () => {
   assert.equal(result.items[0].duration, 245)
   assert.equal(result.has_more, true)
   assert.equal(result.next_cursor.continuation, 'CONTINUATION_2')
+})
+
+test('desktop youporn remote channel parses profile avatar', async () => {
+  const result = await getRemoteChannel({
+    site: 'youporn',
+    url: 'https://www.youporn.com/channel/demo-channel/',
+    limit: 5,
+    buildCookieHeader,
+    fetchImpl: async () => htmlResponse(`
+      <div class="header-banner-wrapper">
+        <div class="logo-wrapper">
+          <img alt="Demo Channel" title="Demo Channel" src="https://fi1-ph.ypncdn.com/pics/sites/000/056/162/avatar1595606809/200x200.jpg">
+        </div>
+      </div>
+      <h1 class="name-title">Demo Channel</h1>
+      <article class="video-box pc js_video-box" aria-label="Demo Channel Video">
+        <a href="/watch/789/demo-channel-video/" data-testid="plw_video_thumbnail_link">
+          <img data-src="https://fi.ypncdn.com/demo-channel-video.jpg">
+        </a>
+        <span class="duration">01:23</span>
+        <a href="/watch/789/demo-channel-video/" class="video-title-text"><span>Demo Channel Video</span></a>
+      </article>
+    `),
+  })
+
+  assert.equal(
+    result.profile.avatar,
+    'https://fi1-ph.ypncdn.com/pics/sites/000/056/162/avatar1595606809/200x200.jpg'
+  )
+  assert.equal(result.items[0].uploader_avatar, result.profile.avatar)
 })

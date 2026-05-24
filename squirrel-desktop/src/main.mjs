@@ -18,6 +18,7 @@ import {
 } from './playback/providers/youtube/index.mjs'
 import { getRemoteChannel } from './search/providers/remote-channel.mjs'
 import { searchRemoteVideos } from './search/providers/index.mjs'
+import { loadYouPornProfileAvatar } from './search/providers/youporn.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -1832,6 +1833,15 @@ const installDesktopBridgeHandlers = () => {
       fetchImpl: createSessionFetch(),
       buildCookieHeader: buildCookieHeaderForUrl,
       loadDocumentHtml: loadDocumentHtmlWithBrowserWindow,
+    })
+  })
+
+  ipcMain.removeHandler('desktop:get-youporn-profile-avatar')
+  ipcMain.handle('desktop:get-youporn-profile-avatar', async (_event, profileUrl) => {
+    return loadYouPornProfileAvatar({
+      profileUrl,
+      fetchImpl: createSessionFetch(),
+      buildCookieHeader: buildCookieHeaderForUrl,
     })
   })
 

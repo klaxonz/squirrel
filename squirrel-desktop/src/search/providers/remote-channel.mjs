@@ -693,9 +693,12 @@ const getYouPornChannel = async ({ url, limit, page, fetchImpl, buildCookieHeade
     },
   })
   const title = stripHtml(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || profile?.name || '')
+  const logoImage = html.match(
+    /<div[^>]+class=["'][^"']*\bheader-banner-wrapper\b[^"']*["'][^>]*>[\s\S]*?<div[^>]+class=["'][^"']*\b(?:logo|avatar)-wrapper\b[^"']*["'][^>]*>[\s\S]*?(<img\b[^>]*>)/i
+  )?.[1] || ''
   const avatar = normalizeUrl(
-    extractAttribute(html.match(/<img[^>]+class=["'][^"']*(?:avatar|profile)[^"']*["'][^>]*>/i)?.[0] || '', 'src')
-    || profile?.avatar
+    extractAttribute(logoImage, 'data-src')
+    || extractAttribute(logoImage, 'src')
     || '',
     YOUPORN_ORIGIN
   )

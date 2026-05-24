@@ -29,6 +29,7 @@ interface DesktopAppBridge {
   resolveYouTubeSubtitles?: DesktopSubtitleResolver
   searchRemoteVideos?: DesktopRemoteSearchResolver
   getRemoteChannel?: DesktopRemoteChannelResolver
+  getYouPornProfileAvatar?: (profileUrl: string) => Promise<string>
   getSiteLoginStatus?: (siteName: string) => Promise<DesktopSiteLoginStatus>
   openSiteLogin?: (siteName: string) => Promise<DesktopSiteLoginStatus>
   clearSiteSession?: (siteName: string) => Promise<DesktopSiteLoginStatus>
