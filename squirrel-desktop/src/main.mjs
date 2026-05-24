@@ -580,6 +580,56 @@ const buildYouPornDesktopLoginStatus = async (profile, cookies) => {
   }
 }
 
+const buildYouPornLoginWindowStatus = async (profile, loginWindow) => {
+  if (!loginWindow || loginWindow.isDestroyed() || loginWindow.webContents.isLoading()) {
+    return null
+  }
+
+  const normalizedUrl = normalizeTargetUrl(loginWindow.webContents.getURL())
+  if (!normalizedUrl || !hostMatchesLoginProfile(new URL(normalizedUrl).hostname, profile.allowedHosts)) {
+    return null
+  }
+
+  let status = null
+  try {
+    status = await loginWindow.webContents.executeJavaScript(`(() => {
+      const pageParams = window.page_params || {}
+      const pageUsername = typeof pageParams.liu_username === 'string' ? pageParams.liu_username.trim() : ''
+      const profileLink = document.querySelector('#js_mainMenu .user-item a[href^="/users/"]')
+      const logoutLink = document.querySelector('#js_mainMenu a[href^="/logout"]')
+      const signedOutLink = document.querySelector('#js_signupLink, #upgrade-menujs_loginLink')
+      const profileHref = profileLink ? profileLink.getAttribute('href') || '' : ''
+      const linkUsername = profileHref.match(/^\\/users\\/([^/?#]+)/)?.[1] || ''
+      const loggedIn = pageParams.isLoggedInUser === true
+        || Boolean(pageParams.liu)
+        || Boolean((profileLink || logoutLink) && !signedOutLink)
+
+      return {
+        logged_in: loggedIn,
+        username: pageUsername || linkUsername || null,
+      }
+    })()`, true)
+  } catch {
+    return null
+  }
+
+  if (!status?.logged_in) {
+    return null
+  }
+
+  const cookies = await getDesktopSiteCookies(profile)
+  return {
+    site_name: profile.siteName,
+    supported: true,
+    logged_in: true,
+    username: status.username || null,
+    message: '桌面会话有效',
+    checked_at: new Date().toISOString(),
+    source: 'desktop',
+    cookie_count: cookies.length,
+  }
+}
+
 const buildYouTubeDesktopLoginStatusFromOAuth = (profile, oauthState) => {
   const status = String(oauthState?.status || 'not_configured')
   const loggedIn = status === 'authenticated' || status === 'already_authenticated'
@@ -811,6 +861,23 @@ const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
     }
 
     const checkLoginStatus = () => {
+      if (profile.siteName === 'youporn') {
+        buildYouPornLoginWindowStatus(profile, loginWindow)
+          .then((status) => {
+            if (!status?.logged_in) return buildDesktopSiteLoginStatus(profile.siteName)
+            return status
+          })
+          .then((status) => {
+            if (!status.logged_in) return
+            if (!loginWindow.isDestroyed()) {
+              loginWindow.close()
+            }
+            resolveWithStatus(status)
+          })
+          .catch(reject)
+        return
+      }
+
       buildDesktopSiteLoginStatus(profile.siteName)
         .then((status) => {
           if (!status.logged_in) return
