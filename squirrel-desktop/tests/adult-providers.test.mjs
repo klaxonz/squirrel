@@ -141,7 +141,128 @@ test('desktop youporn provider expands remote definitions in parallel and expose
   const payload = await payloadPromise
   assert.equal(payload.stream_type, 'hls')
   assert.equal(payload.video_url, 'https://cdn.example.test/1080.m3u8')
-  assert.equal(payload.default_quality_id, 'yp-hls:1920x1080')
+  assert.equal(payload.default_quality_id, 'yp-hls:1920x1080:4000000')
   assert.deepEqual(payload.qualities.map((item) => item.label), ['1080p', '720p'])
+  assert.deepEqual(payload.qualities.map((item) => item.src), [
+    'https://cdn.example.test/1080.m3u8',
+    'https://cdn.example.test/720.m3u8',
+  ])
   assert.equal(payload.supports_manual_quality, true)
+})
+
+test('desktop youporn provider exposes direct hls quality sources from media definitions', async () => {
+  const html = `
+    <script>
+      window.initials = {
+        playervars: {
+          "mediaDefinitions": [
+            { "format": "hls", "quality": "720", "height": 720, "width": 1280, "videoUrl": "https://cdn.example.test/720/index.m3u8" },
+            { "format": "hls", "quality": "1080", "height": 1080, "width": 1920, "videoUrl": "https://cdn.example.test/1080/index.m3u8" }
+          ]
+        }
+      };
+    </script>
+  `
+  const requestedUrls = []
+
+  const payload = await resolveYouPornPlayback('https://www.youporn.com/watch/123/synthesized-master/', {
+    forceRefresh: true,
+    fetchImpl: async (targetUrl) => {
+      const url = String(targetUrl)
+      requestedUrls.push(url)
+      if (url.includes('/watch/')) {
+        return htmlResponse(html)
+      }
+      throw new Error(`Unexpected request: ${url}`)
+    },
+  })
+
+  assert.equal(payload.stream_type, 'hls')
+  assert.equal(payload.video_url, 'https://cdn.example.test/1080/index.m3u8')
+  assert.equal(payload.default_quality_id, 'yp-hls:1920x1080:4000000')
+  assert.deepEqual(payload.qualities.map((item) => item.label), ['1080p', '720p'])
+  assert.deepEqual(requestedUrls, ['https://www.youporn.com/watch/123/synthesized-master/'])
+  assert.deepEqual(payload.qualities.map((item) => item.src), [
+    'https://cdn.example.test/1080/index.m3u8',
+    'https://cdn.example.test/720/index.m3u8',
+  ])
+  assert.equal(payload.supports_manual_quality, true)
+})
+
+test('desktop youporn provider derives quality labels from media urls when dimensions are player sized', async () => {
+  const html = `
+    <script>
+      window.initials = {
+        playervars: {
+          "mediaDefinitions": [
+            { "format": "hls", "height": 404, "width": 720, "videoUrl": "https://cdn.example.test/video_720P_4000K_demo.mp4/master.m3u8" },
+            { "format": "hls", "height": 404, "width": 720, "videoUrl": "https://cdn.example.test/video_1080P_4000K_demo.mp4/master.m3u8" },
+            { "format": "hls", "height": 404, "width": 720, "videoUrl": "https://cdn.example.test/video_480P_2000K_demo.mp4/master.m3u8" }
+          ]
+        }
+      };
+    </script>
+  `
+
+  const payload = await resolveYouPornPlayback('https://www.youporn.com/watch/123/url-quality/', {
+    forceRefresh: true,
+    fetchImpl: async (targetUrl) => {
+      const url = String(targetUrl)
+      if (url.includes('/watch/')) {
+        return htmlResponse(html)
+      }
+      throw new Error(`Unexpected request: ${url}`)
+    },
+  })
+
+  assert.equal(payload.video_url, 'https://cdn.example.test/video_1080P_4000K_demo.mp4/master.m3u8')
+  assert.deepEqual(payload.qualities.map((item) => item.label), ['1080p', '720p', '480p'])
+  assert.deepEqual(payload.qualities.map((item) => item.src), [
+    'https://cdn.example.test/video_1080P_4000K_demo.mp4/master.m3u8',
+    'https://cdn.example.test/video_720P_4000K_demo.mp4/master.m3u8',
+    'https://cdn.example.test/video_480P_2000K_demo.mp4/master.m3u8',
+  ])
+})
+
+test('desktop youporn provider expands current you-porn media definitions', async () => {
+  const html = `
+    <script>
+      window.initials = {
+        playervars: {
+          "mediaDefinitions": [
+            { "format": "hls", "videoUrl": "https://www.you-porn.com/media/a" }
+          ]
+        }
+      };
+    </script>
+  `
+  const requestedUrls = []
+  const origins = []
+  const referers = []
+
+  const payload = await resolveYouPornPlayback('https://www.you-porn.com/watch/123/current-domain/', {
+    forceRefresh: true,
+    fetchImpl: async (targetUrl, options = {}) => {
+      const url = String(targetUrl)
+      requestedUrls.push(url)
+      origins.push(options?.headers?.Origin)
+      referers.push(options?.headers?.Referer)
+      if (url.includes('/watch/')) {
+        return htmlResponse(html)
+      }
+      if (url.includes('/media/a')) {
+        return jsonResponse([
+          { format: 'hls', height: 720, width: 1280, videoUrl: 'https://cdn.example.test/720.m3u8' },
+          { format: 'hls', height: 1080, width: 1920, videoUrl: 'https://cdn.example.test/1080.m3u8' },
+        ])
+      }
+      throw new Error(`Unexpected request: ${url}`)
+    },
+  })
+
+  assert.equal(requestedUrls.includes('https://www.you-porn.com/media/a'), true)
+  assert.equal(origins.every((origin) => origin === 'https://www.you-porn.com'), true)
+  assert.equal(referers.every((referer) => referer === 'https://www.you-porn.com/'), true)
+  assert.equal(payload.video_url, 'https://cdn.example.test/1080.m3u8')
+  assert.deepEqual(payload.qualities.map((item) => item.label), ['1080p', '720p'])
 })

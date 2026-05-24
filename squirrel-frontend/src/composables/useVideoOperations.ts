@@ -29,6 +29,7 @@ type VideoUrlInfo = {
     height?: number | null
     bandwidth?: number | null
     codec?: string
+    src?: string | null
     id?: string | number | null
     index?: number
   }> | null
@@ -90,7 +91,7 @@ const DESKTOP_PLAYBACK_PROVIDERS: DesktopPlaybackProvider[] = [
   {
     key: 'resolveYouPornPlayback',
     debugLabel: 'YouPorn',
-    matches: (url) => includesAny(url, ['youporn.com/watch/']),
+    matches: (url) => includesAny(url, ['youporn.com/watch/', 'you-porn.com/watch/']),
   },
 ]
 
@@ -185,7 +186,8 @@ export default function useVideoOperations() {
         label: item.label,
         height: item.height ?? undefined,
         bitrate: item.bandwidth ?? undefined,
-        codec: item.codec
+        codec: item.codec,
+        src: item.src ?? undefined
       }))
       const shouldSynthesizeMpd = !data?.mpd_url && !!videoUrl && !!audioUrl && !isDesktopClient
       const synthesizedMpdUrl = shouldSynthesizeMpd

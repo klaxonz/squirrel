@@ -59,6 +59,7 @@ export interface PlayerEvents {
 
 export type RuntimeQualitySelection =
   | { kind: 'hls-level'; levelIndex: number }
+  | { kind: 'hls-source'; src: string }
   | { kind: 'dash-selection'; trackIndex: number; qualityIndex: number }
 
 export type QualitySelectionRequest = string | number | RuntimeQualitySelection
@@ -71,6 +72,7 @@ export interface QualityDescriptor {
   height?: number
   bitrate?: number
   codec?: string
+  src?: string
   runtimeSelection?: RuntimeQualitySelection
 }
 

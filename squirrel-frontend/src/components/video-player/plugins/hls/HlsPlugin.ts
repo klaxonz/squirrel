@@ -43,6 +43,7 @@ export class HlsPlugin implements PlayerPlugin {
   private reloadTimer: ReturnType<typeof setTimeout> | null = null
   private qualityIdByLevelIndex = new Map<number, string>()
   private levelIndexByQualityId = new Map<string, number>()
+  private currentExternalQualityId: string | number | null = null
 
   private clearRetryTimers(): void {
     if (this.retryTimer) {
@@ -167,6 +168,20 @@ export class HlsPlugin implements PlayerPlugin {
   private buildHintedQualities(): QualityLevel[] {
     if (this.sourceQualityHints.length === 0) return []
 
+    const externalQualities = this.sourceQualityHints.filter((hint) => hint.id && hint.src)
+    if (externalQualities.length > 0) {
+      return externalQualities.map((hint) => ({
+        id: hint.id,
+        label: hint.label,
+        width: hint.width,
+        height: hint.height,
+        bitrate: hint.bitrate,
+        codec: hint.codec,
+        src: hint.src,
+        runtimeSelection: { kind: 'hls-source', src: String(hint.src) }
+      }))
+    }
+
     return this.sourceQualityHints.reduce<QualityLevel[]>((qualities, hint) => {
       if (!hint.id) return qualities
       const levelIndex = this.levelIndexByQualityId.get(String(hint.id))
@@ -262,6 +277,7 @@ export class HlsPlugin implements PlayerPlugin {
     if (!this.context) return
     this.sourceQualityHints = Array.isArray(source.qualities) ? source.qualities : []
     this.currentQualities = []
+    this.currentExternalQualityId = null
 
     // 检查是否为 HLS 源
     const isHls = source.type === 'hls' || 
@@ -347,6 +363,19 @@ export class HlsPlugin implements PlayerPlugin {
     this.hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
       const level = this.hls?.levels[data.level]
       if (level) {
+        if (this.currentExternalQualityId !== null) {
+          const externalQuality = this.currentQualities.find((item) => String(item.id) === String(this.currentExternalQualityId))
+          if (externalQuality) {
+            this.context?.registerCurrentQualityId?.(externalQuality.id)
+            this.context?.emit('qualitychange', {
+              quality: externalQuality.label,
+              auto: false,
+              id: externalQuality.id
+            })
+            return
+          }
+        }
+
         const currentQuality = this.findQualityForLevel(data.level)
         const quality = currentQuality?.label || (level.height ? `${level.height}p` : `level_${data.level}`)
         const qualityId = currentQuality?.id || this.getStableQualityId(level, data.level)
@@ -513,6 +542,20 @@ export class HlsPlugin implements PlayerPlugin {
   setQuality(quality: QualitySelectionRequest): void {
     if (!this.hls) return
 
+    if (typeof quality === 'object' && quality?.kind === 'hls-source') {
+      const requestedQuality = this.currentQualities.find((item) => item.src === quality.src)
+      if (requestedQuality) {
+        this.switchExternalSource(requestedQuality)
+      }
+      return
+    }
+
+    const requestedQuality = this.currentQualities.find((item) => String(item.id) === String(quality))
+    if (requestedQuality?.runtimeSelection?.kind === 'hls-source') {
+      this.switchExternalSource(requestedQuality)
+      return
+    }
+
     if (quality === 'auto' || quality === -1) {
       this.applyLevelSwitch(-1)
       this.context?.logger.debug('[HlsPlugin] Quality set to auto')
@@ -577,12 +620,51 @@ export class HlsPlugin implements PlayerPlugin {
     return levelData?.height ? `${levelData.height}p` : `level_${level}`
   }
 
+  private switchExternalSource(quality: QualityLevel): void {
+    const src = quality.runtimeSelection?.kind === 'hls-source' ? quality.runtimeSelection.src : quality.src
+    if (!src) return
+
+    this.currentExternalQualityId = quality.id
+    this.context?.registerCurrentQualityId?.(quality.id)
+    this.context?.emit('qualitychange', {
+      quality: quality.label,
+      auto: false,
+      id: quality.id
+    })
+
+    if (src === this.currentSource) {
+      return
+    }
+
+    const video = this.context?.videoElement
+    const resumeTime = video?.currentTime ?? 0
+    const shouldResumePlayback = !!video && !video.paused && !video.ended
+
+    if (video && Number.isFinite(resumeTime) && resumeTime > 0) {
+      video.addEventListener('loadedmetadata', () => {
+        try {
+          video.currentTime = Math.max(0, resumeTime)
+        } catch (error) {
+          this.context?.logger.warn('[HlsPlugin] Failed to restore time after external quality switch', error)
+        }
+      }, { once: true })
+    }
+
+    if (shouldResumePlayback && video) {
+      video.addEventListener('canplay', () => {
+        void video.play().catch(() => {})
+      }, { once: true })
+    }
+
+    this.loadSource(src)
+    this.context?.logger.debug('[HlsPlugin] Quality set to external source', quality.id)
+  }
+
   /**
    * 销毁 HLS 实例
    */
   private destroyHls(): void {
     this.clearRetryTimers()
-    this.sourceQualityHints = []
     this.currentQualities = []
     this.qualityIdByLevelIndex.clear()
     this.levelIndexByQualityId.clear()
