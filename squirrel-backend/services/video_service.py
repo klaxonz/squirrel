@@ -218,6 +218,53 @@ def _parse_optional_datetime(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
+def _video_extra_profiles(video: Video, key: str) -> list[dict]:
+    extra_data = video.extra_data if isinstance(video.extra_data, dict) else {}
+    profiles = extra_data.get(key)
+    if not isinstance(profiles, list):
+        return []
+
+    normalized = []
+    for profile in profiles:
+        if not isinstance(profile, dict):
+            continue
+        name = str(profile.get('name') or '').strip()
+        url = str(profile.get('url') or '').strip()
+        if not name and not url:
+            continue
+        item = {
+            'id': profile.get('id'),
+            'name': name,
+            'url': url,
+            'type': profile.get('type'),
+            'avatar': profile.get('avatar'),
+            'is_nsfw': profile.get('is_nsfw'),
+        }
+        if profile.get('description') is not None:
+            item['description'] = profile.get('description')
+        if profile.get('site') is not None:
+            item['site'] = profile.get('site')
+        normalized.append(item)
+
+    return normalized
+
+
+def _merge_profiles(primary: list[dict], extra: list[dict]) -> list[dict]:
+    merged = []
+    seen = set()
+    for profile in [*primary, *extra]:
+        key = (
+            str(profile.get('id') or '').strip(),
+            str(profile.get('url') or '').strip(),
+            str(profile.get('name') or '').strip(),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(profile)
+    return merged
+
+
 def save_remote_video(data: dict) -> Video:
     url = str(data.get('url') or '').strip()
     title = str(data.get('title') or '').strip()
@@ -990,8 +1037,14 @@ def list_videos(
                 'last_position': history_map.get(video.id, 0),
                 'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
                 'created_at': video.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'subscriptions': subscriptions_map.get(video.id, []),
-                'actors': actors_map.get(video.id, []),
+                'subscriptions': _merge_profiles(
+                    subscriptions_map.get(video.id, []),
+                    _video_extra_profiles(video, 'subscriptions'),
+                ),
+                'actors': _merge_profiles(
+                    actors_map.get(video.id, []),
+                    _video_extra_profiles(video, 'actors'),
+                ),
             }
             video_list.append(video_data)
         assemble_ms = _elapsed_ms(assemble_started_at)
@@ -1112,7 +1165,11 @@ def get_video(user_id, video_id):
             'interaction_type': video_interaction.interaction_type if video_interaction else None,
             'last_position': video_history.last_position if video_history else 0,
             'domain': url_helper.extract_top_level_domain(video.url),
-            'subscriptions': subscriptions_data,
+            'subscriptions': _merge_profiles(subscriptions_data, _video_extra_profiles(video, 'subscriptions')),
+            'actors': _merge_profiles(
+                [creator.to_dict() for creator in video.creators],
+                _video_extra_profiles(video, 'actors'),
+            ),
             'creators': [creator.to_dict() for creator in video.creators],
             'clip_markers': [serialize_marker(marker) for marker in clip_markers],
         }

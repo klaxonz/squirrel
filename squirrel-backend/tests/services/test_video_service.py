@@ -153,6 +153,52 @@ def test_save_remote_video_creates_local_video(monkeypatch):
     assert video.extra_data['subscriptions'][0]['name'] == 'Remote Channel'
 
 
+def test_get_video_returns_remote_profiles_from_saved_video_metadata(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+
+    saved_video = video_service.save_remote_video({
+        'site': 'youtube',
+        'url': 'https://www.youtube.com/watch?v=remote-profile',
+        'title': 'Remote Profile Demo',
+        'thumbnail': 'https://img.example.com/remote-profile.jpg',
+        'publish_date': '2024-05-01T12:30:00Z',
+        'subscriptions': [{
+            'id': 'UCremote',
+            'type': 'CHANNEL',
+            'name': 'Remote Channel',
+            'url': 'https://www.youtube.com/@remote',
+            'avatar': 'https://img.example.com/channel.jpg',
+            'is_nsfw': False,
+        }],
+        'actors': [{
+            'id': 'actor-1',
+            'type': 'ACTOR',
+            'name': 'Remote Actor',
+            'url': 'https://example.com/actor',
+            'avatar': 'https://img.example.com/actor.jpg',
+        }],
+    })
+
+    video = video_service.get_video(user_id=7, video_id=saved_video.id)
+
+    assert video['subscriptions'] == [{
+        'id': 'UCremote',
+        'name': 'Remote Channel',
+        'url': 'https://www.youtube.com/@remote',
+        'type': 'CHANNEL',
+        'avatar': 'https://img.example.com/channel.jpg',
+        'is_nsfw': False,
+    }]
+    assert video['actors'] == [{
+        'id': 'actor-1',
+        'name': 'Remote Actor',
+        'url': 'https://example.com/actor',
+        'type': 'ACTOR',
+        'avatar': 'https://img.example.com/actor.jpg',
+        'is_nsfw': None,
+    }]
+
+
 def test_save_remote_video_reuses_existing_url(monkeypatch):
     engine = _setup_test_env(monkeypatch)
     _seed_video(engine, video_id=42, url='https://www.youtube.com/watch?v=existing')
