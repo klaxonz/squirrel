@@ -44,13 +44,27 @@
             </div>
           </div>
         </div>
+
+        <button
+          type="button"
+          class="flex h-9 w-full items-center gap-2 rounded-md border px-3 text-sm transition-colors"
+          :class="specialFilter === 'yes' ? 'border-amber-400/40 bg-amber-400/10 text-amber-600' : 'border-border/50 bg-background text-muted-foreground hover:bg-accent/40 hover:text-foreground'"
+          @click="toggleSpecialFilter"
+        >
+          <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': specialFilter === 'yes' }" />
+          <span class="flex-1 text-left">特别关注</span>
+        </button>
       </div>
 
       <div ref="channelsContainer" class="flex-1 space-y-1 overflow-y-auto p-2 custom-scrollbar">
-        <button
+        <div
           v-for="sub in filteredChannels"
           :key="sub.id"
+          role="button"
+          tabindex="0"
           @click="handleChannelClick(sub.id)"
+          @keydown.enter.prevent="handleChannelClick(sub.id)"
+          @keydown.space.prevent="handleChannelClick(sub.id)"
           class="group flex h-10 w-full items-center gap-2.5 rounded-md px-2 text-left text-sm transition-colors"
           :class="activeChannelId === sub.id ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
         >
@@ -59,8 +73,17 @@
             <div v-if="sub.unread_count > 0" class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
           </div>
           <span class="flex-1 truncate font-medium">{{ sub.name }}</span>
+          <button
+            type="button"
+            class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md opacity-100 transition-colors lg:opacity-0 lg:group-hover:opacity-100"
+            :class="sub.is_special_followed ? 'text-amber-500' : 'text-muted-foreground/40 hover:bg-accent hover:text-foreground'"
+            aria-label="切换特别关注"
+            @click.stop="toggleSpecialFollow(sub)"
+          >
+            <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': sub.is_special_followed }" />
+          </button>
           <SiteTag :site="sub.site" class="origin-right scale-90 opacity-0 transition-opacity group-hover:opacity-100" />
-        </button>
+        </div>
 
         <div v-if="loadingChannels" class="space-y-2 p-2">
           <div v-for="i in 5" :key="i" class="h-10 w-full animate-pulse rounded-md bg-accent/40" />
@@ -120,6 +143,16 @@
               >
                 <AppIcon name="chevronRight" class="h-3.5 w-3.5" />
                 详情
+              </button>
+              <button
+                v-if="activeChannel"
+                type="button"
+                class="inline-flex h-7 shrink-0 items-center justify-center rounded-md border px-2 transition-colors"
+                :class="activeChannel.is_special_followed ? 'border-amber-400/40 bg-amber-400/10 text-amber-600' : 'border-border/50 text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
+                aria-label="切换特别关注"
+                @click="toggleSpecialFollow(activeChannel)"
+              >
+                <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': activeChannel.is_special_followed }" />
               </button>
             </div>
             <p class="mt-0.5 text-xs text-muted-foreground">
@@ -185,7 +218,13 @@
 
           <div v-else class="space-y-6">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-              <SubscriptionCard v-for="sub in filteredChannels" :key="sub.id" :subscription="sub" @click="handleChannelClick(sub.id)" />
+              <SubscriptionCard
+                v-for="sub in filteredChannels"
+                :key="sub.id"
+                :subscription="sub"
+                @click="handleChannelClick(sub.id)"
+                @toggleSpecial="toggleSpecialFollow"
+              />
             </div>
             <div v-if="loadingChannels && !list.length" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               <SubscriptionCardSkeleton v-for="i in 12" :key="i" />
@@ -219,7 +258,7 @@ import AddChannelDialog from '@/components/dialogs/AddChannelDialog.vue'
 import ImportSubscriptionDialog from '@/components/dialogs/ImportSubscriptionDialog.vue'
 import { useFeedFilters } from '../composables/useFeedFilters'
 import { useSites } from '../composables/useSites'
-import { getSubscriptions, getVideoList } from '@/api'
+import { getSubscriptions, getVideoList, updateSpecialFollowStatus } from '@/api'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 
 defineOptions({ name: 'Subscribed' })
@@ -270,6 +309,7 @@ const channelDataMode = ref<'local' | 'remote'>('local')
 const sidebarSearch = ref('')
 const showSiteDropdown = ref(false)
 const siteFilterRef = ref<HTMLElement | null>(null)
+const specialFilter = ref<'all' | 'yes'>('all')
 const activeChannelId = ref<string | number | null>(null)
 const activeChannelNameCache = ref('')
 const showAddDialog = ref(false)
@@ -286,6 +326,7 @@ const channelsPage = ref(1)
 const CHANNELS_PAGE_SIZE = 100
 let channelsRequestToken = 0
 let sidebarSearchTimer: number | null = null
+const togglingSpecialIds = ref<Set<string | number>>(new Set())
 
 // Data State (Feed)
 const feedItems = ref<any[]>([])
@@ -347,6 +388,45 @@ const filteredChannels = computed(() => {
   return list.value
 })
 
+const sortChannels = (items: any[]) => {
+  return [...items].sort((a, b) => {
+    if (a.is_special_followed !== b.is_special_followed) return a.is_special_followed ? -1 : 1
+    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+  })
+}
+
+const applySpecialFollowState = (subscriptionId: string | number, isSpecialFollowed: boolean) => {
+  const updated = list.value.map((item) => (
+    item.id === subscriptionId ? { ...item, is_special_followed: isSpecialFollowed } : item
+  ))
+  list.value = specialFilter.value === 'yes' && !isSpecialFollowed
+    ? updated.filter((item) => item.id !== subscriptionId)
+    : sortChannels(updated)
+  if (specialFilter.value === 'yes' && !isSpecialFollowed && activeChannelId.value === subscriptionId) {
+    activeChannelId.value = null
+    activeChannelNameCache.value = ''
+    fetchFeed(true)
+  }
+}
+
+const toggleSpecialFilter = () => {
+  specialFilter.value = specialFilter.value === 'yes' ? 'all' : 'yes'
+}
+
+const toggleSpecialFollow = async (subscription: any) => {
+  if (!subscription?.id || togglingSpecialIds.value.has(subscription.id)) return
+
+  const nextValue = !subscription.is_special_followed
+  togglingSpecialIds.value = new Set(togglingSpecialIds.value).add(subscription.id)
+
+  const { error } = await updateSpecialFollowStatus(subscription.id, nextValue)
+  if (!error) applySpecialFollowState(subscription.id, nextValue)
+
+  const nextIds = new Set(togglingSpecialIds.value)
+  nextIds.delete(subscription.id)
+  togglingSpecialIds.value = nextIds
+}
+
 const videoGroups = computed(() => {
   const groups: Record<string, any[]> = {}
   feedItems.value.forEach(video => {
@@ -388,6 +468,7 @@ const fetchChannels = async (isReset = false) => {
       page_size: CHANNELS_PAGE_SIZE,
     }
     if (site.value) params.site = site.value
+    if (specialFilter.value === 'yes') params.special = 'yes'
     const query = sidebarSearch.value.trim()
     if (query) params.query = query
     const { data } = await getSubscriptions(params)
@@ -419,7 +500,8 @@ const fetchFeed = async (isReset = false) => {
       nsfw: nsfwValue,
       site: site.value || undefined,
       subscription_id: activeChannelId.value || undefined,
-      sort_by: 'publish_date'
+      sort_by: 'publish_date',
+      special: !activeChannelId.value && specialFilter.value === 'yes' ? 'yes' : undefined,
     })
     if (requestToken !== feedRequestToken) return
     const items = data?.data || data?.items || []
@@ -651,7 +733,7 @@ watch(viewMode, () => {
   nextTick(() => initObservers())
 })
 
-watch([nsfw, site], () => { fetchChannels(true); fetchFeed(true); resetAllScroll() })
+watch([nsfw, site, specialFilter], () => { fetchChannels(true); fetchFeed(true); resetAllScroll() })
 
 watch(remoteChannelKey, () => {
   remoteItems.value = []

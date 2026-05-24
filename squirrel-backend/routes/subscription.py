@@ -82,8 +82,10 @@ def get_subscription_detail(subscription_id: int, current_user: User = Depends(g
         return response.not_found("订阅不存在")
 
     is_nsfw = subscription_service.get_user_subscription_nsfw(current_user.id, subscription_id)
+    is_special_followed = subscription_service.get_user_subscription_special_followed(current_user.id, subscription_id)
     data = sub.model_dump() if hasattr(sub, 'model_dump') else dict(sub)
     data["is_nsfw"] = bool(is_nsfw) if is_nsfw is not None else False
+    data["is_special_followed"] = bool(is_special_followed) if is_special_followed is not None else False
     return response.success(data)
 
 
@@ -92,6 +94,7 @@ def list_subscriptions(
         query: str = Query(None, description="搜索关键字"),
         type: str = Query(None, description="内容类型"),
         nsfw: str = Query("all", description="NSFW 过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
+        special: str = Query("all", description="特别关注过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
         site: str = Query(None, description="站点过滤：例如 youtube、bilibili 等（支持别名）"),
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
@@ -103,7 +106,7 @@ def list_subscriptions(
         domains = resolved if resolved else None
 
     subscriptions, total = subscription_service.list_subscriptions(
-        current_user.id, query, type, nsfw, page, page_size, domains
+        current_user.id, query, type, nsfw, page, page_size, domains, special
     )
     return response.success({
         "total": total,
@@ -292,6 +295,19 @@ def toggle_nsfw(
         current_user: User = Depends(get_current_user)
 ):
     success = subscription_service.toggle_nsfw_status(
+        current_user.id,
+        req.subscription_id,
+        req.is_enable
+    )
+    return response.success({"success": success})
+
+
+@router.post("/api/subscription/toggle-special-follow")
+def toggle_special_follow(
+        req: ToggleStatusRequest,
+        current_user: User = Depends(get_current_user)
+):
+    success = subscription_service.toggle_special_follow_status(
         current_user.id,
         req.subscription_id,
         req.is_enable

@@ -7,6 +7,7 @@ def get_subscriptions_sql():
                 else coalesce(s.total_videos, 0)
             end as total_videos,
             us.is_nsfw,
+            us.is_special_followed,
             coalesce(vc.video_count, 0) as total_extract,
             coalesce(ss.sync_status, 'idle') as sync_status,
             ss.last_sync_at,
@@ -44,7 +45,7 @@ def get_subscriptions_sql():
         /*{if filter_nsfw_when_all}*/
             and us.is_nsfw is false
         /*{endif}*/
-        order by s.created_at desc
+        order by us.is_special_followed desc, s.created_at desc
         limit :limit offset :offset
     """
 
@@ -84,6 +85,7 @@ def get_subscription_sql():
                 else coalesce(s.total_videos, 0)
             end as total_videos,
             0 as is_nsfw,
+            0 as is_special_followed,
             coalesce(vc.video_count, 0) as total_extract,
             coalesce(ss.sync_status, 'idle') as sync_status,
             ss.last_sync_at,

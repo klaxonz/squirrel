@@ -677,6 +677,124 @@ def test_list_videos_returns_remote_thumbnail_urls_directly(monkeypatch):
     assert videos[0]['thumbnail'] == 'https://img.example.com/111.jpg'
 
 
+def test_list_videos_filters_special_followed_subscriptions(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add_all([
+            Subscription(
+                id=1,
+                type='CHANNEL',
+                name='Special Feed',
+                url='https://www.youtube.com/channel/special',
+                avatar=None,
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            Subscription(
+                id=2,
+                type='CHANNEL',
+                name='Regular Feed',
+                url='https://www.youtube.com/channel/regular',
+                avatar=None,
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            UserSubscription(
+                id=1,
+                user_id=7,
+                subscription_id=1,
+                is_deleted=False,
+                is_nsfw=False,
+                is_special_followed=True,
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            UserSubscription(
+                id=2,
+                user_id=7,
+                subscription_id=2,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+            Video(
+                id=201,
+                title='Special video',
+                url='https://www.youtube.com/watch?v=201',
+                domain='youtube.com',
+                duration=180,
+                thumbnail='https://img.example.com/201.jpg',
+                publish_date=datetime(2024, 1, 4, 12, 0, 0),
+                created_at=datetime(2024, 1, 4, 12, 0, 0),
+                updated_at=datetime(2024, 1, 4, 12, 0, 0),
+                is_deleted=False,
+            ),
+            Video(
+                id=202,
+                title='Regular video',
+                url='https://www.youtube.com/watch?v=202',
+                domain='youtube.com',
+                duration=180,
+                thumbnail='https://img.example.com/202.jpg',
+                publish_date=datetime(2024, 1, 5, 12, 0, 0),
+                created_at=datetime(2024, 1, 5, 12, 0, 0),
+                updated_at=datetime(2024, 1, 5, 12, 0, 0),
+                is_deleted=False,
+            ),
+            UserVideoFeed(
+                user_id=7,
+                subscription_id=1,
+                video_id=201,
+                publish_date=datetime(2024, 1, 4, 12, 0, 0),
+                video_created_at=datetime(2024, 1, 4, 12, 0, 0),
+                domain='youtube.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 4, 12, 0, 0),
+                updated_at=datetime(2024, 1, 4, 12, 0, 0),
+            ),
+            UserVideoFeed(
+                user_id=7,
+                subscription_id=2,
+                video_id=202,
+                publish_date=datetime(2024, 1, 5, 12, 0, 0),
+                video_created_at=datetime(2024, 1, 5, 12, 0, 0),
+                domain='youtube.com',
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 5, 12, 0, 0),
+                updated_at=datetime(2024, 1, 5, 12, 0, 0),
+            ),
+        ])
+        session.commit()
+
+    videos, total = video_service.list_videos(
+        user_id=7,
+        query=None,
+        subscription_id=None,
+        category='all',
+        sort_by='publish_date',
+        nsfw='all',
+        domains=None,
+        page=1,
+        page_size=10,
+        with_total=True,
+        special='yes',
+    )
+
+    assert total == 1
+    assert [video['id'] for video in videos] == [201]
+    assert videos[0]['subscriptions'][0]['is_special_followed'] is True
+
+
 def test_list_videos_filters_domains_from_user_video_feed(monkeypatch):
     engine = _setup_test_env(monkeypatch)
     statements = []

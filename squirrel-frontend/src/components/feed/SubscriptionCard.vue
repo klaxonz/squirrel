@@ -26,6 +26,15 @@
           <h3 class="line-clamp-2 flex-1 text-sm font-semibold leading-snug text-foreground">
             {{ subscription.name }}
           </h3>
+          <button
+            type="button"
+            class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors"
+            :class="subscription.is_special_followed ? 'text-amber-500' : 'text-muted-foreground/40 hover:bg-accent hover:text-foreground'"
+            aria-label="切换特别关注"
+            @click.stop="$emit('toggleSpecial', subscription)"
+          >
+            <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': subscription.is_special_followed }" />
+          </button>
           <div v-if="subscription.is_nsfw" class="shrink-0 rounded-md bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
             敏感
           </div>
@@ -85,7 +94,7 @@ const props = defineProps<{
   subscription: any
 }>()
 
-defineEmits(['click', 'more'])
+defineEmits(['click', 'more', 'toggleSpecial'])
 
 const lastUpdatedText = computed(() => {
   const date = props.subscription.updated_at || props.subscription.last_published_at

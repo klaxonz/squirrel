@@ -208,6 +208,7 @@ def _serialize_subscription_list_item(row: Mapping[str, Any], total_extract: int
         'created_at': _serialize_datetime(row_data['created_at']),
         'updated_at': _serialize_datetime(row_data['updated_at']),
         'is_nsfw': bool(row_data['is_nsfw']),
+        'is_special_followed': bool(row_data['is_special_followed']),
         'total_extract': total_extract,
         'sync_status': row_data['sync_status'] or 'idle',
         'last_sync_at': _serialize_datetime(row_data['last_sync_at']),
@@ -350,7 +351,8 @@ def list_subscriptions(
         nsfw: str,
         page: int,
         page_size: int,
-        domains: Optional[List[str]] = None
+        domains: Optional[List[str]] = None,
+        special: str = 'all',
 ) -> Tuple[List[Dict[str, Any]], int]:
     """Get subscription list"""
 
@@ -375,6 +377,11 @@ def list_subscriptions(
             conditions.append(UserSubscription.is_nsfw.is_(True))
         elif effective_nsfw == 'no':
             conditions.append(UserSubscription.is_nsfw.is_(False))
+
+        if special == 'yes':
+            conditions.append(UserSubscription.is_special_followed.is_(True))
+        elif special == 'no':
+            conditions.append(UserSubscription.is_special_followed.is_(False))
 
         if domains:
             normalized_domains = [domain for domain in dict.fromkeys(domains) if domain]
@@ -407,6 +414,7 @@ def list_subscriptions(
                 Subscription.created_at,
                 Subscription.updated_at,
                 UserSubscription.is_nsfw.label('is_nsfw'),
+                UserSubscription.is_special_followed.label('is_special_followed'),
                 literal(0).label('total_extract'),
                 func.coalesce(SubscriptionSyncState.sync_status, 'idle').label('sync_status'),
                 SubscriptionSyncState.last_sync_at.label('last_sync_at'),
@@ -425,7 +433,7 @@ def list_subscriptions(
                 ),
             )
             .where(*conditions)
-            .order_by(Subscription.created_at.desc())
+            .order_by(UserSubscription.is_special_followed.desc(), Subscription.created_at.desc())
             .limit(page_size)
             .offset((page - 1) * page_size)
         )
@@ -529,7 +537,7 @@ def toggle_nsfw_status(user_id: int, subscription_id: int, is_nsfw: bool) -> boo
             .where(
                 UserSubscription.user_id == user_id,
                 UserSubscription.subscription_id == subscription_id,
-                UserSubscription.is_deleted == 0
+                UserSubscription.is_deleted.is_(False)
             )
         ).scalar_one_or_none()
         if not user_sub:
@@ -538,6 +546,24 @@ def toggle_nsfw_status(user_id: int, subscription_id: int, is_nsfw: bool) -> boo
         user_sub.is_nsfw = is_nsfw
         session.commit()
     user_video_feed_service.update_user_subscription_nsfw(user_id, subscription_id, is_nsfw)
+    return True
+
+
+def toggle_special_follow_status(user_id: int, subscription_id: int, is_special_followed: bool) -> bool:
+    with get_session() as session:
+        user_sub = session.execute(
+            select(UserSubscription)
+            .where(
+                UserSubscription.user_id == user_id,
+                UserSubscription.subscription_id == subscription_id,
+                UserSubscription.is_deleted.is_(False)
+            )
+        ).scalar_one_or_none()
+        if not user_sub:
+            return False
+
+        user_sub.is_special_followed = is_special_followed
+        session.commit()
     return True
 
 
@@ -690,6 +716,20 @@ def get_user_subscription_nsfw(user_id: int, subscription_id: int) -> Optional[b
         ).first()
         if user_sub:
             return user_sub.is_nsfw
+        return None
+
+
+def get_user_subscription_special_followed(user_id: int, subscription_id: int) -> Optional[bool]:
+    with get_session() as session:
+        user_sub = session.scalars(
+            select(UserSubscription).where(
+                UserSubscription.user_id == user_id,
+                UserSubscription.subscription_id == subscription_id,
+                UserSubscription.is_deleted.is_(False)
+            )
+        ).first()
+        if user_sub:
+            return user_sub.is_special_followed
         return None
 
 

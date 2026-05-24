@@ -524,12 +524,14 @@ def _build_active_subscriptions_query(
     subscription_id: Optional[int],
     nsfw: str,
     show_nsfw: bool,
+    special: str,
 ):
     effective_nsfw = resolve_effective_nsfw_filter(nsfw, show_nsfw)
     active_subscriptions = (
         select(
             UserSubscription.subscription_id.label('subscription_id'),
             UserSubscription.is_nsfw.label('is_nsfw'),
+            UserSubscription.is_special_followed.label('is_special_followed'),
             Subscription.name.label('subscription_name'),
             Subscription.type.label('subscription_type'),
         )
@@ -551,6 +553,11 @@ def _build_active_subscriptions_query(
         active_subscriptions = active_subscriptions.where(UserSubscription.is_nsfw.is_(True))
     elif effective_nsfw == 'no':
         active_subscriptions = active_subscriptions.where(UserSubscription.is_nsfw.is_(False))
+
+    if special == 'yes':
+        active_subscriptions = active_subscriptions.where(UserSubscription.is_special_followed.is_(True))
+    elif special == 'no':
+        active_subscriptions = active_subscriptions.where(UserSubscription.is_special_followed.is_(False))
 
     return active_subscriptions.subquery('active_subscriptions')
 
@@ -653,12 +660,14 @@ def _build_feed_rows_query(
     sort_by: str,
     nsfw: str,
     domains: Optional[List[str]],
+    special: str,
 ):
     active_subscriptions = _build_active_subscriptions_query(
         user_id=user_id,
         subscription_id=subscription_id,
         nsfw=nsfw,
         show_nsfw=show_nsfw,
+        special=special,
     )
     query_stmt = (
         select(
@@ -730,12 +739,14 @@ def _build_list_query(
     time_range: str,
     duration: str,
     content_type: str,
+    special: str,
 ):
     active_subscriptions = _build_active_subscriptions_query(
         user_id=user_id,
         subscription_id=subscription_id,
         nsfw=nsfw,
         show_nsfw=show_nsfw,
+        special=special,
     )
     parsed_query = parse_search_query(query)
     has_unsupported_terms = any([
@@ -841,6 +852,7 @@ def list_videos(
         time_range: str = 'all',
         duration: str = 'all',
         content_type: str = 'all',
+        special: str = 'all',
 ) -> Tuple[List[dict], Optional[int]]:
     user_config = user_config_service.get_config(user_id)
     show_nsfw = user_config.get('showNsfw', False)
@@ -865,6 +877,7 @@ def list_videos(
                 sort_by=sort_by,
                 nsfw=nsfw,
                 domains=domains,
+                special=special,
             )
         else:
             base_ids_query = _build_list_query(
@@ -879,6 +892,7 @@ def list_videos(
                 time_range=time_range,
                 duration=duration,
                 content_type=content_type,
+                special=special,
             )
         build_query_ms = _elapsed_ms(build_query_started_at)
 
@@ -964,6 +978,7 @@ def list_videos(
                 Subscription.type,
                 Subscription.avatar,
                 UserSubscription.is_nsfw,
+                UserSubscription.is_special_followed,
             )
             .select_from(SubscriptionVideo)
             .join(
@@ -995,6 +1010,7 @@ def list_videos(
                 'type': row.type,
                 'avatar': row.avatar,
                 'is_nsfw': row.is_nsfw,
+                'is_special_followed': row.is_special_followed,
             })
         subscriptions_ms = _elapsed_ms(subscriptions_started_at)
 

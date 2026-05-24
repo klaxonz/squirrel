@@ -84,6 +84,16 @@
           </div>
 
           <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors"
+              :class="detail?.is_special_followed ? 'border-amber-400/40 bg-amber-400/10 text-amber-600' : 'border-border/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              :disabled="isTogglingSpecial"
+              aria-label="切换特别关注"
+              @click="handleToggleSpecialFollow"
+            >
+              <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': detail?.is_special_followed }" />
+            </button>
             <div v-if="syncMessage" class="hidden max-w-40 truncate text-xs font-medium sm:block" :class="syncError ? 'text-destructive' : 'text-muted-foreground'">
               {{ syncMessage }}
             </div>
@@ -146,7 +156,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { getSubscriptionDetail, triggerDirectRefresh, unsubscribe as apiUnsubscribe } from '@/api'
+import { getSubscriptionDetail, triggerDirectRefresh, unsubscribe as apiUnsubscribe, updateSpecialFollowStatus } from '@/api'
 import { notifySubscriptionRemoved } from '@/utils/subscriptionEvents'
 
 const props = defineProps({
@@ -160,6 +170,7 @@ const detail = ref(null);
 const loading = ref(false);
 const isVisible = ref(true)
 const isUnsubscribing = ref(false)
+const isTogglingSpecial = ref(false)
 const isSyncing = ref(false)
 const unsubscribeError = ref('')
 const syncError = ref('')
@@ -205,6 +216,19 @@ const handleUnsubscribe = async () => {
   await wait(DISMISS_MS)
 }
 
+const handleToggleSpecialFollow = async () => {
+  if (!props.subscriptionId || !detail.value || isTogglingSpecial.value) return
+
+  isTogglingSpecial.value = true
+  const nextValue = !detail.value.is_special_followed
+  const { error } = await updateSpecialFollowStatus(props.subscriptionId, nextValue)
+  if (!error) {
+    detail.value = { ...detail.value, is_special_followed: nextValue }
+    emit('loaded', detail.value)
+  }
+  isTogglingSpecial.value = false
+}
+
 const buildSyncSuccessMessage = (data, mode) => {
   if (data?.status === 'in_progress') return '同步进行中'
   if (data?.status === 'queued') return '同步等待中'
@@ -240,6 +264,7 @@ const handleDirectSync = async (mode = 'incremental') => {
 watch(() => props.subscriptionId, () => {
   isVisible.value = true
   isUnsubscribing.value = false
+  isTogglingSpecial.value = false
   unsubscribeError.value = ''
   isSyncing.value = false
   syncError.value = ''

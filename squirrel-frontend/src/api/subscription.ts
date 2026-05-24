@@ -39,6 +39,18 @@ export const updateNsfwStatus = async (subscriptionId: string | number, isNsfw: 
   return { data: null, error: new ApiError('更新失败', undefined, null, data) }
 }
 
+export const updateSpecialFollowStatus = async (subscriptionId: string | number, isSpecialFollowed: boolean) => {
+  const { data, error } = await post('/api/subscription/toggle-special-follow', {
+    subscription_id: subscriptionId,
+    is_enable: isSpecialFollowed,
+  })
+
+  if (error) return { data: null, error }
+  if (data?.success) return { data, error: null }
+
+  return { data: null, error: new ApiError('更新失败', undefined, null, data) }
+}
+
 export const triggerRefresh = async (subscriptionId: string | number, mode: string = 'incremental') => {
   const result = await post(`/api/subscription/${subscriptionId}/refresh`, null, {
     params: { mode },

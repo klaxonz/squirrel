@@ -36,6 +36,7 @@ class SubscriptionDto(sqlalchemy_to_pydantic(Subscription)):
 
     total_extract: int = 0
     is_nsfw: bool
+    is_special_followed: bool = False
     sync_status: str = 'idle'
     last_sync_at: Optional[datetime] = None
     last_success_at: Optional[datetime] = None

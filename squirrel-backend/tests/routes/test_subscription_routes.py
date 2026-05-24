@@ -104,3 +104,28 @@ def test_refresh_direct_runs_subscription_without_scheduler_queue(monkeypatch):
     assert calls[0]['subscription_id'] == 42
     assert calls[0]['user_id'] == 7
     assert calls[0]['mode'].value == 'full'
+
+
+def test_toggle_special_follow_route_updates_current_user_subscription(monkeypatch):
+    calls = []
+
+    def _toggle(user_id, subscription_id, is_special_followed):
+        calls.append((user_id, subscription_id, is_special_followed))
+        return True
+
+    monkeypatch.setattr(
+        'routes.subscription.subscription_service.toggle_special_follow_status',
+        _toggle,
+    )
+    client = _build_client(monkeypatch)
+
+    response = client.post('/api/subscription/toggle-special-follow', json={
+        'subscription_id': 42,
+        'is_enable': True,
+    })
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body['code'] == 0
+    assert body['data'] == {'success': True}
+    assert calls == [(7, 42, True)]

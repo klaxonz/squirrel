@@ -92,6 +92,7 @@ class UserSubscription(Base, SerializerMixin):
     subscription_id: Mapped[int] = mapped_column(Integer, nullable=False)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     is_nsfw: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_special_followed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
     updated_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(),
@@ -111,5 +112,6 @@ class UserSubscription(Base, SerializerMixin):
         Index('ix_user_subscription_subscription_id', 'subscription_id'),
         Index('ix_user_subscription_is_deleted', 'is_deleted'),
         Index('ix_user_subscription_user_deleted_nsfw', 'user_id', 'is_deleted', 'is_nsfw'),
+        Index('ix_user_subscription_user_deleted_special', 'user_id', 'is_deleted', 'is_special_followed'),
         Index('ix_user_subscription_sub_user_deleted', 'subscription_id', 'user_id', 'is_deleted'),
     )

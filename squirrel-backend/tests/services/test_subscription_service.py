@@ -1065,6 +1065,7 @@ def test_list_subscriptions_recent_videos_include_source_url(monkeypatch):
         'created_at': '2024-01-01 00:00:00',
         'updated_at': '2024-01-01 00:00:00',
         'is_nsfw': False,
+        'is_special_followed': False,
         'total_extract': 1,
         'sync_status': 'queued',
         'last_sync_at': '',
@@ -1125,3 +1126,83 @@ def test_get_subscription_detail_prefers_actual_extract_count_when_total_videos_
 
     assert detail.total_extract == 2
     assert detail.total_videos == 2
+
+
+def test_list_subscriptions_orders_special_followed_first_and_filters(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_subscription(engine, user_ids=[1])
+
+    with Session(engine, expire_on_commit=False) as session:
+        user_subscription = session.query(UserSubscription).filter_by(user_id=1, subscription_id=1).one()
+        user_subscription.is_special_followed = True
+        session.add(
+            Subscription(
+                id=2,
+                type='CHANNEL',
+                name='New regular subscription',
+                url='https://www.youtube.com/channel/2',
+                avatar=None,
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 2),
+                updated_at=datetime(2024, 1, 2),
+            )
+        )
+        session.add(
+            UserSubscription(
+                id=2,
+                user_id=1,
+                subscription_id=2,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 2),
+                updated_at=datetime(2024, 1, 2),
+            )
+        )
+        session.commit()
+
+    monkeypatch.setattr(subscription_service.user_config_service, 'get_config', lambda _user_id: {'showNsfw': False})
+
+    subscriptions, total = subscription_service.list_subscriptions(
+        user_id=1,
+        query=None,
+        type=None,
+        nsfw='all',
+        page=1,
+        page_size=10,
+    )
+
+    assert total == 2
+    assert [item['id'] for item in subscriptions] == [1, 2]
+    assert subscriptions[0]['is_special_followed'] is True
+
+    special_subscriptions, special_total = subscription_service.list_subscriptions(
+        user_id=1,
+        query=None,
+        type=None,
+        nsfw='all',
+        page=1,
+        page_size=10,
+        special='yes',
+    )
+
+    assert special_total == 1
+    assert [item['id'] for item in special_subscriptions] == [1]
+
+
+def test_toggle_special_follow_status_updates_user_subscription(monkeypatch):
+    engine = _setup_test_env(monkeypatch)
+    _seed_subscription(engine, user_ids=[1])
+
+    assert subscription_service.toggle_special_follow_status(
+        user_id=1,
+        subscription_id=1,
+        is_special_followed=True,
+    ) is True
+
+    with Session(engine, expire_on_commit=False) as session:
+        user_subscription = session.query(UserSubscription).filter_by(user_id=1, subscription_id=1).one()
+
+    assert user_subscription.is_special_followed is True

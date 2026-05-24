@@ -91,6 +91,7 @@ def get_videos(
         category: str = Query('all', description="阅读状态: all, read, unread, preview, like"),
         sort_by: SortBy = Query(SortBy.UPLOADED_AT, description="排序字段"),
         nsfw: str = Query("all", description="NSFW 过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
+        special: str = Query("all", description="特别关注过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
         site: str = Query(None, description="站点过滤：例如 youtube、bilibili 等（支持别名）"),
         with_total: bool = Query(False, alias="withTotal", description="是否返回 total（会额外执行 count 查询）"),
         page: int = Query(1, ge=1, description="页码"),
@@ -111,7 +112,7 @@ def get_videos(
 
     videos, total_counts = video_service.list_videos(
         current_user.id, query, subscription_id, category, sort_by, nsfw, domains_list, page, page_size,
-        with_total=with_total, time_range=time_range, duration=duration, content_type=content_type,
+        with_total=with_total, time_range=time_range, duration=duration, content_type=content_type, special=special,
     )
 
     result = response.success({
