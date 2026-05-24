@@ -31,6 +31,15 @@
         </button>
         
         <!-- Kbd Hint (Linear Style) -->
+        <button
+          v-if="activeSearchModeLabel"
+          type="button"
+          class="h-6 shrink-0 rounded-md border border-border/50 bg-muted/40 px-2 text-[11px] font-semibold text-muted-foreground/70 transition-colors hover:bg-background hover:text-foreground"
+          @click.stop="cycleSearchMode"
+        >
+          {{ activeSearchModeLabel }}
+        </button>
+
         <div v-else class="hidden md:flex items-center gap-1 px-1.5 py-0.5 rounded border border-border/60 bg-muted/50 text-[10px] font-bold text-muted-foreground/40 tracking-tighter">
           <span class="text-[11px] leading-none">⌘</span>K
         </div>
@@ -52,11 +61,29 @@
           <button v-if="recentSearches.length" @click="clearRecentSearches" class="text-[10px] font-bold text-muted-foreground/40 hover:text-destructive transition-colors uppercase">清空</button>
         </div>
 
+        <div v-if="searchActionItems.length" class="grid grid-cols-2 gap-1 px-1 pb-1">
+          <button
+            v-for="(item, index) in searchActionItems"
+            :key="item.id"
+            type="button"
+            class="flex min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors"
+            :class="index === activeSuggestionIndex ? 'bg-secondary text-foreground' : 'text-muted-foreground/80 hover:bg-secondary/50 hover:text-foreground'"
+            @mouseenter="activeSuggestionIndex = index"
+            @click="searchWithMode(item.mode)"
+          >
+            <AppIcon name="search" class="h-3.5 w-3.5 shrink-0 opacity-60" />
+            <div class="min-w-0">
+              <span class="block truncate text-[12px] font-semibold">{{ item.label }}</span>
+              <span class="block truncate text-[10px] opacity-50">{{ item.meta }}</span>
+            </div>
+          </button>
+        </div>
+
         <div v-for="(item, index) in suggestionItems" :key="item.id" class="flex min-w-0 gap-1">
           <button
             class="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2 text-left transition-all"
-            :class="index === activeSuggestionIndex ? 'bg-secondary text-foreground' : 'hover:bg-secondary/50 text-muted-foreground/80'"
-            @mouseenter="activeSuggestionIndex = index"
+            :class="index + searchActionItems.length === activeSuggestionIndex ? 'bg-secondary text-foreground' : 'hover:bg-secondary/50 text-muted-foreground/80'"
+            @mouseenter="activeSuggestionIndex = index + searchActionItems.length"
             @click="selectSuggestion(item.value)"
           >
             <AppIcon :name="item.type === 'search' ? 'search' : 'history'" class="h-4 w-4 shrink-0 opacity-50" />
@@ -70,25 +97,32 @@
           </button>
         </div>
         
-        <div v-if="!suggestionItems.length" class="p-8 text-center text-[12px] text-muted-foreground/40 font-medium">暂无搜索记录</div>
+        <div v-if="!searchActionItems.length && !suggestionItems.length" class="p-8 text-center text-[12px] text-muted-foreground/40 font-medium">暂无搜索记录</div>
       </div>
     </transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch, type PropType } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { getSearchSuggestions } from '@/api/search'
 import { useUIStore } from '@/stores/ui'
 
+type SearchModeOption = {
+  value: string
+  label: string
+}
+
 const props = defineProps({
   modelValue: { type: String, default: '' },
   placeholder: { type: String, default: '搜索或输入命令...' },
-  suggestionScope: { type: String, default: 'home' }
+  suggestionScope: { type: String, default: 'home' },
+  searchModes: { type: Array as PropType<readonly SearchModeOption[]>, default: () => [] },
+  activeSearchMode: { type: String, default: '' },
 })
 
-const emit = defineEmits(['update:modelValue', 'search', 'clear'])
+const emit = defineEmits(['update:modelValue', 'search', 'clear', 'search-mode-change'])
 const uiStore = useUIStore()
 
 const inputValue = ref(uiStore.searchQuery)
@@ -107,6 +141,20 @@ let suggestionTimeout: any = null
 
 const trimmedInputValue = computed(() => inputValue.value.trim())
 const showSuggestions = computed(() => isPanelOpen.value && isFocused.value)
+const activeSearchModeLabel = computed(() => {
+  return props.searchModes.find((mode) => mode.value === props.activeSearchMode)?.label || ''
+})
+const searchActionItems = computed(() => {
+  if (!trimmedInputValue.value) return []
+  return props.searchModes.map((mode) => ({
+    id: `mode-${mode.value}`,
+    type: 'mode',
+    mode: mode.value,
+    label: `${mode.label}搜索`,
+    meta: trimmedInputValue.value,
+  }))
+})
+const selectableItems = computed(() => [...searchActionItems.value, ...suggestionItems.value])
 
 watch(() => uiStore.searchQuery, (newVal) => {
   if (newVal !== inputValue.value) inputValue.value = newVal
@@ -164,7 +212,12 @@ async function loadRemoteSuggestions() {
 function handleEnterKey() {
   if (isComposing.value) return
   if (activeSuggestionIndex.value >= 0) {
-    selectSuggestion(suggestionItems.value[activeSuggestionIndex.value].value)
+    const item = selectableItems.value[activeSuggestionIndex.value]
+    if (item?.type === 'mode') {
+      searchWithMode(item.mode)
+    } else if (item?.value) {
+      selectSuggestion(item.value)
+    }
   } else {
     handleSearch()
   }
@@ -187,6 +240,18 @@ function handleSearch() {
   emit('search')
   isPanelOpen.value = false
   inputRef.value?.blur()
+}
+
+function searchWithMode(mode: string) {
+  emit('search-mode-change', mode)
+  handleSearch()
+}
+
+function cycleSearchMode() {
+  if (props.searchModes.length < 2) return
+  const currentIndex = props.searchModes.findIndex((mode) => mode.value === props.activeSearchMode)
+  const nextMode = props.searchModes[(currentIndex + 1) % props.searchModes.length]
+  emit('search-mode-change', nextMode.value)
 }
 
 function clearSearch() {
@@ -230,7 +295,7 @@ function handleFocusOut(e: FocusEvent) {
 
 function moveActiveSuggestion(dir: number) {
   isPanelOpen.value = true
-  const len = suggestionItems.value.length
+  const len = selectableItems.value.length
   if (len === 0) return
   activeSuggestionIndex.value = (activeSuggestionIndex.value + dir + len) % len
 }
