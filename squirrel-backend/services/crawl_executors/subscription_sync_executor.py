@@ -49,6 +49,7 @@ def execute_subscription_sync_payload(payload: dict):
         queue_token=queue_token,
         cursor_payload=cursor_payload,
         last_seen_video_url=last_seen_video_url,
+        inline_video_extraction=bool(payload.get('inline_video_extraction', False)),
     )
     return orchestrator.update(request)
 

@@ -7,6 +7,7 @@
       :mode="channelDataMode"
       @update:mode="handleChannelModeChange"
       @loaded="channelDetail = $event"
+      @synced="handleChannelSynced"
     />
 
     <!-- Sticky Toolbar -->
@@ -183,6 +184,13 @@ const refreshCurrentList = () => {
     return
   }
   videoChildRef.value?.refresh?.()
+}
+
+const handleChannelSynced = () => {
+  if (channelDataMode.value === 'remote') {
+    channelDataMode.value = 'local'
+  }
+  refreshCurrentList()
 }
 
 const handleOpenModal = (video: any) => {

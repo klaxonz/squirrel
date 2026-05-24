@@ -17,7 +17,14 @@ from services.subscription_sync_event_service import SyncEventInput, append_even
 from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunContext, SyncRunStatus, create_run
 from utils.site_catalog import SiteCatalog
 from utils.trace import generate_trace_id, get_trace_id
-from .models import SubscriptionScheduleResult, SubscriptionUpdateRequest, UpdateTrigger, UpdateMode
+from .models import (
+    SubscriptionDirectRunResult,
+    SubscriptionScheduleResult,
+    SubscriptionUpdateRequest,
+    SubscriptionUpdateResult,
+    UpdateTrigger,
+    UpdateMode,
+)
 
 logger = logging.getLogger()
 
@@ -143,6 +150,255 @@ class SubscriptionScheduler:
             status='queued',
             request_id=str(event.id),
             run_id=run_context.run_id,
+        )
+
+    def run_one_inline(
+        self,
+        subscription_id: int,
+        url: str,
+        trigger: UpdateTrigger = UpdateTrigger.MANUAL,
+        mode: UpdateMode = UpdateMode.INCREMENTAL,
+        user_id: Optional[int] = None,
+        force: bool = False,
+        trace_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+    ) -> SubscriptionDirectRunResult:
+        trace_id = self._resolve_trace_id(trace_id)
+        resolved_mode = self._resolve_mode(mode)
+        domain = subscription_sync_state_service._resolve_site(url)
+
+        if not domain or not SiteCatalog.is_site_enabled(domain=domain):
+            run_context, emit_run_created = self._build_run_context(
+                subscription_id=subscription_id,
+                sync_state_id=None,
+                site=domain,
+                sync_mode=resolved_mode.value,
+                trigger=trigger.value,
+                trace_id=trace_id,
+                run_id=run_id,
+            )
+            if emit_run_created:
+                append_event(SyncEventInput(
+                    stream_id=run_context.run_id,
+                    subscription_id=subscription_id,
+                    sync_state_id=None,
+                    site=domain,
+                    sync_mode=resolved_mode.value,
+                    trigger=trigger.value,
+                    trace_id=trace_id,
+                    event_type=SyncEventType.RUN_CREATED,
+                    event_phase=SyncPhase.INIT,
+                    event_status=SyncRunStatus.CREATED,
+                    payload={'pending_video_count': 0},
+                    occurred_at=run_context.created_at,
+                ))
+            append_event(SyncEventInput(
+                stream_id=run_context.run_id,
+                subscription_id=subscription_id,
+                sync_state_id=None,
+                site=domain,
+                sync_mode=resolved_mode.value,
+                trigger=trigger.value,
+                trace_id=trace_id,
+                event_type=SyncEventType.DEFERRED,
+                event_phase=SyncPhase.DEFERRED,
+                event_status=SyncRunStatus.DEFERRED,
+                payload={'reason': 'site_disabled', 'error_message': 'site_disabled'},
+            ))
+            result = SubscriptionUpdateResult(
+                subscription_id=subscription_id,
+                success=True,
+                videos_found=0,
+                videos_enqueued=0,
+                skipped_reason='site_disabled',
+            )
+            return SubscriptionDirectRunResult(
+                subscription_id,
+                None,
+                'site_disabled',
+                run_id=run_context.run_id,
+                result=result,
+            )
+
+        if not self._has_active_subscribers(subscription_id):
+            run_context, emit_run_created = self._build_run_context(
+                subscription_id=subscription_id,
+                sync_state_id=None,
+                site=domain,
+                sync_mode=resolved_mode.value,
+                trigger=trigger.value,
+                trace_id=trace_id,
+                run_id=run_id,
+            )
+            if emit_run_created:
+                append_event(SyncEventInput(
+                    stream_id=run_context.run_id,
+                    subscription_id=subscription_id,
+                    sync_state_id=None,
+                    site=domain,
+                    sync_mode=resolved_mode.value,
+                    trigger=trigger.value,
+                    trace_id=trace_id,
+                    event_type=SyncEventType.RUN_CREATED,
+                    event_phase=SyncPhase.INIT,
+                    event_status=SyncRunStatus.CREATED,
+                    payload={'pending_video_count': 0},
+                    occurred_at=run_context.created_at,
+                ))
+            append_event(SyncEventInput(
+                stream_id=run_context.run_id,
+                subscription_id=subscription_id,
+                sync_state_id=None,
+                site=domain,
+                sync_mode=resolved_mode.value,
+                trigger=trigger.value,
+                trace_id=trace_id,
+                event_type=SyncEventType.DEFERRED,
+                event_phase=SyncPhase.DEFERRED,
+                event_status=SyncRunStatus.DEFERRED,
+                payload={'reason': 'no_subscribers', 'error_message': 'no_subscribers'},
+            ))
+            result = SubscriptionUpdateResult(
+                subscription_id=subscription_id,
+                success=True,
+                videos_found=0,
+                videos_enqueued=0,
+                skipped_reason='no_subscribers',
+            )
+            return SubscriptionDirectRunResult(
+                subscription_id,
+                None,
+                'no_subscribers',
+                run_id=run_context.run_id,
+                result=result,
+            )
+
+        sync_state, state_status = subscription_sync_state_service.prepare_sync_state_for_enqueue(
+            subscription_id,
+            url,
+            resolved_mode.value,
+            scheduled=False,
+        )
+        if not sync_state:
+            result = SubscriptionUpdateResult(
+                subscription_id=subscription_id,
+                success=False,
+                videos_found=0,
+                videos_enqueued=0,
+                error_message='sync_state_prepare_failed',
+            )
+            return SubscriptionDirectRunResult(subscription_id, None, 'failed', result=result)
+        if state_status in {'in_progress', 'queued'}:
+            return SubscriptionDirectRunResult(subscription_id, sync_state.id, state_status)
+
+        run_context, emit_run_created = self._build_run_context(
+            subscription_id=subscription_id,
+            sync_state_id=sync_state.id,
+            site=domain,
+            sync_mode=resolved_mode.value,
+            trigger=trigger.value,
+            trace_id=trace_id,
+            run_id=run_id,
+        )
+        request_id = f'direct:{run_context.run_id}'
+        if emit_run_created:
+            append_event(SyncEventInput(
+                stream_id=run_context.run_id,
+                subscription_id=subscription_id,
+                sync_state_id=sync_state.id,
+                site=domain,
+                sync_mode=resolved_mode.value,
+                trigger=trigger.value,
+                request_id=request_id,
+                trace_id=trace_id,
+                event_type=SyncEventType.RUN_CREATED,
+                event_phase=SyncPhase.INIT,
+                event_status=SyncRunStatus.CREATED,
+                payload={'pending_video_count': sync_state.pending_video_count},
+                occurred_at=run_context.created_at,
+            ))
+
+        queue_token = subscription_sync_state_service.build_queue_token()
+        queued_state = subscription_sync_state_service.queue_sync_state(sync_state.id, queue_token)
+        if not queued_state or queued_state.queue_token != queue_token or queued_state.sync_status != 'queued':
+            result = SubscriptionUpdateResult(
+                subscription_id=subscription_id,
+                success=False,
+                videos_found=0,
+                videos_enqueued=0,
+                error_message='sync_state_queue_failed',
+            )
+            return SubscriptionDirectRunResult(
+                subscription_id=subscription_id,
+                sync_state_id=sync_state.id,
+                status='failed',
+                request_id=request_id,
+                run_id=run_context.run_id,
+                result=result,
+            )
+
+        append_event(SyncEventInput(
+            stream_id=run_context.run_id,
+            subscription_id=subscription_id,
+            sync_state_id=queued_state.id,
+            site=domain,
+            sync_mode=resolved_mode.value,
+            trigger=trigger.value,
+            request_id=request_id,
+            trace_id=trace_id,
+            event_type=SyncEventType.QUEUED,
+            event_phase=SyncPhase.QUEUED,
+            event_status=SyncRunStatus.QUEUED,
+            payload={
+                'queue_token': queue_token,
+                'queued_at': queued_state.queued_at,
+                'pending_video_count': queued_state.pending_video_count,
+                'direct': True,
+            },
+        ))
+
+        from services.crawl_executors.subscription_sync_executor import execute_subscription_sync_payload
+
+        try:
+            result = execute_subscription_sync_payload({
+                'subscription_id': subscription_id,
+                'url': url,
+                'sync_state_id': queued_state.id,
+                'mode': resolved_mode.value,
+                'user_id': user_id,
+                'force': force,
+                'queue_token': queue_token,
+                'trigger': trigger.value,
+                'run_id': run_context.run_id,
+                'trace_id': trace_id,
+                'request_id': request_id,
+                'inline_video_extraction': True,
+            })
+        except Exception as exc:
+            subscription_sync_state_service.mark_sync_failed(
+                queued_state.id,
+                str(exc),
+                run_id=run_context.run_id,
+                request_id=request_id,
+                trace_id=trace_id,
+                error_type=type(exc).__name__,
+                trigger=trigger.value,
+            )
+            result = SubscriptionUpdateResult(
+                subscription_id=subscription_id,
+                success=False,
+                videos_found=0,
+                videos_enqueued=0,
+                error_message=str(exc),
+            )
+
+        return SubscriptionDirectRunResult(
+            subscription_id=subscription_id,
+            sync_state_id=queued_state.id,
+            status='success' if result.success else 'failed',
+            request_id=request_id,
+            run_id=run_context.run_id,
+            result=result,
         )
 
     def _schedule_one_direct(

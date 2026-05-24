@@ -165,19 +165,33 @@ class UpdateStrategy(ABC):
 
                     from services.subscription_update import scheduler
 
-                    continuation_result = scheduler.schedule_one(
-                        subscription_id=request.subscription_id,
-                        url=request.url,
-                        trigger=request.trigger,
-                        mode=request.mode,
-                        user_id=request.user_id,
-                        force=request.force,
-                        trace_id=request.trace_id,
-                        run_id=request.run_id,
-                    )
-                    if continuation_result.status != 'queued':
+                    if request.inline_video_extraction:
+                        continuation_result = scheduler.run_one_inline(
+                            subscription_id=request.subscription_id,
+                            url=request.url,
+                            trigger=request.trigger,
+                            mode=request.mode,
+                            user_id=request.user_id,
+                            force=request.force,
+                            trace_id=request.trace_id,
+                            run_id=request.run_id,
+                        )
+                        expected_status = 'success'
+                    else:
+                        continuation_result = scheduler.schedule_one(
+                            subscription_id=request.subscription_id,
+                            url=request.url,
+                            trigger=request.trigger,
+                            mode=request.mode,
+                            user_id=request.user_id,
+                            force=request.force,
+                            trace_id=request.trace_id,
+                            run_id=request.run_id,
+                        )
+                        expected_status = 'queued'
+                    if continuation_result.status != expected_status:
                         raise ValueError(
-                            f'Failed to schedule continuation batch: subscription_id={request.subscription_id}, '
+                            f'Failed to continue subscription sync: subscription_id={request.subscription_id}, '
                             f'status={continuation_result.status}'
                         )
                 else:

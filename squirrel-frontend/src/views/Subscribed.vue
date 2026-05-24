@@ -112,6 +112,15 @@
                   远端
                 </button>
               </div>
+              <button
+                v-if="activeChannelId"
+                type="button"
+                class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border/50 px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+                @click="openActiveChannelDetail"
+              >
+                <AppIcon name="chevronRight" class="h-3.5 w-3.5" />
+                详情
+              </button>
             </div>
             <p class="mt-0.5 text-xs text-muted-foreground">
               {{ headerSubtitle }}
@@ -444,6 +453,11 @@ const handleChannelClick = (id: string | number) => {
   channelDataMode.value = 'local'
   viewMode.value = 'feed'; fetchFeed(true)
   scrollToTop(feedContainer.value)
+}
+
+const openActiveChannelDetail = () => {
+  if (!activeChannelId.value) return
+  router.push({ name: 'SubscriptionAllVideos', params: { id: String(activeChannelId.value) } })
 }
 
 const handleRefresh = () => {

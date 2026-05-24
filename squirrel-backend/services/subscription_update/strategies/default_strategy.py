@@ -18,6 +18,7 @@ from services.blocked_video_service import is_blocked_video
 from services.subscription_runtime_models import SubscriptionSyncResult
 from services.subscription_sync_event_service import SyncEventInput, append_event
 from services.subscription_sync_run_service import SyncEventType, SyncRunStatus
+from services.video_extraction import extract_video
 from utils.site_catalog import SiteCatalog
 from utils.metrics import metrics
 from .base import UpdateStrategy
@@ -160,7 +161,14 @@ class DefaultUpdateStrategy(UpdateStrategy):
                     )
                     subscription_sync_state_service.increment_pending_video_count(request.sync_state_id, 1)
                     reserved_pending = True
-                    if download_service.enqueue_video_extraction(params):
+                    if request.inline_video_extraction:
+                        result = extract_video(params)
+                        if result.success:
+                            enqueued += 1
+                        else:
+                            failed_count += 1
+                            logger.warning(f"Failed to extract video {video_url}: {result.error}")
+                    elif download_service.enqueue_video_extraction(params):
                         enqueued += 1
                     else:
                         subscription_sync_state_service.decrement_pending_video_count(
@@ -257,6 +265,9 @@ class DefaultUpdateStrategy(UpdateStrategy):
         request: SubscriptionUpdateRequest,
         result: SubscriptionUpdateResult,
     ) -> None:
+        if request.inline_video_extraction:
+            return
+
         subscription = subscription_service.get_subscription_by_id(request.subscription_id)
         if not subscription:
             return

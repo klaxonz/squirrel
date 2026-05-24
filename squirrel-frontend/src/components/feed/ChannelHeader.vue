@@ -82,6 +82,45 @@
               远端
             </button>
           </div>
+
+          <div class="flex items-center gap-2">
+            <div v-if="syncMessage" class="hidden max-w-40 truncate text-xs font-medium sm:block" :class="syncError ? 'text-destructive' : 'text-muted-foreground'">
+              {{ syncMessage }}
+            </div>
+            <div class="flex overflow-hidden rounded-md border border-border/40 bg-background">
+              <button
+                type="button"
+                class="inline-flex h-8 items-center gap-1.5 px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isSyncing"
+                @click="handleDirectSync('incremental')"
+              >
+                <AppIcon name="refresh" class="h-3.5 w-3.5" :class="{ 'animate-spin': isSyncing }" />
+                {{ isSyncing ? '同步中' : '同步' }}
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child>
+                  <button
+                    type="button"
+                    class="inline-flex h-8 w-8 items-center justify-center border-l border-border/40 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                    :disabled="isSyncing"
+                    aria-label="选择同步模式"
+                  >
+                    <AppIcon name="chevronDown" class="h-3.5 w-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" class="w-36">
+                  <DropdownMenuItem @click="handleDirectSync('incremental')">
+                    <AppIcon name="refresh" class="mr-2 h-3.5 w-3.5" />
+                    增量同步
+                  </DropdownMenuItem>
+                  <DropdownMenuItem @click="handleDirectSync('full')">
+                    <AppIcon name="sync" class="mr-2 h-3.5 w-3.5" />
+                    全量同步
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
           
           <button
             type="button"
@@ -101,7 +140,13 @@
 import { computed, ref, watch } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
-import { getSubscriptionDetail, unsubscribe as apiUnsubscribe } from '@/api'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { getSubscriptionDetail, triggerDirectRefresh, unsubscribe as apiUnsubscribe } from '@/api'
 import { notifySubscriptionRemoved } from '@/utils/subscriptionEvents'
 
 const props = defineProps({
@@ -109,13 +154,16 @@ const props = defineProps({
   mode: { type: String, default: 'local' },
 })
 
-const emit = defineEmits(['update:mode', 'loaded'])
+const emit = defineEmits(['update:mode', 'loaded', 'synced'])
 
 const detail = ref(null);
 const loading = ref(false);
 const isVisible = ref(true)
 const isUnsubscribing = ref(false)
+const isSyncing = ref(false)
 const unsubscribeError = ref('')
+const syncError = ref('')
+const syncMessage = ref('')
 const DISMISS_MS = 180
 const isDesktop = window.desktopApp?.isDesktop === true
 
@@ -157,10 +205,45 @@ const handleUnsubscribe = async () => {
   await wait(DISMISS_MS)
 }
 
+const buildSyncSuccessMessage = (data, mode) => {
+  if (data?.status === 'in_progress') return '同步进行中'
+  if (data?.status === 'queued') return '同步等待中'
+  if (data?.skippedReason) return '同步已跳过'
+  const found = Number(data?.videosFound || 0)
+  const extracted = Number(data?.videosExtracted || 0)
+  const modeLabel = mode === 'full' ? '全量' : '增量'
+  return `${modeLabel}完成 ${extracted}/${found}`
+}
+
+const handleDirectSync = async (mode = 'incremental') => {
+  if (!props.subscriptionId || isSyncing.value) return
+
+  isSyncing.value = true
+  syncError.value = ''
+  syncMessage.value = ''
+
+  const { data, error } = await triggerDirectRefresh(props.subscriptionId, mode)
+
+  if (error) {
+    syncError.value = error?.message || '同步失败'
+    syncMessage.value = syncError.value
+    isSyncing.value = false
+    return
+  }
+
+  syncMessage.value = buildSyncSuccessMessage(data, mode)
+  await fetchDetail()
+  emit('synced', data)
+  isSyncing.value = false
+}
+
 watch(() => props.subscriptionId, () => {
   isVisible.value = true
   isUnsubscribing.value = false
   unsubscribeError.value = ''
+  isSyncing.value = false
+  syncError.value = ''
+  syncMessage.value = ''
   fetchDetail()
 }, { immediate: true })
 </script>

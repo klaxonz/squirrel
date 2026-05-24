@@ -18,7 +18,7 @@ from models.outbox_event import OutboxEvent
 from models.subscription import Subscription
 from models.subscription_sync_state import SubscriptionSyncState
 from services.crawl_tasks import service as crawl_task_service
-from services.subscription_update.models import UpdateMode, UpdateTrigger
+from services.subscription_update.models import SubscriptionUpdateResult, UpdateMode, UpdateTrigger
 from services.subscription_update.scheduler import SubscriptionScheduler
 
 scheduler_module = import_module('services.subscription_update.scheduler')
@@ -191,6 +191,74 @@ def test_schedule_one_publishes_incremental_sync_outbox_event_for_incremental_mo
     assert events[0].payload['run_id'] == 'run-2'
     assert result.request_id == str(events[0].id)
     assert appended_events == []
+
+
+def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(monkeypatch):
+    appended_events = []
+    payloads = []
+
+    monkeypatch.setattr(scheduler_module.SiteCatalog, 'is_site_enabled', lambda domain=None, site=None: True)
+    monkeypatch.setattr(SubscriptionScheduler, '_has_active_subscribers', staticmethod(lambda subscription_id: True))
+    monkeypatch.setattr(
+        scheduler_module.subscription_sync_state_service,
+        'prepare_sync_state_for_enqueue',
+        lambda subscription_id, url, mode, scheduled: (
+            SimpleNamespace(id=21, pending_video_count=0, sync_mode=mode),
+            'ready',
+        ),
+    )
+    monkeypatch.setattr(scheduler_module.subscription_sync_state_service, 'build_queue_token', lambda: 'queue-token-3')
+    monkeypatch.setattr(
+        scheduler_module.subscription_sync_state_service,
+        'queue_sync_state',
+        lambda sync_state_id, queue_token: SimpleNamespace(
+            id=21,
+            queue_token=queue_token,
+            sync_status='queued',
+            queued_at='2026-04-01 12:00:00',
+            pending_video_count=0,
+        ),
+    )
+    monkeypatch.setattr(scheduler_module, 'append_event', lambda event: appended_events.append(event))
+    monkeypatch.setattr(
+        'services.crawl_executors.subscription_sync_executor.execute_subscription_sync_payload',
+        lambda payload: payloads.append(payload) or SubscriptionUpdateResult(
+            subscription_id=payload['subscription_id'],
+            success=True,
+            videos_found=2,
+            videos_enqueued=2,
+        ),
+    )
+
+    result = SubscriptionScheduler().run_one_inline(
+        subscription_id=9,
+        url='https://space.bilibili.com/44',
+        trigger=UpdateTrigger.MANUAL,
+        mode=UpdateMode.INCREMENTAL,
+        user_id=7,
+        trace_id='trace-3',
+        run_id='run-3',
+    )
+
+    assert result.status == 'success'
+    assert result.request_id == 'direct:run-3'
+    assert result.sync_state_id == 21
+    assert result.result.videos_enqueued == 2
+    assert payloads == [{
+        'subscription_id': 9,
+        'url': 'https://space.bilibili.com/44',
+        'sync_state_id': 21,
+        'mode': 'incremental',
+        'user_id': 7,
+        'force': False,
+        'queue_token': 'queue-token-3',
+        'trigger': 'manual',
+        'run_id': 'run-3',
+        'trace_id': 'trace-3',
+        'request_id': 'direct:run-3',
+        'inline_video_extraction': True,
+    }]
+    assert [event.event_type for event in appended_events] == ['queued']
 
 
 def test_enqueue_all_active_includes_active_subscriptions_without_sync_state(monkeypatch):

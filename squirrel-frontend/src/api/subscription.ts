@@ -62,6 +62,23 @@ export const triggerRefresh = async (subscriptionId: string | number, mode: stri
   return result
 }
 
+export const triggerDirectRefresh = async (subscriptionId: string | number, mode: string = 'incremental') => {
+  const result = await post(`/api/subscription/${subscriptionId}/refresh/direct`, null, {
+    params: { mode },
+    timeout: 0,
+  })
+  if (!result.error) return result
+
+  if (result.error.status === 403) {
+    return {
+      data: null,
+      error: new ApiError('没有权限执行此操作', result.error.type, result.error.status, result.error.data),
+    }
+  }
+
+  return result
+}
+
 export const getSupportedImportSites = async () => {
   const { data, error } = await get('/api/subscription/import/sites')
   return { data: data?.sites || [], error }

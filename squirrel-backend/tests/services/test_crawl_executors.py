@@ -111,6 +111,7 @@ def test_execute_subscription_sync_task_builds_request_from_payload(monkeypatch)
             'queue_token': 'queue-1',
             'cursor_payload': {'page': 2},
             'last_seen_video_url': 'https://example.com/old',
+            'inline_video_extraction': True,
         },
     )
 
@@ -136,6 +137,7 @@ def test_execute_subscription_sync_task_builds_request_from_payload(monkeypatch)
     assert calls[0].mode == UpdateMode.FULL
     assert calls[0].cursor_payload == {'page': 2}
     assert calls[0].last_seen_video_url == 'https://example.com/old'
+    assert calls[0].inline_video_extraction is True
 
 
 def test_execute_subscription_sync_task_uses_subscription_url_fallback(monkeypatch):

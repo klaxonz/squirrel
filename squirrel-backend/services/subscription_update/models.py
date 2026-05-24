@@ -36,6 +36,7 @@ class SubscriptionUpdateRequest:
     queue_token: Optional[str] = None
     cursor_payload: Optional[dict] = None
     last_seen_video_url: Optional[str] = None
+    inline_video_extraction: bool = False
 
 
 @dataclass
@@ -68,4 +69,15 @@ class SubscriptionScheduleResult:
     status: str
     request_id: Optional[str] = None
     run_id: Optional[str] = None
+
+
+@dataclass
+class SubscriptionDirectRunResult:
+    """订阅直接执行结果"""
+    subscription_id: int
+    sync_state_id: Optional[int]
+    status: str
+    request_id: Optional[str] = None
+    run_id: Optional[str] = None
+    result: Optional[SubscriptionUpdateResult] = None
 
