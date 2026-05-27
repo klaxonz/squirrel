@@ -297,6 +297,15 @@ const ensureLocalVideo = async (targetVideo: any) => {
   return video.value || savedVideo
 }
 
+watch(() => {
+  const currentVideo = video.value as any
+  if (currentVideo?.source !== 'remote') return ''
+  return String(currentVideo.url || '').trim()
+}, async (url) => {
+  if (!url) return
+  await ensureLocalVideo(video.value as any)
+}, { immediate: true })
+
 const { videoActions, handleVideoAction } = useVideoActionBar({
   video,
   interactionTypeLike: INTERACTION_TYPE.LIKE,

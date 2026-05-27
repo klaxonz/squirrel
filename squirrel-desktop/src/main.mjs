@@ -1555,8 +1555,6 @@ const MEDIA_HEADER_RULES = [
     },
   },
 ]
-const missavMediaHeaderRules = new Map()
-
 const RELAXED_CROSS_ORIGIN_HOSTS = [
   'javdb.com',
   'surrit.com',
@@ -1589,10 +1587,6 @@ const hostMatchesAnyRule = (hostname, hosts) => {
 const matchMediaHeaderRule = (targetUrl) => {
   try {
     const hostname = new URL(targetUrl).hostname.toLowerCase()
-    const missavHeaders = missavMediaHeaderRules.get(hostname)
-    if (missavHeaders) {
-      return { hosts: [hostname], headers: missavHeaders }
-    }
     return MEDIA_HEADER_RULES.find((rule) => {
       return hostMatchesAnyRule(hostname, rule.hosts)
     }) || null
@@ -1604,31 +1598,10 @@ const matchMediaHeaderRule = (targetUrl) => {
 const shouldRelaxCrossOriginResponseHeaders = (targetUrl) => {
   try {
     const hostname = new URL(targetUrl).hostname.toLowerCase()
-    if (missavMediaHeaderRules.has(hostname)) {
-      return true
-    }
     return hostMatchesAnyRule(hostname, RELAXED_CROSS_ORIGIN_HOSTS)
   } catch {
     return false
   }
-}
-
-const registerMissavMediaHeaders = (streamUrl, referer) => {
-  const normalizedStreamUrl = normalizeTargetUrl(streamUrl)
-  const normalizedReferer = normalizeTargetUrl(referer)
-  if (!normalizedStreamUrl || !normalizedReferer || !isMissavDocumentTarget(normalizedReferer)) {
-    return
-  }
-
-  const streamHost = new URL(normalizedStreamUrl).hostname.toLowerCase()
-  const refererOrigin = new URL(normalizedReferer).origin
-  missavMediaHeaderRules.set(streamHost, {
-    Referer: normalizedReferer,
-    Origin: refererOrigin,
-    'Accept-Language': desktopChromeAcceptLanguage,
-    'User-Agent': desktopChromeUserAgent,
-    ...desktopChromeClientHints,
-  })
 }
 
 const stripRelaxedResponseHeaders = (responseHeaders) => {
@@ -1811,14 +1784,12 @@ const installDesktopBridgeHandlers = () => {
       throw new Error('Invalid JavDB URL')
     }
 
-    const payload = await resolveJavdbPlayback(normalizedUrl, {
+    return resolveJavdbPlayback(normalizedUrl, {
       forceRefresh: options?.forceRefresh === true,
       title: options?.title,
       videoNo: options?.videoNo,
       loadDocumentHtml: loadDocumentHtmlWithBrowserWindow,
     })
-    registerMissavMediaHeaders(payload?.video_url, payload?.metadata?.referer)
-    return payload
   })
 
   ipcMain.removeHandler('desktop:resolve-javdb-metadata')
