@@ -23,6 +23,7 @@ type VideoUrlInfo = {
   audio_url?: string | null
   default_quality_id?: string | null
   supports_manual_quality?: boolean
+  metadata?: Record<string, any>
   qualities?: Array<{
     value: string
     label: string
@@ -206,7 +207,8 @@ export default function useVideoOperations() {
         type: toPlayerSourceType(streamType),
         key,
         progressKey,
-        qualities
+        qualities,
+        metadata: data?.metadata,
       }
 
       if (!videoUrl && !audioUrl) {
@@ -218,7 +220,8 @@ export default function useVideoOperations() {
         type: toPlayerSourceType(streamType),
         key,
         progressKey,
-        qualities
+        qualities,
+        metadata: data?.metadata,
       }
     } catch (err) {
       throw err

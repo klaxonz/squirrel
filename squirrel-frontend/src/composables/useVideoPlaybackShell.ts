@@ -180,8 +180,21 @@ export default function useVideoPlaybackShell({
     return String(globalVideoPlayerSession.currentVideoId || '') === String(videoId || '')
   }
 
+  const hasJavdbActors = (videoSnapshot: VideoLike | null | undefined) => {
+    const actors = videoSnapshot?.actors
+    return Array.isArray(actors) && actors.some((actor: any) => String(actor?.name || '').trim())
+  }
+
+  const shouldRefreshJavdbSession = () => {
+    const videoSnapshot = globalVideoPlayerSession.videoSnapshot || null
+    const videoUrl = String(videoSnapshot?.url || '')
+    if (!videoUrl.includes('javdb.com/')) return false
+    return !hasJavdbActors(videoSnapshot)
+  }
+
   const hasReusableGlobalPlaybackSession = (videoId = route.params.videoId) => {
     if (!isSameGlobalPlaybackSession(videoId)) return false
+    if (shouldRefreshJavdbSession()) return false
 
     return !!(
       globalVideoPlayerSession.source

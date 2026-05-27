@@ -4,6 +4,8 @@ const MISSAV_ORIGIN = 'https://missav.ai'
 
 const stripHtml = (value) => String(value || '').replace(/<[^>]*>/g, '').trim()
 
+const stripHtmlWithSpaces = (value) => stripHtml(String(value || '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ')
+
 const extractVideoNo = (text) => {
   const normalized = String(text || '').trim()
   const match = normalized.match(/\b([A-Za-z]{2,10}-\d{2,})\b/)
@@ -27,6 +29,68 @@ const extractJavdbTitle = (htmlText) => {
   const title = String(htmlText || '').match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || ''
   return stripHtml(title)
 }
+
+const extractJavdbDisplayTitle = (htmlText) => {
+  const titleBlock = String(htmlText || '').match(/<div[^>]+class=["'][^"']*\btitle\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1]
+  return titleBlock ? stripHtmlWithSpaces(titleBlock) : ''
+}
+
+const extractJavdbImage = (htmlText, baseUrl) => {
+  const imageMatch = String(htmlText || '').match(/<img\b(?=[^>]*class=["'][^"']*\bvideo-cover\b)[^>]*src=["']([^"']+)["']/i)
+    || String(htmlText || '').match(/<img\b(?=[^>]*src=["']([^"']+)["'])(?=[^>]*class=["'][^"']*\bvideo-cover\b)[^>]*>/i)
+  const src = imageMatch?.[1] || ''
+  return src ? new URL(src, baseUrl).toString() : ''
+}
+
+const extractJavdbInfoPanelText = (htmlText, labelPattern) => {
+  for (const panel of String(htmlText || '').matchAll(/<div[^>]+class=["'][^"']*\bpanel-block\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi)) {
+    const text = stripHtmlWithSpaces(panel[1])
+    if (labelPattern.test(text)) return { html: panel[1], text }
+  }
+  return { html: '', text: '' }
+}
+
+const extractJavdbPublishDate = (htmlText) => {
+  const { text } = extractJavdbInfoPanelText(htmlText, /Released Date:/i)
+  return text.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0] || null
+}
+
+const extractJavdbDuration = (htmlText) => {
+  const { text } = extractJavdbInfoPanelText(htmlText, /Duration:/i)
+  const minutes = Number.parseInt(text.match(/Duration:\s*(\d+)/i)?.[1] || '', 10)
+  return Number.isFinite(minutes) ? minutes * 60 : null
+}
+
+const extractJavdbActors = (htmlText) => {
+  const actors = []
+  const seen = new Set()
+  const categoryPaths = new Set(['censored', 'uncensored', 'western'])
+  for (const match of String(htmlText || '').matchAll(/<a\b[^>]*href=["']([^"']*\/actors\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const url = new URL(match[1], 'https://javdb.com').toString()
+    const actorId = url.split('/').filter(Boolean).pop() || ''
+    if (!actorId || categoryPaths.has(actorId)) continue
+    const name = stripHtmlWithSpaces(match[2])
+    if (!name || seen.has(url)) continue
+    seen.add(url)
+    actors.push({
+      id: actorId,
+      type: 'ACTOR',
+      name,
+      url,
+      avatar: '',
+      is_nsfw: true,
+    })
+  }
+  return actors
+}
+
+const extractJavdbMetadata = (htmlText, targetUrl) => ({
+  title: extractJavdbDisplayTitle(htmlText),
+  thumbnail: extractJavdbImage(htmlText, targetUrl),
+  publish_date: extractJavdbPublishDate(htmlText),
+  duration: extractJavdbDuration(htmlText),
+  actors: extractJavdbActors(htmlText),
+})
 
 const looksLikeChallengePage = (htmlText) => {
   return /just a moment|cf_chl_|cf-turnstile|challenges\.cloudflare\.com/i.test(String(htmlText || '').toLowerCase())
@@ -190,9 +254,26 @@ export async function resolveJavdbPlayback(targetUrl, {
   return payload
 }
 
+export async function resolveJavdbMetadata(targetUrl, { loadDocumentHtml } = {}) {
+  const normalizedUrl = normalizeTargetUrl(targetUrl)
+  if (!normalizedUrl || !new URL(normalizedUrl).hostname.endsWith('javdb.com')) {
+    throw new Error('Invalid JavDB URL')
+  }
+  if (typeof loadDocumentHtml !== 'function') {
+    throw new Error('JavDB metadata requires browser document loading')
+  }
+
+  const javdbHtml = await loadDocumentHtml(normalizedUrl, {
+    timeoutMs: 30000,
+    challengeTimeoutMs: 90000,
+  })
+  return extractJavdbMetadata(javdbHtml, normalizedUrl)
+}
+
 export const __testing = {
   extractVideoNo,
   extractJavdbTitle,
+  extractJavdbMetadata,
   extractPartsFromHtml,
   extractMissavSearchLinks,
   formatStreamUrl,

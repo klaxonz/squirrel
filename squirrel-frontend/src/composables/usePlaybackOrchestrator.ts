@@ -27,6 +27,31 @@ const toRecord = (value: unknown): Record<string, any> => {
   return {}
 }
 
+export const mergeVideoMetadata = (currentVideo: VideoLike | null, videoMetadata: Record<string, any>, sourceUrl = '') => {
+  if (!currentVideo || !videoMetadata || Object.keys(videoMetadata).length === 0) return currentVideo
+
+  const currentUrl = String((currentVideo as any).url || '')
+  if (sourceUrl && currentUrl && sourceUrl !== currentUrl) return currentVideo
+
+  const nextVideo: Record<string, any> = { ...currentVideo }
+  for (const key of ['title', 'thumbnail', 'publish_date', 'duration']) {
+    const value = videoMetadata[key]
+    if (value != null && value !== '') {
+      nextVideo[key] = value
+    }
+  }
+
+  if (Array.isArray(videoMetadata.actors) && videoMetadata.actors.length > 0) {
+    nextVideo.actors = videoMetadata.actors
+  }
+
+  return nextVideo as VideoLike
+}
+
+const mergePlaybackMetadata = (currentVideo: VideoLike | null, playbackMetadata: Record<string, any>) => {
+  return mergeVideoMetadata(currentVideo, toRecord(playbackMetadata.video), String(playbackMetadata.source_url || ''))
+}
+
 type DesktopWindow = Window & {
   desktopApp?: { isDesktop?: boolean }
 }
@@ -131,9 +156,13 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
       if (seq !== requestSeq.value) return
 
       const v: any = video.value || initialVideoData || {}
+      const mergedVideo = mergePlaybackMetadata(v, toRecord((source as any).metadata))
+      if (mergedVideo && mergedVideo !== video.value) {
+        setVideoSnapshot(mergedVideo)
+      }
       playbackSource.value = {
         ...source,
-        title: source.title || v.title,
+        title: source.title || (mergedVideo as any)?.title || v.title,
       }
 
       Logger.debug('[usePlaybackOrchestrator] playbackSource ready', {

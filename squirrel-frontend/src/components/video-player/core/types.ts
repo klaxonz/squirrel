@@ -97,6 +97,7 @@ export interface MediaSource {
   poster?: string
   title?: string
   qualities?: QualityDescriptor[]
+  metadata?: Record<string, any>
 }
 
 // 播放器错误

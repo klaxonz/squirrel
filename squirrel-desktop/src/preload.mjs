@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   openExternal: (targetUrl) => ipcRenderer.invoke('desktop:open-external', targetUrl),
   resolveBilibiliPlayback: (targetUrl, options) => ipcRenderer.invoke('desktop:resolve-bilibili-playback', targetUrl, options),
   resolveJavdbPlayback: (targetUrl, options) => ipcRenderer.invoke('desktop:resolve-javdb-playback', targetUrl, options),
+  resolveJavdbMetadata: (targetUrl) => ipcRenderer.invoke('desktop:resolve-javdb-metadata', targetUrl),
   resolvePornhubPlayback: (targetUrl, options) => ipcRenderer.invoke('desktop:resolve-pornhub-playback', targetUrl, options),
   resolveYouPornPlayback: (targetUrl, options) => ipcRenderer.invoke('desktop:resolve-youporn-playback', targetUrl, options),
   resolveYouTubePlayback: (targetUrl, options) => ipcRenderer.invoke('desktop:resolve-youtube-playback', targetUrl, options),

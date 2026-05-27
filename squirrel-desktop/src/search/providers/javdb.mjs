@@ -3,6 +3,10 @@ import { clampLimit, clampPage, normalizeQuery, normalizeUrl, parseDuration, str
 const SITE = 'javdb'
 const ORIGIN = 'https://javdb.com'
 
+const looksLikeBlockedPage = (html) => {
+  return /has banned your access|管理員禁止了你的訪問|管理员禁止了你的访问/i.test(String(html || ''))
+}
+
 const extractAttribute = (source, name) => {
   const match = source.match(new RegExp(`${name}=["']([^"']+)["']`, 'i'))
   return match ? match[1] : ''
@@ -47,6 +51,9 @@ export const searchJavdbVideos = async ({ query, limit, page, loadDocumentHtml }
     timeoutMs: 30000,
     challengeTimeoutMs: 60000,
   })
+  if (looksLikeBlockedPage(html)) {
+    throw new Error('JavDB access is temporarily blocked by upstream')
+  }
 
   const blocks = html.match(/<div[^>]+class=["'][^"']*item[^"']*["'][\s\S]*?<\/a>\s*<\/div>/gi) || []
   return uniqueByUrl(blocks.map((block) => {

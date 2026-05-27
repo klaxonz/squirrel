@@ -538,6 +538,18 @@ test('desktop javdb remote search parses movie items', async () => {
   }])
 })
 
+test('desktop javdb remote search reports upstream block pages', async () => {
+  await assert.rejects(
+    searchJavdbVideos({
+      query: 'demo',
+      limit: 5,
+      page: 1,
+      loadDocumentHtml: async () => '<pre>The owner of this website has banned your access based on your browser behavior.</pre>',
+    }),
+    /temporarily blocked/,
+  )
+})
+
 test('desktop remote search response carries pagination metadata', async () => {
   const result = await searchRemoteVideos({
     query: 'demo',

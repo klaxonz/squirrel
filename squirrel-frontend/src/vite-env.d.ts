@@ -23,6 +23,7 @@ interface DesktopAppBridge {
   openExternal?: (targetUrl: string) => Promise<boolean>
   resolveBilibiliPlayback?: DesktopPlaybackResolver
   resolveJavdbPlayback?: DesktopPlaybackResolver
+  resolveJavdbMetadata?: (targetUrl: string) => Promise<DesktopVideoMetadata>
   resolvePornhubPlayback?: DesktopPlaybackResolver
   resolveYouPornPlayback?: DesktopPlaybackResolver
   resolveYouTubePlayback?: DesktopPlaybackResolver
@@ -50,6 +51,7 @@ type DesktopPlaybackResolver = (
   audio_url?: string | null
   default_quality_id?: string | null
   supports_manual_quality?: boolean
+  metadata?: Record<string, unknown>
   qualities?: Array<{
     value: string
     label: string
@@ -71,6 +73,21 @@ type DesktopSubtitleResolver = (
   translated?: boolean
   kind?: string | null
 }>
+
+type DesktopVideoMetadata = {
+  title?: string | null
+  thumbnail?: string | null
+  duration?: number | null
+  publish_date?: string | null
+  actors?: Array<{
+    id?: string | number | null
+    type?: string | null
+    name: string
+    url?: string | null
+    avatar?: string | null
+    is_nsfw?: boolean | null
+  }>
+}
 
 type DesktopRemoteSearchResolver = (
   options: {

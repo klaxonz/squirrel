@@ -48,12 +48,12 @@ const findShadowRootElements = async (queryable, selector) => {
       const roots = []
       const collectRoots = (node) => {
         if (!node) return
-        if (node.shadowRootUnl) {
-          roots.push(node.shadowRootUnl)
-          collectRoots(node.shadowRootUnl)
+        if (node.shadowRoot) {
+          roots.push(node.shadowRoot)
+          collectRoots(node.shadowRoot)
         }
         for (const child of node.querySelectorAll('*')) {
-          if (child.shadowRootUnl) {
+          if (child.shadowRoot) {
             collectRoots(child)
           }
         }

@@ -79,6 +79,19 @@
               </div>
             </div>
 
+            <div v-if="videoActors.length" class="flex flex-wrap items-center gap-2">
+              <button
+                v-for="actor in videoActors"
+                :key="actor.url || actor.name"
+                type="button"
+                class="inline-flex h-8 max-w-full items-center gap-2 rounded-full bg-accent/35 px-2.5 text-[12px] font-semibold text-foreground/85 ring-1 ring-border/20 transition-colors hover:bg-accent/55"
+                @click="openChannelDetail(actor)"
+              >
+                <SubscriptionAvatar :src="actor.avatar" :name="actor.name" size="xs" />
+                <span class="truncate">{{ actor.name }}</span>
+              </button>
+            </div>
+
             <div v-if="videoDescription" class="!mt-0 p-4 bg-accent/20 rounded-xl ring-1 ring-border/10 group">
               <p
                 ref="descriptionTextRef"
@@ -159,7 +172,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
-import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator'
+import usePlaybackOrchestrator, { mergeVideoMetadata } from '../composables/usePlaybackOrchestrator'
 import usePlaybackReporting from '../composables/usePlaybackReporting'
 import useVideoActionBar from '../composables/useVideoActionBar'
 import useVideoClipMarkers from '../composables/useVideoClipMarkers'
@@ -234,6 +247,7 @@ const isSubscribing = ref(false)
 const subscriptionId = ref<number | null>(null)
 let descriptionResizeObserver: ResizeObserver | null = null
 const remoteSaveByUrl = new Map<string, Promise<any>>()
+let javdbMetadataRequestSeq = 0
 
 const ensureLocalVideo = async (targetVideo: any) => {
   if (!targetVideo || targetVideo.source !== 'remote') return targetVideo
@@ -315,6 +329,23 @@ const videoPublishedText = computed(() => {
 
 const videoDescription = computed(() => String((video.value as any)?.description || '').trim())
 const isRemoteVideo = computed(() => (video.value as any)?.source === 'remote')
+const videoActors = computed(() => {
+  const actors = (video.value as any)?.actors
+  if (!Array.isArray(actors)) return []
+  return actors
+    .filter((actor: any) => String(actor?.name || '').trim())
+    .map((actor: any) => ({
+      ...actor,
+      name: String(actor.name || '').trim(),
+      url: String(actor.url || '').trim(),
+      avatar: String(actor.avatar || '').trim(),
+    }))
+})
+const shouldResolveJavdbMetadata = computed(() => {
+  const v = video.value as any
+  const url = String(v?.url || '').trim()
+  return !!v && url.includes('javdb.com/') && videoActors.value.length === 0 && window.desktopApp?.isDesktop === true
+})
 const primaryVisibleActions = computed(() => {
   const keys = isRemoteVideo.value ? ['later', 'like', 'dislike'] : ['like', 'dislike']
   return videoActions.value.filter((action) => keys.includes(action.key))
@@ -337,6 +368,28 @@ watch(videoDescription, () => {
   descriptionExpanded.value = false
   void syncDescriptionOverflow()
 })
+
+watch(shouldResolveJavdbMetadata, async (shouldResolve) => {
+  if (!shouldResolve || typeof window.desktopApp?.resolveJavdbMetadata !== 'function') return
+
+  const snapshot = video.value as any
+  const url = String(snapshot?.url || '').trim()
+  if (!url) return
+
+  const requestSeq = ++javdbMetadataRequestSeq
+  try {
+    const metadata = await window.desktopApp.resolveJavdbMetadata(url)
+    if (requestSeq !== javdbMetadataRequestSeq) return
+    const current = video.value as any
+    if (!current || String(current.url || '') !== url) return
+    const mergedVideo = mergeVideoMetadata(current, metadata as any, url)
+    if (mergedVideo) {
+      video.value = mergedVideo as any
+    }
+  } catch {
+    // Metadata enrichment must not block playback.
+  }
+}, { immediate: true })
 
 watch(descriptionTextRef, (el) => {
   descriptionResizeObserver?.disconnect()

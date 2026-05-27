@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { app, BrowserWindow, clipboard, ipcMain, Menu, session, shell } from 'electron'
 import { CamoufoxDocumentLoader } from './cloudflare/camoufox-document-loader.mjs'
 import { clearBilibiliPlaybackCache, resolveBilibiliPlayback } from './playback/providers/bilibili/index.mjs'
-import { resolveJavdbPlayback } from './playback/providers/javdb/index.mjs'
+import { resolveJavdbMetadata, resolveJavdbPlayback } from './playback/providers/javdb/index.mjs'
 import { resolvePornhubPlayback } from './playback/providers/pornhub/index.mjs'
 import { resolveYouPornPlayback } from './playback/providers/youporn/index.mjs'
 import {
@@ -1555,6 +1555,7 @@ const MEDIA_HEADER_RULES = [
     },
   },
 ]
+const missavMediaHeaderRules = new Map()
 
 const RELAXED_CROSS_ORIGIN_HOSTS = [
   'javdb.com',
@@ -1588,6 +1589,10 @@ const hostMatchesAnyRule = (hostname, hosts) => {
 const matchMediaHeaderRule = (targetUrl) => {
   try {
     const hostname = new URL(targetUrl).hostname.toLowerCase()
+    const missavHeaders = missavMediaHeaderRules.get(hostname)
+    if (missavHeaders) {
+      return { hosts: [hostname], headers: missavHeaders }
+    }
     return MEDIA_HEADER_RULES.find((rule) => {
       return hostMatchesAnyRule(hostname, rule.hosts)
     }) || null
@@ -1599,10 +1604,31 @@ const matchMediaHeaderRule = (targetUrl) => {
 const shouldRelaxCrossOriginResponseHeaders = (targetUrl) => {
   try {
     const hostname = new URL(targetUrl).hostname.toLowerCase()
+    if (missavMediaHeaderRules.has(hostname)) {
+      return true
+    }
     return hostMatchesAnyRule(hostname, RELAXED_CROSS_ORIGIN_HOSTS)
   } catch {
     return false
   }
+}
+
+const registerMissavMediaHeaders = (streamUrl, referer) => {
+  const normalizedStreamUrl = normalizeTargetUrl(streamUrl)
+  const normalizedReferer = normalizeTargetUrl(referer)
+  if (!normalizedStreamUrl || !normalizedReferer || !isMissavDocumentTarget(normalizedReferer)) {
+    return
+  }
+
+  const streamHost = new URL(normalizedStreamUrl).hostname.toLowerCase()
+  const refererOrigin = new URL(normalizedReferer).origin
+  missavMediaHeaderRules.set(streamHost, {
+    Referer: normalizedReferer,
+    Origin: refererOrigin,
+    'Accept-Language': desktopChromeAcceptLanguage,
+    'User-Agent': desktopChromeUserAgent,
+    ...desktopChromeClientHints,
+  })
 }
 
 const stripRelaxedResponseHeaders = (responseHeaders) => {
@@ -1785,10 +1811,24 @@ const installDesktopBridgeHandlers = () => {
       throw new Error('Invalid JavDB URL')
     }
 
-    return resolveJavdbPlayback(normalizedUrl, {
+    const payload = await resolveJavdbPlayback(normalizedUrl, {
       forceRefresh: options?.forceRefresh === true,
       title: options?.title,
       videoNo: options?.videoNo,
+      loadDocumentHtml: loadDocumentHtmlWithBrowserWindow,
+    })
+    registerMissavMediaHeaders(payload?.video_url, payload?.metadata?.referer)
+    return payload
+  })
+
+  ipcMain.removeHandler('desktop:resolve-javdb-metadata')
+  ipcMain.handle('desktop:resolve-javdb-metadata', async (_event, targetUrl) => {
+    const normalizedUrl = normalizeTargetUrl(targetUrl)
+    if (!normalizedUrl) {
+      throw new Error('Invalid JavDB URL')
+    }
+
+    return resolveJavdbMetadata(normalizedUrl, {
       loadDocumentHtml: loadDocumentHtmlWithBrowserWindow,
     })
   })
