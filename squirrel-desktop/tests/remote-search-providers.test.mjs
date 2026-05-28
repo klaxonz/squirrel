@@ -353,9 +353,10 @@ test('desktop pornhub remote search parses video list items', async () => {
     buildCookieHeader,
     fetchImpl: async () => htmlResponse(`
       <li class="pcVideoListItem videoblock" data-video-vkey="ph-demo">
-        <a href="/view_video.php?viewkey=ph-demo" title="Demo PH" data-title="Demo PH">
+        <a href="/view_video.php?viewkey=ph-demo" title="Demo PH">
           <img data-mediumthumb="https://ei.phncdn.com/demo.jpg">
         </a>
+        <button type="button" data-title="Add to playlist"></button>
         <div class="usernameWrap"><a href="/users/demo-channel">Demo Channel</a></div>
         <a href="/pornstar/demo-actor">Demo Actor</a>
         <var class="duration">04:05</var>
@@ -1119,6 +1120,29 @@ test('desktop youtube remote channel loads continuation videos', async () => {
   assert.equal(result.items[0].duration, 245)
   assert.equal(result.has_more, true)
   assert.equal(result.next_cursor.continuation, 'CONTINUATION_2')
+})
+
+test('desktop pornhub remote channel uses the video link title', async () => {
+  const result = await getRemoteChannel({
+    site: 'pornhub',
+    url: 'https://www.pornhub.com/users/demo-channel',
+    limit: 5,
+    buildCookieHeader,
+    fetchImpl: async () => htmlResponse(`
+      <h1>Demo Channel</h1>
+      <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel">
+        <a href="/view_video.php?viewkey=ph-channel" title="Demo Channel Video">
+          <img data-mediumthumb="https://ei.phncdn.com/demo-channel-video.jpg">
+        </a>
+        <button type="button" data-title="Add to playlist"></button>
+        <var class="duration">01:23</var>
+      </li>
+    `),
+  })
+
+  assert.equal(result.items[0].title, 'Demo Channel Video')
+  assert.equal(result.items[0].url, 'https://www.pornhub.com/view_video.php?viewkey=ph-channel')
+  assert.equal(result.items[0].duration, 83)
 })
 
 test('desktop youporn remote channel parses profile avatar', async () => {

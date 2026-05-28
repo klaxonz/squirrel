@@ -51,6 +51,14 @@ const extractAttribute = (source, name) => {
   return match ? match[1] : ''
 }
 
+const extractPornhubVideoLink = (block) => {
+  const tag = String(block || '').match(/<a\b[^>]*href=["']([^"']*view_video\.php\?viewkey=[^"']+)["'][^>]*>/i)?.[0] || ''
+  return {
+    tag,
+    href: extractAttribute(tag, 'href'),
+  }
+}
+
 const looksLikeJavdbBlockedPage = (html) => {
   return /has banned your access|管理員禁止了你的訪問|管理员禁止了你的访问/i.test(String(html || ''))
 }
@@ -681,16 +689,16 @@ const getJavdbChannel = async ({ url, limit, page, loadDocumentHtml }) => {
 const collectPornhubVideos = (html, profile) => {
   const blocks = html.match(/<li[^>]+class=["'][^"']*(?:pcVideoListItem|videoblock)[^"']*["'][\s\S]*?<\/li>/gi) || []
   return uniqueByUrl(blocks.map((block) => {
-    const hrefMatch = block.match(/href=["']([^"']*view_video\.php\?viewkey=[^"']+)["']/i)
-    const title = extractAttribute(block, 'data-title') || extractAttribute(block, 'title')
+    const videoLink = extractPornhubVideoLink(block)
+    const title = extractAttribute(videoLink.tag, 'title')
     const thumbnail = extractAttribute(block, 'data-mediumthumb') || extractAttribute(block, 'data-src') || extractAttribute(block, 'src')
     const durationMatch = block.match(/class=["'][^"']*duration[^"']*["'][^>]*>\s*([^<]+)/i)
     return {
       source: 'remote',
       site: 'pornhub',
-      id: extractAttribute(block, 'data-video-vkey') || hrefMatch?.[1] || '',
+      id: extractAttribute(block, 'data-video-vkey') || videoLink.href,
       title: stripHtml(title),
-      url: normalizeUrl(hrefMatch?.[1] || '', PORNHUB_ORIGIN),
+      url: normalizeUrl(videoLink.href, PORNHUB_ORIGIN),
       thumbnail: normalizeUrl(thumbnail, PORNHUB_ORIGIN),
       duration: parseDuration(durationMatch?.[1]),
       publish_date: null,

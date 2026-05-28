@@ -8,6 +8,14 @@ const extractAttribute = (source, name) => {
   return match ? match[1] : ''
 }
 
+const extractVideoLink = (block) => {
+  const tag = block.match(/<a\b[^>]*href=["']([^"']*view_video\.php\?viewkey=[^"']+)["'][^>]*>/i)?.[0] || ''
+  return {
+    tag,
+    href: extractAttribute(tag, 'href'),
+  }
+}
+
 const collectProfileLinks = (block, hrefPattern, type) => {
   const profiles = []
   const seen = new Set()
@@ -51,8 +59,8 @@ export const searchPornhubVideos = async ({ query, limit, page, fetchImpl, build
 
   const blocks = html.match(/<li[^>]+class=["'][^"']*(?:pcVideoListItem|videoblock)[^"']*["'][\s\S]*?<\/li>/gi) || []
   return uniqueByUrl(blocks.map((block) => {
-    const hrefMatch = block.match(/href=["']([^"']*view_video\.php\?viewkey=[^"']+)["']/i)
-    const title = extractAttribute(block, 'data-title') || extractAttribute(block, 'title')
+    const videoLink = extractVideoLink(block)
+    const title = extractAttribute(videoLink.tag, 'title')
     const thumbnail = extractAttribute(block, 'data-mediumthumb')
       || extractAttribute(block, 'data-src')
       || extractAttribute(block, 'src')
@@ -70,9 +78,9 @@ export const searchPornhubVideos = async ({ query, limit, page, fetchImpl, build
     return {
       source: 'remote',
       site: SITE,
-      id: extractAttribute(block, 'data-video-vkey') || hrefMatch?.[1] || '',
+      id: extractAttribute(block, 'data-video-vkey') || videoLink.href,
       title: stripHtml(title),
-      url: normalizeUrl(hrefMatch?.[1] || '', ORIGIN),
+      url: normalizeUrl(videoLink.href, ORIGIN),
       thumbnail: normalizeUrl(thumbnail, ORIGIN),
       duration: parseDuration(durationMatch?.[1]),
       publish_date: null,
