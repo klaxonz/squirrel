@@ -510,13 +510,14 @@ const {
 } as any)
 
 const openChannelDetail = async (profile: any) => {
-  if ((video.value as any)?.source === 'remote') {
-    const url = String(profile?.url || '').trim()
+  const url = String(profile?.url || '').trim()
+  const isJavdbActor = /javdb\.com\/actors\//i.test(url)
+  if ((video.value as any)?.source === 'remote' || isJavdbActor) {
     if (url) {
       await router.push({
         name: 'RemoteChannelDetail',
         query: {
-          site: String((video.value as any)?.site || ''),
+          site: isJavdbActor ? 'javdb' : String((video.value as any)?.site || ''),
           url,
           id: profile?.id != null ? String(profile.id) : undefined,
           name: profile?.name || undefined,

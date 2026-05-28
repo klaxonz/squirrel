@@ -16,6 +16,7 @@ import {
 const BILIBILI_ORIGIN = 'https://www.bilibili.com'
 const BILIBILI_SPACE_ORIGIN = 'https://space.bilibili.com'
 const YOUTUBE_ORIGIN = 'https://www.youtube.com'
+const JAVDB_ORIGIN = 'https://javdb.com'
 const PORNHUB_ORIGIN = 'https://www.pornhub.com'
 const YOUPORN_ORIGIN = 'https://www.youporn.com'
 const DESKTOP_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36'
@@ -32,6 +33,7 @@ const SITE_ALIASES = {
   'b23.tv': 'bilibili',
   'youtube.com': 'youtube',
   'youtu.be': 'youtube',
+  'javdb.com': 'javdb',
   'pornhub.com': 'pornhub',
   'youporn.com': 'youporn',
 }
@@ -47,6 +49,10 @@ const normalizeSite = (site, targetUrl) => {
 const extractAttribute = (source, name) => {
   const match = String(source || '').match(new RegExp(`${name}=["']([^"']+)["']`, 'i'))
   return match ? match[1] : ''
+}
+
+const looksLikeJavdbBlockedPage = (html) => {
+  return /has banned your access|管理員禁止了你的訪問|管理员禁止了你的访问/i.test(String(html || ''))
 }
 
 const buildBilibiliHeaders = (cookie) => ({
@@ -578,6 +584,100 @@ const getBilibiliChannel = async ({ url, limit, page, fetchImpl, buildCookieHead
   }
 }
 
+const extractJavdbActorProfile = (html, channelUrl) => {
+  const name = stripHtml(
+    html.match(/class=["'][^"']*\bactor-section-name\b[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i)?.[1]
+    || ''
+  ).split(',')[0].trim()
+  const avatarBlock = html.match(/<[^>]+class=["'][^"']*\bavatar\b[^"']*["'][^>]*>/i)?.[0] || ''
+  const avatarStyle = avatarBlock.match(/\sstyle=(["'])([\s\S]*?)\1/i)?.[2] || ''
+  const styleAvatar = avatarStyle.match(/url\((.*?)\)/i)?.[1]?.replace(/^["']|["']$/g, '') || ''
+  const avatarImage = html.match(/class=["'][^"']*\bavatar\b[^"']*["'][\s\S]*?<img\b[^>]*src=["']([^"']+)["']/i)?.[1] || ''
+  const actorId = new URL(channelUrl).pathname.split('/').filter(Boolean).pop() || null
+
+  return {
+    id: actorId,
+    type: 'ACTOR',
+    name,
+    url: channelUrl,
+    avatar: normalizeUrl(styleAvatar || avatarImage, JAVDB_ORIGIN),
+    description: '',
+    site: 'javdb',
+    is_nsfw: true,
+  }
+}
+
+const collectJavdbVideos = (html, profile) => {
+  const items = []
+  const linkPattern = /<a\b(?=[^>]*class=["'][^"']*\bbox\b)(?=[^>]*href=["']([^"']*\/v\/[^"']+)["'])[^>]*>([\s\S]*?)<\/a>/gi
+  let match
+  while ((match = linkPattern.exec(html))) {
+    const href = match[1] || ''
+    const block = match[2] || ''
+    const title = stripHtml(
+      block.match(/class=["'][^"']*\bvideo-title\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1]
+      || extractAttribute(match[0], 'title')
+      || ''
+    )
+    const image = block.match(/<img\b[^>]*>/i)?.[0] || ''
+    const thumbnail = extractAttribute(image, 'data-src') || extractAttribute(image, 'src')
+    const metaText = stripHtml(block.match(/class=["'][^"']*\bmeta\b[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i)?.[1] || '')
+    const publishDate = metaText.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0] || metaText || null
+
+    items.push({
+      source: 'remote',
+      site: 'javdb',
+      id: href,
+      title,
+      url: normalizeUrl(href, JAVDB_ORIGIN),
+      thumbnail: normalizeUrl(thumbnail, JAVDB_ORIGIN),
+      duration: null,
+      publish_date: publishDate,
+      uploader: profile.name,
+      uploader_url: profile.url,
+      uploader_avatar: profile.avatar,
+      subscriptions: [],
+      actors: [profile],
+      description: '',
+    })
+  }
+  return uniqueByUrl(items).filter((item) => item.title && item.url)
+}
+
+const getJavdbChannel = async ({ url, limit, page, loadDocumentHtml }) => {
+  if (typeof loadDocumentHtml !== 'function') {
+    throw new Error('JavDB remote channel requires browser document loading')
+  }
+
+  const resultLimit = clampLimit(limit)
+  const resultPage = clampPage(page)
+  const channelUrl = normalizeChannelUrl(url)
+  const targetUrl = new URL(channelUrl)
+  if (resultPage > 1) {
+    targetUrl.searchParams.set('page', String(resultPage))
+    targetUrl.searchParams.set('sort_type', '0')
+  }
+
+  const html = await loadDocumentHtml(targetUrl.toString(), {
+    timeoutMs: 30000,
+    challengeTimeoutMs: 60000,
+  })
+  if (looksLikeJavdbBlockedPage(html)) {
+    throw new Error('JavDB access is temporarily blocked by upstream')
+  }
+
+  const channelProfile = extractJavdbActorProfile(html, channelUrl)
+  const items = collectJavdbVideos(html, channelProfile)
+  const hasNext = /<a\b(?=[^>]*class=["'][^"']*\bpagination-link\b)(?=[^>]*rel=["']next["'])/i.test(html)
+
+  return {
+    profile: channelProfile,
+    items: items.slice(0, resultLimit),
+    page: resultPage,
+    has_more: hasNext || items.length > resultLimit,
+  }
+}
+
 const collectPornhubVideos = (html, profile) => {
   const blocks = html.match(/<li[^>]+class=["'][^"']*(?:pcVideoListItem|videoblock)[^"']*["'][\s\S]*?<\/li>/gi) || []
   return uniqueByUrl(blocks.map((block) => {
@@ -725,6 +825,7 @@ const getYouPornChannel = async ({ url, limit, page, fetchImpl, buildCookieHeade
 const CHANNEL_PROVIDERS = {
   bilibili: getBilibiliChannel,
   youtube: getYouTubeChannel,
+  javdb: getJavdbChannel,
   pornhub: getPornhubChannel,
   youporn: getYouPornChannel,
 }

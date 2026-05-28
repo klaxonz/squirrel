@@ -759,6 +759,52 @@ test('desktop javdb site search requests automatic challenge solving window time
   assert.equal(documentOptions[0].challengeTimeoutMs, 60000)
 })
 
+test('desktop javdb remote channel parses actor videos', async () => {
+  const documentRequests = []
+  const result = await getRemoteChannel({
+    site: 'javdb',
+    url: 'https://javdb.com/actors/demo-actor',
+    limit: 5,
+    page: 2,
+    buildCookieHeader,
+    fetchImpl: async () => htmlResponse(''),
+    loadDocumentHtml: async (url, options = {}) => {
+      documentRequests.push({ url, options })
+      return `
+        <div class="actor-section-name">Demo Actor, Alias</div>
+        <div class="avatar" style="background-image: url('https://javdb.com/actor.jpg')"></div>
+        <div class="movie-list">
+          <div class="item">
+            <a class="box" href="/v/channel-demo">
+              <img src="/cover.jpg">
+              <div class="video-title"><strong>DEMO-002</strong> Actor Video</div>
+              <div class="meta">2026-02-03</div>
+            </a>
+          </div>
+        </div>
+        <a class="pagination-link" rel="next">3</a>
+      `
+    },
+  })
+
+  assert.equal(result.site, 'javdb')
+  assert.equal(result.profile.id, 'demo-actor')
+  assert.equal(result.profile.type, 'ACTOR')
+  assert.equal(result.profile.name, 'Demo Actor')
+  assert.equal(result.profile.avatar, 'https://javdb.com/actor.jpg')
+  assert.equal(result.items.length, 1)
+  assert.equal(result.items[0].site, 'javdb')
+  assert.equal(result.items[0].title, 'DEMO-002 Actor Video')
+  assert.equal(result.items[0].url, 'https://javdb.com/v/channel-demo')
+  assert.equal(result.items[0].thumbnail, 'https://javdb.com/cover.jpg')
+  assert.equal(result.items[0].publish_date, '2026-02-03')
+  assert.deepEqual(result.items[0].actors, [result.profile])
+  assert.equal(result.has_more, true)
+  assert.equal(documentRequests[0].url, 'https://javdb.com/actors/demo-actor?page=2&sort_type=0')
+  assert.equal(documentRequests[0].options.timeoutMs, 30000)
+  assert.equal(documentRequests[0].options.challengeTimeoutMs, 60000)
+})
+
 test('desktop bilibili remote channel returns profile and videos', async () => {
   const requestedUrls = []
   const documentUrls = []

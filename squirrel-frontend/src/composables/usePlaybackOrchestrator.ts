@@ -27,6 +27,50 @@ const toRecord = (value: unknown): Record<string, any> => {
   return {}
 }
 
+const actorKey = (actor: Record<string, any>) => {
+  const url = String(actor.url || '').trim().toLowerCase()
+  if (url) return `url:${url}`
+  const id = String(actor.id || '').trim()
+  if (id) return `id:${id}`
+  const name = String(actor.name || '').trim().toLowerCase()
+  return name ? `name:${name}` : ''
+}
+
+const mergeActor = (currentActor: Record<string, any>, nextActor: Record<string, any>) => {
+  const merged = { ...currentActor }
+  for (const [key, value] of Object.entries(nextActor)) {
+    if (value != null && value !== '' && (merged[key] == null || merged[key] === '')) {
+      merged[key] = value
+    }
+  }
+  return merged
+}
+
+const mergeActors = (currentActors: unknown, nextActors: Record<string, any>[]) => {
+  const mergedActors = Array.isArray(currentActors)
+    ? currentActors.map((actor) => ({ ...toRecord(actor) }))
+    : []
+  const indexByKey = new Map<string, number>()
+
+  mergedActors.forEach((actor, index) => {
+    const key = actorKey(actor)
+    if (key) indexByKey.set(key, index)
+  })
+
+  for (const actor of nextActors) {
+    const key = actorKey(actor)
+    const existingIndex = key ? indexByKey.get(key) : undefined
+    if (existingIndex != null) {
+      mergedActors[existingIndex] = mergeActor(mergedActors[existingIndex], actor)
+      continue
+    }
+    mergedActors.push(actor)
+    if (key) indexByKey.set(key, mergedActors.length - 1)
+  }
+
+  return mergedActors
+}
+
 export const mergeVideoMetadata = (currentVideo: VideoLike | null, videoMetadata: Record<string, any>, sourceUrl = '') => {
   if (!currentVideo || !videoMetadata || Object.keys(videoMetadata).length === 0) return currentVideo
 
@@ -42,7 +86,7 @@ export const mergeVideoMetadata = (currentVideo: VideoLike | null, videoMetadata
   }
 
   if (Array.isArray(videoMetadata.actors) && videoMetadata.actors.length > 0) {
-    nextVideo.actors = videoMetadata.actors
+    nextVideo.actors = mergeActors(nextVideo.actors, videoMetadata.actors.map((actor) => toRecord(actor)))
   }
 
   return nextVideo as VideoLike
