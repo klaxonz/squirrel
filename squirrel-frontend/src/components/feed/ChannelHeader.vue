@@ -1,6 +1,6 @@
 <template>
   <transition name="channel-dismiss">
-    <div v-if="isVisible" class="relative bg-background border-b border-border/40 overflow-hidden">
+    <div v-if="isVisible" class="relative bg-background border-b border-border/20 overflow-hidden">
       <div class="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         
         <div class="flex items-center gap-4 min-w-0">

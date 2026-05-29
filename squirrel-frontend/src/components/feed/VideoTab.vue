@@ -17,7 +17,7 @@ import { computed, ref, watch } from 'vue'
 import VideoList from './VideoList.vue'
 import useLatestVideos from '@/composables/useLatestVideos'
 
-const emit = defineEmits(['openModal', 'goToSubscription', 'loading-change', 'error'])
+const emit = defineEmits(['openModal', 'goToSubscription', 'loading-change', 'error', 'loaded'])
 
 const props = defineProps<{
   filters?: any
@@ -80,6 +80,7 @@ watch(currentFilters, (f) => {
 
 watch(error, (err) => err && emit('error', err))
 watch(loading, (val) => emit('loading-change', val))
+watch(videos, (val) => emit('loaded', val), { deep: true, immediate: true })
 
 defineExpose({ refresh: () => handleSearch() })
 </script>

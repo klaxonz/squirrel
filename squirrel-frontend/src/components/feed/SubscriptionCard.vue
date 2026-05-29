@@ -1,9 +1,9 @@
 <template>
   <div
-    class="group flex cursor-pointer flex-col rounded-lg border border-border/50 bg-background p-3 transition-colors hover:bg-accent/40"
+    class="group flex cursor-pointer flex-col py-4 border-b border-border/20 transition-colors hover:bg-accent/10 last:border-0"
     @click="$emit('click')"
   >
-    <div class="flex items-start gap-3">
+    <div class="flex items-start gap-3 px-2">
       <div class="relative shrink-0">
         <div class="h-11 w-11 overflow-hidden rounded-md bg-muted">
           <SubscriptionAvatar
@@ -46,12 +46,12 @@
       </div>
     </div>
 
-    <div v-if="subscription.latest_videos?.length" class="mt-3">
+    <div v-if="subscription.latest_videos?.length" class="mt-3 px-2">
       <div class="grid grid-cols-3 gap-1.5">
         <div
           v-for="video in subscription.latest_videos.slice(0, 3)"
           :key="video.id"
-          class="aspect-video overflow-hidden rounded-md bg-muted"
+          class="aspect-video overflow-hidden rounded bg-muted"
         >
           <img
             v-if="video.thumbnail"
@@ -60,11 +60,11 @@
             loading="lazy"
           />
         </div>
-        <div v-for="i in Math.max(0, 3 - (subscription.latest_videos?.length || 0))" :key="`p-${i}`" class="aspect-video rounded-md bg-muted/50" />
+        <div v-for="i in Math.max(0, 3 - (subscription.latest_videos?.length || 0))" :key="`p-${i}`" class="aspect-video rounded bg-muted/50" />
       </div>
     </div>
 
-    <div class="mt-3 flex items-center justify-between border-t border-border/50 pt-2 text-xs text-muted-foreground">
+    <div class="mt-3 mx-2 flex items-center justify-between pt-2 text-xs text-muted-foreground">
       <div class="flex items-center gap-1.5">
         <AppIcon name="time" class="h-3.5 w-3.5" />
         <span>{{ lastUpdatedText }}</span>

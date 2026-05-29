@@ -1,23 +1,23 @@
 <template>
-  <section class="flex flex-col bg-background relative z-10 transition-transform duration-300" :class="{ '-translate-y-full': isHidden }">
+  <section class="flex flex-col bg-background relative z-10 transition-transform duration-300 border-b border-border/40" :class="{ '-translate-y-full': isHidden }">
     <div class="flex items-center h-14 px-4 sm:px-6 gap-4 sm:gap-6">
-      <nav v-if="showTabs" class="flex items-center h-full space-x-1 overflow-x-auto scrollbar-hide shrink-0">
+      <nav v-if="showTabs" class="flex items-center h-full space-x-4 overflow-x-auto scrollbar-hide shrink-0">
         <button
           v-for="tab in tabs"
           :key="tab.value"
-          class="h-full px-3 flex items-center text-[13px] font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 shrink-0"
+          class="h-full px-1 flex items-center text-[15px] font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 shrink-0"
           :class="[
             localActiveTab === tab.value
-              ? 'text-foreground'
-              : 'text-muted-foreground hover:text-foreground/80'
+              ? 'text-foreground font-semibold'
+              : 'text-muted-foreground hover:text-foreground'
           ]"
           @click="localActiveTab = tab.value"
         >
-          <span class="relative inline-flex items-center leading-6">
+          <span class="relative inline-flex items-center leading-6 tracking-wide">
             {{ tab.label }}
             <span
               v-if="localActiveTab === tab.value"
-              class="absolute -bottom-1 left-0 right-0 h-[2px] bg-primary rounded-full"
+              class="absolute -bottom-[13px] left-0 right-0 h-[2px] bg-foreground"
             />
           </span>
         </button>
@@ -29,18 +29,18 @@
       <div class="flex items-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap">
 
         <!-- View Mode Toggle -->
-        <div class="hidden sm:flex bg-muted/40 p-0.5 rounded-lg border border-border/40 shrink-0">
+        <div class="hidden sm:flex bg-muted/40 p-0.5 rounded shrink-0">
           <button
-            class="flex items-center justify-center p-1.5 rounded-md transition-colors"
-            :class="uiStore.viewMode === 'grid' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
+            class="flex items-center justify-center p-1.5 rounded-sm transition-colors"
+            :class="uiStore.viewMode === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
             @click="uiStore.setViewMode('grid')"
             title="网格视图"
           >
             <AppIcon name="layoutGrid" class="w-4 h-4" />
           </button>
           <button
-            class="flex items-center justify-center p-1.5 rounded-md transition-colors"
-            :class="uiStore.viewMode === 'list' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
+            class="flex items-center justify-center p-1.5 rounded-sm transition-colors"
+            :class="uiStore.viewMode === 'list' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
             @click="uiStore.setViewMode('list')"
             title="列表视图"
           >
@@ -64,11 +64,11 @@
 
         <!-- Site Select -->
         <Select :model-value="site || 'all'" @update:model-value="handleSiteChange">
-          <SelectTrigger class="h-8 w-auto min-w-0 shrink-0 flex-nowrap whitespace-nowrap border-border/40 bg-muted/40 px-2.5 py-0 text-xs font-medium text-foreground shadow-none hover:bg-muted/60 focus:ring-primary/20">
+          <SelectTrigger class="h-8 w-auto min-w-0 shrink-0 flex-nowrap whitespace-nowrap border-0 bg-muted/40 px-2.5 py-0 text-xs font-medium text-foreground shadow-none hover:bg-muted/60 focus:ring-primary/20 rounded-sm">
             <span class="hidden shrink-0 select-none text-[10px] font-semibold uppercase text-muted-foreground/60 sm:inline-block">站点</span>
             <SelectValue />
           </SelectTrigger>
-          <SelectContent class="min-w-44">
+          <SelectContent class="min-w-44 border-border/20 shadow-lg rounded-sm">
             <SelectItem value="all" class="text-xs">全部站点</SelectItem>
             <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">
               {{ opt.label }}
@@ -79,11 +79,11 @@
         <!-- Sort Select -->
         <div v-if="showSort" class="hidden sm:block shrink-0">
           <Select v-model="localSortBy">
-            <SelectTrigger class="h-8 w-auto min-w-0 flex-nowrap whitespace-nowrap border-border/40 bg-muted/40 px-2.5 py-0 text-xs font-medium text-foreground shadow-none hover:bg-muted/60 focus:ring-primary/20">
+            <SelectTrigger class="h-8 w-auto min-w-0 flex-nowrap whitespace-nowrap border-0 bg-muted/40 px-2.5 py-0 text-xs font-medium text-foreground shadow-none hover:bg-muted/60 focus:ring-primary/20 rounded-sm">
               <span class="shrink-0 select-none text-[10px] font-semibold uppercase text-muted-foreground/60">排序</span>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent class="min-w-36">
+            <SelectContent class="min-w-36 border-border/20 shadow-lg rounded-sm">
               <SelectItem v-for="opt in sortOptions" :key="opt.value" :value="opt.value" class="text-xs">
                 {{ opt.label }}
               </SelectItem>
@@ -97,11 +97,11 @@
         <button
           v-if="showFilter"
           type="button"
-          class="relative flex size-8 shrink-0 items-center justify-center rounded-lg border transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          class="relative flex size-8 shrink-0 items-center justify-center rounded-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary bg-muted/40 border-0"
           :class="[
             activeFilterCount > 0
-              ? 'bg-primary/10 text-primary border-primary/20'
-              : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground border-border/40'
+              ? 'bg-primary/10 text-primary'
+              : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
           ]"
           @click="filterModalOpen = true"
           :title="activeFilterCount > 0 ? '筛选已启用' : '筛选'"
@@ -114,7 +114,7 @@
         <button
           v-if="showRefresh"
           type="button"
-          class="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/40 text-muted-foreground transition-colors outline-none hover:bg-muted/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
+          class="flex size-8 shrink-0 items-center justify-center rounded-sm bg-muted/40 border-0 text-muted-foreground transition-colors outline-none hover:bg-muted/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
           @click="$emit('refresh')"
           title="刷新内容"
         >

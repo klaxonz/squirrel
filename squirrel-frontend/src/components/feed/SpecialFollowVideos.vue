@@ -1,7 +1,7 @@
 <template>
   <section v-if="items.length > 0" class="group/container mb-6 px-6 pt-2">
     <div class="mb-4 flex items-center justify-between">
-      <h2 class="flex items-center gap-2 text-lg font-bold text-foreground/90">
+      <h2 class="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground/90">
         <AppIcon name="star" class="size-5 fill-current text-amber-500" />
         特别关注
       </h2>
@@ -44,7 +44,7 @@
         class="group w-64 shrink-0 cursor-pointer snap-start"
         @click="emit('openModal', item)"
       >
-        <div class="relative aspect-video overflow-hidden rounded-lg bg-muted transition-all duration-300 group-hover:scale-[1.02] group-hover:brightness-110">
+        <div class="relative aspect-video overflow-hidden rounded-sm bg-muted transition-all duration-300 group-hover:brightness-110">
           <VideoThumbnail
             :src="item.thumbnail"
             :alt="item.title"

@@ -37,7 +37,7 @@
           @keydown.enter.prevent="openResult(item)"
           @keydown.space.prevent="openResult(item)"
         >
-          <div class="relative aspect-video overflow-hidden rounded-lg bg-muted transition-colors group-hover:bg-muted/80">
+          <div class="relative aspect-video overflow-hidden rounded-sm bg-muted transition-colors group-hover:brightness-110">
             <VideoThumbnail :src="item.thumbnail" :alt="item.title" />
             <span v-if="item.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium tabular-nums text-white backdrop-blur-sm">
               {{ formatDuration(item.duration) }}

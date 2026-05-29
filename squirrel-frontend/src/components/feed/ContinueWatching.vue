@@ -1,7 +1,7 @@
 <template>
   <div v-if="historyItems.length > 0" class="mb-6 pt-4 px-6 overflow-hidden relative group/container">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-bold flex items-center gap-2 text-foreground/90">
+      <h2 class="text-xl font-bold tracking-tight flex items-center gap-2 text-foreground/90">
         <AppIcon name="time" class="size-5 text-primary" />
         继续观看
       </h2>
@@ -44,7 +44,7 @@
         class="w-64 shrink-0 snap-start group cursor-pointer"
         @click="$emit('openModal', item)"
       >
-        <div class="relative aspect-video rounded-lg bg-muted overflow-hidden transition-all duration-300 group-hover:scale-[1.02] group-hover:brightness-110">
+        <div class="relative aspect-video rounded-sm bg-muted overflow-hidden transition-all duration-300 group-hover:brightness-110">
           <img
             :src="item.thumbnail"
             loading="lazy"

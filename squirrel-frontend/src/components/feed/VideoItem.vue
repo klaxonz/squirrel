@@ -7,7 +7,7 @@
   >
     <!-- Thumbnail Container -->
     <div :class="[
-      'relative overflow-hidden rounded-lg bg-muted transition-colors group-hover:bg-muted/80',
+      'relative overflow-hidden rounded-sm bg-muted transition-colors group-hover:brightness-110',
       layout === 'list' ? 'w-48 shrink-0 md:w-64 aspect-video' : 'aspect-video w-full'
     ]">
       <VideoThumbnail
@@ -224,7 +224,7 @@ onMounted(() => document.addEventListener('closeAllContextMenus', () => showMenu
 </script>
 
 <style scoped>
-.group:hover .group-hover\:premium-shadow {
-  box-shadow: var(--shadow-premium);
+.group:hover {
+  /* Minimal zoom effect without card feeling */
 }
 </style>

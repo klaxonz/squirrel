@@ -36,21 +36,81 @@
     <!-- Main Content Area -->
     <div class="app-page-content">
 
-      <!-- Continue Watching (Only on Home "All" tab) -->
-      <ContinueWatching
-        v-if="!subscriptionId && searchMode === 'local' && activeTab === 'all' && !searchQuery"
-        @openModal="handleOpenModal"
-        @viewMore="goToContinueWatching"
-      />
-      <SpecialFollowVideos
-        v-if="!subscriptionId && searchMode === 'local' && activeTab === 'all' && !searchQuery"
-        @openModal="handleOpenModal"
-        @goToSubscription="goToChannelDetail"
-        @viewMore="goToSpecialFollowVideos"
-      />
+      <!-- Cinematic Full-Bleed Spotlight Hero -->
+      <div v-if="showSpotlightHero" class="relative w-[calc(100%+3rem)] -mx-6 -mt-6 mb-8 overflow-hidden group cursor-pointer bg-black" @click="handleOpenModal(spotlightVideo)">
+        <!-- Full-Width Background Image -->
+        <div class="absolute inset-0 z-0">
+          <img :src="spotlightVideo?.thumbnail" class="w-full h-full object-cover object-center opacity-60 group-hover:scale-105 transition-transform duration-1000" />
+          <!-- Heavy gradient on left for text readability -->
+          <div class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent"></div>
+          <!-- Bottom gradient to blend into the app's native background -->
+          <div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
+        </div>
+
+        <!-- Content Overlay -->
+        <div class="relative z-10 w-full h-[320px] lg:h-[380px] flex items-end pb-8 px-8 md:px-12">
+          <div class="max-w-3xl flex flex-col gap-3">
+            <div class="flex items-center gap-3 text-sm text-white/80 font-medium">
+              <span class="flex items-center gap-1.5 text-primary tracking-widest uppercase text-xs font-bold drop-shadow">
+                <AppIcon name="star" class="w-4 h-4 fill-primary"/> SPOTLIGHT
+              </span>
+              <span class="flex items-center gap-1.5 drop-shadow">
+                <AppIcon name="time" class="w-4 h-4"/> 
+                {{ formatDate(spotlightVideo?.uploaded_at || spotlightVideo?.created_at) }}
+              </span>
+            </div>
+            
+            <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold leading-tight text-white line-clamp-2 drop-shadow-md">
+              {{ spotlightVideo?.title }}
+            </h2>
+            
+            <p class="text-white/70 text-sm md:text-base line-clamp-2 max-w-xl drop-shadow">
+              {{ spotlightVideo?.description || 'No description available for this video.' }}
+            </p>
+
+            <div class="flex items-center gap-5 mt-3">
+              <button class="flex items-center gap-2 bg-white text-black hover:bg-white/90 px-6 py-2 rounded-sm text-sm font-bold transition-colors">
+                <AppIcon name="play" class="w-4 h-4" />
+                立即播放
+              </button>
+              
+              <div class="flex items-center gap-2.5 text-white/80 hover:text-white transition-colors" @click.stop="goToChannelDetail(spotlightVideo?.subscriptions?.[0]?.id)">
+                <SubscriptionAvatar :src="spotlightVideo?.subscriptions?.[0]?.avatar" :name="spotlightVideo?.subscriptions?.[0]?.name" size="sm" class="ring-1 ring-white/20" />
+                <span class="text-xs font-medium drop-shadow">{{ spotlightVideo?.subscriptions?.[0]?.name || '未知频道' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Secondary Feed Sections (Grid layout on wide screens for better space utilization) -->
+      <div v-if="!subscriptionId && searchMode === 'local' && activeTab === 'all' && !searchQuery" class="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-2 mb-6">
+        <!-- Continue Watching Section -->
+        <ContinueWatching
+          class="!mb-0"
+          @openModal="handleOpenModal"
+          @viewMore="goToContinueWatching"
+        />
+
+        <!-- Special Follows Section -->
+        <SpecialFollowVideos
+          class="!mb-0"
+          @openModal="handleOpenModal"
+          @goToSubscription="goToChannelDetail"
+          @viewMore="goToSpecialFollowVideos"
+        />
+      </div>
+
+      <!-- Main Feed Section Header -->
+      <div v-if="searchMode === 'local' && !searchQuery" class="px-6 flex items-center justify-between mb-2">
+        <h2 class="text-xl font-bold tracking-tight text-foreground/90 flex items-center gap-2">
+          <AppIcon name="list" class="w-5 h-5 text-primary" />
+          最新动态
+        </h2>
+      </div>
 
       <div v-if="loadError" class="px-6 pt-6">
-        <div class="bg-destructive/5 border border-destructive/20 rounded-2xl p-4 flex items-center justify-between">
+        <div class="bg-destructive/10 rounded-sm p-4 flex items-center justify-between">
           <p class="text-sm text-destructive font-medium">{{ loadError?.message || loadError }}</p>
           <button @click="refreshCurrentList" class="text-xs font-bold uppercase tracking-widest px-4 py-2 bg-destructive text-white rounded-full">重试</button>
         </div>
@@ -87,6 +147,7 @@
             @openModal="handleOpenModal"
             @error="loadError = $event"
             @loading-change="isRefreshing = !!$event"
+            @loaded="handleChildLoaded"
           />
         </keep-alive>
       </router-view>
@@ -111,6 +172,9 @@ import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { VIDEO_TABS } from '@/constants/videos'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { onSubscriptionRemoved } from '@/utils/subscriptionEvents'
+import AppIcon from '@/components/common/AppIcon.vue'
+import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
+import { formatDate, formatDuration } from '@/utils/dateFormat'
 
 defineOptions({ name: 'LatestVideos' })
 
@@ -182,6 +246,17 @@ const remoteChannelKey = computed(() => {
   const channel = channelDetail.value
   return channel ? `${channel.site || ''}::${channel.url || ''}` : ''
 })
+
+const spotlightVideo = ref<any>(null)
+const showSpotlightHero = computed(() => !subscriptionId.value && searchMode.value === 'local' && activeTab.value === 'all' && !searchQuery.value && spotlightVideo.value != null)
+
+const handleChildLoaded = (videos: any) => {
+  if (Array.isArray(videos) && videos.length > 0) {
+    spotlightVideo.value = videos[0]
+  } else {
+    spotlightVideo.value = null
+  }
+}
 
 const refreshCurrentList = () => {
   loadError.value = null
