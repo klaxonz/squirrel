@@ -14,14 +14,14 @@
     <div class="app-page-content">
 
       <!-- Cinematic Full-Bleed Spotlight Hero -->
-      <div v-if="showSpotlightHero" class="relative w-[calc(100%+3rem)] -mx-6 -mt-6 mb-8 overflow-hidden group cursor-pointer bg-black" @click="handleOpenModal(spotlightVideo)">
+      <div v-if="showSpotlightHero" class="relative w-[calc(100%+3rem)] -mx-6 -mt-6 mb-6 border-b border-border/10 overflow-hidden group cursor-pointer bg-black" @click="handleOpenModal(spotlightVideo)">
         <!-- Full-Width Background Image -->
         <div class="absolute inset-0 z-0">
           <img :src="spotlightVideo?.thumbnail" class="w-full h-full object-cover object-center opacity-60 group-hover:scale-105 transition-transform duration-1000" />
           <!-- Heavy gradient on left for text readability -->
-          <div class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent"></div>
-          <!-- Bottom gradient to blend into the app's native background -->
-          <div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent"></div>
+          <!-- Dark bottom vignette for text contrast, eliminating the muddy white fade -->
+          <div class="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 to-transparent pointer-events-none"></div>
         </div>
 
         <!-- Content Overlay -->
@@ -61,7 +61,7 @@
       </div>
 
       <!-- Secondary Feed Sections (Grid layout on wide screens for better space utilization) -->
-      <div v-if="!subscriptionId && searchMode === 'local' && activeTab === 'all' && !searchQuery" class="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-2 mb-6">
+      <div v-if="!subscriptionId && searchMode === 'local' && activeTab === 'all' && !searchQuery" class="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-2 mb-6 mt-2">
         <!-- Continue Watching Section -->
         <ContinueWatching
           class="!mb-0"
