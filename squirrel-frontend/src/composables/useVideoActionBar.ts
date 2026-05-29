@@ -155,6 +155,7 @@ export default function useVideoActionBar({
 
   return {
     videoActions,
+    videoOverflowActions,
     handleVideoAction,
   }
 }

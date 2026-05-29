@@ -10,13 +10,12 @@
       >
         <!-- Player Section -->
         <div
-          class="relative aspect-video overflow-hidden bg-black shadow-2xl"
-          :class="isWidescreen ? 'lg:col-span-2 rounded-xl' : 'rounded-2xl'"
+          class="relative aspect-video overflow-hidden bg-black shadow-lg"
+          :class="isWidescreen ? 'lg:col-span-2 rounded-xl' : 'rounded-xl'"
         >
           <div
             ref="videoPlayerHostRef"
-            class="absolute inset-0 overflow-hidden"
-            :class="isWidescreen ? 'rounded-xl' : 'rounded-2xl'"
+            class="absolute inset-0 overflow-hidden rounded-xl"
           />
         </div>
 
@@ -31,7 +30,7 @@
               <div class="flex items-center gap-2 text-sm text-muted-foreground/60 font-medium">
                 <span>{{ videoPublishedText }}</span>
                 <span>·</span>
-                <span v-if="(video as any)?.site" class="uppercase tracking-widest text-[10px] bg-accent/50 text-muted-foreground px-1.5 py-0.5 rounded-[4px] font-bold">{{ (video as any).site }}</span>
+                <span v-if="(video as any)?.site" class="inline-flex items-center uppercase tracking-wider text-[10px] bg-accent/50 text-muted-foreground px-1.5 py-px rounded font-bold leading-normal">{{ (video as any).site }}</span>
               </div>
             </div>
             
@@ -58,7 +57,7 @@
 
               <div class="flex items-center gap-2">
                 <div class="flex bg-accent/40 rounded-full p-0.5 ring-1 ring-border/20">
-                  <button 
+                  <button
                     v-for="action in primaryVisibleActions"
                     :key="action.key"
                     class="flex items-center gap-2 px-4 py-1.5 rounded-full hover:bg-accent/60 transition-all text-[13px] font-semibold"
@@ -69,41 +68,81 @@
                     <span v-if="action.label && action.key === 'like'">{{ action.label }}</span>
                   </button>
                 </div>
-                
-                <button class="w-9 h-9 flex items-center justify-center rounded-full bg-accent/40 hover:bg-accent/60 transition-all active:scale-95 ring-1 ring-border/20 text-muted-foreground hover:text-foreground">
+
+                <button
+                  class="w-9 h-9 flex items-center justify-center rounded-full bg-accent/40 hover:bg-accent/60 transition-all active:scale-95 ring-1 ring-border/20 text-muted-foreground hover:text-foreground"
+                  title="分享链接"
+                  @click="handleShare"
+                >
                   <AppIcon name="share" class="w-4 h-4" />
                 </button>
-                <button class="w-9 h-9 flex items-center justify-center rounded-full bg-accent/40 hover:bg-accent/60 transition-all active:scale-95 ring-1 ring-border/20 text-muted-foreground hover:text-foreground">
-                  <AppIcon name="more" class="w-4 h-4" />
+                <div class="relative" ref="moreMenuRef">
+                  <button
+                    class="w-9 h-9 flex items-center justify-center rounded-full bg-accent/40 hover:bg-accent/60 transition-all active:scale-95 ring-1 ring-border/20 text-muted-foreground hover:text-foreground"
+                    @click.stop="moreMenuOpen = !moreMenuOpen"
+                  >
+                    <AppIcon name="more" class="w-4 h-4" />
+                  </button>
+                  <Transition name="fade">
+                    <div v-if="moreMenuOpen" class="absolute right-0 top-full mt-1 w-44 bg-popover border border-border rounded-xl shadow-premium py-1 z-50">
+                      <button
+                        v-for="action in videoOverflowActions.filter(a => a.key !== 'source')"
+                        :key="action.key"
+                        class="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] font-medium text-foreground/80 hover:bg-accent transition-colors"
+                        @click.stop="handleVideoAction(action); moreMenuOpen = false"
+                      >
+                        <AppIcon :name="action.icon" class="w-4 h-4 text-muted-foreground" />
+                        {{ action.label }}
+                      </button>
+                      <a
+                        v-if="(video as any)?.url"
+                        :href="(video as any).url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] font-medium text-foreground/80 hover:bg-accent transition-colors"
+                        @click.stop="moreMenuOpen = false"
+                      >
+                        <AppIcon name="externalLink" class="w-4 h-4 text-muted-foreground" />
+                        原视频
+                      </a>
+                    </div>
+                  </Transition>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="displayedVideoActors.length" class="-mx-1">
+              <div class="flex gap-2 overflow-x-auto px-1 pb-0.5 no-scrollbar">
+                <button
+                  v-for="actor in displayedVideoActors"
+                  :key="actor.url || actor.name"
+                  type="button"
+                  class="inline-flex h-8 shrink-0 items-center gap-2 rounded-full bg-accent/35 px-2.5 text-[12px] font-semibold text-foreground/85 ring-1 ring-border/20 transition-colors hover:bg-accent/55"
+                  @click="openChannelDetail(actor)"
+                >
+                  <SubscriptionAvatar :src="actor.avatar" :name="actor.name" size="xs" />
+                  <span class="truncate max-w-[120px]">{{ actor.name }}</span>
                 </button>
               </div>
             </div>
 
-            <div v-if="displayedVideoActors.length" class="flex flex-wrap items-center gap-2">
-              <button
-                v-for="actor in displayedVideoActors"
-                :key="actor.url || actor.name"
-                type="button"
-                class="inline-flex h-8 max-w-full items-center gap-2 rounded-full bg-accent/35 px-2.5 text-[12px] font-semibold text-foreground/85 ring-1 ring-border/20 transition-colors hover:bg-accent/55"
-                @click="openChannelDetail(actor)"
-              >
-                <SubscriptionAvatar :src="actor.avatar" :name="actor.name" size="xs" />
-                <span class="truncate">{{ actor.name }}</span>
-              </button>
-            </div>
-
-            <div v-if="videoDescription" class="!mt-0 p-4 bg-accent/20 rounded-xl ring-1 ring-border/10 group">
-              <p
-                ref="descriptionTextRef"
-                class="text-[14px] leading-relaxed text-foreground/80 whitespace-pre-wrap"
-                :class="{ 'line-clamp-3': !descriptionExpanded }"
-              >
-                {{ videoDescription }}
-              </p>
+            <div v-if="videoDescription" class="mt-2 p-4 bg-muted/30 rounded-xl ring-1 ring-border/10">
+              <div class="relative overflow-hidden" :class="{ 'max-h-[4.8em]': !descriptionExpanded }">
+                <p
+                  ref="descriptionTextRef"
+                  class="text-[14px] leading-relaxed text-foreground/75 whitespace-pre-wrap"
+                >
+                  {{ videoDescription }}
+                </p>
+                <div
+                  v-if="!descriptionExpanded && hasLongDescription"
+                  class="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-muted/30 to-transparent pointer-events-none"
+                />
+              </div>
               <button
                 v-if="hasLongDescription"
                 type="button"
-                class="mt-3 text-[13px] font-bold text-foreground hover:text-primary transition-colors"
+                class="mt-2 text-[13px] font-semibold text-foreground/70 hover:text-foreground transition-colors"
                 @click="descriptionExpanded = !descriptionExpanded"
               >
                 {{ descriptionExpanded ? '收起' : '展开' }}
@@ -112,15 +151,25 @@
           </div>
           
           <!-- Skeleton -->
-          <div v-else class="space-y-4 animate-pulse">
-            <div class="h-8 bg-muted rounded-lg w-3/4" />
-            <div class="flex items-center gap-4">
-              <div class="h-12 w-12 rounded-full bg-muted" />
-              <div class="space-y-2">
-                <div class="h-4 bg-muted rounded w-32" />
-                <div class="h-3 bg-muted rounded w-20" />
-              </div>
+          <div v-else class="space-y-6 animate-pulse">
+            <div class="space-y-2">
+              <div class="h-7 bg-muted rounded-lg w-3/4" />
+              <div class="h-4 bg-muted rounded w-36" />
             </div>
+            <div class="flex items-center gap-4">
+              <div class="h-12 w-12 rounded-full bg-muted shrink-0" />
+              <div class="space-y-2 flex-1">
+                <div class="h-4 bg-muted rounded w-28" />
+                <div class="h-3 bg-muted rounded w-16" />
+              </div>
+              <div class="h-7 w-16 rounded-full bg-muted" />
+            </div>
+            <div class="flex gap-2">
+              <div class="h-8 w-16 rounded-full bg-muted" />
+              <div class="h-8 w-20 rounded-full bg-muted" />
+              <div class="h-8 w-14 rounded-full bg-muted" />
+            </div>
+            <div class="h-20 bg-muted rounded-xl" />
           </div>
         </div>
       </div>
@@ -130,13 +179,13 @@
         class="space-y-6"
         :class="isWidescreen ? 'lg:col-start-2 lg:row-start-2' : 'lg:col-start-2 lg:row-start-1'"
       >
-        <div class="flex p-0.5 bg-accent/30 rounded-lg ring-1 ring-border/20">
-          <button 
+        <div class="app-tab-list w-full">
+          <button
             v-for="tab in asideTabs"
             :key="tab.key"
             @click="asideTab = tab.key"
-            class="flex-1 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all"
-            :class="asideTab === tab.key ? 'bg-background text-foreground shadow-sm ring-1 ring-border/10' : 'text-muted-foreground hover:text-foreground'"
+            class="app-tab-button flex-1 justify-center"
+            :class="{ 'is-active': asideTab === tab.key }"
           >
             {{ tab.label }}
           </button>
@@ -144,27 +193,56 @@
 
         <div class="min-h-[400px]">
           <Transition name="fade" mode="out-in">
-            <div v-if="asideTab === 'related'" class="space-y-4">
-              <article v-for="related in relatedVideos" :key="related.id" class="flex gap-3 group cursor-pointer" @click="goToVideo(related.id, related)">
-                <div class="relative w-40 aspect-video shrink-0 overflow-hidden rounded-md bg-muted transition-colors group-hover:bg-muted/80">
-                  <VideoThumbnail v-if="related.thumbnail" :src="(related.thumbnail as string)" fit="contain" />
-                  <span v-if="related.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium text-white tabular-nums backdrop-blur-sm">{{ formatDuration(related.duration as number) }}</span>
+            <div v-if="asideTab === 'related'" key="related">
+              <div v-if="loadingRelated" class="space-y-3 animate-pulse">
+                <div v-for="n in 4" :key="n" class="flex gap-3">
+                  <div class="w-40 aspect-video rounded-md bg-muted shrink-0" />
+                  <div class="flex-1 space-y-1.5 py-0.5">
+                    <div class="h-3.5 bg-muted rounded w-full" />
+                    <div class="h-3.5 bg-muted rounded w-3/4" />
+                    <div class="h-3 bg-muted rounded w-16" />
+                  </div>
                 </div>
-                <div class="flex-1 min-w-0 flex flex-col gap-0.5">
-                  <h4 class="text-[13px] font-semibold line-clamp-2 leading-[1.3] group-hover:text-primary transition-colors tracking-tight text-foreground/90">{{ related.title }}</h4>
-                  <p class="text-[11px] text-muted-foreground/60 font-medium truncate">{{ (related as any).subscriptions?.[0]?.name || (related as any).site }}</p>
-                  <p class="text-[10px] text-muted-foreground/40 font-medium">{{ formatDate((related as any).uploaded_at) }}</p>
-                </div>
-              </article>
+              </div>
+              <div v-else-if="relatedVideos.length" class="space-y-2">
+                <article v-for="related in relatedVideos" :key="related.id" class="flex gap-3 group cursor-pointer rounded-lg p-1.5 -mx-1.5 hover:bg-accent/40 transition-colors" @click="goToVideo(related.id, related)">
+                  <div class="relative w-40 aspect-video shrink-0 overflow-hidden rounded-md bg-muted">
+                    <VideoThumbnail v-if="related.thumbnail" :src="(related.thumbnail as string)" fit="contain" />
+                    <span v-if="related.duration" class="absolute bottom-1 right-1 inline-flex h-[18px] items-center rounded-[4px] bg-black/70 px-1 text-[10px] font-semibold text-white tabular-nums">{{ formatDuration(related.duration as number) }}</span>
+                  </div>
+                  <div class="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+                    <h4 class="text-[13px] font-semibold line-clamp-2 leading-[1.35] group-hover:text-primary transition-colors text-foreground/85">{{ related.title }}</h4>
+                    <p class="text-[11px] text-muted-foreground/55 font-medium truncate">{{ (related as any).subscriptions?.[0]?.name || (related as any).site || '' }}</p>
+                    <p class="text-[10px] text-muted-foreground/35 font-medium">{{ formatDate((related as any).uploaded_at) }}</p>
+                  </div>
+                </article>
+              </div>
+              <div v-else class="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <AppIcon name="film" class="w-8 h-8 mb-3 opacity-20" />
+                <p class="text-xs font-medium">暂无相关视频</p>
+              </div>
             </div>
-            <div v-else-if="asideTab === 'clips'" class="flex flex-col items-center justify-center py-20 text-muted-foreground">
+            <div v-else-if="asideTab === 'clips'" key="clips" class="flex flex-col items-center justify-center py-20 text-muted-foreground">
               <AppIcon name="clip" class="w-10 h-10 mb-4 opacity-20" />
-              <p class="text-sm font-medium">Press Shift + M to create a clip</p>
+              <p class="text-sm font-medium">按 Shift + M 创建片段</p>
+              <p class="text-xs text-muted-foreground/50 mt-1">标记精彩时刻</p>
+            </div>
+            <div v-else-if="asideTab === 'playlist'" key="playlist" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <AppIcon name="playlists" class="w-8 h-8 mb-3 opacity-20" />
+              <p class="text-xs font-medium">播放列表功能开发中</p>
             </div>
           </Transition>
         </div>
       </div>
     </div>
+
+    <!-- Toast -->
+    <Transition name="toast">
+      <div v-if="toastVisible" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 bg-foreground text-background text-sm font-medium rounded-full shadow-premium">
+        <AppIcon :name="toastError ? 'xCircle' : 'check'" class="w-4 h-4" />
+        {{ toastMessage }}
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -307,7 +385,52 @@ watch(() => {
   await ensureLocalVideo(video.value as any)
 }, { immediate: true })
 
-const { videoActions, handleVideoAction } = useVideoActionBar({
+const moreMenuOpen = ref(false)
+const moreMenuRef = ref<HTMLElement | null>(null)
+const toastVisible = ref(false)
+const toastMessage = ref('')
+const toastError = ref(false)
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+
+const showToast = (message: string, isError = false) => {
+  if (toastTimer) clearTimeout(toastTimer)
+  toastMessage.value = message
+  toastError.value = isError
+  toastVisible.value = true
+  toastTimer = setTimeout(() => {
+    toastVisible.value = false
+    toastTimer = null
+  }, 2500)
+}
+
+const handleShare = async () => {
+  const url = `${window.location.origin}/video/${route.params.videoId}`
+  try {
+    await navigator.clipboard.writeText(url)
+    showToast('链接已复制到剪贴板')
+  } catch {
+    showToast('复制失败，请手动复制链接', true)
+  }
+}
+
+const handleClickOutside = (e: MouseEvent) => {
+  if (moreMenuRef.value && !moreMenuRef.value.contains(e.target as Node)) {
+    moreMenuOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+  void syncDescriptionOverflow()
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+  descriptionResizeObserver?.disconnect()
+  if (toastTimer) clearTimeout(toastTimer)
+})
+
+const { videoActions, videoOverflowActions, handleVideoAction } = useVideoActionBar({
   video,
   interactionTypeLike: INTERACTION_TYPE.LIKE,
   interactionTypeDislike: INTERACTION_TYPE.DISLIKE,
@@ -413,14 +536,6 @@ watch(descriptionTextRef, (el) => {
   }
 
   void syncDescriptionOverflow()
-})
-
-onMounted(() => {
-  void syncDescriptionOverflow()
-})
-
-onBeforeUnmount(() => {
-  descriptionResizeObserver?.disconnect()
 })
 
 const primarySubscription = computed(() => {
@@ -574,10 +689,27 @@ const openChannelDetail = async (profile: any) => {
 </script>
 
 <style scoped>
-.fade-enter-active, .fade-leave-active {
+.fade-enter-active,
+.fade-leave-active {
   transition: opacity 0.2s ease;
 }
-.fade-enter-from, .fade-leave-to {
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
+}
+
+.toast-enter-active {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.toast-leave-active {
+  transition: all 0.2s ease-in;
+}
+.toast-enter-from {
+  opacity: 0;
+  transform: translate(-50%, 0.5rem);
+}
+.toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 0.25rem);
 }
 </style>
