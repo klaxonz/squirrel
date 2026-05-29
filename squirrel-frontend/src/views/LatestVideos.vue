@@ -168,12 +168,12 @@
       <template v-if="searchMode === 'remote'">
         <div v-if="searchQuery" class="px-6 flex items-center justify-between mb-2 mt-4">
           <h2 class="text-[16px] font-bold tracking-tight text-foreground/90 flex items-center gap-2">
-            <AppIcon name="cloud" class="w-5 h-5 text-primary opacity-80" />
+            <AppIcon name="siteFallback" class="w-5 h-5 text-primary opacity-80" />
             远端搜索结果
           </h2>
           
           <!-- Remote Site Selector -->
-          <Select :model-value="site || 'all'" @update:model-value="site = $event === 'all' ? '' : $event">
+          <Select :model-value="site || 'all'" @update:model-value="updateRemoteSite">
             <SelectTrigger class="h-8 w-auto min-w-[120px] bg-accent/40 border-0 text-[12px] font-bold rounded-full transition-colors hover:bg-accent/60">
               <SelectValue placeholder="全部站点" />
             </SelectTrigger>
@@ -328,6 +328,11 @@ let spotlightTimer: ReturnType<typeof setInterval> | null = null
 const toolbarSentinel = ref<HTMLElement | null>(null)
 const isToolbarSticky = ref(false)
 const showSpotlightHero = computed(() => !subscriptionId.value && searchMode.value === 'local' && activeTab.value === 'all' && !searchQuery.value && spotlightVideos.value.length > 0)
+
+const updateRemoteSite = (value: unknown) => {
+  const nextSite = String(value || 'all')
+  site.value = nextSite === 'all' ? '' : nextSite
+}
 
 const startSpotlightTimer = () => {
   if (spotlightTimer) clearInterval(spotlightTimer)

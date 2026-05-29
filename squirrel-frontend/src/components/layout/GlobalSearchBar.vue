@@ -4,33 +4,16 @@
     <div 
       class="flex items-center h-9 p-1 rounded-lg bg-accent/30 border border-border/20 transition-all duration-300 group focus-within:bg-background focus-within:border-primary/20 focus-within:ring-4 focus-within:ring-primary/5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]"
     >
-      <!-- Scope Selector (Local/Remote) -->
-      <div v-if="searchModes.length > 0" class="relative">
+      <!-- Scope Toggle (Local/Remote) -->
+      <div v-if="searchModes.length > 0" class="shrink-0">
         <button
           type="button"
-          class="flex items-center gap-1.5 h-7 px-2.5 rounded-md hover:bg-muted text-[12px] font-bold text-muted-foreground transition-colors shrink-0"
-          @mousedown.prevent="isModeSelectorOpen = !isModeSelectorOpen"
+          class="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          @click="toggleMode"
         >
-          <AppIcon :name="activeSearchMode === 'local' ? 'database' : 'cloud'" class="w-3.5 h-3.5" />
+          <AppIcon :name="activeSearchMode === 'local' ? 'library' : 'siteFallback'" class="w-3.5 h-3.5" />
           {{ activeSearchModeLabel }}
-          <AppIcon name="chevronDown" class="w-3 h-3 opacity-50" />
         </button>
-        
-        <!-- Mode Dropdown -->
-        <transition enter-active-class="transition duration-100 ease-out" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-75 ease-in" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
-          <div v-if="isModeSelectorOpen" class="absolute top-full left-0 mt-2 w-32 bg-popover border border-border/50 rounded-lg shadow-xl p-1 z-[70] origin-top-left">
-            <button 
-              v-for="mode in searchModes" 
-              :key="mode.value"
-              class="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-[12px] font-medium transition-colors"
-              :class="activeSearchMode === mode.value ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'"
-              @click.stop="selectMode(mode.value)"
-            >
-              <AppIcon :name="mode.value === 'local' ? 'database' : 'cloud'" class="w-3.5 h-3.5 opacity-70" />
-              {{ mode.label }}
-            </button>
-          </div>
-        </transition>
       </div>
       
       <div v-if="searchModes.length > 0" class="w-px h-3 bg-border/40 mx-1.5 shrink-0" />
@@ -135,7 +118,6 @@ const isFocused = ref(false)
 const isTyping = ref(false)
 const isComposing = ref(false)
 const isPanelOpen = ref(false)
-const isModeSelectorOpen = ref(false)
 const activeSuggestionIndex = ref(-1)
 const recentSearches = ref<string[]>([])
 const remoteSuggestions = ref<any[]>([])
@@ -235,9 +217,15 @@ function handleSearch() {
 }
 
 function selectMode(mode: string) {
+  if (mode === props.activeSearchMode) return
   emit('search-mode-change', mode)
-  isModeSelectorOpen.value = false
   inputRef.value?.focus()
+}
+
+function toggleMode() {
+  const currentIndex = props.searchModes.findIndex((mode) => mode.value === props.activeSearchMode)
+  const nextMode = props.searchModes[(currentIndex + 1) % props.searchModes.length]
+  if (nextMode) selectMode(nextMode.value)
 }
 
 function clearSearch() {
@@ -276,7 +264,6 @@ function handleFocusOut(e: FocusEvent) {
   if (!rootRef.value?.contains(e.relatedTarget as Node)) {
     isFocused.value = false
     isPanelOpen.value = false
-    isModeSelectorOpen.value = false
   }
 }
 
