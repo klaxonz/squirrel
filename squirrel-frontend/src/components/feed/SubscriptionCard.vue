@@ -53,11 +53,11 @@
           :key="video.id"
           class="aspect-video overflow-hidden rounded-lg bg-muted/80 ring-1 ring-border/30 relative group/video"
         >
-          <img
+          <VideoThumbnail
             v-if="video.thumbnail"
             :src="video.thumbnail"
-            class="h-full w-full object-cover transition-transform duration-300 group-hover/video:scale-105"
-            loading="lazy"
+            fit="cover"
+            img-class="transition-transform duration-300 group-hover/video:scale-105"
           />
           <div class="absolute inset-0 bg-black/20 opacity-0 group-hover/video:opacity-100 transition-opacity flex items-center justify-center">
             <AppIcon name="play" class="h-4 w-4 text-white" />
@@ -91,6 +91,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import { Button } from '@/components/ui/button'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import SiteTag from '@/components/common/SiteTag.vue'
+import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import { formatDate } from '@/utils/dateFormat'
 
 const props = defineProps<{

@@ -31,14 +31,20 @@ const props = withDefaults(defineProps<{
   src?: string | null
   alt?: string
   fit?: 'contain' | 'cover' | 'responsive'
+  position?: string
   interactive?: boolean
   blur?: boolean
+  noFade?: boolean
+  imgClass?: string
 }>(), {
   src: '',
   alt: '',
   fit: 'contain',
+  position: 'center',
   interactive: false,
   blur: false,
+  noFade: false,
+  imgClass: '',
 })
 
 const thumbnailSrc = computed(() => String(props.src || '').trim())
@@ -50,10 +56,14 @@ const fitClass = computed(() => {
   return 'object-contain'
 })
 
+const positionClass = computed(() => props.position ? `object-${props.position}` : '')
+
 const imageClasses = computed(() => [
   fitClass.value,
+  positionClass.value,
   props.interactive ? 'group-hover:scale-105 group-hover:brightness-110' : '',
   props.blur ? 'blur-2xl scale-110' : '',
-  imageLoaded.value ? 'opacity-100' : 'opacity-0',
+  props.imgClass,
+  props.noFade ? '' : (imageLoaded.value ? 'opacity-100' : 'opacity-0'),
 ])
 </script>

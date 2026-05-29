@@ -27,11 +27,11 @@
             <!-- Full-Width Background Image Layers -->
             <div class="absolute inset-0 z-0 bg-black">
               <!-- Blurred Background for cinematic full-bleed effect -->
-              <img :src="video?.thumbnail" class="absolute inset-0 w-full h-full object-cover object-center opacity-40 blur-2xl scale-125 transition-transform duration-[10000ms] ease-out" />
-              
+              <VideoThumbnail :src="video?.thumbnail" :alt="video?.title" fit="cover" position="center" blur no-fade img-class="opacity-40 scale-125 transition-transform duration-[10000ms] ease-out" />
+
               <!-- Uncropped Foreground Image aligned to the right -->
               <div class="absolute inset-0 flex justify-end md:pr-12">
-                <img :src="video?.thumbnail" class="w-full md:w-3/4 h-full object-contain object-center md:object-right opacity-95 transition-transform duration-[10000ms] ease-out" :class="index === activeSpotlightIndex ? 'scale-[1.03]' : 'scale-100'" />
+                <VideoThumbnail :src="video?.thumbnail" :alt="video?.title" fit="contain" position="center" no-fade :img-class="`md:w-3/4 md:object-right opacity-95 transition-transform duration-[10000ms] ease-out ${index === activeSpotlightIndex ? 'scale-[1.03]' : 'scale-100'}`" />
               </div>
 
               <!-- Heavy gradient on left for text readability (placed over the image) -->
@@ -243,6 +243,7 @@ import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { onSubscriptionRemoved } from '@/utils/subscriptionEvents'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
+import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import { formatDate, formatDuration } from '@/utils/dateFormat'
 import { useSites } from '@/composables/useSites'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'

@@ -147,7 +147,7 @@
             <div v-if="asideTab === 'related'" class="space-y-4">
               <article v-for="related in relatedVideos" :key="related.id" class="flex gap-3 group cursor-pointer" @click="goToVideo(related.id, related)">
                 <div class="relative w-40 aspect-video shrink-0 overflow-hidden rounded-md bg-muted transition-colors group-hover:bg-muted/80">
-                  <img v-if="related.thumbnail" :src="(related.thumbnail as string)" class="h-full w-full object-contain" />
+                  <VideoThumbnail v-if="related.thumbnail" :src="(related.thumbnail as string)" fit="contain" />
                   <span v-if="related.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium text-white tabular-nums backdrop-blur-sm">{{ formatDuration(related.duration as number) }}</span>
                 </div>
                 <div class="flex-1 min-w-0 flex flex-col gap-0.5">
@@ -182,6 +182,7 @@ import { consumeVideoPlaybackSeed, peekVideoPlaybackSeed } from '@/composables/v
 import { useGlobalVideoPlayer } from '@/composables/useGlobalVideoPlayer'
 import { useAppTheme } from '@/composables/useAppTheme'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
+import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import { LocalStorageAdapter } from '@/components/video-player/core'
 import useVideoHistory from "../composables/useVideoHistory"
 import { formatDate, formatDuration } from '../utils/dateFormat'

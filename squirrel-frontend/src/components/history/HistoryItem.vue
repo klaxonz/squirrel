@@ -4,16 +4,11 @@
     @click="$emit('open', video)"
   >
     <div class="relative aspect-video w-40 flex-shrink-0 overflow-hidden rounded-md bg-muted md:w-48">
-      <img
-        v-if="video.thumbnail"
+      <VideoThumbnail
         :src="video.thumbnail"
-        referrerpolicy="no-referrer"
-        class="h-full w-full object-contain"
         :alt="video.title"
+        fit="contain"
       />
-      <div v-else class="flex h-full w-full items-center justify-center">
-        <AppIcon name="film" class="h-7 w-7 text-muted-foreground/30" />
-      </div>
 
       <!-- Bottom Shadow/Gradient for Overlay Visibility -->
       <div class="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-10" />
@@ -73,6 +68,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import { formatDate, formatDuration } from '@/utils/dateFormat'
 
 const props = defineProps<{

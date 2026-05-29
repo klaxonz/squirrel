@@ -45,11 +45,10 @@
         @click="$emit('openModal', item)"
       >
         <div class="relative aspect-video rounded-sm bg-muted overflow-hidden transition-all duration-300 group-hover:brightness-110">
-          <img
+          <VideoThumbnail
             :src="item.thumbnail"
-            loading="lazy"
-            class="w-full h-full object-cover"
             :alt="item.title"
+            fit="cover"
           />
           <!-- Bottom Shadow/Gradient for Overlay Visibility -->
           <div class="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-10" />
@@ -78,6 +77,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import useVideoHistory from '@/composables/useVideoHistory'
 import { formatDuration } from '@/utils/dateFormat'
 

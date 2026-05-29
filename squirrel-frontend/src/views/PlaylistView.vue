@@ -21,12 +21,11 @@
             @click="selectPlaylist(playlist.id)"
           >
             <div class="h-8 w-8 shrink-0 overflow-hidden rounded-md bg-muted">
-              <img
+              <VideoThumbnail
                 v-if="getPlaylistThumbnails(playlist).length"
                 :src="getPlaylistThumbnails(playlist)[0]"
-                referrerpolicy="no-referrer"
-                class="h-full w-full object-cover"
-              >
+                fit="cover"
+              />
               <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground">
                 <AppIcon name="playlistVideo" class="h-4 w-4" />
               </div>
@@ -118,20 +117,18 @@
               <section class="flex flex-col gap-4 border-b border-border/50 pb-6 sm:flex-row sm:items-end">
                 <div class="h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
                   <div v-if="getPlaylistThumbnails(activePlaylist).length >= 4" class="grid h-full w-full grid-cols-2 grid-rows-2 gap-px">
-                    <img
+                    <VideoThumbnail
                       v-for="(thumb, i) in getPlaylistThumbnails(activePlaylist).slice(0, 4)"
                       :key="i"
                       :src="thumb"
-                      referrerpolicy="no-referrer"
-                      class="h-full w-full object-cover"
-                    >
+                      fit="cover"
+                    />
                   </div>
-                  <img
+                  <VideoThumbnail
                     v-else-if="getPlaylistThumbnails(activePlaylist).length > 0"
                     :src="getPlaylistThumbnails(activePlaylist)[0]"
-                    referrerpolicy="no-referrer"
-                    class="h-full w-full object-cover"
-                  >
+                    fit="cover"
+                  />
                   <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground">
                     <AppIcon name="playlistVideo" class="h-8 w-8" />
                   </div>
@@ -186,12 +183,11 @@
 
                   <div class="flex min-w-0 items-center gap-3">
                     <div class="relative aspect-video w-20 shrink-0 overflow-hidden rounded-md bg-muted">
-                      <img
+                      <VideoThumbnail
                         v-if="item.video?.thumbnail"
                         :src="item.video.thumbnail"
-                        referrerpolicy="no-referrer"
-                        class="h-full w-full object-contain"
-                      >
+                        fit="contain"
+                      />
                       <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground">
                         <AppIcon name="film" class="h-5 w-5" />
                       </div>
@@ -280,6 +276,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
+import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
