@@ -14,49 +14,85 @@
     <div class="app-page-content">
 
       <!-- Cinematic Full-Bleed Spotlight Hero -->
-      <div v-if="showSpotlightHero" class="relative w-[calc(100%+3rem)] -mx-6 -mt-6 mb-6 border-b border-border/10 overflow-hidden group cursor-pointer bg-black" @click="handleOpenModal(spotlightVideo)">
-        <!-- Full-Width Background Image -->
-        <div class="absolute inset-0 z-0">
-          <img :src="spotlightVideo?.thumbnail" class="w-full h-full object-cover object-center opacity-60 group-hover:scale-105 transition-transform duration-1000" />
-          <!-- Heavy gradient on left for text readability -->
-          <div class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent"></div>
-          <!-- Dark bottom vignette for text contrast, eliminating the muddy white fade -->
-          <div class="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 to-transparent pointer-events-none"></div>
-        </div>
-
-        <!-- Content Overlay -->
-        <div class="relative z-10 w-full h-[320px] lg:h-[380px] flex items-end pb-8 px-8 md:px-12">
-          <div class="max-w-3xl flex flex-col gap-3">
-            <div class="flex items-center gap-3 text-sm text-white/80 font-medium">
-              <span class="flex items-center gap-1.5 text-primary tracking-widest uppercase text-xs font-bold drop-shadow">
-                <AppIcon name="star" class="w-4 h-4 fill-primary"/> SPOTLIGHT
-              </span>
-              <span class="flex items-center gap-1.5 drop-shadow">
-                <AppIcon name="time" class="w-4 h-4"/> 
-                {{ formatDate(spotlightVideo?.uploaded_at || spotlightVideo?.created_at) }}
-              </span>
-            </div>
-            
-            <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold leading-tight text-white line-clamp-2 drop-shadow-md">
-              {{ spotlightVideo?.title }}
-            </h2>
-            
-            <p class="text-white/70 text-sm md:text-base line-clamp-2 max-w-xl drop-shadow">
-              {{ spotlightVideo?.description || 'No description available for this video.' }}
-            </p>
-
-            <div class="flex items-center gap-5 mt-3">
-              <button class="flex items-center gap-2 bg-white text-black hover:bg-white/90 px-6 py-2 rounded-sm text-sm font-bold transition-colors">
-                <AppIcon name="play" class="w-4 h-4" />
-                立即播放
-              </button>
+      <div v-if="showSpotlightHero" class="relative w-[calc(100%+3rem)] -mx-6 -mt-6 mb-6 border-b border-border/10 overflow-hidden group bg-black" @mouseenter="handleSpotlightMouseEnter" @mouseleave="handleSpotlightMouseLeave">
+        <div class="relative w-full h-[320px] lg:h-[380px]">
+          <!-- Carousel Items -->
+          <div 
+            v-for="(video, index) in spotlightVideos" 
+            :key="video.id"
+            class="absolute inset-0 cursor-pointer transition-opacity duration-1000 ease-in-out"
+            :class="index === activeSpotlightIndex ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'"
+            @click="handleOpenModal(video)"
+          >
+            <!-- Full-Width Background Image Layers -->
+            <div class="absolute inset-0 z-0 bg-black">
+              <!-- Blurred Background for cinematic full-bleed effect -->
+              <img :src="video?.thumbnail" class="absolute inset-0 w-full h-full object-cover object-center opacity-40 blur-2xl scale-125 transition-transform duration-[10000ms] ease-out" />
               
-              <div class="flex items-center gap-2.5 text-white/80 hover:text-white transition-colors" @click.stop="goToChannelDetail(spotlightVideo?.subscriptions?.[0]?.id)">
-                <SubscriptionAvatar :src="spotlightVideo?.subscriptions?.[0]?.avatar" :name="spotlightVideo?.subscriptions?.[0]?.name" size="sm" class="ring-1 ring-white/20" />
-                <span class="text-xs font-medium drop-shadow">{{ spotlightVideo?.subscriptions?.[0]?.name || '未知频道' }}</span>
+              <!-- Uncropped Foreground Image aligned to the right -->
+              <div class="absolute inset-0 flex justify-end md:pr-12">
+                <img :src="video?.thumbnail" class="w-full md:w-3/4 h-full object-contain object-center md:object-right opacity-95 transition-transform duration-[10000ms] ease-out" :class="index === activeSpotlightIndex ? 'scale-[1.03]' : 'scale-100'" />
+              </div>
+
+              <!-- Heavy gradient on left for text readability (placed over the image) -->
+              <div class="absolute inset-0 bg-gradient-to-r from-black/95 via-black/60 to-transparent"></div>
+              <!-- Dark bottom vignette for text contrast -->
+              <div class="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none"></div>
+            </div>
+
+            <!-- Content Overlay -->
+            <div class="relative z-10 w-full h-full flex items-end pb-12 px-8 md:px-12">
+              <div class="max-w-3xl flex flex-col gap-3 transition-all duration-1000 transform" :class="index === activeSpotlightIndex ? 'translate-y-0 opacity-100 delay-300' : 'translate-y-8 opacity-0'">
+                <div class="flex items-center gap-3 text-sm text-white/80 font-medium">
+                  <span class="flex items-center gap-1.5 text-primary tracking-widest uppercase text-xs font-bold drop-shadow">
+                    <AppIcon name="star" class="w-4 h-4 fill-primary"/> SPOTLIGHT
+                  </span>
+                  <span class="flex items-center gap-1.5 drop-shadow">
+                    <AppIcon name="time" class="w-4 h-4"/> 
+                    {{ formatDate(video?.uploaded_at || video?.created_at) }}
+                  </span>
+                </div>
+                
+                <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold leading-tight text-white line-clamp-2 drop-shadow-md">
+                  {{ video?.title }}
+                </h2>
+                
+                <p class="text-white/70 text-sm md:text-base line-clamp-2 max-w-xl drop-shadow">
+                  {{ video?.description || 'No description available for this video.' }}
+                </p>
+
+                <div class="flex items-center gap-5 mt-3">
+                  <button class="flex items-center gap-2 bg-white text-black hover:bg-white/90 px-6 py-2 rounded-sm text-sm font-bold transition-colors">
+                    <AppIcon name="play" class="w-4 h-4" />
+                    立即播放
+                  </button>
+                  
+                  <div class="flex items-center gap-2.5 text-white/80 hover:text-white transition-colors" @click.stop="goToChannelDetail(video?.subscriptions?.[0]?.id)">
+                    <SubscriptionAvatar :src="video?.subscriptions?.[0]?.avatar" :name="video?.subscriptions?.[0]?.name" size="sm" class="ring-1 ring-white/20" />
+                    <span class="text-xs font-medium drop-shadow">{{ video?.subscriptions?.[0]?.name || '未知频道' }}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Carousel Indicators -->
+        <div v-if="spotlightVideos.length > 1" class="absolute bottom-5 left-8 md:left-12 flex items-center gap-2 z-20">
+          <button 
+            v-for="(_, index) in spotlightVideos" 
+            :key="index"
+            class="h-1.5 rounded-full transition-all duration-300 overflow-hidden relative"
+            :class="index === activeSpotlightIndex ? 'w-10 bg-white/30' : 'w-2 bg-white/40 hover:bg-white/60'"
+            @click.stop="setSpotlightIndex(index)"
+          >
+            <!-- Progress bar effect for active item -->
+            <div 
+              v-if="index === activeSpotlightIndex" 
+              class="absolute inset-y-0 left-0 bg-white"
+              :style="{ animation: `spotlight-progress ${SPOTLIGHT_INTERVAL}ms linear forwards`, animationPlayState: isSpotlightHovered ? 'paused' : 'running' }"
+            ></div>
+          </button>
         </div>
       </div>
 
@@ -260,16 +296,66 @@ const remoteChannelKey = computed(() => {
   return channel ? `${channel.site || ''}::${channel.url || ''}` : ''
 })
 
-const spotlightVideo = ref<any>(null)
+const SPOTLIGHT_INTERVAL = 6000
+const spotlightVideos = ref<any[]>([])
+const activeSpotlightIndex = ref(0)
+const isSpotlightHovered = ref(false)
+let spotlightTimer: ReturnType<typeof setInterval> | null = null
+
 const toolbarSentinel = ref<HTMLElement | null>(null)
 const isToolbarSticky = ref(false)
-const showSpotlightHero = computed(() => !subscriptionId.value && searchMode.value === 'local' && activeTab.value === 'all' && !searchQuery.value && spotlightVideo.value != null)
+const showSpotlightHero = computed(() => !subscriptionId.value && searchMode.value === 'local' && activeTab.value === 'all' && !searchQuery.value && spotlightVideos.value.length > 0)
+
+const startSpotlightTimer = () => {
+  if (spotlightTimer) clearInterval(spotlightTimer)
+  spotlightTimer = setInterval(() => {
+    nextSpotlight()
+  }, SPOTLIGHT_INTERVAL)
+}
+
+const stopSpotlightTimer = () => {
+  if (spotlightTimer) {
+    clearInterval(spotlightTimer)
+    spotlightTimer = null
+  }
+}
+
+const handleSpotlightMouseEnter = () => {
+  isSpotlightHovered.value = true
+  stopSpotlightTimer()
+}
+
+const handleSpotlightMouseLeave = () => {
+  isSpotlightHovered.value = false
+  // Restart timer if we have multiple videos
+  if (spotlightVideos.value.length > 1) {
+    startSpotlightTimer()
+  }
+}
 
 const handleChildLoaded = (videos: any) => {
   if (Array.isArray(videos) && videos.length > 0) {
-    spotlightVideo.value = videos[0]
+    spotlightVideos.value = videos.slice(0, 5) // Display up to top 5 videos in carousel
+    activeSpotlightIndex.value = 0
+    if (spotlightVideos.value.length > 1) {
+      startSpotlightTimer()
+    }
   } else {
-    spotlightVideo.value = null
+    spotlightVideos.value = []
+    stopSpotlightTimer()
+  }
+}
+
+const nextSpotlight = () => {
+  if (spotlightVideos.value.length > 1) {
+    activeSpotlightIndex.value = (activeSpotlightIndex.value + 1) % spotlightVideos.value.length
+  }
+}
+
+const setSpotlightIndex = (index: number) => {
+  activeSpotlightIndex.value = index
+  if (spotlightVideos.value.length > 1 && !isSpotlightHovered.value) {
+    startSpotlightTimer()
   }
 }
 
@@ -517,5 +603,10 @@ onMounted(() => {
 <style scoped>
 .latest-videos-page {
   --app-page-max-width: 2400px;
+}
+
+@keyframes spotlight-progress {
+  from { width: 0%; }
+  to { width: 100%; }
 }
 </style>
