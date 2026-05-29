@@ -10,29 +10,6 @@
       @synced="handleChannelSynced"
     />
 
-    <!-- Sticky Toolbar -->
-    <div class="sticky top-0 z-30">
-      <FeedToolbar
-        :active-tab="activeTab"
-        :nsfw="nsfw"
-        :sort-by="sortBy"
-        :site="site"
-        :special="special"
-        :subscription-id="subscriptionId"
-        :tabs="tabs"
-        :is-refreshing="isRefreshing"
-        :show-tabs="searchMode === 'local'"
-        :show-sort="searchMode === 'local'"
-        :show-filter="searchMode === 'local'"
-        @update:activeTab="activeTab = $event"
-        @update:nsfw="nsfw = $event"
-        @update:sortBy="sortBy = $event"
-        @update:site="site = $event"
-        @update:special="setSpecialFilter"
-        @refresh="refreshCurrentList"
-      />
-    </div>
-
     <!-- Main Content Area -->
     <div class="app-page-content">
 
@@ -99,6 +76,42 @@
           @goToSubscription="goToChannelDetail"
           @viewMore="goToSpecialFollowVideos"
         />
+      </div>
+
+      <!-- Sentinel for Sticky Toolbar -->
+      <div ref="toolbarSentinel" class="h-px w-full invisible pointer-events-none -mt-6 absolute"></div>
+
+      <!-- Zero-height Sticky Wrapper to respect AppLayout's scroll container -->
+      <div class="sticky top-6 z-50 h-0 w-full overflow-visible pointer-events-none">
+        <!-- Pure Dynamic Island (Only visible when scrolling) -->
+        <div 
+          class="mx-auto w-fit transition-all duration-500 ease-out bg-background/90 backdrop-blur-3xl shadow-2xl border border-border/15 rounded-full ring-1 ring-black/5 dark:ring-white/10 px-2 py-0.5"
+          :class="[
+            isToolbarSticky 
+              ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' 
+              : 'opacity-0 -translate-y-6 scale-95 pointer-events-none'
+          ]"
+        >
+        <FeedToolbar
+          :active-tab="activeTab"
+          :nsfw="nsfw"
+          :sort-by="sortBy"
+          :site="site"
+          :special="special"
+          :subscription-id="subscriptionId"
+          :tabs="tabs"
+          :is-refreshing="isRefreshing"
+          :show-tabs="searchMode === 'local'"
+          :show-sort="searchMode === 'local'"
+          :show-filter="searchMode === 'local'"
+          @update:activeTab="activeTab = $event"
+          @update:nsfw="nsfw = $event"
+          @update:sortBy="sortBy = $event"
+          @update:site="site = $event"
+          @update:special="setSpecialFilter"
+          @refresh="refreshCurrentList"
+        />
+      </div>
       </div>
 
       <!-- Main Feed Section Header -->
@@ -248,6 +261,8 @@ const remoteChannelKey = computed(() => {
 })
 
 const spotlightVideo = ref<any>(null)
+const toolbarSentinel = ref<HTMLElement | null>(null)
+const isToolbarSticky = ref(false)
 const showSpotlightHero = computed(() => !subscriptionId.value && searchMode.value === 'local' && activeTab.value === 'all' && !searchQuery.value && spotlightVideo.value != null)
 
 const handleChildLoaded = (videos: any) => {
@@ -483,6 +498,19 @@ onMounted(() => {
   onSubscriptionRemoved(({ subscriptionId }) => {
     if (String(route.params.id || '') === String(subscriptionId)) router.replace({ name: 'AllVideos' })
   })
+
+  const scrollContainer = document.getElementById('app-main-scroll')
+  if (scrollContainer && toolbarSentinel.value) {
+    const observer = new IntersectionObserver(([entry]) => {
+      // The element is sticky when the sentinel scrolls past the sticky offset (24px = top-6)
+      isToolbarSticky.value = !entry.isIntersecting && entry.boundingClientRect.top < (entry.rootBounds?.top || 0) + 24
+    }, {
+      root: scrollContainer,
+      rootMargin: '-24px 0px 0px 0px',
+      threshold: 0
+    })
+    observer.observe(toolbarSentinel.value)
+  }
 })
 </script>
 
