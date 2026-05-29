@@ -1,62 +1,65 @@
 <template>
   <div class="flex h-full overflow-hidden bg-background text-foreground selection:bg-primary/10">
-    <aside class="hidden w-72 shrink-0 flex-col border-r border-border/50 bg-background lg:flex">
-      <div class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4">
-        <div class="min-w-0">
-          <h1 class="truncate text-sm font-semibold">订阅</h1>
-          <p class="mt-0.5 text-xs text-muted-foreground">{{ list.length }} 个频道</p>
+    <aside class="hidden w-[320px] shrink-0 flex-col border-r border-border/20 bg-muted/10 lg:flex">
+      <div class="flex h-20 shrink-0 items-center justify-between border-b border-border/20 px-5 bg-background/50 backdrop-blur-sm">
+        <div class="min-w-0 flex flex-col justify-center">
+          <h1 class="truncate text-lg font-bold tracking-tight text-foreground/90">订阅频道</h1>
+          <p class="mt-0.5 text-xs font-medium text-muted-foreground/70">{{ list.length }} 个频道</p>
         </div>
-        <Button variant="ghost" size="icon" class="h-8 w-8 rounded-md" @click="showAddDialog = true">
-          <AppIcon name="plus" class="w-4 h-4" />
+        <Button variant="ghost" size="icon" class="h-9 w-9 rounded-full bg-primary/5 hover:bg-primary/10 text-primary transition-colors" @click="showAddDialog = true">
+          <AppIcon name="plus" class="w-5 h-5" />
         </Button>
       </div>
 
-      <div class="shrink-0 space-y-2 border-b border-border/50 p-3">
-        <div class="relative">
-          <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      <div class="shrink-0 space-y-3 border-b border-border/10 p-4 bg-background/20 backdrop-blur-sm z-10">
+        <div class="relative group">
+          <AppIcon name="search" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
           <input 
             v-model="sidebarSearch"
-            placeholder="搜索订阅" 
-            class="h-9 w-full rounded-md border border-border/50 bg-background pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-ring"
+            placeholder="搜索订阅..." 
+            class="h-10 w-full rounded-xl border border-transparent bg-accent/40 hover:bg-accent/60 pl-10 pr-4 text-sm font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/30 focus:bg-background focus:ring-4 focus:ring-primary/10"
           />
         </div>
         
-        <div ref="siteFilterRef" class="relative">
-          <button
-            @click="showSiteDropdown = !showSiteDropdown"
-            class="flex h-9 w-full items-center justify-between rounded-md border border-border/50 bg-background px-3 text-sm transition-colors hover:bg-accent/40"
-            :class="site ? 'text-foreground' : 'text-muted-foreground'"
-          >
-            <div class="flex items-center gap-2">
-              <AppIcon name="filter" class="h-3.5 w-3.5" />
-              <span>{{ activeSiteLabel }}</span>
-            </div>
-            <AppIcon name="chevronRight" class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showSiteDropdown }" />
-          </button>
+        <div class="flex items-center gap-2">
+          <div ref="siteFilterRef" class="relative flex-1">
+            <button
+              @click="showSiteDropdown = !showSiteDropdown"
+              class="flex h-9 w-full items-center justify-between rounded-lg border border-transparent bg-accent/40 px-3 text-xs font-semibold transition-all hover:bg-accent/60"
+              :class="site ? 'text-foreground border-primary/20 bg-primary/5' : 'text-muted-foreground'"
+            >
+              <div class="flex items-center gap-2">
+                <AppIcon name="filter" class="h-3.5 w-3.5" :class="site ? 'text-primary' : ''" />
+                <span>{{ activeSiteLabel }}</span>
+              </div>
+              <AppIcon name="chevronRight" class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showSiteDropdown }" />
+            </button>
 
-          <div v-if="showSiteDropdown" class="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-border/50 bg-background p-1 shadow-lg">
-            <div class="max-h-[280px] overflow-y-auto custom-scrollbar">
-              <button @click="site = ''; showSiteDropdown = false" class="flex h-8 w-full items-center rounded-md px-2.5 text-left text-sm transition-colors hover:bg-accent" :class="!site ? 'font-medium text-foreground' : 'text-muted-foreground'">全部来源</button>
-              <button v-for="opt in siteOptionsList" :key="opt.value" @click="site = opt.value; showSiteDropdown = false" class="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-sm transition-colors hover:bg-accent" :class="site === opt.value ? 'font-medium text-foreground' : 'text-muted-foreground'">
-                <SiteIcon :site="opt.value" class="h-3.5 w-3.5 rounded-sm" />
-                <span class="flex-1 truncate">{{ opt.label }}</span>
-              </button>
+            <div v-if="showSiteDropdown" class="absolute left-0 right-0 top-full z-50 mt-1.5 rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl p-1.5 shadow-xl ring-1 ring-black/5">
+              <div class="max-h-[280px] overflow-y-auto custom-scrollbar pr-1">
+                <button @click="site = ''; showSiteDropdown = false" class="flex h-9 w-full items-center rounded-lg px-3 text-left text-sm font-medium transition-colors hover:bg-accent" :class="!site ? 'text-foreground bg-accent/50' : 'text-muted-foreground'">全部来源</button>
+                <div class="h-px w-full bg-border/50 my-1"></div>
+                <button v-for="opt in siteOptionsList" :key="opt.value" @click="site = opt.value; showSiteDropdown = false" class="flex h-9 w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-medium transition-colors hover:bg-accent" :class="site === opt.value ? 'text-foreground bg-accent/50' : 'text-muted-foreground'">
+                  <SiteIcon :site="opt.value" class="h-4 w-4 rounded-sm" />
+                  <span class="flex-1 truncate">{{ opt.label }}</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <button
-          type="button"
-          class="flex h-9 w-full items-center gap-2 rounded-md border px-3 text-sm transition-colors"
-          :class="specialFilter === 'yes' ? 'border-amber-400/40 bg-amber-400/10 text-amber-600' : 'border-border/50 bg-background text-muted-foreground hover:bg-accent/40 hover:text-foreground'"
-          @click="toggleSpecialFilter"
-        >
-          <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': specialFilter === 'yes' }" />
-          <span class="flex-1 text-left">特别关注</span>
-        </button>
+          <button
+            type="button"
+            class="flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-transparent bg-accent/40 px-3 text-xs font-semibold transition-all hover:bg-accent/60"
+            :class="specialFilter === 'yes' ? 'border-amber-400/30 bg-amber-400/10 text-amber-600' : 'text-muted-foreground hover:text-foreground'"
+            @click="toggleSpecialFilter"
+          >
+            <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current drop-shadow-sm': specialFilter === 'yes' }" />
+            <span>特别关注</span>
+          </button>
+        </div>
       </div>
 
-      <div ref="channelsContainer" class="flex-1 space-y-1 overflow-y-auto p-2 custom-scrollbar">
+      <div ref="channelsContainer" class="flex-1 space-y-1 overflow-y-auto p-3 custom-scrollbar relative">
         <div
           v-for="sub in filteredChannels"
           :key="sub.id"
@@ -65,124 +68,150 @@
           @click="handleChannelClick(sub.id)"
           @keydown.enter.prevent="handleChannelClick(sub.id)"
           @keydown.space.prevent="handleChannelClick(sub.id)"
-          class="group flex h-10 w-full items-center gap-2.5 rounded-md px-2 text-left text-sm transition-colors"
-          :class="activeChannelId === sub.id ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
+          class="group relative flex h-[3.25rem] w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-all overflow-hidden"
+          :class="activeChannelId === sub.id ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
         >
           <div class="relative shrink-0">
-            <SubscriptionAvatar :src="sub.avatar" :name="sub.name" size="md" />
-            <div v-if="sub.unread_count > 0" class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
+            <SubscriptionAvatar :src="sub.avatar" :name="sub.name" size="md" :class="activeChannelId === sub.id ? 'ring-2 ring-primary/30' : ''" />
+            <div v-if="sub.unread_count > 0" class="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-background shadow-sm">
+              {{ sub.unread_count > 99 ? '99+' : sub.unread_count }}
+            </div>
           </div>
-          <span class="flex-1 truncate font-medium">{{ sub.name }}</span>
+          
+          <div class="flex-1 min-w-0" :class="{'pr-8': sub.is_special_followed}">
+            <span class="block truncate" :class="activeChannelId === sub.id ? 'font-bold' : 'font-medium'">{{ sub.name }}</span>
+          </div>
+
           <button
+            v-if="sub.is_special_followed"
             type="button"
-            class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md opacity-100 transition-colors lg:opacity-0 lg:group-hover:opacity-100"
-            :class="sub.is_special_followed ? 'text-amber-500' : 'text-muted-foreground/40 hover:bg-accent hover:text-foreground'"
-            aria-label="切换特别关注"
+            class="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-lg text-amber-500 hover:bg-amber-500/10 transition-colors"
+            aria-label="取消特别关注"
             @click.stop="toggleSpecialFollow(sub)"
           >
-            <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': sub.is_special_followed }" />
+            <AppIcon name="star" class="h-4 w-4 fill-current drop-shadow-sm" />
           </button>
-          <SiteTag :site="sub.site" class="origin-right scale-90 opacity-0 transition-opacity group-hover:opacity-100" />
+
+          <button
+            v-else
+            type="button"
+            class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-lg opacity-0 transition-all group-hover:opacity-100 text-muted-foreground/50 hover:text-foreground hover:bg-background/90 backdrop-blur-sm"
+            aria-label="设为特别关注"
+            @click.stop="toggleSpecialFollow(sub)"
+          >
+            <AppIcon name="star" class="h-4 w-4" />
+          </button>
         </div>
 
         <div v-if="loadingChannels" class="space-y-2 p-2">
-          <div v-for="i in 5" :key="i" class="h-10 w-full animate-pulse rounded-md bg-accent/40" />
+          <div v-for="i in 5" :key="i" class="h-12 w-full animate-pulse rounded-xl bg-accent/40" />
         </div>
         
-        <div ref="channelsTrigger" class="flex h-10 w-full items-center justify-center">
-          <div v-if="loadingMoreChannels" class="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+        <div ref="channelsTrigger" class="flex h-12 w-full items-center justify-center">
+          <div v-if="loadingMoreChannels" class="h-5 w-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
         </div>
 
-        <div v-if="channelsFinished && !filteredChannels.length" class="py-10 text-center">
-          <AppIcon name="inbox" class="mx-auto h-7 w-7 text-muted-foreground/30" />
-          <p class="mt-2 text-xs font-medium text-muted-foreground">暂无匹配订阅</p>
+        <div v-if="channelsFinished && !filteredChannels.length" class="py-10 flex flex-col items-center justify-center text-center">
+          <div class="h-12 w-12 rounded-full bg-accent/50 flex items-center justify-center mb-3">
+            <AppIcon name="inbox" class="h-6 w-6 text-muted-foreground/40" />
+          </div>
+          <p class="text-sm font-semibold text-foreground/70">暂无匹配订阅</p>
+          <p class="text-xs text-muted-foreground mt-1">请尝试更换筛选条件</p>
         </div>
       </div>
 
-      <div class="shrink-0 border-t border-border/50 p-3">
-        <Button variant="outline" class="h-9 w-full justify-start rounded-md" @click="showImportDialog = true">
+      <div class="shrink-0 border-t border-border/30 p-4 bg-background/50 backdrop-blur-sm">
+        <Button variant="outline" class="h-10 w-full justify-start rounded-xl border-border/50 hover:bg-background shadow-sm font-medium" @click="showImportDialog = true">
           <AppIcon name="download" class="mr-2 h-4 w-4 text-muted-foreground" />
-          <span class="text-sm font-medium">导入订阅</span>
+          导入订阅
         </Button>
       </div>
     </aside>
 
-    <main class="flex min-w-0 flex-1 flex-col bg-background">
-      <header class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4 lg:px-6">
-        <div class="flex min-w-0 items-center gap-3">
-          <div class="min-w-0">
-            <div class="flex min-w-0 items-center gap-2">
-              <h2 class="max-w-[360px] truncate text-base font-semibold">
+    <main class="flex min-w-0 flex-1 flex-col bg-background relative">
+      <header class="relative flex shrink-0 items-center justify-between border-b border-border/10 bg-background/70 px-4 py-4 lg:px-8 backdrop-blur-2xl z-20">
+        <div class="flex min-w-0 items-center gap-4">
+          <div v-if="activeChannel" class="shrink-0 relative group cursor-pointer" @click="openActiveChannelDetail">
+            <SubscriptionAvatar :src="activeChannel.avatar" :name="activeChannel.name" size="xl" class="ring-2 ring-background shadow-md transition-transform group-hover:scale-105" />
+            <div v-if="activeChannel.is_special_followed" class="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 text-white ring-2 ring-background shadow-sm">
+              <AppIcon name="star" class="h-3 w-3 fill-current" />
+            </div>
+          </div>
+          <div v-else class="flex h-[3.25rem] w-[3.25rem] shrink-0 items-center justify-center rounded-[18px] bg-primary/10 text-primary">
+            <AppIcon name="library" class="h-6 w-6" />
+          </div>
+
+          <div class="min-w-0 flex flex-col justify-center">
+            <div class="flex min-w-0 items-center gap-3">
+              <h2 class="max-w-[400px] truncate text-xl font-bold tracking-tight text-foreground/90 cursor-pointer hover:text-primary transition-colors" @click="activeChannel && openActiveChannelDetail()">
                 {{ activeChannelName || '订阅动态' }}
               </h2>
-              <div v-if="canOpenRemoteChannel" class="flex shrink-0 rounded-md border border-border/50 bg-muted p-0.5">
+              
+              <div v-if="canOpenRemoteChannel" class="flex shrink-0 rounded-lg border border-border/40 bg-muted/50 p-0.5 shadow-sm">
                 <button
                   type="button"
-                  class="inline-flex h-7 items-center gap-1.5 rounded-[5px] px-2.5 text-xs font-medium transition-colors"
+                  class="inline-flex h-6 items-center gap-1.5 rounded-[6px] px-2.5 text-[11px] font-bold uppercase tracking-wider transition-all"
                   :class="channelDataMode === 'local' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
                   @click="openLocalChannel"
                 >
-                  <AppIcon name="library" class="h-3.5 w-3.5" />
-                  本地
+                  <AppIcon name="library" class="h-3 w-3" />
+                  Local
                 </button>
                 <button
                   type="button"
-                  class="inline-flex h-7 items-center gap-1.5 rounded-[5px] px-2.5 text-xs font-medium transition-colors"
+                  class="inline-flex h-6 items-center gap-1.5 rounded-[6px] px-2.5 text-[11px] font-bold uppercase tracking-wider transition-all"
                   :class="channelDataMode === 'remote' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
                   @click="openRemoteChannel"
                 >
-                  <AppIcon name="siteFallback" class="h-3.5 w-3.5" />
-                  远端
+                  <AppIcon name="siteFallback" class="h-3 w-3" />
+                  Remote
                 </button>
               </div>
-              <button
-                v-if="activeChannelId"
-                type="button"
-                class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border/50 px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-                @click="openActiveChannelDetail"
-              >
-                <AppIcon name="chevronRight" class="h-3.5 w-3.5" />
-                详情
-              </button>
+
               <button
                 v-if="activeChannel"
                 type="button"
-                class="inline-flex h-7 shrink-0 items-center justify-center rounded-md border px-2 transition-colors"
-                :class="activeChannel.is_special_followed ? 'border-amber-400/40 bg-amber-400/10 text-amber-600' : 'border-border/50 text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
+                class="inline-flex h-7 shrink-0 items-center justify-center rounded-full border transition-all"
+                :class="activeChannel.is_special_followed ? 'border-amber-400/40 bg-amber-400/10 text-amber-600 ring-1 ring-amber-400/20' : 'border-border/50 text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
                 aria-label="切换特别关注"
                 @click="toggleSpecialFollow(activeChannel)"
               >
-                <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': activeChannel.is_special_followed }" />
+                <AppIcon name="star" class="h-3.5 w-3.5 mx-1.5" :class="{ 'fill-current drop-shadow-sm': activeChannel.is_special_followed }" />
               </button>
             </div>
-            <p class="mt-0.5 text-xs text-muted-foreground">
-              {{ headerSubtitle }}
-            </p>
-          </div>
-          <div v-if="headerLoading" class="flex gap-1">
-            <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.3s]" />
-            <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.15s]" />
-            <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" />
+            
+            <div class="mt-1 flex items-center gap-2 text-xs text-muted-foreground/80 font-medium">
+              <span>{{ headerSubtitle }}</span>
+              <div v-if="headerLoading" class="flex items-center gap-1 ml-2">
+                <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.3s]" />
+                <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/80 [animation-delay:-0.15s]" />
+                <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" />
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
-          <div class="flex shrink-0 rounded-md bg-muted p-0.5">
-            <button @click="showLocalFeed" class="h-8 rounded-[6px] px-3 text-sm font-medium transition-colors" :class="channelDataMode === 'local' && viewMode === 'feed' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">最近发布</button>
-            <button @click="showLocalGrid" class="h-8 rounded-[6px] px-3 text-sm font-medium transition-colors" :class="channelDataMode === 'local' && viewMode === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">频道</button>
+        <div class="flex items-center gap-3">
+          <div class="flex shrink-0 rounded-lg bg-accent/40 p-1">
+            <button @click="showLocalFeed" class="h-8 rounded-md px-4 text-sm font-semibold transition-all" :class="channelDataMode === 'local' && viewMode === 'feed' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">最近发布</button>
+            <button @click="showLocalGrid" class="h-8 rounded-md px-4 text-sm font-semibold transition-all" :class="channelDataMode === 'local' && viewMode === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">频道</button>
           </div>
-          <button class="hidden h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors md:flex" :class="nsfw === 'all' ? 'border-border/50 text-muted-foreground hover:bg-accent/60' : 'border-destructive/20 bg-destructive/10 text-destructive'" @click="nsfw = nsfw === 'all' ? 'yes' : 'all'">
-            <span class="h-2 w-2 rounded-full" :class="nsfw === 'all' ? 'bg-muted-foreground/30' : 'bg-destructive'" />
+          
+          <div class="h-8 w-px bg-border/40 mx-1 hidden md:block"></div>
+
+          <button class="hidden h-9 items-center gap-2 rounded-lg border border-transparent bg-accent/40 px-4 text-sm font-semibold transition-all md:flex" :class="nsfw === 'all' ? 'text-muted-foreground hover:bg-accent/60 hover:text-foreground' : 'bg-destructive/10 text-destructive'" @click="nsfw = nsfw === 'all' ? 'yes' : 'all'">
+            <span class="h-2 w-2 rounded-full" :class="nsfw === 'all' ? 'bg-muted-foreground/40' : 'bg-destructive'" />
             成年内容
           </button>
-          <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" @click="handleRefresh">
-            <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': headerLoading }" />
+          
+          <Button variant="ghost" size="icon" class="h-9 w-9 rounded-lg bg-accent/40 hover:bg-accent/60" @click="handleRefresh">
+            <AppIcon name="refresh" class="h-4 w-4 text-foreground/80" :class="{ 'animate-spin': headerLoading }" />
           </Button>
         </div>
       </header>
 
-      <div ref="feedContainer" class="flex-1 overflow-y-auto custom-scrollbar">
-        <div class="mx-auto w-full max-w-[1600px] p-4 lg:p-6">
+      <div ref="feedContainer" class="flex-1 overflow-y-auto custom-scrollbar bg-background">
+        <div class="mx-auto w-full max-w-[1800px] p-4 lg:p-6 lg:px-8">
           <RemoteChannelVideoGrid
             v-if="channelDataMode === 'remote'"
             :items="remoteItems"
@@ -194,30 +223,33 @@
             @load-more="loadMoreRemote"
           />
 
-          <div v-else-if="viewMode === 'feed'" class="space-y-10">
-            <div v-if="!feedItems.length && !loadingFeed" class="flex min-h-[24rem] flex-col items-center justify-center text-center">
-              <AppIcon name="inbox" class="h-9 w-9 text-muted-foreground/30" />
-              <h3 class="mt-4 text-sm font-semibold">暂无内容</h3>
-              <p class="mt-1 text-sm text-muted-foreground">订阅频道更新后会显示在这里。</p>
+          <div v-else-if="viewMode === 'feed'" class="space-y-12 pb-12">
+            <div v-if="!feedItems.length && !loadingFeed" class="flex min-h-[30rem] flex-col items-center justify-center text-center">
+              <div class="h-24 w-24 rounded-full bg-accent/40 flex items-center justify-center mb-6 ring-4 ring-background shadow-inner">
+                <AppIcon name="inbox" class="h-10 w-10 text-muted-foreground/30" />
+              </div>
+              <h3 class="text-lg font-bold tracking-tight text-foreground/80">暂无内容</h3>
+              <p class="mt-2 text-sm font-medium text-muted-foreground max-w-[240px]">订阅频道更新后会显示在这里。</p>
             </div>
 
             <div v-for="group in videoGroups" :key="group.title" class="space-y-4">
-              <div class="flex h-7 items-center">
-                <h3 class="text-xs font-semibold text-muted-foreground">{{ group.title }}</h3>
+              <div class="flex items-center gap-3 pt-4 pb-2">
+                <h3 class="text-[20px] font-bold tracking-tight text-foreground/90">{{ group.title }}</h3>
+                <span class="text-[12px] font-semibold text-muted-foreground/60">{{ group.videos.length }} 视频</span>
               </div>
-              <div class="grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5">
+              <div class="grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5">
                 <VideoItem v-for="video in group.videos" :key="video.id" :video="video" show-avatar @openModal="handleOpenVideo" />
               </div>
             </div>
 
-            <div v-if="loadingMoreFeed" class="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5">
-              <VideoSkeleton v-for="i in 8" :key="i" />
+            <div v-if="loadingMoreFeed" class="grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 pt-6">
+              <VideoSkeleton v-for="i in 10" :key="i" />
             </div>
             <div ref="feedTrigger" class="h-20" />
           </div>
 
-          <div v-else class="space-y-6">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          <div v-else class="space-y-8 pb-12">
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               <SubscriptionCard
                 v-for="sub in filteredChannels"
                 :key="sub.id"
@@ -226,7 +258,7 @@
                 @toggleSpecial="toggleSpecialFollow"
               />
             </div>
-            <div v-if="loadingChannels && !list.length" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <div v-if="loadingChannels && !list.length" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               <SubscriptionCardSkeleton v-for="i in 12" :key="i" />
             </div>
             <div v-if="!channelsFinished" ref="gridMoreTrigger" class="h-20" />
