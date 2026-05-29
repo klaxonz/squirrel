@@ -1724,7 +1724,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   font-family: var(--sp-font-mono);
   letter-spacing: 0.1em;
   font-weight: 700;
-  text-shadow: 0 0 4px rgba(255, 77, 0, 0.4);
+  text-shadow: 0 0 4px rgba(var(--sp-primary-rgb), 0.4);
 }
 
 .sp-hud-separator {
@@ -1808,7 +1808,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 .sp-progress-played {
   position: absolute;
   height: 100%;
-  background: var(--sp-primary, #ff4d00);
+  background: var(--sp-primary, #d3d4d8);
   box-shadow: 0 0 10px rgba(var(--sp-primary-rgb), 0.5);
   border-radius: 2px;
   display: flex;
@@ -2098,7 +2098,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 
 .sp-quality-tag:hover,
 .sp-quality-tag.is-active {
-  color: var(--sp-primary, #ff4d00);
+  color: var(--sp-primary, #d3d4d8);
   border-color: var(--sp-border);
   background: var(--sp-bg-hover);
 }
@@ -2132,7 +2132,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 }
 
 .sp-icon-btn:hover {
-  color: var(--sp-primary, #ff4d00);
+  color: var(--sp-primary, #d3d4d8);
   transform: translateY(-1px);
 }
 

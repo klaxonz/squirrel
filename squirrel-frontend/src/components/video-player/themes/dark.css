@@ -4,12 +4,12 @@
 
 .sp-player.sp-theme-dark,
 .sp-player[data-sp-theme="dark"] {
-  /* 核心颜色 (Cyber Orange) */
-  --sp-theme-primary: #ff4d00;
-  --sp-theme-primary-hover: #ff6a26;
-  --sp-theme-primary-active: #cc3d00;
-  --sp-theme-primary-rgb: 255, 77, 0;
-  
+  /* 核心颜色 (Ring Blue-Gray - 与应用 --ring 色调统一) */
+  --sp-theme-primary: #d3d4d8;
+  --sp-theme-primary-hover: #e4e5e8;
+  --sp-theme-primary-active: #b8b9be;
+  --sp-theme-primary-rgb: 211, 212, 216;
+
   /* 背景 */
   --sp-bg-elevated: rgba(18, 18, 18, 0.85);
   --sp-bg-overlay: rgba(0, 0, 0, 0.65);
@@ -18,9 +18,9 @@
   --sp-overlay-weak: rgba(0, 0, 0, 0.55);
   --sp-overlay: rgba(0, 0, 0, 0.7);
   --sp-overlay-strong: rgba(0, 0, 0, 0.85);
-  --sp-bg-hover: rgba(255, 77, 0, 0.12);
-  --sp-bg-active: rgba(255, 77, 0, 0.2);
-  
+  --sp-bg-hover: rgba(211, 212, 216, 0.08);
+  --sp-bg-active: rgba(211, 212, 216, 0.14);
+
   /* 文字 */
   --sp-text: #ffffff;
   --sp-text-strong: #ffffff;
@@ -28,45 +28,45 @@
   --sp-text-muted: rgba(255, 255, 255, 0.55);
   --sp-text-tertiary: rgba(255, 255, 255, 0.4);
   --sp-text-disabled: rgba(255, 255, 255, 0.25);
-  
+
   /* 边框 */
-  --sp-border: rgba(255, 77, 0, 0.18);
-  --sp-border-hover: rgba(255, 77, 0, 0.32);
-  
+  --sp-border: rgba(211, 212, 216, 0.12);
+  --sp-border-hover: rgba(211, 212, 216, 0.22);
+
   /* 控制栏 */
   --sp-controls-bg: transparent;
   --sp-controls-group-bg: rgba(0, 0, 0, 0.72);
-  
+
   /* 进度条 */
   --sp-progress-bg: rgba(255, 255, 255, 0.12);
   --sp-progress-buffered: rgba(255, 255, 255, 0.2);
-  
+
   /* 菜单 */
   --sp-menu-bg: rgba(10, 10, 10, 0.88);
-  --sp-menu-border: rgba(255, 77, 0, 0.24);
+  --sp-menu-border: rgba(211, 212, 216, 0.1);
   --sp-menu-shadow: 0 12px 48px rgba(0, 0, 0, 0.8);
-  --sp-btn-toggled-bg: rgba(255, 77, 0, 0.2);
+  --sp-btn-toggled-bg: rgba(211, 212, 216, 0.14);
   --sp-switch-bg: rgba(255, 255, 255, 0.15);
   --sp-switch-thumb: #fff;
-  
+
   /* 提示 */
-  --sp-tooltip-bg: rgba(255, 77, 0, 0.95);
-  
+  --sp-tooltip-bg: rgba(30, 30, 30, 0.95);
+
   /* 字幕 */
   --sp-subtitle-color: #ffffff;
-  --sp-subtitle-highlight: #ff4d00;
+  --sp-subtitle-highlight: #d3d4d8;
   --sp-subtitle-bg-rgb: 0, 0, 0;
   --sp-subtitle-bg-opacity: 0.8;
   --sp-subtitle-bg: rgba(var(--sp-subtitle-bg-rgb), var(--sp-subtitle-bg-opacity));
-  --sp-spinner-stroke-color: #ff4d00;
+  --sp-spinner-stroke-color: #d3d4d8;
   --sp-error-bg: rgba(10, 10, 10, 0.9);
-  --sp-error-btn-border: rgba(255, 77, 0, 0.3);
-  --sp-error-btn-bg: rgba(255, 77, 0, 0.1);
-  --sp-error-btn-hover-bg: rgba(255, 77, 0, 0.2);
-  --sp-error-btn-active-bg: rgba(255, 77, 0, 0.3);
-  
+  --sp-error-btn-border: rgba(211, 212, 216, 0.22);
+  --sp-error-btn-bg: rgba(211, 212, 216, 0.06);
+  --sp-error-btn-hover-bg: rgba(211, 212, 216, 0.12);
+  --sp-error-btn-active-bg: rgba(211, 212, 216, 0.18);
+
   /* 阴影 */
-  --sp-shadow-sm: 0 0 10px rgba(255, 77, 0, 0.2);
-  --sp-shadow-md: 0 0 20px rgba(255, 77, 0, 0.35);
-  --sp-shadow-lg: 0 0 40px rgba(255, 77, 0, 0.45);
+  --sp-shadow-sm: 0 0 10px rgba(211, 212, 216, 0.1);
+  --sp-shadow-md: 0 0 20px rgba(211, 212, 216, 0.15);
+  --sp-shadow-lg: 0 0 40px rgba(211, 212, 216, 0.2);
 }
