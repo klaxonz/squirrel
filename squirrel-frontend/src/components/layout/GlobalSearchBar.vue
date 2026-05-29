@@ -2,16 +2,46 @@
   <div ref="rootRef" class="relative w-full max-w-[560px]" @focusin="handleFocusIn" @focusout="handleFocusOut">
     <!-- Search Input Field -->
     <div 
-      class="flex items-center h-9 px-3 rounded-lg bg-accent/30 border border-border/20 transition-all duration-300 group focus-within:bg-background focus-within:border-primary/20 focus-within:ring-4 focus-within:ring-primary/5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]"
+      class="flex items-center h-9 p-1 rounded-lg bg-accent/30 border border-border/20 transition-all duration-300 group focus-within:bg-background focus-within:border-primary/20 focus-within:ring-4 focus-within:ring-primary/5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]"
     >
-      <AppIcon name="search" class="w-3.5 h-3.5 text-muted-foreground/40 group-focus-within:text-primary transition-colors mr-2.5" :stroke-width="2.5" />
+      <!-- Scope Selector (Local/Remote) -->
+      <div v-if="searchModes.length > 0" class="relative">
+        <button
+          type="button"
+          class="flex items-center gap-1.5 h-7 px-2.5 rounded-md hover:bg-muted text-[12px] font-bold text-muted-foreground transition-colors shrink-0"
+          @mousedown.prevent="isModeSelectorOpen = !isModeSelectorOpen"
+        >
+          <AppIcon :name="activeSearchMode === 'local' ? 'database' : 'cloud'" class="w-3.5 h-3.5" />
+          {{ activeSearchModeLabel }}
+          <AppIcon name="chevronDown" class="w-3 h-3 opacity-50" />
+        </button>
+        
+        <!-- Mode Dropdown -->
+        <transition enter-active-class="transition duration-100 ease-out" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-75 ease-in" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
+          <div v-if="isModeSelectorOpen" class="absolute top-full left-0 mt-2 w-32 bg-popover border border-border/50 rounded-lg shadow-xl p-1 z-[70] origin-top-left">
+            <button 
+              v-for="mode in searchModes" 
+              :key="mode.value"
+              class="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-[12px] font-medium transition-colors"
+              :class="activeSearchMode === mode.value ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'"
+              @click.stop="selectMode(mode.value)"
+            >
+              <AppIcon :name="mode.value === 'local' ? 'database' : 'cloud'" class="w-3.5 h-3.5 opacity-70" />
+              {{ mode.label }}
+            </button>
+          </div>
+        </transition>
+      </div>
+      
+      <div v-if="searchModes.length > 0" class="w-px h-3 bg-border/40 mx-1.5 shrink-0" />
+      <AppIcon v-else name="search" class="w-3.5 h-3.5 text-muted-foreground/40 group-focus-within:text-primary transition-colors ml-2 mr-1.5" :stroke-width="2.5" />
       
       <input
         ref="inputRef"
         v-model="inputValue"
         type="text"
         :placeholder="placeholder"
-        class="flex-1 bg-transparent border-none text-[13px] font-medium outline-none placeholder:text-muted-foreground/30"
+        class="flex-1 bg-transparent border-none px-1 text-[13px] font-medium outline-none placeholder:text-muted-foreground/30 min-w-0"
         @input="handleInput"
         @compositionstart="isComposing = true"
         @compositionend="handleCompositionEnd"
@@ -21,26 +51,17 @@
         @keydown.esc.prevent="handleEscape"
       />
 
-      <div class="flex items-center gap-2 ml-2">
+      <div class="flex items-center gap-1.5 pr-1">
         <!-- Loading Spinner -->
         <div v-if="isTyping" class="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
         
         <!-- Clear Button -->
         <button v-if="inputValue" @click="clearSearch" class="p-1 rounded-md hover:bg-muted text-muted-foreground/60 transition-colors">
-          <AppIcon name="close" class="w-3 h-3" />
+          <AppIcon name="close" class="w-3.5 h-3.5" />
         </button>
         
-        <!-- Kbd Hint (Linear Style) -->
-        <button
-          v-if="activeSearchModeLabel"
-          type="button"
-          class="h-6 shrink-0 rounded-md border border-border/50 bg-muted/40 px-2 text-[11px] font-semibold text-muted-foreground/70 transition-colors hover:bg-background hover:text-foreground"
-          @click.stop="cycleSearchMode"
-        >
-          {{ activeSearchModeLabel }}
-        </button>
-
-        <div v-else class="hidden md:flex items-center gap-1 px-1.5 py-0.5 rounded border border-border/60 bg-muted/50 text-[10px] font-bold text-muted-foreground/40 tracking-tighter">
+        <!-- Kbd Hint -->
+        <div class="hidden md:flex items-center gap-1 px-1.5 py-0.5 rounded border border-border/60 bg-muted/50 text-[10px] font-bold text-muted-foreground/40 tracking-tighter">
           <span class="text-[11px] leading-none">⌘</span>K
         </div>
       </div>
@@ -61,29 +82,13 @@
           <button v-if="recentSearches.length" @click="clearRecentSearches" class="text-[10px] font-bold text-muted-foreground/40 hover:text-destructive transition-colors uppercase">清空</button>
         </div>
 
-        <div v-if="searchActionItems.length" class="grid grid-cols-2 gap-1 px-1 pb-1">
-          <button
-            v-for="(item, index) in searchActionItems"
-            :key="item.id"
-            type="button"
-            class="flex min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors"
-            :class="index === activeSuggestionIndex ? 'bg-secondary text-foreground' : 'text-muted-foreground/80 hover:bg-secondary/50 hover:text-foreground'"
-            @mouseenter="activeSuggestionIndex = index"
-            @click="searchWithMode(item.mode)"
-          >
-            <AppIcon name="search" class="h-3.5 w-3.5 shrink-0 opacity-60" />
-            <div class="min-w-0">
-              <span class="block truncate text-[12px] font-semibold">{{ item.label }}</span>
-              <span class="block truncate text-[10px] opacity-50">{{ item.meta }}</span>
-            </div>
-          </button>
-        </div>
+
 
         <div v-for="(item, index) in suggestionItems" :key="item.id" class="flex min-w-0 gap-1">
           <button
             class="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2 text-left transition-all"
-            :class="index + searchActionItems.length === activeSuggestionIndex ? 'bg-secondary text-foreground' : 'hover:bg-secondary/50 text-muted-foreground/80'"
-            @mouseenter="activeSuggestionIndex = index + searchActionItems.length"
+            :class="index === activeSuggestionIndex ? 'bg-secondary text-foreground' : 'hover:bg-secondary/50 text-muted-foreground/80'"
+            @mouseenter="activeSuggestionIndex = index"
             @click="selectSuggestion(item.value)"
           >
             <AppIcon :name="item.type === 'search' ? 'search' : 'history'" class="h-4 w-4 shrink-0 opacity-50" />
@@ -97,7 +102,7 @@
           </button>
         </div>
         
-        <div v-if="!searchActionItems.length && !suggestionItems.length" class="p-8 text-center text-[12px] text-muted-foreground/40 font-medium">暂无搜索记录</div>
+        <div v-if="!suggestionItems.length" class="p-8 text-center text-[12px] text-muted-foreground/40 font-medium">暂无搜索记录</div>
       </div>
     </transition>
   </div>
@@ -130,6 +135,7 @@ const isFocused = ref(false)
 const isTyping = ref(false)
 const isComposing = ref(false)
 const isPanelOpen = ref(false)
+const isModeSelectorOpen = ref(false)
 const activeSuggestionIndex = ref(-1)
 const recentSearches = ref<string[]>([])
 const remoteSuggestions = ref<any[]>([])
@@ -144,17 +150,7 @@ const showSuggestions = computed(() => isPanelOpen.value && isFocused.value)
 const activeSearchModeLabel = computed(() => {
   return props.searchModes.find((mode) => mode.value === props.activeSearchMode)?.label || ''
 })
-const searchActionItems = computed(() => {
-  if (!trimmedInputValue.value) return []
-  return props.searchModes.map((mode) => ({
-    id: `mode-${mode.value}`,
-    type: 'mode',
-    mode: mode.value,
-    label: `${mode.label}搜索`,
-    meta: trimmedInputValue.value,
-  }))
-})
-const selectableItems = computed(() => [...searchActionItems.value, ...suggestionItems.value])
+const selectableItems = computed(() => [...suggestionItems.value])
 
 watch(() => uiStore.searchQuery, (newVal) => {
   if (newVal !== inputValue.value) inputValue.value = newVal
@@ -213,11 +209,7 @@ function handleEnterKey() {
   if (isComposing.value) return
   if (activeSuggestionIndex.value >= 0) {
     const item = selectableItems.value[activeSuggestionIndex.value]
-    if (item?.type === 'mode') {
-      searchWithMode(item.mode)
-    } else if (item?.value) {
       selectSuggestion(item.value)
-    }
   } else {
     handleSearch()
   }
@@ -242,16 +234,10 @@ function handleSearch() {
   inputRef.value?.blur()
 }
 
-function searchWithMode(mode: string) {
+function selectMode(mode: string) {
   emit('search-mode-change', mode)
-  handleSearch()
-}
-
-function cycleSearchMode() {
-  if (props.searchModes.length < 2) return
-  const currentIndex = props.searchModes.findIndex((mode) => mode.value === props.activeSearchMode)
-  const nextMode = props.searchModes[(currentIndex + 1) % props.searchModes.length]
-  emit('search-mode-change', nextMode.value)
+  isModeSelectorOpen.value = false
+  inputRef.value?.focus()
 }
 
 function clearSearch() {
@@ -290,6 +276,7 @@ function handleFocusOut(e: FocusEvent) {
   if (!rootRef.value?.contains(e.relatedTarget as Node)) {
     isFocused.value = false
     isPanelOpen.value = false
+    isModeSelectorOpen.value = false
   }
 }
 

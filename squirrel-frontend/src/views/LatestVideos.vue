@@ -118,7 +118,7 @@
       <div ref="toolbarSentinel" class="h-px w-full invisible pointer-events-none -mt-6 absolute"></div>
 
       <!-- Zero-height Sticky Wrapper to respect AppLayout's scroll container -->
-      <div class="sticky top-6 z-50 h-0 w-full overflow-visible pointer-events-none">
+      <div v-if="searchMode === 'local' || subscriptionId" class="sticky top-6 z-30 h-0 w-full overflow-visible pointer-events-none">
         <!-- Pure Dynamic Island (Only visible when scrolling) -->
         <div 
           class="mx-auto w-fit transition-all duration-500 ease-out bg-background/90 backdrop-blur-3xl shadow-2xl border border-border/15 rounded-full ring-1 ring-black/5 dark:ring-white/10 px-2 py-0.5"
@@ -165,15 +165,35 @@
         </div>
       </div>
 
-      <keep-alive v-if="searchMode === 'remote'">
-        <RemoteSearchResults
-          ref="remoteSearchRef"
-          :query="searchQuery"
-          :site="site"
-          @error="loadError = $event"
-          @loading-change="isRefreshing = !!$event"
-        />
-      </keep-alive>
+      <template v-if="searchMode === 'remote'">
+        <div v-if="searchQuery" class="px-6 flex items-center justify-between mb-2 mt-4">
+          <h2 class="text-[16px] font-bold tracking-tight text-foreground/90 flex items-center gap-2">
+            <AppIcon name="cloud" class="w-5 h-5 text-primary opacity-80" />
+            远端搜索结果
+          </h2>
+          
+          <!-- Remote Site Selector -->
+          <Select :model-value="site || 'all'" @update:model-value="site = $event === 'all' ? '' : $event">
+            <SelectTrigger class="h-8 w-auto min-w-[120px] bg-accent/40 border-0 text-[12px] font-bold rounded-full transition-colors hover:bg-accent/60">
+              <SelectValue placeholder="全部站点" />
+            </SelectTrigger>
+            <SelectContent class="border-border/10 bg-background/70 backdrop-blur-2xl shadow-2xl rounded-md min-w-[140px]">
+              <SelectItem value="all" class="text-xs">全部站点</SelectItem>
+              <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">{{ opt.label }}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <keep-alive>
+          <RemoteSearchResults
+            ref="remoteSearchRef"
+            :query="searchQuery"
+            :site="site"
+            @error="loadError = $event"
+            @loading-change="isRefreshing = !!$event"
+          />
+        </keep-alive>
+      </template>
 
       <RemoteChannelVideoGrid
         v-else-if="subscriptionId && channelDataMode === 'remote'"
@@ -224,6 +244,8 @@ import { onSubscriptionRemoved } from '@/utils/subscriptionEvents'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import { formatDate, formatDuration } from '@/utils/dateFormat'
+import { useSites } from '@/composables/useSites'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 defineOptions({ name: 'LatestVideos' })
 
@@ -269,6 +291,7 @@ const uiStore = useUIStore()
 
 const subscriptionId = computed(() => route.params.id as string)
 const { activeTab, nsfw, sortBy, site, searchQuery, special, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId })
+const { options: siteOptions, fetchSites } = useSites()
 
 const tabs = ref(VIDEO_TABS)
 const isRefreshing = ref(false)
@@ -597,6 +620,8 @@ onMounted(() => {
     })
     observer.observe(toolbarSentinel.value)
   }
+
+  fetchSites()
 })
 </script>
 
