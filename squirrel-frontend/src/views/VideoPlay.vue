@@ -79,9 +79,9 @@
               </div>
             </div>
 
-            <div v-if="videoActors.length" class="flex flex-wrap items-center gap-2">
+            <div v-if="displayedVideoActors.length" class="flex flex-wrap items-center gap-2">
               <button
-                v-for="actor in videoActors"
+                v-for="actor in displayedVideoActors"
                 :key="actor.url || actor.name"
                 type="button"
                 class="inline-flex h-8 max-w-full items-center gap-2 rounded-full bg-accent/35 px-2.5 text-[12px] font-semibold text-foreground/85 ring-1 ring-border/20 transition-colors hover:bg-accent/55"
@@ -426,6 +426,24 @@ const primarySubscription = computed(() => {
   const v = video.value as any
   if (!v) return null
   return v.subscriptions?.[0] || v.actors?.[0] || null
+})
+
+const displayedVideoActors = computed(() => {
+  const primary = primarySubscription.value as any
+  const primaryUrl = String(primary?.url || '').trim().toLowerCase()
+  const primaryId = primary?.id != null ? String(primary.id).trim() : ''
+  const primaryName = String(primary?.name || '').trim().toLowerCase()
+
+  return videoActors.value.filter((actor: any) => {
+    const actorUrl = String(actor?.url || '').trim().toLowerCase()
+    if (primaryUrl && actorUrl && actorUrl === primaryUrl) return false
+
+    const actorId = actor?.id != null ? String(actor.id).trim() : ''
+    if (primaryId && actorId && actorId === primaryId) return false
+
+    const actorName = String(actor?.name || '').trim().toLowerCase()
+    return !(primaryName && actorName && actorName === primaryName)
+  })
 })
 
 const primarySubscriptionUrl = computed(() => String((primarySubscription.value as any)?.url || '').trim())
