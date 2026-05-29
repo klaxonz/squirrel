@@ -15,6 +15,12 @@ const SITE = 'youtube'
 const ORIGIN = 'https://www.youtube.com'
 const DESKTOP_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36'
 
+const buildChannelUrl = (browseEndpoint) => {
+  const browseId = String(browseEndpoint?.browseId || '').trim()
+  if (browseId.startsWith('UC')) return `${ORIGIN}/channel/${encodeURIComponent(browseId)}`
+  return normalizeUrl(browseEndpoint?.canonicalBaseUrl || '', ORIGIN)
+}
+
 const collectVideoRenderers = (node, output) => {
   if (!node || typeof node !== 'object') return
   if (node.videoRenderer) {
@@ -66,9 +72,6 @@ const extractOwnerProfile = (renderer) => {
   const name = pickText(ownerText)
   const ownerRun = Array.isArray(ownerText?.runs) ? ownerText.runs.find((run) => run?.navigationEndpoint) : null
   const browseEndpoint = ownerRun?.navigationEndpoint?.browseEndpoint
-  const webUrl = ownerRun?.navigationEndpoint?.commandMetadata?.webCommandMetadata?.url
-    || browseEndpoint?.canonicalBaseUrl
-    || ''
   const avatar = pickThumbnail(
     renderer?.channelThumbnailSupportedRenderers?.channelThumbnailWithLinkRenderer?.thumbnail?.thumbnails
   )
@@ -79,7 +82,7 @@ const extractOwnerProfile = (renderer) => {
     id: browseEndpoint?.browseId || null,
     type: 'CHANNEL',
     name,
-    url: normalizeUrl(webUrl, ORIGIN),
+    url: buildChannelUrl(browseEndpoint),
     avatar,
     is_nsfw: false,
   }
@@ -103,9 +106,6 @@ const findLockupOwnerRun = (lockup) => {
 const extractLockupOwnerProfile = (lockup) => {
   const ownerRun = findLockupOwnerRun(lockup)
   const browseEndpoint = ownerRun?.onTap?.innertubeCommand?.browseEndpoint
-  const webUrl = ownerRun?.onTap?.innertubeCommand?.commandMetadata?.webCommandMetadata?.url
-    || browseEndpoint?.canonicalBaseUrl
-    || ''
   const name = String(ownerRun?.text || '').trim()
 
   if (!name) return null
@@ -114,7 +114,7 @@ const extractLockupOwnerProfile = (lockup) => {
     id: browseEndpoint?.browseId || null,
     type: 'CHANNEL',
     name,
-    url: normalizeUrl(webUrl, ORIGIN),
+    url: buildChannelUrl(browseEndpoint),
     avatar: '',
     is_nsfw: false,
   }

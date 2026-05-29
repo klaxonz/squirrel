@@ -187,6 +187,12 @@ const buildYouTubeVideosUrl = (channelUrl) => {
   return url.toString()
 }
 
+const buildYouTubeChannelUrl = (url, profile = {}) => {
+  const profileId = String(profile?.id || '').trim()
+  if (profileId.startsWith('UC')) return `${YOUTUBE_ORIGIN}/channel/${encodeURIComponent(profileId)}`
+  return normalizeChannelUrl(url)
+}
+
 const extractYouTubeProfile = (initialData, channelUrl, providedProfile = {}) => {
   const metadata = initialData?.metadata?.channelMetadataRenderer || {}
   const header = initialData?.header?.pageHeaderRenderer || initialData?.header?.c4TabbedHeaderRenderer || {}
@@ -396,7 +402,7 @@ const getYouTubeChannel = async ({ url, limit, page, cursor, fetchImpl, buildCoo
     }
   }
 
-  const channelUrl = normalizeChannelUrl(url)
+  const channelUrl = buildYouTubeChannelUrl(url, profile)
   const videosUrl = buildYouTubeVideosUrl(channelUrl)
   const cookie = await buildCookieHeader(YOUTUBE_ORIGIN)
   const html = await fetchText(fetchImpl, videosUrl, {

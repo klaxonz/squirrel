@@ -146,13 +146,13 @@ test('desktop youtube remote search extracts video renderers', async () => {
   assert.equal(items[0].site, 'youtube')
   assert.equal(items[0].url, 'https://www.youtube.com/watch?v=abc123')
   assert.equal(items[0].duration, 63)
-  assert.equal(items[0].uploader_url, 'https://www.youtube.com/@demo')
+  assert.equal(items[0].uploader_url, 'https://www.youtube.com/channel/UCdemo')
   assert.equal(items[0].uploader_avatar, 'https://yt3.ggpht.com/demo-avatar=s88-c-k-c0x00ffffff-no-rj')
   assert.deepEqual(items[0].subscriptions, [{
     id: 'UCdemo',
     type: 'CHANNEL',
     name: 'Demo Channel',
-    url: 'https://www.youtube.com/@demo',
+    url: 'https://www.youtube.com/channel/UCdemo',
     avatar: 'https://yt3.ggpht.com/demo-avatar=s88-c-k-c0x00ffffff-no-rj',
     is_nsfw: false,
   }])
@@ -255,7 +255,7 @@ test('desktop youtube remote search extracts lockup view models', async () => {
   assert.equal(result.items[0].url, 'https://www.youtube.com/watch?v=lock123')
   assert.equal(result.items[0].duration, 341)
   assert.equal(result.items[0].published_text, '3 days ago')
-  assert.equal(result.items[0].uploader_url, 'https://www.youtube.com/@demo')
+  assert.equal(result.items[0].uploader_url, 'https://www.youtube.com/channel/UCdemo')
 })
 
 test('desktop youtube remote search loads continuation pages', async () => {
@@ -1057,6 +1057,45 @@ test('desktop youtube remote channel parses lockup view model videos', async () 
   assert.equal(result.items[0].url, 'https://www.youtube.com/watch?v=lock123')
   assert.equal(result.items[0].duration, 77)
   assert.equal(result.items[0].published_text, '8 days ago')
+})
+
+test('desktop youtube remote channel uses profile channel id for page requests', async () => {
+  const initialData = {
+    metadata: {
+      channelMetadataRenderer: {
+        title: 'Demo Channel',
+        externalId: 'UCdemo',
+      },
+    },
+    contents: {
+      richGridRenderer: {
+        contents: [],
+      },
+    },
+  }
+
+  let requestedUrl = ''
+  await getRemoteChannel({
+    site: 'youtube',
+    url: 'https://www.youtube.com/@Demo Channel',
+    limit: 5,
+    profile: {
+      id: 'UCdemo',
+      name: 'Demo Channel',
+      url: 'https://www.youtube.com/@Demo Channel',
+      avatar: '',
+    },
+    buildCookieHeader,
+    fetchImpl: async (url) => {
+      requestedUrl = url
+      return htmlResponse(`
+        <script>ytcfg.set({"INNERTUBE_API_KEY":"test-key","INNERTUBE_CONTEXT":{"client":{"clientName":"WEB","clientVersion":"1.0"}}});</script>
+        <script>var ytInitialData = ${JSON.stringify(initialData)};</script>
+      `)
+    },
+  })
+
+  assert.equal(requestedUrl, 'https://www.youtube.com/channel/UCdemo/videos')
 })
 
 test('desktop youtube remote channel loads continuation videos', async () => {

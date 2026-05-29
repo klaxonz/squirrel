@@ -527,15 +527,36 @@ const {
   flushPendingReport
 } as any)
 
+const resolveRemoteChannelSite = (url: string) => {
+  let parsedUrl: URL
+  try {
+    parsedUrl = new URL(url)
+  } catch {
+    return ''
+  }
+
+  const hostname = parsedUrl.hostname.toLowerCase().replace(/^www\./, '')
+  const pathname = parsedUrl.pathname
+
+  if (hostname === 'space.bilibili.com' && /^\/\d+/i.test(pathname)) return 'bilibili'
+  if (hostname === 'youtube.com' && /^\/(?:@[^/]+|channel\/[^/]+|c\/[^/]+|user\/[^/]+)/i.test(pathname)) return 'youtube'
+  if (hostname === 'javdb.com' && /^\/actors?\//i.test(pathname)) return 'javdb'
+  if (hostname === 'pornhub.com' && /^\/(?:users?|channels?|model|pornstar)\//i.test(pathname)) return 'pornhub'
+  if (hostname === 'youporn.com' && /^\/(?:channel|amateur|pornstar|model)\//i.test(pathname)) return 'youporn'
+
+  return ''
+}
+
 const openChannelDetail = async (profile: any) => {
   const url = String(profile?.url || '').trim()
-  const isJavdbActor = /javdb\.com\/actors\//i.test(url)
-  if ((video.value as any)?.source === 'remote' || isJavdbActor) {
+  const remoteSite = resolveRemoteChannelSite(url)
+
+  if (remoteSite) {
     if (url) {
       await router.push({
         name: 'RemoteChannelDetail',
         query: {
-          site: isJavdbActor ? 'javdb' : String((video.value as any)?.site || ''),
+          site: remoteSite,
           url,
           id: profile?.id != null ? String(profile.id) : undefined,
           name: profile?.name || undefined,
