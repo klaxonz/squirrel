@@ -51,11 +51,15 @@
             class="w-full h-full object-cover"
             :alt="item.title"
           />
-          <div v-if="item.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium tabular-nums text-white backdrop-blur-sm">
+          <!-- Bottom Shadow/Gradient for Overlay Visibility -->
+          <div class="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-10" />
+
+          <div v-if="item.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium tabular-nums text-white backdrop-blur-sm z-20">
             {{ formatDuration(item.duration) }}
           </div>
-          <div class="absolute bottom-0 left-0 right-0 h-1 bg-black/40">
-            <div class="h-full bg-primary transition-all duration-500" :style="{ width: `${getProgress(item) * 100}%` }" />
+          <!-- Progress Bar -->
+          <div class="absolute bottom-0 inset-x-0 h-1 group-hover:h-1.5 transition-all duration-300 z-20 bg-white/30">
+            <div class="h-full bg-white transition-all duration-500 ease-out" :style="{ width: `${getProgress(item) * 100}%` }" />
           </div>
           <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             <div class="size-10 rounded-full bg-primary/90 flex items-center justify-center text-white shadow-lg backdrop-blur-sm scale-75 group-hover:scale-100 transition-transform">

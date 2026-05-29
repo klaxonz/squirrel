@@ -15,14 +15,15 @@
         <AppIcon name="film" class="h-7 w-7 text-muted-foreground/30" />
       </div>
 
-      <div v-if="video.progress > 0" class="absolute bottom-0 left-0 right-0 h-0.5 overflow-hidden bg-black/20">
-        <div
-          class="h-full bg-primary"
-          :style="{ width: `${video.progress * 100}%` }"
-        />
+      <!-- Bottom Shadow/Gradient for Overlay Visibility -->
+      <div class="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-10" />
+
+      <!-- Progress Bar -->
+      <div v-if="video.progress > 0" class="absolute bottom-0 inset-x-0 h-1 group-hover:h-1.5 transition-all duration-300 z-20 bg-white/30">
+        <div class="h-full bg-white transition-all duration-500 ease-out" :style="{ width: `${video.progress * 100}%` }" />
       </div>
 
-      <div v-if="video.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium text-white tabular-nums backdrop-blur-sm">
+      <div v-if="video.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium text-white tabular-nums backdrop-blur-sm z-20">
         {{ formatDuration(video.duration) }}
       </div>
 

@@ -49,13 +49,17 @@
         {{ formatDuration(video.duration) }}
       </span>
 
+      <!-- Bottom Shadow/Gradient for Overlay Visibility -->
+      <div class="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-black/60 to-transparent opacity-100 pointer-events-none z-10" />
+
       <!-- Hover Timeline (Visual only for now) -->
-      <div class="absolute bottom-0 left-0 right-0 h-1 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div class="absolute bottom-0 left-0 right-0 h-1 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity z-20">
         <div class="h-full bg-white/40 w-1/3 animate-[pulse_2s_ease-in-out_infinite]" />
       </div>
 
-      <div v-if="progressRatio > 0" class="absolute bottom-0 left-0 right-0 h-0.5 overflow-hidden bg-black/20 group-hover:h-1 transition-all">
-        <div class="h-full bg-primary transition-all duration-500" :style="{ width: `${progressRatio * 100}%` }" />
+      <!-- Progress Bar -->
+      <div v-if="progressRatio > 0" class="absolute bottom-0 inset-x-0 h-1 group-hover:h-1.5 transition-all duration-300 z-20 bg-white/30">
+        <div class="h-full bg-white transition-all duration-500 ease-out" :style="{ width: `${progressRatio * 100}%` }" />
       </div>
     </div>
 
