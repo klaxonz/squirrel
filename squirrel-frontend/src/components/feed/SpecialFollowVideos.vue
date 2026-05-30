@@ -56,7 +56,7 @@
           </div>
           <div class="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity group-hover:opacity-100">
             <div class="flex size-10 scale-75 items-center justify-center rounded-full bg-primary/90 text-primary-foreground shadow-lg backdrop-blur-sm transition-transform group-hover:scale-100">
-              <AppIcon name="play" class="ml-1 size-5" />
+              <AppIcon name="play" class="size-5" />
             </div>
           </div>
         </div>
