@@ -483,7 +483,7 @@
               :class="readerFontClass"
               :style="{ fontSize: readerFontSize + 'px' }"
               @click="handleContentClick"
-              v-html="readingEntry.summary || '<p class=text-muted-foreground>该文章暂无正文内容。</p>'"
+              v-html="cleanAndDecodeHtml(readingEntry.summary) || '<p class=text-muted-foreground>该文章暂无正文内容。</p>'"
             />
           </div>
 
@@ -884,7 +884,7 @@
               :class="readerFontClass"
               :style="{ fontSize: readerFontSize + 'px' }"
               @click="handleContentClick"
-              v-html="readingEntry.summary || '<p class=text-muted-foreground>该文章暂无正文内容。</p>'"
+              v-html="cleanAndDecodeHtml(readingEntry.summary) || '<p class=text-muted-foreground>该文章暂无正文内容。</p>'"
             />
           </div>
         </div>
@@ -1341,10 +1341,37 @@ const getFeedInitials = (feedId: number) => {
   return title.trim().charAt(0) || 'R'
 }
 
+// Safely decode HTML entities using a temporary textarea
+const decodeHtmlEntities = (str: string) => {
+  if (!str) return ''
+  const txt = document.createElement('textarea')
+  txt.innerHTML = str
+  return txt.value
+}
+
+// Clean and recursively decode escaped HTML to support both single and double escaped markup
+const cleanAndDecodeHtml = (html: string | null | undefined): string => {
+  if (!html) return ''
+  
+  let decoded = html
+  // Detect if it contains escaped HTML tags like &lt;p or &amp;lt;p
+  const escapedHtmlRegex = /&(amp;)?lt;\/?(p|div|h[1-6]|a|span|br|strong|em|ul|ol|li|blockquote|img|table|tr|td|th|section|article|pre|code)\b/i
+  
+  let iterations = 0
+  while (escapedHtmlRegex.test(decoded) && iterations < 3) {
+    decoded = decodeHtmlEntities(decoded)
+    iterations++
+  }
+  
+  return decoded
+}
+
 // Clean summary HTML tags for compact card summary rendering
 const stripHtmlTags = (html: string) => {
   if (!html) return ''
-  let text = html.replace(/<(script|style)\b[^>]*>([\s\S]*?)<\/\1>/gi, '')
+  // Pre-decode escaped HTML tags so we operate on unescaped HTML
+  const decodedHtml = cleanAndDecodeHtml(html)
+  let text = decodedHtml.replace(/<(script|style)\b[^>]*>([\s\S]*?)<\/\1>/gi, '')
   text = text.replace(/<[^>]+>/g, ' ')
   text = text
     .replace(/&nbsp;/g, ' ')
