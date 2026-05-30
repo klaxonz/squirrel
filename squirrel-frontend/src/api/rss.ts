@@ -24,8 +24,10 @@ export const testRssAccountConfig = async (payload: RssAccountPayload) => post('
 
 export const testRssAccount = async (accountId: string | number) => post(`/api/rss/accounts/${accountId}/test`)
 
-export const syncRssAccount = async (accountId: string | number, entryLimit?: number) => {
-  const params = entryLimit ? { entryLimit } : {}
+export const syncRssAccount = async (accountId: string | number, entryLimit?: number, forceFullSync?: boolean) => {
+  const params: Record<string, unknown> = {}
+  if (entryLimit) params.entryLimit = entryLimit
+  if (forceFullSync) params.forceFullSync = true
   return post(`/api/rss/accounts/${accountId}/sync/start`, null, { params })
 }
 

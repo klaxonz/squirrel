@@ -738,7 +738,7 @@ def test_account(user_id: int, account_id: int) -> Optional[dict[str, Any]]:
     return {'ok': True, 'feed_count': feed_count}
 
 
-def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = None) -> Optional[dict[str, Any]]:
+def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = None, force_full_sync: bool = False) -> Optional[dict[str, Any]]:
     sync_lock = _sync_lock_for_account(account_id)
     if not sync_lock.acquire(blocking=False):
         raise RssServiceError('RSS account sync is already running')
@@ -818,48 +818,49 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
                     _set_sync_progress(account_id, phase='entries_saving', entries_synced=synced_entries)
                     session.commit()
 
-            try:
-                reading_ids_raw = client.fetch_all_item_ids('reading-list', limit=200000)
-            except Exception:
-                reading_ids_raw = []
+            if not force_full_sync:
+                try:
+                    reading_ids_raw = client.fetch_all_item_ids('reading-list', limit=200000)
+                except Exception:
+                    reading_ids_raw = []
 
-            if reading_ids_raw:
-                _set_sync_progress(account_id, phase='entries_saving', message='Syncing read/starred state')
-                read_ids = set(client.fetch_all_item_ids('user/-/state/com.google/read', limit=200000))
-                starred_ids = set(client.fetch_all_item_ids('user/-/state/com.google/starred', limit=50000))
-                reading_ids = set(reading_ids_raw)
+                if reading_ids_raw:
+                    _set_sync_progress(account_id, phase='entries_saving', message='Syncing read/starred state')
+                    read_ids = set(client.fetch_all_item_ids('user/-/state/com.google/read', limit=200000))
+                    starred_ids = set(client.fetch_all_item_ids('user/-/state/com.google/starred', limit=50000))
+                    reading_ids = set(reading_ids_raw)
 
-                with get_session() as session:
-                    local_rows = session.execute(
-                        select(RssEntry.id, RssEntry.external_entry_id, RssEntry.is_read, RssEntry.is_starred)
-                        .where(RssEntry.account_id == account_id)
-                    ).all()
+                    with get_session() as session:
+                        local_rows = session.execute(
+                            select(RssEntry.id, RssEntry.external_entry_id, RssEntry.is_read, RssEntry.is_starred)
+                            .where(RssEntry.account_id == account_id)
+                        ).all()
 
-                    local_by_eid: dict[str, tuple[int, bool, bool]] = {
-                        row.external_entry_id: (row.id, row.is_read, row.is_starred)
-                        for row in local_rows
-                    }
+                        local_by_eid: dict[str, tuple[int, bool, bool]] = {
+                            row.external_entry_id: (row.id, row.is_read, row.is_starred)
+                            for row in local_rows
+                        }
 
-                    local_ids = set(local_by_eid.keys())
-                    removed_ids = local_ids - reading_ids
+                        local_ids = set(local_by_eid.keys())
+                        removed_ids = local_ids - reading_ids
 
-                    if removed_ids:
-                        session.execute(delete(RssEntry).where(RssEntry.external_entry_id.in_(list(removed_ids))))
+                        if removed_ids:
+                            session.execute(delete(RssEntry).where(RssEntry.external_entry_id.in_(list(removed_ids))))
 
-                    update_dicts: list[dict[str, Any]] = []
-                    for eid, (eid_id, is_read, is_starred) in local_by_eid.items():
-                        if eid not in reading_ids:
-                            continue
-                        should_read = eid not in read_ids
-                        should_starred = eid in starred_ids
-                        if is_read != should_read or is_starred != should_starred:
-                            update_dicts.append({'id': eid_id, 'is_read': should_read, 'is_starred': should_starred})
+                        update_dicts: list[dict[str, Any]] = []
+                        for eid, (eid_id, is_read, is_starred) in local_by_eid.items():
+                            if eid not in reading_ids:
+                                continue
+                            should_read = eid not in read_ids
+                            should_starred = eid in starred_ids
+                            if is_read != should_read or is_starred != should_starred:
+                                update_dicts.append({'id': eid_id, 'is_read': should_read, 'is_starred': should_starred})
 
-                    if update_dicts:
-                        session.bulk_update_mappings(RssEntry, update_dicts)
+                        if update_dicts:
+                            session.bulk_update_mappings(RssEntry, update_dicts)
 
-                    if removed_ids or update_dicts:
-                        session.commit()
+                        if removed_ids or update_dicts:
+                            session.commit()
         else:
             if effective_entry_limit is None:
                 raise RssServiceError('Sync entry limit is required for this RSS provider')

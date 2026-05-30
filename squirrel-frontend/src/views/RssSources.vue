@@ -96,14 +96,35 @@
             <span class="truncate pr-1">
               {{ selectedAccount.last_sync_at ? '同步于 ' + formatDate(selectedAccount.last_sync_at) : '从未同步' }}
             </span>
-            <button 
-              @click="syncSelectedAccount" 
-              class="flex items-center gap-1 font-semibold text-primary hover:text-primary/80 transition-all shrink-0" 
-              :disabled="syncing"
-            >
-              <AppIcon name="refresh" class="h-3 w-3" :class="{ 'animate-spin': syncing }" />
-              <span>同步</span>
-            </button>
+            <div class="relative flex items-center gap-0.5 shrink-0" ref="syncDropdownRef">
+              <button 
+                @click="syncSelectedAccount(false)" 
+                class="flex items-center gap-1 font-semibold text-primary hover:text-primary/80 transition-all shrink-0" 
+                :disabled="syncing"
+              >
+                <AppIcon name="refresh" class="h-3 w-3" :class="{ 'animate-spin': syncing }" />
+                <span>增量</span>
+              </button>
+              <button 
+                @click="showSyncMenu = !showSyncMenu" 
+                class="p-0.5 rounded text-muted-foreground/60 hover:text-primary transition-colors"
+                :disabled="syncing"
+              >
+                <AppIcon name="chevronDown" class="h-3 w-3" />
+              </button>
+              <div 
+                v-if="showSyncMenu" 
+                class="absolute right-0 top-full z-50 mt-1 w-28 rounded-lg border border-border/50 bg-background/95 backdrop-blur-xl p-1 shadow-lg"
+              >
+                <button 
+                  @click="syncSelectedAccount(true); showSyncMenu = false" 
+                  class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                >
+                  <AppIcon name="refresh" class="h-3 w-3" />
+                  <span>全量同步</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Feed Search input -->
@@ -636,6 +657,8 @@ const showDeleteConfirmModal = ref(false)
 const accountToDelete = ref<RssAccount | null>(null)
 const showAccountDropdown = ref(false)
 const accountDropdownRef = ref<HTMLElement | null>(null)
+const showSyncMenu = ref(false)
+const syncDropdownRef = ref<HTMLElement | null>(null)
 const feedSearch = ref('')
 const collapsedFolders = ref<Record<string, boolean>>({})
 
@@ -669,6 +692,9 @@ const formError = ref(false)
 // Click outside account dropdown logic
 onClickOutside(accountDropdownRef, () => {
   showAccountDropdown.value = false
+})
+onClickOutside(syncDropdownRef, () => {
+  showSyncMenu.value = false
 })
 
 // Computeds
@@ -1056,11 +1082,11 @@ const pollSyncProgress = () => {
   }, 1000)
 }
 
-const syncSelectedAccount = async () => {
+const syncSelectedAccount = async (forceFullSync = false) => {
   if (!selectedAccountId.value) return
   syncing.value = true
   statusMessage.value = ''
-  const result = await syncRssAccount(selectedAccountId.value)
+  const result = await syncRssAccount(selectedAccountId.value, undefined, forceFullSync)
   if (result.error) {
     syncing.value = false
     setStatus(result.error.message || '启动同步失败', true)

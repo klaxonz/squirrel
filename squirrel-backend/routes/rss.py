@@ -134,6 +134,7 @@ def sync_rss_account(
 def start_rss_sync(
     account_id: int,
     entry_limit: Optional[int] = Query(None, ge=1, alias='entryLimit'),
+    force_full_sync: bool = Query(False, alias='forceFullSync'),
     current_user: User = Depends(get_current_user),
 ):
     progress = rss_service.get_sync_progress(current_user.id, account_id)
@@ -146,7 +147,7 @@ def start_rss_sync(
 
     def _bg_sync():
         try:
-            rss_service.sync_account(user_id, account_id, entry_limit=entry_limit)
+            rss_service.sync_account(user_id, account_id, entry_limit=entry_limit, force_full_sync=force_full_sync)
         except rss_service.RssServiceError:
             pass
         except Exception:
