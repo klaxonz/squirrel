@@ -223,7 +223,7 @@ def test_greader_client_paginates_reading_list():
 
     assert [entry.title for entry in entries] == ['Entry One', 'Entry Two']
     assert len(http_client.urls) == 2
-    assert 'stream/contents/reading-list?output=json&n=500' in http_client.urls[0]
+    assert 'stream/contents/reading-list?output=json&n=1000' in http_client.urls[0]
     assert 'c=next-page' in http_client.urls[1]
 
 

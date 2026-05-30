@@ -2,7 +2,7 @@
   <AppPageShell variant="compact">
     <div class="flex h-full overflow-hidden bg-background text-foreground selection:bg-primary/10">
       <!-- 1. Left Sidebar: Accounts & Feeds -->
-      <aside class="hidden w-[320px] shrink-0 flex-col border-r border-border/20 bg-muted/10 lg:flex">
+      <aside class="hidden w-[320px] shrink-0 flex-col border-r border-border/20 bg-muted/20 dark:bg-muted/5 lg:flex">
         <!-- Header -->
         <div class="flex h-20 shrink-0 items-center justify-between border-b border-border/20 px-5 bg-background/50 backdrop-blur-sm">
           <div class="min-w-0 flex flex-col justify-center">
@@ -123,9 +123,9 @@
           <button
             @click="selectedFeedId = null; loadEntries(true)"
             class="group relative flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-all overflow-hidden"
-            :class="!selectedFeedId ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20 font-bold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground font-medium'"
+            :class="!selectedFeedId ? 'bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground font-medium'"
           >
-            <AppIcon name="library" class="h-4 w-4 shrink-0" />
+            <AppIcon name="inbox" class="h-4 w-4 shrink-0" />
             <span class="flex-1 truncate">全部文章</span>
             <span class="text-xs opacity-60">{{ filteredFeeds.length }}</span>
           </button>
@@ -157,7 +157,7 @@
                 :key="feed.id"
                 @click="selectFeed(feed.id)"
                 class="group relative flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-xs transition-all overflow-hidden"
-                :class="selectedFeedId === feed.id ? 'bg-primary/10 text-primary shadow-sm font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
+                :class="selectedFeedId === feed.id ? 'bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
               >
                 <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
                 <span class="flex-1 truncate">{{ feed.title }}</span>
@@ -247,32 +247,32 @@
             </div>
 
             <!-- Articles List -->
-            <div v-else class="flex flex-col gap-3">
+            <div v-else class="flex flex-col divide-y divide-border/10 border-t border-b border-border/10">
               <div 
                 v-for="entry in filteredEntries" 
                 :key="entry.id"
                 @click="openReader(entry)"
-                class="group relative flex flex-col justify-between rounded-xl border p-4 transition-all duration-300 ease-out cursor-pointer animate-fade-in"
-                :class="readingEntry?.id === entry.id ? 'border-primary/40 bg-primary/5 ring-1 ring-primary/10' : 'border-border/20 bg-accent/5 hover:bg-accent/12 hover:border-primary/20'"
+                class="group relative flex flex-col justify-between py-4 px-3.5 transition-all duration-200 ease-out cursor-pointer animate-fade-in"
+                :class="readingEntry && String(readingEntry.id) === String(entry.id) ? 'bg-primary/5' : 'bg-transparent hover:bg-accent/5'"
               >
                 <!-- Card Top: Category & Time -->
-                <div class="flex items-center justify-between text-xs text-muted-foreground/85 mb-2.5">
-                  <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/5 border border-primary/10 text-primary text-[9px] font-bold tracking-wide uppercase group-hover:bg-primary/10 group-hover:border-primary/20 transition-all duration-300 ease-out">
+                <div class="flex items-center justify-between text-xs text-muted-foreground/85 mb-2">
+                  <span class="inline-flex items-center text-primary text-[10px] font-bold tracking-wider uppercase">
                     {{ getFeedCategory(entry.feed_id) }}
                   </span>
-                  <span class="tabular-nums text-[10px]">{{ formatDate(entry.published_at) }}</span>
+                  <span class="tabular-nums text-[10px] text-muted-foreground/60">{{ formatDate(entry.published_at) }}</span>
                 </div>
                 
                 <!-- Title & Summary -->
-                <div class="flex-1 space-y-1.5 mb-3.5">
-                  <h4 class="text-xs font-bold leading-snug transition-colors duration-300 ease-out line-clamp-2" :class="readingEntry?.id === entry.id ? 'text-primary' : 'text-foreground/90 group-hover:text-primary'">
+                <div class="flex-1 space-y-1 mb-3">
+                  <h4 class="text-xs font-bold leading-snug transition-colors duration-200 ease-out line-clamp-2" :class="readingEntry && String(readingEntry.id) === String(entry.id) ? 'text-primary' : 'text-foreground/90 group-hover:text-primary'">
                     {{ entry.title }}
                   </h4>
-                  <p v-if="entry.summary" class="text-[11px] leading-relaxed text-muted-foreground/75 line-clamp-2" v-html="stripHtmlTags(entry.summary)" />
+                  <p v-if="entry.summary" class="text-[11px] leading-relaxed text-muted-foreground/70 line-clamp-2" v-html="stripHtmlTags(entry.summary)" />
                 </div>
                 
                 <!-- Card Bottom: Source & Media indicator -->
-                <div class="flex items-center justify-between pt-3 border-t border-border/5">
+                <div class="flex items-center justify-between pt-1">
                   <div class="flex items-center gap-2 min-w-0">
                     <SiteIcon :icon-url="getFeedIconUrl(entry.feed_id)" size="xs" rounded="sm" class="shrink-0" />
                     <span class="text-[11px] font-semibold text-muted-foreground/90 truncate">
@@ -280,7 +280,7 @@
                     </span>
                   </div>
                   
-                  <AppIcon name="externalLink" class="h-3 w-3 text-muted-foreground/40 group-hover:text-foreground/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300 ease-out" />
+                  <AppIcon name="externalLink" class="h-3 w-3 text-muted-foreground/40 group-hover:text-foreground/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-200 ease-out" />
                 </div>
               </div>
             </div>
@@ -294,30 +294,32 @@
       </section>
 
       <!-- 3. Right Column: Permanent Article Content Reader -->
-      <main class="hidden lg:flex flex-1 min-w-0 flex-col bg-accent/5 relative h-full overflow-hidden">
+      <main class="hidden lg:flex flex-1 min-w-0 flex-col bg-background relative h-full overflow-hidden border-l border-border/10">
         <!-- If an article is selected, render it -->
         <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden animate-fade-in bg-background">
           <!-- Reader Header -->
-          <header class="shrink-0 border-b border-border/10 p-6 bg-background/50 backdrop-blur-md pr-6 flex flex-col gap-2">
+          <header class="shrink-0 border-b border-border/10 p-6 flex flex-col gap-3.5 bg-background">
             <!-- Feed Source details & Date -->
-            <div class="flex items-center gap-2.5 text-xs text-muted-foreground">
-              <span class="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold uppercase tracking-wider text-[9px]">
-                {{ getFeedCategory(readingEntry.feed_id) }}
-              </span>
-              <span>•</span>
-              <span class="font-bold text-foreground/80">{{ getFeedTitle(readingEntry.feed_id) }}</span>
-              <span>•</span>
-              <span>发布于 {{ formatDate(readingEntry.published_at) }}</span>
+            <div class="flex items-center justify-between text-xs text-muted-foreground/85">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold uppercase tracking-wider text-[9px]">
+                  {{ getFeedCategory(readingEntry.feed_id) }}
+                </span>
+                <span>•</span>
+                <span class="font-bold text-foreground/80">{{ getFeedTitle(readingEntry.feed_id) }}</span>
+              </div>
+              
+              <span class="tabular-nums text-muted-foreground/60 text-[11px]">{{ formatDate(readingEntry.published_at) }}</span>
             </div>
             
             <!-- Title -->
-            <h3 class="text-lg md:text-xl font-bold tracking-tight text-foreground leading-snug">
+            <h3 class="text-xl md:text-2xl font-bold tracking-tight text-foreground leading-snug">
               {{ readingEntry.title }}
             </h3>
             
-            <!-- Actions -->
-            <div class="flex items-center justify-between mt-1.5">
-              <div class="flex items-center gap-3">
+            <!-- Actions Row -->
+            <div class="flex items-center justify-between mt-1 pt-3.5 border-t border-border/5">
+              <div class="flex items-center gap-2">
                 <a 
                   :href="readingEntry.canonical_url" 
                   target="_blank" 
@@ -329,7 +331,7 @@
                 </a>
               </div>
               
-              <!-- Close/Deselect button for clean workspace feel -->
+              <!-- Close/Deselect button -->
               <button 
                 @click="closeReader"
                 class="h-8 px-3 rounded-lg border border-border/50 bg-accent/10 hover:bg-accent/25 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-xs font-semibold gap-1"
@@ -342,10 +344,10 @@
           </header>
           
           <!-- Reader Body Scroll Container -->
-          <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6 bg-background">
+          <div class="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10 bg-background space-y-6">
             <!-- Description / HTML content -->
             <div 
-              class="reader-content prose prose-sm dark:prose-invert max-w-none text-foreground/90 leading-relaxed font-normal py-2 space-y-4"
+              class="reader-content prose prose-neutral dark:prose-invert max-w-3xl mx-auto text-foreground/90 leading-relaxed font-normal py-2 space-y-4"
               v-html="readingEntry.summary || '<p class=text-muted-foreground>该文章暂无正文内容。</p>'"
             />
           </div>

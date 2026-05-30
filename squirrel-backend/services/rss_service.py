@@ -21,7 +21,7 @@ from models.rss import RssAccount, RssEntry, RssFeed
 logger = logging.getLogger(__name__)
 
 SUPPORTED_PROVIDERS = {'greader', 'miniflux', 'fever'}
-G_READER_PAGE_SIZE = 500
+G_READER_PAGE_SIZE = 1000
 UNSET = object()
 _SYNC_LOCK = Lock()
 _ACCOUNT_SYNC_LOCKS: dict[int, Lock] = {}
@@ -781,20 +781,16 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
 
             with get_session() as session:
                 feeds_by_external_id: dict[str, RssFeed] = {}
-                batch_index = 0
                 for page in client.iter_recent_entries(effective_entry_limit, _on_entries_fetched):
-                    new_feeds = _load_feeds_by_external_id(session, account_id, page)
+                    new_feeds = _load_feeds_by_external_id(session, account_id, page, feeds_by_external_id)
                     feeds_by_external_id.update(new_feeds)
-                    for batch in _chunked(page, 200):
-                        batch_index += 1
-                        batch_entries = _upsert_remote_entries_batch(session, feeds_by_external_id, batch)
-                        synced_entries += batch_entries
-                        _set_sync_progress(
-                            account_id,
-                            phase='entries_saving',
-                            entries_synced=synced_entries,
-                            current_batch=batch_index,
-                        )
+                    batch_entries = _upsert_remote_entries_batch(session, feeds_by_external_id, page)
+                    synced_entries += batch_entries
+                    _set_sync_progress(
+                        account_id,
+                        phase='entries_saving',
+                        entries_synced=synced_entries,
+                    )
                     session.commit()
         else:
             if effective_entry_limit is None:
@@ -973,7 +969,6 @@ def _upsert_remote_entries_batch(
     feeds_by_external_id: dict[str, RssFeed],
     remote_entries: list[RemoteEntry],
 ) -> int:
-    entries_by_key: dict[tuple[int, str], RssEntry] = {}
     feed_ids: set[int] = set()
     entry_ids: list[str] = []
 
@@ -986,18 +981,20 @@ def _upsert_remote_entries_batch(
         feed_ids.add(feed.id)
         entry_ids.append(remote_entry.external_entry_id)
 
+    existing: dict[tuple[int, str], RssEntry] = {}
     if feed_ids and entry_ids:
-        existing_entries = session.scalars(
+        existing_rows = session.scalars(
             select(RssEntry).where(
                 RssEntry.feed_id.in_(feed_ids),
                 RssEntry.external_entry_id.in_(entry_ids),
             )
         ).all()
-        entries_by_key = {(entry.feed_id, entry.external_entry_id): entry for entry in existing_entries}
+        existing = {(e.feed_id, e.external_entry_id): e for e in existing_rows}
 
-    new_entry_dicts: list[dict[str, Any]] = []
-    new_entry_keys: list[tuple[int, str]] = []
-    upserted_count = 0
+    new_dicts: list[dict[str, Any]] = []
+    update_dicts: list[dict[str, Any]] = []
+    touched_feeds: set[int] = set()
+    now = datetime.now()
 
     for remote_entry in remote_entries:
         if not remote_entry.external_feed_id:
@@ -1006,63 +1003,75 @@ def _upsert_remote_entries_batch(
         if not feed or not feed.enabled:
             continue
         key = (feed.id, remote_entry.external_entry_id)
-        entry = entries_by_key.get(key)
+        entry = existing.get(key)
+
+        common = dict(
+            user_id=feed.user_id,
+            account_id=feed.account_id,
+            feed_id=feed.id,
+            external_entry_id=remote_entry.external_entry_id,
+            canonical_url=remote_entry.canonical_url,
+            title=remote_entry.title,
+            summary=remote_entry.summary,
+            thumbnail=remote_entry.thumbnail,
+            author=remote_entry.author,
+            published_at=remote_entry.published_at,
+            is_read=remote_entry.is_read,
+            is_starred=remote_entry.is_starred,
+            raw_data=remote_entry.raw_data,
+        )
+
         if entry is None:
-            now = datetime.now()
-            new_entry_dicts.append(dict(
-                user_id=feed.user_id,
-                account_id=feed.account_id,
-                feed_id=feed.id,
-                external_entry_id=remote_entry.external_entry_id,
-                canonical_url=remote_entry.canonical_url,
-                title=remote_entry.title,
-                summary=remote_entry.summary,
-                thumbnail=remote_entry.thumbnail,
-                author=remote_entry.author,
-                published_at=remote_entry.published_at,
-                is_read=remote_entry.is_read,
-                is_starred=remote_entry.is_starred,
-                raw_data=remote_entry.raw_data,
-                created_at=now,
-                updated_at=now,
-            ))
-            new_entry_keys.append(key)
-            upserted_count += 1
+            common['created_at'] = now
+            common['updated_at'] = now
+            new_dicts.append(common)
         else:
-            entry.canonical_url = remote_entry.canonical_url
-            entry.title = remote_entry.title
-            entry.summary = remote_entry.summary
-            entry.thumbnail = remote_entry.thumbnail
-            entry.author = remote_entry.author
-            entry.published_at = remote_entry.published_at
-            entry.is_read = remote_entry.is_read
-            entry.is_starred = remote_entry.is_starred
-            entry.raw_data = remote_entry.raw_data
-            upserted_count += 1
-        feed.last_entry_sync_at = datetime.now()
+            if (entry.title == remote_entry.title
+                    and entry.summary == remote_entry.summary
+                    and entry.author == remote_entry.author
+                    and entry.canonical_url == remote_entry.canonical_url
+                    and entry.thumbnail == remote_entry.thumbnail
+                    and entry.is_read == remote_entry.is_read
+                    and entry.is_starred == remote_entry.is_starred
+                    and entry.published_at == remote_entry.published_at):
+                continue
 
-    if new_entry_dicts:
-        session.bulk_insert_mappings(RssEntry, new_entry_dicts)
+            common['id'] = entry.id
+            common['updated_at'] = now
+            update_dicts.append(common)
 
-    return upserted_count
+        if feed.id not in touched_feeds:
+            feed.last_entry_sync_at = now
+            touched_feeds.add(feed.id)
+
+    if new_dicts:
+        session.bulk_insert_mappings(RssEntry, new_dicts)
+    if update_dicts:
+        session.bulk_update_mappings(RssEntry, update_dicts)
+
+    return len(new_dicts) + len(update_dicts)
 
 
 def _load_feeds_by_external_id(
     session,
     account_id: int,
     remote_entries: list[RemoteEntry],
+    known_feeds: Optional[dict[str, RssFeed]] = None,
 ) -> dict[str, RssFeed]:
-    external_feed_ids = sorted({entry.external_feed_id for entry in remote_entries if entry.external_feed_id})
-    if not external_feed_ids:
+    feed_ids = {entry.external_feed_id for entry in remote_entries if entry.external_feed_id}
+    if not feed_ids:
+        return {}
+    if known_feeds:
+        feed_ids -= known_feeds.keys()
+    if not feed_ids:
         return {}
     feeds = session.scalars(
         select(RssFeed).where(
             RssFeed.account_id == account_id,
-            RssFeed.external_feed_id.in_(external_feed_ids),
+            RssFeed.external_feed_id.in_(sorted(feed_ids)),
         )
     ).all()
     return {feed.external_feed_id: feed for feed in feeds if feed.enabled}
 
 
-def _chunked(items: list[RemoteEntry], size: int) -> list[list[RemoteEntry]]:
-    return [items[index:index + size] for index in range(0, len(items), size)]
+
