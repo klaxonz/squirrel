@@ -91,10 +91,14 @@
           <!-- Selected Account Sync Info -->
           <div 
             v-if="selectedAccount" 
-            class="flex items-center justify-between p-2.5 rounded-xl bg-accent/20 border border-border/10 text-xs text-muted-foreground/90"
+            class="flex items-center justify-between p-2 rounded-lg bg-accent/20 border border-border/10 text-xs text-muted-foreground/90"
           >
-            <span class="truncate pr-1">
-              {{ selectedAccount.last_sync_at ? '同步于 ' + formatDate(selectedAccount.last_sync_at) : '从未同步' }}
+            <span 
+              class="truncate pr-1 flex-1 min-w-0"
+              :class="{ 'text-primary font-semibold animate-pulse': syncing, 'text-destructive': statusError }"
+              :title="statusMessage"
+            >
+              {{ statusMessage || (selectedAccount.last_sync_at ? '同步于 ' + formatDate(selectedAccount.last_sync_at) : '从未同步') }}
             </span>
             <div class="relative flex items-center gap-0.5 shrink-0" ref="syncDropdownRef">
               <button 
@@ -238,20 +242,6 @@
         <!-- Main Body Scroll Container -->
         <div ref="entriesContainer" class="flex-1 overflow-y-auto custom-scrollbar bg-background">
           <div class="w-full p-4 space-y-4">
-            <!-- Global Status Bar -->
-            <div 
-              v-if="statusMessage" 
-              class="rounded-xl border px-4 py-3 text-xs leading-relaxed flex items-center justify-between shadow-sm" 
-              :class="statusError ? 'border-destructive/20 bg-destructive/5 text-destructive' : 'border-border/50 bg-accent/20 text-muted-foreground'"
-            >
-              <div class="flex items-center gap-2">
-                <AppIcon :name="statusError ? 'error' : 'info'" class="h-4 w-4 shrink-0" />
-                <span>{{ statusMessage }}</span>
-              </div>
-              <button @click="statusMessage = ''" class="hover:text-foreground shrink-0 text-muted-foreground/50 transition-colors ml-2">
-                <AppIcon name="close" class="h-3.5 w-3.5" />
-              </button>
-            </div>
 
             <!-- Empty view -->
             <div 
@@ -828,10 +818,18 @@ const stripHtmlTags = (html: string) => {
   return text.replace(/\s+/g, ' ').trim()
 }
 
-// Actions & Methods
+let statusTimeout: ReturnType<typeof setTimeout> | null = null
 const setStatus = (message: string, isError = false) => {
   statusMessage.value = message
   statusError.value = isError
+  
+  if (statusTimeout) clearTimeout(statusTimeout)
+  if (message && !message.startsWith('同步中')) {
+    statusTimeout = setTimeout(() => {
+      statusMessage.value = ''
+      statusError.value = false
+    }, 6000)
+  }
 }
 
 const resetScroll = () => {
