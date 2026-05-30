@@ -307,7 +307,7 @@
       <!-- 3. Right Column: Permanent Article Content Reader -->
       <main class="hidden lg:flex flex-1 min-w-0 flex-col bg-background relative h-full overflow-hidden border-l border-border/10">
         <!-- If an article is selected, render it -->
-        <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden animate-fade-in bg-background">
+        <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden animate-fade-in bg-background relative">
           <!-- Reader Header -->
           <header class="shrink-0 border-b border-border/10 p-6 flex flex-col gap-3.5 bg-background">
             <!-- Feed Source details & Date -->
@@ -340,12 +340,73 @@
                   <AppIcon name="externalLink" class="h-3.5 w-3.5" />
                   <span>访问原始网页</span>
                 </a>
+
+                <!-- Reading Preferences Menu -->
+                <div class="relative flex items-center gap-1 border-l border-border/10 pl-2 ml-1" ref="readerSettingsRef">
+                  <button 
+                    @click="showReaderSettings = !showReaderSettings"
+                    class="h-8 w-8 rounded-lg border border-border/50 bg-accent/15 hover:bg-accent/30 text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer"
+                    title="阅读个性化设置"
+                  >
+                    <AppIcon name="settingsPanel" class="h-4 w-4" />
+                  </button>
+                  
+                  <div 
+                    v-if="showReaderSettings" 
+                    class="absolute left-0 top-full z-50 mt-1 w-48 rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl p-3 shadow-xl space-y-3 animate-fade-in"
+                  >
+                    <!-- Font Family toggle -->
+                    <div class="space-y-1">
+                      <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">排版字体</span>
+                      <div class="grid grid-cols-2 gap-1 bg-accent/20 p-0.5 rounded-lg border border-border/5">
+                        <button 
+                          @click="readerFontFamily = 'sans'; saveReaderPrefs()"
+                          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
+                          :class="readerFontFamily === 'sans' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                        >
+                          无衬线
+                        </button>
+                        <button 
+                          @click="readerFontFamily = 'serif'; saveReaderPrefs()"
+                          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
+                          :class="readerFontFamily === 'serif' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                        >
+                          衬线体
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <!-- Font Size toggle -->
+                    <div class="space-y-1">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">字号大小</span>
+                        <span class="text-[10px] font-semibold tabular-nums text-foreground/80">{{ readerFontSize }}px</span>
+                      </div>
+                      <div class="flex items-center gap-1">
+                        <button 
+                          @click="setReaderFontSize(readerFontSize - 1)" 
+                          class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
+                          :disabled="readerFontSize <= 12"
+                        >
+                          A-
+                        </button>
+                        <button 
+                          @click="setReaderFontSize(readerFontSize + 1)" 
+                          class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
+                          :disabled="readerFontSize >= 24"
+                        >
+                          A+
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
               
               <!-- Close/Deselect button -->
               <button 
                 @click="closeReader"
-                class="h-8 px-3 rounded-lg border border-border/50 bg-accent/10 hover:bg-accent/25 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-xs font-semibold gap-1"
+                class="h-8 px-3 rounded-lg border border-border/50 bg-accent/10 hover:bg-accent/25 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-xs font-semibold gap-1 cursor-pointer"
                 title="关闭阅读器"
               >
                 <AppIcon name="close" class="h-3.5 w-3.5" />
@@ -354,11 +415,26 @@
             </div>
           </header>
           
+          <!-- Reading Progress Bar -->
+          <div class="w-full h-[2px] bg-border/5 shrink-0 z-30 overflow-hidden relative">
+            <div 
+              class="h-full bg-primary transition-all duration-75 ease-out shadow-[0_0_8px_rgba(var(--primary),0.8)]"
+              :style="{ width: scrollProgress + '%' }"
+            />
+          </div>
+
           <!-- Reader Body Scroll Container -->
-          <div class="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10 bg-background space-y-6">
+          <div 
+            ref="readerScrollContainer"
+            @scroll="handleReaderScroll"
+            class="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10 bg-background space-y-6 relative"
+          >
             <!-- Description / HTML content -->
             <div 
-              class="reader-content prose prose-neutral dark:prose-invert max-w-3xl mx-auto text-foreground/90 leading-relaxed font-normal py-2 space-y-4"
+              class="reader-content prose prose-neutral dark:prose-invert max-w-3xl mx-auto text-foreground/90 py-2 space-y-4"
+              :class="readerFontClass"
+              :style="{ fontSize: readerFontSize + 'px' }"
+              @click="handleContentClick"
               v-html="readingEntry.summary || '<p class=text-muted-foreground>该文章暂无正文内容。</p>'"
             />
           </div>
@@ -549,6 +625,67 @@
                 <AppIcon name="externalLink" class="h-3.5 w-3.5" />
                 <span>访问原始网页</span>
               </a>
+
+              <!-- Mobile Reading Preferences Menu -->
+              <div class="relative flex items-center gap-1 border-l border-border/10 pl-2 ml-1" ref="mobileReaderSettingsRef">
+                <button 
+                  @click="showMobileReaderSettings = !showMobileReaderSettings"
+                  class="h-8 w-8 rounded-lg border border-border/50 bg-accent/15 hover:bg-accent/30 text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer"
+                  title="阅读个性化设置"
+                >
+                  <AppIcon name="settingsPanel" class="h-4 w-4" />
+                </button>
+                
+                <div 
+                  v-if="showMobileReaderSettings" 
+                  class="absolute left-0 top-full z-50 mt-1 w-48 rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl p-3 shadow-xl space-y-3 animate-fade-in"
+                >
+                  <!-- Font Family toggle -->
+                  <div class="space-y-1">
+                    <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">排版字体</span>
+                    <div class="grid grid-cols-2 gap-1 bg-accent/20 p-0.5 rounded-lg border border-border/5">
+                      <button 
+                        @click="readerFontFamily = 'sans'; saveReaderPrefs()"
+                        class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
+                        :class="readerFontFamily === 'sans' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                      >
+                        无衬线
+                      </button>
+                      <button 
+                        @click="readerFontFamily = 'serif'; saveReaderPrefs()"
+                        class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
+                        :class="readerFontFamily === 'serif' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                      >
+                        衬线体
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Font Size toggle -->
+                  <div class="space-y-1">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">字号大小</span>
+                      <span class="text-[10px] font-semibold tabular-nums text-foreground/80">{{ readerFontSize }}px</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <button 
+                        @click="setReaderFontSize(readerFontSize - 1)" 
+                        class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
+                        :disabled="readerFontSize <= 12"
+                      >
+                        A-
+                      </button>
+                      <button 
+                        @click="setReaderFontSize(readerFontSize + 1)" 
+                        class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
+                        :disabled="readerFontSize >= 24"
+                      >
+                        A+
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </header>
           
@@ -556,13 +693,41 @@
           <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
             <!-- Description / HTML content -->
             <div 
-              class="reader-content prose prose-sm dark:prose-invert max-w-none text-foreground/90 leading-relaxed font-normal py-2 space-y-4"
+              class="reader-content prose prose-sm dark:prose-invert max-w-none text-foreground/90 py-2 space-y-4"
+              :class="readerFontClass"
+              :style="{ fontSize: readerFontSize + 'px' }"
+              @click="handleContentClick"
               v-html="readingEntry.summary || '<p class=text-muted-foreground>该文章暂无正文内容。</p>'"
             />
           </div>
         </div>
       </SheetContent>
     </Sheet>
+
+    <!-- Beautiful Full-screen Image Lightbox -->
+    <div 
+      v-if="activeLightboxImg" 
+      class="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-md transition-all duration-300 animate-fade-in"
+      @click="closeLightbox"
+    >
+      <!-- Close Button -->
+      <button 
+        class="absolute top-5 right-5 h-10 w-10 rounded-full bg-accent/20 hover:bg-accent/40 text-foreground flex items-center justify-center backdrop-blur-md border border-border/10 transition-all cursor-pointer"
+        @click.stop="closeLightbox"
+      >
+        <AppIcon name="close" class="h-5 w-5" />
+      </button>
+      
+      <!-- Interactive Image -->
+      <div class="relative max-w-[90vw] max-h-[90vh] overflow-hidden select-none">
+        <img 
+          :src="activeLightboxImg" 
+          class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl transition-transform duration-300 cursor-zoom-out"
+          :style="{ transform: `scale(${lightboxScale})` }"
+          @click.stop="closeLightbox"
+        />
+      </div>
+    </div>
   </AppPageShell>
 </template>
 
@@ -633,6 +798,22 @@ const entries = ref<RssEntry[]>([])
 const selectedAccountId = ref<number | null>(null)
 const selectedFeedId = ref<number | null>(null)
 
+// Reader Customization State
+const readerFontSize = ref(Number(localStorage.getItem('rss_reader_font_size')) || 16)
+const readerFontFamily = ref(localStorage.getItem('rss_reader_font_family') || 'sans')
+const showReaderSettings = ref(false)
+const readerSettingsRef = ref<HTMLElement | null>(null)
+const showMobileReaderSettings = ref(false)
+const mobileReaderSettingsRef = ref<HTMLElement | null>(null)
+
+// Interactive Image Lightbox State
+const activeLightboxImg = ref<string | null>(null)
+const lightboxScale = ref(1)
+
+// Reading progress indicator scroll tracking
+const scrollProgress = ref(0)
+const readerScrollContainer = ref<HTMLElement | null>(null)
+
 // UI Loading/Transition states
 const loading = ref(false)
 const saving = ref(false)
@@ -685,6 +866,12 @@ onClickOutside(accountDropdownRef, () => {
 })
 onClickOutside(syncDropdownRef, () => {
   showSyncMenu.value = false
+})
+onClickOutside(readerSettingsRef, () => {
+  showReaderSettings.value = false
+})
+onClickOutside(mobileReaderSettingsRef, () => {
+  showMobileReaderSettings.value = false
 })
 
 // Computeds
@@ -781,6 +968,52 @@ const filteredEntries = computed(() => {
   
   return list
 })
+
+// Reader Personalization & Scroll Functions
+const setReaderFontSize = (size: number) => {
+  readerFontSize.value = Math.max(12, Math.min(26, size))
+  localStorage.setItem('rss_reader_font_size', String(readerFontSize.value))
+}
+
+const saveReaderPrefs = () => {
+  localStorage.setItem('rss_reader_font_family', readerFontFamily.value)
+}
+
+const readerFontClass = computed(() => {
+  return readerFontFamily.value === 'serif' 
+    ? 'font-serif tracking-normal leading-relaxed' 
+    : 'font-sans tracking-wide leading-relaxed'
+})
+
+const handleReaderScroll = () => {
+  const container = readerScrollContainer.value
+  if (!container) return
+  const { scrollTop, scrollHeight, clientHeight } = container
+  const totalScroll = scrollHeight - clientHeight
+  if (totalScroll <= 0) {
+    scrollProgress.value = 0
+  } else {
+    scrollProgress.value = (scrollTop / totalScroll) * 100
+  }
+}
+
+const handleContentClick = (e: MouseEvent) => {
+  const target = e.target as HTMLElement
+  if (target.tagName === 'IMG') {
+    activeLightboxImg.value = (target as HTMLImageElement).src
+    lightboxScale.value = 1
+  }
+}
+
+const closeLightbox = () => {
+  activeLightboxImg.value = null
+}
+
+const handleKeyDown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && activeLightboxImg.value) {
+    closeLightbox()
+  }
+}
 
 // Helper methods for resolving article grid metadata
 const getFeedTitle = (feedId: number) => {
@@ -1130,6 +1363,17 @@ watch(selectedAccountId, () => {
   collapsedFolders.value = {}
 })
 
+watch(readingEntry, () => {
+  scrollProgress.value = 0
+  showReaderSettings.value = false
+  showMobileReaderSettings.value = false
+  nextTick(() => {
+    if (readerScrollContainer.value) {
+      readerScrollContainer.value.scrollTop = 0
+    }
+  })
+})
+
 const resumeSyncPollingIfRunning = async () => {
   const accountId = selectedAccountId.value
   if (!accountId) return
@@ -1149,6 +1393,7 @@ const checkIfMobile = () => {
 onMounted(async () => {
   checkIfMobile()
   window.addEventListener('resize', checkIfMobile)
+  window.addEventListener('keydown', handleKeyDown)
   await loadAll()
   nextTick(() => {
     initObserver()
@@ -1158,6 +1403,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkIfMobile)
+  window.removeEventListener('keydown', handleKeyDown)
   entriesObserver?.disconnect()
   if (syncPollTimer) {
     clearInterval(syncPollTimer)
@@ -1182,13 +1428,48 @@ onUnmounted(() => {
 }
 
 /* Scoped stylesheet for beautiful markdown / HTML summary rendering in reader */
+.font-serif {
+  font-family: Georgia, Cambria, "Times New Roman", Times, "Songti SC", "SimSun", serif;
+}
+.font-sans {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.reader-content {
+  text-align: justify;
+  text-justify: inter-character;
+  word-break: break-word;
+}
+
 .reader-content :deep(img) {
   max-width: 100%;
   height: auto;
   border-radius: 0.75rem;
-  margin: 1.5rem auto;
+  margin: 2rem auto;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  cursor: zoom-in;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s;
+}
+
+.reader-content :deep(img:hover) {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.reader-content :deep(figure) {
+  margin: 2rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.reader-content :deep(figcaption) {
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+  margin-top: 0.75rem;
+  text-align: center;
+  font-style: italic;
 }
 
 .reader-content :deep(a) {
@@ -1203,8 +1484,9 @@ onUnmounted(() => {
 }
 
 .reader-content :deep(p) {
-  margin-bottom: 1.25rem;
-  line-height: 1.7;
+  margin-bottom: 1.5rem;
+  line-height: 1.85 !important;
+  letter-spacing: 0.015em;
 }
 
 .reader-content :deep(h1),
@@ -1213,42 +1495,70 @@ onUnmounted(() => {
 .reader-content :deep(h4) {
   font-weight: 700;
   color: var(--foreground);
-  margin-top: 1.5rem;
-  margin-bottom: 0.75rem;
+  margin-top: 2rem;
+  margin-bottom: 0.85rem;
+  line-height: 1.4;
 }
 
 .reader-content :deep(blockquote) {
   border-left: 4px solid hsl(var(--primary));
-  padding-left: 1.25rem;
-  color: var(--muted-foreground);
-  font-style: italic;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 0.375rem;
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
-  margin: 1.5rem 0;
+  padding-left: 1.5rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  margin: 2rem 0;
+  background: hsla(var(--primary), 0.03);
+  border-radius: 0.5rem;
+  color: var(--foreground);
+  font-size: 1.05em;
+  line-height: 1.8;
+  font-weight: 450;
+  position: relative;
+}
+
+.reader-content :deep(blockquote p) {
+  margin-bottom: 0;
 }
 
 .reader-content :deep(ul),
 .reader-content :deep(ol) {
-  padding-left: 1.25rem;
-  margin-bottom: 1.25rem;
+  padding-left: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .reader-content :deep(li) {
-  margin-bottom: 0.5rem;
-  list-style-type: disc;
+  margin-bottom: 0.65rem;
+  line-height: 1.7;
 }
 
 .reader-content :deep(pre) {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 0.75rem;
-  padding: 1rem;
+  padding: 1.25rem;
   overflow-x: auto;
-  font-family: monospace;
-  font-size: 0.85rem;
-  margin: 1.5rem 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  margin: 2rem 0;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.reader-content :deep(code:not(pre code)) {
+  background: rgba(var(--primary), 0.08);
+  color: hsl(var(--primary));
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.375rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  font-weight: 500;
+  border: 1px solid rgba(var(--primary), 0.1);
+}
+
+.reader-content :deep(hr) {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
+  margin: 2.5rem 0;
 }
 
 @keyframes fadeIn {
