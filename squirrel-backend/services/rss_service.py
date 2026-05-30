@@ -1,0 +1,907 @@
+from __future__ import annotations
+
+import base64
+import hashlib
+import json
+import logging
+from threading import Lock
+import urllib.parse
+import urllib.request
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Optional
+
+from cryptography.fernet import Fernet
+from sqlalchemy import func, select
+
+from core.config import settings
+from core.database import get_session
+from models.rss import RssAccount, RssEntry, RssEntryMedia, RssFeed
+
+logger = logging.getLogger(__name__)
+
+SUPPORTED_PROVIDERS = {'greader', 'miniflux', 'fever'}
+MEDIA_EXTENSIONS = ('.mp4', '.mp3', '.m4a', '.mkv', '.webm', '.flv', '.mov', '.ogg', '.wav', '.m3u8')
+_SYNC_LOCK = Lock()
+_ACCOUNT_SYNC_LOCKS: dict[int, Lock] = {}
+
+
+class RssServiceError(ValueError):
+    pass
+
+
+@dataclass
+class RssAccountConfig:
+    provider: str
+    base_url: str
+    username: Optional[str]
+    credential: str
+
+
+@dataclass
+class RemoteFeed:
+    external_feed_id: str
+    title: str
+    feed_url: Optional[str] = None
+    site_url: Optional[str] = None
+    icon_url: Optional[str] = None
+    category: Optional[str] = None
+    raw_data: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class RemoteEntry:
+    external_entry_id: str
+    canonical_url: str
+    title: str
+    external_feed_id: Optional[str] = None
+    summary: Optional[str] = None
+    thumbnail: Optional[str] = None
+    author: Optional[str] = None
+    published_at: Optional[datetime] = None
+    is_read: bool = False
+    is_starred: bool = False
+    media: list[dict[str, Any]] = field(default_factory=list)
+    raw_data: dict[str, Any] = field(default_factory=dict)
+
+
+def _fernet() -> Fernet:
+    digest = hashlib.sha256(settings.JWT_SECRET_KEY.encode('utf-8')).digest()
+    return Fernet(base64.urlsafe_b64encode(digest))
+
+
+def _encrypt(value: str) -> str:
+    return _fernet().encrypt(value.encode('utf-8')).decode('utf-8')
+
+
+def _decrypt(value: str) -> str:
+    return _fernet().decrypt(value.encode('utf-8')).decode('utf-8')
+
+
+def _normalize_provider(provider: str) -> str:
+    normalized = str(provider or '').strip().lower()
+    if normalized not in SUPPORTED_PROVIDERS:
+        raise RssServiceError(f'Unsupported RSS provider: {provider}')
+    return normalized
+
+
+def _normalize_base_url(base_url: str) -> str:
+    normalized = str(base_url or '').strip().rstrip('/')
+    parsed = urllib.parse.urlparse(normalized)
+    if parsed.scheme not in {'http', 'https'} or not parsed.netloc:
+        raise RssServiceError('RSS service URL must be an HTTP or HTTPS URL')
+    return normalized
+
+
+def _parse_datetime(value: Any) -> Optional[datetime]:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        timestamp = float(value)
+        if timestamp > 10_000_000_000:
+            timestamp = timestamp / 1000
+        return datetime.fromtimestamp(timestamp)
+    text = str(value).strip()
+    if not text:
+        return None
+    if text.endswith('Z'):
+        text = f'{text[:-1]}+00:00'
+    try:
+        parsed = datetime.fromisoformat(text)
+        return parsed.replace(tzinfo=None) if parsed.tzinfo else parsed
+    except ValueError:
+        return None
+
+
+def _is_media_url(url: str) -> bool:
+    path = urllib.parse.urlparse(str(url or '')).path.lower()
+    return path.endswith(MEDIA_EXTENSIONS)
+
+
+class _JsonHttpClient:
+    def get_json(self, url: str, headers: dict[str, str]) -> Any:
+        request = urllib.request.Request(url, headers=headers, method='GET')
+        with urllib.request.urlopen(request, timeout=20) as response:
+            return json.loads(response.read().decode('utf-8'))
+
+    def post_text(self, url: str, data: dict[str, str], headers: dict[str, str]) -> str:
+        body = urllib.parse.urlencode(data).encode('utf-8')
+        request = urllib.request.Request(url, data=body, headers=headers, method='POST')
+        with urllib.request.urlopen(request, timeout=20) as response:
+            return response.read().decode('utf-8')
+
+    def post_json(self, url: str, data: dict[str, str], headers: dict[str, str]) -> Any:
+        body = urllib.parse.urlencode(data).encode('utf-8')
+        request = urllib.request.Request(url, data=body, headers=headers, method='POST')
+        with urllib.request.urlopen(request, timeout=20) as response:
+            return json.loads(response.read().decode('utf-8'))
+
+
+class MinifluxClient:
+    def __init__(self, config: RssAccountConfig, http_client: Optional[_JsonHttpClient] = None):
+        self.config = config
+        self.http_client = http_client or _JsonHttpClient()
+
+    def _headers(self) -> dict[str, str]:
+        return {
+            'Accept': 'application/json',
+            'User-Agent': 'Squirrel/1.0',
+            'X-Auth-Token': self.config.credential,
+        }
+
+    def list_feeds(self) -> list[RemoteFeed]:
+        data = self.http_client.get_json(f'{self.config.base_url}/v1/feeds', self._headers())
+        if not isinstance(data, list):
+            raise RssServiceError('Invalid Miniflux feeds response')
+        feeds: list[RemoteFeed] = []
+        for item in data:
+            feed_id = str(item.get('id') or item.get('feed_id') or '').strip()
+            if not feed_id:
+                continue
+            category = item.get('category')
+            feeds.append(
+                RemoteFeed(
+                    external_feed_id=feed_id,
+                    title=str(item.get('title') or item.get('feed_url') or feed_id),
+                    feed_url=item.get('feed_url'),
+                    site_url=item.get('site_url'),
+                    icon_url=item.get('icon_url'),
+                    category=category.get('title') if isinstance(category, dict) else None,
+                    raw_data=dict(item),
+                )
+            )
+        return feeds
+
+    def list_entries(self, external_feed_id: str, limit: int) -> list[RemoteEntry]:
+        query = urllib.parse.urlencode({'limit': max(1, limit), 'order': 'published_at', 'direction': 'desc'})
+        url = f'{self.config.base_url}/v1/feeds/{urllib.parse.quote(str(external_feed_id))}/entries?{query}'
+        data = self.http_client.get_json(url, self._headers())
+        entries = data.get('entries') if isinstance(data, dict) else data
+        if not isinstance(entries, list):
+            raise RssServiceError('Invalid Miniflux entries response')
+        return [_miniflux_entry_to_remote(item) for item in entries if isinstance(item, dict)]
+
+    def test_connection(self) -> int:
+        return len(self.list_feeds())
+
+
+class FeverClient:
+    def __init__(self, config: RssAccountConfig, http_client: Optional[_JsonHttpClient] = None):
+        self.config = config
+        self.http_client = http_client or _JsonHttpClient()
+
+    def _api_url(self) -> str:
+        base_url = self.config.base_url
+        if '?' in base_url:
+            return base_url if 'api' in base_url else f'{base_url}&api'
+        if base_url.endswith('/fever.php') or base_url.endswith('/fever/'):
+            return f'{base_url}?api'
+        return f'{base_url}/api/fever.php?api'
+
+    def _api_key(self) -> str:
+        source = f'{self.config.username or ""}:{self.config.credential}'
+        return hashlib.md5(source.encode('utf-8')).hexdigest()
+
+    def _post(self, payload: dict[str, str]) -> dict[str, Any]:
+        response = self.http_client.post_json(
+            self._api_url(),
+            {'api_key': self._api_key(), **payload},
+            {
+                'Accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': 'Squirrel/1.0',
+            },
+        )
+        if not isinstance(response, dict):
+            raise RssServiceError('Invalid Fever API response')
+        if not response.get('auth'):
+            raise RssServiceError('RSS service authentication failed')
+        return response
+
+    def list_feeds(self) -> list[RemoteFeed]:
+        data = self._post({'feeds': '1'})
+        feeds: list[RemoteFeed] = []
+        for item in data.get('feeds') or []:
+            if not isinstance(item, dict):
+                continue
+            feed_id = str(item.get('id') or '').strip()
+            if not feed_id:
+                continue
+            feeds.append(
+                RemoteFeed(
+                    external_feed_id=feed_id,
+                    title=str(item.get('title') or item.get('url') or feed_id),
+                    feed_url=item.get('url'),
+                    site_url=item.get('site_url'),
+                    raw_data=dict(item),
+                )
+            )
+        return feeds
+
+    def list_entries(self, external_feed_id: str, limit: int) -> list[RemoteEntry]:
+        data = self._post({'items': '1', 'with_ids': str(external_feed_id)})
+        entries: list[RemoteEntry] = []
+        for item in data.get('items') or []:
+            if not isinstance(item, dict) or str(item.get('feed_id')) != str(external_feed_id):
+                continue
+            entries.append(_fever_entry_to_remote(item))
+            if len(entries) >= limit:
+                break
+        return entries
+
+    def test_connection(self) -> int:
+        return len(self.list_feeds())
+
+
+class GReaderClient:
+    def __init__(self, config: RssAccountConfig, http_client: Optional[_JsonHttpClient] = None):
+        self.config = config
+        self.http_client = http_client or _JsonHttpClient()
+        self._auth_token: Optional[str] = None
+
+    def _headers(self) -> dict[str, str]:
+        return {
+            'Accept': 'application/json',
+            'Authorization': f'GoogleLogin auth={self._login()}',
+            'User-Agent': 'Squirrel/1.0',
+        }
+
+    def _login(self) -> str:
+        if self._auth_token:
+            return self._auth_token
+        if not self.config.username:
+            raise RssServiceError('Google Reader API username is required')
+
+        response = self.http_client.post_text(
+            f'{self.config.base_url}/accounts/ClientLogin',
+            {
+                'Email': self.config.username,
+                'Passwd': self.config.credential,
+            },
+            {
+                'Accept': 'text/plain',
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': 'Squirrel/1.0',
+            },
+        )
+        for line in response.splitlines():
+            key, separator, value = line.partition('=')
+            if separator and key == 'Auth' and value.strip():
+                self._auth_token = value.strip()
+                return self._auth_token
+        raise RssServiceError('Google Reader API authentication failed')
+
+    def list_feeds(self) -> list[RemoteFeed]:
+        data = self.http_client.get_json(
+            f'{self.config.base_url}/reader/api/0/subscription/list?output=json',
+            self._headers(),
+        )
+        subscriptions = data.get('subscriptions') if isinstance(data, dict) else None
+        if not isinstance(subscriptions, list):
+            raise RssServiceError('Invalid Google Reader API subscriptions response')
+
+        feeds: list[RemoteFeed] = []
+        for item in subscriptions:
+            if not isinstance(item, dict):
+                continue
+            feed_id = str(item.get('id') or '').strip()
+            if not feed_id:
+                continue
+            feed_url = item.get('url')
+            if not feed_url and feed_id.startswith('feed/'):
+                feed_url = feed_id[5:]
+            feeds.append(
+                RemoteFeed(
+                    external_feed_id=feed_id,
+                    title=str(item.get('title') or feed_url or feed_id),
+                    feed_url=feed_url,
+                    site_url=item.get('htmlUrl'),
+                    icon_url=item.get('iconUrl'),
+                    category=_greader_category_label(item.get('categories')),
+                    raw_data=dict(item),
+                )
+            )
+        return feeds
+
+    def list_entries(self, external_feed_id: str, limit: int) -> list[RemoteEntry]:
+        stream_id = urllib.parse.quote(str(external_feed_id), safe='/')
+        query = urllib.parse.urlencode({'output': 'json', 'n': max(1, limit)})
+        data = self.http_client.get_json(
+            f'{self.config.base_url}/reader/api/0/stream/contents/{stream_id}?{query}',
+            self._headers(),
+        )
+        items = data.get('items') if isinstance(data, dict) else None
+        if not isinstance(items, list):
+            raise RssServiceError('Invalid Google Reader API stream response')
+        return [_greader_entry_to_remote(item) for item in items if isinstance(item, dict)]
+
+    def list_recent_entries(self, limit: int) -> list[RemoteEntry]:
+        query = urllib.parse.urlencode({'output': 'json', 'n': max(1, limit)})
+        data = self.http_client.get_json(
+            f'{self.config.base_url}/reader/api/0/stream/contents/reading-list?{query}',
+            self._headers(),
+        )
+        items = data.get('items') if isinstance(data, dict) else None
+        if not isinstance(items, list):
+            raise RssServiceError('Invalid Google Reader API reading list response')
+        return [_greader_entry_to_remote(item) for item in items if isinstance(item, dict)]
+
+    def test_connection(self) -> int:
+        return len(self.list_feeds())
+
+
+def _miniflux_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
+    url = str(item.get('url') or item.get('comments_url') or '').strip()
+    entry_id = str(item.get('id') or item.get('hash') or url).strip()
+    media = _extract_media(item)
+    return RemoteEntry(
+        external_entry_id=entry_id,
+        canonical_url=url or entry_id,
+        title=str(item.get('title') or url or entry_id),
+        summary=item.get('content') or item.get('summary'),
+        thumbnail=item.get('image_url'),
+        author=item.get('author'),
+        published_at=_parse_datetime(item.get('published_at') or item.get('created_at')),
+        is_read=str(item.get('status') or '').lower() == 'read',
+        is_starred=bool(item.get('starred')),
+        media=media,
+        raw_data=dict(item),
+    )
+
+
+def _fever_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
+    url = str(item.get('url') or '').strip()
+    entry_id = str(item.get('id') or url).strip()
+    return RemoteEntry(
+        external_entry_id=entry_id,
+        canonical_url=url or entry_id,
+        title=str(item.get('title') or url or entry_id),
+        summary=item.get('html'),
+        author=item.get('author'),
+        published_at=_parse_datetime(item.get('created_on_time')),
+        is_read=bool(item.get('is_read')),
+        is_starred=bool(item.get('is_saved')),
+        media=_extract_media(item),
+        raw_data=dict(item),
+    )
+
+
+def _greader_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
+    origin = item.get('origin')
+    origin_url = origin.get('htmlUrl') if isinstance(origin, dict) else None
+    origin_stream_id = origin.get('streamId') if isinstance(origin, dict) else None
+    url = _greader_alternate_url(item) or str(origin_url or '').strip()
+    entry_id = str(item.get('id') or url).strip()
+    categories = item.get('categories') if isinstance(item.get('categories'), list) else []
+    return RemoteEntry(
+        external_entry_id=entry_id,
+        canonical_url=url or entry_id,
+        title=str(item.get('title') or url or entry_id),
+        external_feed_id=str(origin_stream_id).strip() if origin_stream_id else None,
+        summary=_greader_text(item.get('content')) or _greader_text(item.get('summary')),
+        author=item.get('author'),
+        published_at=_parse_datetime(item.get('published') or item.get('updated') or item.get('crawlTimeMsec')),
+        is_read=any('/state/com.google/read' in str(category) for category in categories),
+        is_starred=any('/state/com.google/starred' in str(category) for category in categories),
+        media=_extract_media(item),
+        raw_data=dict(item),
+    )
+
+
+def _greader_category_label(categories: Any) -> Optional[str]:
+    if not isinstance(categories, list):
+        return None
+    for item in categories:
+        if isinstance(item, dict) and item.get('label'):
+            return str(item['label'])
+    return None
+
+
+def _greader_alternate_url(item: dict[str, Any]) -> Optional[str]:
+    alternates = item.get('alternate')
+    if not isinstance(alternates, list):
+        return None
+    for alternate in alternates:
+        if isinstance(alternate, dict) and alternate.get('href'):
+            return str(alternate['href']).strip()
+    return None
+
+
+def _greader_text(value: Any) -> Optional[str]:
+    if isinstance(value, dict):
+        content = value.get('content')
+        return str(content) if content is not None else None
+    if isinstance(value, str):
+        return value
+    return None
+
+
+def _extract_media(item: dict[str, Any]) -> list[dict[str, Any]]:
+    media: list[dict[str, Any]] = []
+    for key in ('enclosures', 'attachments'):
+        values = item.get(key)
+        if not isinstance(values, list):
+            continue
+        for value in values:
+            if not isinstance(value, dict):
+                continue
+            media_url = value.get('url')
+            if not media_url:
+                continue
+            media_type = value.get('mime_type') or value.get('type')
+            if media_type or _is_media_url(media_url):
+                media.append({'media_url': media_url, 'media_type': media_type, 'raw_data': dict(value)})
+
+    for key in ('media_url', 'enclosure_url'):
+        media_url = item.get(key)
+        if media_url and _is_media_url(media_url):
+            media.append({'media_url': media_url, 'media_type': item.get('media_type'), 'raw_data': {}})
+    return media
+
+
+def _client_for_config(config: RssAccountConfig):
+    if config.provider == 'greader':
+        return GReaderClient(config)
+    if config.provider == 'miniflux':
+        return MinifluxClient(config)
+    if config.provider == 'fever':
+        return FeverClient(config)
+    raise RssServiceError(f'Unsupported RSS provider: {config.provider}')
+
+
+def _config_from_account(account: RssAccount) -> RssAccountConfig:
+    return RssAccountConfig(
+        provider=account.provider,
+        base_url=account.base_url,
+        username=account.username,
+        credential=_decrypt(account.credential_encrypted),
+    )
+
+
+def _sync_lock_for_account(account_id: int) -> Lock:
+    with _SYNC_LOCK:
+        lock = _ACCOUNT_SYNC_LOCKS.get(account_id)
+        if lock is None:
+            lock = Lock()
+            _ACCOUNT_SYNC_LOCKS[account_id] = lock
+        return lock
+
+
+def serialize_account(account: RssAccount) -> dict[str, Any]:
+    return {
+        'id': account.id,
+        'provider': account.provider,
+        'name': account.name,
+        'base_url': account.base_url,
+        'username': account.username,
+        'enabled': account.enabled,
+        'last_sync_at': account.last_sync_at.isoformat() if account.last_sync_at else None,
+        'last_error': account.last_error,
+        'created_at': account.created_at.isoformat() if account.created_at else None,
+        'updated_at': account.updated_at.isoformat() if account.updated_at else None,
+    }
+
+
+def serialize_feed(feed: RssFeed) -> dict[str, Any]:
+    return {
+        'id': feed.id,
+        'account_id': feed.account_id,
+        'external_feed_id': feed.external_feed_id,
+        'title': feed.title,
+        'feed_url': feed.feed_url,
+        'site_url': feed.site_url,
+        'icon_url': feed.icon_url,
+        'category': feed.category,
+        'enabled': feed.enabled,
+        'last_entry_sync_at': feed.last_entry_sync_at.isoformat() if feed.last_entry_sync_at else None,
+    }
+
+
+def serialize_entry(entry: RssEntry, media: Optional[list[RssEntryMedia]] = None) -> dict[str, Any]:
+    return {
+        'id': entry.id,
+        'account_id': entry.account_id,
+        'feed_id': entry.feed_id,
+        'external_entry_id': entry.external_entry_id,
+        'canonical_url': entry.canonical_url,
+        'title': entry.title,
+        'summary': entry.summary,
+        'thumbnail': entry.thumbnail,
+        'author': entry.author,
+        'published_at': entry.published_at.isoformat() if entry.published_at else None,
+        'is_read': entry.is_read,
+        'is_starred': entry.is_starred,
+        'media': [
+            {
+                'id': item.id,
+                'media_url': item.media_url,
+                'media_type': item.media_type,
+                'duration': item.duration,
+                'video_id': item.video_id,
+            }
+            for item in (media or [])
+        ],
+    }
+
+
+def list_accounts(user_id: int) -> list[dict[str, Any]]:
+    with get_session() as session:
+        accounts = session.scalars(
+            select(RssAccount)
+            .where(RssAccount.user_id == user_id, RssAccount.is_deleted.is_(False))
+            .order_by(RssAccount.created_at.desc())
+        ).all()
+        return [serialize_account(account) for account in accounts]
+
+
+def create_account(
+    user_id: int,
+    *,
+    provider: str,
+    name: str,
+    base_url: str,
+    username: Optional[str],
+    credential: str,
+    enabled: bool = True,
+) -> dict[str, Any]:
+    provider = _normalize_provider(provider)
+    base_url = _normalize_base_url(base_url)
+    name = str(name or '').strip()
+    credential = str(credential or '').strip()
+    if not name:
+        raise RssServiceError('Account name is required')
+    if not credential:
+        raise RssServiceError('Credential is required')
+
+    with get_session() as session:
+        account = RssAccount(
+            user_id=user_id,
+            provider=provider,
+            name=name,
+            base_url=base_url,
+            username=str(username or '').strip() or None,
+            credential_encrypted=_encrypt(credential),
+            enabled=bool(enabled),
+            is_deleted=False,
+        )
+        session.add(account)
+        session.commit()
+        session.refresh(account)
+        return serialize_account(account)
+
+
+def update_account(
+    user_id: int,
+    account_id: int,
+    *,
+    provider: Optional[str] = None,
+    name: Optional[str] = None,
+    base_url: Optional[str] = None,
+    username: Optional[str] = None,
+    credential: Optional[str] = None,
+    enabled: Optional[bool] = None,
+) -> Optional[dict[str, Any]]:
+    with get_session() as session:
+        account = _get_account(session, user_id, account_id)
+        if not account:
+            return None
+        if provider is not None:
+            account.provider = _normalize_provider(provider)
+        if name is not None:
+            normalized_name = str(name or '').strip()
+            if not normalized_name:
+                raise RssServiceError('Account name is required')
+            account.name = normalized_name
+        if base_url is not None:
+            account.base_url = _normalize_base_url(base_url)
+        if username is not None:
+            account.username = str(username or '').strip() or None
+        if credential is not None and str(credential).strip():
+            account.credential_encrypted = _encrypt(str(credential).strip())
+        if enabled is not None:
+            account.enabled = bool(enabled)
+        session.commit()
+        session.refresh(account)
+        return serialize_account(account)
+
+
+def delete_account(user_id: int, account_id: int) -> bool:
+    with get_session() as session:
+        account = _get_account(session, user_id, account_id)
+        if not account:
+            return False
+        account.is_deleted = True
+        account.enabled = False
+        session.commit()
+        return True
+
+
+def test_account_config(
+    *,
+    provider: str,
+    base_url: str,
+    username: Optional[str],
+    credential: str,
+) -> dict[str, Any]:
+    config = RssAccountConfig(
+        provider=_normalize_provider(provider),
+        base_url=_normalize_base_url(base_url),
+        username=str(username or '').strip() or None,
+        credential=str(credential or '').strip(),
+    )
+    if not config.credential:
+        raise RssServiceError('Credential is required')
+    feed_count = _client_for_config(config).test_connection()
+    return {'ok': True, 'feed_count': feed_count}
+
+
+def test_account(user_id: int, account_id: int) -> Optional[dict[str, Any]]:
+    with get_session() as session:
+        account = _get_account(session, user_id, account_id)
+        if not account:
+            return None
+        config = _config_from_account(account)
+    feed_count = _client_for_config(config).test_connection()
+    return {'ok': True, 'feed_count': feed_count}
+
+
+def sync_account(user_id: int, account_id: int, *, entry_limit: int = 50) -> Optional[dict[str, Any]]:
+    sync_lock = _sync_lock_for_account(account_id)
+    if not sync_lock.acquire(blocking=False):
+        raise RssServiceError('RSS account sync is already running')
+
+    synced_feeds = 0
+    synced_entries = 0
+    synced_media = 0
+    error_message = None
+
+    try:
+        with get_session() as session:
+            account = _get_account(session, user_id, account_id)
+            if not account:
+                return None
+            config = _config_from_account(account)
+
+        client = _client_for_config(config)
+        remote_feeds = client.list_feeds()
+        feed_refs: list[tuple[int, str, bool]] = []
+        with get_session() as session:
+            account = _get_account(session, user_id, account_id)
+            if not account:
+                return None
+            account.last_error = None
+            for remote_feed in remote_feeds:
+                feed = _upsert_feed(session, account, remote_feed)
+                synced_feeds += 1
+                feed_refs.append((feed.id, feed.external_feed_id, feed.enabled))
+
+        if isinstance(client, GReaderClient):
+            remote_entries = client.list_recent_entries(entry_limit)
+            with get_session() as session:
+                external_feed_ids = [entry.external_feed_id for entry in remote_entries if entry.external_feed_id]
+                feeds = session.scalars(
+                    select(RssFeed).where(
+                        RssFeed.account_id == account_id,
+                        RssFeed.external_feed_id.in_(external_feed_ids),
+                    )
+                ).all() if external_feed_ids else []
+                feeds_by_external_id = {feed.external_feed_id: feed for feed in feeds if feed.enabled}
+                for remote_entry in remote_entries:
+                    if not remote_entry.external_feed_id:
+                        continue
+                    feed = feeds_by_external_id.get(remote_entry.external_feed_id)
+                    if not feed:
+                        continue
+                    entry = _upsert_entry(session, feed, remote_entry)
+                    synced_entries += 1
+                    synced_media += _upsert_entry_media(session, entry, remote_entry.media)
+                    feed.last_entry_sync_at = datetime.now()
+        else:
+            for feed_id, external_feed_id, enabled in feed_refs:
+                if not enabled:
+                    continue
+                remote_entries = client.list_entries(external_feed_id, entry_limit)
+                with get_session() as session:
+                    feed = session.scalars(
+                        select(RssFeed).where(
+                            RssFeed.id == feed_id,
+                            RssFeed.user_id == user_id,
+                            RssFeed.account_id == account_id,
+                        )
+                    ).first()
+                    if not feed:
+                        continue
+                    for remote_entry in remote_entries:
+                        entry = _upsert_entry(session, feed, remote_entry)
+                        synced_entries += 1
+                        synced_media += _upsert_entry_media(session, entry, remote_entry.media)
+                    feed.last_entry_sync_at = datetime.now()
+
+        with get_session() as session:
+            account = _get_account(session, user_id, account_id)
+            if account:
+                account.last_sync_at = datetime.now()
+                account.last_error = None
+    except Exception as exc:
+        error_message = str(exc)
+        provider = config.provider if 'config' in locals() else 'unknown'
+        logger.warning('RSS account sync failed: account_id=%s provider=%s error=%s', account_id, provider, exc)
+        with get_session() as session:
+            account = _get_account(session, user_id, account_id)
+            if account:
+                account.last_error = error_message
+                session.commit()
+        raise
+    finally:
+        sync_lock.release()
+
+    return {
+        'account_id': account_id,
+        'feeds': synced_feeds,
+        'entries': synced_entries,
+        'media': synced_media,
+        'error': error_message,
+    }
+
+
+def list_feeds(user_id: int, account_id: Optional[int] = None) -> list[dict[str, Any]]:
+    with get_session() as session:
+        statement = select(RssFeed).where(RssFeed.user_id == user_id)
+        if account_id is not None:
+            statement = statement.where(RssFeed.account_id == account_id)
+        feeds = session.scalars(statement.order_by(RssFeed.title.asc())).all()
+        return [serialize_feed(feed) for feed in feeds]
+
+
+def list_entries(
+    user_id: int,
+    *,
+    account_id: Optional[int] = None,
+    feed_id: Optional[int] = None,
+    page: int = 1,
+    page_size: int = 30,
+) -> dict[str, Any]:
+    page = max(1, int(page or 1))
+    page_size = max(1, min(100, int(page_size or 30)))
+    with get_session() as session:
+        conditions = [RssEntry.user_id == user_id]
+        if account_id is not None:
+            conditions.append(RssEntry.account_id == account_id)
+        if feed_id is not None:
+            conditions.append(RssEntry.feed_id == feed_id)
+
+        total = session.scalar(select(func.count()).select_from(RssEntry).where(*conditions)) or 0
+        entries = session.scalars(
+            select(RssEntry)
+            .where(*conditions)
+            .order_by(RssEntry.published_at.desc().nullslast(), RssEntry.id.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        ).all()
+        entry_ids = [entry.id for entry in entries]
+        media_rows = session.scalars(select(RssEntryMedia).where(RssEntryMedia.entry_id.in_(entry_ids))).all() if entry_ids else []
+        media_by_entry: dict[int, list[RssEntryMedia]] = {}
+        for media in media_rows:
+            media_by_entry.setdefault(media.entry_id, []).append(media)
+        return {
+            'total': total,
+            'page': page,
+            'pageSize': page_size,
+            'data': [serialize_entry(entry, media_by_entry.get(entry.id, [])) for entry in entries],
+        }
+
+
+def _get_account(session, user_id: int, account_id: int) -> Optional[RssAccount]:
+    return session.scalars(
+        select(RssAccount).where(
+            RssAccount.id == account_id,
+            RssAccount.user_id == user_id,
+            RssAccount.is_deleted.is_(False),
+        )
+    ).first()
+
+
+def _upsert_feed(session, account: RssAccount, remote: RemoteFeed) -> RssFeed:
+    feed = session.scalars(
+        select(RssFeed).where(
+            RssFeed.account_id == account.id,
+            RssFeed.external_feed_id == remote.external_feed_id,
+        )
+    ).first()
+    if feed is None:
+        feed = RssFeed(
+            user_id=account.user_id,
+            account_id=account.id,
+            external_feed_id=remote.external_feed_id,
+            title=remote.title,
+            enabled=True,
+        )
+        session.add(feed)
+        session.flush()
+
+    feed.title = remote.title
+    feed.feed_url = remote.feed_url
+    feed.site_url = remote.site_url
+    feed.icon_url = remote.icon_url
+    feed.category = remote.category
+    feed.raw_data = remote.raw_data
+    return feed
+
+
+def _upsert_entry(session, feed: RssFeed, remote: RemoteEntry) -> RssEntry:
+    entry = session.scalars(
+        select(RssEntry).where(
+            RssEntry.feed_id == feed.id,
+            RssEntry.external_entry_id == remote.external_entry_id,
+        )
+    ).first()
+    if entry is None:
+        entry = RssEntry(
+            user_id=feed.user_id,
+            account_id=feed.account_id,
+            feed_id=feed.id,
+            external_entry_id=remote.external_entry_id,
+            canonical_url=remote.canonical_url,
+            title=remote.title,
+        )
+        session.add(entry)
+        session.flush()
+
+    entry.canonical_url = remote.canonical_url
+    entry.title = remote.title
+    entry.summary = remote.summary
+    entry.thumbnail = remote.thumbnail
+    entry.author = remote.author
+    entry.published_at = remote.published_at
+    entry.is_read = remote.is_read
+    entry.is_starred = remote.is_starred
+    entry.raw_data = remote.raw_data
+    return entry
+
+
+def _upsert_entry_media(session, entry: RssEntry, media_items: list[dict[str, Any]]) -> int:
+    count = 0
+    for media in media_items:
+        media_url = str(media.get('media_url') or '').strip()
+        if not media_url:
+            continue
+        row = session.scalars(
+            select(RssEntryMedia).where(
+                RssEntryMedia.entry_id == entry.id,
+                RssEntryMedia.media_url == media_url,
+            )
+        ).first()
+        if row is None:
+            row = RssEntryMedia(
+                user_id=entry.user_id,
+                account_id=entry.account_id,
+                feed_id=entry.feed_id,
+                entry_id=entry.id,
+                media_url=media_url,
+            )
+            session.add(row)
+            count += 1
+        row.media_type = media.get('media_type')
+        row.duration = media.get('duration')
+        row.raw_data = media.get('raw_data')
+    return count

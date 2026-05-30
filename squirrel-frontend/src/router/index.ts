@@ -6,6 +6,7 @@ import { Logger } from '@/utils/logger'
 
 const LatestVideos = () => import('../views/LatestVideos.vue')
 const Subscribed = () => import('../views/Subscribed.vue')
+const RssSources = () => import('../views/RssSources.vue')
 const Settings = () => import('../views/Settings.vue')
 const VideoTab = () => import('@/components/feed/VideoTab.vue')
 const History = () => import('../views/History.vue')
@@ -108,6 +109,15 @@ const routes = [
       search: 'subscribed',
       searchEvent: 'search:subscribed',
       searchPlaceholder: '搜索订阅源',
+    }),
+  },
+  {
+    path: '/rss',
+    name: 'RssSources',
+    component: RssSources,
+    meta: createNoSearchMeta('RSS 内容源', {
+      navKey: 'rss-sources',
+      sectionLabel: '内容源',
     }),
   },
   {

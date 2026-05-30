@@ -8,6 +8,7 @@ import type { AppIconName } from '@/icons/app-icons'
 export type AppNavKey =
   | 'videos'
   | 'subscribed'
+  | 'rss-sources'
   | 'history'
   | 'playlists'
   | 'sync-center'
@@ -151,6 +152,17 @@ export const NAV_ITEMS: NavigationItem[] = [
       'SubscriptionLikedVideos',
       'SubscriptionLaterVideos',
     ],
+  },
+  {
+    key: 'rss-sources',
+    name: 'RSS',
+    title: 'RSS 内容源',
+    mobileLabel: 'RSS',
+    path: '/rss',
+    icon: 'rss',
+    group: 'content',
+    showOnMobile: false,
+    activeRouteNames: ['RssSources'],
   },
   {
     key: 'history',
