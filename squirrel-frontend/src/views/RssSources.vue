@@ -307,53 +307,49 @@
       <!-- 3. Right Column: Permanent Article Content Reader -->
       <main class="hidden lg:flex flex-1 min-w-0 flex-col bg-background relative h-full overflow-hidden border-l border-border/10">
         <!-- If an article is selected, render it -->
-        <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden animate-fade-in bg-background relative">
+        <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden animate-fade-in bg-background">
           <!-- Reader Header -->
-          <header class="shrink-0 border-b border-border/10 p-6 flex flex-col gap-3.5 bg-background relative">
-            <!-- Feed Source details & Date -->
-            <div class="flex items-center justify-between text-xs text-muted-foreground/85">
-              <div class="flex items-center gap-2">
-                <span class="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold uppercase tracking-wider text-[9px]">
+          <header class="shrink-0 border-b border-border/10 p-5 bg-background flex flex-col gap-3">
+            <!-- Top Metadata & Controls Row -->
+            <div class="flex items-center justify-between">
+              <!-- Metadata (Feed Source & Date) -->
+              <div class="flex items-center gap-2 text-xs text-muted-foreground/80">
+                <span class="px-2 py-0.5 rounded bg-primary/10 text-primary font-bold uppercase tracking-wider text-[9px]">
                   {{ getFeedCategory(readingEntry.feed_id) }}
                 </span>
                 <span>•</span>
                 <span class="font-bold text-foreground/80">{{ getFeedTitle(readingEntry.feed_id) }}</span>
+                <span>•</span>
+                <span class="tabular-nums text-muted-foreground/60 text-[11px]">{{ formatDate(readingEntry.published_at) }}</span>
               </div>
               
-              <span class="tabular-nums text-muted-foreground/60 text-[11px]">{{ formatDate(readingEntry.published_at) }}</span>
-            </div>
-            
-            <!-- Title -->
-            <h3 class="text-xl md:text-2xl font-bold tracking-tight text-foreground leading-snug">
-              {{ readingEntry.title }}
-            </h3>
-            
-            <!-- Actions Row -->
-            <div class="flex items-center justify-between mt-1 pt-3.5 border-t border-border/5">
-              <div class="flex items-center gap-2">
+              <!-- Clean Flat Action Buttons -->
+              <div class="flex items-center gap-1.5">
+                <!-- 访问原始网页 -->
                 <a 
                   :href="readingEntry.canonical_url" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent/30 hover:bg-accent/50 px-3 text-xs font-medium text-foreground transition-all duration-200"
+                  class="h-7 w-7 rounded-lg bg-accent/40 hover:bg-accent/60 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all"
+                  title="访问原始网页"
                 >
-                  <AppIcon name="externalLink" class="h-3.5 w-3.5" />
-                  <span>访问原始网页</span>
+                  <AppIcon name="externalLink" class="h-4 w-4" />
                 </a>
 
-                <!-- Reading Preferences Menu -->
-                <div class="relative flex items-center gap-1 border-l border-border/10 pl-2 ml-1" ref="readerSettingsRef">
+                <!-- 阅读设置 -->
+                <div class="relative" ref="readerSettingsRef">
                   <button 
                     @click="showReaderSettings = !showReaderSettings"
-                    class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all cursor-pointer"
+                    class="h-7 w-7 rounded-lg bg-accent/40 hover:bg-accent/60 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all cursor-pointer"
                     title="阅读个性化设置"
                   >
                     <AppIcon name="settingsPanel" class="h-4 w-4" />
                   </button>
                   
+                  <!-- Preference dropdown (opens to left) -->
                   <div 
                     v-if="showReaderSettings" 
-                    class="absolute left-0 top-full z-50 mt-1 w-48 rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl p-3 shadow-xl space-y-3 animate-fade-in"
+                    class="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl p-3 shadow-xl space-y-3 animate-fade-in"
                   >
                     <!-- Font Family toggle -->
                     <div class="space-y-1">
@@ -401,32 +397,27 @@
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              <!-- Close/Deselect button -->
-              <button 
-                @click="closeReader"
-                class="h-8 px-3 rounded-lg bg-accent/30 hover:bg-accent/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all text-xs font-semibold gap-1 cursor-pointer"
-                title="关闭阅读器"
-              >
-                <AppIcon name="close" class="h-3.5 w-3.5" />
-                <span>关闭</span>
-              </button>
-            </div>
 
-            <!-- Reading Progress Bar (Overlay on top of border-b) -->
-            <div class="absolute bottom-0 left-0 w-full h-[2px] overflow-hidden">
-              <div 
-                class="h-full bg-primary transition-all duration-75 ease-out shadow-[0_0_8px_rgba(var(--primary),0.8)]"
-                :style="{ width: scrollProgress + '%' }"
-              />
+                <!-- 关闭 -->
+                <button 
+                  @click="closeReader"
+                  class="h-7 w-7 rounded-lg bg-accent/40 hover:bg-accent/60 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all cursor-pointer"
+                  title="关闭阅读器"
+                >
+                  <AppIcon name="close" class="h-4 w-4" />
+                </button>
+              </div>
             </div>
+            
+            <!-- Title -->
+            <h3 class="text-lg md:text-xl font-bold tracking-tight text-foreground leading-snug">
+              {{ readingEntry.title }}
+            </h3>
           </header>
           
           <!-- Reader Body Scroll Container -->
           <div 
             ref="readerScrollContainer"
-            @scroll="handleReaderScroll"
             class="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10 bg-background space-y-6 relative"
           >
             <!-- Description / HTML content -->
@@ -597,96 +588,100 @@
       <SheetContent class="w-full sm:max-w-[640px] md:max-w-[768px] lg:max-w-[900px] border-l border-border/20 bg-background/95 backdrop-blur-xl p-0 flex flex-col h-full shadow-2xl">
         <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden">
           <!-- Reader Header -->
-          <header class="shrink-0 border-b border-border/10 p-6 bg-background/50 backdrop-blur-sm pr-16 flex flex-col gap-2">
-            <!-- Feed Source details & Date -->
-            <div class="flex items-center gap-2.5 text-xs text-muted-foreground">
-              <span class="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold uppercase tracking-wider text-[9px]">
-                {{ getFeedCategory(readingEntry.feed_id) }}
-              </span>
-              <span>•</span>
-              <span class="font-bold text-foreground/80">{{ getFeedTitle(readingEntry.feed_id) }}</span>
-              <span>•</span>
-              <span>发布于 {{ formatDate(readingEntry.published_at) }}</span>
+          <header class="shrink-0 border-b border-border/10 p-5 bg-background/50 backdrop-blur-sm pr-16 flex flex-col gap-3">
+            <!-- Top Metadata & Controls Row -->
+            <div class="flex items-center justify-between">
+              <!-- Metadata (Feed Source & Date) -->
+              <div class="flex items-center gap-2 text-xs text-muted-foreground/80">
+                <span class="px-2 py-0.5 rounded bg-primary/10 text-primary font-bold uppercase tracking-wider text-[9px]">
+                  {{ getFeedCategory(readingEntry.feed_id) }}
+                </span>
+                <span>•</span>
+                <span class="font-bold text-foreground/80">{{ getFeedTitle(readingEntry.feed_id) }}</span>
+                <span>•</span>
+                <span class="tabular-nums text-muted-foreground/60 text-[11px]">{{ formatDate(readingEntry.published_at) }}</span>
+              </div>
+              
+              <!-- Clean Flat Action Buttons -->
+              <div class="flex items-center gap-1.5 pr-2">
+                <!-- 访问原始网页 -->
+                <a 
+                  :href="readingEntry.canonical_url" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  class="h-7 w-7 rounded-lg bg-accent/40 hover:bg-accent/60 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all"
+                  title="访问原始网页"
+                >
+                  <AppIcon name="externalLink" class="h-4 w-4" />
+                </a>
+
+                <!-- Mobile Reading Preferences Menu -->
+                <div class="relative" ref="mobileReaderSettingsRef">
+                  <button 
+                    @click="showMobileReaderSettings = !showMobileReaderSettings"
+                    class="h-7 w-7 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all cursor-pointer"
+                    title="阅读设置"
+                  >
+                    <AppIcon name="settingsPanel" class="h-4 w-4" />
+                  </button>
+                  
+                  <div 
+                    v-if="showMobileReaderSettings" 
+                    class="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl p-3 shadow-xl space-y-3 animate-fade-in"
+                  >
+                    <!-- Font Family toggle -->
+                    <div class="space-y-1">
+                      <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">排版字体</span>
+                      <div class="grid grid-cols-2 gap-1 bg-accent/20 p-0.5 rounded-lg border border-border/5">
+                        <button 
+                          @click="readerFontFamily = 'sans'; saveReaderPrefs()"
+                          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
+                          :class="readerFontFamily === 'sans' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                        >
+                          无衬线
+                        </button>
+                        <button 
+                          @click="readerFontFamily = 'serif'; saveReaderPrefs()"
+                          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
+                          :class="readerFontFamily === 'serif' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                        >
+                          衬线体
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <!-- Font Size toggle -->
+                    <div class="space-y-1">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">字号大小</span>
+                        <span class="text-[10px] font-semibold tabular-nums text-foreground/80">{{ readerFontSize }}px</span>
+                      </div>
+                      <div class="flex items-center gap-1">
+                        <button 
+                          @click="setReaderFontSize(readerFontSize - 1)" 
+                          class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
+                          :disabled="readerFontSize <= 12"
+                        >
+                          A-
+                        </button>
+                        <button 
+                          @click="setReaderFontSize(readerFontSize + 1)" 
+                          class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
+                          :disabled="readerFontSize >= 24"
+                        >
+                          A+
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             
             <!-- Title -->
             <h3 class="text-base md:text-lg font-bold tracking-tight text-foreground leading-snug">
               {{ readingEntry.title }}
             </h3>
-            
-            <!-- Actions -->
-            <div class="flex items-center gap-3 mt-1.5">
-              <a 
-                :href="readingEntry.canonical_url" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent/30 hover:bg-accent/50 px-3 text-xs font-medium text-foreground transition-all duration-200"
-              >
-                <AppIcon name="externalLink" class="h-3.5 w-3.5" />
-                <span>访问原始网页</span>
-              </a>
-
-              <!-- Mobile Reading Preferences Menu -->
-              <div class="relative flex items-center gap-1 border-l border-border/10 pl-2 ml-1" ref="mobileReaderSettingsRef">
-                <button 
-                  @click="showMobileReaderSettings = !showMobileReaderSettings"
-                  class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all cursor-pointer"
-                  title="阅读个性化设置"
-                >
-                  <AppIcon name="settingsPanel" class="h-4 w-4" />
-                </button>
-                
-                <div 
-                  v-if="showMobileReaderSettings" 
-                  class="absolute left-0 top-full z-50 mt-1 w-48 rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl p-3 shadow-xl space-y-3 animate-fade-in"
-                >
-                  <!-- Font Family toggle -->
-                  <div class="space-y-1">
-                    <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">排版字体</span>
-                    <div class="grid grid-cols-2 gap-1 bg-accent/20 p-0.5 rounded-lg border border-border/5">
-                      <button 
-                        @click="readerFontFamily = 'sans'; saveReaderPrefs()"
-                        class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
-                        :class="readerFontFamily === 'sans' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-                      >
-                        无衬线
-                      </button>
-                      <button 
-                        @click="readerFontFamily = 'serif'; saveReaderPrefs()"
-                        class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
-                        :class="readerFontFamily === 'serif' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-                      >
-                        衬线体
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <!-- Font Size toggle -->
-                  <div class="space-y-1">
-                    <div class="flex items-center justify-between">
-                      <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">字号大小</span>
-                      <span class="text-[10px] font-semibold tabular-nums text-foreground/80">{{ readerFontSize }}px</span>
-                    </div>
-                    <div class="flex items-center gap-1">
-                      <button 
-                        @click="setReaderFontSize(readerFontSize - 1)" 
-                        class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
-                        :disabled="readerFontSize <= 12"
-                      >
-                        A-
-                      </button>
-                      <button 
-                        @click="setReaderFontSize(readerFontSize + 1)" 
-                        class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
-                        :disabled="readerFontSize >= 24"
-                      >
-                        A+
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </header>
           
           <!-- Reader Body Scroll Container -->
@@ -810,8 +805,7 @@ const mobileReaderSettingsRef = ref<HTMLElement | null>(null)
 const activeLightboxImg = ref<string | null>(null)
 const lightboxScale = ref(1)
 
-// Reading progress indicator scroll tracking
-const scrollProgress = ref(0)
+// Reading progress container scroll ref
 const readerScrollContainer = ref<HTMLElement | null>(null)
 
 // UI Loading/Transition states
@@ -985,17 +979,7 @@ const readerFontClass = computed(() => {
     : 'font-sans tracking-wide leading-relaxed'
 })
 
-const handleReaderScroll = () => {
-  const container = readerScrollContainer.value
-  if (!container) return
-  const { scrollTop, scrollHeight, clientHeight } = container
-  const totalScroll = scrollHeight - clientHeight
-  if (totalScroll <= 0) {
-    scrollProgress.value = 0
-  } else {
-    scrollProgress.value = (scrollTop / totalScroll) * 100
-  }
-}
+
 
 const handleContentClick = (e: MouseEvent) => {
   const target = e.target as HTMLElement
@@ -1364,7 +1348,6 @@ watch(selectedAccountId, () => {
 })
 
 watch(readingEntry, () => {
-  scrollProgress.value = 0
   showReaderSettings.value = false
   showMobileReaderSettings.value = false
   nextTick(() => {
