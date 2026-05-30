@@ -332,9 +332,16 @@ const mapPlaybackPayload = (response) => {
   const dashManifestUrl = String(response?.streaming_data?.dash_manifest_url || '').trim()
   const hlsManifestUrl = String(response?.streaming_data?.hls_manifest_url || '').trim()
   const isLive = response?.basic_info?.is_live === true || response?.basic_info?.is_post_live_dvr === true
+  const title = String(response?.basic_info?.title || '').trim() || null
+  const thumbnails = response?.basic_info?.thumbnails
+  const thumbnail = Array.isArray(thumbnails) ? thumbnails[thumbnails.length - 1]?.url || null : null
+  const uploaderName = String(response?.basic_info?.uploader || response?.basic_info?.channel || '').trim() || null
+  const uploaderUrl = String(response?.basic_info?.uploader_url || response?.basic_info?.channel_url || '').trim() || null
+  const basePayload = { title, thumbnail, uploader_name: uploaderName, uploader_url: uploaderUrl }
 
   if (isLive && hlsManifestUrl) {
     return {
+      ...basePayload,
       stream_type: 'hls',
       video_url: hlsManifestUrl,
       audio_url: null,
@@ -349,6 +356,7 @@ const mapPlaybackPayload = (response) => {
     const localDashManifest = response?.local_dash_manifest || buildFallbackLocalDashManifest(formats)
     if (localDashManifest) {
       return {
+        ...basePayload,
         stream_type: 'dash',
         video_url: null,
         audio_url: null,
@@ -363,6 +371,7 @@ const mapPlaybackPayload = (response) => {
 
   if (hasAdaptiveSet && dashManifestUrl) {
     return {
+      ...basePayload,
       stream_type: 'dash',
       video_url: null,
       audio_url: null,
@@ -375,6 +384,7 @@ const mapPlaybackPayload = (response) => {
 
   if (bestProgressive?.url) {
     return {
+      ...basePayload,
       stream_type: 'progressive',
       video_url: bestProgressive.url,
       audio_url: null,
@@ -388,6 +398,7 @@ const mapPlaybackPayload = (response) => {
 
   if (hlsManifestUrl) {
     return {
+      ...basePayload,
       stream_type: 'hls',
       video_url: hlsManifestUrl,
       audio_url: null,

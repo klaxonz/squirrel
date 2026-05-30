@@ -15,6 +15,33 @@ import {
 const YOUPORN_MEDIA_PATH_PATTERN = /^https:\/\/www\.(?:youporn|you-porn)\.com\/media\//i
 const AGE_GATE_COOKIE_HEADER = 'showAgeDisclaimer=1; access=1; accessPH=1'
 
+const extractPageTitle = (htmlText) => {
+  const ogTitle = htmlText.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)?.[1]
+  return ogTitle ? ogTitle.trim() : String(htmlText.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '').replace(/\s*[-|]\s*\S+\s*$/, '').trim()
+}
+
+const extractPageThumbnail = (htmlText) => {
+  const ogImage = htmlText.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1]
+  if (ogImage) return ogImage.trim()
+  const jsonLdThumb = htmlText.match(/"thumbnailUrl"\s*:\s*"([^"]+)"/i)?.[1]
+  return jsonLdThumb ? jsonLdThumb.trim() : ''
+}
+
+const extractYpUploaderName = (htmlText) => {
+  const jsonLdScripts = htmlText.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || []
+  for (const script of jsonLdScripts) {
+    const authorMatch = script.match(/"author"\s*:\s*"([^"]+)"/i)
+    if (authorMatch?.[1] && authorMatch[1].trim()) return authorMatch[1].trim()
+  }
+  return null
+}
+
+const extractYpUploaderUrl = (htmlText, targetUrl) => {
+  const match = htmlText.match(/<a\b[^>]*href=["']((?:\/user\/|\/pornstar\/|\/channel\/)[^"']+)["'][^>]*>/i)
+  if (match?.[1]) return new URL(match[1], new URL(targetUrl).origin).toString()
+  return null
+}
+
 const buildCookieHeader = (cookie) => {
   return mergeCookieHeaders(AGE_GATE_COOKIE_HEADER, cookie)
 }
@@ -195,11 +222,13 @@ const buildHlsQualitiesFromDefinitions = (definitions) => {
   return qualities
 }
 
-const mapPlaybackPayload = (targetUrl, definitions) => {
+const mapPlaybackPayload = (targetUrl, definitions, { title, thumbnail, uploader_name, uploader_url } = {}) => {
+  const basePayload = { title: title || null, thumbnail: thumbnail || null, uploader_name: uploader_name || null, uploader_url: uploader_url || null }
   const hlsDefinition = collectHlsDefinitions(definitions)[0]
   if (hlsDefinition?.videoUrl) {
     const qualities = buildHlsQualitiesFromDefinitions(definitions)
     return {
+      ...basePayload,
       stream_type: 'hls',
       video_url: hlsDefinition.videoUrl,
       audio_url: null,
@@ -218,6 +247,7 @@ const mapPlaybackPayload = (targetUrl, definitions) => {
   const mp4Definition = pickBestDefinition(definitions, 'mp4')
   if (mp4Definition?.videoUrl) {
     return {
+      ...basePayload,
       stream_type: 'progressive',
       video_url: mp4Definition.videoUrl,
       audio_url: null,
@@ -260,7 +290,11 @@ export async function resolveYouPornPlayback(targetUrl, { cookie = '', forceRefr
   })
   const definitions = (await expandMediaDefinitions(extractMediaDefinitions(htmlText), cookie, requestContext, fetchImpl))
     .filter((item) => safeUrl(item?.videoUrl))
-  const payload = mapPlaybackPayload(normalizedUrl, definitions)
+  const title = String(extractPageTitle(htmlText) || '').trim() || null
+  const thumbnail = String(extractPageThumbnail(htmlText) || '').trim() || null
+  const uploader_name = extractYpUploaderName(htmlText)
+  const uploader_url = extractYpUploaderUrl(htmlText, normalizedUrl)
+  const payload = mapPlaybackPayload(normalizedUrl, definitions, { title, thumbnail, uploader_name, uploader_url })
   setCachedPayload(cacheKey, payload)
   return payload
 }

@@ -84,13 +84,33 @@ const extractJavdbActors = (htmlText) => {
   return actors
 }
 
-const extractJavdbMetadata = (htmlText, targetUrl) => ({
-  title: extractJavdbDisplayTitle(htmlText),
-  thumbnail: extractJavdbImage(htmlText, targetUrl),
-  publish_date: extractJavdbPublishDate(htmlText),
-  duration: extractJavdbDuration(htmlText),
-  actors: extractJavdbActors(htmlText),
-})
+const extractJavdbUploaderName = (htmlText) => {
+  const { text } = extractJavdbInfoPanelText(htmlText, /(?:Studio|Maker|Label):/i)
+  const match = text.match(/(?:Studio|Maker|Label):\s*(.+)/i)
+  return match?.[1]?.trim() || null
+}
+
+const extractJavdbUploaderUrl = (htmlText) => {
+  const { html } = extractJavdbInfoPanelText(htmlText, /(?:Studio|Maker|Label):/i)
+  const linkMatch = html.match(/<a\b[^>]*href=["']([^"']+)["'][^>]*>/i)
+  if (linkMatch?.[1]) return new URL(linkMatch[1], 'https://javdb.com').toString()
+  return null
+}
+
+const extractJavdbMetadata = (htmlText, targetUrl) => {
+  const metadata = {
+    title: extractJavdbDisplayTitle(htmlText),
+    thumbnail: extractJavdbImage(htmlText, targetUrl),
+    publish_date: extractJavdbPublishDate(htmlText),
+    duration: extractJavdbDuration(htmlText),
+    actors: extractJavdbActors(htmlText),
+  }
+  const uploaderName = extractJavdbUploaderName(htmlText)
+  const uploaderUrl = extractJavdbUploaderUrl(htmlText)
+  if (uploaderName) metadata.uploader_name = uploaderName
+  if (uploaderUrl) metadata.uploader_url = uploaderUrl
+  return metadata
+}
 
 const looksLikeChallengePage = (htmlText) => {
   return /just a moment|cf_chl_|cf-turnstile|challenges\.cloudflare\.com/i.test(String(htmlText || '').toLowerCase())
@@ -192,7 +212,11 @@ const resolveMissavStream = async (videoNo, loadDocumentHtml) => {
   throw new Error(`MissAV detail pages are missing stream metadata for ${videoNo}`)
 }
 
-const mapPlaybackPayload = ({ streamUrl, referer, videoNo, targetUrl }) => ({
+const mapPlaybackPayload = ({ streamUrl, referer, videoNo, targetUrl, title, thumbnail, uploader_name, uploader_url }) => ({
+  title: title || null,
+  thumbnail: thumbnail || null,
+  uploader_name: uploader_name || null,
+  uploader_url: uploader_url || null,
   stream_type: 'hls',
   video_url: streamUrl,
   audio_url: null,
@@ -232,6 +256,7 @@ export async function resolveJavdbPlayback(targetUrl, {
   }
 
   let videoNo = extractVideoNo(sourceVideoNo || sourceTitle)
+  let metadata = { title: null, thumbnail: null }
   if (!videoNo) {
     const javdbHtml = await loadDocumentHtml(normalizedUrl, {
       timeoutMs: 30000,
@@ -239,6 +264,7 @@ export async function resolveJavdbPlayback(targetUrl, {
     })
     const title = extractJavdbTitle(javdbHtml)
     videoNo = extractVideoNo(title)
+    metadata = extractJavdbMetadata(javdbHtml, normalizedUrl)
   }
   if (!videoNo) {
     throw new Error('JavDB video number was not found')
@@ -249,6 +275,10 @@ export async function resolveJavdbPlayback(targetUrl, {
     ...stream,
     videoNo,
     targetUrl: normalizedUrl,
+    title: metadata.title || null,
+    thumbnail: metadata.thumbnail || null,
+    uploader_name: metadata.uploader_name || null,
+    uploader_url: metadata.uploader_url || null,
   })
   setCachedPayload(cacheKey, payload)
   return payload
