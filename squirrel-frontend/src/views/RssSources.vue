@@ -1906,24 +1906,7 @@ onUnmounted(() => {
   line-height: 1.4;
 }
 
-.reader-content :deep(blockquote) {
-  border-left: 4px solid hsl(var(--primary));
-  padding-left: 1.5rem;
-  padding-top: 1rem;
-  padding-bottom: 1rem;
-  margin: 2rem 0;
-  background: hsla(var(--primary), 0.03);
-  border-radius: 0.5rem;
-  color: var(--foreground);
-  font-size: 1.05em;
-  line-height: 1.8;
-  font-weight: 450;
-  position: relative;
-}
 
-.reader-content :deep(blockquote p) {
-  margin-bottom: 0;
-}
 
 .reader-content :deep(ul),
 .reader-content :deep(ol) {
