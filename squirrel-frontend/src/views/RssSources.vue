@@ -1947,34 +1947,152 @@ onUnmounted(() => {
   padding-top: 0.5rem;
 }
 
-.reader-content :deep(img) {
-  max-width: 100%;
-  max-height: 48vh;
-  object-fit: contain;
-  border-radius: 8px;
-  margin: 2rem auto;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-  cursor: zoom-in;
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s;
+/* Explicit highly readable Chinese/English Sans-serif & Serif Font Stacks */
+.reader-content.font-sans {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
 }
 
-.dark .reader-content :deep(img) {
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+.reader-content.font-serif {
+  font-family: Georgia, "Nimbus Roman No9 L", "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", "Source Han Serif CN", "STSong", "AR PL New Sung", "SimSun", "Times New Roman", Times, serif !important;
+}
+
+/* Paragraph spacing & Premium line height */
+.reader-content :deep(p) {
+  margin-bottom: 1.75rem;
+  line-height: 1.85 !important;
+  letter-spacing: 0.012em;
+  color: hsl(var(--foreground) / 0.88);
+}
+
+.dark .reader-content :deep(p) {
+  color: hsl(var(--foreground) / 0.85);
+}
+
+/* Headings typography: clean, bold, balanced vertical rhythm */
+.reader-content :deep(h1) {
+  font-size: 1.8em;
+  margin-top: 2.5rem;
+  margin-bottom: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+}
+
+.reader-content :deep(h2) {
+  font-size: 1.45em;
+  margin-top: 2.25rem;
+  margin-bottom: 1rem;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+  color: hsl(var(--foreground));
+  border-bottom: 1px solid hsla(var(--primary), 0.08);
+  padding-bottom: 0.4rem;
+}
+
+.reader-content :deep(h3) {
+  font-size: 1.25em;
+  margin-top: 2rem;
+  margin-bottom: 0.85rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: hsl(var(--foreground));
+}
+
+.reader-content :deep(h4) {
+  font-size: 1.1em;
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+
+/* Beautiful custom hyperlinks */
+.reader-content :deep(a) {
+  color: hsl(var(--primary));
+  text-decoration: none;
+  border-bottom: 1.5px solid hsla(var(--primary), 0.25);
+  font-weight: 550;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding-bottom: 1px;
+}
+
+.reader-content :deep(a:hover) {
+  border-bottom-color: hsl(var(--primary));
+  background-color: hsla(var(--primary), 0.05);
+  border-radius: 4px;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+/* Aesthetic primary-accented list formatting */
+.reader-content :deep(ul),
+.reader-content :deep(ol) {
+  padding-left: 1.75rem;
+  margin-bottom: 1.75rem;
+}
+
+.reader-content :deep(li) {
+  margin-bottom: 0.75rem;
+  line-height: 1.8;
+  color: hsl(var(--foreground) / 0.88);
+}
+
+.reader-content :deep(ul > li) {
+  list-style-type: none;
+  padding-left: 0.25rem;
+  position: relative;
+}
+
+.reader-content :deep(ul > li::before) {
+  content: "•";
+  color: hsl(var(--primary) / 0.7);
+  font-weight: bold;
+  display: inline-block;
+  width: 1.25rem;
+  margin-left: -1.25rem;
+  font-size: 1.2em;
+  line-height: 1;
+  position: absolute;
+  left: 0;
+  top: 0.3em;
+}
+
+.reader-content :deep(ol > li) {
+  list-style-type: decimal;
+}
+
+/* Premium images & figures with micro-interactions */
+.reader-content :deep(img) {
+  max-width: 100%;
+  max-height: 52vh;
+  object-fit: contain;
+  border-radius: 12px;
+  margin: 2.5rem auto;
+  border: 1px solid hsl(var(--border) / 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
+  cursor: zoom-in;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: block;
 }
 
 .reader-content :deep(img:hover) {
-  transform: translateY(-2px) scale(1.005);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.06);
+  transform: scale(1.008) translateY(-2px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+  border-color: hsl(var(--primary) / 0.25);
+}
+
+.dark .reader-content :deep(img) {
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
 }
 
 .dark .reader-content :deep(img:hover) {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+  border-color: hsl(var(--primary) / 0.4);
 }
 
 .reader-content :deep(figure) {
-  margin: 2rem 0;
+  margin: 2.5rem 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1983,52 +2101,13 @@ onUnmounted(() => {
 .reader-content :deep(figcaption) {
   font-size: 0.8rem;
   color: var(--muted-foreground);
-  margin-top: 0.75rem;
+  margin-top: 0.85rem;
   text-align: center;
   font-style: italic;
+  letter-spacing: 0.02em;
 }
 
-.reader-content :deep(a) {
-  color: hsl(var(--primary));
-  text-decoration: underline;
-  font-weight: 500;
-  transition: opacity 0.15s;
-}
-
-.reader-content :deep(a:hover) {
-  opacity: 0.8;
-}
-
-.reader-content :deep(p) {
-  margin-bottom: 1.5rem;
-  line-height: 1.8 !important;
-  letter-spacing: 0.010em;
-}
-
-.reader-content :deep(h1),
-.reader-content :deep(h2),
-.reader-content :deep(h3),
-.reader-content :deep(h4) {
-  font-weight: 700;
-  color: var(--foreground);
-  margin-top: 2rem;
-  margin-bottom: 0.85rem;
-  line-height: 1.4;
-}
-
-
-
-.reader-content :deep(ul),
-.reader-content :deep(ol) {
-  padding-left: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.reader-content :deep(li) {
-  margin-bottom: 0.65rem;
-  line-height: 1.7;
-}
-
+/* Code blocks (Fallback overrides) */
 .reader-content :deep(pre) {
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -2053,11 +2132,25 @@ onUnmounted(() => {
   border: 1px solid rgba(var(--primary), 0.1);
 }
 
+/* Exquisite divider styled with a centered ✦ emblem */
 .reader-content :deep(hr) {
   border: 0;
   height: 1px;
-  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
-  margin: 2.5rem 0;
+  background: linear-gradient(to right, transparent, hsl(var(--border) / 0.6), transparent);
+  margin: 3.5rem 0;
+  position: relative;
+  overflow: visible;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.reader-content :deep(hr::after) {
+  content: "✦";
+  color: hsl(var(--muted-foreground) / 0.35);
+  background-color: hsl(var(--background));
+  padding: 0 0.85rem;
+  font-size: 0.85rem;
 }
 
 @keyframes fadeIn {
