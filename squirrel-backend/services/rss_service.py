@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Any, Callable, Iterator, Optional
 
 from cryptography.fernet import Fernet
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from core.config import settings
 from core.database import get_session
@@ -390,6 +390,35 @@ class GReaderClient:
                 break
             if not items or not continuation:
                 break
+
+    def fetch_all_item_ids(self, stream_id: str = 'reading-list', limit: int = 200000) -> list[str]:
+        params = {'output': 'json', 's': stream_id, 'n': str(limit)}
+        data = self.http_client.get_json(
+            f'{self.config.base_url}/reader/api/0/stream/items/ids?{urllib.parse.urlencode(params)}',
+            self._headers(),
+        )
+        if not isinstance(data, dict):
+            return []
+        ids = data.get('itemRefs') or data.get('itemIds')
+        if isinstance(ids, list):
+            return [str(i.get('id') if isinstance(i, dict) else i) for i in ids if i]
+        items = data.get('items')
+        if isinstance(items, list):
+            return [str(i.get('id', '')) for i in items if isinstance(i, dict) and i.get('id')]
+        return []
+
+    def fetch_items_contents(self, entry_ids: list[str]) -> list[RemoteEntry]:
+        base = f'{self.config.base_url}/reader/api/0/stream/items/contents?output=json'
+        body = urllib.parse.urlencode([('i', eid) for eid in entry_ids])
+        data = self.http_client.post_text(base, body, {
+            'Authorization': self._headers()['Authorization'],
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'Squirrel/1.0',
+        })
+        items = json.loads(data).get('items') if data else None
+        if not isinstance(items, list):
+            return []
+        return [_greader_entry_to_remote(item) for item in items if isinstance(item, dict)]
 
     def test_connection(self) -> int:
         return len(self.list_feeds())
@@ -786,12 +815,51 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
                     feeds_by_external_id.update(new_feeds)
                     batch_entries = _upsert_remote_entries_batch(session, feeds_by_external_id, page)
                     synced_entries += batch_entries
-                    _set_sync_progress(
-                        account_id,
-                        phase='entries_saving',
-                        entries_synced=synced_entries,
-                    )
+                    _set_sync_progress(account_id, phase='entries_saving', entries_synced=synced_entries)
                     session.commit()
+
+            try:
+                reading_ids_raw = client.fetch_all_item_ids('reading-list', limit=200000)
+            except Exception:
+                reading_ids_raw = []
+
+            if reading_ids_raw:
+                _set_sync_progress(account_id, phase='entries_saving', message='Syncing read/starred state')
+                read_ids = set(client.fetch_all_item_ids('user/-/state/com.google/read', limit=200000))
+                starred_ids = set(client.fetch_all_item_ids('user/-/state/com.google/starred', limit=50000))
+                reading_ids = set(reading_ids_raw)
+
+                with get_session() as session:
+                    local_rows = session.execute(
+                        select(RssEntry.id, RssEntry.external_entry_id, RssEntry.is_read, RssEntry.is_starred)
+                        .where(RssEntry.account_id == account_id)
+                    ).all()
+
+                    local_by_eid: dict[str, tuple[int, bool, bool]] = {
+                        row.external_entry_id: (row.id, row.is_read, row.is_starred)
+                        for row in local_rows
+                    }
+
+                    local_ids = set(local_by_eid.keys())
+                    removed_ids = local_ids - reading_ids
+
+                    if removed_ids:
+                        session.execute(delete(RssEntry).where(RssEntry.external_entry_id.in_(list(removed_ids))))
+
+                    update_dicts: list[dict[str, Any]] = []
+                    for eid, (eid_id, is_read, is_starred) in local_by_eid.items():
+                        if eid not in reading_ids:
+                            continue
+                        should_read = eid not in read_ids
+                        should_starred = eid in starred_ids
+                        if is_read != should_read or is_starred != should_starred:
+                            update_dicts.append({'id': eid_id, 'is_read': should_read, 'is_starred': should_starred})
+
+                    if update_dicts:
+                        session.bulk_update_mappings(RssEntry, update_dicts)
+
+                    if removed_ids or update_dicts:
+                        session.commit()
         else:
             if effective_entry_limit is None:
                 raise RssServiceError('Sync entry limit is required for this RSS provider')

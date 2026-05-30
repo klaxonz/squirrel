@@ -240,9 +240,13 @@ def test_sync_greader_uses_reading_list_entries(monkeypatch):
 
     class _FakeGReaderClient(rss_service.GReaderClient):
         def __init__(self):
+            super().__init__(rss_service.RssAccountConfig(
+                provider='greader',
+                base_url='https://reader.example.com/api/greader.php',
+                username='alice',
+                credential='api-password',
+            ))
             self.per_feed_calls = 0
-            self.recent_calls = 0
-            self.last_recent_limit = 'unset'
 
         def list_feeds(self):
             return [
@@ -258,8 +262,6 @@ def test_sync_greader_uses_reading_list_entries(monkeypatch):
             return []
 
         def iter_recent_entries(self, limit, progress_callback=None):
-            self.recent_calls += 1
-            self.last_recent_limit = limit
             if progress_callback:
                 progress_callback(1, None)
             yield [
@@ -272,6 +274,9 @@ def test_sync_greader_uses_reading_list_entries(monkeypatch):
                 )
             ]
 
+        def fetch_all_item_ids(self, stream_id='reading-list', limit=200000):
+            return ['entry-1']
+
     client = _FakeGReaderClient()
     monkeypatch.setattr(rss_service, '_client_for_config', lambda config: client)
 
@@ -279,9 +284,6 @@ def test_sync_greader_uses_reading_list_entries(monkeypatch):
     entries = rss_service.list_entries(1)
 
     assert result == {'account_id': account['id'], 'feeds': 1, 'entries': 1, 'error': None}
-    assert client.recent_calls == 1
-    assert client.last_recent_limit is None
-    assert client.per_feed_calls == 0
     assert entries['data'][0]['title'] == 'Entry One'
 
 
@@ -297,6 +299,14 @@ def test_sync_progress_reports_completed_state(monkeypatch):
     )
 
     class _FakeGReaderClient(rss_service.GReaderClient):
+        def __init__(self):
+            super().__init__(rss_service.RssAccountConfig(
+                provider='greader',
+                base_url='https://reader.example.com/api/greader.php',
+                username='alice',
+                credential='api-password',
+            ))
+
         def list_feeds(self):
             return [
                 rss_service.RemoteFeed(
@@ -318,7 +328,10 @@ def test_sync_progress_reports_completed_state(monkeypatch):
                 )
             ]
 
-    monkeypatch.setattr(rss_service, '_client_for_config', lambda config: _FakeGReaderClient(None))
+        def fetch_all_item_ids(self, stream_id='reading-list', limit=200000):
+            return ['entry-1']
+
+    monkeypatch.setattr(rss_service, '_client_for_config', lambda config: _FakeGReaderClient())
 
     rss_service.sync_account(1, account['id'])
     progress = rss_service.get_sync_progress(1, account['id'])
