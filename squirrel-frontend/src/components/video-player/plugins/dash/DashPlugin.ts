@@ -164,7 +164,7 @@ export class DashPlugin implements PlayerPlugin {
       streaming: {
         abr: {
           autoSwitchBitrate: { video: this.options.enableAutoQuality !== false },
-          initialBitrate: { video: 3000 },
+          initialBitrate: { video: 20000 },
           initialRepresentationRatio: 1,
           maxBitrate: { video: -1 },
           bandwidthSafetyFactor: 0.95,
