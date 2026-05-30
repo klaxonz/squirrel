@@ -458,28 +458,28 @@
           <!-- Reader Body Scroll Container -->
           <div 
             ref="readerScrollContainer"
-            class="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10 bg-background space-y-6 relative"
+            class="flex-1 overflow-y-auto custom-scrollbar px-5 md:px-16 lg:px-28 py-8 bg-background relative"
           >
-            <!-- Editorial Header (Inside scrollable region for immersive layout) -->
-            <div class="max-w-3xl mx-auto mb-8 space-y-3">
-              <!-- Large Title (Clickable, Reeder classic shortcut to original webpage) -->
+            <!-- Editorial Header -->
+            <div class="max-w-[42rem] mx-auto mb-8">
+              <!-- Title -->
               <h1 
                 @click="openInAppBrowser"
-                class="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground/95 hover:text-primary leading-tight cursor-pointer transition-colors duration-200 ease-out"
+                class="text-xl md:text-2xl font-bold text-foreground/90 hover:text-primary leading-relaxed cursor-pointer transition-colors duration-200"
                 title="点击在应用内打开原文"
               >
                 {{ readingEntry.title }}
               </h1>
 
-              <!-- Date Metadata Row (Reeder-style) -->
-              <div class="text-xs text-muted-foreground/60 tabular-nums font-medium">
+              <!-- Date -->
+              <div class="mt-2 text-xs text-muted-foreground/50 tabular-nums">
                 {{ formatDate(readingEntry.published_at) }}
               </div>
             </div>
 
-            <!-- Description / HTML content -->
+            <!-- Content -->
             <div 
-              class="reader-content prose prose-neutral dark:prose-invert max-w-3xl mx-auto text-foreground/90 py-2 space-y-4"
+              class="reader-content prose prose-neutral dark:prose-invert max-w-[42rem] mx-auto text-foreground/80 py-2 space-y-0"
               :class="readerFontClass"
               :style="{ fontSize: readerFontSize + 'px' }"
               @click="handleContentClick"
@@ -880,7 +880,7 @@
           <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
             <!-- Description / HTML content -->
             <div 
-              class="reader-content prose prose-sm dark:prose-invert max-w-none text-foreground/90 py-2 space-y-4"
+              class="reader-content prose prose-sm dark:prose-invert max-w-none text-foreground/80 py-2 space-y-0"
               :class="readerFontClass"
               :style="{ fontSize: readerFontSize + 'px' }"
               @click="handleContentClick"
@@ -1081,8 +1081,8 @@ const contextMenuPosition = ref({ x: 0, y: 0 })
 const contextMenuEntry = ref<RssEntry | null>(null)
 
 // Reader Customization State
-const readerFontSize = ref(Number(localStorage.getItem('rss_reader_font_size')) || 16)
-const readerFontFamily = ref(localStorage.getItem('rss_reader_font_family') || 'sans')
+const readerFontSize = ref(Number(localStorage.getItem('rss_reader_font_size')) || 17)
+const readerFontFamily = ref(localStorage.getItem('rss_reader_font_family') || 'serif')
 const showReaderSettings = ref(false)
 const readerSettingsRef = ref<HTMLElement | null>(null)
 const showMobileReaderSettings = ref(false)
@@ -1286,7 +1286,7 @@ const filteredEntries = computed(() => {
 
 // Reader Personalization & Scroll Functions
 const setReaderFontSize = (size: number) => {
-  readerFontSize.value = Math.max(12, Math.min(26, size))
+  readerFontSize.value = Math.max(12, Math.min(24, size))
   localStorage.setItem('rss_reader_font_size', String(readerFontSize.value))
 }
 
@@ -1296,8 +1296,8 @@ const saveReaderPrefs = () => {
 
 const readerFontClass = computed(() => {
   return readerFontFamily.value === 'serif' 
-    ? 'font-serif tracking-normal leading-relaxed' 
-    : 'font-sans tracking-wide leading-relaxed'
+    ? 'font-serif tracking-normal leading-loose' 
+    : 'font-sans tracking-normal leading-loose'
 })
 
 
@@ -1932,12 +1932,12 @@ onUnmounted(() => {
   opacity: 0.9;
 }
 
-/* Scoped stylesheet for beautiful markdown / HTML summary rendering in reader */
+/* Scoped stylesheet for reader content typography — WeRead-inspired */
 .font-serif {
-  font-family: Georgia, Cambria, "Times New Roman", Times, "Songti SC", "SimSun", serif;
+  font-family: "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", Georgia, Cambria, "Times New Roman", Times, "SimSun", serif;
 }
 .font-sans {
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 .reader-content {
@@ -1945,154 +1945,147 @@ onUnmounted(() => {
   text-justify: inter-character;
   word-break: break-word;
   padding-top: 0.5rem;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Explicit highly readable Chinese/English Sans-serif & Serif Font Stacks */
 .reader-content.font-sans {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
 }
 
 .reader-content.font-serif {
-  font-family: Georgia, "Nimbus Roman No9 L", "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", "Source Han Serif CN", "STSong", "AR PL New Sung", "SimSun", "Times New Roman", Times, serif !important;
+  font-family: "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", Georgia, "Nimbus Roman No9 L", "SimSun", "Times New Roman", Times, serif !important;
 }
 
-/* Paragraph spacing & Premium line height */
+/* Paragraphs — generous spacing, first-line indent for Chinese */
 .reader-content :deep(p) {
-  margin-bottom: 1.75rem;
-  line-height: 1.85 !important;
-  letter-spacing: 0.012em;
-  color: hsl(var(--foreground) / 0.88);
+  margin-bottom: 1.25rem;
+  line-height: 2 !important;
+  letter-spacing: 0.03em;
+  color: hsl(var(--foreground) / 0.82);
+  text-indent: 2em;
+}
+
+.reader-content :deep(p:first-child) {
+  text-indent: 0;
+}
+
+.reader-content :deep(p:last-child) {
+  margin-bottom: 0;
 }
 
 .dark .reader-content :deep(p) {
-  color: hsl(var(--foreground) / 0.85);
+  color: hsl(var(--foreground) / 0.78);
 }
 
-/* Headings typography: clean, bold, balanced vertical rhythm */
+/* Headings — understated, no decoration */
 .reader-content :deep(h1) {
-  font-size: 1.8em;
+  font-size: 1.6em;
   margin-top: 2.5rem;
-  margin-bottom: 1.25rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: hsl(var(--foreground));
+  margin-bottom: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.4;
+  color: hsl(var(--foreground) / 0.9);
+  text-indent: 0;
 }
 
 .reader-content :deep(h2) {
-  font-size: 1.45em;
-  margin-top: 2.25rem;
+  font-size: 1.3em;
+  margin-top: 2.2rem;
   margin-bottom: 1rem;
-  font-weight: 750;
-  letter-spacing: -0.015em;
-  color: hsl(var(--foreground));
-  border-bottom: 1px solid hsla(var(--primary), 0.08);
-  padding-bottom: 0.4rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: hsl(var(--foreground) / 0.88);
+  text-indent: 0;
 }
 
 .reader-content :deep(h3) {
-  font-size: 1.25em;
-  margin-top: 2rem;
-  margin-bottom: 0.85rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: hsl(var(--foreground));
+  font-size: 1.15em;
+  margin-top: 1.8rem;
+  margin-bottom: 0.8rem;
+  font-weight: 600;
+  color: hsl(var(--foreground) / 0.85);
+  text-indent: 0;
 }
 
 .reader-content :deep(h4) {
-  font-size: 1.1em;
-  margin-top: 1.75rem;
-  margin-bottom: 0.75rem;
-  font-weight: 700;
-  color: hsl(var(--foreground));
+  font-size: 1.05em;
+  margin-top: 1.5rem;
+  margin-bottom: 0.6rem;
+  font-weight: 600;
+  color: hsl(var(--foreground) / 0.82);
+  text-indent: 0;
 }
 
-/* Beautiful custom hyperlinks */
+/* Links — minimal, color only */
 .reader-content :deep(a) {
-  color: hsl(var(--primary));
+  color: hsl(var(--primary) / 0.9);
   text-decoration: none;
-  border-bottom: 1.5px solid hsla(var(--primary), 0.25);
-  font-weight: 550;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  padding-bottom: 1px;
+  font-weight: 500;
+  transition: color 0.15s ease;
 }
 
 .reader-content :deep(a:hover) {
-  border-bottom-color: hsl(var(--primary));
-  background-color: hsla(var(--primary), 0.05);
-  border-radius: 4px;
-  padding-left: 2px;
-  padding-right: 2px;
+  color: hsl(var(--primary));
 }
 
-/* Aesthetic primary-accented list formatting */
+/* Lists */
 .reader-content :deep(ul),
 .reader-content :deep(ol) {
-  padding-left: 1.75rem;
-  margin-bottom: 1.75rem;
+  padding-left: 1.75em;
+  margin-bottom: 1.25rem;
 }
 
 .reader-content :deep(li) {
-  margin-bottom: 0.75rem;
-  line-height: 1.8;
-  color: hsl(var(--foreground) / 0.88);
+  margin-bottom: 0.35rem;
+  line-height: 2;
+  color: hsl(var(--foreground) / 0.82);
+}
+
+.reader-content :deep(li > p) {
+  text-indent: 0;
+  margin-bottom: 0.35rem;
 }
 
 .reader-content :deep(ul > li) {
   list-style-type: none;
-  padding-left: 0.25rem;
+  padding-left: 0;
   position: relative;
 }
 
 .reader-content :deep(ul > li::before) {
-  content: "•";
-  color: hsl(var(--primary) / 0.7);
-  font-weight: bold;
+  content: '';
   display: inline-block;
-  width: 1.25rem;
-  margin-left: -1.25rem;
-  font-size: 1.2em;
-  line-height: 1;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: hsl(var(--foreground) / 0.25);
   position: absolute;
-  left: 0;
-  top: 0.3em;
+  left: -0.75em;
+  top: 0.7em;
 }
 
 .reader-content :deep(ol > li) {
   list-style-type: decimal;
 }
 
-/* Premium images & figures with micro-interactions */
+/* Images — clean, centered */
 .reader-content :deep(img) {
   max-width: 100%;
-  max-height: 52vh;
+  max-height: 50vh;
   object-fit: contain;
-  border-radius: 12px;
-  margin: 2.5rem auto;
-  border: 1px solid hsl(var(--border) / 0.4);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
-  cursor: zoom-in;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 4px;
+  margin: 1.75rem auto;
   display: block;
 }
 
-.reader-content :deep(img:hover) {
-  transform: scale(1.008) translateY(-2px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
-  border-color: hsl(var(--primary) / 0.25);
-}
-
 .dark .reader-content :deep(img) {
-  border-color: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-}
-
-.dark .reader-content :deep(img:hover) {
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
-  border-color: hsl(var(--primary) / 0.4);
+  opacity: 0.92;
 }
 
 .reader-content :deep(figure) {
-  margin: 2.5rem 0;
+  margin: 1.75rem 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2100,57 +2093,85 @@ onUnmounted(() => {
 
 .reader-content :deep(figcaption) {
   font-size: 0.8rem;
-  color: var(--muted-foreground);
-  margin-top: 0.85rem;
+  color: hsl(var(--muted-foreground) / 0.7);
+  margin-top: 0.5rem;
   text-align: center;
-  font-style: italic;
-  letter-spacing: 0.02em;
+  font-style: normal;
+  letter-spacing: 0;
+  text-indent: 0;
 }
 
-/* Code blocks (Fallback overrides) */
+/* Code blocks */
 .reader-content :deep(pre) {
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 0.75rem;
-  padding: 1.25rem;
+  background: hsl(var(--muted) / 0.45);
+  border: none;
+  border-radius: 4px;
+  padding: 1rem 1.25rem;
   overflow-x: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.875rem;
-  line-height: 1.6;
-  margin: 2rem 0;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  margin: 1.5rem 0;
+  text-indent: 0;
+}
+
+.reader-content :deep(pre p) {
+  text-indent: 0 !important;
 }
 
 .reader-content :deep(code:not(pre code)) {
-  background: rgba(var(--primary), 0.08);
-  color: hsl(var(--primary));
-  padding: 0.2rem 0.4rem;
-  border-radius: 0.375rem;
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--foreground) / 0.8);
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.9em;
-  font-weight: 500;
-  border: 1px solid rgba(var(--primary), 0.1);
+  font-size: 0.88em;
+  font-weight: 400;
 }
 
-/* Exquisite divider styled with a centered ✦ emblem */
+/* Blockquotes — left bar, quiet */
+.reader-content :deep(blockquote) {
+  border: none;
+  border-left: 3px solid hsl(var(--primary) / 0.35);
+  padding: 0.5rem 1.25rem;
+  margin: 1.5rem 0;
+  background: transparent;
+  color: hsl(var(--foreground) / 0.65);
+  font-size: 0.97em;
+  line-height: 2;
+  text-indent: 0;
+}
+
+.reader-content :deep(blockquote p) {
+  text-indent: 0 !important;
+  margin-bottom: 0.5rem !important;
+  line-height: 2 !important;
+}
+
+.reader-content :deep(blockquote p:last-child) {
+  margin-bottom: 0 !important;
+}
+
+/* Divider — subtle */
 .reader-content :deep(hr) {
   border: 0;
   height: 1px;
-  background: linear-gradient(to right, transparent, hsl(var(--border) / 0.6), transparent);
-  margin: 3.5rem 0;
-  position: relative;
-  overflow: visible;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  background: hsl(var(--border) / 0.4);
+  margin: 2rem 0;
 }
 
 .reader-content :deep(hr::after) {
-  content: "✦";
-  color: hsl(var(--muted-foreground) / 0.35);
-  background-color: hsl(var(--background));
-  padding: 0 0.85rem;
-  font-size: 0.85rem;
+  content: none;
+}
+
+/* Table handling — no indent */
+.reader-content :deep(table) {
+  text-indent: 0;
+}
+
+.reader-content :deep(th),
+.reader-content :deep(td) {
+  text-indent: 0;
 }
 
 @keyframes fadeIn {
