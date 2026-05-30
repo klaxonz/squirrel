@@ -340,3 +340,223 @@ def test_sync_progress_reports_completed_state(monkeypatch):
     assert progress['phase'] == 'completed'
     assert progress['feeds_synced'] == 1
     assert progress['entries_synced'] == 1
+
+
+def test_greader_incremental_sync_stops_when_page_has_no_changes(monkeypatch):
+    engine = _setup(monkeypatch)
+    account = rss_service.create_account(
+        1,
+        provider='greader',
+        name='FreshRSS',
+        base_url='https://reader.example.com/api/greader.php',
+        username='alice',
+        credential='api-password',
+    )
+
+    with Session(engine) as session:
+        feed = RssFeed(
+            user_id=1,
+            account_id=account['id'],
+            external_feed_id='feed/1',
+            title='Feed One',
+            enabled=True,
+        )
+        session.add(feed)
+        session.flush()
+        session.add(
+            RssEntry(
+                user_id=1,
+                account_id=account['id'],
+                feed_id=feed.id,
+                external_entry_id='entry-1',
+                canonical_url='https://example.com/posts/1',
+                title='Entry One',
+                published_at=datetime(2024, 1, 1, 10, 0, 0),
+                is_read=False,
+                is_starred=False,
+            )
+        )
+        session.commit()
+
+    class _FakeGReaderClient(rss_service.GReaderClient):
+        def __init__(self):
+            super().__init__(rss_service.RssAccountConfig(
+                provider='greader',
+                base_url='https://reader.example.com/api/greader.php',
+                username='alice',
+                credential='api-password',
+            ))
+            self.pages_requested = 0
+            self.entry_limit = None
+
+        def list_feeds(self):
+            return [
+                rss_service.RemoteFeed(
+                    external_feed_id='feed/1',
+                    title='Feed One',
+                    feed_url='https://example.com/feed.xml',
+                )
+            ]
+
+        def iter_recent_entries(self, limit, progress_callback=None):
+            self.pages_requested += 1
+            self.entry_limit = limit
+            if progress_callback:
+                progress_callback(1, 'next-page')
+            yield [
+                rss_service.RemoteEntry(
+                    external_feed_id='feed/1',
+                    external_entry_id='entry-1',
+                    canonical_url='https://example.com/posts/1',
+                    title='Entry One',
+                    published_at=datetime(2024, 1, 1, 10, 0, 0),
+                )
+            ]
+            raise AssertionError('incremental sync should stop before requesting older pages')
+
+        def fetch_all_item_ids(self, stream_id='reading-list', limit=200000):
+            raise AssertionError('incremental sync should not run full state reconciliation')
+
+    client = _FakeGReaderClient()
+    monkeypatch.setattr(rss_service, '_client_for_config', lambda config: client)
+
+    result = rss_service.sync_account(1, account['id'])
+    progress = rss_service.get_sync_progress(1, account['id'])
+
+    assert result == {'account_id': account['id'], 'feeds': 1, 'entries': 0, 'error': None}
+    assert client.pages_requested == 1
+    assert client.entry_limit == rss_service.G_READER_QUICK_ENTRIES_PER_FEED
+    assert progress['sync_mode'] == 'incremental'
+
+
+def test_greader_full_sync_reconciles_read_and_starred_state(monkeypatch):
+    engine = _setup(monkeypatch)
+    account = rss_service.create_account(
+        1,
+        provider='greader',
+        name='FreshRSS',
+        base_url='https://reader.example.com/api/greader.php',
+        username='alice',
+        credential='api-password',
+    )
+    other_account = rss_service.create_account(
+        1,
+        provider='greader',
+        name='Other FreshRSS',
+        base_url='https://reader.example.com/api/greader.php',
+        username='alice',
+        credential='api-password',
+    )
+
+    with Session(engine) as session:
+        feed = RssFeed(
+            user_id=1,
+            account_id=account['id'],
+            external_feed_id='feed/1',
+            title='Feed One',
+            enabled=True,
+        )
+        session.add(feed)
+        session.flush()
+        session.add(
+            RssEntry(
+                user_id=1,
+                account_id=account['id'],
+                feed_id=feed.id,
+                external_entry_id='entry-1',
+                canonical_url='https://example.com/posts/1',
+                title='Entry One',
+                is_read=False,
+                is_starred=False,
+            )
+        )
+        session.add(
+            RssEntry(
+                user_id=1,
+                account_id=account['id'],
+                feed_id=feed.id,
+                external_entry_id='entry-removed',
+                canonical_url='https://example.com/posts/removed',
+                title='Removed Entry',
+                is_read=False,
+                is_starred=False,
+            )
+        )
+        other_feed = RssFeed(
+            user_id=1,
+            account_id=other_account['id'],
+            external_feed_id='feed/other',
+            title='Other Feed',
+            enabled=True,
+        )
+        session.add(other_feed)
+        session.flush()
+        session.add(
+            RssEntry(
+                user_id=1,
+                account_id=other_account['id'],
+                feed_id=other_feed.id,
+                external_entry_id='entry-removed',
+                canonical_url='https://other.example.com/posts/removed',
+                title='Other Removed Entry',
+                is_read=False,
+                is_starred=False,
+            )
+        )
+        session.commit()
+
+    class _FakeGReaderClient(rss_service.GReaderClient):
+        def __init__(self):
+            super().__init__(rss_service.RssAccountConfig(
+                provider='greader',
+                base_url='https://reader.example.com/api/greader.php',
+                username='alice',
+                credential='api-password',
+            ))
+            self.state_streams = []
+
+        def list_feeds(self):
+            return [
+                rss_service.RemoteFeed(
+                    external_feed_id='feed/1',
+                    title='Feed One',
+                    feed_url='https://example.com/feed.xml',
+                )
+            ]
+
+        def iter_recent_entries(self, limit, progress_callback=None):
+            if False:
+                yield []
+
+        def fetch_all_item_ids(self, stream_id='reading-list', limit=200000):
+            self.state_streams.append(stream_id)
+            if stream_id == 'reading-list':
+                return ['entry-1']
+            if stream_id == 'user/-/state/com.google/read':
+                return ['entry-1']
+            if stream_id == 'user/-/state/com.google/starred':
+                return ['entry-1']
+            return []
+
+    client = _FakeGReaderClient()
+    monkeypatch.setattr(rss_service, '_client_for_config', lambda config: client)
+
+    rss_service.sync_account(1, account['id'], force_full_sync=True)
+
+    with Session(engine) as session:
+        entry = session.scalars(select(RssEntry).where(
+            RssEntry.account_id == account['id'],
+            RssEntry.external_entry_id == 'entry-1',
+        )).one()
+        other_entry = session.scalars(select(RssEntry).where(
+            RssEntry.account_id == other_account['id'],
+            RssEntry.external_entry_id == 'entry-removed',
+        )).one()
+        assert entry.is_read is True
+        assert entry.is_starred is True
+        assert other_entry.title == 'Other Removed Entry'
+    assert client.state_streams == [
+        'reading-list',
+        'user/-/state/com.google/read',
+        'user/-/state/com.google/starred',
+    ]

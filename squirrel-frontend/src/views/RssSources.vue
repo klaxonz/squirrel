@@ -107,7 +107,7 @@
                 :disabled="syncing"
               >
                 <AppIcon name="refresh" class="h-3 w-3" :class="{ 'animate-spin': syncing }" />
-                <span>增量</span>
+                <span>轻量</span>
               </button>
               <button 
                 @click="showSyncMenu = !showSyncMenu" 
@@ -819,12 +819,16 @@ const stripHtmlTags = (html: string) => {
 }
 
 let statusTimeout: ReturnType<typeof setTimeout> | null = null
+const getRssSyncModeLabel = (syncMode?: string) => {
+  return syncMode === 'full' ? '全量同步' : '轻量同步'
+}
+
 const setStatus = (message: string, isError = false) => {
   statusMessage.value = message
   statusError.value = isError
   
   if (statusTimeout) clearTimeout(statusTimeout)
-  if (message && !message.startsWith('同步中')) {
+  if (message && !message.includes('同步中')) {
     statusTimeout = setTimeout(() => {
       statusMessage.value = ''
       statusError.value = false
@@ -1047,33 +1051,37 @@ const pollSyncProgress = () => {
     }
     const data = result.data
     if (!data) return
+    const modeLabel = getRssSyncModeLabel(data.sync_mode)
     if (data.running) {
       const phaseLabel: Record<string, string> = {
         starting: '启动中',
-        feeds_fetching: '获取 Feed 列表',
-        feeds_saving: '保存 Feed',
-        entries_fetching: '获取文章',
-        entries_saving: '保存文章',
+        feeds_fetching: '同步订阅源',
+        feeds_saving: '同步订阅源',
+        entries_fetching: '同步文章',
+        entries_saving: '同步文章',
       }
       const label = phaseLabel[data.phase] || data.phase
       let progress = ''
       if (data.phase === 'entries_fetching') {
-        progress = data.entries_fetched != null ? `已拉取 ${data.entries_fetched} 条` : '等待服务器响应...'
+        progress = data.entries_fetched != null ? `已获取 ${data.entries_fetched} 篇` : '等待服务器响应...'
       } else if (data.phase === 'entries_saving') {
-        progress = `已保存 ${data.entries_synced || 0} 条`
+        progress = `已更新 ${data.entries_synced || 0} 篇`
       } else if (data.feeds_synced != null) {
         progress = `${data.feeds_synced} 个`
       }
-      setStatus(`同步中 [${label}] ${progress}`, false)
+      setStatus(`${modeLabel}中 [${label}] ${progress}`, false)
     } else {
       clearInterval(syncPollTimer!)
       syncPollTimer = null
       syncing.value = false
       if (data.phase === 'completed') {
-        setStatus(`同步完成：${data.feeds_synced || 0} 个 Feed，${data.entries_synced || 0} 个文章`)
+        const changedEntries = data.entries_synced || 0
+        const entryText = changedEntries > 0 ? `已更新 ${changedEntries} 篇文章` : '所有内容已是最新'
+        setStatus(`${modeLabel}完成：${entryText}`)
       } else {
         setStatus(data.message || data.error || '同步失败', true)
       }
+      await loadAccounts()
       await loadFeeds()
       await loadEntries(true)
     }

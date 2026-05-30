@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 SUPPORTED_PROVIDERS = {'greader', 'miniflux', 'fever'}
 G_READER_PAGE_SIZE = 1000
+G_READER_QUICK_ENTRIES_PER_FEED = 10
+G_READER_QUICK_MAX_ENTRIES = 1000
 UNSET = object()
 _SYNC_LOCK = Lock()
 _ACCOUNT_SYNC_LOCKS: dict[int, Lock] = {}
@@ -748,6 +750,7 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
         running=True,
         phase='starting',
         message='Starting RSS sync',
+        sync_mode='full' if force_full_sync else 'incremental',
         feeds_total=None,
         feeds_synced=0,
         entries_fetched=0,
@@ -793,11 +796,23 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
         synced_feeds = len(feeds)
 
         if isinstance(client, GReaderClient):
+            greader_entry_limit = effective_entry_limit
+            if not force_full_sync:
+                quick_entry_limit = min(
+                    G_READER_QUICK_MAX_ENTRIES,
+                    max(1, len(feed_refs) * G_READER_QUICK_ENTRIES_PER_FEED),
+                )
+                greader_entry_limit = (
+                    min(effective_entry_limit, quick_entry_limit)
+                    if effective_entry_limit is not None
+                    else quick_entry_limit
+                )
+
             _set_sync_progress(
                 account_id,
                 phase='entries_fetching',
                 message='Fetching RSS entries',
-                entry_limit=effective_entry_limit,
+                entry_limit=greader_entry_limit,
             )
 
             def _on_entries_fetched(entry_count: int, continuation: Optional[str]) -> None:
@@ -810,20 +825,18 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
 
             with get_session() as session:
                 feeds_by_external_id: dict[str, RssFeed] = {}
-                for page in client.iter_recent_entries(effective_entry_limit, _on_entries_fetched):
+                for page in client.iter_recent_entries(greader_entry_limit, _on_entries_fetched):
                     new_feeds = _load_feeds_by_external_id(session, account_id, page, feeds_by_external_id)
                     feeds_by_external_id.update(new_feeds)
                     batch_entries = _upsert_remote_entries_batch(session, feeds_by_external_id, page)
                     synced_entries += batch_entries
                     _set_sync_progress(account_id, phase='entries_saving', entries_synced=synced_entries)
                     session.commit()
+                    if not force_full_sync and batch_entries == 0:
+                        break
 
-            if not force_full_sync:
-                try:
-                    reading_ids_raw = client.fetch_all_item_ids('reading-list', limit=200000)
-                except Exception:
-                    reading_ids_raw = []
-
+            if force_full_sync:
+                reading_ids_raw = client.fetch_all_item_ids('reading-list', limit=200000)
                 if reading_ids_raw:
                     _set_sync_progress(account_id, phase='entries_saving', message='Syncing read/starred state')
                     read_ids = set(client.fetch_all_item_ids('user/-/state/com.google/read', limit=200000))
@@ -845,13 +858,16 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
                         removed_ids = local_ids - reading_ids
 
                         if removed_ids:
-                            session.execute(delete(RssEntry).where(RssEntry.external_entry_id.in_(list(removed_ids))))
+                            session.execute(delete(RssEntry).where(
+                                RssEntry.account_id == account_id,
+                                RssEntry.external_entry_id.in_(list(removed_ids)),
+                            ))
 
                         update_dicts: list[dict[str, Any]] = []
                         for eid, (eid_id, is_read, is_starred) in local_by_eid.items():
                             if eid not in reading_ids:
                                 continue
-                            should_read = eid not in read_ids
+                            should_read = eid in read_ids
                             should_starred = eid in starred_ids
                             if is_read != should_read or is_starred != should_starred:
                                 update_dicts.append({'id': eid_id, 'is_read': should_read, 'is_starred': should_starred})
@@ -1141,6 +1157,3 @@ def _load_feeds_by_external_id(
         )
     ).all()
     return {feed.external_feed_id: feed for feed in feeds if feed.enabled}
-
-
-
