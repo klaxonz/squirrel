@@ -61,7 +61,7 @@
             <div class="h-full bg-white transition-all duration-500 ease-out" :style="{ width: `${getProgress(item) * 100}%` }" />
           </div>
           <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <div class="size-10 rounded-full bg-primary/90 flex items-center justify-center text-white shadow-lg backdrop-blur-sm scale-75 group-hover:scale-100 transition-transform">
+            <div class="size-10 rounded-full bg-primary/90 flex items-center justify-center text-primary-foreground shadow-lg backdrop-blur-sm scale-75 group-hover:scale-100 transition-transform">
               <AppIcon name="play" class="size-5 ml-1" />
             </div>
           </div>
