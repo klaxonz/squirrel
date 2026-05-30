@@ -211,16 +211,6 @@
               />
             </div>
 
-            <!-- Media Only Filter -->
-            <button
-              @click="mediaOnly = !mediaOnly"
-              class="flex h-8 w-8 items-center justify-center rounded-lg border border-border/50 text-muted-foreground hover:bg-accent hover:text-foreground transition-all shrink-0 bg-accent/20"
-              :class="mediaOnly ? 'border-primary/30 bg-primary/10 text-primary' : 'text-muted-foreground'"
-              title="仅看媒体"
-            >
-              <AppIcon name="film" class="h-3.5 w-3.5" />
-            </button>
-
           </div>
         </header>
 
@@ -290,14 +280,7 @@
                     </span>
                   </div>
                   
-                  <!-- Icons: Enclosure media indicator -->
-                  <div class="flex items-center gap-1.5 shrink-0">
-                    <span v-if="entry.media?.length" class="inline-flex items-center gap-1 px-1.2 py-0.2 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[9px] font-bold">
-                      <AppIcon name="film" class="h-2.5 w-2.5" />
-                      <span>{{ entry.media.length }}</span>
-                    </span>
-                    <AppIcon name="externalLink" class="h-3 w-3 text-muted-foreground/40 group-hover:text-foreground/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300 ease-out" />
-                  </div>
+                  <AppIcon name="externalLink" class="h-3 w-3 text-muted-foreground/40 group-hover:text-foreground/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300 ease-out" />
                 </div>
               </div>
             </div>
@@ -360,46 +343,6 @@
           
           <!-- Reader Body Scroll Container -->
           <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6 bg-background">
-            <!-- Playable Video Attachments -->
-            <div v-if="playableVideos.length" class="space-y-3 bg-accent/20 p-4 rounded-2xl border border-border/10">
-              <h5 class="text-xs font-bold text-foreground/90 flex items-center gap-2">
-                <AppIcon name="film" class="h-4 w-4 text-primary" />
-                <span>视频播放</span>
-              </h5>
-              <div v-for="media in playableVideos" :key="media.id" class="space-y-2">
-                <div class="text-xs text-muted-foreground/85 font-medium truncate flex items-center gap-1.5">
-                  <AppIcon name="link" class="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                  <span class="truncate">{{ getMediaFileName(media.media_url) }}</span>
-                </div>
-                <video 
-                  :src="media.media_url" 
-                  controls 
-                  class="w-full rounded-xl aspect-video bg-black border border-border/20 shadow-md"
-                  preload="metadata"
-                ></video>
-              </div>
-            </div>
-            
-            <!-- Playable Audio Attachments -->
-            <div v-if="playableAudios.length" class="space-y-3 bg-accent/20 p-4 rounded-2xl border border-border/10">
-              <h5 class="text-xs font-bold text-foreground/90 flex items-center gap-2">
-                <AppIcon name="playlistMusic" class="h-4 w-4 text-primary" />
-                <span>音频播放</span>
-              </h5>
-              <div v-for="media in playableAudios" :key="media.id" class="space-y-2">
-                <div class="text-xs text-muted-foreground/85 font-medium truncate flex items-center gap-1.5">
-                  <AppIcon name="link" class="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                  <span class="truncate">{{ getMediaFileName(media.media_url) }}</span>
-                </div>
-                <audio 
-                  :src="media.media_url" 
-                  controls 
-                  class="w-full mt-1"
-                  preload="metadata"
-                ></audio>
-              </div>
-            </div>
-            
             <!-- Description / HTML content -->
             <div 
               class="reader-content prose prose-sm dark:prose-invert max-w-none text-foreground/90 leading-relaxed font-normal py-2 space-y-4"
@@ -598,46 +541,6 @@
           
           <!-- Reader Body Scroll Container -->
           <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
-            <!-- Playable Video Attachments -->
-            <div v-if="playableVideos.length" class="space-y-3 bg-accent/20 p-4 rounded-2xl border border-border/10">
-              <h5 class="text-xs font-bold text-foreground/90 flex items-center gap-2">
-                <AppIcon name="film" class="h-4 w-4 text-primary" />
-                <span>视频播放</span>
-              </h5>
-              <div v-for="media in playableVideos" :key="media.id" class="space-y-2">
-                <div class="text-xs text-muted-foreground/85 font-medium truncate flex items-center gap-1.5">
-                  <AppIcon name="link" class="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                  <span class="truncate">{{ getMediaFileName(media.media_url) }}</span>
-                </div>
-                <video 
-                  :src="media.media_url" 
-                  controls 
-                  class="w-full rounded-xl aspect-video bg-black border border-border/20 shadow-md"
-                  preload="metadata"
-                ></video>
-              </div>
-            </div>
-            
-            <!-- Playable Audio Attachments -->
-            <div v-if="playableAudios.length" class="space-y-3 bg-accent/20 p-4 rounded-2xl border border-border/10">
-              <h5 class="text-xs font-bold text-foreground/90 flex items-center gap-2">
-                <AppIcon name="playlistMusic" class="h-4 w-4 text-primary" />
-                <span>音频播放</span>
-              </h5>
-              <div v-for="media in playableAudios" :key="media.id" class="space-y-2">
-                <div class="text-xs text-muted-foreground/85 font-medium truncate flex items-center gap-1.5">
-                  <AppIcon name="link" class="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                  <span class="truncate">{{ getMediaFileName(media.media_url) }}</span>
-                </div>
-                <audio 
-                  :src="media.media_url" 
-                  controls 
-                  class="w-full mt-1"
-                  preload="metadata"
-                ></audio>
-              </div>
-            </div>
-            
             <!-- Description / HTML content -->
             <div 
               class="reader-content prose prose-sm dark:prose-invert max-w-none text-foreground/90 leading-relaxed font-normal py-2 space-y-4"
@@ -708,13 +611,6 @@ type RssEntry = {
   published_at?: string | null
   is_read: boolean
   is_starred: boolean
-  media?: Array<{
-    id: number
-    media_url: string
-    media_type?: string | null
-    duration?: number | null
-    video_id?: number | null
-  }>
 }
 
 // Reactive Data State
@@ -743,7 +639,6 @@ const collapsedFolders = ref<Record<string, boolean>>({})
 
 // Articles grid Filtering, Searching & Pagination
 const entrySearch = ref('')
-const mediaOnly = ref(false)
 const page = ref(1)
 const pageSize = ref(30)
 const totalEntries = ref(0)
@@ -866,38 +761,7 @@ const filteredEntries = computed(() => {
     })
   }
   
-  if (mediaOnly.value) {
-    list = list.filter(entry => entry.media && entry.media.length > 0)
-  }
-  
   return list
-})
-
-// Reader attachment players (Video/Audio)
-const isVideoMedia = (media: any) => {
-  const url = media.media_url || ''
-  const type = media.media_type || ''
-  if (type.includes('video')) return true
-  const lowerUrl = url.toLowerCase()
-  return lowerUrl.endsWith('.mp4') || lowerUrl.endsWith('.webm') || lowerUrl.endsWith('.mkv') || lowerUrl.endsWith('.m3u8') || lowerUrl.endsWith('.mov') || lowerUrl.endsWith('.flv')
-}
-
-const isAudioMedia = (media: any) => {
-  const url = media.media_url || ''
-  const type = media.media_type || ''
-  if (type.includes('audio')) return true
-  const lowerUrl = url.toLowerCase()
-  return lowerUrl.endsWith('.mp3') || lowerUrl.endsWith('.m4a') || lowerUrl.endsWith('.wav') || lowerUrl.endsWith('.ogg')
-}
-
-const playableVideos = computed(() => {
-  if (!readingEntry.value || !readingEntry.value.media) return []
-  return readingEntry.value.media.filter(isVideoMedia)
-})
-
-const playableAudios = computed(() => {
-  if (!readingEntry.value || !readingEntry.value.media) return []
-  return readingEntry.value.media.filter(isAudioMedia)
 })
 
 // Helper methods for resolving article grid metadata
@@ -919,17 +783,6 @@ const getFeedIconUrl = (feedId: number) => {
 const getFeedInitials = (feedId: number) => {
   const title = getFeedTitle(feedId)
   return title.trim().charAt(0) || 'R'
-}
-
-const getMediaFileName = (url: string) => {
-  if (!url) return '多媒体文件'
-  try {
-    const pathname = new URL(url).pathname
-    const parts = pathname.split('/')
-    return decodeURIComponent(parts[parts.length - 1]) || '多媒体文件'
-  } catch {
-    return '多媒体文件'
-  }
 }
 
 // Clean summary HTML tags for compact card summary rendering

@@ -85,24 +85,4 @@ class RssEntry(Base, SerializerMixin):
     updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(), onupdate=lambda: datetime.now())
 
 
-class RssEntryMedia(Base, SerializerMixin):
-    __tablename__ = 'rss_entry_media'
 
-    __table_args__ = (
-        UniqueConstraint('entry_id', 'media_url', name='uix_rss_entry_media_entry_url'),
-        Index('ix_rss_entry_media_entry', 'entry_id'),
-        Index('ix_rss_entry_media_video', 'video_id'),
-    )
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    account_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    feed_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    entry_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    media_url: Mapped[str] = mapped_column(VARCHAR(2048), nullable=False)
-    media_type: Mapped[Optional[str]] = mapped_column(VARCHAR(120), nullable=True)
-    duration: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    video_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    raw_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
-    updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(), onupdate=lambda: datetime.now())

@@ -12,16 +12,15 @@ from datetime import datetime
 from typing import Any, Callable, Iterator, Optional
 
 from cryptography.fernet import Fernet
-from sqlalchemy import func, select, tuple_
+from sqlalchemy import func, select
 
 from core.config import settings
 from core.database import get_session
-from models.rss import RssAccount, RssEntry, RssEntryMedia, RssFeed
+from models.rss import RssAccount, RssEntry, RssFeed
 
 logger = logging.getLogger(__name__)
 
 SUPPORTED_PROVIDERS = {'greader', 'miniflux', 'fever'}
-MEDIA_EXTENSIONS = ('.mp4', '.mp3', '.m4a', '.mkv', '.webm', '.flv', '.mov', '.ogg', '.wav', '.m3u8')
 G_READER_PAGE_SIZE = 500
 UNSET = object()
 _SYNC_LOCK = Lock()
@@ -65,7 +64,6 @@ class RemoteEntry:
     published_at: Optional[datetime] = None
     is_read: bool = False
     is_starred: bool = False
-    media: list[dict[str, Any]] = field(default_factory=list)
     raw_data: dict[str, Any] = field(default_factory=dict)
 
 
@@ -126,11 +124,6 @@ def _parse_datetime(value: Any) -> Optional[datetime]:
         return parsed.replace(tzinfo=None) if parsed.tzinfo else parsed
     except ValueError:
         return None
-
-
-def _is_media_url(url: str) -> bool:
-    path = urllib.parse.urlparse(str(url or '')).path.lower()
-    return path.endswith(MEDIA_EXTENSIONS)
 
 
 class _JsonHttpClient:
@@ -405,7 +398,6 @@ class GReaderClient:
 def _miniflux_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
     url = str(item.get('url') or item.get('comments_url') or '').strip()
     entry_id = str(item.get('id') or item.get('hash') or url).strip()
-    media = _extract_media(item)
     return RemoteEntry(
         external_entry_id=entry_id,
         canonical_url=url or entry_id,
@@ -416,7 +408,6 @@ def _miniflux_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
         published_at=_parse_datetime(item.get('published_at') or item.get('created_at')),
         is_read=str(item.get('status') or '').lower() == 'read',
         is_starred=bool(item.get('starred')),
-        media=media,
         raw_data=dict(item),
     )
 
@@ -433,7 +424,6 @@ def _fever_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
         published_at=_parse_datetime(item.get('created_on_time')),
         is_read=bool(item.get('is_read')),
         is_starred=bool(item.get('is_saved')),
-        media=_extract_media(item),
         raw_data=dict(item),
     )
 
@@ -455,7 +445,6 @@ def _greader_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
         published_at=_parse_datetime(item.get('published') or item.get('updated') or item.get('crawlTimeMsec')),
         is_read=any('/state/com.google/read' in str(category) for category in categories),
         is_starred=any('/state/com.google/starred' in str(category) for category in categories),
-        media=_extract_media(item),
         raw_data=dict(item),
     )
 
@@ -486,29 +475,6 @@ def _greader_text(value: Any) -> Optional[str]:
     if isinstance(value, str):
         return value
     return None
-
-
-def _extract_media(item: dict[str, Any]) -> list[dict[str, Any]]:
-    media: list[dict[str, Any]] = []
-    for key in ('enclosures', 'attachments'):
-        values = item.get(key)
-        if not isinstance(values, list):
-            continue
-        for value in values:
-            if not isinstance(value, dict):
-                continue
-            media_url = value.get('url')
-            if not media_url:
-                continue
-            media_type = value.get('mime_type') or value.get('type')
-            if media_type or _is_media_url(media_url):
-                media.append({'media_url': media_url, 'media_type': media_type, 'raw_data': dict(value)})
-
-    for key in ('media_url', 'enclosure_url'):
-        media_url = item.get(key)
-        if media_url and _is_media_url(media_url):
-            media.append({'media_url': media_url, 'media_type': item.get('media_type'), 'raw_data': {}})
-    return media
 
 
 def _client_for_config(config: RssAccountConfig):
@@ -597,7 +563,7 @@ def serialize_feed(feed: RssFeed) -> dict[str, Any]:
     }
 
 
-def serialize_entry(entry: RssEntry, media: Optional[list[RssEntryMedia]] = None) -> dict[str, Any]:
+def serialize_entry(entry: RssEntry) -> dict[str, Any]:
     return {
         'id': entry.id,
         'account_id': entry.account_id,
@@ -611,16 +577,6 @@ def serialize_entry(entry: RssEntry, media: Optional[list[RssEntryMedia]] = None
         'published_at': entry.published_at.isoformat() if entry.published_at else None,
         'is_read': entry.is_read,
         'is_starred': entry.is_starred,
-        'media': [
-            {
-                'id': item.id,
-                'media_url': item.media_url,
-                'media_type': item.media_type,
-                'duration': item.duration,
-                'video_id': item.video_id,
-            }
-            for item in (media or [])
-        ],
     }
 
 
@@ -767,14 +723,12 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
         feeds_synced=0,
         entries_fetched=0,
         entries_synced=0,
-        media_synced=0,
         error=None,
         started_at=datetime.now().isoformat(),
         finished_at=None,
     )
     synced_feeds = 0
     synced_entries = 0
-    synced_media = 0
     error_message = None
 
     try:
@@ -833,14 +787,12 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
                     feeds_by_external_id.update(new_feeds)
                     for batch in _chunked(page, 200):
                         batch_index += 1
-                        batch_entries, batch_media = _upsert_remote_entries_batch(session, feeds_by_external_id, batch)
+                        batch_entries = _upsert_remote_entries_batch(session, feeds_by_external_id, batch)
                         synced_entries += batch_entries
-                        synced_media += batch_media
                         _set_sync_progress(
                             account_id,
                             phase='entries_saving',
                             entries_synced=synced_entries,
-                            media_synced=synced_media,
                             current_batch=batch_index,
                         )
                     session.commit()
@@ -871,15 +823,13 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
                     feeds_by_external_id = {external_feed_id: feed}
                     if remote_entries:
                         remote_entries = [replace(re, external_feed_id=re.external_feed_id or external_feed_id) for re in remote_entries]
-                    batch_entries, batch_media = _upsert_remote_entries_batch(session, feeds_by_external_id, remote_entries)
+                    batch_entries = _upsert_remote_entries_batch(session, feeds_by_external_id, remote_entries)
                     synced_entries += batch_entries
-                    synced_media += batch_media
                     feed.last_entry_sync_at = datetime.now()
                     _set_sync_progress(
                         account_id,
                         phase='entries_saving',
                         entries_synced=synced_entries,
-                        media_synced=synced_media,
                     )
                     session.commit()
 
@@ -895,7 +845,6 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
             message='RSS sync completed',
             feeds_synced=synced_feeds,
             entries_synced=synced_entries,
-            media_synced=synced_media,
             error=None,
             finished_at=datetime.now().isoformat(),
         )
@@ -915,7 +864,6 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
             message='RSS sync failed',
             feeds_synced=synced_feeds,
             entries_synced=synced_entries,
-            media_synced=synced_media,
             error=error_message,
             finished_at=datetime.now().isoformat(),
         )
@@ -927,7 +875,6 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
         'account_id': account_id,
         'feeds': synced_feeds,
         'entries': synced_entries,
-        'media': synced_media,
         'error': error_message,
     }
 
@@ -966,16 +913,11 @@ def list_entries(
             .offset((page - 1) * page_size)
             .limit(page_size)
         ).all()
-        entry_ids = [entry.id for entry in entries]
-        media_rows = session.scalars(select(RssEntryMedia).where(RssEntryMedia.entry_id.in_(entry_ids))).all() if entry_ids else []
-        media_by_entry: dict[int, list[RssEntryMedia]] = {}
-        for media in media_rows:
-            media_by_entry.setdefault(media.entry_id, []).append(media)
         return {
             'total': total,
             'page': page,
             'pageSize': page_size,
-            'data': [serialize_entry(entry, media_by_entry.get(entry.id, [])) for entry in entries],
+            'data': [serialize_entry(entry) for entry in entries],
         }
 
 
@@ -1030,9 +972,8 @@ def _upsert_remote_entries_batch(
     session,
     feeds_by_external_id: dict[str, RssFeed],
     remote_entries: list[RemoteEntry],
-) -> tuple[int, int]:
+) -> int:
     entries_by_key: dict[tuple[int, str], RssEntry] = {}
-    eligible_entries: list[tuple[RssFeed, RemoteEntry, RssEntry]] = []
     feed_ids: set[int] = set()
     entry_ids: list[str] = []
 
@@ -1056,6 +997,7 @@ def _upsert_remote_entries_batch(
 
     new_entry_dicts: list[dict[str, Any]] = []
     new_entry_keys: list[tuple[int, str]] = []
+    upserted_count = 0
 
     for remote_entry in remote_entries:
         if not remote_entry.external_feed_id:
@@ -1085,6 +1027,7 @@ def _upsert_remote_entries_batch(
                 updated_at=now,
             ))
             new_entry_keys.append(key)
+            upserted_count += 1
         else:
             entry.canonical_url = remote_entry.canonical_url
             entry.title = remote_entry.title
@@ -1095,77 +1038,13 @@ def _upsert_remote_entries_batch(
             entry.is_read = remote_entry.is_read
             entry.is_starred = remote_entry.is_starred
             entry.raw_data = remote_entry.raw_data
+            upserted_count += 1
+        feed.last_entry_sync_at = datetime.now()
 
     if new_entry_dicts:
         session.bulk_insert_mappings(RssEntry, new_entry_dicts)
-        keys_tuples = [(fid, eid) for fid, eid in new_entry_keys]
-        new_rows = session.scalars(
-            select(RssEntry).where(
-                tuple_(RssEntry.feed_id, RssEntry.external_entry_id).in_(keys_tuples)
-            )
-        ).all()
-        for row in new_rows:
-            entries_by_key[(row.feed_id, row.external_entry_id)] = row
 
-    for remote_entry in remote_entries:
-        if not remote_entry.external_feed_id:
-            continue
-        feed = feeds_by_external_id.get(remote_entry.external_feed_id)
-        if not feed or not feed.enabled:
-            continue
-        key = (feed.id, remote_entry.external_entry_id)
-        entry = entries_by_key.get(key)
-        if entry is not None:
-            eligible_entries.append((feed, remote_entry, entry))
-
-    if not eligible_entries:
-        return 0, 0
-
-    session.flush()
-
-    batch_entry_ids = [entry.id for _, _, entry in eligible_entries]
-    existing_media_rows = session.scalars(
-        select(RssEntryMedia).where(RssEntryMedia.entry_id.in_(batch_entry_ids))
-    ).all()
-    media_by_key: dict[tuple[int, str], RssEntryMedia] = {}
-    for media in existing_media_rows:
-        media_by_key[(media.entry_id, media.media_url)] = media
-
-    new_media_dicts: list[dict[str, Any]] = []
-    media_count = 0
-    for feed, remote_entry, entry in eligible_entries:
-        for media_item in remote_entry.media:
-            media_url = str(media_item.get('media_url') or '').strip()
-            if not media_url:
-                continue
-            key = (entry.id, media_url)
-            row = media_by_key.get(key)
-            if row is None:
-                now = datetime.now()
-                new_media_dicts.append(dict(
-                    user_id=entry.user_id,
-                    account_id=entry.account_id,
-                    feed_id=entry.feed_id,
-                    entry_id=entry.id,
-                    media_url=media_url,
-                    media_type=media_item.get('media_type'),
-                    duration=media_item.get('duration'),
-                    raw_data=media_item.get('raw_data'),
-                    created_at=now,
-                    updated_at=now,
-                ))
-                media_by_key[key] = None  # placeholder to avoid duplicate within batch
-                media_count += 1
-            else:
-                row.media_type = media_item.get('media_type')
-                row.duration = media_item.get('duration')
-                row.raw_data = media_item.get('raw_data')
-        feed.last_entry_sync_at = datetime.now()
-
-    if new_media_dicts:
-        session.bulk_insert_mappings(RssEntryMedia, new_media_dicts)
-
-    return len(eligible_entries), media_count
+    return upserted_count
 
 
 def _load_feeds_by_external_id(

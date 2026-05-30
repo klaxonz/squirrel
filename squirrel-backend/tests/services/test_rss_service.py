@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
-from models.rss import RssAccount, RssEntry, RssEntryMedia, RssFeed
+from models.rss import RssAccount, RssEntry, RssFeed
 from services import rss_service
 
 
@@ -34,7 +34,6 @@ def _setup(monkeypatch):
             RssAccount.__table__,
             RssFeed.__table__,
             RssEntry.__table__,
-            RssEntryMedia.__table__,
         ],
     )
     monkeypatch.setattr(rss_service, 'get_session', lambda: _managed_session(engine))
@@ -64,7 +63,7 @@ def test_create_account_encrypts_credential_and_hides_it_from_api(monkeypatch):
         assert rss_service._decrypt(row.credential_encrypted) == 'secret-token'
 
 
-def test_sync_account_upserts_feeds_entries_and_media(monkeypatch):
+def test_sync_account_upserts_feeds_and_entries(monkeypatch):
     _setup(monkeypatch)
     account = rss_service.create_account(
         1,
@@ -96,13 +95,6 @@ def test_sync_account_upserts_feeds_entries_and_media(monkeypatch):
                     title='Entry One',
                     summary='Body',
                     published_at=datetime(2024, 1, 1, 10, 0, 0),
-                    media=[
-                        {
-                            'media_url': 'https://cdn.example.com/video.mp4',
-                            'media_type': 'video/mp4',
-                            'raw_data': {'source': 'test'},
-                        }
-                    ],
                 )
             ]
 
@@ -111,11 +103,10 @@ def test_sync_account_upserts_feeds_entries_and_media(monkeypatch):
     result = rss_service.sync_account(1, account['id'], entry_limit=20)
     entries = rss_service.list_entries(1)
 
-    assert result == {'account_id': account['id'], 'feeds': 1, 'entries': 1, 'media': 1, 'error': None}
+    assert result == {'account_id': account['id'], 'feeds': 1, 'entries': 1, 'error': None}
     assert rss_service.list_feeds(1)[0]['title'] == 'Feed One'
     assert entries['total'] == 1
     assert entries['data'][0]['title'] == 'Entry One'
-    assert entries['data'][0]['media'][0]['media_url'] == 'https://cdn.example.com/video.mp4'
 
 
 def test_rss_entry_title_uses_text_column():
@@ -182,7 +173,6 @@ def test_greader_client_uses_client_login_and_stream_api():
     assert entries[0].title == 'Example Entry'
     assert entries[0].canonical_url == 'https://example.com/posts/1'
     assert entries[0].is_read is True
-    assert entries[0].media[0]['media_url'] == 'https://cdn.example.com/audio.mp3'
 
 
 def test_greader_client_paginates_reading_list():
@@ -288,7 +278,7 @@ def test_sync_greader_uses_reading_list_entries(monkeypatch):
     result = rss_service.sync_account(1, account['id'])
     entries = rss_service.list_entries(1)
 
-    assert result == {'account_id': account['id'], 'feeds': 1, 'entries': 1, 'media': 0, 'error': None}
+    assert result == {'account_id': account['id'], 'feeds': 1, 'entries': 1, 'error': None}
     assert client.recent_calls == 1
     assert client.last_recent_limit is None
     assert client.per_feed_calls == 0
