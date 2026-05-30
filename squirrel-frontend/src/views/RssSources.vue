@@ -349,7 +349,7 @@
                   <!-- Preference dropdown (opens to left) -->
                   <div 
                     v-if="showReaderSettings" 
-                    class="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-border/30 bg-background/98 p-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] space-y-3 animate-fade-in"
+                    class="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-border/30 bg-popover text-popover-foreground p-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] space-y-3 animate-fade-in"
                   >
                     <!-- Font Family toggle -->
                     <div class="space-y-1">
@@ -619,7 +619,7 @@
                   
                   <div 
                     v-if="showMobileReaderSettings" 
-                    class="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-border/30 bg-background/98 p-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] space-y-3 animate-fade-in"
+                    class="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-border/30 bg-popover text-popover-foreground p-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] space-y-3 animate-fade-in"
                   >
                     <!-- Font Family toggle -->
                     <div class="space-y-1">
