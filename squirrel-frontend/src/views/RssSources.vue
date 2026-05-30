@@ -159,7 +159,7 @@
                 class="group relative flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-xs transition-all overflow-hidden"
                 :class="selectedFeedId === feed.id ? 'bg-primary/10 text-primary shadow-sm font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
               >
-                <AppIcon name="rss" class="h-3.5 w-3.5 shrink-0 opacity-70" />
+                <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
                 <span class="flex-1 truncate">{{ feed.title }}</span>
               </button>
             </div>
@@ -171,27 +171,38 @@
         </div>
       </aside>
 
-      <!-- 2. Middle Main Area: Article cards grid -->
-      <main class="flex min-w-0 flex-1 flex-col bg-background relative">
-        <header class="relative flex shrink-0 items-center justify-between border-b border-border/10 bg-background/70 px-4 py-4 lg:px-8 backdrop-blur-2xl z-20">
-          <div class="min-w-0">
-            <h2 class="truncate text-xl font-bold tracking-tight text-foreground/90">
-              {{ selectedFeedTitle || selectedAccount?.name || 'RSS 阅读器' }}
-            </h2>
-            <div class="mt-1 flex items-center gap-2 text-xs text-muted-foreground/80 font-medium">
-              <span>{{ selectedFeedSubtitle }}</span>
-              <div v-if="loading" class="flex items-center gap-1 ml-1.5">
-                <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.3s]" />
-                <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/80 [animation-delay:-0.15s]" />
-                <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" />
+      <!-- 2. Middle Column: Article List Flow -->
+      <section class="flex h-full w-full lg:w-[360px] xl:w-[400px] shrink-0 flex-col bg-background border-r border-border/10 relative z-10">
+        <header class="relative flex shrink-0 flex-col border-b border-border/10 bg-background/70 p-4 backdrop-blur-2xl z-20">
+          <div class="flex items-center justify-between w-full">
+            <div class="min-w-0">
+              <h2 class="truncate text-base font-bold tracking-tight text-foreground/90">
+                {{ selectedFeedTitle || selectedAccount?.name || 'RSS 阅读器' }}
+              </h2>
+              <div class="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground/80 font-medium">
+                <span>{{ selectedFeedSubtitle }}</span>
+                <div v-if="loading" class="flex items-center gap-1 ml-1">
+                  <div class="h-1 w-1 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.3s]" />
+                  <div class="h-1 w-1 animate-bounce rounded-full bg-primary/80 [animation-delay:-0.15s]" />
+                  <div class="h-1 w-1 animate-bounce rounded-full bg-primary" />
+                </div>
               </div>
             </div>
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              class="h-7 w-7 rounded-lg bg-accent/40 hover:bg-accent/60 shrink-0" 
+              @click="loadAll"
+            >
+              <AppIcon name="refresh" class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" />
+            </Button>
           </div>
 
-          <!-- Actions Toolbar -->
-          <div class="flex items-center gap-2.5">
+          <!-- Controls Toolbar Row -->
+          <div class="flex items-center gap-2 mt-3 w-full">
             <!-- Entry Search -->
-            <div class="relative w-36 sm:w-48 group">
+            <div class="relative flex-1 group">
               <AppIcon name="search" class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
               <input
                 v-model="entrySearch"
@@ -203,40 +214,19 @@
             <!-- Media Only Filter -->
             <button
               @click="mediaOnly = !mediaOnly"
-              class="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition-all shrink-0"
-              :class="mediaOnly ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border/50 text-muted-foreground hover:bg-accent hover:text-foreground'"
+              class="flex h-8 w-8 items-center justify-center rounded-lg border border-border/50 text-muted-foreground hover:bg-accent hover:text-foreground transition-all shrink-0 bg-accent/20"
+              :class="mediaOnly ? 'border-primary/30 bg-primary/10 text-primary' : 'text-muted-foreground'"
+              title="仅看媒体"
             >
               <AppIcon name="film" class="h-3.5 w-3.5" />
-              <span class="hidden sm:inline">仅看媒体</span>
             </button>
 
-            <!-- Sync Button -->
-            <Button 
-              v-if="selectedAccount"
-              variant="outline" 
-              class="h-8 rounded-lg text-xs font-semibold px-2.5 gap-1 shrink-0" 
-              :disabled="syncing" 
-              @click="syncSelectedAccount"
-            >
-              <AppIcon name="refresh" class="h-3.5 w-3.5" :class="{ 'animate-spin': syncing }" />
-              <span class="hidden sm:inline">同步</span>
-            </Button>
-
-            <!-- Refresh Button -->
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              class="h-8 w-8 rounded-lg bg-accent/40 hover:bg-accent/60 shrink-0" 
-              @click="loadAll"
-            >
-              <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': loading }" />
-            </Button>
           </div>
         </header>
 
         <!-- Main Body Scroll Container -->
         <div ref="entriesContainer" class="flex-1 overflow-y-auto custom-scrollbar bg-background">
-          <div class="mx-auto w-full max-w-[1400px] p-4 lg:p-6 lg:px-8 space-y-6">
+          <div class="w-full p-4 space-y-4">
             <!-- Global Status Bar -->
             <div 
               v-if="statusMessage" 
@@ -255,59 +245,58 @@
             <!-- Empty view -->
             <div 
               v-if="filteredEntries.length === 0" 
-              class="flex min-h-[30rem] flex-col items-center justify-center text-center py-10"
+              class="flex min-h-[20rem] flex-col items-center justify-center text-center py-10"
             >
-              <div class="h-20 w-20 rounded-full bg-accent/30 flex items-center justify-center mb-5 ring-4 ring-background shadow-inner">
-                <AppIcon name="inbox" class="h-8 w-8 text-muted-foreground/45" />
+              <div class="h-16 w-16 rounded-full bg-accent/30 flex items-center justify-center mb-4 ring-4 ring-background shadow-inner">
+                <AppIcon name="inbox" class="h-6 w-6 text-muted-foreground/45" />
               </div>
-              <h3 class="text-base font-bold tracking-tight text-foreground/80">暂无相关文章</h3>
-              <p class="mt-1 text-xs text-muted-foreground max-w-[240px] leading-relaxed">
-                {{ selectedAccount ? '该分类或订阅源当前未加载到对应文章，可点击同步获取最新文章。' : '请先添加并选择您的 RSS 账号以加载内容。' }}
+              <h3 class="text-sm font-bold tracking-tight text-foreground/80">暂无相关文章</h3>
+              <p class="mt-1 text-[11px] text-muted-foreground max-w-[200px] leading-relaxed">
+                {{ selectedAccount ? '当前无对应文章，可点击同步获取最新内容。' : '请先添加并选择您的 RSS 账号。' }}
               </p>
             </div>
 
-            <!-- Articles Cards Grid -->
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <!-- Articles List -->
+            <div v-else class="flex flex-col gap-3">
               <div 
                 v-for="entry in filteredEntries" 
                 :key="entry.id"
                 @click="openReader(entry)"
-                class="group relative flex flex-col justify-between rounded-xl border border-border/20 bg-accent/5 p-5 hover:bg-accent/12 hover:border-primary/20 transition-all duration-300 ease-out cursor-pointer animate-fade-in"
+                class="group relative flex flex-col justify-between rounded-xl border p-4 transition-all duration-300 ease-out cursor-pointer animate-fade-in"
+                :class="readingEntry?.id === entry.id ? 'border-primary/40 bg-primary/5 ring-1 ring-primary/10' : 'border-border/20 bg-accent/5 hover:bg-accent/12 hover:border-primary/20'"
               >
                 <!-- Card Top: Category & Time -->
-                <div class="flex items-center justify-between text-xs text-muted-foreground/85 mb-3">
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/5 border border-primary/10 text-primary text-[10px] font-bold tracking-wide uppercase group-hover:bg-primary/10 group-hover:border-primary/20 transition-all duration-300 ease-out">
+                <div class="flex items-center justify-between text-xs text-muted-foreground/85 mb-2.5">
+                  <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/5 border border-primary/10 text-primary text-[9px] font-bold tracking-wide uppercase group-hover:bg-primary/10 group-hover:border-primary/20 transition-all duration-300 ease-out">
                     {{ getFeedCategory(entry.feed_id) }}
                   </span>
-                  <span class="tabular-nums">{{ formatDate(entry.published_at) }}</span>
+                  <span class="tabular-nums text-[10px]">{{ formatDate(entry.published_at) }}</span>
                 </div>
                 
                 <!-- Title & Summary -->
-                <div class="flex-1 space-y-2 mb-4">
-                  <h4 class="text-sm font-bold leading-snug text-foreground/90 group-hover:text-primary transition-colors duration-300 ease-out line-clamp-2">
+                <div class="flex-1 space-y-1.5 mb-3.5">
+                  <h4 class="text-xs font-bold leading-snug transition-colors duration-300 ease-out line-clamp-2" :class="readingEntry?.id === entry.id ? 'text-primary' : 'text-foreground/90 group-hover:text-primary'">
                     {{ entry.title }}
                   </h4>
-                  <p v-if="entry.summary" class="text-xs leading-relaxed text-muted-foreground/75 line-clamp-3" v-html="stripHtmlTags(entry.summary)" />
+                  <p v-if="entry.summary" class="text-[11px] leading-relaxed text-muted-foreground/75 line-clamp-2" v-html="stripHtmlTags(entry.summary)" />
                 </div>
                 
                 <!-- Card Bottom: Source & Media indicator -->
-                <div class="flex items-center justify-between pt-3.5 border-t border-border/5">
+                <div class="flex items-center justify-between pt-3 border-t border-border/5">
                   <div class="flex items-center gap-2 min-w-0">
-                    <div class="h-5 w-5 rounded bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0 uppercase group-hover:scale-105 group-hover:bg-primary/20 transition-all duration-300 ease-out">
-                      {{ getFeedInitials(entry.feed_id) }}
-                    </div>
-                    <span class="text-xs font-semibold text-muted-foreground/90 truncate">
+                    <SiteIcon :icon-url="getFeedIconUrl(entry.feed_id)" size="xs" rounded="sm" class="shrink-0" />
+                    <span class="text-[11px] font-semibold text-muted-foreground/90 truncate">
                       {{ getFeedTitle(entry.feed_id) }}
                     </span>
                   </div>
                   
                   <!-- Icons: Enclosure media indicator -->
                   <div class="flex items-center gap-1.5 shrink-0">
-                    <span v-if="entry.media?.length" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold">
-                      <AppIcon name="film" class="h-3 w-3" />
+                    <span v-if="entry.media?.length" class="inline-flex items-center gap-1 px-1.2 py-0.2 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[9px] font-bold">
+                      <AppIcon name="film" class="h-2.5 w-2.5" />
                       <span>{{ entry.media.length }}</span>
                     </span>
-                    <AppIcon name="externalLink" class="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-foreground/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300 ease-out" />
+                    <AppIcon name="externalLink" class="h-3 w-3 text-muted-foreground/40 group-hover:text-foreground/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300 ease-out" />
                   </div>
                 </div>
               </div>
@@ -318,6 +307,115 @@
               <div v-if="loadingMoreEntries" class="h-6 w-6 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- 3. Right Column: Permanent Article Content Reader -->
+      <main class="hidden lg:flex flex-1 min-w-0 flex-col bg-accent/5 relative h-full overflow-hidden">
+        <!-- If an article is selected, render it -->
+        <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden animate-fade-in bg-background">
+          <!-- Reader Header -->
+          <header class="shrink-0 border-b border-border/10 p-6 bg-background/50 backdrop-blur-md pr-6 flex flex-col gap-2">
+            <!-- Feed Source details & Date -->
+            <div class="flex items-center gap-2.5 text-xs text-muted-foreground">
+              <span class="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold uppercase tracking-wider text-[9px]">
+                {{ getFeedCategory(readingEntry.feed_id) }}
+              </span>
+              <span>•</span>
+              <span class="font-bold text-foreground/80">{{ getFeedTitle(readingEntry.feed_id) }}</span>
+              <span>•</span>
+              <span>发布于 {{ formatDate(readingEntry.published_at) }}</span>
+            </div>
+            
+            <!-- Title -->
+            <h3 class="text-lg md:text-xl font-bold tracking-tight text-foreground leading-snug">
+              {{ readingEntry.title }}
+            </h3>
+            
+            <!-- Actions -->
+            <div class="flex items-center justify-between mt-1.5">
+              <div class="flex items-center gap-3">
+                <a 
+                  :href="readingEntry.canonical_url" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/50 bg-accent/20 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
+                >
+                  <AppIcon name="externalLink" class="h-3.5 w-3.5" />
+                  <span>访问原始网页</span>
+                </a>
+              </div>
+              
+              <!-- Close/Deselect button for clean workspace feel -->
+              <button 
+                @click="closeReader"
+                class="h-8 px-3 rounded-lg border border-border/50 bg-accent/10 hover:bg-accent/25 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-xs font-semibold gap-1"
+                title="关闭阅读器"
+              >
+                <AppIcon name="close" class="h-3.5 w-3.5" />
+                <span>关闭</span>
+              </button>
+            </div>
+          </header>
+          
+          <!-- Reader Body Scroll Container -->
+          <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6 bg-background">
+            <!-- Playable Video Attachments -->
+            <div v-if="playableVideos.length" class="space-y-3 bg-accent/20 p-4 rounded-2xl border border-border/10">
+              <h5 class="text-xs font-bold text-foreground/90 flex items-center gap-2">
+                <AppIcon name="film" class="h-4 w-4 text-primary" />
+                <span>视频播放</span>
+              </h5>
+              <div v-for="media in playableVideos" :key="media.id" class="space-y-2">
+                <div class="text-xs text-muted-foreground/85 font-medium truncate flex items-center gap-1.5">
+                  <AppIcon name="link" class="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                  <span class="truncate">{{ getMediaFileName(media.media_url) }}</span>
+                </div>
+                <video 
+                  :src="media.media_url" 
+                  controls 
+                  class="w-full rounded-xl aspect-video bg-black border border-border/20 shadow-md"
+                  preload="metadata"
+                ></video>
+              </div>
+            </div>
+            
+            <!-- Playable Audio Attachments -->
+            <div v-if="playableAudios.length" class="space-y-3 bg-accent/20 p-4 rounded-2xl border border-border/10">
+              <h5 class="text-xs font-bold text-foreground/90 flex items-center gap-2">
+                <AppIcon name="playlistMusic" class="h-4 w-4 text-primary" />
+                <span>音频播放</span>
+              </h5>
+              <div v-for="media in playableAudios" :key="media.id" class="space-y-2">
+                <div class="text-xs text-muted-foreground/85 font-medium truncate flex items-center gap-1.5">
+                  <AppIcon name="link" class="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                  <span class="truncate">{{ getMediaFileName(media.media_url) }}</span>
+                </div>
+                <audio 
+                  :src="media.media_url" 
+                  controls 
+                  class="w-full mt-1"
+                  preload="metadata"
+                ></audio>
+              </div>
+            </div>
+            
+            <!-- Description / HTML content -->
+            <div 
+              class="reader-content prose prose-sm dark:prose-invert max-w-none text-foreground/90 leading-relaxed font-normal py-2 space-y-4"
+              v-html="readingEntry.summary || '<p class=text-muted-foreground>该文章暂无正文内容。</p>'"
+            />
+          </div>
+        </div>
+        
+        <!-- If no article is selected, render a gorgeous premium workstation-themed placeholder -->
+        <div v-else class="flex flex-col items-center justify-center flex-1 text-center p-8 bg-background/30 backdrop-blur-sm h-full select-none">
+          <div class="h-20 w-20 rounded-2xl bg-accent/20 flex items-center justify-center mb-5 border border-border/10 shadow-inner ring-4 ring-accent/5 animate-pulse">
+            <AppIcon name="library" class="h-9 w-9 text-primary/70" />
+          </div>
+          <p class="text-xs text-muted-foreground max-w-[280px] leading-relaxed">
+            选择左侧订阅源，并点击中间文章列表中感兴趣的文章即可开始阅读。
+          </p>
         </div>
       </main>
     </div>
@@ -462,8 +560,8 @@
       </DialogContent>
     </Dialog>
 
-    <!-- 5. Premium Slide-over Reader View Drawer -->
-    <Sheet :open="!!readingEntry" @update:open="closeReader">
+    <!-- 5. Premium Slide-over Reader View Drawer (Mobile Fallback) -->
+    <Sheet :open="isMobile && !!readingEntry" @update:open="closeReader">
       <SheetContent class="w-full sm:max-w-[640px] md:max-w-[768px] lg:max-w-[900px] border-l border-border/20 bg-background/95 backdrop-blur-xl p-0 flex flex-col h-full shadow-2xl">
         <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden">
           <!-- Reader Header -->
@@ -567,6 +665,7 @@ import {
   updateRssAccount,
 } from '@/api'
 import AppIcon from '@/components/common/AppIcon.vue'
+import SiteIcon from '@/components/common/SiteIcon.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -593,6 +692,7 @@ type RssFeed = {
   title: string
   feed_url?: string | null
   site_url?: string | null
+  icon_url?: string | null
   category?: string | null
 }
 type RssEntry = {
@@ -649,6 +749,7 @@ const pageSize = ref(30)
 const totalEntries = ref(0)
 const loadingMoreEntries = ref(false)
 const readingEntry = ref<RssEntry | null>(null)
+const isMobile = ref(false)
 
 // Scroll containers and Infinite scroll observer refs
 const entriesContainer = ref<HTMLElement | null>(null)
@@ -747,7 +848,7 @@ const selectedFeedSubtitle = computed(() => {
     return `${feed?.category || '未分类'} · ${totalEntries.value} 篇文章`
   }
   if (selectedAccount.value) {
-    return `${selectedAccount.value.base_url} · 共 ${totalEntries.value} 篇文章`
+    return `共 ${totalEntries.value} 篇文章`
   }
   return '浏览您的 RSS 服务内容源'
 })
@@ -808,6 +909,11 @@ const getFeedTitle = (feedId: number) => {
 const getFeedCategory = (feedId: number) => {
   const feed = feeds.value.find(f => f.id === feedId)
   return feed ? feed.category || '未分类' : '未分类'
+}
+
+const getFeedIconUrl = (feedId: number) => {
+  const feed = feeds.value.find(f => f.id === feedId)
+  return feed?.icon_url || null
 }
 
 const getFeedInitials = (feedId: number) => {
@@ -1149,7 +1255,13 @@ const resumeSyncPollingIfRunning = async () => {
   }
 }
 
+const checkIfMobile = () => {
+  isMobile.value = window.innerWidth < 1024
+}
+
 onMounted(async () => {
+  checkIfMobile()
+  window.addEventListener('resize', checkIfMobile)
   await loadAll()
   nextTick(() => {
     initObserver()
@@ -1158,6 +1270,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', checkIfMobile)
   entriesObserver?.disconnect()
   if (syncPollTimer) {
     clearInterval(syncPollTimer)
