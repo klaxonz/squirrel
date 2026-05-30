@@ -309,7 +309,7 @@
         <!-- If an article is selected, render it -->
         <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden animate-fade-in bg-background">
           <!-- Reader Header -->
-          <header class="shrink-0 border-b border-border/10 p-5 bg-background flex flex-col gap-3">
+          <header class="shrink-0 border-b border-border/10 p-5 bg-background flex flex-col gap-3 relative z-20">
             <!-- Top Metadata & Controls Row -->
             <div class="flex items-center justify-between">
               <!-- Metadata (Feed Source & Date) -->
@@ -580,7 +580,7 @@
       <SheetContent class="w-full sm:max-w-[640px] md:max-w-[768px] lg:max-w-[900px] border-l border-border/20 bg-background/95 backdrop-blur-xl p-0 flex flex-col h-full shadow-2xl">
         <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden">
           <!-- Reader Header -->
-          <header class="shrink-0 border-b border-border/10 p-5 bg-background/50 backdrop-blur-sm pr-16 flex flex-col gap-3">
+          <header class="shrink-0 border-b border-border/10 p-5 bg-background/50 backdrop-blur-sm pr-16 flex flex-col gap-3 relative z-20">
             <!-- Top Metadata & Controls Row -->
             <div class="flex items-center justify-between">
               <!-- Metadata (Feed Source & Date) -->
