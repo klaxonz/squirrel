@@ -218,6 +218,7 @@ function handleSearch() {
 
 function selectMode(mode: string) {
   if (mode === props.activeSearchMode) return
+  isPanelOpen.value = false
   emit('search-mode-change', mode)
   inputRef.value?.focus()
 }
