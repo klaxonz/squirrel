@@ -272,11 +272,11 @@
                 v-for="entry in filteredEntries" 
                 :key="entry.id"
                 @click="openReader(entry)"
-                class="group relative flex flex-col justify-between rounded-2xl border border-border/10 bg-accent/15 p-5 hover:bg-accent/35 hover:border-primary/20 transition-all duration-300 shadow-sm cursor-pointer hover:-translate-y-0.5 hover:shadow-md animate-fade-in"
+                class="group relative flex flex-col justify-between rounded-xl border border-border/20 bg-accent/5 p-5 hover:bg-accent/12 hover:border-primary/20 transition-all duration-300 ease-out cursor-pointer animate-fade-in"
               >
                 <!-- Card Top: Category & Time -->
                 <div class="flex items-center justify-between text-xs text-muted-foreground/85 mb-3">
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/5 border border-primary/10 text-primary text-[10px] font-bold tracking-wide uppercase">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/5 border border-primary/10 text-primary text-[10px] font-bold tracking-wide uppercase group-hover:bg-primary/10 group-hover:border-primary/20 transition-all duration-300 ease-out">
                     {{ getFeedCategory(entry.feed_id) }}
                   </span>
                   <span class="tabular-nums">{{ formatDate(entry.published_at) }}</span>
@@ -284,7 +284,7 @@
                 
                 <!-- Title & Summary -->
                 <div class="flex-1 space-y-2 mb-4">
-                  <h4 class="text-sm font-bold leading-snug text-foreground/90 group-hover:text-primary transition-colors line-clamp-2">
+                  <h4 class="text-sm font-bold leading-snug text-foreground/90 group-hover:text-primary transition-colors duration-300 ease-out line-clamp-2">
                     {{ entry.title }}
                   </h4>
                   <p v-if="entry.summary" class="text-xs leading-relaxed text-muted-foreground/75 line-clamp-3" v-html="stripHtmlTags(entry.summary)" />
@@ -293,7 +293,7 @@
                 <!-- Card Bottom: Source & Media indicator -->
                 <div class="flex items-center justify-between pt-3.5 border-t border-border/5">
                   <div class="flex items-center gap-2 min-w-0">
-                    <div class="h-5 w-5 rounded bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0 uppercase">
+                    <div class="h-5 w-5 rounded bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0 uppercase group-hover:scale-105 group-hover:bg-primary/20 transition-all duration-300 ease-out">
                       {{ getFeedInitials(entry.feed_id) }}
                     </div>
                     <span class="text-xs font-semibold text-muted-foreground/90 truncate">
@@ -307,7 +307,7 @@
                       <AppIcon name="film" class="h-3 w-3" />
                       <span>{{ entry.media.length }}</span>
                     </span>
-                    <AppIcon name="externalLink" class="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-foreground/60 transition-colors" />
+                    <AppIcon name="externalLink" class="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-foreground/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300 ease-out" />
                   </div>
                 </div>
               </div>
