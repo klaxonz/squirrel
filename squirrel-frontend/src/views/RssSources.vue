@@ -349,7 +349,7 @@
                   <!-- Preference dropdown (opens to left) -->
                   <div 
                     v-if="showReaderSettings" 
-                    class="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl p-3 shadow-xl space-y-3 animate-fade-in"
+                    class="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-border/30 bg-background/98 p-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] space-y-3 animate-fade-in"
                   >
                     <!-- Font Family toggle -->
                     <div class="space-y-1">
@@ -398,14 +398,6 @@
                   </div>
                 </div>
 
-                <!-- 关闭 -->
-                <button 
-                  @click="closeReader"
-                  class="h-7 w-7 rounded-lg bg-accent/40 hover:bg-accent/60 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all cursor-pointer"
-                  title="关闭阅读器"
-                >
-                  <AppIcon name="close" class="h-4 w-4" />
-                </button>
               </div>
             </div>
             
@@ -627,7 +619,7 @@
                   
                   <div 
                     v-if="showMobileReaderSettings" 
-                    class="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl p-3 shadow-xl space-y-3 animate-fade-in"
+                    class="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-border/30 bg-background/98 p-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] space-y-3 animate-fade-in"
                   >
                     <!-- Font Family toggle -->
                     <div class="space-y-1">
