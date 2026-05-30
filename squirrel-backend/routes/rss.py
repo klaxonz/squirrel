@@ -200,6 +200,23 @@ class RssEntryUpdateRequest(BaseModel):
     isStarred: Optional[bool] = None
 
 
+class RssEntriesBulkUpdateRequest(BaseModel):
+    entryIds: list[int]
+    isRead: bool
+
+
+@router.patch('/entries/bulk')
+def update_rss_entries_bulk(
+    req: RssEntriesBulkUpdateRequest,
+    current_user: User = Depends(get_current_user),
+):
+    return response.success(rss_service.update_entries_read_status(
+        current_user.id,
+        req.entryIds,
+        is_read=req.isRead,
+    ))
+
+
 @router.patch('/entries/{entry_id}')
 def update_rss_entry(
     entry_id: int,

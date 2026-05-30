@@ -4,7 +4,7 @@ import base64
 import hashlib
 import json
 import logging
-from threading import Lock
+from threading import Lock, Thread
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field, replace
@@ -1122,8 +1122,6 @@ def update_entry(
         ).first()
 
         if account and account.enabled:
-            from threading import Thread
-
             def _bg_update_remote(config_data, ext_eid, read_val, star_val):
                 try:
                     client = _client_for_config(config_data)
@@ -1142,6 +1140,64 @@ def update_entry(
         session.commit()
         session.refresh(entry)
         return serialize_entry(entry)
+
+
+def update_entries_read_status(
+    user_id: int,
+    entry_ids: list[int],
+    *,
+    is_read: bool,
+) -> dict[str, Any]:
+    if not entry_ids:
+        return {'updated': 0}
+
+    unique_entry_ids = list(dict.fromkeys(entry_ids))
+    remote_targets: list[tuple[RssAccountConfig, str]] = []
+
+    with get_session() as session:
+        entries = session.scalars(
+            select(RssEntry).where(
+                RssEntry.id.in_(unique_entry_ids),
+                RssEntry.user_id == user_id,
+            )
+        ).all()
+        changed_entries = [entry for entry in entries if entry.is_read != is_read]
+
+        if not changed_entries:
+            return {'updated': 0}
+
+        for entry in changed_entries:
+            entry.is_read = is_read
+
+        account_ids = {entry.account_id for entry in changed_entries}
+        accounts = session.scalars(
+            select(RssAccount).where(
+                RssAccount.id.in_(account_ids),
+                RssAccount.user_id == user_id,
+                RssAccount.enabled.is_(True),
+                RssAccount.is_deleted.is_(False),
+            )
+        ).all()
+        config_by_account_id = {account.id: _config_from_account(account) for account in accounts}
+
+        for entry in changed_entries:
+            config = config_by_account_id.get(entry.account_id)
+            if config:
+                remote_targets.append((config, entry.external_entry_id))
+
+        session.commit()
+
+    if remote_targets:
+        def _bg_update_remote() -> None:
+            for config, external_entry_id in remote_targets:
+                try:
+                    _client_for_config(config).update_entry(external_entry_id, is_read=is_read)
+                except Exception as e:
+                    logger.warning('Failed to sync RSS read status to remote in background: %s', e)
+
+        Thread(target=_bg_update_remote, daemon=True).start()
+
+    return {'updated': len(changed_entries)}
 
 
 def _get_account(session, user_id: int, account_id: int) -> Optional[RssAccount]:

@@ -40,3 +40,7 @@ export const getRssEntries = async (params: Record<string, unknown> = {}) => get
 export const updateRssEntry = async (entryId: string | number, payload: { isRead?: boolean; isStarred?: boolean }) => {
   return patch(`/api/rss/entries/${entryId}`, payload)
 }
+
+export const updateRssEntries = async (payload: { entryIds: Array<string | number>; isRead: boolean }) => {
+  return patch('/api/rss/entries/bulk', payload)
+}

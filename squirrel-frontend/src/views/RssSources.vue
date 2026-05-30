@@ -857,7 +857,7 @@
     <Teleport to="body">
       <div
         v-if="showContextMenu && contextMenuEntry"
-        class="fixed z-[9999] w-[180px] rounded-xl border border-border/30 bg-popover/90 backdrop-blur-xl p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.18)] animate-fade-in"
+        class="fixed z-[9999] w-[200px] rounded-xl border border-border/30 bg-popover/90 backdrop-blur-xl p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.18)] animate-fade-in"
         :style="{ left: contextMenuPosition.x + 'px', top: contextMenuPosition.y + 'px' }"
       >
         <div class="flex flex-col gap-0.5">
@@ -875,6 +875,40 @@
           >
             <AppIcon :name="contextMenuEntry.is_starred ? 'bookmark' : 'star'" class="h-3.5 w-3.5 opacity-70" />
             <span>{{ contextMenuEntry.is_starred ? '取消收藏' : '收藏文章' }}</span>
+          </button>
+
+          <div class="h-px bg-border/20 my-1"></div>
+
+          <button
+            @click="batchUpdateReadStatus('above', true)"
+            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon name="eye" class="h-3.5 w-3.5 opacity-70" />
+            <span>上方全部已读</span>
+          </button>
+
+          <button
+            @click="batchUpdateReadStatus('below', true)"
+            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon name="eye" class="h-3.5 w-3.5 opacity-70" />
+            <span>下方全部已读</span>
+          </button>
+
+          <button
+            @click="batchUpdateReadStatus('all', true)"
+            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon name="list" class="h-3.5 w-3.5 opacity-70" />
+            <span>列表全部已读</span>
+          </button>
+
+          <button
+            @click="batchUpdateReadStatus('all', false)"
+            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon name="eyeOff" class="h-3.5 w-3.5 opacity-70" />
+            <span>列表全部未读</span>
           </button>
 
           <div class="h-px bg-border/20 my-1"></div>
@@ -913,6 +947,7 @@ import {
   syncRssAccount,
   testRssAccountConfig,
   updateRssAccount,
+  updateRssEntries,
   updateRssEntry,
 } from '@/api'
 import AppIcon from '@/components/common/AppIcon.vue'
@@ -960,6 +995,7 @@ type RssEntry = {
   is_read: boolean
   is_starred: boolean
 }
+type ReadBatchMode = 'above' | 'below' | 'all'
 
 // Reactive Data State
 const accounts = ref<RssAccount[]>([])
@@ -1545,8 +1581,8 @@ const showArticleContextMenu = (entry: RssEntry, event: MouseEvent) => {
   contextMenuEntry.value = entry
   let x = event.clientX
   let y = event.clientY
-  const menuWidth = 180
-  const menuHeight = 160
+  const menuWidth = 200
+  const menuHeight = 300
   if (x + menuWidth > window.innerWidth) {
     x = window.innerWidth - menuWidth - 8
   }
@@ -1592,6 +1628,54 @@ const toggleReadStatus = async (entry: RssEntry, reloadFilteredList = true) => {
   }
 
   if (reloadFilteredList && shouldReloadAfterEntryUpdate(entry)) {
+    await loadEntries(true)
+  }
+}
+
+const getBatchReadTargets = (mode: ReadBatchMode) => {
+  if (!contextMenuEntry.value) return []
+  const list = filteredEntries.value
+  if (mode === 'all') return list
+
+  const index = list.findIndex(entry => String(entry.id) === String(contextMenuEntry.value?.id))
+  if (index < 0) return []
+  if (mode === 'above') return list.slice(0, index)
+  return list.slice(index + 1)
+}
+
+const batchUpdateReadStatus = async (mode: ReadBatchMode, isRead: boolean) => {
+  const targets = getBatchReadTargets(mode).filter(entry => entry.is_read !== isRead)
+  if (targets.length === 0) {
+    setStatus('没有需要更新的文章')
+    return
+  }
+
+  const previous = targets.map(entry => ({ entry, isRead: entry.is_read }))
+  targets.forEach(entry => {
+    entry.is_read = isRead
+    if (readingEntry.value && String(readingEntry.value.id) === String(entry.id)) {
+      readingEntry.value.is_read = isRead
+    }
+  })
+
+  const result = await updateRssEntries({
+    entryIds: targets.map(entry => entry.id),
+    isRead,
+  }) as ApiResult<{ updated: number }>
+
+  if (result.error) {
+    previous.forEach(({ entry, isRead: previousIsRead }) => {
+      entry.is_read = previousIsRead
+      if (readingEntry.value && String(readingEntry.value.id) === String(entry.id)) {
+        readingEntry.value.is_read = previousIsRead
+      }
+    })
+    setStatus(result.error.message || '批量更新已读状态失败', true)
+    return
+  }
+
+  setStatus(`已更新 ${result.data?.updated ?? targets.length} 篇文章`)
+  if (targets.some(shouldReloadAfterEntryUpdate)) {
     await loadEntries(true)
   }
 }

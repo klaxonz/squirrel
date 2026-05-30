@@ -109,6 +109,88 @@ def test_sync_account_upserts_feeds_and_entries(monkeypatch):
     assert entries['data'][0]['title'] == 'Entry One'
 
 
+def test_bulk_update_entries_read_status_updates_user_entries_only(monkeypatch):
+    engine = _setup(monkeypatch)
+    account = rss_service.create_account(
+        1,
+        provider='miniflux',
+        name='Reader',
+        base_url='https://reader.example',
+        username=None,
+        credential='secret-token',
+        enabled=False,
+        sync_entry_limit=100,
+    )
+    other_account = rss_service.create_account(
+        2,
+        provider='miniflux',
+        name='Other Reader',
+        base_url='https://other.example',
+        username=None,
+        credential='other-token',
+        enabled=False,
+        sync_entry_limit=100,
+    )
+
+    with Session(engine) as session:
+        feed = RssFeed(
+            user_id=1,
+            account_id=account['id'],
+            external_feed_id='feed-1',
+            title='Feed One',
+            enabled=True,
+        )
+        other_feed = RssFeed(
+            user_id=2,
+            account_id=other_account['id'],
+            external_feed_id='feed-2',
+            title='Feed Two',
+            enabled=True,
+        )
+        session.add_all([feed, other_feed])
+        session.flush()
+        entry_one = RssEntry(
+            user_id=1,
+            account_id=account['id'],
+            feed_id=feed.id,
+            external_entry_id='entry-1',
+            canonical_url='https://example.com/posts/1',
+            title='Entry One',
+            is_read=False,
+            is_starred=False,
+        )
+        entry_two = RssEntry(
+            user_id=1,
+            account_id=account['id'],
+            feed_id=feed.id,
+            external_entry_id='entry-2',
+            canonical_url='https://example.com/posts/2',
+            title='Entry Two',
+            is_read=False,
+            is_starred=False,
+        )
+        other_entry = RssEntry(
+            user_id=2,
+            account_id=other_account['id'],
+            feed_id=other_feed.id,
+            external_entry_id='entry-3',
+            canonical_url='https://other.example.com/posts/3',
+            title='Entry Three',
+            is_read=False,
+            is_starred=False,
+        )
+        session.add_all([entry_one, entry_two, other_entry])
+        session.commit()
+        entry_ids = [entry_one.id, entry_two.id, other_entry.id]
+
+    result = rss_service.update_entries_read_status(1, entry_ids, is_read=True)
+
+    assert result == {'updated': 2}
+    with Session(engine) as session:
+        rows = session.scalars(select(RssEntry).order_by(RssEntry.id)).all()
+        assert [row.is_read for row in rows] == [True, True, False]
+
+
 def test_rss_entry_title_uses_text_column():
     assert isinstance(RssEntry.__table__.c.title.type, Text)
 
