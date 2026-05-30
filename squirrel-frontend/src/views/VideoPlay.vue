@@ -127,11 +127,12 @@
             </div>
 
             <div v-if="videoDescription" class="mt-2 p-4 bg-muted/30 rounded-xl ring-1 ring-border/10">
-              <div class="relative overflow-hidden" :class="{ 'max-h-[4.8em]': !descriptionExpanded }">
-                <p
-                  ref="descriptionTextRef"
-                  class="text-[14px] leading-relaxed text-foreground/75 whitespace-pre-wrap"
-                >
+              <div
+                ref="descriptionTextRef"
+                class="relative overflow-hidden"
+                :class="{ 'max-h-[4.8em]': !descriptionExpanded }"
+              >
+                <p class="text-[14px] leading-relaxed text-foreground/75 whitespace-pre-wrap">
                   {{ videoDescription }}
                 </p>
                 <div
