@@ -309,7 +309,7 @@
         <!-- If an article is selected, render it -->
         <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden animate-fade-in bg-background relative">
           <!-- Reader Header -->
-          <header class="shrink-0 border-b border-border/10 p-6 flex flex-col gap-3.5 bg-background">
+          <header class="shrink-0 border-b border-border/10 p-6 flex flex-col gap-3.5 bg-background relative">
             <!-- Feed Source details & Date -->
             <div class="flex items-center justify-between text-xs text-muted-foreground/85">
               <div class="flex items-center gap-2">
@@ -335,7 +335,7 @@
                   :href="readingEntry.canonical_url" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/50 bg-accent/20 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
+                  class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent/30 hover:bg-accent/50 px-3 text-xs font-medium text-foreground transition-all duration-200"
                 >
                   <AppIcon name="externalLink" class="h-3.5 w-3.5" />
                   <span>访问原始网页</span>
@@ -345,7 +345,7 @@
                 <div class="relative flex items-center gap-1 border-l border-border/10 pl-2 ml-1" ref="readerSettingsRef">
                   <button 
                     @click="showReaderSettings = !showReaderSettings"
-                    class="h-8 w-8 rounded-lg border border-border/50 bg-accent/15 hover:bg-accent/30 text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer"
+                    class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all cursor-pointer"
                     title="阅读个性化设置"
                   >
                     <AppIcon name="settingsPanel" class="h-4 w-4" />
@@ -406,23 +406,23 @@
               <!-- Close/Deselect button -->
               <button 
                 @click="closeReader"
-                class="h-8 px-3 rounded-lg border border-border/50 bg-accent/10 hover:bg-accent/25 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-xs font-semibold gap-1 cursor-pointer"
+                class="h-8 px-3 rounded-lg bg-accent/30 hover:bg-accent/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all text-xs font-semibold gap-1 cursor-pointer"
                 title="关闭阅读器"
               >
                 <AppIcon name="close" class="h-3.5 w-3.5" />
                 <span>关闭</span>
               </button>
             </div>
+
+            <!-- Reading Progress Bar (Overlay on top of border-b) -->
+            <div class="absolute bottom-0 left-0 w-full h-[2px] overflow-hidden">
+              <div 
+                class="h-full bg-primary transition-all duration-75 ease-out shadow-[0_0_8px_rgba(var(--primary),0.8)]"
+                :style="{ width: scrollProgress + '%' }"
+              />
+            </div>
           </header>
           
-          <!-- Reading Progress Bar -->
-          <div class="w-full h-[2px] bg-border/5 shrink-0 z-30 overflow-hidden relative">
-            <div 
-              class="h-full bg-primary transition-all duration-75 ease-out shadow-[0_0_8px_rgba(var(--primary),0.8)]"
-              :style="{ width: scrollProgress + '%' }"
-            />
-          </div>
-
           <!-- Reader Body Scroll Container -->
           <div 
             ref="readerScrollContainer"
@@ -620,7 +620,7 @@
                 :href="readingEntry.canonical_url" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/50 bg-accent/20 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
+                class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent/30 hover:bg-accent/50 px-3 text-xs font-medium text-foreground transition-all duration-200"
               >
                 <AppIcon name="externalLink" class="h-3.5 w-3.5" />
                 <span>访问原始网页</span>
@@ -630,7 +630,7 @@
               <div class="relative flex items-center gap-1 border-l border-border/10 pl-2 ml-1" ref="mobileReaderSettingsRef">
                 <button 
                   @click="showMobileReaderSettings = !showMobileReaderSettings"
-                  class="h-8 w-8 rounded-lg border border-border/50 bg-accent/15 hover:bg-accent/30 text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer"
+                  class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all cursor-pointer"
                   title="阅读个性化设置"
                 >
                   <AppIcon name="settingsPanel" class="h-4 w-4" />
@@ -1439,22 +1439,33 @@ onUnmounted(() => {
   text-align: justify;
   text-justify: inter-character;
   word-break: break-word;
+  padding-top: 0.5rem;
 }
 
 .reader-content :deep(img) {
   max-width: 100%;
-  height: auto;
-  border-radius: 0.75rem;
+  max-height: 48vh;
+  object-fit: contain;
+  border-radius: 8px;
   margin: 2rem auto;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
   cursor: zoom-in;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s;
+}
+
+.dark .reader-content :deep(img) {
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
 }
 
 .reader-content :deep(img:hover) {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  transform: translateY(-2px) scale(1.005);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.06);
+}
+
+.dark .reader-content :deep(img:hover) {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .reader-content :deep(figure) {
@@ -1485,8 +1496,8 @@ onUnmounted(() => {
 
 .reader-content :deep(p) {
   margin-bottom: 1.5rem;
-  line-height: 1.85 !important;
-  letter-spacing: 0.015em;
+  line-height: 1.8 !important;
+  letter-spacing: 0.010em;
 }
 
 .reader-content :deep(h1),
