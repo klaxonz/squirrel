@@ -151,7 +151,7 @@
             :class="!selectedFeedId ? 'bg-primary/5 text-primary font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground font-medium'"
           >
             <AppIcon name="inbox" class="h-3.5 w-3.5 shrink-0" />
-            <span class="flex-1 truncate">全部文章</span>
+            <span class="flex-1 truncate">全部订阅</span>
             <span class="text-xs opacity-60">{{ filteredFeeds.length }}</span>
           </button>
           
@@ -168,7 +168,7 @@
                 <AppIcon 
                   name="chevronRight" 
                   class="h-3 w-3 transition-transform text-muted-foreground/70 shrink-0" 
-                  :class="{ 'rotate-90': !collapsedFolders[folder.name] }" 
+                  :class="{ 'rotate-90': collapsedFolders[folder.name] }" 
                 />
                 <span class="truncate">{{ folder.name }}</span>
               </div>
@@ -176,7 +176,7 @@
             </button>
             
             <!-- Folder Feeds List -->
-            <div v-if="!collapsedFolders[folder.name]" class="pl-3 space-y-0.5">
+            <div v-if="collapsedFolders[folder.name]" class="pl-3 space-y-0.5">
               <button
                 v-for="feed in folder.feeds"
                 :key="feed.id"
