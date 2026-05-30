@@ -148,7 +148,7 @@
           <button
             @click="selectedFeedId = null; loadEntries(true)"
             class="group relative flex h-8 w-full items-center gap-3 rounded-lg px-2.5 text-left text-xs transition-all overflow-hidden"
-            :class="!selectedFeedId ? 'bg-primary/5 text-primary font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground font-medium'"
+            :class="!selectedFeedId ? 'bg-transparent text-primary font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground font-medium'"
           >
             <AppIcon name="inbox" class="h-3.5 w-3.5 shrink-0" />
             <span class="flex-1 truncate">全部订阅</span>
@@ -182,7 +182,7 @@
                 :key="feed.id"
                 @click="selectFeed(feed.id)"
                 class="group relative flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-xs transition-all overflow-hidden"
-                :class="selectedFeedId === feed.id ? 'bg-primary/5 text-primary font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
+                :class="selectedFeedId === feed.id ? 'bg-transparent text-primary font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
               >
                 <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
                 <span class="flex-1 truncate">{{ feed.title }}</span>
