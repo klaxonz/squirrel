@@ -33,6 +33,10 @@ export type IconName =
   | 'close'
   | 'error'
   | 'loading'
+  | 'screenshot'
+  | 'sleepTimer'
+  | 'loopAB'
+  | 'info'
 
 export function useIcons() {
   return {

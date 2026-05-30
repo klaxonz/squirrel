@@ -13,8 +13,58 @@
     @keydown="handleKeyDown"
     tabindex="0"
   >
-    <!-- ????????-->
+    <!-- 暗角遮罩-->
     <div class="sp-vignette-overlay"></div>
+
+    <!-- 视频信息浮层 -->
+    <transition name="sp-info-fade">
+      <div v-if="isFullscreen && showVideoInfo" class="sp-video-info-overlay">
+        <div class="sp-video-info-title">{{ props.title || 'Untitled' }}</div>
+        <div v-if="props.uploader" class="sp-video-info-meta">{{ props.uploader }}</div>
+      </div>
+    </transition>
+
+    <!-- 睡眠定时器角标 -->
+    <div v-if="isFullscreen && store.sleepTimerMinutes !== null" class="sp-sleep-badge">
+      <PlayerIcon name="sleepTimer" />
+      <span>{{ formatSleepRemaining() }}</span>
+    </div>
+
+    <!-- AB 循环指示器 -->
+    <div v-if="store.abLoopActive" class="sp-abloop-indicator">
+      <PlayerIcon name="loopAB" /> {{ t('abLoopActive') }}
+      <span class="sp-abloop-times">{{ formatTime(store.loopAPoint ?? 0) }} - {{ formatTime(store.loopBPoint ?? 0) }}</span>
+    </div>
+
+    <!-- 下一集倒计时 -->
+    <transition name="sp-info-fade">
+      <div v-if="showUpNext" class="sp-upnext-overlay" @click.stop="handleStartNow">
+        <div class="sp-upnext-label">{{ t('upNext') }}</div>
+        <div class="sp-upnext-title">{{ nextEpisodeTitle }}</div>
+        <div class="sp-upnext-countdown">{{ upNextCountdown }}s</div>
+        <button class="sp-upnext-btn" @click.stop="handleStartNow">{{ t('startNow') }}</button>
+      </div>
+    </transition>
+
+    <!-- 章节浮层 -->
+    <transition name="sp-info-fade">
+      <div v-if="showChapterOverlay" class="sp-chapter-overlay" @mouseleave="showChapterOverlay = false">
+        <div class="sp-chapter-overlay-title">{{ t('chapters') }}</div>
+        <div
+          v-for="chapter in normalizedChapters"
+          :key="chapter.id"
+          class="sp-chapter-overlay-item"
+          :class="{ 'is-active': isCurrentChapter(chapter) }"
+          @click="handleChapterClick(chapter.startTime)"
+        >
+          <span class="sp-chapter-overlay-time">{{ formatTime(chapter.startTime) }}</span>
+          <span class="sp-chapter-overlay-name">{{ chapter.title }}</span>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 快捷速度选择 -->
+
 
     <!-- ???? -->
     <video
@@ -222,6 +272,15 @@
               <button v-if="hasPlaylist" class="sp-icon-btn" @click.stop="showPlaylist = !showPlaylist" :title="'Playlist'">
                 <PlayerIcon name="settings" />
               </button>
+              <button v-if="isFullscreen" class="sp-icon-btn" @click.stop="captureScreenshot" :title="t('screenshot')">
+                <PlayerIcon name="screenshot" />
+              </button>
+              <button v-if="isFullscreen" class="sp-icon-btn" @click.stop="settingsView = 'sleepTimer'; showSettingsMenu = true" :title="t('sleepTimer')">
+                <PlayerIcon name="sleepTimer" />
+              </button>
+              <button v-if="isFullscreen" class="sp-icon-btn" @click.stop="handleLoopABToggle" :title="store.abLoopActive ? t('loopClearAB') : (store.loopAPoint !== null ? t('loopSetB') : t('loopSetA'))">
+                <PlayerIcon name="loopAB" :style="{ opacity: store.loopAPoint !== null ? 1 : 0.5 }" />
+              </button>
               <button class="sp-icon-btn" @click.stop="toggleSettingsMenu" :title="t('settings')" aria-haspopup="true" :aria-expanded="showSettingsMenu" :aria-label="t('settings')">
                 <PlayerIcon name="settings" />
               </button>
@@ -271,6 +330,13 @@
             <div class="sp-menu-item" @click="toggleLoop" role="menuitem">
               <span>{{ t('loop') }}</span>
               <div class="sp-simple-switch" :class="{ 'is-on': store.loop }" role="switch" :aria-checked="store.loop"></div>
+            </div>
+            <div class="sp-menu-item" @click="settingsView = 'sleepTimer'">
+              <span>{{ t('sleepTimer') }}</span>
+              <span class="sp-menu-val">{{ sleepTimerLabel }}</span>
+            </div>
+            <div class="sp-menu-item" @click="captureScreenshot">
+              <span>{{ t('screenshot') }}</span>
             </div>
             <div class="sp-menu-item" @click="settingsView = 'speed'">
               <span>{{ t('playbackSpeed') }}</span>
@@ -489,6 +555,29 @@
             </div>
           </div>
         </template>
+        <template v-else-if="settingsView === 'sleepTimer'">
+          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'main'">
+            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('sleepTimer') }}
+          </div>
+          <div class="sp-menu-list">
+            <div
+              class="sp-menu-item"
+              :class="{ 'is-active': store.sleepTimerMinutes === null }"
+              @click="handleSleepTimerSelect(null)"
+            >
+              {{ t('sleepTimerOff') }}
+            </div>
+            <div
+              v-for="mins in sleepTimerOptions"
+              :key="mins"
+              class="sp-menu-item"
+              :class="{ 'is-active': store.sleepTimerMinutes === mins }"
+              @click="handleSleepTimerSelect(mins)"
+            >
+              {{ t('sleepTimerMinutes', { minutes: mins }) }}
+            </div>
+          </div>
+        </template>
       </div>
     </transition>
 
@@ -533,6 +622,7 @@ interface Props {
   subtitles?: SubtitleTrack[]
   clipMarkers?: VideoClipMarker[]
   title?: string
+  uploader?: string
   autoplay?: boolean
   adapter?: PlayerOptions['adapter'] | null
   i18nOptions?: PlayerOptions['i18nOptions']
@@ -542,6 +632,8 @@ interface Props {
   externalLoading?: boolean
   hasPrev?: boolean
   hasNext?: boolean
+  playlistEntries?: Array<{ title: string; source: any }>
+  playlistIndex?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -550,6 +642,7 @@ const props = withDefaults(defineProps<Props>(), {
   subtitles: () => [],
   clipMarkers: () => [],
   title: '',
+  uploader: '',
   autoplay: true,
   adapter: null,
   i18nOptions: undefined,
@@ -558,6 +651,8 @@ const props = withDefaults(defineProps<Props>(), {
   externalLoading: false,
   hasPrev: false,
   hasNext: false,
+  playlistEntries: () => [],
+  playlistIndex: -1,
 })
 
 const emit = defineEmits([
@@ -630,6 +725,25 @@ const containerRef = ref<HTMLElement | null>(null)
 const progressAreaRef = ref<HTMLElement | null>(null)
 const settingsPopupRef = ref<HTMLElement | null>(null)
 const opacityRailRef = ref<HTMLElement | null>(null)
+
+// Fullscreen feature state
+const showVideoInfo = ref(true)
+const showChapterOverlay = ref(false)
+const showUpNext = ref(false)
+const upNextCountdown = ref(5)
+const nextEpisodeTitle = computed(() => {
+  const entries = props.playlistEntries || []
+  const nextIdx = (props.playlistIndex ?? -1) + 1
+  if (nextIdx >= 0 && nextIdx < entries.length) {
+    return entries[nextIdx].title || `Episode ${nextIdx + 1}`
+  }
+  return ''
+})
+let sleepTimerInterval: ReturnType<typeof setInterval> | null = null
+let videoInfoTimer: ReturnType<typeof setTimeout> | null = null
+let upNextTimer: ReturnType<typeof setInterval> | null = null
+
+const sleepTimerOptions = [15, 30, 45, 60, 90, 120]
 
 // Clip Markers state
 const localClipMarkers = ref<VideoClipMarker[]>([])
@@ -877,6 +991,17 @@ const onMarkerPointerDown = (e: PointerEvent, marker: ReturnType<typeof normaliz
 const onPointerMove = (event: PointerEvent) => {
   if (!shouldHandlePointerVisibility(event.pointerType)) return
   showControls()
+
+  // Chapter overlay on fullscreen: show when cursor near top
+  if (isFullscreen.value && containerRef.value) {
+    const rect = containerRef.value.getBoundingClientRect()
+    const y = event.clientY - rect.top
+    if (y < 60) {
+      showChapterOverlay.value = true
+    } else if (y > 200) {
+      showChapterOverlay.value = false
+    }
+  }
 }
 
 const releaseMarkerPointerCapture = () => {
@@ -1517,6 +1642,11 @@ const syncHideTimer = () => {
 const showControls = () => {
   store.setControlsVisible(true)
   syncHideTimer()
+  if (isFullscreen.value) {
+    showVideoInfo.value = true
+    if (videoInfoTimer) clearTimeout(videoInfoTimer)
+    videoInfoTimer = setTimeout(() => { showVideoInfo.value = false }, 5000)
+  }
 }
 const toggleControls = (nextVisible = !store.controlsVisible) => {
   if (nextVisible) {
@@ -1703,6 +1833,54 @@ const handleKeyDown = (e: KeyboardEvent) => {
     return
   }
 
+  if (matches(ks.screenshot) && isFullscreen.value) {
+    e.preventDefault()
+    captureScreenshot()
+    return
+  }
+
+  if (matches(ks.speedUp)) {
+    e.preventDefault()
+    const nextIdx = playbackRates.indexOf(store.playbackRate) + 1
+    if (nextIdx < playbackRates.length) handleSpeedSelect(playbackRates[nextIdx])
+    return
+  }
+
+  if (matches(ks.speedDown)) {
+    e.preventDefault()
+    const prevIdx = playbackRates.indexOf(store.playbackRate) - 1
+    if (prevIdx >= 0) handleSpeedSelect(playbackRates[prevIdx])
+    return
+  }
+
+  if (matches(ks.setLoopA) && isFullscreen.value) {
+    e.preventDefault()
+    store.setAbLoopActive(false)
+    store.setLoopAPoint(currentTime.value)
+    store.setLoopBPoint(null)
+    showCentralHud('loopAB', t('loopSetA'), 'skipBackward')
+    return
+  }
+
+  if (matches(ks.setLoopB) && isFullscreen.value && store.loopAPoint !== null) {
+    e.preventDefault()
+    const bTime = currentTime.value
+    if (bTime <= (store.loopAPoint ?? 0)) return
+    store.setLoopBPoint(bTime)
+    store.setAbLoopActive(true)
+    showCentralHud('loopAB', t('abLoopActive'), 'loop')
+    return
+  }
+
+  if (matches(ks.clearLoopAB) && isFullscreen.value && store.abLoopActive) {
+    e.preventDefault()
+    store.setAbLoopActive(false)
+    store.setLoopAPoint(null)
+    store.setLoopBPoint(null)
+    showCentralHud('loopAB', t('loopClearAB'), 'loop')
+    return
+  }
+
   if (matches(ks.prevVideo) && props.hasPrev) {
     e.preventDefault()
     emit('prev')
@@ -1726,6 +1904,130 @@ const handlePointerDown = (event: PointerEvent) => {
   lastPointerType.value = event.pointerType || 'mouse'
 }
 
+// ===== Fullscreen features =====
+
+const sleepTimerLabel = computed(() => {
+  if (store.sleepTimerMinutes === null) return t('sleepTimerOff')
+  return t('sleepTimerMinutes', { minutes: store.sleepTimerMinutes })
+})
+
+const formatSleepRemaining = (): string => {
+  const total = store.sleepTimerRemaining
+  const mins = Math.floor(total / 60)
+  const secs = Math.floor(total % 60)
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+}
+
+const handleSleepTimerSelect = (mins: number | null) => {
+  store.setSleepTimerMinutes(mins)
+  if (mins !== null) {
+    store.setSleepTimerRemaining(mins * 60)
+    startSleepTimer()
+  } else {
+    stopSleepTimer()
+  }
+  settingsView.value = 'main'
+  showSettingsMenu.value = false
+}
+
+const startSleepTimer = () => {
+  stopSleepTimer()
+  sleepTimerInterval = setInterval(() => {
+    if (store.sleepTimerRemaining > 0) {
+      store.setSleepTimerRemaining(store.sleepTimerRemaining - 1)
+    } else {
+      pause()
+      store.setSleepTimerMinutes(null)
+      store.setSleepTimerRemaining(0)
+      stopSleepTimer()
+      showCentralHud('sleep', t('sleepTimer'), 'pause')
+    }
+  }, 1000)
+}
+
+const stopSleepTimer = () => {
+  if (sleepTimerInterval) {
+    clearInterval(sleepTimerInterval)
+    sleepTimerInterval = null
+  }
+}
+
+const captureScreenshot = () => {
+  const dataUrl = captureCurrentFrameDataUrl()
+  if (!dataUrl) {
+    showCentralHud('error', t('errorMedia'), 'play')
+    return
+  }
+  const link = document.createElement('a')
+  link.download = `screenshot-${Date.now()}.jpg`
+  link.href = dataUrl
+  link.click()
+  showCentralHud('screenshot', t('screenshotSaved'), 'check')
+}
+
+const handleLoopABToggle = () => {
+  if (store.abLoopActive) {
+    store.setAbLoopActive(false)
+    store.setLoopAPoint(null)
+    store.setLoopBPoint(null)
+    showCentralHud('loopAB', t('loopClearAB'), 'loop')
+    return
+  }
+  if (store.loopAPoint === null) {
+    store.setLoopAPoint(currentTime.value)
+    showCentralHud('loopAB', t('loopSetA'), 'skipBackward')
+    return
+  }
+  if (store.loopAPoint !== null && store.loopBPoint === null) {
+    const bTime = currentTime.value
+    if (bTime <= store.loopAPoint) {
+      showCentralHud('error', 'B must be after A', 'play')
+      return
+    }
+    store.setLoopBPoint(bTime)
+    store.setAbLoopActive(true)
+    showCentralHud('loopAB', t('abLoopActive'), 'loop')
+    return
+  }
+}
+
+const isCurrentChapter = (chapter: any): boolean => {
+  return chapter.startTime <= currentTime.value && (chapter.endTime || (duration.value)) > currentTime.value
+}
+
+const handleStartNow = () => {
+  showUpNext.value = false
+  if (upNextTimer) {
+    clearInterval(upNextTimer)
+    upNextTimer = null
+  }
+  emit('next')
+}
+
+const startUpNextCountdown = () => {
+  const entries = props.playlistEntries || []
+  const nextIdx = (props.playlistIndex ?? -1) + 1
+  if (nextIdx < 0 || nextIdx >= entries.length) return
+  const remaining = duration.value - currentTime.value
+  if (remaining > 30 || remaining < 0) return
+  showUpNext.value = true
+  upNextCountdown.value = Math.min(5, Math.floor(remaining))
+  upNextTimer = setInterval(() => {
+    upNextCountdown.value--
+    if (upNextCountdown.value <= 0) {
+      handleStartNow()
+    }
+  }, 1000)
+}
+
+const clearUpNextCountdown = () => {
+  showUpNext.value = false
+  if (upNextTimer) {
+    clearInterval(upNextTimer)
+    upNextTimer = null
+  }
+}
+
 watch(isPlaying, (playing) => {
   if (!playing) {
     showControls()
@@ -1735,8 +2037,48 @@ watch(isPlaying, (playing) => {
   showControls()
 })
 
+// AB loop check
+watch(() => currentTime.value, (t) => {
+  if (!store.abLoopActive || store.loopBPoint === null) return
+  if (t >= store.loopBPoint) {
+    seek(store.loopAPoint ?? 0)
+  }
+})
+
+// Up next countdown
+watch(() => currentTime.value, (t) => {
+  if (!isFullscreen.value || !isPlaying.value) {
+    clearUpNextCountdown()
+    return
+  }
+  const entries = props.playlistEntries || []
+  const nextIdx = (props.playlistIndex ?? -1) + 1
+  if (nextIdx < 0 || nextIdx >= entries.length || duration.value <= 0) return
+  const remaining = duration.value - t
+  if (remaining <= 30 && remaining > 0 && !showUpNext.value) {
+    startUpNextCountdown()
+  }
+})
+
+// Video info timer
+watch(showVideoInfo, (v) => {
+  if (!v) return
+  if (videoInfoTimer) clearTimeout(videoInfoTimer)
+  videoInfoTimer = setTimeout(() => { showVideoInfo.value = false }, 5000)
+})
+
 watch(isFullscreen, (fullscreen) => {
   emit('fullscreenChange', fullscreen)
+
+  if (fullscreen) {
+    showVideoInfo.value = true
+    if (videoInfoTimer) clearTimeout(videoInfoTimer)
+    videoInfoTimer = setTimeout(() => { showVideoInfo.value = false }, 5000)
+  } else {
+    showVideoInfo.value = false
+    if (videoInfoTimer) clearTimeout(videoInfoTimer)
+    showChapterOverlay.value = false
+  }
 
   if (fullscreen || pendingWidescreenValue.value === null) return
 
@@ -1787,6 +2129,9 @@ onUnmounted(() => {
   removeMarkerDragListeners()
   removeProgressScrubListeners()
   window.removeEventListener('keydown', handleKeyDown)
+  stopSleepTimer()
+  clearUpNextCountdown()
+  if (videoInfoTimer) clearTimeout(videoInfoTimer)
 })
 
 defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
@@ -2851,6 +3196,223 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 
 .sp-error-retry-btn:hover {
   opacity: 0.85;
+}
+
+/* ===== Fullscreen Features CSS ===== */
+
+/* Video info overlay */
+.sp-video-info-overlay {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 30;
+  max-width: 50%;
+  pointer-events: none;
+}
+
+.sp-video-info-title {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: var(--sp-font-family);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+.sp-video-info-meta {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  font-family: var(--sp-font-mono);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.sp-info-fade-enter-active,
+.sp-info-fade-leave-active {
+  transition: opacity 0.4s ease;
+}
+
+.sp-info-fade-enter-from,
+.sp-info-fade-leave-to {
+  opacity: 0;
+}
+
+/* Sleep timer badge */
+.sp-sleep-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(var(--sp-primary-rgb), 0.25);
+  border-radius: 16px;
+  color: var(--sp-primary);
+  font-family: var(--sp-font-mono);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sp-sleep-badge :deep(svg) {
+  width: 14px;
+  height: 14px;
+}
+
+/* AB loop indicator */
+.sp-abloop-indicator {
+  position: absolute;
+  bottom: 56px;
+  left: 16px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(var(--sp-primary-rgb), 0.4);
+  border-radius: 16px;
+  color: var(--sp-primary);
+  font-family: var(--sp-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  animation: abloop-pulse 2s ease-in-out infinite;
+}
+
+.sp-abloop-indicator :deep(svg) {
+  width: 14px;
+  height: 14px;
+}
+
+.sp-abloop-times {
+  opacity: 0.6;
+  font-weight: 400;
+}
+
+@keyframes abloop-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Up next overlay */
+.sp-upnext-overlay {
+  position: absolute;
+  bottom: 64px;
+  right: 16px;
+  z-index: 30;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--sp-border);
+  border-radius: 8px;
+  min-width: 200px;
+  cursor: default;
+}
+
+.sp-upnext-label {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: var(--sp-font-mono);
+  margin-bottom: 4px;
+}
+
+.sp-upnext-title {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+
+.sp-upnext-countdown {
+  color: var(--sp-primary);
+  font-size: 11px;
+  font-family: var(--sp-font-mono);
+  margin-bottom: 8px;
+}
+
+.sp-upnext-btn {
+  width: 100%;
+  padding: 6px 0;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.sp-upnext-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Chapter overlay */
+.sp-chapter-overlay {
+  position: absolute;
+  top: 0;
+  right: 16px;
+  z-index: 35;
+  max-height: 60vh;
+  width: 240px;
+  overflow-y: auto;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--sp-border);
+  border-radius: 0 0 8px 8px;
+}
+
+.sp-chapter-overlay-title {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: var(--sp-font-mono);
+  padding: 4px 8px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 4px;
+}
+
+.sp-chapter-overlay-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.sp-chapter-overlay-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sp-chapter-overlay-item.is-active {
+  background: rgba(var(--sp-primary-rgb), 0.15);
+}
+
+.sp-chapter-overlay-time {
+  color: var(--sp-primary);
+  font-family: var(--sp-font-mono);
+  font-size: 11px;
+  min-width: 50px;
+  flex-shrink: 0;
+}
+
+.sp-chapter-overlay-name {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 </style>

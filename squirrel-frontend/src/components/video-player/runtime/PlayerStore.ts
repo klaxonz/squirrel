@@ -31,6 +31,13 @@ type PlayerRuntimeStoreData = {
   // UI state
   controlsVisible: boolean
   fullscreen: boolean
+
+  // Fullscreen features
+  sleepTimerMinutes: number | null
+  sleepTimerRemaining: number
+  loopAPoint: number | null
+  loopBPoint: number | null
+  abLoopActive: boolean
 }
 
 export type PlayerRuntimeStore = PlayerRuntimeStoreData & {
@@ -57,6 +64,11 @@ export type PlayerRuntimeStore = PlayerRuntimeStoreData & {
   setHasStartedPlayback: (value: boolean) => void
   setControlsVisible: (value: boolean) => void
   setFullscreen: (value: boolean) => void
+  setSleepTimerMinutes: (value: number | null) => void
+  setSleepTimerRemaining: (value: number) => void
+  setLoopAPoint: (value: number | null) => void
+  setLoopBPoint: (value: number | null) => void
+  setAbLoopActive: (value: boolean) => void
   resetForNewVideo: () => void
 }
 
@@ -88,6 +100,11 @@ export function createPlayerRuntimeStore(): PlayerRuntimeStore {
     loop: false,
     controlsVisible: true,
     fullscreen: false,
+    sleepTimerMinutes: null,
+    sleepTimerRemaining: 0,
+    loopAPoint: null,
+    loopBPoint: null,
+    abLoopActive: false,
   }) as PlayerRuntimeStore
 
   store.setPlaying = (value: boolean): void => {
@@ -183,6 +200,26 @@ export function createPlayerRuntimeStore(): PlayerRuntimeStore {
 
   store.setFullscreen = (value: boolean): void => {
     store.fullscreen = value
+  }
+
+  store.setSleepTimerMinutes = (value: number | null): void => {
+    store.sleepTimerMinutes = value
+  }
+
+  store.setSleepTimerRemaining = (value: number): void => {
+    store.sleepTimerRemaining = value
+  }
+
+  store.setLoopAPoint = (value: number | null): void => {
+    store.loopAPoint = value
+  }
+
+  store.setLoopBPoint = (value: number | null): void => {
+    store.loopBPoint = value
+  }
+
+  store.setAbLoopActive = (value: boolean): void => {
+    store.abLoopActive = value
   }
 
   store.resetForNewVideo = (): void => {

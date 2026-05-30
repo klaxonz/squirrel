@@ -50,6 +50,10 @@ const iconMap: Record<IconName, AppIconName> = {
   close: 'close',
   error: 'error',
   loading: 'loading',
+  screenshot: 'camera',
+  sleepTimer: 'time',
+  loopAB: 'loop',
+  info: 'info',
 }
 
 const iconName = computed(() => iconMap[props.name] || 'error')

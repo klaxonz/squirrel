@@ -483,6 +483,61 @@
   height: 100vh;
 }
 
+/* Fullscreen enhancements */
+.sp-player:fullscreen .sp-controls-content {
+  padding: 0 32px 12px;
+}
+
+.sp-player:fullscreen .sp-progress-container {
+  padding: 8px 0;
+}
+
+.sp-player:fullscreen .sp-progress-area {
+  height: 6px;
+}
+
+.sp-player:fullscreen .sp-progress-rail {
+  height: 4px;
+}
+
+.sp-player:fullscreen .sp-progress-container:hover .sp-progress-rail {
+  height: 6px;
+}
+
+.sp-player:fullscreen .sp-icon-btn {
+  width: 40px;
+  height: 40px;
+}
+
+.sp-player:fullscreen .sp-icon-btn :deep(svg) {
+  width: 22px;
+  height: 22px;
+}
+
+.sp-player:fullscreen .sp-controls-main {
+  height: 48px;
+}
+
+.sp-player:fullscreen .sp-time-display {
+  font-size: 14px;
+}
+
+.sp-player:fullscreen .sp-quality-tag {
+  font-size: 12px;
+  padding: 3px 8px;
+}
+
+.sp-player:fullscreen .sp-settings-pop {
+  bottom: 64px;
+  right: 20px;
+  width: 240px;
+}
+
+.sp-player:fullscreen .sp-menu-item {
+  padding: 12px 16px;
+  font-size: 13px;
+}
+
 /* 响应式 */
 @media (max-width: 640px) {
   .sp-player {

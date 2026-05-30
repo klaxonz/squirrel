@@ -20,6 +20,9 @@ export type BuiltInControl =
   | 'pip'
   | 'fullscreen'
   | 'spacer'
+  | 'sleepTimer'
+  | 'screenshot'
+  | 'loopAB'
 
 // 控件定义
 export interface ControlDefinition {
@@ -47,7 +50,7 @@ export interface ControlsLayoutConfig {
 }
 
 // 预设布局
-export type PresetLayout = 'default' | 'minimal' | 'simple' | 'compact' | 'custom'
+export type PresetLayout = 'default' | 'minimal' | 'simple' | 'compact' | 'fullscreen' | 'custom'
 
 export interface UseControlsLayoutOptions {
   layout?: ControlsLayoutConfig | PresetLayout
@@ -108,7 +111,14 @@ const PRESET_LAYOUTS: Record<PresetLayout, ControlsLayoutConfig> = {
     center: [],
     right: ['volume', 'quality', 'subtitles', 'settings', 'pip', 'fullscreen']
   },
-  
+
+  fullscreen: {
+    progress: true,
+    left: ['play', 'prev', 'next', 'volume', 'time'],
+    center: [],
+    right: ['screenshot', 'loopAB', 'sleepTimer', 'subtitles', 'quality', 'settings', 'pip', 'fullscreen']
+  },
+
   custom: {
     progress: true,
     left: [],

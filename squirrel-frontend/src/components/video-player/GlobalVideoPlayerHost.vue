@@ -50,6 +50,7 @@ const playerProps = computed(() => ({
   clipMarkers: playerStore.session.clipMarkers as any[],
   videoId: playerStore.session.currentVideoId || null,
   title: playerStore.session.title,
+  uploader: playerStore.session.uploader,
   initialTime: playerStore.session.initialTime,
   hasPrev: playerStore.session.hasPrev,
   hasNext: playerStore.session.hasNext,
@@ -57,7 +58,9 @@ const playerProps = computed(() => ({
   widescreen: playerStore.session.widescreen,
   externalLoading: playerStore.session.externalLoading,
   adapter: (playerStore.session.adapter || backendAdapter.value) as any,
-  theme: (playerStore.session.theme || 'dark') as ThemeName
+  theme: (playerStore.session.theme || 'dark') as ThemeName,
+  playlistEntries: playerStore.session.playlist || [],
+  playlistIndex: playerStore.session.playlistIndex ?? -1,
 }))
 
 watch(playerStore.session, (session) => {

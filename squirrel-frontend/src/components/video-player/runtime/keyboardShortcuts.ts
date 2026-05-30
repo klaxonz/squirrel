@@ -15,6 +15,12 @@ export interface KeyboardShortcutsConfig {
   nextVideo?: string
   toggleSubtitles?: string
   toggleStats?: string
+  screenshot?: string
+  setLoopA?: string
+  setLoopB?: string
+  clearLoopAB?: string
+  speedUp?: string
+  speedDown?: string
 }
 
 export const DEFAULT_SHORTCUTS: Required<KeyboardShortcutsConfig> = {
@@ -34,4 +40,10 @@ export const DEFAULT_SHORTCUTS: Required<KeyboardShortcutsConfig> = {
   nextVideo: 'n',
   toggleSubtitles: 'c',
   toggleStats: 's',
+  screenshot: 'S',
+  setLoopA: '[',
+  setLoopB: ']',
+  clearLoopAB: '\\',
+  speedUp: '>',
+  speedDown: '<',
 }

@@ -33,6 +33,7 @@ export const usePlayerStore = defineStore('player', () => {
     subtitles: [] as any[],
     clipMarkers: [] as any[],
     title: '',
+    uploader: '',
     initialTime: 0,
     hasPrev: false,
     hasNext: false,

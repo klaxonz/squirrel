@@ -109,6 +109,24 @@ export interface LocaleMessages {
   progressBar: string
   volumeSlider: string
   timeSlider: string
+
+  // 全屏功能
+  sleepTimer: string
+  sleepTimerOff: string
+  sleepTimerMinutes: string
+  sleepTimerRemaining: string
+  screenshot: string
+  screenshotSaved: string
+  loopAB: string
+  loopSetA: string
+  loopSetB: string
+  loopClearAB: string
+  abLoopActive: string
+  upNext: string
+  startNow: string
+  videoInfo: string
+  chapters: string
+  playbackSpeedShort: string
 }
 
 export interface LocaleConfig {

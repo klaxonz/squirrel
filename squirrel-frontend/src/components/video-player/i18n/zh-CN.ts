@@ -107,7 +107,25 @@ const zhCN: LocaleConfig = {
     videoPlayer: '视频播放器',
     progressBar: '播放进度条',
     volumeSlider: '音量滑块',
-    timeSlider: '时间滑块'
+    timeSlider: '时间滑块',
+
+    // 全屏功能
+    sleepTimer: '睡眠定时器',
+    sleepTimerOff: '关闭',
+    sleepTimerMinutes: '{minutes} 分钟',
+    sleepTimerRemaining: '剩余 {minutes}:{seconds}',
+    screenshot: '截图',
+    screenshotSaved: '截图已保存',
+    loopAB: 'AB 循环',
+    loopSetA: '设置 A 点',
+    loopSetB: '设置 B 点',
+    loopClearAB: '清除 AB',
+    abLoopActive: 'AB 循环中',
+    upNext: '即将播放',
+    startNow: '立即播放',
+    videoInfo: '视频信息',
+    chapters: '章节',
+    playbackSpeedShort: '倍速'
   }
 }
 
