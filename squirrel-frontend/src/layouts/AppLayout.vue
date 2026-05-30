@@ -36,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import DesktopTitleBar from '@/components/shell/DesktopTitleBar.vue'
 import AppSidebar from '@/components/shell/AppSidebar.vue'
@@ -45,6 +45,7 @@ import MobileNavigation from '@/components/shell/MobileNavigation.vue'
 import GlobalVideoPlayerHost from '@/components/video-player/GlobalVideoPlayerHost.vue'
 import { isMobile } from '@/composables/useMobile'
 import { useThemeStore } from '@/stores/theme'
+import { useNavigationHistory } from '@/composables/useNavigationHistory'
 
 type ScrollRouteState = {
   fullPath: string
@@ -54,6 +55,7 @@ type ScrollRouteState = {
 const scrollPositions = new Map<string, number>()
 const isDesktop = (window as any).desktopApp?.isDesktop === true
 const themeStore = useThemeStore()
+const nav = useNavigationHistory()
 const route = useRoute()
 const mainScrollRef = ref<HTMLElement | null>(null)
 let activeScrollRoute: ScrollRouteState = {
@@ -89,8 +91,23 @@ watch(() => route.fullPath, async () => {
   previousHistoryPosition = currentHistoryPosition
 })
 
+function handleKeydown(e: KeyboardEvent) {
+  if (e.altKey && e.key === 'ArrowLeft') {
+    e.preventDefault()
+    nav.goBack()
+  } else if (e.altKey && e.key === 'ArrowRight') {
+    e.preventDefault()
+    nav.goForward()
+  }
+}
+
 onMounted(() => {
   themeStore.init()
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
 })
 </script>
 

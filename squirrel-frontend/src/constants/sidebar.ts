@@ -335,11 +335,6 @@ export function resolveRouteContext(route: RouteLocationNormalizedLoaded): Route
     breadcrumbs.push({ label: pageTitle })
   }
 
-  const lastItem = breadcrumbs[breadcrumbs.length - 1]
-  if (lastItem) {
-    delete lastItem.to
-  }
-
   if (breadcrumbs.length === 1 && breadcrumbs[0]?.label === navItem?.name) {
     breadcrumbs[0] = { label: pageTitle }
   }

@@ -1,7 +1,24 @@
 <template>
   <header class="h-8 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border/50 select-none drag">
-    <div class="flex items-center gap-2">
-      <!-- Identity label removed for cleaner look -->
+    <div class="flex items-center gap-2 no-drag">
+      <button
+        :disabled="!nav.canGoBack"
+        :title="nav.canGoBack ? '后退 (Alt+←)' : '后退'"
+        @click="nav.goBack()"
+        class="w-7 h-7 flex items-center justify-center rounded transition-colors"
+        :class="nav.canGoBack ? 'hover:bg-accent text-muted-foreground hover:text-foreground' : 'text-muted-foreground/30 cursor-not-allowed'"
+      >
+        <AppIcon name="chevronLeft" class="w-4 h-4" />
+      </button>
+      <button
+        :disabled="!nav.canGoForward"
+        :title="nav.canGoForward ? '前进 (Alt+→)' : '前进'"
+        @click="nav.goForward()"
+        class="w-7 h-7 flex items-center justify-center rounded transition-colors"
+        :class="nav.canGoForward ? 'hover:bg-accent text-muted-foreground hover:text-foreground' : 'text-muted-foreground/30 cursor-not-allowed'"
+      >
+        <AppIcon name="chevronRight" class="w-4 h-4" />
+      </button>
     </div>
     
     <div class="flex items-center no-drag">
@@ -21,6 +38,9 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import type { AppIconName } from '@/icons/app-icons'
+import { useNavigationHistory } from '@/composables/useNavigationHistory'
+
+const nav = useNavigationHistory()
 
 const desktop = (window as any).desktopApp
 const isMaximized = ref(false)
