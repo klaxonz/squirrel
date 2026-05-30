@@ -26,6 +26,11 @@ test('desktop bilibili provider builds codec-separated video adaptation sets wit
         data: {
           bvid: 'BV1BfobBREWE',
           aid: 116451478472399,
+          owner: {
+            mid: 12345,
+            name: 'Bilibili Owner',
+            face: 'https://i0.hdslb.com/bfs/face/owner.jpg',
+          },
           pages: [{ cid: 37738447455 }],
         },
       },
@@ -140,6 +145,9 @@ test('desktop bilibili provider builds codec-separated video adaptation sets wit
     })
 
     assert.equal(payload.stream_type, 'dash')
+    assert.equal(payload.uploader_name, 'Bilibili Owner')
+    assert.equal(payload.uploader_url, 'https://space.bilibili.com/12345')
+    assert.equal(payload.uploader_avatar, 'https://i0.hdslb.com/bfs/face/owner.jpg')
     assert.equal(Boolean(payload.mpd_content), true)
     assert.deepEqual(
       payload.qualities?.map((item) => item.id),

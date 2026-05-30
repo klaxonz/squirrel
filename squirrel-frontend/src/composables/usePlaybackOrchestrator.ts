@@ -89,6 +89,10 @@ export const mergeVideoMetadata = (currentVideo: VideoLike | null, videoMetadata
     nextVideo.actors = mergeActors(nextVideo.actors, videoMetadata.actors.map((actor) => toRecord(actor)))
   }
 
+  if (Array.isArray(videoMetadata.subscriptions) && videoMetadata.subscriptions.length > 0) {
+    nextVideo.subscriptions = mergeActors(nextVideo.subscriptions, videoMetadata.subscriptions.map((subscription) => toRecord(subscription)))
+  }
+
   return nextVideo as VideoLike
 }
 

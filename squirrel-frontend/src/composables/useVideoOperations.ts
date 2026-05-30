@@ -15,12 +15,17 @@ type PlaybackVideoLike = {
 
 type ApiResult<T> = { data?: T | null; error?: any }
 
-type VideoUrlInfo = {
+export type VideoUrlInfo = {
   stream_type?: 'hls' | 'dash' | 'progressive'
   mpd_url?: string | null
   mpd_content?: string | null
   video_url?: string | null
   audio_url?: string | null
+  title?: string | null
+  thumbnail?: string | null
+  uploader_name?: string | null
+  uploader_url?: string | null
+  uploader_avatar?: string | null
   default_quality_id?: string | null
   supports_manual_quality?: boolean
   metadata?: Record<string, any>
@@ -36,7 +41,7 @@ type VideoUrlInfo = {
   }> | null
 }
 
-const toPlayerSourceType = (streamType?: VideoUrlInfo['stream_type']): MediaSource['type'] => {
+export const toPlayerSourceType = (streamType?: VideoUrlInfo['stream_type']): MediaSource['type'] => {
   if (streamType === 'progressive') return 'native'
   return streamType || 'auto'
 }
@@ -51,16 +56,17 @@ const getDesktopBridge = () => {
   return desktopWindow.desktopApp || null
 }
 
-const DESKTOP_PLAYBACK_TIMEOUT_MS = 120000
+export const DESKTOP_PLAYBACK_TIMEOUT_MS = 120000
 
-type DesktopResolverKey =
+export type DesktopResolverKey =
   | 'resolveYouTubePlayback'
   | 'resolveBilibiliPlayback'
   | 'resolveJavdbPlayback'
   | 'resolvePornhubPlayback'
   | 'resolveYouPornPlayback'
 
-type DesktopPlaybackProvider = {
+export type DesktopPlaybackProvider = {
+  site: string
   key: DesktopResolverKey
   matches: (url: string) => boolean
   debugLabel: string
@@ -68,35 +74,46 @@ type DesktopPlaybackProvider = {
 
 const includesAny = (value: string, needles: string[]) => needles.some((needle) => value.includes(needle))
 
-const DESKTOP_PLAYBACK_PROVIDERS: DesktopPlaybackProvider[] = [
+export const DESKTOP_PLAYBACK_PROVIDERS: DesktopPlaybackProvider[] = [
   {
+    site: 'youtube',
     key: 'resolveYouTubePlayback',
     debugLabel: 'YouTube',
     matches: (url) => includesAny(url, ['youtube.com/', 'youtu.be/']),
   },
   {
+    site: 'bilibili',
     key: 'resolveBilibiliPlayback',
     debugLabel: 'Bilibili',
     matches: (url) => includesAny(url, ['bilibili.com/video/', 'b23.tv/']),
   },
   {
+    site: 'javdb',
     key: 'resolveJavdbPlayback',
     debugLabel: 'JavDB',
     matches: (url) => includesAny(url, ['javdb.com/v/', 'javdb.com/video/']),
   },
   {
+    site: 'pornhub',
     key: 'resolvePornhubPlayback',
     debugLabel: 'Pornhub',
     matches: (url) => includesAny(url, ['pornhub.com/view_video.php', 'pornhub.com/video/', 'pornhub.com/embed/']),
   },
   {
+    site: 'youporn',
     key: 'resolveYouPornPlayback',
     debugLabel: 'YouPorn',
     matches: (url) => includesAny(url, ['youporn.com/watch/', 'you-porn.com/watch/']),
   },
 ]
 
-const resolveDesktopPlayback = async (
+export const findDesktopPlaybackProvider = (url: string) => {
+  const value = String(url || '').trim()
+  if (!value) return null
+  return DESKTOP_PLAYBACK_PROVIDERS.find((provider) => provider.matches(value)) || null
+}
+
+export const resolveDesktopPlayback = async (
   provider: DesktopPlaybackProvider,
   videoUrl: string,
   options: VideoUrlOptions = {},
@@ -124,7 +141,7 @@ const resolveDesktopPlayback = async (
   }
 }
 
-const isDesktopPlaybackClient = () => {
+export const isDesktopPlaybackClient = () => {
   if (typeof window === 'undefined') return false
 
   const desktopWindow = window as DesktopWindow
@@ -155,7 +172,7 @@ export default function useVideoOperations() {
       let error: any = null
       const playbackUrl = String(playbackVideo?.url || '').trim()
       const isDesktopClient = isDesktopPlaybackClient()
-      const matchedDesktopProvider = DESKTOP_PLAYBACK_PROVIDERS.find((provider) => provider.matches(playbackUrl))
+      const matchedDesktopProvider = findDesktopPlaybackProvider(playbackUrl)
 
       if (isDesktopClient && matchedDesktopProvider) {
         Logger.debug(`[getPlaybackSource] Resolving ${matchedDesktopProvider.debugLabel} playback via desktop bridge`, { videoId, forceRefresh })
@@ -202,13 +219,33 @@ export default function useVideoOperations() {
         : undefined
       const resolvedMpdUrl = localMpdUrl || mpdUrl || synthesizedMpdUrl
 
+      const resolvedMetadata = { ...(data?.metadata || {}) } as Record<string, any>
+      const uploaderName = String(data?.uploader_name || '').trim()
+      const uploaderUrl = String(data?.uploader_url || '').trim()
+      const uploaderAvatar = String(data?.uploader_avatar || '').trim()
+      if (data?.title || data?.thumbnail || uploaderName) {
+        const metadataVideo = (resolvedMetadata.video && typeof resolvedMetadata.video === 'object')
+          ? resolvedMetadata.video
+          : {}
+        resolvedMetadata.video = {
+          ...metadataVideo,
+          title: data?.title || undefined,
+          thumbnail: data?.thumbnail || undefined,
+          subscriptions: uploaderName ? [{
+            name: uploaderName,
+            url: uploaderUrl,
+            avatar: uploaderAvatar,
+          }] : undefined,
+        }
+      }
+
       if (resolvedMpdUrl) return {
         src: resolvedMpdUrl,
         type: toPlayerSourceType(streamType),
         key,
         progressKey,
         qualities,
-        metadata: data?.metadata,
+        metadata: resolvedMetadata,
       }
 
       if (!videoUrl && !audioUrl) {
@@ -221,7 +258,7 @@ export default function useVideoOperations() {
         key,
         progressKey,
         qualities,
-        metadata: data?.metadata,
+        metadata: resolvedMetadata,
       }
     } catch (err) {
       throw err

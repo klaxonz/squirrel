@@ -93,8 +93,15 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch, type PropType } from 'vue'
+import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { getSearchSuggestions } from '@/api/search'
+import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
+import {
+  findDesktopPlaybackProvider,
+  resolveDesktopPlayback,
+  isDesktopPlaybackClient,
+} from '@/composables/useVideoOperations'
 import { useUIStore } from '@/stores/ui'
 
 type SearchModeOption = {
@@ -112,6 +119,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'search', 'clear', 'search-mode-change'])
 const uiStore = useUIStore()
+const router = useRouter()
 
 const inputValue = ref(uiStore.searchQuery)
 const isFocused = ref(false)
@@ -160,6 +168,7 @@ const suggestionItems = computed(() => {
 })
 
 const suggestionTitle = computed(() => trimmedInputValue.value ? '搜索建议' : '最近搜索')
+const matchedPlaybackProvider = computed(() => findDesktopPlaybackProvider(trimmedInputValue.value))
 
 const handleInput = () => {
   uiStore.searchQuery = inputValue.value
@@ -204,7 +213,55 @@ function selectSuggestion(val: string) {
   handleSearch()
 }
 
-function handleSearch() {
+async function handleSearch() {
+  const provider = matchedPlaybackProvider.value
+  if (provider) {
+    const url = trimmedInputValue.value
+    const fakeId = `_sandbox_${Date.now()}`
+    const site = provider.site
+    const isDesktop = isDesktopPlaybackClient()
+
+    let title = url
+    let thumbnail: string | undefined
+    let uploader = ''
+    let uploaderUrl = ''
+    let uploaderAvatar = ''
+    let subscriptions: any[] = []
+
+    if (isDesktop) {
+      try {
+        const info = await resolveDesktopPlayback(provider, url, { forceRefresh: true })
+        if ((info as any)?.title) title = (info as any).title
+        if ((info as any)?.thumbnail) thumbnail = (info as any).thumbnail
+        const uname = (info as any)?.uploader_name
+        const uurl = (info as any)?.uploader_url
+        const uavatar = (info as any)?.uploader_avatar
+        if (uname) {
+          uploader = String(uname)
+          uploaderUrl = String(uurl || '')
+          uploaderAvatar = String(uavatar || '')
+          subscriptions = [{ name: uploader, url: uploaderUrl, avatar: uploaderAvatar }]
+        }
+      } catch { /* keep title as url if resolve fails */ }
+    }
+
+    rememberVideoPlaybackSeed({
+      id: fakeId,
+      url,
+      title,
+      thumbnail,
+      site,
+      source: 'remote',
+      uploader,
+      uploader_url: uploaderUrl,
+      uploader_avatar: uploaderAvatar,
+      subscriptions,
+    } as any)
+    isPanelOpen.value = false
+    inputRef.value?.blur()
+    router.push({ name: 'VideoPlay', params: { videoId: fakeId } })
+    return
+  }
   if (trimmedInputValue.value) {
     const next = [trimmedInputValue.value, ...recentSearches.value.filter(s => s !== trimmedInputValue.value)].slice(0, 10)
     recentSearches.value = next

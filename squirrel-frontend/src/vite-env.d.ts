@@ -49,6 +49,11 @@ type DesktopPlaybackResolver = (
   mpd_content?: string | null
   video_url?: string | null
   audio_url?: string | null
+  title?: string | null
+  thumbnail?: string | null
+  uploader_name?: string | null
+  uploader_url?: string | null
+  uploader_avatar?: string | null
   default_quality_id?: string | null
   supports_manual_quality?: boolean
   metadata?: Record<string, unknown>

@@ -23,6 +23,7 @@ type RouteLike = {
 type GlobalPlaybackSessionLike = {
   currentVideoId?: string | number | null
   source?: PlaybackSourceLike
+  uploader?: string
   externalError?: unknown
   externalLoading?: boolean
   videoSnapshot?: VideoLike | null
@@ -38,6 +39,7 @@ type ActivateSessionPayload = {
   subtitles: unknown[]
   clipMarkers: ClipMarkerLike[]
   title: string
+  uploader: string
   initialTime: number | null | undefined
   hasPrev: boolean
   hasNext: boolean
@@ -273,6 +275,16 @@ export default function useVideoPlaybackShell({
       nextPlaylistPrev,
       nextPlaylistNext,
     ]) => {
+      const primaryProfile = Array.isArray((nextVideo as any)?.subscriptions)
+        ? (nextVideo as any).subscriptions[0]
+        : (Array.isArray((nextVideo as any)?.actors) ? (nextVideo as any).actors[0] : null)
+      const nextUploader = String(
+        primaryProfile?.name
+        || (nextVideo as any)?.uploader
+        || (nextVideo as any)?.uploader_name
+        || ''
+      )
+
       const hasLocalPlaybackState = !!(
         nextVideo
         || nextSource
@@ -290,6 +302,7 @@ export default function useVideoPlaybackShell({
         subtitles: nextSubtitles || [],
         clipMarkers: nextClipMarkers || [],
         title: String(nextTitle || ''),
+        uploader: nextUploader,
         initialTime: nextInitialTime,
         hasPrev: !!nextHasPrev,
         hasNext: !!nextHasNext,

@@ -316,13 +316,22 @@ const summarizeUnplayablePayload = (playData) => {
   ].filter(Boolean).join('; ')
 }
 
-const mapPlaybackPayload = ({ playData, context }) => {
+const mapPlaybackPayload = ({ playData, context, info }) => {
   const dashData = playData?.dash
   const localDashManifest = dashData ? buildLocalDashManifest(dashData) : null
   const qualities = buildQualities(dashData)
+  const title = String(info?.data?.title || info?.title || '').trim() || null
+  const thumbnail = String(info?.data?.pic || info?.pic || '').trim() || null
+  const owner = info?.owner || info?.data?.owner || {}
+  const uploaderName = String(owner?.name || '').trim() || null
+  const uploaderAvatar = String(owner?.face || '').trim() || null
+  const uploaderId = String(owner?.mid || '').trim() || null
+  const uploaderUrl = uploaderId ? `https://space.bilibili.com/${uploaderId}` : null
+  const basePayload = { title, thumbnail, uploader_name: uploaderName, uploader_url: uploaderUrl, uploader_avatar: uploaderAvatar }
 
   if (localDashManifest) {
     return {
+      ...basePayload,
       stream_type: 'dash',
       video_url: null,
       audio_url: null,
