@@ -7,12 +7,12 @@ import logging
 from threading import Lock
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Callable, Iterator, Optional
 
 from cryptography.fernet import Fernet
-from sqlalchemy import func, select
+from sqlalchemy import func, select, tuple_
 
 from core.config import settings
 from core.database import get_session
@@ -22,8 +22,12 @@ logger = logging.getLogger(__name__)
 
 SUPPORTED_PROVIDERS = {'greader', 'miniflux', 'fever'}
 MEDIA_EXTENSIONS = ('.mp4', '.mp3', '.m4a', '.mkv', '.webm', '.flv', '.mov', '.ogg', '.wav', '.m3u8')
+G_READER_PAGE_SIZE = 500
+UNSET = object()
 _SYNC_LOCK = Lock()
 _ACCOUNT_SYNC_LOCKS: dict[int, Lock] = {}
+_SYNC_PROGRESS_LOCK = Lock()
+_SYNC_PROGRESS: dict[int, dict[str, Any]] = {}
 
 
 class RssServiceError(ValueError):
@@ -91,6 +95,17 @@ def _normalize_base_url(base_url: str) -> str:
     if parsed.scheme not in {'http', 'https'} or not parsed.netloc:
         raise RssServiceError('RSS service URL must be an HTTP or HTTPS URL')
     return normalized
+
+
+def _normalize_sync_entry_limit(provider: str, sync_entry_limit: Optional[int]) -> Optional[int]:
+    if sync_entry_limit is None:
+        if provider == 'greader':
+            return None
+        raise RssServiceError('Sync entry limit is required for this RSS provider')
+    limit = int(sync_entry_limit)
+    if limit < 1:
+        raise RssServiceError('Sync entry limit must be greater than 0')
+    return limit
 
 
 def _parse_datetime(value: Any) -> Optional[datetime]:
@@ -325,26 +340,63 @@ class GReaderClient:
 
     def list_entries(self, external_feed_id: str, limit: int) -> list[RemoteEntry]:
         stream_id = urllib.parse.quote(str(external_feed_id), safe='/')
-        query = urllib.parse.urlencode({'output': 'json', 'n': max(1, limit)})
-        data = self.http_client.get_json(
-            f'{self.config.base_url}/reader/api/0/stream/contents/{stream_id}?{query}',
-            self._headers(),
-        )
-        items = data.get('items') if isinstance(data, dict) else None
-        if not isinstance(items, list):
-            raise RssServiceError('Invalid Google Reader API stream response')
-        return [_greader_entry_to_remote(item) for item in items if isinstance(item, dict)]
+        result: list[RemoteEntry] = []
+        for page in self._iter_stream_entries(stream_id, limit):
+            result.extend(page)
+            if limit is not None and len(result) >= limit:
+                break
+        return result[:limit] if limit is not None else result
 
-    def list_recent_entries(self, limit: int) -> list[RemoteEntry]:
-        query = urllib.parse.urlencode({'output': 'json', 'n': max(1, limit)})
-        data = self.http_client.get_json(
-            f'{self.config.base_url}/reader/api/0/stream/contents/reading-list?{query}',
-            self._headers(),
-        )
-        items = data.get('items') if isinstance(data, dict) else None
-        if not isinstance(items, list):
-            raise RssServiceError('Invalid Google Reader API reading list response')
-        return [_greader_entry_to_remote(item) for item in items if isinstance(item, dict)]
+    def list_recent_entries(
+        self,
+        limit: Optional[int],
+        progress_callback: Optional[Callable[[int, Optional[str]], None]] = None,
+    ) -> list[RemoteEntry]:
+        result: list[RemoteEntry] = []
+        for page in self._iter_stream_entries('reading-list', limit, progress_callback):
+            result.extend(page)
+        return result[:limit] if limit is not None else result
+
+    def iter_recent_entries(
+        self,
+        limit: Optional[int],
+        progress_callback: Optional[Callable[[int, Optional[str]], None]] = None,
+    ) -> Iterator[list[RemoteEntry]]:
+        return self._iter_stream_entries('reading-list', limit, progress_callback)
+
+    def _iter_stream_entries(
+        self,
+        stream_id: str,
+        limit: Optional[int],
+        progress_callback: Optional[Callable[[int, Optional[str]], None]] = None,
+    ) -> Iterator[list[RemoteEntry]]:
+        fetched = 0
+        continuation: Optional[str] = None
+
+        while True:
+            page_size = G_READER_PAGE_SIZE if limit is None else min(G_READER_PAGE_SIZE, max(1, limit - fetched))
+            query_params = {'output': 'json', 'n': str(page_size)}
+            if continuation:
+                query_params['c'] = continuation
+            query = urllib.parse.urlencode(query_params)
+            data = self.http_client.get_json(
+                f'{self.config.base_url}/reader/api/0/stream/contents/{stream_id}?{query}',
+                self._headers(),
+            )
+            items = data.get('items') if isinstance(data, dict) else None
+            if not isinstance(items, list):
+                raise RssServiceError('Invalid Google Reader API stream response')
+            page = [_greader_entry_to_remote(item) for item in items if isinstance(item, dict)]
+            fetched += len(page)
+            continuation = str(data.get('continuation') or '').strip()
+            if progress_callback:
+                progress_callback(fetched, continuation or None)
+            if page:
+                yield page
+            if limit is not None and fetched >= limit:
+                break
+            if not items or not continuation:
+                break
 
     def test_connection(self) -> int:
         return len(self.list_feeds())
@@ -487,6 +539,33 @@ def _sync_lock_for_account(account_id: int) -> Lock:
         return lock
 
 
+def _set_sync_progress(account_id: int, **values: Any) -> None:
+    with _SYNC_PROGRESS_LOCK:
+        current = dict(_SYNC_PROGRESS.get(account_id) or {})
+        current.update(values)
+        current['account_id'] = account_id
+        current['updated_at'] = datetime.now().isoformat()
+        _SYNC_PROGRESS[account_id] = current
+
+
+def get_sync_progress(user_id: int, account_id: int) -> Optional[dict[str, Any]]:
+    with get_session() as session:
+        account = _get_account(session, user_id, account_id)
+        if not account:
+            return None
+
+    with _SYNC_PROGRESS_LOCK:
+        progress = dict(_SYNC_PROGRESS.get(account_id) or {})
+    if not progress:
+        progress = {
+            'account_id': account_id,
+            'running': False,
+            'phase': 'idle',
+            'message': 'RSS sync is idle',
+        }
+    return progress
+
+
 def serialize_account(account: RssAccount) -> dict[str, Any]:
     return {
         'id': account.id,
@@ -495,6 +574,7 @@ def serialize_account(account: RssAccount) -> dict[str, Any]:
         'base_url': account.base_url,
         'username': account.username,
         'enabled': account.enabled,
+        'sync_entry_limit': account.sync_entry_limit,
         'last_sync_at': account.last_sync_at.isoformat() if account.last_sync_at else None,
         'last_error': account.last_error,
         'created_at': account.created_at.isoformat() if account.created_at else None,
@@ -563,9 +643,11 @@ def create_account(
     username: Optional[str],
     credential: str,
     enabled: bool = True,
+    sync_entry_limit: Optional[int] = None,
 ) -> dict[str, Any]:
     provider = _normalize_provider(provider)
     base_url = _normalize_base_url(base_url)
+    sync_entry_limit = _normalize_sync_entry_limit(provider, sync_entry_limit)
     name = str(name or '').strip()
     credential = str(credential or '').strip()
     if not name:
@@ -582,6 +664,7 @@ def create_account(
             username=str(username or '').strip() or None,
             credential_encrypted=_encrypt(credential),
             enabled=bool(enabled),
+            sync_entry_limit=sync_entry_limit,
             is_deleted=False,
         )
         session.add(account)
@@ -600,6 +683,7 @@ def update_account(
     username: Optional[str] = None,
     credential: Optional[str] = None,
     enabled: Optional[bool] = None,
+    sync_entry_limit: Any = UNSET,
 ) -> Optional[dict[str, Any]]:
     with get_session() as session:
         account = _get_account(session, user_id, account_id)
@@ -607,6 +691,10 @@ def update_account(
             return None
         if provider is not None:
             account.provider = _normalize_provider(provider)
+        if sync_entry_limit is not UNSET:
+            account.sync_entry_limit = _normalize_sync_entry_limit(account.provider, sync_entry_limit)
+        elif provider is not None:
+            account.sync_entry_limit = _normalize_sync_entry_limit(account.provider, account.sync_entry_limit)
         if name is not None:
             normalized_name = str(name or '').strip()
             if not normalized_name:
@@ -665,11 +753,25 @@ def test_account(user_id: int, account_id: int) -> Optional[dict[str, Any]]:
     return {'ok': True, 'feed_count': feed_count}
 
 
-def sync_account(user_id: int, account_id: int, *, entry_limit: int = 50) -> Optional[dict[str, Any]]:
+def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = None) -> Optional[dict[str, Any]]:
     sync_lock = _sync_lock_for_account(account_id)
     if not sync_lock.acquire(blocking=False):
         raise RssServiceError('RSS account sync is already running')
 
+    _set_sync_progress(
+        account_id,
+        running=True,
+        phase='starting',
+        message='Starting RSS sync',
+        feeds_total=None,
+        feeds_synced=0,
+        entries_fetched=0,
+        entries_synced=0,
+        media_synced=0,
+        error=None,
+        started_at=datetime.now().isoformat(),
+        finished_at=None,
+    )
     synced_feeds = 0
     synced_entries = 0
     synced_media = 0
@@ -681,47 +783,82 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: int = 50) -> Opt
             if not account:
                 return None
             config = _config_from_account(account)
+            configured_entry_limit = account.sync_entry_limit
+
+        effective_entry_limit = entry_limit if entry_limit is not None else configured_entry_limit
 
         client = _client_for_config(config)
+        _set_sync_progress(account_id, phase='feeds_fetching', message='Fetching RSS feeds')
         remote_feeds = client.list_feeds()
+        _set_sync_progress(
+            account_id,
+            phase='feeds_saving',
+            message='Saving RSS feeds',
+            feeds_total=len(remote_feeds),
+        )
         feed_refs: list[tuple[int, str, bool]] = []
         with get_session() as session:
             account = _get_account(session, user_id, account_id)
             if not account:
                 return None
             account.last_error = None
-            for remote_feed in remote_feeds:
-                feed = _upsert_feed(session, account, remote_feed)
-                synced_feeds += 1
+            feeds = _upsert_feeds(session, account, remote_feeds)
+            for index, feed in enumerate(feeds, start=1):
                 feed_refs.append((feed.id, feed.external_feed_id, feed.enabled))
+                if index % 50 == 0 or index == len(feeds):
+                    _set_sync_progress(account_id, feeds_synced=index)
+        synced_feeds = len(feeds)
 
         if isinstance(client, GReaderClient):
-            remote_entries = client.list_recent_entries(entry_limit)
+            _set_sync_progress(
+                account_id,
+                phase='entries_fetching',
+                message='Fetching RSS entries',
+                entry_limit=effective_entry_limit,
+            )
+
+            def _on_entries_fetched(entry_count: int, continuation: Optional[str]) -> None:
+                _set_sync_progress(
+                    account_id,
+                    phase='entries_fetching',
+                    entries_fetched=entry_count,
+                    has_more=bool(continuation),
+                )
+
             with get_session() as session:
-                external_feed_ids = [entry.external_feed_id for entry in remote_entries if entry.external_feed_id]
-                feeds = session.scalars(
-                    select(RssFeed).where(
-                        RssFeed.account_id == account_id,
-                        RssFeed.external_feed_id.in_(external_feed_ids),
-                    )
-                ).all() if external_feed_ids else []
-                feeds_by_external_id = {feed.external_feed_id: feed for feed in feeds if feed.enabled}
-                for remote_entry in remote_entries:
-                    if not remote_entry.external_feed_id:
-                        continue
-                    feed = feeds_by_external_id.get(remote_entry.external_feed_id)
-                    if not feed:
-                        continue
-                    entry = _upsert_entry(session, feed, remote_entry)
-                    synced_entries += 1
-                    synced_media += _upsert_entry_media(session, entry, remote_entry.media)
-                    feed.last_entry_sync_at = datetime.now()
+                feeds_by_external_id: dict[str, RssFeed] = {}
+                batch_index = 0
+                for page in client.iter_recent_entries(effective_entry_limit, _on_entries_fetched):
+                    new_feeds = _load_feeds_by_external_id(session, account_id, page)
+                    feeds_by_external_id.update(new_feeds)
+                    for batch in _chunked(page, 200):
+                        batch_index += 1
+                        batch_entries, batch_media = _upsert_remote_entries_batch(session, feeds_by_external_id, batch)
+                        synced_entries += batch_entries
+                        synced_media += batch_media
+                        _set_sync_progress(
+                            account_id,
+                            phase='entries_saving',
+                            entries_synced=synced_entries,
+                            media_synced=synced_media,
+                            current_batch=batch_index,
+                        )
+                    session.commit()
         else:
-            for feed_id, external_feed_id, enabled in feed_refs:
-                if not enabled:
-                    continue
-                remote_entries = client.list_entries(external_feed_id, entry_limit)
-                with get_session() as session:
+            if effective_entry_limit is None:
+                raise RssServiceError('Sync entry limit is required for this RSS provider')
+            with get_session() as session:
+                for feed_id, external_feed_id, enabled in feed_refs:
+                    if not enabled:
+                        continue
+                    _set_sync_progress(
+                        account_id,
+                        phase='entries_fetching',
+                        message='Fetching RSS entries',
+                        current_feed_id=feed_id,
+                        feeds_synced=synced_feeds,
+                    )
+                    remote_entries = client.list_entries(external_feed_id, effective_entry_limit)
                     feed = session.scalars(
                         select(RssFeed).where(
                             RssFeed.id == feed_id,
@@ -731,17 +868,37 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: int = 50) -> Opt
                     ).first()
                     if not feed:
                         continue
-                    for remote_entry in remote_entries:
-                        entry = _upsert_entry(session, feed, remote_entry)
-                        synced_entries += 1
-                        synced_media += _upsert_entry_media(session, entry, remote_entry.media)
+                    feeds_by_external_id = {external_feed_id: feed}
+                    if remote_entries:
+                        remote_entries = [replace(re, external_feed_id=re.external_feed_id or external_feed_id) for re in remote_entries]
+                    batch_entries, batch_media = _upsert_remote_entries_batch(session, feeds_by_external_id, remote_entries)
+                    synced_entries += batch_entries
+                    synced_media += batch_media
                     feed.last_entry_sync_at = datetime.now()
+                    _set_sync_progress(
+                        account_id,
+                        phase='entries_saving',
+                        entries_synced=synced_entries,
+                        media_synced=synced_media,
+                    )
+                    session.commit()
 
         with get_session() as session:
             account = _get_account(session, user_id, account_id)
             if account:
                 account.last_sync_at = datetime.now()
                 account.last_error = None
+        _set_sync_progress(
+            account_id,
+            running=False,
+            phase='completed',
+            message='RSS sync completed',
+            feeds_synced=synced_feeds,
+            entries_synced=synced_entries,
+            media_synced=synced_media,
+            error=None,
+            finished_at=datetime.now().isoformat(),
+        )
     except Exception as exc:
         error_message = str(exc)
         provider = config.provider if 'config' in locals() else 'unknown'
@@ -751,6 +908,17 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: int = 50) -> Opt
             if account:
                 account.last_error = error_message
                 session.commit()
+        _set_sync_progress(
+            account_id,
+            running=False,
+            phase='failed',
+            message='RSS sync failed',
+            feeds_synced=synced_feeds,
+            entries_synced=synced_entries,
+            media_synced=synced_media,
+            error=error_message,
+            finished_at=datetime.now().isoformat(),
+        )
         raise
     finally:
         sync_lock.release()
@@ -821,87 +989,201 @@ def _get_account(session, user_id: int, account_id: int) -> Optional[RssAccount]
     ).first()
 
 
-def _upsert_feed(session, account: RssAccount, remote: RemoteFeed) -> RssFeed:
-    feed = session.scalars(
-        select(RssFeed).where(
-            RssFeed.account_id == account.id,
-            RssFeed.external_feed_id == remote.external_feed_id,
-        )
-    ).first()
-    if feed is None:
-        feed = RssFeed(
-            user_id=account.user_id,
-            account_id=account.id,
-            external_feed_id=remote.external_feed_id,
-            title=remote.title,
-            enabled=True,
-        )
-        session.add(feed)
-        session.flush()
+def _upsert_feeds(session, account: RssAccount, remotes: list[RemoteFeed]) -> list[RssFeed]:
+    external_feed_ids = [r.external_feed_id for r in remotes]
+    existing_by_id: dict[str, RssFeed] = {}
+    if external_feed_ids:
+        existing_rows = session.scalars(
+            select(RssFeed).where(
+                RssFeed.account_id == account.id,
+                RssFeed.external_feed_id.in_(external_feed_ids),
+            )
+        ).all()
+        existing_by_id = {f.external_feed_id: f for f in existing_rows}
 
-    feed.title = remote.title
-    feed.feed_url = remote.feed_url
-    feed.site_url = remote.site_url
-    feed.icon_url = remote.icon_url
-    feed.category = remote.category
-    feed.raw_data = remote.raw_data
-    return feed
+    feeds: list[RssFeed] = []
+    for remote in remotes:
+        feed = existing_by_id.get(remote.external_feed_id)
+        if feed is None:
+            feed = RssFeed(
+                user_id=account.user_id,
+                account_id=account.id,
+                external_feed_id=remote.external_feed_id,
+                title=remote.title,
+                enabled=True,
+            )
+            session.add(feed)
+            session.flush()
 
+        feed.title = remote.title
+        feed.feed_url = remote.feed_url
+        feed.site_url = remote.site_url
+        feed.icon_url = remote.icon_url
+        feed.category = remote.category
+        feed.raw_data = remote.raw_data
+        feeds.append(feed)
 
-def _upsert_entry(session, feed: RssFeed, remote: RemoteEntry) -> RssEntry:
-    entry = session.scalars(
-        select(RssEntry).where(
-            RssEntry.feed_id == feed.id,
-            RssEntry.external_entry_id == remote.external_entry_id,
-        )
-    ).first()
-    if entry is None:
-        entry = RssEntry(
-            user_id=feed.user_id,
-            account_id=feed.account_id,
-            feed_id=feed.id,
-            external_entry_id=remote.external_entry_id,
-            canonical_url=remote.canonical_url,
-            title=remote.title,
-        )
-        session.add(entry)
-        session.flush()
-
-    entry.canonical_url = remote.canonical_url
-    entry.title = remote.title
-    entry.summary = remote.summary
-    entry.thumbnail = remote.thumbnail
-    entry.author = remote.author
-    entry.published_at = remote.published_at
-    entry.is_read = remote.is_read
-    entry.is_starred = remote.is_starred
-    entry.raw_data = remote.raw_data
-    return entry
+    return feeds
 
 
-def _upsert_entry_media(session, entry: RssEntry, media_items: list[dict[str, Any]]) -> int:
-    count = 0
-    for media in media_items:
-        media_url = str(media.get('media_url') or '').strip()
-        if not media_url:
+def _upsert_remote_entries_batch(
+    session,
+    feeds_by_external_id: dict[str, RssFeed],
+    remote_entries: list[RemoteEntry],
+) -> tuple[int, int]:
+    entries_by_key: dict[tuple[int, str], RssEntry] = {}
+    eligible_entries: list[tuple[RssFeed, RemoteEntry, RssEntry]] = []
+    feed_ids: set[int] = set()
+    entry_ids: list[str] = []
+
+    for remote_entry in remote_entries:
+        if not remote_entry.external_feed_id:
             continue
-        row = session.scalars(
-            select(RssEntryMedia).where(
-                RssEntryMedia.entry_id == entry.id,
-                RssEntryMedia.media_url == media_url,
+        feed = feeds_by_external_id.get(remote_entry.external_feed_id)
+        if not feed or not feed.enabled:
+            continue
+        feed_ids.add(feed.id)
+        entry_ids.append(remote_entry.external_entry_id)
+
+    if feed_ids and entry_ids:
+        existing_entries = session.scalars(
+            select(RssEntry).where(
+                RssEntry.feed_id.in_(feed_ids),
+                RssEntry.external_entry_id.in_(entry_ids),
             )
-        ).first()
-        if row is None:
-            row = RssEntryMedia(
-                user_id=entry.user_id,
-                account_id=entry.account_id,
-                feed_id=entry.feed_id,
-                entry_id=entry.id,
-                media_url=media_url,
+        ).all()
+        entries_by_key = {(entry.feed_id, entry.external_entry_id): entry for entry in existing_entries}
+
+    new_entry_dicts: list[dict[str, Any]] = []
+    new_entry_keys: list[tuple[int, str]] = []
+
+    for remote_entry in remote_entries:
+        if not remote_entry.external_feed_id:
+            continue
+        feed = feeds_by_external_id.get(remote_entry.external_feed_id)
+        if not feed or not feed.enabled:
+            continue
+        key = (feed.id, remote_entry.external_entry_id)
+        entry = entries_by_key.get(key)
+        if entry is None:
+            now = datetime.now()
+            new_entry_dicts.append(dict(
+                user_id=feed.user_id,
+                account_id=feed.account_id,
+                feed_id=feed.id,
+                external_entry_id=remote_entry.external_entry_id,
+                canonical_url=remote_entry.canonical_url,
+                title=remote_entry.title,
+                summary=remote_entry.summary,
+                thumbnail=remote_entry.thumbnail,
+                author=remote_entry.author,
+                published_at=remote_entry.published_at,
+                is_read=remote_entry.is_read,
+                is_starred=remote_entry.is_starred,
+                raw_data=remote_entry.raw_data,
+                created_at=now,
+                updated_at=now,
+            ))
+            new_entry_keys.append(key)
+        else:
+            entry.canonical_url = remote_entry.canonical_url
+            entry.title = remote_entry.title
+            entry.summary = remote_entry.summary
+            entry.thumbnail = remote_entry.thumbnail
+            entry.author = remote_entry.author
+            entry.published_at = remote_entry.published_at
+            entry.is_read = remote_entry.is_read
+            entry.is_starred = remote_entry.is_starred
+            entry.raw_data = remote_entry.raw_data
+
+    if new_entry_dicts:
+        session.bulk_insert_mappings(RssEntry, new_entry_dicts)
+        keys_tuples = [(fid, eid) for fid, eid in new_entry_keys]
+        new_rows = session.scalars(
+            select(RssEntry).where(
+                tuple_(RssEntry.feed_id, RssEntry.external_entry_id).in_(keys_tuples)
             )
-            session.add(row)
-            count += 1
-        row.media_type = media.get('media_type')
-        row.duration = media.get('duration')
-        row.raw_data = media.get('raw_data')
-    return count
+        ).all()
+        for row in new_rows:
+            entries_by_key[(row.feed_id, row.external_entry_id)] = row
+
+    for remote_entry in remote_entries:
+        if not remote_entry.external_feed_id:
+            continue
+        feed = feeds_by_external_id.get(remote_entry.external_feed_id)
+        if not feed or not feed.enabled:
+            continue
+        key = (feed.id, remote_entry.external_entry_id)
+        entry = entries_by_key.get(key)
+        if entry is not None:
+            eligible_entries.append((feed, remote_entry, entry))
+
+    if not eligible_entries:
+        return 0, 0
+
+    session.flush()
+
+    batch_entry_ids = [entry.id for _, _, entry in eligible_entries]
+    existing_media_rows = session.scalars(
+        select(RssEntryMedia).where(RssEntryMedia.entry_id.in_(batch_entry_ids))
+    ).all()
+    media_by_key: dict[tuple[int, str], RssEntryMedia] = {}
+    for media in existing_media_rows:
+        media_by_key[(media.entry_id, media.media_url)] = media
+
+    new_media_dicts: list[dict[str, Any]] = []
+    media_count = 0
+    for feed, remote_entry, entry in eligible_entries:
+        for media_item in remote_entry.media:
+            media_url = str(media_item.get('media_url') or '').strip()
+            if not media_url:
+                continue
+            key = (entry.id, media_url)
+            row = media_by_key.get(key)
+            if row is None:
+                now = datetime.now()
+                new_media_dicts.append(dict(
+                    user_id=entry.user_id,
+                    account_id=entry.account_id,
+                    feed_id=entry.feed_id,
+                    entry_id=entry.id,
+                    media_url=media_url,
+                    media_type=media_item.get('media_type'),
+                    duration=media_item.get('duration'),
+                    raw_data=media_item.get('raw_data'),
+                    created_at=now,
+                    updated_at=now,
+                ))
+                media_by_key[key] = None  # placeholder to avoid duplicate within batch
+                media_count += 1
+            else:
+                row.media_type = media_item.get('media_type')
+                row.duration = media_item.get('duration')
+                row.raw_data = media_item.get('raw_data')
+        feed.last_entry_sync_at = datetime.now()
+
+    if new_media_dicts:
+        session.bulk_insert_mappings(RssEntryMedia, new_media_dicts)
+
+    return len(eligible_entries), media_count
+
+
+def _load_feeds_by_external_id(
+    session,
+    account_id: int,
+    remote_entries: list[RemoteEntry],
+) -> dict[str, RssFeed]:
+    external_feed_ids = sorted({entry.external_feed_id for entry in remote_entries if entry.external_feed_id})
+    if not external_feed_ids:
+        return {}
+    feeds = session.scalars(
+        select(RssFeed).where(
+            RssFeed.account_id == account_id,
+            RssFeed.external_feed_id.in_(external_feed_ids),
+        )
+    ).all()
+    return {feed.external_feed_id: feed for feed in feeds if feed.enabled}
+
+
+def _chunked(items: list[RemoteEntry], size: int) -> list[list[RemoteEntry]]:
+    return [items[index:index + size] for index in range(0, len(items), size)]

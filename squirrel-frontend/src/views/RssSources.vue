@@ -9,10 +9,10 @@
             <h1 class="truncate text-lg font-bold tracking-tight text-foreground/90">RSS 内容源</h1>
             <p class="mt-0.5 text-xs font-medium text-muted-foreground/70">{{ accounts.length }} 个服务账号</p>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            class="h-9 w-9 rounded-full bg-primary/5 hover:bg-primary/10 text-primary transition-colors shrink-0"
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            class="h-9 w-9 rounded-full bg-primary/5 hover:bg-primary/10 text-primary transition-colors shrink-0" 
             @click="openAddAccount"
           >
             <AppIcon name="plus" class="h-5 w-5" />
@@ -32,42 +32,42 @@
                 <AppIcon name="rss" class="h-4 w-4 shrink-0 text-primary" />
                 <span class="truncate">{{ selectedAccount?.name || '选择账号...' }}</span>
               </div>
-              <AppIcon
-                name="chevronDown"
-                class="h-4 w-4 transition-transform text-muted-foreground shrink-0"
-                :class="{ 'rotate-180': showAccountDropdown }"
+              <AppIcon 
+                name="chevronDown" 
+                class="h-4 w-4 transition-transform text-muted-foreground shrink-0" 
+                :class="{ 'rotate-180': showAccountDropdown }" 
               />
             </button>
-
+            
             <!-- Accounts Dropdown -->
-            <div
-              v-if="showAccountDropdown"
+            <div 
+              v-if="showAccountDropdown" 
               class="absolute left-0 right-0 top-full z-50 mt-1.5 rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl p-1.5 shadow-xl ring-1 ring-black/5"
             >
               <div class="max-h-[220px] overflow-y-auto custom-scrollbar pr-1 space-y-0.5">
-                <div
-                  v-for="acc in accounts"
-                  :key="acc.id"
-                  @click="selectAccount(acc.id); showAccountDropdown = false"
-                  class="flex h-10 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-sm font-medium transition-colors hover:bg-accent cursor-pointer group/item"
+                <div 
+                  v-for="acc in accounts" 
+                  :key="acc.id" 
+                  @click="selectAccount(acc.id); showAccountDropdown = false" 
+                  class="flex h-10 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-sm font-medium transition-colors hover:bg-accent cursor-pointer group/item" 
                   :class="selectedAccountId === acc.id ? 'text-foreground bg-accent/50 font-semibold shadow-sm' : 'text-muted-foreground'"
                 >
                   <AppIcon name="rss" class="h-4 w-4 shrink-0 opacity-70" />
                   <span class="flex-1 truncate">
-                    {{ acc.name }}
+                    {{ acc.name }} 
                     <span class="text-[10px] text-muted-foreground/80 block">({{ acc.provider }})</span>
                   </span>
                   <!-- Action tools inside dropdown (pencil & delete) -->
                   <div class="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                    <button
-                      @click.stop="openEditAccount(acc); showAccountDropdown = false"
+                    <button 
+                      @click.stop="openEditAccount(acc); showAccountDropdown = false" 
                       class="h-7 w-7 rounded-md hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                       title="编辑账号"
                     >
                       <AppIcon name="pencil" class="h-3.5 w-3.5" />
                     </button>
-                    <button
-                      @click.stop="confirmDeleteAccount(acc); showAccountDropdown = false"
+                    <button 
+                      @click.stop="confirmDeleteAccount(acc); showAccountDropdown = false" 
                       class="h-7 w-7 rounded-md hover:bg-destructive/15 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
                       title="删除账号"
                     >
@@ -77,8 +77,8 @@
                 </div>
                 <div v-if="!accounts.length" class="py-4 text-center text-xs text-muted-foreground">暂无账号</div>
                 <div class="h-px w-full bg-border/50 my-1"></div>
-                <button
-                  @click="openAddAccount(); showAccountDropdown = false"
+                <button 
+                  @click="openAddAccount(); showAccountDropdown = false" 
                   class="flex h-9 w-full items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold text-primary hover:bg-primary/5 transition-colors"
                 >
                   <AppIcon name="plus" class="h-4 w-4" />
@@ -89,16 +89,16 @@
           </div>
 
           <!-- Selected Account Sync Info -->
-          <div
-            v-if="selectedAccount"
+          <div 
+            v-if="selectedAccount" 
             class="flex items-center justify-between p-2.5 rounded-xl bg-accent/20 border border-border/10 text-xs text-muted-foreground/90"
           >
             <span class="truncate pr-1">
               {{ selectedAccount.last_sync_at ? '同步于 ' + formatDate(selectedAccount.last_sync_at) : '从未同步' }}
             </span>
-            <button
-              @click="syncSelectedAccount"
-              class="flex items-center gap-1 font-semibold text-primary hover:text-primary/80 transition-all shrink-0"
+            <button 
+              @click="syncSelectedAccount" 
+              class="flex items-center gap-1 font-semibold text-primary hover:text-primary/80 transition-all shrink-0" 
               :disabled="syncing"
             >
               <AppIcon name="refresh" class="h-3 w-3" :class="{ 'animate-spin': syncing }" />
@@ -109,9 +109,9 @@
           <!-- Feed Search input -->
           <div class="relative group">
             <AppIcon name="search" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
-            <input
+            <input 
               v-model="feedSearch"
-              placeholder="搜索订阅源..."
+              placeholder="搜索订阅源..." 
               class="h-10 w-full rounded-xl border border-transparent bg-accent/40 hover:bg-accent/60 pl-10 pr-4 text-sm font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/30 focus:bg-background focus:ring-4 focus:ring-primary/10"
             />
           </div>
@@ -129,27 +129,27 @@
             <span class="flex-1 truncate">全部文章</span>
             <span class="text-xs opacity-60">{{ filteredFeeds.length }}</span>
           </button>
-
+          
           <div class="h-px bg-border/20 my-2"></div>
-
+          
           <!-- Collapsible Folders -->
           <div v-for="folder in feedFolders" :key="folder.name" class="space-y-1">
             <!-- Folder Header -->
-            <button
-              @click="toggleFolder(folder.name)"
+            <button 
+              @click="toggleFolder(folder.name)" 
               class="flex w-full items-center justify-between px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
             >
               <div class="flex items-center gap-1.5 min-w-0">
-                <AppIcon
-                  name="chevronRight"
-                  class="h-3 w-3 transition-transform text-muted-foreground/70 shrink-0"
-                  :class="{ 'rotate-90': !collapsedFolders[folder.name] }"
+                <AppIcon 
+                  name="chevronRight" 
+                  class="h-3 w-3 transition-transform text-muted-foreground/70 shrink-0" 
+                  :class="{ 'rotate-90': !collapsedFolders[folder.name] }" 
                 />
                 <span class="truncate">{{ folder.name }}</span>
               </div>
               <span class="text-[10px] bg-accent/60 px-1.5 py-0.5 rounded-full text-muted-foreground/80 shrink-0">{{ folder.feeds.length }}</span>
             </button>
-
+            
             <!-- Folder Feeds List -->
             <div v-if="!collapsedFolders[folder.name]" class="pl-3 space-y-0.5">
               <button
@@ -211,11 +211,11 @@
             </button>
 
             <!-- Sync Button -->
-            <Button
+            <Button 
               v-if="selectedAccount"
-              variant="outline"
-              class="h-8 rounded-lg text-xs font-semibold px-2.5 gap-1 shrink-0"
-              :disabled="syncing"
+              variant="outline" 
+              class="h-8 rounded-lg text-xs font-semibold px-2.5 gap-1 shrink-0" 
+              :disabled="syncing" 
               @click="syncSelectedAccount"
             >
               <AppIcon name="refresh" class="h-3.5 w-3.5" :class="{ 'animate-spin': syncing }" />
@@ -223,10 +223,10 @@
             </Button>
 
             <!-- Refresh Button -->
-            <Button
-              variant="ghost"
-              size="icon"
-              class="h-8 w-8 rounded-lg bg-accent/40 hover:bg-accent/60 shrink-0"
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              class="h-8 w-8 rounded-lg bg-accent/40 hover:bg-accent/60 shrink-0" 
               @click="loadAll"
             >
               <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': loading }" />
@@ -235,12 +235,12 @@
         </header>
 
         <!-- Main Body Scroll Container -->
-        <div class="flex-1 overflow-y-auto custom-scrollbar bg-background">
+        <div ref="entriesContainer" class="flex-1 overflow-y-auto custom-scrollbar bg-background">
           <div class="mx-auto w-full max-w-[1400px] p-4 lg:p-6 lg:px-8 space-y-6">
             <!-- Global Status Bar -->
-            <div
-              v-if="statusMessage"
-              class="rounded-xl border px-4 py-3 text-xs leading-relaxed flex items-center justify-between shadow-sm"
+            <div 
+              v-if="statusMessage" 
+              class="rounded-xl border px-4 py-3 text-xs leading-relaxed flex items-center justify-between shadow-sm" 
               :class="statusError ? 'border-destructive/20 bg-destructive/5 text-destructive' : 'border-border/50 bg-accent/20 text-muted-foreground'"
             >
               <div class="flex items-center gap-2">
@@ -253,8 +253,8 @@
             </div>
 
             <!-- Empty view -->
-            <div
-              v-if="filteredEntries.length === 0"
+            <div 
+              v-if="filteredEntries.length === 0" 
               class="flex min-h-[30rem] flex-col items-center justify-center text-center py-10"
             >
               <div class="h-20 w-20 rounded-full bg-accent/30 flex items-center justify-center mb-5 ring-4 ring-background shadow-inner">
@@ -268,8 +268,8 @@
 
             <!-- Articles Cards Grid -->
             <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              <div
-                v-for="entry in filteredEntries"
+              <div 
+                v-for="entry in filteredEntries" 
                 :key="entry.id"
                 @click="openReader(entry)"
                 class="group relative flex flex-col justify-between rounded-2xl border border-border/10 bg-accent/15 p-5 hover:bg-accent/35 hover:border-primary/20 transition-all duration-300 shadow-sm cursor-pointer hover:-translate-y-0.5 hover:shadow-md animate-fade-in"
@@ -281,7 +281,7 @@
                   </span>
                   <span class="tabular-nums">{{ formatDate(entry.published_at) }}</span>
                 </div>
-
+                
                 <!-- Title & Summary -->
                 <div class="flex-1 space-y-2 mb-4">
                   <h4 class="text-sm font-bold leading-snug text-foreground/90 group-hover:text-primary transition-colors line-clamp-2">
@@ -289,7 +289,7 @@
                   </h4>
                   <p v-if="entry.summary" class="text-xs leading-relaxed text-muted-foreground/75 line-clamp-3" v-html="stripHtmlTags(entry.summary)" />
                 </div>
-
+                
                 <!-- Card Bottom: Source & Media indicator -->
                 <div class="flex items-center justify-between pt-3.5 border-t border-border/5">
                   <div class="flex items-center gap-2 min-w-0">
@@ -300,7 +300,7 @@
                       {{ getFeedTitle(entry.feed_id) }}
                     </span>
                   </div>
-
+                  
                   <!-- Icons: Enclosure media indicator -->
                   <div class="flex items-center gap-1.5 shrink-0">
                     <span v-if="entry.media?.length" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold">
@@ -313,17 +313,9 @@
               </div>
             </div>
 
-            <!-- Loading More Spinner / load more trigger button -->
-            <div v-if="hasMoreEntries" class="flex justify-center pt-8 pb-10">
-              <Button
-                variant="outline"
-                class="h-10 rounded-xl text-xs font-semibold px-6 border-border/50"
-                :disabled="loadingMoreEntries"
-                @click="loadMore"
-              >
-                <AppIcon v-if="loadingMoreEntries" name="refresh" class="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                {{ loadingMoreEntries ? '加载中...' : '加载更多文章' }}
-              </Button>
+            <!-- Infinite Scroll Loader Anchor -->
+            <div ref="loadMoreTrigger" class="h-20 flex items-center justify-center w-full">
+              <div v-if="loadingMoreEntries" class="h-6 w-6 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
             </div>
           </div>
         </div>
@@ -341,13 +333,13 @@
             连接第三方 RSS 服务账号，支持 Google Reader API, Miniflux, Fever 等规范。
           </DialogDescription>
         </DialogHeader>
-
+        
         <div class="p-5 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
           <!-- Provider Select -->
           <div class="space-y-1.5">
             <label class="text-xs font-bold text-muted-foreground">服务提供商</label>
-            <select
-              v-model="accountForm.provider"
+            <select 
+              v-model="accountForm.provider" 
               class="h-10 w-full rounded-xl border border-border/50 bg-accent/20 px-3 text-sm focus:border-primary focus:bg-background outline-none transition-all"
             >
               <option value="greader">Google Reader API</option>
@@ -355,92 +347,92 @@
               <option value="fever">Fever</option>
             </select>
           </div>
-
+          
           <!-- Account Name -->
           <div class="space-y-1.5">
             <label class="text-xs font-bold text-muted-foreground">账号名称</label>
-            <Input
-              v-model="accountForm.name"
-              class="h-10 rounded-xl border-border/50 bg-accent/20 focus:bg-background text-sm shadow-none"
-              placeholder="例如: 我的 Miniflux"
+            <Input 
+              v-model="accountForm.name" 
+              class="h-10 rounded-xl border-border/50 bg-accent/20 focus:bg-background text-sm shadow-none" 
+              placeholder="例如: 我的 Miniflux" 
             />
           </div>
-
+          
           <!-- Base URL -->
           <div class="space-y-1.5">
             <label class="text-xs font-bold text-muted-foreground">服务接口地址 (URL)</label>
-            <Input
-              v-model="accountForm.base_url"
-              class="h-10 rounded-xl border-border/50 bg-accent/20 focus:bg-background text-sm shadow-none"
-              :placeholder="baseUrlPlaceholder"
+            <Input 
+              v-model="accountForm.base_url" 
+              class="h-10 rounded-xl border-border/50 bg-accent/20 focus:bg-background text-sm shadow-none" 
+              :placeholder="baseUrlPlaceholder" 
             />
           </div>
-
+          
           <!-- Username -->
           <div class="space-y-1.5">
             <label class="text-xs font-bold text-muted-foreground">用户名</label>
-            <Input
-              v-model="accountForm.username"
-              class="h-10 rounded-xl border-border/50 bg-accent/20 focus:bg-background text-sm shadow-none"
-              placeholder="用户名 (Google Reader 与 Fever 需要)"
+            <Input 
+              v-model="accountForm.username" 
+              class="h-10 rounded-xl border-border/50 bg-accent/20 focus:bg-background text-sm shadow-none" 
+              placeholder="用户名 (Google Reader 与 Fever 需要)" 
             />
           </div>
-
+          
           <!-- Credential -->
           <div class="space-y-1.5">
             <label class="text-xs font-bold text-muted-foreground">{{ credentialPlaceholder }}</label>
-            <Input
-              v-model="accountForm.credential"
+            <Input 
+              v-model="accountForm.credential" 
               type="password"
-              class="h-10 rounded-xl border-border/50 bg-accent/20 focus:bg-background text-sm shadow-none"
-              :placeholder="accountForm.id ? '留空表示不修改密码或 Token' : '密码或 API Token'"
+              class="h-10 rounded-xl border-border/50 bg-accent/20 focus:bg-background text-sm shadow-none" 
+              :placeholder="accountForm.id ? '留空表示不修改密码或 Token' : '密码或 API Token'" 
             />
           </div>
-
+          
           <!-- Enabled Switch -->
           <label class="flex items-center gap-2.5 py-1 text-sm text-muted-foreground cursor-pointer select-none">
-            <input
-              v-model="accountForm.enabled"
-              type="checkbox"
-              class="h-4.5 w-4.5 rounded-lg border-border bg-accent/20 text-primary focus:ring-primary/20 accent-primary"
+            <input 
+              v-model="accountForm.enabled" 
+              type="checkbox" 
+              class="h-4.5 w-4.5 rounded-lg border-border bg-accent/20 text-primary focus:ring-primary/20 accent-primary" 
             />
             <span class="font-semibold text-foreground/80">启用此账号同步</span>
           </label>
-
+          
           <!-- Error / Success Message -->
-          <div
-            v-if="formMessage"
+          <div 
+            v-if="formMessage" 
             class="p-3 rounded-xl border text-xs leading-relaxed"
             :class="formError ? 'border-destructive/20 bg-destructive/5 text-destructive' : 'border-emerald-500/20 bg-emerald-500/5 text-emerald-500'"
           >
             {{ formMessage }}
           </div>
         </div>
-
+        
         <DialogFooter class="gap-2 bg-muted/30 p-4 border-t border-border/10">
-          <Button
-            type="button"
-            variant="outline"
-            class="h-10 rounded-xl text-xs font-semibold px-4 flex-1 sm:flex-none"
-            :disabled="testing || !canTestForm"
+          <Button 
+            type="button" 
+            variant="outline" 
+            class="h-10 rounded-xl text-xs font-semibold px-4 flex-1 sm:flex-none" 
+            :disabled="testing || !canTestForm" 
             @click="testForm"
           >
             <AppIcon v-if="testing" name="refresh" class="h-3.5 w-3.5 mr-1.5 animate-spin" />
             测试连接
           </Button>
           <div class="flex gap-2 flex-1 sm:flex-none justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              class="h-10 rounded-xl text-xs font-semibold px-4"
+            <Button 
+              type="button" 
+              variant="outline" 
+              class="h-10 rounded-xl text-xs font-semibold px-4" 
               @click="showAddEditModal = false"
             >
               取消
             </Button>
-            <Button
+            <Button 
               type="button"
-              class="h-10 rounded-xl text-xs font-semibold px-5"
-              :disabled="saving || !canSaveForm"
+              class="h-10 rounded-xl text-xs font-semibold px-5" 
+              :disabled="saving || !canSaveForm" 
               @click="saveAccount"
             >
               <AppIcon v-if="saving" name="refresh" class="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -486,17 +478,17 @@
               <span>•</span>
               <span>发布于 {{ formatDate(readingEntry.published_at) }}</span>
             </div>
-
+            
             <!-- Title -->
             <h3 class="text-base md:text-lg font-bold tracking-tight text-foreground leading-snug">
               {{ readingEntry.title }}
             </h3>
-
+            
             <!-- Actions -->
             <div class="flex items-center gap-3 mt-1.5">
-              <a
-                :href="readingEntry.canonical_url"
-                target="_blank"
+              <a 
+                :href="readingEntry.canonical_url" 
+                target="_blank" 
                 rel="noopener noreferrer"
                 class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/50 bg-accent/20 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
               >
@@ -505,7 +497,7 @@
               </a>
             </div>
           </header>
-
+          
           <!-- Reader Body Scroll Container -->
           <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
             <!-- Playable Video Attachments -->
@@ -519,15 +511,15 @@
                   <AppIcon name="link" class="h-3 w-3 text-muted-foreground/50 shrink-0" />
                   <span class="truncate">{{ getMediaFileName(media.media_url) }}</span>
                 </div>
-                <video
-                  :src="media.media_url"
-                  controls
+                <video 
+                  :src="media.media_url" 
+                  controls 
                   class="w-full rounded-xl aspect-video bg-black border border-border/20 shadow-md"
                   preload="metadata"
                 ></video>
               </div>
             </div>
-
+            
             <!-- Playable Audio Attachments -->
             <div v-if="playableAudios.length" class="space-y-3 bg-accent/20 p-4 rounded-2xl border border-border/10">
               <h5 class="text-xs font-bold text-foreground/90 flex items-center gap-2">
@@ -539,17 +531,17 @@
                   <AppIcon name="link" class="h-3 w-3 text-muted-foreground/50 shrink-0" />
                   <span class="truncate">{{ getMediaFileName(media.media_url) }}</span>
                 </div>
-                <audio
-                  :src="media.media_url"
-                  controls
+                <audio 
+                  :src="media.media_url" 
+                  controls 
                   class="w-full mt-1"
                   preload="metadata"
                 ></audio>
               </div>
             </div>
-
+            
             <!-- Description / HTML content -->
-            <div
+            <div 
               class="reader-content prose prose-sm dark:prose-invert max-w-none text-foreground/90 leading-relaxed font-normal py-2 space-y-4"
               v-html="readingEntry.summary || '<p class=text-muted-foreground>该文章暂无正文内容。</p>'"
             />
@@ -561,7 +553,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 import {
   createRssAccount,
@@ -569,6 +561,7 @@ import {
   getRssAccounts,
   getRssEntries,
   getRssFeeds,
+  getRssSyncStatus,
   syncRssAccount,
   testRssAccountConfig,
   updateRssAccount,
@@ -657,6 +650,11 @@ const totalEntries = ref(0)
 const loadingMoreEntries = ref(false)
 const readingEntry = ref<RssEntry | null>(null)
 
+// Scroll containers and Infinite scroll observer refs
+const entriesContainer = ref<HTMLElement | null>(null)
+const loadMoreTrigger = ref<HTMLElement | null>(null)
+let entriesObserver: IntersectionObserver | null = null
+
 // Account Form state
 const accountForm = ref({
   id: null as number | null,
@@ -721,17 +719,17 @@ const feedFolders = computed(() => {
   const query = feedSearch.value.trim().toLowerCase()
   const feedsToGroup = filteredFeeds.value.filter(feed => {
     if (!query) return true
-    return feed.title.toLowerCase().includes(query) ||
+    return feed.title.toLowerCase().includes(query) || 
            (feed.feed_url && feed.feed_url.toLowerCase().includes(query)) ||
            (feed.category && feed.category.toLowerCase().includes(query))
   })
-
+  
   feedsToGroup.forEach(feed => {
     const cat = feed.category || '未分类'
     if (!groups[cat]) groups[cat] = []
     groups[cat].push(feed)
   })
-
+  
   return Object.entries(groups).map(([name, feeds]) => ({ name, feeds }))
 })
 
@@ -758,7 +756,7 @@ const selectedFeedSubtitle = computed(() => {
 const filteredEntries = computed(() => {
   let list = entries.value
   const query = entrySearch.value.trim().toLowerCase()
-
+  
   if (query) {
     list = list.filter(entry => {
       const matchTitle = entry.title.toLowerCase().includes(query)
@@ -766,11 +764,11 @@ const filteredEntries = computed(() => {
       return matchTitle || matchSummary
     })
   }
-
+  
   if (mediaOnly.value) {
     list = list.filter(entry => entry.media && entry.media.length > 0)
   }
-
+  
   return list
 })
 
@@ -849,6 +847,12 @@ const setStatus = (message: string, isError = false) => {
   statusError.value = isError
 }
 
+const resetScroll = () => {
+  if (entriesContainer.value) {
+    entriesContainer.value.scrollTop = 0
+  }
+}
+
 const resetForm = () => {
   accountForm.value = {
     id: null,
@@ -898,7 +902,7 @@ const handleDeleteAccount = async () => {
     showDeleteConfirmModal.value = false
     return
   }
-
+  
   setStatus(`已成功删除账号「${accountToDelete.value.name}」`)
   showDeleteConfirmModal.value = false
   if (selectedAccountId.value === accountToDelete.value.id) {
@@ -938,27 +942,28 @@ const loadEntries = async (isReset = false) => {
   if (isReset) {
     page.value = 1
     entries.value = []
+    resetScroll()
   }
   const params: Record<string, unknown> = { page: page.value, pageSize: pageSize.value }
   if (selectedAccountId.value) params.accountId = selectedAccountId.value
   if (selectedFeedId.value) params.feedId = selectedFeedId.value
-
+  
   if (isReset) loading.value = true
   else loadingMoreEntries.value = true
-
+  
   const result = await getRssEntries(params) as ApiResult<{ data: RssEntry[], total: number }>
-
+  
   if (isReset) loading.value = false
   else loadingMoreEntries.value = false
-
+  
   if (result.error) {
     setStatus(result.error.message || '加载条目失败', true)
     return
   }
-
+  
   const fetched = result.data?.data || []
   totalEntries.value = (result.data as any)?.total || 0
-
+  
   if (isReset) {
     entries.value = fetched
   } else {
@@ -1036,19 +1041,71 @@ const testForm = async () => {
   formMessage.value = result.error ? result.error.message || '连接失败' : `连接成功，发现 ${(result.data as any)?.feed_count ?? 0} 个 Feed`
 }
 
+let syncPollTimer: ReturnType<typeof setInterval> | null = null
+
+const pollSyncProgress = () => {
+  if (syncPollTimer) clearInterval(syncPollTimer)
+  const accountId = selectedAccountId.value
+  if (!accountId) {
+    syncing.value = false
+    return
+  }
+
+  syncPollTimer = setInterval(async () => {
+    const result = await getRssSyncStatus(accountId) as ApiResult<any>
+    if (result.error) {
+      clearInterval(syncPollTimer!)
+      syncPollTimer = null
+      syncing.value = false
+      setStatus(result.error.message || '获取同步状态失败', true)
+      return
+    }
+    const data = result.data
+    if (!data) return
+    if (data.running) {
+      const phaseLabel: Record<string, string> = {
+        starting: '启动中',
+        feeds_fetching: '获取 Feed 列表',
+        feeds_saving: '保存 Feed',
+        entries_fetching: '获取文章',
+        entries_saving: '保存文章',
+      }
+      const label = phaseLabel[data.phase] || data.phase
+      let progress = ''
+      if (data.phase === 'entries_fetching') {
+        progress = data.entries_fetched != null ? `已拉取 ${data.entries_fetched} 条` : '等待服务器响应...'
+      } else if (data.phase === 'entries_saving') {
+        progress = `已保存 ${data.entries_synced || 0} 条`
+      } else if (data.feeds_synced != null) {
+        progress = `${data.feeds_synced} 个`
+      }
+      setStatus(`同步中 [${label}] ${progress}`, false)
+    } else {
+      clearInterval(syncPollTimer!)
+      syncPollTimer = null
+      syncing.value = false
+      if (data.phase === 'completed') {
+        setStatus(`同步完成：${data.feeds_synced || 0} 个 Feed，${data.entries_synced || 0} 个文章`)
+      } else {
+        setStatus(data.message || data.error || '同步失败', true)
+      }
+      await loadFeeds()
+      await loadEntries(true)
+    }
+  }, 1000)
+}
+
 const syncSelectedAccount = async () => {
   if (!selectedAccountId.value) return
   syncing.value = true
+  statusMessage.value = ''
   const result = await syncRssAccount(selectedAccountId.value)
-  syncing.value = false
   if (result.error) {
-    setStatus(result.error.message || '同步失败', true)
+    syncing.value = false
+    setStatus(result.error.message || '启动同步失败', true)
     return
   }
-  const data = result.data as any
-  setStatus(`同步完成：${data.feeds || 0} 个 Feed，${data.entries || 0} 个文章`)
-  await loadFeeds()
-  await loadEntries(true)
+  pollSyncProgress()
 }
 
 const openReader = (entry: RssEntry) => {
@@ -1059,27 +1116,69 @@ const closeReader = () => {
   readingEntry.value = null
 }
 
+// Infinite Scroll Automatic Observer Setup
+const initObserver = () => {
+  entriesObserver?.disconnect()
+  entriesObserver = new IntersectionObserver((entriesList) => {
+    if (entriesList[0].isIntersecting && !loading.value && !loadingMoreEntries.value && hasMoreEntries.value) {
+      loadMore()
+    }
+  }, {
+    root: entriesContainer.value,
+    rootMargin: '400px'
+  })
+  if (loadMoreTrigger.value) {
+    entriesObserver.observe(loadMoreTrigger.value)
+  }
+}
+
 // Watchers
 watch(selectedAccountId, () => {
   collapsedFolders.value = {}
 })
 
-onMounted(loadAll)
+const resumeSyncPollingIfRunning = async () => {
+  const accountId = selectedAccountId.value
+  if (!accountId) return
+  const result = await getRssSyncStatus(accountId) as ApiResult<any>
+  if (result.error) return
+  const data = result.data
+  if (data && data.running) {
+    syncing.value = true
+    pollSyncProgress()
+  }
+}
+
+onMounted(async () => {
+  await loadAll()
+  nextTick(() => {
+    initObserver()
+  })
+  await resumeSyncPollingIfRunning()
+})
+
+onUnmounted(() => {
+  entriesObserver?.disconnect()
+  if (syncPollTimer) {
+    clearInterval(syncPollTimer)
+    syncPollTimer = null
+  }
+})
 </script>
 
 <style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
+.custom-scrollbar::-webkit-scrollbar { 
+  width: 5px; 
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+.custom-scrollbar::-webkit-scrollbar-track { 
+  background: transparent; 
 }
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(var(--primary), 0.1);
-  border-radius: 10px;
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+  background: rgba(var(--primary), 0.1); 
+  border-radius: 10px; 
 }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--primary), 0.2);
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+  background: rgba(var(--primary), 0.2); 
 }
 
 /* Scoped stylesheet for beautiful markdown / HTML summary rendering in reader */
@@ -1153,13 +1252,13 @@ onMounted(loadAll)
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
+  from { 
+    opacity: 0; 
+    transform: translateY(6px); 
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
   }
 }
 

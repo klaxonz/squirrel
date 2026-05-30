@@ -51,9 +51,11 @@ def test_create_account_encrypts_credential_and_hides_it_from_api(monkeypatch):
         base_url='https://reader.example/',
         username=None,
         credential='secret-token',
+        sync_entry_limit=100,
     )
 
     assert account['base_url'] == 'https://reader.example'
+    assert account['sync_entry_limit'] == 100
     assert 'credential' not in account
 
     with Session(engine) as session:
@@ -71,6 +73,7 @@ def test_sync_account_upserts_feeds_entries_and_media(monkeypatch):
         base_url='https://reader.example',
         username=None,
         credential='secret-token',
+        sync_entry_limit=100,
     )
 
     class _FakeClient:
@@ -182,6 +185,58 @@ def test_greader_client_uses_client_login_and_stream_api():
     assert entries[0].media[0]['media_url'] == 'https://cdn.example.com/audio.mp3'
 
 
+def test_greader_client_paginates_reading_list():
+    class _FakeHttpClient:
+        def __init__(self):
+            self.urls = []
+
+        def post_text(self, url, data, headers):
+            return 'Auth=reader-token\n'
+
+        def get_json(self, url, headers):
+            self.urls.append(url)
+            if 'c=next-page' in url:
+                return {
+                    'items': [
+                        {
+                            'id': 'entry-2',
+                            'title': 'Entry Two',
+                            'alternate': [{'href': 'https://example.com/posts/2'}],
+                            'origin': {'streamId': 'feed/1'},
+                        }
+                    ]
+                }
+            return {
+                'items': [
+                    {
+                        'id': 'entry-1',
+                        'title': 'Entry One',
+                        'alternate': [{'href': 'https://example.com/posts/1'}],
+                        'origin': {'streamId': 'feed/1'},
+                    }
+                ],
+                'continuation': 'next-page',
+            }
+
+    http_client = _FakeHttpClient()
+    client = rss_service.GReaderClient(
+        rss_service.RssAccountConfig(
+            provider='greader',
+            base_url='https://reader.example.com/api/greader.php',
+            username='alice',
+            credential='api-password',
+        ),
+        http_client=http_client,
+    )
+
+    entries = client.list_recent_entries(None)
+
+    assert [entry.title for entry in entries] == ['Entry One', 'Entry Two']
+    assert len(http_client.urls) == 2
+    assert 'stream/contents/reading-list?output=json&n=500' in http_client.urls[0]
+    assert 'c=next-page' in http_client.urls[1]
+
+
 def test_sync_greader_uses_reading_list_entries(monkeypatch):
     _setup(monkeypatch)
     account = rss_service.create_account(
@@ -197,6 +252,7 @@ def test_sync_greader_uses_reading_list_entries(monkeypatch):
         def __init__(self):
             self.per_feed_calls = 0
             self.recent_calls = 0
+            self.last_recent_limit = 'unset'
 
         def list_feeds(self):
             return [
@@ -211,9 +267,12 @@ def test_sync_greader_uses_reading_list_entries(monkeypatch):
             self.per_feed_calls += 1
             return []
 
-        def list_recent_entries(self, limit):
+        def iter_recent_entries(self, limit, progress_callback=None):
             self.recent_calls += 1
-            return [
+            self.last_recent_limit = limit
+            if progress_callback:
+                progress_callback(1, None)
+            yield [
                 rss_service.RemoteEntry(
                     external_feed_id='feed/5815',
                     external_entry_id='entry-1',
@@ -226,10 +285,55 @@ def test_sync_greader_uses_reading_list_entries(monkeypatch):
     client = _FakeGReaderClient()
     monkeypatch.setattr(rss_service, '_client_for_config', lambda config: client)
 
-    result = rss_service.sync_account(1, account['id'], entry_limit=20)
+    result = rss_service.sync_account(1, account['id'])
     entries = rss_service.list_entries(1)
 
     assert result == {'account_id': account['id'], 'feeds': 1, 'entries': 1, 'media': 0, 'error': None}
     assert client.recent_calls == 1
+    assert client.last_recent_limit is None
     assert client.per_feed_calls == 0
     assert entries['data'][0]['title'] == 'Entry One'
+
+
+def test_sync_progress_reports_completed_state(monkeypatch):
+    _setup(monkeypatch)
+    account = rss_service.create_account(
+        1,
+        provider='greader',
+        name='FreshRSS',
+        base_url='https://reader.example.com/api/greader.php',
+        username='alice',
+        credential='api-password',
+    )
+
+    class _FakeGReaderClient(rss_service.GReaderClient):
+        def list_feeds(self):
+            return [
+                rss_service.RemoteFeed(
+                    external_feed_id='feed/1',
+                    title='Feed One',
+                    feed_url='https://example.com/feed.xml',
+                )
+            ]
+
+        def iter_recent_entries(self, limit, progress_callback=None):
+            if progress_callback:
+                progress_callback(1, None)
+            yield [
+                rss_service.RemoteEntry(
+                    external_feed_id='feed/1',
+                    external_entry_id='entry-1',
+                    canonical_url='https://example.com/posts/1',
+                    title='Entry One',
+                )
+            ]
+
+    monkeypatch.setattr(rss_service, '_client_for_config', lambda config: _FakeGReaderClient(None))
+
+    rss_service.sync_account(1, account['id'])
+    progress = rss_service.get_sync_progress(1, account['id'])
+
+    assert progress['running'] is False
+    assert progress['phase'] == 'completed'
+    assert progress['feeds_synced'] == 1
+    assert progress['entries_synced'] == 1

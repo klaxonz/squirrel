@@ -7,6 +7,7 @@ export type RssAccountPayload = {
   username?: string
   credential?: string
   enabled?: boolean
+  sync_entry_limit?: number | null
 }
 
 export const getRssAccounts = async () => get('/api/rss/accounts')
@@ -23,9 +24,12 @@ export const testRssAccountConfig = async (payload: RssAccountPayload) => post('
 
 export const testRssAccount = async (accountId: string | number) => post(`/api/rss/accounts/${accountId}/test`)
 
-export const syncRssAccount = async (accountId: string | number, entryLimit = 50) => {
-  return post(`/api/rss/accounts/${accountId}/sync`, null, { params: { entryLimit } })
+export const syncRssAccount = async (accountId: string | number, entryLimit?: number) => {
+  const params = entryLimit ? { entryLimit } : {}
+  return post(`/api/rss/accounts/${accountId}/sync/start`, null, { params })
 }
+
+export const getRssSyncStatus = async (accountId: string | number) => get(`/api/rss/accounts/${accountId}/sync/status`)
 
 export const getRssFeeds = async (params: Record<string, unknown> = {}) => get('/api/rss/feeds', params)
 

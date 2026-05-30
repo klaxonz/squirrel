@@ -1,3 +1,4 @@
+from threading import Thread
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -18,6 +19,7 @@ class RssAccountCreateRequest(BaseModel):
     username: Optional[str] = None
     credential: SecretStr
     enabled: bool = True
+    sync_entry_limit: Optional[int] = None
 
 
 class RssAccountUpdateRequest(BaseModel):
@@ -27,6 +29,7 @@ class RssAccountUpdateRequest(BaseModel):
     username: Optional[str] = None
     credential: Optional[SecretStr] = None
     enabled: Optional[bool] = None
+    sync_entry_limit: Optional[int] = None
 
 
 class RssAccountTestRequest(BaseModel):
@@ -52,6 +55,7 @@ def create_rss_account(req: RssAccountCreateRequest, current_user: User = Depend
             username=req.username,
             credential=req.credential.get_secret_value(),
             enabled=req.enabled,
+            sync_entry_limit=req.sync_entry_limit,
         )
     except rss_service.RssServiceError as exc:
         return response.param_error(str(exc))
@@ -114,18 +118,51 @@ def test_rss_account(account_id: int, current_user: User = Depends(get_current_u
 @router.post('/accounts/{account_id}/sync')
 def sync_rss_account(
     account_id: int,
-    entry_limit: int = Query(50, ge=1, le=200, alias='entryLimit'),
+    entry_limit: Optional[int] = Query(None, ge=1, alias='entryLimit'),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        result = rss_service.sync_account(current_user.id, account_id, entry_limit=entry_limit)
+        rss_service.sync_account(current_user.id, account_id, entry_limit=entry_limit)
     except rss_service.RssServiceError as exc:
         return response.param_error(str(exc))
     except Exception as exc:
         return response.error(f'RSS 同步失败: {exc}')
-    if result is None:
+    return response.success(None)
+
+
+@router.post('/accounts/{account_id}/sync/start')
+def start_rss_sync(
+    account_id: int,
+    entry_limit: Optional[int] = Query(None, ge=1, alias='entryLimit'),
+    current_user: User = Depends(get_current_user),
+):
+    progress = rss_service.get_sync_progress(current_user.id, account_id)
+    if progress is None:
         return response.not_found('RSS 账号不存在')
-    return response.success(result)
+    if progress.get('running'):
+        return response.param_error('RSS account sync is already running')
+
+    user_id = current_user.id
+
+    def _bg_sync():
+        try:
+            rss_service.sync_account(user_id, account_id, entry_limit=entry_limit)
+        except rss_service.RssServiceError:
+            pass
+        except Exception:
+            pass
+
+    thread = Thread(target=_bg_sync, daemon=True)
+    thread.start()
+    return response.success({'started': True, 'account_id': account_id})
+
+
+@router.get('/accounts/{account_id}/sync/status')
+def get_rss_sync_status(account_id: int, current_user: User = Depends(get_current_user)):
+    progress = rss_service.get_sync_progress(current_user.id, account_id)
+    if progress is None:
+        return response.not_found('RSS 账号不存在')
+    return response.success(progress)
 
 
 @router.get('/feeds')
