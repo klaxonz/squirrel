@@ -25,16 +25,16 @@
           <div class="relative w-full" ref="accountDropdownRef">
             <button
               @click="showAccountDropdown = !showAccountDropdown"
-              class="flex h-10 w-full items-center justify-between rounded-xl border border-transparent bg-accent/40 hover:bg-accent/60 px-3.5 text-sm font-semibold transition-all"
+              class="flex h-8 w-full items-center justify-between rounded-lg border border-transparent bg-accent/40 hover:bg-accent/60 px-2.5 text-xs font-semibold transition-all"
               :class="selectedAccountId ? 'text-foreground border-primary/20 bg-primary/5' : 'text-muted-foreground'"
             >
-              <div class="flex items-center gap-2.5 min-w-0">
-                <AppIcon name="rss" class="h-4 w-4 shrink-0 text-primary" />
+              <div class="flex items-center gap-2 min-w-0">
+                <AppIcon name="rss" class="h-3.5 w-3.5 shrink-0 text-primary" />
                 <span class="truncate">{{ selectedAccount?.name || '选择账号...' }}</span>
               </div>
               <AppIcon 
                 name="chevronDown" 
-                class="h-4 w-4 transition-transform text-muted-foreground shrink-0" 
+                class="h-3.5 w-3.5 transition-transform text-muted-foreground shrink-0" 
                 :class="{ 'rotate-180': showAccountDropdown }" 
               />
             </button>
@@ -42,20 +42,20 @@
             <!-- Accounts Dropdown -->
             <div 
               v-if="showAccountDropdown" 
-              class="absolute left-0 right-0 top-full z-50 mt-1.5 rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl p-1.5 shadow-xl ring-1 ring-black/5"
+              class="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-border/50 bg-background/95 backdrop-blur-xl p-1 shadow-lg ring-1 ring-black/5"
             >
               <div class="max-h-[220px] overflow-y-auto custom-scrollbar pr-1 space-y-0.5">
                 <div 
                   v-for="acc in accounts" 
                   :key="acc.id" 
                   @click="selectAccount(acc.id); showAccountDropdown = false" 
-                  class="flex h-10 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-sm font-medium transition-colors hover:bg-accent cursor-pointer group/item" 
-                  :class="selectedAccountId === acc.id ? 'text-foreground bg-accent/50 font-semibold shadow-sm' : 'text-muted-foreground'"
+                  class="flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-xs font-medium transition-colors hover:bg-accent cursor-pointer group/item" 
+                  :class="selectedAccountId === acc.id ? 'text-foreground bg-accent/50 font-semibold' : 'text-muted-foreground'"
                 >
-                  <AppIcon name="rss" class="h-4 w-4 shrink-0 opacity-70" />
+                  <AppIcon name="rss" class="h-3.5 w-3.5 shrink-0 opacity-70" />
                   <span class="flex-1 truncate">
                     {{ acc.name }} 
-                    <span class="text-[10px] text-muted-foreground/80 block">({{ acc.provider }})</span>
+                    <span class="text-[9px] text-muted-foreground/80 block">({{ acc.provider }})</span>
                   </span>
                   <!-- Action tools inside dropdown (pencil & delete) -->
                   <div class="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
@@ -129,11 +129,11 @@
 
           <!-- Feed Search input -->
           <div class="relative group">
-            <AppIcon name="search" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
+            <AppIcon name="search" class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
             <input 
               v-model="feedSearch"
               placeholder="搜索订阅源..." 
-              class="h-10 w-full rounded-xl border border-transparent bg-accent/40 hover:bg-accent/60 pl-10 pr-4 text-sm font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/30 focus:bg-background focus:ring-4 focus:ring-primary/10"
+              class="h-8 w-full rounded-lg border border-transparent bg-accent/40 hover:bg-accent/60 pl-8 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/40 focus:bg-background"
             />
           </div>
         </div>
@@ -143,10 +143,10 @@
           <!-- All Feeds Item -->
           <button
             @click="selectedFeedId = null; loadEntries(true)"
-            class="group relative flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-all overflow-hidden"
-            :class="!selectedFeedId ? 'bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground font-medium'"
+            class="group relative flex h-8 w-full items-center gap-3 rounded-lg px-2.5 text-left text-xs transition-all overflow-hidden"
+            :class="!selectedFeedId ? 'bg-primary/5 text-primary font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground font-medium'"
           >
-            <AppIcon name="inbox" class="h-4 w-4 shrink-0" />
+            <AppIcon name="inbox" class="h-3.5 w-3.5 shrink-0" />
             <span class="flex-1 truncate">全部文章</span>
             <span class="text-xs opacity-60">{{ filteredFeeds.length }}</span>
           </button>
@@ -177,8 +177,8 @@
                 v-for="feed in folder.feeds"
                 :key="feed.id"
                 @click="selectFeed(feed.id)"
-                class="group relative flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-xs transition-all overflow-hidden"
-                :class="selectedFeedId === feed.id ? 'bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
+                class="group relative flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-xs transition-all overflow-hidden"
+                :class="selectedFeedId === feed.id ? 'bg-primary/5 text-primary font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
               >
                 <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
                 <span class="flex-1 truncate">{{ feed.title }}</span>
