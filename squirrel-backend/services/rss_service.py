@@ -24,6 +24,8 @@ SUPPORTED_PROVIDERS = {'greader', 'miniflux', 'fever'}
 G_READER_PAGE_SIZE = 1000
 G_READER_QUICK_ENTRIES_PER_FEED = 10
 G_READER_QUICK_MAX_ENTRIES = 1000
+G_READER_READ_STATE = 'user/-/state/com.google/read'
+G_READER_STARRED_STATE = 'user/-/state/com.google/starred'
 UNSET = object()
 _SYNC_LOCK = Lock()
 _ACCOUNT_SYNC_LOCKS: dict[int, Lock] = {}
@@ -146,6 +148,17 @@ class _JsonHttpClient:
         with urllib.request.urlopen(request, timeout=20) as response:
             return json.loads(response.read().decode('utf-8'))
 
+    def put_json(self, url: str, data: dict[str, Any], headers: dict[str, str]) -> str:
+        body = json.dumps(data).encode('utf-8')
+        request = urllib.request.Request(url, data=body, headers=headers, method='PUT')
+        with urllib.request.urlopen(request, timeout=20) as response:
+            return response.read().decode('utf-8')
+
+    def put_text(self, url: str, headers: dict[str, str]) -> str:
+        request = urllib.request.Request(url, headers=headers, method='PUT')
+        with urllib.request.urlopen(request, timeout=20) as response:
+            return response.read().decode('utf-8')
+
 
 class MinifluxClient:
     def __init__(self, config: RssAccountConfig, http_client: Optional[_JsonHttpClient] = None):
@@ -193,6 +206,28 @@ class MinifluxClient:
 
     def test_connection(self) -> int:
         return len(self.list_feeds())
+
+    def update_entry(self, external_entry_id: str, is_read: Optional[bool] = None, is_starred: Optional[bool] = None) -> None:
+        try:
+            eid = int(external_entry_id)
+        except ValueError:
+            return
+
+        if is_read is not None:
+            self.http_client.put_json(
+                f'{self.config.base_url}/v1/entries',
+                {
+                    'entry_ids': [eid],
+                    'status': 'read' if is_read else 'unread',
+                },
+                {**self._headers(), 'Content-Type': 'application/json'},
+            )
+
+        if is_starred is not None:
+            self.http_client.put_text(
+                f'{self.config.base_url}/v1/entries/{eid}/bookmark',
+                self._headers(),
+            )
 
 
 class FeverClient:
@@ -261,6 +296,20 @@ class FeverClient:
 
     def test_connection(self) -> int:
         return len(self.list_feeds())
+
+    def update_entry(self, external_entry_id: str, is_read: Optional[bool] = None, is_starred: Optional[bool] = None) -> None:
+        if is_read is not None:
+            self._post({
+                'mark': 'item',
+                'as': 'read' if is_read else 'unread',
+                'id': str(external_entry_id)
+            })
+        if is_starred is not None:
+            self._post({
+                'mark': 'item',
+                'as': 'saved' if is_starred else 'unsaved',
+                'id': str(external_entry_id)
+            })
 
 
 class GReaderClient:
@@ -425,6 +474,38 @@ class GReaderClient:
     def test_connection(self) -> int:
         return len(self.list_feeds())
 
+    def _get_token(self) -> str:
+        url = f'{self.config.base_url}/reader/api/0/token'
+        request = urllib.request.Request(url, headers=self._headers(), method='GET')
+        with urllib.request.urlopen(request, timeout=20) as response:
+            return response.read().decode('utf-8').strip()
+
+    def update_entry(self, external_entry_id: str, is_read: Optional[bool] = None, is_starred: Optional[bool] = None) -> None:
+        try:
+            token = self._get_token()
+        except Exception as e:
+            logger.warning('Failed to fetch GReader token for updating entry status: %s', e)
+            return
+
+        headers = self._headers()
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+
+        if is_read is not None:
+            data = {
+                'i': external_entry_id,
+                'T': token,
+                'a' if is_read else 'r': 'user/-/state/com.google/read'
+            }
+            self.http_client.post_text(f'{self.config.base_url}/reader/api/0/edit-tag', data, headers)
+
+        if is_starred is not None:
+            data = {
+                'i': external_entry_id,
+                'T': token,
+                'a' if is_starred else 'r': 'user/-/state/com.google/starred'
+            }
+            self.http_client.post_text(f'{self.config.base_url}/reader/api/0/edit-tag', data, headers)
+
 
 def _miniflux_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
     url = str(item.get('url') or item.get('comments_url') or '').strip()
@@ -466,6 +547,7 @@ def _greader_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
     url = _greader_alternate_url(item) or str(origin_url or '').strip()
     entry_id = str(item.get('id') or url).strip()
     categories = item.get('categories') if isinstance(item.get('categories'), list) else []
+    category_set = {str(category) for category in categories}
     return RemoteEntry(
         external_entry_id=entry_id,
         canonical_url=url or entry_id,
@@ -474,8 +556,8 @@ def _greader_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
         summary=_greader_text(item.get('content')) or _greader_text(item.get('summary')),
         author=item.get('author'),
         published_at=_parse_datetime(item.get('published') or item.get('updated') or item.get('crawlTimeMsec')),
-        is_read=any('/state/com.google/read' in str(category) for category in categories),
-        is_starred=any('/state/com.google/starred' in str(category) for category in categories),
+        is_read=G_READER_READ_STATE in category_set,
+        is_starred=G_READER_STARRED_STATE in category_set,
         raw_data=dict(item),
     )
 
@@ -839,8 +921,8 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
                 reading_ids_raw = client.fetch_all_item_ids('reading-list', limit=200000)
                 if reading_ids_raw:
                     _set_sync_progress(account_id, phase='entries_saving', message='Syncing read/starred state')
-                    read_ids = set(client.fetch_all_item_ids('user/-/state/com.google/read', limit=200000))
-                    starred_ids = set(client.fetch_all_item_ids('user/-/state/com.google/starred', limit=50000))
+                    read_ids = set(client.fetch_all_item_ids(G_READER_READ_STATE, limit=200000))
+                    starred_ids = set(client.fetch_all_item_ids(G_READER_STARRED_STATE, limit=50000))
                     reading_ids = set(reading_ids_raw)
 
                     with get_session() as session:
@@ -974,6 +1056,8 @@ def list_entries(
     *,
     account_id: Optional[int] = None,
     feed_id: Optional[int] = None,
+    is_read: Optional[bool] = None,
+    is_starred: Optional[bool] = None,
     page: int = 1,
     page_size: int = 30,
 ) -> dict[str, Any]:
@@ -985,6 +1069,10 @@ def list_entries(
             conditions.append(RssEntry.account_id == account_id)
         if feed_id is not None:
             conditions.append(RssEntry.feed_id == feed_id)
+        if is_read is not None:
+            conditions.append(RssEntry.is_read == is_read)
+        if is_starred is not None:
+            conditions.append(RssEntry.is_starred == is_starred)
 
         total = session.scalar(select(func.count()).select_from(RssEntry).where(*conditions)) or 0
         entries = session.scalars(
@@ -1000,6 +1088,60 @@ def list_entries(
             'pageSize': page_size,
             'data': [serialize_entry(entry) for entry in entries],
         }
+
+
+def update_entry(
+    user_id: int,
+    entry_id: int,
+    *,
+    is_read: Optional[bool] = None,
+    is_starred: Optional[bool] = None,
+) -> Optional[dict[str, Any]]:
+    with get_session() as session:
+        entry = session.scalars(
+            select(RssEntry).where(
+                RssEntry.id == entry_id,
+                RssEntry.user_id == user_id,
+            )
+        ).first()
+        if not entry:
+            return None
+
+        if is_read is not None:
+            entry.is_read = is_read
+        if is_starred is not None:
+            entry.is_starred = is_starred
+
+        # Remote sync-back to third-party RSS accounts
+        account = session.scalars(
+            select(RssAccount).where(
+                RssAccount.id == entry.account_id,
+                RssAccount.user_id == user_id,
+                RssAccount.is_deleted.is_(False),
+            )
+        ).first()
+
+        if account and account.enabled:
+            from threading import Thread
+
+            def _bg_update_remote(config_data, ext_eid, read_val, star_val):
+                try:
+                    client = _client_for_config(config_data)
+                    if hasattr(client, 'update_entry'):
+                        client.update_entry(ext_eid, is_read=read_val, is_starred=star_val)
+                except Exception as e:
+                    logger.warning('Failed to sync RSS status to remote in background: %s', e)
+
+            config_data = _config_from_account(account)
+            Thread(
+                target=_bg_update_remote,
+                args=(config_data, entry.external_entry_id, is_read, is_starred),
+                daemon=True
+            ).start()
+
+        session.commit()
+        session.refresh(entry)
+        return serialize_entry(entry)
 
 
 def _get_account(session, user_id: int, account_id: int) -> Optional[RssAccount]:

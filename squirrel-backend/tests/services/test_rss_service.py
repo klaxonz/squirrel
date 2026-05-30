@@ -113,6 +113,72 @@ def test_rss_entry_title_uses_text_column():
     assert isinstance(RssEntry.__table__.c.title.type, Text)
 
 
+def test_miniflux_client_updates_read_status_and_bookmark():
+    class _FakeHttpClient:
+        def __init__(self):
+            self.put_json_calls = []
+            self.put_text_calls = []
+
+        def put_json(self, url, data, headers):
+            self.put_json_calls.append((url, data, headers))
+            return ''
+
+        def put_text(self, url, headers):
+            self.put_text_calls.append((url, headers))
+            return ''
+
+    http_client = _FakeHttpClient()
+    client = rss_service.MinifluxClient(
+        rss_service.RssAccountConfig(
+            provider='miniflux',
+            base_url='https://reader.example',
+            username=None,
+            credential='secret-token',
+        ),
+        http_client=http_client,
+    )
+
+    client.update_entry('42', is_read=True, is_starred=True)
+
+    assert http_client.put_json_calls == [
+        (
+            'https://reader.example/v1/entries',
+            {'entry_ids': [42], 'status': 'read'},
+            {
+                'Accept': 'application/json',
+                'User-Agent': 'Squirrel/1.0',
+                'X-Auth-Token': 'secret-token',
+                'Content-Type': 'application/json',
+            },
+        )
+    ]
+    assert http_client.put_text_calls == [
+        (
+            'https://reader.example/v1/entries/42/bookmark',
+            {
+                'Accept': 'application/json',
+                'User-Agent': 'Squirrel/1.0',
+                'X-Auth-Token': 'secret-token',
+            },
+        )
+    ]
+
+
+def test_greader_reading_list_category_does_not_mark_entry_read():
+    entry = rss_service._greader_entry_to_remote({
+        'id': 'tag:example.com,2024:item',
+        'title': 'Unread Entry',
+        'alternate': [{'href': 'https://example.com/posts/unread'}],
+        'categories': [
+            'user/-/state/com.google/reading-list',
+            'user/-/label/Tech',
+        ],
+    })
+
+    assert entry.is_read is False
+    assert entry.is_starred is False
+
+
 def test_greader_client_uses_client_login_and_stream_api():
     class _FakeHttpClient:
         def __init__(self):

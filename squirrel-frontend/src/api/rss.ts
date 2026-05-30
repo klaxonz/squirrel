@@ -1,4 +1,4 @@
-import { del as delRequest, get, post, put } from '@/utils/request'
+import { del as delRequest, get, post, put, patch } from '@/utils/request'
 
 export type RssAccountPayload = {
   provider: string
@@ -36,3 +36,7 @@ export const getRssSyncStatus = async (accountId: string | number) => get(`/api/
 export const getRssFeeds = async (params: Record<string, unknown> = {}) => get('/api/rss/feeds', params)
 
 export const getRssEntries = async (params: Record<string, unknown> = {}) => get('/api/rss/entries', params)
+
+export const updateRssEntry = async (entryId: string | number, payload: { isRead?: boolean; isStarred?: boolean }) => {
+  return patch(`/api/rss/entries/${entryId}`, payload)
+}

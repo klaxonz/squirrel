@@ -225,9 +225,9 @@
           </div>
 
           <!-- Controls Toolbar Row -->
-          <div class="flex items-center gap-2 mt-3 w-full">
+          <div class="flex flex-col gap-2 mt-3 w-full">
             <!-- Entry Search -->
-            <div class="relative flex-1 group">
+            <div class="relative w-full group">
               <AppIcon name="search" class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
               <input
                 v-model="entrySearch"
@@ -236,6 +236,30 @@
               />
             </div>
 
+            <!-- iOS/Reeder segmented control -->
+            <div class="flex p-0.5 bg-muted/40 dark:bg-muted/10 rounded-lg border border-border/10">
+              <button
+                @click="activeFilter = 'all'"
+                class="flex-1 py-1 text-[10px] font-bold rounded-md transition-all text-center cursor-pointer"
+                :class="activeFilter === 'all' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+              >
+                全部
+              </button>
+              <button
+                @click="activeFilter = 'unread'"
+                class="flex-1 py-1 text-[10px] font-bold rounded-md transition-all text-center cursor-pointer"
+                :class="activeFilter === 'unread' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+              >
+                未读
+              </button>
+              <button
+                @click="activeFilter = 'starred'"
+                class="flex-1 py-1 text-[10px] font-bold rounded-md transition-all text-center cursor-pointer"
+                :class="activeFilter === 'starred' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+              >
+                星标
+              </button>
+            </div>
           </div>
         </header>
 
@@ -263,30 +287,52 @@
                 v-for="entry in filteredEntries" 
                 :key="entry.id"
                 @click="openReader(entry)"
+                @contextmenu.prevent.stop="showArticleContextMenu(entry, $event)"
                 class="group relative flex flex-col justify-between py-4 px-3.5 transition-all duration-200 ease-out cursor-pointer animate-fade-in"
                 :class="readingEntry && String(readingEntry.id) === String(entry.id) ? 'bg-primary/5' : 'bg-transparent hover:bg-accent/5'"
               >
                 <!-- Card Top: Category & Time -->
                 <div class="flex items-center justify-between text-xs text-muted-foreground/85 mb-2">
-                  <span class="inline-flex items-center text-primary text-[10px] font-bold tracking-wider uppercase">
+                  <span
+                    class="inline-flex items-center text-[10px] font-bold tracking-wider uppercase transition-colors"
+                    :class="entry.is_read ? 'text-muted-foreground/55' : 'text-primary'"
+                  >
                     {{ getFeedCategory(entry.feed_id) }}
                   </span>
-                  <span class="tabular-nums text-[10px] text-muted-foreground/60">{{ formatDate(entry.published_at) }}</span>
+                  <div class="flex items-center gap-1.5">
+                    <AppIcon v-if="entry.is_starred" name="star" class="h-3 w-3 text-amber-500 fill-amber-500" />
+                    <span class="tabular-nums text-[10px] text-muted-foreground/60">{{ formatDate(entry.published_at) }}</span>
+                  </div>
                 </div>
                 
                 <!-- Title & Summary -->
                 <div class="flex-1 space-y-1 mb-3">
-                  <h4 class="text-xs font-bold leading-snug transition-colors duration-200 ease-out line-clamp-2" :class="readingEntry && String(readingEntry.id) === String(entry.id) ? 'text-primary' : 'text-foreground/90 group-hover:text-primary'">
+                  <h4
+                    class="text-xs font-bold leading-snug transition-colors duration-200 ease-out line-clamp-2"
+                    :class="readingEntry && String(readingEntry.id) === String(entry.id)
+                      ? 'text-primary'
+                      : entry.is_read
+                        ? 'text-muted-foreground/75 group-hover:text-foreground/80'
+                        : 'text-foreground/90 group-hover:text-primary'"
+                  >
                     {{ entry.title }}
                   </h4>
-                  <p v-if="entry.summary" class="text-[11px] leading-relaxed text-muted-foreground/70 line-clamp-2" v-html="stripHtmlTags(entry.summary)" />
+                  <p
+                    v-if="entry.summary"
+                    class="text-[11px] leading-relaxed line-clamp-2 transition-colors"
+                    :class="entry.is_read ? 'text-muted-foreground/50' : 'text-muted-foreground/70'"
+                    v-html="stripHtmlTags(entry.summary)"
+                  />
                 </div>
                 
                 <!-- Card Bottom: Source & Media indicator -->
                 <div class="flex items-center pt-1">
                   <div class="flex items-center gap-2 min-w-0">
                     <SiteIcon :icon-url="getFeedIconUrl(entry.feed_id)" size="xs" rounded="sm" class="shrink-0" />
-                    <span class="text-[11px] font-semibold text-muted-foreground/90 truncate">
+                    <span
+                      class="text-[11px] font-semibold truncate transition-colors"
+                      :class="entry.is_read ? 'text-muted-foreground/55' : 'text-muted-foreground/90'"
+                    >
                       {{ getFeedTitle(entry.feed_id) }}
                     </span>
                   </div>
@@ -806,6 +852,51 @@
         />
       </div>
     </div>
+
+    <!-- Customized Right-Click Context Menu -->
+    <Teleport to="body">
+      <div
+        v-if="showContextMenu && contextMenuEntry"
+        class="fixed z-[9999] w-[180px] rounded-xl border border-border/30 bg-popover/90 backdrop-blur-xl p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.18)] animate-fade-in"
+        :style="{ left: contextMenuPosition.x + 'px', top: contextMenuPosition.y + 'px' }"
+      >
+        <div class="flex flex-col gap-0.5">
+          <button
+            @click="toggleReadStatus(contextMenuEntry)"
+            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon :name="contextMenuEntry.is_read ? 'eyeOff' : 'eye'" class="h-3.5 w-3.5 opacity-70" />
+            <span>{{ contextMenuEntry.is_read ? '标记为未读' : '标记为已读' }}</span>
+          </button>
+
+          <button
+            @click="toggleStarStatus(contextMenuEntry)"
+            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon :name="contextMenuEntry.is_starred ? 'bookmark' : 'star'" class="h-3.5 w-3.5 opacity-70" />
+            <span>{{ contextMenuEntry.is_starred ? '取消收藏' : '收藏文章' }}</span>
+          </button>
+
+          <div class="h-px bg-border/20 my-1"></div>
+
+          <button
+            @click="copyArticleLink(contextMenuEntry)"
+            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon name="link" class="h-3.5 w-3.5 opacity-70" />
+            <span>复制文章链接</span>
+          </button>
+
+          <button
+            @click="openInExternalBrowser(contextMenuEntry)"
+            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon name="externalLink" class="h-3.5 w-3.5 opacity-70" />
+            <span>在外部浏览器打开</span>
+          </button>
+        </div>
+      </div>
+    </Teleport>
   </AppPageShell>
 </template>
 
@@ -822,6 +913,7 @@ import {
   syncRssAccount,
   testRssAccountConfig,
   updateRssAccount,
+  updateRssEntry,
 } from '@/api'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SiteIcon from '@/components/common/SiteIcon.vue'
@@ -875,6 +967,12 @@ const feeds = ref<RssFeed[]>([])
 const entries = ref<RssEntry[]>([])
 const selectedAccountId = ref<number | null>(null)
 const selectedFeedId = ref<number | null>(null)
+const activeFilter = ref<'all' | 'unread' | 'starred'>('unread')
+
+// Context Menu States
+const showContextMenu = ref(false)
+const contextMenuPosition = ref({ x: 0, y: 0 })
+const contextMenuEntry = ref<RssEntry | null>(null)
 
 // Reader Customization State
 const readerFontSize = ref(Number(localStorage.getItem('rss_reader_font_size')) || 16)
@@ -1259,6 +1357,11 @@ const loadEntries = async (isReset = false) => {
   const params: Record<string, unknown> = { page: page.value, pageSize: pageSize.value }
   if (selectedAccountId.value) params.accountId = selectedAccountId.value
   if (selectedFeedId.value) params.feedId = selectedFeedId.value
+  if (activeFilter.value === 'unread') {
+    params.isRead = false
+  } else if (activeFilter.value === 'starred') {
+    params.isStarred = true
+  }
   
   if (isReset) loading.value = true
   else loadingMoreEntries.value = true
@@ -1428,11 +1531,111 @@ const openReader = (entry: RssEntry) => {
   readingEntry.value = entry
   showInAppBrowser.value = false
   iframeLoading.value = false
+  if (!entry.is_read) {
+    toggleReadStatus(entry, false)
+  }
 }
 
 const closeReader = () => {
   readingEntry.value = null
 }
+
+// Custom Context Menu functions
+const showArticleContextMenu = (entry: RssEntry, event: MouseEvent) => {
+  contextMenuEntry.value = entry
+  let x = event.clientX
+  let y = event.clientY
+  const menuWidth = 180
+  const menuHeight = 160
+  if (x + menuWidth > window.innerWidth) {
+    x = window.innerWidth - menuWidth - 8
+  }
+  if (y + menuHeight > window.innerHeight) {
+    y = window.innerHeight - menuHeight - 8
+  }
+  contextMenuPosition.value = { x, y }
+  showContextMenu.value = true
+}
+
+const closeContextMenu = () => {
+  showContextMenu.value = false
+  contextMenuEntry.value = null
+}
+
+const shouldReloadAfterEntryUpdate = (entry: RssEntry) => {
+  if (activeFilter.value === 'unread') {
+    return entry.is_read
+  }
+  if (activeFilter.value === 'starred') {
+    return !entry.is_starred
+  }
+  return false
+}
+
+const toggleReadStatus = async (entry: RssEntry, reloadFilteredList = true) => {
+  const newStatus = !entry.is_read
+  entry.is_read = newStatus
+
+  // If the currently reading entry is this entry, update its local copy too
+  if (readingEntry.value && String(readingEntry.value.id) === String(entry.id)) {
+    readingEntry.value.is_read = newStatus
+  }
+
+  const result = await updateRssEntry(entry.id, { isRead: newStatus })
+  if (result.error) {
+    entry.is_read = !newStatus
+    if (readingEntry.value && String(readingEntry.value.id) === String(entry.id)) {
+      readingEntry.value.is_read = !newStatus
+    }
+    setStatus(result.error.message || '更新已读状态失败', true)
+    return
+  }
+
+  if (reloadFilteredList && shouldReloadAfterEntryUpdate(entry)) {
+    await loadEntries(true)
+  }
+}
+
+const toggleStarStatus = async (entry: RssEntry) => {
+  const newStatus = !entry.is_starred
+  entry.is_starred = newStatus
+
+  if (readingEntry.value && String(readingEntry.value.id) === String(entry.id)) {
+    readingEntry.value.is_starred = newStatus
+  }
+
+  const result = await updateRssEntry(entry.id, { isStarred: newStatus })
+  if (result.error) {
+    entry.is_starred = !newStatus
+    if (readingEntry.value && String(readingEntry.value.id) === String(entry.id)) {
+      readingEntry.value.is_starred = !newStatus
+    }
+    setStatus(result.error.message || '更新星标状态失败', true)
+    return
+  }
+
+  if (shouldReloadAfterEntryUpdate(entry)) {
+    await loadEntries(true)
+  }
+}
+
+const copyArticleLink = async (entry: RssEntry) => {
+  try {
+    await navigator.clipboard.writeText(entry.canonical_url)
+    setStatus('已成功复制链接到剪贴板')
+  } catch (err) {
+    setStatus('复制链接失败', true)
+  }
+}
+
+const openInExternalBrowser = (entry: RssEntry) => {
+  window.open(entry.canonical_url, '_blank')
+}
+
+// Watch activeFilter to reload
+watch(activeFilter, () => {
+  loadEntries(true)
+})
 
 // Infinite Scroll Automatic Observer Setup
 const initObserver = () => {
@@ -1487,6 +1690,8 @@ onMounted(async () => {
   checkIfMobile()
   window.addEventListener('resize', checkIfMobile)
   window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('click', closeContextMenu)
+  window.addEventListener('contextmenu', closeContextMenu)
   await loadAll()
   nextTick(() => {
     initObserver()
@@ -1497,6 +1702,8 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('resize', checkIfMobile)
   window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('click', closeContextMenu)
+  window.removeEventListener('contextmenu', closeContextMenu)
   entriesObserver?.disconnect()
   if (syncPollTimer) {
     clearInterval(syncPollTimer)

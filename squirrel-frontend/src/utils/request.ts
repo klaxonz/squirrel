@@ -129,6 +129,8 @@ export const post = <T = any>(url: string, data?: unknown, config: AxiosRequestC
   request<T>({ url, method: 'post', data, ...config })
 export const put = <T = any>(url: string, data?: unknown, config: AxiosRequestConfig = {}) =>
   request<T>({ url, method: 'put', data, ...config })
+export const patch = <T = any>(url: string, data?: unknown, config: AxiosRequestConfig = {}) =>
+  request<T>({ url, method: 'patch', data, ...config })
 export const del = <T = any>(url: string, data?: unknown, config: AxiosRequestConfig = {}) =>
   request<T>({ url, method: 'delete', data, ...config })
 
