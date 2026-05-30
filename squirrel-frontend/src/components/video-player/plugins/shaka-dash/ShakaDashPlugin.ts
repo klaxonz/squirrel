@@ -1,5 +1,6 @@
 import shaka from 'shaka-player'
 
+import { getCodecFamily, compareCodecFamilies } from '../../core/codec'
 import type {
   MediaSource,
   PlaybackRecoveryAction,
@@ -161,29 +162,11 @@ export class ShakaDashPlugin implements PlayerPlugin {
     return this.player.getVariantTracks().filter((track) => track.type === 'variant')
   }
 
-  private normalizeCodecFamily(codec: string | null | undefined): string | null {
-    if (!codec) return null
-    const normalized = String(codec).toLowerCase()
-    if (normalized.includes('av01') || normalized.includes('av1')) return 'av1'
-    if (normalized.includes('vp09') || normalized.includes('vp9')) return 'vp9'
-    if (normalized.includes('avc1') || normalized.includes('avc') || normalized.includes('h264')) return 'avc'
-    if (normalized.includes('mp4a') || normalized.includes('aac')) return 'aac'
-    if (normalized.includes('opus')) return 'opus'
-    return normalized
-  }
 
-  private compareCodecFamilies(left: string, right: string): number {
-    const leftIndex = QUALITY_CODEC_FAMILY_ORDER.indexOf(left)
-    const rightIndex = QUALITY_CODEC_FAMILY_ORDER.indexOf(right)
-    const safeLeft = leftIndex >= 0 ? leftIndex : QUALITY_CODEC_FAMILY_ORDER.length
-    const safeRight = rightIndex >= 0 ? rightIndex : QUALITY_CODEC_FAMILY_ORDER.length
-    if (safeLeft !== safeRight) return safeLeft - safeRight
-    return left.localeCompare(right)
-  }
 
   private updateActiveCodecFamily(): void {
     const activeTrack = this.getVariantTracks().find((track) => track.active)
-    this.activeCodecFamily = this.normalizeCodecFamily(activeTrack?.videoCodec) || null
+    this.activeCodecFamily = getCodecFamily(activeTrack?.videoCodec) || null
   }
 
   private buildQualitiesFromVariants(): QualityLevel[] {
@@ -192,7 +175,7 @@ export class ShakaDashPlugin implements PlayerPlugin {
     const seen = new Set<string>()
 
     for (const track of tracks) {
-      const codec = this.normalizeCodecFamily(track.videoCodec)
+      const codec = getCodecFamily(track.videoCodec)
       if (
         this.selectedCodecFamily !== 'auto' &&
         codec &&
@@ -263,7 +246,7 @@ export class ShakaDashPlugin implements PlayerPlugin {
 
     const hintedMatches = this.sourceQualityHints.filter((quality) => {
       const heightMatches = (quality.height || 0) === activeHeight
-      const codecMatches = this.normalizeCodecFamily(quality.codec) === this.normalizeCodecFamily(activeTrack.videoCodec)
+      const codecMatches = getCodecFamily(quality.codec) === getCodecFamily(activeTrack.videoCodec)
       return heightMatches && codecMatches
     })
     if (hintedMatches.length > 0) {
@@ -277,7 +260,7 @@ export class ShakaDashPlugin implements PlayerPlugin {
       width: activeTrack.width || undefined,
       height: activeTrack.height || undefined,
       bitrate: activeTrack.bandwidth || undefined,
-      codec: this.normalizeCodecFamily(activeTrack.videoCodec) || undefined,
+      codec: getCodecFamily(activeTrack.videoCodec) || undefined,
     }
   }
 
@@ -289,16 +272,16 @@ export class ShakaDashPlugin implements PlayerPlugin {
   private scoreTrackForHint(track: ShakaVariantTrack, hint: QualityLevel): number {
     const heightDelta = Math.abs((track.height || 0) - (hint.height || 0))
     const widthDelta = Math.abs((track.width || 0) - (hint.width || 0))
-    const codecDelta = this.normalizeCodecFamily(track.videoCodec) === this.normalizeCodecFamily(hint.codec) ? 0 : 1
+    const codecDelta = getCodecFamily(track.videoCodec) === getCodecFamily(hint.codec) ? 0 : 1
     const bitrateDelta = Math.abs((track.bandwidth || 0) - (hint.bitrate || 0))
     return codecDelta * 1_000_000_000 + heightDelta * 1_000_000 + widthDelta * 1_000 + bitrateDelta
   }
 
   private getHintedTrackCandidates(tracks: ShakaVariantTrack[], hint: QualityLevel): ShakaVariantTrack[] {
-    const hintCodec = this.normalizeCodecFamily(hint.codec)
+    const hintCodec = getCodecFamily(hint.codec)
     const strictCandidates = tracks.filter((track) => {
       const heightMatches = !hint.height || track.height === hint.height
-      const codecMatches = !hintCodec || this.normalizeCodecFamily(track.videoCodec) === hintCodec
+      const codecMatches = !hintCodec || getCodecFamily(track.videoCodec) === hintCodec
       return heightMatches && codecMatches
     })
 
@@ -322,9 +305,9 @@ export class ShakaDashPlugin implements PlayerPlugin {
 
     return Array.from(new Set(
       qualities
-        .map((quality) => this.normalizeCodecFamily(quality.codec))
+        .map((quality) => getCodecFamily(quality.codec))
         .filter((family): family is string => !!family && family !== 'aac' && family !== 'opus')
-    )).sort((left, right) => this.compareCodecFamilies(left, right))
+    )).sort((left, right) => compareCodecFamilies(left, right))
   }
 
   getSelectedCodecFamily(): string {
@@ -336,7 +319,7 @@ export class ShakaDashPlugin implements PlayerPlugin {
   }
 
   setCodecFamily(codecFamily: string): void {
-    const normalized = this.normalizeCodecFamily(codecFamily)
+    const normalized = getCodecFamily(codecFamily)
     this.selectedCodecFamily = normalized || 'auto'
     this.updateQualities()
   }
@@ -369,7 +352,7 @@ export class ShakaDashPlugin implements PlayerPlugin {
     }
 
     if (this.selectedCodecFamily !== 'auto') {
-      const codecFiltered = candidates.filter((track) => this.normalizeCodecFamily(track.videoCodec) === this.selectedCodecFamily)
+      const codecFiltered = candidates.filter((track) => getCodecFamily(track.videoCodec) === this.selectedCodecFamily)
       if (codecFiltered.length > 0) {
         candidates = codecFiltered
       }

@@ -4,6 +4,7 @@
  */
 
 import Hls, { type HlsConfig, type Level, type ErrorData } from 'hls.js'
+import { getCodecFamily } from '../../core/codec'
 import type {
   PlayerPlugin,
   PluginContext,
@@ -116,16 +117,6 @@ export class HlsPlugin implements PlayerPlugin {
     return stableId
   }
 
-  private getCodecFamily(codec: string | null | undefined): string | null {
-    if (!codec) return null
-    const normalized = String(codec).toLowerCase()
-    if (normalized.includes('av01') || normalized.includes('av1')) return 'av1'
-    if (normalized.includes('vp09') || normalized.includes('vp9')) return 'vp9'
-    if (normalized.includes('avc1') || normalized.includes('avc') || normalized.includes('h264')) return 'avc'
-    if (normalized.includes('hev1') || normalized.includes('hvc1') || normalized.includes('hevc') || normalized.includes('h265')) return 'hevc'
-    return normalized
-  }
-
   private matchHintedLevels(levels: Level[]): Map<string, number> {
     const matches = new Map<string, number>()
     const usedLevelIndexes = new Set<number>()
@@ -136,12 +127,12 @@ export class HlsPlugin implements PlayerPlugin {
 
       let bestLevelIndex: number | null = null
       let bestScore = Number.POSITIVE_INFINITY
-      const hintCodecFamily = this.getCodecFamily(hint.codec)
+      const hintCodecFamily = getCodecFamily(hint.codec)
 
       levels.forEach((level, index) => {
         if (usedLevelIndexes.has(index)) return
 
-        const levelCodecFamily = this.getCodecFamily(level.videoCodec)
+        const levelCodecFamily = getCodecFamily(level.videoCodec)
         const codecPenalty = (
           hintCodecFamily &&
           levelCodecFamily &&

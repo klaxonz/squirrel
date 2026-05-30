@@ -3,7 +3,7 @@ import type { SubtitleTrack } from '../core/types'
 
 export type LoadingStage = 'idle' | 'fetching' | 'buffering' | 'ready'
 
-export type PlayerRuntimeStore = {
+type PlayerRuntimeStoreData = {
   // Media state
   playing: boolean
   canPlayVideo: boolean
@@ -31,7 +31,9 @@ export type PlayerRuntimeStore = {
   // UI state
   controlsVisible: boolean
   fullscreen: boolean
+}
 
+export type PlayerRuntimeStore = PlayerRuntimeStoreData & {
   // Actions
   setPlaying: (value: boolean) => void
   setCanPlay: (type: 'video' | 'audio', value: boolean) => void
@@ -61,14 +63,14 @@ export type PlayerRuntimeStore = {
 const MAX_VOLUME = 200
 
 export function createPlayerRuntimeStore(): PlayerRuntimeStore {
-  const store = reactive<any>({
+  const store = reactive<PlayerRuntimeStoreData>({
     playing: false,
     canPlayVideo: false,
     canPlayAudio: false,
     seekingVideo: false,
     seekingAudio: false,
     loading: false,
-    loadingStage: 'idle' as LoadingStage,
+    loadingStage: 'idle',
     volume: 100,
     muted: false,
     currentTime: 0,
@@ -78,15 +80,15 @@ export function createPlayerRuntimeStore(): PlayerRuntimeStore {
     subtitlesEnabled: false,
     pictureInPicture: false,
     hasStartedPlayback: false,
-    currentQuality: null as string | null,
-    currentQualityId: null as string | number | null,
-    currentSubtitle: null as SubtitleTrack | null,
+    currentQuality: null,
+    currentQualityId: null,
+    currentSubtitle: null,
     autoplay: false,
     autoplayNext: true,
     loop: false,
     controlsVisible: true,
     fullscreen: false,
-  })
+  }) as PlayerRuntimeStore
 
   store.setPlaying = (value: boolean): void => {
     store.playing = value
@@ -202,5 +204,5 @@ export function createPlayerRuntimeStore(): PlayerRuntimeStore {
     store.subtitlesEnabled = false
   }
 
-  return store as PlayerRuntimeStore
+  return store
 }

@@ -4,6 +4,7 @@ export { noopLogger, type PlayerLogger } from './logger'
 export { createPlayerEngine, type PlayerEngine, type PlayerEngineOptions } from './createPlayerEngine'
 export { createDefaultPlayerPlugins, type DefaultPluginsOptions } from './defaultPlugins'
 export { useIcons, type IconName } from './useIcons'
+export { getCodecFamily, CODEC_FAMILY_ORDER, compareCodecFamilies } from './codec'
 export {
   MemoryAdapter,
   LocalStorageAdapter,

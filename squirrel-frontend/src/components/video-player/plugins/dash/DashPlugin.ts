@@ -4,6 +4,7 @@
  */
 
 import dashjs, { type MediaPlayerClass, type MediaPlayerSettingClass } from 'dashjs'
+import { getCodecFamily, compareCodecFamilies } from '../../core/codec'
 import type {
   PlayerPlugin,
   PluginContext,
@@ -371,7 +372,7 @@ export class DashPlugin implements PlayerPlugin {
         const visibleCodecFamily = this.resolveVisibleCodecFamily()
         if (visibleCodecFamily) {
           const activeCodecQualities = hintedQualities.filter(
-            (hint) => this.getCodecFamily(hint.codec) === visibleCodecFamily
+              (hint) => getCodecFamily(hint.codec) === visibleCodecFamily
           )
           if (activeCodecQualities.length > 0) {
             return activeCodecQualities
@@ -465,19 +466,19 @@ export class DashPlugin implements PlayerPlugin {
   getAvailableCodecFamilies(): string[] {
     const hintedFamilies = Array.from(new Set(
       this.getHintedQualities()
-        .map((hint) => this.getCodecFamily(hint.codec))
+        .map((hint) => getCodecFamily(hint.codec))
         .filter((family): family is string => !!family)
     ))
     if (hintedFamilies.length > 0) {
-      return hintedFamilies.sort((left, right) => this.compareCodecFamilies(left, right))
+      return hintedFamilies.sort((left, right) => compareCodecFamilies(left, right))
     }
 
     const trackFamilies = Array.from(new Set(
       this.getVideoTracks()
-        .map((track) => this.getCodecFamily(track?.codec))
+        .map((track) => getCodecFamily(track?.codec))
         .filter((family): family is string => !!family)
     ))
-    return trackFamilies.sort((left, right) => this.compareCodecFamilies(left, right))
+    return trackFamilies.sort((left, right) => compareCodecFamilies(left, right))
   }
 
   getSelectedCodecFamily(): string {
@@ -712,11 +713,11 @@ export class DashPlugin implements PlayerPlugin {
     const tracks = this.getVideoTracks()
     for (const hint of this.sourceQualityHints) {
       let bestMatch: { trackIndex: number; qualityIndex: number; score: number } | null = null
-      const hintCodecFamily = this.getCodecFamily(hint.codec)
+      const hintCodecFamily = getCodecFamily(hint.codec)
 
       for (const [trackIndex, track] of tracks.entries()) {
         const bitrateList = Array.isArray(track?.bitrateList) ? track.bitrateList : []
-        const trackCodecFamily = this.getCodecFamily(track?.codec)
+        const trackCodecFamily = getCodecFamily(track?.codec)
         for (const [index, bitrateInfo] of bitrateList.entries()) {
           const height = Number(bitrateInfo?.height || 0)
           const bitrate = Number(bitrateInfo?.bitrate || 0)
@@ -868,13 +869,13 @@ export class DashPlugin implements PlayerPlugin {
     if (!codecFamily) return 'auto'
     const normalized = String(codecFamily).toLowerCase()
     if (normalized === 'auto' || normalized === '自动') return 'auto'
-    return this.getCodecFamily(normalized) || normalized
+    return getCodecFamily(normalized) || normalized
   }
 
   private pickCodecFamilyHint(codecFamily: string): QualityLevel | null {
     const candidates = this.sourceQualityHints
       .filter((hint) => this.hintedSelectionsById.has(String(hint.id)))
-      .filter((hint) => this.getCodecFamily(hint.codec) === codecFamily)
+      .filter((hint) => getCodecFamily(hint.codec) === codecFamily)
 
     if (candidates.length === 0) return null
 
@@ -908,16 +909,6 @@ export class DashPlugin implements PlayerPlugin {
     }
   }
 
-  private compareCodecFamilies(left: string, right: string): number {
-    const order = ['av1', 'vp9', 'avc']
-    const leftIndex = order.indexOf(left)
-    const rightIndex = order.indexOf(right)
-    const safeLeftIndex = leftIndex >= 0 ? leftIndex : order.length
-    const safeRightIndex = rightIndex >= 0 ? rightIndex : order.length
-    if (safeLeftIndex !== safeRightIndex) return safeLeftIndex - safeRightIndex
-    return left.localeCompare(right)
-  }
-
   private isCodecFamilySupported(codecFamily: string): boolean {
     if (typeof window === 'undefined') return true
     const mediaSourceCtor = window.MediaSource as typeof MediaSource | undefined
@@ -932,27 +923,16 @@ export class DashPlugin implements PlayerPlugin {
     return mimeType ? mediaSourceCtor.isTypeSupported(mimeType) : true
   }
 
-  private getCodecFamily(codec: string | null | undefined): string | null {
-    if (!codec) return null
-    const normalized = String(codec).toLowerCase()
-    if (normalized.includes('av01') || normalized.includes('av1')) return 'av1'
-    if (normalized.includes('vp09') || normalized.includes('vp9')) return 'vp9'
-    if (normalized.includes('avc1') || normalized.includes('avc') || normalized.includes('h264')) return 'avc'
-    if (normalized.includes('mp4a') || normalized.includes('aac')) return 'aac'
-    if (normalized.includes('opus')) return 'opus'
-    return normalized
-  }
-
   private getActiveCodecFamily(): string | null {
     if (!this.player) return null
     const player = this.player as any
     const currentTrack = player.getCurrentTrackFor?.('video')
-    const currentTrackCodecFamily = this.getCodecFamily(currentTrack?.codec)
+    const currentTrackCodecFamily = getCodecFamily(currentTrack?.codec)
     if (currentTrackCodecFamily) return currentTrackCodecFamily
 
     if (this.currentTrackIndex === null) return null
     const track = this.getVideoTracks()[this.currentTrackIndex]
-    return this.getCodecFamily(track?.codec)
+    return getCodecFamily(track?.codec)
   }
 
   onDestroy(): void {

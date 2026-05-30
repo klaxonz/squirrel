@@ -417,6 +417,10 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     store.setPlaying(false)
   })
 
+  engine.on('ended', () => {
+    store.setLoading(false, 'idle')
+  })
+
   watch(videoElement, (el) => {
     engine.attachVideoElement(el)
   }, { immediate: true })

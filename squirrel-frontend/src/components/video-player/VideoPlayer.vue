@@ -49,6 +49,24 @@
       </div>
     </Transition>
 
+    <!-- Error overlay -->
+    <Transition name="sp-loading-fade">
+      <div v-if="errorState.show" class="sp-error-overlay" @click.stop>
+        <div class="sp-error-content">
+          <div class="sp-error-icon">
+            <PlayerIcon name="error" class="sp-error-icon-svg" />
+          </div>
+          <div class="sp-error-title">{{ errorState.title || t('errorTitle') }}</div>
+          <div class="sp-error-message">{{ errorState.message }}</div>
+          <div class="sp-error-actions">
+            <button v-if="errorState.canRetry" class="sp-error-retry-btn" @click.stop="handleRetry">
+              {{ t('retry') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- ??????-->
     <transition name="sp-ui-fade">
       <div v-show="store.controlsVisible" class="sp-controls-wrapper" data-player-interactive>
@@ -86,7 +104,7 @@
                     <span class="sp-clip-marker-tooltip__title">{{ getMarkerTitle(marker) }}</span>
                     <span class="sp-clip-marker-tooltip__time">{{ getMarkerTimeText(marker) }}</span>
                     <span class="sp-clip-marker-tooltip__actions">
-                      <button class="sp-clip-marker-tooltip__del" @click.stop="deleteMarkerFromPanel(marker)">?</button>
+                      <button class="sp-clip-marker-tooltip__del" @click.stop="deleteMarkerFromPanel(marker)">×</button>
                     </span>
                   </span>
                 </button>
@@ -119,18 +137,18 @@
           <!-- ??????-->
           <div class="sp-controls-main">
             <div class="sp-controls-left">
-              <button class="sp-icon-btn" @click="emit('prev')" :title="t('prev')" :disabled="!props.hasPrev">
+              <button class="sp-icon-btn" @click="emit('prev')" :title="t('prev')" :disabled="!props.hasPrev" :aria-label="t('prev')">
                 <PlayerIcon name="prev" />
               </button>
-              <button class="sp-icon-btn sp-btn--play" @click="togglePlay" :title="isPlaying ? t('pause') : t('play')">
+              <button class="sp-icon-btn sp-btn--play" @click="togglePlay" :title="isPlaying ? t('pause') : t('play')" :aria-label="isPlaying ? t('pause') : t('play')">
                 <PlayerIcon :name="isPlaying ? 'pause' : 'play'" />
               </button>
-              <button class="sp-icon-btn" @click="emit('next')" :title="t('next')" :disabled="!props.hasNext">
+              <button class="sp-icon-btn" @click="emit('next')" :title="t('next')" :disabled="!props.hasNext" :aria-label="t('next')">
                 <PlayerIcon name="next" />
               </button>
               
               <div class="sp-volume-group" :class="{ 'is-active': isVolumeScrubbing }">
-                <button class="sp-icon-btn" @click="toggleMute" :title="t('mute')">
+                <button class="sp-icon-btn" @click="toggleMute" :title="t('mute')" :aria-label="isMuted ? t('unmute') : t('mute')">
                   <PlayerIcon :name="volumeIconName" />
                 </button>
                 <div class="sp-volume-slider-wrap" 
@@ -158,6 +176,9 @@
                 class="sp-quality-tag"
                 :class="{ 'is-active': showQualityMenu }"
                 @click.stop="toggleQualityMenu"
+                aria-haspopup="true"
+                :aria-expanded="showQualityMenu"
+                role="button"
               >
                 {{ qualityTagLabel }}
               </div>
@@ -168,7 +189,7 @@
                 <PlayerIcon name="markClip" />
                 <span v-if="hasPendingSegment" class="sp-marker-count sp-marker-count--capturing">●</span>
               </button>
-              <button class="sp-icon-btn" @click.stop="toggleSettingsMenu" :title="t('settings')">
+              <button class="sp-icon-btn" @click.stop="toggleSettingsMenu" :title="t('settings')" aria-haspopup="true" :aria-expanded="showSettingsMenu" :aria-label="t('settings')">
                 <PlayerIcon name="settings" />
               </button>
               <button class="sp-icon-btn" @click="toggleWidescreen" :title="props.widescreen ? t('exitWidescreen') : t('widescreen')">
@@ -188,7 +209,7 @@
 
     <!-- ?????? -->
     <transition name="sp-ui-fade">
-      <div v-if="showQualityMenu" class="sp-settings-pop sp-quality-pop" data-player-interactive>
+      <div v-if="showQualityMenu" class="sp-settings-pop sp-quality-pop" data-player-interactive role="menu">
         <div class="sp-menu-list">
           <div
             v-for="q in displayedQualities"
@@ -196,6 +217,8 @@
             class="sp-menu-item"
             :class="{ 'is-active': isQualityActive(q) }"
             @click="handleQualitySelect(q)"
+            role="menuitemradio"
+            :aria-checked="isQualityActive(q)"
           >
             {{ q.label }}
           </div>
@@ -205,16 +228,16 @@
 
     <!-- ???? -->
     <transition name="sp-ui-fade">
-      <div v-if="showSettingsMenu" class="sp-settings-pop" ref="settingsPopupRef" data-player-interactive>
+      <div v-if="showSettingsMenu" class="sp-settings-pop" ref="settingsPopupRef" data-player-interactive role="menu">
         <template v-if="settingsView === 'main'">
           <div class="sp-menu-list">
-            <div class="sp-menu-item" @click="toggleAutoplayNext">
+            <div class="sp-menu-item" @click="toggleAutoplayNext" role="menuitem">
               <span>{{ t('autoplayNext') }}</span>
-              <div class="sp-simple-switch" :class="{ 'is-on': store.autoplayNext }"></div>
+              <div class="sp-simple-switch" :class="{ 'is-on': store.autoplayNext }" role="switch" :aria-checked="store.autoplayNext"></div>
             </div>
-            <div class="sp-menu-item" @click="toggleLoop">
+            <div class="sp-menu-item" @click="toggleLoop" role="menuitem">
               <span>{{ t('loop') }}</span>
-              <div class="sp-simple-switch" :class="{ 'is-on': store.loop }"></div>
+              <div class="sp-simple-switch" :class="{ 'is-on': store.loop }" role="switch" :aria-checked="store.loop"></div>
             </div>
             <div class="sp-menu-item" @click="settingsView = 'speed'">
               <span>{{ t('playbackSpeed') }}</span>
@@ -448,6 +471,7 @@ import {
   resolveClipMarkerVideoId,
 } from './runtime/clipMarkers'
 import type { MediaSource, SubtitleTrack } from './core'
+import { getCodecFamily } from './core/codec'
 import type { ThemeName } from './themes'
 import type { IconName } from './core/useIcons'
 import type { VideoClipMarker } from '@/types/videoClipMarker'
@@ -528,7 +552,16 @@ const {
   onPlay: () => emit('play'),
   onPause: () => emit('pause'),
   onEnded: () => emit('ended'),
-  onError: (e) => emit('error', e),
+  onError: (e) => {
+    errorState.value = {
+      show: true,
+      title: e.code || t('errorTitle'),
+      message: e.message,
+      code: e.code,
+      canRetry: true
+    }
+    emit('error', e)
+  },
   onTimeUpdate: (time) => emit('timeupdate', time)
 })
 
@@ -664,8 +697,10 @@ const finishSegmentCapture = async () => {
     currentTime: endTime,
     duration: duration.value,
   })
+  pendingSegmentStartTime.value = null
   pendingSegmentEndTime.value = null
   const previewImageDataUrl = pendingSegmentPreviewImageDataUrl.value
+  pendingSegmentPreviewImageDataUrl.value = null
   isSavingMarker.value = true
 
   try {
@@ -676,13 +711,11 @@ const finishSegmentCapture = async () => {
     })
 
     if (error || !data) {
-      pendingSegmentStartTime.value = null
+      isSavingMarker.value = false
       showCentralHud('error', error?.message || '保存失败', 'play')
       return
     }
 
-    pendingSegmentStartTime.value = null
-    pendingSegmentPreviewImageDataUrl.value = null
     const markerWithPreview = await uploadMarkerPreviewIfAvailable(data, previewImageDataUrl)
     syncLocalClipMarkers([...localClipMarkers.value, markerWithPreview])
     showCentralHud('segment', `片段 ${formatTime(draft.startTime)}`, 'skipForward')
@@ -718,6 +751,30 @@ const getTimeFromPointerX = (clientX: number) => {
   return ratio * duration.value
 }
 
+const addMarkerDragListeners = () => {
+  window.addEventListener('pointermove', onWindowMarkerPointerMove)
+  window.addEventListener('pointerup', onWindowMarkerPointerUp)
+  window.addEventListener('pointercancel', onWindowMarkerPointerUp)
+}
+
+const removeMarkerDragListeners = () => {
+  window.removeEventListener('pointermove', onWindowMarkerPointerMove)
+  window.removeEventListener('pointerup', onWindowMarkerPointerUp)
+  window.removeEventListener('pointercancel', onWindowMarkerPointerUp)
+}
+
+const addProgressScrubListeners = () => {
+  window.addEventListener('pointermove', onWindowProgressPointerMove)
+  window.addEventListener('pointerup', onWindowProgressPointerUp)
+  window.addEventListener('pointercancel', onWindowProgressPointerUp)
+}
+
+const removeProgressScrubListeners = () => {
+  window.removeEventListener('pointermove', onWindowProgressPointerMove)
+  window.removeEventListener('pointerup', onWindowProgressPointerUp)
+  window.removeEventListener('pointercancel', onWindowProgressPointerUp)
+}
+
 const onMarkerPointerDown = (e: PointerEvent, marker: ReturnType<typeof normalizedClipMarkers.value.find>) => {
   if (isSavingMarker.value || !marker) return
   const rect = getProgressRect()
@@ -745,6 +802,7 @@ const onMarkerPointerDown = (e: PointerEvent, marker: ReturnType<typeof normaliz
     previewEnd: marker.endTime,
     moved: false,
   }
+  addMarkerDragListeners()
 
   if (e.currentTarget instanceof HTMLElement && typeof e.currentTarget.setPointerCapture === 'function') {
     try {
@@ -822,6 +880,7 @@ const commitDrag = () => {
   const normMarker = normalizedClipMarkers.value.find((m) => m.id === d.markerId)
   if (!normMarker || !duration.value) {
     releaseMarkerPointerCapture()
+    removeMarkerDragListeners()
     draggingMarker.value = null
     return
   }
@@ -830,6 +889,7 @@ const commitDrag = () => {
   const newEnd = Math.max(newStart, Math.min(duration.value, d.previewEnd))
 
   releaseMarkerPointerCapture()
+  removeMarkerDragListeners()
   draggingMarker.value = null
   if (d.moved) {
     suppressMarkerClickUntil = Date.now() + 250
@@ -897,6 +957,10 @@ const pendingUserVolumeHud = ref<number | null>(null)
 const pendingWidescreenValue = ref<boolean | null>(null)
 const shouldResumeAfterSourceSwap = ref(false)
 const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
+const handleRetry = () => {
+  errorState.value.show = false
+  emit('retry')
+}
 const centralHud = ref<{ visible: boolean; type: string; value: string; icon: IconName; percent: number }>({ 
   visible: false, type: '', value: '', icon: 'play', percent: 0 
 })
@@ -907,28 +971,33 @@ const videoRotationStyle = computed(() => ({
   transform: `rotate(${videoRotation.value}deg) scale(${videoRotationScale.value})`,
 }))
 let videoRotationResizeObserver: ResizeObserver | null = null
+let rotationScaleRafId: number | null = null
 
 const updateVideoRotationScale = () => {
-  const container = containerRef.value
-  if (!container || videoRotation.value % 180 === 0) {
-    videoRotationScale.value = 1
-    return
-  }
+  if (rotationScaleRafId !== null) return
+  rotationScaleRafId = requestAnimationFrame(() => {
+    rotationScaleRafId = null
+    const container = containerRef.value
+    if (!container || videoRotation.value % 180 === 0) {
+      videoRotationScale.value = 1
+      return
+    }
 
-  const rect = container.getBoundingClientRect()
-  if (rect.width <= 0 || rect.height <= 0) {
-    videoRotationScale.value = 1
-    return
-  }
+    const rect = container.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) {
+      videoRotationScale.value = 1
+      return
+    }
 
-  videoRotationScale.value = Math.min(rect.width / rect.height, rect.height / rect.width)
+    videoRotationScale.value = Math.min(rect.width / rect.height, rect.height / rect.width)
+  })
 }
 
 // Loading state control
 const onLoadingEnter = () => {}
 const onLoadingLeave = () => {}
 
-let centralHudTimer: any
+let centralHudTimer: ReturnType<typeof setTimeout>
 const showCentralHud = (type: string, value: string, icon: IconName, percent: number = 0) => {
   clearTimeout(centralHudTimer)
   centralHud.value = { visible: true, type, value, icon, percent }
@@ -1195,6 +1264,7 @@ watch(() => props.source, (s, previousSource) => {
     clearInitialTimeListener()
     clearResumeAfterSourceSwapListener()
     initialTimeAppliedSourceKey = null
+    errorState.value.show = false
   }
   if (!s) {
     shouldResumeAfterSourceSwap.value = isPlaying.value
@@ -1315,7 +1385,7 @@ const toggleSubtitlesQuick = () => {
 
   setSubtitle(nextTrack)
 }
-let hideTimer: any
+let hideTimer: ReturnType<typeof setTimeout>
 const clearHideTimer = () => clearTimeout(hideTimer)
 const hideControls = () => {
   clearHideTimer()
@@ -1401,6 +1471,7 @@ const stopProgressScrub = (pointerId?: number) => {
   if (activeProgressPointerId !== null && typeof pointerId === 'number' && pointerId !== activeProgressPointerId) return
 
   releaseProgressPointerCapture()
+  removeProgressScrubListeners()
   activeProgressPointerId = null
   isScrubbing.value = false
 }
@@ -1419,6 +1490,7 @@ const onWindowProgressPointerUp = (e: PointerEvent) => {
 const onProgressPointerDown = (e: PointerEvent) => {
   activeProgressPointerId = e.pointerId
   isScrubbing.value = true
+  addProgressScrubListeners()
   const progressArea = progressAreaRef.value
   if (progressArea && typeof progressArea.setPointerCapture === 'function') {
     try {
@@ -1486,24 +1558,6 @@ const handleKeyDown = (e: KeyboardEvent) => {
   }
 }
 
-const getCodecFamily = (codec: string | null | undefined) => {
-  if (!codec) return null
-  const normalized = String(codec).toLowerCase()
-  if (normalized.includes('av01') || normalized.includes('av1')) return 'av1'
-  if (normalized.includes('vp09') || normalized.includes('vp9')) return 'vp9'
-  if (normalized.includes('avc1') || normalized.includes('avc') || normalized.includes('h264')) return 'avc'
-  return normalized
-}
-
-const formatCodecFamilyLabel = (codecFamily: string | null | undefined) => {
-  if (!codecFamily) return t('codec')
-  const normalized = String(codecFamily).toLowerCase()
-  if (normalized === 'av1') return 'AV1'
-  if (normalized === 'vp9') return 'VP9'
-  if (normalized === 'avc') return 'AVC'
-  return normalized.toUpperCase()
-}
-
 const isQualityActive = (quality: { id: string | number }) => (
   resolvedCurrentQuality.value !== null
     && String(resolvedCurrentQuality.value.id) === String(quality.id)
@@ -1520,7 +1574,7 @@ watch(isPlaying, (playing) => {
     return
   }
 
-  syncHideTimer()
+  showControls()
 })
 
 watch(isFullscreen, (fullscreen) => {
@@ -1564,27 +1618,16 @@ watch(containerRef, (container) => {
 }, { immediate: true })
 
 onMounted(() => { window.addEventListener('keydown', handleKeyDown) })
-onMounted(() => {
-  window.addEventListener('pointermove', onWindowMarkerPointerMove)
-  window.addEventListener('pointerup', onWindowMarkerPointerUp)
-  window.addEventListener('pointercancel', onWindowMarkerPointerUp)
-  window.addEventListener('pointermove', onWindowProgressPointerMove)
-  window.addEventListener('pointerup', onWindowProgressPointerUp)
-  window.addEventListener('pointercancel', onWindowProgressPointerUp)
-})
 onUnmounted(() => {
   clearHideTimer()
   clearInitialTimeListener()
   clearResumeAfterSourceSwapListener()
   videoRotationResizeObserver?.disconnect()
+  if (rotationScaleRafId !== null) cancelAnimationFrame(rotationScaleRafId)
   releaseMarkerPointerCapture()
   releaseProgressPointerCapture()
-  window.removeEventListener('pointermove', onWindowMarkerPointerMove)
-  window.removeEventListener('pointerup', onWindowMarkerPointerUp)
-  window.removeEventListener('pointercancel', onWindowMarkerPointerUp)
-  window.removeEventListener('pointermove', onWindowProgressPointerMove)
-  window.removeEventListener('pointerup', onWindowProgressPointerUp)
-  window.removeEventListener('pointercancel', onWindowProgressPointerUp)
+  removeMarkerDragListeners()
+  removeProgressScrubListeners()
   window.removeEventListener('keydown', handleKeyDown)
 })
 
@@ -2460,6 +2503,69 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   opacity: 0.35;
   cursor: not-allowed;
   filter: grayscale(1);
+}
+
+/* Error overlay */
+.sp-error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+}
+
+.sp-error-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 24px;
+  max-width: 320px;
+  text-align: center;
+}
+
+.sp-error-icon-svg {
+  width: 36px;
+  height: 36px;
+  color: var(--sp-primary, #d3d4d8);
+  opacity: 0.7;
+}
+
+.sp-error-title {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.sp-error-message {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sp-error-actions {
+  margin-top: 4px;
+}
+
+.sp-error-retry-btn {
+  padding: 6px 18px;
+  background: var(--sp-primary, #d3d4d8);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--duration-fast) var(--ease-default);
+  letter-spacing: 0.03em;
+}
+
+.sp-error-retry-btn:hover {
+  opacity: 0.85;
 }
 
 </style>
