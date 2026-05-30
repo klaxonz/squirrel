@@ -27,10 +27,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/player'
 import VideoPlayer from './VideoPlayer.vue'
+import { BackendPlayerAdapter } from './core/BackendPlayerAdapter'
 import type { ThemeName } from './themes'
 
 const playerStore = usePlayerStore()
@@ -38,6 +39,8 @@ const detachedHostRef = ref<HTMLElement | null>(null)
 const playerRef = ref(null)
 const route = useRoute()
 const router = useRouter()
+
+const backendAdapter = shallowRef<BackendPlayerAdapter | null>(null)
 
 const teleportTarget = computed(() => playerStore.session.target || detachedHostRef.value)
 
@@ -53,9 +56,19 @@ const playerProps = computed(() => ({
   externalError: playerStore.session.externalError,
   widescreen: playerStore.session.widescreen,
   externalLoading: playerStore.session.externalLoading,
-  adapter: playerStore.session.adapter as any,
+  adapter: (playerStore.session.adapter || backendAdapter.value) as any,
   theme: (playerStore.session.theme || 'dark') as ThemeName
 }))
+
+watch(playerStore.session, (session) => {
+  if (session.active && !session.adapter && !backendAdapter.value) {
+    backendAdapter.value = new BackendPlayerAdapter()
+  }
+}, { immediate: true })
+
+onUnmounted(() => {
+  backendAdapter.value?.destroy()
+})
 
 // Event Handlers with safety checks
 const handlePlay = () => playerStore.session.handlers.onPlay?.()

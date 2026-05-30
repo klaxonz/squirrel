@@ -1,6 +1,17 @@
 import { defineStore } from 'pinia'
 import { reactive, shallowRef } from 'vue'
 
+export type PlaylistEntry = {
+  id: string
+  title: string
+  thumbnail?: string
+  source: any
+  subtitles?: any[]
+  clipMarkers?: any[]
+  videoId?: string | number
+  duration?: number
+}
+
 export type PlayerHandlers = {
   onPlay?: (() => void) | null
   onPause?: (() => void) | null
@@ -36,6 +47,8 @@ export const usePlayerStore = defineStore('player', () => {
     loadingRelated: false,
     pictureInPicture: false,
     handlers: {} as PlayerHandlers,
+    playlist: [] as PlaylistEntry[],
+    playlistIndex: -1,
   })
 
   const playerRef = shallowRef<any>(null)

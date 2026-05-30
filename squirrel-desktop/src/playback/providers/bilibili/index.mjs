@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 
 import { resolveBilibiliApiPayload } from './request-runtime.mjs'
+import { loadFileCache, saveFileCache } from '../../file-cache.mjs'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 const playbackCache = new Map()
@@ -58,6 +59,7 @@ const setCachedPayload = (cacheKey, value) => {
     value,
     expiresAt: Date.now() + CACHE_TTL_MS,
   })
+  saveFileCache(cacheKey, value, CACHE_TTL_MS).catch(() => {})
 }
 
 const cacheScopeForCookie = (cookie) => {

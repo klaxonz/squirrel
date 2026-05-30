@@ -87,6 +87,14 @@ export interface SubtitleTrack {
   default?: boolean
 }
 
+export interface Chapter {
+  id: string
+  title: string
+  startTime: number
+  endTime: number
+  thumbnail?: string
+}
+
 // 媒体源配置
 export interface MediaSource {
   src: string
@@ -97,7 +105,14 @@ export interface MediaSource {
   poster?: string
   title?: string
   qualities?: QualityDescriptor[]
+  chapters?: Chapter[]
+  thumbnailSpriteUrl?: string
+  thumbnailSpriteColumns?: number
+  thumbnailSpriteRows?: number
+  thumbnailSpriteInterval?: number
+  audioOnly?: boolean
   metadata?: Record<string, any>
+  alternativeSources?: { src: string; type: 'native' | 'hls' | 'dash' }[]
 }
 
 // 播放器错误
@@ -152,7 +167,7 @@ export interface PluginContext {
   once: EventEmitter<PlayerEvents>['once']
 
   // 播放控制
-  play(): Promise<void>
+  play(): Promise<boolean>
   pause(): void
   seek(time: number): void
   setVolume(volume: number): void
@@ -233,4 +248,21 @@ export interface MediaTypeDetection {
   isSupported: boolean
   requiresPlugin: boolean
   pluginName?: string
+}
+
+export interface PlayerStats {
+  resolution: { width: number; height: number } | null
+  codec: string | null
+  sourceType: 'native' | 'hls' | 'dash' | null
+  bufferedPercent: number
+  playbackRate: number
+  quality: string | null
+  volume: number
+  muted: boolean
+  duration: number
+  currentTime: number
+  droppedFrames: number
+  totalFrames: number
+  videoBitrate: number | null
+  audioBitrate: number | null
 }

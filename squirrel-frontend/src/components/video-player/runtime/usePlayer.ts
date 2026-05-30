@@ -11,8 +11,9 @@ import { useA11y } from './useA11y'
 import { useControlsLayout } from './useControlsLayout'
 import { useGestures } from './useGestures'
 import { useIcons } from '../core/useIcons'
+import { DEFAULT_SHORTCUTS, type KeyboardShortcutsConfig } from './keyboardShortcuts'
 import type { UserConfig } from '../core/PlayerAdapter'
-import type { MediaSource, PlayerError, PluginConfig, QualityLevel, SubtitleTrack } from '../core/types'
+import type { MediaSource, PlayerError, PlayerStats, PluginConfig, QualityLevel, SubtitleTrack } from '../core/types'
 
 export interface PlayerOptions {
   autoplay?: boolean
@@ -31,6 +32,8 @@ export interface PlayerOptions {
   enableSubtitles?: boolean
   enableAnalytics?: boolean
   enableGestures?: boolean
+  enableQualityFallback?: boolean
+  keyboardShortcuts?: KeyboardShortcutsConfig
 
   adapter?: PlayerEngineOptions['adapter']
   plugins?: PluginConfig[]
@@ -69,7 +72,7 @@ export interface PlayerReturn {
   isHlsStream: ComputedRef<boolean>
   isDashStream: ComputedRef<boolean>
 
-  play: () => Promise<void>
+  play: () => Promise<boolean>
   pause: () => void
   seek: (time: number) => void
   setVolume: (volume: number) => void
@@ -86,11 +89,13 @@ export interface PlayerReturn {
   currentSubtitle: Ref<SubtitleTrack | null>
   subtitleStyle: Ref<Record<string, any>>
   subtitlePresets: typeof import('../plugins/subtitles').BUILT_IN_PRESETS
+  subtitleOffset: Ref<number>
   setSubtitle: (track: SubtitleTrack | null) => void
   setSubtitleTracks: (tracks: SubtitleTrack[]) => Promise<void>
   setSubtitleStyle: (style: Record<string, any>) => void
   applySubtitlePreset: (presetId: string) => void
   toggleSubtitles: () => void
+  setSubtitleOffset: (offsetSeconds: number) => void
 
   loadSource: (source: MediaSource) => void
 
@@ -107,11 +112,13 @@ export interface PlayerReturn {
   announce: (message: string) => void
 
   getPlugin: <T>(name: string) => T | null
+  getStats: () => PlayerStats
   on: PlayerEngine['on']
   off: PlayerEngine['off']
 
   controlsLayout: ReturnType<typeof useControlsLayout>
   icons: ReturnType<typeof useIcons>
+  keyboardShortcuts: Required<KeyboardShortcutsConfig>
 
   destroy: () => void
 }
@@ -168,6 +175,8 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     enableSubtitles = true,
     enableAnalytics = false,
     enableGestures = true,
+    enableQualityFallback = true,
+    keyboardShortcuts,
     adapter,
     plugins,
     useDefaultPlugins = true,
@@ -196,6 +205,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   const currentSubtitle = ref<SubtitleTrack | null>(null)
   const subtitleStyle = ref<Record<string, any>>(loadSubtitleStyleFromStorage())
   const subtitlePresets = BUILT_IN_PRESETS
+  const subtitleOffset = ref(0)
   const preferredSubtitleEnabled = ref(true)
   const preferredSubtitleTrackId = ref<string | null>(null)
   const preferredSubtitleLanguage = ref<string | null>(null)
@@ -216,6 +226,11 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
   const controlsLayout = useControlsLayout({ layout: 'default' })
   const icons = useIcons()
+
+  const mergedShortcuts: Required<KeyboardShortcutsConfig> = {
+    ...DEFAULT_SHORTCUTS,
+    ...(keyboardShortcuts ?? {}),
+  }
 
   const { theme, setTheme: applyTheme } = useTheme({ ...(options.themeOptions ?? {}), defaultTheme: initialTheme, target: containerElement })
   const setTheme = (newTheme: ThemeName) => applyTheme(newTheme)
@@ -245,7 +260,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     onTimeUpdate,
     onQualityChange,
     errorRecovery: {
-      enableQualityFallback: false,
+      enableQualityFallback,
     },
   })
 
@@ -429,8 +444,8 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     engine.attachContainerElement(el)
   }, { immediate: true })
 
-  const play = async (): Promise<void> => {
-    await engine.play()
+  const play = async (): Promise<boolean> => {
+    return await engine.play()
   }
 
   const pause = (): void => {
@@ -504,6 +519,11 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     engine.applySubtitlePreset(presetId)
     subtitleStyle.value = engine.getSubtitleStyle()
     saveSubtitleStyleToStorage(subtitleStyle.value)
+  }
+
+  const setSubtitleOffset = (offsetSeconds: number): void => {
+    subtitleOffset.value = offsetSeconds
+    engine.setSubtitleOffset(offsetSeconds)
   }
 
   const setSubtitleTracks = async (tracks: SubtitleTrack[]): Promise<void> => {
@@ -659,11 +679,13 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     currentSubtitle,
     subtitleStyle,
     subtitlePresets,
+    subtitleOffset,
     setSubtitle,
     setSubtitleTracks,
     setSubtitleStyle,
     applySubtitlePreset,
     toggleSubtitles,
+    setSubtitleOffset,
     loadSource,
     theme,
     setTheme,
@@ -674,10 +696,12 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     loadProgress,
     announce,
     getPlugin: engine.getPlugin,
+    getStats: () => engine.getStats(),
     on: engine.on,
     off: engine.off,
     controlsLayout,
     icons,
+    keyboardShortcuts: mergedShortcuts,
     destroy,
   }
 }

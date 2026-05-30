@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
 import { prewarmYoutubeiRuntime, resolveYoutubeiPayload } from './youtubei_core.mjs'
+import { loadFileCache, saveFileCache } from '../../file-cache.mjs'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 const RESOLVE_RETRY_DELAY_MS = 500
@@ -46,6 +47,7 @@ const setCachedPayload = (cacheKey, value) => {
     value,
     expiresAt: Date.now() + CACHE_TTL_MS,
   })
+  saveFileCache(cacheKey, value, CACHE_TTL_MS).catch(() => {})
 }
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))

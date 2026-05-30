@@ -75,6 +75,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
   private cues: SubtitleCue[] = []
   private activeCueIndex: number = -1
   private enabled: boolean = false
+  private subtitleOffset: number = 0
   private scopeId: string
   private style: SubtitleStyle
   private styleElement: HTMLStyleElement | null = null
@@ -234,7 +235,8 @@ export class SubtitlesPlugin implements PlayerPlugin {
   private updateActiveCue(currentTime: number): void {
     if (!this.containerElement) return
 
-    let foundIndex = this.findCueIndex(currentTime)
+    const adjustedTime = currentTime + this.subtitleOffset
+    let foundIndex = this.findCueIndex(adjustedTime)
 
     // 如果变化了，更新显示
     if (foundIndex !== this.activeCueIndex) {
@@ -807,6 +809,15 @@ export class SubtitlesPlugin implements PlayerPlugin {
     if (preset) {
       this.importStyle(preset.style)
     }
+  }
+
+  setSubtitleOffset(offsetSeconds: number): void {
+    this.subtitleOffset = offsetSeconds
+    this.refreshCurrentCue()
+  }
+
+  getSubtitleOffset(): number {
+    return this.subtitleOffset
   }
 
   onDestroy(): void {

@@ -27,9 +27,15 @@
       crossorigin="anonymous"
       playsinline
       webkit-playsinline
+      :class="{ 'sp-video--hidden': isAudioOnly }"
       @click="handleVideoClick"
       @dblclick="toggleFullscreen"
     />
+    <div v-if="isAudioOnly" class="sp-audio-background">
+      <div class="sp-audio-visual">
+        <div v-for="n in 5" :key="n" class="sp-audio-dot" :class="{ 'is-active': isPlaying }"></div>
+      </div>
+    </div>
     <!-- ?? HUD ????-->
     <transition name="sp-hud-fade">
       <div v-if="centralHud.visible" class="sp-central-hud">
@@ -46,6 +52,7 @@
         <div class="sp-loader">
           <div class="sp-loader-ring"></div>
         </div>
+        <div v-if="loadingStageText" class="sp-loading-text">{{ loadingStageText }}</div>
       </div>
     </Transition>
 
@@ -67,6 +74,19 @@
       </div>
     </Transition>
 
+    <!-- Stats overlay -->
+    <StatsOverlay :get-stats="getStats" :visible="showStats" />
+
+    <!-- Playlist panel -->
+    <PlaylistPanel
+      :visible="showPlaylist"
+      :entries="playlistEntries"
+      :active-index="playlistIndex"
+      :is-playing="isPlaying"
+      @close="showPlaylist = false"
+      @select="handlePlaylistSelect"
+    />
+
     <!-- ??????-->
     <transition name="sp-ui-fade">
       <div v-show="store.controlsVisible" class="sp-controls-wrapper" data-player-interactive>
@@ -85,6 +105,14 @@
                  @pointercancel="onProgressPointerUp">
               <div class="sp-progress-rail">
                 <div class="sp-progress-buffered" :style="{ width: `${store.bufferedProgress}%` }"></div>
+                <button
+                  v-for="chapter in normalizedChapters"
+                  :key="chapter.id"
+                  class="sp-chapter-marker"
+                  :style="{ left: `${chapter.startPercent}%` }"
+                  :title="chapter.title"
+                  @pointerdown.stop="handleChapterClick(chapter.startTime)"
+                ></button>
                 <button
                   v-for="marker in normalizedClipMarkers"
                   :key="marker.id"
@@ -127,6 +155,7 @@
               </div>
               <!-- ?????? -->
               <div v-if="previewTime !== null" class="sp-preview-hint" :style="{ left: `${previewPercent}%` }">
+                <div v-if="thumbnailSpriteUrl" class="sp-preview-thumbnail" :style="thumbnailSpriteStyle"></div>
                 <div class="sp-preview-hint-inner">
                   {{ formatTime(previewTime) }}
                 </div>
@@ -147,7 +176,7 @@
                 <PlayerIcon name="next" />
               </button>
               
-              <div class="sp-volume-group" :class="{ 'is-active': isVolumeScrubbing }">
+              <div class="sp-volume-group" :class="{ 'is-active': isVolumeScrubbing }" @pointerenter="isVolumeHovered = true" @pointerleave="isVolumeHovered = false">
                 <button class="sp-icon-btn" @click="toggleMute" :title="t('mute')" :aria-label="isMuted ? t('unmute') : t('mute')">
                   <PlayerIcon :name="volumeIconName" />
                 </button>
@@ -161,6 +190,7 @@
                     </div>
                   </div>
                 </div>
+                <span v-if="isVolumeScrubbing || isVolumeHovered" class="sp-volume-percent">{{ volumeText }}</span>
               </div>
 
               <div class="sp-time-display">
@@ -188,6 +218,9 @@
               <button class="sp-icon-btn" :title="hasPendingSegment ? `保存片段` : t('markClip')" :disabled="isSavingMarker" @click.stop="hasPendingSegment ? finishSegmentCapture() : markCurrentPoint()">
                 <PlayerIcon name="markClip" />
                 <span v-if="hasPendingSegment" class="sp-marker-count sp-marker-count--capturing">●</span>
+              </button>
+              <button v-if="hasPlaylist" class="sp-icon-btn" @click.stop="showPlaylist = !showPlaylist" :title="'Playlist'">
+                <PlayerIcon name="settings" />
               </button>
               <button class="sp-icon-btn" @click.stop="toggleSettingsMenu" :title="t('settings')" aria-haspopup="true" :aria-expanded="showSettingsMenu" :aria-label="t('settings')">
                 <PlayerIcon name="settings" />
@@ -346,10 +379,19 @@
               <span class="sp-subtitle-color-preview" :style="{ background: subtitleStyle.backgroundColor || 'rgba(0,0,0,0.8)' }"></span>
             </div>
             <!-- ???? -->
-            <div class="sp-menu-item" @click="settingsView = 'subtitlePosition'">
-              <span>{{ t('position') }}</span>
-              <span class="sp-menu-val">{{ subtitleStyle.position === 'top' ? t('positionTop') : t('positionBottom') }}</span>
-            </div>
+              <div class="sp-menu-item" @click="settingsView = 'subtitlePosition'">
+                <span>{{ t('position') }}</span>
+                <span class="sp-menu-val">{{ subtitleStyle.position === 'top' ? t('positionTop') : t('positionBottom') }}</span>
+              </div>
+              <!-- Subtitle offset -->
+              <div class="sp-menu-item sp-menu-item--offset">
+                <span>{{ t('subtitleOffset') }}</span>
+                <div class="sp-offset-controls">
+                  <button class="sp-offset-btn" @click.stop="handleSubtitleOffsetChange(-0.5)">-0.5s</button>
+                  <span class="sp-offset-value">{{ subtitleOffset > 0 ? '+' : '' }}{{ subtitleOffset.toFixed(1) }}s</span>
+                  <button class="sp-offset-btn" @click.stop="handleSubtitleOffsetChange(0.5)">+0.5s</button>
+                </div>
+              </div>
           </div>
         </template>
         <template v-else-if="settingsView === 'subtitleFontSize'">
@@ -476,7 +518,10 @@ import type { ThemeName } from './themes'
 import type { IconName } from './core/useIcons'
 import type { VideoClipMarker } from '@/types/videoClipMarker'
 import { createVideoClipMarker, deleteVideoClipMarker, updateVideoClipMarker, uploadVideoClipMarkerPreview } from '@/api/videoClipMarkers'
+import { usePlayerStore } from '@/stores/player'
 import PlayerIcon from './PlayerIcon.vue'
+import StatsOverlay from './StatsOverlay.vue'
+import PlaylistPanel from './PlaylistPanel.vue'
 
 import './themes/variables.css'
 import './themes/dark.css'
@@ -530,6 +575,7 @@ const emit = defineEmits([
   'clipmarkersupdated',
   'prev',
   'next',
+  'playlistSelect',
 ])
 
 const MAX_VOLUME = 200
@@ -538,7 +584,9 @@ const {
   store, videoElement, containerElement, isPlaying, currentTime, duration, volume, isMuted, isFullscreen,
   play, pause, seek, setVolume, toggleMute, setPlaybackRate, toggleFullscreen,
   togglePictureInPicture,
-  subtitleTracks, currentSubtitle, subtitleStyle, subtitlePresets, setSubtitle, setSubtitleTracks, setSubtitleStyle, applySubtitlePreset, loadSource, theme, t,
+  subtitleTracks, currentSubtitle, subtitleStyle, subtitlePresets, subtitleOffset,
+  setSubtitle, setSubtitleTracks, setSubtitleStyle, applySubtitlePreset, setSubtitleOffset,
+  loadSource, theme, t, getStats, keyboardShortcuts,
   qualities, selectedCodecFamily, currentCodecFamily,
   currentQualityLabel, currentQualityId, setQuality
 } = usePlayer({
@@ -564,6 +612,18 @@ const {
   },
   onTimeUpdate: (time) => emit('timeupdate', time)
 })
+
+const playerStore = usePlayerStore()
+const playlistEntries = computed(() => playerStore.session.playlist || [])
+const playlistIndex = computed(() => playerStore.session.playlistIndex ?? -1)
+const hasPlaylist = computed(() => playlistEntries.value.length > 1)
+
+const handlePlaylistSelect = (index: number) => {
+  if (index >= 0 && index < playlistEntries.value.length) {
+    showPlaylist.value = false
+    emit('playlistSelect', index)
+  }
+}
 
 const videoRef = ref<HTMLVideoElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
@@ -947,11 +1007,14 @@ watch(() => [props.videoId, props.source] as const, ([videoId, source]) => {
 
 const showSettingsMenu = ref(false)
 const showQualityMenu = ref(false)
+const showStats = ref(false)
+const showPlaylist = ref(false)
 const settingsView = ref('main')
 const previewTime = ref<number | null>(null)
 const previewPercent = ref(0)
 const isScrubbing = ref(false)
 const isVolumeScrubbing = ref(false)
+const isVolumeHovered = ref(false)
 const lastPointerType = ref('mouse')
 const pendingUserVolumeHud = ref<number | null>(null)
 const pendingWidescreenValue = ref<boolean | null>(null)
@@ -965,6 +1028,12 @@ const centralHud = ref<{ visible: boolean; type: string; value: string; icon: Ic
   visible: false, type: '', value: '', icon: 'play', percent: 0 
 })
 const showLoadingOverlay = computed(() => (store.loading || props.externalLoading) && !errorState.value.show)
+const isAudioOnly = computed(() => !!(props.source as any)?.audioOnly)
+const loadingStageText = computed(() => {
+  if (store.loadingStage === 'fetching') return t('loading')
+  if (store.loadingStage === 'buffering') return t('buffering')
+  return null
+})
 const videoRotation = ref(0)
 const videoRotationScale = ref(1)
 const videoRotationStyle = computed(() => ({
@@ -1041,6 +1110,43 @@ const subtitleStyleLabel = (key: string, value: string, options: any[]) => {
   return opt ? opt.label : value
 }
 const progress = computed(() => duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0)
+
+const sourceChapters = computed(() => (props.source as any)?.chapters || [])
+const normalizedChapters = computed(() => {
+  if (!duration.value || duration.value <= 0) return []
+  return sourceChapters.value.map((chapter: any) => ({
+    ...chapter,
+    startPercent: Math.min((chapter.startTime / duration.value) * 100, 100),
+  }))
+})
+
+const thumbnailSpriteUrl = computed(() => (props.source as any)?.thumbnailSpriteUrl || null)
+const thumbnailSpriteColumns = computed(() => (props.source as any)?.thumbnailSpriteColumns || 10)
+const thumbnailSpriteRows = computed(() => (props.source as any)?.thumbnailSpriteRows || 10)
+const thumbnailSpriteInterval = computed(() => (props.source as any)?.thumbnailSpriteInterval || 10)
+const thumbnailSpriteStyle = computed(() => {
+  if (!thumbnailSpriteUrl.value || !duration.value) return {}
+  const totalFrames = thumbnailSpriteColumns.value * thumbnailSpriteRows.value
+  const frameIndex = Math.min(
+    Math.floor((previewTime.value ?? 0) / thumbnailSpriteInterval.value),
+    totalFrames - 1
+  )
+  const col = frameIndex % thumbnailSpriteColumns.value
+  const row = Math.floor(frameIndex / thumbnailSpriteColumns.value)
+  const frameW = 100 * thumbnailSpriteColumns.value
+  const frameH = 100 * thumbnailSpriteRows.value
+  return {
+    backgroundImage: `url(${thumbnailSpriteUrl.value})`,
+    backgroundPosition: `-${col * 100}% -${row * 100}%`,
+    backgroundSize: `${frameW}% ${frameH}%`,
+  }
+})
+
+const handleChapterClick = (time: number) => {
+  seek(time)
+  showCentralHud('seek', formatTime(time), 'skipForward')
+}
+
 const COLORS = [
   'hsl(24 100% 50%)',
   'hsl(186 100% 50%)',
@@ -1100,6 +1206,7 @@ const getMarkerTimeText = (marker: { start_time?: number; startTime?: number; en
     : `${formatTime(startTime)} ??${formatTime(endTime)}`
 }
 const volumeIconName = computed(() => (isMuted.value || volume.value === 0) ? 'volumeOff' : volume.value < 50 ? 'volumeLow' : 'volumeHigh')
+const volumeText = computed(() => isMuted.value ? 'Muted' : `${Math.round(volume.value)}%`)
 const volumeFillPercent = computed(() => (isMuted.value ? 0 : Math.min(100, (volume.value / MAX_VOLUME) * 100)))
 const visibleCodecFamily = computed(() => (
   selectedCodecFamily.value !== 'auto'
@@ -1310,6 +1417,10 @@ const handleQualitySelect = (q: any) => { setQuality(q.id); closeMenus() }
 const handleSubtitleSelect = (track: SubtitleTrack) => { setSubtitle(track); closeMenus() }
 const handleSubtitleDisable = () => { setSubtitle(null); closeMenus() }
 const handleSubtitleStyleChange = (key: string, value: any) => { setSubtitleStyle({ [key]: value }) }
+const handleSubtitleOffsetChange = (delta: number) => {
+  const next = subtitleOffset.value + delta
+  setSubtitleOffset(Math.max(-10, Math.min(10, Math.round(next * 10) / 10)))
+}
 const handlePresetSelect = (presetId: string) => { applySubtitlePreset(presetId); closeMenus() }
 const rotateVideo = () => {
   videoRotation.value = (videoRotation.value + 90) % 360
@@ -1520,41 +1631,88 @@ const updateVol = (e: PointerEvent) => {
   setUserVolume(Math.max(0, Math.min(MAX_VOLUME, ((e.clientX - rect.left) / rect.width) * MAX_VOLUME)))
 }
 
+const isModifierKey = (e: KeyboardEvent): boolean =>
+  e.metaKey || e.ctrlKey || e.altKey
+
+const isInputFocused = (): boolean =>
+  document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA'
+
 const handleKeyDown = (e: KeyboardEvent) => {
-  if (e.key === ' ') { e.preventDefault(); togglePlay() }
-  if (e.key === 'f') toggleFullscreen()
-  if (e.key === 'r' || e.key === 'R') {
-    if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return
+  const ks = keyboardShortcuts
+  if (!ks.enabled) return
+  if (isModifierKey(e)) return
+
+  const matches = (key: string): boolean => {
+    if (e.key === key) return true
+    if (key === ' ' && e.code === 'Space') return true
+    return false
+  }
+
+  if (matches(ks.playPause)) { e.preventDefault(); togglePlay(); return }
+  if (matches(ks.fullscreen)) { toggleFullscreen(); return }
+
+  if (matches(ks.rotate)) {
+    if (isInputFocused()) return
     e.preventDefault()
     rotateVideo()
+    return
   }
-  if (e.key === 'ArrowLeft') { seek(currentTime.value - 10); showCentralHud('seek', '-10s', 'skipBackward') }
-  if (e.key === 'ArrowRight') { seek(currentTime.value + 10); showCentralHud('seek', '+10s', 'skipForward') }
-  if (e.key === 'ArrowUp') { setUserVolume(Math.min(MAX_VOLUME, volume.value + 5)) }
-  if (e.key === 'ArrowDown') { setUserVolume(Math.max(0, volume.value - 5)) }
-  if (e.key === 'm' || e.key === 'M') {
-    if (document.activeElement?.tagName === 'INPUT') return
+
+  if (matches(ks.seekBackward)) { seek(currentTime.value - 10); showCentralHud('seek', '-10s', 'skipBackward'); return }
+  if (matches(ks.seekForward)) { seek(currentTime.value + 10); showCentralHud('seek', '+10s', 'skipForward'); return }
+  if (matches(ks.volumeUp)) { setUserVolume(Math.min(MAX_VOLUME, volume.value + 5)); return }
+  if (matches(ks.volumeDown)) { setUserVolume(Math.max(0, volume.value - 5)); return }
+
+  if (matches(ks.markSegmentStart)) {
+    if (isInputFocused()) return
     e.preventDefault()
     if (e.shiftKey) {
-      if (hasPendingSegment.value) {
-        finishSegmentCapture()
-      } else {
-        startSegmentCapture()
-      }
+      if (hasPendingSegment.value) finishSegmentCapture()
+      else startSegmentCapture()
       return
     }
+    if (matches(ks.markPoint)) {
+      markCurrentPoint()
+      return
+    }
+  }
+
+  if (matches(ks.markPoint)) {
+    if (isInputFocused()) return
+    e.preventDefault()
     markCurrentPoint()
+    return
   }
-  if (e.key === 'Escape' && hasPendingSegment.value) {
+
+  if (matches(ks.cancelSegment) && hasPendingSegment.value) {
     cancelSegmentCapture()
+    return
   }
-  if ((e.key === 'p' || e.key === 'P') && props.hasPrev) {
+
+  if (matches(ks.toggleSubtitles)) {
+    if (isInputFocused()) return
+    e.preventDefault()
+    toggleSubtitlesQuick()
+    return
+  }
+
+  if (matches(ks.toggleStats)) {
+    if (isInputFocused()) return
+    e.preventDefault()
+    showStats.value = !showStats.value
+    return
+  }
+
+  if (matches(ks.prevVideo) && props.hasPrev) {
     e.preventDefault()
     emit('prev')
+    return
   }
-  if ((e.key === 'n' || e.key === 'N') && props.hasNext) {
+
+  if (matches(ks.nextVideo) && props.hasNext) {
     e.preventDefault()
     emit('next')
+    return
   }
 }
 
@@ -1667,6 +1825,53 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   object-fit: contain;
   transform-origin: center center;
   transition: transform var(--duration-normal) var(--ease-default);
+}
+
+.sp-video--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sp-audio-background {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  z-index: 1;
+}
+
+.sp-audio-visual {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  height: 60px;
+}
+
+.sp-audio-dot {
+  width: 6px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  transition: height var(--duration-normal) ease;
+}
+
+.sp-audio-dot.is-active {
+  background: var(--sp-primary, #d3d4d8);
+  animation: audio-bar-bounce 1.2s ease-in-out infinite;
+}
+
+.sp-audio-dot:nth-child(1).is-active { animation-delay: 0s; }
+.sp-audio-dot:nth-child(2).is-active { animation-delay: 0.1s; }
+.sp-audio-dot:nth-child(3).is-active { animation-delay: 0.2s; }
+.sp-audio-dot:nth-child(4).is-active { animation-delay: 0.3s; }
+.sp-audio-dot:nth-child(5).is-active { animation-delay: 0.4s; }
+
+@keyframes audio-bar-bounce {
+  0%, 100% { height: 12px; }
+  50% { height: 36px; }
 }
 
 /* ????????*/
@@ -2108,6 +2313,38 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   box-shadow: 0 4px 10px rgba(0,0,0,0.6);
 }
 
+.sp-preview-thumbnail {
+  width: 120px;
+  height: 68px;
+  margin-bottom: 4px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background-color: #000;
+  background-repeat: no-repeat;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+/* Chapter markers */
+.sp-chapter-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 2px;
+  cursor: pointer;
+  z-index: 1;
+  transition: height var(--duration-fast), background var(--duration-fast);
+}
+
+.sp-chapter-marker:hover {
+  height: 14px;
+  background: var(--sp-primary, #d3d4d8);
+}
+
 /* ????????*/
 .sp-controls-main {
   display: flex;
@@ -2258,6 +2495,15 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   height: 100%;
   width: 100%;
   box-shadow: 0 0 10px rgba(var(--sp-primary-rgb), 0.6);
+}
+
+.sp-volume-percent {
+  font-family: var(--sp-font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  min-width: 36px;
+  text-align: right;
+  flex-shrink: 0;
 }
 
 /* ????????*/
@@ -2446,6 +2692,38 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   flex-shrink: 0;
 }
 
+/* Subtitle offset controls */
+.sp-offset-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--sp-font-mono);
+}
+
+.sp-offset-btn {
+  padding: 2px 6px;
+  background: var(--sp-bg-hover);
+  border: 1px solid var(--sp-border);
+  border-radius: 3px;
+  color: var(--sp-text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-default);
+  font-family: var(--sp-font-mono);
+}
+
+.sp-offset-btn:hover {
+  color: var(--sp-primary);
+  border-color: var(--sp-primary);
+}
+
+.sp-offset-value {
+  font-size: 11px;
+  color: var(--sp-text-strong);
+  min-width: 36px;
+  text-align: center;
+}
+
 /* ???? */
 .sp-loading {
   position: absolute;
@@ -2471,6 +2749,13 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   border-top-color: rgba(255, 255, 255, 0.6);
   border-radius: 50%;
   animation: sp-loader-spin 0.8s linear infinite;
+}
+
+.sp-loading-text {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  font-family: var(--sp-font-family);
+  margin-top: 8px;
 }
 
 @keyframes sp-loader-spin {

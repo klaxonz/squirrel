@@ -7,6 +7,7 @@ import type {
   PlayerError,
   PlayerEvents,
   PlayerState,
+  PlayerStats,
   QualityLevel,
   QualitySelectionRequest,
   PluginConfig,
@@ -53,7 +54,7 @@ export type PlayerEngine = {
   init: () => Promise<void>
   destroy: () => void
 
-  play: () => Promise<void>
+  play: () => Promise<boolean>
   pause: () => void
   seek: (time: number) => void
   setVolume: (volume: number) => void
@@ -79,6 +80,8 @@ export type PlayerEngine = {
   getSubtitleStyle: () => Record<string, any>
   setSubtitleStyle: (style: Record<string, any>) => void
   applySubtitlePreset: (presetId: string) => void
+  setSubtitleOffset: (offsetSeconds: number) => void
+  getSubtitleOffset: () => number
 
   saveProgress: () => void
   loadProgress: (progressKey: string) => Promise<number | null>
@@ -91,6 +94,7 @@ export type PlayerEngine = {
   getCurrentSubtitle: () => SubtitleTrack | null
 
   getPlugin: <T>(name: string) => T | null
+  getStats: () => PlayerStats
   on: EventEmitter<PlayerEvents>['on']
   off: EventEmitter<PlayerEvents>['off']
 }
@@ -309,6 +313,14 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     loading = false
     events.emit('error', error)
     options.onError?.(error)
+    void adapter.reportError({
+      sourceUrl: currentSource?.src,
+      errorCode: error.code,
+      errorMessage: error.message,
+      progressKey: progressKey ?? undefined,
+      timestamp: Date.now(),
+    }).catch(() => {})
+    adapter.trackEvent?.('error', { code: error.code, message: error.message, fatal: error.fatal })
   }
 
   const resolveMediaUrl = (src: string): string => {
@@ -405,6 +417,25 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   const reloadCurrentSource = (): boolean => {
     if (!currentSource) return false
+
+    const altSources = currentSource.alternativeSources || []
+    if (altSources.length > 0 && retryCount >= maxRetries) {
+      const altIndex = (retryCount - maxRetries) % altSources.length
+      const alt = altSources[altIndex]
+      if (alt && alt.src) {
+        logger.debug(`[ErrorRecovery] Switching to alternative source type=${alt.type}: ${alt.src}`)
+        const altSource: MediaSource = {
+          ...currentSource,
+          src: alt.src,
+          type: alt.type,
+        }
+        currentSourceKey = ''
+        pendingSourceKey = ''
+        doLoadSource(altSource)
+        currentSource = altSource
+        return true
+      }
+    }
 
     const sourceToReload = { ...currentSource }
     const resumeTime = videoElement?.currentTime ?? 0
@@ -526,7 +557,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     },
     once: events.once.bind(events),
 
-    async play() { await play() },
+    async play() { return await play() },
     pause() { pause() },
     seek(time) { seek(time) },
     setVolume(v) { setVolume(v * 100) },
@@ -698,6 +729,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       clearWaitingRecovery()
       events.emit('play', undefined)
       options.onPlay?.()
+      adapter.trackEvent?.('play', { sourceType: currentSourceType, currentTime: video.currentTime })
     }
     const onPlaying = () => {
       loading = false
@@ -710,6 +742,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       flushProgress()
       events.emit('pause', undefined)
       options.onPause?.()
+      adapter.trackEvent?.('pause', { sourceType: currentSourceType, currentTime: video.currentTime })
     }
     const onEnded = () => {
       clearWaitingRecovery()
@@ -920,15 +953,17 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     containerElement = el
   }
 
-  const play = async (): Promise<void> => {
-    if (!videoElement) return
+  const play = async (): Promise<boolean> => {
+    if (!videoElement) return false
     try {
       if (audioContext?.state === 'suspended') {
         await audioContext.resume()
       }
       await videoElement.play()
+      return true
     } catch (e) {
       logger.warn('[PlayerEngine] Play failed', e)
+      return false
     }
   }
 
@@ -943,6 +978,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     waitingRecoverySuppressedUntil = Date.now() + Math.max(retryDelay * 2, 4000)
     videoElement.currentTime = time
     events.emit('seeking', time)
+    adapter.trackEvent?.('seek', { currentTime: time, duration: videoElement.duration })
   }
 
   const setVolume = (vol: number): void => {
@@ -960,6 +996,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
     events.emit('volumechange', { volume: v / 100, muted })
     void adapter.saveConfig({ volume: v, muted })
+    adapter.trackEvent?.('volumechange', { volume: v, muted })
   }
 
   const setMuted = (value: boolean): void => {
@@ -1068,6 +1105,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
     events.emit('qualitychange', { quality: emittedLabel, auto: emittedLabel === 'auto', id: currentQualityId ?? undefined })
     options.onQualityChange?.(emittedLabel)
+    adapter.trackEvent?.('qualitychange', { quality: emittedLabel, auto: emittedLabel === 'auto' })
   }
 
   const toggleFullscreen = async (): Promise<void> => {
@@ -1165,6 +1203,21 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     }
   }
 
+  const setSubtitleOffset = (offsetSeconds: number): void => {
+    const subtitlesPlugin = pluginManager.get<any>('subtitles')
+    if (subtitlesPlugin && typeof subtitlesPlugin.setSubtitleOffset === 'function') {
+      subtitlesPlugin.setSubtitleOffset(offsetSeconds)
+    }
+  }
+
+  const getSubtitleOffset = (): number => {
+    const subtitlesPlugin = pluginManager.get<any>('subtitles')
+    if (subtitlesPlugin && typeof subtitlesPlugin.getSubtitleOffset === 'function') {
+      return subtitlesPlugin.getSubtitleOffset()
+    }
+    return 0
+  }
+
   const setSubtitleStyle = (style: Record<string, any>): void => {
     const subtitlesPlugin = pluginManager.get<any>('subtitles')
     if (subtitlesPlugin && typeof subtitlesPlugin.importStyle === 'function') {
@@ -1252,6 +1305,30 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     return progress?.currentTime ?? null
   }
 
+  const getStats = (): PlayerStats => {
+    const video = videoElement
+    const webkitDropped = (video as any)?.webkitDroppedFrameCount
+    const webkitDecoded = (video as any)?.webkitDecodedFrameCount
+    return {
+      resolution: video && video.videoWidth > 0
+        ? { width: video.videoWidth, height: video.videoHeight }
+        : null,
+      codec: currentQualityLabel,
+      sourceType: currentSourceType,
+      bufferedPercent: bufferedProgress,
+      playbackRate: video?.playbackRate ?? playbackRate,
+      quality: currentQualityLabel,
+      volume: volume,
+      muted,
+      duration: video?.duration ?? 0,
+      currentTime: video?.currentTime ?? 0,
+      droppedFrames: typeof webkitDropped === 'number' ? webkitDropped : 0,
+      totalFrames: typeof webkitDecoded === 'number' ? webkitDecoded : 0,
+      videoBitrate: null,
+      audioBitrate: null,
+    }
+  }
+
   return {
     attachVideoElement,
     attachContainerElement,
@@ -1285,6 +1362,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     getSubtitleStyle,
     setSubtitleStyle,
     applySubtitlePreset,
+    setSubtitleOffset,
+    getSubtitleOffset,
 
     saveProgress,
     loadProgress,
@@ -1297,6 +1376,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     getCurrentSubtitle: () => currentSubtitle,
 
     getPlugin: <T>(name: string) => pluginManager.get(name) as T,
+    getStats,
     on: events.on.bind(events),
     off: events.off.bind(events)
   }

@@ -225,7 +225,7 @@ export async function resolveJavdbPlayback(targetUrl, {
 
   const cacheKey = normalizedUrl
   if (!forceRefresh) {
-    const cached = getCachedPayload(cacheKey)
+    const cached = await getCachedPayload(cacheKey)
     if (cached) {
       return cached
     }

@@ -244,7 +244,7 @@ export async function resolveYouPornPlayback(targetUrl, { cookie = '', forceRefr
 
   const cacheKey = `${normalizedUrl}|cookie=${cookie ? '1' : '0'}`
   if (!forceRefresh) {
-    const cached = getCachedPayload(cacheKey)
+    const cached = await getCachedPayload(cacheKey)
     if (cached) {
       return cached
     }

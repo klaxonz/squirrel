@@ -53,6 +53,7 @@ export interface LocaleMessages {
   position: string
   positionTop: string
   positionBottom: string
+  subtitleOffset: string
   preset: string
   opacity: string
   custom: string

@@ -1,3 +1,5 @@
+import { loadFileCache, saveFileCache } from '../../file-cache.mjs'
+
 const CACHE_TTL_MS = 5 * 60 * 1000
 
 const playbackCache = new Map()
@@ -8,13 +10,29 @@ const isExpired = (entry) => {
   return !entry || entry.expiresAt <= Date.now()
 }
 
-export const getCachedPayload = (cacheKey) => {
+const fileCacheLoading = new Set()
+
+export const getCachedPayload = async (cacheKey) => {
   const cached = playbackCache.get(cacheKey)
-  if (isExpired(cached)) {
-    playbackCache.delete(cacheKey)
-    return null
+  if (cached) {
+    if (isExpired(cached)) {
+      playbackCache.delete(cacheKey)
+    } else {
+      return cached.value
+    }
   }
-  return cached.value
+  if (fileCacheLoading.has(cacheKey)) return null
+  fileCacheLoading.add(cacheKey)
+  try {
+    const diskValue = await loadFileCache(cacheKey, CACHE_TTL_MS)
+    if (diskValue) {
+      playbackCache.set(cacheKey, { value: diskValue, expiresAt: Date.now() + CACHE_TTL_MS })
+      return diskValue
+    }
+  } finally {
+    fileCacheLoading.delete(cacheKey)
+  }
+  return null
 }
 
 export const setCachedPayload = (cacheKey, value) => {
@@ -22,6 +40,7 @@ export const setCachedPayload = (cacheKey, value) => {
     value,
     expiresAt: Date.now() + CACHE_TTL_MS,
   })
+  saveFileCache(cacheKey, value, CACHE_TTL_MS).catch(() => {})
 }
 
 export const clearAdultPlaybackCache = () => {

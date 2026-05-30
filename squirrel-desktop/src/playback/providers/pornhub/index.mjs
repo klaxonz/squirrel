@@ -99,7 +99,7 @@ export async function resolvePornhubPlayback(targetUrl, { cookie = '', forceRefr
 
   const cacheKey = `${normalizedUrl}|${cacheScopeForCookie(cookie)}`
   if (!forceRefresh) {
-    const cached = getCachedPayload(cacheKey)
+    const cached = await getCachedPayload(cacheKey)
     if (cached) {
       return cached
     }
