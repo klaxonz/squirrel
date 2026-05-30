@@ -373,7 +373,7 @@
             <div class="flex items-center gap-2 shrink-0">
               <!-- 应用内预览原文 -->
               <button 
-                @click="showInAppBrowser = true; iframeLoading = true"
+                @click="openInAppBrowser"
                 class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer"
                 title="在应用内打开原文"
               >
@@ -464,7 +464,7 @@
             <div class="max-w-3xl mx-auto mb-8 space-y-3">
               <!-- Large Title (Clickable, Reeder classic shortcut to original webpage) -->
               <h1 
-                @click="showInAppBrowser = true; iframeLoading = true"
+                @click="openInAppBrowser"
                 class="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground/95 hover:text-primary leading-tight cursor-pointer transition-colors duration-200 ease-out"
                 title="点击在应用内打开原文"
               >
@@ -551,10 +551,12 @@
                 </div>
                 
                 <iframe 
+                  :key="iframeLoadKey"
                   ref="iframeRef"
                   :src="readingEntry.canonical_url"
+                  :data-load-key="iframeLoadKey"
                   class="w-full h-full border-0 bg-white"
-                  @load="iframeLoading = false"
+                  @load="handleIframeLoad"
                 />
                 
                 <!-- Fallback Browser Alert for web users -->
@@ -1028,6 +1030,7 @@ const mobileReaderSettingsRef = ref<HTMLElement | null>(null)
 // Reeder-style In-App Browser Overlay States (omitting mobile view as requested)
 const showInAppBrowser = ref(false)
 const iframeLoading = ref(false)
+const iframeLoadKey = ref(0)
 const isElectron = computed(() => (window as any).desktopApp?.isDesktop === true)
 const iframeRef = ref<HTMLIFrameElement | null>(null)
 
@@ -1041,11 +1044,21 @@ const getDisplayDomain = (urlStr?: string | null) => {
 }
 
 const refreshIframe = () => {
-  if (iframeRef.value) {
-    iframeLoading.value = true
-    const src = iframeRef.value.src
-    iframeRef.value.src = src
-  }
+  if (!showInAppBrowser.value || !readingEntry.value?.canonical_url) return
+  iframeLoading.value = true
+  iframeLoadKey.value += 1
+}
+
+const openInAppBrowser = () => {
+  showInAppBrowser.value = true
+  iframeLoading.value = true
+  iframeLoadKey.value += 1
+}
+
+const handleIframeLoad = (event: Event) => {
+  const target = event.currentTarget as HTMLIFrameElement | null
+  if (!target || target.dataset.loadKey !== String(iframeLoadKey.value)) return
+  iframeLoading.value = false
 }
 
 // Interactive Image Lightbox State
