@@ -1646,6 +1646,23 @@ const installDesktopMediaHeaders = () => {
   })
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    // Strip X-Frame-Options and CSP headers for subFrame requests (iframes) to allow previewing inside the app
+    if (details.resourceType === 'subFrame') {
+      const responseHeaders = { ...details.responseHeaders }
+      for (const key of Object.keys(responseHeaders)) {
+        const lowerKey = key.toLowerCase()
+        if (
+          lowerKey === 'x-frame-options' ||
+          lowerKey === 'content-security-policy' ||
+          lowerKey === 'content-security-policy-report-only'
+        ) {
+          delete responseHeaders[key]
+        }
+      }
+      callback({ responseHeaders })
+      return
+    }
+
     if (!shouldRelaxCrossOriginResponseHeaders(details.url)) {
       callback({ responseHeaders: details.responseHeaders })
       return

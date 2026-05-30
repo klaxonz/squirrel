@@ -283,15 +283,13 @@
                 </div>
                 
                 <!-- Card Bottom: Source & Media indicator -->
-                <div class="flex items-center justify-between pt-1">
+                <div class="flex items-center pt-1">
                   <div class="flex items-center gap-2 min-w-0">
                     <SiteIcon :icon-url="getFeedIconUrl(entry.feed_id)" size="xs" rounded="sm" class="shrink-0" />
                     <span class="text-[11px] font-semibold text-muted-foreground/90 truncate">
                       {{ getFeedTitle(entry.feed_id) }}
                     </span>
                   </div>
-                  
-                  <AppIcon name="externalLink" class="h-3 w-3 text-muted-foreground/40 group-hover:text-foreground/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-200 ease-out" />
                 </div>
               </div>
             </div>
@@ -307,104 +305,101 @@
       <!-- 3. Right Column: Permanent Article Content Reader -->
       <main class="hidden lg:flex flex-1 min-w-0 flex-col bg-background relative h-full overflow-hidden border-l border-border/10">
         <!-- If an article is selected, render it -->
-        <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden animate-fade-in bg-background">
-          <!-- Reader Header -->
-          <header class="shrink-0 border-b border-border/10 p-5 bg-background flex flex-col gap-3 relative z-20">
-            <!-- Top Metadata & Controls Row -->
-            <div class="flex items-center justify-between">
-              <!-- Metadata (Feed Source & Date) -->
-              <div class="flex items-center gap-2 text-xs text-muted-foreground/80">
-                <span class="px-2 py-0.5 rounded bg-primary/10 text-primary font-bold uppercase tracking-wider text-[9px]">
-                  {{ getFeedCategory(readingEntry.feed_id) }}
-                </span>
-                <span>•</span>
-                <span class="font-bold text-foreground/80">{{ getFeedTitle(readingEntry.feed_id) }}</span>
-                <span>•</span>
-                <span class="tabular-nums text-muted-foreground/60 text-[11px]">{{ formatDate(readingEntry.published_at) }}</span>
-              </div>
-              
-              <!-- Clean Flat Action Buttons -->
-              <div class="flex items-center gap-1.5">
-                <!-- 访问原始网页 -->
-                <a 
-                  :href="readingEntry.canonical_url" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  class="h-7 w-7 rounded-lg bg-accent/40 hover:bg-accent/60 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all"
-                  title="访问原始网页"
-                >
-                  <AppIcon name="externalLink" class="h-4 w-4" />
-                </a>
+        <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden animate-fade-in bg-background relative">
+          <!-- Reader Header (Clean compact toolbar) -->
+          <header class="shrink-0 border-b border-border/10 h-14 px-6 bg-background flex items-center justify-between relative z-20">
+            <!-- Left Side: Source badge -->
+            <div class="flex items-center gap-2 text-xs text-muted-foreground/80 min-w-0 pr-4">
+              <SiteIcon :icon-url="getFeedIconUrl(readingEntry.feed_id)" size="xs" rounded="sm" class="shrink-0" />
+              <span class="font-bold text-foreground/85 truncate max-w-[180px] lg:max-w-[240px]" :title="getFeedTitle(readingEntry.feed_id)">
+                {{ getFeedTitle(readingEntry.feed_id) }}
+              </span>
+            </div>
 
-                <!-- 阅读设置 -->
-                <div class="relative" ref="readerSettingsRef">
-                  <button 
-                    @click="showReaderSettings = !showReaderSettings"
-                    class="h-7 w-7 rounded-lg bg-accent/40 hover:bg-accent/60 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all cursor-pointer"
-                    title="阅读个性化设置"
-                  >
-                    <AppIcon name="settingsPanel" class="h-4 w-4" />
-                  </button>
-                  
-                  <!-- Preference dropdown (opens to left) -->
-                  <div 
-                    v-if="showReaderSettings" 
-                    class="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-border/30 bg-popover text-popover-foreground p-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] space-y-3 animate-fade-in"
-                  >
-                    <!-- Font Family toggle -->
-                    <div class="space-y-1">
-                      <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">排版字体</span>
-                      <div class="grid grid-cols-2 gap-1 bg-accent/20 p-0.5 rounded-lg border border-border/5">
-                        <button 
-                          @click="readerFontFamily = 'sans'; saveReaderPrefs()"
-                          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
-                          :class="readerFontFamily === 'sans' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-                        >
-                          无衬线
-                        </button>
-                        <button 
-                          @click="readerFontFamily = 'serif'; saveReaderPrefs()"
-                          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
-                          :class="readerFontFamily === 'serif' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-                        >
-                          衬线体
-                        </button>
-                      </div>
+            <!-- Right Side: Action buttons -->
+            <div class="flex items-center gap-2 shrink-0">
+              <!-- 应用内预览原文 -->
+              <button 
+                @click="showInAppBrowser = true; iframeLoading = true"
+                class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer"
+                title="在应用内打开原文"
+              >
+                <AppIcon name="siteFallback" class="h-4 w-4" />
+              </button>
+
+              <!-- 在系统浏览器打开 -->
+              <a 
+                :href="readingEntry.canonical_url" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5"
+                title="在系统浏览器打开"
+              >
+                <AppIcon name="externalLink" class="h-4 w-4" />
+              </a>
+
+              <!-- 阅读设置 -->
+              <div class="relative" ref="readerSettingsRef">
+                <button 
+                  @click="showReaderSettings = !showReaderSettings"
+                  class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer"
+                  title="阅读个性化设置"
+                >
+                  <AppIcon name="settingsPanel" class="h-4 w-4" />
+                </button>
+                
+                <!-- Preference dropdown (opens to left) -->
+                <div 
+                  v-if="showReaderSettings" 
+                  class="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-border/30 bg-popover text-popover-foreground p-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] space-y-3 animate-fade-in"
+                >
+                  <!-- Font Family toggle -->
+                  <div class="space-y-1">
+                    <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">排版字体</span>
+                    <div class="grid grid-cols-2 gap-1 bg-accent/20 p-0.5 rounded-lg border border-border/5">
+                      <button 
+                        @click="readerFontFamily = 'sans'; saveReaderPrefs()"
+                        class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
+                        :class="readerFontFamily === 'sans' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                      >
+                        无衬线
+                      </button>
+                      <button 
+                        @click="readerFontFamily = 'serif'; saveReaderPrefs()"
+                        class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
+                        :class="readerFontFamily === 'serif' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                      >
+                        衬线体
+                      </button>
                     </div>
-                    
-                    <!-- Font Size toggle -->
-                    <div class="space-y-1">
-                      <div class="flex items-center justify-between">
-                        <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">字号大小</span>
-                        <span class="text-[10px] font-semibold tabular-nums text-foreground/80">{{ readerFontSize }}px</span>
-                      </div>
-                      <div class="flex items-center gap-1">
-                        <button 
-                          @click="setReaderFontSize(readerFontSize - 1)" 
-                          class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
-                          :disabled="readerFontSize <= 12"
-                        >
-                          A-
-                        </button>
-                        <button 
-                          @click="setReaderFontSize(readerFontSize + 1)" 
-                          class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
-                          :disabled="readerFontSize >= 24"
-                        >
-                          A+
-                        </button>
-                      </div>
+                  </div>
+                  
+                  <!-- Font Size toggle -->
+                  <div class="space-y-1">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">字号大小</span>
+                      <span class="text-[10px] font-semibold tabular-nums text-foreground/80">{{ readerFontSize }}px</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <button 
+                        @click="setReaderFontSize(readerFontSize - 1)" 
+                        class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
+                        :disabled="readerFontSize <= 12"
+                      >
+                        A-
+                      </button>
+                      <button 
+                        @click="setReaderFontSize(readerFontSize + 1)" 
+                        class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
+                        :disabled="readerFontSize >= 24"
+                      >
+                        A+
+                      </button>
                     </div>
                   </div>
                 </div>
-
               </div>
             </div>
-            
-            <!-- Title -->
-            <h3 class="text-lg md:text-xl font-bold tracking-tight text-foreground leading-snug">
-              {{ readingEntry.title }}
-            </h3>
           </header>
           
           <!-- Reader Body Scroll Container -->
@@ -412,6 +407,23 @@
             ref="readerScrollContainer"
             class="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10 bg-background space-y-6 relative"
           >
+            <!-- Editorial Header (Inside scrollable region for immersive layout) -->
+            <div class="max-w-3xl mx-auto mb-8 space-y-3">
+              <!-- Large Title (Clickable, Reeder classic shortcut to original webpage) -->
+              <h1 
+                @click="showInAppBrowser = true; iframeLoading = true"
+                class="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground/95 hover:text-primary leading-tight cursor-pointer transition-colors duration-200 ease-out"
+                title="点击在应用内打开原文"
+              >
+                {{ readingEntry.title }}
+              </h1>
+
+              <!-- Date Metadata Row (Reeder-style) -->
+              <div class="text-xs text-muted-foreground/60 tabular-nums font-medium">
+                {{ formatDate(readingEntry.published_at) }}
+              </div>
+            </div>
+
             <!-- Description / HTML content -->
             <div 
               class="reader-content prose prose-neutral dark:prose-invert max-w-3xl mx-auto text-foreground/90 py-2 space-y-4"
@@ -421,6 +433,85 @@
               v-html="readingEntry.summary || '<p class=text-muted-foreground>该文章暂无正文内容。</p>'"
             />
           </div>
+
+          <!-- Reeder-style Slide-over In-App Browser Overlay -->
+          <Transition name="slide">
+            <div 
+              v-if="showInAppBrowser"
+              class="absolute inset-0 z-30 bg-background flex flex-col shadow-2xl border-l border-border/10"
+            >
+              <!-- Browser Toolbar -->
+              <header class="shrink-0 border-b border-border/10 h-14 px-6 bg-background/95 backdrop-blur-md flex items-center justify-between relative z-20">
+                <!-- Left Side: Back/Close button -->
+                <div class="flex items-center gap-3 min-w-0">
+                  <button 
+                    @click="showInAppBrowser = false"
+                    class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer shrink-0"
+                    title="返回正文"
+                  >
+                    <AppIcon name="back" class="h-4 w-4" />
+                  </button>
+                  <div class="flex flex-col min-w-0 leading-tight">
+                    <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">正在浏览原文</span>
+                    <span class="text-xs font-semibold text-foreground/80 truncate max-w-[150px] lg:max-w-[280px]">
+                      {{ readingEntry.title }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Center: Address Bar (Globe + Domain) -->
+                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex items-center bg-accent/20 px-3 py-1 rounded-lg border border-border/5 text-[10px] font-medium text-muted-foreground/85 max-w-[220px] lg:max-w-[320px] truncate shadow-inner">
+                  <AppIcon name="siteFallback" class="h-3.5 w-3.5 mr-1.5 text-muted-foreground/60 shrink-0" />
+                  <span class="truncate">{{ getDisplayDomain(readingEntry.canonical_url) }}</span>
+                </div>
+
+                <!-- Right Side: Navigation & Refresh -->
+                <div class="flex items-center gap-2 shrink-0">
+                  <!-- 刷新 -->
+                  <button 
+                    @click="refreshIframe"
+                    class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer"
+                    title="重新加载"
+                  >
+                    <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': iframeLoading }" />
+                  </button>
+
+                  <!-- 在系统浏览器打开 -->
+                  <a 
+                    :href="readingEntry.canonical_url" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5"
+                    title="在系统浏览器打开"
+                  >
+                    <AppIcon name="externalLink" class="h-4 w-4" />
+                  </a>
+                </div>
+              </header>
+
+              <!-- Iframe Webview Body -->
+              <div class="flex-1 w-full h-full overflow-hidden bg-background relative flex flex-col">
+                <!-- Loading Indicator -->
+                <div v-if="iframeLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10 gap-3">
+                  <div class="h-6 w-6 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                  <span class="text-xs text-muted-foreground">正在加载原文...</span>
+                </div>
+                
+                <iframe 
+                  ref="iframeRef"
+                  :src="readingEntry.canonical_url"
+                  class="w-full h-full border-0 bg-white"
+                  @load="iframeLoading = false"
+                />
+                
+                <!-- Fallback Browser Alert for web users -->
+                <div v-if="!isElectron && !iframeLoading" class="absolute bottom-4 right-4 max-w-xs p-3 rounded-xl border border-border bg-popover text-popover-foreground shadow-lg text-[10px] leading-relaxed z-20 flex flex-col gap-1.5 animate-fade-in">
+                  <span class="font-bold text-foreground">💡 原文加载提示</span>
+                  <span class="text-muted-foreground">如果页面显示空白或拒绝连接，是由于源站安全策略限制。您可以点击右上角图标在外部浏览器中打开。</span>
+                </div>
+              </div>
+            </div>
+          </Transition>
         </div>
         
         <!-- If no article is selected, render a gorgeous premium workstation-themed placeholder -->
@@ -792,6 +883,29 @@ const showReaderSettings = ref(false)
 const readerSettingsRef = ref<HTMLElement | null>(null)
 const showMobileReaderSettings = ref(false)
 const mobileReaderSettingsRef = ref<HTMLElement | null>(null)
+
+// Reeder-style In-App Browser Overlay States (omitting mobile view as requested)
+const showInAppBrowser = ref(false)
+const iframeLoading = ref(false)
+const isElectron = computed(() => (window as any).desktopApp?.isDesktop === true)
+const iframeRef = ref<HTMLIFrameElement | null>(null)
+
+const getDisplayDomain = (urlStr?: string | null) => {
+  if (!urlStr) return ''
+  try {
+    return new URL(urlStr).hostname
+  } catch {
+    return urlStr || ''
+  }
+}
+
+const refreshIframe = () => {
+  if (iframeRef.value) {
+    iframeLoading.value = true
+    const src = iframeRef.value.src
+    iframeRef.value.src = src
+  }
+}
 
 // Interactive Image Lightbox State
 const activeLightboxImg = ref<string | null>(null)
@@ -1312,6 +1426,8 @@ const syncSelectedAccount = async (forceFullSync = false) => {
 
 const openReader = (entry: RssEntry) => {
   readingEntry.value = entry
+  showInAppBrowser.value = false
+  iframeLoading.value = false
 }
 
 const closeReader = () => {
@@ -1342,6 +1458,8 @@ watch(selectedAccountId, () => {
 watch(readingEntry, () => {
   showReaderSettings.value = false
   showMobileReaderSettings.value = false
+  showInAppBrowser.value = false
+  iframeLoading.value = false
   nextTick(() => {
     if (readerScrollContainer.value) {
       readerScrollContainer.value.scrollTop = 0
@@ -1400,6 +1518,17 @@ onUnmounted(() => {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { 
   background: rgba(var(--primary), 0.2); 
+}
+
+/* Reeder-style slide animation for in-app browser overlay */
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s ease;
+}
+.slide-enter-from,
+.slide-leave-to {
+  transform: translateX(100%);
+  opacity: 0.9;
 }
 
 /* Scoped stylesheet for beautiful markdown / HTML summary rendering in reader */
