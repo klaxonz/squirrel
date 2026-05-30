@@ -267,9 +267,16 @@
         <div ref="entriesContainer" class="flex-1 overflow-y-auto custom-scrollbar bg-background">
           <div class="w-full p-4 space-y-4">
 
+            <div
+              v-if="loading && filteredEntries.length === 0"
+              class="flex min-h-[20rem] flex-col items-center justify-center text-center py-10"
+            >
+              <div class="h-7 w-7 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+            </div>
+
             <!-- Empty view -->
-            <div 
-              v-if="filteredEntries.length === 0" 
+            <div
+              v-else-if="filteredEntries.length === 0"
               class="flex min-h-[20rem] flex-col items-center justify-center text-center py-10"
             >
               <div class="h-16 w-16 rounded-full bg-accent/30 flex items-center justify-center mb-4 ring-4 ring-background shadow-inner">
@@ -1385,6 +1392,9 @@ const loadFeeds = async () => {
 }
 
 const loadEntries = async (isReset = false) => {
+  if (isReset) loading.value = true
+  else loadingMoreEntries.value = true
+
   if (isReset) {
     page.value = 1
     entries.value = []
@@ -1399,15 +1409,11 @@ const loadEntries = async (isReset = false) => {
     params.isStarred = true
   }
   
-  if (isReset) loading.value = true
-  else loadingMoreEntries.value = true
-  
   const result = await getRssEntries(params) as ApiResult<{ data: RssEntry[], total: number }>
-  
-  if (isReset) loading.value = false
-  else loadingMoreEntries.value = false
-  
+
   if (result.error) {
+    if (isReset) loading.value = false
+    else loadingMoreEntries.value = false
     setStatus(result.error.message || '加载条目失败', true)
     return
   }
@@ -1420,6 +1426,9 @@ const loadEntries = async (isReset = false) => {
   } else {
     entries.value.push(...fetched)
   }
+
+  if (isReset) loading.value = false
+  else loadingMoreEntries.value = false
 }
 
 const loadMore = async () => {
