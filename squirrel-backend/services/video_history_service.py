@@ -16,6 +16,7 @@ from utils import url_helper
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import get_site_from_url
 from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
+from services.video_service import _video_extra_profiles, _merge_profiles
 
 
 def _resolve_reported_at(report: HistoryCreate) -> datetime:
@@ -271,17 +272,20 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
             v = video_map.get(h.video_id)
             if not v:
                 continue
-            subs_for_video = [
-                {
-                    'id': s.id,
-                    'name': s.name,
-                    'url': s.url,
-                    'type': s.type,
-                    'avatar': s.avatar,
-                    'is_nsfw': user_sub_nsfw_map.get(s.id, False)
-                }
-                for s in (video_subs.get(v.id) or []) if s is not None
-            ]
+            subs_for_video = _merge_profiles(
+                [
+                    {
+                        'id': s.id,
+                        'name': s.name,
+                        'url': s.url,
+                        'type': s.type,
+                        'avatar': s.avatar,
+                        'is_nsfw': user_sub_nsfw_map.get(s.id, False)
+                    }
+                    for s in (video_subs.get(v.id) or []) if s is not None
+                ],
+                _video_extra_profiles(v, 'subscriptions'),
+            )
 
             video_site = get_site_from_url(v.url)
             if not video_site and subs_for_video:
@@ -304,6 +308,7 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
                 'uploaded_at': v.publish_date.strftime('%Y-%m-%d %H:%M:%S') if v.publish_date else None,
                 'created_at': v.created_at.strftime('%Y-%m-%d %H:%M:%S') if v.created_at else None,
                 'subscriptions': subs_for_video,
+                'actors': _video_extra_profiles(v, 'actors'),
                 'site': video_site,
             }
             items.append(item)
