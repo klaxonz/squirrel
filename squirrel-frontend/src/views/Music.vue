@@ -132,7 +132,7 @@
           </div>
         </header>
 
-        <div class="music-content custom-scrollbar">
+        <div class="music-content custom-scrollbar" @scroll="handleContentScroll">
           <!-- Ranks Grid View -->
           <div v-if="activeMode === 'rank' && !selectedRank" class="music-discovery-grid">
             <h3 class="text-sm font-semibold mb-3">官方排行榜</h3>
@@ -430,6 +430,7 @@ const currentPage = ref(1)
 const playlistPage = ref(1)
 const playlistHasMore = ref(false)
 const pageSize = 30
+const loadMoreOffset = 240
 const total = ref(0)
 const authStatus = ref<MusicAuthStatus | null>(null)
 const qrOpen = ref(false)
@@ -663,6 +664,18 @@ async function loadMorePlaylists() {
   if (discoveryLoading.value || !playlistHasMore.value) return
   playlistPage.value += 1
   await loadPlaylists(true)
+}
+
+function handleContentScroll(event: Event) {
+  const target = event.currentTarget
+  if (!(target instanceof HTMLElement)) return
+  const distanceToBottom = target.scrollHeight - target.scrollTop - target.clientHeight
+  if (distanceToBottom > loadMoreOffset) return
+  if (activeMode.value === 'playlist' && !selectedPlaylist.value) {
+    void loadMorePlaylists()
+    return
+  }
+  void loadMoreSearch()
 }
 
 async function selectPlaylist(playlist: MusicPlaylist) {
