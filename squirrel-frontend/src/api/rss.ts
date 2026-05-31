@@ -56,5 +56,9 @@ export const subscribeRssFeed = async (payload: { accountId: number; feedUrl: st
 }
 
 export const unsubscribeRssFeed = async (feedId: number, accountId: number) => {
-  return delRequest(`/api/rss/feeds/${feedId}`, { params: { accountId } })
+  return delRequest(`/api/rss/feeds/${feedId}`, null, { params: { accountId } })
+}
+
+export const markRssFeedAsRead = async (feedId: number) => {
+  return post(`/api/rss/feeds/${feedId}/read`)
 }

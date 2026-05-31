@@ -193,6 +193,7 @@
                 v-for="feed in folder.feeds"
                 :key="feed.id"
                 @click="selectFeed(feed.id)"
+                @contextmenu.prevent.stop="showFeedContextMenu(feed, $event)"
                 class="group relative flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-xs transition-all overflow-hidden"
                 :class="selectedFeedId === feed.id ? 'bg-transparent text-primary font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
               >
@@ -1236,6 +1237,52 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- Customized Feed Right-Click Context Menu -->
+    <Teleport to="body">
+      <div
+        v-if="showFeedContextMenuState && contextMenuFeed"
+        class="fixed z-[9999] w-[200px] rounded-xl border border-border/30 bg-popover/90 backdrop-blur-xl p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.18)] animate-fade-in"
+        :style="{ left: feedContextMenuPosition.x + 'px', top: feedContextMenuPosition.y + 'px' }"
+      >
+        <div class="flex flex-col gap-0.5">
+          <button
+            @click="markFeedAllAsRead(contextMenuFeed)"
+            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon name="eye" class="h-3.5 w-3.5 opacity-70" />
+            <span>全部标记为已读</span>
+          </button>
+
+          <button
+            @click="copyFeedLink(contextMenuFeed)"
+            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon name="link" class="h-3.5 w-3.5 opacity-70" />
+            <span>复制订阅源地址</span>
+          </button>
+
+          <button
+            v-if="contextMenuFeed.site_url"
+            @click="openFeedSiteInExternalBrowser(contextMenuFeed)"
+            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon name="externalLink" class="h-3.5 w-3.5 opacity-70" />
+            <span>访问源网站</span>
+          </button>
+
+          <div class="h-px bg-border/20 my-1"></div>
+
+          <button
+            @click="unsubscribeFeedFromContextMenu(contextMenuFeed)"
+            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-destructive cursor-pointer"
+          >
+            <AppIcon name="close" class="h-3.5 w-3.5 opacity-70" />
+            <span>取消订阅</span>
+          </button>
+        </div>
+      </div>
+    </Teleport>
   </AppPageShell>
 </template>
 
@@ -1253,6 +1300,7 @@ import {
   recordRssEntryView,
   subscribeRssFeed,
   syncRssAccount,
+  markRssFeedAsRead,
   testRssAccountConfig,
   unsubscribeRssFeed,
   updateRssAccount,
@@ -1329,6 +1377,10 @@ const activeFilter = ref<'all' | 'unread' | 'starred' | 'recent'>('unread')
 const showContextMenu = ref(false)
 const contextMenuPosition = ref({ x: 0, y: 0 })
 const contextMenuEntry = ref<RssEntry | null>(null)
+
+const showFeedContextMenuState = ref(false)
+const feedContextMenuPosition = ref({ x: 0, y: 0 })
+const contextMenuFeed = ref<RssFeed | null>(null)
 
 // Reader Customization State
 const readerFontSize = ref(Number(localStorage.getItem('rss_reader_font_size')) || 17)
@@ -2192,6 +2244,67 @@ const showArticleContextMenu = (entry: RssEntry, event: MouseEvent) => {
 const closeContextMenu = () => {
   showContextMenu.value = false
   contextMenuEntry.value = null
+  closeFeedContextMenu()
+}
+
+const showFeedContextMenu = (feed: RssFeed, event: MouseEvent) => {
+  contextMenuFeed.value = feed
+  let x = event.clientX
+  let y = event.clientY
+  const menuWidth = 200
+  const menuHeight = 180
+  if (x + menuWidth > window.innerWidth) {
+    x = window.innerWidth - menuWidth - 8
+  }
+  if (y + menuHeight > window.innerHeight) {
+    y = window.innerHeight - menuHeight - 8
+  }
+  feedContextMenuPosition.value = { x, y }
+  showFeedContextMenuState.value = true
+}
+
+const closeFeedContextMenu = () => {
+  showFeedContextMenuState.value = false
+  contextMenuFeed.value = null
+}
+
+const markFeedAllAsRead = async (feed: RssFeed) => {
+  closeFeedContextMenu()
+  loading.value = true
+  const result = await markRssFeedAsRead(feed.id) as ApiResult
+  loading.value = false
+  if (result.error) {
+    setStatus(result.error.message || '标记已读失败', true)
+    return
+  }
+  setStatus(`已将「${feed.title}」全部文章标记为已读`)
+  await loadEntries(true)
+}
+
+const copyFeedLink = async (feed: RssFeed) => {
+  closeFeedContextMenu()
+  if (!feed.feed_url) {
+    setStatus('订阅源地址为空', true)
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(feed.feed_url)
+    setStatus('已成功复制订阅源地址到剪贴板')
+  } catch (err) {
+    setStatus('复制链接失败', true)
+  }
+}
+
+const openFeedSiteInExternalBrowser = (feed: RssFeed) => {
+  closeFeedContextMenu()
+  if (feed.site_url) {
+    window.open(feed.site_url, '_blank')
+  }
+}
+
+const unsubscribeFeedFromContextMenu = (feed: RssFeed) => {
+  closeFeedContextMenu()
+  handleUnsubscribeFeed(feed)
 }
 
 const shouldReloadAfterEntryUpdate = (entry: RssEntry) => {

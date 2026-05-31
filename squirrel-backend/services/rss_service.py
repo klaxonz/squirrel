@@ -1265,6 +1265,34 @@ def unsubscribe_feed(user_id: int, account_id: int, feed_id: int) -> bool:
 
         external_feed_id = feed.external_feed_id
 
+    with get_session() as session:
+        account = _get_account(session, user_id, account_id)
+
+    if account and account.enabled:
+        try:
+            config = _config_from_account(account)
+            client = _client_for_config(config)
+            client.unsubscribe(external_feed_id)
+        except RssServiceError:
+            raise
+        except Exception as e:
+            logger.warning(
+                'Failed to sync unsubscribe to remote RSS service: account_id=%s feed_id=%s error=%s',
+                account_id, feed_id, e,
+            )
+            raise RssServiceError(f'Failed to unsubscribe from remote RSS service: {e}') from e
+
+    with get_session() as session:
+        feed = session.scalars(
+            select(RssFeed).where(
+                RssFeed.id == feed_id,
+                RssFeed.account_id == account_id,
+                RssFeed.user_id == user_id,
+            )
+        ).first()
+        if not feed:
+            return True
+
         entry_rows = session.execute(
             select(RssEntry.id).where(RssEntry.feed_id == feed_id)
         ).all()
@@ -1278,18 +1306,6 @@ def unsubscribe_feed(user_id: int, account_id: int, feed_id: int) -> bool:
         )
         session.delete(feed)
         session.commit()
-
-    try:
-        with get_session() as session:
-            account = _get_account(session, user_id, account_id)
-            if account and account.enabled:
-                config = _config_from_account(account)
-                client = _client_for_config(config)
-                client.unsubscribe(external_feed_id)
-    except RssServiceError:
-        pass
-    except Exception as e:
-        logger.warning('Failed to sync unsubscribe to remote RSS service: account_id=%s feed_id=%s error=%s', account_id, feed_id, e)
 
     return True
 
@@ -1441,6 +1457,22 @@ def update_entries_read_status(
         Thread(target=_bg_update_remote, daemon=True).start()
 
     return {'updated': len(changed_entries)}
+
+
+def mark_feed_as_read(user_id: int, feed_id: int) -> dict[str, Any]:
+    """Mark all unread entries of a specific feed as read and trigger sync with remote RSS server."""
+    with get_session() as session:
+        statement = select(RssEntry.id).where(
+            RssEntry.user_id == user_id,
+            RssEntry.feed_id == feed_id,
+            RssEntry.is_read.is_(False),
+        )
+        entry_ids = list(session.scalars(statement).all())
+
+    if not entry_ids:
+        return {'updated': 0}
+
+    return update_entries_read_status(user_id, entry_ids, is_read=True)
 
 
 def _get_account(session, user_id: int, account_id: int) -> Optional[RssAccount]:

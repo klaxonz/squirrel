@@ -201,9 +201,20 @@ def unsubscribe_rss_feed(
     account_id: int = Query(..., alias='accountId'),
     current_user: User = Depends(get_current_user),
 ):
-    if not rss_service.unsubscribe_feed(current_user.id, account_id, feed_id):
-        return response.not_found('RSS 订阅源不存在')
+    try:
+        if not rss_service.unsubscribe_feed(current_user.id, account_id, feed_id):
+            return response.not_found('RSS 订阅源不存在')
+    except rss_service.RssServiceError as exc:
+        return response.param_error(str(exc))
     return response.success()
+
+
+@router.post('/feeds/{feed_id}/read')
+def mark_rss_feed_as_read(
+    feed_id: int,
+    current_user: User = Depends(get_current_user),
+):
+    return response.success(rss_service.mark_feed_as_read(current_user.id, feed_id))
 
 
 @router.get('/feeds')
