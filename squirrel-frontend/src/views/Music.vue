@@ -12,6 +12,14 @@
           <div class="music-nav-label">发现音乐</div>
           <button
             class="music-nav-item"
+            :class="{ 'active': activeMode === 'recommend' && trackSource === 'recommend' }"
+            @click="setMusicMode('recommend')"
+          >
+            <AppIcon name="star" class="h-4 w-4" />
+            <span>为你推荐</span>
+          </button>
+          <button
+            class="music-nav-item"
             :class="{ 'active': activeMode === 'rank' }"
             @click="setMusicMode('rank')"
           >
@@ -184,7 +192,7 @@
           <!-- Normal Track List Area -->
           <div v-else class="music-tracks-container">
             <!-- Sleek Header Banner for Playlists -->
-            <header class="music-playlist-header" v-if="selectedRank || selectedPlaylist || selectedUserPlaylist || selectedArtist || selectedAlbum || trackSource === 'history' || trackSource === 'listen_rank' || trackSource === 'latest_listen' || trackSource === 'search'">
+            <header class="music-playlist-header" v-if="selectedRank || selectedPlaylist || selectedUserPlaylist || selectedArtist || selectedAlbum || trackSource === 'recommend' || trackSource === 'history' || trackSource === 'listen_rank' || trackSource === 'latest_listen' || trackSource === 'search'">
               <div class="music-playlist-header-cover">
                 <img v-if="selectedRank?.cover" :src="selectedRank.cover" alt="" />
                 <img v-else-if="selectedPlaylist?.cover" :src="selectedPlaylist.cover" alt="" />
@@ -456,6 +464,7 @@ import {
   getMusicPlaylists,
   getMusicRankTracks,
   getMusicRanks,
+  getMusicRecommendations,
   getMusicLatestListenSongs,
   getMusicUserHistory,
   getMusicUserListenRank,
@@ -479,8 +488,8 @@ import { Logger } from '@/utils/logger'
 
 const store = useMusicPlayerStore()
 
-type MusicMode = 'rank' | 'playlist' | 'mine'
-type TrackSource = 'idle' | 'search' | 'rank' | 'playlist' | 'user_playlist' | 'history' | 'listen_rank' | 'latest_listen' | 'artist_detail' | 'album_detail'
+type MusicMode = 'recommend' | 'rank' | 'playlist' | 'mine'
+type TrackSource = 'idle' | 'recommend' | 'search' | 'rank' | 'playlist' | 'user_playlist' | 'history' | 'listen_rank' | 'latest_listen' | 'artist_detail' | 'album_detail'
 
 const query = ref('')
 const tracks = ref<MusicTrack[]>([])
@@ -556,6 +565,7 @@ const qrStatusText = computed(() => {
 })
 
 const trackSourceText = computed(() => {
+  if (trackSource.value === 'recommend') return '酷狗私人 FM'
   if (trackSource.value === 'search') return '搜索结果'
   if (trackSource.value === 'rank') return '酷狗音乐排行榜'
   if (trackSource.value === 'playlist') return '酷狗音乐热门歌单'
@@ -572,6 +582,7 @@ let previousVolume = 0.7
 
 onMounted(() => {
   void loadAuthStatus()
+  void loadRecommendations()
   void loadRanks()
   void loadPlaylists(false)
   void loadUserPlaylists()
@@ -671,7 +682,9 @@ async function searchPage(keyword: string, page: number, append: boolean) {
 
 async function setMusicMode(mode: MusicMode) {
   activeMode.value = mode
-  if (mode === 'rank' && ranks.value.length === 0) {
+  if (mode === 'recommend') {
+    await loadRecommendations()
+  } else if (mode === 'rank' && ranks.value.length === 0) {
     await loadRanks()
   } else if (mode === 'playlist' && playlists.value.length === 0) {
     await loadPlaylists(false)
@@ -679,6 +692,35 @@ async function setMusicMode(mode: MusicMode) {
     if (userPlaylists.value.length === 0) await loadUserPlaylists()
     if (trackSource.value !== 'user_playlist' && trackSource.value !== 'history') await loadUserHistory(false)
   }
+}
+
+async function loadRecommendations() {
+  loading.value = true
+  searched.value = true
+  error.value = ''
+  activeMode.value = 'recommend'
+  trackSource.value = 'recommend'
+  selectedSourceTitle.value = '为你推荐'
+  selectedRank.value = null
+  selectedPlaylist.value = null
+  selectedUserPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  artistAlbums.value = []
+  searchArtists.value = []
+  searchAlbums.value = []
+  currentPage.value = 1
+
+  const { data, error: requestError } = await getMusicRecommendations()
+  loading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load music recommendations', requestError)
+    return
+  }
+  tracks.value = data?.items || []
+  total.value = data?.total || tracks.value.length
+  void loadFavoriteCounts(tracks.value)
 }
 
 async function loadRanks() {

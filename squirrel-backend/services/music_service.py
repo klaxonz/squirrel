@@ -88,6 +88,21 @@ def search_albums(user_id: int, query: str, page: int, page_size: int) -> dict[s
     }
 
 
+def get_personal_fm_tracks(user_id: int) -> dict[str, Any]:
+    payload = _request_kugou('/personal/fm', {}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    rows = data.get('song_list')
+    if not isinstance(rows, list):
+        rows = []
+
+    return {
+        'items': [_normalize_track(row) for row in rows],
+        'page': 1,
+        'page_size': len(rows),
+        'total': len(rows),
+    }
+
+
 def list_ranks(user_id: int) -> dict[str, Any]:
     payload = _request_kugou('/rank/list', {'withsong': 0}, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
@@ -761,7 +776,10 @@ def _normalize_track(row: dict[str, Any]) -> dict[str, Any]:
                 title = title[len(prefix):].strip()
                 break
     duration = (
-        row.get('Duration') or _milliseconds_to_seconds(row.get('timelen')) or _milliseconds_to_seconds(
+        row.get('Duration')
+        or row.get('time_length')
+        or _milliseconds_to_seconds(row.get('timelen'))
+        or _milliseconds_to_seconds(
             audio_info.get('duration_128') or audio_info.get('duration') or row.get('timelength_128')
         )
     )

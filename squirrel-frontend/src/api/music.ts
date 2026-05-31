@@ -194,6 +194,10 @@ export const getMusicRanks = () => {
   return get<MusicRankResult>('/api/music/ranks')
 }
 
+export const getMusicRecommendations = () => {
+  return get<MusicSearchResult>('/api/music/recommend')
+}
+
 export const getMusicRankTracks = (params: {
   rank_id: string
   rank_cid?: string

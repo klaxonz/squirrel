@@ -127,6 +127,62 @@ def test_search_tracks_normalizes_kugou_response(monkeypatch):
     ]
 
 
+def test_get_personal_fm_tracks_normalizes_items(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payload = {
+        'data': {
+            'song_list': [
+                {
+                    'songname': 'FM Artist - FM Song.mp3',
+                    'author_name': 'FM Artist',
+                    'album_name': 'FM Album',
+                    'album_id': 456,
+                    'album_audio_id': 123,
+                    'hash': 'FMHASH',
+                    'time_length': 217,
+                    'sizable_cover': 'http://img.example.test/{size}/fm.jpg',
+                    'singerinfo': [{'id': 789, 'name': 'FM Artist'}],
+                }
+            ]
+        }
+    }
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+
+    result = music_service.get_personal_fm_tracks(1)
+
+    assert result == {
+        'items': [
+            {
+                'id': '123',
+                'title': 'FM Song',
+                'artist': 'FM Artist',
+                'album': 'FM Album',
+                'hash': 'FMHASH',
+                'album_id': '456',
+                'album_audio_id': '123',
+                'duration': 217,
+                'cover': 'http://img.example.test/240/fm.jpg',
+                'artist_id': '789',
+            }
+        ],
+        'page': 1,
+        'page_size': 1,
+        'total': 1,
+    }
+    assert calls == [
+        {
+            'url': 'http://127.0.0.1:3000/personal/fm',
+            'params': {},
+            'headers': {'Authorization': 'token=abc;userid=1;dfid=xyz'},
+        }
+    ]
+
+
 def test_search_artists_normalizes_kugou_response(monkeypatch):
     calls = []
     redis = _FakeRedis()

@@ -67,6 +67,16 @@ def get_music_auth_status(
     return response.success(music_service.get_auth_status(current_user.id))
 
 
+@router.get('/api/music/recommend')
+def get_music_recommendations(
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(music_service.get_personal_fm_tracks(current_user.id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
 @router.get('/api/music/ranks')
 def list_music_ranks(
     current_user: User = Depends(get_current_user),
