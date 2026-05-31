@@ -1146,6 +1146,7 @@
     <Teleport to="body">
       <div
         v-if="showContextMenu && contextMenuEntry"
+        ref="contextMenuRef"
         class="fixed z-[9999] w-[200px] rounded-xl border border-border/30 bg-popover/90 backdrop-blur-xl p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.18)] animate-fade-in"
         :style="{ left: contextMenuPosition.x + 'px', top: contextMenuPosition.y + 'px' }"
       >
@@ -1274,6 +1275,7 @@
     <Teleport to="body">
       <div
         v-if="showFeedContextMenuState && contextMenuFeed"
+        ref="feedContextMenuRef"
         class="fixed z-[9999] w-[200px] rounded-xl border border-border/30 bg-popover/90 backdrop-blur-xl p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.18)] animate-fade-in"
         :style="{ left: feedContextMenuPosition.x + 'px', top: feedContextMenuPosition.y + 'px' }"
       >
@@ -1451,8 +1453,10 @@ const activeFilter = ref<'all' | 'unread' | 'starred' | 'recent'>('unread')
 const showContextMenu = ref(false)
 const contextMenuPosition = ref({ x: 0, y: 0 })
 const contextMenuEntry = ref<RssEntry | null>(null)
+const contextMenuRef = ref<HTMLElement | null>(null)
 
 const showFeedContextMenuState = ref(false)
+const feedContextMenuRef = ref<HTMLElement | null>(null)
 const feedContextMenuPosition = ref({ x: 0, y: 0 })
 const contextMenuFeed = ref<RssFeed | null>(null)
 
@@ -2360,15 +2364,19 @@ const showArticleContextMenu = (entry: RssEntry, event: MouseEvent) => {
   let x = event.clientX
   let y = event.clientY
   const menuWidth = 200
-  const menuHeight = 300
   if (x + menuWidth > window.innerWidth) {
     x = window.innerWidth - menuWidth - 8
   }
-  if (y + menuHeight > window.innerHeight) {
-    y = window.innerHeight - menuHeight - 8
-  }
   contextMenuPosition.value = { x, y }
   showContextMenu.value = true
+  nextTick(() => {
+    const el = contextMenuRef.value
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    if (rect.bottom > window.innerHeight) {
+      contextMenuPosition.value = { x, y: window.innerHeight - rect.height - 8 }
+    }
+  })
 }
 
 const closeContextMenu = () => {
@@ -2382,15 +2390,19 @@ const showFeedContextMenu = (feed: RssFeed, event: MouseEvent) => {
   let x = event.clientX
   let y = event.clientY
   const menuWidth = 200
-  const menuHeight = 180
   if (x + menuWidth > window.innerWidth) {
     x = window.innerWidth - menuWidth - 8
   }
-  if (y + menuHeight > window.innerHeight) {
-    y = window.innerHeight - menuHeight - 8
-  }
   feedContextMenuPosition.value = { x, y }
   showFeedContextMenuState.value = true
+  nextTick(() => {
+    const el = feedContextMenuRef.value
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    if (rect.bottom > window.innerHeight) {
+      feedContextMenuPosition.value = { x, y: window.innerHeight - rect.height - 8 }
+    }
+  })
 }
 
 const closeFeedContextMenu = () => {
