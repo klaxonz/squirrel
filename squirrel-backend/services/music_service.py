@@ -506,6 +506,23 @@ def get_auth_status(user_id: int) -> dict[str, Any]:
     }
 
 
+async def get_user_profile(user_id: int) -> dict[str, Any]:
+    payload = await _request_kugou('/user/detail', {}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    return {
+        'userid': str(data.get('userid') or data.get('user_id') or ''),
+        'nickname': data.get('nickname') or data.get('user_name') or '',
+        'avatar': data.get('user_pic') or data.get('avatar') or data.get('head_url') or '',
+        'level': int(data.get('level') or data.get('user_level') or 0),
+        'gender': str(data.get('gender') or ''),
+        'register_time': str(data.get('register_time') or data.get('reg_time') or ''),
+        'follow_count': int(data.get('follow_count') or data.get('follows') or 0),
+        'fan_count': int(data.get('fan_count') or data.get('fans') or 0),
+        'listen_count': int(data.get('listen_count') or data.get('listen_nums') or 0),
+        'raw': payload,
+    }
+
+
 async def create_qr_login() -> dict[str, Any]:
     key_payload = await _request_kugou('/login/qr/key', {})
     key_data = key_payload.get('data') if isinstance(key_payload.get('data'), dict) else {}

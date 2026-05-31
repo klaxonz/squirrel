@@ -34,6 +34,14 @@
             <AppIcon name="playlistMusic" class="h-4 w-4" />
             <span>热门歌单</span>
           </button>
+          <button
+            class="music-nav-item"
+            :class="{ 'active': activeMode === 'profile' }"
+            @click="loadKugouProfile"
+          >
+            <AppIcon name="user" class="h-4 w-4" />
+            <span>个人主页</span>
+          </button>
         </div>
 
         <div class="music-nav-section">
@@ -72,29 +80,6 @@
       </nav>
 
       <section class="music-main">
-        <header class="music-header">
-          <div class="min-w-0">
-            <h1 class="truncate text-sm font-semibold tracking-wide text-muted-foreground">{{ resultSummary }}</h1>
-          </div>
-          <div class="music-header-actions">
-            <Button variant="outline" class="h-8 rounded-md px-3 text-xs" @click="openQrLogin">
-              <AppIcon name="user" class="h-3.5 w-3.5" />
-              {{ authStatus?.logged_in ? '已登录' : '扫码登录' }}
-            </Button>
-            <form class="music-search" @submit.prevent="submitSearch">
-              <Input
-                v-model="query"
-                class="h-8 border-none bg-muted/50 text-xs focus-visible:ring-1"
-                placeholder="搜索歌曲、歌手、专辑"
-              />
-              <Button type="submit" class="h-8 rounded-md px-3 text-xs" :disabled="(loading && trackSource === 'search') || !query.trim()">
-                <AppIcon v-if="loading" name="loadingSpinner" class="h-3.5 w-3.5 animate-spin" />
-                <AppIcon v-else name="search" class="h-3.5 w-3.5" />
-                搜索
-              </Button>
-            </form>
-          </div>
-        </header>
 
         <div class="music-content custom-scrollbar" @scroll="handleContentScroll">
           <!-- Ranks Grid View -->
@@ -257,6 +242,336 @@
               <div class="music-fm-skeleton-cover" />
               <div class="music-fm-skeleton-line" />
               <div class="music-fm-skeleton-line music-fm-skeleton-line--short" />
+            </div>
+          </div>
+
+          <!-- Kugou Profile View -->
+          <div v-else-if="activeMode === 'profile'" class="music-profile-view">
+            <div v-if="kugouProfileLoading && !kugouProfile" class="music-empty">
+              <AppIcon name="loadingSpinner" class="h-6 w-6 animate-spin text-primary" />
+              <p class="mt-2 text-sm text-muted-foreground">加载主页中...</p>
+            </div>
+            
+            <div v-else-if="kugouProfileError && !kugouProfile" class="music-empty">
+              <AppIcon name="warning" class="h-9 w-9 text-destructive/60" />
+              <p class="mt-2 text-sm text-muted-foreground">{{ kugouProfileError }}</p>
+              <Button class="mt-3 h-8 rounded-md px-3 text-xs" @click="loadKugouProfile">
+                重试
+              </Button>
+            </div>
+            
+            <div v-else-if="!authStatus?.logged_in" class="music-empty">
+              <AppIcon name="user" class="h-9 w-9 text-muted-foreground/30" />
+              <p class="mt-2 text-sm text-muted-foreground">请先扫码登录酷狗账号</p>
+              <Button class="mt-3 h-8 rounded-md px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90" @click="openQrLogin">
+                扫码登录
+              </Button>
+            </div>
+            
+            <div v-else-if="kugouProfile" class="music-profile-layout">
+              <!-- Premium Profile Banner -->
+              <header class="music-profile-banner">
+                <div class="music-profile-banner-glass">
+                  <div class="music-profile-avatar-wrap">
+                    <img v-if="kugouProfile.avatar" :src="kugouProfile.avatar" alt="" class="music-profile-avatar" />
+                    <div v-else class="music-profile-avatar-fallback">
+                      <AppIcon name="user" class="h-10 w-10 text-primary" />
+                    </div>
+                    <span class="music-profile-level-badge">LV.{{ kugouProfile.level }}</span>
+                  </div>
+                  
+                  <div class="music-profile-banner-info">
+                    <h2 class="music-profile-nickname">{{ kugouProfile.nickname || '酷狗用户' }}</h2>
+                    <p class="music-profile-gender-reg">
+                      <span v-if="kugouProfile.gender" class="music-gender-tag">{{ kugouProfile.gender === '1' ? '♂ 男' : (kugouProfile.gender === '2' ? '♀ 女' : '密') }}</span>
+                      <span v-if="kugouProfile.register_time" class="music-reg-date">注册时间: {{ formatRegTime(kugouProfile.register_time) }}</span>
+                    </p>
+                  </div>
+                  
+                  <div class="music-profile-banner-stats">
+                    <div class="music-profile-stat-item">
+                      <span class="music-profile-stat-num">{{ kugouProfile.follow_count }}</span>
+                      <span class="music-profile-stat-name">关注</span>
+                    </div>
+                    <div class="music-profile-stat-item">
+                      <span class="music-profile-stat-num">{{ kugouProfile.fan_count }}</span>
+                      <span class="music-profile-stat-name">粉丝</span>
+                    </div>
+                    <div class="music-profile-stat-item">
+                      <span class="music-profile-stat-num">{{ kugouProfile.listen_count }}</span>
+                      <span class="music-profile-stat-name">累计听歌</span>
+                    </div>
+                  </div>
+                </div>
+              </header>
+              
+              <!-- Tab Navigation -->
+              <div class="music-profile-tabs-wrapper">
+                <div class="music-profile-tabs">
+                  <button 
+                    class="music-profile-tab-btn" 
+                    :class="{ 'active': profileActiveTab === 'playlists' }"
+                    @click="profileActiveTab = 'playlists'"
+                  >
+                    <span>我的歌单</span>
+                  </button>
+                  <button 
+                    class="music-profile-tab-btn" 
+                    :class="{ 'active': profileActiveTab === 'history' }"
+                    @click="profileActiveTab = 'history'"
+                  >
+                    <span>最近播放</span>
+                  </button>
+                  <button 
+                    class="music-profile-tab-btn" 
+                    :class="{ 'active': profileActiveTab === 'rank' }"
+                    @click="profileActiveTab = 'rank'"
+                  >
+                    <span>听歌排行</span>
+                  </button>
+                </div>
+                
+                <!-- Action / Options aligned to the right of tabs -->
+                <div class="music-profile-tab-actions">
+                  <!-- Play all current button -->
+                  <button 
+                    v-if="profileActiveTab !== 'playlists' && currentProfileTracks.length > 0"
+                    class="music-chip music-chip--primary"
+                    @click="playAllProfileTracks(false)"
+                  >
+                    <AppIcon name="play" class="h-3.5 w-3.5" />
+                    播放全部
+                  </button>
+                  
+                  <!-- Rank weekly/all toggle -->
+                  <div v-if="profileActiveTab === 'rank'" class="music-profile-rank-pills">
+                    <button 
+                      class="music-profile-rank-pill"
+                      :class="{ 'active': profileRankType === 0 }"
+                      @click="toggleProfileRankType(0)"
+                    >最近一周</button>
+                    <button 
+                      class="music-profile-rank-pill"
+                      :class="{ 'active': profileRankType === 1 }"
+                      @click="toggleProfileRankType(1)"
+                    >全部累计</button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Tab Panels -->
+              <div class="music-profile-panel">
+                <!-- 1. Playlists Panel -->
+                <div v-if="profileActiveTab === 'playlists'" class="music-profile-playlists">
+                  <!-- Created Playlists -->
+                  <div class="music-profile-playlist-section">
+                    <h3 class="music-profile-section-title">创建的歌单 ({{ createdUserPlaylists.length }})</h3>
+                    <div v-if="createdUserPlaylists.length === 0" class="music-profile-playlist-empty">
+                      暂无自建歌单，您可以在左侧新建歌单
+                    </div>
+                    <div v-else class="music-grid">
+                      <div 
+                        v-for="playlist in createdUserPlaylists" 
+                        :key="playlist.id" 
+                        class="music-grid-card"
+                        @click="selectUserPlaylist(playlist)"
+                      >
+                        <div class="music-source-cover-wrap">
+                          <img v-if="playlist.cover" :src="playlist.cover" alt="" class="music-source-cover" />
+                          <div v-else class="music-source-cover">
+                            <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
+                          </div>
+                          <div class="music-source-play-overlay">
+                            <AppIcon name="play" class="h-6 w-6 text-primary-foreground fill-current" />
+                          </div>
+                        </div>
+                        <span class="music-grid-card-title">{{ playlist.name }}</span>
+                        <span class="music-grid-card-subtitle">{{ playlist.song_count }} 首歌曲</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Collected Playlists -->
+                  <div class="music-profile-playlist-section mt-8">
+                    <h3 class="music-profile-section-title">收藏的歌单 ({{ collectedUserPlaylists.length }})</h3>
+                    <div v-if="collectedUserPlaylists.length === 0" class="music-profile-playlist-empty">
+                      暂无收藏歌单，浏览热门歌单并收藏后将在此显示
+                    </div>
+                    <div v-else class="music-grid">
+                      <div 
+                        v-for="playlist in collectedUserPlaylists" 
+                        :key="playlist.id" 
+                        class="music-grid-card"
+                        @click="selectUserPlaylist(playlist)"
+                      >
+                        <div class="music-source-cover-wrap">
+                          <img v-if="playlist.cover" :src="playlist.cover" alt="" class="music-source-cover" />
+                          <div v-else class="music-source-cover">
+                            <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
+                          </div>
+                          <div class="music-source-play-overlay">
+                            <AppIcon name="play" class="h-6 w-6 text-primary-foreground fill-current" />
+                          </div>
+                        </div>
+                        <span class="music-grid-card-title">{{ playlist.name }}</span>
+                        <span class="music-grid-card-subtitle">{{ playlist.song_count }} 首歌曲</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 2. Recent Playback Panel -->
+                <div v-else-if="profileActiveTab === 'history'" class="music-profile-tracks-list">
+                  <div v-if="profileHistoryLoading" class="music-profile-tracks-loading">
+                    <AppIcon name="loadingSpinner" class="h-5 w-5 animate-spin text-primary" />
+                    <span class="text-xs text-muted-foreground ml-2">正在载入播放历史...</span>
+                  </div>
+                  <div v-else-if="profileHistory.length === 0" class="music-empty py-12">
+                    <AppIcon name="playlistMusic" class="h-8 w-8 text-muted-foreground/30" />
+                    <p class="mt-2 text-xs text-muted-foreground">暂无播放历史记录</p>
+                  </div>
+                  <div v-else class="music-list animate-fade-in">
+                    <!-- Tracks header row -->
+                    <div class="music-row music-row--header text-[0.6875rem] uppercase font-bold tracking-wider text-muted-foreground/50 border-b border-border/15 pb-2 mb-1.5 pointer-events-none select-none">
+                      <div class="text-center">#</div>
+                      <div></div>
+                      <div>歌曲标题</div>
+                      <div class="hidden md:block">专辑</div>
+                      <div class="text-right pr-4 hidden sm:block">时长</div>
+                      <div></div>
+                    </div>
+                    
+                    <article 
+                      v-for="(track, index) in profileHistory" 
+                      :key="`hist-${track.hash}-${index}`" 
+                      class="music-row"
+                      :class="{ 'music-row--active': isCurrentTrack(track) }"
+                      @click="store.playTrack(track)"
+                      @dblclick="store.playTrack(track)"
+                    >
+                      <div class="music-row-index">
+                        <span v-if="isCurrentTrack(track) && store.playing" class="music-row-equalizer">
+                          <span class="eq-bar" /><span class="eq-bar" /><span class="eq-bar" />
+                        </span>
+                        <span v-else class="music-row-number">{{ index + 1 }}</span>
+                        <AppIcon name="play" class="music-row-play h-4 w-4 fill-current" />
+                      </div>
+                      <div class="music-cover">
+                        <img v-if="track.cover" :src="track.cover" alt="" class="h-full w-full object-cover" />
+                        <AppIcon v-else name="playlistMusic" class="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div class="min-w-0">
+                        <div class="truncate text-sm font-medium" :class="{ 'text-primary': isCurrentTrack(track) }">
+                          {{ track.title || '未知歌曲' }}
+                        </div>
+                        <button 
+                          class="music-link mt-1 block truncate text-xs" 
+                          :disabled="!track.artist_id"
+                          @click.stop="selectArtist(track)"
+                        >
+                          {{ track.artist || '未知歌手' }}
+                        </button>
+                      </div>
+                      <button 
+                        class="music-link hidden truncate text-sm md:block" 
+                        :disabled="!track.album_id"
+                        @click.stop="selectAlbum(track)"
+                      >
+                        {{ track.album || '未知专辑' }}
+                      </button>
+                      <div class="music-row-side hidden text-right text-sm tabular-nums text-muted-foreground sm:block">
+                        <span>{{ formatDuration(track.duration) }}</span>
+                      </div>
+                      <div class="music-row-actions">
+                        <button 
+                          class="music-row-action" 
+                          :disabled="!targetUserPlaylistId" 
+                          title="加入所选歌单" 
+                          @click.stop="addTrackToSelectedPlaylist(track)"
+                        >
+                          <AppIcon name="addToPlaylist" class="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+                
+                <!-- 3. Top Rankings Panel -->
+                <div v-else-if="profileActiveTab === 'rank'" class="music-profile-tracks-list">
+                  <div v-if="profileRankLoading" class="music-profile-tracks-loading">
+                    <AppIcon name="loadingSpinner" class="h-5 w-5 animate-spin text-primary" />
+                    <span class="text-xs text-muted-foreground ml-2">正在载入听歌排行...</span>
+                  </div>
+                  <div v-else-if="profileListenRank.length === 0" class="music-empty py-12">
+                    <AppIcon name="playlistMusic" class="h-8 w-8 text-muted-foreground/30" />
+                    <p class="mt-2 text-xs text-muted-foreground">暂无听歌排行数据</p>
+                  </div>
+                  <div v-else class="music-list animate-fade-in">
+                    <!-- Tracks header row -->
+                    <div class="music-row music-row--header text-[0.6875rem] uppercase font-bold tracking-wider text-muted-foreground/50 border-b border-border/15 pb-2 mb-1.5 pointer-events-none select-none">
+                      <div class="text-center">#</div>
+                      <div></div>
+                      <div>歌曲标题</div>
+                      <div class="hidden md:block">专辑</div>
+                      <div class="text-right pr-4 hidden sm:block">时长</div>
+                      <div></div>
+                    </div>
+                    
+                    <article 
+                      v-for="(track, index) in profileListenRank" 
+                      :key="`rank-${track.hash}-${index}`" 
+                      class="music-row"
+                      :class="{ 'music-row--active': isCurrentTrack(track) }"
+                      @click="store.playTrack(track)"
+                      @dblclick="store.playTrack(track)"
+                    >
+                      <div class="music-row-index">
+                        <span v-if="isCurrentTrack(track) && store.playing" class="music-row-equalizer">
+                          <span class="eq-bar" /><span class="eq-bar" /><span class="eq-bar" />
+                        </span>
+                        <span v-else class="music-row-number">{{ index + 1 }}</span>
+                        <AppIcon name="play" class="music-row-play h-4 w-4 fill-current" />
+                      </div>
+                      <div class="music-cover">
+                        <img v-if="track.cover" :src="track.cover" alt="" class="h-full w-full object-cover" />
+                        <AppIcon v-else name="playlistMusic" class="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div class="min-w-0">
+                        <div class="truncate text-sm font-medium" :class="{ 'text-primary': isCurrentTrack(track) }">
+                          {{ track.title || '未知歌曲' }}
+                        </div>
+                        <button 
+                          class="music-link mt-1 block truncate text-xs" 
+                          :disabled="!track.artist_id"
+                          @click.stop="selectArtist(track)"
+                        >
+                          {{ track.artist || '未知歌手' }}
+                        </button>
+                      </div>
+                      <button 
+                        class="music-link hidden truncate text-sm md:block" 
+                        :disabled="!track.album_id"
+                        @click.stop="selectAlbum(track)"
+                      >
+                        {{ track.album || '未知专辑' }}
+                      </button>
+                      <div class="music-row-side hidden text-right text-sm tabular-nums text-muted-foreground sm:block">
+                        <span>{{ formatDuration(track.duration) }}</span>
+                      </div>
+                      <div class="music-row-actions">
+                        <button 
+                          class="music-row-action" 
+                          :disabled="!targetUserPlaylistId" 
+                          title="加入所选歌单" 
+                          @click.stop="addTrackToSelectedPlaylist(track)"
+                        >
+                          <AppIcon name="addToPlaylist" class="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -538,6 +853,9 @@ import {
   getMusicRecommendations,
   getMusicUserPlaylistTracks,
   getMusicUserPlaylists,
+  getMusicUserHistory,
+  getMusicUserListenRank,
+  getMusicUserProfile,
   removeMusicUserPlaylistTracks,
   reportFmGarbage,
   searchMusic,
@@ -551,6 +869,7 @@ import {
   type MusicRank,
   type MusicTrack,
   type MusicUserPlaylist,
+  type MusicUserProfile,
 } from '@/api/music'
 import { useMusicPlayerStore } from '@/stores/musicPlayer'
 import { Logger } from '@/utils/logger'
@@ -559,7 +878,7 @@ const store = useMusicPlayerStore()
 
 type FmMode = 'normal' | 'small' | 'peak'
 
-type MusicMode = 'recommend' | 'rank' | 'playlist' | 'mine'
+type MusicMode = 'recommend' | 'rank' | 'playlist' | 'mine' | 'profile'
 type TrackSource = 'idle' | 'recommend' | 'search' | 'rank' | 'playlist' | 'user_playlist' | 'artist_detail' | 'album_detail'
 
 const query = ref('')
@@ -609,6 +928,119 @@ const qrLogin = ref<MusicQrLogin | null>(null)
 const qrStatus = ref(0)
 let qrTimer: ReturnType<typeof setInterval> | null = null
 
+// User profile reactive state
+const kugouProfile = ref<MusicUserProfile | null>(null)
+const kugouProfileLoading = ref(false)
+const kugouProfileError = ref('')
+
+const profileActiveTab = ref<'playlists' | 'history' | 'rank'>('playlists')
+const profileHistory = ref<MusicTrack[]>([])
+const profileListenRank = ref<MusicTrack[]>([])
+const profileRankType = ref<0 | 1>(0) // 0 recent 1 all-time
+const profileHistoryLoading = ref(false)
+const profileRankLoading = ref(false)
+
+import { useRoute } from 'vue-router'
+import { useUIStore } from '@/stores/ui'
+
+const route = useRoute()
+const uiStore = useUIStore()
+
+watch(() => uiStore.searchTrigger, () => {
+  if (route.name === 'Music') {
+    query.value = uiStore.searchQuery
+    void submitSearch()
+  }
+})
+
+watch(() => uiStore.searchQuery, (newVal) => {
+  if (route.name === 'Music' && newVal !== query.value) {
+    query.value = newVal
+  }
+})
+
+watch(() => authStatus.value?.logged_in, (loggedIn) => {
+  if (loggedIn) {
+    void loadKugouProfile()
+  } else {
+    kugouProfile.value = null
+  }
+})
+
+const createdUserPlaylists = computed(() => userPlaylists.value.filter(pl => !pl.is_collected))
+const collectedUserPlaylists = computed(() => userPlaylists.value.filter(pl => pl.is_collected))
+const currentProfileTracks = computed(() => profileActiveTab.value === 'history' ? profileHistory.value : profileListenRank.value)
+
+function formatRegTime(val: string): string {
+  if (!val) return ''
+  if (/^\d+$/.test(val)) {
+    const d = new Date(Number(val) * 1000)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+  return val.split(' ')[0] || val
+}
+
+async function loadKugouProfile() {
+  activeMode.value = 'profile'
+  trackSource.value = 'idle'
+  kugouProfileError.value = ''
+  if (!authStatus.value?.logged_in) {
+    kugouProfile.value = null
+    return
+  }
+  kugouProfileLoading.value = true
+  const { data, error: requestError } = await getMusicUserProfile()
+  kugouProfileLoading.value = false
+  if (requestError) {
+    kugouProfileError.value = requestError.message || '加载失败'
+    kugouProfile.value = null
+    return
+  }
+  kugouProfile.value = data || null
+  
+  // Load other profile data automatically
+  profileActiveTab.value = 'playlists'
+  void loadProfileHistory()
+  void loadProfileListenRank()
+}
+
+async function loadProfileHistory() {
+  if (!authStatus.value?.logged_in) return
+  profileHistoryLoading.value = true
+  const { data, error: requestError } = await getMusicUserHistory()
+  profileHistoryLoading.value = false
+  if (requestError) {
+    Logger.error('Failed to load profile history', requestError)
+    return
+  }
+  profileHistory.value = data?.items || []
+}
+
+async function loadProfileListenRank() {
+  if (!authStatus.value?.logged_in) return
+  profileRankLoading.value = true
+  const { data, error: requestError } = await getMusicUserListenRank({ type: profileRankType.value })
+  profileRankLoading.value = false
+  if (requestError) {
+    Logger.error('Failed to load profile listen rank', requestError)
+    return
+  }
+  profileListenRank.value = data?.items || []
+}
+
+function playAllProfileTracks(shuffle: boolean) {
+  const targetTracks = currentProfileTracks.value
+  if (targetTracks.length === 0) return
+  store.shuffle = shuffle
+  store.playQueue(targetTracks, 0)
+}
+
+function toggleProfileRankType(type: 0 | 1) {
+  if (profileRankType.value === type) return
+  profileRankType.value = type
+  void loadProfileListenRank()
+}
+
 const resultSummary = computed(() => {
   if (loading.value) return '搜索中'
   if (selectedSourceTitle.value) return `${selectedSourceTitle.value} · ${tracks.value.length} / ${total.value} 首`
@@ -645,6 +1077,11 @@ onMounted(() => {
   void loadRanks()
   void loadPlaylists(false)
   void loadUserPlaylists()
+  
+  if (route.name === 'Music' && uiStore.searchQuery) {
+    query.value = uiStore.searchQuery
+    void submitSearch()
+  }
 })
 
 onUnmounted(() => {
@@ -747,6 +1184,8 @@ async function setMusicMode(mode: MusicMode) {
     await loadRanks()
   } else if (mode === 'playlist' && playlists.value.length === 0) {
     await loadPlaylists(false)
+  } else if (mode === 'profile') {
+    await loadKugouProfile()
   }
 }
 
@@ -2828,6 +3267,326 @@ const formatCompactCount = (count: number) => {
 
   .music-row-actions {
     grid-column: 4;
+  }
+}
+
+/* Music Profile Dashboard Styles */
+.music-profile-view {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.music-profile-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.music-profile-banner {
+  position: relative;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.12) 0%, hsl(var(--accent) / 0.08) 100%);
+  border: 1px solid hsl(var(--border) / 0.15);
+  box-shadow: 0 4px 20px -2px hsl(var(--foreground) / 0.02);
+}
+
+.music-profile-banner-glass {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2rem;
+  padding: 2.25rem 2.5rem;
+  backdrop-filter: blur(12px);
+}
+
+.music-profile-avatar-wrap {
+  position: relative;
+  width: 6.5rem;
+  height: 6.5rem;
+  border-radius: 9999px;
+  padding: 3px;
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+  box-shadow: 0 8px 30px hsl(var(--primary) / 0.15);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+.music-profile-avatar-wrap:hover {
+  transform: scale(1.05);
+  box-shadow: 0 12px 35px hsl(var(--primary) / 0.25);
+}
+
+.music-profile-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  object-fit: cover;
+  background: hsl(var(--background));
+  border: 2px solid hsl(var(--background));
+}
+
+.music-profile-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  background: hsl(var(--muted));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid hsl(var(--background));
+}
+
+.music-profile-level-badge {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  color: hsl(var(--primary-foreground));
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  box-shadow: 0 2px 8px hsl(var(--primary) / 0.3);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.music-profile-banner-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.music-profile-nickname {
+  font-size: 1.625rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.5rem;
+}
+
+.music-profile-gender-reg {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.music-gender-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+}
+
+.music-reg-date {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
+
+.music-profile-banner-stats {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+  background: hsl(var(--background) / 0.35);
+  border: 1px solid hsl(var(--border) / 0.1);
+  padding: 1rem 1.75rem;
+  border-radius: 0.75rem;
+  backdrop-filter: blur(8px);
+}
+
+.music-profile-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  transition: transform 0.2s ease;
+}
+
+.music-profile-stat-item:hover {
+  transform: translateY(-2px);
+}
+
+.music-profile-stat-num {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: hsl(var(--foreground));
+  letter-spacing: -0.01em;
+}
+
+.music-profile-stat-name {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  font-weight: 600;
+}
+
+/* Tabs styles */
+.music-profile-tabs-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid hsl(var(--border) / 0.15);
+  padding-bottom: 0.25rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.music-profile-tabs {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.music-profile-tab-btn {
+  position: relative;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+  padding: 0.625rem 0.25rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.music-profile-tab-btn:hover {
+  color: hsl(var(--foreground));
+}
+
+.music-profile-tab-btn.active {
+  color: hsl(var(--primary));
+}
+
+.music-profile-tab-btn::after {
+  content: '';
+  position: absolute;
+  bottom: -0.25rem;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: hsl(var(--primary));
+  border-radius: 9999px;
+  transform: scaleX(0);
+  transition: transform 0.25s cubic-bezier(0.5, 1.6, 0.4, 1);
+}
+
+.music-profile-tab-btn.active::after {
+  transform: scaleX(1);
+}
+
+.music-profile-tab-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.music-profile-rank-pills {
+  display: flex;
+  background: hsl(var(--muted) / 0.5);
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.1);
+}
+
+.music-profile-rank-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.music-profile-rank-pill:hover {
+  color: hsl(var(--foreground));
+}
+
+.music-profile-rank-pill.active {
+  color: hsl(var(--primary-foreground));
+  background: hsl(var(--primary));
+  box-shadow: 0 2px 8px hsl(var(--primary) / 0.15);
+}
+
+/* Panel and list styles */
+.music-profile-panel {
+  min-height: 20rem;
+}
+
+.music-profile-playlists {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.music-profile-section-title {
+  font-size: 0.9375rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: hsl(var(--foreground) / 0.85);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.music-profile-playlist-empty {
+  padding: 3rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
+  border: 1px dashed hsl(var(--border) / 0.4);
+  border-radius: 0.75rem;
+  background: hsl(var(--muted) / 0.1);
+}
+
+.music-profile-tracks-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.music-profile-tracks-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 767px) {
+  .music-profile-banner-glass {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.5rem;
+    gap: 1.25rem;
+  }
+  
+  .music-profile-banner-stats {
+    width: 100%;
+    justify-content: space-around;
+    padding: 0.75rem 1rem;
+  }
+  
+  .music-profile-tabs-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  
+  .music-profile-tab-actions {
+    justify-content: space-between;
+    width: 100%;
   }
 }
 </style>

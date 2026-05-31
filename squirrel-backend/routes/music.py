@@ -358,6 +358,16 @@ async def create_music_qr_login(
         return response.server_error(str(exc))
 
 
+@router.get('/api/music/user/profile')
+async def get_music_user_profile(
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_user_profile(current_user.id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
 @router.get('/api/music/auth/qr/check')
 async def check_music_qr_login(
     key: str = Query(..., min_length=1, description='二维码 key'),

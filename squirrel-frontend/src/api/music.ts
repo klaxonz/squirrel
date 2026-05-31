@@ -368,6 +368,22 @@ export const getMusicLyric = (params: {
   return get<MusicLyricResult>('/api/music/lyric', params)
 }
 
+export type MusicUserProfile = {
+  userid: string
+  nickname: string
+  avatar: string
+  level: number
+  gender: string
+  register_time: string
+  follow_count: number
+  fan_count: number
+  listen_count: number
+}
+
+export const getMusicUserProfile = () => {
+  return get<MusicUserProfile>('/api/music/user/profile')
+}
+
 export const getMusicAuthStatus = () => {
   return get<MusicAuthStatus>('/api/music/auth/status')
 }

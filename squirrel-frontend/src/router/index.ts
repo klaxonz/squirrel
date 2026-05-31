@@ -274,11 +274,14 @@ const routes = [
     path: '/music',
     name: 'Music',
     component: Music,
-    meta: createNoSearchMeta('音乐', {
+    meta: createSearchMeta('音乐', {
       navKey: 'music',
       sectionLabel: '音乐',
       scrollable: true,
       hideScrollbar: true,
+      search: 'music',
+      searchEvent: 'search:music',
+      searchPlaceholder: '搜索歌曲、歌手、专辑',
     }),
   },
   {

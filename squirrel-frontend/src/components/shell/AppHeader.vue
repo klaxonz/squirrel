@@ -23,6 +23,7 @@
         <div class="flex w-full max-w-[720px] items-center justify-center gap-2">
           <GlobalSearchBar
             class="min-w-0 flex-1"
+            :placeholder="String(route.meta.searchPlaceholder || '搜索或输入命令...')"
             :search-modes="showHomeSearchMode ? searchModeOptions : []"
             :active-search-mode="homeSearchMode"
             @search-mode-change="uiStore.setHomeSearchMode"
