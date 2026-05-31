@@ -870,35 +870,76 @@
             </div>
           </div>
 
-          <!-- Category (dropdown with existing categories + custom) -->
-          <div class="space-y-1.5">
+          <!-- Category (custom dropdown matching app style) -->
+          <div class="space-y-1.5 relative" ref="categoryDropdownRef">
             <label class="text-xs font-semibold text-foreground/80">分类</label>
-            <div class="relative group">
-              <AppIcon name="list" class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 z-10 pointer-events-none" />
-              <select
-                v-model="subscribeForm.category"
-                class="h-9.5 w-full rounded-lg pl-9 pr-8 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200 appearance-none cursor-pointer"
-              >
-                <option value="">自动带出</option>
-                <option
+            <button
+              @click="showCategoryDropdown = !showCategoryDropdown"
+              class="flex h-9.5 w-full items-center justify-between rounded-lg border border-border/40 bg-accent/10 hover:bg-accent/15 px-3 text-xs font-medium transition-all"
+              :class="subscribeForm.category ? 'text-foreground' : 'text-muted-foreground/60'"
+            >
+              <div class="flex items-center gap-2 min-w-0">
+                <AppIcon name="list" class="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+                <span class="truncate">{{ subscribeForm.category || '未选择（自动带出）' }}</span>
+              </div>
+              <AppIcon
+                name="chevronDown"
+                class="h-3.5 w-3.5 shrink-0 text-muted-foreground/50 transition-transform"
+                :class="{ 'rotate-180': showCategoryDropdown }"
+              />
+            </button>
+
+            <div
+              v-if="showCategoryDropdown"
+              class="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-border/50 bg-background/95 backdrop-blur-xl p-1 shadow-lg ring-1 ring-black/5"
+            >
+              <div class="max-h-[200px] overflow-y-auto custom-scrollbar pr-1 space-y-0.5">
+                <button
+                  @click="subscribeForm.category = ''; showCategoryDropdown = false"
+                  class="flex h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent cursor-pointer"
+                  :class="!subscribeForm.category ? 'text-foreground bg-accent/50 font-semibold' : 'text-muted-foreground'"
+                >
+                  <span>未分类</span>
+                </button>
+                <button
                   v-for="cat in existingCategories"
                   :key="cat"
-                  :value="cat"
-                >{{ cat }}</option>
-                <option value="__custom__">新建分类...</option>
-              </select>
-              <AppIcon name="chevronDown" class="absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/50 pointer-events-none" />
-            </div>
-            <Transition name="fade">
-              <div v-if="subscribeForm.category === '__custom__'" class="relative group">
-                <AppIcon name="pencil" class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
-                <Input
-                  v-model="subscribeForm.customCategory"
-                  class="h-9.5 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200"
-                  placeholder="输入新分类名称"
-                />
+                  @click="subscribeForm.category = cat; showCategoryDropdown = false"
+                  class="flex h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent cursor-pointer"
+                  :class="subscribeForm.category === cat ? 'text-foreground bg-accent/50 font-semibold' : 'text-muted-foreground'"
+                >
+                  <span>{{ cat }}</span>
+                </button>
+                <div v-if="!existingCategories.length" class="py-3 text-center text-[10px] text-muted-foreground/60">暂无分类</div>
               </div>
-            </Transition>
+              <div class="h-px w-full bg-border/50 my-1"></div>
+              <div v-if="!showCustomCategoryInput" class="p-1">
+                <button
+                  @click="showCustomCategoryInput = true"
+                  class="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-primary hover:bg-primary/5 transition-colors cursor-pointer"
+                >
+                  <AppIcon name="plus" class="h-3.5 w-3.5" />
+                  新建分类
+                </button>
+              </div>
+              <div v-else class="p-2">
+                <div class="relative">
+                  <Input
+                    v-model="subscribeForm.customCategory"
+                    class="h-8 rounded-lg pl-2.5 pr-8 border border-border/40 bg-accent/10 text-xs font-medium shadow-none"
+                    placeholder="输入分类名称"
+                    @keyup.enter="confirmCustomCategory"
+                    ref="customCategoryInputRef"
+                  />
+                  <button
+                    @click="confirmCustomCategory"
+                    class="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 rounded-md bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors cursor-pointer"
+                  >
+                    <AppIcon name="check" class="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Error / Success Message -->
@@ -1393,6 +1434,10 @@ let entriesObserver: IntersectionObserver | null = null
 // Subscribe Feed state
 const showSubscribeModal = ref(false)
 const subscribingFeed = ref(false)
+const showCategoryDropdown = ref(false)
+const showCustomCategoryInput = ref(false)
+const customCategoryInputRef = ref<HTMLElement | null>(null)
+const categoryDropdownRef = ref<HTMLElement | null>(null)
 const subscribeForm = ref({
   feedUrl: '',
   category: '',
@@ -1426,6 +1471,9 @@ onClickOutside(readerSettingsRef, () => {
 })
 onClickOutside(mobileReaderSettingsRef, () => {
   showMobileReaderSettings.value = false
+})
+onClickOutside(categoryDropdownRef, () => {
+  showCategoryDropdown.value = false
 })
 
 // Computeds
@@ -1750,8 +1798,19 @@ const confirmDeleteAccount = (account: RssAccount) => {
   showDeleteConfirmModal.value = true
 }
 
+const confirmCustomCategory = () => {
+  const name = subscribeForm.value.customCategory.trim()
+  if (name) {
+    subscribeForm.value.category = name
+  }
+  showCustomCategoryInput.value = false
+  showCategoryDropdown.value = false
+}
+
 const closeSubscribeModal = () => {
   showSubscribeModal.value = false
+  showCategoryDropdown.value = false
+  showCustomCategoryInput.value = false
   subscribeForm.value = { feedUrl: '', category: '', customCategory: '' }
   subscribeMessage.value = ''
   subscribeError.value = false
@@ -1763,14 +1822,10 @@ const handleSubscribeFeed = async () => {
   subscribeMessage.value = ''
   subscribeError.value = false
 
-  let category = subscribeForm.value.category
-  if (category === '__custom__') {
-    category = subscribeForm.value.customCategory.trim() || ''
-  }
   const result = await subscribeRssFeed({
     accountId: selectedAccountId.value,
     feedUrl: subscribeForm.value.feedUrl.trim(),
-    category: category || undefined,
+    category: subscribeForm.value.category.trim() || undefined,
   })
 
   subscribingFeed.value = false
