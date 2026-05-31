@@ -569,85 +569,77 @@
           </div>
 
           <!-- Reeder-style Slide-over In-App Browser Overlay -->
-          <Transition name="slide">
-            <div 
-              v-if="showInAppBrowser"
-              class="absolute inset-0 z-30 bg-background flex flex-col shadow-2xl border-l border-border/10"
-            >
-              <!-- Browser Toolbar -->
-              <header class="shrink-0 border-b border-border/10 h-14 px-6 bg-background/95 backdrop-blur-md flex items-center justify-between relative z-20">
-                <!-- Left Side: Back/Close button -->
-                <div class="flex items-center gap-3 min-w-0">
-                  <button 
-                    @click="showInAppBrowser = false"
-                    class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer shrink-0"
-                    title="返回正文"
-                  >
-                    <AppIcon name="back" class="h-4 w-4" />
-                  </button>
-                  <div class="flex flex-col min-w-0 leading-tight">
-                    <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">正在浏览原文</span>
-                    <span class="text-xs font-semibold text-foreground/80 truncate max-w-[150px] lg:max-w-[280px]">
-                      {{ readingEntry.title }}
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Center: Address Bar (Globe + Domain) -->
-                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex items-center bg-accent/20 px-3 py-1 rounded-lg border border-border/5 text-[10px] font-medium text-muted-foreground/85 max-w-[220px] lg:max-w-[320px] truncate shadow-inner">
-                  <AppIcon name="siteFallback" class="h-3.5 w-3.5 mr-1.5 text-muted-foreground/60 shrink-0" />
-                  <span class="truncate">{{ getDisplayDomain(readingEntry.canonical_url) }}</span>
-                </div>
-
-                <!-- Right Side: Navigation & Refresh -->
-                <div class="flex items-center gap-2 shrink-0">
-                  <!-- 刷新 -->
-                  <button 
-                    @click="refreshIframe"
-                    class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer"
-                    title="重新加载"
-                  >
-                    <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': iframeLoading }" />
-                  </button>
-
-                  <!-- 在系统浏览器打开 -->
-                  <a 
-                    :href="readingEntry.canonical_url" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5"
-                    title="在系统浏览器打开"
-                  >
-                    <AppIcon name="externalLink" class="h-4 w-4" />
-                  </a>
-                </div>
-              </header>
-
-              <!-- Iframe Webview Body -->
-              <div class="flex-1 w-full h-full overflow-hidden bg-background relative flex flex-col">
-                <!-- Loading Indicator -->
-                <div v-if="iframeLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10 gap-3">
-                  <div class="h-6 w-6 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-                  <span class="text-xs text-muted-foreground">正在加载原文...</span>
-                </div>
-                
-                <iframe 
-                  :key="iframeLoadKey"
-                  ref="iframeRef"
-                  :src="readingEntry.canonical_url"
-                  :data-load-key="iframeLoadKey"
-                  class="w-full h-full border-0 bg-white"
-                  @load="handleIframeLoad"
-                />
-                
-                <!-- Fallback Browser Alert for web users -->
-                <div v-if="!isElectron && !iframeLoading" class="absolute bottom-4 right-4 max-w-xs p-3 rounded-xl border border-border bg-popover text-popover-foreground shadow-lg text-[10px] leading-relaxed z-20 flex flex-col gap-1.5 animate-fade-in">
-                  <span class="font-bold text-foreground">💡 原文加载提示</span>
-                  <span class="text-muted-foreground">如果页面显示空白或拒绝连接，是由于源站安全策略限制。您可以点击右上角图标在外部浏览器中打开。</span>
+          <div 
+            v-if="showInAppBrowser"
+            class="absolute inset-0 z-30 bg-background flex flex-col shadow-2xl border-l border-border/10 animate-fade-in"
+          >
+            <!-- Browser Toolbar -->
+            <header class="shrink-0 border-b border-border/10 h-14 px-6 bg-background/95 backdrop-blur-md flex items-center justify-between relative z-20">
+              <!-- Left Side: Back/Close button -->
+              <div class="flex items-center gap-3 min-w-0">
+                <button 
+                  @click="showInAppBrowser = false"
+                  class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer shrink-0"
+                  title="返回正文"
+                >
+                  <AppIcon name="back" class="h-4 w-4" />
+                </button>
+                <div class="flex flex-col min-w-0 leading-tight">
+                  <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">正在浏览原文</span>
+                  <span class="text-xs font-semibold text-foreground/80 truncate max-w-[150px] lg:max-w-[280px]">
+                    {{ readingEntry.title }}
+                  </span>
                 </div>
               </div>
+
+              <!-- Center: Address Bar (Globe + Domain) -->
+              <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex items-center bg-accent/20 px-3 py-1 rounded-lg border border-border/5 text-[10px] font-medium text-muted-foreground/85 max-w-[220px] lg:max-w-[320px] truncate shadow-inner">
+                <AppIcon name="siteFallback" class="h-3.5 w-3.5 mr-1.5 text-muted-foreground/60 shrink-0" />
+                <span class="truncate">{{ getDisplayDomain(readingEntry.canonical_url) }}</span>
+              </div>
+
+              <!-- Right Side: Navigation & Refresh -->
+              <div class="flex items-center gap-2 shrink-0">
+                <!-- 刷新 -->
+                <button 
+                  @click="refreshIframe"
+                  class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer"
+                  title="重新加载"
+                >
+                  <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': iframeLoading }" />
+                </button>
+
+                <!-- 在系统浏览器打开 -->
+                <a 
+                  :href="readingEntry.canonical_url" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5"
+                  title="在系统浏览器打开"
+                >
+                  <AppIcon name="externalLink" class="h-4 w-4" />
+                </a>
+              </div>
+            </header>
+
+            <!-- Iframe Webview Body -->
+            <div class="flex-1 w-full h-full overflow-hidden bg-background relative flex flex-col">
+              <iframe 
+                :key="iframeLoadKey"
+                ref="iframeRef"
+                :src="readingEntry.canonical_url"
+                :data-load-key="iframeLoadKey"
+                class="w-full h-full border-0 bg-white"
+                @load="handleIframeLoad"
+              />
+              
+              <!-- Fallback Browser Alert for web users -->
+              <div v-if="!isElectron && !iframeLoading" class="absolute bottom-4 right-4 max-w-xs p-3 rounded-xl border border-border bg-popover text-popover-foreground shadow-lg text-[10px] leading-relaxed z-20 flex flex-col gap-1.5 animate-fade-in">
+                <span class="font-bold text-foreground">💡 原文加载提示</span>
+                <span class="text-muted-foreground">如果页面显示空白或拒绝连接，是由于源站安全策略限制。您可以点击右上角图标在外部浏览器中打开。</span>
+              </div>
             </div>
-          </Transition>
+          </div>
         </div>
         
         <!-- If no article is selected, render a gorgeous premium workstation-themed placeholder -->
@@ -1445,8 +1437,43 @@ const mobileReaderSettingsRef = ref<HTMLElement | null>(null)
 const showInAppBrowser = ref(false)
 const iframeLoading = ref(false)
 const iframeLoadKey = ref(0)
+const iframeProgress = ref(0)
 const isElectron = computed(() => (window as any).desktopApp?.isDesktop === true)
 const iframeRef = ref<HTMLIFrameElement | null>(null)
+
+let progressTimer: number | null = null
+
+const startProgress = () => {
+  if (progressTimer) {
+    clearInterval(progressTimer)
+  }
+  iframeProgress.value = 8
+  progressTimer = window.setInterval(() => {
+    if (iframeProgress.value < 75) {
+      iframeProgress.value += Math.floor(Math.random() * 8 + 4)
+    } else if (iframeProgress.value < 90) {
+      iframeProgress.value += Math.floor(Math.random() * 3 + 1)
+    } else if (iframeProgress.value < 98) {
+      iframeProgress.value += 0.2
+    }
+  }, 120)
+}
+
+const completeProgress = () => {
+  if (progressTimer) {
+    clearInterval(progressTimer)
+    progressTimer = null
+  }
+  iframeProgress.value = 100
+}
+
+const resetIframeState = () => {
+  if (progressTimer) {
+    clearInterval(progressTimer)
+    progressTimer = null
+  }
+  iframeProgress.value = 0
+}
 
 const getDisplayDomain = (urlStr?: string | null) => {
   if (!urlStr) return ''
@@ -1461,17 +1488,20 @@ const refreshIframe = () => {
   if (!showInAppBrowser.value || !readingEntry.value?.canonical_url) return
   iframeLoading.value = true
   iframeLoadKey.value += 1
+  startProgress()
 }
 
 const openInAppBrowser = () => {
   showInAppBrowser.value = true
   iframeLoading.value = true
   iframeLoadKey.value += 1
+  startProgress()
 }
 
 const handleIframeLoad = (event: Event) => {
   const target = event.currentTarget as HTMLIFrameElement | null
   if (!target || target.dataset.loadKey !== String(iframeLoadKey.value)) return
+  completeProgress()
   iframeLoading.value = false
 }
 
@@ -2255,6 +2285,7 @@ const openReader = (entry: RssEntry) => {
   readingEntry.value = entry
   showInAppBrowser.value = false
   iframeLoading.value = false
+  resetIframeState()
 
   const feed = findFeedByEntry(entry)
   const method = feed?.open_method
@@ -2547,6 +2578,7 @@ watch(readingEntry, () => {
   showMobileReaderSettings.value = false
   showInAppBrowser.value = false
   iframeLoading.value = false
+  resetIframeState()
   nextTick(() => {
     if (readerScrollContainer.value) {
       readerScrollContainer.value.scrollTop = 0
@@ -2612,16 +2644,7 @@ onUnmounted(() => {
   background: rgba(var(--primary), 0.2); 
 }
 
-/* Reeder-style slide animation for in-app browser overlay */
-.slide-enter-active,
-.slide-leave-active {
-  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s ease;
-}
-.slide-enter-from,
-.slide-leave-to {
-  transform: translateX(100%);
-  opacity: 0.9;
-}
+
 
 /* Scoped stylesheet for reader content typography — WeRead-inspired */
 .font-serif {
