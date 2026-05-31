@@ -570,8 +570,19 @@ def _normalize_track(row: dict[str, Any]) -> dict[str, Any]:
     audio_info = row.get('audio_info') if isinstance(row.get('audio_info'), dict) else {}
     album_info = row.get('album_info') if isinstance(row.get('album_info'), dict) else {}
     albuminfo = row.get('albuminfo') if isinstance(row.get('albuminfo'), dict) else {}
-    title = row.get('SongName') or row.get('FileName') or row.get('songname') or row.get('name') or ''
     artist = row.get('SingerName') or row.get('author_name') or row.get('singername') or _artist_names(row)
+    title = row.get('SongName') or row.get('FileName') or row.get('songname') or row.get('name') or ''
+    if not (row.get('SongName') or row.get('FileName') or row.get('songname')) and row.get('name') and artist:
+        title = str(title).strip()
+        for suffix in ('.mp3', '.flac', '.m4a', '.aac', '.wav', '.ogg'):
+            if title.lower().endswith(suffix):
+                title = title[:-len(suffix)].strip()
+                break
+        for artist_name in [str(artist), *str(artist).split('、')]:
+            prefix = f'{artist_name} - '
+            if title.startswith(prefix):
+                title = title[len(prefix):].strip()
+                break
     duration = row.get('Duration') or _milliseconds_to_seconds(row.get('timelen')) or _milliseconds_to_seconds(
         audio_info.get('duration_128')
     )

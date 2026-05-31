@@ -359,7 +359,7 @@ def test_get_playlist_tracks_normalizes_items(monkeypatch):
             'count': 1,
             'songs': [
                 {
-                    'name': 'Playlist Song',
+                    'name': 'Singer A、Singer B - Playlist Song.mp3',
                     'mixsongid': 321,
                     'hash': 'PLHASH',
                     'album_id': 654,
