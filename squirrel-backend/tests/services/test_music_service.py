@@ -131,18 +131,12 @@ def test_get_track_play_url_returns_direct_url(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payload = {
-        'data': [
-            {
-                'quality': '128',
-                'expire': 1800,
-                'info': {
-                    'tracker_url': [
-                        'https://cdn.example.test/demo.mp3',
-                        'https://cdn.example.test/demo-backup.mp3',
-                    ],
-                },
-            }
-        ]
+        'bitRate': 128000,
+        'expire': 1800,
+        'url': [
+            'https://cdn.example.test/demo.mp3',
+            'https://cdn.example.test/demo-backup.mp3',
+        ],
     }
 
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
@@ -154,9 +148,27 @@ def test_get_track_play_url_returns_direct_url(monkeypatch):
 
     assert result['url'] == 'https://cdn.example.test/demo.mp3'
     assert result['expires_at'] == 1800
-    assert calls[0]['url'] == 'http://127.0.0.1:3000/song/url/new'
-    assert calls[0]['params'] == {'hash': 'ABC', 'album_audio_id': '123'}
+    assert calls[0]['url'] == 'http://127.0.0.1:3000/song/url'
+    assert calls[0]['params'] == {'hash': 'ABC', 'quality': '128', 'album_audio_id': '123'}
     assert calls[0]['headers'] == {}
+
+
+def test_get_track_play_url_returns_string_url(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payload = {
+        'bitRate': 128000,
+        'url': 'https://cdn.example.test/demo.mp3',
+    }
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+
+    result = music_service.get_track_play_url(1, 'ABC', '123', '128')
+
+    assert result['url'] == 'https://cdn.example.test/demo.mp3'
 
 
 def test_get_track_lyric_returns_timed_lines(monkeypatch):

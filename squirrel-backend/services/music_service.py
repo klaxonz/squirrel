@@ -277,15 +277,13 @@ def get_favorite_counts(user_id: int, mixsongids: str) -> dict[str, Any]:
 def get_track_play_url(user_id: int, hash_value: str, album_audio_id: str | None, quality: str) -> dict[str, Any]:
     params = {
         'hash': hash_value,
+        'quality': quality,
     }
     if album_audio_id:
         params['album_audio_id'] = album_audio_id
 
-    payload = _request_kugou('/song/url/new', params, user_id=user_id)
-    rows = payload.get('data') if isinstance(payload.get('data'), list) else []
-    data = rows[0] if rows and isinstance(rows[0], dict) else {}
-    info = data.get('info') if isinstance(data.get('info'), dict) else {}
-    tracker_url = info.get('tracker_url')
+    payload = _request_kugou('/song/url', params, user_id=user_id)
+    tracker_url = payload.get('url')
     url = ''
     if isinstance(tracker_url, str):
         url = tracker_url
@@ -297,9 +295,9 @@ def get_track_play_url(user_id: int, hash_value: str, album_audio_id: str | None
 
     return {
         'url': url or '',
-        'quality': str(data.get('quality') or info.get('bitrate') or quality),
-        'expires_at': data.get('expire'),
-        'raw': data,
+        'quality': str(payload.get('bitRate') or payload.get('quality') or quality),
+        'expires_at': payload.get('expire'),
+        'raw': payload,
     }
 
 
