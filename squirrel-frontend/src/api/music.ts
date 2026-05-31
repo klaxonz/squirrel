@@ -194,8 +194,29 @@ export const getMusicRanks = () => {
   return get<MusicRankResult>('/api/music/ranks')
 }
 
-export const getMusicRecommendations = () => {
-  return get<MusicSearchResult>('/api/music/recommend')
+export type FmParams = {
+  mode?: 'normal' | 'small' | 'peak'
+  song_pool_id?: string
+  action?: string
+  hash?: string
+  songid?: string
+  playtime?: number
+  is_overplay?: boolean
+  remain_songcnt?: number
+}
+
+export const getMusicRecommendations = (params?: FmParams) => {
+  return get<MusicSearchResult>('/api/music/recommend', params)
+}
+
+export const reportFmGarbage = (params: {
+  hash: string
+  songid?: string
+  playtime?: number
+  mode?: string
+  song_pool_id?: string
+}) => {
+  return get<MusicSearchResult>('/api/music/fm/garbage', params)
 }
 
 export const getMusicRankTracks = (params: {

@@ -69,10 +69,56 @@ def get_music_auth_status(
 
 @router.get('/api/music/recommend')
 def get_music_recommendations(
+    mode: str = Query('normal', description='发现模式: normal/small/peak'),
+    song_pool_id: str | None = Query(None, description='AI 池: 0-Alpha 口味, 1-Beta 风格, 2-Gamma'),
+    action: str | None = Query(None, description='操作: play/garbage'),
+    hash: str | None = Query(None, description='当前音乐 hash'),
+    songid: str | None = Query(None, description='当前音乐 songid'),
+    playtime: int | None = Query(None, ge=0, description='已播放秒数'),
+    is_overplay: bool = Query(False, description='是否播放完成'),
+    remain_songcnt: int = Query(0, ge=0, description='剩余未播歌曲数'),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return response.success(music_service.get_personal_fm_tracks(current_user.id))
+        return response.success(
+            music_service.get_personal_fm_tracks(
+                current_user.id,
+                mode=mode,
+                song_pool_id=song_pool_id,
+                action=action,
+                hash=hash,
+                songid=songid,
+                playtime=playtime,
+                is_overplay=is_overplay,
+                remain_songcnt=remain_songcnt,
+            )
+        )
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/fm/garbage')
+def fm_garbage(
+    hash: str = Query(..., min_length=1, description='音乐 hash'),
+    songid: str | None = Query(None, description='音乐 songid'),
+    playtime: int | None = Query(None, ge=0, description='已播放秒数'),
+    mode: str = Query('normal', description='发现模式: normal/small/peak'),
+    song_pool_id: str | None = Query(None, description='AI 池: 0-Alpha, 1-Beta, 2-Gamma'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(
+            music_service.get_personal_fm_tracks(
+                current_user.id,
+                mode=mode,
+                song_pool_id=song_pool_id,
+                action='garbage',
+                hash=hash,
+                songid=songid,
+                playtime=playtime,
+                is_overplay=True,
+            )
+        )
     except music_service.MusicServiceError as exc:
         return response.server_error(str(exc))
 

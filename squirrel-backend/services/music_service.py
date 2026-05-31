@@ -88,8 +88,34 @@ def search_albums(user_id: int, query: str, page: int, page_size: int) -> dict[s
     }
 
 
-def get_personal_fm_tracks(user_id: int) -> dict[str, Any]:
-    payload = _request_kugou('/personal/fm', {}, user_id=user_id)
+def get_personal_fm_tracks(
+    user_id: int,
+    mode: str = 'normal',
+    song_pool_id: str | None = None,
+    action: str | None = None,
+    hash: str | None = None,
+    songid: str | None = None,
+    playtime: int | None = None,
+    is_overplay: bool = False,
+    remain_songcnt: int = 0,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {'mode': mode}
+    if song_pool_id is not None:
+        params['song_pool_id'] = song_pool_id
+    if action is not None:
+        params['action'] = action
+    if hash is not None:
+        params['hash'] = hash
+    if songid is not None:
+        params['songid'] = songid
+    if playtime is not None:
+        params['playtime'] = playtime
+    if is_overplay:
+        params['is_overplay'] = 1
+    if remain_songcnt > 0:
+        params['remain_songcnt'] = remain_songcnt
+
+    payload = _request_kugou('/personal/fm', params, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
     rows = data.get('song_list')
     if not isinstance(rows, list):

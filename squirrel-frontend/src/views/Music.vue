@@ -189,10 +189,108 @@
             </div>
           </div>
 
+          <!-- FM Radio Card View -->
+          <div v-else-if="trackSource === 'recommend'" class="music-fm-view">
+            <!-- FM Mode Tabs -->
+            <div class="music-fm-tabs">
+              <button
+                class="music-fm-tab"
+                :class="{ 'music-fm-tab--active': fmMode === 'normal' }"
+                @click="switchFmMode('normal')"
+              >发现</button>
+              <button
+                class="music-fm-tab"
+                :class="{ 'music-fm-tab--active': fmMode === 'small' }"
+                @click="switchFmMode('small')"
+              >小众</button>
+              <button
+                class="music-fm-tab"
+                :class="{ 'music-fm-tab--active': fmMode === 'peak' }"
+                @click="switchFmMode('peak')"
+              >30s</button>
+            </div>
+
+            <!-- AI Pool Selector -->
+            <div class="music-fm-pool">
+              <button
+                class="music-fm-chip"
+                :class="{ 'music-fm-chip--active': fmPoolId === '0' }"
+                @click="switchFmPool('0')"
+              >口味推荐</button>
+              <button
+                class="music-fm-chip"
+                :class="{ 'music-fm-chip--active': fmPoolId === '1' }"
+                @click="switchFmPool('1')"
+              >风格推荐</button>
+              <button
+                class="music-fm-chip"
+                :class="{ 'music-fm-chip--active': fmPoolId === '2' }"
+                @click="switchFmPool('2')"
+              >Gamma</button>
+            </div>
+
+            <!-- Now Playing Card -->
+            <div v-if="store.currentTrack" class="music-fm-card">
+              <div class="music-fm-card-cover">
+                <img
+                  v-if="store.currentTrack.cover"
+                  :src="store.currentTrack.cover"
+                  alt=""
+                />
+                <AppIcon v-else name="playlistMusic" class="h-16 w-16 text-muted-foreground/30" />
+              </div>
+
+              <div class="music-fm-card-meta">
+                <h2 class="music-fm-card-title">{{ store.currentTrack.title || '未知歌曲' }}</h2>
+                <button
+                  class="music-fm-card-artist"
+                  :disabled="!store.currentTrack.artist_id"
+                  @click="selectArtist(store.currentTrack)"
+                >{{ store.currentTrack.artist || '未知歌手' }}</button>
+              </div>
+
+              <div class="music-fm-card-actions">
+                <button class="music-fm-btn" title="不喜欢" @click="fmDislike" :disabled="fmLoading">
+                  <AppIcon name="trash" class="h-4 w-4" />
+                </button>
+                <button
+                  class="music-fm-btn"
+                  :class="{ 'text-primary': fmHearted[store.currentTrack.hash] }"
+                  title="喜欢"
+                  @click="fmLike(store.currentTrack)"
+                  :disabled="fmLiking"
+                >
+                  <AppIcon v-if="fmLiking" name="loadingSpinner" class="h-4 w-4 animate-spin" />
+                  <AppIcon v-else name="heart" class="h-4 w-4" />
+                </button>
+                <button class="music-fm-btn music-fm-btn--primary" title="下一首" @click="fmNext" :disabled="fmLoading">
+                  <AppIcon name="next" class="h-5 w-5" />
+                  <span class="text-xs font-medium">下一首</span>
+                </button>
+              </div>
+
+              <p v-if="error" class="music-fm-card-error">{{ error }}</p>
+            </div>
+
+            <!-- Empty state -->
+            <div v-else-if="!loading && !fmLoading" class="music-fm-empty">
+              <AppIcon name="playlistMusic" class="h-12 w-12 text-muted-foreground/20" />
+              <p class="mt-3 text-sm text-muted-foreground">暂无推荐</p>
+              <Button class="mt-3 h-8 text-xs" @click="loadFmBatch()">刷新</Button>
+            </div>
+
+            <!-- Loading skeleton -->
+            <div v-if="loading || fmLoading" class="music-fm-loading">
+              <div class="music-fm-skeleton-cover" />
+              <div class="music-fm-skeleton-line" />
+              <div class="music-fm-skeleton-line music-fm-skeleton-line--short" />
+            </div>
+          </div>
+
           <!-- Normal Track List Area -->
           <div v-else class="music-tracks-container">
             <!-- Sleek Header Banner for Playlists -->
-            <header class="music-playlist-header" v-if="selectedRank || selectedPlaylist || selectedUserPlaylist || selectedArtist || selectedAlbum || trackSource === 'recommend' || trackSource === 'history' || trackSource === 'listen_rank' || trackSource === 'latest_listen' || trackSource === 'search'">
+            <header class="music-playlist-header" v-if="selectedRank || selectedPlaylist || selectedUserPlaylist || selectedArtist || selectedAlbum || trackSource === 'history' || trackSource === 'listen_rank' || trackSource === 'latest_listen' || trackSource === 'search'">
               <div class="music-playlist-header-cover">
                 <img v-if="selectedRank?.cover" :src="selectedRank.cover" alt="" />
                 <img v-else-if="selectedPlaylist?.cover" :src="selectedPlaylist.cover" alt="" />
@@ -471,6 +569,7 @@ import {
   getMusicUserPlaylistTracks,
   getMusicUserPlaylists,
   removeMusicUserPlaylistTracks,
+  reportFmGarbage,
   searchMusic,
   searchMusicAlbums,
   searchMusicArtists,
@@ -487,6 +586,8 @@ import { useMusicPlayerStore } from '@/stores/musicPlayer'
 import { Logger } from '@/utils/logger'
 
 const store = useMusicPlayerStore()
+
+type FmMode = 'normal' | 'small' | 'peak'
 
 type MusicMode = 'recommend' | 'rank' | 'playlist' | 'mine'
 type TrackSource = 'idle' | 'recommend' | 'search' | 'rank' | 'playlist' | 'user_playlist' | 'history' | 'listen_rank' | 'latest_listen' | 'artist_detail' | 'album_detail'
@@ -524,6 +625,16 @@ const playlistHasMore = ref(false)
 const pageSize = 30
 const loadMoreOffset = 240
 const total = ref(0)
+
+// FM state
+const fmMode = ref<FmMode>('normal')
+const fmPoolId = ref('0')
+const fmBatch = ref<MusicTrack[]>([])
+const fmBatchIndex = ref(0)
+const fmLoading = ref(false)
+const fmQueueLen = computed(() => Math.max(0, fmBatch.value.length - fmBatchIndex.value - 1))
+const fmHearted = ref<Record<string, boolean>>({})
+const fmLiking = ref(false)
 const authStatus = ref<MusicAuthStatus | null>(null)
 const qrOpen = ref(false)
 const qrLoading = ref(false)
@@ -541,6 +652,7 @@ const resultSummary = computed(() => {
 const canStep = computed(() => store.queue.length > 1)
 const hasMore = computed(() => {
   if (trackSource.value === 'history') return !!userHistoryBp.value
+  if (trackSource.value === 'recommend') return false
   return ['search', 'rank', 'playlist', 'user_playlist', 'artist_detail', 'album_detail'].includes(trackSource.value) && tracks.value.length < total.value
 })
 
@@ -565,7 +677,7 @@ const qrStatusText = computed(() => {
 })
 
 const trackSourceText = computed(() => {
-  if (trackSource.value === 'recommend') return '酷狗私人 FM'
+  if (trackSource.value === 'recommend') return '酷狗私人 FM · ' + fmModeText.value
   if (trackSource.value === 'search') return '搜索结果'
   if (trackSource.value === 'rank') return '酷狗音乐排行榜'
   if (trackSource.value === 'playlist') return '酷狗音乐热门歌单'
@@ -683,7 +795,7 @@ async function searchPage(keyword: string, page: number, append: boolean) {
 async function setMusicMode(mode: MusicMode) {
   activeMode.value = mode
   if (mode === 'recommend') {
-    await loadRecommendations()
+    await loadFmBatch()
   } else if (mode === 'rank' && ranks.value.length === 0) {
     await loadRanks()
   } else if (mode === 'playlist' && playlists.value.length === 0) {
@@ -694,13 +806,9 @@ async function setMusicMode(mode: MusicMode) {
   }
 }
 
-async function loadRecommendations() {
-  loading.value = true
-  searched.value = true
-  error.value = ''
+function enterFmMode() {
   activeMode.value = 'recommend'
   trackSource.value = 'recommend'
-  selectedSourceTitle.value = '为你推荐'
   selectedRank.value = null
   selectedPlaylist.value = null
   selectedUserPlaylist.value = null
@@ -710,18 +818,167 @@ async function loadRecommendations() {
   searchArtists.value = []
   searchAlbums.value = []
   currentPage.value = 1
+}
 
-  const { data, error: requestError } = await getMusicRecommendations()
-  loading.value = false
-  if (requestError) {
-    error.value = requestError.message
-    Logger.error('Failed to load music recommendations', requestError)
+function fmLike(track: MusicTrack) {
+  if (!track.hash || fmHearted.value[track.hash] || fmLiking.value) return
+  const hash = track.hash
+  fmHearted.value = { ...fmHearted.value, [hash]: true }
+  fmLiking.value = true
+
+  const targetId = userPlaylists.value.find((pl) => pl.name === '我喜欢')?.id
+  if (!targetId) {
+    fmHearted.value = { ...fmHearted.value, [hash]: false }
+    error.value = '未找到「我喜欢」歌单，请先登录酷狗账号'
+    fmLiking.value = false
     return
   }
-  tracks.value = data?.items || []
+
+  addMusicUserPlaylistTrack({
+    list_id: targetId,
+    track: {
+      title: track.title,
+      hash: track.hash,
+      album_id: track.album_id,
+      album_audio_id: track.album_audio_id,
+    },
+  }).then(({ error: addErr }) => {
+    if (addErr) {
+      Logger.error('Failed to like FM track', addErr)
+      fmHearted.value = { ...fmHearted.value, [hash]: false }
+      error.value = '收藏失败，请重试'
+    }
+  }).finally(() => {
+    fmLiking.value = false
+  })
+}
+
+async function loadFmBatch(isNext = false) {
+  loading.value = true
+  fmLoading.value = true
+  error.value = ''
+  enterFmMode()
+  selectedSourceTitle.value = fmModeText.value
+
+  // Ensure user playlists are loaded for like action
+  if (userPlaylists.value.length === 0) {
+    await loadUserPlaylists()
+  }
+
+  const params: Record<string, any> = {
+    mode: fmMode.value,
+    song_pool_id: fmPoolId.value,
+  }
+  if (isNext && store.currentTrack) {
+    params.hash = store.currentTrack.hash
+    params.playtime = Math.max(0, Math.floor(store.currentTime))
+    params.remain_songcnt = fmQueueLen.value
+  }
+
+  const { data, error: requestError } = await getMusicRecommendations(params)
+  loading.value = false
+  fmLoading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load FM batch', requestError)
+    return
+  }
+  fmBatch.value = data?.items || []
+  fmBatchIndex.value = 0
+  tracks.value = fmBatch.value
+  fmHearted.value = {}
   total.value = data?.total || tracks.value.length
   void loadFavoriteCounts(tracks.value)
+
+  if (fmBatch.value.length) {
+    store.playQueue(fmBatch.value, 0)
+  }
 }
+
+async function loadRecommendations() {
+  await loadFmBatch()
+}
+
+const fmModeText = computed(() => {
+  if (fmMode.value === 'normal') return '为你推荐 · 发现'
+  if (fmMode.value === 'small') return '为你推荐 · 小众'
+  return '为你推荐 · 30s'
+})
+
+async function switchFmMode(mode: FmMode) {
+  if (fmMode.value === mode) return
+  fmMode.value = mode
+  await loadFmBatch()
+}
+
+async function switchFmPool(poolId: string) {
+  if (fmPoolId.value === poolId) return
+  fmPoolId.value = poolId
+  await loadFmBatch()
+}
+
+async function fmNext() {
+  if (fmBatchIndex.value < fmBatch.value.length - 1) {
+    fmBatchIndex.value++
+    const next = fmBatch.value[fmBatchIndex.value]
+    if (next) {
+      store.playTrack(next)
+    }
+  } else {
+    await loadFmBatch(true)
+  }
+}
+
+async function fmDislike() {
+  if (!store.currentTrack) return
+  fmLoading.value = true
+  error.value = ''
+  const { data, error: requestError } = await reportFmGarbage({
+    hash: store.currentTrack.hash,
+    playtime: Math.max(0, Math.floor(store.currentTime)),
+    mode: fmMode.value,
+    song_pool_id: fmPoolId.value,
+  })
+  fmLoading.value = false
+  if (requestError) {
+    Logger.error('Failed to report FM garbage', requestError)
+    error.value = requestError.message
+    return
+  }
+  // Remove current track from batch
+  const idx = fmBatch.value.findIndex(t => t.hash === store.currentTrack?.hash)
+  if (idx !== -1) {
+    fmBatch.value.splice(idx, 1)
+    if (fmBatchIndex.value > idx) {
+      fmBatchIndex.value--
+    }
+  }
+  // Merge new tracks from API response
+  const newItems = data?.items || []
+  if (newItems.length) {
+    fmBatch.value.push(...newItems)
+  }
+  // Play next available track
+  if (fmBatch.value.length > 0) {
+    const nextIdx = Math.min(fmBatchIndex.value, fmBatch.value.length - 1)
+    fmBatchIndex.value = nextIdx
+    store.playTrack(fmBatch.value[nextIdx])
+  } else {
+    store.clear()
+    await loadFmBatch()
+  }
+}
+
+// Auto-advance FM when track ends naturally
+watch(() => store.playing, (playing) => {
+  if (!playing && trackSource.value === 'recommend') {
+    const time = store.currentTime
+    const dur = store.duration
+    if (time > 0 && dur > 0 && time >= dur - 1) {
+      void fmNext()
+    }
+  }
+})
 
 async function loadRanks() {
   discoveryLoading.value = true
@@ -2433,6 +2690,229 @@ const formatCompactCount = (count: number) => {
   border: 1px solid hsl(var(--border) / 0.45);
   background: white;
   padding: 0.5rem;
+}
+
+/* FM Radio View */
+.music-fm-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  margin: 0 auto;
+  width: min(100%, 28rem);
+  padding-top: 2rem;
+}
+
+.music-fm-tabs {
+  display: flex;
+  gap: 0.25rem;
+  background: hsl(var(--muted) / 0.3);
+  border-radius: 0.5rem;
+  padding: 0.1875rem;
+}
+
+.music-fm-tab {
+  border: 0;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.375rem 0.875rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.music-fm-tab:hover {
+  color: hsl(var(--foreground));
+}
+
+.music-fm-tab--active {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.06);
+}
+
+.music-fm-pool {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.music-fm-chip {
+  border: 1px solid hsl(var(--border) / 0.4);
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.music-fm-chip:hover {
+  border-color: hsl(var(--primary) / 0.4);
+  color: hsl(var(--foreground));
+}
+
+.music-fm-chip--active {
+  border-color: hsl(var(--primary) / 0.5);
+  background: hsl(var(--primary) / 0.08);
+  color: hsl(var(--primary));
+  font-weight: 600;
+}
+
+.music-fm-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.music-fm-card-cover {
+  width: min(16rem, 70vw);
+  aspect-ratio: 1;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: hsl(var(--muted) / 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px hsl(var(--foreground) / 0.06);
+  transition: transform 0.3s ease;
+}
+
+.music-fm-card-cover:hover {
+  transform: scale(1.02);
+}
+
+.music-fm-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.music-fm-card-meta {
+  text-align: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.music-fm-card-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.music-fm-card-artist {
+  border: 0;
+  background: transparent;
+  color: hsl(var(--primary));
+  font-size: 0.8125rem;
+  font-weight: 500;
+  margin-top: 0.25rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.music-fm-card-artist:hover {
+  text-decoration: underline;
+}
+
+.music-fm-card-artist:disabled {
+  color: hsl(var(--muted-foreground));
+  cursor: default;
+  text-decoration: none;
+}
+
+.music-fm-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.music-fm-btn {
+  display: flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.music-fm-btn:hover {
+  background: hsl(var(--muted) / 0.5);
+}
+
+.music-fm-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.music-fm-btn--primary {
+  gap: 0.375rem;
+  width: auto;
+  padding: 0 1rem;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.music-fm-btn--primary:hover {
+  background: hsl(var(--primary) / 0.9);
+  transform: scale(1.05);
+}
+
+
+
+.music-fm-card-error {
+  font-size: 0.75rem;
+  color: hsl(var(--destructive));
+  text-align: center;
+}
+
+.music-fm-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 16rem;
+}
+
+.music-fm-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: min(16rem, 70vw);
+}
+
+.music-fm-skeleton-cover {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 0.75rem;
+  background: hsl(var(--accent) / 0.35);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.music-fm-skeleton-line {
+  width: 100%;
+  height: 1rem;
+  border-radius: 0.25rem;
+  background: hsl(var(--accent) / 0.2);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.music-fm-skeleton-line--short {
+  width: 60%;
 }
 
 @keyframes pulse {

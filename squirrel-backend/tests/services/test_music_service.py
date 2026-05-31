@@ -177,7 +177,7 @@ def test_get_personal_fm_tracks_normalizes_items(monkeypatch):
     assert calls == [
         {
             'url': 'http://127.0.0.1:3000/personal/fm',
-            'params': {},
+            'params': {'mode': 'normal'},
             'headers': {'Authorization': 'token=abc;userid=1;dfid=xyz'},
         }
     ]
