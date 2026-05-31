@@ -56,9 +56,9 @@
             title="播放/暂停"
             @click="store.togglePlayback()"
           >
-            <AppIcon v-if="store.resolvingUrl" name="loadingSpinner" class="h-5 w-5 animate-spin" />
-            <AppIcon v-else-if="store.playing" name="pause" class="h-5 w-5 fill-current" />
-            <AppIcon v-else name="play" class="h-5 w-5 fill-current" />
+            <AppIcon v-if="store.resolvingUrl" name="loadingSpinner" class="h-5 w-5 animate-spin" stroke-width="2.5" />
+            <AppIcon v-else-if="store.playing" name="pause" class="h-5 w-5 fill-current" stroke-width="2.5" />
+            <AppIcon v-else name="play" class="h-5 w-5 fill-current" stroke-width="2.5" />
           </button>
           <button
             class="music-bar-btn"
@@ -100,9 +100,8 @@
             :title="repeatTitle"
             @click="cycleRepeat"
           >
-            <AppIcon v-if="store.repeat === 'one'" name="loop" class="h-4 w-4" />
+            <AppIcon v-if="store.repeat === 'one'" name="repeatOne" class="h-4 w-4" />
             <AppIcon v-else name="refresh" class="h-4 w-4" />
-            <sup v-if="store.repeat === 'one'" class="music-bar-badge">1</sup>
           </button>
           <div class="music-bar-volume">
             <button class="music-bar-btn" title="音量" @click="toggleMute">
@@ -213,9 +212,9 @@
                   title="播放/暂停"
                   @click="store.togglePlayback()"
                 >
-                  <AppIcon v-if="store.resolvingUrl" name="loadingSpinner" class="h-5 w-5 animate-spin" />
-                  <AppIcon v-else-if="store.playing" name="pause" class="h-5 w-5 fill-current" />
-                  <AppIcon v-else name="play" class="h-5 w-5 fill-current" />
+                  <AppIcon v-if="store.resolvingUrl" name="loadingSpinner" class="h-6 w-6 animate-spin" stroke-width="2.5" />
+                  <AppIcon v-else-if="store.playing" name="pause" class="h-6 w-6 fill-current" />
+                  <AppIcon v-else name="play" class="h-6 w-6 fill-current" />
                 </button>
                 <button
                   class="immersive-btn"
@@ -231,44 +230,11 @@
                   :title="repeatTitle"
                   @click="cycleRepeat"
                 >
-                  <AppIcon v-if="store.repeat === 'one'" name="loop" class="h-5 w-5" />
+                  <AppIcon v-if="store.repeat === 'one'" name="repeatOne" class="h-5 w-5" />
                   <AppIcon v-else name="refresh" class="h-5 w-5" />
-                  <sup v-if="store.repeat === 'one'" class="immersive-badge">1</sup>
                 </button>
               </div>
 
-              <!-- Volume & Quality Grid -->
-              <div class="immersive-sliders-grid">
-                <div class="immersive-slider-row">
-                  <button class="immersive-btn-icon" @click="toggleMute" title="静音">
-                    <AppIcon :name="volumeIcon" class="h-4 w-4" />
-                  </button>
-                  <input
-                    class="immersive-range immersive-range--volume"
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    :value="store.volume"
-                    @input="onVolume"
-                    :style="{ '--slider-progress': `${store.volume * 100}%` }"
-                  />
-                </div>
-
-                <div class="immersive-quality-row">
-                  <span class="text-xs text-foreground/50">音质</span>
-                  <select v-model="store.quality" class="immersive-quality-select">
-                    <option value="128">128k</option>
-                    <option value="320">320k</option>
-                    <option value="flac">FLAC</option>
-                    <option value="high">无损</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div v-if="store.error" class="immersive-error-msg">
-                {{ store.error }}
-              </div>
             </div>
           </div>
 
@@ -532,21 +498,34 @@ onUnmounted(() => {
 }
 
 .music-bar-btn--play {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 9999px;
-  background: hsl(var(--primary));
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.9));
   color: hsl(var(--primary-foreground));
-  transition: transform 0.15s ease, background 0.15s ease;
+  border: none;
+  box-shadow:
+    0 2px 8px hsl(var(--primary) / 0.18),
+    0 0 0 3px hsl(var(--primary) / 0.06);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .music-bar-btn--play:hover {
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.92), hsl(var(--primary) / 0.82));
+  box-shadow:
+    0 4px 16px hsl(var(--primary) / 0.28),
+    0 0 0 6px hsl(var(--primary) / 0.08);
   transform: scale(1.05);
-  background: hsl(var(--primary) / 0.9);
+}
+
+.music-bar-btn--play:active {
+  transform: scale(0.96);
 }
 
 .music-bar-btn--play:disabled {
-  background: hsl(var(--muted-foreground));
+  background: linear-gradient(135deg, hsl(var(--muted-foreground) / 0.25), hsl(var(--muted-foreground) / 0.18));
+  color: hsl(var(--muted-foreground) / 0.4);
+  box-shadow: none;
 }
 
 .music-bar-progress-wrap {
@@ -930,6 +909,11 @@ onUnmounted(() => {
   background: hsl(var(--foreground) / 0.05);
 }
 
+.immersive-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
 .immersive-btn--active {
   color: hsl(var(--primary)) !important;
 }
@@ -937,20 +921,31 @@ onUnmounted(() => {
 .immersive-btn--play {
   width: 3.5rem;
   height: 3.5rem;
-  background: hsl(var(--foreground));
-  color: hsl(var(--background));
-  box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.88));
+  color: hsl(var(--primary-foreground));
+  border: none;
+  box-shadow:
+    0 4px 20px hsl(var(--primary) / 0.22),
+    0 0 0 5px hsl(var(--primary) / 0.05);
 }
 
 .immersive-btn--play:hover {
-  background: hsl(var(--foreground) / 0.9);
-  color: hsl(var(--background));
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.92), hsl(var(--primary) / 0.8));
+  color: hsl(var(--primary-foreground));
   transform: scale(1.05);
-  box-shadow: 0 6px 16px hsl(var(--foreground) / 0.15);
+  box-shadow:
+    0 6px 32px hsl(var(--primary) / 0.32),
+    0 0 0 10px hsl(var(--primary) / 0.07);
 }
 
 .immersive-btn--play:active {
   transform: scale(0.95);
+}
+
+.immersive-btn--play:disabled {
+  background: linear-gradient(135deg, hsl(var(--muted-foreground) / 0.22), hsl(var(--muted-foreground) / 0.15));
+  color: hsl(var(--muted-foreground) / 0.3);
+  box-shadow: none;
 }
 
 .immersive-badge {
@@ -962,101 +957,6 @@ onUnmounted(() => {
   color: hsl(var(--primary-foreground));
   padding: 1px 3px;
   border-radius: 9999px;
-}
-
-.immersive-sliders-grid {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 1.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid hsl(var(--foreground) / 0.06);
-}
-
-.immersive-slider-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex: 1;
-}
-
-.immersive-btn-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: none;
-  background: none;
-  color: hsl(var(--foreground) / 0.5);
-  cursor: pointer;
-}
-
-.immersive-range--volume {
-  width: 6.5rem;
-  background: linear-gradient(
-    to right,
-    hsl(var(--foreground)) var(--slider-progress, 0%),
-    hsl(var(--foreground) / 0.1) var(--slider-progress, 0%)
-  );
-}
-
-.immersive-range--volume::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 9999px;
-  background: hsl(var(--foreground));
-  opacity: 0;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.immersive-range--volume:hover::-webkit-slider-thumb {
-  opacity: 1;
-  transform: scale(1.1);
-}
-
-.immersive-quality-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.immersive-quality-select {
-  background: hsl(var(--foreground) / 0.04);
-  border: 1px solid hsl(var(--border) / 0.4);
-  border-radius: 9999px;
-  color: hsl(var(--foreground));
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.325rem 1.5rem 0.325rem 0.65rem;
-  outline: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.45rem center;
-  background-size: 0.55rem;
-}
-
-.immersive-quality-select:hover {
-  background-color: hsl(var(--foreground) / 0.08);
-  border-color: hsl(var(--border) / 0.7);
-  transform: translateY(-1px);
-}
-
-.immersive-quality-select:active {
-  transform: translateY(0);
-}
-
-.immersive-error-msg {
-  font-size: 0.75rem;
-  color: hsl(var(--destructive));
-  text-align: center;
-  margin-top: 0.5rem;
 }
 
 /* Right Side: Lyrics Box */
