@@ -5,6 +5,7 @@ import httpx
 
 from core.cache import redis_client
 from core.config import settings
+from schemas.music import MusicTrackPayload
 
 
 class MusicServiceError(Exception):
@@ -106,6 +107,170 @@ def get_playlist_tracks(user_id: int, playlist_id: str, page: int, page_size: in
         'page': page,
         'page_size': page_size,
         'total': data.get('count') or len(rows),
+    }
+
+
+def list_user_playlists(user_id: int, page: int, page_size: int) -> dict[str, Any]:
+    payload = _request_kugou('/user/playlist', {
+        'page': page,
+        'pagesize': page_size,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('info', 'lists', 'list', 'data'))
+    if isinstance(data, dict):
+        total = data.get('total') or data.get('count') or len(rows)
+    else:
+        total = len(rows)
+
+    return {
+        'items': [_normalize_user_playlist(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': total,
+        'raw': payload,
+    }
+
+
+def get_user_playlist_tracks(user_id: int, list_id: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = _request_kugou('/playlist/track/all/new', {
+        'listid': list_id,
+        'page': page,
+        'pagesize': page_size,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('info', 'songs', 'list', 'files', 'data'))
+    if isinstance(data, dict):
+        total = data.get('total') or data.get('count') or len(rows)
+    else:
+        total = len(rows)
+
+    return {
+        'items': [_normalize_track(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': total,
+        'raw': payload,
+    }
+
+
+def create_user_playlist(user_id: int, name: str, is_private: bool) -> dict[str, Any]:
+    payload = _request_kugou('/playlist/add', {
+        'name': name,
+        'type': 0,
+        'is_pri': 1 if is_private else 0,
+    }, user_id=user_id)
+    return {'ok': True, 'raw': payload}
+
+
+def collect_playlist(user_id: int, playlist_id: str) -> dict[str, Any]:
+    detail_payload = _request_kugou('/playlist/detail', {'ids': playlist_id}, user_id=user_id)
+    detail_rows = detail_payload.get('data') if isinstance(detail_payload.get('data'), list) else []
+    detail = detail_rows[0] if detail_rows and isinstance(detail_rows[0], dict) else {}
+    list_create_userid = str(detail.get('list_create_userid') or '')
+    list_create_listid = str(detail.get('list_create_listid') or '')
+    name = str(detail.get('name') or '')
+    if not list_create_userid or not list_create_listid or not name:
+        raise MusicServiceError('KuGouMusicApi playlist detail missed collect fields')
+
+    payload = _request_kugou('/playlist/add', {
+        'name': name,
+        'type': 1,
+        'source': detail.get('source') or 1,
+        'list_create_userid': list_create_userid,
+        'list_create_listid': list_create_listid,
+        'list_create_gid': detail.get('list_create_gid') or playlist_id,
+    }, user_id=user_id)
+    return {'ok': True, 'raw': payload}
+
+
+def delete_user_playlist(user_id: int, list_id: str) -> dict[str, Any]:
+    payload = _request_kugou('/playlist/del', {'listid': list_id}, user_id=user_id)
+    return {'ok': True, 'raw': payload}
+
+
+def add_track_to_user_playlist(user_id: int, list_id: str, track: MusicTrackPayload) -> dict[str, Any]:
+    payload = _request_kugou('/playlist/tracks/add', {
+        'listid': list_id,
+        'data': _playlist_track_data(track),
+    }, user_id=user_id)
+    return {'ok': True, 'raw': payload}
+
+
+def remove_tracks_from_user_playlist(user_id: int, list_id: str, file_ids: str) -> dict[str, Any]:
+    payload = _request_kugou('/playlist/tracks/del', {
+        'listid': list_id,
+        'fileids': file_ids,
+    }, user_id=user_id)
+    return {'ok': True, 'raw': payload}
+
+
+def get_user_history(user_id: int, bp: str | None) -> dict[str, Any]:
+    params = {}
+    if bp:
+        params['bp'] = bp
+    payload = _request_kugou('/user/history', params, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('songs', 'info', 'list', 'data'))
+    if isinstance(data, dict):
+        bp = data.get('bp') or data.get('next_bp') or ''
+    else:
+        bp = ''
+
+    return {
+        'items': [_normalize_track(row) for row in rows],
+        'bp': bp,
+        'raw': payload,
+    }
+
+
+def get_user_listen_rank(user_id: int, history_type: int) -> dict[str, Any]:
+    payload = _request_kugou('/user/listen', {'type': history_type}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('songs', 'info', 'list', 'data'))
+
+    return {
+        'items': [_normalize_track(row) for row in rows],
+        'raw': payload,
+    }
+
+
+def get_latest_listen_songs(user_id: int, page_size: int) -> dict[str, Any]:
+    payload = _request_kugou('/lastest/songs/listen', {'pagesize': page_size}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('songs', 'info', 'list', 'data'))
+
+    return {
+        'items': [_normalize_track(row) for row in rows],
+        'raw': payload,
+    }
+
+
+def upload_play_history(user_id: int, album_audio_id: str, played_at: int | None, play_count: int) -> dict[str, Any]:
+    params = {
+        'mxid': album_audio_id,
+        'pc': play_count,
+    }
+    if played_at:
+        params['time'] = played_at
+    payload = _request_kugou('/playhistory/upload', params, user_id=user_id)
+    return {'ok': True, 'raw': payload}
+
+
+def get_favorite_counts(user_id: int, mixsongids: str) -> dict[str, Any]:
+    payload = _request_kugou('/favorite/count', {'mixsongids': mixsongids}, user_id=user_id, use_auth=False)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    rows = data.get('list') if isinstance(data.get('list'), list) else []
+    return {
+        'items': [
+            {
+                'mixsongid': str(row.get('mixsongid') or ''),
+                'count': int(row.get('count') or 0),
+                'count_text': str(row.get('count_text') or ''),
+            }
+            for row in rows
+            if isinstance(row, dict)
+        ],
+        'raw': payload,
     }
 
 
@@ -260,12 +425,15 @@ def _request_kugou(
         raise MusicServiceError('KuGouMusicApi returned invalid payload')
 
     error_code = payload.get('error_code')
-    if error_code:
+    if error_code in (None, '', 0, '0'):
+        error_code = payload.get('errcode')
+    if error_code not in (None, '', 0, '0'):
         message = (
             payload.get('error')
             or payload.get('message')
             or payload.get('msg')
             or payload.get('error_msg')
+            or payload.get('errmsg')
             or 'KuGouMusicApi rejected request'
         )
         raise MusicServiceError(str(message))
@@ -380,6 +548,23 @@ def _normalize_playlist(row: dict[str, Any]) -> dict[str, Any]:
         'play_count': int(row.get('play_count') or 0),
         'collect_count': int(row.get('collectcount') or 0),
         'tags': [tag.get('tag_name') for tag in tags if isinstance(tag, dict) and tag.get('tag_name')],
+        'list_create_userid': str(row.get('list_create_userid') or row.get('suid') or ''),
+        'list_create_listid': str(row.get('list_create_listid') or row.get('specialid') or ''),
+        'list_create_gid': str(row.get('list_create_gid') or row.get('global_collection_id') or ''),
+    }
+
+
+def _normalize_user_playlist(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'id': str(row.get('listid') or row.get('list_id') or row.get('id') or ''),
+        'name': row.get('name') or row.get('listname') or row.get('specialname') or '',
+        'cover': _format_image_url(row.get('pic') or row.get('cover') or row.get('imgurl') or ''),
+        'song_count': int(row.get('count') or row.get('song_count') or row.get('filecount') or 0),
+        'is_default': bool(row.get('is_default') or row.get('is_def')),
+        'is_collected': bool(row.get('is_collected') or row.get('type') == 1),
+        'list_create_userid': str(row.get('list_create_userid') or row.get('userid') or ''),
+        'list_create_listid': str(row.get('list_create_listid') or row.get('listid') or ''),
+        'list_create_gid': str(row.get('list_create_gid') or row.get('gid') or ''),
     }
 
 
@@ -392,7 +577,7 @@ def _normalize_track(row: dict[str, Any]) -> dict[str, Any]:
     duration = row.get('Duration') or _milliseconds_to_seconds(row.get('timelen')) or _milliseconds_to_seconds(
         audio_info.get('duration_128')
     )
-    return {
+    payload = {
         'id': str(
             row.get('AlbumAudioID')
             or row.get('MixSongID')
@@ -417,6 +602,10 @@ def _normalize_track(row: dict[str, Any]) -> dict[str, Any]:
         'duration': int(duration or 0),
         'cover': _format_image_url(row.get('Image') or row.get('cover') or album_info.get('sizable_cover') or ''),
     }
+    file_id = str(row.get('fileid') or row.get('file_id') or '')
+    if file_id:
+        payload['file_id'] = file_id
+    return payload
 
 
 def _artist_names(row: dict[str, Any]) -> str:
@@ -446,3 +635,19 @@ def _milliseconds_to_seconds(value: Any) -> int:
 
 def _format_image_url(value: str) -> str:
     return value.replace('{size}', '240') if value else ''
+
+
+def _first_list(data: Any, keys: tuple[str, ...]) -> list[dict[str, Any]]:
+    if isinstance(data, list):
+        return [item for item in data if isinstance(item, dict)]
+    if not isinstance(data, dict):
+        return []
+    for key in keys:
+        value = data.get(key)
+        if isinstance(value, list):
+            return [item for item in value if isinstance(item, dict)]
+    return []
+
+
+def _playlist_track_data(track: MusicTrackPayload) -> str:
+    return '|'.join([track.title, track.hash, track.album_id, track.album_audio_id])

@@ -326,6 +326,9 @@ def test_list_playlists_normalizes_items(monkeypatch):
                 'play_count': 10,
                 'collect_count': 20,
                 'tags': ['Pop', 'ACG'],
+                'list_create_userid': '',
+                'list_create_listid': '',
+                'list_create_gid': 'collection-demo',
             }
         ],
         'page': 1,
@@ -497,3 +500,209 @@ def test_search_tracks_prefers_redis_cookie(monkeypatch):
     music_service.search_tracks(1, 'demo', 1, 20)
 
     assert calls[0]['headers'] == {'Authorization': 'token=redis-token;userid=9;dfid=redis-dfid'}
+
+
+def test_list_user_playlists_normalizes_kugou_response(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payload = {
+        'data': {
+            'total': 1,
+            'info': [
+                {
+                    'listid': 10,
+                    'name': '我喜欢',
+                    'pic': 'http://img.example.test/{size}/playlist.jpg',
+                    'count': 20,
+                    'userid': 42,
+                    'gid': 'gid-1',
+                }
+            ],
+        }
+    }
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+
+    result = music_service.list_user_playlists(1, 1, 30)
+
+    assert result['items'][0] == {
+        'id': '10',
+        'name': '我喜欢',
+        'cover': 'http://img.example.test/240/playlist.jpg',
+        'song_count': 20,
+        'is_default': False,
+        'is_collected': False,
+        'list_create_userid': '42',
+        'list_create_listid': '10',
+        'list_create_gid': 'gid-1',
+    }
+    assert calls[0]['url'] == 'http://127.0.0.1:3000/user/playlist'
+    assert calls[0]['params'] == {'page': 1, 'pagesize': 30}
+
+
+def test_get_user_playlist_tracks_includes_file_id(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payload = {
+        'data': {
+            'total': 1,
+            'info': [
+                {
+                    'fileid': 99,
+                    'name': 'Liked Song',
+                    'hash': 'HASH',
+                    'album_id': 1,
+                    'mixsongid': 2,
+                    'timelen': 180000,
+                }
+            ],
+        }
+    }
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+
+    result = music_service.get_user_playlist_tracks(1, '10', 1, 30)
+
+    assert result['items'][0]['file_id'] == '99'
+    assert result['items'][0]['hash'] == 'HASH'
+    assert calls[0]['url'] == 'http://127.0.0.1:3000/playlist/track/all/new'
+    assert calls[0]['params'] == {'listid': '10', 'page': 1, 'pagesize': 30}
+
+
+def test_add_track_to_user_playlist_formats_track_data(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payload = {'status': 1}
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+
+    result = music_service.add_track_to_user_playlist(
+        1,
+        '10',
+        music_service.MusicTrackPayload(title='Song', hash='HASH', album_id='1', album_audio_id='2'),
+    )
+
+    assert result['ok'] is True
+    assert calls[0]['url'] == 'http://127.0.0.1:3000/playlist/tracks/add'
+    assert calls[0]['params'] == {'listid': '10', 'data': 'Song|HASH|1|2'}
+
+
+def test_create_and_delete_user_playlist_use_kugou_endpoints(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payloads = [
+        {'status': 1},
+        {'status': 1},
+    ]
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    client = _SequenceClient(calls, payloads)
+    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: client)
+
+    created = music_service.create_user_playlist(1, 'New List', True)
+    deleted = music_service.delete_user_playlist(1, '10')
+
+    assert created['ok'] is True
+    assert deleted['ok'] is True
+    assert calls[0]['url'] == 'http://127.0.0.1:3000/playlist/add'
+    assert calls[0]['params'] == {'name': 'New List', 'type': 0, 'is_pri': 1}
+    assert calls[1]['url'] == 'http://127.0.0.1:3000/playlist/del'
+    assert calls[1]['params'] == {'listid': '10'}
+
+
+def test_collect_playlist_loads_detail_before_add(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payloads = [
+        {
+            'data': [
+                {
+                    'name': 'Public List',
+                    'source': 1,
+                    'list_create_userid': 42,
+                    'list_create_listid': 88,
+                    'list_create_gid': 'collection_3_42_88_0',
+                }
+            ]
+        },
+        {'status': 1},
+    ]
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    client = _SequenceClient(calls, payloads)
+    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: client)
+
+    result = music_service.collect_playlist(1, 'collection_3_42_88_0')
+
+    assert result['ok'] is True
+    assert calls[0]['url'] == 'http://127.0.0.1:3000/playlist/detail'
+    assert calls[0]['params'] == {'ids': 'collection_3_42_88_0'}
+    assert calls[1]['url'] == 'http://127.0.0.1:3000/playlist/add'
+    assert calls[1]['params'] == {
+        'name': 'Public List',
+        'type': 1,
+        'source': 1,
+        'list_create_userid': '42',
+        'list_create_listid': '88',
+        'list_create_gid': 'collection_3_42_88_0',
+    }
+
+
+def test_user_history_and_playhistory_upload_use_kugou_endpoints(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payloads = [
+        {'data': {'bp': 'next-bp', 'songs': [{'name': 'Recent Song', 'hash': 'HASH'}]}},
+        {'status': 1},
+    ]
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    client = _SequenceClient(calls, payloads)
+    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: client)
+
+    history = music_service.get_user_history(1, None)
+    report = music_service.upload_play_history(1, '123', 1710000000, 1)
+
+    assert history['bp'] == 'next-bp'
+    assert history['items'][0]['hash'] == 'HASH'
+    assert report['ok'] is True
+    assert calls[0]['url'] == 'http://127.0.0.1:3000/user/history'
+    assert calls[0]['params'] == {}
+    assert calls[1]['url'] == 'http://127.0.0.1:3000/playhistory/upload'
+    assert calls[1]['params'] == {'mxid': '123', 'pc': 1, 'time': 1710000000}
+
+
+def test_get_favorite_counts_uses_public_endpoint_without_auth(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payload = {
+        'errcode': 0,
+        'data': {'list': [{'mixsongid': 368015985, 'count': 376527, 'count_text': '37w'}]},
+    }
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+
+    result = music_service.get_favorite_counts(1, '368015985')
+
+    assert result['items'] == [{'mixsongid': '368015985', 'count': 376527, 'count_text': '37w'}]
+    assert calls[0]['url'] == 'http://127.0.0.1:3000/favorite/count'
+    assert calls[0]['params'] == {'mixsongids': '368015985'}
+    assert calls[0]['headers'] == {}

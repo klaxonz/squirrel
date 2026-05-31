@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, nextTick, ref, shallowRef } from 'vue'
-import { getMusicLyric, getMusicPlayUrl, type MusicLyricLine, type MusicTrack } from '@/api/music'
+import { getMusicLyric, getMusicPlayUrl, uploadMusicPlayHistory, type MusicLyricLine, type MusicTrack } from '@/api/music'
 import { Logger } from '@/utils/logger'
 
 export type RepeatMode = 'all' | 'one' | 'none'
@@ -207,7 +207,20 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
       return
     }
     audioSrc.value = data.url
+    void _uploadPlayHistory(track)
     await nextTick()
+  }
+
+  async function _uploadPlayHistory(track: MusicTrack) {
+    if (!track.album_audio_id) return
+    const { error: err } = await uploadMusicPlayHistory({
+      album_audio_id: track.album_audio_id,
+      played_at: Math.floor(Date.now() / 1000),
+      play_count: 1,
+    })
+    if (err) {
+      Logger.error('Failed to upload music play history', err)
+    }
   }
 
   function _onEnded() {

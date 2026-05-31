@@ -1,4 +1,4 @@
-import { get, post } from '@/utils/request'
+import { get, post, request } from '@/utils/request'
 
 export type MusicTrack = {
   id: string
@@ -10,6 +10,7 @@ export type MusicTrack = {
   album_audio_id: string
   duration: number
   cover: string
+  file_id?: string
 }
 
 export type MusicSearchResult = {
@@ -43,6 +44,9 @@ export type MusicPlaylist = {
   play_count: number
   collect_count: number
   tags: string[]
+  list_create_userid: string
+  list_create_listid: string
+  list_create_gid: string
 }
 
 export type MusicPlaylistResult = {
@@ -50,6 +54,26 @@ export type MusicPlaylistResult = {
   page: number
   page_size: number
   has_more: boolean
+}
+
+export type MusicUserPlaylist = {
+  id: string
+  name: string
+  cover: string
+  song_count: number
+  is_default: boolean
+  is_collected: boolean
+  list_create_userid: string
+  list_create_listid: string
+  list_create_gid: string
+}
+
+export type MusicUserPlaylistResult = {
+  items: MusicUserPlaylist[]
+  page: number
+  page_size: number
+  total: number
+  raw?: Record<string, unknown>
 }
 
 export type MusicPlayUrl = {
@@ -88,6 +112,22 @@ export type MusicQrLoginStatus = {
   raw: Record<string, unknown>
 }
 
+export type MusicFavoriteCount = {
+  mixsongid: string
+  count: number
+  count_text: string
+}
+
+export type MusicFavoriteCountResult = {
+  items: MusicFavoriteCount[]
+  raw?: Record<string, unknown>
+}
+
+export type MusicActionResult = {
+  ok: boolean
+  raw?: Record<string, unknown>
+}
+
 export const searchMusic = (params: {
   query: string
   page?: number
@@ -123,6 +163,80 @@ export const getMusicPlaylistTracks = (params: {
   page_size?: number
 }) => {
   return get<MusicSearchResult>('/api/music/playlist/tracks', params)
+}
+
+export const getMusicUserPlaylists = (params?: {
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicUserPlaylistResult>('/api/music/user/playlists', params)
+}
+
+export const getMusicUserPlaylistTracks = (params: {
+  list_id: string
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicSearchResult>('/api/music/user/playlist/tracks', params)
+}
+
+export const createMusicUserPlaylist = (data: {
+  name: string
+  is_private?: boolean
+}) => {
+  return post<MusicActionResult>('/api/music/user/playlists', data)
+}
+
+export const collectMusicPlaylist = (playlist_id: string) => {
+  return post<MusicActionResult>('/api/music/user/playlists/collect', { playlist_id })
+}
+
+export const deleteMusicUserPlaylist = (list_id: string) => {
+  return request<MusicActionResult>({ url: '/api/music/user/playlists', method: 'delete', params: { list_id } })
+}
+
+export const addMusicUserPlaylistTrack = (data: {
+  list_id: string
+  track: Pick<MusicTrack, 'title' | 'hash' | 'album_id' | 'album_audio_id'>
+}) => {
+  return post<MusicActionResult>('/api/music/user/playlist/tracks', data)
+}
+
+export const removeMusicUserPlaylistTracks = (params: {
+  list_id: string
+  file_ids: string
+}) => {
+  return request<MusicActionResult>({ url: '/api/music/user/playlist/tracks', method: 'delete', params })
+}
+
+export const getMusicUserHistory = (params?: {
+  bp?: string
+}) => {
+  return get<MusicSearchResult & { bp?: string; raw?: Record<string, unknown> }>('/api/music/user/history', params)
+}
+
+export const getMusicUserListenRank = (params?: {
+  type?: 0 | 1
+}) => {
+  return get<MusicSearchResult & { raw?: Record<string, unknown> }>('/api/music/user/listen-rank', params)
+}
+
+export const getMusicLatestListenSongs = (params?: {
+  page_size?: number
+}) => {
+  return get<MusicSearchResult & { raw?: Record<string, unknown> }>('/api/music/latest-songs/listen', params)
+}
+
+export const uploadMusicPlayHistory = (data: {
+  album_audio_id: string
+  played_at?: number
+  play_count?: number
+}) => {
+  return post<MusicActionResult>('/api/music/playhistory', data)
+}
+
+export const getMusicFavoriteCount = (mixsongids: string) => {
+  return get<MusicFavoriteCountResult>('/api/music/favorite/count', { mixsongids })
 }
 
 export const getMusicPlayUrl = (params: {

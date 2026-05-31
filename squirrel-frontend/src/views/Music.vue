@@ -51,6 +51,13 @@
               >
                 歌单
               </button>
+              <button
+                class="music-tab"
+                :class="{ 'music-tab--active': activeMode === 'mine' }"
+                @click="setMusicMode('mine')"
+              >
+                我的
+              </button>
             </div>
 
             <div v-if="activeMode === 'rank'" class="music-card-strip custom-scrollbar">
@@ -91,6 +98,74 @@
               </button>
               <span v-if="discoveryLoading" class="music-source-loading">加载中</span>
             </div>
+
+            <div v-else-if="activeMode === 'mine'" class="music-card-strip custom-scrollbar">
+              <form class="music-playlist-create" @submit.prevent="createUserPlaylist">
+                <Input
+                  v-model="newPlaylistName"
+                  class="h-8 border-none bg-muted/50 text-xs focus-visible:ring-1"
+                  placeholder="新建歌单"
+                />
+                <label class="music-private-toggle">
+                  <input v-model="newPlaylistPrivate" type="checkbox" />
+                  <span>私密</span>
+                </label>
+                <button class="music-row-action" :disabled="!newPlaylistName.trim()" title="新建歌单" type="submit">
+                  <AppIcon name="plus" class="h-3.5 w-3.5" />
+                </button>
+              </form>
+              <button
+                class="music-source-card music-source-card--compact"
+                :class="{ 'music-source-card--active': trackSource === 'history' }"
+                @click="loadUserHistory(false)"
+              >
+                <AppIcon name="history" class="h-5 w-5 text-muted-foreground" />
+                <span class="truncate text-xs font-medium">最近播放</span>
+                <span class="truncate text-[0.7rem] text-muted-foreground">酷狗历史</span>
+              </button>
+              <button
+                class="music-source-card music-source-card--compact"
+                :class="{ 'music-source-card--active': trackSource === 'listen_rank' && listenRankType === 0 }"
+                @click="loadUserListenRank(0)"
+              >
+                <AppIcon name="list" class="h-5 w-5 text-muted-foreground" />
+                <span class="truncate text-xs font-medium">听歌排行</span>
+                <span class="truncate text-[0.7rem] text-muted-foreground">一周排行</span>
+              </button>
+              <button
+                class="music-source-card music-source-card--compact"
+                :class="{ 'music-source-card--active': trackSource === 'listen_rank' && listenRankType === 1 }"
+                @click="loadUserListenRank(1)"
+              >
+                <AppIcon name="list" class="h-5 w-5 text-muted-foreground" />
+                <span class="truncate text-xs font-medium">累计排行</span>
+                <span class="truncate text-[0.7rem] text-muted-foreground">全部记录</span>
+              </button>
+              <button
+                class="music-source-card music-source-card--compact"
+                :class="{ 'music-source-card--active': trackSource === 'latest_listen' }"
+                @click="loadLatestListenSongs"
+              >
+                <AppIcon name="refresh" class="h-5 w-5 text-muted-foreground" />
+                <span class="truncate text-xs font-medium">继续播放</span>
+                <span class="truncate text-[0.7rem] text-muted-foreground">设备记录</span>
+              </button>
+              <button
+                v-for="playlist in userPlaylists"
+                :key="playlist.id"
+                class="music-source-card music-source-card--playlist"
+                :class="{ 'music-source-card--active': selectedUserPlaylist?.id === playlist.id }"
+                @click="selectUserPlaylist(playlist)"
+              >
+                <img v-if="playlist.cover" :src="playlist.cover" alt="" class="music-source-cover" />
+                <div v-else class="music-source-cover">
+                  <AppIcon name="playlistMusic" class="h-5 w-5 text-muted-foreground" />
+                </div>
+                <span class="truncate text-xs font-medium">{{ playlist.name }}</span>
+                <span class="truncate text-[0.7rem] text-muted-foreground">{{ playlist.song_count }} 首</span>
+              </button>
+              <span v-if="discoveryLoading" class="music-source-loading">加载中</span>
+            </div>
           </div>
 
           <div v-if="loading && tracks.length === 0" class="music-list">
@@ -111,7 +186,31 @@
           <div v-else class="music-list">
             <div class="flex items-center justify-between px-1 pb-2">
               <span class="text-xs text-muted-foreground">{{ tracks.length }} / {{ total }} 首歌曲</span>
-              <div class="flex items-center gap-1">
+              <div class="flex flex-wrap items-center justify-end gap-1">
+                <button
+                  v-if="selectedPlaylist"
+                  class="music-chip"
+                  title="收藏歌单"
+                  @click="collectSelectedPlaylist"
+                >
+                  <AppIcon name="heart" class="h-3.5 w-3.5" />
+                  收藏歌单
+                </button>
+                <button
+                  v-if="selectedUserPlaylist"
+                  class="music-chip music-chip--danger"
+                  title="删除歌单"
+                  @click="deleteSelectedUserPlaylist"
+                >
+                  <AppIcon name="trash" class="h-3.5 w-3.5" />
+                  删除歌单
+                </button>
+                <select v-if="userPlaylists.length" v-model="targetUserPlaylistId" class="music-inline-select">
+                  <option value="">选择歌单</option>
+                  <option v-for="playlist in userPlaylists" :key="playlist.id" :value="playlist.id">
+                    {{ playlist.name }}
+                  </option>
+                </select>
                 <button
                   class="music-chip"
                   title="播放全部"
@@ -158,8 +257,30 @@
                 <div class="mt-1 truncate text-xs text-muted-foreground">{{ track.artist || '未知歌手' }}</div>
               </div>
               <div class="hidden truncate text-sm text-muted-foreground md:block">{{ track.album || '未知专辑' }}</div>
-              <div class="hidden text-right text-sm tabular-nums text-muted-foreground sm:block">
-                {{ formatDuration(track.duration) }}
+              <div class="music-row-side hidden text-right text-sm tabular-nums text-muted-foreground sm:block">
+                <span>{{ formatDuration(track.duration) }}</span>
+                <span v-if="favoriteCounts[track.album_audio_id]" class="music-favorite-count">
+                  <AppIcon name="heart" class="h-3 w-3" />
+                  {{ formatCompactCount(favoriteCounts[track.album_audio_id]) }}
+                </span>
+              </div>
+              <div class="music-row-actions">
+                <button
+                  class="music-row-action"
+                  :disabled="!targetUserPlaylistId"
+                  title="加入所选歌单"
+                  @click.stop="addTrackToSelectedPlaylist(track)"
+                >
+                  <AppIcon name="addToPlaylist" class="h-3.5 w-3.5" />
+                </button>
+                <button
+                  v-if="trackSource === 'user_playlist' && track.file_id"
+                  class="music-row-action"
+                  title="从歌单删除"
+                  @click.stop="removeTrackFromSelectedPlaylist(track)"
+                >
+                  <AppIcon name="close" class="h-3.5 w-3.5" />
+                </button>
               </div>
             </article>
 
@@ -328,32 +449,46 @@ import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
+  collectMusicPlaylist,
   checkMusicQrLogin,
+  createMusicUserPlaylist,
   createMusicQrLogin,
+  deleteMusicUserPlaylist,
   getMusicAuthStatus,
+  addMusicUserPlaylistTrack,
+  getMusicFavoriteCount,
   getMusicPlaylistTracks,
   getMusicPlaylists,
   getMusicRankTracks,
   getMusicRanks,
+  getMusicLatestListenSongs,
+  getMusicUserHistory,
+  getMusicUserListenRank,
+  getMusicUserPlaylistTracks,
+  getMusicUserPlaylists,
+  removeMusicUserPlaylistTracks,
   searchMusic,
   type MusicAuthStatus,
   type MusicPlaylist,
   type MusicQrLogin,
   type MusicRank,
   type MusicTrack,
+  type MusicUserPlaylist,
 } from '@/api/music'
 import { useMusicPlayerStore } from '@/stores/musicPlayer'
 import { Logger } from '@/utils/logger'
 
 const store = useMusicPlayerStore()
 
-type MusicMode = 'recommend' | 'rank' | 'playlist'
-type TrackSource = 'recommend' | 'search' | 'rank' | 'playlist'
+type MusicMode = 'recommend' | 'rank' | 'playlist' | 'mine'
+type TrackSource = 'recommend' | 'search' | 'rank' | 'playlist' | 'user_playlist' | 'history' | 'listen_rank' | 'latest_listen'
 
 const query = ref('')
 const tracks = ref<MusicTrack[]>([])
 const ranks = ref<MusicRank[]>([])
 const playlists = ref<MusicPlaylist[]>([])
+const userPlaylists = ref<MusicUserPlaylist[]>([])
+const favoriteCounts = ref<Record<string, number>>({})
 const loading = ref(false)
 const discoveryLoading = ref(false)
 const searched = ref(false)
@@ -364,6 +499,12 @@ const trackSource = ref<TrackSource>('recommend')
 const selectedSourceTitle = ref('')
 const selectedRank = ref<MusicRank | null>(null)
 const selectedPlaylist = ref<MusicPlaylist | null>(null)
+const selectedUserPlaylist = ref<MusicUserPlaylist | null>(null)
+const targetUserPlaylistId = ref('')
+const newPlaylistName = ref('')
+const newPlaylistPrivate = ref(false)
+const userHistoryBp = ref('')
+const listenRankType = ref<0 | 1>(0)
 const currentPage = ref(1)
 const playlistPage = ref(1)
 const playlistHasMore = ref(false)
@@ -387,7 +528,10 @@ const resultSummary = computed(() => {
 })
 
 const canStep = computed(() => store.queue.length > 1)
-const hasMore = computed(() => trackSource.value !== 'recommend' && tracks.value.length < total.value)
+const hasMore = computed(() => {
+  if (trackSource.value === 'history') return !!userHistoryBp.value
+  return ['search', 'rank', 'playlist', 'user_playlist'].includes(trackSource.value) && tracks.value.length < total.value
+})
 
 const repeatTitle = computed(() => {
   if (store.repeat === 'all') return '列表循环'
@@ -416,6 +560,7 @@ onMounted(() => {
   void loadSuggestions()
   void loadRanks()
   void loadPlaylists(false)
+  void loadUserPlaylists()
 })
 
 onUnmounted(() => {
@@ -440,6 +585,7 @@ async function loadSuggestions() {
     total.value = data.total || data.items.length
     trackSource.value = 'recommend'
     selectedSourceTitle.value = ''
+    void loadFavoriteCounts(tracks.value)
   }
 }
 
@@ -451,6 +597,7 @@ const submitSearch = async () => {
   trackSource.value = 'search'
   selectedRank.value = null
   selectedPlaylist.value = null
+  selectedUserPlaylist.value = null
   selectedSourceTitle.value = `搜索：${keyword}`
   currentPage.value = 1
   await searchPage(keyword, currentPage.value, false)
@@ -466,6 +613,10 @@ async function loadMoreSearch() {
     await loadRankTracks(selectedRank.value, currentPage.value, true)
   } else if (trackSource.value === 'playlist' && selectedPlaylist.value) {
     await loadPlaylistTracks(selectedPlaylist.value, currentPage.value, true)
+  } else if (trackSource.value === 'user_playlist' && selectedUserPlaylist.value) {
+    await loadUserPlaylistTracks(selectedUserPlaylist.value, currentPage.value, true)
+  } else if (trackSource.value === 'history') {
+    await loadUserHistory(true)
   }
 }
 
@@ -488,6 +639,7 @@ async function searchPage(keyword: string, page: number, append: boolean) {
   const items = data?.items || []
   tracks.value = append ? [...tracks.value, ...items] : items
   total.value = data?.total || tracks.value.length
+  void loadFavoriteCounts(tracks.value)
 }
 
 async function setMusicMode(mode: MusicMode) {
@@ -495,12 +647,16 @@ async function setMusicMode(mode: MusicMode) {
   if (mode === 'recommend') {
     selectedRank.value = null
     selectedPlaylist.value = null
+    selectedUserPlaylist.value = null
     selectedSourceTitle.value = ''
     await loadSuggestions()
   } else if (mode === 'rank' && ranks.value.length === 0) {
     await loadRanks()
   } else if (mode === 'playlist' && playlists.value.length === 0) {
     await loadPlaylists(false)
+  } else if (mode === 'mine') {
+    if (userPlaylists.value.length === 0) await loadUserPlaylists()
+    if (trackSource.value !== 'user_playlist' && trackSource.value !== 'history') await loadUserHistory(false)
   }
 }
 
@@ -518,6 +674,7 @@ async function loadRanks() {
 async function selectRank(rank: MusicRank) {
   selectedRank.value = rank
   selectedPlaylist.value = null
+  selectedUserPlaylist.value = null
   trackSource.value = 'rank'
   selectedSourceTitle.value = rank.name
   currentPage.value = 1
@@ -542,6 +699,7 @@ async function loadRankTracks(rank: MusicRank, page: number, append: boolean) {
   const items = data?.items || []
   tracks.value = append ? [...tracks.value, ...items] : items
   total.value = data?.total || tracks.value.length
+  void loadFavoriteCounts(tracks.value)
 }
 
 async function loadPlaylists(append: boolean) {
@@ -570,6 +728,7 @@ async function loadMorePlaylists() {
 async function selectPlaylist(playlist: MusicPlaylist) {
   selectedPlaylist.value = playlist
   selectedRank.value = null
+  selectedUserPlaylist.value = null
   trackSource.value = 'playlist'
   selectedSourceTitle.value = playlist.name
   currentPage.value = 1
@@ -593,6 +752,221 @@ async function loadPlaylistTracks(playlist: MusicPlaylist, page: number, append:
   const items = data?.items || []
   tracks.value = append ? [...tracks.value, ...items] : items
   total.value = data?.total || tracks.value.length
+  void loadFavoriteCounts(tracks.value)
+}
+
+async function loadUserPlaylists() {
+  const { data, error: requestError } = await getMusicUserPlaylists({ page: 1, page_size: 30 })
+  if (requestError) {
+    Logger.error('Failed to load music user playlists', requestError)
+    return
+  }
+  userPlaylists.value = data?.items || []
+  if (!targetUserPlaylistId.value && userPlaylists.value.length) {
+    targetUserPlaylistId.value = userPlaylists.value[0].id
+  }
+}
+
+async function createUserPlaylist() {
+  const name = newPlaylistName.value.trim()
+  if (!name) return
+  const { error: requestError } = await createMusicUserPlaylist({
+    name,
+    is_private: newPlaylistPrivate.value,
+  })
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to create music user playlist', requestError)
+    return
+  }
+  newPlaylistName.value = ''
+  newPlaylistPrivate.value = false
+  await loadUserPlaylists()
+}
+
+async function selectUserPlaylist(playlist: MusicUserPlaylist) {
+  selectedUserPlaylist.value = playlist
+  selectedRank.value = null
+  selectedPlaylist.value = null
+  targetUserPlaylistId.value = playlist.id
+  trackSource.value = 'user_playlist'
+  selectedSourceTitle.value = playlist.name
+  currentPage.value = 1
+  await loadUserPlaylistTracks(playlist, currentPage.value, false)
+}
+
+async function collectSelectedPlaylist() {
+  if (!selectedPlaylist.value?.id) return
+  const { error: requestError } = await collectMusicPlaylist(selectedPlaylist.value.id)
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to collect music playlist', requestError)
+    return
+  }
+  await loadUserPlaylists()
+}
+
+async function deleteSelectedUserPlaylist() {
+  if (!selectedUserPlaylist.value?.id) return
+  if (!window.confirm(`删除歌单「${selectedUserPlaylist.value.name}」？`)) return
+  const deletedId = selectedUserPlaylist.value.id
+  const { error: requestError } = await deleteMusicUserPlaylist(deletedId)
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to delete music user playlist', requestError)
+    return
+  }
+  selectedUserPlaylist.value = null
+  if (targetUserPlaylistId.value === deletedId) {
+    targetUserPlaylistId.value = ''
+  }
+  tracks.value = []
+  total.value = 0
+  selectedSourceTitle.value = ''
+  await loadUserPlaylists()
+}
+
+async function loadUserPlaylistTracks(playlist: MusicUserPlaylist, page: number, append: boolean) {
+  loading.value = true
+  searched.value = true
+  error.value = ''
+  const { data, error: requestError } = await getMusicUserPlaylistTracks({
+    list_id: playlist.id,
+    page,
+    page_size: pageSize,
+  })
+  loading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load music user playlist tracks', requestError)
+    return
+  }
+  const items = data?.items || []
+  tracks.value = append ? [...tracks.value, ...items] : items
+  total.value = data?.total || tracks.value.length
+  void loadFavoriteCounts(tracks.value)
+}
+
+async function loadUserHistory(append: boolean) {
+  loading.value = true
+  searched.value = true
+  error.value = ''
+  if (!append) currentPage.value = 1
+  selectedSourceTitle.value = '最近播放'
+  trackSource.value = 'history'
+  selectedUserPlaylist.value = null
+  selectedRank.value = null
+  selectedPlaylist.value = null
+  const { data, error: requestError } = await getMusicUserHistory({ bp: append ? userHistoryBp.value : undefined })
+  loading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load music user history', requestError)
+    return
+  }
+  const items = data?.items || []
+  tracks.value = append ? [...tracks.value, ...items] : items
+  total.value = tracks.value.length
+  userHistoryBp.value = data?.bp || ''
+  void loadFavoriteCounts(tracks.value)
+}
+
+async function loadUserListenRank(type: 0 | 1) {
+  loading.value = true
+  searched.value = true
+  error.value = ''
+  listenRankType.value = type
+  selectedSourceTitle.value = type === 0 ? '一周排行' : '累计排行'
+  trackSource.value = 'listen_rank'
+  selectedUserPlaylist.value = null
+  selectedRank.value = null
+  selectedPlaylist.value = null
+  const { data, error: requestError } = await getMusicUserListenRank({ type })
+  loading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load music user listen rank', requestError)
+    return
+  }
+  tracks.value = data?.items || []
+  total.value = tracks.value.length
+  void loadFavoriteCounts(tracks.value)
+}
+
+async function loadLatestListenSongs() {
+  loading.value = true
+  searched.value = true
+  error.value = ''
+  selectedSourceTitle.value = '继续播放'
+  trackSource.value = 'latest_listen'
+  selectedUserPlaylist.value = null
+  selectedRank.value = null
+  selectedPlaylist.value = null
+  const { data, error: requestError } = await getMusicLatestListenSongs({ page_size: pageSize })
+  loading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load latest music listen songs', requestError)
+    return
+  }
+  tracks.value = data?.items || []
+  total.value = tracks.value.length
+  void loadFavoriteCounts(tracks.value)
+}
+
+async function addTrackToSelectedPlaylist(track: MusicTrack) {
+  if (!targetUserPlaylistId.value || !track.hash) return
+  const { error: requestError } = await addMusicUserPlaylistTrack({
+    list_id: targetUserPlaylistId.value,
+    track: {
+      title: track.title,
+      hash: track.hash,
+      album_id: track.album_id,
+      album_audio_id: track.album_audio_id,
+    },
+  })
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to add music track to user playlist', requestError)
+    return
+  }
+  if (selectedUserPlaylist.value?.id === targetUserPlaylistId.value) {
+    await loadUserPlaylistTracks(selectedUserPlaylist.value, 1, false)
+  }
+  await loadUserPlaylists()
+}
+
+async function removeTrackFromSelectedPlaylist(track: MusicTrack) {
+  if (!selectedUserPlaylist.value?.id || !track.file_id) return
+  const { error: requestError } = await removeMusicUserPlaylistTracks({
+    list_id: selectedUserPlaylist.value.id,
+    file_ids: track.file_id,
+  })
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to remove music track from user playlist', requestError)
+    return
+  }
+  await loadUserPlaylistTracks(selectedUserPlaylist.value, 1, false)
+  await loadUserPlaylists()
+}
+
+async function loadFavoriteCounts(trackList: MusicTrack[]) {
+  const ids = Array.from(new Set(trackList.map((track) => track.album_audio_id).filter(Boolean))).slice(0, 50)
+  if (ids.length === 0) {
+    favoriteCounts.value = {}
+    return
+  }
+  const { data, error: requestError } = await getMusicFavoriteCount(ids.join(','))
+  if (requestError) {
+    Logger.error('Failed to load music favorite counts', requestError)
+    return
+  }
+  const next: Record<string, number> = {}
+  for (const item of data?.items || []) {
+    next[item.mixsongid] = item.count
+  }
+  favoriteCounts.value = next
 }
 
 function playAll(shuffle: boolean) {
@@ -711,6 +1085,11 @@ const formatDuration = (seconds: number) => {
   const rest = rounded % 60
   return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
 }
+
+const formatCompactCount = (count: number) => {
+  if (count >= 10000) return `${Math.floor(count / 10000)}w`
+  return String(count)
+}
 </script>
 
 <style scoped>
@@ -810,9 +1189,45 @@ const formatDuration = (seconds: number) => {
 
 .music-card-strip {
   display: flex;
+  align-items: stretch;
   gap: 0.625rem;
   overflow-x: auto;
   padding-bottom: 0.25rem;
+}
+
+.music-playlist-create {
+  display: grid;
+  width: 11rem;
+  flex: 0 0 11rem;
+  grid-template-columns: minmax(0, 1fr) 2rem;
+  gap: 0.375rem;
+  align-content: center;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 0.5rem;
+  background: hsl(var(--background));
+  padding: 0.45rem;
+}
+
+.music-playlist-create :deep(input[type="text"]) {
+  grid-column: 1 / 3;
+}
+
+.music-playlist-create .music-row-action {
+  justify-self: end;
+}
+
+.music-private-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+}
+
+.music-private-toggle input {
+  width: 0.875rem;
+  height: 0.875rem;
+  accent-color: hsl(var(--primary));
 }
 
 .music-source-card {
@@ -833,6 +1248,14 @@ const formatDuration = (seconds: number) => {
 .music-source-card--playlist {
   width: 8.75rem;
   flex-basis: 8.75rem;
+}
+
+.music-source-card--compact {
+  width: 6.75rem;
+  flex-basis: 6.75rem;
+  grid-template-rows: 2rem auto auto;
+  align-content: center;
+  justify-items: start;
 }
 
 .music-source-card:hover,
@@ -898,9 +1321,25 @@ const formatDuration = (seconds: number) => {
   background: hsl(var(--primary) / 0.08);
 }
 
+.music-chip--danger {
+  color: hsl(var(--destructive));
+  border-color: hsl(var(--destructive) / 0.25);
+}
+
+.music-inline-select {
+  height: 1.75rem;
+  max-width: 10rem;
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 0.375rem;
+  background: hsl(var(--background));
+  padding: 0 0.5rem;
+  color: hsl(var(--foreground));
+  font-size: 0.75rem;
+}
+
 .music-row {
   display: grid;
-  grid-template-columns: 2rem 3rem minmax(0, 1fr) minmax(8rem, 0.5fr) 4rem;
+  grid-template-columns: 2rem 3rem minmax(0, 1fr) minmax(8rem, 0.5fr) 5.25rem 4.75rem;
   align-items: center;
   gap: 0.75rem;
   min-height: 4rem;
@@ -977,6 +1416,57 @@ const formatDuration = (seconds: number) => {
   justify-content: center;
   border-radius: 0.5rem;
   background: hsl(var(--muted));
+}
+
+.music-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+.music-row-side {
+  line-height: 1.2;
+}
+
+.music-row-side > span {
+  display: block;
+}
+
+.music-row-side .music-favorite-count {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 0.125rem;
+}
+
+.music-favorite-count {
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.6875rem;
+  color: hsl(var(--muted-foreground) / 0.75);
+}
+
+.music-row-action {
+  display: flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+
+.music-row-action:hover {
+  background: hsl(var(--accent) / 0.7);
+  color: hsl(var(--foreground));
+}
+
+.music-row-action:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .music-player {
@@ -1245,7 +1735,11 @@ const formatDuration = (seconds: number) => {
   }
 
   .music-row {
-    grid-template-columns: 2rem 3rem minmax(0, 1fr);
+    grid-template-columns: 2rem 3rem minmax(0, 1fr) 4.75rem;
+  }
+
+  .music-row-actions {
+    grid-column: 4;
   }
 }
 </style>
