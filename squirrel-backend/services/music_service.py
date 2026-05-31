@@ -15,8 +15,8 @@ class MusicServiceError(Exception):
 KUGOU_AUTH_REDIS_KEY_PREFIX = 'music:kugou:auth'
 
 
-def search_tracks(user_id: int, query: str, page: int, page_size: int) -> dict[str, Any]:
-    payload = _request_kugou('/search', {
+async def search_tracks(user_id: int, query: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/search', {
         'keywords': query,
         'page': page,
         'pagesize': page_size,
@@ -35,8 +35,8 @@ def search_tracks(user_id: int, query: str, page: int, page_size: int) -> dict[s
     }
 
 
-def search_artists(user_id: int, query: str, page: int, page_size: int) -> dict[str, Any]:
-    payload = _request_kugou('/search', {
+async def search_artists(user_id: int, query: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/search', {
         'keywords': query,
         'page': page,
         'pagesize': page_size,
@@ -55,8 +55,8 @@ def search_artists(user_id: int, query: str, page: int, page_size: int) -> dict[
     }
 
 
-def search_albums(user_id: int, query: str, page: int, page_size: int) -> dict[str, Any]:
-    payload = _request_kugou('/search', {
+async def search_albums(user_id: int, query: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/search', {
         'keywords': query,
         'page': page,
         'pagesize': min(page_size * 3, 50),
@@ -88,7 +88,7 @@ def search_albums(user_id: int, query: str, page: int, page_size: int) -> dict[s
     }
 
 
-def get_personal_fm_tracks(
+async def get_personal_fm_tracks(
     user_id: int,
     mode: str = 'normal',
     song_pool_id: str | None = None,
@@ -115,7 +115,7 @@ def get_personal_fm_tracks(
     if remain_songcnt > 0:
         params['remain_songcnt'] = remain_songcnt
 
-    payload = _request_kugou('/personal/fm', params, user_id=user_id)
+    payload = await _request_kugou('/personal/fm', params, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
     rows = data.get('song_list')
     if not isinstance(rows, list):
@@ -129,8 +129,8 @@ def get_personal_fm_tracks(
     }
 
 
-def list_ranks(user_id: int) -> dict[str, Any]:
-    payload = _request_kugou('/rank/list', {'withsong': 0}, user_id=user_id)
+async def list_ranks(user_id: int) -> dict[str, Any]:
+    payload = await _request_kugou('/rank/list', {'withsong': 0}, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
     rows = data.get('info')
     if not isinstance(rows, list):
@@ -142,7 +142,7 @@ def list_ranks(user_id: int) -> dict[str, Any]:
     }
 
 
-def get_rank_tracks(user_id: int, rank_id: str, rank_cid: str | None, page: int, page_size: int) -> dict[str, Any]:
+async def get_rank_tracks(user_id: int, rank_id: str, rank_cid: str | None, page: int, page_size: int) -> dict[str, Any]:
     params = {
         'rankid': rank_id,
         'page': page,
@@ -151,7 +151,7 @@ def get_rank_tracks(user_id: int, rank_id: str, rank_cid: str | None, page: int,
     if rank_cid:
         params['rank_cid'] = rank_cid
 
-    payload = _request_kugou('/rank/audio', params, user_id=user_id)
+    payload = await _request_kugou('/rank/audio', params, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
     rows = data.get('songlist')
     if not isinstance(rows, list):
@@ -165,8 +165,8 @@ def get_rank_tracks(user_id: int, rank_id: str, rank_cid: str | None, page: int,
     }
 
 
-def list_playlists(user_id: int, category_id: int, page: int, page_size: int) -> dict[str, Any]:
-    payload = _request_kugou('/top/playlist', {
+async def list_playlists(user_id: int, category_id: int, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/top/playlist', {
         'category_id': category_id,
         'page': page,
         'pagesize': page_size,
@@ -185,8 +185,8 @@ def list_playlists(user_id: int, category_id: int, page: int, page_size: int) ->
     }
 
 
-def get_playlist_tracks(user_id: int, playlist_id: str, page: int, page_size: int) -> dict[str, Any]:
-    payload = _request_kugou('/playlist/track/all', {
+async def get_playlist_tracks(user_id: int, playlist_id: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/playlist/track/all', {
         'id': playlist_id,
         'page': page,
         'pagesize': page_size,
@@ -204,8 +204,8 @@ def get_playlist_tracks(user_id: int, playlist_id: str, page: int, page_size: in
     }
 
 
-def list_user_playlists(user_id: int, page: int, page_size: int) -> dict[str, Any]:
-    payload = _request_kugou('/user/playlist', {
+async def list_user_playlists(user_id: int, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/user/playlist', {
         'page': page,
         'pagesize': page_size,
     }, user_id=user_id)
@@ -225,8 +225,8 @@ def list_user_playlists(user_id: int, page: int, page_size: int) -> dict[str, An
     }
 
 
-def get_user_playlist_tracks(user_id: int, list_id: str, page: int, page_size: int) -> dict[str, Any]:
-    payload = _request_kugou('/playlist/track/all/new', {
+async def get_user_playlist_tracks(user_id: int, list_id: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/playlist/track/all/new', {
         'listid': list_id,
         'page': page,
         'pagesize': page_size,
@@ -247,14 +247,14 @@ def get_user_playlist_tracks(user_id: int, list_id: str, page: int, page_size: i
     }
 
 
-def get_artist_detail(user_id: int, artist_id: str) -> dict[str, Any]:
-    payload = _request_kugou('/artist/detail', {'id': artist_id}, user_id=user_id)
+async def get_artist_detail(user_id: int, artist_id: str) -> dict[str, Any]:
+    payload = await _request_kugou('/artist/detail', {'id': artist_id}, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
     return _normalize_artist(data)
 
 
-def get_artist_tracks(user_id: int, artist_id: str, page: int, page_size: int) -> dict[str, Any]:
-    payload = _request_kugou('/artist/audios', {
+async def get_artist_tracks(user_id: int, artist_id: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/artist/audios', {
         'id': artist_id,
         'page': page,
         'pagesize': page_size,
@@ -268,8 +268,8 @@ def get_artist_tracks(user_id: int, artist_id: str, page: int, page_size: int) -
     }
 
 
-def get_artist_albums(user_id: int, artist_id: str, page: int, page_size: int) -> dict[str, Any]:
-    payload = _request_kugou('/artist/albums', {
+async def get_artist_albums(user_id: int, artist_id: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/artist/albums', {
         'id': artist_id,
         'page': page,
         'pagesize': page_size,
@@ -283,15 +283,15 @@ def get_artist_albums(user_id: int, artist_id: str, page: int, page_size: int) -
     }
 
 
-def get_album_detail(user_id: int, album_id: str) -> dict[str, Any]:
-    payload = _request_kugou('/album/detail', {'id': album_id}, user_id=user_id)
+async def get_album_detail(user_id: int, album_id: str) -> dict[str, Any]:
+    payload = await _request_kugou('/album/detail', {'id': album_id}, user_id=user_id)
     rows = payload.get('data') if isinstance(payload.get('data'), list) else []
     row = rows[0] if rows and isinstance(rows[0], dict) else {}
     return _normalize_album(row)
 
 
-def get_album_tracks(user_id: int, album_id: str, page: int, page_size: int) -> dict[str, Any]:
-    payload = _request_kugou('/album/songs', {
+async def get_album_tracks(user_id: int, album_id: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/album/songs', {
         'id': album_id,
         'page': page,
         'pagesize': page_size,
@@ -306,8 +306,8 @@ def get_album_tracks(user_id: int, album_id: str, page: int, page_size: int) -> 
     }
 
 
-def create_user_playlist(user_id: int, name: str, is_private: bool) -> dict[str, Any]:
-    payload = _request_kugou('/playlist/add', {
+async def create_user_playlist(user_id: int, name: str, is_private: bool) -> dict[str, Any]:
+    payload = await _request_kugou('/playlist/add', {
         'name': name,
         'type': 0,
         'is_pri': 1 if is_private else 0,
@@ -315,8 +315,8 @@ def create_user_playlist(user_id: int, name: str, is_private: bool) -> dict[str,
     return {'ok': True, 'raw': payload}
 
 
-def collect_playlist(user_id: int, playlist_id: str) -> dict[str, Any]:
-    detail_payload = _request_kugou('/playlist/detail', {'ids': playlist_id}, user_id=user_id)
+async def collect_playlist(user_id: int, playlist_id: str) -> dict[str, Any]:
+    detail_payload = await _request_kugou('/playlist/detail', {'ids': playlist_id}, user_id=user_id)
     detail_rows = detail_payload.get('data') if isinstance(detail_payload.get('data'), list) else []
     detail = detail_rows[0] if detail_rows and isinstance(detail_rows[0], dict) else {}
     list_create_userid = str(detail.get('list_create_userid') or '')
@@ -325,7 +325,7 @@ def collect_playlist(user_id: int, playlist_id: str) -> dict[str, Any]:
     if not list_create_userid or not list_create_listid or not name:
         raise MusicServiceError('KuGouMusicApi playlist detail missed collect fields')
 
-    payload = _request_kugou('/playlist/add', {
+    payload = await _request_kugou('/playlist/add', {
         'name': name,
         'type': 1,
         'source': detail.get('source') or 1,
@@ -336,32 +336,32 @@ def collect_playlist(user_id: int, playlist_id: str) -> dict[str, Any]:
     return {'ok': True, 'raw': payload}
 
 
-def delete_user_playlist(user_id: int, list_id: str) -> dict[str, Any]:
-    payload = _request_kugou('/playlist/del', {'listid': list_id}, user_id=user_id)
+async def delete_user_playlist(user_id: int, list_id: str) -> dict[str, Any]:
+    payload = await _request_kugou('/playlist/del', {'listid': list_id}, user_id=user_id)
     return {'ok': True, 'raw': payload}
 
 
-def add_track_to_user_playlist(user_id: int, list_id: str, track: MusicTrackPayload) -> dict[str, Any]:
-    payload = _request_kugou('/playlist/tracks/add', {
+async def add_track_to_user_playlist(user_id: int, list_id: str, track: MusicTrackPayload) -> dict[str, Any]:
+    payload = await _request_kugou('/playlist/tracks/add', {
         'listid': list_id,
         'data': _playlist_track_data(track),
     }, user_id=user_id)
     return {'ok': True, 'raw': payload}
 
 
-def remove_tracks_from_user_playlist(user_id: int, list_id: str, file_ids: str) -> dict[str, Any]:
-    payload = _request_kugou('/playlist/tracks/del', {
+async def remove_tracks_from_user_playlist(user_id: int, list_id: str, file_ids: str) -> dict[str, Any]:
+    payload = await _request_kugou('/playlist/tracks/del', {
         'listid': list_id,
         'fileids': file_ids,
     }, user_id=user_id)
     return {'ok': True, 'raw': payload}
 
 
-def get_user_history(user_id: int, bp: str | None) -> dict[str, Any]:
+async def get_user_history(user_id: int, bp: str | None) -> dict[str, Any]:
     params = {}
     if bp:
         params['bp'] = bp
-    payload = _request_kugou('/user/history', params, user_id=user_id)
+    payload = await _request_kugou('/user/history', params, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
     rows = _first_list(data, ('songs', 'info', 'list', 'data'))
     if isinstance(data, dict):
@@ -376,8 +376,8 @@ def get_user_history(user_id: int, bp: str | None) -> dict[str, Any]:
     }
 
 
-def get_user_listen_rank(user_id: int, history_type: int) -> dict[str, Any]:
-    payload = _request_kugou('/user/listen', {'type': history_type}, user_id=user_id)
+async def get_user_listen_rank(user_id: int, history_type: int) -> dict[str, Any]:
+    payload = await _request_kugou('/user/listen', {'type': history_type}, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
     rows = _first_list(data, ('songs', 'info', 'list', 'data'))
 
@@ -387,8 +387,8 @@ def get_user_listen_rank(user_id: int, history_type: int) -> dict[str, Any]:
     }
 
 
-def get_latest_listen_songs(user_id: int, page_size: int) -> dict[str, Any]:
-    payload = _request_kugou('/lastest/songs/listen', {'pagesize': page_size}, user_id=user_id)
+async def get_latest_listen_songs(user_id: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/lastest/songs/listen', {'pagesize': page_size}, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
     rows = _first_list(data, ('songs', 'info', 'list', 'data'))
 
@@ -398,19 +398,19 @@ def get_latest_listen_songs(user_id: int, page_size: int) -> dict[str, Any]:
     }
 
 
-def upload_play_history(user_id: int, album_audio_id: str, played_at: int | None, play_count: int) -> dict[str, Any]:
+async def upload_play_history(user_id: int, album_audio_id: str, played_at: int | None, play_count: int) -> dict[str, Any]:
     params = {
         'mxid': album_audio_id,
         'pc': play_count,
     }
     if played_at:
         params['time'] = played_at
-    payload = _request_kugou('/playhistory/upload', params, user_id=user_id)
+    payload = await _request_kugou('/playhistory/upload', params, user_id=user_id)
     return {'ok': True, 'raw': payload}
 
 
-def get_favorite_counts(user_id: int, mixsongids: str) -> dict[str, Any]:
-    payload = _request_kugou('/favorite/count', {'mixsongids': mixsongids}, user_id=user_id, use_auth=False)
+async def get_favorite_counts(user_id: int, mixsongids: str) -> dict[str, Any]:
+    payload = await _request_kugou('/favorite/count', {'mixsongids': mixsongids}, user_id=user_id, use_auth=False)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
     rows = data.get('list') if isinstance(data.get('list'), list) else []
     return {
@@ -427,7 +427,7 @@ def get_favorite_counts(user_id: int, mixsongids: str) -> dict[str, Any]:
     }
 
 
-def get_track_play_url(user_id: int, hash_value: str, album_audio_id: str | None, quality: str) -> dict[str, Any]:
+async def get_track_play_url(user_id: int, hash_value: str, album_audio_id: str | None, quality: str) -> dict[str, Any]:
     params = {
         'hash': hash_value,
         'quality': quality,
@@ -435,7 +435,7 @@ def get_track_play_url(user_id: int, hash_value: str, album_audio_id: str | None
     if album_audio_id:
         params['album_audio_id'] = album_audio_id
 
-    payload = _request_kugou('/song/url', params, user_id=user_id)
+    payload = await _request_kugou('/song/url', params, user_id=user_id)
     tracker_url = payload.get('url')
     url = ''
     if isinstance(tracker_url, str):
@@ -454,7 +454,7 @@ def get_track_play_url(user_id: int, hash_value: str, album_audio_id: str | None
     }
 
 
-def get_track_lyric(
+async def get_track_lyric(
     user_id: int,
     title: str,
     artist: str,
@@ -463,7 +463,7 @@ def get_track_lyric(
     duration: int,
 ) -> dict[str, Any]:
     keyword = f'{artist} - {title}' if artist else title
-    lyric_search = _request_kugou('/search/lyric', {
+    lyric_search = await _request_kugou('/search/lyric', {
         'keywords': keyword,
         'hash': hash_value,
         'album_audio_id': album_audio_id or 0,
@@ -483,7 +483,7 @@ def get_track_lyric(
     if not lyric_id or not access_key:
         return {'lines': [], 'raw': ''}
 
-    lyric_payload = _request_kugou('/lyric', {
+    lyric_payload = await _request_kugou('/lyric', {
         'id': lyric_id,
         'accesskey': access_key,
         'fmt': 'lrc',
@@ -506,14 +506,14 @@ def get_auth_status(user_id: int) -> dict[str, Any]:
     }
 
 
-def create_qr_login() -> dict[str, Any]:
-    key_payload = _request_kugou('/login/qr/key', {})
+async def create_qr_login() -> dict[str, Any]:
+    key_payload = await _request_kugou('/login/qr/key', {})
     key_data = key_payload.get('data') if isinstance(key_payload.get('data'), dict) else {}
     key = key_data.get('qrcode') or key_data.get('key') or key_data.get('qr_code') or key_data.get('qrcode_txt')
     if not key:
         raise MusicServiceError('KuGouMusicApi did not return QR login key')
 
-    qr_payload = _request_kugou('/login/qr/create', {'key': key, 'qrimg': 1})
+    qr_payload = await _request_kugou('/login/qr/create', {'key': key, 'qrimg': 1})
     qr_data = qr_payload.get('data') if isinstance(qr_payload.get('data'), dict) else {}
     return {
         'key': key,
@@ -522,12 +522,12 @@ def create_qr_login() -> dict[str, Any]:
     }
 
 
-def check_qr_login(user_id: int, key: str) -> dict[str, Any]:
-    payload = _request_kugou('/login/qr/check', {'key': key, 'timestamp': _timestamp_ms()})
+async def check_qr_login(user_id: int, key: str) -> dict[str, Any]:
+    payload = await _request_kugou('/login/qr/check', {'key': key, 'timestamp': _timestamp_ms()})
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
     status = int(data.get('status') or 0)
     if status == 4:
-        _save_user_cookie_from_login(user_id, data)
+        await _save_user_cookie_from_login(user_id, data)
 
     return {
         'status': status,
@@ -537,7 +537,7 @@ def check_qr_login(user_id: int, key: str) -> dict[str, Any]:
     }
 
 
-def _request_kugou(
+async def _request_kugou(
     path: str,
     params: dict[str, Any],
     *,
@@ -553,8 +553,8 @@ def _request_kugou(
         headers['Authorization'] = cookie
 
     try:
-        with httpx.Client(timeout=20.0, follow_redirects=True) as client:
-            result = client.get(
+        async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
+            result = await client.get(
                 urljoin(settings.KUGOU_MUSIC_API_BASE_URL.rstrip('/') + '/', path.lstrip('/')),
                 params=params,
                 headers=headers,
@@ -597,7 +597,7 @@ def _request_kugou(
     return payload
 
 
-def _save_user_cookie_from_login(user_id: int, data: dict[str, Any]) -> None:
+async def _save_user_cookie_from_login(user_id: int, data: dict[str, Any]) -> None:
     token = str(data.get('token') or '')
     kugou_userid = str(data.get('userid') or '')
     if not token or not kugou_userid:
@@ -605,7 +605,7 @@ def _save_user_cookie_from_login(user_id: int, data: dict[str, Any]) -> None:
 
     dfid = _cookie_value(_effective_cookie(user_id), 'dfid')
     if not dfid:
-        register_payload = _request_kugou('/register/dev', {}, use_auth=False)
+        register_payload = await _request_kugou('/register/dev', {}, use_auth=False)
         register_data = register_payload.get('data') if isinstance(register_payload.get('data'), dict) else {}
         dfid = str(register_data.get('dfid') or '')
 

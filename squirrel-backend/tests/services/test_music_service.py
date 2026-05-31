@@ -1,9 +1,13 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from services import music_service
+
+pytestmark = [pytest.mark.anyio(backend='asyncio')]
 
 
 class _FakeResponse:
@@ -37,13 +41,13 @@ class _FakeClient:
         self._calls = calls
         self._payload = payload
 
-    def __enter__(self):
+    async def __aenter__(self):
         return self
 
-    def __exit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type, exc, tb):
         return False
 
-    def get(self, url, params=None, headers=None):
+    async def get(self, url, params=None, headers=None):
         self._calls.append({'url': url, 'params': params, 'headers': headers})
         return _FakeResponse(self._payload)
 
@@ -53,13 +57,13 @@ class _SequenceClient:
         self._calls = calls
         self._payloads = list(payloads)
 
-    def __enter__(self):
+    async def __aenter__(self):
         return self
 
-    def __exit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type, exc, tb):
         return False
 
-    def get(self, url, params=None, headers=None):
+    async def get(self, url, params=None, headers=None):
         self._calls.append({'url': url, 'params': params, 'headers': headers})
         return _FakeResponse(self._payloads.pop(0))
 
@@ -76,7 +80,7 @@ class _FakeRedis:
         return True
 
 
-def test_search_tracks_normalizes_kugou_response(monkeypatch):
+async def test_search_tracks_normalizes_kugou_response(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payload = {
@@ -100,9 +104,9 @@ def test_search_tracks_normalizes_kugou_response(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = music_service.search_tracks(1, 'demo', 1, 20)
+    result = await music_service.search_tracks(1, 'demo', 1, 20)
 
     assert result['total'] == 1
     assert result['items'] == [
@@ -127,7 +131,7 @@ def test_search_tracks_normalizes_kugou_response(monkeypatch):
     ]
 
 
-def test_get_personal_fm_tracks_normalizes_items(monkeypatch):
+async def test_get_personal_fm_tracks_normalizes_items(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payload = {
@@ -151,9 +155,9 @@ def test_get_personal_fm_tracks_normalizes_items(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = music_service.get_personal_fm_tracks(1)
+    result = await music_service.get_personal_fm_tracks(1)
 
     assert result == {
         'items': [
@@ -183,7 +187,7 @@ def test_get_personal_fm_tracks_normalizes_items(monkeypatch):
     ]
 
 
-def test_search_artists_normalizes_kugou_response(monkeypatch):
+async def test_search_artists_normalizes_kugou_response(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payload = {
@@ -205,9 +209,9 @@ def test_search_artists_normalizes_kugou_response(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = music_service.search_artists(1, 'demo', 1, 6)
+    result = await music_service.search_artists(1, 'demo', 1, 6)
 
     assert result['items'] == [
         {
@@ -223,7 +227,7 @@ def test_search_artists_normalizes_kugou_response(monkeypatch):
     assert calls[0]['params'] == {'keywords': 'demo', 'page': 1, 'pagesize': 6, 'type': 'author'}
 
 
-def test_search_albums_derives_unique_albums_from_song_results(monkeypatch):
+async def test_search_albums_derives_unique_albums_from_song_results(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payload = {
@@ -255,9 +259,9 @@ def test_search_albums_derives_unique_albums_from_song_results(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = music_service.search_albums(1, 'demo', 1, 8)
+    result = await music_service.search_albums(1, 'demo', 1, 8)
 
     assert result['items'] == [
         {
@@ -288,7 +292,7 @@ def test_search_albums_derives_unique_albums_from_song_results(monkeypatch):
     assert calls[0]['params'] == {'keywords': 'demo', 'page': 1, 'pagesize': 24, 'type': 'song'}
 
 
-def test_get_track_play_url_returns_direct_url(monkeypatch):
+async def test_get_track_play_url_returns_direct_url(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payload = {
@@ -303,9 +307,9 @@ def test_get_track_play_url_returns_direct_url(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = music_service.get_track_play_url(1, 'ABC', '123', '128')
+    result = await music_service.get_track_play_url(1, 'ABC', '123', '128')
 
     assert result['url'] == 'https://cdn.example.test/demo.mp3'
     assert result['expires_at'] == 1800
@@ -314,7 +318,7 @@ def test_get_track_play_url_returns_direct_url(monkeypatch):
     assert calls[0]['headers'] == {}
 
 
-def test_get_track_play_url_returns_string_url(monkeypatch):
+async def test_get_track_play_url_returns_string_url(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payload = {
@@ -325,14 +329,14 @@ def test_get_track_play_url_returns_string_url(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = music_service.get_track_play_url(1, 'ABC', '123', '128')
+    result = await music_service.get_track_play_url(1, 'ABC', '123', '128')
 
     assert result['url'] == 'https://cdn.example.test/demo.mp3'
 
 
-def test_get_track_lyric_returns_timed_lines(monkeypatch):
+async def test_get_track_lyric_returns_timed_lines(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payloads = [
@@ -344,9 +348,9 @@ def test_get_track_lyric_returns_timed_lines(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
     monkeypatch.setattr(music_service, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: client)
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
 
-    result = music_service.get_track_lyric(1, 'Demo Song', 'Demo Artist', 'ABC', '123', 210)
+    result = await music_service.get_track_lyric(1, 'Demo Song', 'Demo Artist', 'ABC', '123', 210)
 
     assert result['lines'] == [
         {'time': 1.0, 'text': 'First line'},
@@ -370,7 +374,7 @@ def test_get_track_lyric_returns_timed_lines(monkeypatch):
     }
 
 
-def test_list_ranks_normalizes_items(monkeypatch):
+async def test_list_ranks_normalizes_items(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payload = {
@@ -393,9 +397,9 @@ def test_list_ranks_normalizes_items(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = music_service.list_ranks(1)
+    result = await music_service.list_ranks(1)
 
     assert result == {
         'items': [
@@ -415,7 +419,7 @@ def test_list_ranks_normalizes_items(monkeypatch):
     assert calls[0]['params'] == {'withsong': 0}
 
 
-def test_get_rank_tracks_normalizes_items(monkeypatch):
+async def test_get_rank_tracks_normalizes_items(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payload = {
@@ -440,9 +444,9 @@ def test_get_rank_tracks_normalizes_items(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = music_service.get_rank_tracks(1, '8888', '115390', 2, 10)
+    result = await music_service.get_rank_tracks(1, '8888', '115390', 2, 10)
 
     assert result['total'] == 1
     assert result['items'][0] == {
@@ -460,7 +464,7 @@ def test_get_rank_tracks_normalizes_items(monkeypatch):
     assert calls[0]['params'] == {'rankid': '8888', 'page': 2, 'pagesize': 10, 'rank_cid': '115390'}
 
 
-def test_list_playlists_normalizes_items(monkeypatch):
+async def test_list_playlists_normalizes_items(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payload = {
@@ -484,9 +488,9 @@ def test_list_playlists_normalizes_items(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = music_service.list_playlists(1, 0, 1, 12)
+    result = await music_service.list_playlists(1, 0, 1, 12)
 
     assert result == {
         'items': [
@@ -512,7 +516,7 @@ def test_list_playlists_normalizes_items(monkeypatch):
     assert calls[0]['params'] == {'category_id': 0, 'page': 1, 'pagesize': 12, 'withsong': 0}
 
 
-def test_get_playlist_tracks_normalizes_items(monkeypatch):
+async def test_get_playlist_tracks_normalizes_items(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payload = {
@@ -536,9 +540,9 @@ def test_get_playlist_tracks_normalizes_items(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = music_service.get_playlist_tracks(1, 'collection-demo', 3, 15)
+    result = await music_service.get_playlist_tracks(1, 'collection-demo', 3, 15)
 
     assert result['total'] == 1
     assert result['items'][0] == {
@@ -556,7 +560,7 @@ def test_get_playlist_tracks_normalizes_items(monkeypatch):
     assert calls[0]['params'] == {'id': 'collection-demo', 'page': 3, 'pagesize': 15}
 
 
-def test_get_artist_detail_and_tracks_normalize_items(monkeypatch):
+async def test_get_artist_detail_and_tracks_normalize_items(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payloads = [
@@ -593,10 +597,10 @@ def test_get_artist_detail_and_tracks_normalize_items(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
     monkeypatch.setattr(music_service, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: client)
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
 
-    detail = music_service.get_artist_detail(1, '10')
-    tracks = music_service.get_artist_tracks(1, '10', 2, 30)
+    detail = await music_service.get_artist_detail(1, '10')
+    tracks = await music_service.get_artist_tracks(1, '10', 2, 30)
 
     assert detail == {
         'id': '10',
@@ -625,7 +629,7 @@ def test_get_artist_detail_and_tracks_normalize_items(monkeypatch):
     assert calls[1]['params'] == {'id': '10', 'page': 2, 'pagesize': 30}
 
 
-def test_get_album_detail_and_tracks_normalize_items(monkeypatch):
+async def test_get_album_detail_and_tracks_normalize_items(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payloads = [
@@ -672,10 +676,10 @@ def test_get_album_detail_and_tracks_normalize_items(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
     monkeypatch.setattr(music_service, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: client)
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
 
-    detail = music_service.get_album_detail(1, '20')
-    tracks = music_service.get_album_tracks(1, '20', 1, 30)
+    detail = await music_service.get_album_detail(1, '20')
+    tracks = await music_service.get_album_tracks(1, '20', 1, 30)
 
     assert detail == {
         'id': '20',
@@ -707,40 +711,40 @@ def test_get_album_detail_and_tracks_normalize_items(monkeypatch):
     assert calls[1]['params'] == {'id': '20', 'page': 1, 'pagesize': 30}
 
 
-def test_request_requires_configured_base_url(monkeypatch):
+async def test_request_requires_configured_base_url(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', '')
     monkeypatch.setattr(music_service, 'redis_client', _FakeRedis())
 
     try:
-        music_service.search_tracks(1, 'demo', 1, 20)
+        await music_service.search_tracks(1, 'demo', 1, 20)
     except music_service.MusicServiceError as exc:
         assert str(exc) == 'KUGOU_MUSIC_API_BASE_URL is not configured'
     else:
         raise AssertionError('MusicServiceError was not raised')
 
 
-def test_request_reports_non_json_response(monkeypatch):
+async def test_request_reports_non_json_response(monkeypatch):
     calls = []
     redis = _FakeRedis()
 
     class _InvalidJsonClient:
-        def __enter__(self):
+        async def __aenter__(self):
             return self
 
-        def __exit__(self, exc_type, exc, tb):
+        async def __aexit__(self, exc_type, exc, tb):
             return False
 
-        def get(self, url, params=None, headers=None):
+        async def get(self, url, params=None, headers=None):
             calls.append({'url': url, 'params': params, 'headers': headers})
             return _InvalidJsonResponse()
 
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _InvalidJsonClient())
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _InvalidJsonClient())
 
     try:
-        music_service.search_tracks(1, 'demo', 1, 20)
+        await music_service.search_tracks(1, 'demo', 1, 20)
     except music_service.MusicServiceError as exc:
         message = str(exc)
         assert 'KuGouMusicApi returned non-JSON response' in message
@@ -750,7 +754,7 @@ def test_request_reports_non_json_response(monkeypatch):
         raise AssertionError('MusicServiceError was not raised')
 
 
-def test_create_qr_login_returns_key_and_image(monkeypatch):
+async def test_create_qr_login_returns_key_and_image(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payloads = [
@@ -762,9 +766,9 @@ def test_create_qr_login_returns_key_and_image(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
     monkeypatch.setattr(music_service, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: client)
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
 
-    result = music_service.create_qr_login()
+    result = await music_service.create_qr_login()
 
     assert result == {
         'key': 'qr-demo',
@@ -776,7 +780,7 @@ def test_create_qr_login_returns_key_and_image(monkeypatch):
     assert calls[1]['params'] == {'key': 'qr-demo', 'qrimg': 1}
 
 
-def test_check_qr_login_saves_redis_cookie(monkeypatch):
+async def test_check_qr_login_saves_redis_cookie(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payloads = [
@@ -789,9 +793,9 @@ def test_check_qr_login_saves_redis_cookie(monkeypatch):
     monkeypatch.setattr(music_service, 'redis_client', redis)
     monkeypatch.setattr(music_service, '_timestamp_ms', lambda: 1000)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: client)
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
 
-    result = music_service.check_qr_login(1, 'qr-demo')
+    result = await music_service.check_qr_login(1, 'qr-demo')
 
     assert result['logged_in'] is True
     assert result['auth'] == {'logged_in': True, 'source': 'redis', 'userid': '42'}
@@ -810,7 +814,7 @@ def test_check_qr_login_saves_redis_cookie(monkeypatch):
     ]
 
 
-def test_search_tracks_prefers_redis_cookie(monkeypatch):
+async def test_search_tracks_prefers_redis_cookie(monkeypatch):
     calls = []
     redis = _FakeRedis()
     redis.set('music:kugou:auth:1', 'token=redis-token;userid=9;dfid=redis-dfid')
@@ -819,14 +823,14 @@ def test_search_tracks_prefers_redis_cookie(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=env-token;userid=1;dfid=env-dfid')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
-    music_service.search_tracks(1, 'demo', 1, 20)
+    await music_service.search_tracks(1, 'demo', 1, 20)
 
     assert calls[0]['headers'] == {'Authorization': 'token=redis-token;userid=9;dfid=redis-dfid'}
 
 
-def test_list_user_playlists_normalizes_kugou_response(monkeypatch):
+async def test_list_user_playlists_normalizes_kugou_response(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payload = {
@@ -848,9 +852,9 @@ def test_list_user_playlists_normalizes_kugou_response(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = music_service.list_user_playlists(1, 1, 30)
+    result = await music_service.list_user_playlists(1, 1, 30)
 
     assert result['items'][0] == {
         'id': '10',
@@ -867,7 +871,7 @@ def test_list_user_playlists_normalizes_kugou_response(monkeypatch):
     assert calls[0]['params'] == {'page': 1, 'pagesize': 30}
 
 
-def test_get_user_playlist_tracks_includes_file_id(monkeypatch):
+async def test_get_user_playlist_tracks_includes_file_id(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payload = {
@@ -889,9 +893,9 @@ def test_get_user_playlist_tracks_includes_file_id(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = music_service.get_user_playlist_tracks(1, '10', 1, 30)
+    result = await music_service.get_user_playlist_tracks(1, '10', 1, 30)
 
     assert result['items'][0]['file_id'] == '99'
     assert result['items'][0]['hash'] == 'HASH'
@@ -899,7 +903,7 @@ def test_get_user_playlist_tracks_includes_file_id(monkeypatch):
     assert calls[0]['params'] == {'listid': '10', 'page': 1, 'pagesize': 30}
 
 
-def test_add_track_to_user_playlist_formats_track_data(monkeypatch):
+async def test_add_track_to_user_playlist_formats_track_data(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payload = {'status': 1}
@@ -907,9 +911,9 @@ def test_add_track_to_user_playlist_formats_track_data(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = music_service.add_track_to_user_playlist(
+    result = await music_service.add_track_to_user_playlist(
         1,
         '10',
         music_service.MusicTrackPayload(title='Song', hash='HASH', album_id='1', album_audio_id='2'),
@@ -920,7 +924,7 @@ def test_add_track_to_user_playlist_formats_track_data(monkeypatch):
     assert calls[0]['params'] == {'listid': '10', 'data': 'Song|HASH|1|2'}
 
 
-def test_create_and_delete_user_playlist_use_kugou_endpoints(monkeypatch):
+async def test_create_and_delete_user_playlist_use_kugou_endpoints(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payloads = [
@@ -932,10 +936,10 @@ def test_create_and_delete_user_playlist_use_kugou_endpoints(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
     monkeypatch.setattr(music_service, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: client)
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
 
-    created = music_service.create_user_playlist(1, 'New List', True)
-    deleted = music_service.delete_user_playlist(1, '10')
+    created = await music_service.create_user_playlist(1, 'New List', True)
+    deleted = await music_service.delete_user_playlist(1, '10')
 
     assert created['ok'] is True
     assert deleted['ok'] is True
@@ -945,7 +949,7 @@ def test_create_and_delete_user_playlist_use_kugou_endpoints(monkeypatch):
     assert calls[1]['params'] == {'listid': '10'}
 
 
-def test_collect_playlist_loads_detail_before_add(monkeypatch):
+async def test_collect_playlist_loads_detail_before_add(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payloads = [
@@ -967,9 +971,9 @@ def test_collect_playlist_loads_detail_before_add(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
     monkeypatch.setattr(music_service, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: client)
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
 
-    result = music_service.collect_playlist(1, 'collection_3_42_88_0')
+    result = await music_service.collect_playlist(1, 'collection_3_42_88_0')
 
     assert result['ok'] is True
     assert calls[0]['url'] == 'http://127.0.0.1:3000/playlist/detail'
@@ -985,7 +989,7 @@ def test_collect_playlist_loads_detail_before_add(monkeypatch):
     }
 
 
-def test_user_history_and_playhistory_upload_use_kugou_endpoints(monkeypatch):
+async def test_user_history_and_playhistory_upload_use_kugou_endpoints(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payloads = [
@@ -997,10 +1001,10 @@ def test_user_history_and_playhistory_upload_use_kugou_endpoints(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
     monkeypatch.setattr(music_service, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: client)
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
 
-    history = music_service.get_user_history(1, None)
-    report = music_service.upload_play_history(1, '123', 1710000000, 1)
+    history = await music_service.get_user_history(1, None)
+    report = await music_service.upload_play_history(1, '123', 1710000000, 1)
 
     assert history['bp'] == 'next-bp'
     assert history['items'][0]['hash'] == 'HASH'
@@ -1011,7 +1015,7 @@ def test_user_history_and_playhistory_upload_use_kugou_endpoints(monkeypatch):
     assert calls[1]['params'] == {'mxid': '123', 'pc': 1, 'time': 1710000000}
 
 
-def test_get_favorite_counts_uses_public_endpoint_without_auth(monkeypatch):
+async def test_get_favorite_counts_uses_public_endpoint_without_auth(monkeypatch):
     calls = []
     redis = _FakeRedis()
     payload = {
@@ -1022,9 +1026,9 @@ def test_get_favorite_counts_uses_public_endpoint_without_auth(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
     monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = music_service.get_favorite_counts(1, '368015985')
+    result = await music_service.get_favorite_counts(1, '368015985')
 
     assert result['items'] == [{'mixsongid': '368015985', 'count': 376527, 'count_text': '37w'}]
     assert calls[0]['url'] == 'http://127.0.0.1:3000/favorite/count'
