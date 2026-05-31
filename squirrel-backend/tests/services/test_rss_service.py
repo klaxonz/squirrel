@@ -261,6 +261,37 @@ def test_greader_reading_list_category_does_not_mark_entry_read():
     assert entry.is_starred is False
 
 
+def test_greader_client_fetches_unread_item_ids():
+    class _FakeHttpClient:
+        def __init__(self):
+            self.urls = []
+
+        def post_text(self, url, data, headers):
+            return 'Auth=reader-token\n'
+
+        def get_json(self, url, headers):
+            self.urls.append(url)
+            return {'itemRefs': [{'id': 'entry-1'}, {'id': 'entry-2'}]}
+
+    http_client = _FakeHttpClient()
+    client = rss_service.GReaderClient(
+        rss_service.RssAccountConfig(
+            provider='greader',
+            base_url='https://reader.example.com/api/greader.php',
+            username='alice',
+            credential='api-password',
+        ),
+        http_client=http_client,
+    )
+
+    result = client.fetch_unread_item_ids(limit=200000)
+
+    assert result == ['entry-1', 'entry-2']
+    assert 'stream/items/ids?' in http_client.urls[0]
+    assert 's=reading-list' in http_client.urls[0]
+    assert 'xt=user%2F-%2Fstate%2Fcom.google%2Fread' in http_client.urls[0]
+
+
 def test_greader_client_uses_client_login_and_stream_api():
     class _FakeHttpClient:
         def __init__(self):
@@ -425,6 +456,12 @@ def test_sync_greader_uses_reading_list_entries(monkeypatch):
         def fetch_all_item_ids(self, stream_id='reading-list', limit=200000):
             return ['entry-1']
 
+        def fetch_unread_item_ids(self, limit=200000):
+            return ['entry-1']
+
+        def fetch_items_contents(self, entry_ids):
+            return []
+
     client = _FakeGReaderClient()
     monkeypatch.setattr(rss_service, '_client_for_config', lambda config: client)
 
@@ -433,6 +470,115 @@ def test_sync_greader_uses_reading_list_entries(monkeypatch):
 
     assert result == {'account_id': account['id'], 'feeds': 1, 'entries': 1, 'error': None}
     assert entries['data'][0]['title'] == 'Entry One'
+
+
+def test_sync_greader_imports_missing_unread_entries(monkeypatch):
+    engine = _setup(monkeypatch)
+    account = rss_service.create_account(
+        1,
+        provider='greader',
+        name='FreshRSS',
+        base_url='https://reader.example.com/api/greader.php',
+        username='alice',
+        credential='api-password',
+    )
+
+    with Session(engine) as session:
+        feed = RssFeed(
+            user_id=1,
+            account_id=account['id'],
+            external_feed_id='feed/1',
+            title='Feed One',
+            enabled=True,
+        )
+        session.add(feed)
+        session.flush()
+        session.add(
+            RssEntry(
+                user_id=1,
+                account_id=account['id'],
+                feed_id=feed.id,
+                external_entry_id='entry-existing-unread',
+                canonical_url='https://example.com/posts/existing',
+                title='Existing Entry',
+                is_read=True,
+                is_starred=False,
+            )
+        )
+        session.add(
+            RssEntry(
+                user_id=1,
+                account_id=account['id'],
+                feed_id=feed.id,
+                external_entry_id='entry-read-remotely',
+                canonical_url='https://example.com/posts/read',
+                title='Read Entry',
+                is_read=False,
+                is_starred=False,
+            )
+        )
+        session.commit()
+
+    class _FakeGReaderClient(rss_service.GReaderClient):
+        def __init__(self):
+            super().__init__(rss_service.RssAccountConfig(
+                provider='greader',
+                base_url='https://reader.example.com/api/greader.php',
+                username='alice',
+                credential='api-password',
+            ))
+            self.content_requests = []
+
+        def list_feeds(self):
+            return [
+                rss_service.RemoteFeed(
+                    external_feed_id='feed/1',
+                    title='Feed One',
+                    feed_url='https://example.com/feed.xml',
+                )
+            ]
+
+        def iter_recent_entries(self, limit, progress_callback=None):
+            if False:
+                yield []
+
+        def fetch_unread_item_ids(self, limit=200000):
+            return ['entry-existing-unread', 'entry-missing-unread']
+
+        def fetch_items_contents(self, entry_ids):
+            self.content_requests.append(list(entry_ids))
+            return [
+                rss_service.RemoteEntry(
+                    external_feed_id='feed/1',
+                    external_entry_id='entry-missing-unread',
+                    canonical_url='https://example.com/posts/missing',
+                    title='Missing Entry',
+                    is_read=False,
+                )
+            ]
+
+        def fetch_all_item_ids(self, stream_id='reading-list', limit=200000):
+            raise AssertionError('incremental sync should not run full state reconciliation')
+
+    client = _FakeGReaderClient()
+    monkeypatch.setattr(rss_service, '_client_for_config', lambda config: client)
+
+    rss_service.sync_account(1, account['id'])
+
+    unread = rss_service.list_entries(1, account_id=account['id'], is_read=False)
+    with Session(engine) as session:
+        read_entry = session.scalars(select(RssEntry).where(
+            RssEntry.account_id == account['id'],
+            RssEntry.external_entry_id == 'entry-read-remotely',
+        )).one()
+
+    assert unread['total'] == 2
+    assert [entry['external_entry_id'] for entry in unread['data']] == [
+        'entry-missing-unread',
+        'entry-existing-unread',
+    ]
+    assert read_entry.is_read is True
+    assert client.content_requests == [['entry-missing-unread']]
 
 
 def test_sync_progress_reports_completed_state(monkeypatch):
@@ -478,6 +624,12 @@ def test_sync_progress_reports_completed_state(monkeypatch):
 
         def fetch_all_item_ids(self, stream_id='reading-list', limit=200000):
             return ['entry-1']
+
+        def fetch_unread_item_ids(self, limit=200000):
+            return ['entry-1']
+
+        def fetch_items_contents(self, entry_ids):
+            return []
 
     monkeypatch.setattr(rss_service, '_client_for_config', lambda config: _FakeGReaderClient())
 
@@ -564,6 +716,12 @@ def test_greader_incremental_sync_stops_when_page_has_no_changes(monkeypatch):
 
         def fetch_all_item_ids(self, stream_id='reading-list', limit=200000):
             raise AssertionError('incremental sync should not run full state reconciliation')
+
+        def fetch_unread_item_ids(self, limit=200000):
+            return ['entry-1']
+
+        def fetch_items_contents(self, entry_ids):
+            return []
 
     client = _FakeGReaderClient()
     monkeypatch.setattr(rss_service, '_client_for_config', lambda config: client)
@@ -684,6 +842,12 @@ def test_greader_full_sync_reconciles_read_and_starred_state(monkeypatch):
                 return ['entry-1']
             if stream_id == 'user/-/state/com.google/starred':
                 return ['entry-1']
+            return []
+
+        def fetch_unread_item_ids(self, limit=200000):
+            return []
+
+        def fetch_items_contents(self, entry_ids):
             return []
 
     client = _FakeGReaderClient()

@@ -414,15 +414,33 @@
                         @click="readerFontFamily = 'sans'; saveReaderPrefs()"
                         class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
                         :class="readerFontFamily === 'sans' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                        title="极简现代 (Inter)"
                       >
-                        无衬线
+                        Inter
+                      </button>
+                      <button 
+                        @click="readerFontFamily = 'outfit'; saveReaderPrefs()"
+                        class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
+                        :class="readerFontFamily === 'outfit' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                        title="优雅圆润 (Outfit)"
+                      >
+                        Outfit
                       </button>
                       <button 
                         @click="readerFontFamily = 'serif'; saveReaderPrefs()"
                         class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
                         :class="readerFontFamily === 'serif' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                        title="经典衬线 (Georgia)"
                       >
-                        衬线体
+                        Georgia
+                      </button>
+                      <button 
+                        @click="readerFontFamily = 'lora'; saveReaderPrefs()"
+                        class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
+                        :class="readerFontFamily === 'lora' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                        title="人文阅读 (Lora)"
+                      >
+                        Lora
                       </button>
                     </div>
                   </div>
@@ -829,15 +847,33 @@
                           @click="readerFontFamily = 'sans'; saveReaderPrefs()"
                           class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
                           :class="readerFontFamily === 'sans' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                          title="极简现代 (Inter)"
                         >
-                          无衬线
+                          Inter
+                        </button>
+                        <button 
+                          @click="readerFontFamily = 'outfit'; saveReaderPrefs()"
+                          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
+                          :class="readerFontFamily === 'outfit' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                          title="优雅圆润 (Outfit)"
+                        >
+                          Outfit
                         </button>
                         <button 
                           @click="readerFontFamily = 'serif'; saveReaderPrefs()"
                           class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
                           :class="readerFontFamily === 'serif' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                          title="经典衬线 (Georgia)"
                         >
-                          衬线体
+                          Georgia
+                        </button>
+                        <button 
+                          @click="readerFontFamily = 'lora'; saveReaderPrefs()"
+                          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
+                          :class="readerFontFamily === 'lora' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                          title="人文阅读 (Lora)"
+                        >
+                          Lora
                         </button>
                       </div>
                     </div>
@@ -1295,9 +1331,17 @@ const saveReaderPrefs = () => {
 }
 
 const readerFontClass = computed(() => {
-  return readerFontFamily.value === 'serif' 
-    ? 'font-serif tracking-normal leading-loose' 
-    : 'font-sans tracking-normal leading-loose'
+  switch (readerFontFamily.value) {
+    case 'outfit':
+      return 'font-outfit tracking-wide leading-loose'
+    case 'serif':
+      return 'font-serif tracking-normal leading-loose'
+    case 'lora':
+      return 'font-lora tracking-normal leading-loose'
+    case 'sans':
+    default:
+      return 'font-sans tracking-normal leading-loose'
+  }
 })
 
 
@@ -1934,15 +1978,21 @@ onUnmounted(() => {
 
 /* Scoped stylesheet for reader content typography — WeRead-inspired */
 .font-serif {
-  font-family: "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", Georgia, Cambria, "Times New Roman", Times, "SimSun", serif;
+  font-family: Georgia, Cambria, "Times New Roman", Times, "Nimbus Roman No9 L", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
 }
 .font-sans {
-  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+.font-outfit {
+  font-family: Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+.font-lora {
+  font-family: Lora, Georgia, Cambria, "Times New Roman", Times, "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
 }
 
 .reader-content {
   text-align: justify;
-  text-justify: inter-character;
+  text-justify: normal;
   word-break: break-word;
   padding-top: 0.5rem;
   -webkit-font-smoothing: antialiased;
@@ -1950,11 +2000,19 @@ onUnmounted(() => {
 }
 
 .reader-content.font-sans {
-  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+}
+
+.reader-content.font-outfit {
+  font-family: Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
 }
 
 .reader-content.font-serif {
-  font-family: "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", Georgia, "Nimbus Roman No9 L", "SimSun", "Times New Roman", Times, serif !important;
+  font-family: Georgia, Cambria, "Times New Roman", Times, "Nimbus Roman No9 L", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif !important;
+}
+
+.reader-content.font-lora {
+  font-family: Lora, Georgia, Cambria, "Times New Roman", Times, "Nimbus Roman No9 L", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif !important;
 }
 
 /* Paragraphs — generous spacing, first-line indent for Chinese */

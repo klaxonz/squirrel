@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 SUPPORTED_PROVIDERS = {'greader', 'miniflux', 'fever'}
 G_READER_PAGE_SIZE = 1000
+G_READER_CONTENT_BATCH_SIZE = 500
 G_READER_QUICK_ENTRIES_PER_FEED = 10
 G_READER_QUICK_MAX_ENTRIES = 1000
 G_READER_READ_STATE = 'user/-/state/com.google/read'
@@ -444,6 +445,27 @@ class GReaderClient:
 
     def fetch_all_item_ids(self, stream_id: str = 'reading-list', limit: int = 200000) -> list[str]:
         params = {'output': 'json', 's': stream_id, 'n': str(limit)}
+        data = self.http_client.get_json(
+            f'{self.config.base_url}/reader/api/0/stream/items/ids?{urllib.parse.urlencode(params)}',
+            self._headers(),
+        )
+        if not isinstance(data, dict):
+            return []
+        ids = data.get('itemRefs') or data.get('itemIds')
+        if isinstance(ids, list):
+            return [str(i.get('id') if isinstance(i, dict) else i) for i in ids if i]
+        items = data.get('items')
+        if isinstance(items, list):
+            return [str(i.get('id', '')) for i in items if isinstance(i, dict) and i.get('id')]
+        return []
+
+    def fetch_unread_item_ids(self, limit: int = 200000) -> list[str]:
+        params = {
+            'output': 'json',
+            's': 'reading-list',
+            'xt': G_READER_READ_STATE,
+            'n': str(limit),
+        }
         data = self.http_client.get_json(
             f'{self.config.base_url}/reader/api/0/stream/items/ids?{urllib.parse.urlencode(params)}',
             self._headers(),
@@ -916,6 +938,43 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
                     session.commit()
                     if not force_full_sync and batch_entries == 0:
                         break
+
+            unread_ids = set(client.fetch_unread_item_ids(limit=200000))
+            with get_session() as session:
+                local_rows = session.execute(
+                    select(RssEntry.id, RssEntry.external_entry_id, RssEntry.is_read)
+                    .where(RssEntry.account_id == account_id)
+                ).all()
+                local_by_eid = {
+                    row.external_entry_id: (row.id, row.is_read)
+                    for row in local_rows
+                }
+                missing_unread_ids = list(unread_ids - set(local_by_eid.keys()))
+                read_updates = []
+                for external_entry_id, (entry_id, is_read) in local_by_eid.items():
+                    should_read = external_entry_id not in unread_ids
+                    if is_read != should_read:
+                        read_updates.append({'id': entry_id, 'is_read': should_read})
+                if read_updates:
+                    session.bulk_update_mappings(RssEntry, read_updates)
+                    session.commit()
+
+            if missing_unread_ids:
+                _set_sync_progress(account_id, phase='entries_fetching', message='Fetching unread RSS entries')
+                with get_session() as session:
+                    feeds_by_external_id: dict[str, RssFeed] = {}
+                    for index in range(0, len(missing_unread_ids), G_READER_CONTENT_BATCH_SIZE):
+                        chunk_ids = missing_unread_ids[index:index + G_READER_CONTENT_BATCH_SIZE]
+                        page = [
+                            replace(entry, is_read=False)
+                            for entry in client.fetch_items_contents(chunk_ids)
+                        ]
+                        new_feeds = _load_feeds_by_external_id(session, account_id, page, feeds_by_external_id)
+                        feeds_by_external_id.update(new_feeds)
+                        batch_entries = _upsert_remote_entries_batch(session, feeds_by_external_id, page)
+                        synced_entries += batch_entries
+                        _set_sync_progress(account_id, phase='entries_saving', entries_synced=synced_entries)
+                        session.commit()
 
             if force_full_sync:
                 reading_ids_raw = client.fetch_all_item_ids('reading-list', limit=200000)
