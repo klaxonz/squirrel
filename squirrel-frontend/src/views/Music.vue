@@ -236,6 +236,22 @@
               <p v-if="error" class="music-fm-card-error">{{ error }}</p>
             </div>
 
+            <!-- Idle state: show first track with play prompt -->
+            <div v-else-if="fmBatch.length" class="music-fm-card music-fm-card--idle cursor-pointer" @click="fmPlayFirst">
+              <div class="music-fm-card-cover">
+                <img v-if="fmBatch[0].cover" :src="fmBatch[0].cover" alt="" />
+                <AppIcon v-else name="playlistMusic" class="h-16 w-16 text-muted-foreground/30" />
+                <div class="music-fm-card-play-overlay">
+                  <AppIcon name="play" class="h-10 w-10 text-white drop-shadow-lg" />
+                </div>
+              </div>
+              <div class="music-fm-card-meta">
+                <h2 class="music-fm-card-title">{{ fmBatch[0].title || '未知歌曲' }}</h2>
+                <p class="music-fm-card-artist text-muted-foreground">{{ fmBatch[0].artist || '未知歌手' }}</p>
+              </div>
+              <p class="text-xs text-muted-foreground mt-2">点击播放推荐曲目</p>
+            </div>
+
             <!-- Loading skeleton -->
             <div v-else-if="loading || fmLoading" class="music-fm-loading">
               <div class="music-fm-skeleton-cover" />
@@ -726,7 +742,7 @@ async function setMusicMode(mode: MusicMode) {
   selectedSourceTitle.value = ''
   searched.value = false
   if (mode === 'recommend') {
-    await loadFmBatch()
+    await loadFmBatch(false, false)
   } else if (mode === 'rank' && ranks.value.length === 0) {
     await loadRanks()
   } else if (mode === 'playlist' && playlists.value.length === 0) {
@@ -785,7 +801,7 @@ function fmLike(track: MusicTrack) {
   })
 }
 
-async function loadFmBatch(isNext = false) {
+async function loadFmBatch(isNext = false, autoPlay = true) {
   loading.value = true
   fmLoading.value = true
   error.value = ''
@@ -822,7 +838,7 @@ async function loadFmBatch(isNext = false) {
   total.value = data?.total || tracks.value.length
   void loadFavoriteCounts(tracks.value)
 
-  if (fmBatch.value.length) {
+  if (fmBatch.value.length && autoPlay) {
     store.playQueue(fmBatch.value, 0)
   }
 }
@@ -843,6 +859,12 @@ async function switchFmPool(poolId: string) {
   if (fmPoolId.value === poolId) return
   fmPoolId.value = poolId
   await loadFmBatch()
+}
+
+function fmPlayFirst() {
+  if (fmBatch.value.length) {
+    store.playQueue(fmBatch.value, 0)
+  }
 }
 
 async function fmNext() {
@@ -2589,6 +2611,7 @@ const formatCompactCount = (count: number) => {
 }
 
 .music-fm-card-cover {
+  position: relative;
   width: min(16rem, 70vw);
   aspect-ratio: 1;
   border-radius: 0.75rem;
@@ -2603,6 +2626,25 @@ const formatCompactCount = (count: number) => {
 
 .music-fm-card-cover:hover {
   transform: scale(1.02);
+}
+
+.music-fm-card--idle:hover .music-fm-card-cover {
+  transform: scale(1.02);
+}
+
+.music-fm-card-play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--background) / 0.4);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.music-fm-card--idle:hover .music-fm-card-play-overlay {
+  opacity: 1;
 }
 
 .music-fm-card-cover img {
