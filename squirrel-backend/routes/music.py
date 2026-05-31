@@ -64,3 +64,20 @@ def get_music_play_url(
         return response.success(music_service.get_track_play_url(current_user.id, hash, album_audio_id, quality))
     except music_service.MusicServiceError as exc:
         return response.server_error(str(exc))
+
+
+@router.get('/api/music/lyric')
+def get_music_lyric(
+    title: str = Query(..., min_length=1, description='歌曲名'),
+    artist: str = Query('', description='歌手名'),
+    hash: str = Query(..., min_length=1, description='音乐 hash'),
+    album_audio_id: str | None = Query(None, description='专辑音频 ID'),
+    duration: int = Query(0, ge=0, description='歌曲时长'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(
+            music_service.get_track_lyric(current_user.id, title, artist, hash, album_audio_id, duration)
+        )
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))

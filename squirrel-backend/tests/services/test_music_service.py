@@ -159,6 +159,44 @@ def test_get_track_play_url_returns_direct_url(monkeypatch):
     assert calls[0]['headers'] == {}
 
 
+def test_get_track_lyric_returns_timed_lines(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payloads = [
+        {'status': 200, 'candidates': [{'id': 'lyric-1', 'accesskey': 'access-1'}]},
+        {'status': 200, 'decodeContent': '[00:01.00]First line\n[00:03.50][00:04.00]Repeat line\n[ti:Demo]'},
+    ]
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    client = _SequenceClient(calls, payloads)
+    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: client)
+
+    result = music_service.get_track_lyric(1, 'Demo Song', 'Demo Artist', 'ABC', '123', 210)
+
+    assert result['lines'] == [
+        {'time': 1.0, 'text': 'First line'},
+        {'time': 3.5, 'text': 'Repeat line'},
+        {'time': 4.0, 'text': 'Repeat line'},
+    ]
+    assert calls[0]['url'] == 'http://127.0.0.1:3000/search/lyric'
+    assert calls[0]['params'] == {
+        'keywords': 'Demo Artist - Demo Song',
+        'hash': 'ABC',
+        'album_audio_id': '123',
+        'duration': 210,
+        'man': 'no',
+    }
+    assert calls[1]['url'] == 'http://127.0.0.1:3000/lyric'
+    assert calls[1]['params'] == {
+        'id': 'lyric-1',
+        'accesskey': 'access-1',
+        'fmt': 'lrc',
+        'decode': 'true',
+    }
+
+
 def test_request_requires_configured_base_url(monkeypatch):
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', '')
     monkeypatch.setattr(music_service, 'redis_client', _FakeRedis())

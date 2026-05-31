@@ -19,6 +19,7 @@
         <div
           ref="mainScrollRef"
           class="flex-1 overflow-y-auto overflow-x-hidden relative scrollbar overflow-anchor-none"
+          :class="musicBarPadding"
           id="app-main-scroll"
         >
           <GlobalVideoPlayerHost />
@@ -32,19 +33,24 @@
       <!-- Mobile Navigation (Fixed at bottom) -->
       <MobileNavigation v-if="isMobile" class="fixed bottom-0 left-0 right-0 z-50 h-nav" />
     </div>
+
+    <!-- Global Music Player Bar (Fixed at bottom, above mobile nav) -->
+    <GlobalMusicPlayerBar />
   </div>
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import DesktopTitleBar from '@/components/shell/DesktopTitleBar.vue'
 import AppSidebar from '@/components/shell/AppSidebar.vue'
 import AppHeader from '@/components/shell/AppHeader.vue'
 import MobileNavigation from '@/components/shell/MobileNavigation.vue'
 import GlobalVideoPlayerHost from '@/components/video-player/GlobalVideoPlayerHost.vue'
+import GlobalMusicPlayerBar from '@/components/music/GlobalMusicPlayerBar.vue'
 import { isMobile } from '@/composables/useMobile'
 import { useThemeStore } from '@/stores/theme'
+import { useMusicPlayerStore } from '@/stores/musicPlayer'
 import { useNavigationHistory } from '@/composables/useNavigationHistory'
 
 type ScrollRouteState = {
@@ -55,8 +61,13 @@ type ScrollRouteState = {
 const scrollPositions = new Map<string, number>()
 const isDesktop = (window as any).desktopApp?.isDesktop === true
 const themeStore = useThemeStore()
+const musicPlayerStore = useMusicPlayerStore()
 const nav = useNavigationHistory()
 const route = useRoute()
+
+const musicBarPadding = computed(() =>
+  musicPlayerStore.currentTrack ? 'pb-16' : ''
+)
 const mainScrollRef = ref<HTMLElement | null>(null)
 let activeScrollRoute: ScrollRouteState = {
   fullPath: route.fullPath,

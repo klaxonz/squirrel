@@ -26,6 +26,16 @@ export type MusicPlayUrl = {
   raw?: Record<string, unknown>
 }
 
+export type MusicLyricLine = {
+  time: number
+  text: string
+}
+
+export type MusicLyricResult = {
+  lines: MusicLyricLine[]
+  raw: string
+}
+
 export type MusicAuthStatus = {
   logged_in: boolean
   source: string
@@ -59,6 +69,16 @@ export const getMusicPlayUrl = (params: {
   quality?: string
 }) => {
   return get<MusicPlayUrl>('/api/music/play-url', params)
+}
+
+export const getMusicLyric = (params: {
+  title: string
+  artist?: string
+  hash: string
+  album_audio_id?: string
+  duration?: number
+}) => {
+  return get<MusicLyricResult>('/api/music/lyric', params)
 }
 
 export const getMusicAuthStatus = () => {

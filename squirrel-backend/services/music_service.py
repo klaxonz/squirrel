@@ -63,6 +63,49 @@ def get_track_play_url(user_id: int, hash_value: str, album_audio_id: str | None
     }
 
 
+def get_track_lyric(
+    user_id: int,
+    title: str,
+    artist: str,
+    hash_value: str,
+    album_audio_id: str | None,
+    duration: int,
+) -> dict[str, Any]:
+    keyword = f'{artist} - {title}' if artist else title
+    lyric_search = _request_kugou('/search/lyric', {
+        'keywords': keyword,
+        'hash': hash_value,
+        'album_audio_id': album_audio_id or 0,
+        'duration': duration,
+        'man': 'no',
+    }, user_id=user_id)
+    candidates = lyric_search.get('candidates')
+    if not isinstance(candidates, list) or not candidates:
+        return {'lines': [], 'raw': ''}
+
+    lyric_candidate = candidates[0]
+    if not isinstance(lyric_candidate, dict):
+        return {'lines': [], 'raw': ''}
+
+    lyric_id = str(lyric_candidate.get('id') or '')
+    access_key = str(lyric_candidate.get('accesskey') or '')
+    if not lyric_id or not access_key:
+        return {'lines': [], 'raw': ''}
+
+    lyric_payload = _request_kugou('/lyric', {
+        'id': lyric_id,
+        'accesskey': access_key,
+        'fmt': 'lrc',
+        'decode': 'true',
+    }, user_id=user_id)
+    content = str(lyric_payload.get('decodeContent') or '')
+
+    return {
+        'lines': _parse_lrc(content),
+        'raw': content,
+    }
+
+
 def get_auth_status(user_id: int) -> dict[str, Any]:
     cookie = _effective_cookie(user_id)
     return {
@@ -209,6 +252,31 @@ def _cookie_value(cookie: str, key: str) -> str:
 def _timestamp_ms() -> int:
     import time
     return int(time.time() * 1000)
+
+
+def _parse_lrc(content: str) -> list[dict[str, Any]]:
+    lines = []
+    for raw_line in content.splitlines():
+        if not raw_line.startswith('[') or ']' not in raw_line:
+            continue
+        text = raw_line[raw_line.rfind(']') + 1:].strip()
+        for timestamp in raw_line[:raw_line.rfind(']') + 1].split(']'):
+            if not timestamp.startswith('['):
+                continue
+            seconds = _parse_lrc_timestamp(timestamp[1:])
+            if seconds >= 0:
+                lines.append({'time': seconds, 'text': text})
+    return sorted(lines, key=lambda item: item['time'])
+
+
+def _parse_lrc_timestamp(value: str) -> float:
+    if ':' not in value:
+        return -1
+    minutes_text, seconds_text = value.split(':', 1)
+    try:
+        return int(minutes_text) * 60 + float(seconds_text)
+    except ValueError:
+        return -1
 
 
 def _normalize_track(row: dict[str, Any]) -> dict[str, Any]:
