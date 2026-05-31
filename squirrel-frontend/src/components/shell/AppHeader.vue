@@ -40,7 +40,7 @@
       <div class="flex items-center gap-2.5 pl-2.5 ml-1 border-l border-border">
         <div
           class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer transition-all active:scale-95"
-          @click="handleLogout"
+          @click="goToProfile"
         >
           <div class="w-7 h-7 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-xs font-bold text-primary dark:text-primary-foreground shrink-0">
             <template v-if="userInitial">{{ userInitial }}</template>
@@ -80,9 +80,8 @@ const userInitial = computed(() => {
   return name && name !== '未登录' ? name.charAt(0) : ''
 })
 
-const handleLogout = async () => {
-  await userStore.logout()
-  router.push('/login')
+const goToProfile = () => {
+  router.push('/profile')
 }
 
 function handleVideoBack() {

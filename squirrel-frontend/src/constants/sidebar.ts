@@ -14,6 +14,7 @@ export type AppNavKey =
   | 'music'
   | 'sync-center'
   | 'scheduled-tasks'
+  | 'profile'
   | 'plugins'
   | 'logs'
   | 'settings'

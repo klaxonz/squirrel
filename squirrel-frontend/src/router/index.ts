@@ -20,6 +20,7 @@ const PluginManager = () => import('../views/PluginManager.vue')
 const LogViewer = () => import('../views/LogViewer.vue')
 const ScheduledTasks = () => import('../views/ScheduledTasks.vue')
 const SyncCenter = () => import('../views/SyncCenter.vue')
+const Profile = () => import('../views/Profile.vue')
 
 const baseSearchMeta = {
   showSearch: true,
@@ -155,6 +156,15 @@ const routes = [
     meta: createNoSearchMeta('日志查看器', {
       navKey: 'logs',
       sectionLabel: '日志',
+    }),
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: Profile,
+    meta: createNoSearchMeta('个人主页', {
+      navKey: 'profile',
+      sectionLabel: '个人',
     }),
   },
   {

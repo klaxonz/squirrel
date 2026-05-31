@@ -57,6 +57,16 @@ export const useUserStore = defineStore('user', () => {
     clearState()
   }
 
+  const updateProfile = async (data: any) => {
+    loading.value = true
+    const result = await updateUserMe(data)
+    if (!result.error) {
+      currentUser.value = result.data || null
+    }
+    loading.value = false
+    return result
+  }
+
   return {
     currentUser,
     isAuthenticated,
@@ -67,6 +77,7 @@ export const useUserStore = defineStore('user', () => {
     login,
     register,
     logout,
+    updateProfile,
     clearState
   }
 })
