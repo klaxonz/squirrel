@@ -1176,6 +1176,37 @@
 
           <div class="h-px bg-border/20 my-1"></div>
 
+          <template v-if="findFeedByEntry(contextMenuEntry)">
+            <div class="px-2.5 py-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">默认打开方式</div>
+
+            <button
+              @click="setFeedOpenMethod(findFeedByEntry(contextMenuEntry)!, null)"
+              class="flex h-7 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+            >
+              <AppIcon name="list" class="h-3.5 w-3.5 opacity-70" />
+              <span class="flex-1">内嵌阅读</span>
+              <AppIcon v-if="!findFeedByEntry(contextMenuEntry)!.open_method" name="check" class="h-3 w-3 text-primary" />
+            </button>
+
+            <button
+              @click="setFeedOpenMethod(findFeedByEntry(contextMenuEntry)!, 'app_browser')"
+              class="flex h-7 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+            >
+              <AppIcon name="siteFallback" class="h-3.5 w-3.5 opacity-70" />
+              <span class="flex-1">应用内浏览器</span>
+              <AppIcon v-if="findFeedByEntry(contextMenuEntry)!.open_method === 'app_browser'" name="check" class="h-3 w-3 text-primary" />
+            </button>
+
+            <button
+              @click="setFeedOpenMethod(findFeedByEntry(contextMenuEntry)!, 'external_browser')"
+              class="flex h-7 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+            >
+              <AppIcon name="externalLink" class="h-3.5 w-3.5 opacity-70" />
+              <span class="flex-1">系统浏览器</span>
+              <AppIcon v-if="findFeedByEntry(contextMenuEntry)!.open_method === 'external_browser'" name="check" class="h-3 w-3 text-primary" />
+            </button>
+          </template>
+
           <button
             @click="batchUpdateReadStatus('above', true)"
             class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
