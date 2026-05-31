@@ -37,21 +37,28 @@ def search_tracks(user_id: int, query: str, page: int, page_size: int) -> dict[s
 def get_track_play_url(user_id: int, hash_value: str, album_audio_id: str | None, quality: str) -> dict[str, Any]:
     params = {
         'hash': hash_value,
-        'quality': quality,
     }
     if album_audio_id:
         params['album_audio_id'] = album_audio_id
 
-    payload = _request_kugou('/song/url', params, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
-    url = data.get('play_url') or data.get('url') or data.get('backup_url')
-    if isinstance(url, list):
-        url = url[0] if url else ''
+    payload = _request_kugou('/song/url/new', params, user_id=user_id)
+    rows = payload.get('data') if isinstance(payload.get('data'), list) else []
+    data = rows[0] if rows and isinstance(rows[0], dict) else {}
+    info = data.get('info') if isinstance(data.get('info'), dict) else {}
+    tracker_url = info.get('tracker_url')
+    url = ''
+    if isinstance(tracker_url, str):
+        url = tracker_url
+    elif isinstance(tracker_url, list):
+        for item in tracker_url:
+            if isinstance(item, str) and item:
+                url = item
+                break
 
     return {
         'url': url or '',
-        'quality': data.get('quality') or quality,
-        'expires_at': data.get('expires_at'),
+        'quality': str(data.get('quality') or info.get('bitrate') or quality),
+        'expires_at': data.get('expire'),
         'raw': data,
     }
 

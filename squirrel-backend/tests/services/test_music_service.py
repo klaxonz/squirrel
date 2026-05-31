@@ -130,7 +130,20 @@ def test_search_tracks_normalizes_kugou_response(monkeypatch):
 def test_get_track_play_url_returns_direct_url(monkeypatch):
     calls = []
     redis = _FakeRedis()
-    payload = {'data': {'play_url': 'https://cdn.example.test/demo.mp3', 'quality': '128'}}
+    payload = {
+        'data': [
+            {
+                'quality': '128',
+                'expire': 1800,
+                'info': {
+                    'tracker_url': [
+                        'https://cdn.example.test/demo.mp3',
+                        'https://cdn.example.test/demo-backup.mp3',
+                    ],
+                },
+            }
+        ]
+    }
 
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
     monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
@@ -140,8 +153,9 @@ def test_get_track_play_url_returns_direct_url(monkeypatch):
     result = music_service.get_track_play_url(1, 'ABC', '123', '128')
 
     assert result['url'] == 'https://cdn.example.test/demo.mp3'
-    assert calls[0]['url'] == 'http://127.0.0.1:3000/song/url'
-    assert calls[0]['params'] == {'hash': 'ABC', 'quality': '128', 'album_audio_id': '123'}
+    assert result['expires_at'] == 1800
+    assert calls[0]['url'] == 'http://127.0.0.1:3000/song/url/new'
+    assert calls[0]['params'] == {'hash': 'ABC', 'album_audio_id': '123'}
     assert calls[0]['headers'] == {}
 
 
