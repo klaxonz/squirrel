@@ -387,13 +387,17 @@
         <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden animate-fade-in bg-background relative">
           <!-- Reader Header (Clean compact toolbar) -->
           <header class="shrink-0 border-b border-border/10 h-14 px-6 bg-background flex items-center justify-between relative z-20">
-            <!-- Left Side: Source badge -->
-            <div class="flex items-center gap-2 text-xs text-muted-foreground/80 min-w-0 pr-4">
+            <!-- Left Side: Source badge (clickable to view feed) -->
+            <button
+              @click="selectFeed(readingEntry.feed_id)"
+              class="flex items-center gap-2 text-xs text-muted-foreground/80 min-w-0 pr-4 hover:text-primary transition-colors cursor-pointer"
+              title="查看该订阅源的所有文章"
+            >
               <SiteIcon :icon-url="getFeedIconUrl(readingEntry.feed_id)" size="xs" rounded="sm" class="shrink-0" />
               <span class="font-bold text-foreground/85 truncate max-w-[180px] lg:max-w-[240px]" :title="getFeedTitle(readingEntry.feed_id)">
                 {{ getFeedTitle(readingEntry.feed_id) }}
               </span>
-            </div>
+            </button>
 
             <!-- Right Side: Action buttons -->
             <div class="flex items-center gap-2 shrink-0">
@@ -1087,6 +1091,14 @@
             <span>{{ contextMenuEntry.is_starred ? '取消收藏' : '收藏文章' }}</span>
           </button>
 
+          <button
+            @click="goToFeedFromContextMenu(contextMenuEntry)"
+            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon name="inbox" class="h-3.5 w-3.5 opacity-70" />
+            <span>查看订阅源</span>
+          </button>
+
           <div class="h-px bg-border/20 my-1"></div>
 
           <button
@@ -1720,6 +1732,11 @@ const handleSubscribeFeed = async () => {
 
 const findFeedByEntry = (entry: RssEntry): RssFeed | undefined => {
   return feeds.value.find(f => f.id === entry.feed_id)
+}
+
+const goToFeedFromContextMenu = async (entry: RssEntry) => {
+  closeContextMenu()
+  await selectFeed(entry.feed_id)
 }
 
 const unsubscribeCurrentFeed = async (entry: RssEntry) => {
