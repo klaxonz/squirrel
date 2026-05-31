@@ -506,6 +506,10 @@ def get_auth_status(user_id: int) -> dict[str, Any]:
     }
 
 
+def clear_auth(user_id: int) -> None:
+    redis_client.delete(_auth_redis_key(user_id))
+
+
 async def get_user_profile(user_id: int) -> dict[str, Any]:
     payload = await _request_kugou('/user/detail', {}, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
@@ -521,6 +525,11 @@ async def get_user_profile(user_id: int) -> dict[str, Any]:
         'listen_count': int(data.get('duration') or 0),
         'raw': payload,
     }
+
+
+async def logout(user_id: int) -> dict[str, Any]:
+    redis_client.delete(_auth_redis_key(user_id))
+    return {'ok': True}
 
 
 async def create_qr_login() -> dict[str, Any]:

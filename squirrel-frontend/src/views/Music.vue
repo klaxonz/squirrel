@@ -260,12 +260,90 @@
               </Button>
             </div>
             
-            <div v-else-if="!authStatus?.logged_in" class="music-empty">
-              <AppIcon name="user" class="h-9 w-9 text-muted-foreground/30" />
-              <p class="mt-2 text-sm text-muted-foreground">请先扫码登录酷狗账号</p>
-              <Button class="mt-3 h-8 rounded-md px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90" @click="openQrLogin">
-                扫码登录
-              </Button>
+            <div v-else-if="!authStatus?.logged_in" class="music-login-showcase">
+              <div class="music-login-content">
+                
+                <!-- State 1: Intro Page (qrOpen is false) -->
+                <template v-if="!qrOpen">
+                  <!-- Artistic abstract music wave illustration -->
+                  <div class="music-login-art">
+                    <div class="music-login-art-circle music-login-art-circle--1"></div>
+                    <div class="music-login-art-circle music-login-art-circle--2"></div>
+                    <div class="music-login-art-circle music-login-art-circle--3"></div>
+                    <div class="music-login-icon-wrapper">
+                      <AppIcon name="playlistMusic" class="h-10 w-10 text-primary" />
+                    </div>
+                  </div>
+                  
+                  <h3 class="music-login-title">开启您的酷狗音乐之旅</h3>
+                  <p class="music-login-subtitle">
+                    登录后即可同步您在酷狗音乐创建的歌单与收藏，解锁海量曲库，更有个性化每日推荐、最近播放历史及听歌排行榜等专属特权。
+                  </p>
+                  
+                  <div class="music-login-actions">
+                    <Button 
+                      class="music-login-btn-premium font-bold tracking-wide" 
+                      @click="openQrLogin"
+                    >
+                      <AppIcon name="user" class="h-4 w-4 mr-2" />
+                      立即扫码登录
+                    </Button>
+                  </div>
+                </template>
+
+                <!-- State 2: Inline QR Code Page (qrOpen is true) -->
+                <template v-else>
+                  <div class="music-login-qr-inline">
+                    <div class="music-login-qr-header">
+                      <button class="music-login-qr-back" @click="closeQrLogin" title="返回">
+                        <AppIcon name="chevronLeft" class="h-4 w-4" />
+                      </button>
+                      
+                      <div class="text-center flex-1">
+                        <h4 class="text-base font-extrabold tracking-tight">扫码登录酷狗</h4>
+                        <p class="text-[10px] text-muted-foreground font-medium flex items-center justify-center gap-1 mt-0.5">
+                          <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          {{ qrStatusText }}
+                        </p>
+                      </div>
+
+                      <button class="music-login-qr-refresh" @click="openQrLogin" :disabled="qrLoading" title="刷新二维码">
+                        <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': qrLoading }" />
+                      </button>
+                    </div>
+
+                    <div class="music-login-qr-body">
+                      <!-- Single, ultra-clean white card -->
+                      <div 
+                        class="music-qr-card" 
+                        :class="{ 'qr-expired': qrStatus === 0 }" 
+                        @click="qrStatus === 0 && openQrLogin()"
+                      >
+                        <img 
+                          v-if="qrLogin?.base64" 
+                          :src="qrLogin.base64" 
+                          alt="KuGou login QR code" 
+                          class="music-qr-img" 
+                          :style="{ opacity: qrStatus === 0 ? 0.15 : 1, filter: qrStatus === 0 ? 'blur(3px)' : 'none' }"
+                        />
+                        <AppIcon v-else name="loadingSpinner" class="h-6 w-6 animate-spin text-primary" />
+                        
+                        <!-- Overlay when expired -->
+                        <div v-if="qrStatus === 0" class="music-qr-expired-overlay">
+                          <AppIcon name="refresh" class="h-5 w-5 text-primary mb-1 animate-pulse" />
+                          <span class="text-[10px] font-bold text-slate-700">二维码已失效</span>
+                          <span class="text-[9px] text-muted-foreground mt-0.5">点击重试</span>
+                        </div>
+                      </div>
+                      
+                      <p class="text-xs text-muted-foreground max-w-[14rem] leading-relaxed mt-1">
+                        请使用酷狗音乐 App 扫描上方二维码
+                      </p>
+                    </div>
+                  </div>
+                </template>
+
+              </div>
             </div>
             
             <div v-else-if="kugouProfile" class="music-profile-layout">
@@ -285,6 +363,17 @@
                     <p class="music-profile-gender-reg">
                       <span v-if="kugouProfile.gender" class="music-gender-tag">{{ kugouProfile.gender === '1' ? '♂ 男' : (kugouProfile.gender === '2' ? '♀ 女' : '密') }}</span>
                       <span v-if="kugouProfile.register_time" class="music-reg-date">注册时间: {{ formatRegTime(kugouProfile.register_time) }}</span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        class="h-6 px-2 rounded-md text-xs text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors ml-1 font-semibold flex items-center gap-1 shrink-0" 
+                        @click="handleLogout"
+                        :disabled="logoutLoading"
+                      >
+                        <AppIcon v-if="logoutLoading" name="loadingSpinner" class="h-3 w-3 animate-spin" />
+                        <AppIcon v-else name="logout" class="h-3 w-3" />
+                        退出登录
+                      </Button>
                     </p>
                   </div>
                   
@@ -792,36 +881,6 @@
 
 
 
-      <div v-if="qrOpen" class="music-qr-modal" @click.self="closeQrLogin">
-        <section class="music-qr-panel">
-          <header class="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
-            <div class="min-w-0">
-              <h2 class="truncate text-sm font-semibold">酷狗扫码登录</h2>
-              <p class="mt-0.5 text-xs text-muted-foreground">{{ qrStatusText }}</p>
-            </div>
-            <Button variant="ghost" size="icon" class="h-8 w-8 rounded-md" @click="closeQrLogin">
-              <AppIcon name="close" class="h-4 w-4" />
-            </Button>
-          </header>
-
-          <div class="flex flex-col items-center gap-4 p-5">
-            <div class="music-qr-image">
-              <img v-if="qrLogin?.base64" :src="qrLogin.base64" alt="KuGou login QR code" class="h-full w-full" />
-              <AppIcon v-else name="loadingSpinner" class="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-            <div class="flex gap-2">
-              <Button variant="outline" class="h-9 rounded-md px-3" :disabled="qrLoading" @click="openQrLogin">
-                <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': qrLoading }" />
-                刷新
-              </Button>
-              <Button class="h-9 rounded-md px-3" :disabled="!qrLogin?.url" @click="openQrUrl">
-                <AppIcon name="externalLink" class="h-4 w-4" />
-                打开
-              </Button>
-            </div>
-          </div>
-        </section>
-      </div>
     </div>
   </AppPageShell>
 </template>
@@ -839,6 +898,7 @@ import {
   createMusicQrLogin,
   deleteMusicUserPlaylist,
   getMusicAuthStatus,
+  logoutMusic,
   addMusicUserPlaylistTrack,
   getMusicAlbumDetail,
   getMusicAlbumTracks,
@@ -852,10 +912,11 @@ import {
   getMusicRanks,
   getMusicRecommendations,
   getMusicUserPlaylistTracks,
-  getMusicUserPlaylists,
   getMusicUserHistory,
   getMusicUserListenRank,
+  getMusicUserPlaylists,
   getMusicUserProfile,
+  logoutMusicUser,
   removeMusicUserPlaylistTracks,
   reportFmGarbage,
   searchMusic,
@@ -932,6 +993,7 @@ let qrTimer: ReturnType<typeof setInterval> | null = null
 const kugouProfile = ref<MusicUserProfile | null>(null)
 const kugouProfileLoading = ref(false)
 const kugouProfileError = ref('')
+const logoutLoading = ref(false)
 
 const profileActiveTab = ref<'playlists' | 'history' | 'rank'>('playlists')
 const profileHistory = ref<MusicTrack[]>([])
@@ -1800,6 +1862,34 @@ const loadAuthStatus = async () => {
     return
   }
   authStatus.value = data
+}
+
+async function handleLogout() {
+  logoutLoading.value = true
+  try {
+    const { error: requestError } = await logoutMusicUser()
+    if (requestError) {
+      Logger.error('Failed to logout Kugou account', requestError)
+      return
+    }
+    // Reset state
+    if (authStatus.value) {
+      authStatus.value.logged_in = false
+    }
+    kugouProfile.value = null
+    userPlaylists.value = []
+    profileHistory.value = []
+    profileListenRank.value = []
+    selectedUserPlaylist.value = null
+    if (trackSource.value === 'user_playlist') {
+      trackSource.value = 'idle'
+      tracks.value = []
+    }
+  } catch (err) {
+    Logger.error('Error during logout', err)
+  } finally {
+    logoutLoading.value = false
+  }
 }
 
 const openQrLogin = async () => {
@@ -2940,35 +3030,276 @@ const formatCompactCount = (count: number) => {
   animation: pulse 1.8s ease-in-out infinite;
 }
 
-.music-qr-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 999;
+/* Breathtaking Minimalist Login Showcase */
+.music-login-showcase {
+  display: flex;
+  min-height: 32rem;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  width: 100%;
+}
+
+.music-login-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 36rem;
+  width: 100%;
+  animation: musicFadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes musicFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Artistic Abstract Icon Layout */
+.music-login-art {
+  position: relative;
+  width: 7rem;
+  height: 7rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(0 0 0 / 0.45);
-  padding: 1rem;
+  margin-bottom: 2rem;
 }
 
-.music-qr-panel {
-  width: min(100%, 20rem);
-  overflow: hidden;
-  border-radius: 0.375rem;
-  border: 1px solid hsl(var(--border) / 0.6);
+.music-login-icon-wrapper {
+  position: relative;
+  z-index: 10;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 0.5rem; /* Cohesive standard radius */
   background: hsl(var(--background));
-}
-
-.music-qr-image {
+  border: 1px solid hsl(var(--border) / 0.8);
+  box-shadow: 
+    0 4px 12px -3px rgb(0 0 0 / 0.05),
+    0 1px 2px 0 rgb(0 0 0 / 0.02);
   display: flex;
-  width: 12rem;
-  height: 12rem;
   align-items: center;
   justify-content: center;
-  border-radius: 0.375rem;
-  border: 1px solid hsl(var(--border) / 0.45);
+  transition: all 0.3s ease;
+}
+
+.music-login-showcase:hover .music-login-icon-wrapper {
+  transform: translateY(-2px);
+  border-color: hsl(var(--primary) / 0.5);
+  box-shadow: 
+    0 8px 16px -4px hsl(var(--primary) / 0.15),
+    0 1px 2px 0 hsl(var(--primary) / 0.05);
+}
+
+/* Dynamic rotating background circles */
+.music-login-art-circle {
+  position: absolute;
+  border-radius: 9999px;
+  border: 1px dashed hsl(var(--border) / 0.6);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.music-login-art-circle--1 {
+  width: 5rem;
+  height: 5rem;
+  animation: musicSpinRotate 30s linear infinite;
+}
+
+.music-login-art-circle--2 {
+  width: 6.25rem;
+  height: 6.25rem;
+  border-style: solid;
+  border-color: hsl(var(--border) / 0.15);
+  animation: musicSpinRotate 40s linear infinite reverse;
+}
+
+.music-login-art-circle--3 {
+  width: 7.5rem;
+  height: 7.5rem;
+  border-color: hsl(var(--border) / 0.08);
+  animation: musicSpinRotate 50s linear infinite;
+}
+
+@keyframes musicSpinRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Elegant Breathtaking Typography */
+.music-login-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+.music-login-subtitle {
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: hsl(var(--muted-foreground));
+  max-width: 26rem;
+  margin-bottom: 2.25rem;
+  font-weight: 400;
+}
+
+/* Standard Cohesive Primary Button */
+.music-login-btn-premium {
+  height: 2.5rem;
+  padding: 0 1.5rem;
+  border-radius: 0.375rem; /* Standard rounded-md */
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.music-login-btn-premium:hover {
+  background: hsl(var(--primary) / 0.9);
+  transform: translateY(-1px);
+}
+
+.music-login-btn-premium:active {
+  transform: translateY(0);
+}
+
+/* Elegant Inline QR layout */
+.music-login-qr-inline {
+  width: 100%;
+  max-width: 20rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: qrInlineEntry 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes qrInlineEntry {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Symmetrical Inline QR Header */
+.music-login-qr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 18rem;
+  margin-bottom: 2rem;
+}
+
+.music-login-qr-back,
+.music-login-qr-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.375rem; /* Standard rounded-md */
+  border: none;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.music-login-qr-back:hover,
+.music-login-qr-refresh:hover:not(:disabled) {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+
+.music-login-qr-back:active,
+.music-login-qr-refresh:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.music-login-qr-refresh:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Symmetrical Inline QR Body & Single White Card */
+.music-login-qr-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.music-qr-card {
+  position: relative;
+  width: 11rem;
+  height: 11rem;
   background: white;
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 0.375rem; /* Match standard border-radius */
   padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 
+    0 4px 12px -3px rgb(0 0 0 / 0.05),
+    0 1px 2px 0 rgb(0 0 0 / 0.02);
+  transition: all 0.2s ease;
+}
+
+.music-qr-card.qr-expired {
+  cursor: pointer;
+  border-color: hsl(var(--destructive) / 0.2);
+}
+
+.music-qr-card.qr-expired:hover {
+  border-color: hsl(var(--primary) / 0.3);
+  box-shadow: 0 4px 16px -2px hsl(var(--primary) / 0.15);
+}
+
+.music-qr-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 0.125rem; /* very small radius for the image to look clean */
+  transition: all 0.3s ease;
+}
+
+.music-qr-expired-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgb(255 255 255 / 0.96);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.music-qr-expired-overlay:hover {
+  background: rgb(255 255 255 / 0.99);
 }
 
 /* FM Radio View */

@@ -384,6 +384,10 @@ export const getMusicUserProfile = () => {
   return get<MusicUserProfile>('/api/music/user/profile')
 }
 
+export const logoutMusicUser = () => {
+  return post<{ ok: boolean }>('/api/music/user/logout')
+}
+
 export const getMusicAuthStatus = () => {
   return get<MusicAuthStatus>('/api/music/auth/status')
 }
@@ -394,4 +398,8 @@ export const createMusicQrLogin = () => {
 
 export const checkMusicQrLogin = (key: string) => {
   return get<MusicQrLoginStatus>('/api/music/auth/qr/check', { key })
+}
+
+export const logoutMusic = () => {
+  return post<MusicActionResult>('/api/music/auth/logout')
 }

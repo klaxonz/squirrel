@@ -368,6 +368,16 @@ async def get_music_user_profile(
         return response.server_error(str(exc))
 
 
+@router.post('/api/music/user/logout')
+async def logout_music_user(
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.logout(current_user.id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
 @router.get('/api/music/auth/qr/check')
 async def check_music_qr_login(
     key: str = Query(..., min_length=1, description='二维码 key'),
@@ -375,6 +385,17 @@ async def check_music_qr_login(
 ):
     try:
         return response.success(await music_service.check_qr_login(current_user.id, key))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.post('/api/music/auth/logout')
+async def logout_music(
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        music_service.clear_auth(current_user.id)
+        return response.success({'ok': True})
     except music_service.MusicServiceError as exc:
         return response.server_error(str(exc))
 
