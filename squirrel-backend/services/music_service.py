@@ -425,9 +425,9 @@ def _request_kugou(
         raise MusicServiceError('KuGouMusicApi returned invalid payload')
 
     error_code = payload.get('error_code')
-    if error_code in (None, '', 0, '0'):
+    if error_code in (None, '', 0, '0', 200, '200'):
         error_code = payload.get('errcode')
-    if error_code not in (None, '', 0, '0'):
+    if error_code not in (None, '', 0, '0', 200, '200'):
         message = (
             payload.get('error')
             or payload.get('message')

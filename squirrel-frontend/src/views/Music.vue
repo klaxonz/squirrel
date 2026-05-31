@@ -1,26 +1,131 @@
 <template>
   <AppPageShell variant="compact">
     <div class="music-page">
+      <!-- Left sidebar navigation for music app -->
+      <nav class="music-nav-sidebar">
+        <div class="music-nav-brand">
+          <AppIcon name="playlistMusic" class="h-5 w-5 text-primary" />
+          <h1 class="text-sm font-semibold tracking-wider">我的音乐库</h1>
+        </div>
+
+        <div class="music-nav-section">
+          <div class="music-nav-label">发现音乐</div>
+          <button
+            class="music-nav-item"
+            :class="{ 'active': activeMode === 'recommend' && !selectedRank && !selectedPlaylist }"
+            @click="selectRecommendNav"
+          >
+            <AppIcon name="playlistMusic" class="h-4 w-4" />
+            <span>为您推荐</span>
+          </button>
+          <button
+            class="music-nav-item"
+            :class="{ 'active': activeMode === 'rank' }"
+            @click="setMusicMode('rank')"
+          >
+            <AppIcon name="list" class="h-4 w-4" />
+            <span>排行榜</span>
+          </button>
+          <button
+            class="music-nav-item"
+            :class="{ 'active': activeMode === 'playlist' }"
+            @click="setMusicMode('playlist')"
+          >
+            <AppIcon name="playlistMusic" class="h-4 w-4" />
+            <span>热门歌单</span>
+          </button>
+        </div>
+
+        <div class="music-nav-section">
+          <div class="music-nav-label">我的音乐</div>
+          <button
+            class="music-nav-item"
+            :class="{ 'active': trackSource === 'history' }"
+            @click="loadUserHistory(false)"
+          >
+            <AppIcon name="history" class="h-4 w-4" />
+            <span>最近播放</span>
+          </button>
+          <button
+            class="music-nav-item"
+            :class="{ 'active': trackSource === 'listen_rank' && listenRankType === 0 }"
+            @click="loadUserListenRank(0)"
+          >
+            <AppIcon name="list" class="h-4 w-4" />
+            <span>一周排行</span>
+          </button>
+          <button
+            class="music-nav-item"
+            :class="{ 'active': trackSource === 'listen_rank' && listenRankType === 1 }"
+            @click="loadUserListenRank(1)"
+          >
+            <AppIcon name="list" class="h-4 w-4" />
+            <span>累计排行</span>
+          </button>
+          <button
+            class="music-nav-item"
+            :class="{ 'active': trackSource === 'latest_listen' }"
+            @click="loadLatestListenSongs"
+          >
+            <AppIcon name="refresh" class="h-4 w-4" />
+            <span>继续播放</span>
+          </button>
+        </div>
+
+        <div class="music-nav-section">
+          <div class="music-nav-label">新建歌单</div>
+          <form class="music-playlist-create" @submit.prevent="createUserPlaylist">
+            <Input
+              v-model="newPlaylistName"
+              class="h-7 text-xs border-none bg-muted/40"
+              placeholder="歌单名称..."
+            />
+            <div class="music-playlist-create-footer">
+              <label class="music-private-toggle">
+                <input v-model="newPlaylistPrivate" type="checkbox" />
+                <span>私密</span>
+              </label>
+              <button class="music-row-action" :disabled="!newPlaylistName.trim()" title="新建歌单" type="submit">
+                <AppIcon name="plus" class="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="music-nav-section" v-if="userPlaylists.length">
+          <div class="music-nav-label">我的歌单</div>
+          <button
+            v-for="playlist in userPlaylists"
+            :key="playlist.id"
+            class="music-nav-item"
+            :class="{ 'active': selectedUserPlaylist?.id === playlist.id && trackSource === 'user_playlist' }"
+            @click="selectUserPlaylist(playlist)"
+          >
+            <AppIcon name="playlistMusic" class="h-4 w-4" />
+            <span class="truncate">{{ playlist.name }}</span>
+          </button>
+        </div>
+      </nav>
+
       <section class="music-main">
         <header class="music-header">
           <div class="min-w-0">
-            <h1 class="truncate text-base font-semibold">音乐</h1>
-            <p class="mt-0.5 text-xs text-muted-foreground">{{ resultSummary }}</p>
+            <h1 class="truncate text-sm font-semibold tracking-wide text-muted-foreground">{{ resultSummary }}</h1>
           </div>
           <div class="music-header-actions">
-            <Button variant="outline" class="h-9 rounded-md px-3" @click="openQrLogin">
-              <AppIcon name="user" class="h-4 w-4" />
+            <Button variant="outline" class="h-8 rounded-md px-3 text-xs" @click="openQrLogin">
+              <AppIcon name="user" class="h-3.5 w-3.5" />
               {{ authStatus?.logged_in ? '已登录' : '扫码登录' }}
             </Button>
             <form class="music-search" @submit.prevent="submitSearch">
               <Input
                 v-model="query"
-                class="h-9 border-none bg-muted/50 text-sm focus-visible:ring-1"
+                class="h-8 border-none bg-muted/50 text-xs focus-visible:ring-1"
                 placeholder="搜索歌曲、歌手、专辑"
               />
-              <Button type="submit" class="h-9 rounded-md px-3" :disabled="loading || !query.trim()">
-                <AppIcon v-if="loading" name="loadingSpinner" class="h-4 w-4 animate-spin" />
-                <AppIcon v-else name="search" class="h-4 w-4" />
+              <Button type="submit" class="h-8 rounded-md px-3 text-xs" :disabled="loading || !query.trim()">
+                <AppIcon v-if="loading" name="loadingSpinner" class="h-3.5 w-3.5 animate-spin" />
+                <AppIcon v-else name="search" class="h-3.5 w-3.5" />
                 搜索
               </Button>
             </form>
@@ -28,385 +133,201 @@
         </header>
 
         <div class="music-content custom-scrollbar">
-          <div class="music-discovery">
-            <div class="music-tabs">
-              <button
-                class="music-tab"
-                :class="{ 'music-tab--active': activeMode === 'recommend' }"
-                @click="setMusicMode('recommend')"
-              >
-                推荐
-              </button>
-              <button
-                class="music-tab"
-                :class="{ 'music-tab--active': activeMode === 'rank' }"
-                @click="setMusicMode('rank')"
-              >
-                排行榜
-              </button>
-              <button
-                class="music-tab"
-                :class="{ 'music-tab--active': activeMode === 'playlist' }"
-                @click="setMusicMode('playlist')"
-              >
-                歌单
-              </button>
-              <button
-                class="music-tab"
-                :class="{ 'music-tab--active': activeMode === 'mine' }"
-                @click="setMusicMode('mine')"
-              >
-                我的
-              </button>
-            </div>
-
-            <div v-if="activeMode === 'rank'" class="music-card-strip custom-scrollbar">
-              <button
+          <!-- Ranks Grid View -->
+          <div v-if="activeMode === 'rank' && !selectedRank" class="music-discovery-grid">
+            <h3 class="text-sm font-semibold mb-3">官方排行榜</h3>
+            <div class="music-grid">
+              <div
                 v-for="rank in ranks"
                 :key="rank.id"
-                class="music-source-card"
-                :class="{ 'music-source-card--active': selectedRank?.id === rank.id }"
+                class="music-grid-card"
                 @click="selectRank(rank)"
               >
-                <img v-if="rank.cover" :src="rank.cover" alt="" class="music-source-cover" />
-                <div v-else class="music-source-cover">
-                  <AppIcon name="playlistMusic" class="h-5 w-5 text-muted-foreground" />
+                <div class="music-source-cover-wrap">
+                  <img v-if="rank.cover" :src="rank.cover" alt="" class="music-source-cover" />
+                  <div v-else class="music-source-cover">
+                    <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <div class="music-source-play-overlay">
+                    <AppIcon name="play" class="h-6 w-6 text-primary-foreground fill-current" />
+                  </div>
                 </div>
-                <span class="truncate text-xs font-medium">{{ rank.name }}</span>
-                <span class="truncate text-[0.7rem] text-muted-foreground">{{ rank.update_frequency || '排行榜' }}</span>
-              </button>
-              <span v-if="discoveryLoading" class="music-source-loading">加载中</span>
+                <span class="music-grid-card-title">{{ rank.name }}</span>
+                <span class="music-grid-card-subtitle">{{ rank.update_frequency || '排行榜' }}</span>
+              </div>
             </div>
+          </div>
 
-            <div v-else-if="activeMode === 'playlist'" class="music-card-strip custom-scrollbar">
-              <button
+          <!-- Playlists Grid View -->
+          <div v-else-if="activeMode === 'playlist' && !selectedPlaylist" class="music-discovery-grid">
+            <h3 class="text-sm font-semibold mb-3">热门精品歌单</h3>
+            <div class="music-grid">
+              <div
                 v-for="playlist in playlists"
                 :key="playlist.id"
-                class="music-source-card music-source-card--playlist"
-                :class="{ 'music-source-card--active': selectedPlaylist?.id === playlist.id }"
+                class="music-grid-card"
                 @click="selectPlaylist(playlist)"
               >
-                <img v-if="playlist.cover" :src="playlist.cover" alt="" class="music-source-cover" />
-                <div v-else class="music-source-cover">
-                  <AppIcon name="playlistMusic" class="h-5 w-5 text-muted-foreground" />
+                <div class="music-source-cover-wrap">
+                  <img v-if="playlist.cover" :src="playlist.cover" alt="" class="music-source-cover" />
+                  <div v-else class="music-source-cover">
+                    <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <div class="music-source-play-overlay">
+                    <AppIcon name="play" class="h-6 w-6 text-primary-foreground fill-current" />
+                  </div>
                 </div>
-                <span class="truncate text-xs font-medium">{{ playlist.name }}</span>
-                <span class="truncate text-[0.7rem] text-muted-foreground">{{ playlist.creator || '歌单' }}</span>
-              </button>
-              <button v-if="playlistHasMore" class="music-source-more" :disabled="discoveryLoading" @click="loadMorePlaylists">
-                更多
-              </button>
-              <span v-if="discoveryLoading" class="music-source-loading">加载中</span>
-            </div>
-
-            <div v-else-if="activeMode === 'mine'" class="music-card-strip custom-scrollbar">
-              <form class="music-playlist-create" @submit.prevent="createUserPlaylist">
-                <Input
-                  v-model="newPlaylistName"
-                  class="h-8 border-none bg-muted/50 text-xs focus-visible:ring-1"
-                  placeholder="新建歌单"
-                />
-                <label class="music-private-toggle">
-                  <input v-model="newPlaylistPrivate" type="checkbox" />
-                  <span>私密</span>
-                </label>
-                <button class="music-row-action" :disabled="!newPlaylistName.trim()" title="新建歌单" type="submit">
-                  <AppIcon name="plus" class="h-3.5 w-3.5" />
-                </button>
-              </form>
-              <button
-                class="music-source-card music-source-card--compact"
-                :class="{ 'music-source-card--active': trackSource === 'history' }"
-                @click="loadUserHistory(false)"
-              >
-                <AppIcon name="history" class="h-5 w-5 text-muted-foreground" />
-                <span class="truncate text-xs font-medium">最近播放</span>
-                <span class="truncate text-[0.7rem] text-muted-foreground">酷狗历史</span>
-              </button>
-              <button
-                class="music-source-card music-source-card--compact"
-                :class="{ 'music-source-card--active': trackSource === 'listen_rank' && listenRankType === 0 }"
-                @click="loadUserListenRank(0)"
-              >
-                <AppIcon name="list" class="h-5 w-5 text-muted-foreground" />
-                <span class="truncate text-xs font-medium">听歌排行</span>
-                <span class="truncate text-[0.7rem] text-muted-foreground">一周排行</span>
-              </button>
-              <button
-                class="music-source-card music-source-card--compact"
-                :class="{ 'music-source-card--active': trackSource === 'listen_rank' && listenRankType === 1 }"
-                @click="loadUserListenRank(1)"
-              >
-                <AppIcon name="list" class="h-5 w-5 text-muted-foreground" />
-                <span class="truncate text-xs font-medium">累计排行</span>
-                <span class="truncate text-[0.7rem] text-muted-foreground">全部记录</span>
-              </button>
-              <button
-                class="music-source-card music-source-card--compact"
-                :class="{ 'music-source-card--active': trackSource === 'latest_listen' }"
-                @click="loadLatestListenSongs"
-              >
-                <AppIcon name="refresh" class="h-5 w-5 text-muted-foreground" />
-                <span class="truncate text-xs font-medium">继续播放</span>
-                <span class="truncate text-[0.7rem] text-muted-foreground">设备记录</span>
-              </button>
-              <button
-                v-for="playlist in userPlaylists"
-                :key="playlist.id"
-                class="music-source-card music-source-card--playlist"
-                :class="{ 'music-source-card--active': selectedUserPlaylist?.id === playlist.id }"
-                @click="selectUserPlaylist(playlist)"
-              >
-                <img v-if="playlist.cover" :src="playlist.cover" alt="" class="music-source-cover" />
-                <div v-else class="music-source-cover">
-                  <AppIcon name="playlistMusic" class="h-5 w-5 text-muted-foreground" />
-                </div>
-                <span class="truncate text-xs font-medium">{{ playlist.name }}</span>
-                <span class="truncate text-[0.7rem] text-muted-foreground">{{ playlist.song_count }} 首</span>
-              </button>
-              <span v-if="discoveryLoading" class="music-source-loading">加载中</span>
-            </div>
-          </div>
-
-          <div v-if="loading && tracks.length === 0" class="music-list">
-            <div v-for="index in 8" :key="index" class="music-skeleton" />
-          </div>
-
-          <div v-else-if="error" class="music-empty">
-            <AppIcon name="warning" class="h-9 w-9 text-destructive/60" />
-            <h2 class="mt-4 text-sm font-semibold">加载失败</h2>
-            <p class="mt-1 max-w-md text-sm text-muted-foreground">{{ error }}</p>
-          </div>
-
-          <div v-else-if="searched && tracks.length === 0" class="music-empty">
-            <AppIcon name="playlistMusic" class="h-9 w-9 text-muted-foreground/30" />
-            <h2 class="mt-4 text-sm font-semibold">没有结果</h2>
-          </div>
-
-          <div v-else class="music-list">
-            <div class="flex items-center justify-between px-1 pb-2">
-              <span class="text-xs text-muted-foreground">{{ tracks.length }} / {{ total }} 首歌曲</span>
-              <div class="flex flex-wrap items-center justify-end gap-1">
-                <button
-                  v-if="selectedPlaylist"
-                  class="music-chip"
-                  title="收藏歌单"
-                  @click="collectSelectedPlaylist"
-                >
-                  <AppIcon name="heart" class="h-3.5 w-3.5" />
-                  收藏歌单
-                </button>
-                <button
-                  v-if="selectedUserPlaylist"
-                  class="music-chip music-chip--danger"
-                  title="删除歌单"
-                  @click="deleteSelectedUserPlaylist"
-                >
-                  <AppIcon name="trash" class="h-3.5 w-3.5" />
-                  删除歌单
-                </button>
-                <select v-if="userPlaylists.length" v-model="targetUserPlaylistId" class="music-inline-select">
-                  <option value="">选择歌单</option>
-                  <option v-for="playlist in userPlaylists" :key="playlist.id" :value="playlist.id">
-                    {{ playlist.name }}
-                  </option>
-                </select>
-                <button
-                  class="music-chip"
-                  title="播放全部"
-                  @click="playAll(false)"
-                >
-                  <AppIcon name="play" class="h-3.5 w-3.5" />
-                  播放全部
-                </button>
-                <button
-                  class="music-chip"
-                  :class="{ 'music-chip--active': store.shuffle }"
-                  title="随机播放"
-                  @click="playAll(true)"
-                >
-                  <AppIcon name="shuffle" class="h-3.5 w-3.5" />
-                  随机
-                </button>
+                <span class="music-grid-card-title">{{ playlist.name }}</span>
+                <span class="music-grid-card-subtitle">{{ playlist.creator || '歌单' }}</span>
               </div>
             </div>
-
-            <article
-              v-for="(track, index) in tracks"
-              :key="trackKey(track, index)"
-              class="music-row"
-              :class="{ 'music-row--active': isCurrentTrack(track) }"
-              @click="store.playTrack(track)"
-              @dblclick="store.playTrack(track)"
-            >
-              <div class="music-row-index">
-                <span v-if="isCurrentTrack(track) && store.playing" class="music-row-equalizer">
-                  <span class="eq-bar" /><span class="eq-bar" /><span class="eq-bar" />
-                </span>
-                <span v-else class="music-row-number">{{ index + 1 }}</span>
-                <AppIcon name="play" class="music-row-play h-4 w-4 fill-current" />
-              </div>
-              <div class="music-cover">
-                <img v-if="track.cover" :src="track.cover" alt="" class="h-full w-full object-cover" />
-                <AppIcon v-else name="playlistMusic" class="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div class="min-w-0">
-                <div class="truncate text-sm font-medium" :class="{ 'text-primary': isCurrentTrack(track) }">
-                  {{ track.title || '未知歌曲' }}
-                </div>
-                <div class="mt-1 truncate text-xs text-muted-foreground">{{ track.artist || '未知歌手' }}</div>
-              </div>
-              <div class="hidden truncate text-sm text-muted-foreground md:block">{{ track.album || '未知专辑' }}</div>
-              <div class="music-row-side hidden text-right text-sm tabular-nums text-muted-foreground sm:block">
-                <span>{{ formatDuration(track.duration) }}</span>
-                <span v-if="favoriteCounts[track.album_audio_id]" class="music-favorite-count">
-                  <AppIcon name="heart" class="h-3 w-3" />
-                  {{ formatCompactCount(favoriteCounts[track.album_audio_id]) }}
-                </span>
-              </div>
-              <div class="music-row-actions">
-                <button
-                  class="music-row-action"
-                  :disabled="!targetUserPlaylistId"
-                  title="加入所选歌单"
-                  @click.stop="addTrackToSelectedPlaylist(track)"
-                >
-                  <AppIcon name="addToPlaylist" class="h-3.5 w-3.5" />
-                </button>
-                <button
-                  v-if="trackSource === 'user_playlist' && track.file_id"
-                  class="music-row-action"
-                  title="从歌单删除"
-                  @click.stop="removeTrackFromSelectedPlaylist(track)"
-                >
-                  <AppIcon name="close" class="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </article>
-
-            <div v-if="hasMore" class="flex justify-center pt-3">
-              <Button variant="outline" class="h-9 rounded-md px-4" :disabled="loading" @click="loadMoreSearch">
-                <AppIcon v-if="loading" name="loadingSpinner" class="h-4 w-4 animate-spin" />
-                加载更多
+            <div class="flex justify-center mt-6" v-if="playlistHasMore">
+              <Button variant="outline" class="h-8 text-xs px-4" :disabled="discoveryLoading" @click="loadMorePlaylists">
+                <AppIcon v-if="discoveryLoading" name="loadingSpinner" class="h-3.5 w-3.5 animate-spin" />
+                加载更多歌单
               </Button>
+            </div>
+          </div>
+
+          <!-- Normal Track List Area -->
+          <div v-else class="music-tracks-container">
+            <!-- Sleek Header Banner for Playlists -->
+            <header class="music-playlist-header" v-if="selectedRank || selectedPlaylist || selectedUserPlaylist || trackSource === 'history' || trackSource === 'listen_rank' || trackSource === 'latest_listen' || trackSource === 'search' || trackSource === 'recommend'">
+              <div class="music-playlist-header-cover">
+                <img v-if="selectedRank?.cover" :src="selectedRank.cover" alt="" />
+                <img v-else-if="selectedPlaylist?.cover" :src="selectedPlaylist.cover" alt="" />
+                <img v-else-if="selectedUserPlaylist?.cover" :src="selectedUserPlaylist.cover" alt="" />
+                <div v-else class="music-playlist-header-placeholder">
+                  <AppIcon name="playlistMusic" class="h-10 w-10 text-muted-foreground" />
+                </div>
+              </div>
+              <div class="music-playlist-header-info">
+                <div class="text-[0.6875rem] font-bold uppercase tracking-wider text-primary">{{ trackSourceText }}</div>
+                <h1 class="text-xl font-bold mt-1 text-foreground leading-tight">{{ selectedSourceTitle || '为您推荐' }}</h1>
+                <p class="text-xs text-muted-foreground mt-2">{{ total }} 首歌曲 · 酷狗音乐提供</p>
+                
+                <div class="music-playlist-header-actions mt-4">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <button class="music-chip" title="播放全部" @click="playAll(false)">
+                      <AppIcon name="play" class="h-3.5 w-3.5" />
+                      播放全部
+                    </button>
+                    <button class="music-chip" :class="{ 'music-chip--active': store.shuffle }" title="随机播放" @click="playAll(true)">
+                      <AppIcon name="shuffle" class="h-3.5 w-3.5" />
+                      随机
+                    </button>
+                    <button v-if="selectedPlaylist" class="music-chip" title="收藏歌单" @click="collectSelectedPlaylist">
+                      <AppIcon name="heart" class="h-3.5 w-3.5" />
+                      收藏
+                    </button>
+                    <button v-if="selectedUserPlaylist" class="music-chip music-chip--danger" title="删除歌单" @click="deleteSelectedUserPlaylist">
+                      <AppIcon name="trash" class="h-3.5 w-3.5" />
+                      删除
+                    </button>
+                    <div class="flex items-center gap-1.5 ml-auto" v-if="userPlaylists.length">
+                      <select v-model="targetUserPlaylistId" class="music-inline-select">
+                        <option value="">快速加入到歌单</option>
+                        <option v-for="playlist in userPlaylists" :key="playlist.id" :value="playlist.id">
+                          {{ playlist.name }}
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </header>
+
+            <div v-if="loading && tracks.length === 0" class="music-list">
+              <div v-for="index in 8" :key="index" class="music-skeleton" />
+            </div>
+
+            <div v-else-if="error" class="music-empty">
+              <AppIcon name="warning" class="h-9 w-9 text-destructive/60" />
+              <h2 class="mt-4 text-sm font-semibold">加载失败</h2>
+              <p class="mt-1 max-w-md text-sm text-muted-foreground">{{ error }}</p>
+            </div>
+
+            <div v-else-if="searched && tracks.length === 0" class="music-empty">
+              <AppIcon name="playlistMusic" class="h-9 w-9 text-muted-foreground/30" />
+              <h2 class="mt-4 text-sm font-semibold">没有结果</h2>
+            </div>
+
+            <div v-else class="music-list">
+              <!-- Clean aligned header row -->
+              <div class="music-row music-row--header text-[0.6875rem] uppercase font-bold tracking-wider text-muted-foreground/50 border-b border-border/15 pb-2 mb-1.5 pointer-events-none select-none">
+                <div class="text-center">#</div>
+                <div></div> <!-- Cover space -->
+                <div>歌曲标题</div>
+                <div class="hidden md:block">专辑</div>
+                <div class="text-right pr-4 hidden sm:block">时长</div>
+                <div></div> <!-- Actions space -->
+              </div>
+
+              <article
+                v-for="(track, index) in tracks"
+                :key="trackKey(track, index)"
+                class="music-row"
+                :class="{ 'music-row--active': isCurrentTrack(track) }"
+                @click="store.playTrack(track)"
+                @dblclick="store.playTrack(track)"
+              >
+                <div class="music-row-index">
+                  <span v-if="isCurrentTrack(track) && store.playing" class="music-row-equalizer">
+                    <span class="eq-bar" /><span class="eq-bar" /><span class="eq-bar" />
+                  </span>
+                  <span v-else class="music-row-number">{{ index + 1 }}</span>
+                  <AppIcon name="play" class="music-row-play h-4 w-4 fill-current" />
+                </div>
+                <div class="music-cover">
+                  <img v-if="track.cover" :src="track.cover" alt="" class="h-full w-full object-cover" />
+                  <AppIcon v-else name="playlistMusic" class="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div class="min-w-0">
+                  <div class="truncate text-sm font-medium" :class="{ 'text-primary': isCurrentTrack(track) }">
+                    {{ track.title || '未知歌曲' }}
+                  </div>
+                  <div class="mt-1 truncate text-xs text-muted-foreground">{{ track.artist || '未知歌手' }}</div>
+                </div>
+                <div class="hidden truncate text-sm text-muted-foreground md:block">{{ track.album || '未知专辑' }}</div>
+                <div class="music-row-side hidden text-right text-sm tabular-nums text-muted-foreground sm:block">
+                  <span>{{ formatDuration(track.duration) }}</span>
+                  <span v-if="favoriteCounts[track.album_audio_id]" class="music-favorite-count">
+                    <AppIcon name="heart" class="h-3 w-3" />
+                    {{ formatCompactCount(favoriteCounts[track.album_audio_id]) }}
+                  </span>
+                </div>
+                <div class="music-row-actions">
+                  <button
+                    class="music-row-action"
+                    :disabled="!targetUserPlaylistId"
+                    title="加入所选歌单"
+                    @click.stop="addTrackToSelectedPlaylist(track)"
+                  >
+                    <AppIcon name="addToPlaylist" class="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    v-if="trackSource === 'user_playlist' && track.file_id"
+                    class="music-row-action"
+                    title="从歌单删除"
+                    @click.stop="removeTrackFromSelectedPlaylist(track)"
+                  >
+                    <AppIcon name="close" class="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </article>
+
+              <div v-if="hasMore" class="flex justify-center pt-3">
+                <Button variant="outline" class="h-9 rounded-md px-4 text-xs" :disabled="loading" @click="loadMoreSearch">
+                  <AppIcon v-if="loading" name="loadingSpinner" class="h-3.5 w-3.5 animate-spin" />
+                  加载更多
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <aside class="music-player">
-        <div class="music-player-art">
-          <img
-            v-if="store.currentTrack?.cover"
-            :src="store.currentTrack.cover"
-            alt=""
-            class="h-full w-full object-cover"
-            :class="{ 'music-player-art--spin': store.playing }"
-          />
-          <AppIcon v-else name="playlistMusic" class="h-16 w-16 text-muted-foreground/40" />
-        </div>
 
-        <div class="min-w-0 text-center">
-          <h2 class="truncate text-base font-semibold">{{ store.currentTrack?.title || '未选择歌曲' }}</h2>
-          <p class="mt-1 truncate text-sm text-muted-foreground">{{ store.currentTrack?.artist || '酷狗音乐' }}</p>
-          <p v-if="store.currentTrack?.album" class="mt-0.5 truncate text-xs text-muted-foreground/60">
-            {{ store.currentTrack.album }}
-          </p>
-        </div>
-
-        <div class="music-player-controls">
-          <button class="music-player-btn" :class="{ 'text-primary': store.shuffle }" title="随机" @click="store.shuffle = !store.shuffle">
-            <AppIcon name="shuffle" class="h-4 w-4" />
-          </button>
-          <button class="music-player-btn" :disabled="!canStep" @click="store.playPrevious()">
-            <AppIcon name="previous" class="h-4 w-4" />
-          </button>
-          <button class="music-player-main-btn" :disabled="!store.currentTrack || store.resolvingUrl" @click="store.togglePlayback()">
-            <AppIcon v-if="store.resolvingUrl" name="loadingSpinner" class="h-5 w-5 animate-spin" />
-            <AppIcon v-else-if="store.playing" name="pause" class="h-5 w-5 fill-current" />
-            <AppIcon v-else name="play" class="h-5 w-5 fill-current" />
-          </button>
-          <button class="music-player-btn" :disabled="!canStep" @click="store.playNext()">
-            <AppIcon name="next" class="h-4 w-4" />
-          </button>
-          <button
-            class="music-player-btn relative"
-            :class="{ 'text-primary': store.repeat !== 'none' }"
-            :title="repeatTitle"
-            @click="cycleRepeat"
-          >
-            <AppIcon v-if="store.repeat === 'one'" name="loop" class="h-4 w-4" />
-            <AppIcon v-else name="refresh" class="h-4 w-4" />
-            <sup v-if="store.repeat === 'one'" class="absolute -top-0.5 -right-0.5 text-[0.6rem]">1</sup>
-          </button>
-        </div>
-
-        <div class="music-progress">
-          <input
-            class="music-progress-range"
-            type="range"
-            min="0"
-            :max="store.duration || 0"
-            :value="store.currentTime"
-            :disabled="!store.audioSrc"
-            @input="onSeek"
-          />
-          <div class="flex justify-between text-xs tabular-nums text-muted-foreground">
-            <span>{{ formatDuration(store.currentTime) }}</span>
-            <span>{{ formatDuration(store.duration) }}</span>
-          </div>
-        </div>
-
-        <div class="music-player-extras">
-          <div class="music-quality">
-            <span class="text-xs text-muted-foreground">音质</span>
-            <select v-model="quality" class="music-quality-select">
-              <option value="128">128k</option>
-              <option value="320">320k</option>
-              <option value="flac">FLAC</option>
-              <option value="high">无损</option>
-            </select>
-          </div>
-
-          <div class="music-volume">
-            <span class="text-xs text-muted-foreground">音量</span>
-            <div class="flex items-center gap-1.5">
-              <button class="music-player-btn" @click="toggleMute">
-                <AppIcon :name="volumeIcon" class="h-3.5 w-3.5" />
-              </button>
-              <input
-                class="music-volume-range"
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                :value="store.volume"
-                @input="onVolume"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div v-if="store.error" class="text-xs text-destructive text-center px-2">
-          {{ store.error }}
-        </div>
-
-        <div class="music-lyrics custom-scrollbar">
-          <div v-if="store.lyricLoading" class="music-lyric-state">歌词加载中</div>
-          <div v-else-if="store.lyricError" class="music-lyric-state text-destructive">{{ store.lyricError }}</div>
-          <div v-else-if="store.lyricLines.length === 0" class="music-lyric-state">暂无歌词</div>
-          <div v-else class="music-lyric-list">
-            <p
-              v-for="(line, index) in store.lyricLines"
-              :key="`${line.time}-${index}`"
-              class="music-lyric-line"
-              :class="{ 'music-lyric-line--active': index === store.currentLyricIndex }"
-            >
-              {{ line.text || '·' }}
-            </p>
-          </div>
-        </div>
-      </aside>
 
       <div v-if="qrOpen" class="music-qr-modal" @click.self="closeQrLogin">
         <section class="music-qr-panel">
@@ -552,6 +473,25 @@ const qrStatusText = computed(() => {
   if (qrStatus.value === 0 && qrLogin.value) return '二维码已过期，请刷新'
   return '使用酷狗音乐 App 扫码'
 })
+
+const trackSourceText = computed(() => {
+  if (trackSource.value === 'recommend') return '酷狗推荐'
+  if (trackSource.value === 'search') return '搜索结果'
+  if (trackSource.value === 'rank') return '酷狗音乐排行榜'
+  if (trackSource.value === 'playlist') return '酷狗音乐热门歌单'
+  if (trackSource.value === 'user_playlist') return '我的自建歌单'
+  if (trackSource.value === 'history') return '我最近听过的歌'
+  if (trackSource.value === 'listen_rank') return '听歌排行记录'
+  if (trackSource.value === 'latest_listen') return '设备上次继续播放'
+  return '音乐库'
+})
+
+function selectRecommendNav() {
+  selectedRank.value = null
+  selectedPlaylist.value = null
+  selectedUserPlaylist.value = null
+  setMusicMode('recommend')
+}
 
 let previousVolume = 0.7
 
@@ -1097,9 +1037,170 @@ const formatCompactCount = (count: number) => {
   display: grid;
   height: 100%;
   min-height: 0;
-  grid-template-columns: minmax(0, 1fr) 22rem;
+  grid-template-columns: 14.5rem minmax(0, 1fr);
   background: hsl(var(--background));
   color: hsl(var(--foreground));
+}
+
+.music-nav-sidebar {
+  display: flex;
+  flex-direction: column;
+  background: hsl(var(--muted) / 0.15);
+  border-right: 1px solid hsl(var(--border) / 0.35);
+  padding: 1.5rem 0.875rem;
+  gap: 1.25rem;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.music-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.25rem;
+  padding-left: 0.5rem;
+}
+
+.music-nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.music-nav-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground) / 0.7);
+  font-weight: 600;
+  margin-bottom: 0.375rem;
+  padding-left: 0.5rem;
+}
+
+.music-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  border-radius: 0.375rem;
+  padding: 0.45rem 0.5rem;
+  text-align: left;
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.music-nav-item:hover {
+  background: hsl(var(--muted) / 0.55);
+  color: hsl(var(--foreground));
+}
+
+.music-nav-item.active {
+  background: hsl(var(--primary) / 0.08);
+  color: hsl(var(--primary));
+  font-weight: 600;
+}
+
+.music-nav-sidebar .music-playlist-create {
+  width: 100%;
+  flex: none;
+  background: transparent;
+  border: none;
+  padding: 0 0.5rem;
+  gap: 0.375rem;
+}
+
+.music-discovery-grid {
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto;
+  width: min(100%, 72rem);
+}
+
+.music-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: 1.25rem;
+}
+
+.music-grid-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.music-grid-card:hover {
+  opacity: 0.85;
+}
+
+.music-grid-card-title {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.music-grid-card-subtitle {
+  font-size: 0.7rem;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.music-playlist-header {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  border-bottom: 1px solid hsl(var(--border) / 0.25);
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+  width: min(100%, 72rem);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.music-playlist-header-cover {
+  width: 6.5rem;
+  height: 6.5rem;
+  flex-shrink: 0;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  background: hsl(var(--muted) / 0.3);
+}
+
+.music-playlist-header-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.music-playlist-header-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.music-playlist-header-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.music-playlist-header-actions {
+  width: 100%;
 }
 
 .music-main {
@@ -1116,15 +1217,28 @@ const formatCompactCount = (count: number) => {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
-  padding: 0 1rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.35);
+  padding: 0 1.5rem;
 }
 
 .music-search {
   display: flex;
-  width: min(32rem, 55vw);
+  width: min(28rem, 50vw);
   align-items: center;
   gap: 0.5rem;
+}
+
+.music-search :deep(input) {
+  background: hsl(var(--muted) / 0.35);
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  transition: all 0.2s ease;
+}
+
+.music-search :deep(input:focus-visible) {
+  background: transparent;
+  border-color: hsl(var(--primary) / 0.5);
+  box-shadow: none;
 }
 
 .music-header-actions {
@@ -1138,7 +1252,7 @@ const formatCompactCount = (count: number) => {
   min-height: 0;
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 1.5rem;
 }
 
 .music-list {
@@ -1146,74 +1260,90 @@ const formatCompactCount = (count: number) => {
   width: min(100%, 72rem);
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.125rem;
 }
 
 .music-discovery {
-  margin: 0 auto 0.75rem;
+  margin: 0 auto 1.5rem;
   width: min(100%, 72rem);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .music-tabs {
   display: inline-flex;
-  width: fit-content;
-  overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 0.5rem;
-  background: hsl(var(--muted) / 0.25);
+  width: 100%;
+  align-items: center;
+  gap: 1.5rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.35);
+  padding-bottom: 0.5rem;
 }
 
 .music-tab {
-  height: 2rem;
-  min-width: 4.25rem;
+  position: relative;
+  height: auto;
   border: 0;
-  border-right: 1px solid hsl(var(--border) / 0.45);
   background: transparent;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.25rem 0;
   cursor: pointer;
+  transition: color 0.15s ease;
 }
 
-.music-tab:last-child {
-  border-right: 0;
+.music-tab:hover {
+  color: hsl(var(--foreground));
 }
 
 .music-tab--active {
-  background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-weight: 600;
+}
+
+.music-tab--active::after {
+  content: '';
+  position: absolute;
+  bottom: -0.5625rem;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: hsl(var(--primary));
+  border-radius: 9999px;
 }
 
 .music-card-strip {
   display: flex;
   align-items: stretch;
-  gap: 0.625rem;
+  gap: 0.875rem;
   overflow-x: auto;
-  padding-bottom: 0.25rem;
+  padding-bottom: 0.5rem;
 }
 
 .music-playlist-create {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   width: 11rem;
   flex: 0 0 11rem;
-  grid-template-columns: minmax(0, 1fr) 2rem;
-  gap: 0.375rem;
-  align-content: center;
-  border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 0.5rem;
+  gap: 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.35);
+  border-radius: 0.375rem;
+  background: hsl(var(--muted) / 0.15);
+  padding: 0.5rem;
+}
+
+.music-playlist-create :deep(input) {
+  height: 1.75rem;
+  border: 1px solid hsl(var(--border) / 0.45);
   background: hsl(var(--background));
-  padding: 0.45rem;
 }
 
-.music-playlist-create :deep(input[type="text"]) {
-  grid-column: 1 / 3;
-}
-
-.music-playlist-create .music-row-action {
-  justify-self: end;
+.music-playlist-create-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .music-private-toggle {
@@ -1228,63 +1358,104 @@ const formatCompactCount = (count: number) => {
   width: 0.875rem;
   height: 0.875rem;
   accent-color: hsl(var(--primary));
+  cursor: pointer;
 }
 
 .music-source-card {
-  display: grid;
-  width: 8rem;
-  flex: 0 0 8rem;
-  grid-template-rows: 5rem auto auto;
-  gap: 0.35rem;
-  border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 0.5rem;
-  background: hsl(var(--background));
-  padding: 0.45rem;
+  display: flex;
+  flex-direction: column;
+  width: 7.5rem;
+  flex: 0 0 7.5rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  padding: 0;
   text-align: left;
   cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease;
+  gap: 0.375rem;
 }
 
 .music-source-card--playlist {
-  width: 8.75rem;
-  flex-basis: 8.75rem;
+  width: 8rem;
+  flex-basis: 8rem;
 }
 
 .music-source-card--compact {
-  width: 6.75rem;
-  flex-basis: 6.75rem;
-  grid-template-rows: 2rem auto auto;
-  align-content: center;
-  justify-items: start;
+  width: 6.5rem;
+  flex-basis: 6.5rem;
+  border-radius: 0.375rem;
+  background: hsl(var(--muted) / 0.3) !important;
+  padding: 0.75rem 0.5rem;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.music-source-card:hover,
-.music-source-card--active {
-  border-color: hsl(var(--primary) / 0.5);
-  background: hsl(var(--accent) / 0.35);
+.music-source-card--compact:hover {
+  background: hsl(var(--muted) / 0.6) !important;
+}
+
+.music-source-card--compact.music-source-card--active {
+  background: hsl(var(--primary) / 0.08) !important;
+  color: hsl(var(--primary));
+}
+
+.music-source-card:not(.music-source-card--compact):hover {
+  opacity: 0.85;
+}
+
+.music-source-cover-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 0.375rem;
+  background: hsl(var(--muted) / 0.3);
 }
 
 .music-source-cover {
-  display: flex;
   width: 100%;
-  height: 5rem;
-  overflow: hidden;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.music-source-card:hover .music-source-cover {
+  transform: scale(1.04);
+}
+
+.music-source-play-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.375rem;
-  background: hsl(var(--muted));
-  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(2px);
+}
+
+.music-source-card:hover .music-source-play-overlay {
+  opacity: 1;
 }
 
 .music-source-more {
   width: 4rem;
   flex: 0 0 4rem;
-  border: 1px dashed hsl(var(--border));
-  border-radius: 0.5rem;
+  border: 1px dashed hsl(var(--border) / 0.5);
+  border-radius: 0.375rem;
   background: transparent;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.music-source-more:hover {
+  border-color: hsl(var(--primary) / 0.5);
+  color: hsl(var(--foreground));
 }
 
 .music-source-loading {
@@ -1298,19 +1469,19 @@ const formatCompactCount = (count: number) => {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  height: 1.75rem;
+  height: 1.625rem;
   padding: 0 0.625rem;
   border-radius: 9999px;
-  border: 1px solid hsl(var(--border) / 0.6);
+  border: 1px solid hsl(var(--border) / 0.5);
   background: transparent;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+  transition: all 0.15s ease;
 }
 
 .music-chip:hover {
-  background: hsl(var(--accent) / 0.4);
+  background: hsl(var(--muted) / 0.4);
   color: hsl(var(--foreground));
   border-color: hsl(var(--border));
 }
@@ -1323,18 +1494,26 @@ const formatCompactCount = (count: number) => {
 
 .music-chip--danger {
   color: hsl(var(--destructive));
-  border-color: hsl(var(--destructive) / 0.25);
+  border-color: hsl(var(--destructive) / 0.3);
+}
+
+.music-chip--danger:hover {
+  background: hsl(var(--destructive) / 0.08);
+  border-color: hsl(var(--destructive) / 0.5);
+  color: hsl(var(--destructive));
 }
 
 .music-inline-select {
-  height: 1.75rem;
+  height: 1.625rem;
   max-width: 10rem;
-  border: 1px solid hsl(var(--border) / 0.6);
+  border: 1px solid hsl(var(--border) / 0.5);
   border-radius: 0.375rem;
   background: hsl(var(--background));
   padding: 0 0.5rem;
   color: hsl(var(--foreground));
   font-size: 0.75rem;
+  outline: none;
+  cursor: pointer;
 }
 
 .music-row {
@@ -1342,21 +1521,33 @@ const formatCompactCount = (count: number) => {
   grid-template-columns: 2rem 3rem minmax(0, 1fr) minmax(8rem, 0.5fr) 5.25rem 4.75rem;
   align-items: center;
   gap: 0.75rem;
-  min-height: 4rem;
-  border: 1px solid transparent;
-  border-radius: 0.5rem;
-  padding: 0.5rem;
+  min-height: 3.5rem;
+  border-radius: 0.25rem;
+  padding: 0.375rem 0.5rem;
   cursor: pointer;
-  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+  background: transparent;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.music-row:hover,
-.music-row--active {
-  border-color: hsl(var(--border) / 0.6);
-  background: hsl(var(--accent) / 0.5);
+.music-row--header {
+  border-bottom: 1px solid hsl(var(--border) / 0.15);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground) / 0.5);
+  cursor: default;
+  background: transparent !important;
+  min-height: auto;
+  padding-bottom: 0.625rem;
+}
+
+.music-row:hover {
+  background: hsl(var(--muted) / 0.45);
 }
 
 .music-row--active {
+  background: hsl(var(--primary) / 0.04);
   color: hsl(var(--primary));
 }
 
@@ -1364,7 +1555,8 @@ const formatCompactCount = (count: number) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground) / 0.7);
+  font-size: 0.8125rem;
 }
 
 .music-row-play {
@@ -1385,43 +1577,51 @@ const formatCompactCount = (count: number) => {
 
 .music-row-equalizer {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 2px;
-  height: 1rem;
+  height: 0.75rem;
+  width: 0.75rem;
 }
 
 .eq-bar {
   display: block;
-  width: 3px;
+  width: 2px;
   background: hsl(var(--primary));
-  border-radius: 1px;
-  animation: eqAnim 0.7s ease-in-out infinite alternate;
+  border-radius: 9999px;
+  animation: eqAnim 0.75s ease-in-out infinite alternate;
+  transform-origin: bottom;
 }
 
-.eq-bar:nth-child(1) { height: 8px; animation-delay: 0s; }
-.eq-bar:nth-child(2) { height: 14px; animation-delay: 0.15s; }
-.eq-bar:nth-child(3) { height: 10px; animation-delay: 0.3s; }
+.eq-bar:nth-child(1) { height: 30%; animation-delay: 0s; }
+.eq-bar:nth-child(2) { height: 95%; animation-delay: 0.2s; }
+.eq-bar:nth-child(3) { height: 60%; animation-delay: 0.4s; }
 
 @keyframes eqAnim {
-  0% { transform: scaleY(0.5); }
+  0% { transform: scaleY(0.3); }
   100% { transform: scaleY(1); }
 }
 
 .music-cover {
   display: flex;
-  width: 3rem;
-  height: 3rem;
+  width: 2.25rem;
+  height: 2.25rem;
   overflow: hidden;
   align-items: center;
   justify-content: center;
-  border-radius: 0.5rem;
-  background: hsl(var(--muted));
+  border-radius: 0.25rem;
+  background: hsl(var(--muted) / 0.4);
 }
 
 .music-row-actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.music-row:hover .music-row-actions {
+  opacity: 1;
 }
 
 .music-row-side {
@@ -1447,58 +1647,93 @@ const formatCompactCount = (count: number) => {
 
 .music-row-action {
   display: flex;
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 0.375rem;
+  border-radius: 0.25rem;
   background: transparent;
   color: hsl(var(--muted-foreground));
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease, opacity 160ms ease;
+  transition: all 0.15s ease;
 }
 
 .music-row-action:hover {
-  background: hsl(var(--accent) / 0.7);
+  background: hsl(var(--muted) / 0.6);
   color: hsl(var(--foreground));
 }
 
 .music-row-action:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
 .music-player {
+  position: relative;
   display: flex;
   min-width: 0;
   flex-direction: column;
   align-items: center;
   gap: 1.25rem;
-  border-left: 1px solid hsl(var(--border) / 0.5);
-  padding: 2rem 1.25rem;
-  background: hsl(var(--muted) / 0.2);
+  border-left: 1px solid hsl(var(--border) / 0.25);
+  padding: 2.5rem 1.5rem;
+  background: transparent;
+  overflow: hidden;
+}
+
+.music-player-ambient-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(55px) saturate(2);
+  opacity: 0.38;
+  z-index: 0;
+  transform: scale(1.2);
+  transition: background-image 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.music-player-ambient-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent, hsl(var(--background)) 85%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.dark .music-player-ambient-overlay {
+  background: linear-gradient(to bottom, transparent, hsl(var(--background)) 80%);
+}
+
+/* Ensure child content floats above ambient layers */
+.music-player > *:not(.music-player-ambient-bg):not(.music-player-ambient-overlay) {
+  position: relative;
+  z-index: 2;
 }
 
 .music-player-art {
   display: flex;
-  width: min(18rem, 100%);
+  width: min(12.5rem, 100%);
   aspect-ratio: 1;
   overflow: hidden;
   align-items: center;
   justify-content: center;
-  border-radius: 0.75rem;
-  background: hsl(var(--background));
-  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: var(--radius-xl, 12px);
+  background: hsl(var(--muted) / 0.35);
+  border: 1px solid hsl(var(--border) / 0.4);
   transition: transform 0.3s ease;
 }
 
-.music-player-art--spin {
-  animation: spin 20s linear infinite;
+.music-player-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.music-player-art:hover img {
+  transform: scale(1.05);
 }
 
 .music-player-controls {
@@ -1518,15 +1753,15 @@ const formatCompactCount = (count: number) => {
   background: none;
   color: hsl(var(--foreground));
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease;
+  transition: all 0.15s ease;
 }
 
 .music-player-btn:hover {
-  background: hsl(var(--accent) / 0.6);
+  background: hsl(var(--muted) / 0.6);
 }
 
 .music-player-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
@@ -1538,14 +1773,19 @@ const formatCompactCount = (count: number) => {
   justify-content: center;
   border: none;
   border-radius: 9999px;
-  background: hsl(var(--foreground));
-  color: hsl(var(--background));
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
   cursor: pointer;
-  transition: background 160ms ease, opacity 160ms ease;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .music-player-main-btn:hover {
-  background: hsl(var(--foreground) / 0.85);
+  transform: scale(1.05);
+  background: hsl(var(--primary) / 0.9);
+}
+
+.music-player-main-btn:active {
+  transform: scale(0.95);
 }
 
 .music-player-main-btn:disabled {
@@ -1554,19 +1794,47 @@ const formatCompactCount = (count: number) => {
 }
 
 .music-progress {
-  width: min(18rem, 100%);
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
 }
 
 .music-progress-range {
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
-  accent-color: hsl(var(--primary));
+  height: 3px;
+  border-radius: 9999px;
+  background: linear-gradient(to right, hsl(var(--primary)) var(--slider-progress, 0%), hsl(var(--border) / 0.45) var(--slider-progress, 0%));
+  outline: none;
+  cursor: pointer;
+  transition: height 0.1s ease;
+}
+
+.music-progress-range:hover {
+  height: 5px;
+}
+
+.music-progress-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+  border: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.music-progress-range:hover::-webkit-slider-thumb {
+  opacity: 1;
+  transform: scale(1.2);
 }
 
 .music-player-extras {
-  width: min(18rem, 100%);
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -1580,13 +1848,15 @@ const formatCompactCount = (count: number) => {
 }
 
 .music-quality-select {
-  height: 2rem;
-  min-width: 6rem;
+  height: 1.75rem;
+  min-width: 5.5rem;
   border-radius: 0.375rem;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid hsl(var(--border) / 0.5);
   background: hsl(var(--background));
   padding: 0 0.5rem;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  outline: none;
+  cursor: pointer;
 }
 
 .music-volume {
@@ -1597,22 +1867,45 @@ const formatCompactCount = (count: number) => {
 }
 
 .music-volume-range {
-  width: 7rem;
-  accent-color: hsl(var(--primary));
+  -webkit-appearance: none;
+  appearance: none;
+  width: 5rem;
+  height: 3px;
+  border-radius: 9999px;
+  background: linear-gradient(to right, hsl(var(--foreground)) var(--slider-progress, 0%), hsl(var(--border) / 0.45) var(--slider-progress, 0%));
+  outline: none;
+  cursor: pointer;
+}
+
+.music-volume-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: hsl(var(--foreground));
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.music-volume:hover .music-volume-range::-webkit-slider-thumb {
+  opacity: 1;
 }
 
 .music-lyrics {
-  width: min(18rem, 100%);
-  min-height: 8rem;
-  max-height: 14rem;
+  position: relative;
+  width: 100%;
+  height: 12rem;
   overflow-y: auto;
-  border-top: 1px solid hsl(var(--border) / 0.5);
+  border-top: 1px solid hsl(var(--border) / 0.25);
   padding-top: 0.75rem;
+  mask-image: linear-gradient(to bottom, transparent, white 20%, white 80%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, white 20%, white 80%, transparent);
 }
 
 .music-lyric-state {
   display: flex;
-  min-height: 6rem;
+  min-height: 8rem;
   align-items: center;
   justify-content: center;
   text-align: center;
@@ -1623,7 +1916,7 @@ const formatCompactCount = (count: number) => {
 .music-lyric-list {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.5rem;
   padding: 0.25rem 0;
 }
 
@@ -1632,13 +1925,14 @@ const formatCompactCount = (count: number) => {
   text-align: center;
   font-size: 0.8125rem;
   line-height: 1.45;
-  color: hsl(var(--muted-foreground));
-  transition: color 160ms ease, font-weight 160ms ease;
+  color: hsl(var(--muted-foreground) / 0.55);
+  transition: color 0.18s ease, font-size 0.18s ease, font-weight 0.18s ease;
 }
 
 .music-lyric-line--active {
   color: hsl(var(--foreground));
   font-weight: 600;
+  font-size: 0.875rem;
 }
 
 .music-empty {
@@ -1651,8 +1945,8 @@ const formatCompactCount = (count: number) => {
 }
 
 .music-skeleton {
-  height: 4rem;
-  border-radius: 0.5rem;
+  height: 3.5rem;
+  border-radius: 0.25rem;
   background: hsl(var(--accent) / 0.35);
   animation: pulse 1.8s ease-in-out infinite;
 }
@@ -1660,33 +1954,32 @@ const formatCompactCount = (count: number) => {
 .music-qr-modal {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 999;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(0 0 0 / 0.42);
+  background: rgb(0 0 0 / 0.45);
   padding: 1rem;
 }
 
 .music-qr-panel {
-  width: min(100%, 22rem);
+  width: min(100%, 20rem);
   overflow: hidden;
-  border-radius: 0.75rem;
-  border: 1px solid hsl(var(--border));
+  border-radius: 0.375rem;
+  border: 1px solid hsl(var(--border) / 0.6);
   background: hsl(var(--background));
-  box-shadow: 0 18px 60px rgb(0 0 0 / 0.24);
 }
 
 .music-qr-image {
   display: flex;
-  width: 13rem;
-  height: 13rem;
+  width: 12rem;
+  height: 12rem;
   align-items: center;
   justify-content: center;
-  border-radius: 0.75rem;
-  border: 1px solid hsl(var(--border) / 0.65);
+  border-radius: 0.375rem;
+  border: 1px solid hsl(var(--border) / 0.45);
   background: white;
-  padding: 0.75rem;
+  padding: 0.5rem;
 }
 
 @keyframes pulse {
@@ -1707,8 +2000,8 @@ const formatCompactCount = (count: number) => {
 
   .music-player {
     border-left: 0;
-    border-top: 1px solid hsl(var(--border) / 0.5);
-    padding: 1rem;
+    border-top: 1px solid hsl(var(--border) / 0.35);
+    padding: 1.5rem;
   }
 
   .music-player-art {
@@ -1718,10 +2011,12 @@ const formatCompactCount = (count: number) => {
 
 @media (max-width: 767px) {
   .music-header {
-    min-height: 6.5rem;
+    min-height: 6rem;
     flex-direction: column;
     align-items: stretch;
     justify-content: center;
+    padding: 0.75rem 1rem;
+    gap: 0.75rem;
   }
 
   .music-search {

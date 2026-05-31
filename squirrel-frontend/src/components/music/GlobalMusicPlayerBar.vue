@@ -8,6 +8,7 @@
     <div
       v-if="store.currentTrack"
       class="music-bar"
+      :class="{ 'music-bar--immersive': showImmersive }"
     >
       <audio
         ref="audioEl"
@@ -20,7 +21,7 @@
       />
 
       <div class="music-bar-inner">
-        <button class="music-bar-track" @click="goToMusic">
+        <button class="music-bar-track" @click="openImmersive" title="显示歌词面板">
           <div class="music-bar-cover">
             <img
               v-if="store.currentTrack.cover"
@@ -79,6 +80,7 @@
             :value="store.currentTime"
             :disabled="!store.audioSrc"
             @input="onSeek"
+            :style="{ '--slider-progress': `${(store.currentTime / (store.duration || 1)) * 100}%` }"
           />
           <span class="music-bar-time">{{ formatDuration(store.duration) }}</span>
         </div>
@@ -114,9 +116,189 @@
               step="0.05"
               :value="store.volume"
               @input="onVolume"
+              :style="{ '--slider-progress': `${store.volume * 100}%` }"
             />
           </div>
         </div>
+      </div>
+    </div>
+  </Transition>
+
+  <!-- Immersive Fullscreen Player Modal -->
+  <Transition
+    enter-active-class="transition-all duration-500 ease-out"
+    leave-active-class="transition-all duration-350 ease-in"
+    enter-from-class="translate-y-full opacity-0 scale-95"
+    leave-to-class="translate-y-full opacity-0 scale-95"
+  >
+    <div v-if="showImmersive" class="immersive-player">
+      <!-- High-saturation ambient color background -->
+      <div 
+        class="immersive-bg" 
+        v-if="store.currentTrack?.cover" 
+        :style="{ backgroundImage: `url(${store.currentTrack.cover})` }"
+      ></div>
+      <div class="immersive-overlay"></div>
+
+      <!-- Main Layout -->
+      <div class="immersive-container">
+        <!-- Top Toolbar -->
+        <header class="immersive-header">
+          <button class="immersive-close-btn" @click="closeImmersive" title="收起">
+            <AppIcon name="chevronDown" class="h-5 w-5" />
+          </button>
+          <div class="immersive-header-title">正在播放</div>
+          <div class="w-10"></div> <!-- Placeholder for layout balance -->
+        </header>
+
+        <!-- Dynamic Body -->
+        <main class="immersive-body">
+          <!-- Left Column: Album Art & Info -->
+          <div class="immersive-left">
+            <div class="immersive-art-wrapper" :class="{ 'immersive-art-wrapper--playing': store.playing }">
+              <img
+                v-if="store.currentTrack?.cover"
+                :src="store.currentTrack.cover"
+                alt=""
+                class="immersive-cover"
+              />
+              <div v-else class="immersive-cover-fallback">
+                <AppIcon name="playlistMusic" class="h-24 w-24 text-muted-foreground/30" />
+              </div>
+            </div>
+            
+            <div class="immersive-meta">
+              <h2 class="immersive-title" :title="store.currentTrack?.title">{{ store.currentTrack?.title || '未知歌曲' }}</h2>
+              <p class="immersive-artist">{{ store.currentTrack?.artist || '未知歌手' }}</p>
+              <p v-if="store.currentTrack?.album" class="immersive-album">{{ store.currentTrack.album }}</p>
+            </div>
+
+            <!-- Controls (under cover on desktop/mobile) -->
+            <div class="immersive-controls-section">
+              <div class="immersive-progress-wrap">
+                <span class="immersive-time">{{ formatDuration(store.currentTime) }}</span>
+                <input
+                  class="immersive-range immersive-range--seek"
+                  type="range"
+                  min="0"
+                  :max="store.duration || 0"
+                  :value="store.currentTime"
+                  :disabled="!store.audioSrc"
+                  @input="onSeek"
+                  :style="{ '--slider-progress': `${(store.currentTime / (store.duration || 1)) * 100}%` }"
+                />
+                <span class="immersive-time">{{ formatDuration(store.duration) }}</span>
+              </div>
+
+              <div class="immersive-buttons">
+                <button
+                  class="immersive-btn"
+                  :class="{ 'immersive-btn--active': store.shuffle }"
+                  title="随机播放"
+                  @click="store.shuffle = !store.shuffle"
+                >
+                  <AppIcon name="shuffle" class="h-5 w-5" />
+                </button>
+                <button
+                  class="immersive-btn"
+                  :disabled="!canStep"
+                  title="上一首"
+                  @click="store.playPrevious()"
+                >
+                  <AppIcon name="previous" class="h-5 w-5" />
+                </button>
+                <button
+                  class="immersive-btn immersive-btn--play"
+                  :disabled="store.resolvingUrl"
+                  title="播放/暂停"
+                  @click="store.togglePlayback()"
+                >
+                  <AppIcon v-if="store.resolvingUrl" name="loadingSpinner" class="h-5 w-5 animate-spin" />
+                  <AppIcon v-else-if="store.playing" name="pause" class="h-5 w-5 fill-current" />
+                  <AppIcon v-else name="play" class="h-5 w-5 fill-current" />
+                </button>
+                <button
+                  class="immersive-btn"
+                  :disabled="!canStep"
+                  title="下一首"
+                  @click="store.playNext()"
+                >
+                  <AppIcon name="next" class="h-5 w-5" />
+                </button>
+                <button
+                  class="immersive-btn"
+                  :class="{ 'immersive-btn--active': store.repeat !== 'none' }"
+                  :title="repeatTitle"
+                  @click="cycleRepeat"
+                >
+                  <AppIcon v-if="store.repeat === 'one'" name="loop" class="h-5 w-5" />
+                  <AppIcon v-else name="refresh" class="h-5 w-5" />
+                  <sup v-if="store.repeat === 'one'" class="immersive-badge">1</sup>
+                </button>
+              </div>
+
+              <!-- Volume & Quality Grid -->
+              <div class="immersive-sliders-grid">
+                <div class="immersive-slider-row">
+                  <button class="immersive-btn-icon" @click="toggleMute" title="静音">
+                    <AppIcon :name="volumeIcon" class="h-4 w-4" />
+                  </button>
+                  <input
+                    class="immersive-range immersive-range--volume"
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    :value="store.volume"
+                    @input="onVolume"
+                    :style="{ '--slider-progress': `${store.volume * 100}%` }"
+                  />
+                </div>
+
+                <div class="immersive-quality-row">
+                  <span class="text-xs text-foreground/50">音质</span>
+                  <select v-model="store.quality" class="immersive-quality-select">
+                    <option value="128">128k</option>
+                    <option value="320">320k</option>
+                    <option value="flac">FLAC</option>
+                    <option value="high">无损</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div v-if="store.error" class="immersive-error-msg">
+                {{ store.error }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Scrollable Immersive Lyrics -->
+          <div class="immersive-right">
+            <div class="immersive-lyrics-box" ref="lyricsContainer">
+              <div v-if="store.lyricLoading" class="immersive-lyric-state">
+                <AppIcon name="loadingSpinner" class="h-6 w-6 animate-spin" />
+                <span>歌词加载中...</span>
+              </div>
+              <div v-else-if="store.lyricError" class="immersive-lyric-state text-destructive">
+                <span>{{ store.lyricError }}</span>
+              </div>
+              <div v-else-if="store.lyricLines.length === 0" class="immersive-lyric-state">
+                <span>暂无歌词</span>
+              </div>
+              <div v-else class="immersive-lyric-scrollable">
+                <p
+                  v-for="(line, index) in store.lyricLines"
+                  :key="`${line.time}-${index}`"
+                  class="immersive-lyric-line"
+                  :class="{ 'immersive-lyric-line--active': index === store.currentLyricIndex }"
+                  @click="seekToLine(line.time)"
+                >
+                  {{ line.text || '·' }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   </Transition>
@@ -187,8 +369,50 @@ function cycleRepeat() {
   else store.repeat = 'none'
 }
 
+const showImmersive = ref(false)
+const lyricsContainer = ref<HTMLElement | null>(null)
+
+function openImmersive() {
+  showImmersive.value = true
+  document.body.style.overflow = 'hidden' // Lock body scroll
+}
+
+function closeImmersive() {
+  showImmersive.value = false
+  document.body.style.overflow = '' // Restore body scroll
+}
+
+function seekToLine(time: number) {
+  store.seekTo(time)
+}
+
+function handleKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && showImmersive.value) {
+    closeImmersive()
+  }
+}
+
+watch(() => store.currentLyricIndex, (idx) => {
+  if (!showImmersive.value || idx === -1 || !lyricsContainer.value) return
+  setTimeout(() => {
+    const container = lyricsContainer.value
+    const activeEl = container?.querySelector<HTMLElement>('.immersive-lyric-line--active')
+    if (!container || !activeEl) return
+
+    const containerRect = container.getBoundingClientRect()
+    const activeRect = activeEl.getBoundingClientRect()
+    const top = container.scrollTop
+      + activeRect.top
+      - containerRect.top
+      - (container.clientHeight - activeRect.height) / 2
+
+    container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+  }, 50)
+})
+
 onMounted(() => {
   store.setAudioRef(audioEl.value)
+  window.addEventListener('keydown', handleKeyDown)
 })
 
 watch(() => store.audioSrc, (src) => {
@@ -202,6 +426,8 @@ watch(() => store.audioSrc, (src) => {
 
 onUnmounted(() => {
   store.setAudioRef(null)
+  window.removeEventListener('keydown', handleKeyDown)
+  document.body.style.overflow = ''
 })
 </script>
 
@@ -213,18 +439,30 @@ onUnmounted(() => {
   right: 0;
   z-index: 60;
   height: 4rem;
-  border-top: 1px solid hsl(var(--border) / 0.5);
-  background: hsl(var(--background) / 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  padding: 0 1rem;
+  border-top: 1px solid hsl(var(--border) / 0.35);
+  background: hsl(var(--background) / 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 0 1.5rem;
+  transition: left 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.music-bar--immersive {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@media (min-width: 768px) {
+  .music-bar {
+    left: var(--sidebar-width, 240px);
+  }
 }
 
 .music-bar-inner {
   display: flex;
   height: 100%;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1.25rem;
   max-width: 1280px;
   margin: 0 auto;
 }
@@ -237,16 +475,16 @@ onUnmounted(() => {
   gap: 0.75rem;
   cursor: pointer;
   border-radius: 0.375rem;
-  padding: 0.25rem;
+  padding: 0.375rem;
   border: none;
   background: none;
   color: inherit;
   text-align: left;
-  transition: background 160ms ease;
+  transition: background-color 0.15s ease;
 }
 
 .music-bar-track:hover {
-  background: hsl(var(--accent) / 0.5);
+  background: hsl(var(--muted) / 0.5);
 }
 
 .music-bar-cover {
@@ -257,21 +495,21 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border-radius: 0.375rem;
-  background: hsl(var(--muted));
+  border-radius: 0.25rem;
+  background: hsl(var(--muted) / 0.4);
 }
 
 .music-bar-controls {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.375rem;
   flex-shrink: 0;
 }
 
 .music-bar-btn {
   display: flex;
-  height: 2.25rem;
-  width: 2.25rem;
+  height: 2rem;
+  width: 2rem;
   align-items: center;
   justify-content: center;
   border-radius: 0.375rem;
@@ -279,29 +517,32 @@ onUnmounted(() => {
   background: none;
   color: hsl(var(--foreground));
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease;
+  transition: all 0.15s ease;
   flex-shrink: 0;
+  position: relative;
 }
 
 .music-bar-btn:hover {
-  background: hsl(var(--accent) / 0.6);
+  background: hsl(var(--muted) / 0.6);
 }
 
 .music-bar-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
 .music-bar-btn--play {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.25rem;
+  height: 2.25rem;
   border-radius: 9999px;
-  background: hsl(var(--foreground));
-  color: hsl(var(--background));
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .music-bar-btn--play:hover {
-  background: hsl(var(--foreground) / 0.85);
+  transform: scale(1.05);
+  background: hsl(var(--primary) / 0.9);
 }
 
 .music-bar-btn--play:disabled {
@@ -312,36 +553,66 @@ onUnmounted(() => {
   display: flex;
   flex: 2;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.625rem;
   min-width: 8rem;
 }
 
 .music-bar-time {
   font-size: 0.75rem;
-  line-height: 1;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground) / 0.85);
   tabular-nums: normal;
   flex-shrink: 0;
   min-width: 3ch;
 }
 
 .music-bar-range {
+  -webkit-appearance: none;
+  appearance: none;
   flex: 1;
-  height: 0.375rem;
-  accent-color: hsl(var(--primary));
+  height: 3px;
+  border-radius: 9999px;
+  background: linear-gradient(to right, hsl(var(--primary)) var(--slider-progress, 0%), hsl(var(--border) / 0.45) var(--slider-progress, 0%));
+  outline: none;
   cursor: pointer;
   min-width: 0;
+  transition: height 0.1s ease;
+}
+
+.music-bar-range:hover {
+  height: 5px;
+}
+
+.music-bar-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+  border: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.music-bar-range:hover::-webkit-slider-thumb {
+  opacity: 1;
+  transform: scale(1.1);
 }
 
 .music-bar-range--volume {
-  width: 4rem;
+  width: 4.5rem;
   flex: none;
+  background: linear-gradient(to right, hsl(var(--foreground)) var(--slider-progress, 0%), hsl(var(--border) / 0.45) var(--slider-progress, 0%));
+}
+
+.music-bar-range--volume::-webkit-slider-thumb {
+  background: hsl(var(--foreground));
 }
 
 .music-bar-actions {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.375rem;
   flex-shrink: 0;
 }
 
@@ -353,20 +624,566 @@ onUnmounted(() => {
 
 .music-bar-badge {
   position: absolute;
-  top: 0.25rem;
-  right: 0.25rem;
-  font-size: 0.625rem;
+  top: 0.15rem;
+  right: 0.15rem;
+  font-size: 0.55rem;
   line-height: 1;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  padding: 1px 3px;
+  border-radius: 9999px;
 }
 
 @media (max-width: 767px) {
   .music-bar {
     bottom: var(--mobile-nav-height);
+    left: 0 !important;
   }
 
   .music-bar-progress-wrap,
   .music-bar-actions {
     display: none;
+  }
+}
+
+/* Immersive Player Fullscreen Overlay */
+.immersive-player {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100dvh;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+/* Ambient Backlight Blur */
+.immersive-bg {
+  position: absolute;
+  top: -20%;
+  left: -20%;
+  width: 140%;
+  height: 140%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(90px) saturate(2.5) brightness(0.95);
+  opacity: 0.65;
+  transform: translateZ(0);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.immersive-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent 0%,
+    hsl(var(--background) / 0.5) 60%,
+    hsl(var(--background) / 0.95) 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.immersive-container {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+/* Header */
+.immersive-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 3.5rem;
+  margin-bottom: 2rem;
+  flex-shrink: 0;
+}
+
+.immersive-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  border: none;
+  background: hsl(var(--foreground) / 0.05);
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.immersive-close-btn:hover {
+  background: hsl(var(--foreground) / 0.1);
+  transform: translateY(2px);
+}
+
+.immersive-header-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsl(var(--foreground) / 0.5);
+}
+
+/* Body Split */
+.immersive-body {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 4rem;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+}
+
+/* Left Side */
+.immersive-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 100%;
+  gap: 2rem;
+}
+
+@keyframes coverFloat {
+  0% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2);
+  }
+  50% {
+    transform: translateY(-8px) scale(1.015);
+    box-shadow: 0 30px 50px -8px rgba(0, 0, 0, 0.25);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2);
+  }
+}
+
+.immersive-art-wrapper {
+  position: relative;
+  width: min(24rem, 80vw);
+  aspect-ratio: 1;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: hsl(var(--muted) / 0.2);
+  box-shadow: 0 20px 40px -10px rgba(0,0,0,0.2);
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.immersive-art-wrapper--playing {
+  animation: coverFloat 6s ease-in-out infinite;
+}
+
+.immersive-art-wrapper:hover {
+  transform: scale(1.02);
+}
+
+.immersive-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.immersive-cover-fallback {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.immersive-meta {
+  width: min(24rem, 80vw);
+  text-align: left;
+}
+
+.immersive-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.immersive-artist {
+  font-size: 1rem;
+  font-weight: 500;
+  color: hsl(var(--primary));
+  margin-top: 0.375rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.immersive-album {
+  font-size: 0.8125rem;
+  color: hsl(var(--foreground) / 0.45);
+  margin-top: 0.125rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Controls inside Immersive */
+.immersive-controls-section {
+  width: min(24rem, 80vw);
+}
+
+.immersive-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.immersive-time {
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: hsl(var(--foreground) / 0.45);
+  min-width: 4ch;
+  text-align: center;
+}
+
+.immersive-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+  transition: height 0.15s ease;
+}
+
+.immersive-range:hover {
+  height: 6px;
+}
+
+.immersive-range--seek {
+  flex: 1;
+  background: linear-gradient(
+    to right,
+    hsl(var(--primary)) var(--slider-progress, 0%),
+    hsl(var(--foreground) / 0.15) var(--slider-progress, 0%)
+  );
+}
+
+.immersive-range--seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.immersive-range--seek:hover::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+.immersive-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.25rem;
+  padding: 0 0.5rem;
+}
+
+.immersive-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  border: none;
+  background: none;
+  color: hsl(var(--foreground) / 0.65);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.immersive-btn:hover {
+  color: hsl(var(--foreground));
+  background: hsl(var(--foreground) / 0.05);
+}
+
+.immersive-btn--active {
+  color: hsl(var(--primary)) !important;
+}
+
+.immersive-btn--play {
+  width: 3.5rem;
+  height: 3.5rem;
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
+}
+
+.immersive-btn--play:hover {
+  background: hsl(var(--foreground) / 0.9);
+  color: hsl(var(--background));
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px hsl(var(--foreground) / 0.15);
+}
+
+.immersive-btn--play:active {
+  transform: scale(0.95);
+}
+
+.immersive-badge {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  font-size: 0.55rem;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  padding: 1px 3px;
+  border-radius: 9999px;
+}
+
+.immersive-sliders-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid hsl(var(--foreground) / 0.06);
+}
+
+.immersive-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.immersive-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  background: none;
+  color: hsl(var(--foreground) / 0.5);
+  cursor: pointer;
+}
+
+.immersive-range--volume {
+  width: 6.5rem;
+  background: linear-gradient(
+    to right,
+    hsl(var(--foreground)) var(--slider-progress, 0%),
+    hsl(var(--foreground) / 0.1) var(--slider-progress, 0%)
+  );
+}
+
+.immersive-range--volume::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: hsl(var(--foreground));
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.immersive-range--volume:hover::-webkit-slider-thumb {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.immersive-quality-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.immersive-quality-select {
+  background: hsl(var(--foreground) / 0.04);
+  border: 1px solid hsl(var(--border) / 0.4);
+  border-radius: 9999px;
+  color: hsl(var(--foreground));
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.325rem 1.5rem 0.325rem 0.65rem;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.45rem center;
+  background-size: 0.55rem;
+}
+
+.immersive-quality-select:hover {
+  background-color: hsl(var(--foreground) / 0.08);
+  border-color: hsl(var(--border) / 0.7);
+  transform: translateY(-1px);
+}
+
+.immersive-quality-select:active {
+  transform: translateY(0);
+}
+
+.immersive-error-msg {
+  font-size: 0.75rem;
+  color: hsl(var(--destructive));
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+/* Right Side: Lyrics Box */
+.immersive-right {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.immersive-lyrics-box {
+  width: 100%;
+  height: min(34rem, 75vh);
+  overflow-y: auto;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 15%,
+    black 85%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 15%,
+    black 85%,
+    transparent 100%
+  );
+  padding: 4rem 1rem;
+}
+
+/* Hide scrollbar but keep scroll behavior */
+.immersive-lyrics-box::-webkit-scrollbar {
+  display: none;
+}
+
+.immersive-lyrics-box {
+  scrollbar-width: none;
+}
+
+.immersive-lyric-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 0.75rem;
+  color: hsl(var(--foreground) / 0.45);
+  font-size: 1.125rem;
+}
+
+.immersive-lyric-scrollable {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  padding: 2rem 0;
+}
+
+.immersive-lyric-line {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: hsl(var(--foreground) / 0.38);
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+  transform-origin: left center;
+  padding: 0.5rem 0;
+}
+
+.immersive-lyric-line:hover {
+  color: hsl(var(--foreground) / 0.75);
+}
+
+.immersive-lyric-line--active {
+  color: hsl(var(--foreground)) !important;
+  font-size: 2rem;
+  font-weight: 800;
+  transform: scale(1.03);
+  text-shadow: 0 4px 24px hsl(var(--foreground) / 0.08);
+}
+
+/* Responsive Stacking */
+@media (max-width: 868px) {
+  .immersive-body {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    overflow-y: auto;
+    align-items: start;
+    padding-bottom: 2rem;
+  }
+  
+  .immersive-left {
+    height: auto;
+    padding-top: 1rem;
+  }
+  
+  .immersive-art-wrapper {
+    width: min(15rem, 60vw);
+  }
+  
+  .immersive-meta {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .immersive-controls-section {
+    width: 100%;
+  }
+  
+  .immersive-right {
+    height: auto;
+  }
+  
+  .immersive-lyrics-box {
+    height: 18rem;
+    padding: 2rem 0.5rem;
+  }
+  
+  .immersive-lyric-line {
+    font-size: 1.125rem;
+    text-align: center;
+    transform-origin: center center;
+  }
+  
+  .immersive-lyric-line--active {
+    font-size: 1.375rem;
   }
 }
 </style>
