@@ -220,9 +220,20 @@
         <header class="relative flex shrink-0 flex-col border-b border-border/10 bg-background/70 p-4 backdrop-blur-2xl z-20">
           <div class="flex items-center justify-between w-full">
             <div class="min-w-0">
-              <h2 class="truncate text-base font-bold tracking-tight text-foreground/90">
-                {{ selectedFeedTitle || selectedAccount?.name || 'RSS 阅读器' }}
-              </h2>
+              <div class="flex items-center gap-2">
+                <button
+                  v-if="feedNavStack"
+                  @click="goBackFromFeed"
+                  class="shrink-0 flex items-center gap-1 rounded-lg bg-accent/40 hover:bg-accent/60 px-2 py-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  title="返回之前的列表"
+                >
+                  <AppIcon name="back" class="h-3 w-3" />
+                  <span>返回</span>
+                </button>
+                <h2 class="truncate text-base font-bold tracking-tight text-foreground/90">
+                  {{ selectedFeedTitle || selectedAccount?.name || 'RSS 阅读器' }}
+                </h2>
+              </div>
               <div class="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground/80 font-medium">
                 <span>{{ selectedFeedSubtitle }}</span>
                 <div v-if="loading" class="flex items-center gap-1 ml-1">
@@ -389,7 +400,7 @@
           <header class="shrink-0 border-b border-border/10 h-14 px-6 bg-background flex items-center justify-between relative z-20">
             <!-- Left Side: Source badge (clickable to view feed) -->
             <button
-              @click="selectFeed(readingEntry.feed_id)"
+              @click="pushFeedNavStack(); selectFeed(readingEntry.feed_id)"
               class="flex items-center gap-2 text-xs text-muted-foreground/80 min-w-0 pr-4 hover:text-primary transition-colors cursor-pointer"
               title="查看该订阅源的所有文章"
             >
@@ -1334,6 +1345,16 @@ const loadingMoreEntries = ref(false)
 const readingEntry = ref<RssEntry | null>(null)
 const recentlyViewed = ref<RecentEntry[]>([])
 
+// Navigation stack for feed-to-feed jumps from reader
+const feedNavStack = ref<{
+  selectedFeedId: number | null
+  activeFilter: string
+  page: number
+  entries: RssEntry[]
+  totalEntries: number
+  readingEntry: RssEntry | null
+} | null>(null)
+
 const loadRecentlyViewed = async () => {
   const result = await getRssRecentlyViewed() as ApiResult<{ data: RecentEntry[] }>
   if (!result.error) {
@@ -1734,8 +1755,34 @@ const findFeedByEntry = (entry: RssEntry): RssFeed | undefined => {
   return feeds.value.find(f => f.id === entry.feed_id)
 }
 
+const pushFeedNavStack = () => {
+  feedNavStack.value = {
+    selectedFeedId: selectedFeedId.value,
+    activeFilter: activeFilter.value,
+    page: page.value,
+    entries: [...entries.value],
+    totalEntries: totalEntries.value,
+    readingEntry: readingEntry.value,
+  }
+}
+
+const goBackFromFeed = async () => {
+  const stack = feedNavStack.value
+  if (!stack) return
+
+  selectedFeedId.value = stack.selectedFeedId
+  activeFilter.value = stack.activeFilter as any
+  page.value = stack.page
+  entries.value = stack.entries
+  totalEntries.value = stack.totalEntries
+  readingEntry.value = stack.readingEntry
+  feedNavStack.value = null
+  resetScroll()
+}
+
 const goToFeedFromContextMenu = async (entry: RssEntry) => {
   closeContextMenu()
+  pushFeedNavStack()
   await selectFeed(entry.feed_id)
 }
 
