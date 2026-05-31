@@ -381,6 +381,10 @@ onMounted(() => {
   window.addEventListener('keydown', handleKeyDown)
 })
 
+watch(audioEl, (el) => {
+  store.setAudioRef(el)
+})
+
 watch(() => store.audioSrc, (src) => {
   if (!audioEl.value) return
   if (src) {

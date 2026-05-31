@@ -12,14 +12,6 @@
           <div class="music-nav-label">发现音乐</div>
           <button
             class="music-nav-item"
-            :class="{ 'active': activeMode === 'recommend' && !selectedRank && !selectedPlaylist }"
-            @click="selectRecommendNav"
-          >
-            <AppIcon name="playlistMusic" class="h-4 w-4" />
-            <span>为您推荐</span>
-          </button>
-          <button
-            class="music-nav-item"
             :class="{ 'active': activeMode === 'rank' }"
             @click="setMusicMode('rank')"
           >
@@ -192,7 +184,7 @@
           <!-- Normal Track List Area -->
           <div v-else class="music-tracks-container">
             <!-- Sleek Header Banner for Playlists -->
-            <header class="music-playlist-header" v-if="selectedRank || selectedPlaylist || selectedUserPlaylist || selectedArtist || selectedAlbum || trackSource === 'history' || trackSource === 'listen_rank' || trackSource === 'latest_listen' || trackSource === 'search' || trackSource === 'recommend'">
+            <header class="music-playlist-header" v-if="selectedRank || selectedPlaylist || selectedUserPlaylist || selectedArtist || selectedAlbum || trackSource === 'history' || trackSource === 'listen_rank' || trackSource === 'latest_listen' || trackSource === 'search'">
               <div class="music-playlist-header-cover">
                 <img v-if="selectedRank?.cover" :src="selectedRank.cover" alt="" />
                 <img v-else-if="selectedPlaylist?.cover" :src="selectedPlaylist.cover" alt="" />
@@ -205,7 +197,7 @@
               </div>
               <div class="music-playlist-header-info">
                 <div class="text-[0.6875rem] font-bold uppercase tracking-wider text-primary">{{ trackSourceText }}</div>
-                <h1 class="text-xl font-bold mt-1 text-foreground leading-tight">{{ selectedSourceTitle || '为您推荐' }}</h1>
+                <h1 class="text-xl font-bold mt-1 text-foreground leading-tight">{{ selectedSourceTitle }}</h1>
                 <p class="text-xs text-muted-foreground mt-2">{{ total }} 首歌曲 · 酷狗音乐提供</p>
                 <p v-if="selectedArtist?.intro" class="music-detail-intro">{{ selectedArtist.intro }}</p>
                 <p v-else-if="selectedAlbum?.intro" class="music-detail-intro">{{ selectedAlbum.intro }}</p>
@@ -487,8 +479,8 @@ import { Logger } from '@/utils/logger'
 
 const store = useMusicPlayerStore()
 
-type MusicMode = 'recommend' | 'rank' | 'playlist' | 'mine'
-type TrackSource = 'recommend' | 'search' | 'rank' | 'playlist' | 'user_playlist' | 'history' | 'listen_rank' | 'latest_listen' | 'artist_detail' | 'album_detail'
+type MusicMode = 'rank' | 'playlist' | 'mine'
+type TrackSource = 'idle' | 'search' | 'rank' | 'playlist' | 'user_playlist' | 'history' | 'listen_rank' | 'latest_listen' | 'artist_detail' | 'album_detail'
 
 const query = ref('')
 const tracks = ref<MusicTrack[]>([])
@@ -504,8 +496,8 @@ const discoveryLoading = ref(false)
 const searched = ref(false)
 const error = ref('')
 const quality = ref(store.quality)
-const activeMode = ref<MusicMode>('recommend')
-const trackSource = ref<TrackSource>('recommend')
+const activeMode = ref<MusicMode>('mine')
+const trackSource = ref<TrackSource>('idle')
 const selectedSourceTitle = ref('')
 const selectedRank = ref<MusicRank | null>(null)
 const selectedPlaylist = ref<MusicPlaylist | null>(null)
@@ -533,10 +525,7 @@ let qrTimer: ReturnType<typeof setInterval> | null = null
 const resultSummary = computed(() => {
   if (loading.value) return '搜索中'
   if (selectedSourceTitle.value) return `${selectedSourceTitle.value} · ${tracks.value.length} / ${total.value} 首`
-  if (!searched.value) {
-    if (tracks.value.length > 0) return `推荐 · ${total.value} 首`
-    return '酷狗音乐 · 试试搜索吧'
-  }
+  if (!searched.value) return '酷狗音乐 · 试试搜索吧'
   return `共 ${total.value} 首`
 })
 
@@ -567,7 +556,6 @@ const qrStatusText = computed(() => {
 })
 
 const trackSourceText = computed(() => {
-  if (trackSource.value === 'recommend') return '酷狗推荐'
   if (trackSource.value === 'search') return '搜索结果'
   if (trackSource.value === 'rank') return '酷狗音乐排行榜'
   if (trackSource.value === 'playlist') return '酷狗音乐热门歌单'
@@ -580,21 +568,10 @@ const trackSourceText = computed(() => {
   return '音乐库'
 })
 
-function selectRecommendNav() {
-  selectedRank.value = null
-  selectedPlaylist.value = null
-  selectedUserPlaylist.value = null
-  selectedArtist.value = null
-  selectedAlbum.value = null
-  artistAlbums.value = []
-  setMusicMode('recommend')
-}
-
 let previousVolume = 0.7
 
 onMounted(() => {
   void loadAuthStatus()
-  void loadSuggestions()
   void loadRanks()
   void loadPlaylists(false)
   void loadUserPlaylists()
@@ -608,29 +585,11 @@ function isCurrentTrack(track: MusicTrack): boolean {
   return store.currentTrack?.hash === track.hash
 }
 
-async function loadSuggestions() {
-  loading.value = true
-  error.value = ''
-  const { data, error: err } = await searchMusic({ query: '新歌', page: 1, page_size: pageSize })
-  loading.value = false
-  if (err) {
-    Logger.error('Failed to load music suggestions', err)
-    return
-  }
-  if (data?.items?.length) {
-    tracks.value = data.items
-    total.value = data.total || data.items.length
-    trackSource.value = 'recommend'
-    selectedSourceTitle.value = ''
-    void loadFavoriteCounts(tracks.value)
-  }
-}
-
 const submitSearch = async () => {
   const keyword = query.value.trim()
   if (!keyword || loading.value) return
 
-  activeMode.value = 'recommend'
+  activeMode.value = 'mine'
   trackSource.value = 'search'
   selectedRank.value = null
   selectedPlaylist.value = null
@@ -712,16 +671,7 @@ async function searchPage(keyword: string, page: number, append: boolean) {
 
 async function setMusicMode(mode: MusicMode) {
   activeMode.value = mode
-  if (mode === 'recommend') {
-    selectedRank.value = null
-    selectedPlaylist.value = null
-    selectedUserPlaylist.value = null
-    selectedArtist.value = null
-    selectedAlbum.value = null
-    artistAlbums.value = []
-    selectedSourceTitle.value = ''
-    await loadSuggestions()
-  } else if (mode === 'rank' && ranks.value.length === 0) {
+  if (mode === 'rank' && ranks.value.length === 0) {
     await loadRanks()
   } else if (mode === 'playlist' && playlists.value.length === 0) {
     await loadPlaylists(false)
@@ -959,7 +909,7 @@ async function selectArtist(track: MusicTrack) {
   selectedRank.value = null
   selectedPlaylist.value = null
   selectedUserPlaylist.value = null
-  activeMode.value = 'recommend'
+  activeMode.value = 'mine'
   trackSource.value = 'artist_detail'
   selectedSourceTitle.value = data.name
   currentPage.value = 1
@@ -1058,7 +1008,7 @@ async function loadAlbumDetail(albumId: string) {
   selectedRank.value = null
   selectedPlaylist.value = null
   selectedUserPlaylist.value = null
-  activeMode.value = 'recommend'
+  activeMode.value = 'mine'
   trackSource.value = 'album_detail'
   selectedSourceTitle.value = data.name
   currentPage.value = 1
