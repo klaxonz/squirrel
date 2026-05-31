@@ -771,8 +771,33 @@ def serialize_feed(feed: RssFeed) -> dict[str, Any]:
         'icon_url': feed.icon_url,
         'category': feed.category,
         'enabled': feed.enabled,
+        'open_method': feed.open_method,
         'last_entry_sync_at': feed.last_entry_sync_at.isoformat() if feed.last_entry_sync_at else None,
     }
+
+
+def update_feed(user_id: int, feed_id: int, **kwargs: Any) -> dict[str, Any]:
+    allowed_fields = {'category', 'open_method'}
+    updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
+
+    if not updates:
+        raise RssServiceError('No valid fields to update')
+
+    with get_session() as session:
+        feed = session.scalars(
+            select(RssFeed).where(
+                RssFeed.id == feed_id,
+                RssFeed.user_id == user_id,
+            )
+        ).first()
+        if not feed:
+            raise RssServiceError('RSS 订阅源不存在')
+
+        for key, value in updates.items():
+            setattr(feed, key, value)
+        session.commit()
+        session.refresh(feed)
+        return serialize_feed(feed)
 
 
 def serialize_entry(entry: RssEntry) -> dict[str, Any]:

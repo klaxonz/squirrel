@@ -1290,6 +1290,37 @@
 
           <div class="h-px bg-border/20 my-1"></div>
 
+          <div class="px-2.5 py-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">默认打开方式</div>
+
+          <button
+            @click="setFeedOpenMethod(contextMenuFeed!, null)"
+            class="flex h-7 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon name="list" class="h-3.5 w-3.5 opacity-70" />
+            <span class="flex-1">内嵌阅读</span>
+            <AppIcon v-if="!contextMenuFeed.open_method" name="check" class="h-3 w-3 text-primary" />
+          </button>
+
+          <button
+            @click="setFeedOpenMethod(contextMenuFeed!, 'app_browser')"
+            class="flex h-7 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon name="siteFallback" class="h-3.5 w-3.5 opacity-70" />
+            <span class="flex-1">应用内浏览器</span>
+            <AppIcon v-if="contextMenuFeed.open_method === 'app_browser'" name="check" class="h-3 w-3 text-primary" />
+          </button>
+
+          <button
+            @click="setFeedOpenMethod(contextMenuFeed!, 'external_browser')"
+            class="flex h-7 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon name="externalLink" class="h-3.5 w-3.5 opacity-70" />
+            <span class="flex-1">系统浏览器</span>
+            <AppIcon v-if="contextMenuFeed.open_method === 'external_browser'" name="check" class="h-3 w-3 text-primary" />
+          </button>
+
+          <div class="h-px bg-border/20 my-1"></div>
+
           <button
             @click="unsubscribeFeedFromContextMenu(contextMenuFeed)"
             class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-destructive cursor-pointer"
@@ -1318,6 +1349,7 @@ import {
   subscribeRssFeed,
   syncRssAccount,
   syncRssFeed,
+  updateRssFeed,
   markRssFeedAsRead,
   testRssAccountConfig,
   unsubscribeRssFeed,
@@ -1362,6 +1394,7 @@ type RssFeed = {
   site_url?: string | null
   icon_url?: string | null
   category?: string | null
+  open_method?: string | null
 }
 type RssEntry = {
   id: number
@@ -2222,10 +2255,27 @@ const openReader = (entry: RssEntry) => {
   readingEntry.value = entry
   showInAppBrowser.value = false
   iframeLoading.value = false
+
+  const feed = findFeedByEntry(entry)
+  const method = feed?.open_method
+
+  if (method === 'external_browser') {
+    window.open(entry.canonical_url, '_blank')
+    if (!entry.is_read) {
+      toggleReadStatus(entry, false)
+    }
+    recordRecentlyViewed(entry)
+    return
+  }
+
   if (!entry.is_read) {
     toggleReadStatus(entry, false)
   }
   recordRecentlyViewed(entry)
+
+  if (method === 'app_browser') {
+    nextTick(() => openInAppBrowser())
+  }
 }
 
 const openRecentEntry = (recent: RecentEntry) => {
@@ -2284,6 +2334,17 @@ const showFeedContextMenu = (feed: RssFeed, event: MouseEvent) => {
 const closeFeedContextMenu = () => {
   showFeedContextMenuState.value = false
   contextMenuFeed.value = null
+}
+
+const setFeedOpenMethod = async (feed: RssFeed, method: string | null) => {
+  const result = await updateRssFeed(feed.id, { open_method: method }) as ApiResult
+  if (result.error) {
+    setStatus(result.error.message || '更新失败', true)
+    return
+  }
+  feed.open_method = method
+  closeFeedContextMenu()
+  setStatus(method === 'external_browser' ? '已设为系统浏览器打开' : method === 'app_browser' ? '已设为应用内浏览器打开' : '已设为内嵌阅读')
 }
 
 const syncFeedFromContextMenu = async (feed: RssFeed) => {

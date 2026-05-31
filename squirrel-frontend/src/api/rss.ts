@@ -63,6 +63,10 @@ export const syncRssFeed = async (feedId: number, entryLimit = 50) => {
   return post(`/api/rss/feeds/${feedId}/sync`, null, { params: { entryLimit } })
 }
 
+export const updateRssFeed = async (feedId: number, payload: Record<string, unknown>) => {
+  return patch(`/api/rss/feeds/${feedId}`, payload)
+}
+
 export const markRssFeedAsRead = async (feedId: number) => {
   return post(`/api/rss/feeds/${feedId}/read`)
 }

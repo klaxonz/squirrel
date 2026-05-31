@@ -1,5 +1,5 @@
 from threading import Thread
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, SecretStr
@@ -222,6 +222,21 @@ def sync_rss_feed(
     except Exception as exc:
         return response.error(f'RSS 同步失败: {exc}')
     return response.success(result)
+
+
+@router.patch('/feeds/{feed_id}')
+def patch_rss_feed(
+    feed_id: int,
+    req: dict[str, Any],
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        feed = rss_service.update_feed(current_user.id, feed_id, **req)
+    except rss_service.RssServiceError as exc:
+        return response.param_error(str(exc))
+    except Exception as exc:
+        return response.error(f'更新订阅源失败: {exc}')
+    return response.success(feed)
 
 
 @router.post('/feeds/{feed_id}/read')

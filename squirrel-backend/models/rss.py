@@ -51,6 +51,7 @@ class RssFeed(Base, SerializerMixin):
     icon_url: Mapped[Optional[str]] = mapped_column(VARCHAR(2048), nullable=True)
     category: Mapped[Optional[str]] = mapped_column(VARCHAR(255), nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    open_method: Mapped[Optional[str]] = mapped_column(VARCHAR(32), nullable=True, default=None)
     raw_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     last_entry_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
