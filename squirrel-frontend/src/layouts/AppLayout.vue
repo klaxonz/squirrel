@@ -34,8 +34,8 @@
       <MobileNavigation v-if="isMobile" class="fixed bottom-0 left-0 right-0 z-50 h-nav" />
     </div>
 
-    <!-- Global Music Player Bar (Fixed at bottom, above mobile nav) -->
-    <GlobalMusicPlayerBar />
+    <!-- Global Music Player Bar (Fixed at bottom, above mobile nav, only on /music page) -->
+    <GlobalMusicPlayerBar v-if="route.name === 'Music'" />
   </div>
 </template>
 
@@ -66,7 +66,7 @@ const nav = useNavigationHistory()
 const route = useRoute()
 
 const musicBarPadding = computed(() =>
-  musicPlayerStore.currentTrack ? 'pb-16' : ''
+  route.name === 'Music' && musicPlayerStore.currentTrack ? 'pb-16' : ''
 )
 const mainScrollRef = ref<HTMLElement | null>(null)
 let activeScrollRoute: ScrollRouteState = {
