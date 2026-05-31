@@ -848,7 +848,7 @@
 
     <!-- 5. Subscribe Feed Dialog -->
     <Dialog :open="showSubscribeModal" @update:open="showSubscribeModal = $event">
-      <DialogContent class="max-w-md overflow-hidden rounded-xl p-0 border border-border/30 bg-background/95 backdrop-blur-xl shadow-xl transition-all duration-200">
+      <DialogContent class="max-w-md rounded-xl p-0 border border-border/30 bg-background/95 backdrop-blur-xl shadow-xl transition-all duration-200">
         <DialogHeader class="border-b border-border/10 p-5 text-left">
           <DialogTitle class="text-base font-bold text-foreground">添加订阅源</DialogTitle>
           <DialogDescription class="text-xs text-muted-foreground mt-1 leading-normal">
