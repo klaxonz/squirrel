@@ -28,6 +28,71 @@
         </header>
 
         <div class="music-content custom-scrollbar">
+          <div class="music-discovery">
+            <div class="music-tabs">
+              <button
+                class="music-tab"
+                :class="{ 'music-tab--active': activeMode === 'recommend' }"
+                @click="setMusicMode('recommend')"
+              >
+                推荐
+              </button>
+              <button
+                class="music-tab"
+                :class="{ 'music-tab--active': activeMode === 'rank' }"
+                @click="setMusicMode('rank')"
+              >
+                排行榜
+              </button>
+              <button
+                class="music-tab"
+                :class="{ 'music-tab--active': activeMode === 'playlist' }"
+                @click="setMusicMode('playlist')"
+              >
+                歌单
+              </button>
+            </div>
+
+            <div v-if="activeMode === 'rank'" class="music-card-strip custom-scrollbar">
+              <button
+                v-for="rank in ranks"
+                :key="rank.id"
+                class="music-source-card"
+                :class="{ 'music-source-card--active': selectedRank?.id === rank.id }"
+                @click="selectRank(rank)"
+              >
+                <img v-if="rank.cover" :src="rank.cover" alt="" class="music-source-cover" />
+                <div v-else class="music-source-cover">
+                  <AppIcon name="playlistMusic" class="h-5 w-5 text-muted-foreground" />
+                </div>
+                <span class="truncate text-xs font-medium">{{ rank.name }}</span>
+                <span class="truncate text-[0.7rem] text-muted-foreground">{{ rank.update_frequency || '排行榜' }}</span>
+              </button>
+              <span v-if="discoveryLoading" class="music-source-loading">加载中</span>
+            </div>
+
+            <div v-else-if="activeMode === 'playlist'" class="music-card-strip custom-scrollbar">
+              <button
+                v-for="playlist in playlists"
+                :key="playlist.id"
+                class="music-source-card music-source-card--playlist"
+                :class="{ 'music-source-card--active': selectedPlaylist?.id === playlist.id }"
+                @click="selectPlaylist(playlist)"
+              >
+                <img v-if="playlist.cover" :src="playlist.cover" alt="" class="music-source-cover" />
+                <div v-else class="music-source-cover">
+                  <AppIcon name="playlistMusic" class="h-5 w-5 text-muted-foreground" />
+                </div>
+                <span class="truncate text-xs font-medium">{{ playlist.name }}</span>
+                <span class="truncate text-[0.7rem] text-muted-foreground">{{ playlist.creator || '歌单' }}</span>
+              </button>
+              <button v-if="playlistHasMore" class="music-source-more" :disabled="discoveryLoading" @click="loadMorePlaylists">
+                更多
+              </button>
+              <span v-if="discoveryLoading" class="music-source-loading">加载中</span>
+            </div>
+          </div>
+
           <div v-if="loading && tracks.length === 0" class="music-list">
             <div v-for="index in 8" :key="index" class="music-skeleton" />
           </div>
@@ -266,9 +331,15 @@ import {
   checkMusicQrLogin,
   createMusicQrLogin,
   getMusicAuthStatus,
+  getMusicPlaylistTracks,
+  getMusicPlaylists,
+  getMusicRankTracks,
+  getMusicRanks,
   searchMusic,
   type MusicAuthStatus,
+  type MusicPlaylist,
   type MusicQrLogin,
+  type MusicRank,
   type MusicTrack,
 } from '@/api/music'
 import { useMusicPlayerStore } from '@/stores/musicPlayer'
@@ -276,13 +347,26 @@ import { Logger } from '@/utils/logger'
 
 const store = useMusicPlayerStore()
 
+type MusicMode = 'recommend' | 'rank' | 'playlist'
+type TrackSource = 'recommend' | 'search' | 'rank' | 'playlist'
+
 const query = ref('')
 const tracks = ref<MusicTrack[]>([])
+const ranks = ref<MusicRank[]>([])
+const playlists = ref<MusicPlaylist[]>([])
 const loading = ref(false)
+const discoveryLoading = ref(false)
 const searched = ref(false)
 const error = ref('')
 const quality = ref(store.quality)
+const activeMode = ref<MusicMode>('recommend')
+const trackSource = ref<TrackSource>('recommend')
+const selectedSourceTitle = ref('')
+const selectedRank = ref<MusicRank | null>(null)
+const selectedPlaylist = ref<MusicPlaylist | null>(null)
 const currentPage = ref(1)
+const playlistPage = ref(1)
+const playlistHasMore = ref(false)
 const pageSize = 30
 const total = ref(0)
 const authStatus = ref<MusicAuthStatus | null>(null)
@@ -294,6 +378,7 @@ let qrTimer: ReturnType<typeof setInterval> | null = null
 
 const resultSummary = computed(() => {
   if (loading.value) return '搜索中'
+  if (selectedSourceTitle.value) return `${selectedSourceTitle.value} · ${tracks.value.length} / ${total.value} 首`
   if (!searched.value) {
     if (tracks.value.length > 0) return `推荐 · ${total.value} 首`
     return '酷狗音乐 · 试试搜索吧'
@@ -302,7 +387,7 @@ const resultSummary = computed(() => {
 })
 
 const canStep = computed(() => store.queue.length > 1)
-const hasMore = computed(() => searched.value && tracks.value.length < total.value)
+const hasMore = computed(() => trackSource.value !== 'recommend' && tracks.value.length < total.value)
 
 const repeatTitle = computed(() => {
   if (store.repeat === 'all') return '列表循环'
@@ -329,6 +414,8 @@ let previousVolume = 0.7
 onMounted(() => {
   void loadAuthStatus()
   void loadSuggestions()
+  void loadRanks()
+  void loadPlaylists(false)
 })
 
 onUnmounted(() => {
@@ -351,6 +438,8 @@ async function loadSuggestions() {
   if (data?.items?.length) {
     tracks.value = data.items
     total.value = data.total || data.items.length
+    trackSource.value = 'recommend'
+    selectedSourceTitle.value = ''
   }
 }
 
@@ -358,16 +447,26 @@ const submitSearch = async () => {
   const keyword = query.value.trim()
   if (!keyword || loading.value) return
 
+  activeMode.value = 'recommend'
+  trackSource.value = 'search'
+  selectedRank.value = null
+  selectedPlaylist.value = null
+  selectedSourceTitle.value = `搜索：${keyword}`
   currentPage.value = 1
   await searchPage(keyword, currentPage.value, false)
 }
 
 async function loadMoreSearch() {
-  const keyword = query.value.trim()
-  if (!keyword || loading.value || !hasMore.value) return
-
+  if (loading.value || !hasMore.value) return
   currentPage.value += 1
-  await searchPage(keyword, currentPage.value, true)
+  if (trackSource.value === 'search') {
+    const keyword = query.value.trim()
+    if (keyword) await searchPage(keyword, currentPage.value, true)
+  } else if (trackSource.value === 'rank' && selectedRank.value) {
+    await loadRankTracks(selectedRank.value, currentPage.value, true)
+  } else if (trackSource.value === 'playlist' && selectedPlaylist.value) {
+    await loadPlaylistTracks(selectedPlaylist.value, currentPage.value, true)
+  }
 }
 
 async function searchPage(keyword: string, page: number, append: boolean) {
@@ -386,6 +485,111 @@ async function searchPage(keyword: string, page: number, append: boolean) {
     return
   }
 
+  const items = data?.items || []
+  tracks.value = append ? [...tracks.value, ...items] : items
+  total.value = data?.total || tracks.value.length
+}
+
+async function setMusicMode(mode: MusicMode) {
+  activeMode.value = mode
+  if (mode === 'recommend') {
+    selectedRank.value = null
+    selectedPlaylist.value = null
+    selectedSourceTitle.value = ''
+    await loadSuggestions()
+  } else if (mode === 'rank' && ranks.value.length === 0) {
+    await loadRanks()
+  } else if (mode === 'playlist' && playlists.value.length === 0) {
+    await loadPlaylists(false)
+  }
+}
+
+async function loadRanks() {
+  discoveryLoading.value = true
+  const { data, error: requestError } = await getMusicRanks()
+  discoveryLoading.value = false
+  if (requestError) {
+    Logger.error('Failed to load music ranks', requestError)
+    return
+  }
+  ranks.value = data?.items || []
+}
+
+async function selectRank(rank: MusicRank) {
+  selectedRank.value = rank
+  selectedPlaylist.value = null
+  trackSource.value = 'rank'
+  selectedSourceTitle.value = rank.name
+  currentPage.value = 1
+  await loadRankTracks(rank, currentPage.value, false)
+}
+
+async function loadRankTracks(rank: MusicRank, page: number, append: boolean) {
+  loading.value = true
+  error.value = ''
+  const { data, error: requestError } = await getMusicRankTracks({
+    rank_id: rank.id,
+    rank_cid: rank.rank_cid || undefined,
+    page,
+    page_size: pageSize,
+  })
+  loading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load music rank tracks', requestError)
+    return
+  }
+  const items = data?.items || []
+  tracks.value = append ? [...tracks.value, ...items] : items
+  total.value = data?.total || tracks.value.length
+}
+
+async function loadPlaylists(append: boolean) {
+  discoveryLoading.value = true
+  const { data, error: requestError } = await getMusicPlaylists({
+    category_id: 0,
+    page: playlistPage.value,
+    page_size: 12,
+  })
+  discoveryLoading.value = false
+  if (requestError) {
+    Logger.error('Failed to load music playlists', requestError)
+    return
+  }
+  const items = data?.items || []
+  playlists.value = append ? [...playlists.value, ...items] : items
+  playlistHasMore.value = data?.has_more === true
+}
+
+async function loadMorePlaylists() {
+  if (discoveryLoading.value || !playlistHasMore.value) return
+  playlistPage.value += 1
+  await loadPlaylists(true)
+}
+
+async function selectPlaylist(playlist: MusicPlaylist) {
+  selectedPlaylist.value = playlist
+  selectedRank.value = null
+  trackSource.value = 'playlist'
+  selectedSourceTitle.value = playlist.name
+  currentPage.value = 1
+  await loadPlaylistTracks(playlist, currentPage.value, false)
+}
+
+async function loadPlaylistTracks(playlist: MusicPlaylist, page: number, append: boolean) {
+  loading.value = true
+  error.value = ''
+  const { data, error: requestError } = await getMusicPlaylistTracks({
+    playlist_id: playlist.id,
+    page,
+    page_size: pageSize,
+  })
+  loading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load music playlist tracks', requestError)
+    return
+  }
   const items = data?.items || []
   tracks.value = append ? [...tracks.value, ...items] : items
   total.value = data?.total || tracks.value.length
@@ -564,6 +768,107 @@ const formatDuration = (seconds: number) => {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+}
+
+.music-discovery {
+  margin: 0 auto 0.75rem;
+  width: min(100%, 72rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.music-tabs {
+  display: inline-flex;
+  width: fit-content;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 0.5rem;
+  background: hsl(var(--muted) / 0.25);
+}
+
+.music-tab {
+  height: 2rem;
+  min-width: 4.25rem;
+  border: 0;
+  border-right: 1px solid hsl(var(--border) / 0.45);
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.music-tab:last-child {
+  border-right: 0;
+}
+
+.music-tab--active {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+.music-card-strip {
+  display: flex;
+  gap: 0.625rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.music-source-card {
+  display: grid;
+  width: 8rem;
+  flex: 0 0 8rem;
+  grid-template-rows: 5rem auto auto;
+  gap: 0.35rem;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 0.5rem;
+  background: hsl(var(--background));
+  padding: 0.45rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.music-source-card--playlist {
+  width: 8.75rem;
+  flex-basis: 8.75rem;
+}
+
+.music-source-card:hover,
+.music-source-card--active {
+  border-color: hsl(var(--primary) / 0.5);
+  background: hsl(var(--accent) / 0.35);
+}
+
+.music-source-cover {
+  display: flex;
+  width: 100%;
+  height: 5rem;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  background: hsl(var(--muted));
+  object-fit: cover;
+}
+
+.music-source-more {
+  width: 4rem;
+  flex: 0 0 4rem;
+  border: 1px dashed hsl(var(--border));
+  border-radius: 0.5rem;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.music-source-loading {
+  display: flex;
+  align-items: center;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
 }
 
 .music-chip {

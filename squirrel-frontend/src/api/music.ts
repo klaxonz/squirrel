@@ -19,6 +19,39 @@ export type MusicSearchResult = {
   total: number
 }
 
+export type MusicRank = {
+  id: string
+  rank_cid: string
+  name: string
+  cover: string
+  intro: string
+  update_frequency: string
+  play_count: number
+}
+
+export type MusicRankResult = {
+  items: MusicRank[]
+  total: number
+}
+
+export type MusicPlaylist = {
+  id: string
+  name: string
+  cover: string
+  intro: string
+  creator: string
+  play_count: number
+  collect_count: number
+  tags: string[]
+}
+
+export type MusicPlaylistResult = {
+  items: MusicPlaylist[]
+  page: number
+  page_size: number
+  has_more: boolean
+}
+
 export type MusicPlayUrl = {
   url: string
   quality: string
@@ -61,6 +94,35 @@ export const searchMusic = (params: {
   page_size?: number
 }) => {
   return get<MusicSearchResult>('/api/music/search', params)
+}
+
+export const getMusicRanks = () => {
+  return get<MusicRankResult>('/api/music/ranks')
+}
+
+export const getMusicRankTracks = (params: {
+  rank_id: string
+  rank_cid?: string
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicSearchResult>('/api/music/rank/tracks', params)
+}
+
+export const getMusicPlaylists = (params: {
+  category_id?: number
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicPlaylistResult>('/api/music/playlists', params)
+}
+
+export const getMusicPlaylistTracks = (params: {
+  playlist_id: string
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicSearchResult>('/api/music/playlist/tracks', params)
 }
 
 export const getMusicPlayUrl = (params: {

@@ -34,6 +34,81 @@ def search_tracks(user_id: int, query: str, page: int, page_size: int) -> dict[s
     }
 
 
+def list_ranks(user_id: int) -> dict[str, Any]:
+    payload = _request_kugou('/rank/list', {'withsong': 0}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    rows = data.get('info')
+    if not isinstance(rows, list):
+        rows = []
+
+    return {
+        'items': [_normalize_rank(row) for row in rows],
+        'total': data.get('total') or len(rows),
+    }
+
+
+def get_rank_tracks(user_id: int, rank_id: str, rank_cid: str | None, page: int, page_size: int) -> dict[str, Any]:
+    params = {
+        'rankid': rank_id,
+        'page': page,
+        'pagesize': page_size,
+    }
+    if rank_cid:
+        params['rank_cid'] = rank_cid
+
+    payload = _request_kugou('/rank/audio', params, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    rows = data.get('songlist')
+    if not isinstance(rows, list):
+        rows = []
+
+    return {
+        'items': [_normalize_track(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': data.get('total') or payload.get('total') or len(rows),
+    }
+
+
+def list_playlists(user_id: int, category_id: int, page: int, page_size: int) -> dict[str, Any]:
+    payload = _request_kugou('/top/playlist', {
+        'category_id': category_id,
+        'page': page,
+        'pagesize': page_size,
+        'withsong': 0,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    rows = data.get('special_list')
+    if not isinstance(rows, list):
+        rows = []
+
+    return {
+        'items': [_normalize_playlist(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'has_more': bool(data.get('has_next')),
+    }
+
+
+def get_playlist_tracks(user_id: int, playlist_id: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = _request_kugou('/playlist/track/all', {
+        'id': playlist_id,
+        'page': page,
+        'pagesize': page_size,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    rows = data.get('songs')
+    if not isinstance(rows, list):
+        rows = []
+
+    return {
+        'items': [_normalize_track(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': data.get('count') or len(rows),
+    }
+
+
 def get_track_play_url(user_id: int, hash_value: str, album_audio_id: str | None, quality: str) -> dict[str, Any]:
     params = {
         'hash': hash_value,
@@ -279,17 +354,95 @@ def _parse_lrc_timestamp(value: str) -> float:
         return -1
 
 
-def _normalize_track(row: dict[str, Any]) -> dict[str, Any]:
-    title = row.get('SongName') or row.get('FileName') or ''
-    artist = row.get('SingerName') or ''
+def _normalize_rank(row: dict[str, Any]) -> dict[str, Any]:
     return {
-        'id': str(row.get('AlbumAudioID') or row.get('MixSongID') or row.get('Audioid') or row.get('FileHash') or ''),
+        'id': str(row.get('rankid') or row.get('id') or ''),
+        'rank_cid': str(row.get('rank_cid') or ''),
+        'name': row.get('rankname') or '',
+        'cover': _format_image_url(row.get('imgurl') or row.get('album_img_9') or row.get('banner_9') or ''),
+        'intro': row.get('intro') or '',
+        'update_frequency': row.get('update_frequency') or '',
+        'play_count': int(row.get('play_times') or 0),
+    }
+
+
+def _normalize_playlist(row: dict[str, Any]) -> dict[str, Any]:
+    tags = row.get('tags')
+    if not isinstance(tags, list):
+        tags = []
+
+    return {
+        'id': str(row.get('global_collection_id') or ''),
+        'name': row.get('specialname') or '',
+        'cover': _format_image_url(row.get('flexible_cover') or row.get('imgurl') or ''),
+        'intro': row.get('intro') or '',
+        'creator': row.get('nickname') or '',
+        'play_count': int(row.get('play_count') or 0),
+        'collect_count': int(row.get('collectcount') or 0),
+        'tags': [tag.get('tag_name') for tag in tags if isinstance(tag, dict) and tag.get('tag_name')],
+    }
+
+
+def _normalize_track(row: dict[str, Any]) -> dict[str, Any]:
+    audio_info = row.get('audio_info') if isinstance(row.get('audio_info'), dict) else {}
+    album_info = row.get('album_info') if isinstance(row.get('album_info'), dict) else {}
+    albuminfo = row.get('albuminfo') if isinstance(row.get('albuminfo'), dict) else {}
+    title = row.get('SongName') or row.get('FileName') or row.get('songname') or row.get('name') or ''
+    artist = row.get('SingerName') or row.get('author_name') or row.get('singername') or _artist_names(row)
+    duration = row.get('Duration') or _milliseconds_to_seconds(row.get('timelen')) or _milliseconds_to_seconds(
+        audio_info.get('duration_128')
+    )
+    return {
+        'id': str(
+            row.get('AlbumAudioID')
+            or row.get('MixSongID')
+            or row.get('album_audio_id')
+            or row.get('add_mixsongid')
+            or row.get('mixsongid')
+            or row.get('Audioid')
+            or row.get('audio_id')
+            or row.get('FileHash')
+            or row.get('hash')
+            or ''
+        ),
         'title': title,
         'artist': artist,
-        'album': row.get('AlbumName') or '',
-        'hash': row.get('FileHash') or '',
-        'album_id': str(row.get('AlbumID') or ''),
-        'album_audio_id': str(row.get('AlbumAudioID') or row.get('MixSongID') or ''),
-        'duration': int(row.get('Duration') or 0),
-        'cover': row.get('Image') or '',
+        'album': row.get('AlbumName') or album_info.get('album_name') or albuminfo.get('name') or row.get('remark') or '',
+        'hash': row.get('FileHash') or row.get('hash') or audio_info.get('hash_128') or '',
+        'album_id': str(row.get('AlbumID') or row.get('album_id') or albuminfo.get('id') or ''),
+        'album_audio_id': str(
+            row.get('AlbumAudioID') or row.get('MixSongID') or row.get('album_audio_id') or row.get('add_mixsongid')
+            or row.get('mixsongid') or ''
+        ),
+        'duration': int(duration or 0),
+        'cover': _format_image_url(row.get('Image') or row.get('cover') or album_info.get('sizable_cover') or ''),
     }
+
+
+def _artist_names(row: dict[str, Any]) -> str:
+    for key in ('authors', 'singerinfo'):
+        rows = row.get(key)
+        if isinstance(rows, list):
+            names = []
+            for item in rows:
+                if isinstance(item, dict):
+                    name = item.get('author_name') or item.get('name')
+                    if name:
+                        names.append(name)
+            if names:
+                return '、'.join(names)
+    return ''
+
+
+def _milliseconds_to_seconds(value: Any) -> int:
+    try:
+        milliseconds = int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+    if milliseconds > 1000:
+        return round(milliseconds / 1000)
+    return milliseconds
+
+
+def _format_image_url(value: str) -> str:
+    return value.replace('{size}', '240') if value else ''
