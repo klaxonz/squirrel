@@ -369,9 +369,12 @@
                   />
                 </div>
                 
-                <!-- Card Bottom: Source & Media indicator -->
+                <!-- Card Bottom: Source & Media indicator (clickable to view feed) -->
                 <div class="flex items-center pt-1">
-                  <div class="flex items-center gap-2 min-w-0">
+                  <button
+                    @click.stop="pushFeedNavStack(); selectFeed(entry.feed_id)"
+                    class="flex items-center gap-2 min-w-0 text-left hover:text-primary transition-colors cursor-pointer"
+                  >
                     <SiteIcon :icon-url="getFeedIconUrl(entry.feed_id)" size="xs" rounded="sm" class="shrink-0" />
                     <span
                       class="text-[11px] font-semibold truncate transition-colors"
@@ -379,7 +382,7 @@
                     >
                       {{ getFeedTitle(entry.feed_id) }}
                     </span>
-                  </div>
+                  </button>
                 </div>
               </div>
             </div>
