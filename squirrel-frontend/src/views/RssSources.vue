@@ -442,7 +442,7 @@
                 class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer"
                 :title="readingEntry.is_starred ? '取消收藏' : '收藏文章'"
               >
-                <AppIcon :name="readingEntry.is_starred ? 'bookmark' : 'star'" class="h-4 w-4" :class="readingEntry.is_starred ? 'text-amber-500 fill-amber-500' : ''" />
+                <AppIcon name="star" class="h-4 w-4" :class="readingEntry.is_starred ? 'text-amber-500 fill-amber-500' : ''" />
               </button>
 
               <!-- 取消订阅该源 -->
@@ -1170,7 +1170,7 @@
             @click="toggleStarStatus(contextMenuEntry)"
             class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
           >
-            <AppIcon :name="contextMenuEntry.is_starred ? 'bookmark' : 'star'" class="h-3.5 w-3.5 opacity-70" />
+            <AppIcon name="star" class="h-3.5 w-3.5 opacity-70" :class="contextMenuEntry.is_starred ? 'text-amber-500 fill-amber-500' : ''" />
             <span>{{ contextMenuEntry.is_starred ? '取消收藏' : '收藏文章' }}</span>
           </button>
 
