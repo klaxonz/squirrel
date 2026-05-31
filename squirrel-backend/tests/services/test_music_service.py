@@ -86,7 +86,7 @@ def test_search_tracks_normalizes_kugou_response(monkeypatch):
                 {
                     'AlbumAudioID': 123,
                     'FileHash': 'ABC',
-                    'SongName': 'Demo Song',
+                    'SongName': 'Demo Artist - Demo Song',
                     'SingerName': 'Demo Artist',
                     'AlbumName': 'Demo Album',
                     'AlbumID': 456,
@@ -125,6 +125,111 @@ def test_search_tracks_normalizes_kugou_response(monkeypatch):
             'headers': {'Authorization': 'token=abc;userid=1;dfid=xyz'},
         }
     ]
+
+
+def test_search_artists_normalizes_kugou_response(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payload = {
+        'data': {
+            'total': 1,
+            'lists': [
+                {
+                    'AuthorId': 420,
+                    'AuthorName': 'Demo Artist',
+                    'Avatar': 'http://img.example.test/artist.jpg',
+                    'AudioCount': 20,
+                    'AlbumCount': 3,
+                    'FansNum': 99,
+                }
+            ],
+        }
+    }
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+
+    result = music_service.search_artists(1, 'demo', 1, 6)
+
+    assert result['items'] == [
+        {
+            'id': '420',
+            'name': 'Demo Artist',
+            'avatar': 'http://img.example.test/artist.jpg',
+            'intro': '',
+            'song_count': 20,
+            'album_count': 3,
+            'fan_count': 99,
+        }
+    ]
+    assert calls[0]['params'] == {'keywords': 'demo', 'page': 1, 'pagesize': 6, 'type': 'author'}
+
+
+def test_search_albums_derives_unique_albums_from_song_results(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payload = {
+        'data': {
+            'total': 2,
+            'lists': [
+                {
+                    'AlbumID': 1,
+                    'AlbumName': 'Album A',
+                    'SingerName': 'Singer A',
+                    'Image': 'http://img.example.test/album-a.jpg',
+                },
+                {
+                    'AlbumID': 1,
+                    'AlbumName': 'Album A',
+                    'SingerName': 'Singer A',
+                    'Image': 'http://img.example.test/album-a-duplicate.jpg',
+                },
+                {
+                    'AlbumID': 2,
+                    'AlbumName': 'Album B',
+                    'SingerName': 'Singer B',
+                    'Image': 'http://img.example.test/album-b.jpg',
+                },
+            ],
+        }
+    }
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: _FakeClient(calls, payload))
+
+    result = music_service.search_albums(1, 'demo', 1, 8)
+
+    assert result['items'] == [
+        {
+            'id': '1',
+            'name': 'Album A',
+            'cover': 'http://img.example.test/album-a.jpg',
+            'intro': '',
+            'artist': 'Singer A',
+            'artist_id': '',
+            'publish_date': '',
+            'language': '',
+            'type': '',
+            'heat': 0,
+        },
+        {
+            'id': '2',
+            'name': 'Album B',
+            'cover': 'http://img.example.test/album-b.jpg',
+            'intro': '',
+            'artist': 'Singer B',
+            'artist_id': '',
+            'publish_date': '',
+            'language': '',
+            'type': '',
+            'heat': 0,
+        },
+    ]
+    assert calls[0]['params'] == {'keywords': 'demo', 'page': 1, 'pagesize': 24, 'type': 'song'}
 
 
 def test_get_track_play_url_returns_direct_url(monkeypatch):
@@ -393,6 +498,157 @@ def test_get_playlist_tracks_normalizes_items(monkeypatch):
     }
     assert calls[0]['url'] == 'http://127.0.0.1:3000/playlist/track/all'
     assert calls[0]['params'] == {'id': 'collection-demo', 'page': 3, 'pagesize': 15}
+
+
+def test_get_artist_detail_and_tracks_normalize_items(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payloads = [
+        {
+            'data': {
+                'author_id': 10,
+                'author_name': 'Singer A',
+                'sizable_avatar': 'http://img.example.test/{size}/artist.jpg',
+                'intro': 'Artist intro',
+                'song_count': 2,
+                'album_count': 1,
+                'fansnums': 99,
+            }
+        },
+        {
+            'total': 1,
+            'data': [
+                {
+                    'audio_name': 'Artist Song',
+                    'author_name': 'Singer A',
+                    'author_id': 10,
+                    'album_name': 'Artist Album',
+                    'album_id': 20,
+                    'album_audio_id': 30,
+                    'hash': 'ARTHASH',
+                    'timelength_128': 123000,
+                    'trans_param': {'union_cover': 'http://img.example.test/{size}/song.jpg'},
+                }
+            ],
+        },
+    ]
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    client = _SequenceClient(calls, payloads)
+    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: client)
+
+    detail = music_service.get_artist_detail(1, '10')
+    tracks = music_service.get_artist_tracks(1, '10', 2, 30)
+
+    assert detail == {
+        'id': '10',
+        'name': 'Singer A',
+        'avatar': 'http://img.example.test/240/artist.jpg',
+        'intro': 'Artist intro',
+        'song_count': 2,
+        'album_count': 1,
+        'fan_count': 99,
+    }
+    assert tracks['items'][0] == {
+        'id': '30',
+        'title': 'Artist Song',
+        'artist': 'Singer A',
+        'artist_id': '10',
+        'album': 'Artist Album',
+        'hash': 'ARTHASH',
+        'album_id': '20',
+        'album_audio_id': '30',
+        'duration': 123,
+        'cover': 'http://img.example.test/240/song.jpg',
+    }
+    assert calls[0]['url'] == 'http://127.0.0.1:3000/artist/detail'
+    assert calls[0]['params'] == {'id': '10'}
+    assert calls[1]['url'] == 'http://127.0.0.1:3000/artist/audios'
+    assert calls[1]['params'] == {'id': '10', 'page': 2, 'pagesize': 30}
+
+
+def test_get_album_detail_and_tracks_normalize_items(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payloads = [
+        {
+            'data': [
+                {
+                    'album_id': 20,
+                    'album_name': 'Album A',
+                    'sizable_cover': 'http://img.example.test/{size}/album.jpg',
+                    'intro': 'Album intro',
+                    'author_name': 'Singer A',
+                    'publish_date': '2026-01-01',
+                    'language': '国语',
+                    'type': '录音室专辑',
+                    'heat': '12',
+                    'authors': [{'author_id': 10, 'author_name': 'Singer A'}],
+                }
+            ]
+        },
+        {
+            'data': {
+                'total': 1,
+                'songs': [
+                    {
+                        'base': {
+                            'audio_name': 'Album Song',
+                            'author_name': 'Singer A',
+                            'album_id': 20,
+                            'album_audio_id': 30,
+                        },
+                        'authors': [{'author_id': 10, 'author_name': 'Singer A'}],
+                        'audio_info': {'hash': 'ALBHASH', 'duration': 210000},
+                        'album_info': {
+                            'album_name': 'Album A',
+                            'cover': 'http://img.example.test/{size}/album.jpg',
+                        },
+                    }
+                ],
+            }
+        },
+    ]
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    client = _SequenceClient(calls, payloads)
+    monkeypatch.setattr(music_service.httpx, 'Client', lambda **_kwargs: client)
+
+    detail = music_service.get_album_detail(1, '20')
+    tracks = music_service.get_album_tracks(1, '20', 1, 30)
+
+    assert detail == {
+        'id': '20',
+        'name': 'Album A',
+        'cover': 'http://img.example.test/240/album.jpg',
+        'intro': 'Album intro',
+        'artist': 'Singer A',
+        'artist_id': '10',
+        'publish_date': '2026-01-01',
+        'language': '国语',
+        'type': '录音室专辑',
+        'heat': 12,
+    }
+    assert tracks['items'][0] == {
+        'id': '30',
+        'title': 'Album Song',
+        'artist': 'Singer A',
+        'artist_id': '10',
+        'album': 'Album A',
+        'hash': 'ALBHASH',
+        'album_id': '20',
+        'album_audio_id': '30',
+        'duration': 210,
+        'cover': 'http://img.example.test/240/album.jpg',
+    }
+    assert calls[0]['url'] == 'http://127.0.0.1:3000/album/detail'
+    assert calls[0]['params'] == {'id': '20'}
+    assert calls[1]['url'] == 'http://127.0.0.1:3000/album/songs'
+    assert calls[1]['params'] == {'id': '20', 'page': 1, 'pagesize': 30}
 
 
 def test_request_requires_configured_base_url(monkeypatch):

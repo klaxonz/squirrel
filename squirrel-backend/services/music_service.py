@@ -35,6 +35,59 @@ def search_tracks(user_id: int, query: str, page: int, page_size: int) -> dict[s
     }
 
 
+def search_artists(user_id: int, query: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = _request_kugou('/search', {
+        'keywords': query,
+        'page': page,
+        'pagesize': page_size,
+        'type': 'author',
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    rows = data.get('lists')
+    if not isinstance(rows, list):
+        rows = []
+
+    return {
+        'items': [_normalize_artist_search(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': data.get('total') or len(rows),
+    }
+
+
+def search_albums(user_id: int, query: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = _request_kugou('/search', {
+        'keywords': query,
+        'page': page,
+        'pagesize': min(page_size * 3, 50),
+        'type': 'song',
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    rows = data.get('lists')
+    if not isinstance(rows, list):
+        rows = []
+
+    albums: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        album = _normalize_album_from_track(row)
+        if not album['id'] or album['id'] in seen:
+            continue
+        seen.add(album['id'])
+        albums.append(album)
+        if len(albums) >= page_size:
+            break
+
+    return {
+        'items': albums,
+        'page': page,
+        'page_size': page_size,
+        'total': len(albums),
+    }
+
+
 def list_ranks(user_id: int) -> dict[str, Any]:
     payload = _request_kugou('/rank/list', {'withsong': 0}, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
@@ -150,6 +203,65 @@ def get_user_playlist_tracks(user_id: int, list_id: str, page: int, page_size: i
         'page_size': page_size,
         'total': total,
         'raw': payload,
+    }
+
+
+def get_artist_detail(user_id: int, artist_id: str) -> dict[str, Any]:
+    payload = _request_kugou('/artist/detail', {'id': artist_id}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    return _normalize_artist(data)
+
+
+def get_artist_tracks(user_id: int, artist_id: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = _request_kugou('/artist/audios', {
+        'id': artist_id,
+        'page': page,
+        'pagesize': page_size,
+    }, user_id=user_id)
+    rows = payload.get('data') if isinstance(payload.get('data'), list) else []
+    return {
+        'items': [_normalize_track(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': payload.get('total') or len(rows),
+    }
+
+
+def get_artist_albums(user_id: int, artist_id: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = _request_kugou('/artist/albums', {
+        'id': artist_id,
+        'page': page,
+        'pagesize': page_size,
+    }, user_id=user_id)
+    rows = payload.get('data') if isinstance(payload.get('data'), list) else []
+    return {
+        'items': [_normalize_album(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': payload.get('total') or len(rows),
+    }
+
+
+def get_album_detail(user_id: int, album_id: str) -> dict[str, Any]:
+    payload = _request_kugou('/album/detail', {'id': album_id}, user_id=user_id)
+    rows = payload.get('data') if isinstance(payload.get('data'), list) else []
+    row = rows[0] if rows and isinstance(rows[0], dict) else {}
+    return _normalize_album(row)
+
+
+def get_album_tracks(user_id: int, album_id: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = _request_kugou('/album/songs', {
+        'id': album_id,
+        'page': page,
+        'pagesize': page_size,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    rows = data.get('songs') if isinstance(data.get('songs'), list) else []
+    return {
+        'items': [_normalize_track(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': data.get('total') or payload.get('total') or len(rows),
     }
 
 
@@ -566,13 +678,78 @@ def _normalize_user_playlist(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _normalize_artist(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'id': str(row.get('author_id') or ''),
+        'name': row.get('author_name') or '',
+        'avatar': _format_image_url(row.get('sizable_avatar') or ''),
+        'intro': row.get('intro') or '',
+        'song_count': int(row.get('song_count') or 0),
+        'album_count': int(row.get('album_count') or 0),
+        'fan_count': int(row.get('fansnums') or 0),
+    }
+
+
+def _normalize_artist_search(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'id': str(row.get('AuthorId') or row.get('author_id') or ''),
+        'name': row.get('AuthorName') or row.get('author_name') or '',
+        'avatar': _format_image_url(row.get('Avatar') or row.get('sizable_avatar') or ''),
+        'intro': row.get('Auxiliary') or row.get('intro') or '',
+        'song_count': int(row.get('AudioCount') or row.get('song_count') or 0),
+        'album_count': int(row.get('AlbumCount') or row.get('album_count') or 0),
+        'fan_count': int(row.get('FansNum') or row.get('fansnums') or 0),
+    }
+
+
+def _normalize_album(row: dict[str, Any]) -> dict[str, Any]:
+    authors = row.get('authors') if isinstance(row.get('authors'), list) else []
+    first_author = next((item for item in authors if isinstance(item, dict)), {})
+    return {
+        'id': str(row.get('album_id') or ''),
+        'name': row.get('album_name') or '',
+        'cover': _format_image_url(row.get('sizable_cover') or ''),
+        'intro': row.get('intro') or '',
+        'artist': row.get('author_name') or first_author.get('author_name') or '',
+        'artist_id': str(first_author.get('author_id') or ''),
+        'publish_date': row.get('publish_date') or '',
+        'language': row.get('language') or '',
+        'type': row.get('type') or '',
+        'heat': int(row.get('heat') or 0),
+    }
+
+
+def _normalize_album_from_track(row: dict[str, Any]) -> dict[str, Any]:
+    album_info = row.get('album_info') if isinstance(row.get('album_info'), dict) else {}
+    album_id = str(row.get('AlbumID') or row.get('album_id') or '')
+    album_name = row.get('AlbumName') or album_info.get('album_name') or row.get('album_name') or ''
+    artist_id = _artist_id(row)
+    return {
+        'id': album_id,
+        'name': album_name,
+        'cover': _format_image_url(row.get('Image') or row.get('cover') or album_info.get('sizable_cover') or ''),
+        'intro': '',
+        'artist': row.get('SingerName') or row.get('author_name') or _artist_names(row),
+        'artist_id': artist_id,
+        'publish_date': '',
+        'language': '',
+        'type': '',
+        'heat': 0,
+    }
+
+
 def _normalize_track(row: dict[str, Any]) -> dict[str, Any]:
     audio_info = row.get('audio_info') if isinstance(row.get('audio_info'), dict) else {}
     album_info = row.get('album_info') if isinstance(row.get('album_info'), dict) else {}
     albuminfo = row.get('albuminfo') if isinstance(row.get('albuminfo'), dict) else {}
-    artist = row.get('SingerName') or row.get('author_name') or row.get('singername') or _artist_names(row)
-    title = row.get('SongName') or row.get('FileName') or row.get('songname') or row.get('name') or ''
-    if not (row.get('SongName') or row.get('FileName') or row.get('songname')) and row.get('name') and artist:
+    base = row.get('base') if isinstance(row.get('base'), dict) else {}
+    trans_param = row.get('trans_param') if isinstance(row.get('trans_param'), dict) else {}
+    artist = row.get('SingerName') or row.get('author_name') or base.get('author_name') or row.get('singername') or _artist_names(row)
+    title = (
+        row.get('SongName') or row.get('FileName') or row.get('songname') or base.get('audio_name')
+        or row.get('audio_name') or row.get('name') or ''
+    )
+    if title and artist:
         title = str(title).strip()
         for suffix in ('.mp3', '.flac', '.m4a', '.aac', '.wav', '.ogg'):
             if title.lower().endswith(suffix):
@@ -583,8 +760,10 @@ def _normalize_track(row: dict[str, Any]) -> dict[str, Any]:
             if title.startswith(prefix):
                 title = title[len(prefix):].strip()
                 break
-    duration = row.get('Duration') or _milliseconds_to_seconds(row.get('timelen')) or _milliseconds_to_seconds(
-        audio_info.get('duration_128')
+    duration = (
+        row.get('Duration') or _milliseconds_to_seconds(row.get('timelen')) or _milliseconds_to_seconds(
+            audio_info.get('duration_128') or audio_info.get('duration') or row.get('timelength_128')
+        )
     )
     payload = {
         'id': str(
@@ -593,6 +772,7 @@ def _normalize_track(row: dict[str, Any]) -> dict[str, Any]:
             or row.get('album_audio_id')
             or row.get('add_mixsongid')
             or row.get('mixsongid')
+            or base.get('album_audio_id')
             or row.get('Audioid')
             or row.get('audio_id')
             or row.get('FileHash')
@@ -601,16 +781,22 @@ def _normalize_track(row: dict[str, Any]) -> dict[str, Any]:
         ),
         'title': title,
         'artist': artist,
-        'album': row.get('AlbumName') or album_info.get('album_name') or albuminfo.get('name') or row.get('remark') or '',
-        'hash': row.get('FileHash') or row.get('hash') or audio_info.get('hash_128') or '',
-        'album_id': str(row.get('AlbumID') or row.get('album_id') or albuminfo.get('id') or ''),
+        'album': row.get('AlbumName') or album_info.get('album_name') or albuminfo.get('name') or row.get('album_name') or row.get('remark') or '',
+        'hash': row.get('FileHash') or row.get('hash') or audio_info.get('hash_128') or audio_info.get('hash') or '',
+        'album_id': str(row.get('AlbumID') or row.get('album_id') or base.get('album_id') or albuminfo.get('id') or ''),
         'album_audio_id': str(
             row.get('AlbumAudioID') or row.get('MixSongID') or row.get('album_audio_id') or row.get('add_mixsongid')
-            or row.get('mixsongid') or ''
+            or row.get('mixsongid') or base.get('album_audio_id') or ''
         ),
         'duration': int(duration or 0),
-        'cover': _format_image_url(row.get('Image') or row.get('cover') or album_info.get('sizable_cover') or ''),
+        'cover': _format_image_url(
+            row.get('Image') or row.get('cover') or album_info.get('sizable_cover') or album_info.get('cover')
+            or row.get('sizable_cover') or trans_param.get('union_cover') or ''
+        ),
     }
+    artist_id = _artist_id(row)
+    if artist_id:
+        payload['artist_id'] = artist_id
     file_id = str(row.get('fileid') or row.get('file_id') or '')
     if file_id:
         payload['file_id'] = file_id
@@ -629,6 +815,19 @@ def _artist_names(row: dict[str, Any]) -> str:
                         names.append(name)
             if names:
                 return '、'.join(names)
+    return ''
+
+
+def _artist_id(row: dict[str, Any]) -> str:
+    for key in ('SingerId', 'author_id', 'singerid'):
+        if row.get(key):
+            return str(row.get(key))
+    for key in ('authors', 'singerinfo'):
+        rows = row.get(key)
+        if isinstance(rows, list):
+            for item in rows:
+                if isinstance(item, dict) and (item.get('author_id') or item.get('id')):
+                    return str(item.get('author_id') or item.get('id'))
     return ''
 
 

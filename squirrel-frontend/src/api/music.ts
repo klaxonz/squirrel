@@ -4,6 +4,7 @@ export type MusicTrack = {
   id: string
   title: string
   artist: string
+  artist_id?: string
   album: string
   hash: string
   album_id: string
@@ -11,6 +12,43 @@ export type MusicTrack = {
   duration: number
   cover: string
   file_id?: string
+}
+
+export type MusicArtist = {
+  id: string
+  name: string
+  avatar: string
+  intro: string
+  song_count: number
+  album_count: number
+  fan_count: number
+}
+
+export type MusicAlbum = {
+  id: string
+  name: string
+  cover: string
+  intro: string
+  artist: string
+  artist_id: string
+  publish_date: string
+  language: string
+  type: string
+  heat: number
+}
+
+export type MusicAlbumResult = {
+  items: MusicAlbum[]
+  page: number
+  page_size: number
+  total: number
+}
+
+export type MusicArtistResult = {
+  items: MusicArtist[]
+  page: number
+  page_size: number
+  total: number
 }
 
 export type MusicSearchResult = {
@@ -136,6 +174,22 @@ export const searchMusic = (params: {
   return get<MusicSearchResult>('/api/music/search', params)
 }
 
+export const searchMusicArtists = (params: {
+  query: string
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicArtistResult>('/api/music/search/artists', params)
+}
+
+export const searchMusicAlbums = (params: {
+  query: string
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicAlbumResult>('/api/music/search/albums', params)
+}
+
 export const getMusicRanks = () => {
   return get<MusicRankResult>('/api/music/ranks')
 }
@@ -178,6 +232,38 @@ export const getMusicUserPlaylistTracks = (params: {
   page_size?: number
 }) => {
   return get<MusicSearchResult>('/api/music/user/playlist/tracks', params)
+}
+
+export const getMusicArtistDetail = (artist_id: string) => {
+  return get<MusicArtist>('/api/music/artist/detail', { artist_id })
+}
+
+export const getMusicArtistTracks = (params: {
+  artist_id: string
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicSearchResult>('/api/music/artist/tracks', params)
+}
+
+export const getMusicArtistAlbums = (params: {
+  artist_id: string
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicAlbumResult>('/api/music/artist/albums', params)
+}
+
+export const getMusicAlbumDetail = (album_id: string) => {
+  return get<MusicAlbum>('/api/music/album/detail', { album_id })
+}
+
+export const getMusicAlbumTracks = (params: {
+  album_id: string
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicSearchResult>('/api/music/album/tracks', params)
 }
 
 export const createMusicUserPlaylist = (data: {

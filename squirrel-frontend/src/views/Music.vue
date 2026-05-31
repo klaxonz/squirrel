@@ -192,11 +192,13 @@
           <!-- Normal Track List Area -->
           <div v-else class="music-tracks-container">
             <!-- Sleek Header Banner for Playlists -->
-            <header class="music-playlist-header" v-if="selectedRank || selectedPlaylist || selectedUserPlaylist || trackSource === 'history' || trackSource === 'listen_rank' || trackSource === 'latest_listen' || trackSource === 'search' || trackSource === 'recommend'">
+            <header class="music-playlist-header" v-if="selectedRank || selectedPlaylist || selectedUserPlaylist || selectedArtist || selectedAlbum || trackSource === 'history' || trackSource === 'listen_rank' || trackSource === 'latest_listen' || trackSource === 'search' || trackSource === 'recommend'">
               <div class="music-playlist-header-cover">
                 <img v-if="selectedRank?.cover" :src="selectedRank.cover" alt="" />
                 <img v-else-if="selectedPlaylist?.cover" :src="selectedPlaylist.cover" alt="" />
                 <img v-else-if="selectedUserPlaylist?.cover" :src="selectedUserPlaylist.cover" alt="" />
+                <img v-else-if="selectedArtist?.avatar" :src="selectedArtist.avatar" alt="" />
+                <img v-else-if="selectedAlbum?.cover" :src="selectedAlbum.cover" alt="" />
                 <div v-else class="music-playlist-header-placeholder">
                   <AppIcon name="playlistMusic" class="h-10 w-10 text-muted-foreground" />
                 </div>
@@ -205,6 +207,15 @@
                 <div class="text-[0.6875rem] font-bold uppercase tracking-wider text-primary">{{ trackSourceText }}</div>
                 <h1 class="text-xl font-bold mt-1 text-foreground leading-tight">{{ selectedSourceTitle || '为您推荐' }}</h1>
                 <p class="text-xs text-muted-foreground mt-2">{{ total }} 首歌曲 · 酷狗音乐提供</p>
+                <p v-if="selectedArtist?.intro" class="music-detail-intro">{{ selectedArtist.intro }}</p>
+                <p v-else-if="selectedAlbum?.intro" class="music-detail-intro">{{ selectedAlbum.intro }}</p>
+                <div v-if="selectedAlbum" class="music-detail-meta">
+                  <button v-if="selectedAlbum.artist_id" class="music-link" @click="selectAlbumArtist">
+                    {{ selectedAlbum.artist }}
+                  </button>
+                  <span v-if="selectedAlbum.publish_date">{{ selectedAlbum.publish_date }}</span>
+                  <span v-if="selectedAlbum.type">{{ selectedAlbum.type }}</span>
+                </div>
                 
                 <div class="music-playlist-header-actions mt-4">
                   <div class="flex items-center gap-1.5 flex-wrap">
@@ -236,6 +247,60 @@
                 </div>
               </div>
             </header>
+
+            <div v-if="selectedArtist && artistAlbums.length" class="music-album-strip">
+              <button
+                v-for="album in artistAlbums"
+                :key="album.id"
+                class="music-album-card"
+                @click="selectAlbumSummary(album)"
+              >
+                <img v-if="album.cover" :src="album.cover" alt="" />
+                <div v-else class="music-album-placeholder">
+                  <AppIcon name="playlistMusic" class="h-5 w-5 text-muted-foreground" />
+                </div>
+                <span>{{ album.name }}</span>
+              </button>
+            </div>
+
+            <div v-if="trackSource === 'search' && (searchArtists.length || searchAlbums.length)" class="music-search-sections">
+              <section v-if="searchArtists.length" class="music-search-section">
+                <h2>歌手</h2>
+                <div class="music-result-grid">
+                  <button
+                    v-for="artist in searchArtists"
+                    :key="artist.id"
+                    class="music-result-card"
+                    @click="selectArtistSummary(artist)"
+                  >
+                    <img v-if="artist.avatar" :src="artist.avatar" alt="" />
+                    <div v-else class="music-result-placeholder">
+                      <AppIcon name="user" class="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <span>{{ artist.name }}</span>
+                    <small>{{ artist.song_count }} 首歌曲</small>
+                  </button>
+                </div>
+              </section>
+              <section v-if="searchAlbums.length" class="music-search-section">
+                <h2>专辑</h2>
+                <div class="music-result-grid">
+                  <button
+                    v-for="album in searchAlbums"
+                    :key="album.id"
+                    class="music-result-card"
+                    @click="selectAlbumSummary(album)"
+                  >
+                    <img v-if="album.cover" :src="album.cover" alt="" />
+                    <div v-else class="music-result-placeholder">
+                      <AppIcon name="playlistMusic" class="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <span>{{ album.name }}</span>
+                    <small>{{ album.artist }}</small>
+                  </button>
+                </div>
+              </section>
+            </div>
 
             <div v-if="loading && tracks.length === 0" class="music-list">
               <div v-for="index in 8" :key="index" class="music-skeleton" />
@@ -286,9 +351,21 @@
                   <div class="truncate text-sm font-medium" :class="{ 'text-primary': isCurrentTrack(track) }">
                     {{ track.title || '未知歌曲' }}
                   </div>
-                  <div class="mt-1 truncate text-xs text-muted-foreground">{{ track.artist || '未知歌手' }}</div>
+                  <button
+                    class="music-link mt-1 block truncate text-xs"
+                    :disabled="!track.artist_id"
+                    @click.stop="selectArtist(track)"
+                  >
+                    {{ track.artist || '未知歌手' }}
+                  </button>
                 </div>
-                <div class="hidden truncate text-sm text-muted-foreground md:block">{{ track.album || '未知专辑' }}</div>
+                <button
+                  class="music-link hidden truncate text-sm md:block"
+                  :disabled="!track.album_id"
+                  @click.stop="selectAlbum(track)"
+                >
+                  {{ track.album }}
+                </button>
                 <div class="music-row-side hidden text-right text-sm tabular-nums text-muted-foreground sm:block">
                   <span>{{ formatDuration(track.duration) }}</span>
                   <span v-if="favoriteCounts[track.album_audio_id]" class="music-favorite-count">
@@ -377,6 +454,11 @@ import {
   deleteMusicUserPlaylist,
   getMusicAuthStatus,
   addMusicUserPlaylistTrack,
+  getMusicAlbumDetail,
+  getMusicAlbumTracks,
+  getMusicArtistAlbums,
+  getMusicArtistDetail,
+  getMusicArtistTracks,
   getMusicFavoriteCount,
   getMusicPlaylistTracks,
   getMusicPlaylists,
@@ -389,6 +471,10 @@ import {
   getMusicUserPlaylists,
   removeMusicUserPlaylistTracks,
   searchMusic,
+  searchMusicAlbums,
+  searchMusicArtists,
+  type MusicAlbum,
+  type MusicArtist,
   type MusicAuthStatus,
   type MusicPlaylist,
   type MusicQrLogin,
@@ -402,13 +488,16 @@ import { Logger } from '@/utils/logger'
 const store = useMusicPlayerStore()
 
 type MusicMode = 'recommend' | 'rank' | 'playlist' | 'mine'
-type TrackSource = 'recommend' | 'search' | 'rank' | 'playlist' | 'user_playlist' | 'history' | 'listen_rank' | 'latest_listen'
+type TrackSource = 'recommend' | 'search' | 'rank' | 'playlist' | 'user_playlist' | 'history' | 'listen_rank' | 'latest_listen' | 'artist_detail' | 'album_detail'
 
 const query = ref('')
 const tracks = ref<MusicTrack[]>([])
 const ranks = ref<MusicRank[]>([])
 const playlists = ref<MusicPlaylist[]>([])
 const userPlaylists = ref<MusicUserPlaylist[]>([])
+const artistAlbums = ref<MusicAlbum[]>([])
+const searchArtists = ref<MusicArtist[]>([])
+const searchAlbums = ref<MusicAlbum[]>([])
 const favoriteCounts = ref<Record<string, number>>({})
 const loading = ref(false)
 const discoveryLoading = ref(false)
@@ -421,6 +510,8 @@ const selectedSourceTitle = ref('')
 const selectedRank = ref<MusicRank | null>(null)
 const selectedPlaylist = ref<MusicPlaylist | null>(null)
 const selectedUserPlaylist = ref<MusicUserPlaylist | null>(null)
+const selectedArtist = ref<MusicArtist | null>(null)
+const selectedAlbum = ref<MusicAlbum | null>(null)
 const targetUserPlaylistId = ref('')
 const newPlaylistName = ref('')
 const newPlaylistPrivate = ref(false)
@@ -452,7 +543,7 @@ const resultSummary = computed(() => {
 const canStep = computed(() => store.queue.length > 1)
 const hasMore = computed(() => {
   if (trackSource.value === 'history') return !!userHistoryBp.value
-  return ['search', 'rank', 'playlist', 'user_playlist'].includes(trackSource.value) && tracks.value.length < total.value
+  return ['search', 'rank', 'playlist', 'user_playlist', 'artist_detail', 'album_detail'].includes(trackSource.value) && tracks.value.length < total.value
 })
 
 const repeatTitle = computed(() => {
@@ -484,6 +575,8 @@ const trackSourceText = computed(() => {
   if (trackSource.value === 'history') return '我最近听过的歌'
   if (trackSource.value === 'listen_rank') return '听歌排行记录'
   if (trackSource.value === 'latest_listen') return '设备上次继续播放'
+  if (trackSource.value === 'artist_detail') return '歌手详情'
+  if (trackSource.value === 'album_detail') return '专辑详情'
   return '音乐库'
 })
 
@@ -491,6 +584,9 @@ function selectRecommendNav() {
   selectedRank.value = null
   selectedPlaylist.value = null
   selectedUserPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  artistAlbums.value = []
   setMusicMode('recommend')
 }
 
@@ -539,9 +635,36 @@ const submitSearch = async () => {
   selectedRank.value = null
   selectedPlaylist.value = null
   selectedUserPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  artistAlbums.value = []
+  searchArtists.value = []
+  searchAlbums.value = []
   selectedSourceTitle.value = `搜索：${keyword}`
   currentPage.value = 1
-  await searchPage(keyword, currentPage.value, false)
+  await Promise.all([
+    searchPage(keyword, currentPage.value, false),
+    loadSearchOverview(keyword),
+  ])
+}
+
+async function loadSearchOverview(keyword: string) {
+  const [artistResult, albumResult] = await Promise.all([
+    searchMusicArtists({ query: keyword, page: 1, page_size: 6 }),
+    searchMusicAlbums({ query: keyword, page: 1, page_size: 8 }),
+  ])
+  if (artistResult.error) {
+    Logger.error('Failed to search music artists', artistResult.error)
+    searchArtists.value = []
+  } else {
+    searchArtists.value = artistResult.data?.items || []
+  }
+  if (albumResult.error) {
+    Logger.error('Failed to search music albums', albumResult.error)
+    searchAlbums.value = []
+  } else {
+    searchAlbums.value = albumResult.data?.items || []
+  }
 }
 
 async function loadMoreSearch() {
@@ -556,6 +679,10 @@ async function loadMoreSearch() {
     await loadPlaylistTracks(selectedPlaylist.value, currentPage.value, true)
   } else if (trackSource.value === 'user_playlist' && selectedUserPlaylist.value) {
     await loadUserPlaylistTracks(selectedUserPlaylist.value, currentPage.value, true)
+  } else if (trackSource.value === 'artist_detail' && selectedArtist.value) {
+    await loadArtistTracks(selectedArtist.value.id, currentPage.value, true)
+  } else if (trackSource.value === 'album_detail' && selectedAlbum.value) {
+    await loadAlbumTracks(selectedAlbum.value.id, currentPage.value, true)
   } else if (trackSource.value === 'history') {
     await loadUserHistory(true)
   }
@@ -589,6 +716,9 @@ async function setMusicMode(mode: MusicMode) {
     selectedRank.value = null
     selectedPlaylist.value = null
     selectedUserPlaylist.value = null
+    selectedArtist.value = null
+    selectedAlbum.value = null
+    artistAlbums.value = []
     selectedSourceTitle.value = ''
     await loadSuggestions()
   } else if (mode === 'rank' && ranks.value.length === 0) {
@@ -616,6 +746,9 @@ async function selectRank(rank: MusicRank) {
   selectedRank.value = rank
   selectedPlaylist.value = null
   selectedUserPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  artistAlbums.value = []
   trackSource.value = 'rank'
   selectedSourceTitle.value = rank.name
   currentPage.value = 1
@@ -682,6 +815,9 @@ async function selectPlaylist(playlist: MusicPlaylist) {
   selectedPlaylist.value = playlist
   selectedRank.value = null
   selectedUserPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  artistAlbums.value = []
   trackSource.value = 'playlist'
   selectedSourceTitle.value = playlist.name
   currentPage.value = 1
@@ -741,6 +877,9 @@ async function selectUserPlaylist(playlist: MusicUserPlaylist) {
   selectedUserPlaylist.value = playlist
   selectedRank.value = null
   selectedPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  artistAlbums.value = []
   targetUserPlaylistId.value = playlist.id
   trackSource.value = 'user_playlist'
   selectedSourceTitle.value = playlist.name
@@ -770,6 +909,9 @@ async function deleteSelectedUserPlaylist() {
     return
   }
   selectedUserPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  artistAlbums.value = []
   if (targetUserPlaylistId.value === deletedId) {
     targetUserPlaylistId.value = ''
   }
@@ -800,6 +942,149 @@ async function loadUserPlaylistTracks(playlist: MusicUserPlaylist, page: number,
   void loadFavoriteCounts(tracks.value)
 }
 
+async function selectArtist(track: MusicTrack) {
+  if (!track.artist_id) return
+  loading.value = true
+  searched.value = true
+  error.value = ''
+  const { data, error: requestError } = await getMusicArtistDetail(track.artist_id)
+  if (requestError || !data) {
+    loading.value = false
+    error.value = requestError?.message || 'artist detail is empty'
+    Logger.error('Failed to load music artist detail', requestError)
+    return
+  }
+  selectedArtist.value = data
+  selectedAlbum.value = null
+  selectedRank.value = null
+  selectedPlaylist.value = null
+  selectedUserPlaylist.value = null
+  activeMode.value = 'recommend'
+  trackSource.value = 'artist_detail'
+  selectedSourceTitle.value = data.name
+  currentPage.value = 1
+  await loadArtistAlbums(data.id)
+  await loadArtistTracks(data.id, currentPage.value, false)
+}
+
+async function selectArtistSummary(artist: MusicArtist) {
+  await selectArtist({
+    id: '',
+    title: '',
+    artist: artist.name,
+    artist_id: artist.id,
+    album: '',
+    hash: '',
+    album_id: '',
+    album_audio_id: '',
+    duration: 0,
+    cover: '',
+  })
+}
+
+async function selectAlbumArtist() {
+  if (!selectedAlbum.value?.artist_id) return
+  await selectArtist({
+    id: '',
+    title: '',
+    artist: selectedAlbum.value.artist,
+    artist_id: selectedAlbum.value.artist_id,
+    album: '',
+    hash: '',
+    album_id: '',
+    album_audio_id: '',
+    duration: 0,
+    cover: '',
+  })
+}
+
+async function loadArtistTracks(artistId: string, page: number, append: boolean) {
+  loading.value = true
+  error.value = ''
+  const { data, error: requestError } = await getMusicArtistTracks({
+    artist_id: artistId,
+    page,
+    page_size: pageSize,
+  })
+  loading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load music artist tracks', requestError)
+    return
+  }
+  const items = data?.items || []
+  tracks.value = append ? [...tracks.value, ...items] : items
+  total.value = data?.total || tracks.value.length
+  void loadFavoriteCounts(tracks.value)
+}
+
+async function loadArtistAlbums(artistId: string) {
+  const { data, error: requestError } = await getMusicArtistAlbums({
+    artist_id: artistId,
+    page: 1,
+    page_size: 12,
+  })
+  if (requestError) {
+    Logger.error('Failed to load music artist albums', requestError)
+    artistAlbums.value = []
+    return
+  }
+  artistAlbums.value = data?.items || []
+}
+
+async function selectAlbum(track: MusicTrack) {
+  if (!track.album_id) return
+  await loadAlbumDetail(track.album_id)
+}
+
+async function selectAlbumSummary(album: MusicAlbum) {
+  await loadAlbumDetail(album.id)
+}
+
+async function loadAlbumDetail(albumId: string) {
+  loading.value = true
+  searched.value = true
+  error.value = ''
+  const { data, error: requestError } = await getMusicAlbumDetail(albumId)
+  if (requestError || !data) {
+    loading.value = false
+    error.value = requestError?.message || 'album detail is empty'
+    Logger.error('Failed to load music album detail', requestError)
+    return
+  }
+  selectedAlbum.value = data
+  selectedArtist.value = null
+  artistAlbums.value = []
+  selectedRank.value = null
+  selectedPlaylist.value = null
+  selectedUserPlaylist.value = null
+  activeMode.value = 'recommend'
+  trackSource.value = 'album_detail'
+  selectedSourceTitle.value = data.name
+  currentPage.value = 1
+  await loadAlbumTracks(data.id, currentPage.value, false)
+}
+
+async function loadAlbumTracks(albumId: string, page: number, append: boolean) {
+  loading.value = true
+  error.value = ''
+  const { data, error: requestError } = await getMusicAlbumTracks({
+    album_id: albumId,
+    page,
+    page_size: pageSize,
+  })
+  loading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load music album tracks', requestError)
+    return
+  }
+  const items = data?.items || []
+  tracks.value = append ? [...tracks.value, ...items] : items
+  total.value = data?.total || tracks.value.length
+  void loadFavoriteCounts(tracks.value)
+}
+
 async function loadUserHistory(append: boolean) {
   loading.value = true
   searched.value = true
@@ -810,6 +1095,9 @@ async function loadUserHistory(append: boolean) {
   selectedUserPlaylist.value = null
   selectedRank.value = null
   selectedPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  artistAlbums.value = []
   const { data, error: requestError } = await getMusicUserHistory({ bp: append ? userHistoryBp.value : undefined })
   loading.value = false
   if (requestError) {
@@ -834,6 +1122,9 @@ async function loadUserListenRank(type: 0 | 1) {
   selectedUserPlaylist.value = null
   selectedRank.value = null
   selectedPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  artistAlbums.value = []
   const { data, error: requestError } = await getMusicUserListenRank({ type })
   loading.value = false
   if (requestError) {
@@ -855,6 +1146,9 @@ async function loadLatestListenSongs() {
   selectedUserPlaylist.value = null
   selectedRank.value = null
   selectedPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  artistAlbums.value = []
   const { data, error: requestError } = await getMusicLatestListenSongs({ page_size: pageSize })
   loading.value = false
   if (requestError) {
@@ -1214,6 +1508,160 @@ const formatCompactCount = (count: number) => {
 
 .music-playlist-header-actions {
   width: 100%;
+}
+
+.music-detail-intro {
+  margin-top: 0.5rem;
+  max-width: 48rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.music-detail-meta {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
+.music-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: hsl(var(--muted-foreground));
+  text-align: left;
+}
+
+.music-link:not(:disabled):hover {
+  color: hsl(var(--primary));
+}
+
+.music-link:disabled {
+  cursor: default;
+}
+
+.music-album-strip {
+  margin: 0 auto 1rem;
+  width: min(100%, 72rem);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: 0.75rem;
+}
+
+.music-album-card {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  color: hsl(var(--foreground));
+}
+
+.music-album-card img,
+.music-album-placeholder {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 0.375rem;
+  object-fit: cover;
+  background: hsl(var(--muted) / 0.4);
+}
+
+.music-album-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.music-album-card span {
+  display: block;
+  margin-top: 0.375rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.music-album-card:hover span {
+  color: hsl(var(--primary));
+}
+
+.music-search-sections {
+  margin: 0 auto 1rem;
+  width: min(100%, 72rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.music-search-section h2 {
+  margin-bottom: 0.5rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.music-result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 0.75rem;
+}
+
+.music-result-card {
+  min-width: 0;
+  border: 0;
+  background: hsl(var(--muted) / 0.18);
+  border-radius: 0.375rem;
+  padding: 0.625rem;
+  color: hsl(var(--foreground));
+  text-align: left;
+}
+
+.music-result-card:hover {
+  background: hsl(var(--muted) / 0.36);
+}
+
+.music-result-card img,
+.music-result-placeholder {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.375rem;
+  object-fit: cover;
+  background: hsl(var(--muted) / 0.5);
+}
+
+.music-result-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.music-result-card span,
+.music-result-card small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-result-card span {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.music-result-card small {
+  margin-top: 0.125rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
 }
 
 .music-main {

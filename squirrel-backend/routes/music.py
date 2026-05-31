@@ -26,6 +26,40 @@ def search_music(
         return response.server_error(str(exc))
 
 
+@router.get('/api/music/search/artists')
+def search_music_artists(
+    query: str = Query(..., min_length=1, max_length=100, description='搜索关键词'),
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(10, ge=1, le=30, description='每页数量'),
+    current_user: User = Depends(get_current_user),
+):
+    normalized_query = query.strip()
+    if not normalized_query:
+        return response.param_error('query cannot be empty')
+
+    try:
+        return response.success(music_service.search_artists(current_user.id, normalized_query, page, page_size))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/search/albums')
+def search_music_albums(
+    query: str = Query(..., min_length=1, max_length=100, description='搜索关键词'),
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(12, ge=1, le=30, description='每页数量'),
+    current_user: User = Depends(get_current_user),
+):
+    normalized_query = query.strip()
+    if not normalized_query:
+        return response.param_error('query cannot be empty')
+
+    try:
+        return response.success(music_service.search_albums(current_user.id, normalized_query, page, page_size))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
 @router.get('/api/music/auth/status')
 def get_music_auth_status(
     current_user: User = Depends(get_current_user),
@@ -104,6 +138,67 @@ def get_music_user_playlist_tracks(
 ):
     try:
         return response.success(music_service.get_user_playlist_tracks(current_user.id, list_id, page, page_size))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/artist/detail')
+def get_music_artist_detail(
+    artist_id: str = Query(..., min_length=1, description='歌手 ID'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(music_service.get_artist_detail(current_user.id, artist_id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/artist/tracks')
+def get_music_artist_tracks(
+    artist_id: str = Query(..., min_length=1, description='歌手 ID'),
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(30, ge=1, le=50, description='每页数量'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(music_service.get_artist_tracks(current_user.id, artist_id, page, page_size))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/artist/albums')
+def get_music_artist_albums(
+    artist_id: str = Query(..., min_length=1, description='歌手 ID'),
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(20, ge=1, le=50, description='每页数量'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(music_service.get_artist_albums(current_user.id, artist_id, page, page_size))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/album/detail')
+def get_music_album_detail(
+    album_id: str = Query(..., min_length=1, description='专辑 ID'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(music_service.get_album_detail(current_user.id, album_id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/album/tracks')
+def get_music_album_tracks(
+    album_id: str = Query(..., min_length=1, description='专辑 ID'),
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(30, ge=1, le=50, description='每页数量'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(music_service.get_album_tracks(current_user.id, album_id, page, page_size))
     except music_service.MusicServiceError as exc:
         return response.server_error(str(exc))
 
