@@ -417,6 +417,15 @@
                 <AppIcon name="externalLink" class="h-4 w-4" />
               </a>
 
+              <!-- 取消订阅该源 -->
+              <button
+                @click="unsubscribeCurrentFeedFromReader"
+                class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-destructive/15 text-muted-foreground hover:text-destructive flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer"
+                title="取消订阅该源"
+              >
+                <AppIcon name="close" class="h-4 w-4" />
+              </button>
+
               <!-- 阅读设置 -->
               <div class="relative" ref="readerSettingsRef">
                 <button 
@@ -1115,6 +1124,16 @@
           <div class="h-px bg-border/20 my-1"></div>
 
           <button
+            @click="unsubscribeCurrentFeed(contextMenuEntry)"
+            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-destructive cursor-pointer"
+          >
+            <AppIcon name="close" class="h-3.5 w-3.5 opacity-70" />
+            <span>取消订阅该源</span>
+          </button>
+
+          <div class="h-px bg-border/20 my-1"></div>
+
+          <button
             @click="copyArticleLink(contextMenuEntry)"
             class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
           >
@@ -1699,6 +1718,30 @@ const handleSubscribeFeed = async () => {
   }, 1000)
 }
 
+const findFeedByEntry = (entry: RssEntry): RssFeed | undefined => {
+  return feeds.value.find(f => f.id === entry.feed_id)
+}
+
+const unsubscribeCurrentFeed = async (entry: RssEntry) => {
+  const feed = findFeedByEntry(entry)
+  if (!feed) {
+    setStatus('未找到对应的订阅源', true)
+    return
+  }
+  closeContextMenu()
+  await handleUnsubscribeFeed(feed)
+}
+
+const unsubscribeCurrentFeedFromReader = async () => {
+  if (!readingEntry.value) return
+  const feed = findFeedByEntry(readingEntry.value)
+  if (!feed) {
+    setStatus('未找到对应的订阅源', true)
+    return
+  }
+  await handleUnsubscribeFeed(feed)
+}
+
 const handleUnsubscribeFeed = async (feed: RssFeed) => {
   if (!selectedAccountId.value) return
 
@@ -1711,6 +1754,7 @@ const handleUnsubscribeFeed = async (feed: RssFeed) => {
   if (selectedFeedId.value === feed.id) {
     selectedFeedId.value = null
   }
+  readingEntry.value = null
   setStatus(`已取消订阅「${feed.title}」`)
   await loadFeeds()
   await loadEntries(true)
