@@ -692,7 +692,7 @@
               <AppIcon name="pencil" class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 group-focus-within:text-foreground transition-colors duration-200" />
               <Input 
                 v-model="accountForm.name" 
-                class="h-9.5 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200" 
+                class="h-9 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200" 
                 placeholder="例如: 我的 Miniflux" 
               />
             </div>
@@ -705,7 +705,7 @@
               <AppIcon name="link" class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 group-focus-within:text-foreground transition-colors duration-200" />
               <Input 
                 v-model="accountForm.base_url" 
-                class="h-9.5 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200" 
+                class="h-9 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200" 
                 :placeholder="baseUrlPlaceholder" 
               />
             </div>
@@ -726,7 +726,7 @@
               <AppIcon name="user" class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 group-focus-within:text-foreground transition-colors duration-200" />
               <Input 
                 v-model="accountForm.username" 
-                class="h-9.5 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200" 
+                class="h-9 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200" 
                 placeholder="用户名 (Google Reader 与 Fever 需要)" 
               />
             </div>
@@ -748,7 +748,7 @@
               <Input 
                 v-model="accountForm.credential" 
                 type="password"
-                class="h-9.5 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200" 
+                class="h-9 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200" 
                 :placeholder="accountForm.id ? '留空表示不修改密码或 Token' : '密码或 API Token'" 
               />
             </div>
@@ -796,7 +796,7 @@
           <Button 
             type="button" 
             variant="outline" 
-            class="h-9.5 rounded-lg text-xs font-semibold px-3 border border-border/40 hover:bg-accent/40 transition-colors cursor-pointer shrink-0" 
+            class="h-9 rounded-lg text-xs font-semibold px-3 border border-border/40 hover:bg-accent/40 transition-colors cursor-pointer shrink-0" 
             :disabled="testing || !canTestForm" 
             @click="testForm"
           >
@@ -808,14 +808,14 @@
             <Button 
               type="button" 
               variant="outline" 
-              class="h-9.5 rounded-lg text-xs font-semibold px-3 border border-border/40 hover:bg-accent/40 transition-colors cursor-pointer" 
+              class="h-9 rounded-lg text-xs font-semibold px-3 border border-border/40 hover:bg-accent/40 transition-colors cursor-pointer" 
               @click="showAddEditModal = false"
             >
               取消
             </Button>
             <Button 
               type="button"
-              class="h-9.5 rounded-lg text-xs font-semibold px-4 transition-all duration-150 cursor-pointer bg-foreground text-background hover:opacity-90 active:scale-[0.98]" 
+              class="h-9 rounded-lg text-xs font-semibold px-4 transition-all duration-150 cursor-pointer bg-foreground text-background hover:opacity-90 active:scale-[0.98]" 
               :disabled="saving || !canSaveForm" 
               @click="saveAccount"
             >
@@ -848,7 +848,7 @@
 
     <!-- 5. Subscribe Feed Dialog -->
     <Dialog :open="showSubscribeModal" @update:open="showSubscribeModal = $event">
-      <DialogContent class="max-w-md rounded-xl p-0 border border-border/30 bg-background/95 backdrop-blur-xl shadow-xl transition-all duration-200">
+      <DialogContent class="max-w-md !overflow-visible rounded-xl p-0 border border-border/30 bg-background/95 backdrop-blur-xl shadow-xl transition-all duration-200">
         <DialogHeader class="border-b border-border/10 p-5 text-left">
           <DialogTitle class="text-base font-bold text-foreground">添加订阅源</DialogTitle>
           <DialogDescription class="text-xs text-muted-foreground mt-1 leading-normal">
@@ -864,7 +864,7 @@
               <AppIcon name="link" class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 group-focus-within:text-foreground transition-colors duration-200" />
               <Input
                 v-model="subscribeForm.feedUrl"
-                class="h-9.5 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200"
+                class="h-9 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200"
                 placeholder="https://example.com/rss/feed.xml"
               />
             </div>
@@ -875,7 +875,7 @@
             <label class="text-xs font-semibold text-foreground/80">分类</label>
             <button
               @click="showCategoryDropdown = !showCategoryDropdown"
-              class="flex h-9.5 w-full items-center justify-between rounded-lg border border-border/40 bg-accent/10 hover:bg-accent/15 px-3 text-xs font-medium transition-all"
+              class="flex h-9 w-full items-center justify-between rounded-lg border border-border/40 bg-accent/10 hover:bg-accent/15 px-3 text-xs font-medium transition-all"
               :class="subscribeForm.category ? 'text-foreground' : 'text-muted-foreground/60'"
             >
               <div class="flex items-center gap-2 min-w-0">
@@ -891,7 +891,7 @@
 
             <div
               v-if="showCategoryDropdown"
-              class="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-border/50 bg-background/95 backdrop-blur-xl p-1 shadow-lg ring-1 ring-black/5"
+              class="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-border/50 bg-popover text-popover-foreground p-1 shadow-lg ring-1 ring-black/5"
             >
               <div class="max-h-[200px] overflow-y-auto custom-scrollbar pr-1 space-y-0.5">
                 <button
@@ -959,18 +959,18 @@
           </Transition>
         </div>
 
-        <DialogFooter class="gap-2 bg-muted/20 dark:bg-muted/5 p-4 border-t border-border/10 flex flex-row items-center justify-end">
+        <DialogFooter class="gap-2 bg-muted/20 dark:bg-muted/5 p-4 border-t border-border/10 flex flex-row items-center justify-end rounded-b-xl">
           <Button
             type="button"
             variant="outline"
-            class="h-9.5 rounded-lg text-xs font-semibold px-3 border border-border/40 hover:bg-accent/40 transition-colors cursor-pointer"
+            class="h-9 rounded-lg text-xs font-semibold px-3 border border-border/40 hover:bg-accent/40 transition-colors cursor-pointer"
             @click="closeSubscribeModal"
           >
             取消
           </Button>
           <Button
             type="button"
-            class="h-9.5 rounded-lg text-xs font-semibold px-4 transition-all duration-150 cursor-pointer bg-foreground text-background hover:opacity-90 active:scale-[0.98]"
+            class="h-9 rounded-lg text-xs font-semibold px-4 transition-all duration-150 cursor-pointer bg-foreground text-background hover:opacity-90 active:scale-[0.98]"
             :disabled="subscribingFeed || !subscribeForm.feedUrl.trim()"
             @click="handleSubscribeFeed"
           >
