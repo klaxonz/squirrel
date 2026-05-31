@@ -37,42 +37,6 @@
         </div>
 
         <div class="music-nav-section">
-          <div class="music-nav-label">我的音乐</div>
-          <button
-            class="music-nav-item"
-            :class="{ 'active': trackSource === 'history' }"
-            @click="loadUserHistory(false)"
-          >
-            <AppIcon name="history" class="h-4 w-4" />
-            <span>最近播放</span>
-          </button>
-          <button
-            class="music-nav-item"
-            :class="{ 'active': trackSource === 'listen_rank' && listenRankType === 0 }"
-            @click="loadUserListenRank(0)"
-          >
-            <AppIcon name="list" class="h-4 w-4" />
-            <span>一周排行</span>
-          </button>
-          <button
-            class="music-nav-item"
-            :class="{ 'active': trackSource === 'listen_rank' && listenRankType === 1 }"
-            @click="loadUserListenRank(1)"
-          >
-            <AppIcon name="list" class="h-4 w-4" />
-            <span>累计排行</span>
-          </button>
-          <button
-            class="music-nav-item"
-            :class="{ 'active': trackSource === 'latest_listen' }"
-            @click="loadLatestListenSongs"
-          >
-            <AppIcon name="refresh" class="h-4 w-4" />
-            <span>继续播放</span>
-          </button>
-        </div>
-
-        <div class="music-nav-section">
           <div class="music-nav-label">新建歌单</div>
           <form class="music-playlist-create" @submit.prevent="createUserPlaylist">
             <Input
@@ -694,7 +658,6 @@ let previousVolume = 0.7
 
 onMounted(() => {
   void loadAuthStatus()
-  void loadRecommendations()
   void loadRanks()
   void loadPlaylists(false)
   void loadUserPlaylists()
@@ -1124,6 +1087,7 @@ async function createUserPlaylist() {
 
 async function selectUserPlaylist(playlist: MusicUserPlaylist) {
   selectedUserPlaylist.value = playlist
+  activeMode.value = 'mine'
   selectedRank.value = null
   selectedPlaylist.value = null
   selectedArtist.value = null
@@ -1339,6 +1303,7 @@ async function loadUserHistory(append: boolean) {
   searched.value = true
   error.value = ''
   if (!append) currentPage.value = 1
+  activeMode.value = 'mine'
   selectedSourceTitle.value = '最近播放'
   trackSource.value = 'history'
   selectedUserPlaylist.value = null
@@ -1365,6 +1330,7 @@ async function loadUserListenRank(type: 0 | 1) {
   loading.value = true
   searched.value = true
   error.value = ''
+  activeMode.value = 'mine'
   listenRankType.value = type
   selectedSourceTitle.value = type === 0 ? '一周排行' : '累计排行'
   trackSource.value = 'listen_rank'
@@ -1390,6 +1356,7 @@ async function loadLatestListenSongs() {
   loading.value = true
   searched.value = true
   error.value = ''
+  activeMode.value = 'mine'
   selectedSourceTitle.value = '继续播放'
   trackSource.value = 'latest_listen'
   selectedUserPlaylist.value = null
