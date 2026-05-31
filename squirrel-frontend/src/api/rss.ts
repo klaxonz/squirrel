@@ -44,3 +44,9 @@ export const updateRssEntry = async (entryId: string | number, payload: { isRead
 export const updateRssEntries = async (payload: { entryIds: Array<string | number>; isRead: boolean }) => {
   return patch('/api/rss/entries/bulk', payload)
 }
+
+export const recordRssEntryView = async (entryId: string | number) => {
+  return post(`/api/rss/entries/${entryId}/view`)
+}
+
+export const getRssRecentlyViewed = async () => get('/api/rss/entries/recently-viewed')

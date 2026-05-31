@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, Index, Integer, JSON, Text, UniqueConstraint, VARCHAR
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models import Base
 from models.mixins.serializer import SerializerMixin
@@ -84,5 +84,20 @@ class RssEntry(Base, SerializerMixin):
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
     updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(), onupdate=lambda: datetime.now())
 
+
+class RssEntryView(Base, SerializerMixin):
+    __tablename__ = 'rss_entry_view'
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'entry_id', name='uix_rss_entry_view_user_entry'),
+        Index('ix_rss_entry_view_user_viewed', 'user_id', 'viewed_at'),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    entry_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    viewed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now())
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
+    updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(), onupdate=lambda: datetime.now())
 
 

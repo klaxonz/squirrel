@@ -16,7 +16,7 @@ from sqlalchemy import delete, func, select
 
 from core.config import settings
 from core.database import get_session
-from models.rss import RssAccount, RssEntry, RssFeed
+from models.rss import RssAccount, RssEntry, RssEntryView, RssFeed
 
 logger = logging.getLogger(__name__)
 
@@ -1414,3 +1414,47 @@ def _load_feeds_by_external_id(
         )
     ).all()
     return {feed.external_feed_id: feed for feed in feeds if feed.enabled}
+
+
+def record_entry_view(user_id: int, entry_id: int) -> None:
+    with get_session() as session:
+        existing = session.scalars(
+            select(RssEntryView).where(
+                RssEntryView.user_id == user_id,
+                RssEntryView.entry_id == entry_id,
+            )
+        ).first()
+        if existing:
+            existing.viewed_at = datetime.now()
+        else:
+            session.add(RssEntryView(
+                user_id=user_id,
+                entry_id=entry_id,
+                viewed_at=datetime.now(),
+            ))
+        session.commit()
+
+
+def list_recently_viewed(user_id: int, limit: int = 30) -> list[dict[str, Any]]:
+    with get_session() as session:
+        views = session.scalars(
+            select(RssEntryView)
+            .where(RssEntryView.user_id == user_id)
+            .order_by(RssEntryView.viewed_at.desc())
+            .limit(limit)
+        ).all()
+        if not views:
+            return []
+        entry_ids = [v.entry_id for v in views]
+        entries = session.scalars(
+            select(RssEntry).where(RssEntry.id.in_(entry_ids))
+        ).all()
+        entry_map = {e.id: serialize_entry(e) for e in entries}
+        view_map = {v.entry_id: v.viewed_at for v in views}
+        result = []
+        for entry_id in entry_ids:
+            entry = entry_map.get(entry_id)
+            if entry:
+                entry['viewed_at'] = view_map[entry_id].isoformat()
+                result.append(entry)
+        return result

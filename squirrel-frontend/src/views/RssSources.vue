@@ -259,6 +259,13 @@
               >
                 星标
               </button>
+              <button
+                @click="activeFilter = 'recent'"
+                class="flex-1 py-1 text-[10px] font-bold rounded-md transition-all text-center cursor-pointer"
+                :class="activeFilter === 'recent' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+              >
+                最近浏览
+              </button>
             </div>
           </div>
         </header>
@@ -282,9 +289,9 @@
               <div class="h-16 w-16 rounded-full bg-accent/30 flex items-center justify-center mb-4 ring-4 ring-background shadow-inner">
                 <AppIcon name="inbox" class="h-6 w-6 text-muted-foreground/45" />
               </div>
-              <h3 class="text-sm font-bold tracking-tight text-foreground/80">暂无相关文章</h3>
+              <h3 class="text-sm font-bold tracking-tight text-foreground/80">{{ activeFilter === 'recent' ? '暂无浏览记录' : '暂无相关文章' }}</h3>
               <p class="mt-1 text-[11px] text-muted-foreground max-w-[200px] leading-relaxed">
-                {{ selectedAccount ? '当前无对应文章，可点击同步获取最新内容。' : '请先添加并选择您的 RSS 账号。' }}
+                {{ activeFilter === 'recent' ? '浏览文章后，这里会记录您最近看过的内容。' : (selectedAccount ? '当前无对应文章，可点击同步获取最新内容。' : '请先添加并选择您的 RSS 账号。') }}
               </p>
             </div>
 
@@ -308,7 +315,7 @@
                   </span>
                   <div class="flex items-center gap-1.5">
                     <AppIcon v-if="entry.is_starred" name="star" class="h-3 w-3 text-amber-500 fill-amber-500" />
-                    <span class="tabular-nums text-[10px] text-muted-foreground/60">{{ formatDate(entry.published_at) }}</span>
+                    <span class="tabular-nums text-[10px] text-muted-foreground/60">{{ activeFilter === 'recent' ? formatRelativeTime((entry as RecentEntry).viewed_at) : formatDate(entry.published_at) }}</span>
                   </div>
                 </div>
                 
@@ -1042,7 +1049,9 @@ import {
   getRssAccounts,
   getRssEntries,
   getRssFeeds,
+  getRssRecentlyViewed,
   getRssSyncStatus,
+  recordRssEntryView,
   syncRssAccount,
   testRssAccountConfig,
   updateRssAccount,
@@ -1103,13 +1112,17 @@ type RssEntry = {
 }
 type ReadBatchMode = 'above' | 'below' | 'all'
 
+type RecentEntry = RssEntry & {
+  viewed_at: string
+}
+
 // Reactive Data State
 const accounts = ref<RssAccount[]>([])
 const feeds = ref<RssFeed[]>([])
 const entries = ref<RssEntry[]>([])
 const selectedAccountId = ref<number | null>(null)
 const selectedFeedId = ref<number | null>(null)
-const activeFilter = ref<'all' | 'unread' | 'starred'>('unread')
+const activeFilter = ref<'all' | 'unread' | 'starred' | 'recent'>('unread')
 
 // Context Menu States
 const showContextMenu = ref(false)
@@ -1191,6 +1204,15 @@ const pageSize = ref(30)
 const totalEntries = ref(0)
 const loadingMoreEntries = ref(false)
 const readingEntry = ref<RssEntry | null>(null)
+const recentlyViewed = ref<RecentEntry[]>([])
+
+const loadRecentlyViewed = async () => {
+  const result = await getRssRecentlyViewed() as ApiResult<{ data: RecentEntry[] }>
+  if (!result.error) {
+    recentlyViewed.value = result.data?.data || []
+  }
+}
+
 const isMobile = ref(false)
 
 // Scroll containers and Infinite scroll observer refs
@@ -1263,7 +1285,10 @@ const canTestForm = computed(() => {
   return !!accountForm.value.base_url.trim() && !!accountForm.value.credential.trim()
 })
 
-const hasMoreEntries = computed(() => entries.value.length < totalEntries.value)
+const hasMoreEntries = computed(() => {
+  if (activeFilter.value === 'recent') return false
+  return entries.value.length < totalEntries.value
+})
 
 // Categories / Folders collapsible tree grouping
 const feedFolders = computed(() => {
@@ -1287,6 +1312,7 @@ const feedFolders = computed(() => {
 
 // Article grid titles & totals
 const selectedFeedTitle = computed(() => {
+  if (activeFilter.value === 'recent') return '最近浏览'
   if (selectedFeedId.value) {
     return feeds.value.find(f => f.id === selectedFeedId.value)?.title || '订阅源'
   }
@@ -1294,6 +1320,7 @@ const selectedFeedTitle = computed(() => {
 })
 
 const selectedFeedSubtitle = computed(() => {
+  if (activeFilter.value === 'recent') return `共 ${recentlyViewed.value.length} 篇最近浏览的文章`
   if (selectedFeedId.value) {
     const feed = feeds.value.find(f => f.id === selectedFeedId.value)
     return `${feed?.category || '未分类'} · ${totalEntries.value} 篇文章`
@@ -1306,6 +1333,18 @@ const selectedFeedSubtitle = computed(() => {
 
 // Client side filtering for article cards
 const filteredEntries = computed(() => {
+  if (activeFilter.value === 'recent') {
+    let list = recentlyViewed.value
+    const query = entrySearch.value.trim().toLowerCase()
+    if (query) {
+      list = list.filter(entry => {
+        const matchTitle = entry.title.toLowerCase().includes(query)
+        const matchSummary = entry.summary ? entry.summary.toLowerCase().includes(query) : false
+        return matchTitle || matchSummary
+      })
+    }
+    return list
+  }
   let list = entries.value
   const query = entrySearch.value.trim().toLowerCase()
   
@@ -1383,6 +1422,35 @@ const getFeedIconUrl = (feedId: number) => {
 const getFeedInitials = (feedId: number) => {
   const title = getFeedTitle(feedId)
   return title.trim().charAt(0) || 'R'
+}
+
+const formatRelativeTime = (dateStr: string) => {
+  const now = Date.now()
+  const date = new Date(dateStr).getTime()
+  const diff = now - date
+  if (diff < 0) return '刚刚'
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return '刚刚'
+  if (minutes < 60) return `${minutes} 分钟前`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} 小时前`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days} 天前`
+  return formatDate(dateStr)
+}
+
+const recordRecentlyViewed = (entry: RssEntry) => {
+  recordRssEntryView(entry.id)
+  const recent: RecentEntry = {
+    ...entry,
+    viewed_at: new Date().toISOString(),
+  }
+  const idx = recentlyViewed.value.findIndex(e => String(e.id) === String(entry.id))
+  if (idx !== -1) {
+    recentlyViewed.value.splice(idx, 1)
+  }
+  recentlyViewed.value.unshift(recent)
+
 }
 
 // Safely decode HTML entities using a temporary textarea
@@ -1537,6 +1605,11 @@ const loadFeeds = async () => {
 }
 
 const loadEntries = async (isReset = false) => {
+  if (activeFilter.value === 'recent') {
+    await loadRecentlyViewed()
+    if (isReset) resetScroll()
+    return
+  }
   if (isReset) loading.value = true
   else loadingMoreEntries.value = true
 
@@ -1724,6 +1797,17 @@ const openReader = (entry: RssEntry) => {
   if (!entry.is_read) {
     toggleReadStatus(entry, false)
   }
+  recordRecentlyViewed(entry)
+}
+
+const openRecentEntry = (recent: RecentEntry) => {
+  if (readingEntry.value && String(readingEntry.value.id) === String(recent.id)) return
+  const existing = entries.value.find(e => String(e.id) === String(recent.id))
+  if (existing) {
+    openReader(existing)
+    return
+  }
+  openReader(recent as unknown as RssEntry)
 }
 
 const closeReader = () => {
@@ -1935,6 +2019,7 @@ onMounted(async () => {
     initObserver()
   })
   await resumeSyncPollingIfRunning()
+  loadRecentlyViewed()
 })
 
 onUnmounted(() => {

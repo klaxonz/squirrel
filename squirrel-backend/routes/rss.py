@@ -232,3 +232,19 @@ def update_rss_entry(
     if entry is None:
         return response.not_found('RSS 文章不存在')
     return response.success(entry)
+
+
+@router.post('/entries/{entry_id}/view')
+def record_rss_entry_view(
+    entry_id: int,
+    current_user: User = Depends(get_current_user),
+):
+    rss_service.record_entry_view(current_user.id, entry_id)
+    return response.success()
+
+
+@router.get('/entries/recently-viewed')
+def list_recently_viewed(
+    current_user: User = Depends(get_current_user),
+):
+    return response.success({'data': rss_service.list_recently_viewed(current_user.id)})
