@@ -1251,6 +1251,42 @@ def subscribe_feed(
         return serialize_feed(feed)
 
 
+def sync_feed(user_id: int, feed_id: int, *, entry_limit: int = 50) -> dict[str, Any]:
+    with get_session() as session:
+        feed = session.scalars(
+            select(RssFeed).where(
+                RssFeed.id == feed_id,
+                RssFeed.user_id == user_id,
+            )
+        ).first()
+        if not feed:
+            raise RssServiceError('RSS 订阅源不存在')
+
+        account = _get_account(session, user_id, feed.account_id)
+        if not account or not account.enabled:
+            raise RssServiceError('RSS 账号不可用')
+
+        config = _config_from_account(account)
+        client = _client_for_config(config)
+        external_feed_id = feed.external_feed_id
+
+        remote_entries = client.list_entries(external_feed_id, entry_limit)
+        if remote_entries:
+            remote_entries = [
+                replace(re, external_feed_id=re.external_feed_id or external_feed_id)
+                for re in remote_entries
+            ]
+
+        feeds_by_external_id = {external_feed_id: feed}
+        synced = _upsert_remote_entries_batch(session, feeds_by_external_id, remote_entries)
+        feed.last_entry_sync_at = datetime.now()
+        feed.enabled = True
+        account.last_error = None
+        session.commit()
+
+    return {'feed_id': feed_id, 'entries': synced}
+
+
 def unsubscribe_feed(user_id: int, account_id: int, feed_id: int) -> bool:
     with get_session() as session:
         feed = session.scalars(

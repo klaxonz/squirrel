@@ -209,6 +209,21 @@ def unsubscribe_rss_feed(
     return response.success()
 
 
+@router.post('/feeds/{feed_id}/sync')
+def sync_rss_feed(
+    feed_id: int,
+    entry_limit: int = Query(50, ge=1, le=500, alias='entryLimit'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        result = rss_service.sync_feed(current_user.id, feed_id, entry_limit=entry_limit)
+    except rss_service.RssServiceError as exc:
+        return response.param_error(str(exc))
+    except Exception as exc:
+        return response.error(f'RSS 同步失败: {exc}')
+    return response.success(result)
+
+
 @router.post('/feeds/{feed_id}/read')
 def mark_rss_feed_as_read(
     feed_id: int,

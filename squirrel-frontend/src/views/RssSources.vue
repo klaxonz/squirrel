@@ -1255,6 +1255,14 @@
           </button>
 
           <button
+            @click="syncFeedFromContextMenu(contextMenuFeed)"
+            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          >
+            <AppIcon name="refresh" class="h-3.5 w-3.5 opacity-70" />
+            <span>同步文章</span>
+          </button>
+
+          <button
             @click="copyFeedLink(contextMenuFeed)"
             class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
           >
@@ -1300,6 +1308,7 @@ import {
   recordRssEntryView,
   subscribeRssFeed,
   syncRssAccount,
+  syncRssFeed,
   markRssFeedAsRead,
   testRssAccountConfig,
   unsubscribeRssFeed,
@@ -2266,6 +2275,20 @@ const showFeedContextMenu = (feed: RssFeed, event: MouseEvent) => {
 const closeFeedContextMenu = () => {
   showFeedContextMenuState.value = false
   contextMenuFeed.value = null
+}
+
+const syncFeedFromContextMenu = async (feed: RssFeed) => {
+  closeFeedContextMenu()
+  loading.value = true
+  const result = await syncRssFeed(feed.id) as ApiResult
+  loading.value = false
+  if (result.error) {
+    setStatus(result.error.message || '同步失败', true)
+    return
+  }
+  const count = result.data?.entries ?? 0
+  setStatus(`已同步「${feed.title}」，更新 ${count} 篇文章`)
+  await loadEntries(true)
 }
 
 const markFeedAllAsRead = async (feed: RssFeed) => {

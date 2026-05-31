@@ -59,6 +59,10 @@ export const unsubscribeRssFeed = async (feedId: number, accountId: number) => {
   return delRequest(`/api/rss/feeds/${feedId}`, null, { params: { accountId } })
 }
 
+export const syncRssFeed = async (feedId: number, entryLimit = 50) => {
+  return post(`/api/rss/feeds/${feedId}/sync`, null, { params: { entryLimit } })
+}
+
 export const markRssFeedAsRead = async (feedId: number) => {
   return post(`/api/rss/feeds/${feedId}/read`)
 }
