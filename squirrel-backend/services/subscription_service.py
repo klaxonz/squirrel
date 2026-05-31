@@ -4,7 +4,7 @@ from functools import lru_cache
 from typing import Optional, Tuple, List, Dict, Any, Mapping
 from urllib.parse import urlparse
 
-from sqlalchemy import select, func, and_, or_, false, case, literal
+from sqlalchemy import select, func, and_, or_, false, case, literal, null
 from sqlalchemy.sql import text
 
 from core.database import get_session
@@ -13,6 +13,7 @@ from models.message import Message
 from models.subscription import Subscription, ContentType
 from models.subscription_sync_state import SubscriptionSyncState, SyncMode
 from models.user import User
+from models.video_history import VideoHistory
 from plugins.manager import get_plugin_manager
 from schemas.subscription.dto.subscription_dto import SubscriptionDto
 from services.search_query import normalize_subscription_type_term, parse_search_query
@@ -127,6 +128,34 @@ def _load_subscription_extract_counts(session, subscription_ids: List[int]) -> D
     }
 
 
+def _load_subscription_unread_counts(session, user_id: int, subscription_ids: List[int]) -> Dict[int, int]:
+    if not subscription_ids:
+        return {}
+
+    rows = session.execute(
+        select(
+            SubscriptionVideo.subscription_id,
+            func.count(SubscriptionVideo.video_id).label('unread_count'),
+        )
+        .outerjoin(
+            VideoHistory,
+            and_(
+                VideoHistory.video_id == SubscriptionVideo.video_id,
+                VideoHistory.user_id == user_id,
+            ),
+        )
+        .where(
+            SubscriptionVideo.subscription_id.in_(subscription_ids),
+            VideoHistory.video_id == null(),
+        )
+        .group_by(SubscriptionVideo.subscription_id)
+    ).all()
+    return {
+        int(subscription_id): int(unread_count or 0)
+        for subscription_id, unread_count in rows
+    }
+
+
 def _load_recent_videos(session, subscription_ids: List[int], limit: int = 10) -> Dict[int, List[Dict[str, Any]]]:
     if not subscription_ids:
         return {}
@@ -190,7 +219,7 @@ def _serialize_datetime(dt: Optional[datetime]) -> str:
     return dt.strftime('%Y-%m-%d %H:%M:%S') if dt else ''
 
 
-def _serialize_subscription_list_item(row: Mapping[str, Any], total_extract: int, recent_videos: List[Dict[str, Any]] = None) -> Dict[str, Any]:
+def _serialize_subscription_list_item(row: Mapping[str, Any], total_extract: int, recent_videos: List[Dict[str, Any]] = None, unread_count: int = 0) -> Dict[str, Any]:
     row_data = row if isinstance(row, dict) else dict(row)
     total_videos = max(int(row_data['total_videos'] or 0), total_extract)
     url = row_data['url']
@@ -210,6 +239,7 @@ def _serialize_subscription_list_item(row: Mapping[str, Any], total_extract: int
         'is_nsfw': bool(row_data['is_nsfw']),
         'is_special_followed': bool(row_data['is_special_followed']),
         'total_extract': total_extract,
+        'unread_count': unread_count,
         'sync_status': row_data['sync_status'] or 'idle',
         'last_sync_at': _serialize_datetime(row_data['last_sync_at']),
         'last_success_at': _serialize_datetime(row_data['last_success_at']),
@@ -441,6 +471,7 @@ def list_subscriptions(
         results = session.execute(statement).all()
         subscription_ids = [int(row._mapping['id']) for row in results]
         extract_count_map = _load_subscription_extract_counts(session, subscription_ids)
+        unread_count_map = _load_subscription_unread_counts(session, user_id, subscription_ids)
         recent_videos_map = _load_recent_videos(session, subscription_ids)
 
         subscriptions = []
@@ -448,8 +479,9 @@ def list_subscriptions(
             row_mapping = row._mapping
             sub_id = int(row_mapping['id'])
             total_extract = extract_count_map.get(sub_id, 0)
+            unread_count = unread_count_map.get(sub_id, 0)
             recent_videos = recent_videos_map.get(sub_id, [])
-            subscriptions.append(_serialize_subscription_list_item(row_mapping, total_extract, recent_videos))
+            subscriptions.append(_serialize_subscription_list_item(row_mapping, total_extract, recent_videos, unread_count))
 
         return subscriptions, total_count
 

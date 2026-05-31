@@ -17,6 +17,7 @@ from models.subscription import Subscription
 from models.subscription_sync_state import SubscriptionSyncState
 from models.user import User
 from models.video import Video
+from models.video_history import VideoHistory
 from schemas.subscription.dto.subscription_dto import SubscriptionDto
 from models.user_video_feed import UserVideoFeed
 from services import subscription_service
@@ -49,6 +50,7 @@ def _setup_test_env(monkeypatch):
             UserSubscription.__table__,
             UserVideoFeed.__table__,
             SubscriptionSyncState.__table__,
+            VideoHistory.__table__,
         ],
     )
 
@@ -1066,8 +1068,9 @@ def test_list_subscriptions_recent_videos_include_source_url(monkeypatch):
         'updated_at': '2024-01-01 00:00:00',
         'is_nsfw': False,
         'is_special_followed': False,
-        'total_extract': 1,
-        'sync_status': 'queued',
+            'total_extract': 1,
+            'unread_count': 1,
+            'sync_status': 'queued',
         'last_sync_at': '',
         'last_success_at': '',
         'next_sync_at': '2024-01-01 01:00:00',
