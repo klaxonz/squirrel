@@ -2439,9 +2439,7 @@ const toggleStarStatus = async (entry: RssEntry) => {
     return
   }
 
-  if (shouldReloadAfterEntryUpdate(entry)) {
-    await loadEntries(true)
-  }
+  setStatus(newStatus ? '已收藏' : '已取消收藏')
 }
 
 const copyArticleLink = async (entry: RssEntry) => {
