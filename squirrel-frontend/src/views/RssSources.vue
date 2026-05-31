@@ -870,17 +870,35 @@
             </div>
           </div>
 
-          <!-- Category -->
+          <!-- Category (dropdown with existing categories + custom) -->
           <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-foreground/80">分类（可选）</label>
+            <label class="text-xs font-semibold text-foreground/80">分类</label>
             <div class="relative group">
-              <AppIcon name="list" class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 group-focus-within:text-foreground transition-colors duration-200" />
-              <Input
+              <AppIcon name="list" class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 z-10 pointer-events-none" />
+              <select
                 v-model="subscribeForm.category"
-                class="h-9.5 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200"
-                placeholder="例如: 科技、新闻、博客..."
-              />
+                class="h-9.5 w-full rounded-lg pl-9 pr-8 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200 appearance-none cursor-pointer"
+              >
+                <option value="">自动带出</option>
+                <option
+                  v-for="cat in existingCategories"
+                  :key="cat"
+                  :value="cat"
+                >{{ cat }}</option>
+                <option value="__custom__">新建分类...</option>
+              </select>
+              <AppIcon name="chevronDown" class="absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/50 pointer-events-none" />
             </div>
+            <Transition name="fade">
+              <div v-if="subscribeForm.category === '__custom__'" class="relative group">
+                <AppIcon name="pencil" class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+                <Input
+                  v-model="subscribeForm.customCategory"
+                  class="h-9.5 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200"
+                  placeholder="输入新分类名称"
+                />
+              </div>
+            </Transition>
           </div>
 
           <!-- Error / Success Message -->
@@ -1378,6 +1396,7 @@ const subscribingFeed = ref(false)
 const subscribeForm = ref({
   feedUrl: '',
   category: '',
+  customCategory: '',
 })
 const subscribeMessage = ref('')
 const subscribeError = ref(false)
@@ -1473,6 +1492,17 @@ const feedFolders = computed(() => {
 })
 
 // Article grid titles & totals
+const existingCategories = computed(() => {
+  const cats = new Set<string>()
+  const targetAccountId = selectedAccountId.value
+  feeds.value.forEach(f => {
+    if (f.account_id === targetAccountId && f.category) {
+      cats.add(f.category)
+    }
+  })
+  return [...cats].sort()
+})
+
 const selectedFeedTitle = computed(() => {
   if (activeFilter.value === 'recent') return '最近浏览'
   if (selectedFeedId.value) {
@@ -1722,7 +1752,7 @@ const confirmDeleteAccount = (account: RssAccount) => {
 
 const closeSubscribeModal = () => {
   showSubscribeModal.value = false
-  subscribeForm.value = { feedUrl: '', category: '' }
+  subscribeForm.value = { feedUrl: '', category: '', customCategory: '' }
   subscribeMessage.value = ''
   subscribeError.value = false
 }
@@ -1733,10 +1763,14 @@ const handleSubscribeFeed = async () => {
   subscribeMessage.value = ''
   subscribeError.value = false
 
+  let category = subscribeForm.value.category
+  if (category === '__custom__') {
+    category = subscribeForm.value.customCategory.trim() || ''
+  }
   const result = await subscribeRssFeed({
     accountId: selectedAccountId.value,
     feedUrl: subscribeForm.value.feedUrl.trim(),
-    category: subscribeForm.value.category.trim() || undefined,
+    category: category || undefined,
   })
 
   subscribingFeed.value = false
