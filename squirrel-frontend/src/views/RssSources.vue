@@ -436,6 +436,15 @@
                 <AppIcon name="externalLink" class="h-4 w-4" />
               </a>
 
+              <!-- 收藏 / 取消收藏 -->
+              <button
+                @click="toggleStarStatus(readingEntry)"
+                class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer"
+                :title="readingEntry.is_starred ? '取消收藏' : '收藏文章'"
+              >
+                <AppIcon :name="readingEntry.is_starred ? 'bookmark' : 'star'" class="h-4 w-4" :class="readingEntry.is_starred ? 'text-amber-500 fill-amber-500' : ''" />
+              </button>
+
               <!-- 取消订阅该源 -->
               <button
                 @click="unsubscribeCurrentFeedFromReader"
