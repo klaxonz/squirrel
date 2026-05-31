@@ -160,6 +160,11 @@ class _JsonHttpClient:
         with urllib.request.urlopen(request, timeout=20) as response:
             return response.read().decode('utf-8')
 
+    def delete(self, url: str, headers: dict[str, str]) -> str:
+        request = urllib.request.Request(url, headers=headers, method='DELETE')
+        with urllib.request.urlopen(request, timeout=20) as response:
+            return response.read().decode('utf-8')
+
 
 class MinifluxClient:
     def __init__(self, config: RssAccountConfig, http_client: Optional[_JsonHttpClient] = None):
@@ -229,6 +234,37 @@ class MinifluxClient:
                 f'{self.config.base_url}/v1/entries/{eid}/bookmark',
                 self._headers(),
             )
+
+    def subscribe(self, feed_url: str, category_id: Optional[int] = None) -> RemoteFeed:
+        body: dict[str, Any] = {'feed_url': feed_url}
+        if category_id is not None:
+            body['category_id'] = category_id
+        data = self.http_client.post_json(
+            f'{self.config.base_url}/v1/feeds',
+            body,
+            {**self._headers(), 'Content-Type': 'application/json'},
+        )
+        if not isinstance(data, dict):
+            raise RssServiceError('Invalid Miniflux create feed response')
+        feed_id = str(data.get('id') or '').strip()
+        if not feed_id:
+            raise RssServiceError('Miniflux did not return a feed id')
+        category = data.get('category')
+        return RemoteFeed(
+            external_feed_id=feed_id,
+            title=str(data.get('title') or data.get('feed_url') or feed_id),
+            feed_url=data.get('feed_url'),
+            site_url=data.get('site_url'),
+            icon_url=data.get('icon_url'),
+            category=category.get('title') if isinstance(category, dict) else None,
+            raw_data=dict(data),
+        )
+
+    def unsubscribe(self, external_feed_id: str) -> None:
+        self.http_client.delete(
+            f'{self.config.base_url}/v1/feeds/{urllib.parse.quote(str(external_feed_id))}',
+            self._headers(),
+        )
 
 
 class FeverClient:
@@ -311,6 +347,12 @@ class FeverClient:
                 'as': 'saved' if is_starred else 'unsaved',
                 'id': str(external_entry_id)
             })
+
+    def subscribe(self, feed_url: str) -> RemoteFeed:
+        raise RssServiceError('Fever API does not support subscribing to feeds')
+
+    def unsubscribe(self, external_feed_id: str) -> None:
+        raise RssServiceError('Fever API does not support unsubscribing from feeds')
 
 
 class GReaderClient:
@@ -527,6 +569,41 @@ class GReaderClient:
                 'a' if is_starred else 'r': 'user/-/state/com.google/starred'
             }
             self.http_client.post_text(f'{self.config.base_url}/reader/api/0/edit-tag', data, headers)
+
+    def subscribe(self, feed_url: str) -> RemoteFeed:
+        try:
+            token = self._get_token()
+        except Exception as e:
+            raise RssServiceError(f'Failed to fetch GReader token for subscribe: {e}') from e
+
+        headers = self._headers()
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        self.http_client.post_text(
+            f'{self.config.base_url}/reader/api/0/subscription/quickadd',
+            {'quickadd': feed_url, 'T': token},
+            headers,
+        )
+
+        stream_id = f'feed/{feed_url}'
+        return RemoteFeed(
+            external_feed_id=stream_id,
+            title=feed_url,
+            feed_url=feed_url,
+        )
+
+    def unsubscribe(self, external_feed_id: str) -> None:
+        try:
+            token = self._get_token()
+        except Exception as e:
+            raise RssServiceError(f'Failed to fetch GReader token for unsubscribe: {e}') from e
+
+        headers = self._headers()
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        self.http_client.post_text(
+            f'{self.config.base_url}/reader/api/0/subscription/edit',
+            {'ac': 'unsubscribe', 's': external_feed_id, 'T': token},
+            headers,
+        )
 
 
 def _miniflux_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
@@ -1108,6 +1185,113 @@ def list_feeds(user_id: int, account_id: Optional[int] = None) -> list[dict[str,
             statement = statement.where(RssFeed.account_id == account_id)
         feeds = session.scalars(statement.order_by(RssFeed.title.asc())).all()
         return [serialize_feed(feed) for feed in feeds]
+
+
+def subscribe_feed(
+    user_id: int,
+    account_id: int,
+    feed_url: str,
+    category: Optional[str] = None,
+) -> dict[str, Any]:
+    feed_url = str(feed_url or '').strip()
+    if not feed_url:
+        raise RssServiceError('Feed URL is required')
+    parsed = urllib.parse.urlparse(feed_url)
+    if parsed.scheme not in {'http', 'https'} or not parsed.netloc:
+        raise RssServiceError('Feed URL must be an HTTP or HTTPS URL')
+
+    with get_session() as session:
+        account = _get_account(session, user_id, account_id)
+        if not account:
+            raise RssServiceError('RSS account not found')
+
+        config = _config_from_account(account)
+
+        client = _client_for_config(config)
+        remote_feed = client.subscribe(feed_url)
+
+        existing = session.scalars(
+            select(RssFeed).where(
+                RssFeed.account_id == account_id,
+                RssFeed.external_feed_id == remote_feed.external_feed_id,
+            )
+        ).first()
+
+        if existing:
+            existing.title = remote_feed.title or feed_url
+            existing.feed_url = remote_feed.feed_url or feed_url
+            existing.site_url = remote_feed.site_url
+            existing.icon_url = remote_feed.icon_url
+            if category is not None:
+                existing.category = category
+            elif remote_feed.category is not None:
+                existing.category = remote_feed.category
+            existing.enabled = True
+            session.flush()
+            feed = existing
+        else:
+            feed = RssFeed(
+                user_id=user_id,
+                account_id=account_id,
+                external_feed_id=remote_feed.external_feed_id,
+                title=remote_feed.title or feed_url,
+                feed_url=remote_feed.feed_url or feed_url,
+                site_url=remote_feed.site_url,
+                icon_url=remote_feed.icon_url,
+                category=category or remote_feed.category,
+                enabled=True,
+                raw_data=remote_feed.raw_data,
+            )
+            session.add(feed)
+            session.flush()
+
+        account.last_error = None
+        session.commit()
+        session.refresh(feed)
+        return serialize_feed(feed)
+
+
+def unsubscribe_feed(user_id: int, account_id: int, feed_id: int) -> bool:
+    with get_session() as session:
+        feed = session.scalars(
+            select(RssFeed).where(
+                RssFeed.id == feed_id,
+                RssFeed.account_id == account_id,
+                RssFeed.user_id == user_id,
+            )
+        ).first()
+        if not feed:
+            return False
+
+        external_feed_id = feed.external_feed_id
+
+        entry_rows = session.execute(
+            select(RssEntry.id).where(RssEntry.feed_id == feed_id)
+        ).all()
+        entry_ids = [row.id for row in entry_rows]
+        if entry_ids:
+            session.execute(
+                delete(RssEntryView).where(RssEntryView.entry_id.in_(entry_ids))
+            )
+        session.execute(
+            delete(RssEntry).where(RssEntry.feed_id == feed_id)
+        )
+        session.delete(feed)
+        session.commit()
+
+    try:
+        with get_session() as session:
+            account = _get_account(session, user_id, account_id)
+            if account and account.enabled:
+                config = _config_from_account(account)
+                client = _client_for_config(config)
+                client.unsubscribe(external_feed_id)
+    except RssServiceError:
+        pass
+    except Exception as e:
+        logger.warning('Failed to sync unsubscribe to remote RSS service: account_id=%s feed_id=%s error=%s', account_id, feed_id, e)
+
+    return True
 
 
 def list_entries(

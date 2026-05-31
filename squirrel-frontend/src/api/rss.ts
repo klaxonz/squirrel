@@ -50,3 +50,11 @@ export const recordRssEntryView = async (entryId: string | number) => {
 }
 
 export const getRssRecentlyViewed = async () => get('/api/rss/entries/recently-viewed')
+
+export const subscribeRssFeed = async (payload: { accountId: number; feedUrl: string; category?: string }) => {
+  return post('/api/rss/feeds/subscribe', payload)
+}
+
+export const unsubscribeRssFeed = async (feedId: number, accountId: number) => {
+  return delRequest(`/api/rss/feeds/${feedId}`, { params: { accountId } })
+}

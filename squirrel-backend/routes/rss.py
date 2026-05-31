@@ -166,6 +166,46 @@ def get_rss_sync_status(account_id: int, current_user: User = Depends(get_curren
     return response.success(progress)
 
 
+class RssFeedSubscribeRequest(BaseModel):
+    accountId: int
+    feedUrl: str
+    category: Optional[str] = None
+
+
+class RssFeedUnsubscribeRequest(BaseModel):
+    accountId: int
+
+
+@router.post('/feeds/subscribe')
+def subscribe_rss_feed(
+    req: RssFeedSubscribeRequest,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        feed = rss_service.subscribe_feed(
+            current_user.id,
+            account_id=req.accountId,
+            feed_url=req.feedUrl,
+            category=req.category,
+        )
+    except rss_service.RssServiceError as exc:
+        return response.param_error(str(exc))
+    except Exception as exc:
+        return response.error(f'RSS 订阅失败: {exc}')
+    return response.success(feed)
+
+
+@router.delete('/feeds/{feed_id}')
+def unsubscribe_rss_feed(
+    feed_id: int,
+    account_id: int = Query(..., alias='accountId'),
+    current_user: User = Depends(get_current_user),
+):
+    if not rss_service.unsubscribe_feed(current_user.id, account_id, feed_id):
+        return response.not_found('RSS 订阅源不存在')
+    return response.success()
+
+
 @router.get('/feeds')
 def list_rss_feeds(
     account_id: Optional[int] = Query(None, alias='accountId'),

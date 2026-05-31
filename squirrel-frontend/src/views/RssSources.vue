@@ -145,15 +145,27 @@
         <!-- Feeds Category Folding Tree -->
         <div class="flex-1 space-y-1 overflow-y-auto p-3 custom-scrollbar">
           <!-- All Feeds Item -->
-          <button
-            @click="selectedFeedId = null; loadEntries(true)"
-            class="group relative flex h-8 w-full items-center gap-3 rounded-lg px-2.5 text-left text-xs transition-all overflow-hidden"
-            :class="!selectedFeedId ? 'bg-transparent text-primary font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground font-medium'"
+          <div
+            class="flex h-8 w-full items-center rounded-lg px-2.5 transition-all"
+            :class="!selectedFeedId ? 'bg-transparent text-primary font-semibold' : 'text-muted-foreground'"
           >
-            <AppIcon name="inbox" class="h-3.5 w-3.5 shrink-0" />
-            <span class="flex-1 truncate">全部订阅</span>
-            <span class="text-xs opacity-60">{{ filteredFeeds.length }}</span>
-          </button>
+            <button
+              @click="selectedFeedId = null; loadEntries(true)"
+              class="flex flex-1 items-center gap-3 text-left text-xs overflow-hidden h-full"
+            >
+              <AppIcon name="inbox" class="h-3.5 w-3.5 shrink-0" />
+              <span class="truncate">全部订阅</span>
+              <span class="text-xs opacity-60 ml-auto">{{ filteredFeeds.length }}</span>
+            </button>
+            <button
+              v-if="selectedAccount"
+              @click="showSubscribeModal = true"
+              class="shrink-0 ml-1 rounded-md p-1 text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-all"
+              title="添加订阅源"
+            >
+              <AppIcon name="plus" class="h-3.5 w-3.5" />
+            </button>
+          </div>
           
           <div class="h-px bg-border/20 my-2"></div>
           
@@ -186,6 +198,13 @@
               >
                 <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
                 <span class="flex-1 truncate">{{ feed.title }}</span>
+                <button
+                  @click.stop="handleUnsubscribeFeed(feed)"
+                  class="shrink-0 rounded p-0.5 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
+                  title="取消订阅"
+                >
+                  <AppIcon name="close" class="h-3 w-3" />
+                </button>
               </button>
             </div>
           </div>
@@ -800,7 +819,83 @@
       </DialogContent>
     </Dialog>
 
-    <!-- 5. Premium Slide-over Reader View Drawer (Mobile Fallback) -->
+    <!-- 5. Subscribe Feed Dialog -->
+    <Dialog :open="showSubscribeModal" @update:open="showSubscribeModal = $event">
+      <DialogContent class="max-w-md overflow-hidden rounded-xl p-0 border border-border/30 bg-background/95 backdrop-blur-xl shadow-xl transition-all duration-200">
+        <DialogHeader class="border-b border-border/10 p-5 text-left">
+          <DialogTitle class="text-base font-bold text-foreground">添加订阅源</DialogTitle>
+          <DialogDescription class="text-xs text-muted-foreground mt-1 leading-normal">
+            输入 RSS 订阅源 URL，将其添加到「{{ selectedAccount?.name }}」账号。
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="p-5 space-y-4">
+          <!-- Feed URL -->
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-foreground/80">订阅源 URL</label>
+            <div class="relative group">
+              <AppIcon name="link" class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 group-focus-within:text-foreground transition-colors duration-200" />
+              <Input
+                v-model="subscribeForm.feedUrl"
+                class="h-9.5 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200"
+                placeholder="https://example.com/rss/feed.xml"
+              />
+            </div>
+          </div>
+
+          <!-- Category -->
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-foreground/80">分类（可选）</label>
+            <div class="relative group">
+              <AppIcon name="list" class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 group-focus-within:text-foreground transition-colors duration-200" />
+              <Input
+                v-model="subscribeForm.category"
+                class="h-9.5 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200"
+                placeholder="例如: 科技、新闻、博客..."
+              />
+            </div>
+          </div>
+
+          <!-- Error / Success Message -->
+          <Transition name="fade">
+            <div
+              v-if="subscribeMessage"
+              class="flex items-start gap-2 p-2.5 rounded-lg border text-xs leading-relaxed animate-fade-in"
+              :class="subscribeError ? 'border-destructive/20 bg-destructive/5 text-destructive' : 'border-emerald-500/20 bg-emerald-500/5 text-emerald-500'"
+            >
+              <AppIcon
+                :name="subscribeError ? 'error' : 'check'"
+                class="h-3.5 w-3.5 shrink-0 mt-0.5"
+                :class="subscribeError ? 'text-destructive' : 'text-emerald-500'"
+              />
+              <span class="font-medium">{{ subscribeMessage }}</span>
+            </div>
+          </Transition>
+        </div>
+
+        <DialogFooter class="gap-2 bg-muted/20 dark:bg-muted/5 p-4 border-t border-border/10 flex flex-row items-center justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            class="h-9.5 rounded-lg text-xs font-semibold px-3 border border-border/40 hover:bg-accent/40 transition-colors cursor-pointer"
+            @click="closeSubscribeModal"
+          >
+            取消
+          </Button>
+          <Button
+            type="button"
+            class="h-9.5 rounded-lg text-xs font-semibold px-4 transition-all duration-150 cursor-pointer bg-foreground text-background hover:opacity-90 active:scale-[0.98]"
+            :disabled="subscribingFeed || !subscribeForm.feedUrl.trim()"
+            @click="handleSubscribeFeed"
+          >
+            <AppIcon v-if="subscribingFeed" name="refresh" class="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            添加订阅
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- 6. Premium Slide-over Reader View Drawer (Mobile Fallback) -->
     <Sheet :open="isMobile && !!readingEntry" @update:open="closeReader">
       <SheetContent class="w-full sm:max-w-[640px] md:max-w-[768px] lg:max-w-[900px] border-l border-border/20 bg-background/95 backdrop-blur-xl p-0 flex flex-col h-full shadow-2xl">
         <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden">
@@ -1052,8 +1147,10 @@ import {
   getRssRecentlyViewed,
   getRssSyncStatus,
   recordRssEntryView,
+  subscribeRssFeed,
   syncRssAccount,
   testRssAccountConfig,
+  unsubscribeRssFeed,
   updateRssAccount,
   updateRssEntries,
   updateRssEntry,
@@ -1219,6 +1316,16 @@ const isMobile = ref(false)
 const entriesContainer = ref<HTMLElement | null>(null)
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 let entriesObserver: IntersectionObserver | null = null
+
+// Subscribe Feed state
+const showSubscribeModal = ref(false)
+const subscribingFeed = ref(false)
+const subscribeForm = ref({
+  feedUrl: '',
+  category: '',
+})
+const subscribeMessage = ref('')
+const subscribeError = ref(false)
 
 // Account Form state
 const accountForm = ref({
@@ -1556,6 +1663,57 @@ const openEditAccount = (account: RssAccount) => {
 const confirmDeleteAccount = (account: RssAccount) => {
   accountToDelete.value = account
   showDeleteConfirmModal.value = true
+}
+
+const closeSubscribeModal = () => {
+  showSubscribeModal.value = false
+  subscribeForm.value = { feedUrl: '', category: '' }
+  subscribeMessage.value = ''
+  subscribeError.value = false
+}
+
+const handleSubscribeFeed = async () => {
+  if (!selectedAccountId.value || !subscribeForm.value.feedUrl.trim()) return
+  subscribingFeed.value = true
+  subscribeMessage.value = ''
+  subscribeError.value = false
+
+  const result = await subscribeRssFeed({
+    accountId: selectedAccountId.value,
+    feedUrl: subscribeForm.value.feedUrl.trim(),
+    category: subscribeForm.value.category.trim() || undefined,
+  })
+
+  subscribingFeed.value = false
+
+  if (result.error) {
+    subscribeError.value = true
+    subscribeMessage.value = result.error.message || '订阅失败'
+    return
+  }
+
+  subscribeMessage.value = '订阅成功'
+  setTimeout(() => {
+    closeSubscribeModal()
+    loadFeeds()
+  }, 1000)
+}
+
+const handleUnsubscribeFeed = async (feed: RssFeed) => {
+  if (!selectedAccountId.value) return
+
+  const result = await unsubscribeRssFeed(feed.id, selectedAccountId.value)
+  if (result.error) {
+    setStatus(result.error.message || '取消订阅失败', true)
+    return
+  }
+
+  if (selectedFeedId.value === feed.id) {
+    selectedFeedId.value = null
+  }
+  setStatus(`已取消订阅「${feed.title}」`)
+  await loadFeeds()
+  await loadEntries(true)
 }
 
 const handleDeleteAccount = async () => {
