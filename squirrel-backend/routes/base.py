@@ -37,6 +37,7 @@ from routes.search import router as search_router
 from routes.connectivity import router as connectivity_router
 from routes.scheduler import router as scheduler_router
 from routes.rss import router as rss_router
+from routes.music import router as music_router
 
 logger = logging.getLogger()
 
@@ -125,6 +126,7 @@ def create_app() -> FastAPI:
     app.include_router(connectivity_router)
     app.include_router(scheduler_router)
     app.include_router(rss_router)
+    app.include_router(music_router)
 
     # 开发环境也需要挂载可单独配置的静态资源目录
     _mount_thumbnails(app)

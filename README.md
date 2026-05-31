@@ -10,6 +10,7 @@ Squirrel 是一个视频订阅和下载工具，下载时可以生成nfo文件�
 - 桌面端壳：可直接以桌面应用方式承载现有界面
 - 浏览器拓展：方便快捷的订阅站点频道
 - 视频内容展示：轻松浏览和管理下载的内容
+- 音乐搜索与播放：通过内置 KuGouMusicApi sidecar 提供酷狗音乐能力
 - 定时更新：定时更新订阅频道视频
 
 ## 待办事项
@@ -49,7 +50,7 @@ cp env.example .env
 docker compose up -d
 ```
 
-Cloudflare bypass sidecar 现在也会随 compose 一起启动；容器内默认地址是 `http://squirrel-cf-bypass:8002`，宿主机默认端口也是 `8002`。如果在外部部署目录运行 compose，请确保同时准备好 `klaxonz/squirrel:latest` 和 `klaxonz/squirrel-cf-bypass:latest` 两个镜像。
+Cloudflare bypass sidecar 和 KuGou music sidecar 现在也会随 compose 一起启动；容器内默认地址分别是 `http://squirrel-cf-bypass:8002`、`http://squirrel-music-api:3000`，宿主机默认端口分别是 `8002`、`8003`。如果在外部部署目录运行 compose，请确保同时准备好 `klaxonz/squirrel:latest`、`klaxonz/squirrel-cf-bypass:latest` 和 `klaxonz/squirrel-music-api:latest` 三个镜像。
 
 3. 访问应用：`http://localhost:8001`
 
@@ -65,9 +66,9 @@ cp env.example .env
 # - POSTGRES_PASSWORD=你的PostgreSQL密码
 ```
 
-2. 启动服务（仅启动 Squirrel，不启动数据库；如需本地 Cloudflare bypass，一并启动 sidecar）：
+2. 启动服务（仅启动 Squirrel，不启动数据库；如需本地 sidecar，一并启动）：
 ```bash
-docker compose up -d --no-deps squirrel squirrel-cf-bypass
+docker compose up -d --no-deps squirrel squirrel-cf-bypass squirrel-music-api
 ```
 
 3. 访问应用：`http://localhost:8001`
@@ -144,7 +145,9 @@ docker compose down -v
 
 - `squirrel-cf-bypass` 负责 backend 的 Cloudflare bypass 请求。
 - 容器部署时 `CLOUDFLARE_BYPASS_SERVICE_URL` 应指向 `http://squirrel-cf-bypass:8002`。
-- 外部部署目录运行 compose 时，需要单独提供 `klaxonz/squirrel-cf-bypass:latest` 镜像，而不是依赖本地 `./squirrel-cf-bypass` 构建上下文。
+- `squirrel-music-api` 负责 backend 的酷狗音乐搜索和播放地址解析请求。
+- 容器部署时 `KUGOU_MUSIC_API_BASE_URL` 应指向 `http://squirrel-music-api:3000`。
+- 外部部署目录运行 compose 时，需要单独提供 `klaxonz/squirrel-cf-bypass:latest` 和 `klaxonz/squirrel-music-api:latest` 镜像，而不是依赖本地 sidecar 构建上下文。
 
 ### 📊 服务说明
 
@@ -161,6 +164,12 @@ docker compose down -v
 
 - **端口**: `CF_BYPASS_PORT`（默认 `8002`，宿主机与容器内保持一致）
 - **容器内地址**: `http://squirrel-cf-bypass:8002`
+
+#### KuGou music sidecar
+
+- **端口**: `KUGOU_MUSIC_API_PORT`（默认 `8003`，容器内固定为 `3000`）
+- **容器内地址**: `http://squirrel-music-api:3000`
+- **认证 Cookie**: `KUGOU_MUSIC_COOKIE`，部分酷狗接口需要 `token/userid/dfid`
 
 #### Redis
 

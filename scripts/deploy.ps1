@@ -99,6 +99,7 @@ function Setup-Images {
         docker build --target build-base -t ghcr.io/klaxonz/squirrel-base:build -f Dockerfile.base .
         docker build -t klaxonz/squirrel:latest .
         docker build -t klaxonz/squirrel-cf-bypass:latest .\squirrel-cf-bypass
+        docker build -t klaxonz/squirrel-music-api:latest .\squirrel-music-api
     } else {
         Write-ColorOutput Yellow "从 Docker Hub 拉取镜像..."
         docker compose -f $script:COMPOSE_FILE pull

@@ -1,0 +1,12 @@
+{
+  "name": "squirrel-music-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Squirrel KuGouMusicApi sidecar",
+  "scripts": {
+    "start": "node node_modules/kugoumusicapi/app.js"
+  },
+  "dependencies": {
+    "kugoumusicapi": "https://github.com/MakcRe/KuGouMusicApi/archive/566de02034493af31c5a44f124429cbc1cb11b13.tar.gz"
+  }
+}

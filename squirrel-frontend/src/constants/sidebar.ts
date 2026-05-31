@@ -11,6 +11,7 @@ export type AppNavKey =
   | 'rss-sources'
   | 'history'
   | 'playlists'
+  | 'music'
   | 'sync-center'
   | 'scheduled-tasks'
   | 'plugins'
@@ -185,6 +186,17 @@ export const NAV_ITEMS: NavigationItem[] = [
     group: 'content',
     showOnMobile: true,
     activeRouteNames: ['Playlists'],
+  },
+  {
+    key: 'music',
+    name: '音乐',
+    title: '音乐',
+    mobileLabel: '音乐',
+    path: '/music',
+    icon: 'playlistMusic',
+    group: 'content',
+    showOnMobile: true,
+    activeRouteNames: ['Music'],
   },
   {
     key: 'sync-center',

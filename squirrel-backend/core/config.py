@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     COOKIECLOUD_URL: str = ''
     COOKIECLOUD_UUID: str = ''
     COOKIECLOUD_PASSWORD: str = ''
+    KUGOU_MUSIC_API_BASE_URL: str = ''
+    KUGOU_MUSIC_COOKIE: str = ''
     JWT_SECRET_KEY: str = 'change-me-in-env'
     CORS_ALLOW_ORIGINS: str = 'http://localhost:5173,http://127.0.0.1:5173'
     SQUIRREL_YOUTUBE_POT_PROVIDER_MODE: str = 'auto'

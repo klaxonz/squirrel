@@ -13,6 +13,7 @@ const History = () => import('../views/History.vue')
 const VideoPlay = () => import('../views/VideoPlay.vue')
 const RemoteChannelDetail = () => import('../views/RemoteChannelDetail.vue')
 const PlaylistView = () => import('../views/PlaylistView.vue')
+const Music = () => import('../views/Music.vue')
 const Login = () => import('../views/Login.vue')
 const Register = () => import('../views/Register.vue')
 const PluginManager = () => import('../views/PluginManager.vue')
@@ -257,6 +258,17 @@ const routes = [
     meta: createNoSearchMeta('播放列表', {
       navKey: 'playlists',
       sectionLabel: '播放列表',
+    }),
+  },
+  {
+    path: '/music',
+    name: 'Music',
+    component: Music,
+    meta: createNoSearchMeta('音乐', {
+      navKey: 'music',
+      sectionLabel: '音乐',
+      scrollable: true,
+      hideScrollbar: true,
     }),
   },
   {

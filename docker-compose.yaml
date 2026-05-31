@@ -20,6 +20,27 @@ networks:
     driver: bridge
 
 services:
+  squirrel-music-api:
+    image: klaxonz/squirrel-music-api:latest
+    container_name: squirrel-music-api
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+      - HOST=0.0.0.0
+      - PORT=3000
+      - platform=${KUGOU_MUSIC_PLATFORM:-lite}
+      - KUGOU_API_PROXY=${KUGOU_API_PROXY:-}
+    ports:
+      - "${KUGOU_MUSIC_API_PORT:-8003}:3000"
+    networks:
+      - squirrel-network
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const http=require('http'); const req=http.get('http://127.0.0.1:3000/register/dev', r => process.exit(r.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1)); req.setTimeout(5000, () => { req.destroy(); process.exit(1); });\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
   squirrel-cf-bypass:
     image: klaxonz/squirrel-cf-bypass:latest
     container_name: squirrel-cf-bypass
@@ -51,6 +72,8 @@ services:
       - TZ=Asia/Shanghai
       - PORT=${PORT:-8001}
       - CLOUDFLARE_BYPASS_SERVICE_URL=${CLOUDFLARE_BYPASS_SERVICE_URL:-http://squirrel-cf-bypass:8002}
+      - KUGOU_MUSIC_API_BASE_URL=${KUGOU_MUSIC_API_BASE_URL:-http://squirrel-music-api:3000}
+      - KUGOU_MUSIC_COOKIE=${KUGOU_MUSIC_COOKIE:-}
       - REDIS_HOST=${REDIS_HOST:-redis}
       - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
       - THUMBNAILS_PATH=/thumbnails
@@ -64,6 +87,8 @@ services:
     networks:
       - squirrel-network
     depends_on:
+      squirrel-music-api:
+        condition: service_healthy
       squirrel-cf-bypass:
         condition: service_healthy
       redis:
