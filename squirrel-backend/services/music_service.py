@@ -511,14 +511,14 @@ async def get_user_profile(user_id: int) -> dict[str, Any]:
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
     return {
         'userid': str(data.get('userid') or data.get('user_id') or ''),
-        'nickname': data.get('nickname') or data.get('user_name') or '',
-        'avatar': data.get('user_pic') or data.get('avatar') or data.get('head_url') or '',
-        'level': int(data.get('level') or data.get('user_level') or 0),
+        'nickname': data.get('nickname') or data.get('k_nickname') or data.get('user_name') or '',
+        'avatar': _format_image_url(data.get('pic') or data.get('k_pic') or data.get('fx_pic') or ''),
+        'level': int(data.get('p_grade') or data.get('level') or 0),
         'gender': str(data.get('gender') or ''),
-        'register_time': str(data.get('register_time') or data.get('reg_time') or ''),
-        'follow_count': int(data.get('follow_count') or data.get('follows') or 0),
-        'fan_count': int(data.get('fan_count') or data.get('fans') or 0),
-        'listen_count': int(data.get('listen_count') or data.get('listen_nums') or 0),
+        'register_time': str(data.get('rtime') or data.get('register_time') or ''),
+        'follow_count': int(data.get('follows') or 0),
+        'fan_count': int(data.get('fans') or 0),
+        'listen_count': int(data.get('duration') or 0),
         'raw': payload,
     }
 

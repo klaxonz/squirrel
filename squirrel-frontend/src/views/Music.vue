@@ -3286,36 +3286,30 @@ const formatCompactCount = (count: number) => {
 
 .music-profile-banner {
   position: relative;
-  border-radius: 1rem;
-  overflow: hidden;
-  background: linear-gradient(135deg, hsl(var(--primary) / 0.12) 0%, hsl(var(--accent) / 0.08) 100%);
-  border: 1px solid hsl(var(--border) / 0.15);
-  box-shadow: 0 4px 20px -2px hsl(var(--foreground) / 0.02);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: hsl(var(--foreground));
 }
 
 .music-profile-banner-glass {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 2rem;
-  padding: 2.25rem 2.5rem;
-  backdrop-filter: blur(12px);
+  gap: 2.5rem;
+  padding: 1rem 0 2rem 0;
 }
 
 .music-profile-avatar-wrap {
   position: relative;
-  width: 6.5rem;
-  height: 6.5rem;
+  width: 6rem;
+  height: 6rem;
   border-radius: 9999px;
-  padding: 3px;
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
-  box-shadow: 0 8px 30px hsl(var(--primary) / 0.15);
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .music-profile-avatar-wrap:hover {
-  transform: scale(1.05);
-  box-shadow: 0 12px 35px hsl(var(--primary) / 0.25);
+  transform: scale(1.04);
 }
 
 .music-profile-avatar {
@@ -3323,19 +3317,19 @@ const formatCompactCount = (count: number) => {
   height: 100%;
   border-radius: 9999px;
   object-fit: cover;
-  background: hsl(var(--background));
-  border: 2px solid hsl(var(--background));
+  background: hsl(var(--muted) / 0.1);
+  border: 2px solid hsl(var(--border) / 0.5);
 }
 
 .music-profile-avatar-fallback {
   width: 100%;
   height: 100%;
   border-radius: 9999px;
-  background: hsl(var(--muted));
+  background: hsl(var(--muted) / 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid hsl(var(--background));
+  border: 2px solid hsl(var(--border) / 0.5);
 }
 
 .music-profile-level-badge {
@@ -3343,13 +3337,13 @@ const formatCompactCount = (count: number) => {
   bottom: -4px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-weight: 800;
-  color: hsl(var(--primary-foreground));
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
-  padding: 0.125rem 0.5rem;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+  border: 1px solid hsl(var(--primary) / 0.15);
+  padding: 0.0625rem 0.5rem;
   border-radius: 9999px;
-  box-shadow: 0 2px 8px hsl(var(--primary) / 0.3);
   letter-spacing: 0.05em;
   white-space: nowrap;
 }
@@ -3360,7 +3354,7 @@ const formatCompactCount = (count: number) => {
 }
 
 .music-profile-nickname {
-  font-size: 1.625rem;
+  font-size: 1.75rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: hsl(var(--foreground));
@@ -3392,31 +3386,27 @@ const formatCompactCount = (count: number) => {
 .music-profile-banner-stats {
   display: flex;
   align-items: center;
-  gap: 2.5rem;
-  background: hsl(var(--background) / 0.35);
-  border: 1px solid hsl(var(--border) / 0.1);
-  padding: 1rem 1.75rem;
-  border-radius: 0.75rem;
-  backdrop-filter: blur(8px);
+  gap: 3rem;
+  padding: 0.5rem 0;
 }
 
 .music-profile-stat-item {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.25rem;
   transition: transform 0.2s ease;
 }
 
 .music-profile-stat-item:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .music-profile-stat-num {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: hsl(var(--foreground));
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .music-profile-stat-name {
