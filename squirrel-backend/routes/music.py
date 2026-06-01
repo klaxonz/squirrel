@@ -583,3 +583,267 @@ async def get_music_lyric(
         )
     except music_service.MusicServiceError as exc:
         return response.server_error(str(exc))
+
+
+# --- Comments ---
+
+@router.get('/api/music/comment/song')
+async def get_music_song_comments(
+    mixsong_id: str = Query(..., alias='mixsongid', min_length=1, description='歌曲 mixsongid'),
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(20, ge=1, le=50, description='每页数量'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_song_comments(current_user.id, mixsong_id, page, page_size))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/comment/song/classify')
+async def get_music_song_comments_classify(
+    mixsong_id: str = Query(..., alias='mixsongid', min_length=1, description='歌曲 mixsongid'),
+    type_id: str = Query(..., min_length=1, description='分类 type_id'),
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(20, ge=1, le=50, description='每页数量'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(
+            await music_service.get_song_comments_classify(current_user.id, mixsong_id, type_id, page, page_size)
+        )
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/comment/song/hotword')
+async def get_music_song_comments_hotword(
+    mixsong_id: str = Query(..., alias='mixsongid', min_length=1, description='歌曲 mixsongid'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_song_comments_hotword(current_user.id, mixsong_id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/comment/floor')
+async def get_music_floor_comments(
+    special_id: str = Query(..., min_length=1, description='评论 special_id'),
+    mixsong_id: str | None = Query(None, alias='mixsongid', description='歌曲 mixsongid'),
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(20, ge=1, le=50, description='每页数量'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_floor_comments(current_user.id, special_id, mixsong_id, page, page_size))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/comment/playlist')
+async def get_music_playlist_comments(
+    playlist_id: str = Query(..., min_length=1, description='歌单 ID'),
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(20, ge=1, le=50, description='每页数量'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_playlist_comments(current_user.id, playlist_id, page, page_size))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/comment/album')
+async def get_music_album_comments(
+    album_id: str = Query(..., min_length=1, description='专辑 ID'),
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(20, ge=1, le=50, description='每页数量'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_album_comments(current_user.id, album_id, page, page_size))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/comment/count')
+async def get_music_comment_counts(
+    hash: str = Query(..., min_length=1, description='歌曲 hash'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_comment_counts(current_user.id, hash))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+# --- Artist Follow ---
+
+@router.post('/api/music/artist/follow')
+async def follow_music_artist(
+    artist_id: str = Query(..., min_length=1, description='歌手 ID'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.follow_artist(current_user.id, artist_id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.delete('/api/music/artist/follow')
+async def unfollow_music_artist(
+    artist_id: str = Query(..., min_length=1, description='歌手 ID'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.unfollow_artist(current_user.id, artist_id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/artist/follow/newsongs')
+async def get_music_followed_artist_new_songs(
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_followed_artists_new_songs(current_user.id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/user/followed-artists')
+async def get_music_user_followed_artists(
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_user_followed_artists(current_user.id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+# --- Video / MV ---
+
+@router.get('/api/music/video/detail')
+async def get_music_video_detail(
+    video_id: str = Query(..., min_length=1, description='视频 ID'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_video_detail(current_user.id, video_id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/video/url')
+async def get_music_video_url(
+    video_id: str = Query(..., min_length=1, description='视频 ID'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_video_url(current_user.id, video_id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/video/privilege')
+async def get_music_video_privilege(
+    video_id: str = Query(..., min_length=1, description='视频 ID'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_video_privilege(current_user.id, video_id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+# --- Discovery & Recommendation Enhancements ---
+
+@router.get('/api/music/albums/new')
+async def list_music_new_albums(
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(20, ge=1, le=50, description='每页数量'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.list_new_albums(current_user.id, page, page_size))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/recommend/ai')
+async def get_music_ai_recommend(
+    page_size: int = Query(20, ge=1, le=50, description='每页数量'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_ai_recommend_tracks(current_user.id, page_size))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/recommend/brush')
+async def get_music_brush_feed(
+    page_size: int = Query(20, ge=1, le=50, description='每页数量'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_brush_feed(current_user.id, page_size))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/recommend/everyday')
+async def get_music_everyday_recommend(
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_everyday_recommend(current_user.id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/recommend/style')
+async def get_music_style_recommend(
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_style_recommend(current_user.id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/artist/videos')
+async def get_music_artist_videos(
+    artist_id: str = Query(..., min_length=1, description='歌手 ID'),
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(20, ge=1, le=50, description='每页数量'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_artist_videos(current_user.id, artist_id, page, page_size))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/artist/honour')
+async def get_music_artist_honour(
+    artist_id: str = Query(..., min_length=1, description='歌手 ID'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_artist_honour(current_user.id, artist_id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/artists/directory')
+async def list_music_artist_directory(
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(30, ge=1, le=50, description='每页数量'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.list_artist_directory(current_user.id, page, page_size))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))

@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 from urllib.parse import urljoin
 
@@ -7,6 +8,8 @@ import httpx
 from core.cache import redis_client
 from core.config import settings
 from schemas.music import MusicTrackPayload
+
+logger = logging.getLogger(__name__)
 
 
 class MusicServiceError(Exception):
@@ -737,6 +740,344 @@ async def check_qr_login(user_id: int, key: str) -> dict[str, Any]:
     }
 
 
+# --- Comments ---
+
+async def get_song_comments(user_id: int, mixsong_id: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/comment/music', {
+        'mixsongid': mixsong_id,
+        'p': page,
+        'pagesize': page_size,
+    }, user_id=user_id)
+    logger.debug('comment/music response keys=%s mixsongid=%s', list(payload.keys()), mixsong_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    if isinstance(data, dict):
+        logger.debug('comment/music data keys=%s', list(data.keys()))
+    rows = _first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
+    logger.debug('comment/music resolved rows count=%d', len(rows))
+    if isinstance(data, dict):
+        total = data.get('total') or data.get('count') or data.get('cmtcount') or len(rows)
+    else:
+        total = len(rows)
+
+    return {
+        'items': [_normalize_comment(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': total,
+    }
+
+
+async def get_song_comments_classify(user_id: int, mixsong_id: str, type_id: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/comment/music/classify', {
+        'mixsongid': mixsong_id,
+        'type_id': type_id,
+        'page': page,
+        'pagesize': page_size,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
+    if isinstance(data, dict):
+        total = data.get('total') or data.get('count') or len(rows)
+    else:
+        total = len(rows)
+
+    return {
+        'items': [_normalize_comment(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': total,
+    }
+
+
+async def get_song_comments_hotword(user_id: int, mixsong_id: str) -> dict[str, Any]:
+    payload = await _request_kugou('/comment/music/hotword', {
+        'mixsongid': mixsong_id,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
+    return {
+        'items': [
+            {
+                'keyword': str(row.get('keyword') or row.get('word') or row.get('hotword') or ''),
+                'count': int(row.get('count') or row.get('num') or 0),
+            }
+            for row in rows
+        ],
+    }
+
+
+async def get_floor_comments(user_id: int, special_id: str, mixsong_id: str | None, page: int, page_size: int) -> dict[str, Any]:
+    params: dict[str, Any] = {
+        'special_id': special_id,
+        'p': page,
+        'pagesize': page_size,
+    }
+    if mixsong_id:
+        params['mixsongid'] = mixsong_id
+    payload = await _request_kugou('/comment/floor', params, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
+    if isinstance(data, dict):
+        total = data.get('total') or data.get('count') or len(rows)
+    else:
+        total = len(rows)
+
+    return {
+        'items': [_normalize_comment(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': total,
+    }
+
+
+async def get_playlist_comments(user_id: int, playlist_id: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/comment/playlist', {
+        'id': playlist_id,
+        'p': page,
+        'pagesize': page_size,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
+    if isinstance(data, dict):
+        total = data.get('total') or data.get('count') or len(rows)
+    else:
+        total = len(rows)
+
+    return {
+        'items': [_normalize_comment(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': total,
+    }
+
+
+async def get_album_comments(user_id: int, album_id: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/comment/album', {
+        'id': album_id,
+        'p': page,
+        'pagesize': page_size,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
+    if isinstance(data, dict):
+        total = data.get('total') or data.get('count') or len(rows)
+    else:
+        total = len(rows)
+
+    return {
+        'items': [_normalize_comment(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': total,
+    }
+
+
+async def get_comment_counts(user_id: int, hash_value: str) -> dict[str, Any]:
+    payload = await _request_kugou('/comment/count', {
+        'hash': hash_value,
+    }, user_id=user_id, use_auth=False)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    count = 0
+    if isinstance(data, dict):
+        count = int(data.get('count') or data.get('cmtcount') or data.get('num') or 0)
+    elif isinstance(data, (int, float)):
+        count = int(data)
+    return {
+        'count': count,
+    }
+
+
+# --- Artist Follow ---
+
+async def follow_artist(user_id: int, artist_id: str) -> dict[str, Any]:
+    await _request_kugou('/artist/follow', {
+        'id': artist_id,
+    }, user_id=user_id)
+    return {'ok': True}
+
+
+async def unfollow_artist(user_id: int, artist_id: str) -> dict[str, Any]:
+    await _request_kugou('/artist/unfollow', {
+        'id': artist_id,
+    }, user_id=user_id)
+    return {'ok': True}
+
+
+async def get_followed_artists_new_songs(user_id: int) -> dict[str, Any]:
+    payload = await _request_kugou('/artist/follow/newsongs', {}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('songs', 'info', 'list', 'data'))
+    return {
+        'items': [_normalize_track(row) for row in rows],
+    }
+
+
+async def get_user_followed_artists(user_id: int) -> dict[str, Any]:
+    payload = await _request_kugou('/user/follow', {}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('info', 'list', 'lists', 'data'))
+    return {
+        'items': [_normalize_artist(row) for row in rows],
+    }
+
+
+# --- Video / MV ---
+
+async def get_video_detail(user_id: int, video_id: str) -> dict[str, Any]:
+    payload = await _request_kugou('/video/detail', {
+        'id': video_id,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    return _normalize_video(data)
+
+
+async def get_video_url(user_id: int, video_id: str) -> dict[str, Any]:
+    payload = await _request_kugou('/video/url', {
+        'id': video_id,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    url = ''
+    if isinstance(data, dict):
+        url = str(data.get('url') or data.get('play_url') or data.get('video_url') or '')
+    return {
+        'url': url,
+    }
+
+
+async def get_video_privilege(user_id: int, video_id: str) -> dict[str, Any]:
+    payload = await _request_kugou('/video/privilege', {
+        'id': video_id,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    return {
+        'id': str(data.get('id') or data.get('video_id') or ''),
+        'playable': bool(data.get('playable') or data.get('can_play')),
+        'downloadable': bool(data.get('downloadable') or data.get('can_download')),
+        'quality': str(data.get('quality') or data.get('bitrate') or ''),
+    }
+
+
+# --- Discovery & Recommendation Enhancements ---
+
+async def list_new_albums(user_id: int, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/top/album', {
+        'page': page,
+        'pagesize': page_size,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('info', 'list', 'lists', 'albums', 'data'))
+    if isinstance(data, dict):
+        total = data.get('total') or data.get('count') or len(rows)
+    else:
+        total = len(rows)
+
+    return {
+        'items': [_normalize_album(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': total,
+    }
+
+
+async def get_ai_recommend_tracks(user_id: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/ai/recommend', {
+        'pagesize': page_size,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('songs', 'song_list', 'info', 'list', 'data'))
+    return {
+        'items': [_normalize_track(row) for row in rows],
+    }
+
+
+async def get_brush_feed(user_id: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/brush', {
+        'pagesize': page_size,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('songs', 'song_list', 'info', 'list', 'data'))
+    return {
+        'items': [_normalize_track(row) for row in rows],
+    }
+
+
+async def get_everyday_recommend(user_id: int) -> dict[str, Any]:
+    payload = await _request_kugou('/everyday/recommend', {}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('songs', 'song_list', 'info', 'list', 'data'))
+    return {
+        'items': [_normalize_track(row) for row in rows],
+    }
+
+
+async def get_style_recommend(user_id: int) -> dict[str, Any]:
+    payload = await _request_kugou('/everyday/style/recommend', {}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('songs', 'song_list', 'info', 'list', 'data'))
+    return {
+        'items': [_normalize_track(row) for row in rows],
+    }
+
+
+async def get_artist_videos(user_id: int, artist_id: str, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/artist/videos', {
+        'id': artist_id,
+        'page': page,
+        'pagesize': page_size,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('info', 'list', 'lists', 'videos', 'data'))
+    if isinstance(data, dict):
+        total = data.get('total') or data.get('count') or len(rows)
+    else:
+        total = len(rows)
+
+    return {
+        'items': [_normalize_video(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': total,
+    }
+
+
+async def get_artist_honour(user_id: int, artist_id: str) -> dict[str, Any]:
+    payload = await _request_kugou('/artist/honour', {
+        'id': artist_id,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('info', 'list', 'lists', 'honours', 'data'))
+    return {
+        'items': [
+            {
+                'title': str(row.get('title') or row.get('name') or ''),
+                'description': str(row.get('desc') or row.get('description') or ''),
+                'date': str(row.get('date') or row.get('time') or ''),
+            }
+            for row in rows
+        ],
+    }
+
+
+async def list_artist_directory(user_id: int, page: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/artist/lists', {
+        'page': page,
+        'pagesize': page_size,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('info', 'list', 'lists', 'data'))
+    if isinstance(data, dict):
+        total = data.get('total') or data.get('count') or len(rows)
+    else:
+        total = len(rows)
+
+    return {
+        'items': [_normalize_artist(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': total,
+    }
+
+
 async def _request_kugou(
     path: str,
     params: dict[str, Any],
@@ -1102,6 +1443,49 @@ def _normalize_mv(row: dict[str, Any]) -> dict[str, Any]:
         'hash': str(row.get('hash') or row.get('mv_hash') or row.get('FileHash') or ''),
         'cover': _format_image_url(row.get('cover') or row.get('img') or row.get('imgurl') or ''),
         'duration': int(row.get('duration') or row.get('time_length') or 0),
+    }
+
+
+def _normalize_comment(row: dict[str, Any]) -> dict[str, Any]:
+    user_info = row.get('user_info') if isinstance(row.get('user_info'), dict) else {}
+    user = row.get('user') if isinstance(row.get('user'), dict) else {}
+    merged_user = {**user, **user_info} if user else user_info
+    content = str(row.get('content') or row.get('msg') or row.get('message') or row.get('cmtcontent') or '')
+    return {
+        'id': str(row.get('id') or row.get('comment_id') or row.get('specialid') or row.get('cmtid') or ''),
+        'content': content,
+        'user_name': str(
+            merged_user.get('nickname') or merged_user.get('user_name') or merged_user.get('user_nickname')
+            or row.get('user_name') or row.get('nickname') or row.get('nick_name') or ''
+        ),
+        'user_avatar': _format_image_url(
+            merged_user.get('pic') or merged_user.get('avatar') or merged_user.get('user_pic')
+            or row.get('user_pic') or row.get('avatar') or row.get('user_avatar') or ''
+        ),
+        'user_id': str(merged_user.get('userid') or merged_user.get('user_id') or row.get('userid') or ''),
+        'like_count': int(row.get('likecount') or row.get('like_count') or row.get('support') or row.get('support_count') or 0),
+        'reply_count': int(row.get('replycount') or row.get('reply_count') or row.get('reply_num') or 0),
+        'created_at': str(row.get('addtime') or row.get('add_time') or row.get('create_time') or row.get('creattime') or ''),
+    }
+
+
+def _normalize_video(row: dict[str, Any]) -> dict[str, Any]:
+    authors = row.get('authors') if isinstance(row.get('authors'), list) else []
+    author_name = ''
+    for author in authors:
+        if isinstance(author, dict):
+            name = author.get('author_name') or author.get('name')
+            if name:
+                author_name = name
+                break
+    return {
+        'id': str(row.get('id') or row.get('video_id') or row.get('mv_id') or ''),
+        'name': str(row.get('name') or row.get('title') or row.get('filename') or ''),
+        'cover': _format_image_url(row.get('cover') or row.get('img') or row.get('imgurl') or row.get('cover_url') or ''),
+        'duration': int(row.get('duration') or row.get('time_length') or 0),
+        'play_count': int(row.get('play_count') or row.get('playcount') or 0),
+        'artist': author_name or str(row.get('author_name') or row.get('singer_name') or ''),
+        'artist_id': str(row.get('author_id') or row.get('singer_id') or ''),
     }
 
 

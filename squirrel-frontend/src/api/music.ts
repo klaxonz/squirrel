@@ -520,3 +520,208 @@ export const checkMusicQrLogin = (key: string) => {
 export const logoutMusic = () => {
   return post<MusicActionResult>('/api/music/auth/logout')
 }
+
+// --- Comments ---
+
+export type MusicComment = {
+  id: string
+  content: string
+  user_name: string
+  user_avatar: string
+  user_id: string
+  like_count: number
+  reply_count: number
+  created_at: string
+}
+
+export type MusicCommentResult = {
+  items: MusicComment[]
+  page: number
+  page_size: number
+  total: number
+}
+
+export type MusicCommentHotword = {
+  keyword: string
+  count: number
+}
+
+export type MusicCommentHotwordResult = {
+  items: MusicCommentHotword[]
+}
+
+export type MusicCommentCount = {
+  count: number
+}
+
+export const getMusicSongComments = (params: {
+  mixsongid: string
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicCommentResult>('/api/music/comment/song', params)
+}
+
+export const getMusicSongCommentsClassify = (params: {
+  mixsongid: string
+  type_id: string
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicCommentResult>('/api/music/comment/song/classify', params)
+}
+
+export const getMusicSongCommentsHotword = (mixsongid: string) => {
+  return get<MusicCommentHotwordResult>('/api/music/comment/song/hotword', { mixsongid })
+}
+
+export const getMusicFloorComments = (params: {
+  special_id: string
+  mixsongid?: string
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicCommentResult>('/api/music/comment/floor', params)
+}
+
+export const getMusicPlaylistComments = (params: {
+  playlist_id: string
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicCommentResult>('/api/music/comment/playlist', params)
+}
+
+export const getMusicAlbumComments = (params: {
+  album_id: string
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicCommentResult>('/api/music/comment/album', params)
+}
+
+export const getMusicCommentCounts = (hash: string) => {
+  return get<MusicCommentCount>('/api/music/comment/count', { hash })
+}
+
+// --- Artist Follow ---
+
+export const followMusicArtist = (artist_id: string) => {
+  return post<MusicActionResult>(`/api/music/artist/follow?artist_id=${encodeURIComponent(artist_id)}`)
+}
+
+export const unfollowMusicArtist = (artist_id: string) => {
+  return request<MusicActionResult>({
+    url: '/api/music/artist/follow',
+    method: 'delete',
+    params: { artist_id },
+  })
+}
+
+export const getMusicFollowedArtistNewSongs = () => {
+  return get<MusicSearchResult>('/api/music/artist/follow/newsongs')
+}
+
+export const getMusicFollowedArtists = () => {
+  return get<MusicArtistResult>('/api/music/user/followed-artists')
+}
+
+// --- Video / MV ---
+
+export type MusicVideo = {
+  id: string
+  name: string
+  cover: string
+  duration: number
+  play_count: number
+  artist: string
+  artist_id: string
+}
+
+export type MusicVideoResult = {
+  items: MusicVideo[]
+  page: number
+  page_size: number
+  total: number
+}
+
+export type MusicVideoUrl = {
+  url: string
+}
+
+export type MusicVideoPrivilege = {
+  id: string
+  playable: boolean
+  downloadable: boolean
+  quality: string
+}
+
+export const getMusicVideoDetail = (video_id: string) => {
+  return get<MusicVideo>('/api/music/video/detail', { video_id })
+}
+
+export const getMusicVideoUrl = (video_id: string) => {
+  return get<MusicVideoUrl>('/api/music/video/url', { video_id })
+}
+
+export const getMusicVideoPrivilege = (video_id: string) => {
+  return get<MusicVideoPrivilege>('/api/music/video/privilege', { video_id })
+}
+
+// --- Discovery & Recommendation Enhancements ---
+
+export const getMusicNewAlbums = (params?: {
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicAlbumResult>('/api/music/albums/new', params)
+}
+
+export const getMusicAiRecommend = (params?: {
+  page_size?: number
+}) => {
+  return get<MusicSearchResult>('/api/music/recommend/ai', params)
+}
+
+export const getMusicBrushFeed = (params?: {
+  page_size?: number
+}) => {
+  return get<MusicSearchResult>('/api/music/recommend/brush', params)
+}
+
+export const getMusicEverydayRecommend = () => {
+  return get<MusicSearchResult>('/api/music/recommend/everyday')
+}
+
+export const getMusicStyleRecommend = () => {
+  return get<MusicSearchResult>('/api/music/recommend/style')
+}
+
+export const getMusicArtistVideos = (params: {
+  artist_id: string
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicVideoResult>('/api/music/artist/videos', params)
+}
+
+export type MusicArtistHonour = {
+  title: string
+  description: string
+  date: string
+}
+
+export type MusicArtistHonourResult = {
+  items: MusicArtistHonour[]
+}
+
+export const getMusicArtistHonour = (artist_id: string) => {
+  return get<MusicArtistHonourResult>('/api/music/artist/honour', { artist_id })
+}
+
+export const getMusicArtistDirectory = (params?: {
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicArtistResult>('/api/music/artists/directory', params)
+}

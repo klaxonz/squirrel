@@ -44,6 +44,30 @@
           </button>
           <button
             class="music-nav-item"
+            :class="{ 'active': activeMode === 'new_album' }"
+            @click="setMusicMode('new_album')"
+          >
+            <AppIcon name="playlistMusic" class="h-4 w-4" />
+            <span>新碟上架</span>
+          </button>
+          <button
+            class="music-nav-item"
+            :class="{ 'active': activeMode === 'ai_recommend' }"
+            @click="setMusicMode('ai_recommend')"
+          >
+            <AppIcon name="star" class="h-4 w-4" />
+            <span>AI 推荐</span>
+          </button>
+          <button
+            class="music-nav-item"
+            :class="{ 'active': activeMode === 'everyday' }"
+            @click="setMusicMode('everyday')"
+          >
+            <AppIcon name="bolt" class="h-4 w-4" />
+            <span>每日推荐</span>
+          </button>
+          <button
+            class="music-nav-item"
             :class="{ 'active': activeMode === 'profile' }"
             @click="loadKugouProfile"
           >
@@ -162,6 +186,46 @@
                 加载更多歌单
               </Button>
             </div>
+          </div>
+
+          <!-- New Albums Grid View -->
+          <div v-else-if="activeMode === 'new_album' && !selectedAlbum" class="music-discovery-grid">
+            <h3 class="text-sm font-semibold mb-3">新碟上架</h3>
+            <div v-if="newAlbumsLoading && newAlbums.length === 0" class="music-list">
+              <div v-for="index in 12" :key="index" class="music-skeleton" />
+            </div>
+            <div v-else-if="newAlbums.length === 0" class="music-empty">
+              <AppIcon name="playlistMusic" class="h-9 w-9 text-muted-foreground/30" />
+              <h2 class="mt-4 text-sm font-semibold">暂无新碟</h2>
+            </div>
+            <template v-else>
+              <div class="music-grid">
+                <div
+                  v-for="album in newAlbums"
+                  :key="album.id"
+                  class="music-grid-card"
+                  @click="selectAlbumSummary(album)"
+                >
+                  <div class="music-source-cover-wrap">
+                    <img v-if="album.cover" :src="album.cover" alt="" class="music-source-cover" />
+                    <div v-else class="music-source-cover">
+                      <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <div class="music-source-play-overlay">
+                      <AppIcon name="play" class="h-6 w-6 text-primary-foreground fill-current" />
+                    </div>
+                  </div>
+                  <span class="music-grid-card-title">{{ album.name }}</span>
+                  <span class="music-grid-card-subtitle">{{ album.artist || '专辑' }}</span>
+                </div>
+              </div>
+              <div class="flex justify-center mt-6" v-if="newAlbumsHasMore">
+                <Button variant="outline" class="h-8 text-xs px-4" :disabled="newAlbumsLoading" @click="loadMoreNewAlbums">
+                  <AppIcon v-if="newAlbumsLoading" name="loadingSpinner" class="h-3.5 w-3.5 animate-spin" />
+                  加载更多专辑
+                </Button>
+              </div>
+            </template>
           </div>
 
           <!-- FM Radio Card View - Two Column Desktop Layout -->
@@ -712,6 +776,18 @@
                       <AppIcon name="heart" class="h-3.5 w-3.5" />
                       收藏
                     </button>
+                    <button
+                      v-if="selectedArtist"
+                      class="music-chip"
+                      :class="{ 'music-chip--active': artistFollowed }"
+                      :disabled="artistFollowing"
+                      :title="artistFollowed ? '取消关注' : '关注歌手'"
+                      @click="toggleArtistFollow"
+                    >
+                      <AppIcon v-if="artistFollowing" name="loadingSpinner" class="h-3.5 w-3.5 animate-spin" />
+                      <AppIcon v-else :name="artistFollowed ? 'heart' : 'plus'" class="h-3.5 w-3.5" />
+                      {{ artistFollowed ? '已关注' : '关注' }}
+                    </button>
                     <button v-if="selectedUserPlaylist" class="music-chip music-chip--danger" title="删除歌单" @click="deleteSelectedUserPlaylist">
                       <AppIcon name="trash" class="h-3.5 w-3.5" />
                       删除
@@ -974,6 +1050,26 @@
                     <span>私人 FM</span>
                     <small>使用轻量推荐</small>
                   </button>
+                  <button class="music-discover-entry" @click="setMusicMode('new_album')">
+                    <AppIcon name="playlistMusic" class="h-4 w-4" />
+                    <span>新碟上架</span>
+                    <small>最新发行专辑</small>
+                  </button>
+                  <button class="music-discover-entry" @click="setMusicMode('ai_recommend')">
+                    <AppIcon name="star" class="h-4 w-4" />
+                    <span>AI 推荐</span>
+                    <small>智能推荐好歌</small>
+                  </button>
+                  <button class="music-discover-entry" @click="setMusicMode('everyday')">
+                    <AppIcon name="bolt" class="h-4 w-4" />
+                    <span>每日推荐</span>
+                    <small>今日精选歌单</small>
+                  </button>
+                  <button class="music-discover-entry" @click="setMusicMode('brush')">
+                    <AppIcon name="refresh" class="h-4 w-4" />
+                    <span>刷一刷</span>
+                    <small>随机发现好歌</small>
+                  </button>
                   <button
                     v-for="rank in ranks.slice(0, 3)"
                     :key="rank.id"
@@ -1065,6 +1161,15 @@
                   </button>
                   <button
                     class="music-row-action"
+                    :disabled="!track.album_audio_id || videoLoading"
+                    title="播放 MV"
+                    @click.stop="playMv(track)"
+                  >
+                    <AppIcon v-if="videoLoading && videoTitle === `${track.title} - ${track.artist}`" name="loadingSpinner" class="h-3.5 w-3.5 animate-spin" />
+                    <AppIcon v-else name="play" class="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    class="music-row-action"
                     :disabled="!track.album_audio_id"
                     title="更多版本"
                     @click.stop="selectRelatedTracks(track)"
@@ -1093,7 +1198,37 @@
         </div>
       </section>
 
-
+      <!-- Video/MV Modal -->
+      <Transition
+        enter-active-class="transition-all duration-300 ease-out"
+        leave-active-class="transition-all duration-200 ease-in"
+        enter-from-class="opacity-0 scale-95"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div v-if="showVideoModal" class="music-video-modal" @click.self="closeVideoModal">
+          <div class="music-video-container">
+            <div class="music-video-header">
+              <h3 class="music-video-title truncate">{{ videoTitle }}</h3>
+              <button class="music-row-action" title="关闭" @click="closeVideoModal">
+                <AppIcon name="close" class="h-5 w-5" />
+              </button>
+            </div>
+            <div class="music-video-player">
+              <video
+                v-if="videoUrl"
+                :src="videoUrl"
+                controls
+                autoplay
+                class="music-video-element"
+              />
+              <div v-else class="music-video-loading">
+                <AppIcon name="loadingSpinner" class="h-8 w-8 animate-spin" />
+                <span>加载视频中...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
 
     </div>
   </AppPageShell>
@@ -1111,7 +1246,13 @@ import {
   createMusicUserPlaylist,
   createMusicQrLogin,
   deleteMusicUserPlaylist,
+  followMusicArtist,
+  unfollowMusicArtist,
+  getMusicAiRecommend,
   getMusicAuthStatus,
+  getMusicBrushFeed,
+  getMusicEverydayRecommend,
+  getMusicNewAlbums,
   logoutMusic,
   addMusicUserPlaylistTrack,
   getMusicDefaultSearch,
@@ -1132,11 +1273,13 @@ import {
   getMusicRecommendations,
   getMusicRecommendCard,
   getMusicSimilarPlaylists,
+  getMusicStyleRecommend,
   getMusicUserPlaylistTracks,
   getMusicUserHistory,
   getMusicUserListenRank,
   getMusicUserPlaylists,
   getMusicUserProfile,
+  getMusicVideoUrl,
   logoutMusicUser,
   removeMusicUserPlaylistTracks,
   reportFmGarbage,
@@ -1154,6 +1297,7 @@ import {
   type MusicTrack,
   type MusicUserPlaylist,
   type MusicUserProfile,
+  type MusicVideo,
 } from '@/api/music'
 import { useMusicPlayerStore } from '@/stores/musicPlayer'
 import { Logger } from '@/utils/logger'
@@ -1162,7 +1306,7 @@ const store = useMusicPlayerStore()
 
 type FmMode = 'normal' | 'small' | 'peak'
 
-type MusicMode = 'recommend' | 'rank' | 'playlist' | 'mine' | 'profile' | 'new_song'
+type MusicMode = 'recommend' | 'rank' | 'playlist' | 'mine' | 'profile' | 'new_song' | 'new_album' | 'ai_recommend' | 'brush' | 'everyday' | 'style'
 type TrackSource = 'idle' | 'recommend' | 'search' | 'rank' | 'playlist' | 'user_playlist' | 'artist_detail' | 'album_detail' | 'new_song' | 'related'
 
 const discoverCardDefs = [
@@ -1184,6 +1328,10 @@ const searchAlbums = ref<MusicAlbum[]>([])
 const hotSearches = ref<MusicHotSearch[]>([])
 const playlistTags = ref<MusicPlaylistTag[]>([])
 const dailyRecommendTracks = ref<MusicTrack[]>([])
+const newAlbums = ref<MusicAlbum[]>([])
+const newAlbumsLoading = ref(false)
+const newAlbumsPage = ref(1)
+const newAlbumsHasMore = ref(false)
 const discoverCards = ref<Record<number, MusicTrack[]>>({})
 const favoriteCounts = ref<Record<string, number>>({})
 const loading = ref(false)
@@ -1230,6 +1378,17 @@ const qrLoading = ref(false)
 const qrLogin = ref<MusicQrLogin | null>(null)
 const qrStatus = ref(0)
 let qrTimer: ReturnType<typeof setInterval> | null = null
+
+// Artist follow state
+const artistFollowed = ref(false)
+const artistFollowing = ref(false)
+const followedArtistIds = ref<Set<string>>(new Set())
+
+// Video/MV state
+const videoUrl = ref('')
+const videoLoading = ref(false)
+const showVideoModal = ref(false)
+const videoTitle = ref('')
 
 // User profile reactive state
 const kugouProfile = ref<MusicUserProfile | null>(null)
@@ -1569,7 +1728,7 @@ async function setMusicMode(mode: MusicMode) {
   activeMode.value = mode
   selectedSourceTitle.value = ''
   searched.value = false
-  if (mode === 'rank' || mode === 'playlist') {
+  if (mode === 'rank' || mode === 'playlist' || mode === 'new_album') {
     trackSource.value = 'idle'
     selectedRank.value = null
     selectedPlaylist.value = null
@@ -1592,6 +1751,16 @@ async function setMusicMode(mode: MusicMode) {
     await loadPlaylists(false)
   } else if (mode === 'playlist' && playlistTags.value.length === 0) {
     await loadPlaylistTags()
+  } else if (mode === 'new_album') {
+    await loadNewAlbums()
+  } else if (mode === 'ai_recommend') {
+    await loadAiRecommend()
+  } else if (mode === 'everyday') {
+    await loadEverydayRecommend()
+  } else if (mode === 'style') {
+    await loadStyleRecommend()
+  } else if (mode === 'brush') {
+    await loadBrushFeed()
   } else if (mode === 'profile') {
     await loadKugouProfile()
   }
@@ -1848,6 +2017,159 @@ async function loadNewSongs(page: number, append: boolean) {
   const items = data?.items || []
   tracks.value = append ? [...tracks.value, ...items] : items
   total.value = data?.total || tracks.value.length
+  void loadFavoriteCounts(tracks.value)
+}
+
+async function loadNewAlbums() {
+  newAlbumsLoading.value = true
+  newAlbumsPage.value = 1
+  error.value = ''
+  const { data, error: requestError } = await getMusicNewAlbums({
+    page: 1,
+    page_size: 30,
+  })
+  newAlbumsLoading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load new albums', requestError)
+    return
+  }
+  newAlbums.value = data?.items || []
+  newAlbumsHasMore.value = newAlbums.value.length < (data?.total || 0)
+}
+
+async function loadMoreNewAlbums() {
+  if (newAlbumsLoading.value || !newAlbumsHasMore.value) return
+  newAlbumsLoading.value = true
+  newAlbumsPage.value++
+  const { data, error: requestError } = await getMusicNewAlbums({
+    page: newAlbumsPage.value,
+    page_size: 30,
+  })
+  newAlbumsLoading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load more new albums', requestError)
+    return
+  }
+  const items = data?.items || []
+  newAlbums.value = [...newAlbums.value, ...items]
+  newAlbumsHasMore.value = newAlbums.value.length < (data?.total || 0)
+}
+
+async function loadAiRecommend() {
+  loading.value = true
+  searched.value = true
+  error.value = ''
+  selectedSourceTitle.value = 'AI 推荐'
+  trackSource.value = 'search'
+  selectedRank.value = null
+  selectedPlaylist.value = null
+  selectedUserPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  selectedRelatedTrack.value = null
+  artistAlbums.value = []
+  similarPlaylists.value = []
+  searchArtists.value = []
+  searchAlbums.value = []
+  const { data, error: requestError } = await getMusicAiRecommend({ page_size: pageSize })
+  loading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load AI recommend', requestError)
+    return
+  }
+  const items = data?.items || []
+  tracks.value = items
+  total.value = items.length
+  void loadFavoriteCounts(tracks.value)
+}
+
+async function loadEverydayRecommend() {
+  loading.value = true
+  searched.value = true
+  error.value = ''
+  selectedSourceTitle.value = '每日推荐'
+  trackSource.value = 'search'
+  selectedRank.value = null
+  selectedPlaylist.value = null
+  selectedUserPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  selectedRelatedTrack.value = null
+  artistAlbums.value = []
+  similarPlaylists.value = []
+  searchArtists.value = []
+  searchAlbums.value = []
+  const { data, error: requestError } = await getMusicEverydayRecommend()
+  loading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load everyday recommend', requestError)
+    return
+  }
+  const items = data?.items || []
+  tracks.value = items
+  total.value = items.length
+  void loadFavoriteCounts(tracks.value)
+}
+
+async function loadStyleRecommend() {
+  loading.value = true
+  searched.value = true
+  error.value = ''
+  selectedSourceTitle.value = '风格推荐'
+  trackSource.value = 'search'
+  selectedRank.value = null
+  selectedPlaylist.value = null
+  selectedUserPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  selectedRelatedTrack.value = null
+  artistAlbums.value = []
+  similarPlaylists.value = []
+  searchArtists.value = []
+  searchAlbums.value = []
+  const { data, error: requestError } = await getMusicStyleRecommend()
+  loading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load style recommend', requestError)
+    return
+  }
+  const items = data?.items || []
+  tracks.value = items
+  total.value = items.length
+  void loadFavoriteCounts(tracks.value)
+}
+
+async function loadBrushFeed() {
+  loading.value = true
+  searched.value = true
+  error.value = ''
+  selectedSourceTitle.value = '刷一刷'
+  trackSource.value = 'search'
+  selectedRank.value = null
+  selectedPlaylist.value = null
+  selectedUserPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  selectedRelatedTrack.value = null
+  artistAlbums.value = []
+  similarPlaylists.value = []
+  searchArtists.value = []
+  searchAlbums.value = []
+  const { data, error: requestError } = await getMusicBrushFeed({ page_size: pageSize })
+  loading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load brush feed', requestError)
+    return
+  }
+  const items = data?.items || []
+  tracks.value = items
+  total.value = items.length
   void loadFavoriteCounts(tracks.value)
 }
 
@@ -2115,6 +2437,7 @@ async function selectArtist(track: MusicTrack) {
     return
   }
   selectedArtist.value = data
+  artistFollowed.value = followedArtistIds.value.has(data.id)
   selectedAlbum.value = null
   selectedRank.value = null
   selectedPlaylist.value = null
@@ -2192,6 +2515,60 @@ async function loadArtistAlbums(artistId: string) {
     return
   }
   artistAlbums.value = data?.items || []
+}
+
+async function toggleArtistFollow() {
+  if (!selectedArtist.value || artistFollowing.value) return
+  const artistId = selectedArtist.value.id
+  artistFollowing.value = true
+  try {
+    if (artistFollowed.value) {
+      const { error: err } = await unfollowMusicArtist(artistId)
+      if (err) {
+        error.value = '取消关注失败'
+        Logger.error('Failed to unfollow artist', err)
+        return
+      }
+      artistFollowed.value = false
+      followedArtistIds.value.delete(artistId)
+    } else {
+      const { error: err } = await followMusicArtist(artistId)
+      if (err) {
+        error.value = '关注失败'
+        Logger.error('Failed to follow artist', err)
+        return
+      }
+      artistFollowed.value = true
+      followedArtistIds.value.add(artistId)
+    }
+  } finally {
+    artistFollowing.value = false
+  }
+}
+
+async function playMv(track: MusicTrack) {
+  if (!track.album_audio_id || videoLoading.value) return
+  videoLoading.value = true
+  videoTitle.value = `${track.title} - ${track.artist}`
+  try {
+    const { data, error: err } = await getMusicVideoUrl(track.album_audio_id)
+    if (err || !data?.url) {
+      error.value = 'MV 播放地址获取失败'
+      Logger.error('Failed to load MV url', err)
+      videoLoading.value = false
+      return
+    }
+    videoUrl.value = data.url
+    showVideoModal.value = true
+  } finally {
+    videoLoading.value = false
+  }
+}
+
+function closeVideoModal() {
+  showVideoModal.value = false
+  videoUrl.value = ''
+  videoTitle.value = ''
 }
 
 async function selectAlbum(track: MusicTrack) {
@@ -4781,5 +5158,117 @@ const formatCompactCount = (count: number) => {
     justify-content: space-between;
     width: 100%;
   }
+}
+
+/* Video/MV Modal */
+.music-video-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--background) / 0.85);
+  backdrop-filter: blur(12px);
+  padding: 1.5rem;
+}
+
+.music-video-container {
+  width: 100%;
+  max-width: 56rem;
+  background: hsl(var(--bg-secondary));
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px hsl(var(--foreground) / 0.25);
+  display: flex;
+  flex-direction: column;
+}
+
+.music-video-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.3);
+}
+
+.music-video-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  flex: 1;
+  min-width: 0;
+}
+
+.music-video-player {
+  aspect-ratio: 16 / 9;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.music-video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.music-video-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  color: hsl(var(--foreground) / 0.5);
+  font-size: 0.875rem;
+}
+
+/* Discovery enhancements: new albums grid */
+.music-new-albums-section {
+  margin-top: 1.5rem;
+}
+
+.music-discover-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.music-discover-entry-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: background 0.15s;
+}
+
+.music-discover-entry-card:hover {
+  background: hsl(var(--foreground) / 0.04);
+}
+
+.music-discover-entry-card img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 0.375rem;
+}
+
+.music-discover-entry-card span {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: hsl(var(--foreground) / 0.85);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.music-discover-entry-card small {
+  font-size: 0.625rem;
+  color: hsl(var(--foreground) / 0.45);
 }
 </style>

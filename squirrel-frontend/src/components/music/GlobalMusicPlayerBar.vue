@@ -238,9 +238,25 @@
             </div>
           </div>
 
-          <!-- Right Column: Scrollable Immersive Lyrics -->
+          <!-- Right Column: Scrollable Immersive Lyrics / Comments -->
           <div class="immersive-right">
-            <div class="immersive-lyrics-box" ref="lyricsContainer">
+            <div class="immersive-tabs">
+              <button
+                class="immersive-tab"
+                :class="{ 'immersive-tab--active': immersiveTab === 'lyrics' }"
+                @click="immersiveTab = 'lyrics'"
+              >歌词</button>
+              <button
+                class="immersive-tab"
+                :class="{ 'immersive-tab--active': immersiveTab === 'comments' }"
+                @click="switchToComments"
+              >
+                评论
+                <span v-if="commentCount > 0" class="immersive-tab-badge">{{ commentCount > 999 ? '999+' : commentCount }}</span>
+              </button>
+            </div>
+
+            <div v-if="immersiveTab === 'lyrics'" class="immersive-lyrics-box" ref="lyricsContainer">
               <div v-if="store.lyricLoading" class="immersive-lyric-state">
                 <AppIcon name="loadingSpinner" class="h-6 w-6 animate-spin" />
                 <span>歌词加载中...</span>
@@ -263,6 +279,50 @@
                 </p>
               </div>
             </div>
+
+            <div v-else class="immersive-comments-box">
+              <div v-if="commentsLoading" class="immersive-lyric-state">
+                <AppIcon name="loadingSpinner" class="h-6 w-6 animate-spin" />
+                <span>评论加载中...</span>
+              </div>
+              <div v-else-if="commentsError" class="immersive-lyric-state text-destructive">
+                <span>{{ commentsError }}</span>
+              </div>
+              <div v-else-if="comments.length === 0" class="immersive-lyric-state">
+                <AppIcon name="messageCircle" class="h-6 w-6 text-muted-foreground/40" />
+                <span>暂无评论</span>
+              </div>
+              <div v-else class="immersive-comments-scrollable">
+                <div v-for="comment in comments" :key="comment.id" class="immersive-comment">
+                  <div class="immersive-comment-avatar">
+                    <img v-if="comment.user_avatar" :src="comment.user_avatar" alt="" />
+                    <AppIcon v-else name="user" class="h-4 w-4 text-muted-foreground/50" />
+                  </div>
+                  <div class="immersive-comment-body">
+                    <div class="immersive-comment-header">
+                      <span class="immersive-comment-user">{{ comment.user_name || '匿名用户' }}</span>
+                      <span v-if="comment.created_at" class="immersive-comment-time">{{ comment.created_at }}</span>
+                    </div>
+                    <p class="immersive-comment-text">{{ comment.content }}</p>
+                    <div class="immersive-comment-actions">
+                      <span class="immersive-comment-stat">
+                        <AppIcon name="heart" class="h-3 w-3" />
+                        {{ comment.like_count || 0 }}
+                      </span>
+                      <span v-if="comment.reply_count" class="immersive-comment-stat">
+                        <AppIcon name="messageCircle" class="h-3 w-3" />
+                        {{ comment.reply_count }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="commentsHasMore" class="immersive-comments-more">
+                  <button class="music-chip" :disabled="commentsLoading" @click="loadMoreComments">
+                    加载更多评论
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </main>
       </div>
@@ -276,11 +336,91 @@ import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { useMusicPlayerStore } from '@/stores/musicPlayer'
 import { Logger } from '@/utils/logger'
+import { getMusicSongComments, getMusicCommentCounts, type MusicComment } from '@/api/music'
 
 const store = useMusicPlayerStore()
 const router = useRouter()
 
 const audioEl = ref<HTMLAudioElement | null>(null)
+
+// --- Immersive player comments ---
+const immersiveTab = ref<'lyrics' | 'comments'>('lyrics')
+const comments = ref<MusicComment[]>([])
+const commentsLoading = ref(false)
+const commentsError = ref('')
+const commentsPage = ref(1)
+const commentsTotal = ref(0)
+const commentCount = ref(0)
+const commentsHasMore = computed(() => comments.value.length < commentsTotal.value)
+
+let lastCommentTrackId = ''
+
+async function loadComments(trackAlbumAudioId: string, reset = true) {
+  if (reset) {
+    comments.value = []
+    commentsPage.value = 1
+    commentsTotal.value = 0
+  }
+  commentsLoading.value = true
+  commentsError.value = ''
+  const { data, error: err } = await getMusicSongComments({
+    mixsongid: trackAlbumAudioId,
+    page: commentsPage.value,
+    page_size: 20,
+  })
+  commentsLoading.value = false
+  if (err) {
+    commentsError.value = err.message || '加载评论失败'
+    Logger.error('Failed to load song comments', err)
+    return
+  }
+  const items = data?.items || []
+  comments.value = reset ? items : [...comments.value, ...items]
+  commentsTotal.value = data?.total || comments.value.length
+}
+
+function switchToComments() {
+  immersiveTab.value = 'comments'
+  const track = store.currentTrack
+  if (!track?.album_audio_id || track.album_audio_id === lastCommentTrackId) return
+  lastCommentTrackId = track.album_audio_id
+  void loadComments(track.album_audio_id, true)
+}
+
+async function loadMoreComments() {
+  if (commentsLoading.value || !commentsHasMore.value) return
+  commentsPage.value++
+  const track = store.currentTrack
+  if (!track?.album_audio_id) return
+  await loadComments(track.album_audio_id, false)
+}
+
+watch(() => store.currentTrack?.album_audio_id, async (newId) => {
+  if (newId && newId !== lastCommentTrackId) {
+    comments.value = []
+    lastCommentTrackId = ''
+    if (immersiveTab.value === 'comments') {
+      lastCommentTrackId = newId
+      void loadComments(newId, true)
+    }
+    const track = store.currentTrack
+    if (track?.hash) {
+      commentCount.value = 0
+      const { data } = await getMusicCommentCounts(track.hash)
+      if (data) commentCount.value = data.count
+    }
+  }
+})
+
+watch(commentCount, () => {})
+
+void (async () => {
+  const track = store.currentTrack
+  if (track?.hash) {
+    const { data } = await getMusicCommentCounts(track.hash)
+    if (data) commentCount.value = data.count
+  }
+})()
 
 const canStep = computed(() => store.queue.length > 1)
 
@@ -967,13 +1107,56 @@ onUnmounted(() => {
 .immersive-right {
   height: 100%;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   min-width: 0;
+}
+
+.immersive-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0 1rem;
+  margin-bottom: 0.5rem;
+  flex-shrink: 0;
+}
+
+.immersive-tab {
+  padding: 0.375rem 0.875rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: hsl(var(--foreground) / 0.5);
+  background: transparent;
+  border: 1px solid hsl(var(--border) / 0.3);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.immersive-tab:hover {
+  color: hsl(var(--foreground) / 0.8);
+  background: hsl(var(--foreground) / 0.05);
+}
+
+.immersive-tab--active {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.immersive-tab-badge {
+  font-size: 0.625rem;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 9999px;
+  background: hsl(var(--primary) / 0.15);
+  color: hsl(var(--primary));
+  font-weight: 600;
 }
 
 .immersive-lyrics-box {
   width: 100%;
-  height: min(34rem, 75vh);
+  flex: 1;
   overflow-y: auto;
   mask-image: linear-gradient(
     to bottom,
@@ -999,6 +1182,117 @@ onUnmounted(() => {
 
 .immersive-lyrics-box {
   scrollbar-width: none;
+}
+
+.immersive-comments-box {
+  width: 100%;
+  flex: 1;
+  overflow-y: auto;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
+  padding: 1rem;
+}
+
+.immersive-comments-box::-webkit-scrollbar {
+  display: none;
+}
+
+.immersive-comments-box {
+  scrollbar-width: none;
+}
+
+.immersive-comments-scrollable {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-bottom: 2rem;
+}
+
+.immersive-comment {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+}
+
+.immersive-comment-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  background: hsl(var(--muted));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.immersive-comment-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.immersive-comment-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.immersive-comment-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.immersive-comment-user {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: hsl(var(--foreground) / 0.85);
+}
+
+.immersive-comment-time {
+  font-size: 0.625rem;
+  color: hsl(var(--foreground) / 0.35);
+}
+
+.immersive-comment-text {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: hsl(var(--foreground) / 0.7);
+  word-break: break-word;
+}
+
+.immersive-comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.375rem;
+}
+
+.immersive-comment-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.625rem;
+  color: hsl(var(--foreground) / 0.4);
+}
+
+.immersive-comments-more {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.5rem;
 }
 
 .immersive-lyric-state {
@@ -1074,10 +1368,15 @@ onUnmounted(() => {
   .immersive-right {
     height: auto;
   }
-  
+
   .immersive-lyrics-box {
-    height: 18rem;
+    max-height: 18rem;
     padding: 2rem 0.5rem;
+  }
+
+  .immersive-comments-box {
+    max-height: 18rem;
+    padding: 0.5rem;
   }
   
   .immersive-lyric-line {

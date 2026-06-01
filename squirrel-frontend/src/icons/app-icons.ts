@@ -107,6 +107,7 @@ import {
   Zap,
   CaptionsOff,
   BadgeCheck,
+  MessageCircle,
 } from 'lucide-vue-next'
 
 export const APP_ICON_MAP = {
@@ -154,6 +155,7 @@ export const APP_ICON_MAP = {
   layoutGrid: LayoutGrid,
   library: Library,
   list: List,
+  messageCircle: MessageCircle,
   loading: LoaderCircle,
   loadingSpinner: Loader2,
   link: Link,
