@@ -44,6 +44,29 @@ export type MusicAlbumResult = {
   total: number
 }
 
+export type MusicHotSearch = {
+  keyword: string
+  score: number
+  jump_url: string
+}
+
+export type MusicHotSearchResult = {
+  items: MusicHotSearch[]
+}
+
+export type MusicSearchDefaultResult = {
+  keyword: string
+}
+
+export type MusicSearchSuggestion = {
+  keyword: string
+  type: string
+}
+
+export type MusicSearchSuggestionResult = {
+  items: MusicSearchSuggestion[]
+}
+
 export type MusicArtistResult = {
   items: MusicArtist[]
   page: number
@@ -56,6 +79,15 @@ export type MusicSearchResult = {
   page: number
   page_size: number
   total: number
+}
+
+export type MusicRecommendCardResult = MusicSearchResult & {
+  card_id: number
+  title: string
+}
+
+export type MusicDailyRecommendResult = MusicSearchResult & {
+  cover: string
 }
 
 export type MusicRank = {
@@ -94,6 +126,16 @@ export type MusicPlaylistResult = {
   has_more: boolean
 }
 
+export type MusicPlaylistTag = {
+  id: string
+  name: string
+  parent_name: string
+}
+
+export type MusicPlaylistTagResult = {
+  items: MusicPlaylistTag[]
+}
+
 export type MusicUserPlaylist = {
   id: string
   name: string
@@ -111,14 +153,12 @@ export type MusicUserPlaylistResult = {
   page: number
   page_size: number
   total: number
-  raw?: Record<string, unknown>
 }
 
 export type MusicPlayUrl = {
   url: string
   quality: string
   expires_at?: string | null
-  raw?: Record<string, unknown>
 }
 
 export type MusicLyricLine = {
@@ -128,7 +168,6 @@ export type MusicLyricLine = {
 
 export type MusicLyricResult = {
   lines: MusicLyricLine[]
-  raw: string
 }
 
 export type MusicAuthStatus = {
@@ -147,7 +186,6 @@ export type MusicQrLoginStatus = {
   status: number
   logged_in: boolean
   auth: MusicAuthStatus
-  raw: Record<string, unknown>
 }
 
 export type MusicFavoriteCount = {
@@ -158,12 +196,32 @@ export type MusicFavoriteCount = {
 
 export type MusicFavoriteCountResult = {
   items: MusicFavoriteCount[]
-  raw?: Record<string, unknown>
+}
+
+export type MusicTrackClimax = {
+  hash: string
+  start: number
+  duration: number
+}
+
+export type MusicTrackClimaxResult = {
+  items: MusicTrackClimax[]
+}
+
+export type MusicTrackMv = {
+  id: string
+  name: string
+  hash: string
+  cover: string
+  duration: number
+}
+
+export type MusicTrackMvResult = {
+  items: MusicTrackMv[]
 }
 
 export type MusicActionResult = {
   ok: boolean
-  raw?: Record<string, unknown>
 }
 
 export const searchMusic = (params: {
@@ -190,6 +248,18 @@ export const searchMusicAlbums = (params: {
   return get<MusicAlbumResult>('/api/music/search/albums', params)
 }
 
+export const getMusicDefaultSearch = () => {
+  return get<MusicSearchDefaultResult>('/api/music/search/default')
+}
+
+export const getMusicHotSearch = () => {
+  return get<MusicHotSearchResult>('/api/music/search/hot')
+}
+
+export const getMusicSearchSuggestions = (query: string) => {
+  return get<MusicSearchSuggestionResult>('/api/music/search/suggest', { query })
+}
+
 export const getMusicRanks = () => {
   return get<MusicRankResult>('/api/music/ranks')
 }
@@ -207,6 +277,19 @@ export type FmParams = {
 
 export const getMusicRecommendations = (params?: FmParams) => {
   return get<MusicSearchResult>('/api/music/recommend', params)
+}
+
+export const getMusicRecommendCard = (params?: {
+  card_id?: number
+  page_size?: number
+}) => {
+  return get<MusicRecommendCardResult>('/api/music/recommend/card', params)
+}
+
+export const getMusicDailyRecommend = (params?: {
+  page_size?: number
+}) => {
+  return get<MusicDailyRecommendResult>('/api/music/recommend/daily', params)
 }
 
 export const reportFmGarbage = (params: {
@@ -234,6 +317,14 @@ export const getMusicPlaylists = (params: {
   page_size?: number
 }) => {
   return get<MusicPlaylistResult>('/api/music/playlists', params)
+}
+
+export const getMusicPlaylistTags = () => {
+  return get<MusicPlaylistTagResult>('/api/music/playlist/tags')
+}
+
+export const getMusicSimilarPlaylists = (playlist_id: string) => {
+  return get<MusicPlaylistResult>('/api/music/playlist/similar', { playlist_id })
 }
 
 export const getMusicPlaylistTracks = (params: {
@@ -291,6 +382,14 @@ export const getMusicAlbumTracks = (params: {
   return get<MusicSearchResult>('/api/music/album/tracks', params)
 }
 
+export const getMusicNewSongs = (params?: {
+  type?: number
+  page?: number
+  page_size?: number
+}) => {
+  return get<MusicSearchResult>('/api/music/songs/new', params)
+}
+
 export const createMusicUserPlaylist = (data: {
   name: string
   is_private?: boolean
@@ -323,19 +422,19 @@ export const removeMusicUserPlaylistTracks = (params: {
 export const getMusicUserHistory = (params?: {
   bp?: string
 }) => {
-  return get<MusicSearchResult & { bp?: string; raw?: Record<string, unknown> }>('/api/music/user/history', params)
+  return get<MusicSearchResult & { bp?: string }>('/api/music/user/history', params)
 }
 
 export const getMusicUserListenRank = (params?: {
   type?: 0 | 1
 }) => {
-  return get<MusicSearchResult & { raw?: Record<string, unknown> }>('/api/music/user/listen-rank', params)
+  return get<MusicSearchResult>('/api/music/user/listen-rank', params)
 }
 
 export const getMusicLatestListenSongs = (params?: {
   page_size?: number
 }) => {
-  return get<MusicSearchResult & { raw?: Record<string, unknown> }>('/api/music/latest-songs/listen', params)
+  return get<MusicSearchResult>('/api/music/latest-songs/listen', params)
 }
 
 export const uploadMusicPlayHistory = (data: {
@@ -356,6 +455,24 @@ export const getMusicPlayUrl = (params: {
   quality?: string
 }) => {
   return get<MusicPlayUrl>('/api/music/play-url', params)
+}
+
+export const getMusicTrackClimax = (hash: string) => {
+  return get<MusicTrackClimaxResult>('/api/music/song/climax', { hash })
+}
+
+export const getMusicRelatedTracks = (params: {
+  album_audio_id: string
+  page?: number
+  page_size?: number
+  sort?: 'all' | 'hot' | 'new'
+  type?: string
+}) => {
+  return get<MusicSearchResult>('/api/music/song/related', params)
+}
+
+export const getMusicTrackMv = (album_audio_id: string) => {
+  return get<MusicTrackMvResult>('/api/music/song/mv', { album_audio_id })
 }
 
 export const getMusicLyric = (params: {

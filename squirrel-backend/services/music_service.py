@@ -1,6 +1,7 @@
 from typing import Any
 from urllib.parse import urljoin
 
+import anyio
 import httpx
 
 from core.cache import redis_client
@@ -88,6 +89,42 @@ async def search_albums(user_id: int, query: str, page: int, page_size: int) -> 
     }
 
 
+async def get_default_search_keyword(user_id: int) -> dict[str, Any]:
+    payload = await _request_kugou('/search/default', {}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    keyword = ''
+    if isinstance(data, dict):
+        keyword = str(data.get('keyword') or data.get('show_keyword') or data.get('word') or '')
+    return {
+        'keyword': keyword,
+    }
+
+
+async def list_hot_searches(user_id: int) -> dict[str, Any]:
+    payload = await _request_kugou('/search/hot', {}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('info', 'list', 'lists', 'items', 'data'))
+
+    return {
+        'items': [_normalize_hot_search(row) for row in rows],
+    }
+
+
+async def search_suggestions(user_id: int, query: str) -> dict[str, Any]:
+    payload = await _request_kugou('/search/suggest', {
+        'keywords': query,
+        'albumTipCount': 6,
+        'correctTipCount': 6,
+        'mvTipCount': 6,
+        'musicTipCount': 10,
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+
+    return {
+        'items': _normalize_suggestion_items(data),
+    }
+
+
 async def get_personal_fm_tracks(
     user_id: int,
     mode: str = 'normal',
@@ -126,6 +163,51 @@ async def get_personal_fm_tracks(
         'page': 1,
         'page_size': len(rows),
         'total': len(rows),
+    }
+
+
+async def get_recommend_card_tracks(user_id: int, card_id: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/top/card', {'card_id': card_id}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('song_list', 'songs', 'songlist', 'info', 'list', 'data'))
+    if page_size > 0:
+        rows = rows[:page_size]
+    if isinstance(data, dict):
+        title = str(data.get('rec_desc') or data.get('title') or '')
+        total = data.get('song_list_size') or data.get('total') or len(rows)
+    else:
+        title = ''
+        total = len(rows)
+
+    return {
+        'items': [_normalize_track(row) for row in rows],
+        'page': 1,
+        'page_size': page_size,
+        'total': total,
+        'card_id': card_id,
+        'title': title.strip('「」'),
+    }
+
+
+async def get_daily_recommend_tracks(user_id: int, page_size: int) -> dict[str, Any]:
+    payload = await _request_kugou('/recommend/songs', {}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('song_list', 'songs', 'songlist', 'info', 'list', 'data'))
+    if page_size > 0:
+        rows = rows[:page_size]
+    if isinstance(data, dict):
+        total = data.get('song_list_size') or data.get('total') or len(rows)
+        cover = _format_image_url(str(data.get('cover_img_url') or data.get('cover') or ''))
+    else:
+        total = len(rows)
+        cover = ''
+
+    return {
+        'items': [_normalize_track(row) for row in rows],
+        'page': 1,
+        'page_size': page_size,
+        'total': total,
+        'cover': cover,
     }
 
 
@@ -185,6 +267,24 @@ async def list_playlists(user_id: int, category_id: int, page: int, page_size: i
     }
 
 
+async def list_playlist_tags(user_id: int) -> dict[str, Any]:
+    payload = await _request_kugou('/playlist/tags', {}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('info', 'list', 'tags', 'data'))
+    return {
+        'items': _normalize_playlist_tags(rows),
+    }
+
+
+async def get_similar_playlists(user_id: int, playlist_id: str) -> dict[str, Any]:
+    payload = await _request_kugou('/playlist/similar', {'ids': playlist_id}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('info', 'list', 'lists', 'special_list', 'data'))
+    return {
+        'items': [_normalize_playlist(row) for row in rows],
+    }
+
+
 async def get_playlist_tracks(user_id: int, playlist_id: str, page: int, page_size: int) -> dict[str, Any]:
     payload = await _request_kugou('/playlist/track/all', {
         'id': playlist_id,
@@ -221,7 +321,6 @@ async def list_user_playlists(user_id: int, page: int, page_size: int) -> dict[s
         'page': page,
         'page_size': page_size,
         'total': total,
-        'raw': payload,
     }
 
 
@@ -243,7 +342,6 @@ async def get_user_playlist_tracks(user_id: int, list_id: str, page: int, page_s
         'page': page,
         'page_size': page_size,
         'total': total,
-        'raw': payload,
     }
 
 
@@ -306,13 +404,36 @@ async def get_album_tracks(user_id: int, album_id: str, page: int, page_size: in
     }
 
 
+async def list_new_songs(user_id: int, category_type: int | None, page: int, page_size: int) -> dict[str, Any]:
+    params: dict[str, Any] = {
+        'page': page,
+        'pagesize': page_size,
+    }
+    if category_type is not None:
+        params['type'] = category_type
+    payload = await _request_kugou('/top/song', params, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('songs', 'songlist', 'info', 'list', 'data'))
+    if isinstance(data, dict):
+        total = data.get('total') or data.get('count') or len(rows)
+    else:
+        total = len(rows)
+
+    return {
+        'items': [_normalize_track(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': total,
+    }
+
+
 async def create_user_playlist(user_id: int, name: str, is_private: bool) -> dict[str, Any]:
-    payload = await _request_kugou('/playlist/add', {
+    await _request_kugou('/playlist/add', {
         'name': name,
         'type': 0,
         'is_pri': 1 if is_private else 0,
     }, user_id=user_id)
-    return {'ok': True, 'raw': payload}
+    return {'ok': True}
 
 
 async def collect_playlist(user_id: int, playlist_id: str) -> dict[str, Any]:
@@ -325,7 +446,7 @@ async def collect_playlist(user_id: int, playlist_id: str) -> dict[str, Any]:
     if not list_create_userid or not list_create_listid or not name:
         raise MusicServiceError('KuGouMusicApi playlist detail missed collect fields')
 
-    payload = await _request_kugou('/playlist/add', {
+    await _request_kugou('/playlist/add', {
         'name': name,
         'type': 1,
         'source': detail.get('source') or 1,
@@ -333,28 +454,28 @@ async def collect_playlist(user_id: int, playlist_id: str) -> dict[str, Any]:
         'list_create_listid': list_create_listid,
         'list_create_gid': detail.get('list_create_gid') or playlist_id,
     }, user_id=user_id)
-    return {'ok': True, 'raw': payload}
+    return {'ok': True}
 
 
 async def delete_user_playlist(user_id: int, list_id: str) -> dict[str, Any]:
-    payload = await _request_kugou('/playlist/del', {'listid': list_id}, user_id=user_id)
-    return {'ok': True, 'raw': payload}
+    await _request_kugou('/playlist/del', {'listid': list_id}, user_id=user_id)
+    return {'ok': True}
 
 
 async def add_track_to_user_playlist(user_id: int, list_id: str, track: MusicTrackPayload) -> dict[str, Any]:
-    payload = await _request_kugou('/playlist/tracks/add', {
+    await _request_kugou('/playlist/tracks/add', {
         'listid': list_id,
         'data': _playlist_track_data(track),
     }, user_id=user_id)
-    return {'ok': True, 'raw': payload}
+    return {'ok': True}
 
 
 async def remove_tracks_from_user_playlist(user_id: int, list_id: str, file_ids: str) -> dict[str, Any]:
-    payload = await _request_kugou('/playlist/tracks/del', {
+    await _request_kugou('/playlist/tracks/del', {
         'listid': list_id,
         'fileids': file_ids,
     }, user_id=user_id)
-    return {'ok': True, 'raw': payload}
+    return {'ok': True}
 
 
 async def get_user_history(user_id: int, bp: str | None) -> dict[str, Any]:
@@ -372,7 +493,6 @@ async def get_user_history(user_id: int, bp: str | None) -> dict[str, Any]:
     return {
         'items': [_normalize_track(row) for row in rows],
         'bp': bp,
-        'raw': payload,
     }
 
 
@@ -383,7 +503,6 @@ async def get_user_listen_rank(user_id: int, history_type: int) -> dict[str, Any
 
     return {
         'items': [_normalize_track(row) for row in rows],
-        'raw': payload,
     }
 
 
@@ -394,7 +513,6 @@ async def get_latest_listen_songs(user_id: int, page_size: int) -> dict[str, Any
 
     return {
         'items': [_normalize_track(row) for row in rows],
-        'raw': payload,
     }
 
 
@@ -405,8 +523,8 @@ async def upload_play_history(user_id: int, album_audio_id: str, played_at: int 
     }
     if played_at:
         params['time'] = played_at
-    payload = await _request_kugou('/playhistory/upload', params, user_id=user_id)
-    return {'ok': True, 'raw': payload}
+    await _request_kugou('/playhistory/upload', params, user_id=user_id)
+    return {'ok': True}
 
 
 async def get_favorite_counts(user_id: int, mixsongids: str) -> dict[str, Any]:
@@ -423,7 +541,66 @@ async def get_favorite_counts(user_id: int, mixsongids: str) -> dict[str, Any]:
             for row in rows
             if isinstance(row, dict)
         ],
-        'raw': payload,
+    }
+
+
+async def get_track_climax(user_id: int, hashes: str) -> dict[str, Any]:
+    payload = await _request_kugou('/song/climax', {'hash': hashes}, user_id=user_id, use_auth=False)
+    data = payload.get('data') if isinstance(payload.get('data'), list) else []
+    return {
+        'items': [
+            {
+                'hash': str(row.get('hash') or ''),
+                'start': int(row.get('start') or row.get('start_time') or 0),
+                'duration': int(row.get('duration') or row.get('time') or 0),
+            }
+            for row in data
+            if isinstance(row, dict)
+        ],
+    }
+
+
+async def get_related_tracks(
+    user_id: int,
+    album_audio_id: str,
+    page: int,
+    page_size: int,
+    sort: str,
+    type_id: str | None,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {
+        'album_audio_id': album_audio_id,
+        'page': page,
+        'pagesize': page_size,
+        'sort': sort,
+    }
+    if type_id:
+        params['type'] = type_id
+    payload = await _request_kugou('/audio/related', params, user_id=user_id, use_auth=False)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('info', 'list', 'lists', 'songs', 'data'))
+    if isinstance(data, dict):
+        total = data.get('total') or data.get('count') or len(rows)
+    else:
+        total = len(rows)
+
+    return {
+        'items': [_normalize_track(row) for row in rows],
+        'page': page,
+        'page_size': page_size,
+        'total': total,
+    }
+
+
+async def get_track_mv(user_id: int, album_audio_id: str) -> dict[str, Any]:
+    payload = await _request_kugou('/kmr/audio/mv', {
+        'album_audio_id': album_audio_id,
+        'fields': 'mkv,tags,h264,h265,authors',
+    }, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    rows = _first_list(data, ('info', 'list', 'lists', 'mvs', 'data'))
+    return {
+        'items': [_normalize_mv(row) for row in rows],
     }
 
 
@@ -450,7 +627,6 @@ async def get_track_play_url(user_id: int, hash_value: str, album_audio_id: str 
         'url': url or '',
         'quality': str(payload.get('bitRate') or payload.get('quality') or quality),
         'expires_at': payload.get('expire'),
-        'raw': payload,
     }
 
 
@@ -472,16 +648,16 @@ async def get_track_lyric(
     }, user_id=user_id)
     candidates = lyric_search.get('candidates')
     if not isinstance(candidates, list) or not candidates:
-        return {'lines': [], 'raw': ''}
+        return {'lines': []}
 
     lyric_candidate = candidates[0]
     if not isinstance(lyric_candidate, dict):
-        return {'lines': [], 'raw': ''}
+        return {'lines': []}
 
     lyric_id = str(lyric_candidate.get('id') or '')
     access_key = str(lyric_candidate.get('accesskey') or '')
     if not lyric_id or not access_key:
-        return {'lines': [], 'raw': ''}
+        return {'lines': []}
 
     lyric_payload = await _request_kugou('/lyric', {
         'id': lyric_id,
@@ -493,21 +669,21 @@ async def get_track_lyric(
 
     return {
         'lines': _parse_lrc(content),
-        'raw': content,
     }
 
 
-def get_auth_status(user_id: int) -> dict[str, Any]:
-    cookie = _effective_cookie(user_id)
+async def get_auth_status(user_id: int) -> dict[str, Any]:
+    user_cookie = await _get_user_cookie(user_id)
+    cookie = user_cookie or settings.KUGOU_MUSIC_COOKIE
     return {
         'logged_in': bool(_cookie_value(cookie, 'token') and _cookie_value(cookie, 'userid')),
-        'source': 'redis' if _get_user_cookie(user_id) else ('env' if settings.KUGOU_MUSIC_COOKIE else ''),
+        'source': 'redis' if user_cookie else ('env' if settings.KUGOU_MUSIC_COOKIE else ''),
         'userid': _cookie_value(cookie, 'userid'),
     }
 
 
-def clear_auth(user_id: int) -> None:
-    redis_client.delete(_auth_redis_key(user_id))
+async def clear_auth(user_id: int) -> None:
+    await anyio.to_thread.run_sync(redis_client.delete, _auth_redis_key(user_id))
 
 
 async def get_user_profile(user_id: int) -> dict[str, Any]:
@@ -523,12 +699,11 @@ async def get_user_profile(user_id: int) -> dict[str, Any]:
         'follow_count': int(data.get('follows') or 0),
         'fan_count': int(data.get('fans') or 0),
         'listen_count': int(data.get('duration') or 0),
-        'raw': payload,
     }
 
 
 async def logout(user_id: int) -> dict[str, Any]:
-    redis_client.delete(_auth_redis_key(user_id))
+    await clear_auth(user_id)
     return {'ok': True}
 
 
@@ -558,8 +733,7 @@ async def check_qr_login(user_id: int, key: str) -> dict[str, Any]:
     return {
         'status': status,
         'logged_in': status == 4,
-        'auth': get_auth_status(user_id),
-        'raw': data,
+        'auth': await get_auth_status(user_id),
     }
 
 
@@ -574,9 +748,10 @@ async def _request_kugou(
         raise MusicServiceError('KUGOU_MUSIC_API_BASE_URL is not configured')
 
     headers = {}
-    cookie = _effective_cookie(user_id)
-    if use_auth and cookie:
-        headers['Authorization'] = cookie
+    if use_auth:
+        cookie = await _effective_cookie(user_id)
+        if cookie:
+            headers['Authorization'] = cookie
 
     try:
         async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
@@ -585,6 +760,11 @@ async def _request_kugou(
                 params=params,
                 headers=headers,
             )
+    except httpx.HTTPError as exc:
+        raise MusicServiceError(f'KuGouMusicApi request failed: {exc}') from exc
+
+    try:
+        result.raise_for_status()
     except httpx.HTTPError as exc:
         raise MusicServiceError(f'KuGouMusicApi request failed: {exc}') from exc
 
@@ -615,11 +795,6 @@ async def _request_kugou(
         )
         raise MusicServiceError(str(message))
 
-    try:
-        result.raise_for_status()
-    except httpx.HTTPError as exc:
-        raise MusicServiceError(f'KuGouMusicApi request failed: {exc}') from exc
-
     return payload
 
 
@@ -629,7 +804,7 @@ async def _save_user_cookie_from_login(user_id: int, data: dict[str, Any]) -> No
     if not token or not kugou_userid:
         raise MusicServiceError('KuGouMusicApi login response missed token or userid')
 
-    dfid = _cookie_value(_effective_cookie(user_id), 'dfid')
+    dfid = _cookie_value(await _effective_cookie(user_id), 'dfid')
     if not dfid:
         register_payload = await _request_kugou('/register/dev', {}, use_auth=False)
         register_data = register_payload.get('data') if isinstance(register_payload.get('data'), dict) else {}
@@ -638,19 +813,23 @@ async def _save_user_cookie_from_login(user_id: int, data: dict[str, Any]) -> No
     if not dfid:
         raise MusicServiceError('KuGouMusicApi did not return dfid')
 
-    redis_client.set(_auth_redis_key(user_id), f'token={token};userid={kugou_userid};dfid={dfid}')
+    await anyio.to_thread.run_sync(
+        redis_client.set,
+        _auth_redis_key(user_id),
+        f'token={token};userid={kugou_userid};dfid={dfid}',
+    )
 
 
-def _effective_cookie(user_id: int | None = None) -> str:
+async def _effective_cookie(user_id: int | None = None) -> str:
     if user_id is not None:
-        user_cookie = _get_user_cookie(user_id)
+        user_cookie = await _get_user_cookie(user_id)
         if user_cookie:
             return user_cookie
     return settings.KUGOU_MUSIC_COOKIE
 
 
-def _get_user_cookie(user_id: int) -> str:
-    value = redis_client.get(_auth_redis_key(user_id))
+async def _get_user_cookie(user_id: int) -> str:
+    value = await anyio.to_thread.run_sync(redis_client.get, _auth_redis_key(user_id))
     if isinstance(value, bytes):
         return value.decode('utf-8')
     return str(value or '')
@@ -731,6 +910,26 @@ def _normalize_playlist(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _normalize_playlist_tags(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    tags = []
+    for group in rows:
+        children = group.get('children') if isinstance(group.get('children'), list) else group.get('tags')
+        if not isinstance(children, list):
+            children = [group]
+        for row in children:
+            if not isinstance(row, dict):
+                continue
+            tag_id = str(row.get('tag_id') or row.get('id') or row.get('category_id') or '')
+            name = str(row.get('tag_name') or row.get('name') or row.get('category_name') or '')
+            if tag_id and name:
+                tags.append({
+                    'id': tag_id,
+                    'name': name,
+                    'parent_name': str(group.get('tag_name') or group.get('name') or ''),
+                })
+    return tags
+
+
 def _normalize_user_playlist(row: dict[str, Any]) -> dict[str, Any]:
     return {
         'id': str(row.get('listid') or row.get('list_id') or row.get('id') or ''),
@@ -743,6 +942,29 @@ def _normalize_user_playlist(row: dict[str, Any]) -> dict[str, Any]:
         'list_create_listid': str(row.get('list_create_listid') or row.get('listid') or ''),
         'list_create_gid': str(row.get('list_create_gid') or row.get('gid') or ''),
     }
+
+
+def _normalize_hot_search(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'keyword': str(row.get('keyword') or row.get('word') or row.get('name') or row.get('search_word') or ''),
+        'score': int(row.get('score') or row.get('hot') or row.get('heat') or 0),
+        'jump_url': str(row.get('jump_url') or row.get('url') or ''),
+    }
+
+
+def _normalize_suggestion_items(data: Any) -> list[dict[str, Any]]:
+    rows = _first_list(data, ('info', 'list', 'lists', 'data'))
+    if not rows and isinstance(data, dict):
+        for value in data.values():
+            if isinstance(value, list):
+                rows.extend(item for item in value if isinstance(item, dict))
+    return [
+        {
+            'keyword': str(row.get('keyword') or row.get('HintInfo') or row.get('name') or row.get('SongName') or ''),
+            'type': str(row.get('type') or row.get('search_type') or row.get('RecordType') or ''),
+        }
+        for row in rows
+    ]
 
 
 def _normalize_artist(row: dict[str, Any]) -> dict[str, Any]:
@@ -871,6 +1093,16 @@ def _normalize_track(row: dict[str, Any]) -> dict[str, Any]:
     if file_id:
         payload['file_id'] = file_id
     return payload
+
+
+def _normalize_mv(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'id': str(row.get('id') or row.get('video_id') or row.get('mv_id') or ''),
+        'name': str(row.get('name') or row.get('title') or row.get('filename') or ''),
+        'hash': str(row.get('hash') or row.get('mv_hash') or row.get('FileHash') or ''),
+        'cover': _format_image_url(row.get('cover') or row.get('img') or row.get('imgurl') or ''),
+        'duration': int(row.get('duration') or row.get('time_length') or 0),
+    }
 
 
 def _artist_names(row: dict[str, Any]) -> str:

@@ -20,6 +20,14 @@
           </button>
           <button
             class="music-nav-item"
+            :class="{ 'active': activeMode === 'new_song' }"
+            @click="setMusicMode('new_song')"
+          >
+            <AppIcon name="bolt" class="h-4 w-4" />
+            <span>新歌速递</span>
+          </button>
+          <button
+            class="music-nav-item"
             :class="{ 'active': activeMode === 'rank' }"
             @click="setMusicMode('rank')"
           >
@@ -49,7 +57,7 @@
           <form class="music-playlist-create" @submit.prevent="createUserPlaylist">
             <Input
               v-model="newPlaylistName"
-              class="h-7 text-xs border-none bg-muted/40"
+              class="h-7 text-xs border-b border-border/40 rounded-none bg-transparent px-0 focus-visible:ring-0 focus-visible:border-primary/50 transition-all"
               placeholder="歌单名称..."
             />
             <div class="music-playlist-create-footer">
@@ -110,6 +118,24 @@
           <!-- Playlists Grid View -->
           <div v-else-if="activeMode === 'playlist' && !selectedPlaylist" class="music-discovery-grid">
             <h3 class="text-sm font-semibold mb-3">热门精品歌单</h3>
+            <div v-if="playlistTags.length" class="music-tag-strip">
+              <button
+                class="music-tag-chip"
+                :class="{ 'music-tag-chip--active': selectedPlaylistCategory === 0 }"
+                @click="selectPlaylistCategory(0)"
+              >
+                推荐
+              </button>
+              <button
+                v-for="tag in playlistTags"
+                :key="tag.id"
+                class="music-tag-chip"
+                :class="{ 'music-tag-chip--active': selectedPlaylistCategory === Number(tag.id) }"
+                @click="selectPlaylistCategory(Number(tag.id))"
+              >
+                {{ tag.name }}
+              </button>
+            </div>
             <div class="music-grid">
               <div
                 v-for="playlist in playlists"
@@ -138,110 +164,86 @@
             </div>
           </div>
 
-          <!-- FM Radio Card View -->
+          <!-- FM Radio Card View - Two Column Desktop Layout -->
           <div v-else-if="trackSource === 'recommend'" class="music-fm-view">
-            <!-- FM Mode Tabs -->
-            <div class="music-fm-tabs">
-              <button
-                class="music-fm-tab"
-                :class="{ 'music-fm-tab--active': fmMode === 'normal' }"
-                @click="switchFmMode('normal')"
-              >发现</button>
-              <button
-                class="music-fm-tab"
-                :class="{ 'music-fm-tab--active': fmMode === 'small' }"
-                @click="switchFmMode('small')"
-              >小众</button>
-              <button
-                class="music-fm-tab"
-                :class="{ 'music-fm-tab--active': fmMode === 'peak' }"
-                @click="switchFmMode('peak')"
-              >30s</button>
-            </div>
-
-            <!-- AI Pool Selector -->
-            <div class="music-fm-pool">
-              <button
-                class="music-fm-chip"
-                :class="{ 'music-fm-chip--active': fmPoolId === '0' }"
-                @click="switchFmPool('0')"
-              >口味推荐</button>
-              <button
-                class="music-fm-chip"
-                :class="{ 'music-fm-chip--active': fmPoolId === '1' }"
-                @click="switchFmPool('1')"
-              >风格推荐</button>
-              <button
-                class="music-fm-chip"
-                :class="{ 'music-fm-chip--active': fmPoolId === '2' }"
-                @click="switchFmPool('2')"
-              >Gamma</button>
-            </div>
-
-            <!-- Now Playing Card -->
-            <div v-if="store.currentTrack" class="music-fm-card">
-              <div class="music-fm-card-cover">
-                <img
-                  v-if="store.currentTrack.cover"
-                  :src="store.currentTrack.cover"
-                  alt=""
-                />
-                <AppIcon v-else name="playlistMusic" class="h-16 w-16 text-muted-foreground/30" />
-              </div>
-
-              <div class="music-fm-card-meta">
-                <h2 class="music-fm-card-title">{{ store.currentTrack.title || '未知歌曲' }}</h2>
-                <button
-                  class="music-fm-card-artist"
-                  :disabled="!store.currentTrack.artist_id"
-                  @click="selectArtist(store.currentTrack)"
-                >{{ store.currentTrack.artist || '未知歌手' }}</button>
-              </div>
-
-              <div class="music-fm-card-actions">
-                <button class="music-fm-btn" title="不喜欢" @click="fmDislike" :disabled="fmLoading">
-                  <AppIcon name="trash" class="h-4 w-4" />
-                </button>
-                <button
-                  class="music-fm-btn"
-                  :class="{ 'text-primary': fmHearted[store.currentTrack.hash] }"
-                  title="喜欢"
-                  @click="fmLike(store.currentTrack)"
-                  :disabled="fmLiking"
-                >
-                  <AppIcon v-if="fmLiking" name="loadingSpinner" class="h-4 w-4 animate-spin" />
-                  <AppIcon v-else name="heart" class="h-4 w-4" />
-                </button>
-                <button class="music-fm-btn music-fm-btn--primary" title="下一首" @click="fmNext" :disabled="fmLoading">
-                  <AppIcon name="next" class="h-5 w-5" />
-                  <span class="text-xs font-medium">下一首</span>
-                </button>
-              </div>
-
-              <p v-if="error" class="music-fm-card-error">{{ error }}</p>
-            </div>
-
-            <!-- Idle state: show first track with play prompt -->
-            <div v-else-if="fmBatch.length" class="music-fm-card music-fm-card--idle cursor-pointer" @click="fmPlayFirst">
-              <div class="music-fm-card-cover">
-                <img v-if="fmBatch[0].cover" :src="fmBatch[0].cover" alt="" />
-                <AppIcon v-else name="playlistMusic" class="h-16 w-16 text-muted-foreground/30" />
-                <div class="music-fm-card-play-overlay">
-                  <AppIcon name="play" class="h-10 w-10 text-white drop-shadow-lg" />
+            <div class="music-fm-layout">
+              <!-- Left: Album Art -->
+              <div class="music-fm-left">
+                <div class="music-fm-cover-container">
+                  <img
+                    v-if="store.currentTrack?.cover || fmBatch[0]?.cover"
+                    :src="store.currentTrack?.cover || fmBatch[0]?.cover"
+                    alt=""
+                    class="music-fm-cover-img"
+                  />
+                  <AppIcon v-else name="playlistMusic" class="h-24 w-24 text-muted-foreground/30" />
+                  <div v-if="!store.currentTrack && fmBatch.length" class="music-fm-play-overlay-large" @click="fmPlayFirst">
+                    <AppIcon name="play" class="h-14 w-14 text-white drop-shadow-xl" />
+                  </div>
                 </div>
               </div>
-              <div class="music-fm-card-meta">
-                <h2 class="music-fm-card-title">{{ fmBatch[0].title || '未知歌曲' }}</h2>
-                <p class="music-fm-card-artist text-muted-foreground">{{ fmBatch[0].artist || '未知歌手' }}</p>
-              </div>
-              <p class="text-xs text-muted-foreground mt-2">点击播放推荐曲目</p>
-            </div>
 
-            <!-- Loading skeleton -->
-            <div v-else-if="loading || fmLoading" class="music-fm-loading">
-              <div class="music-fm-skeleton-cover" />
-              <div class="music-fm-skeleton-line" />
-              <div class="music-fm-skeleton-line music-fm-skeleton-line--short" />
+              <!-- Right: Info & Controls -->
+              <div class="music-fm-right">
+                <!-- Meta Info (Top Priority) -->
+                <div class="music-fm-meta" v-if="store.currentTrack || fmBatch.length">
+                  <h1 class="music-fm-title">{{ store.currentTrack?.title || fmBatch[0]?.title || '未知歌曲' }}</h1>
+                  <button
+                    class="music-fm-artist"
+                    :disabled="!store.currentTrack ? !fmBatch[0]?.artist_id : !store.currentTrack.artist_id"
+                    @click="store.currentTrack ? selectArtist(store.currentTrack) : null"
+                  >
+                    {{ store.currentTrack?.artist || fmBatch[0]?.artist || '未知歌手' }}
+                  </button>
+                </div>
+                <div class="music-fm-meta" v-else-if="loading || fmLoading">
+                  <!-- Minimal skeleton loading inline -->
+                  <div class="h-12 bg-muted/30 rounded w-3/4 animate-pulse mb-2"></div>
+                  <div class="h-6 bg-muted/30 rounded w-1/3 animate-pulse"></div>
+                </div>
+
+                <!-- Actions -->
+                <div class="music-fm-actions">
+                  <template v-if="store.currentTrack">
+                    <button class="music-fm-btn-primary" title="下一首" @click="fmNext" :disabled="fmLoading">
+                      <AppIcon name="next" class="h-6 w-6 mr-1.5" />
+                      下一首
+                    </button>
+                    <button class="music-fm-btn-circle" :class="{ 'text-rose-500': fmHearted[store.currentTrack.hash] }" title="喜欢" @click="fmLike(store.currentTrack)" :disabled="fmLiking">
+                      <AppIcon v-if="fmLiking" name="loadingSpinner" class="h-6 w-6 animate-spin" />
+                      <AppIcon v-else name="heart" class="h-6 w-6" :class="{ 'fill-current': fmHearted[store.currentTrack.hash] }" />
+                    </button>
+                    <button class="music-fm-btn-circle" title="不喜欢" @click="fmDislike" :disabled="fmLoading">
+                      <AppIcon name="trash" class="h-6 w-6" />
+                    </button>
+                  </template>
+                  <template v-else-if="fmBatch.length">
+                    <button class="music-fm-btn-primary" @click="fmPlayFirst">
+                      <AppIcon name="play" class="h-6 w-6 mr-1.5" />
+                      点击播放推荐电台
+                    </button>
+                  </template>
+                </div>
+
+                <!-- Divider / Spacer -->
+                <div class="music-fm-divider"></div>
+
+                <!-- Mode & Pool Tabs (Settings) -->
+                <div class="music-fm-controls-bottom">
+                  <div class="music-fm-tabs">
+                    <button class="music-fm-tab" :class="{ 'music-fm-tab--active': fmMode === 'normal' }" @click="switchFmMode('normal')">发现</button>
+                    <button class="music-fm-tab" :class="{ 'music-fm-tab--active': fmMode === 'small' }" @click="switchFmMode('small')">小众</button>
+                    <button class="music-fm-tab" :class="{ 'music-fm-tab--active': fmMode === 'peak' }" @click="switchFmMode('peak')">30s</button>
+                  </div>
+                  <div class="music-fm-pool">
+                    <button class="music-fm-chip" :class="{ 'music-fm-chip--active': fmPoolId === '0' }" @click="switchFmPool('0')">口味推荐</button>
+                    <button class="music-fm-chip" :class="{ 'music-fm-chip--active': fmPoolId === '1' }" @click="switchFmPool('1')">风格推荐</button>
+                    <button class="music-fm-chip" :class="{ 'music-fm-chip--active': fmPoolId === '2' }" @click="switchFmPool('2')">Gamma</button>
+                  </div>
+                </div>
+
+                <p v-if="error" class="music-fm-error">{{ error }}</p>
+              </div>
             </div>
           </div>
 
@@ -667,15 +669,16 @@
           <!-- Normal Track List Area -->
           <div v-else class="music-tracks-container">
             <!-- Sleek Header Banner for Playlists -->
-            <header class="music-playlist-header" v-if="selectedRank || selectedPlaylist || selectedUserPlaylist || selectedArtist || selectedAlbum || trackSource === 'search'">
+            <header class="music-playlist-header" v-if="selectedRank || selectedPlaylist || selectedUserPlaylist || selectedArtist || selectedAlbum || selectedRelatedTrack || trackSource === 'search' || trackSource === 'new_song'">
               <div class="music-playlist-header-cover">
                 <img v-if="selectedRank?.cover" :src="selectedRank.cover" alt="" />
                 <img v-else-if="selectedPlaylist?.cover" :src="selectedPlaylist.cover" alt="" />
                 <img v-else-if="selectedUserPlaylist?.cover" :src="selectedUserPlaylist.cover" alt="" />
                 <img v-else-if="selectedArtist?.avatar" :src="selectedArtist.avatar" alt="" />
                 <img v-else-if="selectedAlbum?.cover" :src="selectedAlbum.cover" alt="" />
+                <img v-else-if="selectedRelatedTrack?.cover" :src="selectedRelatedTrack.cover" alt="" />
                 <div v-else class="music-playlist-header-placeholder">
-                  <AppIcon name="playlistMusic" class="h-10 w-10 text-muted-foreground" />
+                  <AppIcon :name="trackSource === 'new_song' ? 'bolt' : 'playlistMusic'" class="h-10 w-10 text-muted-foreground" />
                 </div>
               </div>
               <div class="music-playlist-header-info">
@@ -691,6 +694,9 @@
                   <span v-if="selectedAlbum.publish_date">{{ selectedAlbum.publish_date }}</span>
                   <span v-if="selectedAlbum.type">{{ selectedAlbum.type }}</span>
                 </div>
+                <p v-else-if="selectedRelatedTrack" class="music-detail-intro">
+                  {{ selectedRelatedTrack.artist }} · {{ selectedRelatedTrack.album || '相关歌曲' }}
+                </p>
                 
                 <div class="music-playlist-header-actions mt-4">
                   <div class="flex items-center gap-1.5 flex-wrap">
@@ -736,6 +742,27 @@
                 </div>
                 <span>{{ album.name }}</span>
               </button>
+            </div>
+
+            <div v-if="selectedPlaylist && similarPlaylists.length" class="music-search-sections">
+              <section class="music-search-section">
+                <h2>相似歌单</h2>
+                <div class="music-result-grid">
+                  <button
+                    v-for="playlist in similarPlaylists"
+                    :key="playlist.id"
+                    class="music-result-card"
+                    @click="selectPlaylist(playlist)"
+                  >
+                    <img v-if="playlist.cover" :src="playlist.cover" alt="" />
+                    <div v-else class="music-result-placeholder">
+                      <AppIcon name="playlistMusic" class="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <span>{{ playlist.name }}</span>
+                    <small>{{ playlist.creator || '歌单' }}</small>
+                  </button>
+                </div>
+              </section>
             </div>
 
             <div v-if="trackSource === 'search' && (searchArtists.length || searchAlbums.length)" class="music-search-sections">
@@ -790,6 +817,185 @@
             <div v-else-if="searched && tracks.length === 0" class="music-empty">
               <AppIcon name="playlistMusic" class="h-9 w-9 text-muted-foreground/30" />
               <h2 class="mt-4 text-sm font-semibold">没有结果</h2>
+            </div>
+
+            <div v-else-if="trackSource === 'idle'" class="music-search-home">
+              <section class="music-discover-section music-discover-section--compact">
+                <div class="music-discover-header">
+                  <h3>搜索推荐</h3>
+                  <button
+                    v-if="!defaultSearchKeyword && hotSearches.length === 0"
+                    class="music-section-action"
+                    :disabled="searchDiscoveryLoading"
+                    @click="loadSearchDiscovery"
+                  >
+                    <AppIcon v-if="searchDiscoveryLoading" name="loadingSpinner" class="h-3.5 w-3.5 animate-spin" />
+                    <AppIcon v-else name="search" class="h-3.5 w-3.5" />
+                    加载热搜
+                  </button>
+                </div>
+                <div class="music-hot-panel">
+                  <button
+                    v-if="defaultSearchKeyword"
+                    class="music-hot-default"
+                    @click="searchByKeyword(defaultSearchKeyword)"
+                  >
+                    <AppIcon name="search" class="h-4 w-4" />
+                    {{ defaultSearchKeyword }}
+                  </button>
+                  <button
+                    v-for="item in hotSearches.slice(0, 18)"
+                    :key="item.keyword"
+                    class="music-hot-chip"
+                    @click="searchByKeyword(item.keyword)"
+                  >
+                    {{ item.keyword }}
+                  </button>
+                </div>
+              </section>
+
+              <section v-if="dailyRecommendTracks.length" class="music-discover-section">
+                <div class="music-discover-header">
+                  <div>
+                    <h3>快速推荐</h3>
+                    <p>使用酷狗 FM 推荐接口，避免首屏等待重接口</p>
+                  </div>
+                  <button class="music-section-action" @click="playTrackList(dailyRecommendTracks)">
+                    <AppIcon name="play" class="h-3.5 w-3.5 fill-current" />
+                    播放
+                  </button>
+                </div>
+                <div class="music-discover-tracks">
+                  <button
+                    v-for="(track, index) in dailyRecommendTracks.slice(0, 6)"
+                    :key="trackKey(track, index)"
+                    class="music-discover-track"
+                    @click="store.playQueue(dailyRecommendTracks, index)"
+                  >
+                    <img v-if="track.cover" :src="track.cover" alt="" />
+                    <div v-else class="music-discover-track-cover">
+                      <AppIcon name="playlistMusic" class="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <span>{{ track.title || '未知歌曲' }}</span>
+                    <small>{{ track.artist || '未知歌手' }}</small>
+                  </button>
+                </div>
+              </section>
+              <section v-else class="music-discover-section">
+                <div class="music-discover-header">
+                  <div>
+                    <h3>快速推荐</h3>
+                    <p>按需加载，避免进入页面时同时请求多个酷狗慢接口</p>
+                  </div>
+                  <button class="music-section-action" :disabled="discoverLoading" @click="loadDiscoverRecommendations">
+                    <AppIcon v-if="discoverLoading" name="loadingSpinner" class="h-3.5 w-3.5 animate-spin" />
+                    <AppIcon v-else name="play" class="h-3.5 w-3.5 fill-current" />
+                    加载推荐
+                  </button>
+                </div>
+              </section>
+
+              <section class="music-discover-section">
+                <div class="music-discover-header">
+                  <div>
+                    <h3>推荐卡片</h3>
+                    <p>一次只加载当前卡片，减少酷狗慢接口并发</p>
+                  </div>
+                </div>
+                <div class="music-tag-strip">
+                  <button
+                    v-for="section in discoverCardDefs"
+                    :key="section.id"
+                    class="music-tag-chip"
+                    :class="{ 'music-tag-chip--active': selectedDiscoverCardId === section.id }"
+                    @click="selectDiscoverCard(section.id)"
+                  >
+                    {{ section.title }}
+                  </button>
+                </div>
+                <div v-if="selectedDiscoverSection" class="music-discover-card-grid">
+                  <article
+                    :key="selectedDiscoverSection.id"
+                    class="music-discover-card"
+                  >
+                    <div class="music-discover-card-title">
+                      <span>{{ selectedDiscoverSection.title }}</span>
+                      <button title="播放本组" @click="playTrackList(selectedDiscoverSection.tracks)">
+                        <AppIcon name="play" class="h-3.5 w-3.5 fill-current" />
+                      </button>
+                    </div>
+                    <button
+                      v-for="(track, index) in selectedDiscoverSection.tracks.slice(0, 6)"
+                      :key="trackKey(track, index)"
+                      class="music-discover-row"
+                      @click="store.playQueue(selectedDiscoverSection.tracks, index)"
+                    >
+                      <span class="music-discover-row-index">{{ index + 1 }}</span>
+                      <span class="music-discover-row-title">{{ track.title || '未知歌曲' }}</span>
+                      <small>{{ track.artist || '未知歌手' }}</small>
+                    </button>
+                  </article>
+                </div>
+                <div v-else class="music-discover-header music-discover-header--inline-action">
+                  <p>{{ selectedDiscoverCardTitle }} 尚未加载</p>
+                  <button class="music-section-action" :disabled="recommendCardsLoading" @click="loadSelectedRecommendCard">
+                    <AppIcon v-if="recommendCardsLoading" name="loadingSpinner" class="h-3.5 w-3.5 animate-spin" />
+                    <AppIcon v-else name="list" class="h-3.5 w-3.5" />
+                    加载当前卡片
+                  </button>
+                </div>
+              </section>
+
+              <section class="music-discover-section">
+                <div class="music-discover-header">
+                  <div>
+                    <h3>继续浏览</h3>
+                    <p>排行榜、新歌和热门歌单</p>
+                  </div>
+                </div>
+                <div class="music-discover-entry-grid">
+                  <button class="music-discover-entry" @click="setMusicMode('new_song')">
+                    <AppIcon name="bolt" class="h-4 w-4" />
+                    <span>新歌速递</span>
+                    <small>查看酷狗新歌</small>
+                  </button>
+                  <button class="music-discover-entry" @click="setMusicMode('rank')">
+                    <AppIcon name="list" class="h-4 w-4" />
+                    <span>官方排行榜</span>
+                    <small>进入后加载榜单</small>
+                  </button>
+                  <button class="music-discover-entry" @click="setMusicMode('playlist')">
+                    <AppIcon name="playlistMusic" class="h-4 w-4" />
+                    <span>热门歌单</span>
+                    <small>进入后加载歌单</small>
+                  </button>
+                  <button class="music-discover-entry" @click="setMusicMode('recommend')">
+                    <AppIcon name="star" class="h-4 w-4" />
+                    <span>私人 FM</span>
+                    <small>使用轻量推荐</small>
+                  </button>
+                  <button
+                    v-for="rank in ranks.slice(0, 3)"
+                    :key="rank.id"
+                    class="music-discover-entry"
+                    @click="selectRank(rank)"
+                  >
+                    <AppIcon name="list" class="h-4 w-4" />
+                    <span>{{ rank.name }}</span>
+                    <small>{{ rank.update_frequency || '官方榜单' }}</small>
+                  </button>
+                  <button
+                    v-for="playlist in playlists.slice(0, 4)"
+                    :key="playlist.id"
+                    class="music-discover-entry"
+                    @click="selectPlaylist(playlist)"
+                  >
+                    <AppIcon name="playlistMusic" class="h-4 w-4" />
+                    <span>{{ playlist.name }}</span>
+                    <small>{{ playlist.creator || '热门歌单' }}</small>
+                  </button>
+                </div>
+              </section>
             </div>
 
             <div v-else class="music-list">
@@ -858,6 +1064,14 @@
                     <AppIcon name="addToPlaylist" class="h-3.5 w-3.5" />
                   </button>
                   <button
+                    class="music-row-action"
+                    :disabled="!track.album_audio_id"
+                    title="更多版本"
+                    @click.stop="selectRelatedTracks(track)"
+                  >
+                    <AppIcon name="list" class="h-3.5 w-3.5" />
+                  </button>
+                  <button
                     v-if="trackSource === 'user_playlist' && track.file_id"
                     class="music-row-action"
                     title="从歌单删除"
@@ -900,17 +1114,24 @@ import {
   getMusicAuthStatus,
   logoutMusic,
   addMusicUserPlaylistTrack,
+  getMusicDefaultSearch,
   getMusicAlbumDetail,
   getMusicAlbumTracks,
   getMusicArtistAlbums,
   getMusicArtistDetail,
   getMusicArtistTracks,
   getMusicFavoriteCount,
+  getMusicHotSearch,
+  getMusicNewSongs,
+  getMusicPlaylistTags,
   getMusicPlaylistTracks,
   getMusicPlaylists,
   getMusicRankTracks,
   getMusicRanks,
+  getMusicRelatedTracks,
   getMusicRecommendations,
+  getMusicRecommendCard,
+  getMusicSimilarPlaylists,
   getMusicUserPlaylistTracks,
   getMusicUserHistory,
   getMusicUserListenRank,
@@ -925,7 +1146,9 @@ import {
   type MusicAlbum,
   type MusicArtist,
   type MusicAuthStatus,
+  type MusicHotSearch,
   type MusicPlaylist,
+  type MusicPlaylistTag,
   type MusicQrLogin,
   type MusicRank,
   type MusicTrack,
@@ -939,20 +1162,35 @@ const store = useMusicPlayerStore()
 
 type FmMode = 'normal' | 'small' | 'peak'
 
-type MusicMode = 'recommend' | 'rank' | 'playlist' | 'mine' | 'profile'
-type TrackSource = 'idle' | 'recommend' | 'search' | 'rank' | 'playlist' | 'user_playlist' | 'artist_detail' | 'album_detail'
+type MusicMode = 'recommend' | 'rank' | 'playlist' | 'mine' | 'profile' | 'new_song'
+type TrackSource = 'idle' | 'recommend' | 'search' | 'rank' | 'playlist' | 'user_playlist' | 'artist_detail' | 'album_detail' | 'new_song' | 'related'
+
+const discoverCardDefs = [
+  { id: 1, title: '精选好歌' },
+  { id: 2, title: '经典怀旧' },
+  { id: 3, title: '热门好歌' },
+  { id: 4, title: '小众宝藏' },
+]
 
 const query = ref('')
 const tracks = ref<MusicTrack[]>([])
 const ranks = ref<MusicRank[]>([])
 const playlists = ref<MusicPlaylist[]>([])
+const similarPlaylists = ref<MusicPlaylist[]>([])
 const userPlaylists = ref<MusicUserPlaylist[]>([])
 const artistAlbums = ref<MusicAlbum[]>([])
 const searchArtists = ref<MusicArtist[]>([])
 const searchAlbums = ref<MusicAlbum[]>([])
+const hotSearches = ref<MusicHotSearch[]>([])
+const playlistTags = ref<MusicPlaylistTag[]>([])
+const dailyRecommendTracks = ref<MusicTrack[]>([])
+const discoverCards = ref<Record<number, MusicTrack[]>>({})
 const favoriteCounts = ref<Record<string, number>>({})
 const loading = ref(false)
 const discoveryLoading = ref(false)
+const discoverLoading = ref(false)
+const recommendCardsLoading = ref(false)
+const searchDiscoveryLoading = ref(false)
 const searched = ref(false)
 const error = ref('')
 const activeMode = ref<MusicMode>('mine')
@@ -963,12 +1201,16 @@ const selectedPlaylist = ref<MusicPlaylist | null>(null)
 const selectedUserPlaylist = ref<MusicUserPlaylist | null>(null)
 const selectedArtist = ref<MusicArtist | null>(null)
 const selectedAlbum = ref<MusicAlbum | null>(null)
+const selectedRelatedTrack = ref<MusicTrack | null>(null)
 const targetUserPlaylistId = ref('')
 const newPlaylistName = ref('')
 const newPlaylistPrivate = ref(false)
 const currentPage = ref(1)
 const playlistPage = ref(1)
 const playlistHasMore = ref(false)
+const selectedPlaylistCategory = ref(0)
+const selectedDiscoverCardId = ref(discoverCardDefs[0].id)
+const defaultSearchKeyword = ref('')
 const pageSize = 30
 const loadMoreOffset = 240
 const total = ref(0)
@@ -1022,8 +1264,10 @@ watch(() => uiStore.searchQuery, (newVal) => {
 })
 
 watch(() => authStatus.value?.logged_in, (loggedIn) => {
-  if (loggedIn) {
+  if (loggedIn && activeMode.value === 'profile') {
     void loadKugouProfile()
+  } else if (loggedIn) {
+    void loadUserPlaylists()
   } else {
     kugouProfile.value = null
   }
@@ -1032,6 +1276,18 @@ watch(() => authStatus.value?.logged_in, (loggedIn) => {
 const createdUserPlaylists = computed(() => userPlaylists.value.filter(pl => !pl.is_collected))
 const collectedUserPlaylists = computed(() => userPlaylists.value.filter(pl => pl.is_collected))
 const currentProfileTracks = computed(() => profileActiveTab.value === 'history' ? profileHistory.value : profileListenRank.value)
+const selectedDiscoverCardTitle = computed(() => (
+  discoverCardDefs.find(section => section.id === selectedDiscoverCardId.value)?.title || '推荐卡片'
+))
+const selectedDiscoverSection = computed(() => {
+  const tracks = discoverCards.value[selectedDiscoverCardId.value] || []
+  if (!tracks.length) return null
+  return {
+    id: selectedDiscoverCardId.value,
+    title: selectedDiscoverCardTitle.value,
+    tracks,
+  }
+})
 
 function formatRegTime(val: string): string {
   if (!val) return ''
@@ -1112,7 +1368,7 @@ const resultSummary = computed(() => {
 
 const hasMore = computed(() => {
   if (trackSource.value === 'recommend') return false
-  return ['search', 'rank', 'playlist', 'user_playlist', 'artist_detail', 'album_detail'].includes(trackSource.value) && tracks.value.length < total.value
+  return ['search', 'rank', 'playlist', 'user_playlist', 'artist_detail', 'album_detail', 'new_song', 'related'].includes(trackSource.value) && tracks.value.length < total.value
 })
 
 const qrStatusText = computed(() => {
@@ -1131,19 +1387,13 @@ const trackSourceText = computed(() => {
   if (trackSource.value === 'user_playlist') return '我的自建歌单'
   if (trackSource.value === 'artist_detail') return '歌手详情'
   if (trackSource.value === 'album_detail') return '专辑详情'
+  if (trackSource.value === 'new_song') return '酷狗新歌速递'
+  if (trackSource.value === 'related') return '相关版本'
   return '音乐库'
 })
 
 onMounted(() => {
-  void loadAuthStatus()
-  void loadRanks()
-  void loadPlaylists(false)
-  void loadUserPlaylists()
-  
-  if (route.name === 'Music' && uiStore.searchQuery) {
-    query.value = uiStore.searchQuery
-    void submitSearch()
-  }
+  void initializeMusicPage()
 })
 
 onUnmounted(() => {
@@ -1152,6 +1402,79 @@ onUnmounted(() => {
 
 function isCurrentTrack(track: MusicTrack): boolean {
   return store.currentTrack?.hash === track.hash
+}
+
+async function initializeMusicPage() {
+  void loadAuthStatus()
+
+  if (route.name === 'Music' && uiStore.searchQuery) {
+    query.value = uiStore.searchQuery
+    await submitSearch()
+  }
+}
+
+async function loadDefaultSearch() {
+  const { data, error: requestError } = await getMusicDefaultSearch()
+  if (requestError) {
+    Logger.error('Failed to load default music search', requestError)
+    return
+  }
+  defaultSearchKeyword.value = data?.keyword || ''
+}
+
+async function loadHotSearches() {
+  const { data, error: requestError } = await getMusicHotSearch()
+  if (requestError) {
+    Logger.error('Failed to load hot music searches', requestError)
+    return
+  }
+  hotSearches.value = (data?.items || []).filter(item => item.keyword).slice(0, 30)
+}
+
+async function loadSearchDiscovery() {
+  searchDiscoveryLoading.value = true
+  await Promise.all([loadDefaultSearch(), loadHotSearches()])
+  searchDiscoveryLoading.value = false
+}
+
+async function loadDiscoverRecommendations() {
+  discoverLoading.value = true
+  const { data, error: requestError } = await getMusicRecommendations({ mode: 'normal' })
+  discoverLoading.value = false
+
+  if (requestError) {
+    Logger.error('Failed to load fast music recommendations', requestError)
+    dailyRecommendTracks.value = []
+    return
+  }
+  dailyRecommendTracks.value = (data?.items || []).slice(0, 10)
+}
+
+async function selectDiscoverCard(cardId: number) {
+  selectedDiscoverCardId.value = cardId
+  if (!discoverCards.value[cardId]?.length) {
+    await loadSelectedRecommendCard()
+  }
+}
+
+async function loadSelectedRecommendCard() {
+  recommendCardsLoading.value = true
+  const cardId = selectedDiscoverCardId.value
+  const result = await getMusicRecommendCard({ card_id: cardId, page_size: 6 })
+  recommendCardsLoading.value = false
+  if (result.error) {
+    Logger.error('Failed to load music recommend card', result.error)
+    return
+  }
+  discoverCards.value = {
+    ...discoverCards.value,
+    [cardId]: result.data?.items || [],
+  }
+}
+
+async function searchByKeyword(keyword: string) {
+  query.value = keyword
+  await submitSearch()
 }
 
 const submitSearch = async () => {
@@ -1165,7 +1488,9 @@ const submitSearch = async () => {
   selectedUserPlaylist.value = null
   selectedArtist.value = null
   selectedAlbum.value = null
+  selectedRelatedTrack.value = null
   artistAlbums.value = []
+  similarPlaylists.value = []
   searchArtists.value = []
   searchAlbums.value = []
   selectedSourceTitle.value = `搜索：${keyword}`
@@ -1211,6 +1536,10 @@ async function loadMoreSearch() {
     await loadArtistTracks(selectedArtist.value.id, currentPage.value, true)
   } else if (trackSource.value === 'album_detail' && selectedAlbum.value) {
     await loadAlbumTracks(selectedAlbum.value.id, currentPage.value, true)
+  } else if (trackSource.value === 'new_song') {
+    await loadNewSongs(currentPage.value, true)
+  } else if (trackSource.value === 'related' && selectedRelatedTrack.value) {
+    await loadRelatedTracks(selectedRelatedTrack.value, currentPage.value, true)
   }
 }
 
@@ -1240,12 +1569,29 @@ async function setMusicMode(mode: MusicMode) {
   activeMode.value = mode
   selectedSourceTitle.value = ''
   searched.value = false
+  if (mode === 'rank' || mode === 'playlist') {
+    trackSource.value = 'idle'
+    selectedRank.value = null
+    selectedPlaylist.value = null
+    selectedUserPlaylist.value = null
+    selectedArtist.value = null
+    selectedAlbum.value = null
+    selectedRelatedTrack.value = null
+    artistAlbums.value = []
+    similarPlaylists.value = []
+    searchArtists.value = []
+    searchAlbums.value = []
+  }
   if (mode === 'recommend') {
     await loadFmBatch(false, false)
+  } else if (mode === 'new_song') {
+    await selectNewSongs()
   } else if (mode === 'rank' && ranks.value.length === 0) {
     await loadRanks()
   } else if (mode === 'playlist' && playlists.value.length === 0) {
     await loadPlaylists(false)
+  } else if (mode === 'playlist' && playlistTags.value.length === 0) {
+    await loadPlaylistTags()
   } else if (mode === 'profile') {
     await loadKugouProfile()
   }
@@ -1259,7 +1605,9 @@ function enterFmMode() {
   selectedUserPlaylist.value = null
   selectedArtist.value = null
   selectedAlbum.value = null
+  selectedRelatedTrack.value = null
   artistAlbums.value = []
+  similarPlaylists.value = []
   searchArtists.value = []
   searchAlbums.value = []
   currentPage.value = 1
@@ -1332,6 +1680,24 @@ async function loadFmBatch(isNext = false, autoPlay = true) {
     Logger.error('Failed to load FM batch', requestError)
     return
   }
+  if (isNext) {
+    const newItems = data?.items || []
+    const seen = new Set(fmBatch.value.map(t => t.hash || t.id))
+    const fresh = newItems.filter(t => !seen.has(t.hash || t.id))
+    const appendStart = fmBatch.value.length
+    fmBatch.value = [...fmBatch.value, ...fresh]
+    tracks.value = fmBatch.value
+    total.value = data?.total || fmBatch.value.length
+    if (fresh.length) {
+      if (autoPlay) {
+        store.playQueue(fmBatch.value, appendStart)
+      }
+    } else {
+      Logger.warn('FM batch exhausted, no more tracks returned')
+    }
+    return
+  }
+
   fmBatch.value = data?.items || []
   fmBatchIndex.value = 0
   tracks.value = fmBatch.value
@@ -1447,6 +1813,44 @@ async function loadRanks() {
   ranks.value = data?.items || []
 }
 
+async function selectNewSongs() {
+  activeMode.value = 'new_song'
+  trackSource.value = 'new_song'
+  selectedRank.value = null
+  selectedPlaylist.value = null
+  selectedUserPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  selectedRelatedTrack.value = null
+  artistAlbums.value = []
+  similarPlaylists.value = []
+  searchArtists.value = []
+  searchAlbums.value = []
+  selectedSourceTitle.value = '新歌速递'
+  currentPage.value = 1
+  await loadNewSongs(currentPage.value, false)
+}
+
+async function loadNewSongs(page: number, append: boolean) {
+  loading.value = true
+  searched.value = true
+  error.value = ''
+  const { data, error: requestError } = await getMusicNewSongs({
+    page,
+    page_size: pageSize,
+  })
+  loading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load new music songs', requestError)
+    return
+  }
+  const items = data?.items || []
+  tracks.value = append ? [...tracks.value, ...items] : items
+  total.value = data?.total || tracks.value.length
+  void loadFavoriteCounts(tracks.value)
+}
+
 async function selectRank(rank: MusicRank) {
   selectedRank.value = rank
   activeMode.value = 'rank'
@@ -1454,7 +1858,9 @@ async function selectRank(rank: MusicRank) {
   selectedUserPlaylist.value = null
   selectedArtist.value = null
   selectedAlbum.value = null
+  selectedRelatedTrack.value = null
   artistAlbums.value = []
+  similarPlaylists.value = []
   trackSource.value = 'rank'
   selectedSourceTitle.value = rank.name
   currentPage.value = 1
@@ -1485,7 +1891,7 @@ async function loadRankTracks(rank: MusicRank, page: number, append: boolean) {
 async function loadPlaylists(append: boolean) {
   discoveryLoading.value = true
   const { data, error: requestError } = await getMusicPlaylists({
-    category_id: 0,
+    category_id: selectedPlaylistCategory.value,
     page: playlistPage.value,
     page_size: 12,
   })
@@ -1499,22 +1905,50 @@ async function loadPlaylists(append: boolean) {
   playlistHasMore.value = data?.has_more === true
 }
 
+async function loadPlaylistTags() {
+  const { data, error: requestError } = await getMusicPlaylistTags()
+  if (requestError) {
+    Logger.error('Failed to load music playlist tags', requestError)
+    return
+  }
+  playlistTags.value = (data?.items || []).slice(0, 24)
+}
+
+async function selectPlaylistCategory(categoryId: number) {
+  if (selectedPlaylistCategory.value === categoryId) return
+  selectedPlaylistCategory.value = categoryId
+  playlistPage.value = 1
+  await loadPlaylists(false)
+}
+
 async function loadMorePlaylists() {
   if (discoveryLoading.value || !playlistHasMore.value) return
   playlistPage.value += 1
   await loadPlaylists(true)
 }
 
+const loadMoreSearchSources = new Set([
+  'search',
+  'rank',
+  'playlist',
+  'user_playlist',
+  'artist_detail',
+  'album_detail',
+  'new_song',
+  'related',
+])
+
 function handleContentScroll(event: Event) {
   const target = event.currentTarget
   if (!(target instanceof HTMLElement)) return
   const distanceToBottom = target.scrollHeight - target.scrollTop - target.clientHeight
   if (distanceToBottom > loadMoreOffset) return
+  if (trackSource.value === 'recommend' || trackSource.value === 'idle') return
   if (activeMode.value === 'playlist' && !selectedPlaylist.value) {
     void loadMorePlaylists()
     return
   }
-  if (trackSource.value === 'recommend' || trackSource.value === 'idle') return
+  if (!loadMoreSearchSources.has(trackSource.value)) return
   void loadMoreSearch()
 }
 
@@ -1525,11 +1959,14 @@ async function selectPlaylist(playlist: MusicPlaylist) {
   selectedUserPlaylist.value = null
   selectedArtist.value = null
   selectedAlbum.value = null
+  selectedRelatedTrack.value = null
   artistAlbums.value = []
+  similarPlaylists.value = []
   trackSource.value = 'playlist'
   selectedSourceTitle.value = playlist.name
   currentPage.value = 1
   await loadPlaylistTracks(playlist, currentPage.value, false)
+  void loadSimilarPlaylists(playlist.id)
 }
 
 async function loadPlaylistTracks(playlist: MusicPlaylist, page: number, append: boolean) {
@@ -1550,6 +1987,16 @@ async function loadPlaylistTracks(playlist: MusicPlaylist, page: number, append:
   tracks.value = append ? [...tracks.value, ...items] : items
   total.value = data?.total || tracks.value.length
   void loadFavoriteCounts(tracks.value)
+}
+
+async function loadSimilarPlaylists(playlistId: string) {
+  const { data, error: requestError } = await getMusicSimilarPlaylists(playlistId)
+  if (requestError) {
+    Logger.error('Failed to load similar music playlists', requestError)
+    similarPlaylists.value = []
+    return
+  }
+  similarPlaylists.value = (data?.items || []).filter(item => item.id && item.id !== playlistId).slice(0, 6)
 }
 
 async function loadUserPlaylists() {
@@ -1588,7 +2035,9 @@ async function selectUserPlaylist(playlist: MusicUserPlaylist) {
   selectedPlaylist.value = null
   selectedArtist.value = null
   selectedAlbum.value = null
+  selectedRelatedTrack.value = null
   artistAlbums.value = []
+  similarPlaylists.value = []
   targetUserPlaylistId.value = playlist.id
   trackSource.value = 'user_playlist'
   selectedSourceTitle.value = playlist.name
@@ -1620,7 +2069,9 @@ async function deleteSelectedUserPlaylist() {
   selectedUserPlaylist.value = null
   selectedArtist.value = null
   selectedAlbum.value = null
+  selectedRelatedTrack.value = null
   artistAlbums.value = []
+  similarPlaylists.value = []
   if (targetUserPlaylistId.value === deletedId) {
     targetUserPlaylistId.value = ''
   }
@@ -1668,6 +2119,8 @@ async function selectArtist(track: MusicTrack) {
   selectedRank.value = null
   selectedPlaylist.value = null
   selectedUserPlaylist.value = null
+  selectedRelatedTrack.value = null
+  similarPlaylists.value = []
   activeMode.value = 'mine'
   trackSource.value = 'artist_detail'
   selectedSourceTitle.value = data.name
@@ -1767,6 +2220,8 @@ async function loadAlbumDetail(albumId: string) {
   selectedRank.value = null
   selectedPlaylist.value = null
   selectedUserPlaylist.value = null
+  selectedRelatedTrack.value = null
+  similarPlaylists.value = []
   activeMode.value = 'mine'
   trackSource.value = 'album_detail'
   selectedSourceTitle.value = data.name
@@ -1786,6 +2241,45 @@ async function loadAlbumTracks(albumId: string, page: number, append: boolean) {
   if (requestError) {
     error.value = requestError.message
     Logger.error('Failed to load music album tracks', requestError)
+    return
+  }
+  const items = data?.items || []
+  tracks.value = append ? [...tracks.value, ...items] : items
+  total.value = data?.total || tracks.value.length
+  void loadFavoriteCounts(tracks.value)
+}
+
+async function selectRelatedTracks(track: MusicTrack) {
+  if (!track.album_audio_id) return
+  selectedRelatedTrack.value = track
+  selectedRank.value = null
+  selectedPlaylist.value = null
+  selectedUserPlaylist.value = null
+  selectedArtist.value = null
+  selectedAlbum.value = null
+  artistAlbums.value = []
+  similarPlaylists.value = []
+  activeMode.value = 'mine'
+  trackSource.value = 'related'
+  selectedSourceTitle.value = `相关版本：${track.title || '未知歌曲'}`
+  currentPage.value = 1
+  await loadRelatedTracks(track, currentPage.value, false)
+}
+
+async function loadRelatedTracks(track: MusicTrack, page: number, append: boolean) {
+  loading.value = true
+  searched.value = true
+  error.value = ''
+  const { data, error: requestError } = await getMusicRelatedTracks({
+    album_audio_id: track.album_audio_id,
+    page,
+    page_size: pageSize,
+    sort: 'all',
+  })
+  loading.value = false
+  if (requestError) {
+    error.value = requestError.message
+    Logger.error('Failed to load related music tracks', requestError)
     return
   }
   const items = data?.items || []
@@ -1853,6 +2347,12 @@ function playAll(shuffle: boolean) {
   if (tracks.value.length === 0) return
   store.shuffle = shuffle
   store.playQueue(tracks.value, 0)
+}
+
+function playTrackList(trackList: MusicTrack[]) {
+  if (trackList.length === 0) return
+  store.shuffle = false
+  store.playQueue(trackList, 0)
 }
 
 const loadAuthStatus = async () => {
@@ -2055,7 +2555,21 @@ const formatCompactCount = (count: number) => {
   background: transparent;
   border: none;
   padding: 0 0.5rem;
-  gap: 0.375rem;
+  gap: 0.5rem;
+}
+
+.music-nav-sidebar .music-playlist-create :deep(input) {
+  height: 1.75rem;
+  border: none;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+}
+
+.music-nav-sidebar .music-playlist-create :deep(input:focus-visible) {
+  border-bottom-color: hsl(var(--primary));
+  box-shadow: none;
 }
 
 .music-discovery-grid {
@@ -2063,6 +2577,278 @@ const formatCompactCount = (count: number) => {
   flex-direction: column;
   margin: 0 auto;
   width: min(100%, 72rem);
+}
+
+.music-search-home {
+  margin: 0 auto;
+  width: min(100%, 72rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.music-hot-panel,
+.music-tag-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.music-hot-default,
+.music-hot-chip,
+.music-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2rem;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 9999px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  padding: 0 0.875rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.music-hot-default {
+  border-color: hsl(var(--primary) / 0.35);
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.06);
+  font-weight: 600;
+}
+
+.music-discover-section {
+  border-top: 1px solid hsl(var(--border) / 0.25);
+  padding-top: 1rem;
+}
+
+.music-discover-section--compact {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.music-discover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.music-discover-header h3 {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+
+.music-discover-header p {
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.music-discover-header--inline-action {
+  align-items: center;
+  margin-top: -0.25rem;
+}
+
+.music-section-action,
+.music-discover-card-title button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 0.375rem;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.music-section-action:hover,
+.music-discover-card-title button:hover {
+  border-color: hsl(var(--primary) / 0.45);
+  color: hsl(var(--primary));
+}
+
+.music-discover-tracks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.625rem;
+}
+
+.music-discover-track {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  grid-template-rows: 1fr 1fr;
+  gap: 0 0.625rem;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid hsl(var(--border) / 0.3);
+  border-radius: 0.5rem;
+  background: hsl(var(--muted) / 0.12);
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.music-discover-track:hover,
+.music-discover-entry:hover,
+.music-discover-card:hover {
+  background: hsl(var(--muted) / 0.28);
+}
+
+.music-discover-track img,
+.music-discover-track-cover {
+  grid-row: 1 / span 2;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.375rem;
+  object-fit: cover;
+  background: hsl(var(--muted) / 0.35);
+}
+
+.music-discover-track-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.music-discover-track span,
+.music-discover-track small,
+.music-discover-row-title,
+.music-discover-row small,
+.music-discover-entry span,
+.music-discover-entry small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-discover-track span {
+  align-self: end;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.music-discover-track small {
+  align-self: start;
+  font-size: 0.6875rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.music-discover-card-grid,
+.music-discover-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem;
+}
+
+.music-discover-card {
+  min-width: 0;
+  border: 1px solid hsl(var(--border) / 0.3);
+  border-radius: 0.5rem;
+  background: hsl(var(--muted) / 0.1);
+  padding: 0.75rem;
+}
+
+.music-discover-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.music-discover-card-title button {
+  width: 2rem;
+  min-height: 2rem;
+  justify-content: center;
+  padding: 0;
+}
+
+.music-discover-row {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  grid-template-rows: 1fr 1fr;
+  width: 100%;
+  min-width: 0;
+  gap: 0 0.5rem;
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  padding: 0.375rem;
+  text-align: left;
+}
+
+.music-discover-row:hover {
+  background: hsl(var(--background) / 0.8);
+}
+
+.music-discover-row-index {
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.music-discover-row-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.music-discover-row small {
+  font-size: 0.6875rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.music-discover-entry {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  grid-template-rows: 1fr 1fr;
+  align-items: center;
+  min-width: 0;
+  min-height: 3.75rem;
+  border: 1px solid hsl(var(--border) / 0.3);
+  border-radius: 0.5rem;
+  background: hsl(var(--muted) / 0.1);
+  padding: 0.625rem;
+  text-align: left;
+}
+
+.music-discover-entry > svg {
+  grid-row: 1 / span 2;
+  color: hsl(var(--primary));
+}
+
+.music-discover-entry span {
+  align-self: end;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.music-discover-entry small {
+  align-self: start;
+  font-size: 0.6875rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.music-hot-chip:hover,
+.music-tag-chip:hover {
+  background: hsl(var(--muted) / 0.45);
+}
+
+.music-tag-chip--active {
+  border-color: hsl(var(--primary) / 0.45);
+  background: hsl(var(--primary) / 0.08);
+  color: hsl(var(--primary));
+  font-weight: 600;
 }
 
 .music-grid {
@@ -2077,10 +2863,15 @@ const formatCompactCount = (count: number) => {
   gap: 0.375rem;
   cursor: pointer;
   text-align: left;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .music-grid-card:hover {
-  opacity: 0.85;
+  transform: translateY(-3px);
+}
+
+.music-grid-card:hover .music-source-cover {
+  transform: scale(1.03);
 }
 
 .music-grid-card-title {
@@ -2508,8 +3299,10 @@ const formatCompactCount = (count: number) => {
   width: 100%;
   aspect-ratio: 1;
   overflow: hidden;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   background: hsl(var(--muted) / 0.3);
+  border: 1px solid hsl(var(--border) / 0.25);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.02);
 }
 
 .music-source-cover {
@@ -2520,7 +3313,7 @@ const formatCompactCount = (count: number) => {
 }
 
 .music-source-card:hover .music-source-cover {
-  transform: scale(1.04);
+  transform: scale(1.03);
 }
 
 .music-source-play-overlay {
@@ -3080,7 +3873,7 @@ const formatCompactCount = (count: number) => {
   border-radius: 0.5rem; /* Cohesive standard radius */
   background: hsl(var(--background));
   border: 1px solid hsl(var(--border) / 0.8);
-  box-shadow: 
+  box-shadow:
     0 4px 12px -3px rgb(0 0 0 / 0.05),
     0 1px 2px 0 rgb(0 0 0 / 0.02);
   display: flex;
@@ -3092,7 +3885,7 @@ const formatCompactCount = (count: number) => {
 .music-login-showcase:hover .music-login-icon-wrapper {
   transform: translateY(-2px);
   border-color: hsl(var(--primary) / 0.5);
-  box-shadow: 
+  box-shadow:
     0 8px 16px -4px hsl(var(--primary) / 0.15),
     0 1px 2px 0 hsl(var(--primary) / 0.05);
 }
@@ -3302,35 +4095,221 @@ const formatCompactCount = (count: number) => {
   background: rgb(255 255 255 / 0.99);
 }
 
-/* FM Radio View */
+/* Breathtaking Minimalist FM Radio View - Two Column Layout */
 .music-fm-view {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  width: 100%;
+  overflow: hidden;
+  padding: 2rem;
+  animation: musicFadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.music-fm-layout {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rem; /* Even larger gap */
+  width: 100%;
+  max-width: 68rem;
+}
+
+/* Left: Album Cover */
+.music-fm-left {
+  flex: 0 0 auto;
+}
+
+.music-fm-cover-container {
+  position: relative;
+  width: 26rem; /* A bit larger */
+  height: 26rem;
+  border-radius: 1.5rem;
+  background: hsl(var(--muted) / 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 30px 60px -15px rgb(0 0 0 / 0.2), 0 0 0 1px hsl(var(--border) / 0.05);
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.music-fm-cover-container:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 40px 80px -20px rgb(0 0 0 / 0.3), 0 0 0 1px hsl(var(--border) / 0.05);
+}
+
+.music-fm-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 1.5rem;
+}
+
+.music-fm-play-overlay-large {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.25);
+  border-radius: 1.5rem;
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.music-fm-cover-container:hover .music-fm-play-overlay-large {
+  opacity: 1;
+}
+
+/* Right: Typography and Controls */
+.music-fm-right {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Meta Data Typography */
+.music-fm-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 2.5rem;
+  width: 100%;
+}
+
+.music-fm-title {
+  font-size: 3.5rem; /* Even larger */
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: hsl(var(--foreground));
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.music-fm-artist {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  transition: color 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.music-fm-artist:hover:not(:disabled) {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+}
+
+/* Action Buttons */
+.music-fm-actions {
+  display: flex;
   align-items: center;
-  gap: 1.25rem;
-  margin: 0 auto;
-  width: min(100%, 28rem);
-  padding-top: 2rem;
+  gap: 1.5rem;
+}
+
+.music-fm-btn-primary {
+  height: 4rem;
+  padding: 0 2.5rem;
+  border-radius: 9999px;
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  font-weight: 700;
+  font-size: 1.125rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  box-shadow: 0 10px 25px -8px rgb(0 0 0 / 0.3);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.music-fm-btn-primary:hover:not(:disabled) {
+  transform: scale(1.05) translateY(-2px);
+  box-shadow: 0 15px 30px -10px rgb(0 0 0 / 0.4);
+}
+
+.music-fm-btn-primary:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.music-fm-btn-circle {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--foreground));
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  cursor: pointer;
+  border: none;
+}
+
+.music-fm-btn-circle:hover:not(:disabled) {
+  background: hsl(var(--muted));
+  transform: scale(1.05);
+}
+
+.music-fm-btn-circle:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Divider */
+.music-fm-divider {
+  width: 100%;
+  height: 1px;
+  background: hsl(var(--border) / 0.4);
+  margin: 3rem 0 2rem;
+}
+
+/* Bottom Controls */
+.music-fm-controls-bottom {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
 }
 
 .music-fm-tabs {
-  display: flex;
+  display: inline-flex;
+  background: hsl(var(--muted) / 0.4);
+  border-radius: 9999px;
+  padding: 0.25rem;
   gap: 0.25rem;
-  background: hsl(var(--muted) / 0.3);
-  border-radius: 0.5rem;
-  padding: 0.1875rem;
 }
 
 .music-fm-tab {
-  border: 0;
-  background: transparent;
-  color: hsl(var(--muted-foreground));
+  padding: 0.4rem 1rem;
+  border-radius: 9999px;
   font-size: 0.8125rem;
-  font-weight: 500;
-  padding: 0.375rem 0.875rem;
-  border-radius: 0.375rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  transition: all 0.2s ease;
+  border: none;
+  background: transparent;
   cursor: pointer;
-  transition: all 0.15s ease;
 }
 
 .music-fm-tab:hover {
@@ -3340,165 +4319,58 @@ const formatCompactCount = (count: number) => {
 .music-fm-tab--active {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-weight: 600;
-  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.06);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.05);
 }
 
 .music-fm-pool {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
 .music-fm-chip {
-  border: 1px solid hsl(var(--border) / 0.4);
-  background: transparent;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.7rem;
-  padding: 0.25rem 0.625rem;
+  padding: 0.35rem 0.875rem;
   border-radius: 9999px;
+  background: transparent;
+  border: 1px solid hsl(var(--border) / 0.6);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
   cursor: pointer;
-  transition: all 0.15s ease;
 }
 
 .music-fm-chip:hover {
-  border-color: hsl(var(--primary) / 0.4);
+  background: hsl(var(--muted) / 0.3);
   color: hsl(var(--foreground));
 }
 
 .music-fm-chip--active {
-  border-color: hsl(var(--primary) / 0.5);
-  background: hsl(var(--primary) / 0.08);
-  color: hsl(var(--primary));
-  font-weight: 600;
+  background: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--foreground)) !important;
+  color: hsl(var(--background)) !important;
 }
 
-.music-fm-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.25rem;
-  width: 100%;
+.music-fm-error {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: hsl(var(--destructive));
 }
 
-.music-fm-card-cover {
-  position: relative;
-  width: min(16rem, 70vw);
-  aspect-ratio: 1;
-  border-radius: 0.75rem;
-  overflow: hidden;
-  background: hsl(var(--muted) / 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 24px hsl(var(--foreground) / 0.06);
-  transition: transform 0.3s ease;
-}
+@media (max-width: 1024px) {
+  .music-fm-layout {
+    flex-direction: column;
+    gap: 3rem;
+    text-align: center;
+  }
 
-.music-fm-card-cover:hover {
-  transform: scale(1.02);
-}
+  .music-fm-right {
+    align-items: center;
+  }
 
-.music-fm-card--idle:hover .music-fm-card-cover {
-  transform: scale(1.02);
-}
-
-.music-fm-card-play-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: hsl(var(--background) / 0.4);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.music-fm-card--idle:hover .music-fm-card-play-overlay {
-  opacity: 1;
-}
-
-.music-fm-card-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.music-fm-card-meta {
-  text-align: center;
-  min-width: 0;
-  width: 100%;
-}
-
-.music-fm-card-title {
-  font-size: 1.125rem;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.music-fm-card-artist {
-  border: 0;
-  background: transparent;
-  color: hsl(var(--primary));
-  font-size: 0.8125rem;
-  font-weight: 500;
-  margin-top: 0.25rem;
-  cursor: pointer;
-  padding: 0;
-}
-
-.music-fm-card-artist:hover {
-  text-decoration: underline;
-}
-
-.music-fm-card-artist:disabled {
-  color: hsl(var(--muted-foreground));
-  cursor: default;
-  text-decoration: none;
-}
-
-.music-fm-card-actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.music-fm-btn {
-  display: flex;
-  width: 2.25rem;
-  height: 2.25rem;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 0.375rem;
-  background: transparent;
-  color: hsl(var(--foreground));
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.music-fm-btn:hover {
-  background: hsl(var(--muted) / 0.5);
-}
-
-.music-fm-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.music-fm-btn--primary {
-  gap: 0.375rem;
-  width: auto;
-  padding: 0 1rem;
-  border-radius: 9999px;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-}
-
-.music-fm-btn--primary:hover {
-  background: hsl(var(--primary) / 0.9);
-  transform: scale(1.05);
+  .music-fm-artist {
+    text-align: center;
+  }
 }
 
 
