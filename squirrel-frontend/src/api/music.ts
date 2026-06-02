@@ -748,7 +748,7 @@ export const searchMusicComplex = (query: string) => {
     songs: MusicTrack[]
     artists: MusicArtist[]
     albums: MusicAlbum[]
-  }>('/api/music/search/complex', { query })
+  }>('/api/music/search/complex', { keywords: query })
 }
 
 export const getMusicUserVip = () => {
