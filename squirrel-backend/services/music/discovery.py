@@ -158,22 +158,23 @@ async def list_new_songs(user_id: int, category_type: int | None, page: int, pag
 
 
 async def list_new_albums(user_id: int, page: int, page_size: int) -> dict[str, Any]:
-    payload = await _request_kugou('/top/album', {
-        'page': page,
-        'pagesize': page_size,
-    }, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
-    rows = _first_list(data, ('info', 'list', 'lists', 'albums', 'data'))
-    if isinstance(data, dict):
-        total = data.get('total') or data.get('count') or len(rows)
-    else:
-        total = len(rows)
+    payload = await _request_kugou('/top/album', {}, user_id=user_id)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    
+    rows = []
+    for key in ('chn', 'ea', 'ja', 'kr', 'all'):
+        region = data.get(key)
+        if isinstance(region, list):
+            rows.extend(region)
+    
+    if page_size > 0 and len(rows) > page_size:
+        rows = rows[:page_size]
 
     return {
         'items': [_normalize_album(row) for row in rows],
-        'page': page,
+        'page': 1,
         'page_size': page_size,
-        'total': total,
+        'total': len(rows),
     }
 
 
