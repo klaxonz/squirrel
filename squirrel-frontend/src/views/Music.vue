@@ -33,6 +33,7 @@
             :hot-searches="hotSearches"
             :loading="searchLoading"
             :result="complexResult"
+            :search-query="searchQuery"
             @search="handleSearch"
             @select-artist="handleSelectArtistDetail"
             @select-album="handleSelectAlbumFromSearch"
@@ -376,6 +377,7 @@ const newAlbumsLoading = ref(false)
 const hotSearches = ref<MusicHotSearch[]>([])
 const searchLoading = ref(false)
 const complexResult = ref<{ songs: MusicTrack[]; artists: MusicArtist[]; albums: MusicAlbum[] } | null>(null)
+const searchQuery = ref('')
 
 const authStatus = ref<MusicAuthStatus | null>(null)
 const kugouProfile = ref<MusicUserProfile | null>(null)
@@ -437,8 +439,9 @@ const userPlaylistAsPlaylist = computed(() => {
 })
 
 watch(() => uiStore.searchTrigger, () => {
-  if (route.name === 'Music') {
+  if (route.name === 'Music' && uiStore.searchQuery) {
     handleSetMode('search')
+    handleSearch(uiStore.searchQuery)
   }
 })
 
@@ -570,6 +573,7 @@ function handleNavigate(section: string) {
 }
 
 async function handleSearch(query: string) {
+  searchQuery.value = query
   searchLoading.value = true
   const { data } = await searchMusicComplex(query)
   searchLoading.value = false

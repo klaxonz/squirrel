@@ -1,21 +1,5 @@
 <template>
   <div class="music-search">
-    <div class="music-search-header">
-      <div class="music-search-input-wrap">
-        <AppIcon name="search" class="h-5 w-5 text-muted-foreground" />
-        <input
-          v-model="query"
-          type="text"
-          class="music-search-input"
-          placeholder="搜索歌曲、歌手、专辑、歌词"
-          @keyup.enter="handleSearch"
-        />
-        <button v-if="query" class="music-search-clear" @click="clearQuery">
-          <AppIcon name="close" class="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-
     <div v-if="!hasSearched" class="music-search-home">
       <section v-if="history.length" class="music-search-section">
         <div class="music-search-section-header">
@@ -76,7 +60,7 @@
           <button
             v-if="result.songs.length > 10"
             class="music-result-more"
-            @click="$emit('more-songs', query)"
+            @click="$emit('more-songs', searchQuery || '')"
           >
             查看更多歌曲
           </button>
@@ -130,7 +114,7 @@
 
         <div v-if="isEmpty" class="music-search-empty">
           <AppIcon name="search" class="h-12 w-12 text-muted-foreground/30" />
-          <p>未找到「{{ query }}」相关结果</p>
+          <p>未找到「{{ searchQuery }}」相关结果</p>
         </div>
       </template>
     </div>
@@ -147,6 +131,7 @@ const props = defineProps<{
   hotSearches: MusicHotSearch[]
   loading: boolean
   result: { songs: MusicTrack[]; artists: MusicArtist[]; albums: MusicAlbum[] } | null
+  searchQuery?: string
 }>()
 
 const emit = defineEmits<{
@@ -156,7 +141,6 @@ const emit = defineEmits<{
   'more-songs': [query: string]
 }>()
 
-const query = ref('')
 const hasSearched = ref(false)
 const history = ref<string[]>([])
 
@@ -165,26 +149,17 @@ const isEmpty = computed(() => {
   return !props.result.songs.length && !props.result.artists.length && !props.result.albums.length
 })
 
-watch(query, (val) => {
-  if (!val) hasSearched.value = false
-})
-
-function handleSearch() {
-  const q = query.value.trim()
-  if (!q) return
-  hasSearched.value = true
-  addToHistory(q)
-  emit('search', q)
-}
+watch(() => props.searchQuery, (val) => {
+  if (val) {
+    hasSearched.value = true
+    addToHistory(val)
+  }
+}, { immediate: true })
 
 function searchByKeyword(keyword: string) {
-  query.value = keyword
-  handleSearch()
-}
-
-function clearQuery() {
-  query.value = ''
-  hasSearched.value = false
+  hasSearched.value = true
+  addToHistory(keyword)
+  emit('search', keyword)
 }
 
 function addToHistory(q: string) {
