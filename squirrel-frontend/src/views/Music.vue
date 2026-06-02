@@ -200,16 +200,11 @@
             @select-album="handleSelectAlbumFromTrack"
           />
 
-          <MusicPlaylistGrid
+          <MusicAlbumGrid
             v-else-if="activeView === 'new-albums'"
-            :playlists="[]"
-            :tags="[]"
-            :selected-category="0"
-            :has-more="false"
+            :albums="newAlbums"
             :loading="newAlbumsLoading"
-            @select="() => {}"
-            @select-category="() => {}"
-            @load-more="() => {}"
+            @select="handleSelectAlbum"
           />
 
           <MusicTrackList
@@ -252,6 +247,7 @@ import MusicSearchView from '@/components/music/MusicSearchView.vue'
 import MusicFmView from '@/components/music/MusicFmView.vue'
 import MusicRankGrid from '@/components/music/MusicRankGrid.vue'
 import MusicPlaylistGrid from '@/components/music/MusicPlaylistGrid.vue'
+import MusicAlbumGrid from '@/components/music/MusicAlbumGrid.vue'
 import MusicPlaylistDetailView from '@/components/music/MusicPlaylistDetailView.vue'
 import MusicArtistDetailView from '@/components/music/MusicArtistDetailView.vue'
 import MusicAlbumDetailView from '@/components/music/MusicAlbumDetailView.vue'
