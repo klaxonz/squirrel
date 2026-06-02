@@ -532,6 +532,8 @@ async function loadUserPlaylists() {
 function handleSetMode(mode: string) {
   if (mode === 'home') {
     activeView.value = 'home'
+  } else if (mode === 'search') {
+    activeView.value = 'search'
   } else if (mode === 'fm' || mode === 'recommend') {
     activeView.value = 'fm'
     fm.loadBatch(false, true, userPlaylists.value)
