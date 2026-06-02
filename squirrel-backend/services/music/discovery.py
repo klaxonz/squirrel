@@ -250,7 +250,7 @@ async def get_banner_list(user_id: int) -> dict[str, Any]:
 
 
 async def get_complex_search(user_id: int, query: str) -> dict[str, Any]:
-    payload = await _request_kugou('/search/complex', {'keywords': query}, user_id=user_id)
+    payload = await _request_kugou('/search/complex', {'keywords': query}, use_auth=False, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
     
     songs = []

@@ -16,8 +16,7 @@ async def search_tracks(user_id: int, query: str, page: int, page_size: int) -> 
         'keywords': query,
         'page': page,
         'pagesize': page_size,
-        'type': 'song',
-    }, user_id=user_id)
+    }, use_auth=False, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
     rows = data.get('lists')
     if not isinstance(rows, list):
@@ -37,8 +36,7 @@ async def search_artists(user_id: int, query: str, page: int, page_size: int) ->
         'keywords': query,
         'page': page,
         'pagesize': page_size,
-        'type': 'author',
-    }, user_id=user_id)
+    }, use_auth=False, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
     rows = data.get('lists')
     if not isinstance(rows, list):
@@ -57,8 +55,7 @@ async def search_albums(user_id: int, query: str, page: int, page_size: int) -> 
         'keywords': query,
         'page': page,
         'pagesize': min(page_size * 3, 50),
-        'type': 'song',
-    }, user_id=user_id)
+    }, use_auth=False, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
     rows = data.get('lists')
     if not isinstance(rows, list):
