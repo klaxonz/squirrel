@@ -683,12 +683,6 @@ export const getMusicAiRecommend = (params?: {
   return get<MusicSearchResult>('/api/music/recommend/ai', params)
 }
 
-export const getMusicBrushFeed = (params?: {
-  page_size?: number
-}) => {
-  return get<MusicSearchResult>('/api/music/recommend/brush', params)
-}
-
 export const getMusicEverydayRecommend = () => {
   return get<MusicSearchResult>('/api/music/recommend/everyday')
 }
@@ -724,4 +718,56 @@ export const getMusicArtistDirectory = (params?: {
   page_size?: number
 }) => {
   return get<MusicArtistResult>('/api/music/artists/directory', params)
+}
+
+export const getMusicRankDetail = (rank_id: string) => {
+  return get<{
+    id: string
+    name: string
+    cover: string
+    intro: string
+    update_frequency: string
+    song_count: number
+  }>('/api/music/rank/detail', { rank_id })
+}
+
+export const getMusicBanner = () => {
+  return get<{
+    items: Array<{
+      id: string
+      title: string
+      cover: string
+      type: string
+      target_id: string
+    }>
+  }>('/api/music/banner')
+}
+
+export const searchMusicComplex = (query: string) => {
+  return get<{
+    songs: MusicTrack[]
+    artists: MusicArtist[]
+    albums: MusicAlbum[]
+  }>('/api/music/search/complex', { query })
+}
+
+export const getMusicUserVip = () => {
+  return get<{
+    is_vip: boolean
+    vip_type: number
+    vip_expire_time: string
+    vip_level: number
+  }>('/api/music/user/vip')
+}
+
+export const sendMusicCaptcha = (phone: string) => {
+  return post<{ ok: boolean }>('/api/music/auth/captcha', { phone })
+}
+
+export const loginMusicCellphone = (phone: string, captcha: string) => {
+  return post<{
+    ok: boolean
+    logged_in: boolean
+    auth: MusicAuthStatus
+  }>('/api/music/auth/login', { phone, captcha })
 }

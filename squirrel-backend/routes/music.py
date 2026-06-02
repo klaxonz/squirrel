@@ -847,3 +847,71 @@ async def list_music_artist_directory(
         return response.success(await music_service.list_artist_directory(current_user.id, page, page_size))
     except music_service.MusicServiceError as exc:
         return response.server_error(str(exc))
+
+
+@router.get('/api/music/rank/detail')
+async def get_music_rank_detail(
+    rank_id: str = Query(..., min_length=1, description='排行榜 ID'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_rank_detail(current_user.id, rank_id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/banner')
+async def get_music_banner(
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_banner_list(current_user.id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/search/complex')
+async def search_music_complex(
+    query: str = Query(..., min_length=1, max_length=100, description='搜索关键词'),
+    current_user: User = Depends(get_current_user),
+):
+    normalized_query = query.strip()
+    if not normalized_query:
+        return response.param_error('query cannot be empty')
+    try:
+        return response.success(await music_service.get_complex_search(current_user.id, normalized_query))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.get('/api/music/user/vip')
+async def get_music_user_vip(
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.get_user_vip_detail(current_user.id))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.post('/api/music/auth/captcha')
+async def send_music_captcha(
+    phone: str = Query(..., min_length=11, max_length=11, description='phone number'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.send_captcha(phone))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
+
+
+@router.post('/api/music/auth/login')
+async def login_music_cellphone(
+    phone: str = Query(..., min_length=11, max_length=11, description='phone number'),
+    captcha: str = Query(..., min_length=4, max_length=6, description='captcha code'),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return response.success(await music_service.login_cellphone(current_user.id, phone, captcha))
+    except music_service.MusicServiceError as exc:
+        return response.server_error(str(exc))
