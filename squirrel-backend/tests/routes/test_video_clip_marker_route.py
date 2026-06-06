@@ -67,7 +67,7 @@ def test_update_clip_marker_returns_not_found_when_service_misses(monkeypatch):
         },
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 404
     assert response.json()['code'] == 404
     assert response.json()['msg'] == '片段标记不存在'
 

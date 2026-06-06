@@ -43,6 +43,29 @@ export class ApiError extends Error {
 const isApiEnvelope = (data: any): data is ApiEnvelope => {
   return !!data && typeof data.code === 'number'
 }
+const getErrorTypeByStatus = (status: number | null | undefined): ErrorType => {
+  switch (status) {
+    case 401: return ErrorTypes.UNAUTHORIZED
+    case 403: return ErrorTypes.FORBIDDEN
+    case 404: return ErrorTypes.NOT_FOUND
+    case 500:
+    case 502:
+    case 503: return ErrorTypes.SERVER_ERROR
+    default: return ErrorTypes.API
+  }
+}
+const getErrorTypeByCode = (code: number, status: number | null | undefined): ErrorType => {
+  const statusType = getErrorTypeByStatus(status)
+  if (statusType !== ErrorTypes.API) return statusType
+
+  switch (code) {
+    case 401: return ErrorTypes.UNAUTHORIZED
+    case 403: return ErrorTypes.FORBIDDEN
+    case 404: return ErrorTypes.NOT_FOUND
+    case 500: return ErrorTypes.SERVER_ERROR
+    default: return ErrorTypes.API
+  }
+}
 const getErrorType = (error: any): ErrorType => {
   if (error?.code === 'ERR_CANCELED') {
     return ErrorTypes.CANCELED
@@ -53,16 +76,7 @@ const getErrorType = (error: any): ErrorType => {
     return ErrorTypes.NETWORK
   }
 
-  const status = error.response.status
-  switch (status) {
-    case 401: return ErrorTypes.UNAUTHORIZED
-    case 403: return ErrorTypes.FORBIDDEN
-    case 404: return ErrorTypes.NOT_FOUND
-    case 500:
-    case 502:
-    case 503: return ErrorTypes.SERVER_ERROR
-    default: return ErrorTypes.API
-  }
+  return getErrorTypeByStatus(error.response.status)
 }
 const formatErrorMessage = (error: any) => {
   if (error.response?.data?.msg) {
@@ -94,7 +108,7 @@ export const handleRequest = async <T = any>(promise: Promise<AxiosResponse<any>
 
       const error = new ApiError(
         response.data.msg || '请求失败',
-        ErrorTypes.API,
+        getErrorTypeByCode(response.data.code, response.status),
         response.status,
         response.data
       )

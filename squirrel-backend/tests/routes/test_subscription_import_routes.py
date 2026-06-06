@@ -74,7 +74,7 @@ def test_preview_import_route_rejects_invalid_cursor_json(monkeypatch):
         params={'cursor': '{not-json}', 'limit': 50},
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 400
     body = response.json()
     assert body['code'] == 400
     assert '无效的预览游标' in body['msg']
@@ -92,7 +92,7 @@ def test_preview_import_route_rejects_non_object_cursor(monkeypatch):
         params={'cursor': '[]', 'limit': 50},
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 400
     body = response.json()
     assert body['code'] == 400
     assert body['msg'] == '无效的预览游标: 必须为 JSON object'

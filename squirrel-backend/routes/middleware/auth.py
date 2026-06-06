@@ -1,8 +1,7 @@
 import logging
 from typing import List
 
-from fastapi import Request, status
-from fastapi.responses import JSONResponse
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from common import response
@@ -78,12 +77,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
     @staticmethod
-    def _unauthorized_response(error: AuthenticationError, request: Request | None = None, clear_cookie: bool = False) -> JSONResponse:
-        payload = response.unauthorized(error.detail)
-        unauthorized_response = JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content=payload,
-        )
+    def _unauthorized_response(error: AuthenticationError, request: Request | None = None, clear_cookie: bool = False):
+        unauthorized_response = response.unauthorized(error.detail)
         if clear_cookie:
             clear_auth_cookie(unauthorized_response, request)
         return unauthorized_response
