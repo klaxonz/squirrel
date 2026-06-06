@@ -1,15 +1,15 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
 
-class SortBy(str, Enum):
+class SortBy(StrEnum):
     UPLOADED_AT = "publish_date"
     CREATED_AT = "created_at"
 
 
-class VideoCategory(str, Enum):
+class VideoCategory(StrEnum):
     ALL = 'all'
     READ = 'read'
     UNREAD = 'unread'
@@ -18,13 +18,13 @@ class VideoCategory(str, Enum):
     LATER = 'later'
 
 
-class YesNoAll(str, Enum):
+class YesNoAll(StrEnum):
     ALL = 'all'
     YES = 'yes'
     NO = 'no'
 
 
-class TimeRange(str, Enum):
+class TimeRange(StrEnum):
     ALL = 'all'
     TODAY = 'today'
     WEEK = 'week'
@@ -32,14 +32,14 @@ class TimeRange(str, Enum):
     YEAR = 'year'
 
 
-class DurationFilter(str, Enum):
+class DurationFilter(StrEnum):
     ALL = 'all'
     SHORT = 'short'
     MEDIUM = 'medium'
     LONG = 'long'
 
 
-class ContentType(str, Enum):
+class ContentType(StrEnum):
     ALL = 'all'
     CHANNEL = 'CHANNEL'
     PLAYLIST = 'PLAYLIST'
