@@ -10,7 +10,7 @@ from typing import List
 from utils.site_catalog import SiteCatalog
 from utils.jwt_helper import get_current_user
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix='/api/video', tags=['频道视频接口'])
 

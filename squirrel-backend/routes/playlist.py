@@ -18,7 +18,7 @@ from schemas.playlist import (
 from services import playlist_service
 from utils.jwt_helper import get_current_user
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix='/api/playlist', tags=['播放列表接口'])
 

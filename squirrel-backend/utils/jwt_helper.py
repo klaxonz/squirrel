@@ -9,7 +9,7 @@ from core.config import settings
 from models.user import User
 from services import user_service
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 ALGORITHM = "HS256"
 AUTH_COOKIE_NAME = 'squirrel_auth'

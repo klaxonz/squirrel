@@ -7,7 +7,7 @@ from typing import Optional, Dict, Set
 
 from .url_helper import extract_second_level_domain
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 @dataclass

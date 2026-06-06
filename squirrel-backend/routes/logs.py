@@ -8,7 +8,7 @@ from utils.jwt_helper import get_current_user
 import common.response as response
 from services import log_service
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix='/api/logs', tags=['日志管理'])
 
 

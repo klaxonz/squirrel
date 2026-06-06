@@ -6,7 +6,7 @@ from typing import List
 from core.config import settings
 from processes.managers.crawl_worker_runtime import CrawlWorkerRuntime
 
-_logger = logging.getLogger()
+_logger = logging.getLogger(__name__)
 
 _worker_threads: List[threading.Thread] = []
 _workers_running: bool = False

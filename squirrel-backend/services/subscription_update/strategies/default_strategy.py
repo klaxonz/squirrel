@@ -25,7 +25,7 @@ from utils.metrics import metrics
 from .base import UpdateStrategy
 from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateMode, UpdateTrigger
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 FULL_BACKFILL_RETRY_COOLDOWN = timedelta(hours=6)
 FULL_BACKFILL_STALE_AFTER = timedelta(days=3)

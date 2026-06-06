@@ -24,7 +24,7 @@ from services.video_list_query_service import (
 from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
 from utils import url_helper
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def _elapsed_ms(start_time: float) -> float:

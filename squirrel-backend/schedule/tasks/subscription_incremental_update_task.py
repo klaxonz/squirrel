@@ -3,7 +3,7 @@ from schedule.task import TaskRegistry, BaseTask
 from services.subscription_update import scheduler
 from services.subscription_update.models import UpdateTrigger, UpdateMode
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 @TaskRegistry.register(interval=5, unit='minutes')

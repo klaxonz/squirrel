@@ -7,7 +7,7 @@ import logging
 from schedule.task import TaskRegistry, BaseTask
 from services.metrics_service import metrics_service
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 @TaskRegistry.register(interval=5, unit='minutes')

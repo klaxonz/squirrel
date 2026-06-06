@@ -42,7 +42,7 @@ from routes.scheduler import router as scheduler_router
 from routes.rss import router as rss_router
 from routes.music import router as music_router
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:

@@ -6,7 +6,7 @@ from typing import List
 from processes.managers.crawl_worker_manager import crawl_worker_start, crawl_worker_status, crawl_worker_stop
 from queues.runner import WorkerRunner
 
-_logger = logging.getLogger()
+_logger = logging.getLogger(__name__)
 
 # module-scope state
 _worker_threads: List[threading.Thread] = []

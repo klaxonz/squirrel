@@ -7,7 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from common import response
 from utils.jwt_helper import AUTH_COOKIE_NAME, clear_auth_cookie, validate_auth_token
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 PUBLIC_PATH_PREFIXES = [
     "/api/users/login",

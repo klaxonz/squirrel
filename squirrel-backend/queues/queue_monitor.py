@@ -3,7 +3,7 @@ from typing import Optional
 
 from services.crawl_tasks import service as crawl_task_service
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class QueueBackpressureMonitor:

@@ -7,7 +7,7 @@ from redis_lock import Lock as RedisLock
 
 from core.config import settings
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def get_redis_connection_kwargs() -> dict[str, Any]:

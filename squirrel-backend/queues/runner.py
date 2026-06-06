@@ -14,7 +14,7 @@ from .registry import ConsumerRegistry
 class WorkerRunner:
     def __init__(self):
         self._threads: List[threading.Thread] = []
-        self._logger = logging.getLogger()
+        self._logger = logging.getLogger(__name__)
 
     def _parse_consumer_count_overrides(self) -> tuple[dict[str, int], list[tuple[str, int]]]:
         exact: dict[str, int] = {}

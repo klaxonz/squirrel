@@ -13,7 +13,7 @@ from queues import queue_listener
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import extract_top_level_domain
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 @queue_listener(constants.QUEUE_SUBSCRIBE, group="subscription", consumer_name="subscribe")

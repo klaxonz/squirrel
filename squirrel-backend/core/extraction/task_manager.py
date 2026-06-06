@@ -8,7 +8,7 @@ from typing import Any, Optional
 from .contracts import ExtractionTask, TaskPriority
 from .factory import get_extractor_factory
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class ICacheManager(ABC):

@@ -3,7 +3,7 @@ import logging
 from schedule.task import TaskRegistry, BaseTask
 from services import subscription_sync_state_service
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 @TaskRegistry.register(interval=10, unit='minutes')

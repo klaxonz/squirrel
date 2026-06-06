@@ -11,7 +11,7 @@ from services import system_config_service
 from services.scheduled_task_service import ScheduledTaskService
 
 router = APIRouter(prefix="/api/scheduler", tags=["定时任务管理"])
-_logger = logging.getLogger()
+_logger = logging.getLogger(__name__)
 
 
 # Pydantic models for API

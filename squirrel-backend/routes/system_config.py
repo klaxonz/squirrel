@@ -6,7 +6,7 @@ from fastapi import Body
 from services import system_config_service
 
 router = APIRouter(prefix="/api/system/config", tags=["system-config"])
-_logger = logging.getLogger()
+_logger = logging.getLogger(__name__)
 
 
 def to_bool(val: Optional[str]) -> Optional[bool]:

@@ -6,6 +6,8 @@ from sqlalchemy import select
 from core.database import get_session
 from models.system_config import SystemConfig
 
+logger = logging.getLogger(__name__)
+
 # bool 转换集合
 TRUE_SET = {"true", "1", "yes", "y", "on"}
 FALSE_SET = {"false", "0", "no", "n", "off"}
@@ -49,7 +51,7 @@ def set_value(key: str, value: str) -> None:
         else:
             row.value = value
         session.commit()
-        logging.getLogger().info(f"[system_config] set %s=%s", key, value)
+        logger.info(f"[system_config] set %s=%s", key, value)
 
 
 def get_bool(key: str, default: bool) -> bool:
@@ -62,9 +64,9 @@ def get_bool(key: str, default: bool) -> bool:
     db_value = get_value(key, None)
     result = _to_bool(db_value, default)
     if db_value is not None:
-        logging.getLogger().debug(f"[system_config] get_bool({key}) from database={db_value} -> {result}")
+        logger.debug(f"[system_config] get_bool({key}) from database={db_value} -> {result}")
     else:
-        logging.getLogger().debug(f"[system_config] get_bool({key}) using default -> {result}")
+        logger.debug(f"[system_config] get_bool({key}) using default -> {result}")
     return result
 
 

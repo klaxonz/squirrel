@@ -2,7 +2,7 @@ import logging
 import time
 from threading import Thread
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class Scheduler:

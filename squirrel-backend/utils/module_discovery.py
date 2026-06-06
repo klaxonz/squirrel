@@ -7,7 +7,7 @@ import pkgutil
 from types import ModuleType
 from typing import List, Sequence, Type, Union
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def import_classes_from_package(

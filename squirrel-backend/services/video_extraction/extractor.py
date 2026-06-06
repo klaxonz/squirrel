@@ -18,7 +18,7 @@ from services.subscription_sync_event_service import SyncEventInput, append_even
 from services.subscription_sync_run_service import SyncEventType, SyncRunStatus
 from services import download_service, subscription_sync_state_service
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 handler = VideoExtractionHandler()
 task_manager = TaskManager()
 

@@ -9,7 +9,7 @@ from common.log import init_logging
 from core.config import settings
 
 init_logging()
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 AFTER_COMMIT_CALLBACKS_KEY = 'after_commit_callbacks'
 
 db_config = {

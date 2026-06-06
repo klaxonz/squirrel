@@ -26,7 +26,7 @@ from .models import (
     UpdateMode,
 )
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)

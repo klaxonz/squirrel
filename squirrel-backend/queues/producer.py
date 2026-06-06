@@ -8,7 +8,7 @@ from core.cache import redis_client
 from .message import MqMessage
 from utils.metrics import metrics
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class RedisStreamProducer:

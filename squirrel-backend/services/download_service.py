@@ -9,7 +9,7 @@ from utils.site_catalog import SiteCatalog
 from utils.url_helper import extract_top_level_domain
 from utils.metrics import metrics
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def enqueue_video_extraction(params: VideoExtractDto) -> bool:

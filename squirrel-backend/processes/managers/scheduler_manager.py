@@ -9,7 +9,7 @@ from models.scheduler_status import SchedulerStatus
 from services import outbox_event_service
 from services.scheduled_task_bootstrap import ensure_system_tasks
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 # module-scope state
 _scheduler: Optional[Scheduler] = None

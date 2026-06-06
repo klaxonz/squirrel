@@ -10,7 +10,7 @@ from typing import Callable, Dict, Optional, Any
 
 from core.cache import redis_client
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class MessageDuplicateChecker:

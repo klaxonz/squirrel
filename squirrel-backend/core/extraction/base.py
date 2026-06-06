@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from .contracts import Extractor, ExtractionTask, ExtractionResult, ResultHandler, TaskProcessor
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class BaseExtractor:

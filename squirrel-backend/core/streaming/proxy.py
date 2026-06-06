@@ -23,7 +23,7 @@ from site_runtimes.ports import get_runtime_gateway
 from utils.cookie import filter_cookies_to_query_string
 from utils.runtime_http import get_cloudflare_bypass_client
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 @dataclass

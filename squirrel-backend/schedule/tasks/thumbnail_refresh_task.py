@@ -16,7 +16,7 @@ from core.site_config_manager import get_effective_site_catalog
 from models.video import Video
 from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 _HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
