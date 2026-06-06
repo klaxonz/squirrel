@@ -387,17 +387,17 @@ onUnmounted(() => {
 <style scoped>
 .music-bar {
   position: fixed;
-  bottom: 0.75rem;
+  bottom: 0.875rem;
   left: 1rem;
   right: 1rem;
   z-index: 60;
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 0.875rem;
+  border-radius: 0.75rem;
   background: hsl(var(--background) / 0.94);
   backdrop-filter: blur(18px) saturate(160%);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
   transition: left 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 12px 40px hsl(var(--foreground) / 0.12);
+  box-shadow: 0 10px 32px hsl(var(--foreground) / 0.1);
   overflow: hidden;
 }
 
@@ -436,16 +436,29 @@ onUnmounted(() => {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 0.625rem;
-  min-height: 3rem;
-  padding: 0.375rem 0.75rem;
+  gap: 0.875rem;
+  min-height: 2.75rem;
+  padding: 0.25rem 0.875rem 0.5rem;
+}
+
+.music-bar :deep(.music-progress-bar) {
+  width: calc(100% - 1.75rem);
+  margin: 0.375rem auto 0;
+  padding: 0;
 }
 
 .music-bar-time-wrap {
   display: flex;
-  gap: 0.375rem;
+  gap: 0.25rem;
   align-items: center;
   justify-content: center;
+}
+
+.music-bar-time-wrap::after {
+  content: '/';
+  order: 1;
+  color: hsl(var(--muted-foreground) / 0.45);
+  font-size: 0.625rem;
 }
 
 .music-bar-time {
@@ -455,6 +468,16 @@ onUnmounted(() => {
   text-align: center;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
+}
+
+.music-bar-time:first-child {
+  order: 0;
+  text-align: right;
+}
+
+.music-bar-time:last-child {
+  order: 2;
+  text-align: left;
 }
 
 .music-mini {

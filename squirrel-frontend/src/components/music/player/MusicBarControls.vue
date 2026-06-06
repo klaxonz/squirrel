@@ -91,16 +91,16 @@ const repeatTitle = computed(() => {
 .music-bar-controls {
   display: flex;
   flex: 1;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.125rem;
+  gap: 0.625rem;
 }
 
 .music-bar-buttons {
   display: flex;
   align-items: center;
-  gap: 0.125rem;
+  gap: 0.1875rem;
 }
 
 .music-bar-btn {
@@ -133,8 +133,8 @@ const repeatTitle = computed(() => {
 }
 
 .music-bar-btn--play {
-  width: 2.125rem;
-  height: 2.125rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 9999px;
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));

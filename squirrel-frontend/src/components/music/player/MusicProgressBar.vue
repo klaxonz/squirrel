@@ -113,26 +113,26 @@ onUnmounted(() => {
   width: 100%;
   height: 2px;
   cursor: pointer;
-  padding: 3px 0;
+  padding: 0;
   margin: 0;
 }
 
 .music-progress-track {
   width: 100%;
-  height: 2px;
-  background: hsl(var(--border) / 0.4);
+  height: 1px;
+  background: hsl(var(--border) / 0.55);
   border-radius: 9999px;
   overflow: hidden;
   transition: height 0.15s ease;
 }
 
 .music-progress-bar--hover .music-progress-track {
-  height: 3px;
+  height: 2px;
 }
 
 .music-progress-fill {
   height: 100%;
-  background: hsl(var(--primary));
+  background: hsl(var(--foreground) / 0.62);
   border-radius: 9999px;
   transition: width 0.1s linear;
 }
@@ -141,9 +141,9 @@ onUnmounted(() => {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 8px;
-  height: 8px;
-  background: hsl(var(--primary));
+  width: 7px;
+  height: 7px;
+  background: hsl(var(--foreground));
   border: 2px solid hsl(var(--background));
   border-radius: 9999px;
   box-shadow: 0 2px 6px hsl(var(--foreground) / 0.2);
