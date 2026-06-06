@@ -45,23 +45,6 @@ class VideoExtractionHandler(BaseResultHandler):
         
         self.pipeline = pipeline
     
-    def handle_success(
-        self,
-        task: ExtractionTask,
-        result: ExtractionResult
-    ) -> None:
-        """
-        处理成功结果
-        
-        注意：这个方法在当前架构中不会被调用，
-        因为我们直接使用Pipeline.execute()。
-        保留此方法是为了兼容BaseResultHandler接口。
-        """
-        logger.debug(
-            f"VideoExtractionHandler.handle_success called "
-            f"(deprecated path): task_id={task.task_id}"
-        )
-    
     def handle_failure(
         self,
         task: ExtractionTask,

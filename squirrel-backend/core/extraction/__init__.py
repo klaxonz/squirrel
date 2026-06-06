@@ -32,7 +32,7 @@ from .factory import (
     reset_factory,
 )
 
-from .task_manager import TaskManager, TaskRouter
+from .task_manager import TaskManager
 
 from .handlers.video_handler import VideoExtractionHandler
 
@@ -55,7 +55,7 @@ __all__ = [
     'reset_factory',
 
     # 任务管理
-    'TaskManager', 'TaskRouter',
+    'TaskManager',
 
     # 处理器
     'VideoExtractionHandler',
