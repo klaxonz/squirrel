@@ -5,7 +5,9 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from crawl import SiteRuntimeInvokeRequest
+from site_runtimes.audit import SiteRuntimeAuditWriter
 from site_runtimes.models import SiteRuntimeRecord, SiteRuntimeTarget, SiteRuntimeState
+from site_runtimes.process_launcher import SiteRuntimeProcessLauncher
 from site_runtimes.supervisor import SiteRuntimeSupervisor
 
 
@@ -97,7 +99,7 @@ def get_site_runtime():
     assert stopped.state == SiteRuntimeState.STOPPED
 
 
-def test_supervisor_builds_workspace_runtime_command(tmp_path):
+def test_process_launcher_builds_workspace_runtime_command(tmp_path):
     runtime_root = tmp_path / 'sample_plugin'
     runtime_root.mkdir()
     record = SiteRuntimeRecord(
@@ -127,9 +129,10 @@ def test_supervisor_builds_workspace_runtime_command(tmp_path):
         metadata={'source': 'workspace'},
     )
 
-    supervisor = SiteRuntimeSupervisor()
+    audit_writer = SiteRuntimeAuditWriter(tmp_path)
+    launcher = SiteRuntimeProcessLauncher(tmp_path, audit_writer)
 
-    command = supervisor._build_runtime_command(record, host='127.0.0.1', port=9001)
+    command = launcher.build_runtime_command(record, host='127.0.0.1', port=9001)
 
     assert command[1:3] == ['-m', 'site_runtimes.runtime_bridge']
     assert '--import-path' in command
@@ -149,13 +152,13 @@ def test_supervisor_builds_workspace_runtime_command(tmp_path):
     assert '--cpu-time-limit-seconds' not in command
     assert '--max-open-files' not in command
 
-    artifact_paths = supervisor._resolve_artifact_paths(record)
+    artifact_paths = audit_writer.resolve_artifact_paths(record)
     assert artifact_paths['stdout'].name == 'stdout.log'
     assert artifact_paths['stderr'].name == 'stderr.log'
     assert artifact_paths['audit'].name == 'audit.jsonl'
 
 
-def test_supervisor_sets_workspace_runtime_environment(monkeypatch, tmp_path):
+def test_process_launcher_sets_workspace_runtime_environment(monkeypatch, tmp_path):
     monkeypatch.setenv('PATH', r'C:\Windows\System32')
     record = SiteRuntimeRecord(
         runtime_id='sample',
@@ -170,9 +173,9 @@ def test_supervisor_sets_workspace_runtime_environment(monkeypatch, tmp_path):
         metadata={'source': 'workspace'},
     )
 
-    supervisor = SiteRuntimeSupervisor()
+    launcher = SiteRuntimeProcessLauncher(tmp_path, SiteRuntimeAuditWriter(tmp_path))
 
-    process_env = supervisor._build_process_env(record)
+    process_env = launcher.build_process_env(record)
 
     assert process_env['SQUIRREL_SITE_RUNTIME_ID'] == 'sample'
     assert process_env['SQUIRREL_SITE_RUNTIME_VERSION'] == '0.1.0'
@@ -181,7 +184,7 @@ def test_supervisor_sets_workspace_runtime_environment(monkeypatch, tmp_path):
     assert process_env['SQUIRREL_SITE_RUNTIME_SOURCE'] == 'workspace'
 
 
-def test_supervisor_appends_audit_events(tmp_path):
+def test_audit_writer_appends_audit_events(tmp_path):
     record = SiteRuntimeRecord(
         runtime_id='sample',
         version='0.1.0',
@@ -192,9 +195,9 @@ def test_supervisor_appends_audit_events(tmp_path):
         enabled=True,
         manifest={},
     )
-    supervisor = SiteRuntimeSupervisor()
+    audit_writer = SiteRuntimeAuditWriter(tmp_path)
 
-    audit_path = supervisor._append_audit_event(
+    audit_path = audit_writer.append_event(
         record,
         event='runtime_started',
         details={'pid': 1234},

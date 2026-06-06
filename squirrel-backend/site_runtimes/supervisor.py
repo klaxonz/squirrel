@@ -1,20 +1,18 @@
 from __future__ import annotations
 
-import json
 import logging
-import os
 import socket
 import subprocess
-import sys
 import threading
 import time
 import urllib.error
-import urllib.request
 from pathlib import Path
 from typing import Dict, Optional, Sequence
 
-from crawl import SiteRuntimeHealthStatus, SiteRuntimeInvokeRequest, SiteRuntimeInvokeResponse, SiteRuntimeError
+from crawl import SiteRuntimeInvokeRequest, SiteRuntimeInvokeResponse, SiteRuntimeError
 
+from .audit import SiteRuntimeAuditWriter
+from .health import SiteRuntimeHealthChecker, SiteRuntimeHealthCheckError, to_health_snapshot
 from .models import (
     SiteRuntimeHealthSnapshot,
     SiteRuntimeRecord,
@@ -23,6 +21,8 @@ from .models import (
     SiteRuntimeState,
     utcnow_iso,
 )
+from .process_launcher import SiteRuntimeProcessLauncher
+from .transport import SiteRuntimeTransportClient
 
 logger = logging.getLogger(__name__)
 
@@ -41,141 +41,40 @@ class SiteRuntimeSupervisor:
         self._log_streams: Dict[str, tuple[object, object]] = {}
         self._runtime_timers: Dict[str, threading.Timer] = {}
         self._backend_root = Path(__file__).resolve().parent.parent
+        self._audit_writer = SiteRuntimeAuditWriter(self._backend_root)
+        self._transport_client = SiteRuntimeTransportClient()
+        self._health_checker = SiteRuntimeHealthChecker(self._transport_client)
+        self._process_launcher = SiteRuntimeProcessLauncher(self._backend_root, self._audit_writer)
 
     def _key(self, runtime_id: str, version: str) -> str:
         return f'{runtime_id}:{version}'
 
     def _candidate_import_paths(self, record: SiteRuntimeRecord) -> list[str]:
-        candidates: list[Path] = []
-        if record.runtime_path:
-            candidates.append(Path(record.runtime_path))
-        if record.install_path:
-            install_path = Path(record.install_path)
-            candidates.append(install_path / 'src')
-            candidates.append(install_path)
+        return self._process_launcher.candidate_import_paths(record)
 
-        seen: set[str] = set()
-        import_paths: list[str] = []
-        for candidate in candidates:
-            if not candidate.exists():
-                continue
-            resolved = str(candidate.resolve())
-            if resolved in seen:
-                continue
-            seen.add(resolved)
-            import_paths.append(resolved)
-        return import_paths
-
-    @staticmethod
-    def _pick_port() -> int:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.bind(('127.0.0.1', 0))
-            return int(sock.getsockname()[1])
+    def _pick_port(self) -> int:
+        return self._process_launcher.pick_port()
 
     def _build_runtime_command(self, record: SiteRuntimeRecord, host: str, port: int) -> list[str]:
-        runtime_policy = self._runtime_policy(record)
-        network_policy = self._network_policy(record)
-        command = [
-            sys.executable,
-            '-m',
-            'site_runtimes.runtime_bridge',
-            '--entrypoint',
-            record.entrypoint,
-            '--runtime-id',
-            record.runtime_id,
-            '--version',
-            record.version,
-            '--host',
-            host,
-            '--port',
-            str(port),
-        ]
-        if record.data_path:
-            command.extend(['--data-dir', record.data_path])
-        for permission in record.granted_permissions:
-            command.extend(['--granted-permission', permission])
-        if network_policy:
-            command.extend(['--network-policy', json.dumps(network_policy)])
-        if runtime_policy.get('max_runtime_seconds') is not None:
-            command.extend(['--max-runtime-seconds', str(runtime_policy['max_runtime_seconds'])])
-        for import_path in self._candidate_import_paths(record):
-            command.extend(['--import-path', import_path])
-        return command
+        return self._process_launcher.build_runtime_command(record, host, port)
 
     def _runtime_policy(self, record: SiteRuntimeRecord) -> dict:
-        metadata = ((record.manifest or {}).get('metadata') or {})
-        policy = metadata.get('runtime_policy') or {}
-        return dict(policy) if isinstance(policy, dict) else {}
+        return self._process_launcher.runtime_policy(record)
 
     def _network_policy(self, record: SiteRuntimeRecord) -> dict:
-        metadata = ((record.manifest or {}).get('metadata') or {})
-        policy = metadata.get('network_policy')
-        if isinstance(policy, dict):
-            return dict(policy)
-        if 'network:http' in set(record.granted_permissions):
-            return {'mode': 'allow_all'}
-        return {'mode': 'deny_all'}
+        return self._process_launcher.network_policy(record)
 
     def _build_process_env(self, record: SiteRuntimeRecord) -> dict[str, str]:
-        allowed_keys = {
-            'PATH',
-            'PATHEXT',
-            'SYSTEMROOT',
-            'WINDIR',
-            'TEMP',
-            'TMP',
-            'PYTHONPATH',
-            'PYTHONIOENCODING',
-        }
-        process_env = {
-            key: value
-            for key, value in os.environ.items()
-            if key.upper() in allowed_keys
-        }
-        process_env['PYTHONUNBUFFERED'] = '1'
-        process_env['SQUIRREL_SITE_RUNTIME_ID'] = record.runtime_id
-        process_env['SQUIRREL_SITE_RUNTIME_VERSION'] = record.version
-        process_env['SQUIRREL_SITE_RUNTIME_SOURCE'] = str(record.metadata.get('source') or 'workspace')
-        process_env['SQUIRREL_SITE_RUNTIME_GRANTED_PERMISSIONS'] = ','.join(record.granted_permissions)
-        process_env['SQUIRREL_SITE_RUNTIME_NETWORK_POLICY'] = json.dumps(self._network_policy(record))
-        process_env['SQUIRREL_SITE_RUNTIME_RUNTIME_POLICY'] = json.dumps(self._runtime_policy(record))
-        process_env['SQUIRREL_SITE_RUNTIME_DECLARED_PERMISSIONS'] = ','.join(
-            str(item.get('name'))
-            for item in ((record.manifest or {}).get('permissions') or [])
-            if isinstance(item, dict) and item.get('name')
-        )
-        if record.data_path:
-            process_env['SQUIRREL_SITE_RUNTIME_DATA_DIR'] = record.data_path
-        return process_env
+        return self._process_launcher.build_process_env(record)
 
     def _resolve_runtime_cwd(self, record: SiteRuntimeRecord) -> Path:
-        return self._backend_root
+        return self._process_launcher.resolve_runtime_cwd(record)
 
     def _resolve_artifact_paths(self, record: SiteRuntimeRecord) -> dict[str, Path]:
-        base_dir = Path(record.data_path or record.install_path or self._backend_root)
-        log_dir = base_dir / 'runtime-logs'
-        audit_dir = base_dir / 'runtime-audit'
-        return {
-            'log_dir': log_dir,
-            'stdout': log_dir / 'stdout.log',
-            'stderr': log_dir / 'stderr.log',
-            'audit': audit_dir / 'audit.jsonl',
-        }
+        return self._audit_writer.resolve_artifact_paths(record)
 
     def _append_audit_event(self, record: SiteRuntimeRecord, event: str, details: Optional[dict] = None) -> Path:
-        artifact_paths = self._resolve_artifact_paths(record)
-        audit_path = artifact_paths['audit']
-        audit_path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {
-            'timestamp': utcnow_iso(),
-            'runtime_id': record.runtime_id,
-            'version': record.version,
-            'event': event,
-            'details': dict(details or {}),
-        }
-        with audit_path.open('a', encoding='utf-8') as handle:
-            handle.write(json.dumps(payload, ensure_ascii=False) + '\n')
-        return audit_path
+        return self._audit_writer.append_event(record, event, details)
 
     def _build_invoke_details(
         self,
@@ -256,51 +155,24 @@ class SiteRuntimeSupervisor:
         payload: Optional[dict] = None,
         timeout: float = 5.0,
     ) -> dict:
-        data = None if payload is None else json.dumps(payload).encode('utf-8')
-        request = urllib.request.Request(
-            f'{endpoint}{path}',
-            data=data,
-            headers={'Content-Type': 'application/json'},
-            method='POST' if payload is not None else 'GET',
-        )
-        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
-            raw_body = response.read().decode('utf-8')
-        parsed = json.loads(raw_body or '{}')
-        return parsed if isinstance(parsed, dict) else {}
+        return self._transport_client.request_json(endpoint, path, payload, timeout)
 
-    def _fetch_health(self, endpoint: str, timeout: float = 5.0) -> SiteRuntimeHealthStatus:
-        payload = self._request_json(endpoint, '/health', timeout=timeout)
-        return SiteRuntimeHealthStatus.from_dict(payload)
+    def _fetch_health(self, endpoint: str, timeout: float = 5.0):
+        return self._health_checker.fetch_health(endpoint, timeout)
 
     def _wait_for_runtime(
         self,
         process: subprocess.Popen,
         endpoint: str,
         startup_timeout_ms: int,
-    ) -> SiteRuntimeHealthStatus:
-        deadline = time.monotonic() + (startup_timeout_ms / 1000)
-        last_error: Optional[Exception] = None
+    ):
+        try:
+            return self._health_checker.wait_for_runtime(process, endpoint, startup_timeout_ms)
+        except SiteRuntimeHealthCheckError as exc:
+            raise SiteRuntimeSupervisorError(str(exc)) from exc
 
-        while time.monotonic() < deadline:
-            if process.poll() is not None:
-                raise SiteRuntimeSupervisorError('Site runtime exited before becoming healthy')
-            try:
-                return self._fetch_health(endpoint, timeout=1.0)
-            except Exception as exc:
-                last_error = exc
-                time.sleep(0.1)
-
-        raise SiteRuntimeSupervisorError(f'Site runtime startup timed out: {last_error}')
-
-    def _to_health_snapshot(self, runtime_id: str, health: SiteRuntimeHealthStatus) -> SiteRuntimeHealthSnapshot:
-        return SiteRuntimeHealthSnapshot(
-            runtime_id=runtime_id,
-            healthy=health.healthy,
-            status=health.status,
-            message=health.message,
-            details=dict(health.details),
-            checked_at=health.checked_at or utcnow_iso(),
-        )
+    def _to_health_snapshot(self, runtime_id: str, health) -> SiteRuntimeHealthSnapshot:
+        return to_health_snapshot(runtime_id, health)
 
     def register_placeholder(self, record: SiteRuntimeRecord) -> SiteRuntimeHandle:
         key = self._key(record.runtime_id, record.version)
@@ -338,10 +210,7 @@ class SiteRuntimeSupervisor:
         )
         process_cwd = cwd or self._resolve_runtime_cwd(record)
         process_env = self._build_process_env(record)
-        artifact_paths = self._resolve_artifact_paths(record)
-        artifact_paths['log_dir'].mkdir(parents=True, exist_ok=True)
-        stdout_handle = artifact_paths['stdout'].open('ab')
-        stderr_handle = artifact_paths['stderr'].open('ab')
+        stdout_handle, stderr_handle = self._process_launcher.open_log_streams(record)
         self._append_audit_event(
             record,
             event='runtime_starting',
@@ -351,12 +220,13 @@ class SiteRuntimeSupervisor:
             },
         )
 
-        process = subprocess.Popen(  # noqa: S603
+        process = self._process_launcher.launch(
+            record,
             process_command,
-            cwd=str(process_cwd),
-            env=process_env,
-            stdout=stdout_handle,
-            stderr=stderr_handle,
+            process_cwd,
+            process_env,
+            stdout_handle,
+            stderr_handle,
         )
         self._log_streams[key] = (stdout_handle, stderr_handle)
         self._processes[key] = process
