@@ -16,7 +16,7 @@ from utils import url_helper
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import get_site_from_url
 from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
-from services.video_service import _video_extra_profiles, _merge_profiles
+from services.video_list_service import _video_extra_profiles, _merge_profiles
 
 
 def _resolve_reported_at(report: HistoryCreate) -> datetime:

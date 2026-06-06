@@ -76,6 +76,7 @@ squirrel-backend/plugins_ext
 squirrel-backend/plugins_ext/*
 squirrel-backend/static/thumbnails/*
 squirrel-backend/.thumbnail-index-backfill.state
+squirrel-backend/scratch/
 .cursor/
 .claude/
 .qwen/
