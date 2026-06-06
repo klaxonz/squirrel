@@ -5,10 +5,10 @@ from models.user import User
 from services import search_suggestion_service
 from utils.jwt_helper import get_current_user
 
-router = APIRouter(tags=['搜索建议接口'])
+router = APIRouter(prefix='/api/search', tags=['搜索建议接口'])
 
 
-@router.get('/api/search/suggestions')
+@router.get('/suggestions')
 def get_search_suggestions(
     query: str = Query(None, description='联想关键词'),
     scope: str = Query('home', description='搜索场景：home/subscribed/history'),

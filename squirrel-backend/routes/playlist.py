@@ -20,10 +20,10 @@ from utils.jwt_helper import get_current_user
 
 logger = logging.getLogger()
 
-router = APIRouter(tags=['播放列表接口'])
+router = APIRouter(prefix='/api/playlist', tags=['播放列表接口'])
 
 
-@router.get("/api/playlist")
+@router.get("")
 def list_playlists(
         current_user: User = Depends(get_current_user)
 ):
@@ -31,7 +31,7 @@ def list_playlists(
     return response.success(playlists)
 
 
-@router.get("/api/playlist/{playlist_id}")
+@router.get("/{playlist_id}")
 def get_playlist_detail(
         playlist_id: int,
         current_user: User = Depends(get_current_user)
@@ -42,7 +42,7 @@ def get_playlist_detail(
     return response.success(detail)
 
 
-@router.get("/api/playlist/{playlist_id}/items")
+@router.get("/{playlist_id}/items")
 def get_playlist_items(
         playlist_id: int,
         current_user: User = Depends(get_current_user)
@@ -74,7 +74,7 @@ def get_playlist_items(
     return response.success(enriched_items)
 
 
-@router.post("/api/playlist")
+@router.post("")
 def create_playlist(
         data: PlaylistCreate,
         current_user: User = Depends(get_current_user)
@@ -86,7 +86,7 @@ def create_playlist(
         return response.param_error(str(e))
 
 
-@router.put("/api/playlist/{playlist_id}")
+@router.put("/{playlist_id}")
 def update_playlist(
         playlist_id: int,
         data: PlaylistUpdate,
@@ -101,7 +101,7 @@ def update_playlist(
         return response.param_error(str(e))
 
 
-@router.delete("/api/playlist/{playlist_id}")
+@router.delete("/{playlist_id}")
 def delete_playlist(
         playlist_id: int,
         current_user: User = Depends(get_current_user)
@@ -115,7 +115,7 @@ def delete_playlist(
         return response.param_error(str(e))
 
 
-@router.post("/api/playlist/items")
+@router.post("/items")
 def add_video_to_playlist(
         data: PlaylistItemAdd,
         current_user: User = Depends(get_current_user)
@@ -136,7 +136,7 @@ def add_video_to_playlist(
         return response.param_error(msg)
 
 
-@router.delete("/api/playlist/{playlist_id}/items/{video_id}")
+@router.delete("/{playlist_id}/items/{video_id}")
 def remove_video_from_playlist(
         playlist_id: int,
         video_id: int,
@@ -148,7 +148,7 @@ def remove_video_from_playlist(
     return response.success({"removed": True})
 
 
-@router.put("/api/playlist/items/reorder")
+@router.put("/items/reorder")
 def reorder_playlist_item(
         data: PlaylistItemReorder,
         current_user: User = Depends(get_current_user)
@@ -162,7 +162,7 @@ def reorder_playlist_item(
         return response.param_error(str(e))
 
 
-@router.get("/api/playlist/default")
+@router.get("/default")
 def get_default_playlist(
         current_user: User = Depends(get_current_user)
 ):
@@ -172,7 +172,7 @@ def get_default_playlist(
     return response.success(playlist)
 
 
-@router.post("/api/playlist/{playlist_id}/play-next")
+@router.post("/{playlist_id}/play-next")
 def play_next_video(
         playlist_id: int,
         video_id: int = Query(..., description="当前播放的视频ID"),

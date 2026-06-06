@@ -6,10 +6,10 @@ from schemas.video_clip_marker import ClipMarkerCreate, ClipMarkerPreviewUpload,
 from services import video_clip_marker_service
 from utils.jwt_helper import get_current_user
 
-router = APIRouter(tags=['视频片段标记'])
+router = APIRouter(prefix='/api/video-clip-markers', tags=['视频片段标记'])
 
 
-@router.get('/api/video-clip-markers')
+@router.get('')
 def list_video_clip_markers(
         video_id: int = Query(..., description='视频ID'),
         user: User = Depends(get_current_user),
@@ -18,7 +18,7 @@ def list_video_clip_markers(
     return response.success(markers)
 
 
-@router.post('/api/video-clip-markers')
+@router.post('')
 def create_video_clip_marker(
         data: ClipMarkerCreate,
         user: User = Depends(get_current_user),
@@ -30,7 +30,7 @@ def create_video_clip_marker(
     return response.success(marker)
 
 
-@router.put('/api/video-clip-markers/{marker_id}')
+@router.put('/{marker_id}')
 def update_video_clip_marker(
         marker_id: int,
         data: ClipMarkerUpdate,
@@ -46,7 +46,7 @@ def update_video_clip_marker(
     return response.success(marker)
 
 
-@router.post('/api/video-clip-markers/{marker_id}/preview')
+@router.post('/{marker_id}/preview')
 def upload_video_clip_marker_preview(
         marker_id: int,
         data: ClipMarkerPreviewUpload,
@@ -62,7 +62,7 @@ def upload_video_clip_marker_preview(
     return response.success(marker)
 
 
-@router.delete('/api/video-clip-markers/{marker_id}')
+@router.delete('/{marker_id}')
 def delete_video_clip_marker(
         marker_id: int,
         user: User = Depends(get_current_user),

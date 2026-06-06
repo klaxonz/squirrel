@@ -17,7 +17,7 @@ from utils.site_catalog import SiteCatalog
 from utils.url_helper import extract_top_level_domain
 from utils.jwt_helper import get_current_user
 
-router = APIRouter(tags=['订阅接口'])
+router = APIRouter(prefix='/api/subscription', tags=['订阅接口'])
 logger = logging.getLogger(__name__)
 SYNC_HISTORY_ALLOWED_STATUS = {'created', 'queued', 'running', 'success', 'failed', 'deferred', 'timeout', 'recent', 'feed_recent'}
 
@@ -47,7 +47,7 @@ def _get_enabled_import_sites(supported_sites: List[str]) -> List[str]:
     return [site for site in _get_normalized_supported_sites(supported_sites) if site in enabled_sites]
 
 
-@router.post("/api/subscription/subscribe")
+@router.post("/subscribe")
 def subscribe_content(req: SubscribeRequest, current_user: User = Depends(get_current_user)):
     domain = extract_top_level_domain(req.url)
     if not SiteCatalog.is_site_enabled(domain=domain):
@@ -60,13 +60,13 @@ def subscribe_content(req: SubscribeRequest, current_user: User = Depends(get_cu
     })
 
 
-@router.post("/api/subscription/unsubscribe")
+@router.post("/unsubscribe")
 def unsubscribe_content(req: UnsubscribeRequest, current_user: User = Depends(get_current_user)):
     subscription_service.unsubscribe_by_id(current_user.id, req.subscription_id)
     return response.success()
 
 
-@router.get("/api/subscription/status")
+@router.get("/status")
 def get_subscription_status(
         url: str = Query(None),
         current_user: User = Depends(get_current_user)
@@ -74,7 +74,7 @@ def get_subscription_status(
     return response.success(subscription_service.check_subscription_status(current_user.id, url))
 
 
-@router.get("/api/subscription/detail/{subscription_id}")
+@router.get("/detail/{subscription_id}")
 def get_subscription_detail(subscription_id: int, current_user: User = Depends(get_current_user)):
     """获取订阅（频道）详情，附带当前用户的 is_nsfw 状态和统计字段"""
     sub = subscription_service.get_subscription_detail(subscription_id)
@@ -89,7 +89,7 @@ def get_subscription_detail(subscription_id: int, current_user: User = Depends(g
     return response.success(data)
 
 
-@router.get("/api/subscription/list")
+@router.get("/list")
 def list_subscriptions(
         query: str = Query(None, description="搜索关键字"),
         type: str = Query(None, description="内容类型"),
@@ -116,14 +116,14 @@ def list_subscriptions(
     })
 
 
-@router.get('/api/subscription/options')
+@router.get('/options')
 def get_subscription_options(current_user: User = Depends(get_current_user)):
     return response.success({
         'data': subscription_service.list_subscription_options(current_user.id)
     })
 
 
-@router.get('/api/subscription/sync-center/stream')
+@router.get('/sync-center/stream')
 async def get_sync_center_stream(
         request: Request,
         selected_run_id: str | None = Query(None, alias='selectedRunId'),
@@ -149,7 +149,7 @@ async def get_sync_center_stream(
     )
 
 
-@router.post("/api/subscription/{subscription_id}/refresh")
+@router.post("/{subscription_id}/refresh")
 def refresh_subscription(
     subscription_id: int,
     request: Request,
@@ -196,7 +196,7 @@ def refresh_subscription(
     })
 
 
-@router.post("/api/subscription/{subscription_id}/refresh/direct")
+@router.post("/{subscription_id}/refresh/direct")
 def refresh_subscription_direct(
     subscription_id: int,
     request: Request,
@@ -245,7 +245,7 @@ def refresh_subscription_direct(
     })
 
 
-@router.get('/api/subscription/sync-center/runs')
+@router.get('/sync-center/runs')
 def get_sync_center_runs(
         status: str = Query(None, description='运行状态筛选'),
         site: str = Query(None, description='站点筛选'),
@@ -275,7 +275,7 @@ def get_sync_center_runs(
         page_size=page_size,
     )
     return response.success(result)
-@router.get('/api/subscription/sync-center/runs/{run_id}')
+@router.get('/sync-center/runs/{run_id}')
 def get_sync_center_run_detail(run_id: str, current_user: User = Depends(get_current_user)):
     result = subscription_sync_history_service.get_run_detail(run_id, current_user.id)
     if not result:
@@ -283,13 +283,13 @@ def get_sync_center_run_detail(run_id: str, current_user: User = Depends(get_cur
     return response.success(result)
 
 
-@router.get('/api/subscription/sync-center/runs/{run_id}/events')
+@router.get('/sync-center/runs/{run_id}/events')
 def get_sync_center_run_events(run_id: str, current_user: User = Depends(get_current_user)):
     events = subscription_sync_history_service.list_run_events(run_id, current_user.id)
     if not events and not subscription_sync_history_service.get_run_detail(run_id, current_user.id):
         return response.not_found('运行实例不存在')
     return response.success(events)
-@router.post("/api/subscription/toggle-nsfw")
+@router.post("/toggle-nsfw")
 def toggle_nsfw(
         req: ToggleStatusRequest,
         current_user: User = Depends(get_current_user)
@@ -302,7 +302,7 @@ def toggle_nsfw(
     return response.success({"success": success})
 
 
-@router.post("/api/subscription/toggle-special-follow")
+@router.post("/toggle-special-follow")
 def toggle_special_follow(
         req: ToggleStatusRequest,
         current_user: User = Depends(get_current_user)
@@ -315,7 +315,7 @@ def toggle_special_follow(
     return response.success({"success": success})
 
 
-@router.get("/api/subscription/import/sites")
+@router.get("/import/sites")
 def get_supported_sites(current_user: User = Depends(get_current_user)):
     """
     获取支持导入的站点列表
@@ -331,7 +331,7 @@ def get_supported_sites(current_user: User = Depends(get_current_user)):
     })
 
 
-@router.get("/api/subscription/import/{site}/preview")
+@router.get("/import/{site}/preview")
 def preview_subscriptions(
     site: str,
     cursor: str | None = Query(None, description='分页游标 JSON'),
@@ -387,7 +387,7 @@ def preview_subscriptions(
         return response.server_error(f"预览失败: {str(e)}")
 
 
-@router.post("/api/subscription/import/{site}")
+@router.post("/import/{site}")
 def import_subscriptions(
     site: str,
     req: ImportSubscriptionsRequest | None = None,

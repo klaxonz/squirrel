@@ -58,5 +58,5 @@ export const getRandomVideo = async (params: RandomVideoParams = {}) => {
 }
 
 export const saveRemoteVideo = async (data: Record<string, unknown>) => {
-  return post('/api/video/remote/save', data)
+  return post('/api/video/remote-save', data)
 }

@@ -11,11 +11,12 @@ from services import video_history_service
 from utils.jwt_helper import get_current_user
 
 router = APIRouter(
+    prefix='/api/video-history',
     tags=['视频历史记录']
 )
 
 
-@router.post("/api/video-history/update")
+@router.post("/update")
 def update_history(
         data: HistoryCreate,
         user: User = Depends(get_current_user)
@@ -24,7 +25,7 @@ def update_history(
     return response.success()
 
 
-@router.post("/api/video-history/batch-update")
+@router.post("/batch-update")
 def batch_update_history(
         data: HistoryBatchUpdate,
         user: User = Depends(get_current_user)
@@ -33,7 +34,7 @@ def batch_update_history(
     return response.success()
 
 
-@router.get("/api/video-history/list")
+@router.get("/list")
 def get_history_list(
         video_id: int = Query(None),
         min_duration: int = Query(None),
@@ -65,7 +66,7 @@ def get_history_list(
     return response.success(video_histories)
 
 
-@router.post("/api/video-history/clear")
+@router.post("/clear")
 def clear_history(
         video_ids: List[int] = Body(None),
         user: dict = Depends(get_current_user)
@@ -77,7 +78,7 @@ def clear_history(
     return response.success()
 
 
-@router.delete("/api/video-history/{history_id}")
+@router.delete("/{history_id}")
 def delete_history(
         history_id: int,
         user: User = Depends(get_current_user)

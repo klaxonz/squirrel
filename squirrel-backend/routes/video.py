@@ -13,14 +13,14 @@ from utils.url_helper import normalize_domain
 
 logger = logging.getLogger()
 
-router = APIRouter(tags=['频道视频接口'])
+router = APIRouter(prefix='/api/video', tags=['频道视频接口'])
 
 
 def _video_domain(url: str) -> str:
     return normalize_domain(url) or ''
 
 
-@router.post("/api/video/remote/save")
+@router.post("/remote-save")
 def save_remote_video(
         data: RemoteVideoSaveRequest,
         current_user: User = Depends(get_current_user)
@@ -35,7 +35,7 @@ def save_remote_video(
         return response.server_error("保存远端视频失败")
 
 
-@router.get("/api/video/detail")
+@router.get("/detail")
 def get_video(
         video_id: int = Query(None, description="视频ID"),
         current_user: User = Depends(get_current_user)
@@ -44,7 +44,7 @@ def get_video(
     return response.success(video)
 
 
-@router.get("/api/video/list")
+@router.get("/list")
 def get_videos(
         query: str = Query(None, description="搜索关键字"),
         subscription_id: int = Query(None, description="订阅ID"),
@@ -85,7 +85,7 @@ def get_videos(
     return result
 
 
-@router.get("/api/video/random")
+@router.get("/random")
 def get_random_video(
         category: VideoCategory = Query(VideoCategory.ALL, description="类别：all|read|unread|preview|liked|later"),
         subscription_id: int = Query(None, description="订阅ID"),
@@ -121,7 +121,7 @@ def get_random_video(
     return response.success(detail)
 
 
-@router.get("/api/video/proxy")
+@router.get("/proxy")
 async def proxy_video(domain: str, url: str, request: Request, referer: str | None = None):
     """代理视频文件，用于解决跨域问题"""
     from core.streaming.proxy import VideoProxy
@@ -130,7 +130,7 @@ async def proxy_video(domain: str, url: str, request: Request, referer: str | No
     return await proxy.handle_stream(url, referer=referer)
 
 
-@router.get("/api/video/subtitles")
+@router.get("/subtitles")
 def get_video_subtitles(
         video_id: int = Query(..., description="视频ID"),
         lang: str | None = Query(None, description="字幕语言代码；留空时走站点默认值"),

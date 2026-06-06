@@ -9,10 +9,10 @@ import common.response as response
 from services import log_service
 
 logger = logging.getLogger()
-router = APIRouter(tags=['日志管理'])
+router = APIRouter(prefix='/api/logs', tags=['日志管理'])
 
 
-@router.get("/api/logs/files")
+@router.get("/files")
 def get_log_files(current_user: User = Depends(get_current_user)):
     """获取所有日志文件列表"""
     try:
@@ -23,7 +23,7 @@ def get_log_files(current_user: User = Depends(get_current_user)):
         return response.server_error("获取日志文件列表失败")
 
 
-@router.get("/api/logs/query")
+@router.get("/query")
 def query_logs(
     filename: str = Query('app.log', description="日志文件名"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),

@@ -13,10 +13,10 @@ from core.database import engine
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["Health"])
+router = APIRouter(prefix="/health", tags=["Health"])
 
 
-@router.get("/health", status_code=status.HTTP_200_OK)
+@router.get("", status_code=status.HTTP_200_OK)
 async def health_check() -> Dict[str, Any]:
     """
     健康检查端点
@@ -60,7 +60,7 @@ async def health_check() -> Dict[str, Any]:
     return health_status
 
 
-@router.get("/health/ready", status_code=status.HTTP_200_OK)
+@router.get("/ready", status_code=status.HTTP_200_OK)
 async def readiness_check() -> Dict[str, str]:
     """
     就绪检查端点
@@ -85,7 +85,7 @@ async def readiness_check() -> Dict[str, str]:
         return {"status": "not ready", "error": str(e)}
 
 
-@router.get("/health/live", status_code=status.HTTP_200_OK)
+@router.get("/live", status_code=status.HTTP_200_OK)
 async def liveness_check() -> Dict[str, str]:
     """
     存活检查端点
