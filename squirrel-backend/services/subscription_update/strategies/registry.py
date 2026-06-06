@@ -1,6 +1,6 @@
 """策略注册表"""
 import logging
-from typing import Dict, Optional
+from typing import Any, Callable, Dict, Optional
 from .base import UpdateStrategy
 
 logger = logging.getLogger()
@@ -12,7 +12,7 @@ class StrategyRegistry:
     _strategies: Dict[str, UpdateStrategy] = {}
     
     @classmethod
-    def register(cls, strategy: UpdateStrategy):
+    def register(cls, strategy: UpdateStrategy) -> None:
         """注册策略"""
         cls._strategies[strategy.site_name] = strategy
         logger.info(f"Registered update strategy: {strategy.site_name}")
@@ -28,9 +28,9 @@ class StrategyRegistry:
         return list(cls._strategies.keys())
 
 
-def update_strategy(site_name: str):
+def update_strategy(site_name: str) -> Callable[[Any], Any]:
     """策略注册装饰器"""
-    def decorator(cls):
+    def decorator(cls: Any) -> Any:
         instance = cls()
         StrategyRegistry.register(instance)
         return cls

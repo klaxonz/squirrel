@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional, Tuple
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.database import get_session
 from models.user import User, Account, AccountType
@@ -50,7 +51,7 @@ def create_user(nickname: str, email: str, password: str) -> Tuple[User, Account
     return user, account
 
 
-def _get_email_account_by_user_id(session, user_id: int) -> Optional[Account]:
+def _get_email_account_by_user_id(session: Session, user_id: int) -> Optional[Account]:
     return session.scalars(
         select(Account).where(
             Account.user_id == user_id,

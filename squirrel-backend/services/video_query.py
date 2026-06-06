@@ -1,7 +1,8 @@
-from typing import Optional, List
+from typing import Any, Optional, List
 from datetime import datetime, timedelta
 
 from sqlalchemy import select, func, and_, exists, or_, false
+from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm import aliased
 
 from models.creator import Creator
@@ -15,11 +16,11 @@ from services.search_query import normalize_subscription_type_term, parse_search
 from utils import url_helper
 
 
-def _contains(column, term: str):
+def _contains(column: Any, term: str) -> ColumnElement[bool]:
     return column.ilike(f'%{term}%')
 
 
-def _video_match_clause(*, video_id_column, term: str):
+def _video_match_clause(*, video_id_column: Any, term: str) -> Any:
     video_alias = aliased(Video)
     return exists(
         select(1)
@@ -37,7 +38,7 @@ def _video_match_clause(*, video_id_column, term: str):
     )
 
 
-def _subscription_match_clause(*, user_id: int, video_id_column=None, subscription_id_column=None, term: str):
+def _subscription_match_clause(*, user_id: int, video_id_column: Any = None, subscription_id_column: Any = None, term: str) -> Any:
     if subscription_id_column is not None:
         return exists(
             select(1)
@@ -85,7 +86,7 @@ def _subscription_match_clause(*, user_id: int, video_id_column=None, subscripti
     )
 
 
-def _subscription_type_clause(*, user_id: int, video_id_column=None, subscription_id_column=None, value: str):
+def _subscription_type_clause(*, user_id: int, video_id_column: Any = None, subscription_id_column: Any = None, value: str) -> Optional[Any]:
     normalized_type = normalize_subscription_type_term(value)
     if not normalized_type:
         return None
@@ -129,7 +130,7 @@ def _subscription_type_clause(*, user_id: int, video_id_column=None, subscriptio
     )
 
 
-def _creator_match_clause(*, video_id_column, term: str):
+def _creator_match_clause(*, video_id_column: Any, term: str) -> Any:
     return exists(
         select(1)
         .select_from(VideoCreator)
@@ -146,7 +147,7 @@ def _creator_match_clause(*, video_id_column, term: str):
     )
 
 
-def build_video_search_clauses(*, user_id: int, query: Optional[str], video_id_column, subscription_id_column=None):
+def build_video_search_clauses(*, user_id: int, query: Optional[str], video_id_column: Any, subscription_id_column: Any = None) -> List[Any]:
     parsed_query = parse_search_query(query)
     if not parsed_query.has_terms:
         return []
@@ -259,7 +260,7 @@ def _build_base_video_conditions(
         time_range: str = 'all',
         duration: str = 'all',
         content_type: str = 'all',
-):
+) -> List[Any]:
     conditions = [
         Video.is_deleted == False,
         UserSubscription.is_deleted == False,
@@ -309,7 +310,7 @@ def build_base_video_query(
         time_range: str = 'all',
         duration: str = 'all',
         content_type: str = 'all',
-):
+) -> Any:
     """构建基础视频查询，以 Video 为主表。"""
     base_query = (
         select(Video, SubscriptionVideo.subscription_id.label('subscription_id'))
@@ -337,7 +338,7 @@ def build_video_count_source_query(
         time_range: str = 'all',
         duration: str = 'all',
         content_type: str = 'all',
-):
+) -> Any:
     user_subscriptions = (
         select(UserSubscription.subscription_id.label('subscription_id'))
         .select_from(UserSubscription)
@@ -413,7 +414,7 @@ def build_video_count_source_query(
     return count_source.distinct()
 
 
-def category_predicate(user_id: int, category: Optional[str]):
+def category_predicate(user_id: int, category: Optional[str]) -> Any:
     """返回分类筛选条件，复用在列表/计数/随机。"""
     published = Video.publish_date <= func.now()
 
@@ -473,13 +474,13 @@ def category_predicate(user_id: int, category: Optional[str]):
     return published
 
 
-def resolve_sort_column(sort_by: str):
+def resolve_sort_column(sort_by: str) -> Any:
     if sort_by == 'created_at':
         return Video.created_at
     return Video.publish_date
 
 
-def time_range_predicate(time_range: str):
+def time_range_predicate(time_range: str) -> List[Any]:
     """返回 publish_date 时间范围过滤条件。"""
     if time_range == 'all':
         return []
@@ -499,7 +500,7 @@ def time_range_predicate(time_range: str):
     return []
 
 
-def duration_predicate(duration: str):
+def duration_predicate(duration: str) -> List[Any]:
     """返回视频时长过滤条件（秒）。"""
     if duration == 'all':
         return []
@@ -512,7 +513,7 @@ def duration_predicate(duration: str):
     return []
 
 
-def content_type_predicate(content_type: str):
+def content_type_predicate(content_type: str) -> List[Any]:
     """返回订阅类型过滤条件（需要 JOIN Subscription）。"""
     if content_type == 'all':
         return []

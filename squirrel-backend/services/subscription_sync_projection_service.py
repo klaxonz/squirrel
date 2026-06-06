@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from math import ceil
+from typing import Optional
 
 from sqlalchemy import select, text
+from sqlalchemy.orm import Session
 
 from core.database import get_session
 from models.subscription_sync_event import SubscriptionSyncEvent
@@ -58,7 +60,7 @@ def _normalize_dim(value: str | None) -> str:
     return str(value or '').strip()
 
 
-def _advisory_lock(session, key: str) -> None:
+def _advisory_lock(session: Session, key: str) -> None:
     session.execute(text('SELECT pg_advisory_xact_lock(hashtext(:key))'), {'key': key})
 
 
@@ -118,7 +120,7 @@ def _resolve_histogram_percentile(histogram: dict | None, percentile: float) -> 
     return TREND_DURATION_BUCKETS_MS[-1]
 
 
-def _get_or_create_run_projection(session, event: SubscriptionSyncEvent) -> SubscriptionSyncRunProjection:
+def _get_or_create_run_projection(session: Session, event: SubscriptionSyncEvent) -> SubscriptionSyncRunProjection:
     _advisory_lock(session, f'run-sync-projection:{event.stream_id}')
     projection = session.get(SubscriptionSyncRunProjection, event.stream_id)
     if projection:
@@ -145,7 +147,7 @@ def _get_or_create_run_projection(session, event: SubscriptionSyncEvent) -> Subs
     return projection
 
 
-def _get_or_create_subscription_projection(session, event: SubscriptionSyncEvent) -> SubscriptionSyncSubscriptionProjection:
+def _get_or_create_subscription_projection(session: Session, event: SubscriptionSyncEvent) -> SubscriptionSyncSubscriptionProjection:
     _advisory_lock(session, f'subscription-sync-projection:{event.subscription_id}')
     projection = session.get(SubscriptionSyncSubscriptionProjection, event.subscription_id)
     if projection:
@@ -165,7 +167,7 @@ def _get_or_create_subscription_projection(session, event: SubscriptionSyncEvent
 
 
 def _get_or_create_trend_projection(
-    session,
+    session: Session,
     *,
     bucket_time: datetime,
     bucket_granularity: str,
@@ -328,7 +330,7 @@ def _apply_subscription_projection(projection: SubscriptionSyncSubscriptionProje
         projection.last_error_message = _payload_text(payload, 'error_message', event.message)
 
 
-def _apply_trend_projection(session, event: SubscriptionSyncEvent) -> None:
+def _apply_trend_projection(session: Session, event: SubscriptionSyncEvent) -> None:
     dimensions = {
         'site': _normalize_dim(event.site),
         'sync_mode': _normalize_dim(event.sync_mode),
@@ -392,7 +394,7 @@ def _apply_trend_projection(session, event: SubscriptionSyncEvent) -> None:
             projection.duration_histogram = histogram
             projection.p95_duration_ms = _resolve_histogram_percentile(histogram, 0.95)
 
-def apply_event(event: SubscriptionSyncEvent, *, session=None) -> SubscriptionSyncEvent:
+def apply_event(event: SubscriptionSyncEvent, *, session: Optional[Session] = None) -> SubscriptionSyncEvent:
     if session is not None:
         if event.projected_at:
             return event
@@ -409,7 +411,7 @@ def apply_event(event: SubscriptionSyncEvent, *, session=None) -> SubscriptionSy
         return apply_event(event, session=managed_session)
 
 
-def apply_events(events: list[SubscriptionSyncEvent], *, session=None) -> list[SubscriptionSyncEvent]:
+def apply_events(events: list[SubscriptionSyncEvent], *, session: Optional[Session] = None) -> list[SubscriptionSyncEvent]:
     if session is not None:
         ordered_events = sorted(events, key=lambda event: (event.occurred_at, event.stream_id, event.seq_no, event.id or 0))
         for event in ordered_events:

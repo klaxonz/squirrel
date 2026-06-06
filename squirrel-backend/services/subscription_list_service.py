@@ -1,8 +1,11 @@
 import logging
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from sqlalchemy import select, func, and_, or_, false, case, literal
+from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import ColumnElement
 
 from core.database import get_session
 from models.links import UserSubscription, SubscriptionVideo
@@ -21,7 +24,7 @@ from utils.url_helper import extract_top_level_domain, get_site_from_url
 logger = logging.getLogger(__name__)
 
 
-def _contains(column, term: str):
+def _contains(column: Any, term: str) -> ColumnElement[bool]:
     return column.ilike(f'%{term}%')
 
 
@@ -70,7 +73,7 @@ def _build_subscription_search_clauses(query: Optional[str]) -> List[Any]:
     return clauses
 
 
-def _resolved_total_videos_expr(total_videos_column, extracted_count_column):
+def _resolved_total_videos_expr(total_videos_column: Any, extracted_count_column: Any) -> Any:
     stored_total = func.coalesce(total_videos_column, 0)
     extracted_total = func.coalesce(extracted_count_column, 0)
     return case(
@@ -103,7 +106,7 @@ def _resolve_site_slug(url: Optional[str]) -> Optional[str]:
         return None
 
 
-def _load_subscription_extract_counts(session, subscription_ids: List[int]) -> Dict[int, int]:
+def _load_subscription_extract_counts(session: Session, subscription_ids: List[int]) -> Dict[int, int]:
     if not subscription_ids:
         return {}
 
@@ -121,7 +124,7 @@ def _load_subscription_extract_counts(session, subscription_ids: List[int]) -> D
     }
 
 
-def _load_subscription_unread_counts(session, user_id: int, subscription_ids: List[int]) -> Dict[int, int]:
+def _load_subscription_unread_counts(session: Session, user_id: int, subscription_ids: List[int]) -> Dict[int, int]:
     if not subscription_ids:
         return {}
 
@@ -149,7 +152,7 @@ def _load_subscription_unread_counts(session, user_id: int, subscription_ids: Li
     }
 
 
-def _load_recent_videos(session, subscription_ids: List[int], limit: int = 10) -> Dict[int, List[Dict[str, Any]]]:
+def _load_recent_videos(session: Session, subscription_ids: List[int], limit: int = 10) -> Dict[int, List[Dict[str, Any]]]:
     if not subscription_ids:
         return {}
 
@@ -208,12 +211,12 @@ def _load_recent_videos(session, subscription_ids: List[int], limit: int = 10) -
     return grouped
 
 
-def _serialize_datetime(dt) -> str:
+def _serialize_datetime(dt: Optional[datetime]) -> str:
     from datetime import datetime
     return dt.strftime('%Y-%m-%d %H:%M:%S') if dt else ''
 
 
-def _serialize_subscription_list_item(row, total_extract: int, recent_videos: List[Dict[str, Any]] = None, unread_count: int = 0) -> Dict[str, Any]:
+def _serialize_subscription_list_item(row: Any, total_extract: int, recent_videos: Optional[List[Dict[str, Any]]] = None, unread_count: int = 0) -> Dict[str, Any]:
     row_data = row if isinstance(row, dict) else dict(row)
     total_videos = max(int(row_data['total_videos'] or 0), total_extract)
     url = row_data['url']

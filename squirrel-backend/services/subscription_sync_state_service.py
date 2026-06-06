@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from sqlalchemy import exists, select, update
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from core.cache import redis_client
 from core.database import get_session
@@ -86,7 +87,7 @@ def _calculate_head_overlap(previous_urls: Optional[list[str]], current_urls: Op
 
 
 def _get_or_create_sync_state_in_session(
-    session,
+    session: Session,
     subscription_id: int,
     mode: str,
     url: Optional[str],
@@ -242,7 +243,7 @@ def list_due_sync_states(
         return [(row[0], row[1]) for row in rows]
 
 
-def _recover_stale_running_states_in_session(session, now: datetime) -> None:
+def _recover_stale_running_states_in_session(session: Session, now: datetime) -> None:
     stale_before = now - RUNNING_TIMEOUT
     states = session.execute(
         select(SubscriptionSyncState).where(
@@ -267,7 +268,7 @@ def _recover_stale_running_state(state: SubscriptionSyncState, now: datetime) ->
 
 
 def _append_recovery_run_events(
-    session,
+    session: Session,
     *,
     state: SubscriptionSyncState,
     event_type: str,
@@ -348,7 +349,7 @@ def _append_recovery_run_events(
 
 
 def _append_terminal_reconcile_run_events(
-    session,
+    session: Session,
     *,
     state: SubscriptionSyncState,
     event_type: str,
@@ -483,7 +484,7 @@ def queue_sync_state(sync_state_id: int, queue_token: str) -> Optional[Subscript
             select(SubscriptionSyncState).where(SubscriptionSyncState.id == sync_state_id)
         ).scalar_one_or_none()
 def _append_state_event(
-    session,
+    session: Session,
     *,
     state: SubscriptionSyncState,
     run_id: Optional[str],
@@ -521,7 +522,7 @@ def _append_state_event(
 
 
 def _complete_sync_success_in_session(
-    session,
+    session: Session,
     *,
     state: SubscriptionSyncState,
     source_video_count: Optional[int] = None,
@@ -1421,7 +1422,7 @@ def _scan_subscription_update_state_ids() -> set[int]:
 
 
 def _get_latest_state_run_projection(
-    session,
+    session: Session,
     state: SubscriptionSyncState,
 ) -> Optional[SubscriptionSyncRunProjection]:
     try:

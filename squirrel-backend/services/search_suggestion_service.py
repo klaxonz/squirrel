@@ -4,6 +4,7 @@ from time import monotonic
 from typing import Any, Iterable, Optional
 
 from sqlalchemy import and_, case, desc, func, select
+from sqlalchemy.orm import Session
 
 from core.database import get_session
 from models.creator import Creator
@@ -65,7 +66,7 @@ def _extract_suggestion_term(query: Optional[str]) -> str:
     return normalized_query
 
 
-def _match_rank(column, query: str):
+def _match_rank(column: Any, query: str) -> Any:
     lowered_column = func.lower(func.coalesce(column, ''))
     return case(
         (lowered_column == query, 0),
@@ -167,7 +168,7 @@ def _subscription_visibility_predicates(user_id: int, effective_nsfw: str) -> li
     return predicates
 
 
-def _build_video_pool(session, *, user_id: int, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
+def _build_video_pool(session: Session, *, user_id: int, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
     rows = session.execute(
         select(
             Video.title.label('value'),
@@ -194,7 +195,7 @@ def _build_video_pool(session, *, user_id: int, effective_nsfw: str, limit: int)
     )
 
 
-def _build_subscription_pool(session, *, user_id: int, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
+def _build_subscription_pool(session: Session, *, user_id: int, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
     rows = session.execute(
         select(
             Subscription.name.label('value'),
@@ -218,7 +219,7 @@ def _build_subscription_pool(session, *, user_id: int, effective_nsfw: str, limi
     )
 
 
-def _build_creator_pool(session, *, user_id: int, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
+def _build_creator_pool(session: Session, *, user_id: int, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
     recent_feed = (
         select(
             UserVideoFeed.video_id,
@@ -257,7 +258,7 @@ def _build_creator_pool(session, *, user_id: int, effective_nsfw: str, limit: in
     )
 
 
-def _build_history_pool(session, *, user_id: int, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
+def _build_history_pool(session: Session, *, user_id: int, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
     if effective_nsfw == 'blocked':
         return []
 
@@ -341,7 +342,7 @@ def _score_candidate(value: str, query: str) -> int:
     return 2
 
 
-def _list_video_suggestions(session, *, user_id: int, query: str, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
+def _list_video_suggestions(session: Session, *, user_id: int, query: str, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
     conditions: list[Any] = [
         UserSubscription.user_id == user_id,
         UserSubscription.is_deleted.is_(False),
@@ -382,7 +383,7 @@ def _list_video_suggestions(session, *, user_id: int, query: str, effective_nsfw
     return _serialize_rows(normalized_rows, 'video')[:limit]
 
 
-def _list_feed_video_suggestions(session, *, user_id: int, query: str, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
+def _list_feed_video_suggestions(session: Session, *, user_id: int, query: str, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
     conditions: list[Any] = [
         UserVideoFeed.user_id == user_id,
         Video.is_deleted.is_(False),
@@ -423,7 +424,7 @@ def _list_feed_video_suggestions(session, *, user_id: int, query: str, effective
     return _serialize_rows(normalized_rows, 'video')[:limit]
 
 
-def _list_subscription_suggestions(session, *, user_id: int, query: str, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
+def _list_subscription_suggestions(session: Session, *, user_id: int, query: str, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
     conditions: list[Any] = [
         UserSubscription.user_id == user_id,
         UserSubscription.is_deleted.is_(False),
@@ -461,7 +462,7 @@ def _list_subscription_suggestions(session, *, user_id: int, query: str, effecti
     return _serialize_rows(normalized_rows, 'subscription')[:limit]
 
 
-def _list_creator_suggestions(session, *, user_id: int, query: str, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
+def _list_creator_suggestions(session: Session, *, user_id: int, query: str, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
     conditions: list[Any] = [
         UserSubscription.user_id == user_id,
         UserSubscription.is_deleted.is_(False),
@@ -504,7 +505,7 @@ def _list_creator_suggestions(session, *, user_id: int, query: str, effective_ns
     return _serialize_rows(normalized_rows, 'creator')[:limit]
 
 
-def _list_history_suggestions(session, *, user_id: int, query: str, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
+def _list_history_suggestions(session: Session, *, user_id: int, query: str, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
     conditions: list[Any] = [
         VideoHistory.user_id == user_id,
         Video.is_deleted.is_(False),
@@ -570,7 +571,7 @@ def _list_history_suggestions(session, *, user_id: int, query: str, effective_ns
     return _serialize_rows(normalized_rows, 'history')[:limit]
 
 
-def list_search_suggestions(user_id: int, query: Optional[str], scope: Optional[str] = None, limit: int = DEFAULT_LIMIT):
+def list_search_suggestions(user_id: int, query: Optional[str], scope: Optional[str] = None, limit: int = DEFAULT_LIMIT) -> list[dict[str, str]]:
     normalized_limit = max(1, min(int(limit or DEFAULT_LIMIT), MAX_LIMIT))
     normalized_query = _extract_suggestion_term(query)
     normalized_scope = str(scope or 'home').strip().lower() or 'home'

@@ -8,6 +8,7 @@ from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.database import engine, get_session
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class RetryLaterError(Exception):
-    def __init__(self, delay_seconds: int):
+    def __init__(self, delay_seconds: int) -> None:
         super().__init__(f'retry later in {delay_seconds} seconds')
         self.delay_seconds = delay_seconds
 
@@ -248,7 +249,7 @@ def _reschedule_event(*, event_id: int, delay_seconds: int, now: datetime) -> No
         session.flush()
 
 
-def _notify_new_event(session, *, event_type: str) -> None:
+def _notify_new_event(session: Session, *, event_type: str) -> None:
     bind = session.get_bind()
     if bind is None or bind.dialect.name != 'postgresql':
         return

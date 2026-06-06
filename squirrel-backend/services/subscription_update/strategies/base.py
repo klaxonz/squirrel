@@ -3,7 +3,7 @@
 每个站点可以实现自己的更新策略
 """
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
 from services.subscription_sync_event_service import SyncEventInput, append_event
 from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus
@@ -61,14 +61,14 @@ class UpdateStrategy(ABC):
         pass
     
     @abstractmethod
-    def fetch_videos(self, request: SubscriptionUpdateRequest):
+    def fetch_videos(self, request: SubscriptionUpdateRequest) -> Any:
         """
         获取视频列表
         """
         pass
     
     @abstractmethod
-    def enqueue_extraction(self, fetch_result, request: SubscriptionUpdateRequest) -> int:
+    def enqueue_extraction(self, fetch_result: Any, request: SubscriptionUpdateRequest) -> int:
         """
         将视频加入提取队列
         """

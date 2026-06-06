@@ -286,7 +286,7 @@ def list_videos(
         return video_list, total_count
 
 
-def get_video(user_id, video_id):
+def get_video(user_id: int, video_id: int) -> Optional[Dict[str, Any]]:
     with get_session() as session:
         video = session.scalars(
             select(Video)
@@ -348,10 +348,10 @@ def get_video(user_id, video_id):
             s_dict['is_nsfw'] = user_subscription.is_nsfw
             subscriptions_data.append(s_dict)
 
-        def _history_sort_key(history: VideoHistory):
+        def _history_sort_key(history: VideoHistory) -> Any:
             return history.updated_at or history.end_time or history.created_at
 
-        def _interaction_sort_key(interaction: VideoInteraction):
+        def _interaction_sort_key(interaction: VideoInteraction) -> Any:
             return interaction.updated_at or interaction.created_at
 
         video_history = max(video.histories, key=_history_sort_key, default=None)

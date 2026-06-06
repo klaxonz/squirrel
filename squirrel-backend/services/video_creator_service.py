@@ -1,10 +1,12 @@
+from typing import Optional
+
 from sqlalchemy import select
 
 from core.database import get_session
 from models.links import VideoCreator
 
 
-def get_video_creator(video_id: int, creator_id: int):
+def get_video_creator(video_id: int, creator_id: int) -> Optional[VideoCreator]:
     with get_session() as session:
         video_creator = session.scalars(select(VideoCreator).where(
             VideoCreator.video_id == video_id,
@@ -12,7 +14,7 @@ def get_video_creator(video_id: int, creator_id: int):
         return video_creator
 
 
-def create_video_creator(video_id: int, creator_id: int):
+def create_video_creator(video_id: int, creator_id: int) -> VideoCreator:
     with get_session() as session:
         video_creator = VideoCreator(video_id=video_id, creator_id=creator_id)
         session.add(video_creator)

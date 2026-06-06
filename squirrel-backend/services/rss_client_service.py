@@ -113,7 +113,7 @@ class _JsonHttpClient:
 
 
 class MinifluxClient:
-    def __init__(self, config: RssAccountConfig, http_client: Optional[_JsonHttpClient] = None):
+    def __init__(self, config: RssAccountConfig, http_client: Optional[_JsonHttpClient] = None) -> None:
         self.config = config
         self.http_client = http_client or _JsonHttpClient()
 
@@ -214,7 +214,7 @@ class MinifluxClient:
 
 
 class FeverClient:
-    def __init__(self, config: RssAccountConfig, http_client: Optional[_JsonHttpClient] = None):
+    def __init__(self, config: RssAccountConfig, http_client: Optional[_JsonHttpClient] = None) -> None:
         self.config = config
         self.http_client = http_client or _JsonHttpClient()
 
@@ -302,7 +302,7 @@ class FeverClient:
 
 
 class GReaderClient:
-    def __init__(self, config: RssAccountConfig, http_client: Optional[_JsonHttpClient] = None):
+    def __init__(self, config: RssAccountConfig, http_client: Optional[_JsonHttpClient] = None) -> None:
         self.config = config
         self.http_client = http_client or _JsonHttpClient()
         self._auth_token: Optional[str] = None
@@ -635,7 +635,7 @@ def _greader_text(value: Any) -> Optional[str]:
     return None
 
 
-def create_client(config: RssAccountConfig):
+def create_client(config: RssAccountConfig) -> MinifluxClient | FeverClient | GReaderClient:
     if config.provider == 'greader':
         return GReaderClient(config)
     if config.provider == 'miniflux':

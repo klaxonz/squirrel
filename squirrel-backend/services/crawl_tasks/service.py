@@ -5,6 +5,7 @@ from typing import Optional, Sequence
 
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 from core.database import get_session
 from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_job import CrawlJob
@@ -479,7 +480,7 @@ def list_active_subscription_sync_state_ids() -> set[int]:
     return state_ids
 
 
-def _get_owned_task(session, *, task_id: int, worker_id: str) -> CrawlTask:
+def _get_owned_task(session: Session, *, task_id: int, worker_id: str) -> CrawlTask:
     task = session.get(CrawlTask, task_id)
     if not task:
         raise CrawlTaskNotFoundError(f'Crawl task not found: {task_id}')
@@ -523,7 +524,7 @@ def _move_task_to_retry_or_dead(
     )
 
 
-def _refresh_job_status(session, *, job_id: int, now: datetime) -> None:
+def _refresh_job_status(session: Session, *, job_id: int, now: datetime) -> None:
     job = session.get(CrawlJob, job_id)
     if not job:
         return
@@ -584,7 +585,7 @@ def _refresh_job_status(session, *, job_id: int, now: datetime) -> None:
     job.finished_at = max(finished_at_values) if finished_at_values else now
 
 
-def _ensure_dispatch_scope(session, *, scope_type: str, scope_key: str) -> CrawlDispatchScope:
+def _ensure_dispatch_scope(session: Session, *, scope_type: str, scope_key: str) -> CrawlDispatchScope:
     scope = session.execute(
         select(CrawlDispatchScope).where(
             CrawlDispatchScope.scope_type == scope_type,
@@ -647,5 +648,5 @@ def _reconcile_subscription_sync_state_for_retry(
     )
 
 
-def _refresh_video_extraction_projection(session, task: CrawlTask) -> None:
+def _refresh_video_extraction_projection(session: Session, task: CrawlTask) -> None:
     video_extraction_projection_service.refresh_projection_for_task(task, session=session)

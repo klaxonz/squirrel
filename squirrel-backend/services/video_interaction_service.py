@@ -1,10 +1,12 @@
+from typing import Optional
+
 from sqlalchemy import select
 
 from core.database import get_session
 from models.video_interaction import VideoInteraction
 
 
-def save_or_update_video_interaction(user_id: int, video_id: int, interaction_type: int):
+def save_or_update_video_interaction(user_id: int, video_id: int, interaction_type: int) -> VideoInteraction:
     with get_session() as session:
         video_interaction = session.scalars(
             select(VideoInteraction).where(
@@ -29,7 +31,7 @@ def save_or_update_video_interaction(user_id: int, video_id: int, interaction_ty
             return video_interaction
 
 
-def get_video_interaction(user_id: int, video_id: int) -> VideoInteraction:
+def get_video_interaction(user_id: int, video_id: int) -> Optional[VideoInteraction]:
     with get_session() as session:
         video_interaction = session.scalars(
             select(VideoInteraction).where(
@@ -40,7 +42,7 @@ def get_video_interaction(user_id: int, video_id: int) -> VideoInteraction:
         return video_interaction
 
 
-def delete_video_interaction(user_id: int, video_id: int):
+def delete_video_interaction(user_id: int, video_id: int) -> None:
     with get_session() as session:
         video_interaction = session.scalars(
             select(VideoInteraction).where(

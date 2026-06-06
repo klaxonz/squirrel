@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
+
+from sqlalchemy.orm import Session
 
 from core.database import get_session, register_after_commit
 from models.subscription_sync_event import SubscriptionSyncEvent
@@ -28,7 +30,7 @@ class SyncEventInput:
     seq_no: Optional[int] = None
 
 
-def _serialize_value(value):
+def _serialize_value(value: Any) -> Any:
     if isinstance(value, datetime):
         return value.isoformat()
     if isinstance(value, dict):
@@ -44,7 +46,7 @@ def serialize_payload(payload: Optional[dict]) -> dict:
     return _serialize_value(dict(payload))
 
 
-def build_event(event_input: SyncEventInput, *, session=None) -> SubscriptionSyncEvent:
+def build_event(event_input: SyncEventInput, *, session: Optional[Session] = None) -> SubscriptionSyncEvent:
     event_time = event_input.occurred_at or datetime.now()
     seq_no = event_input.seq_no
     if seq_no is None:
@@ -70,7 +72,7 @@ def build_event(event_input: SyncEventInput, *, session=None) -> SubscriptionSyn
     )
 
 
-def append_event(event_input: SyncEventInput, *, session=None, project: bool = True) -> SubscriptionSyncEvent:
+def append_event(event_input: SyncEventInput, *, session: Optional[Session] = None, project: bool = True) -> SubscriptionSyncEvent:
     if session is not None:
         event = build_event(event_input, session=session)
         session.add(event)
@@ -96,7 +98,7 @@ def append_event(event_input: SyncEventInput, *, session=None, project: bool = T
         return append_event(event_input, session=managed_session, project=project)
 
 
-def append_events(event_inputs: list[SyncEventInput], *, session=None, project: bool = True) -> list[SubscriptionSyncEvent]:
+def append_events(event_inputs: list[SyncEventInput], *, session: Optional[Session] = None, project: bool = True) -> list[SubscriptionSyncEvent]:
     if session is not None:
         ordered_inputs = sorted(
             event_inputs,

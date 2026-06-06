@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.orm import Session
 
 from core.database import get_session
 from models.links import UserSubscription
@@ -73,7 +74,7 @@ def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
     return None
 
 
-def _payload_metric_value(session, run_id: str, key: str) -> Optional[int]:
+def _payload_metric_value(session: Session, run_id: str, key: str) -> Optional[int]:
     payloads = session.execute(
         select(SubscriptionSyncEvent.payload)
         .where(SubscriptionSyncEvent.stream_id == run_id)
@@ -91,7 +92,7 @@ def _payload_metric_value(session, run_id: str, key: str) -> Optional[int]:
     return None
 
 
-def _load_feed_completed_at_map(session, run_ids: list[str]) -> dict[str, datetime]:
+def _load_feed_completed_at_map(session: Session, run_ids: list[str]) -> dict[str, datetime]:
     if not run_ids:
         return {}
 
@@ -138,7 +139,7 @@ def _load_feed_completed_at_map(session, run_ids: list[str]) -> dict[str, dateti
     return feed_completed_at_map
 
 
-def _base_run_query(user_id: int):
+def _base_run_query(user_id: int) -> Any:
     return (
         select(SubscriptionSyncRunProjection, Subscription)
         .join(Subscription, Subscription.id == SubscriptionSyncRunProjection.subscription_id)
@@ -151,12 +152,12 @@ def _base_run_query(user_id: int):
     )
 
 
-def _count_query_rows(session, query) -> int:
+def _count_query_rows(session: Session, query: Any) -> int:
     count_query = select(func.count()).select_from(query.order_by(None).subquery())
     return int(session.execute(count_query).scalar() or 0)
 
 
-def _run_exists_for_user(session, run_id: str, user_id: int) -> bool:
+def _run_exists_for_user(session: Session, run_id: str, user_id: int) -> bool:
     row = session.execute(
         select(SubscriptionSyncRunProjection.run_id)
         .join(Subscription, Subscription.id == SubscriptionSyncRunProjection.subscription_id)
@@ -239,7 +240,7 @@ def list_runs(
                 [run.run_id for run, _ in all_rows if run and run.run_id],
             )
 
-            def feed_recent_sort_key(row):
+            def feed_recent_sort_key(row: Any) -> tuple:
                 run, _ = row
                 feed_completed_at = feed_completed_at_map.get(run.run_id)
                 return (

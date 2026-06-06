@@ -1,6 +1,8 @@
 from typing import Any, List, Optional
 
 from sqlalchemy import select, func, and_, exists, case, literal, false
+from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import ColumnElement
 
 from core.database import get_session
 from models.links import UserSubscription
@@ -14,7 +16,7 @@ from services.nsfw_policy import resolve_effective_nsfw_filter
 from services.video_query import duration_predicate
 
 
-def _contains(column, term: str):
+def _contains(column: Any, term: str) -> ColumnElement[bool]:
     return column.ilike(f'%{term}%')
 
 
@@ -33,9 +35,9 @@ def _feed_category_predicate(
     user_id: int,
     category: str,
     *,
-    video_id_column=Video.id,
-    publish_date_column=Video.publish_date
-):
+    video_id_column: Any = Video.id,
+    publish_date_column: Any = Video.publish_date
+) -> Any:
     published = and_(
         publish_date_column.is_not(None),
         publish_date_column <= func.now(),
@@ -97,7 +99,7 @@ def _feed_category_predicate(
     return published
 
 
-def _feed_time_range_predicates(time_range: str):
+def _feed_time_range_predicates(time_range: str) -> List[Any]:
     from datetime import timedelta
     if time_range == 'all':
         return []
@@ -123,7 +125,7 @@ def _build_active_subscriptions_query(
     nsfw: str,
     show_nsfw: bool,
     special: str,
-):
+) -> Any:
     effective_nsfw = resolve_effective_nsfw_filter(nsfw, show_nsfw)
     active_subscriptions = (
         select(
@@ -160,7 +162,7 @@ def _build_active_subscriptions_query(
     return active_subscriptions.subquery('active_subscriptions')
 
 
-def _title_search_conditions(parsed_query, *, domain_column=Video.domain) -> list[Any]:
+def _title_search_conditions(parsed_query: Any, *, domain_column: Any = Video.domain) -> list[Any]:
     conditions: list[Any] = []
 
     for term in parsed_query.text_terms:
@@ -177,8 +179,8 @@ def _title_search_conditions(parsed_query, *, domain_column=Video.domain) -> lis
 
 def _subscription_search_query(
     *,
-    active_subscriptions,
-    parsed_query,
+    active_subscriptions: Any,
+    parsed_query: Any,
     user_id: int,
     sort_by: str,
     domains: Optional[List[str]],
@@ -261,7 +263,7 @@ def _build_feed_rows_query(
     nsfw: str,
     domains: Optional[List[str]],
     special: str,
-):
+) -> Any:
     active_subscriptions = _build_active_subscriptions_query(
         user_id=user_id,
         subscription_id=subscription_id,
@@ -301,7 +303,7 @@ def _build_feed_rows_query(
     return query_stmt.order_by(UserVideoFeed.publish_date.desc(), UserVideoFeed.video_id.desc())
 
 
-def _fetch_feed_page_video_ids(session, feed_rows_query, *, offset: int, page_size: int) -> list[int]:
+def _fetch_feed_page_video_ids(session: Session, feed_rows_query: Any, *, offset: int, page_size: int) -> list[int]:
     video_ids: list[int] = []
     seen_video_ids: set[int] = set()
     row_offset = 0
@@ -340,7 +342,7 @@ def _build_list_query(
     duration: str,
     content_type: str,
     special: str,
-):
+) -> Any:
     from services.search_query import parse_search_query
 
     active_subscriptions = _build_active_subscriptions_query(

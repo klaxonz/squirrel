@@ -2,10 +2,11 @@ import logging
 from datetime import datetime, timedelta
 from threading import Lock
 from time import monotonic
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Session
 
 from core.database import get_session
 from core.site_config_manager import get_effective_site_catalog
@@ -66,7 +67,7 @@ def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
             return None
 
 
-def _safe_metric_int(value) -> int:
+def _safe_metric_int(value: Any) -> int:
     if value in (None, ''):
         return 0
     try:
@@ -215,7 +216,7 @@ def _queue_metrics_overview() -> tuple[int, int]:
     return queue_depth, queue_messages
 
 
-def _base_projection_query(user_id: int):
+def _base_projection_query(user_id: int) -> Any:
     return (
         select(Subscription, SubscriptionSyncSubscriptionProjection, SubscriptionSyncRunProjection)
         .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
@@ -235,11 +236,11 @@ def _base_projection_query(user_id: int):
     )
 
 
-def _projection_status_expr():
+def _projection_status_expr() -> Any:
     return func.coalesce(SubscriptionSyncSubscriptionProjection.current_status, '')
 
 
-def _projection_phase_expr():
+def _projection_phase_expr() -> Any:
     return func.coalesce(
         SubscriptionSyncRunProjection.current_phase,
         SubscriptionSyncSubscriptionProjection.current_phase,
@@ -247,7 +248,7 @@ def _projection_phase_expr():
     )
 
 
-def _projection_pending_videos_expr():
+def _projection_pending_videos_expr() -> Any:
     return func.coalesce(
         SubscriptionSyncSubscriptionProjection.pending_video_count,
         SubscriptionSyncRunProjection.pending_video_count,
@@ -255,7 +256,7 @@ def _projection_pending_videos_expr():
     )
 
 
-def _apply_projection_filters(query, *, status: Optional[str] = None, site_candidates: Optional[set[str]] = None, normalized_query: str = ''):
+def _apply_projection_filters(query: Any, *, status: Optional[str] = None, site_candidates: Optional[set[str]] = None, normalized_query: str = '') -> Any:
     clauses = _projection_filter_clauses(
         status=status,
         site_candidates=site_candidates,
@@ -266,7 +267,7 @@ def _apply_projection_filters(query, *, status: Optional[str] = None, site_candi
     return query
 
 
-def _projection_filter_clauses(*, status: Optional[str] = None, site_candidates: Optional[set[str]] = None, normalized_query: str = ''):
+def _projection_filter_clauses(*, status: Optional[str] = None, site_candidates: Optional[set[str]] = None, normalized_query: str = '') -> list[Any]:
     clauses = []
     normalized_status = (status or '').strip().lower() or None
     current_status = _projection_status_expr()
@@ -299,7 +300,7 @@ def _projection_filter_clauses(*, status: Optional[str] = None, site_candidates:
     return clauses
 
 
-def _apply_projection_ordering(query, status: Optional[str]):
+def _apply_projection_ordering(query: Any, status: Optional[str]) -> Any:
     normalized_status = (status or '').strip().lower() or None
     if normalized_status == 'running':
         return query.order_by(
@@ -337,7 +338,7 @@ def _apply_projection_ordering(query, status: Optional[str]):
         Subscription.id.desc(),
     )
 def _load_projection_rows(
-    session,
+    session: Session,
     *,
     user_id: int,
     filter_status: Optional[str] = None,
@@ -366,7 +367,7 @@ def _load_projection_rows(
 
 
 def _load_projection_items(
-    session,
+    session: Session,
     *,
     user_id: int,
     filter_status: Optional[str] = None,
@@ -475,7 +476,7 @@ def _collect_projection_items(
 
 
 def _query_queued_task_rank_map(
-    session,
+    session: Session,
     user_id: int,
     items: list[SyncCenterItemDto],
 ) -> tuple[dict[int, int], dict[int, int]]:
@@ -597,7 +598,7 @@ def _serialize_feed_recent_run(
     }
 
 
-def _load_feed_completed_at_map(session, run_ids: list[str]) -> dict[str, datetime]:
+def _load_feed_completed_at_map(session: Session, run_ids: list[str]) -> dict[str, datetime]:
     if not run_ids:
         return {}
 
@@ -669,7 +670,7 @@ def _sort_items(
         ]
         return max(candidates)
 
-    def sort_key(item: SyncCenterItemDto):
+    def sort_key(item: SyncCenterItemDto) -> Any:
         if status == 'running':
             return parse_dt(item.locked_at, fallback=datetime.min), item.subscription_id
         if status == 'queued':

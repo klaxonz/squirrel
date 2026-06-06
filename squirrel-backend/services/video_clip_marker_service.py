@@ -2,6 +2,7 @@ import base64
 from pathlib import Path
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.database import get_session
@@ -72,7 +73,7 @@ def _decode_preview_image(data_url: str) -> bytes:
         raise ValueError('Invalid image_data_url') from exc
 
 
-def _get_video_or_raise(session, video_id: int) -> Video:
+def _get_video_or_raise(session: Session, video_id: int) -> Video:
     video = session.get(Video, video_id)
     if not video or getattr(video, 'is_deleted', False):
         raise ValueError('Video not found')

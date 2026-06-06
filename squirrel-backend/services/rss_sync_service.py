@@ -8,6 +8,7 @@ from threading import Lock
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session
 
 from core.database import get_session
 from models.rss import RssAccount, RssEntry, RssEntryView, RssFeed
@@ -456,7 +457,7 @@ def unsubscribe_feed(user_id: int, account_id: int, feed_id: int) -> bool:
     return True
 
 
-def _upsert_feeds(session, account: RssAccount, remotes: list[RemoteFeed]) -> list[RssFeed]:
+def _upsert_feeds(session: Session, account: RssAccount, remotes: list[RemoteFeed]) -> list[RssFeed]:
     external_feed_ids = [r.external_feed_id for r in remotes]
     existing_by_id: dict[str, RssFeed] = {}
     if external_feed_ids:

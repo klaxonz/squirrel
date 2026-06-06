@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Iterable, List
 
 from sqlalchemy import and_, delete, exists, func, select, false
+from sqlalchemy.orm import Session
 
 from core.database import get_session
 from models.video_history import VideoHistory
@@ -49,7 +50,7 @@ def _normalize_history_reports(reports: Iterable[HistoryCreate]) -> list[History
     return [item[0] for item in latest_by_video_id.values()]
 
 
-def _apply_history_updates(session, user_id: int, reports: list[HistoryCreate]) -> None:
+def _apply_history_updates(session: Session, user_id: int, reports: list[HistoryCreate]) -> None:
     normalized_reports = _normalize_history_reports(reports)
     if not normalized_reports:
         return

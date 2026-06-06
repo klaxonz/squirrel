@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 
 from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
 from core.database import get_session
 from models.links import SubscriptionVideo, UserSubscription
@@ -11,7 +12,7 @@ from models.video import Video
 logger = logging.getLogger(__name__)
 
 
-def _upsert_feed_rows(session, rows: list[dict]) -> None:
+def _upsert_feed_rows(session: Session, rows: list[dict]) -> None:
     if not rows:
         return
 
@@ -39,7 +40,7 @@ def _upsert_feed_rows(session, rows: list[dict]) -> None:
     session.execute(stmt)
 
 
-def _build_subscription_feed_rows(session, user_id: int, subscription_id: int, is_nsfw: bool) -> list[dict]:
+def _build_subscription_feed_rows(session: Session, user_id: int, subscription_id: int, is_nsfw: bool) -> list[dict]:
     rows = session.execute(
         select(
             SubscriptionVideo.subscription_id,

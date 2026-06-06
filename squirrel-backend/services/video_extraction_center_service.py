@@ -2,9 +2,10 @@ from datetime import datetime
 import logging
 from threading import Lock
 from time import monotonic
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import case, func, select
+from sqlalchemy.orm import Session
 
 from core.database import get_session
 from core.site_config_manager import get_effective_site_catalog
@@ -173,7 +174,7 @@ def _resolve_task_sync_mode(task: CrawlTask) -> str:
 
 
 def _resolve_projection_sync_mode(
-    session,
+    session: Session,
     projection: VideoExtractionProjection,
     cache: dict[tuple[int, str, str], str],
 ) -> str:
@@ -206,7 +207,7 @@ def _base_projection_query(
     *,
     site_candidates: Optional[set[str]] = None,
     normalized_query: str = '',
-):
+) -> Any:
     query = (
         select(VideoExtractionProjection, Subscription)
         .join(Subscription, Subscription.id == VideoExtractionProjection.subscription_id)
@@ -224,7 +225,7 @@ def _base_projection_query(
     return query
 
 
-def _apply_status_filter(query, status: Optional[str]):
+def _apply_status_filter(query: Any, status: Optional[str]) -> Any:
     normalized_status = (status or '').strip().lower() or None
     if normalized_status == 'running':
         return query.where(VideoExtractionProjection.display_status == 'running')
@@ -237,7 +238,7 @@ def _apply_status_filter(query, status: Optional[str]):
     return query
 
 
-def _apply_ordering(query, status: Optional[str]):
+def _apply_ordering(query: Any, status: Optional[str]) -> Any:
     normalized_status = (status or '').strip().lower() or None
     if normalized_status == 'running':
         return query.order_by(VideoExtractionProjection.locked_at.asc(), VideoExtractionProjection.subscription_id.asc())
@@ -248,7 +249,7 @@ def _apply_ordering(query, status: Optional[str]):
 
 
 def _build_item(
-    session,
+    session: Session,
     projection: VideoExtractionProjection,
     subscription: Subscription,
     sync_mode_cache: dict[tuple[int, str, str], str],

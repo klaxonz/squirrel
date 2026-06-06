@@ -1,3 +1,5 @@
+from typing import Optional, Tuple
+
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -6,20 +8,20 @@ from models.links import SubscriptionVideo
 from services import user_video_feed_service
 
 
-def get_subscription_video_by_video_id(video_id: int):
+def get_subscription_video_by_video_id(video_id: int) -> Optional[SubscriptionVideo]:
     with get_session() as session:
         subscription_video = session.scalars(select(SubscriptionVideo).where(SubscriptionVideo.video_id == video_id)).first()
         return subscription_video
 
 
-def get_subscription_video(subscription_id, video_id):
+def get_subscription_video(subscription_id: int, video_id: int) -> Optional[SubscriptionVideo]:
     with get_session() as session:
         return session.scalars(select(SubscriptionVideo).where(
             SubscriptionVideo.subscription_id == subscription_id,
             SubscriptionVideo.video_id == video_id)).first()
 
 
-def create_subscription_video(subscription_id, video_id):
+def create_subscription_video(subscription_id: int, video_id: int) -> Tuple[Optional[SubscriptionVideo], bool]:
     """幂等创建订阅-视频关联。返回 (obj, created)。"""
     with get_session() as session:
         stmt = (

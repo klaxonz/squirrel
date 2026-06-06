@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import case, func, literal, or_, select
 from sqlalchemy.orm import Session
@@ -14,10 +14,10 @@ from services.crawl_tasks import service as crawl_task_service
 
 
 class CrawlDispatcherService:
-    def __init__(self, *, policy: Optional[CrawlDispatcherPolicy] = None):
+    def __init__(self, *, policy: Optional[CrawlDispatcherPolicy] = None) -> None:
         self.policy = policy or CrawlDispatcherPolicy.from_settings()
 
-    def claim_next(self, *, worker_id: str, now: Optional[datetime] = None, lease_seconds: int = 60):
+    def claim_next(self, *, worker_id: str, now: Optional[datetime] = None, lease_seconds: int = 60) -> Optional[CrawlTask]:
         now = now or datetime.now()
         with crawl_task_service.get_session() as session:
             candidate_rows = session.execute(self._build_candidate_query(now)).mappings().all()
@@ -41,7 +41,7 @@ class CrawlDispatcherService:
                 claim_attempt.rollback()
         return None
 
-    def _build_candidate_query(self, now: datetime):
+    def _build_candidate_query(self, now: datetime) -> Any:
         priority_order = case(
             (CrawlTask.priority == 'manual', 3),
             (CrawlTask.priority == 'normal', 2),
@@ -137,7 +137,7 @@ class CrawlDispatcherService:
             .limit(100)
         )
 
-    def _sort_candidates_by_runtime_pressure(self, session: Session, candidate_rows):
+    def _sort_candidates_by_runtime_pressure(self, session: Session, candidate_rows: list[Any]) -> list[Any]:
         if not candidate_rows:
             return []
 
@@ -146,7 +146,7 @@ class CrawlDispatcherService:
         running_by_site = self._count_running_tasks_by_site(session, candidate_sites)
         running_by_task_type = self._count_running_tasks_by_task_type(session, candidate_task_types)
 
-        def _sort_key(row):
+        def _sort_key(row: Any) -> tuple:
             site = str(row['site'] or '')
             task_type = str(row['task_type'] or '')
             site_limit = max(1, self.policy.get_site_limit(site))
@@ -177,7 +177,7 @@ class CrawlDispatcherService:
         worker_id: str,
         now: datetime,
         lease_seconds: int,
-    ):
+    ) -> Optional[CrawlTask]:
         task = session.execute(
             select(CrawlTask)
             .where(

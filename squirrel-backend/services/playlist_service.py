@@ -1,4 +1,5 @@
 from sqlalchemy import delete, select, func, update
+from sqlalchemy.orm import Session
 
 from core.database import get_session
 from models.playlist import Playlist
@@ -18,7 +19,7 @@ def _serialize_item(item: PlaylistItem) -> dict:
     return payload
 
 
-def _get_or_create_default_playlist(session, user_id: int) -> Playlist:
+def _get_or_create_default_playlist(session: Session, user_id: int) -> Playlist:
     default = session.scalar(
         select(Playlist).where(
             Playlist.user_id == user_id,

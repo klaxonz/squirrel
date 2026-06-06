@@ -7,6 +7,7 @@ from threading import Lock, Thread
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session
 
 from core.database import get_session
 from models.rss import RssAccount, RssEntry, RssEntryView, RssFeed
@@ -114,7 +115,7 @@ def serialize_entry(entry: RssEntry) -> dict[str, Any]:
     }
 
 
-def _get_account(session, user_id: int, account_id: int) -> Optional[RssAccount]:
+def _get_account(session: Session, user_id: int, account_id: int) -> Optional[RssAccount]:
     return session.scalars(
         select(RssAccount).where(
             RssAccount.id == account_id,
