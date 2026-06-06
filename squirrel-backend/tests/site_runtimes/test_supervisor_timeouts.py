@@ -29,7 +29,7 @@ def test_supervisor_returns_timeout_error_when_runtime_request_times_out(monkeyp
     def _raise_timeout(*_args, **_kwargs):
         raise socket.timeout('timed out')
 
-    monkeypatch.setattr(supervisor, '_request_json', _raise_timeout)
+    monkeypatch.setattr(supervisor._transport_client, 'request_json', _raise_timeout)
 
     response = supervisor.invoke(
         SiteRuntimeTarget(
@@ -76,15 +76,15 @@ def test_supervisor_records_timeout_invoke_context_in_audit_and_response(monkeyp
 
     monkeypatch.setattr('site_runtimes.supervisor.time.monotonic', lambda: next(monotonic_values))
     monkeypatch.setattr(
-        supervisor,
-        '_append_audit_event',
+        supervisor._audit_writer,
+        'append_event',
         lambda _record, event, details=None: audit_events.append((event, details)),
     )
 
     def _raise_timeout(*_args, **_kwargs):
         raise socket.timeout('timed out')
 
-    monkeypatch.setattr(supervisor, '_request_json', _raise_timeout)
+    monkeypatch.setattr(supervisor._transport_client, 'request_json', _raise_timeout)
 
     response = supervisor.invoke(
         SiteRuntimeTarget(
