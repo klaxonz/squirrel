@@ -48,10 +48,6 @@ def test_gateway_extractor_adapter_extracts_via_plugin_gateway(monkeypatch):
             )
 
     monkeypatch.setattr(
-        'core.extraction.factory.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
-    )
-    monkeypatch.setattr(
         'core.extraction.factory.SiteCatalog.is_site_enabled',
         lambda site=None, domain=None: True,
     )
@@ -69,7 +65,7 @@ def test_gateway_extractor_adapter_extracts_via_plugin_gateway(monkeypatch):
         },
     )
 
-    factory = ExtractorFactory()
+    factory = ExtractorFactory(runtime_gateway=_FakeGateway())
     extractor = factory.create_extractor('https://www.bilibili.com/video/BV1xx411c7mD')
 
     assert extractor is not None

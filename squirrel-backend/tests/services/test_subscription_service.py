@@ -21,6 +21,7 @@ from models.video_history import VideoHistory
 from schemas.subscription.dto.subscription_dto import SubscriptionDto
 from models.user_video_feed import UserVideoFeed
 from services import subscription_service
+from services import subscription_import_service
 from services import subscription_sync_state_service
 from services import user_video_feed_service
 
@@ -262,9 +263,9 @@ def test_preview_user_subscriptions_reads_items_from_plugin_gateway(monkeypatch)
             )
 
     monkeypatch.setattr(
-        subscription_service,
-        'get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        subscription_import_service,
+        'get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
 
     result = subscription_service.preview_user_subscriptions(site_name='bilibili', user_id=1)
@@ -314,9 +315,9 @@ def test_preview_user_subscriptions_forwards_cursor_and_limit(monkeypatch):
             )
 
     monkeypatch.setattr(
-        subscription_service,
-        'get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        subscription_import_service,
+        'get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
     monkeypatch.setattr(subscription_service, 'get_active_user_subscription_url_map', lambda _user_id: {})
 
@@ -372,9 +373,9 @@ def test_import_user_subscriptions_uses_selected_urls_without_refetching_gateway
                 self._target(*self._args)
 
     monkeypatch.setattr(
-        subscription_service,
-        'get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        subscription_import_service,
+        'get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
     monkeypatch.setattr(subscription_service, 'get_active_user_subscription_url_map', lambda _user_id: {})
     monkeypatch.setattr(
@@ -436,9 +437,9 @@ def test_handle_subscribe_request_reads_subscription_meta_from_plugin_gateway(mo
             )
 
     monkeypatch.setattr(
-        subscription_service,
-        'get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        subscription_import_service,
+        'get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
 
     result = subscription_service.handle_subscribe_request(
@@ -469,9 +470,9 @@ def test_get_runtime_supported_sites_reads_enabled_routes_from_plugin_manager(mo
     ]
 
     monkeypatch.setattr(
-        subscription_service,
-        'get_site_runtime_manager',
-        lambda: SimpleNamespace(get_snapshot=lambda: SimpleNamespace(registrations=registrations)),
+        subscription_import_service,
+        'get_runtime_snapshot',
+        lambda: SimpleNamespace(registrations=registrations),
     )
 
     assert subscription_service.get_runtime_supported_sites('import_subscriptions') == ['bilibili', 'youtube']
@@ -579,9 +580,9 @@ def test_import_user_subscriptions_drains_all_gateway_batches_when_no_selection(
                 self._target(*self._args)
 
     monkeypatch.setattr(
-        subscription_service,
-        'get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        subscription_import_service,
+        'get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
     monkeypatch.setattr(subscription_service, 'get_active_user_subscription_url_map', lambda _user_id: {})
     monkeypatch.setattr(

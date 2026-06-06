@@ -24,11 +24,8 @@ def test_get_site_from_url_reads_runtime_registrations(monkeypatch):
 
     monkeypatch.setattr(
         url_helper,
-        'get_site_runtime_manager',
-        lambda: SimpleNamespace(
-            get_snapshot=lambda: SimpleNamespace(registrations=registrations),
-        ),
-        raising=False,
+        'get_runtime_snapshot',
+        lambda: SimpleNamespace(registrations=registrations),
     )
 
     assert url_helper.get_site_from_url('https://www.youtube.com/watch?v=demo') == 'youtube'
@@ -39,11 +36,8 @@ def test_get_site_from_url_returns_none_when_no_runtime_route(monkeypatch):
     url_helper.reset_site_lookup_cache()
     monkeypatch.setattr(
         url_helper,
-        'get_site_runtime_manager',
-        lambda: SimpleNamespace(
-            get_snapshot=lambda: SimpleNamespace(registrations=[]),
-        ),
-        raising=False,
+        'get_runtime_snapshot',
+        lambda: SimpleNamespace(registrations=[]),
     )
 
     assert url_helper.get_site_from_url('https://example.com/video/1') is None
@@ -64,12 +58,7 @@ def test_get_site_from_url_reuses_cached_registration_index(monkeypatch):
         snapshot_calls['count'] += 1
         return SimpleNamespace(registrations=registrations)
 
-    monkeypatch.setattr(
-        url_helper,
-        'get_site_runtime_manager',
-        lambda: SimpleNamespace(get_snapshot=_get_snapshot),
-        raising=False,
-    )
+    monkeypatch.setattr(url_helper, 'get_runtime_snapshot', _get_snapshot)
 
     assert url_helper.get_site_from_url('https://www.youtube.com/watch?v=demo') == 'youtube'
     assert url_helper.get_site_from_url('https://m.youtube.com/watch?v=demo2') == 'youtube'

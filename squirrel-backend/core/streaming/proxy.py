@@ -18,7 +18,8 @@ from core.exceptions.proxy_exceptions import (
     ProxyConfigurationException,
     UnsupportedDomainException,
 )
-from site_runtimes.manager import get_site_runtime_manager
+from site_runtimes.gateway import SiteRuntimeGateway
+from site_runtimes.ports import get_runtime_gateway
 from utils.cookie import filter_cookies_to_query_string
 from utils.runtime_http import get_cloudflare_bypass_client
 
@@ -420,13 +421,19 @@ class VideoProxy:
     _runtime_config_cache_lock = threading.Lock()
     _runtime_config_cache_ttl = 5.0
 
-    def __init__(self, request: Request, domain: Optional[str] = None):
+    def __init__(
+        self,
+        request: Request,
+        domain: Optional[str] = None,
+        runtime_gateway: SiteRuntimeGateway | None = None,
+    ):
         self.request = request
         self.domain = domain or self.domain or self._extract_domain_from_request(request)
         if not self.domain:
             raise UnsupportedDomainException("unknown")
         self.site_headers: Dict[str, str] = {}
         self.domain_config: Optional[Dict[str, Any]] = None
+        self._runtime_gateway = runtime_gateway
 
     def _extract_domain_from_request(self, request: Request) -> Optional[str]:
         return None
@@ -505,7 +512,8 @@ class VideoProxy:
         if referer:
             payload['referer'] = referer
 
-        response = get_site_runtime_manager().gateway.invoke(
+        runtime_gateway = self._runtime_gateway or get_runtime_gateway()
+        response = runtime_gateway.invoke(
             'resolve_proxy_config',
             domain=self.domain,
             payload=payload,
@@ -559,12 +567,12 @@ class VideoProxy:
         return HeaderBuilder.build_headers(self.request, site_headers, custom_headers)
 
     def _rewrite_playlist(self, url: str, content: bytes, referer: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        manager = get_site_runtime_manager()
-        route = manager.gateway.resolve_route('rewrite_proxy_playlist', domain=self.domain)
+        runtime_gateway = self._runtime_gateway or get_runtime_gateway()
+        route = runtime_gateway.resolve_route('rewrite_proxy_playlist', domain=self.domain)
         if route is None:
             return None
 
-        response = manager.gateway.invoke(
+        response = runtime_gateway.invoke(
             'rewrite_proxy_playlist',
             domain=self.domain,
             payload={

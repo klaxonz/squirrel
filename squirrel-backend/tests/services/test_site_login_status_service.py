@@ -8,7 +8,7 @@ from crawl import SiteRuntimeInvokeResponse
 from services import site_login_status_service
 
 
-def test_get_supported_sites_reads_login_status_registrations(monkeypatch):
+def test_get_supported_sites_reads_login_status_registrations():
     registrations = [
         SimpleNamespace(capability='check_login_status', site_name='youtube'),
         SimpleNamespace(capability='extract_video', site_name='youtube'),
@@ -17,29 +17,17 @@ def test_get_supported_sites_reads_login_status_registrations(monkeypatch):
         SimpleNamespace(capability='check_login_status', site_name=''),
     ]
 
-    monkeypatch.setattr(
-        site_login_status_service,
-        'get_site_runtime_manager',
-        lambda: SimpleNamespace(
-            get_snapshot=lambda: SimpleNamespace(registrations=registrations),
-        ),
-    )
-
-    assert site_login_status_service.get_supported_sites() == {'youtube', 'bilibili'}
+    assert site_login_status_service.get_supported_sites(
+        snapshot=SimpleNamespace(registrations=registrations),
+    ) == {'youtube', 'bilibili'}
 
 
-def test_test_site_login_status_returns_fallback_when_route_missing(monkeypatch):
+def test_test_site_login_status_returns_fallback_when_route_missing():
     class _FakeGateway:
         def resolve_route(self, capability, site_name=None, domain=None):
             return None
 
-    monkeypatch.setattr(
-        site_login_status_service,
-        'get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
-    )
-
-    payload = site_login_status_service.test_site_login_status('youtube')
+    payload = site_login_status_service.test_site_login_status('youtube', gateway=_FakeGateway())
 
     assert payload['site_name'] == 'youtube'
     assert payload['supported'] is False
@@ -48,7 +36,7 @@ def test_test_site_login_status_returns_fallback_when_route_missing(monkeypatch)
     assert payload['checked_at']
 
 
-def test_test_site_login_status_normalizes_runtime_payload(monkeypatch):
+def test_test_site_login_status_normalizes_runtime_payload():
     calls = []
 
     class _FakeGateway:
@@ -73,13 +61,7 @@ def test_test_site_login_status_normalizes_runtime_payload(monkeypatch):
                 },
             )
 
-    monkeypatch.setattr(
-        site_login_status_service,
-        'get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
-    )
-
-    payload = site_login_status_service.test_site_login_status('youtube')
+    payload = site_login_status_service.test_site_login_status('youtube', gateway=_FakeGateway())
 
     assert calls == [{
         'capability': 'check_login_status',

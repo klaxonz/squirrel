@@ -7,7 +7,7 @@ from schemas.video.request.video import RemoteVideoSaveRequest, SortBy, VideoCat
 from services import video_service
 from typing import List
 from utils.site_catalog import SiteCatalog
-from site_runtimes.manager import get_site_runtime_manager
+from site_runtimes.ports import get_runtime_gateway
 from utils.jwt_helper import get_current_user
 from utils.url_helper import normalize_domain
 
@@ -147,7 +147,7 @@ def get_video_subtitles(
 
     domain = _video_domain(video.url)
     try:
-        result = get_site_runtime_manager().gateway.invoke(
+        result = get_runtime_gateway().invoke(
             'fetch_subtitles',
             domain=domain,
             payload={

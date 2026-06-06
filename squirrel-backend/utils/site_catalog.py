@@ -2,7 +2,8 @@ import json
 import os
 from typing import Dict, List, Optional, Set
 
-from site_runtimes.manager import get_site_runtime_manager
+from site_runtimes.models import SiteRuntimeSnapshot
+from site_runtimes.ports import get_runtime_snapshot
 from site_runtimes.runtime_models import SiteRuntimeManifest
 from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
@@ -107,9 +108,9 @@ class SiteCatalog:
         return None
 
     @classmethod
-    def build_runtime_site_catalog(cls) -> Dict[str, dict]:
+    def build_runtime_site_catalog(cls, snapshot: SiteRuntimeSnapshot | None = None) -> Dict[str, dict]:
         catalog: Dict[str, dict] = {}
-        snapshot = get_site_runtime_manager().get_snapshot()
+        snapshot = snapshot or get_runtime_snapshot()
         for record in snapshot.records:
             manifest = SiteRuntimeManifest.from_dict(record.manifest)
             for site in manifest.sites:
@@ -195,8 +196,8 @@ class SiteCatalog:
         return cls.load_override_catalog()
 
     @classmethod
-    def _build_from_manifests(cls) -> Dict[str, dict]:
-        return cls.build_runtime_site_catalog()
+    def _build_from_manifests(cls, snapshot: SiteRuntimeSnapshot | None = None) -> Dict[str, dict]:
+        return cls.build_runtime_site_catalog(snapshot=snapshot)
 
     @classmethod
     def get_all_domains(cls) -> List[str]:

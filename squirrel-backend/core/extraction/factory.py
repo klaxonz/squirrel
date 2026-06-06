@@ -8,7 +8,8 @@ from urllib.parse import urlparse
 from .contracts import ExtractionResult, ExtractionTask
 from .runtime_payloads import RuntimeVideoData
 
-from site_runtimes.manager import get_site_runtime_manager
+from site_runtimes.gateway import SiteRuntimeGateway
+from site_runtimes.ports import get_runtime_gateway
 from core.site_config_manager import get_effective_site_catalog
 from utils.site_catalog import SiteCatalog
 
@@ -18,9 +19,15 @@ logger = logging.getLogger(__name__)
 class GatewayExtractorAdapter:
     """Adapter that exposes site runtime capabilities as Extractor protocol."""
 
-    def __init__(self, site_name: str, supported_domains: List[str]):
+    def __init__(
+        self,
+        site_name: str,
+        supported_domains: List[str],
+        runtime_gateway: SiteRuntimeGateway | None = None,
+    ):
         self.site_name = site_name
         self.supported_domains = list(supported_domains)
+        self._runtime_gateway = runtime_gateway
 
     def can_handle(self, url: str) -> bool:
         try:
@@ -37,7 +44,8 @@ class GatewayExtractorAdapter:
             return False
 
     def extract(self, task: ExtractionTask) -> ExtractionResult:
-        response = get_site_runtime_manager().gateway.invoke(
+        runtime_gateway = self._runtime_gateway or get_runtime_gateway()
+        response = runtime_gateway.invoke(
             'extract_video',
             site_name=self.site_name,
             payload={
@@ -69,11 +77,13 @@ class GatewayExtractorAdapter:
 class ExtractorFactory:
     """Resolve extractors from site runtime registrations."""
 
-    def __init__(self):
+    def __init__(self, runtime_gateway: SiteRuntimeGateway | None = None):
         self._instances: Dict[str, GatewayExtractorAdapter] = {}
+        self._runtime_gateway = runtime_gateway
 
     def _create_adapter(self, site_name: str) -> Optional[GatewayExtractorAdapter]:
-        route = get_site_runtime_manager().gateway.resolve_route('extract_video', site_name=site_name)
+        runtime_gateway = self._runtime_gateway or get_runtime_gateway()
+        route = runtime_gateway.resolve_route('extract_video', site_name=site_name)
         if route is None:
             logger.info(f'No extract_video capability found for site: {site_name}')
             return None
@@ -84,7 +94,11 @@ class ExtractorFactory:
             logger.warning(f'No site domains configured for extractor site: {site_name}')
             return None
 
-        return GatewayExtractorAdapter(site_name=site_name, supported_domains=domains)
+        return GatewayExtractorAdapter(
+            site_name=site_name,
+            supported_domains=domains,
+            runtime_gateway=runtime_gateway,
+        )
 
     def create_extractor(self, url: str) -> Optional[GatewayExtractorAdapter]:
         try:

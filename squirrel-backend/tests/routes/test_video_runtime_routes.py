@@ -44,9 +44,8 @@ def test_get_video_subtitles_reads_from_plugin_gateway(monkeypatch):
     )
     monkeypatch.setattr(
         video_route,
-        'get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
-        raising=False,
+        'get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
 
     response = video_route.get_video_subtitles(
@@ -108,9 +107,8 @@ def test_get_video_subtitles_allows_site_default_language(monkeypatch):
     )
     monkeypatch.setattr(
         video_route,
-        'get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
-        raising=False,
+        'get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
 
     response = video_route.get_video_subtitles(
@@ -161,9 +159,8 @@ def test_get_video_subtitles_surfaces_runtime_error_message(monkeypatch):
     )
     monkeypatch.setattr(
         video_route,
-        'get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
-        raising=False,
+        'get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
 
     try:

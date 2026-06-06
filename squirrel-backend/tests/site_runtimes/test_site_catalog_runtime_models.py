@@ -25,21 +25,16 @@ def test_site_catalog_builds_from_backend_runtime_manifest_models(monkeypatch):
         ],
     )
 
-    monkeypatch.setattr(
-        'utils.site_catalog.get_site_runtime_manager',
-        lambda: SimpleNamespace(
-            get_snapshot=lambda: SimpleNamespace(
-                records=[
-                    SimpleNamespace(
-                        enabled=True,
-                        manifest=manifest.to_dict(),
-                    )
-                ]
-            )
+    catalog = SiteCatalog._build_from_manifests(
+        snapshot=SimpleNamespace(
+            records=[
+                SimpleNamespace(
+                    enabled=True,
+                    manifest=manifest.to_dict(),
+                )
+            ]
         ),
     )
-
-    catalog = SiteCatalog._build_from_manifests()
 
     assert catalog == {
         'youtube': {
@@ -77,21 +72,16 @@ def test_site_catalog_builds_site_defaults_from_manifest_metadata(monkeypatch):
         ],
     )
 
-    monkeypatch.setattr(
-        'utils.site_catalog.get_site_runtime_manager',
-        lambda: SimpleNamespace(
-            get_snapshot=lambda: SimpleNamespace(
-                records=[
-                    SimpleNamespace(
-                        enabled=True,
-                        manifest=manifest.to_dict(),
-                    )
-                ]
-            )
+    catalog = SiteCatalog.build_runtime_site_catalog(
+        snapshot=SimpleNamespace(
+            records=[
+                SimpleNamespace(
+                    enabled=True,
+                    manifest=manifest.to_dict(),
+                )
+            ]
         ),
     )
-
-    catalog = SiteCatalog.build_runtime_site_catalog()
 
     assert catalog['youtube']['label'] == 'YouTube'
     assert catalog['youtube']['aliases'] == ['yt']
@@ -118,23 +108,19 @@ def test_site_catalog_builds_icon_url_from_plugin_assets_when_metadata_does_not_
         ],
     )
 
-    monkeypatch.setattr(
-        'utils.site_catalog.get_site_runtime_manager',
-        lambda: SimpleNamespace(
-            get_snapshot=lambda: SimpleNamespace(
-                records=[
-                    SimpleNamespace(
-                        enabled=True,
-                        manifest=manifest.to_dict(),
-                    )
-                ]
-            )
-        ),
-    )
     monkeypatch.setattr('utils.site_catalog.resolve_site_icon_path', lambda site_name: Path(f'/tmp/{site_name}.png'))
     monkeypatch.setattr('utils.site_catalog.build_site_icon_url', lambda site_name: f'/api/sites/{site_name}/icon')
 
-    catalog = SiteCatalog.build_runtime_site_catalog()
+    catalog = SiteCatalog.build_runtime_site_catalog(
+        snapshot=SimpleNamespace(
+            records=[
+                SimpleNamespace(
+                    enabled=True,
+                    manifest=manifest.to_dict(),
+                )
+            ]
+        ),
+    )
 
     assert catalog['youporn']['icon_url'] == '/api/sites/youporn/icon'
 

@@ -11,7 +11,8 @@ from core.database import get_session
 from urllib.parse import urlparse
 from models.subscription import Subscription as SubscriptionModel
 from models.subscription_sync_state import SyncMode, SyncStatus
-from site_runtimes.manager import get_site_runtime_manager
+from site_runtimes.gateway import SiteRuntimeGateway
+from site_runtimes.ports import get_runtime_gateway
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import download_service, subscription_service, subscription_sync_state_service, video_service
 from services.blocked_video_service import is_blocked_video
@@ -64,6 +65,9 @@ def should_schedule_total_video_backfill(
 class DefaultUpdateStrategy(UpdateStrategy):
     """默认更新策略（适用于所有站点）"""
 
+    def __init__(self, runtime_gateway: SiteRuntimeGateway | None = None) -> None:
+        self._runtime_gateway = runtime_gateway
+
     @property
     def site_name(self) -> str:
         return "default"
@@ -91,7 +95,8 @@ class DefaultUpdateStrategy(UpdateStrategy):
             raise ValueError(f'No subscription route found for domain: {domain}')
 
         sync_mode = UpdateMode.FULL if request.mode == UpdateMode.FULL else UpdateMode.INCREMENTAL
-        response = get_site_runtime_manager().gateway.invoke(
+        runtime_gateway = self._runtime_gateway or get_runtime_gateway()
+        response = runtime_gateway.invoke(
             'sync_subscription',
             site_name=site_name,
             domain=domain,

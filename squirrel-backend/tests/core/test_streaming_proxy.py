@@ -102,8 +102,8 @@ def test_video_proxy_reads_runtime_proxy_config(monkeypatch):
             )
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        'core.streaming.proxy.get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
 
     proxy = VideoProxy(SimpleNamespace(headers={}), domain='youtube.com')
@@ -158,8 +158,8 @@ def test_video_proxy_caches_runtime_proxy_config_for_identical_requests(monkeypa
             )
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        'core.streaming.proxy.get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
     monkeypatch.setattr('core.streaming.proxy.filter_cookies_to_query_string', lambda _url: '')
     first = VideoProxy(SimpleNamespace(headers={}), domain='youtube.com')
@@ -199,8 +199,8 @@ def test_video_proxy_raises_when_runtime_proxy_config_is_missing(monkeypatch):
             )
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        'core.streaming.proxy.get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
 
     proxy = VideoProxy(SimpleNamespace(headers={}), domain='youtube.com')
@@ -235,8 +235,8 @@ def test_video_proxy_builds_cookie_header_from_target_url(monkeypatch):
             raise AssertionError(f'unexpected capability: {capability}')
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        'core.streaming.proxy.get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
     monkeypatch.setattr(
         'core.streaming.proxy.filter_cookies_to_query_string',
@@ -291,8 +291,8 @@ def test_video_proxy_uses_runtime_capability_headers_for_target_specific_youtube
             raise AssertionError(f'unexpected capability: {capability}')
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        'core.streaming.proxy.get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
     monkeypatch.setattr('core.streaming.proxy.filter_cookies_to_query_string', lambda _url: '')
 
@@ -363,8 +363,8 @@ def test_video_proxy_rewrites_playlist_via_runtime_capability(monkeypatch):
             return None
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        'core.streaming.proxy.get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
 
     async def _fake_execute_request(self, client, proxy_request, headers, domain_config=None, stream=False):
@@ -450,8 +450,8 @@ def test_video_proxy_uses_cloudflare_bypass_for_configured_domains(monkeypatch):
             return None
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        'core.streaming.proxy.get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
     monkeypatch.setattr('core.streaming.proxy.get_cloudflare_bypass_client', lambda: _BypassClient())
 
@@ -540,8 +540,8 @@ def test_video_proxy_accepts_requests_style_playlist_response_from_cloudflare_by
         yield object()
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        'core.streaming.proxy.get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
     monkeypatch.setattr('core.streaming.proxy.get_cloudflare_bypass_client', lambda: _BypassClient())
 
@@ -595,8 +595,8 @@ def test_video_proxy_streams_requests_style_media_segments_from_cloudflare_bypas
         yield object()
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        'core.streaming.proxy.get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
     monkeypatch.setattr('core.streaming.proxy.get_cloudflare_bypass_client', lambda: _BypassClient())
 
@@ -655,8 +655,8 @@ def test_video_proxy_accepts_async_cloudflare_bypass_clients(monkeypatch):
         yield object()
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        'core.streaming.proxy.get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
     monkeypatch.setattr('core.streaming.proxy.get_cloudflare_bypass_client', lambda: _BypassClient())
 
@@ -732,8 +732,8 @@ def test_video_proxy_skips_cloudflare_bypass_for_cross_host_streams(monkeypatch)
             return None
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        'core.streaming.proxy.get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
     monkeypatch.setattr('core.streaming.proxy.get_cloudflare_bypass_client', lambda: _BypassClient())
 
@@ -846,8 +846,8 @@ def test_video_proxy_uses_cloudflare_bypass_for_explicit_cross_host_domains(monk
             return None
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        'core.streaming.proxy.get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
     monkeypatch.setattr('core.streaming.proxy.get_cloudflare_bypass_client', lambda: _BypassClient())
 
@@ -918,8 +918,8 @@ def test_video_proxy_keeps_shared_client_open_on_proxy_exception(monkeypatch):
             raise AssertionError(f'unexpected capability: {capability}')
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        'core.streaming.proxy.get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
 
     proxy = VideoProxy(SimpleNamespace(headers={}), domain='youtube.com')
@@ -983,8 +983,8 @@ def test_video_proxy_streams_media_segments_without_prefetching_entire_body(monk
             return None
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        'core.streaming.proxy.get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
 
     class _FakeClient:
@@ -1066,8 +1066,8 @@ def test_video_proxy_uses_runtime_chunk_size_when_not_explicitly_overridden(monk
             return None
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
+        'core.streaming.proxy.get_runtime_gateway',
+        lambda: _FakeGateway(),
     )
 
     class _FakeClient:

@@ -4,7 +4,8 @@ from urllib.parse import urlparse
 import logging
 import ipaddress
 
-from site_runtimes.manager import get_site_runtime_manager
+from site_runtimes.models import SiteRuntimeSnapshot
+from site_runtimes.ports import get_runtime_snapshot
 
 
 logger = logging.getLogger(__name__)
@@ -89,8 +90,8 @@ def _normalize_registration_domain(domain: str) -> str:
     return value.lstrip('.')
 
 
-def _build_site_registration_index() -> dict[str, str]:
-    registrations = get_site_runtime_manager().get_snapshot().registrations
+def _build_site_registration_index(snapshot: SiteRuntimeSnapshot | None = None) -> dict[str, str]:
+    registrations = (snapshot or get_runtime_snapshot()).registrations
     index: dict[str, str] = {}
     for registration in registrations:
         if not registration.site_name:

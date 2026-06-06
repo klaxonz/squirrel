@@ -4,24 +4,29 @@ import logging
 from datetime import datetime
 from typing import Any, Dict
 
-from site_runtimes.manager import get_site_runtime_manager
+from site_runtimes.gateway import SiteRuntimeGateway
+from site_runtimes.models import SiteRuntimeSnapshot
+from site_runtimes.ports import get_runtime_gateway, get_runtime_snapshot
 
 logger = logging.getLogger(__name__)
 
 
-def get_supported_sites() -> set[str]:
-    manager = get_site_runtime_manager()
+def get_supported_sites(snapshot: SiteRuntimeSnapshot | None = None) -> set[str]:
+    snapshot = snapshot or get_runtime_snapshot()
     return {
         registration.site_name
-        for registration in manager.get_snapshot().registrations
+        for registration in snapshot.registrations
         if registration.capability == 'check_login_status' and registration.site_name
     }
 
 
-def test_site_login_status(site_name: str) -> Dict[str, Any]:
-    manager = get_site_runtime_manager()
+def test_site_login_status(
+    site_name: str,
+    gateway: SiteRuntimeGateway | None = None,
+) -> Dict[str, Any]:
+    runtime_gateway = gateway or get_runtime_gateway()
     timestamp = datetime.now().isoformat()
-    route = manager.gateway.resolve_route('check_login_status', site_name=site_name)
+    route = runtime_gateway.resolve_route('check_login_status', site_name=site_name)
     if route is None:
         return {
             'site_name': site_name,
@@ -31,7 +36,7 @@ def test_site_login_status(site_name: str) -> Dict[str, Any]:
             'checked_at': timestamp,
         }
 
-    result = manager.gateway.invoke('check_login_status', site_name=site_name)
+    result = runtime_gateway.invoke('check_login_status', site_name=site_name)
     if not result.ok or result.error is not None:
         return {
             'site_name': site_name,

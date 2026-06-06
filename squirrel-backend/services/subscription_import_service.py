@@ -28,7 +28,9 @@ from services.subscription_runtime_models import (
     SubscriptionImportItem,
     SubscriptionMeta,
 )
-from site_runtimes.manager import get_site_runtime_manager
+from site_runtimes.gateway import SiteRuntimeGateway
+from site_runtimes.models import SiteRuntimeSnapshot
+from site_runtimes.ports import get_runtime_gateway, get_runtime_snapshot
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import extract_top_level_domain, get_site_from_url
 from common import constants
@@ -37,8 +39,11 @@ from queues.producer import RedisStreamProducer
 logger = logging.getLogger(__name__)
 
 
-def get_runtime_supported_sites(capability: str) -> List[str]:
-    snapshot = get_site_runtime_manager().get_snapshot()
+def get_runtime_supported_sites(
+    capability: str,
+    snapshot: SiteRuntimeSnapshot | None = None,
+) -> List[str]:
+    snapshot = snapshot or get_runtime_snapshot()
     return sorted({
         registration.site_name
         for registration in snapshot.registrations
@@ -54,7 +59,10 @@ def get_enabled_runtime_import_sites() -> List[str]:
     ]
 
 
-def _load_runtime_subscription_meta(url: str) -> SubscriptionMeta:
+def _load_runtime_subscription_meta(
+    url: str,
+    gateway: SiteRuntimeGateway | None = None,
+) -> SubscriptionMeta:
     from urllib.parse import urlparse
     domain = extract_top_level_domain(url)
     parsed_url = urlparse(url)
@@ -62,7 +70,8 @@ def _load_runtime_subscription_meta(url: str) -> SubscriptionMeta:
         'url': url,
         'domain': domain or parsed_url.netloc.lower().split(':')[0],
     }
-    response = get_site_runtime_manager().gateway.invoke(
+    runtime_gateway = gateway or get_runtime_gateway()
+    response = runtime_gateway.invoke(
         'resolve_subscription',
         payload=payload,
         domain=domain or None,
@@ -93,6 +102,7 @@ def _load_runtime_import_batch(
     *,
     cursor_payload: Optional[Dict[str, Any]] = None,
     limit: Optional[int] = None,
+    gateway: SiteRuntimeGateway | None = None,
 ) -> SubscriptionImportBatchResult:
     payload: Dict[str, Any] = {}
     if cursor_payload:
@@ -100,7 +110,8 @@ def _load_runtime_import_batch(
     if limit is not None:
         payload['limit'] = limit
 
-    response = get_site_runtime_manager().gateway.invoke(
+    runtime_gateway = gateway or get_runtime_gateway()
+    response = runtime_gateway.invoke(
         'import_subscriptions',
         payload=payload or None,
         site_name=site_name,

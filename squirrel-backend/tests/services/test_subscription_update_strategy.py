@@ -136,10 +136,6 @@ def test_fetch_videos_uses_plugin_gateway_sync_subscription(monkeypatch):
             )
 
     monkeypatch.setattr(
-        'services.subscription_update.strategies.default_strategy.get_site_runtime_manager',
-        lambda: SimpleNamespace(gateway=_FakeGateway()),
-    )
-    monkeypatch.setattr(
         'services.subscription_update.strategies.default_strategy.SiteCatalog.find_site_by_domain',
         lambda domain: ('bilibili', {'domains': ['bilibili.com']}),
     )
@@ -153,7 +149,7 @@ def test_fetch_videos_uses_plugin_gateway_sync_subscription(monkeypatch):
         last_seen_video_url='https://www.bilibili.com/video/OLD',
     )
 
-    result = DefaultUpdateStrategy().fetch_videos(request)
+    result = DefaultUpdateStrategy(runtime_gateway=_FakeGateway()).fetch_videos(request)
 
     assert calls == [{
         'capability': 'sync_subscription',
