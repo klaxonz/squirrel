@@ -1,9 +1,10 @@
 import logging
 from typing import Dict, Any, Optional
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
+from common import response
 from common.constants import SYS_ENABLE_SCHEDULER
 from processes.managers.scheduler_manager import scheduler_status
 from services import system_config_service
@@ -41,13 +42,13 @@ class TaskUpdateRequest(BaseModel):
 @router.get("/status")
 def get_scheduler_status():
     """获取调度器运行状态"""
-    return scheduler_status()
+    return response.success(scheduler_status())
 
 
 @router.get("/statistics")
 def get_task_statistics():
     """获取任务统计信息"""
-    return ScheduledTaskService.get_task_statistics()
+    return response.success(ScheduledTaskService.get_task_statistics())
 
 
 @router.get("/tasks")
@@ -59,13 +60,13 @@ def get_scheduled_tasks(
     task_type: Optional[str] = Query(None, description="任务类型")
 ):
     """获取定时任务列表"""
-    return ScheduledTaskService.get_task_list(
+    return response.success(ScheduledTaskService.get_task_list(
         page=page,
         page_size=page_size,
         search=search,
         status=status,
         task_type=task_type
-    )
+    ))
 
 
 @router.post("/tasks")
@@ -85,15 +86,15 @@ def create_task(request: TaskCreateRequest):
     )
 
     if not task:
-        raise HTTPException(status_code=400, detail="创建任务失败")
+        return response.param_error("创建任务失败")
 
-    return {"message": "任务创建成功", "data": task.to_dict()}
+    return response.success(task.to_dict(), "任务创建成功")
 
 
 @router.put("/tasks/{task_id}")
 def update_task(task_id: int, request: TaskUpdateRequest):
     """更新任务配置"""
-    success = ScheduledTaskService.update_task(
+    result = ScheduledTaskService.update_task(
         task_id=task_id,
         name=request.name,
         description=request.description,
@@ -105,67 +106,67 @@ def update_task(task_id: int, request: TaskUpdateRequest):
         is_active=request.is_active
     )
 
-    if not success:
-        raise HTTPException(status_code=404, detail="任务不存在或更新失败")
+    if not result:
+        return response.not_found("任务不存在或更新失败")
 
-    return {"message": "任务更新成功"}
+    return response.success(msg="任务更新成功")
 
 
 @router.delete("/tasks/{task_id}")
 def delete_task(task_id: int):
     """删除任务"""
-    success = ScheduledTaskService.delete_task(task_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="任务不存在或删除失败")
+    result = ScheduledTaskService.delete_task(task_id)
+    if not result:
+        return response.not_found("任务不存在或删除失败")
 
-    return {"message": "任务删除成功"}
+    return response.success(msg="任务删除成功")
 
 
 @router.post("/tasks/{task_id}/enable")
 def enable_task(task_id: int):
     """启用任务"""
-    success = ScheduledTaskService.enable_task(task_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="任务不存在或启用失败")
+    result = ScheduledTaskService.enable_task(task_id)
+    if not result:
+        return response.not_found("任务不存在或启用失败")
 
-    return {"message": "任务已启用"}
+    return response.success(msg="任务已启用")
 
 
 @router.post("/tasks/{task_id}/disable")
 def disable_task(task_id: int):
     """禁用任务"""
-    success = ScheduledTaskService.disable_task(task_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="任务不存在或禁用失败")
+    result = ScheduledTaskService.disable_task(task_id)
+    if not result:
+        return response.not_found("任务不存在或禁用失败")
 
-    return {"message": "任务已禁用"}
+    return response.success(msg="任务已禁用")
 
 
 @router.post("/tasks/{task_id}/execute")
 def execute_task_now(task_id: int):
     """立即执行任务"""
-    success = ScheduledTaskService.execute_task_now(task_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="任务不存在或执行失败")
+    result = ScheduledTaskService.execute_task_now(task_id)
+    if not result:
+        return response.not_found("任务不存在或执行失败")
 
-    return {"message": "任务执行请求已提交"}
+    return response.success(msg="任务执行请求已提交")
 
 
 @router.get("/task-classes")
 def get_available_task_classes():
     """获取可用的任务类"""
-    return ScheduledTaskService.get_available_task_classes()
+    return response.success(ScheduledTaskService.get_available_task_classes())
 
 
 @router.post("/enable")
 def enable_scheduler():
     """启用调度器"""
     system_config_service.set_value(SYS_ENABLE_SCHEDULER, "true")
-    return {"message": "调度器已启用"}
+    return response.success(msg="调度器已启用")
 
 
 @router.post("/disable")
 def disable_scheduler():
     """禁用调度器"""
     system_config_service.set_value(SYS_ENABLE_SCHEDULER, "false")
-    return {"message": "调度器已禁用"}
+    return response.success(msg="调度器已禁用")

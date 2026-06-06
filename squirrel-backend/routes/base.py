@@ -12,6 +12,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, FileResponse
 from starlette.staticfiles import StaticFiles
 
+from common.response import ErrorCode
 from core.config import settings
 from core.database import engine
 from routes.middleware.auth import (
@@ -61,15 +62,20 @@ def create_app() -> FastAPI:
         logger.error(f"AuthenticationError: {exc.detail}", exc_info=True)
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"code": -1, "msg": exc.detail}
+            content={"code": ErrorCode.UNAUTHORIZED, "msg": exc.detail}
         )
 
     async def http_exception_handler(request: Request, exc: Union[StarletteHTTPException, FastAPIHTTPException]):
         """处理 HTTP 异常"""
         logger.error(f"HTTPException: {exc.detail}", exc_info=True)
+        code = exc.status_code if exc.status_code in {
+            ErrorCode.PARAM_ERROR, ErrorCode.UNAUTHORIZED,
+            ErrorCode.FORBIDDEN, ErrorCode.NOT_FOUND,
+            ErrorCode.SERVER_ERROR,
+        } else ErrorCode.UNKNOWN_ERROR
         return JSONResponse(
             status_code=exc.status_code,
-            content={"code": -1, "msg": exc.detail}
+            content={"code": code, "msg": exc.detail}
         )
 
     async def default_exception_handler(request: Request, exc: Exception):
@@ -77,7 +83,7 @@ def create_app() -> FastAPI:
         logger.error(f"DefaultException: {str(exc)}", exc_info=True)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"code": -1, "msg": "服务器内部错误"}
+            content={"code": ErrorCode.SERVER_ERROR, "msg": "服务器内部错误"}
         )
 
     # 配置认证中间件
@@ -189,6 +195,6 @@ def _register_spa_route(app: FastAPI) -> None:
         # 如果静态文件目录不存在，返回友好提示
         return JSONResponse(
             status_code=404,
-            content={"code": -1, "msg": "Frontend static files not found"}
+            content={"code": ErrorCode.NOT_FOUND, "msg": "Frontend static files not found"}
         )
 
