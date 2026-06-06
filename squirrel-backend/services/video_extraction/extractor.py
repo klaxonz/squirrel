@@ -147,6 +147,7 @@ def _create_task(params: VideoExtractDto) -> ExtractionTask:
         'sync_state_id': params.sync_state_id,
         'only_extract': params.only_extract,
         'subscribed': params.subscribed,
+        'sync_mode': 'full' if params.is_extract_all else 'incremental',
         'is_extract_all': params.is_extract_all,
         'is_manual': params.is_manual
     }

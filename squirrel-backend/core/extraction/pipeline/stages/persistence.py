@@ -66,7 +66,8 @@ class PersistenceStage(PipelineStage):
                 duration=dto.duration,
                 publish_date=dto.publish_date,
                 description=dto.description,
-                subscription_id=task.metadata.get('subscription_id')
+                subscription_id=task.metadata.get('subscription_id'),
+                subscription_sync_mode=task.metadata.get('sync_mode'),
             )
             
             context.video_model = video_model

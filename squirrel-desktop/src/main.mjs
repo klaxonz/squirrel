@@ -19,6 +19,11 @@ import {
 import { getRemoteChannel } from './search/providers/remote-channel.mjs'
 import { searchRemoteVideos } from './search/providers/index.mjs'
 import { loadYouPornProfileAvatar } from './search/providers/youporn.mjs'
+import {
+  DEFAULT_WINDOW_STATE,
+  bindWindowStatePersistence,
+  loadWindowState,
+} from './window-state.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -88,15 +93,6 @@ const SITE_SESSION_STORAGE_TYPES = [
 
 const APP_NAME = 'Squirrel'
 const DEFAULT_APP_URL = 'http://127.0.0.1:8001'
-const WINDOW_STATE_FILE_NAME = 'window-state.json'
-const WINDOW_STATE_SAVE_DELAY_MS = 250
-const DEFAULT_WINDOW_STATE = {
-  width: 1440,
-  height: 960,
-  minWidth: 1100,
-  minHeight: 720,
-}
-
 const SERVER_CONFIG_FILE = 'server-config.json'
 
 if (!process.env.YOUTUBE_OAUTH_STATE_FILE && fs.existsSync(youtubeOAuthStateFilePath)) {
@@ -1253,93 +1249,6 @@ const formatWindowTitle = (value) => {
   return title.endsWith(` - ${APP_NAME}`) ? title : `${title} - ${APP_NAME}`
 }
 
-const getWindowStateFilePath = () => {
-  return path.join(app.getPath('userData'), WINDOW_STATE_FILE_NAME)
-}
-
-const sanitizeDimension = (value, fallback, minimum) => {
-  const numericValue = Number(value)
-  if (!Number.isFinite(numericValue)) {
-    return fallback
-  }
-
-  return Math.max(Math.round(numericValue), minimum)
-}
-
-const sanitizeCoordinate = (value) => {
-  const numericValue = Number(value)
-  return Number.isFinite(numericValue) ? Math.round(numericValue) : undefined
-}
-
-const loadWindowState = () => {
-  try {
-    const rawState = fs.readFileSync(getWindowStateFilePath(), 'utf8')
-    const parsedState = JSON.parse(rawState)
-
-    return {
-      x: sanitizeCoordinate(parsedState.x),
-      y: sanitizeCoordinate(parsedState.y),
-      width: sanitizeDimension(parsedState.width, DEFAULT_WINDOW_STATE.width, DEFAULT_WINDOW_STATE.minWidth),
-      height: sanitizeDimension(parsedState.height, DEFAULT_WINDOW_STATE.height, DEFAULT_WINDOW_STATE.minHeight),
-      isMaximized: parsedState.isMaximized === true,
-    }
-  } catch {
-    return {
-      width: DEFAULT_WINDOW_STATE.width,
-      height: DEFAULT_WINDOW_STATE.height,
-      isMaximized: false,
-    }
-  }
-}
-
-const persistWindowState = (mainWindow) => {
-  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMinimized()) {
-    return
-  }
-
-  const bounds = mainWindow.isMaximized()
-    ? mainWindow.getNormalBounds()
-    : mainWindow.getBounds()
-
-  const state = {
-    x: bounds.x,
-    y: bounds.y,
-    width: Math.max(bounds.width, DEFAULT_WINDOW_STATE.minWidth),
-    height: Math.max(bounds.height, DEFAULT_WINDOW_STATE.minHeight),
-    isMaximized: mainWindow.isMaximized(),
-  }
-
-  fs.mkdirSync(path.dirname(getWindowStateFilePath()), { recursive: true })
-  fs.writeFileSync(getWindowStateFilePath(), JSON.stringify(state, null, 2), 'utf8')
-}
-
-const bindWindowStatePersistence = (mainWindow) => {
-  let saveTimer = null
-
-  const scheduleSave = () => {
-    if (saveTimer) {
-      clearTimeout(saveTimer)
-    }
-
-    saveTimer = setTimeout(() => {
-      persistWindowState(mainWindow)
-      saveTimer = null
-    }, WINDOW_STATE_SAVE_DELAY_MS)
-  }
-
-  mainWindow.on('resize', scheduleSave)
-  mainWindow.on('move', scheduleSave)
-  mainWindow.on('maximize', scheduleSave)
-  mainWindow.on('unmaximize', scheduleSave)
-  mainWindow.on('close', () => {
-    if (saveTimer) {
-      clearTimeout(saveTimer)
-      saveTimer = null
-    }
-    persistWindowState(mainWindow)
-  })
-}
-
 const buildShellPageUrl = ({ title, eyebrow, heading, body, status, tone = 'loading' }) => {
   const accent = tone === 'error' ? '#f97373' : '#7dd3fc'
   const actionScript = `window.desktopApp?.reloadApp?.() || window.location.replace(${JSON.stringify(rendererUrl)})`
@@ -2152,7 +2061,8 @@ const installMainWindowBehaviors = (mainWindow) => {
 }
 
 const createMainWindow = () => {
-  const windowState = loadWindowState()
+  const userDataPath = app.getPath('userData')
+  const windowState = loadWindowState(userDataPath)
   const isMac = process.platform === 'darwin'
   const mainWindow = new BrowserWindow({
     x: windowState.x,
@@ -2183,7 +2093,7 @@ const createMainWindow = () => {
     },
   })
 
-  bindWindowStatePersistence(mainWindow)
+  bindWindowStatePersistence(userDataPath, mainWindow)
   installMainWindowBehaviors(mainWindow)
 
   mainWindow.once('ready-to-show', () => {

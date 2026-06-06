@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional
 
-from sqlalchemy import Integer, DateTime, Boolean, VARCHAR, TEXT, JSON
+from sqlalchemy import Integer, DateTime, Boolean, VARCHAR, TEXT
 from sqlalchemy.orm import mapped_column, Mapped
 from models import Base
 from models.mixins.serializer import SerializerMixin
@@ -19,4 +19,3 @@ class SchedulerStatus(Base, SerializerMixin):
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="启动时间")
     stopped_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="停止时间")
     error_message: Mapped[Optional[str]] = mapped_column(TEXT, nullable=True, comment="错误信息")
-    legacy_tasks: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False, default={}, comment="传统任务信息")

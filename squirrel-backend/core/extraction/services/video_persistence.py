@@ -6,6 +6,7 @@ from typing import Tuple, Optional
 from datetime import datetime
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from core.database import get_session
 from models.video import Video as VideoModel
 from services import subscription_video_service
@@ -34,7 +35,8 @@ class VideoPersistenceService:
         duration: Optional[int] = None,
         publish_date: Optional[datetime] = None,
         description: Optional[str] = None,
-        subscription_id: Optional[int] = None
+        subscription_id: Optional[int] = None,
+        subscription_sync_mode: Optional[str] = None,
     ) -> Tuple[VideoModel, bool]:
         """
         创建或更新视频记录
@@ -47,6 +49,7 @@ class VideoPersistenceService:
             publish_date: 发布时间
             description: 描述
             subscription_id: 订阅ID
+            subscription_sync_mode: 订阅同步模式，full 或 incremental
             
         Returns:
             (video_model, is_new): 视频模型和是否新创建
@@ -119,32 +122,38 @@ class VideoPersistenceService:
             # 创建订阅-视频关联（如果提供了subscription_id）
             if subscription_id:
                 self._create_subscription_link(
-                    session, subscription_id, video.id, is_new
+                    session,
+                    subscription_id,
+                    video.id,
+                    is_new,
+                    subscription_sync_mode=subscription_sync_mode,
                 )
             
             return video, is_new
     
     def _create_subscription_link(
         self,
-        session,
+        session: Session,
         subscription_id: int,
         video_id: int,
-        is_new_video: bool
-    ):
+        is_new_video: bool,
+        *,
+        subscription_sync_mode: Optional[str],
+    ) -> None:
         """创建订阅-视频关联"""
         try:
+            refresh_feed = subscription_sync_mode == 'incremental'
             _, created_new_link = subscription_video_service.create_subscription_video(
-                subscription_id, video_id
+                subscription_id,
+                video_id,
+                refresh_feed=refresh_feed,
             )
-            
-            # 如果是增量更新且创建了新关联，更新订阅总数
-            # （全量更新时，总数会在策略层统一更新）
-            # TODO: 这里的逻辑需要根据is_extract_all来决定
-            
+
             if created_new_link:
                 logger.debug(
                     f"Created subscription-video link: "
-                    f"subscription_id={subscription_id}, video_id={video_id}"
+                    f"subscription_id={subscription_id}, video_id={video_id}, "
+                    f"is_new_video={is_new_video}, sync_mode={subscription_sync_mode}"
                 )
         
         except Exception as e:

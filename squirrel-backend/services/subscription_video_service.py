@@ -21,7 +21,12 @@ def get_subscription_video(subscription_id: int, video_id: int) -> Optional[Subs
             SubscriptionVideo.video_id == video_id)).first()
 
 
-def create_subscription_video(subscription_id: int, video_id: int) -> Tuple[Optional[SubscriptionVideo], bool]:
+def create_subscription_video(
+    subscription_id: int,
+    video_id: int,
+    *,
+    refresh_feed: bool = True,
+) -> Tuple[Optional[SubscriptionVideo], bool]:
     """幂等创建订阅-视频关联。返回 (obj, created)。"""
     with get_session() as session:
         stmt = (
@@ -35,7 +40,8 @@ def create_subscription_video(subscription_id: int, video_id: int) -> Tuple[Opti
         session.commit()
         if row is not None:
             # 新建时直接返回对象
-            user_video_feed_service.add_video_to_active_subscribers(subscription_id, video_id)
+            if refresh_feed:
+                user_video_feed_service.add_video_to_active_subscribers(subscription_id, video_id)
             return session.scalars(select(SubscriptionVideo).where(
                 SubscriptionVideo.subscription_id == subscription_id,
                 SubscriptionVideo.video_id == video_id

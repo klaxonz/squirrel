@@ -27,7 +27,6 @@ def upgrade():
     sa.Column('started_at', sa.DateTime(), nullable=True, comment='启动时间'),
     sa.Column('stopped_at', sa.DateTime(), nullable=True, comment='停止时间'),
     sa.Column('error_message', sa.TEXT(), nullable=True, comment='错误信息'),
-    sa.Column('legacy_tasks', sa.JSON(), nullable=False, server_default='{}', comment='传统任务信息'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('process_name')
     )
