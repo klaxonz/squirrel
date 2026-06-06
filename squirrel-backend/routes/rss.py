@@ -1,3 +1,4 @@
+import logging
 from threading import Thread
 from typing import Any, Optional
 
@@ -8,6 +9,8 @@ import common.response as response
 from models.user import User
 from services import rss_service
 from utils.jwt_helper import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix='/api/rss', tags=['rss'])
 
@@ -151,7 +154,7 @@ def start_rss_sync(
         except rss_service.RssServiceError:
             pass
         except Exception:
-            pass
+            logger.exception('Background RSS sync failed for account_id=%s', account_id)
 
     thread = Thread(target=_bg_sync, daemon=True)
     thread.start()

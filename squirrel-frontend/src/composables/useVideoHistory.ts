@@ -1,31 +1,10 @@
-import { reactive, ref } from 'vue'
 import { batchUpdateVideoHistory, clearVideoHistory, deleteVideoHistory, listVideoHistory, updateVideoHistory } from '@/api'
 import { Logger } from '@/utils/logger'
+import { toPersistedVideoId, useVideoHistorySync } from './useVideoHistorySync'
+import type { ReportData } from './useVideoHistorySync'
 
 type VideoId = string | number
 type ApiResult<T> = { data?: T | null; error?: any }
-
-type ReportConnection = {
-  effectiveType?: string
-  downlink?: number
-}
-
-type ReportData = {
-  video_id: VideoId
-  last_position: number
-  timestamp: number
-  user_agent?: string
-  viewport?: { width: number; height: number }
-  connection?: ReportConnection | null
-  lastUpdated?: number
-  [key: string]: unknown
-}
-
-type SyncStatus = {
-  isOnline: boolean
-  lastSyncTime: number | null
-  failedAttempts: number
-}
 
 type SendReportOptions = {
   force?: boolean
@@ -33,20 +12,15 @@ type SendReportOptions = {
   retryOnFailure?: boolean
 }
 
-const toPersistedVideoId = (videoId: VideoId) => {
-  const numericId = Number(videoId)
-  return Number.isSafeInteger(numericId) && numericId > 0 ? numericId : null
+type WatchHistoryFilters = {
+  nsfw?: string
+  site?: string
+  pageSize?: number
+  query?: string
 }
 
 export default function useVideoHistory() {
-  const localHistory = reactive(new Map<VideoId, ReportData>()) as Map<VideoId, ReportData>
-  const pendingUpdates = ref<ReportData[]>([])
-
-  const syncStatus = reactive<SyncStatus>({
-    isOnline: navigator.onLine,
-    lastSyncTime: null,
-    failedAttempts: 0
-  })
+  const sync = useVideoHistorySync()
 
   const sendReport = async (video_id: VideoId, currentTime: number, options: SendReportOptions = {}) => {
     const {
@@ -56,7 +30,7 @@ export default function useVideoHistory() {
     } = options
     const persistedVideoId = toPersistedVideoId(video_id)
 
-    const connection = (navigator as any).connection as ReportConnection | undefined
+    const connection = (navigator as any).connection as { effectiveType?: string; downlink?: number } | undefined
 
     const reportData: ReportData = {
       video_id,
@@ -77,43 +51,43 @@ export default function useVideoHistory() {
       })
     }
 
-    updateLocalHistory(video_id, reportData)
+    sync.updateLocalHistory(video_id, reportData)
 
     if (persistedVideoId == null) {
-      removePendingUpdate(video_id)
+      sync.removePendingUpdate(video_id)
       return true
     }
 
-    if (syncStatus.isOnline || force) {
+    if (sync.syncStatus.isOnline || force) {
       const { error } = (await updateVideoHistory({
         ...reportData,
         video_id: persistedVideoId,
       })) as ApiResult<unknown>
       if (!error) {
-        syncStatus.lastSyncTime = Date.now()
-        syncStatus.failedAttempts = 0
+        sync.syncStatus.lastSyncTime = Date.now()
+        sync.syncStatus.failedAttempts = 0
 
-        removePendingUpdate(video_id)
+        sync.removePendingUpdate(video_id)
 
         return true
       }
 
       Logger.warn('Failed to sync video history', error)
-      syncStatus.failedAttempts++
+      sync.syncStatus.failedAttempts++
 
       if (retryOnFailure) {
-        addToPendingUpdates(reportData)
+        sync.addToPendingUpdates(reportData)
       }
 
       return false
     } else {
-      addToPendingUpdates(reportData)
+      sync.addToPendingUpdates(reportData)
       return false
     }
   }
 
   const sendBatchReport = async (reports: ReportData[]) => {
-    if (!syncStatus.isOnline || reports.length === 0) {
+    if (!sync.syncStatus.isOnline || reports.length === 0) {
       return false
     }
 
@@ -131,7 +105,7 @@ export default function useVideoHistory() {
 
     if (persistedReports.length === 0) {
       reports.forEach((report) => {
-        removePendingUpdate(report.video_id)
+        sync.removePendingUpdate(report.video_id)
       })
       return true
     }
@@ -139,26 +113,42 @@ export default function useVideoHistory() {
     const { error } = (await batchUpdateVideoHistory(persistedReports)) as ApiResult<unknown>
 
     if (!error) {
-      syncStatus.lastSyncTime = Date.now()
-      syncStatus.failedAttempts = 0
+      sync.syncStatus.lastSyncTime = Date.now()
+      sync.syncStatus.failedAttempts = 0
 
       reports.forEach((report) => {
-        removePendingUpdate(report.video_id)
+        sync.removePendingUpdate(report.video_id)
       })
 
       return true
     }
 
     Logger.error('Failed to batch sync video history', error)
-    syncStatus.failedAttempts++
+    sync.syncStatus.failedAttempts++
     return false
   }
 
-  type WatchHistoryFilters = {
-    nsfw?: string
-    site?: string
-    pageSize?: number
-    query?: string
+  const syncPendingUpdates = async () => {
+    if (sync.pendingUpdates.value.length === 0 || !sync.syncStatus.isOnline) {
+      return false
+    }
+
+    const batchSize = 20
+    const batches: ReportData[][] = []
+
+    for (let i = 0; i < sync.pendingUpdates.value.length; i += batchSize) {
+      batches.push(sync.pendingUpdates.value.slice(i, i + batchSize))
+    }
+
+    let successCount = 0
+    for (const batch of batches) {
+      const success = await sendBatchReport(batch)
+      if (success) {
+        successCount += batch.length
+      }
+    }
+
+    return successCount
   }
 
   const getWatchHistory = async (page = 1, filters: WatchHistoryFilters = {}) => {
@@ -224,137 +214,21 @@ export default function useVideoHistory() {
     }
   }
 
-  const getLocalHistory = (video_id: VideoId) => {
-    return localHistory.get(video_id)
-  }
-
-  const getAllLocalHistory = () => {
-    return Array.from(localHistory.values())
-  }
-
-  const updateLocalHistory = (video_id: VideoId, data: ReportData) => {
-    localHistory.set(video_id, {
-      ...data,
-      lastUpdated: Date.now(),
-    })
-  }
-
-  const addToPendingUpdates = (reportData: ReportData) => {
-    const existingIndex = pendingUpdates.value.findIndex(
-      (update) => update.video_id === reportData.video_id
-    )
-
-    if (existingIndex !== -1) {
-      pendingUpdates.value[existingIndex] = reportData
-    } else {
-      pendingUpdates.value.push(reportData)
-    }
-
-    if (pendingUpdates.value.length > 100) {
-      pendingUpdates.value = pendingUpdates.value.slice(-100)
-    }
-  }
-
-  const removePendingUpdate = (video_id: VideoId) => {
-    const index = pendingUpdates.value.findIndex(
-      (update) => update.video_id === video_id
-    )
-    if (index !== -1) {
-      pendingUpdates.value.splice(index, 1)
-    }
-  }
-
-  const syncPendingUpdates = async () => {
-    if (pendingUpdates.value.length === 0 || !syncStatus.isOnline) {
-      return false
-    }
-
-    const batchSize = 20
-    const batches: ReportData[][] = []
-
-    for (let i = 0; i < pendingUpdates.value.length; i += batchSize) {
-      batches.push(pendingUpdates.value.slice(i, i + batchSize))
-    }
-
-    let successCount = 0
-    for (const batch of batches) {
-      const success = await sendBatchReport(batch)
-      if (success) {
-        successCount += batch.length
-      }
-    }
-
-    return successCount
-  }
-
-  const cleanupLocalHistory = (maxAge = 7 * 24 * 60 * 60 * 1000) => {
-    const now = Date.now()
-    const toDelete: VideoId[] = []
-
-    for (const [video_id, data] of localHistory.entries()) {
-      const lastUpdated = data.lastUpdated || 0
-      if (now - lastUpdated > maxAge) {
-        toDelete.push(video_id)
-      }
-    }
-
-    toDelete.forEach((video_id) => {
-      localHistory.delete(video_id)
-    })
-
-    return toDelete.length
-  }
-
-  const setupNetworkListeners = () => {
-    const handleOnline = () => {
-      syncStatus.isOnline = true
-      Logger.debug('Network online, syncing pending updates')
-      syncPendingUpdates()
-    }
-
-    const handleOffline = () => {
-      syncStatus.isOnline = false
-      Logger.debug('Network offline, updates will be queued')
-    }
-
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }
-
-  const startPeriodicSync = (interval = 30000) => {
-    const syncInterval = setInterval(() => {
-      if (syncStatus.isOnline && pendingUpdates.value.length > 0) {
-        syncPendingUpdates()
-      }
-
-      if (Math.random() < 0.1) {
-        cleanupLocalHistory()
-      }
-    }, interval)
-
-    return () => clearInterval(syncInterval)
-  }
-
   return {
     sendReport,
     sendBatchReport,
     getWatchHistory,
     clearHistory,
     deleteHistoryEntry,
-    getLocalHistory,
-    getAllLocalHistory,
-    updateLocalHistory,
     syncPendingUpdates,
-    cleanupLocalHistory,
-    setupNetworkListeners,
-    startPeriodicSync,
-    syncStatus,
-    pendingUpdates,
-    localHistory,
+    getLocalHistory: sync.getLocalHistory,
+    getAllLocalHistory: sync.getAllLocalHistory,
+    updateLocalHistory: sync.updateLocalHistory,
+    cleanupLocalHistory: sync.cleanupLocalHistory,
+    setupNetworkListeners: () => sync.setupNetworkListeners(syncPendingUpdates),
+    startPeriodicSync: (interval?: number) => sync.startPeriodicSync(syncPendingUpdates, interval),
+    syncStatus: sync.syncStatus,
+    pendingUpdates: sync.pendingUpdates,
+    localHistory: sync.localHistory,
   }
 }

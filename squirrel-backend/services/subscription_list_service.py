@@ -13,7 +13,7 @@ from schemas.subscription.dto.subscription_dto import SubscriptionDto
 from services import user_config_service
 from services.nsfw_policy import resolve_effective_nsfw_filter
 from services.search_query import normalize_subscription_type_term, parse_search_query
-from sqlfile.subscription_sql import get_subscription_sql
+from sql.subscription_sql import get_subscription_sql
 from utils.site_catalog import SiteCatalog
 from utils.sql_parser import parse_dynamic_sql
 from utils.url_helper import extract_top_level_domain, get_site_from_url

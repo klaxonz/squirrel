@@ -3,7 +3,7 @@ import type { ComputedRef, Ref } from 'vue'
 import type { AppIconName } from '@/icons/app-icons'
 import type { VideoId, VideoPageVideo } from '@/types/videoPlayback'
 
-type InteractionType = string | number | null
+type InteractionType = string | number | null | undefined
 
 type VideoAction = {
   key: string
@@ -38,7 +38,7 @@ export default function useVideoActionBar({
   handleAddToPlaylist: () => Promise<void>
   handlePlayRandom: () => Promise<void>
 }) {
-  const currentInteractionType = computed(() => video.value?.interaction_type ?? null)
+  const currentInteractionType = computed(() => video.value?.interaction_type ?? undefined)
   const isLaterActionActive = computed(() => currentInteractionType.value === interactionTypeLater)
 
   const updateVideoInteraction = async (targetVideo: VideoPageVideo, nextInteractionType: InteractionType) => {
@@ -47,7 +47,7 @@ export default function useVideoActionBar({
       : targetVideo
     if (!localVideo?.id) return
 
-    if (nextInteractionType !== null && localVideo.interaction_type !== nextInteractionType) {
+    if (nextInteractionType != null && localVideo.interaction_type !== nextInteractionType) {
       const { error } = await toggleLike(localVideo.id, nextInteractionType)
       if (!error) {
         localVideo.interaction_type = nextInteractionType
@@ -57,7 +57,7 @@ export default function useVideoActionBar({
 
     const { error } = await deleteInteraction(localVideo.id)
     if (!error) {
-      localVideo.interaction_type = null
+      localVideo.interaction_type = undefined
     }
   }
 

@@ -1,23 +1,23 @@
 export type VideoId = string | number
 
-export type InteractionType = string | number | null
+export type InteractionType = string | number
 
 export type VideoProfile = {
-  id?: VideoId | null
-  name?: string | null
-  url?: string | null
-  avatar?: string | null
-  total_videos?: number | null
-  is_nsfw?: boolean | null
+  id: VideoId
+  name: string
+  url?: string
+  avatar?: string
+  total_videos?: number
+  is_nsfw?: boolean
 }
 
 export type ClipMarker = {
-  id?: VideoId
-  title?: string | null
+  id: VideoId
+  title?: string
   start_time: number
   end_time: number
-  duration_seconds?: number | null
-  preview_image_url?: string | null
+  duration_seconds?: number
+  preview_image_url?: string
 }
 
 export type VideoSubtitle = {
@@ -30,27 +30,27 @@ export type VideoSubtitle = {
 }
 
 export type VideoPageVideo = {
-  id?: VideoId
-  title?: string | null
-  url?: string | null
-  thumbnail?: string | null
-  duration?: number | null
-  publish_date?: string | null
-  uploaded_at?: string | null
-  description?: string | null
-  source?: string | null
-  site?: string | null
+  id: VideoId
+  title: string
+  url?: string
+  thumbnail?: string
+  duration?: number
+  publish_date?: string
+  uploaded_at?: string
+  description?: string
+  source?: string
+  site?: string
   interaction_type?: InteractionType
-  last_position?: number | null
+  last_position?: number
   clip_markers?: ClipMarker[]
   subtitles?: VideoSubtitle[]
   actors?: VideoProfile[]
   subscriptions?: VideoProfile[]
-  uploader?: string | null
-  uploader_name?: string | null
+  uploader?: string
+  uploader_name?: string
 }
 
 export type ApiResult<T> = {
-  data?: T | null
-  error?: unknown | null
+  data?: T
+  error?: unknown
 }

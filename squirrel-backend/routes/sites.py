@@ -284,7 +284,7 @@ def get_site_login_status(site_name: str):
                 'avatar': oauth_state.account.avatar if oauth_state.account else None,
             } if oauth_state.account else None
         except Exception:
-            pass
+            logger.warning('Failed to fetch YouTube OAuth status', exc_info=True)
 
     return success(status)
 

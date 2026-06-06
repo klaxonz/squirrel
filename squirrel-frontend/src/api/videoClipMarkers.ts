@@ -3,17 +3,17 @@ import type { VideoClipMarker } from '@/types/videoClipMarker'
 
 export type VideoClipMarkerPayload = {
   video_id: string | number
-  title?: string | null
-  note?: string | null
+  title?: string
+  note?: string
   start_time: number
-  end_time?: number | null
+  end_time?: number
 }
 
 export type VideoClipMarkerUpdatePayload = {
   title?: string | null
   note?: string | null
   start_time?: number
-  end_time?: number | null
+  end_time?: number
 }
 
 export type VideoClipMarkerPreviewUploadPayload = {

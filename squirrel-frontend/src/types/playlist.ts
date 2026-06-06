@@ -26,17 +26,17 @@ export interface VideoBasic {
   id: number
   title: string
   url: string
-  thumbnail?: string | null
-  duration?: number | null
-  publish_date?: string | null
-  site?: string | null
+  thumbnail?: string
+  duration?: number
+  publish_date?: string
+  site?: string
   subscriptions?: SubscriptionBasic[]
 }
 
 export interface SubscriptionBasic {
   id: number
   name: string
-  avatar?: string | null
+  avatar?: string
   total_videos?: number
 }
 

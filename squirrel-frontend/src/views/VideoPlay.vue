@@ -363,7 +363,7 @@ const ensureLocalVideo = async (targetVideo: VideoPageVideo | null): Promise<Vid
     video.value = {
       ...video.value,
       id: String(savedVideo.id),
-      interaction_type: savedVideo.interaction_type ?? video.value.interaction_type ?? null,
+      interaction_type: savedVideo.interaction_type ?? video.value.interaction_type ?? undefined,
       last_position: savedVideo.last_position ?? video.value.last_position,
       clip_markers: savedVideo.clip_markers ?? video.value.clip_markers,
       source: 'local',

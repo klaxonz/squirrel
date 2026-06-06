@@ -3,7 +3,7 @@ from fastapi import Query, APIRouter, Request, HTTPException, Depends
 from fastapi.responses import PlainTextResponse
 import common.response as response
 from models.user import User
-from schemas.video.request.video import RemoteVideoSaveRequest, SortBy
+from schemas.video.request.video import RemoteVideoSaveRequest, SortBy, VideoCategory, YesNoAll, TimeRange, DurationFilter, ContentType
 from services import video_service
 from typing import List
 from utils.site_catalog import SiteCatalog
@@ -48,17 +48,17 @@ def get_video(
 def get_videos(
         query: str = Query(None, description="搜索关键字"),
         subscription_id: int = Query(None, description="订阅ID"),
-        category: str = Query('all', description="阅读状态: all, read, unread, preview, like"),
+        category: VideoCategory = Query(VideoCategory.ALL, description="阅读状态: all, read, unread, preview, like"),
         sort_by: SortBy = Query(SortBy.UPLOADED_AT, description="排序字段"),
-        nsfw: str = Query("all", description="NSFW 过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
-        special: str = Query("all", description="特别关注过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
+        nsfw: YesNoAll = Query(YesNoAll.ALL, description="NSFW 过滤: all|yes|no"),
+        special: YesNoAll = Query(YesNoAll.ALL, description="特别关注过滤: all|yes|no"),
         site: str = Query(None, description="站点过滤：例如 youtube、bilibili 等（支持别名）"),
         with_total: bool = Query(False, alias="withTotal", description="是否返回 total（会额外执行 count 查询）"),
         page: int = Query(1, ge=1, description="页码"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
-        time_range: str = Query("all", description="时间范围: all|today|week|month|year"),
-        duration: str = Query("all", description="时长: all|short|medium|long"),
-        content_type: str = Query("all", description="内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR"),
+        time_range: TimeRange = Query(TimeRange.ALL, description="时间范围: all|today|week|month|year"),
+        duration: DurationFilter = Query(DurationFilter.ALL, description="时长: all|short|medium|long"),
+        content_type: ContentType = Query(ContentType.ALL, description="内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR"),
         current_user: User = Depends(get_current_user)
 ):
 
@@ -71,8 +71,8 @@ def get_videos(
         logger.info(f"[Performance] Route: Using cached user config")
 
     videos, total_counts = video_service.list_videos(
-        current_user.id, query, subscription_id, category, sort_by, nsfw, domains_list, page, page_size,
-        with_total=with_total, time_range=time_range, duration=duration, content_type=content_type, special=special,
+        current_user.id, query, subscription_id, category.value, sort_by.value, nsfw.value, domains_list, page, page_size,
+        with_total=with_total, time_range=time_range.value, duration=duration.value, content_type=content_type.value, special=special.value,
     )
 
     result = response.success({
@@ -87,14 +87,14 @@ def get_videos(
 
 @router.get("/api/video/random")
 def get_random_video(
-        category: str = Query('all', description="类别：all|read|unread|preview|liked|later"),
+        category: VideoCategory = Query(VideoCategory.ALL, description="类别：all|read|unread|preview|liked|later"),
         subscription_id: int = Query(None, description="订阅ID"),
-        nsfw: str = Query("all", description="NSFW 过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
+        nsfw: YesNoAll = Query(YesNoAll.ALL, description="NSFW 过滤: all|yes|no"),
         site: str = Query(None, description="站点过滤：例如 youtube、bilibili 等（支持别名）"),
         query: str = Query(None, description="搜索关键字"),
-        time_range: str = Query("all", description="时间范围: all|today|week|month|year"),
-        duration: str = Query("all", description="时长: all|short|medium|long"),
-        content_type: str = Query("all", description="内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR"),
+        time_range: TimeRange = Query(TimeRange.ALL, description="时间范围: all|today|week|month|year"),
+        duration: DurationFilter = Query(DurationFilter.ALL, description="时长: all|short|medium|long"),
+        content_type: ContentType = Query(ContentType.ALL, description="内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR"),
         current_user: User = Depends(get_current_user)
 ):
     domains_list: List[str] | None = None
@@ -104,14 +104,14 @@ def get_random_video(
 
     video = video_service.get_random_video(
         current_user.id,
-        category=category,
+        category=category.value,
         subscription_id=subscription_id,
-        nsfw=nsfw,
+        nsfw=nsfw.value,
         domains=domains_list,
         query=query,
-        time_range=time_range,
-        duration=duration,
-        content_type=content_type,
+        time_range=time_range.value,
+        duration=duration.value,
+        content_type=content_type.value,
     )
     if not video:
         return response.not_found("未找到符合条件的视频")
