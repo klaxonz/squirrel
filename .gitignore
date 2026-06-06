@@ -4,6 +4,7 @@
 # Configurations and sensitive data
 config
 data/plugins/
+data/site-runtimes/state/
 downloads
 mysql
 redis
