@@ -41,8 +41,6 @@ def migrate_legacy_plugin_storage(paths: PluginPaths) -> bool:
     paths.plugin_data_dir.mkdir(parents=True, exist_ok=True)
 
     _move_path_if_needed(paths.legacy_root / 'installations.json', paths.installations_file)
-    _move_path_if_needed(paths.legacy_root / 'packages', paths.packages_dir)
-    _move_path_if_needed(paths.legacy_root / 'installs', paths.installs_dir)
     _move_path_if_needed(paths.legacy_root / 'runtime', paths.runtime_dir)
     _move_path_if_needed(paths.legacy_root / 'data', paths.plugin_data_dir)
 

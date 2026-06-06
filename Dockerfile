@@ -38,14 +38,12 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
     cd /app/squirrel-backend && pipenv install --deploy --system
 
 COPY squirrel-sdk /app/squirrel-sdk
-COPY squirrel-plugin-runner /app/squirrel-plugin-runner
 COPY squirrel-plugins /app/squirrel-plugins
 
 RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
     set -eux; \
     mkdir -p /tmp/wheels; \
     python -m build /app/squirrel-sdk --wheel --outdir /tmp/wheels; \
-    python -m build /app/squirrel-plugin-runner --wheel --outdir /tmp/wheels; \
     find /app/squirrel-plugins -mindepth 2 -maxdepth 2 -name pyproject.toml -print0 | while IFS= read -r -d '' pyproject; do \
         plugin_dir="$(dirname "${pyproject}")"; \
         echo "Building plugin wheel: ${plugin_dir}"; \
@@ -62,7 +60,6 @@ COPY --from=python-builder /usr/local/lib/python3.11/site-packages /usr/local/li
 
 COPY squirrel-backend ./
 COPY squirrel-sdk /app/squirrel-sdk
-COPY squirrel-plugin-runner /app/squirrel-plugin-runner
 COPY squirrel-plugins /app/squirrel-plugins
 
 COPY --from=frontend-builder /app/squirrel-frontend/dist ./static

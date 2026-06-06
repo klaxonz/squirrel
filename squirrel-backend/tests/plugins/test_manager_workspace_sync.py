@@ -7,7 +7,6 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from plugins.installer import PluginInstaller
 from plugins.manager import PluginManager
 from plugins.models import PluginInstallRecord, PluginInstallStatus
 from plugins.paths import build_plugin_paths
@@ -124,7 +123,6 @@ def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path, monkey
 
     manager = PluginManager(
         store=store,
-        installer=PluginInstaller(paths=paths),
         paths=paths,
     )
 
@@ -182,7 +180,6 @@ def test_manager_gateway_rebuilds_enabled_registrations_on_route_miss(tmp_path):
 
     manager = PluginManager(
         store=store,
-        installer=PluginInstaller(paths=paths),
         paths=paths,
     )
 
@@ -190,6 +187,37 @@ def test_manager_gateway_rebuilds_enabled_registrations_on_route_miss(tmp_path):
 
     assert route is not None
     assert route.plugin_id == 'youporn'
+
+
+def test_manager_ignores_non_workspace_records(tmp_path):
+    repo_root = tmp_path / 'repo'
+    backend_root = repo_root / 'squirrel-backend'
+    backend_root.mkdir(parents=True)
+    paths = build_plugin_paths(repo_root=repo_root, backend_root=backend_root)
+    store = PluginInstallStore(data_path=paths.installations_file, paths=paths)
+    store.upsert(
+        PluginInstallRecord(
+            plugin_id='uploaded',
+            version='0.1.0',
+            install_path=str(tmp_path / 'uploaded'),
+            entrypoint='uploaded.runtime:get_plugin_runtime',
+            enabled=True,
+            manifest=PluginManifest(
+                plugin_id='uploaded',
+                version='0.1.0',
+                capabilities=[PluginCapability(name='extract_video')],
+                sites=[PluginSiteManifest(site_name='uploaded', domains=['uploaded.test'])],
+            ).to_dict(),
+            metadata={'source': 'upload'},
+        ),
+    )
+
+    manager = PluginManager(store=store, paths=paths)
+
+    assert manager.discover_plugins() == []
+    assert manager.get_plugin('uploaded') is None
+    assert manager.enable_plugin('uploaded') is None
+    assert manager.gateway.resolve_route('extract_video', domain='uploaded.test') is None
 
 
 def test_manager_uses_shared_paths_for_workspace_discovery(tmp_path):
@@ -227,7 +255,6 @@ def test_bootstrap_enabled_plugins_starts_runtimes_in_parallel_and_preserves_ord
     supervisor = _ParallelSupervisor()
     manager = PluginManager(
         store=store,
-        installer=PluginInstaller(paths=paths),
         supervisor=supervisor,
         paths=paths,
     )
@@ -264,7 +291,6 @@ def test_bootstrap_enabled_plugins_raises_after_persisting_successful_starts(tmp
     supervisor = _FailingSupervisor()
     manager = PluginManager(
         store=store,
-        installer=PluginInstaller(paths=paths),
         supervisor=supervisor,
         paths=paths,
     )

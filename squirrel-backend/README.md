@@ -3,7 +3,7 @@ Plugin Runtime V2
 
 The backend now uses a runtime V2 plugin model:
 
-- plugins are discovered from runtime metadata plus backend-managed install records
+- plugins are discovered from workspace runtime metadata
 - each plugin exposes a `create_plugin_runtime()` entrypoint
 - host-side routing goes through `PluginManager` and `PluginGateway`
 - plugin capabilities are declared in the manifest instead of inferred from SDK registries
@@ -24,33 +24,24 @@ policy, and backend-side cookie resolution. `squirrel-sdk` remains the plugin
 contract and helper package, but backend runtime startup should not depend on
 SDK-global mutable state.
 
-Install and activation
-----------------------
+Discovery and activation
+------------------------
 
-Plugin installation is handled by the backend plugin API. Upload a plugin zip that
-contains `plugin-runtime.json`; once validated, the backend stages the package,
-creates a dedicated virtual environment, installs the plugin together with the
-runtime bridge package, starts the runtime, registers capabilities, and makes the
-plugin effective without restarting the service.
+Plugins under `../squirrel-plugins/<site>/plugin-runtime.json` are auto-discovered
+and bootstrapped as local runtime V2 plugins. The backend no longer accepts plugin
+zip uploads or provisions per-plugin virtual environments. Runtime subprocesses use
+the backend interpreter and receive explicit `SQUIRREL_PLUGIN_*` variables for
+plugin id, version, granted permissions, and data directory.
 
-For workspace development, plugins under `../squirrel-plugins/<site>/plugin-runtime.json`
-are auto-discovered and bootstrapped as local runtime V2 plugins. Workspace plugins
-still use the backend interpreter as a development convenience; uploaded plugins use
-their own isolated Python environment.
-Installed plugin subprocesses receive a reduced inherited environment and explicit
-`SQUIRREL_PLUGIN_*` variables for plugin id, version, granted permissions, and
-data directory.
-
-Operators can also define `manifest.metadata.runtime_policy` and
-`manifest.metadata.network_policy` to control runtime limits and outbound
-network access. Runtime stdout/stderr and audit events are written under the
-plugin data directory.
+Operators can define `manifest.metadata.runtime_policy` and
+`manifest.metadata.network_policy`; these values are passed into the runtime
+context. Runtime stdout/stderr and audit events are written under the plugin data
+directory when one is configured.
 
 Permissions and trust model
 ---------------------------
 
-Runtime V2 assumes plugins may be untrusted. The host tracks declared permissions
-from the manifest and only routes requests through explicit capabilities such as:
+Runtime V2 routes requests through explicit capabilities declared by each manifest:
 
 - `extract_video`
 - `sync_subscription`

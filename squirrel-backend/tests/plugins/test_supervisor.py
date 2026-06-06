@@ -97,16 +97,14 @@ def get_plugin_runtime():
     assert stopped.state == PluginRuntimeState.STOPPED
 
 
-def test_supervisor_uses_isolated_runtime_python_for_installed_plugins(tmp_path):
-    runtime_python = tmp_path / 'venv' / 'Scripts' / 'python.exe'
-    runtime_python.parent.mkdir(parents=True, exist_ok=True)
-    runtime_python.write_text('', encoding='utf-8')
-
+def test_supervisor_builds_workspace_runtime_command(tmp_path):
+    plugin_root = tmp_path / 'sample_plugin'
+    plugin_root.mkdir()
     record = PluginInstallRecord(
         plugin_id='sample',
         version='0.1.0',
-        install_path=str(tmp_path / 'sample_plugin'),
-        runtime_path=str(tmp_path / 'sample_plugin'),
+        install_path=str(plugin_root),
+        runtime_path=str(plugin_root),
         data_path=str(tmp_path / 'data'),
         entrypoint='sample_runtime:get_plugin_runtime',
         enabled=True,
@@ -126,20 +124,16 @@ def test_supervisor_uses_isolated_runtime_python_for_installed_plugins(tmp_path)
             }
         },
         granted_permissions=['network:http', 'cookies:read:site/sample'],
-        runtime_env_path=str(tmp_path / 'venv'),
-        runtime_python=str(runtime_python),
+        metadata={'source': 'workspace'},
     )
 
     supervisor = PluginRuntimeSupervisor()
 
     command = supervisor._build_runtime_command(record, host='127.0.0.1', port=9001)
 
-    assert command[:3] == [
-        str(runtime_python),
-        '-m',
-        'squirrel_plugin_runner.runtime_bridge',
-    ]
-    assert '--import-path' not in command
+    assert command[1:3] == ['-m', 'plugins.runtime_bridge']
+    assert '--import-path' in command
+    assert str(plugin_root) in command
     assert '--data-dir' in command
     assert str(tmp_path / 'data') in command
     assert '--granted-permission' in command
@@ -161,18 +155,8 @@ def test_supervisor_uses_isolated_runtime_python_for_installed_plugins(tmp_path)
     assert artifact_paths['audit'].name == 'audit.jsonl'
 
 
-def test_supervisor_restricts_environment_for_installed_plugins(monkeypatch, tmp_path):
-    runtime_python = tmp_path / 'venv' / 'Scripts' / 'python.exe'
-    runtime_python.parent.mkdir(parents=True, exist_ok=True)
-    runtime_python.write_text('', encoding='utf-8')
-
+def test_supervisor_sets_workspace_runtime_environment(monkeypatch, tmp_path):
     monkeypatch.setenv('PATH', r'C:\Windows\System32')
-    monkeypatch.setenv('SystemRoot', r'C:\Windows')
-    monkeypatch.setenv('TEMP', r'C:\Temp')
-    monkeypatch.setenv('TMP', r'C:\Temp')
-    monkeypatch.setenv('POSTGRES_PASSWORD', 'super-secret')
-    monkeypatch.setenv('PYTHONPATH', r'D:\Code\init\squirrel')
-
     record = PluginInstallRecord(
         plugin_id='sample',
         version='0.1.0',
@@ -183,9 +167,7 @@ def test_supervisor_restricts_environment_for_installed_plugins(monkeypatch, tmp
         enabled=True,
         manifest={},
         granted_permissions=['network:http'],
-        runtime_env_path=str(tmp_path / 'venv'),
-        runtime_python=str(runtime_python),
-        metadata={'source': 'upload'},
+        metadata={'source': 'workspace'},
     )
 
     supervisor = PluginRuntimeSupervisor()
@@ -196,10 +178,7 @@ def test_supervisor_restricts_environment_for_installed_plugins(monkeypatch, tmp
     assert process_env['SQUIRREL_PLUGIN_VERSION'] == '0.1.0'
     assert process_env['SQUIRREL_PLUGIN_DATA_DIR'] == str(tmp_path / 'data')
     assert process_env['SQUIRREL_PLUGIN_GRANTED_PERMISSIONS'] == 'network:http'
-    assert process_env['SQUIRREL_PLUGIN_ISOLATED'] == '1'
-    assert process_env['SQUIRREL_PLUGIN_SOURCE'] == 'upload'
-    assert 'POSTGRES_PASSWORD' not in process_env
-    assert 'PYTHONPATH' not in process_env
+    assert process_env['SQUIRREL_PLUGIN_SOURCE'] == 'workspace'
 
 
 def test_supervisor_appends_audit_events(tmp_path):

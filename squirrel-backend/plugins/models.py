@@ -11,7 +11,6 @@ def utcnow_iso() -> str:
 
 
 class PluginInstallStatus(str, Enum):
-    UPLOADED = 'uploaded'
     VALIDATED = 'validated'
     INSTALLED = 'installed'
     STARTING = 'starting'
@@ -20,7 +19,6 @@ class PluginInstallStatus(str, Enum):
     DISABLED = 'disabled'
     FAILED = 'failed'
     STOPPED = 'stopped'
-    UNINSTALLED = 'uninstalled'
 
 
 class PluginRuntimeState(str, Enum):
@@ -38,13 +36,11 @@ class PluginInstallRecord:
     install_path: str
     entrypoint: str
     enabled: bool = False
-    status: PluginInstallStatus = PluginInstallStatus.UPLOADED
+    status: PluginInstallStatus = PluginInstallStatus.INSTALLED
     granted_permissions: List[str] = field(default_factory=list)
     manifest: Dict[str, Any] = field(default_factory=dict)
     package_path: Optional[str] = None
     runtime_path: Optional[str] = None
-    runtime_env_path: Optional[str] = None
-    runtime_python: Optional[str] = None
     data_path: Optional[str] = None
     checksum_sha256: Optional[str] = None
     installed_at: str = field(default_factory=utcnow_iso)
@@ -63,8 +59,6 @@ class PluginInstallRecord:
             'manifest': dict(self.manifest),
             'package_path': self.package_path,
             'runtime_path': self.runtime_path,
-            'runtime_env_path': self.runtime_env_path,
-            'runtime_python': self.runtime_python,
             'data_path': self.data_path,
             'checksum_sha256': self.checksum_sha256,
             'installed_at': self.installed_at,
@@ -74,7 +68,7 @@ class PluginInstallRecord:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'PluginInstallRecord':
-        status = str(data.get('status', PluginInstallStatus.UPLOADED.value))
+        status = str(data.get('status', PluginInstallStatus.INSTALLED.value))
         try:
             parsed_status = PluginInstallStatus(status)
         except ValueError:
@@ -91,8 +85,6 @@ class PluginInstallRecord:
             manifest=dict(data.get('manifest') or {}),
             package_path=data.get('package_path'),
             runtime_path=data.get('runtime_path'),
-            runtime_env_path=data.get('runtime_env_path'),
-            runtime_python=data.get('runtime_python'),
             data_path=data.get('data_path'),
             checksum_sha256=data.get('checksum_sha256'),
             installed_at=str(data.get('installed_at', utcnow_iso())),

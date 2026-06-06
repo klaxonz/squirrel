@@ -46,9 +46,6 @@ class PluginRuntimeSupervisor:
         return f'{plugin_id}:{version}'
 
     def _candidate_import_paths(self, record: PluginInstallRecord) -> list[str]:
-        if record.runtime_python:
-            return []
-
         candidates: list[Path] = []
         if record.runtime_path:
             candidates.append(Path(record.runtime_path))
@@ -76,14 +73,12 @@ class PluginRuntimeSupervisor:
             return int(sock.getsockname()[1])
 
     def _build_runtime_command(self, record: PluginInstallRecord, host: str, port: int) -> list[str]:
-        python_executable = record.runtime_python or sys.executable
-        module_name = 'squirrel_plugin_runner.runtime_bridge' if record.runtime_python else 'plugins.runtime_bridge'
         runtime_policy = self._runtime_policy(record)
         network_policy = self._network_policy(record)
         command = [
-            python_executable,
+            sys.executable,
             '-m',
-            module_name,
+            'plugins.runtime_bridge',
             '--entrypoint',
             record.entrypoint,
             '--plugin-id',
@@ -128,47 +123,10 @@ class PluginRuntimeSupervisor:
         return {'mode': 'deny_all'}
 
     def _build_process_env(self, record: PluginInstallRecord) -> dict[str, str]:
-        if not record.runtime_python:
-            return dict(os.environ)
-
-        whitelist = {
-            'SYSTEMROOT',
-            'SystemRoot',
-            'WINDIR',
-            'COMSPEC',
-            'ComSpec',
-            'TEMP',
-            'TMP',
-            'PATH',
-            'PATHEXT',
-            'OS',
-            'NUMBER_OF_PROCESSORS',
-            'PROCESSOR_ARCHITECTURE',
-            'PROCESSOR_IDENTIFIER',
-            'PROGRAMDATA',
-            'PUBLIC',
-            'USERPROFILE',
-            'HOME',
-            'HOMEDRIVE',
-            'HOMEPATH',
-            'LOCALAPPDATA',
-            'APPDATA',
-            'YOUTUBE_OAUTH_STATE_FILE',
-        }
-        process_env = {
-            key: value
-            for key, value in os.environ.items()
-            if key in whitelist
-        }
-        runtime_bin = str(Path(record.runtime_python).resolve().parent)
-        existing_path = process_env.get('PATH', '')
-        process_env['PATH'] = runtime_bin if not existing_path else os.pathsep.join([runtime_bin, existing_path])
-        process_env.pop('PYTHONPATH', None)
-        process_env.pop('VIRTUAL_ENV', None)
+        process_env = dict(os.environ)
         process_env['SQUIRREL_PLUGIN_ID'] = record.plugin_id
         process_env['SQUIRREL_PLUGIN_VERSION'] = record.version
-        process_env['SQUIRREL_PLUGIN_ISOLATED'] = '1'
-        process_env['SQUIRREL_PLUGIN_SOURCE'] = str(record.metadata.get('source') or 'upload')
+        process_env['SQUIRREL_PLUGIN_SOURCE'] = str(record.metadata.get('source') or 'workspace')
         process_env['SQUIRREL_PLUGIN_GRANTED_PERMISSIONS'] = ','.join(record.granted_permissions)
         process_env['SQUIRREL_PLUGIN_NETWORK_POLICY'] = json.dumps(self._network_policy(record))
         process_env['SQUIRREL_PLUGIN_RUNTIME_POLICY'] = json.dumps(self._runtime_policy(record))
@@ -182,10 +140,6 @@ class PluginRuntimeSupervisor:
         return process_env
 
     def _resolve_runtime_cwd(self, record: PluginInstallRecord) -> Path:
-        if record.runtime_python and record.data_path:
-            return Path(record.data_path)
-        if record.runtime_python:
-            return Path(record.install_path)
         return self._backend_root
 
     def _resolve_artifact_paths(self, record: PluginInstallRecord) -> dict[str, Path]:

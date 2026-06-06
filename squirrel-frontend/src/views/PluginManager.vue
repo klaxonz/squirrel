@@ -32,21 +32,6 @@
 
         <div class="space-y-4 border-b border-border/50 p-3">
           <div class="space-y-2">
-            <div class="text-xs font-medium text-muted-foreground">插件包</div>
-            <Button as-child variant="outline" class="h-9 w-full justify-start rounded-md">
-              <label class="cursor-pointer">
-                <input type="file" accept=".zip" class="hidden" @change="handleFileChange" />
-                <AppIcon name="upload" class="h-4 w-4" />
-                <span class="truncate">{{ selectedFile ? selectedFile.name : '选择插件包' }}</span>
-              </label>
-            </Button>
-            <Button v-if="selectedFile" class="h-9 w-full rounded-md" :disabled="installing" @click="handleInstall">
-              <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': installing }" />
-              安装插件
-            </Button>
-          </div>
-
-          <div class="space-y-2">
             <div class="text-xs font-medium text-muted-foreground">登录凭据</div>
             <Button as-child variant="outline" class="h-9 w-full justify-start rounded-md">
               <label class="cursor-pointer">
@@ -118,24 +103,13 @@
           <div class="flex gap-2">
             <Button as-child variant="outline" class="h-9 flex-1 justify-start rounded-md">
               <label class="cursor-pointer">
-                <input type="file" accept=".zip" class="hidden" @change="handleFileChange" />
-                <AppIcon name="upload" class="h-4 w-4" />
-                <span class="truncate">{{ selectedFile ? selectedFile.name : '插件包' }}</span>
-              </label>
-            </Button>
-            <Button as-child variant="outline" class="h-9 flex-1 justify-start rounded-md">
-              <label class="cursor-pointer">
                 <input type="file" accept=".txt,.json" class="hidden" @change="handleCookiesFileChange" />
                 <AppIcon name="cookie" class="h-4 w-4" />
                 <span class="truncate">{{ cookiesFileName || '登录凭据' }}</span>
               </label>
             </Button>
           </div>
-          <div v-if="selectedFile || selectedCookiesFile" class="flex gap-2">
-            <Button v-if="selectedFile" class="h-9 flex-1 rounded-md" :disabled="installing" @click="handleInstall">
-              <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': installing }" />
-              安装
-            </Button>
+          <div v-if="selectedCookiesFile" class="flex gap-2">
             <Button v-if="selectedCookiesFile" class="h-9 flex-1 rounded-md" :disabled="importingCookies" @click="handleImportAllCookies">
               <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': importingCookies }" />
               导入
@@ -169,7 +143,7 @@
               <div v-else-if="!displayPlugins.length" class="flex min-h-[20rem] flex-col items-center justify-center text-center">
                 <AppIcon name="cube" class="h-9 w-9 text-muted-foreground/30" />
                 <h2 class="mt-4 text-sm font-semibold">{{ searchQuery ? '没有匹配的插件' : '暂无插件' }}</h2>
-                <p class="mt-1 text-sm text-muted-foreground">{{ searchQuery ? '更换搜索关键词后再试。' : '导入插件包后会显示在这里。' }}</p>
+                <p class="mt-1 text-sm text-muted-foreground">{{ searchQuery ? '更换搜索关键词后再试。' : '本地插件发现后会显示在这里。' }}</p>
               </div>
 
               <div v-else class="min-w-[980px] divide-y divide-border/50">
@@ -321,15 +295,6 @@
                     >
                       <AppIcon name="settingsPanel" class="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      class="h-8 w-8 rounded-md text-muted-foreground"
-                      title="卸载插件"
-                      @click="openUninstallDialog(plugin)"
-                    >
-                      <AppIcon name="trash" class="h-4 w-4" />
-                    </Button>
                   </div>
                 </div>
               </div>
@@ -401,24 +366,6 @@
           </div>
         </div>
       </Transition>
-
-      <Dialog v-model:open="showUninstallDialog">
-        <DialogContent class="max-w-sm overflow-hidden rounded-lg p-0">
-          <DialogHeader class="border-b border-border/50 p-5 text-left">
-            <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-destructive/10 text-destructive">
-              <AppIcon name="trash" class="h-5 w-5" />
-            </div>
-            <DialogTitle class="text-base font-semibold">卸载插件？</DialogTitle>
-            <DialogDescription class="text-sm leading-relaxed text-muted-foreground">
-              确定要卸载插件 <span class="font-semibold text-foreground">"{{ uninstallTarget?.display_name }}"</span> 吗？
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter class="gap-2 bg-muted/30 p-4">
-            <Button variant="outline" class="h-9 rounded-md" @click="showUninstallDialog = false">取消</Button>
-            <Button variant="destructive" class="h-9 rounded-md" @click="confirmUninstall">确认卸载</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   </AppPageShell>
 </template>
@@ -438,14 +385,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { Logger } from '@/utils/logger'
 import { mergeLoginStatusResult, shouldRefreshLoginStatusesAfterCookieImport } from '@/utils/plugin-login-status'
 import { useSiteCatalog } from '@/composables/useSites'
@@ -455,7 +394,6 @@ import {
   getPlugins,
   getSupportedSites,
   importAllSiteCookies,
-  installPlugin,
   getYouTubeOAuthStatus,
   reloadPlugins,
   revokeYouTubeOAuth,
@@ -463,14 +401,11 @@ import {
   testAllSitesConnectivity,
   testSiteConnectivity,
   testSiteLoginStatus,
-  uninstallPlugin,
 } from '@/api'
 
 const loading = ref(false)
-const installing = ref(false)
 const reloading = ref(false)
 const plugins = ref([])
-const selectedFile = ref(null)
 const actioning = ref(null)
 const isInitialLoading = computed(() => loading.value && !plugins.value.length)
 
@@ -587,8 +522,6 @@ const editingSite = ref(null)
 const siteEditorVisible = ref(false)
 const siteEditorSaving = ref(false)
 const siteEditorError = ref('')
-const showUninstallDialog = ref(false)
-const uninstallTarget = ref(null)
 
 const siteCatalogMap = computed(() => siteCatalog.value || {})
 const searchQuery = ref('')
@@ -690,7 +623,7 @@ const pluginSummary = computed(() => ({
     if (!plugin.enabled) return true
     if (!plugin.active_runtime) return true
     if (plugin.health?.healthy === false) return true
-    return ['failed', 'degraded', 'disabled', 'stopped', 'uninstalled'].includes(plugin.status)
+    return ['failed', 'degraded', 'disabled', 'stopped'].includes(plugin.status)
       || ['failed', 'stopped', 'draining'].includes(plugin.active_runtime?.state)
   }).length,
 }))
@@ -701,22 +634,6 @@ const connectivitySummary = computed(() => {
   }
   return connectivityResults.value[0]?.summary || { total: 0, accessible: 0, failed: 0, success_rate: 0 }
 })
-
-const handleFileChange = (event) => {
-  const [file] = event.target.files || []
-  selectedFile.value = file || null
-}
-
-const handleInstall = async () => {
-  if (!selectedFile.value) return
-  installing.value = true
-  const res = await installPlugin(selectedFile.value)
-  if (!res.error) {
-    selectedFile.value = null
-    await fetchPlugins()
-  }
-  installing.value = false
-}
 
 const handleCookiesFileChange = (event) => {
   const file = event.target.files?.[0]
@@ -758,21 +675,6 @@ const handleDisable = async (plugin) => {
   const res = await disablePlugin(plugin.plugin_id)
   if (!res.error) await fetchPlugins()
   actioning.value = null
-}
-
-const openUninstallDialog = (plugin) => {
-  uninstallTarget.value = plugin
-  showUninstallDialog.value = true
-}
-
-const confirmUninstall = async () => {
-  if (!uninstallTarget.value) return
-  showUninstallDialog.value = false
-  actioning.value = uninstallTarget.value.plugin_id
-  const res = await uninstallPlugin(uninstallTarget.value.plugin_id)
-  if (!res.error) await fetchPlugins()
-  actioning.value = null
-  uninstallTarget.value = null
 }
 
 const handleTestAll = async () => {

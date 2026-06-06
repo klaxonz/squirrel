@@ -12,8 +12,6 @@ class PluginPaths:
     workspace_plugins_dir: Path
     state_dir: Path
     artifacts_dir: Path
-    packages_dir: Path
-    installs_dir: Path
     runtime_dir: Path
     plugin_data_dir: Path
     installations_file: Path
@@ -33,11 +31,8 @@ def build_plugin_paths(repo_root: Path | None = None, backend_root: Path | None 
         workspace_plugins_dir=resolved_repo_root / 'squirrel-plugins',
         state_dir=state_dir,
         artifacts_dir=artifacts_dir,
-        packages_dir=artifacts_dir / 'packages',
-        installs_dir=artifacts_dir / 'installs',
         runtime_dir=runtime_dir,
         plugin_data_dir=plugin_data_dir,
         installations_file=state_dir / 'installations.json',
         legacy_root=resolved_repo_root / 'config' / 'plugin_runtime_v2',
     )
-

@@ -7,10 +7,8 @@ from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 
 from services.plugin_service import (
-    install_from_upload,
     list_plugins as get_plugin_list,
     set_enabled_by_name,
-    uninstall_by_name,
 )
 from services.site_login_status_service import (
     get_supported_sites as get_login_supported_sites,
@@ -174,18 +172,6 @@ def build_site_info(site_name: str, catalog: dict) -> dict | None:
 router = APIRouter(prefix="/api/plugins", tags=["plugins"])
 
 
-@router.post("/install")
-def install_plugin(file: UploadFile = File(...)):
-    filename = (file.filename or "plugin.zip").lower()
-    if not filename.endswith(".zip"):
-        return param_error("file must be a zip archive")
-    ok, data_or_err = install_from_upload(file)
-    if ok:
-        publish_plugin_reload_signal()
-        return success(data_or_err, msg="installed and enabled")
-    return error(data_or_err or "install failed")
-
-
 @router.get("/")
 def list_plugins():
     return success(get_plugin_list())
@@ -207,15 +193,6 @@ def disable_plugin(name: str):
         publish_plugin_reload_signal()
         return success(msg="disabled")
     return error("invalid plugin name or not found")
-
-
-@router.post("/{name}/uninstall")
-def uninstall_plugin(name: str):
-    ok = uninstall_by_name(name)
-    if ok:
-        publish_plugin_reload_signal()
-        return success(msg="uninstalled")
-    return error("invalid plugin id or not found")
 
 
 @router.post("/reload")

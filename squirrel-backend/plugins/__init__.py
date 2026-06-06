@@ -1,7 +1,6 @@
 """Runtime V2 plugin entry points for squirrel-backend."""
 
 from .gateway import PluginGateway
-from .installer import PluginInstaller
 from .manager import (
     PluginManager,
     bootstrap_plugin_runtime,
@@ -15,7 +14,6 @@ from .supervisor import PluginRuntimeSupervisor
 
 __all__ = [
     'PluginGateway',
-    'PluginInstaller',
     'PluginInstallStore',
     'PluginManager',
     'PluginPaths',

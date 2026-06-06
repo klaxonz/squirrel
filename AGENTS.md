@@ -4,7 +4,7 @@
 
 ## 范围
 - 主要子项目：`squirrel-backend`、`squirrel-frontend`、`squirrel-desktop`、`squirrel-sdk`、`squirrel-plugins`。
-- 辅助子项目：`squirrel-plugin-runner`、`squirrel-cf-bypass`、`squirrel-extension`。
+- 辅助子项目：`squirrel-cf-bypass`、`squirrel-extension`。
 - 修改应尽量限制在当前任务相关子项目；不要顺手格式化或重构无关代码。
 
 ## 构建、Lint、测试
@@ -38,10 +38,9 @@
 - 模块检查：`python -m compileall src`
 - 当前仓库无 SDK 测试。
 
-### 插件与运行器（Python）
+### 插件（Python）
 - 每个插件位于 `squirrel-plugins/<site>/src/...`。
 - 插件依赖 `squirrel-sdk` 的公开接口。
-- `squirrel-plugin-runner` 是隔离插件运行桥接包，要求 Python 3.10+。
 - 插件运行方式：随后端调度运行，或在 Python 中直接导入模块做针对性验证。
 
 ### Cloudflare Bypass Sidecar

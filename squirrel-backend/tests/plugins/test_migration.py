@@ -15,13 +15,8 @@ def test_migrate_legacy_plugin_storage_moves_runtime_layout(tmp_path):
     paths = build_plugin_paths(repo_root=repo_root, backend_root=backend_root)
 
     legacy = paths.legacy_root
-    (legacy / 'packages').mkdir(parents=True)
-    (legacy / 'installs').mkdir(parents=True)
     (legacy / 'runtime').mkdir(parents=True)
     (legacy / 'data').mkdir(parents=True)
-    (legacy / 'packages' / 'demo.zip').write_text('pkg', encoding='utf-8')
-    (legacy / 'installs' / 'demo').mkdir(parents=True)
-    (legacy / 'installs' / 'demo' / 'entry.txt').write_text('install', encoding='utf-8')
     (legacy / 'runtime' / 'demo').mkdir(parents=True)
     (legacy / 'runtime' / 'demo' / 'python.txt').write_text('runtime', encoding='utf-8')
     (legacy / 'data' / 'demo').mkdir(parents=True)
@@ -36,8 +31,6 @@ def test_migrate_legacy_plugin_storage_moves_runtime_layout(tmp_path):
 
     assert migrated is True
     assert paths.installations_file.exists()
-    assert (paths.packages_dir / 'demo.zip').exists()
-    assert (paths.installs_dir / 'demo' / 'entry.txt').exists()
     assert (paths.runtime_dir / 'demo' / 'python.txt').exists()
     assert (paths.plugin_data_dir / 'demo' / 'state.txt').exists()
     assert not (legacy / 'installations.stale.tmp').exists()

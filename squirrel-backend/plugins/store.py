@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class PluginInstallStore:
-    """Persist plugin runtime installation records as JSON."""
+    """Persist plugin runtime records as JSON."""
 
     def __init__(self, data_path: Optional[Path] = None, paths: PluginPaths | None = None) -> None:
         self._paths = paths or build_plugin_paths()

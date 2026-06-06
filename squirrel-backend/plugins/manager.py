@@ -2,17 +2,14 @@ from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor, wait
 import json
-from pathlib import Path
 from typing import List, Optional
 
 from .gateway import PluginGateway
-from .installer import PluginInstaller
 from .migration import migrate_legacy_plugin_storage
 from .models import (
     PluginInstallRecord,
     PluginInstallStatus,
     PluginManagerSnapshot,
-    utcnow_iso,
 )
 from .paths import PluginPaths, build_plugin_paths
 from .runtime_models import PluginManifest
@@ -21,12 +18,11 @@ from .supervisor import PluginRuntimeSupervisor
 
 
 class PluginManager:
-    """Coordinate plugin installation records, runtime state, and routing."""
+    """Coordinate plugin records, runtime state, and routing."""
 
     def __init__(
         self,
         store: Optional[PluginInstallStore] = None,
-        installer: Optional[PluginInstaller] = None,
         supervisor: Optional[PluginRuntimeSupervisor] = None,
         gateway: Optional[PluginGateway] = None,
         paths: PluginPaths | None = None,
@@ -34,7 +30,6 @@ class PluginManager:
         self._paths = paths or build_plugin_paths()
         migrate_legacy_plugin_storage(self._paths)
         self._store = store or PluginInstallStore(paths=self._paths)
-        self._installer = installer or PluginInstaller(paths=self._paths)
         self._supervisor = supervisor or PluginRuntimeSupervisor()
         self._gateway = gateway or PluginGateway(invocation_client=self._supervisor)
         self._gateway.set_registration_refresh(self._refresh_gateway_registrations)
@@ -50,49 +45,13 @@ class PluginManager:
         return self._discover_local_runtime_plugins()
 
     def get_plugin(self, plugin_id: str) -> Optional[PluginInstallRecord]:
-        self.discover_plugins()
-        return self._store.get_record(plugin_id)
-
-    def install_plugin(
-        self,
-        package_path: Path | str,
-        manifest: PluginManifest,
-        entrypoint: str,
-        granted_permissions: Optional[List[str]] = None,
-        replace_existing: bool = False,
-    ) -> PluginInstallRecord:
-        plan = self._installer.build_install_plan(
-            package_path=package_path,
-            manifest=manifest,
-            entrypoint=entrypoint,
-            replace_existing=replace_existing,
-        )
-        self._installer.stage_distribution(plan)
-        runtime_env_path, runtime_python = self._installer.provision_runtime_environment(plan)
-        record = PluginInstallRecord(
-            plugin_id=plan.plugin_id,
-            version=plan.version,
-            install_path=str(plan.install_path),
-            entrypoint=plan.entrypoint,
-            enabled=False,
-            status=PluginInstallStatus.INSTALLED,
-            granted_permissions=list(granted_permissions or []),
-            manifest=plan.manifest.to_dict(),
-            package_path=str(plan.staging_path),
-            runtime_path=str(plan.runtime_path),
-            runtime_env_path=str(runtime_env_path),
-            runtime_python=str(runtime_python),
-            data_path=str(plan.data_path),
-            checksum_sha256=plan.checksum_sha256,
-            installed_at=utcnow_iso(),
-            updated_at=utcnow_iso(),
-        )
-        self._store.upsert(record)
-        self._supervisor.register_placeholder(record)
-        return record
+        for record in self.discover_plugins():
+            if record.plugin_id == plugin_id:
+                return record
+        return None
 
     def enable_plugin(self, plugin_id: str) -> Optional[PluginInstallRecord]:
-        record = self._store.get_record(plugin_id)
+        record = self.get_plugin(plugin_id)
         if record is None:
             return None
         record.enabled = True
@@ -106,7 +65,7 @@ class PluginManager:
         return self._store.upsert(record)
 
     def disable_plugin(self, plugin_id: str) -> Optional[PluginInstallRecord]:
-        record = self._store.get_record(plugin_id)
+        record = self.get_plugin(plugin_id)
         if record is None:
             return None
         self._gateway.unregister_plugin(plugin_id)
@@ -114,39 +73,6 @@ class PluginManager:
         record.enabled = False
         record.status = PluginInstallStatus.DISABLED
         return self._store.upsert(record)
-
-    def uninstall_plugin(self, plugin_id: str) -> Optional[PluginInstallRecord]:
-        record = self._store.get_record(plugin_id)
-        if record is None:
-            return None
-        self.disable_plugin(plugin_id)
-        if record.metadata.get('source') != 'workspace':
-            self._installer.remove_runtime_environment(record.runtime_env_path)
-            self._installer.remove_installation(record.install_path)
-            self._installer.remove_installation(record.data_path)
-        record.status = PluginInstallStatus.UNINSTALLED
-        record.enabled = False
-        self._store.delete(plugin_id)
-        return record
-
-    def upgrade_plugin(
-        self,
-        plugin_id: str,
-        package_path: Path | str,
-        manifest: PluginManifest,
-        entrypoint: str,
-        granted_permissions: Optional[List[str]] = None,
-    ) -> PluginInstallRecord:
-        existing = self._store.get_record(plugin_id)
-        if existing is not None:
-            self.disable_plugin(plugin_id)
-        return self.install_plugin(
-            package_path=package_path,
-            manifest=manifest,
-            entrypoint=entrypoint,
-            granted_permissions=granted_permissions,
-            replace_existing=existing is not None,
-        )
 
     def get_snapshot(self) -> PluginManagerSnapshot:
         records = self.discover_plugins()
@@ -157,8 +83,7 @@ class PluginManager:
         )
 
     def bootstrap_enabled_plugins(self) -> List[PluginInstallRecord]:
-        self.discover_plugins()
-        enabled_records = [record for record in self._store.list_records() if record.enabled]
+        enabled_records = [record for record in self.discover_plugins() if record.enabled]
         if not enabled_records:
             return []
 
@@ -195,7 +120,7 @@ class PluginManager:
         return started
 
     def shutdown_all(self) -> None:
-        records = self._store.list_records()
+        records = self.discover_plugins()
         for record in records:
             handle = self._supervisor.stop_runtime(record.plugin_id, record.version)
             if handle is not None and record.enabled:
@@ -228,7 +153,11 @@ class PluginManager:
             self._gateway.unregister_plugin(plugin_id)
 
     def _discover_local_runtime_plugins(self) -> List[PluginInstallRecord]:
-        records_by_id = {record.plugin_id: record for record in self._store.list_records()}
+        records_by_id = {
+            record.plugin_id: record
+            for record in self._store.list_records()
+            if record.metadata.get('source') == 'workspace'
+        }
         plugins_root = self._paths.workspace_plugins_dir
         if not plugins_root.exists():
             return sorted(records_by_id.values(), key=lambda record: record.plugin_id.lower())
@@ -246,9 +175,6 @@ class PluginManager:
                 runtime_path = plugin_root / 'src'
                 existing = records_by_id.get(manifest.plugin_id)
                 if existing is not None:
-                    if existing.metadata.get('source') != 'workspace':
-                        continue
-
                     before = existing.to_dict()
                     existing.version = manifest.version
                     existing.install_path = str(plugin_root)

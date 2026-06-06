@@ -79,29 +79,12 @@ export const getPlugins = async () => {
   return get<PluginListItem[]>('/api/plugins/')
 }
 
-export const installPlugin = async (file: File | null | undefined) => {
-  if (!file) {
-    return { data: null, error: new ApiError('请选择插件包') }
-  }
-
-  const formData = new FormData()
-  formData.append('file', file)
-
-  return post('/api/plugins/install', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
-}
-
 export const enablePlugin = async (name: string) => {
   return post(`/api/plugins/${encodeURIComponent(name)}/enable`, null)
 }
 
 export const disablePlugin = async (name: string) => {
   return post(`/api/plugins/${encodeURIComponent(name)}/disable`, null)
-}
-
-export const uninstallPlugin = async (name: string) => {
-  return post(`/api/plugins/${encodeURIComponent(name)}/uninstall`, null)
 }
 
 export const reloadPlugins = async () => {

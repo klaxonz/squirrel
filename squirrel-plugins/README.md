@@ -44,20 +44,18 @@ Backend-owned runtime bootstrap state such as host cookie resolution, site
 config projection, and Cloudflare bypass wiring lives in `squirrel-backend`,
 not in SDK-global mutable state.
 
-Uploaded runtime V2 plugins are installed into a dedicated virtual environment
-by the backend together with the `squirrel-plugin-runner` bridge package. During
-workspace development, the backend can still load sibling plugin folders directly.
+Runtime V2 plugins are discovered from sibling workspace folders under
+`squirrel-plugins`. The backend does not accept uploaded plugin zip packages.
 Runtime processes can read contextual values from `SQUIRREL_PLUGIN_*`
 environment variables, including the granted permission list and plugin data
-directory.
+directory when one is configured.
 
 Optional manifest metadata keys:
 
 - `metadata.runtime_policy`
 - `metadata.network_policy`
 
-These values are passed into the isolated runtime context and can be enforced by
-the host runner.
+These values are passed into the runtime context.
 
 Runtime metadata
 ----------------
