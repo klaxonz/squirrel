@@ -10,6 +10,11 @@ from services import music_service
 pytestmark = [pytest.mark.anyio(backend='asyncio')]
 
 
+@pytest.fixture(autouse=True)
+def reset_music_http_client(monkeypatch):
+    monkeypatch.setattr(music_service, '_http_client', None)
+
+
 class _FakeResponse:
     def __init__(self, payload):
         self._payload = payload
@@ -40,6 +45,7 @@ class _FakeClient:
     def __init__(self, calls, payload):
         self._calls = calls
         self._payload = payload
+        self.is_closed = False
 
     async def __aenter__(self):
         return self
@@ -56,6 +62,7 @@ class _SequenceClient:
     def __init__(self, calls, payloads):
         self._calls = calls
         self._payloads = list(payloads)
+        self.is_closed = False
 
     async def __aenter__(self):
         return self
@@ -290,6 +297,66 @@ async def test_search_albums_derives_unique_albums_from_song_results(monkeypatch
         },
     ]
     assert calls[0]['params'] == {'keywords': 'demo', 'page': 1, 'pagesize': 24, 'type': 'song'}
+
+
+async def test_complex_search_uses_typed_search_results(monkeypatch):
+    from services.music import discovery
+
+    calls = []
+
+    async def fake_request(path, params, *, user_id=None, use_auth=True):
+        calls.append({'path': path, 'params': params, 'user_id': user_id, 'use_auth': use_auth})
+        if params['type'] == 'song':
+            return {
+                'data': {
+                    'lists': [
+                        {
+                            'AlbumAudioID': 123,
+                            'FileHash': 'ABC',
+                            'SongName': 'Demo Artist - Demo Song',
+                            'SingerName': 'Demo Artist',
+                            'AlbumName': 'Demo Album',
+                            'AlbumID': 456,
+                            'Duration': 210,
+                            'Image': 'https://img.example.test/cover.jpg',
+                        }
+                    ],
+                },
+            }
+        return {
+            'data': {
+                'lists': [
+                    {
+                        'AuthorId': 420,
+                        'AuthorName': 'Demo Artist',
+                        'Avatar': 'http://img.example.test/artist.jpg',
+                        'AudioCount': 20,
+                    }
+                ],
+            },
+        }
+
+    monkeypatch.setattr(discovery, '_request_kugou', fake_request)
+
+    result = await music_service.get_complex_search(1, 'demo')
+
+    assert result['songs'][0]['title'] == 'Demo Song'
+    assert result['artists'][0]['name'] == 'Demo Artist'
+    assert result['albums'][0]['name'] == 'Demo Album'
+    assert calls == [
+        {
+            'path': '/search',
+            'params': {'keywords': 'demo', 'page': 1, 'pagesize': 50, 'type': 'song'},
+            'user_id': 1,
+            'use_auth': True,
+        },
+        {
+            'path': '/search',
+            'params': {'keywords': 'demo', 'page': 1, 'pagesize': 12, 'type': 'author'},
+            'user_id': 1,
+            'use_auth': True,
+        },
+    ]
 
 
 async def test_get_track_play_url_returns_direct_url(monkeypatch):
@@ -660,8 +727,10 @@ async def test_get_playlist_tracks_normalizes_items(monkeypatch):
                     'hash': 'PLHASH',
                     'album_id': 654,
                     'timelen': 181000,
-                    'cover': 'http://img.example.test/{size}/song.jpg',
-                    'albuminfo': {'name': 'Playlist Album'},
+                    'albuminfo': {
+                        'name': 'Playlist Album',
+                        'sizable_cover': 'http://img.example.test/{size}/song.jpg',
+                    },
                     'singerinfo': [{'name': 'Singer A'}, {'name': 'Singer B'}],
                 }
             ],
@@ -868,6 +937,72 @@ async def test_new_songs_normalize_items(monkeypatch):
 
     assert songs['items'][0]['title'] == 'New Song'
     assert calls[0]['url'] == 'http://127.0.0.1:3000/top/song'
+
+
+async def test_new_albums_collect_all_regions(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payload = {
+        'data': {
+            'chn': [
+                {'album_id': 1, 'album_name': 'CN Album 1', 'author_name': 'Singer A'},
+                {'album_id': 2, 'album_name': 'CN Album 2', 'author_name': 'Singer B'},
+                {'album_id': 3, 'album_name': 'CN Album 3', 'author_name': 'Singer C'},
+            ],
+            'eur': [{'album_id': 4, 'album_name': 'EU Album', 'author_name': 'Singer D'}],
+            'jpn': [{'album_id': 5, 'album_name': 'JP Album', 'author_name': 'Singer E'}],
+            'kor': [{'album_id': 6, 'album_name': 'KR Album', 'author_name': 'Singer F'}],
+        }
+    }
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+
+    albums = await music_service.list_new_albums(1, 1, 30)
+
+    assert [item['name'] for item in albums['items']] == [
+        'CN Album 1',
+        'CN Album 2',
+        'CN Album 3',
+        'EU Album',
+        'JP Album',
+        'KR Album',
+    ]
+    assert albums['total'] == 6
+    assert calls[0]['url'] == 'http://127.0.0.1:3000/top/album'
+    assert calls[0]['params'] == {}
+
+
+async def test_new_albums_slice_requested_page(monkeypatch):
+    calls = []
+    redis = _FakeRedis()
+    payload = {
+        'data': {
+            'chn': [
+                {'album_id': 1, 'album_name': 'Album 1'},
+                {'album_id': 2, 'album_name': 'Album 2'},
+                {'album_id': 3, 'album_name': 'Album 3'},
+                {'album_id': 4, 'album_name': 'Album 4'},
+            ],
+            'eur': [],
+            'jpn': [],
+            'kor': [],
+        }
+    }
+
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+
+    albums = await music_service.list_new_albums(1, 2, 2)
+
+    assert [item['name'] for item in albums['items']] == ['Album 3', 'Album 4']
+    assert albums['page'] == 2
+    assert albums['page_size'] == 2
+    assert calls[0]['params'] == {}
 
 
 async def test_track_enrichment_endpoints_normalize_items(monkeypatch):

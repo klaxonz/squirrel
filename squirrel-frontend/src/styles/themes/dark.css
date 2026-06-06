@@ -2,25 +2,25 @@
   /* Colors - Inspired by Apple & Linear (Light Mode) */
   --background: 0 0% 100%;
   --foreground: 240 10% 3.9%;
-  
+
   --card: 0 0% 100%;
   --card-foreground: 240 10% 3.9%;
-  
+
   --popover: 0 0% 100%;
   --popover-foreground: 240 10% 3.9%;
-  
+
   --primary: 240 5.9% 10%;
   --primary-foreground: 0 0% 98%;
-  
+
   --secondary: 240 4.8% 95.9%;
   --secondary-foreground: 240 5.9% 10%;
-  
+
   --muted: 240 5% 96%;
   --muted-foreground: 240 4% 46%;
-  
+
   --accent: 240 5% 96%;
   --accent-foreground: 240 5.9% 10%;
-  
+
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
 
@@ -31,7 +31,7 @@
   --radius: 6px; /* 严格基础圆角 */
   --radius-lg: 8px; /* 容器圆角 */
   --radius-xl: 12px; /* 面板圆角 */
-  
+
   /* Sidebar */
   --sidebar-width: 240px;
 
@@ -43,25 +43,25 @@
 .dark {
   --background: 240 10% 2%;
   --foreground: 0 0% 98%;
-  
+
   --card: 240 10% 4%;
   --card-foreground: 0 0% 98%;
-  
+
   --popover: 240 10% 4%;
   --popover-foreground: 0 0% 98%;
-  
+
   --primary: 0 0% 98%;
   --primary-foreground: 240 5.9% 10%;
-  
+
   --secondary: 240 4% 10%;
   --secondary-foreground: 0 0% 98%;
-  
+
   --muted: 240 4% 8%;
   --muted-foreground: 240 5% 65%;
-  
+
   --accent: 240 4% 12%;
   --accent-foreground: 0 0% 98%;
-  
+
   --border: 240 4% 12%;
   --input: 240 4% 12%;
   --ring: 240 5% 84%;

@@ -34,8 +34,8 @@
       <MobileNavigation v-if="isMobile" class="fixed bottom-0 left-0 right-0 z-50 h-nav" />
     </div>
 
-    <!-- Global Music Player Bar (Fixed at bottom, above mobile nav, only on /music page) -->
-    <GlobalMusicPlayerBar v-if="route.name === 'Music'" />
+    <!-- Global Music Player Bar -->
+    <GlobalMusicPlayerBar />
   </div>
 </template>
 
@@ -47,7 +47,7 @@ import AppSidebar from '@/components/shell/AppSidebar.vue'
 import AppHeader from '@/components/shell/AppHeader.vue'
 import MobileNavigation from '@/components/shell/MobileNavigation.vue'
 import GlobalVideoPlayerHost from '@/components/video-player/GlobalVideoPlayerHost.vue'
-import GlobalMusicPlayerBar from '@/components/music/GlobalMusicPlayerBar.vue'
+import GlobalMusicPlayerBar from '@/components/music/GlobalMusicPlayerBarNew.vue'
 import { isMobile } from '@/composables/useMobile'
 import { useThemeStore } from '@/stores/theme'
 import { useMusicPlayerStore } from '@/stores/musicPlayer'
@@ -65,8 +65,12 @@ const musicPlayerStore = useMusicPlayerStore()
 const nav = useNavigationHistory()
 const route = useRoute()
 
+const hasActiveMusicBar = computed(() =>
+  Boolean(musicPlayerStore.currentTrack && (musicPlayerStore.resolvingUrl || musicPlayerStore.audioSrc))
+)
+
 const musicBarPadding = computed(() =>
-  route.name === 'Music' && musicPlayerStore.currentTrack ? 'pb-16' : ''
+  route.name === 'Music' && hasActiveMusicBar.value ? 'pb-12' : ''
 )
 const mainScrollRef = ref<HTMLElement | null>(null)
 let activeScrollRoute: ScrollRouteState = {

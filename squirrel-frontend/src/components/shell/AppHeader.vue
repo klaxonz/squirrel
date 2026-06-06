@@ -24,6 +24,7 @@
           <GlobalSearchBar
             class="min-w-0 flex-1"
             :placeholder="String(route.meta.searchPlaceholder || '搜索或输入命令...')"
+            :suggestion-scope="String(route.meta.search || 'home')"
             :search-modes="showHomeSearchMode ? searchModeOptions : []"
             :active-search-mode="homeSearchMode"
             @search-mode-change="uiStore.setHomeSearchMode"

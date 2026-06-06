@@ -8,8 +8,14 @@ export type FmMode = 'normal' | 'small' | 'peak'
 export function useMusicFm() {
   const store = useMusicPlayerStore()
 
-  const mode = ref<FmMode>('normal')
-  const poolId = ref('0')
+  const mode = computed({
+    get: () => store.fmMode,
+    set: (v) => { store.fmMode = v },
+  })
+  const poolId = computed({
+    get: () => store.fmPoolId,
+    set: (v) => { store.fmPoolId = v },
+  })
   const batch = ref<MusicTrack[]>([])
   const batchIndex = ref(0)
   const loading = ref(false)
@@ -154,6 +160,13 @@ export function useMusicFm() {
     }
   }
 
+  function playAt(index: number) {
+    if (index >= 0 && index < batch.value.length) {
+      batchIndex.value = index
+      store.playQueue(batch.value, index)
+    }
+  }
+
   async function next() {
     if (batchIndex.value < batch.value.length - 1) {
       batchIndex.value++
@@ -199,6 +212,7 @@ export function useMusicFm() {
     like,
     dislike,
     playFirst,
+    playAt,
     next,
     switchMode,
     switchPool,

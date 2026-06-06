@@ -449,6 +449,14 @@ export const getMusicFavoriteCount = (mixsongids: string) => {
   return get<MusicFavoriteCountResult>('/api/music/favorite/count', { mixsongids })
 }
 
+export const addMusicFavorite = (album_audio_id: string) => {
+  return post<MusicActionResult>('/api/music/favorite', { album_audio_id })
+}
+
+export const removeMusicFavorite = (album_audio_id: string) => {
+  return request<MusicActionResult>({ url: '/api/music/favorite', method: 'delete', params: { album_audio_id } })
+}
+
 export const getMusicPlayUrl = (params: {
   hash: string
   album_audio_id?: string
@@ -748,7 +756,7 @@ export const searchMusicComplex = (query: string) => {
     songs: MusicTrack[]
     artists: MusicArtist[]
     albums: MusicAlbum[]
-  }>('/api/music/search/complex', { keywords: query })
+  }>('/api/music/search/complex', { query })
 }
 
 export const getMusicUserVip = () => {

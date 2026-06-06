@@ -43,10 +43,16 @@
           <AppIcon name="close" class="w-3.5 h-3.5" />
         </button>
         
-        <!-- Kbd Hint -->
-        <div class="hidden md:flex items-center gap-1 px-1.5 py-0.5 rounded border border-border/60 bg-muted/50 text-[10px] font-bold text-muted-foreground/40 tracking-tighter">
-          <span class="text-[11px] leading-none">⌘</span>K
-        </div>
+        <button
+          type="button"
+          class="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+          :disabled="!trimmedInputValue"
+          title="搜索"
+          @mousedown.prevent
+          @click="handleSearch"
+        >
+          <AppIcon name="search" class="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
 

@@ -141,8 +141,10 @@ def _normalize_track(row: dict[str, Any]) -> dict[str, Any]:
         ),
         'duration': int(duration or 0),
         'cover': _format_image_url(
-            row.get('Image') or row.get('cover') or album_info.get('sizable_cover') or album_info.get('cover')
-            or row.get('sizable_cover') or trans_param.get('union_cover') or ''
+            row.get('Image') or row.get('image') or row.get('cover') or row.get('pic') or row.get('img')
+            or row.get('imgurl') or row.get('sizable_cover') or album_info.get('sizable_cover')
+            or album_info.get('cover') or album_info.get('imgurl') or albuminfo.get('sizable_cover')
+            or albuminfo.get('cover') or albuminfo.get('imgurl') or trans_param.get('union_cover') or ''
         ),
     }
     artist_id = _artist_id(row)

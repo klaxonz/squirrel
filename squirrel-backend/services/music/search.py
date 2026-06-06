@@ -16,7 +16,8 @@ async def search_tracks(user_id: int, query: str, page: int, page_size: int) -> 
         'keywords': query,
         'page': page,
         'pagesize': page_size,
-    }, use_auth=False, user_id=user_id)
+        'type': 'song',
+    }, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
     rows = data.get('lists')
     if not isinstance(rows, list):
@@ -36,7 +37,8 @@ async def search_artists(user_id: int, query: str, page: int, page_size: int) ->
         'keywords': query,
         'page': page,
         'pagesize': page_size,
-    }, use_auth=False, user_id=user_id)
+        'type': 'author',
+    }, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
     rows = data.get('lists')
     if not isinstance(rows, list):
@@ -55,7 +57,8 @@ async def search_albums(user_id: int, query: str, page: int, page_size: int) -> 
         'keywords': query,
         'page': page,
         'pagesize': min(page_size * 3, 50),
-    }, use_auth=False, user_id=user_id)
+        'type': 'song',
+    }, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
     rows = data.get('lists')
     if not isinstance(rows, list):
@@ -95,6 +98,7 @@ async def get_default_search_keyword(user_id: int) -> dict[str, Any]:
 
 async def list_hot_searches(user_id: int) -> dict[str, Any]:
     from services.music._normalizers import _first_list
+
     payload = await _request_kugou('/search/hot', {}, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
     rows = _first_list(data, ('info', 'list', 'lists', 'items', 'data'))

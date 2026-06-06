@@ -2,11 +2,15 @@
 
 from typing import Any
 
+import anyio
+
 from services.music._client import _request_kugou
 from services.music._normalizers import (
     _first_list,
     _format_image_url,
     _normalize_album,
+    _normalize_album_from_track,
+    _normalize_artist_search,
     _normalize_rank,
     _normalize_track,
 )
@@ -122,9 +126,7 @@ async def get_rank_tracks(user_id: int, rank_id: str, rank_cid: str | None, page
 
     payload = await _request_kugou('/rank/audio', params, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
-    rows = data.get('songlist')
-    if not isinstance(rows, list):
-        rows = []
+    rows = _first_list(data, ('songlist', 'songs', 'list', 'info', 'data'))
 
     return {
         'items': [_normalize_track(row) for row in rows],
@@ -160,21 +162,24 @@ async def list_new_songs(user_id: int, category_type: int | None, page: int, pag
 async def list_new_albums(user_id: int, page: int, page_size: int) -> dict[str, Any]:
     payload = await _request_kugou('/top/album', {}, user_id=user_id)
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
-    
     rows = []
-    for key in ('chn', 'ea', 'ja', 'kr', 'all'):
+    for key in ('chn', 'eur', 'jpn', 'kor'):
         region = data.get(key)
         if isinstance(region, list):
-            rows.extend(region)
-    
-    if page_size > 0 and len(rows) > page_size:
-        rows = rows[:page_size]
+            rows.extend(item for item in region if isinstance(item, dict))
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_rows = rows[start:end]
+    if isinstance(data, dict):
+        total = data.get('total') or data.get('count') or len(rows)
+    else:
+        total = len(rows)
 
     return {
-        'items': [_normalize_album(row) for row in rows],
-        'page': 1,
+        'items': [_normalize_album(row) for row in page_rows],
+        'page': page,
         'page_size': page_size,
-        'total': len(rows),
+        'total': total,
     }
 
 
@@ -250,33 +255,58 @@ async def get_banner_list(user_id: int) -> dict[str, Any]:
 
 
 async def get_complex_search(user_id: int, query: str) -> dict[str, Any]:
-    payload = await _request_kugou('/search/complex', {'keywords': query}, use_auth=False, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
-    
-    songs = []
-    artists = []
-    albums = []
-    
-    song_rows = data.get('song') or data.get('songs') or []
-    for row in song_rows if isinstance(song_rows, list) else []:
-        songs.append(_normalize_track(row))
-    
-    artist_rows = data.get('artist') or data.get('artists') or []
-    from services.music._normalizers import _normalize_artist_search
-    for row in artist_rows if isinstance(artist_rows, list) else []:
-        artists.append(_normalize_artist_search(row))
-    
-    album_rows = data.get('album') or data.get('albums') or []
-    for row in album_rows if isinstance(album_rows, list) else []:
-        albums.append({
-            'id': str(row.get('album_id') or row.get('id') or ''),
-            'name': str(row.get('album_name') or row.get('name') or ''),
-            'cover': _format_image_url(str(row.get('album_pic') or row.get('cover') or '')),
-            'artist': str(row.get('artist_name') or row.get('artist') or ''),
-        })
-    
+    song_payload: dict[str, Any] = {}
+    artist_payload: dict[str, Any] = {}
+
+    async def load_songs() -> None:
+        nonlocal song_payload
+        song_payload = await _request_kugou('/search', {
+            'keywords': query,
+            'page': 1,
+            'pagesize': 50,
+            'type': 'song',
+        }, user_id=user_id)
+
+    async def load_artists() -> None:
+        nonlocal artist_payload
+        artist_payload = await _request_kugou('/search', {
+            'keywords': query,
+            'page': 1,
+            'pagesize': 12,
+            'type': 'author',
+        }, user_id=user_id)
+
+    async with anyio.create_task_group() as task_group:
+        task_group.start_soon(load_songs)
+        task_group.start_soon(load_artists)
+
+    song_data = song_payload.get('data') if isinstance(song_payload.get('data'), dict) else {}
+    song_rows = song_data.get('lists')
+    if not isinstance(song_rows, list):
+        song_rows = []
+
+    artist_data = artist_payload.get('data') if isinstance(artist_payload.get('data'), dict) else {}
+    artist_rows = artist_data.get('lists')
+    if not isinstance(artist_rows, list):
+        artist_rows = []
+
+    songs = [_normalize_track(row) for row in song_rows if isinstance(row, dict)]
+    artists = [_normalize_artist_search(row) for row in artist_rows if isinstance(row, dict)]
+    albums: list[dict[str, Any]] = []
+    seen_album_ids: set[str] = set()
+    for row in song_rows:
+        if not isinstance(row, dict):
+            continue
+        album = _normalize_album_from_track(row)
+        if not album['id'] or album['id'] in seen_album_ids:
+            continue
+        seen_album_ids.add(album['id'])
+        albums.append(album)
+        if len(albums) >= 12:
+            break
+
     return {
-        'songs': songs[:10],
-        'artists': artists[:6],
-        'albums': albums[:6],
+        'songs': songs[:50],
+        'artists': artists[:12],
+        'albums': albums[:12],
     }

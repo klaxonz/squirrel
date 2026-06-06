@@ -70,61 +70,67 @@ defineEmits<{
 
 <style scoped>
 .music-discovery-grid {
-  padding: 1rem;
+  padding: 1.5rem 2rem 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .music-tag-strip {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.375rem;
-  margin-bottom: 1rem;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .music-tag-chip {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-  border: 1px solid hsl(var(--border) / 0.4);
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1px solid hsl(var(--border) / 0.5);
   border-radius: 9999px;
   background: transparent;
   color: hsl(var(--muted-foreground));
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .music-tag-chip:hover {
   border-color: hsl(var(--primary) / 0.5);
   color: hsl(var(--foreground));
+  background: hsl(var(--muted) / 0.3);
 }
 
 .music-tag-chip--active {
-  background: hsl(var(--primary) / 0.1);
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.15) 0%, hsl(var(--primary) / 0.08) 100%);
   border-color: hsl(var(--primary) / 0.5);
   color: hsl(var(--primary));
+  box-shadow: 0 2px 8px hsl(var(--primary) / 0.15);
 }
 
 .music-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1.5rem;
 }
 
 .music-grid-card {
   display: flex;
   flex-direction: column;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .music-grid-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-6px);
 }
 
 .music-source-cover-wrap {
   position: relative;
   aspect-ratio: 1;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   overflow: hidden;
   background: hsl(var(--muted) / 0.3);
+  box-shadow: 0 4px 12px hsl(var(--foreground) / 0.06);
 }
 
 .music-source-cover {
@@ -134,6 +140,11 @@ defineEmits<{
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.music-grid-card:hover .music-source-cover {
+  transform: scale(1.08);
 }
 
 .music-source-play-overlay {
@@ -142,9 +153,9 @@ defineEmits<{
   display: flex;
   align-items: center;
   justify-content: center;
-  background: hsl(var(--foreground) / 0.3);
+  background: linear-gradient(180deg, transparent 0%, hsl(var(--foreground) / 0.6) 100%);
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.3s ease;
 }
 
 .music-grid-card:hover .music-source-play-overlay {
@@ -152,20 +163,24 @@ defineEmits<{
 }
 
 .music-grid-card-title {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-top: 0.75rem;
   color: hsl(var(--foreground));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding: 0 0.125rem;
 }
 
 .music-grid-card-subtitle {
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding: 0 0.125rem;
+  margin-top: 0.25rem;
+  font-weight: 500;
 }
 </style>

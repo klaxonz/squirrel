@@ -11,7 +11,10 @@
     </div>
 
     <!-- Navigation Groups -->
-    <nav class="flex-1 overflow-y-auto px-3 space-y-6 scrollbar-hide pb-4">
+    <nav
+      class="flex-1 overflow-y-auto px-3 space-y-6 scrollbar-hide"
+      :class="showSidebarMusicPlayer ? 'pb-20' : 'pb-4'"
+    >
       <div v-for="group in NAV_GROUPS" :key="group.key">
         <div class="px-2 mb-2 flex items-center justify-between">
           <span class="text-[11px] font-semibold tracking-wider text-muted-foreground/60 uppercase">
@@ -32,7 +35,17 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SidebarMenuItem from './SidebarMenuItem.vue'
 import { NAV_GROUPS, isNavigationItemActive } from '@/constants/sidebar'
+import { useMusicPlayerStore } from '@/stores/musicPlayer'
+
+const route = useRoute()
+const musicPlayerStore = useMusicPlayerStore()
+
+const showSidebarMusicPlayer = computed(() =>
+  route.name !== 'Music' && Boolean(musicPlayerStore.currentTrack && (musicPlayerStore.resolvingUrl || musicPlayerStore.audioSrc))
+)
 </script>

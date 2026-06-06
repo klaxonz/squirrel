@@ -9,6 +9,8 @@ import logging
 from typing import Any
 from urllib.parse import urljoin
 
+import anyio
+
 logger = logging.getLogger(__name__)
 
 
@@ -94,7 +96,7 @@ async def _effective_cookie(user_id: int | None = None) -> str:
 
 async def _get_user_cookie(user_id: int) -> str:
     from services import music_service
-    value = music_service.redis_client.get(_auth_redis_key(user_id))
+    value = await anyio.to_thread.run_sync(music_service.redis_client.get, _auth_redis_key(user_id))
     if isinstance(value, bytes):
         return value.decode('utf-8')
     return str(value or '')
