@@ -1,18 +1,9 @@
 import { computed } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import type { AppIconName } from '@/icons/app-icons'
-
-type VideoId = string | number
+import type { VideoId, VideoPageVideo } from '@/types/videoPlayback'
 
 type InteractionType = string | number | null
-
-type VideoLike = {
-  id?: VideoId
-  url?: string | null
-  interaction_type?: InteractionType
-  source?: string | null
-  [key: string]: unknown
-}
 
 type VideoAction = {
   key: string
@@ -37,20 +28,20 @@ export default function useVideoActionBar({
   handleAddToPlaylist,
   handlePlayRandom,
 }: {
-  video: Ref<VideoLike | null>
+  video: Ref<VideoPageVideo | null>
   interactionTypeLike: string | number
   interactionTypeDislike: string | number
   interactionTypeLater: string | number
   toggleLike: (videoId: VideoId, interactionType: string | number) => Promise<{ error?: unknown }>
   deleteInteraction: (videoId: VideoId) => Promise<{ error?: unknown }>
-  ensureLocalVideo?: (video: VideoLike) => Promise<VideoLike | null>
+  ensureLocalVideo?: (video: VideoPageVideo) => Promise<VideoPageVideo | null>
   handleAddToPlaylist: () => Promise<void>
   handlePlayRandom: () => Promise<void>
 }) {
   const currentInteractionType = computed(() => video.value?.interaction_type ?? null)
   const isLaterActionActive = computed(() => currentInteractionType.value === interactionTypeLater)
 
-  const updateVideoInteraction = async (targetVideo: VideoLike, nextInteractionType: string | number | null) => {
+  const updateVideoInteraction = async (targetVideo: VideoPageVideo, nextInteractionType: InteractionType) => {
     const localVideo = ensureLocalVideo && targetVideo.source === 'remote'
       ? await ensureLocalVideo(targetVideo)
       : targetVideo

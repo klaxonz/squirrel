@@ -1,15 +1,15 @@
-type VideoId = string | number
+import type { VideoId, VideoPageVideo } from '@/types/videoPlayback'
 
-type VideoSeed = {
+type VideoSeedInput = {
   id?: VideoId
 }
 
 const MAX_SEEDS = 20
-const playbackSeeds = new Map<string, VideoSeed>()
+const playbackSeeds = new Map<string, VideoPageVideo>()
 
 const normalizeVideoId = (videoId: VideoId | null | undefined) => String(videoId ?? '').trim()
 
-const cloneSeed = <T extends VideoSeed | null | undefined>(seed: T): T => {
+const cloneSeed = <T extends object | null | undefined>(seed: T): T => {
   if (!seed || typeof seed !== 'object') {
     return seed
   }
@@ -27,11 +27,11 @@ const trimSeeds = () => {
   }
 }
 
-export const rememberVideoPlaybackSeed = <T extends VideoSeed>(video: T | null | undefined) => {
+export const rememberVideoPlaybackSeed = <T extends VideoSeedInput>(video: T | null | undefined) => {
   const key = normalizeVideoId(video?.id)
   if (!key) return
 
-  playbackSeeds.set(key, cloneSeed(video) as VideoSeed)
+  playbackSeeds.set(key, cloneSeed(video) as unknown as VideoPageVideo)
   trimSeeds()
 }
 

@@ -30,14 +30,14 @@
               <div class="flex items-center gap-2 text-sm text-muted-foreground/60 font-medium">
                 <span>{{ videoPublishedText }}</span>
                 <span>·</span>
-                <span v-if="(video as any)?.site" class="inline-flex items-center uppercase tracking-wider text-[10px] bg-accent/50 text-muted-foreground px-1.5 py-px rounded font-bold leading-normal">{{ (video as any).site }}</span>
+                <span v-if="video.site" class="inline-flex items-center uppercase tracking-wider text-[10px] bg-accent/50 text-muted-foreground px-1.5 py-px rounded font-bold leading-normal">{{ video.site }}</span>
               </div>
             </div>
             
             <div class="flex flex-wrap items-center justify-between gap-4 py-1">
               <div class="flex items-center gap-6">
                 <div v-if="primarySubscription" class="flex items-center gap-3 group cursor-pointer" @click="openChannelDetail(primarySubscription)">
-                  <SubscriptionAvatar :src="primarySubscription.avatar" :name="primarySubscription.name" size="xl" />
+                  <SubscriptionAvatar :src="primarySubscription.avatar" :name="primarySubscription.name || ''" size="xl" />
                   <div class="flex flex-col -space-y-0.5">
                     <span class="font-bold text-[15px] group-hover:text-primary transition-colors tracking-tight">{{ primarySubscription.name }}</span>
                     <span class="text-[12px] text-muted-foreground/60 font-medium">{{ primarySubscription.total_videos || 0 }} 项视频</span>
@@ -95,8 +95,8 @@
                         {{ action.label }}
                       </button>
                       <a
-                        v-if="(video as any)?.url"
-                        :href="(video as any).url"
+                        v-if="video.url"
+                        :href="video.url"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] font-medium text-foreground/80 hover:bg-accent transition-colors"
@@ -120,7 +120,7 @@
                   class="inline-flex h-8 shrink-0 items-center gap-2 rounded-full bg-accent/35 px-2.5 text-[12px] font-semibold text-foreground/85 ring-1 ring-border/20 transition-colors hover:bg-accent/55"
                   @click="openChannelDetail(actor)"
                 >
-                  <SubscriptionAvatar :src="actor.avatar" :name="actor.name" size="xs" />
+                  <SubscriptionAvatar :src="actor.avatar" :name="actor.name || ''" size="xs" />
                   <span class="truncate max-w-[120px]">{{ actor.name }}</span>
                 </button>
               </div>
@@ -206,15 +206,15 @@
                 </div>
               </div>
               <div v-else-if="relatedVideos.length" class="space-y-2">
-                <article v-for="related in relatedVideos" :key="related.id" class="flex gap-3 group cursor-pointer rounded-lg p-1.5 -mx-1.5 hover:bg-accent/40 transition-colors" @click="goToVideo(related.id, related)">
+                <article v-for="related in relatedVideos" :key="related.id" class="flex gap-3 group cursor-pointer rounded-lg p-1.5 -mx-1.5 hover:bg-accent/40 transition-colors" @click="related.id != null && goToVideo(related.id, related)">
                   <div class="relative w-40 aspect-video shrink-0 overflow-hidden rounded-md bg-muted">
                     <VideoThumbnail v-if="related.thumbnail" :src="(related.thumbnail as string)" fit="contain" />
                     <span v-if="related.duration" class="absolute bottom-1 right-1 inline-flex h-[18px] items-center rounded-[4px] bg-black/70 px-1 text-[10px] font-semibold text-white tabular-nums">{{ formatDuration(related.duration as number) }}</span>
                   </div>
                   <div class="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
                     <h4 class="text-[13px] font-semibold line-clamp-2 leading-[1.35] group-hover:text-primary transition-colors text-foreground/85">{{ related.title }}</h4>
-                    <p class="text-[11px] text-muted-foreground/55 font-medium truncate">{{ (related as any).subscriptions?.[0]?.name || (related as any).site || '' }}</p>
-                    <p class="text-[10px] text-muted-foreground/35 font-medium">{{ formatDate((related as any).uploaded_at) }}</p>
+                    <p class="text-[11px] text-muted-foreground/55 font-medium truncate">{{ related.subscriptions?.[0]?.name || related.site || '' }}</p>
+                    <p class="text-[10px] text-muted-foreground/35 font-medium">{{ formatDate(related.uploaded_at) }}</p>
                   </div>
                 </article>
               </div>
@@ -268,6 +268,7 @@ import { formatDate, formatDuration } from '../utils/dateFormat'
 import useVideoInteraction from '../composables/useVideoInteraction'
 import usePlaylist from '../composables/usePlaylist'
 import { getSubscriptionStatus, saveRemoteVideo, subscribe, unsubscribe } from '@/api'
+import type { ApiResult, VideoPageVideo, VideoProfile } from '@/types/videoPlayback'
 
 const route = useRoute()
 const router = useRouter()
@@ -296,7 +297,7 @@ const {
   externalError,
   isResolvingPlayback,
   hydratePlaybackState,
-} = usePlaybackOrchestrator(initialPlaybackSeed as any)
+} = usePlaybackOrchestrator(initialPlaybackSeed)
 
 const { sendReport } = useVideoHistory()
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction()
@@ -306,10 +307,10 @@ const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate, flushPending
 
 const { goToVideo, handleAutoplayNext, handlePrevVideoFromPlaylist, handleNextVideoFromPlaylist } = useVideoPageNavigation({
   route, router, video, relatedVideos, 
-  goToPrev: goToPrev as any, 
-  goToNext: goToNext as any, 
-  onVideoEnded: onVideoEnded as any
-} as any)
+  goToPrev,
+  goToNext,
+  onVideoEnded,
+})
 
 const asideTab = ref('related')
 const asideTabs = [
@@ -326,10 +327,10 @@ const isSubscribed = ref(false)
 const isSubscribing = ref(false)
 const subscriptionId = ref<number | null>(null)
 let descriptionResizeObserver: ResizeObserver | null = null
-const remoteSaveByUrl = new Map<string, Promise<any>>()
+const remoteSaveByUrl = new Map<string, Promise<VideoPageVideo | null>>()
 let javdbMetadataRequestSeq = 0
 
-const ensureLocalVideo = async (targetVideo: any) => {
+const ensureLocalVideo = async (targetVideo: VideoPageVideo | null): Promise<VideoPageVideo | null> => {
   if (!targetVideo || targetVideo.source !== 'remote') return targetVideo
 
   const url = String(targetVideo.url || '').trim()
@@ -348,7 +349,7 @@ const ensureLocalVideo = async (targetVideo: any) => {
       description: targetVideo.description || undefined,
       subscriptions: Array.isArray(targetVideo.subscriptions) ? targetVideo.subscriptions : [],
       actors: Array.isArray(targetVideo.actors) ? targetVideo.actors : [],
-    }).then(({ data, error }: any) => {
+    }).then(({ data, error }: ApiResult<VideoPageVideo>) => {
       if (error || !data?.id) return null
       return data
     })
@@ -358,17 +359,17 @@ const ensureLocalVideo = async (targetVideo: any) => {
   const savedVideo = await savePromise
   if (!savedVideo?.id) return null
 
-  if (video.value && String((video.value as any).url || '') === url) {
+  if (video.value && String(video.value.url || '') === url) {
     video.value = {
-      ...(video.value as any),
+      ...video.value,
       id: String(savedVideo.id),
-      interaction_type: savedVideo.interaction_type ?? (video.value as any).interaction_type ?? null,
-      last_position: savedVideo.last_position ?? (video.value as any).last_position,
-      clip_markers: savedVideo.clip_markers ?? (video.value as any).clip_markers,
+      interaction_type: savedVideo.interaction_type ?? video.value.interaction_type ?? null,
+      last_position: savedVideo.last_position ?? video.value.last_position,
+      clip_markers: savedVideo.clip_markers ?? video.value.clip_markers,
       source: 'local',
-      site: (video.value as any).site || savedVideo.site,
+      site: video.value.site || savedVideo.site,
       url,
-    } as any
+    }
     if (String(route.params.videoId || '') !== String(savedVideo.id)) {
       await router.replace({ name: 'VideoPlay', params: { videoId: savedVideo.id } })
     }
@@ -378,12 +379,12 @@ const ensureLocalVideo = async (targetVideo: any) => {
 }
 
 watch(() => {
-  const currentVideo = video.value as any
+  const currentVideo = video.value
   if (currentVideo?.source !== 'remote') return ''
   return String(currentVideo.url || '').trim()
 }, async (url) => {
   if (!url) return
-  await ensureLocalVideo(video.value as any)
+  await ensureLocalVideo(video.value)
 }, { immediate: true })
 
 const moreMenuOpen = ref(false)
@@ -436,12 +437,12 @@ const { videoActions, videoOverflowActions, handleVideoAction } = useVideoAction
   interactionTypeLike: INTERACTION_TYPE.LIKE,
   interactionTypeDislike: INTERACTION_TYPE.DISLIKE,
   interactionTypeLater: INTERACTION_TYPE.LATER,
-  toggleLike: (id: any, type: any) => toggleLike(id, type as any) as any, 
-  deleteInteraction: deleteInteraction as any, 
-  ensureLocalVideo: ensureLocalVideo as any,
-  handleAddToPlaylist: () => Promise.resolve() as any,
-  handlePlayRandom: () => Promise.resolve() as any
-} as any)
+  toggleLike: (id, type) => toggleLike(id, Number(type)),
+  deleteInteraction,
+  ensureLocalVideo,
+  handleAddToPlaylist: async () => {},
+  handlePlayRandom: async () => {},
+})
 
 const { handlePlaybackTimeUpdate, handleClipMarkerSeek, handleClipMarkersUpdated } = useVideoClipMarkers({
   video,
@@ -449,7 +450,7 @@ const { handlePlaybackTimeUpdate, handleClipMarkerSeek, handleClipMarkersUpdated
     if (await seekGlobalVideoPlayer(t)) await playGlobalVideoPlayer()
     focusGlobalVideoPlayer()
   }
-} as any)
+})
 
 const handleVideoTimeUpdate = (currentTime: number) => {
   onVideoTimeUpdate(currentTime)
@@ -458,17 +459,17 @@ const handleVideoTimeUpdate = (currentTime: number) => {
 
 const videoPublishedText = computed(() => {
   const d = video.value?.publish_date || video.value?.uploaded_at
-  return d ? formatDate(d as any) : ''
+  return d ? formatDate(d) : ''
 })
 
-const videoDescription = computed(() => String((video.value as any)?.description || '').trim())
-const isRemoteVideo = computed(() => (video.value as any)?.source === 'remote')
+const videoDescription = computed(() => String(video.value?.description || '').trim())
+const isRemoteVideo = computed(() => video.value?.source === 'remote')
 const videoActors = computed(() => {
-  const actors = (video.value as any)?.actors
+  const actors = video.value?.actors
   if (!Array.isArray(actors)) return []
   return actors
-    .filter((actor: any) => String(actor?.name || '').trim())
-    .map((actor: any) => ({
+    .filter((actor) => String(actor?.name || '').trim())
+    .map((actor) => ({
       ...actor,
       name: String(actor.name || '').trim(),
       url: String(actor.url || '').trim(),
@@ -476,7 +477,7 @@ const videoActors = computed(() => {
     }))
 })
 const shouldResolveJavdbMetadata = computed(() => {
-  const v = video.value as any
+  const v = video.value
   const url = String(v?.url || '').trim()
   return !!v && url.includes('javdb.com/') && videoActors.value.length === 0 && window.desktopApp?.isDesktop === true
 })
@@ -506,7 +507,7 @@ watch(videoDescription, () => {
 watch(shouldResolveJavdbMetadata, async (shouldResolve) => {
   if (!shouldResolve || typeof window.desktopApp?.resolveJavdbMetadata !== 'function') return
 
-  const snapshot = video.value as any
+  const snapshot = video.value
   const url = String(snapshot?.url || '').trim()
   if (!url) return
 
@@ -514,11 +515,11 @@ watch(shouldResolveJavdbMetadata, async (shouldResolve) => {
   try {
     const metadata = await window.desktopApp.resolveJavdbMetadata(url)
     if (requestSeq !== javdbMetadataRequestSeq) return
-    const current = video.value as any
+    const current = video.value
     if (!current || String(current.url || '') !== url) return
-    const mergedVideo = mergeVideoMetadata(current, metadata as any, url)
+    const mergedVideo = mergeVideoMetadata(current, metadata as Record<string, unknown>, url)
     if (mergedVideo) {
-      video.value = mergedVideo as any
+      video.value = mergedVideo
     }
   } catch {
     // Metadata enrichment must not block playback.
@@ -540,18 +541,18 @@ watch(descriptionTextRef, (el) => {
 })
 
 const primarySubscription = computed(() => {
-  const v = video.value as any
+  const v = video.value
   if (!v) return null
   return v.subscriptions?.[0] || v.actors?.[0] || null
 })
 
 const displayedVideoActors = computed(() => {
-  const primary = primarySubscription.value as any
+  const primary = primarySubscription.value
   const primaryUrl = String(primary?.url || '').trim().toLowerCase()
   const primaryId = primary?.id != null ? String(primary.id).trim() : ''
   const primaryName = String(primary?.name || '').trim().toLowerCase()
 
-  return videoActors.value.filter((actor: any) => {
+  return videoActors.value.filter((actor) => {
     const actorUrl = String(actor?.url || '').trim().toLowerCase()
     if (primaryUrl && actorUrl && actorUrl === primaryUrl) return false
 
@@ -563,7 +564,7 @@ const displayedVideoActors = computed(() => {
   })
 })
 
-const primarySubscriptionUrl = computed(() => String((primarySubscription.value as any)?.url || '').trim())
+const primarySubscriptionUrl = computed(() => String(primarySubscription.value?.url || '').trim())
 
 const subscriptionButtonText = computed(() => {
   if (isCheckingSubscription.value) return '检查中'
@@ -624,25 +625,25 @@ const {
   hasPrevVideo: ref(false), hasNextVideo: ref(false),
   externalError, isResolvingPlayback, effectiveTheme, relatedVideos, loadingRelated,
   hasPrev: ref(false), hasNext: ref(false),
-  globalVideoPlayerSession: globalVideoPlayerSession as any, 
-  activateGlobalVideoPlayerSession: activateGlobalVideoPlayerSession as any, 
-  clearGlobalVideoPlayerSession: clearGlobalVideoPlayerSession as any,
-  registerGlobalVideoPlayerTarget: registerGlobalVideoPlayerTarget as any, 
-  unregisterGlobalVideoPlayerTarget: unregisterGlobalVideoPlayerTarget as any,
-  focusGlobalVideoPlayer, hydratePlaybackState: hydratePlaybackState as any, 
-  loadAndPlayById: loadAndPlayById as any,
-  consumePlaybackSeed: (id: any) => consumeVideoPlaybackSeed(id as string),
-  onVideoPlay, onVideoPause, handleAutoplayNext: handleAutoplayNext as any, 
+  globalVideoPlayerSession,
+  activateGlobalVideoPlayerSession,
+  clearGlobalVideoPlayerSession,
+  registerGlobalVideoPlayerTarget,
+  unregisterGlobalVideoPlayerTarget,
+  focusGlobalVideoPlayer, hydratePlaybackState,
+  loadAndPlayById,
+  consumePlaybackSeed: (id: unknown) => consumeVideoPlaybackSeed(String(id || '')),
+  onVideoPlay, onVideoPause, handleAutoplayNext,
   handlePlaybackTimeUpdate: handleVideoTimeUpdate,
-  handlePrevVideoFromPlaylist: handlePrevVideoFromPlaylist as any, 
-  handleNextVideoFromPlaylist: handleNextVideoFromPlaylist as any,
+  handlePrevVideoFromPlaylist,
+  handleNextVideoFromPlaylist,
   handlePlayerRetry: () => {
-    if (video.value?.id) (loadAndPlayById as any)(video.value.id, video.value, { forceRefresh: true })
+    if (video.value?.id) void loadAndPlayById(video.value.id, video.value, { forceRefresh: true })
   },
-  handleClipMarkerSeek: handleClipMarkerSeek as any, 
-  handleClipMarkersUpdated: handleClipMarkersUpdated as any, 
+  handleClipMarkerSeek,
+  handleClipMarkersUpdated,
   flushPendingReport
-} as any)
+})
 
 const resolveRemoteChannelSite = (url: string) => {
   let parsedUrl: URL
@@ -664,7 +665,7 @@ const resolveRemoteChannelSite = (url: string) => {
   return ''
 }
 
-const openChannelDetail = async (profile: any) => {
+const openChannelDetail = async (profile: VideoProfile) => {
   const url = String(profile?.url || '').trim()
   const remoteSite = resolveRemoteChannelSite(url)
 

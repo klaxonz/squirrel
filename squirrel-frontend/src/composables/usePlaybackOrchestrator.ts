@@ -5,15 +5,9 @@ import useVideoOperations from './useVideoOperations'
 import { Logger } from '@/utils/logger'
 import type { MediaSource } from '@/components/video-player/core'
 import type { SubtitleTrack } from '@/components/video-player/plugins/subtitles'
+import type { VideoId, VideoPageVideo, VideoProfile } from '@/types/videoPlayback'
 
-type VideoId = string | number
-
-type VideoLike = {
-  id: VideoId
-  [key: string]: unknown
-}
-
-type ExternalErrorState = {
+export type ExternalErrorState = {
   code: string
   title: string
   message: string
@@ -22,12 +16,12 @@ type ExternalErrorState = {
 
 type PlayOptions = Record<string, unknown>
 
-const toRecord = (value: unknown): Record<string, any> => {
-  if (value && typeof value === 'object') return value as Record<string, any>
+const toRecord = (value: unknown): Record<string, unknown> => {
+  if (value && typeof value === 'object') return value as Record<string, unknown>
   return {}
 }
 
-const actorKey = (actor: Record<string, any>) => {
+const actorKey = (actor: VideoProfile) => {
   const url = String(actor.url || '').trim().toLowerCase()
   if (url) return `url:${url}`
   const id = String(actor.id || '').trim()
@@ -36,19 +30,19 @@ const actorKey = (actor: Record<string, any>) => {
   return name ? `name:${name}` : ''
 }
 
-const mergeActor = (currentActor: Record<string, any>, nextActor: Record<string, any>) => {
-  const merged = { ...currentActor }
+const mergeActor = (currentActor: VideoProfile, nextActor: VideoProfile) => {
+  const merged: Record<string, unknown> = { ...currentActor }
   for (const [key, value] of Object.entries(nextActor)) {
     if (value != null && value !== '' && (merged[key] == null || merged[key] === '')) {
       merged[key] = value
     }
   }
-  return merged
+  return merged as VideoProfile
 }
 
-const mergeActors = (currentActors: unknown, nextActors: Record<string, any>[]) => {
+const mergeActors = (currentActors: unknown, nextActors: VideoProfile[]) => {
   const mergedActors = Array.isArray(currentActors)
-    ? currentActors.map((actor) => ({ ...toRecord(actor) }))
+    ? currentActors.map((actor) => ({ ...toRecord(actor) } as VideoProfile))
     : []
   const indexByKey = new Map<string, number>()
 
@@ -71,32 +65,38 @@ const mergeActors = (currentActors: unknown, nextActors: Record<string, any>[]) 
   return mergedActors
 }
 
-export const mergeVideoMetadata = (currentVideo: VideoLike | null, videoMetadata: Record<string, any>, sourceUrl = '') => {
+export const mergeVideoMetadata = (currentVideo: VideoPageVideo | null, videoMetadata: Record<string, unknown>, sourceUrl = '') => {
   if (!currentVideo || !videoMetadata || Object.keys(videoMetadata).length === 0) return currentVideo
 
-  const currentUrl = String((currentVideo as any).url || '')
+  const currentUrl = String(currentVideo.url || '')
   if (sourceUrl && currentUrl && sourceUrl !== currentUrl) return currentVideo
 
-  const nextVideo: Record<string, any> = { ...currentVideo }
-  for (const key of ['title', 'thumbnail', 'publish_date', 'duration']) {
-    const value = videoMetadata[key]
-    if (value != null && value !== '') {
-      nextVideo[key] = value
-    }
+  const nextVideo: VideoPageVideo = { ...currentVideo }
+  if (typeof videoMetadata.title === 'string' && videoMetadata.title) {
+    nextVideo.title = videoMetadata.title
+  }
+  if (typeof videoMetadata.thumbnail === 'string' && videoMetadata.thumbnail) {
+    nextVideo.thumbnail = videoMetadata.thumbnail
+  }
+  if (typeof videoMetadata.publish_date === 'string' && videoMetadata.publish_date) {
+    nextVideo.publish_date = videoMetadata.publish_date
+  }
+  if (typeof videoMetadata.duration === 'number') {
+    nextVideo.duration = videoMetadata.duration
   }
 
   if (Array.isArray(videoMetadata.actors) && videoMetadata.actors.length > 0) {
-    nextVideo.actors = mergeActors(nextVideo.actors, videoMetadata.actors.map((actor) => toRecord(actor)))
+    nextVideo.actors = mergeActors(nextVideo.actors, videoMetadata.actors.map((actor) => toRecord(actor) as VideoProfile))
   }
 
   if (Array.isArray(videoMetadata.subscriptions) && videoMetadata.subscriptions.length > 0) {
-    nextVideo.subscriptions = mergeActors(nextVideo.subscriptions, videoMetadata.subscriptions.map((subscription) => toRecord(subscription)))
+    nextVideo.subscriptions = mergeActors(nextVideo.subscriptions, videoMetadata.subscriptions.map((subscription) => toRecord(subscription) as VideoProfile))
   }
 
-  return nextVideo as VideoLike
+  return nextVideo
 }
 
-const mergePlaybackMetadata = (currentVideo: VideoLike | null, playbackMetadata: Record<string, any>) => {
+const mergePlaybackMetadata = (currentVideo: VideoPageVideo | null, playbackMetadata: Record<string, unknown>) => {
   return mergeVideoMetadata(currentVideo, toRecord(playbackMetadata.video), String(playbackMetadata.source_url || ''))
 }
 
@@ -112,7 +112,7 @@ const isDesktopPlaybackClient = () => {
   return /electron|tauri/i.test(String(navigator.userAgent || ''))
 }
 
-export default function usePlaybackOrchestrator(initialVideo: VideoLike | null = null) {
+export default function usePlaybackOrchestrator(initialVideo: VideoPageVideo | null = null) {
   const { video, startTime, fetchVideoDetails, maybeInjectSubtitles, setVideoSnapshot } = useVideoDetail(initialVideo)
   const { relatedVideos, loadingRelated, fetchRelatedVideos, setRelatedVideosSnapshot } = useRelatedVideos(video)
   const { getPlaybackSource } = useVideoOperations()
@@ -124,7 +124,7 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
 
   const loadAndPlayById = async (
     videoId: VideoId,
-    initialVideoData: VideoLike | null = null,
+    initialVideoData: VideoPageVideo | null = null,
     options: PlayOptions = {}
   ) => {
     if (!videoId) return
@@ -139,33 +139,33 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
     playbackSource.value = null
     subtitleTracks.value = []
 
-    const currentVideoId = video.value && (video.value as any).id != null ? String((video.value as any).id) : ''
+    const currentVideoId = video.value?.id != null ? String(video.value.id) : ''
     const targetVideoId = String(videoId)
 
     if (initialVideoData && initialVideoData.id === videoId) {
-      setVideoSnapshot(initialVideoData as any)
+      setVideoSnapshot(initialVideoData)
     }
     if (!initialVideoData && currentVideoId && currentVideoId !== targetVideoId) {
       setVideoSnapshot(null)
     }
 
-    const hasInitialData = !!video.value && (video.value as any).id === videoId
+    const hasInitialData = !!video.value && video.value.id === videoId
     const detailPromise = !hasInitialData
-      ? fetchVideoDetails(videoId as any).catch((e) => {
+      ? fetchVideoDetails(videoId).catch((e) => {
           Logger.error('[usePlaybackOrchestrator] fetchVideoDetails error', e)
           return null
         })
-      : fetchVideoDetails(videoId as any).catch((e) => {
+      : fetchVideoDetails(videoId).catch((e) => {
           Logger.error('[usePlaybackOrchestrator] fetchVideoDetails error', e)
           return null
         })
     const playbackPromise = (async () => {
       const initialPlaybackVideo = (() => {
-        if (initialVideoData && typeof (initialVideoData as any).url === 'string') {
+        if (initialVideoData && typeof initialVideoData.url === 'string') {
           return initialVideoData
         }
-        if (hasInitialData && typeof (video.value as any)?.url === 'string') {
-          return video.value as any
+        if (hasInitialData && typeof video.value?.url === 'string') {
+          return video.value
         }
         return null
       })()
@@ -176,8 +176,8 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
 
       if (isDesktopPlaybackClient()) {
         const detailedVideo = await detailPromise
-        if (detailedVideo && typeof (detailedVideo as any).url === 'string') {
-          return getPlaybackSource(videoId, options, detailedVideo as any)
+        if (detailedVideo && typeof detailedVideo.url === 'string') {
+          return getPlaybackSource(videoId, options, detailedVideo)
         }
       }
 
@@ -190,10 +190,10 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
       })
       if (seq !== requestSeq.value) return
 
-      maybeInjectSubtitles(videoId as any).catch((e) =>
+      maybeInjectSubtitles(videoId).catch((e) =>
         Logger.error('[usePlaybackOrchestrator] maybeInjectSubtitles error', e)
       )
-      fetchRelatedVideos(videoId as any).catch((e) =>
+      fetchRelatedVideos(videoId).catch((e) =>
         Logger.error('[usePlaybackOrchestrator] fetchRelatedVideos error', e)
       )
     })
@@ -203,14 +203,15 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
       await detailPromise
       if (seq !== requestSeq.value) return
 
-      const v: any = video.value || initialVideoData || {}
-      const mergedVideo = mergePlaybackMetadata(v, toRecord((source as any).metadata))
+      const v = video.value || initialVideoData || null
+      const sourceMetadata = 'metadata' in source ? source.metadata : undefined
+      const mergedVideo = mergePlaybackMetadata(v, toRecord(sourceMetadata))
       if (mergedVideo && mergedVideo !== video.value) {
         setVideoSnapshot(mergedVideo)
       }
       playbackSource.value = {
         ...source,
-        title: source.title || (mergedVideo as any)?.title || v.title,
+        title: source.title || mergedVideo?.title || v?.title || '',
       }
 
       Logger.debug('[usePlaybackOrchestrator] playbackSource ready', {
@@ -256,7 +257,7 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
         language,
         url,
         content,
-        default: isDefault || (!subtitles.some((x: any) => toRecord(x).default === true) && i === 0),
+        default: isDefault || (!subtitles.some((x) => toRecord(x).default === true) && i === 0),
       }
     })
   }
@@ -270,12 +271,12 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
     nextRelatedVideos = [],
     nextLoadingRelated = false,
   }: {
-    videoSnapshot?: VideoLike | null
+    videoSnapshot?: VideoPageVideo | null
     nextPlaybackSource?: MediaSource | null
     nextSubtitleTracks?: SubtitleTrack[]
     nextExternalError?: ExternalErrorState | null
     nextIsResolvingPlayback?: boolean
-    nextRelatedVideos?: VideoLike[]
+    nextRelatedVideos?: VideoPageVideo[]
     nextLoadingRelated?: boolean
   } = {}) => {
     requestSeq.value += 1
@@ -284,11 +285,11 @@ export default function usePlaybackOrchestrator(initialVideo: VideoLike | null =
     subtitleTracks.value = Array.isArray(nextSubtitleTracks) ? [...nextSubtitleTracks] : []
     externalError.value = nextExternalError
     isResolvingPlayback.value = !!nextIsResolvingPlayback
-    setRelatedVideosSnapshot(nextRelatedVideos as any[], nextLoadingRelated)
+    setRelatedVideosSnapshot(nextRelatedVideos, nextLoadingRelated)
   }
 
   watch(
-    () => toRecord(video.value as any)?.subtitles,
+    () => video.value?.subtitles,
     (subtitles) => {
       subtitleTracks.value = toSubtitleTracks(subtitles)
     },

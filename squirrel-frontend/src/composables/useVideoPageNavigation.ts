@@ -4,21 +4,13 @@ import type { RouteLocationNormalizedLoaded, Router } from 'vue-router'
 
 import { getRandomVideo } from '@/api'
 import { rememberVideoPlaybackSeed } from './videoPlaybackSeed'
-
-type VideoId = string | number
-
-type VideoLike = {
-  id?: VideoId
-  title?: string
-  thumbnail?: string
-  [key: string]: unknown
-}
+import type { VideoId, VideoPageVideo } from '@/types/videoPlayback'
 
 type RouteLike = Pick<RouteLocationNormalizedLoaded, 'params'>
 
-type GoToAdjacentVideo = () => VideoLike | null | undefined
-type OnVideoEnded = () => void
-type NavigateToVideo = (id: VideoId, videoData?: VideoLike | null) => Promise<void>
+type GoToAdjacentVideo = () => VideoPageVideo | null | undefined
+type OnVideoEnded = () => void | Promise<void>
+type NavigateToVideo = (id: VideoId, videoData?: VideoPageVideo | null) => Promise<void>
 
 const RECENTLY_PLAYED_LIMIT = 5
 
@@ -33,8 +25,8 @@ export default function useVideoPageNavigation({
 }: {
   route: RouteLike
   router: Router
-  video: Ref<VideoLike | null>
-  relatedVideos: Ref<VideoLike[]>
+  video: Ref<VideoPageVideo | null>
+  relatedVideos: Ref<VideoPageVideo[]>
   goToPrev: GoToAdjacentVideo
   goToNext: GoToAdjacentVideo
   onVideoEnded: OnVideoEnded
@@ -138,7 +130,7 @@ export default function useVideoPageNavigation({
 
   const handleAutoplayNext = async (event?: { autoplay?: boolean; autoplayNext?: boolean; loop?: boolean }) => {
     try {
-      onVideoEnded()
+      await onVideoEnded()
 
       const autoplayEnabled = event?.autoplay ?? true
       const autoplayNextEnabled = event?.autoplayNext ?? true

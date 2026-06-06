@@ -2,19 +2,13 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Ref } from 'vue'
 
 import { Logger } from '@/utils/logger'
+import type { ClipMarker, VideoId, VideoPageVideo, VideoProfile } from '@/types/videoPlayback'
+import type { MediaSource } from '@/components/video-player/core'
+import type { SubtitleTrack } from '@/components/video-player/plugins/subtitles'
+import type { ExternalErrorState } from './usePlaybackOrchestrator'
 
-type VideoId = string | number
-
-type VideoLike = {
-  id?: VideoId
-  title?: string
-  [key: string]: unknown
-}
-
-type PlaybackSourceLike = Record<string, unknown> | null
-type ClipMarkerLike = Record<string, unknown>
-type RelatedVideoLike = Record<string, unknown>
-type VideoSeedGetter = (videoId: unknown) => VideoLike | null
+type PlaybackSourceLike = MediaSource | null
+type VideoSeedGetter = (videoId: unknown) => VideoPageVideo | null
 
 type RouteLike = {
   params: Record<string, unknown>
@@ -24,11 +18,11 @@ type GlobalPlaybackSessionLike = {
   currentVideoId?: string | number | null
   source?: PlaybackSourceLike
   uploader?: string
-  externalError?: unknown
+  externalError?: ExternalErrorState | null
   externalLoading?: boolean
-  videoSnapshot?: VideoLike | null
-  subtitles?: unknown[]
-  relatedVideos?: RelatedVideoLike[]
+  videoSnapshot?: VideoPageVideo | null
+  subtitles?: SubtitleTrack[]
+  relatedVideos?: VideoPageVideo[]
   loadingRelated?: boolean
   pictureInPicture?: boolean
 }
@@ -36,21 +30,21 @@ type GlobalPlaybackSessionLike = {
 type ActivateSessionPayload = {
   target: HTMLElement | null
   source: PlaybackSourceLike
-  subtitles: unknown[]
-  clipMarkers: ClipMarkerLike[]
+  subtitles: SubtitleTrack[]
+  clipMarkers: ClipMarker[]
   title: string
   uploader: string
   initialTime: number | null | undefined
   hasPrev: boolean
   hasNext: boolean
-  externalError: unknown
+  externalError: ExternalErrorState | null
   widescreen: boolean
   externalLoading: boolean
   adapter: unknown
   theme: unknown
   currentVideoId: string
-  videoSnapshot: VideoLike | null
-  relatedVideos: RelatedVideoLike[]
+  videoSnapshot: VideoPageVideo | null
+  relatedVideos: VideoPageVideo[]
   loadingRelated: boolean
   handlers: {
     onPlay: (() => void) | null
@@ -62,7 +56,7 @@ type ActivateSessionPayload = {
     onRetry: (() => void | Promise<void>) | null
     onWidescreenChange: ((enabled: boolean) => void) | null
     onClipMarkerSelect: ((time: number) => void | Promise<void>) | null
-    onClipMarkersUpdated: ((markers: ClipMarkerLike[]) => void) | null
+    onClipMarkersUpdated: ((markers: ClipMarker[]) => void) | null
   }
 }
 
@@ -107,17 +101,17 @@ export default function useVideoPlaybackShell({
 }: {
   route: RouteLike
   playerAdapter: unknown
-  video: Ref<VideoLike | null>
+  video: Ref<VideoPageVideo | null>
   playbackSource: Ref<PlaybackSourceLike>
-  subtitleTracks: Ref<unknown[]>
+  subtitleTracks: Ref<SubtitleTrack[]>
   resolvedInitialTime: Ref<number | null | undefined>
-  clipMarkers: Ref<ClipMarkerLike[]>
+  clipMarkers: Ref<ClipMarker[]>
   hasPrevVideo: Ref<boolean>
   hasNextVideo: Ref<boolean>
-  externalError: Ref<unknown>
+  externalError: Ref<ExternalErrorState | null>
   isResolvingPlayback: Ref<boolean>
   effectiveTheme: Ref<unknown>
-  relatedVideos: Ref<RelatedVideoLike[]>
+  relatedVideos: Ref<VideoPageVideo[]>
   loadingRelated: Ref<boolean>
   hasPrev: Ref<boolean>
   hasNext: Ref<boolean>
@@ -125,18 +119,18 @@ export default function useVideoPlaybackShell({
   activateGlobalVideoPlayerSession: (payload: ActivateSessionPayload) => void
   clearGlobalVideoPlayerSession: () => void
   registerGlobalVideoPlayerTarget: (target: HTMLElement) => void
-  unregisterGlobalVideoPlayerTarget: (target?: HTMLElement | null) => void
+  unregisterGlobalVideoPlayerTarget: () => void
   focusGlobalVideoPlayer: () => Promise<void>
   hydratePlaybackState: (payload: {
-    videoSnapshot: VideoLike | null
+    videoSnapshot: VideoPageVideo | null
     nextPlaybackSource: PlaybackSourceLike
-    nextSubtitleTracks: unknown[]
-    nextExternalError: unknown
+    nextSubtitleTracks: SubtitleTrack[]
+    nextExternalError: ExternalErrorState | null
     nextIsResolvingPlayback: boolean | undefined
-    nextRelatedVideos: RelatedVideoLike[]
+    nextRelatedVideos: VideoPageVideo[]
     nextLoadingRelated: boolean | undefined
   }) => void
-  loadAndPlayById: (videoId: unknown, initialVideoData?: VideoLike | null) => Promise<void>
+  loadAndPlayById: (videoId: VideoId, initialVideoData?: VideoPageVideo | null, options?: Record<string, unknown>) => Promise<void>
   consumePlaybackSeed: VideoSeedGetter
   onVideoPlay: () => void
   onVideoPause: () => void
@@ -146,7 +140,7 @@ export default function useVideoPlaybackShell({
   handleNextVideoFromPlaylist: () => void | Promise<void>
   handlePlayerRetry: () => void | Promise<void>
   handleClipMarkerSeek: (time: number) => void | Promise<void>
-  handleClipMarkersUpdated: (markers: ClipMarkerLike[]) => void
+  handleClipMarkersUpdated: (markers: ClipMarker[]) => void
   flushPendingReport: () => Promise<void>
 }) {
   const uiStore = useUIStore()
@@ -182,9 +176,9 @@ export default function useVideoPlaybackShell({
     return String(globalVideoPlayerSession.currentVideoId || '') === String(videoId || '')
   }
 
-  const hasJavdbActors = (videoSnapshot: VideoLike | null | undefined) => {
+  const hasJavdbActors = (videoSnapshot: VideoPageVideo | null | undefined) => {
     const actors = videoSnapshot?.actors
-    return Array.isArray(actors) && actors.some((actor: any) => String(actor?.name || '').trim())
+    return Array.isArray(actors) && actors.some((actor) => String(actor?.name || '').trim())
   }
 
   const shouldRefreshJavdbSession = () => {
@@ -275,13 +269,13 @@ export default function useVideoPlaybackShell({
       nextPlaylistPrev,
       nextPlaylistNext,
     ]) => {
-      const primaryProfile = Array.isArray((nextVideo as any)?.subscriptions)
-        ? (nextVideo as any).subscriptions[0]
-        : (Array.isArray((nextVideo as any)?.actors) ? (nextVideo as any).actors[0] : null)
+      const primaryProfile: VideoProfile | null = Array.isArray(nextVideo?.subscriptions)
+        ? nextVideo.subscriptions[0] || null
+        : (Array.isArray(nextVideo?.actors) ? nextVideo.actors[0] || null : null)
       const nextUploader = String(
         primaryProfile?.name
-        || (nextVideo as any)?.uploader
-        || (nextVideo as any)?.uploader_name
+        || nextVideo?.uploader
+        || nextVideo?.uploader_name
         || ''
       )
 
@@ -336,7 +330,8 @@ export default function useVideoPlaybackShell({
     if (hasReusableGlobalPlaybackSession()) {
       hydrateFromGlobalPlaybackSession()
     } else {
-      await loadAndPlayById(route.params.videoId, consumePlaybackSeed(route.params.videoId))
+        const videoId = String(route.params.videoId || '')
+        await loadAndPlayById(videoId, consumePlaybackSeed(videoId))
     }
     await focusVideoPlayer()
 
@@ -350,7 +345,8 @@ export default function useVideoPlaybackShell({
       if (hasReusableGlobalPlaybackSession(newId)) {
         hydrateFromGlobalPlaybackSession()
       } else {
-        await loadAndPlayById(newId, consumePlaybackSeed(newId))
+        const videoId = String(newId || '')
+        await loadAndPlayById(videoId, consumePlaybackSeed(videoId))
       }
       await focusVideoPlayer()
     }
@@ -359,7 +355,7 @@ export default function useVideoPlaybackShell({
   onUnmounted(() => {
     setWidescreenClass(false)
     syncWidescreenSidebarState(false)
-    unregisterGlobalVideoPlayerTarget(videoPlayerHostRef.value)
+  unregisterGlobalVideoPlayerTarget()
     if (hasActivePictureInPictureSession()) {
       return
     }

@@ -1,30 +1,21 @@
 import { ref } from 'vue'
 import type { Ref } from 'vue'
 import { getVideoList } from '@/api'
+import type { ApiResult, VideoId, VideoPageVideo } from '@/types/videoPlayback'
 
-type VideoId = string | number
-
-type VideoListItem = {
-  id: VideoId
-  subscriptions?: Array<{ id?: VideoId }>
-  site?: string
-  [key: string]: unknown
-}
-
-type ApiResult<T> = { data?: T | null; error?: unknown | null }
 type VideoListResponse = { data?: unknown[] }
 
-export default function useRelatedVideos(sourceVideo: Ref<VideoListItem | null>) {
-  const relatedVideos = ref<VideoListItem[]>([])
+export default function useRelatedVideos(sourceVideo: Ref<VideoPageVideo | null>) {
+  const relatedVideos = ref<VideoPageVideo[]>([])
   const loadingRelated = ref(false)
   const requestSeq = ref(0)
 
   const extractItems = (data: VideoListResponse | null | undefined) => (Array.isArray(data?.data) ? data!.data! : [])
 
-  const getRelatedVideos = async (video: VideoListItem, { pageSize = 20 }: { pageSize?: number } = {}) => {
-    if (!video) return { data: [] as VideoListItem[], error: null as unknown | null }
+  const getRelatedVideos = async (video: VideoPageVideo, { pageSize = 20 }: { pageSize?: number } = {}) => {
+    if (!video) return { data: [] as VideoPageVideo[], error: null as unknown | null }
 
-    const collected: VideoListItem[] = []
+    const collected: VideoPageVideo[] = []
 
     const primarySubId = video?.subscriptions?.[0]?.id
     if (primarySubId) {
@@ -34,7 +25,7 @@ export default function useRelatedVideos(sourceVideo: Ref<VideoListItem | null>)
         sort_by: 'publish_date',
         subscription_id: primarySubId,
       })) as ApiResult<VideoListResponse>
-      if (!error) collected.push(...(extractItems(data) as any))
+      if (!error) collected.push(...(extractItems(data) as VideoPageVideo[]))
     }
 
     if (collected.length < pageSize && video?.site) {
@@ -45,15 +36,17 @@ export default function useRelatedVideos(sourceVideo: Ref<VideoListItem | null>)
         sort_by: 'publish_date',
         site: video.site,
       })) as ApiResult<VideoListResponse>
-      if (!error) collected.push(...(extractItems(data) as any))
+      if (!error) collected.push(...(extractItems(data) as VideoPageVideo[]))
     }
 
-    const unique: VideoListItem[] = []
+    const unique: VideoPageVideo[] = []
     const seen = new Set<VideoId>()
     for (const item of collected) {
       if (!item || item.id === video.id) continue
-      if (seen.has(item.id)) continue
-      seen.add(item.id)
+      const itemId = item.id
+      if (itemId == null) continue
+      if (seen.has(itemId)) continue
+      seen.add(itemId)
       unique.push(item)
       if (unique.length >= pageSize) break
     }
@@ -85,7 +78,7 @@ export default function useRelatedVideos(sourceVideo: Ref<VideoListItem | null>)
     }
   }
 
-  const setRelatedVideosSnapshot = (items: VideoListItem[] = [], loading = false) => {
+  const setRelatedVideosSnapshot = (items: VideoPageVideo[] = [], loading = false) => {
     requestSeq.value += 1
     relatedVideos.value = Array.isArray(items) ? [...items] : []
     loadingRelated.value = !!loading

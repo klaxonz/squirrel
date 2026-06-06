@@ -1,27 +1,6 @@
 import { computed, ref } from 'vue'
 import { getVideoDetail } from '@/api'
-import type { VideoClipMarker } from '@/types/videoClipMarker'
-
-type VideoId = string | number
-
-type VideoSubtitle = {
-  id: string
-  label?: string
-  language: string
-  url?: string
-  content?: string
-  default?: boolean
-}
-
-type VideoLike = {
-  id: VideoId
-  url?: string
-  duration?: number
-  last_position?: number
-  subtitles?: VideoSubtitle[]
-  clip_markers?: VideoClipMarker[]
-  [key: string]: unknown
-}
+import type { VideoId, VideoPageVideo, VideoSubtitle } from '@/types/videoPlayback'
 
 type SubtitleCandidate = {
   id: string
@@ -98,15 +77,15 @@ const canResolveDesktopYouTubeSubtitles = () => {
   return bridge?.isDesktop === true && typeof bridge.resolveYouTubeSubtitles === 'function'
 }
 
-export default function useVideoDetail(initialVideo: VideoLike | null = null) {
-  const video = ref<VideoLike | null>(initialVideo)
+export default function useVideoDetail(initialVideo: VideoPageVideo | null = null) {
+  const video = ref<VideoPageVideo | null>(initialVideo)
   let detailRequestSeq = 0
 
-  const replaceVideo = (nextVideo: VideoLike | null) => {
+  const replaceVideo = (nextVideo: VideoPageVideo | null) => {
     video.value = nextVideo
   }
 
-  const setVideoSnapshot = (nextVideo: VideoLike | null) => {
+  const setVideoSnapshot = (nextVideo: VideoPageVideo | null) => {
     detailRequestSeq += 1
     replaceVideo(nextVideo)
   }
@@ -134,7 +113,7 @@ export default function useVideoDetail(initialVideo: VideoLike | null = null) {
 
   const fetchVideoDetails = async (videoId: VideoId) => {
     const seq = ++detailRequestSeq
-    const { data, error } = (await getVideoDetail(videoId)) as { data?: VideoLike | null; error?: unknown | null }
+    const { data, error } = (await getVideoDetail(videoId)) as { data?: VideoPageVideo | null; error?: unknown | null }
     if (!error && seq === detailRequestSeq) {
       replaceVideo(data || null)
     }
@@ -145,15 +124,16 @@ export default function useVideoDetail(initialVideo: VideoLike | null = null) {
     const snapshot = video.value
     if (!snapshot || String(snapshot.id) !== String(videoId)) return
 
-    const candidates = getSubtitleCandidates(snapshot.url)
+    const snapshotUrl = snapshot.url || undefined
+    const candidates = getSubtitleCandidates(snapshotUrl)
     if (!candidates.length) return
 
     const existingSubtitles = Array.isArray(snapshot.subtitles) ? snapshot.subtitles : []
     const missingCandidates = candidates
       .filter((candidate) => !existingSubtitles.some((subtitle) => subtitle.id === candidate.id))
 
-    if (isYouTubeUrl(snapshot.url) && canResolveDesktopYouTubeSubtitles()) {
-      const desktopTracks = await buildDesktopYouTubeSubtitleTracks(snapshot.url || '', missingCandidates)
+    if (isYouTubeUrl(snapshotUrl) && canResolveDesktopYouTubeSubtitles()) {
+      const desktopTracks = await buildDesktopYouTubeSubtitleTracks(snapshotUrl || '', missingCandidates)
       if (!desktopTracks.length) return
       snapshot.subtitles = [...existingSubtitles, ...desktopTracks]
       return
@@ -163,7 +143,7 @@ export default function useVideoDetail(initialVideo: VideoLike | null = null) {
       .map((candidate, index) => {
         const params = new URLSearchParams({
           video_id: String(videoId),
-          fmt: isYouTubeUrl(snapshot.url) ? 'vtt' : 'srt',
+          fmt: isYouTubeUrl(snapshotUrl) ? 'vtt' : 'srt',
         })
         if (candidate.lang) {
           params.set('lang', candidate.lang)

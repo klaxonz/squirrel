@@ -1,14 +1,13 @@
 import type { Ref } from 'vue'
+import type { VideoId } from '@/types/videoPlayback'
 
-type VideoId = string | number
-
-type VideoLike = {
-  id: VideoId
+type PlaybackReportVideo = {
+  id?: VideoId
   isPlaying?: boolean
   if_read?: boolean
   is_read?: boolean
-  last_position?: number
-  duration?: number
+  last_position?: number | null
+  duration?: number | null
   progress?: number
   [key: string]: unknown
 }
@@ -28,7 +27,7 @@ type QueuedReport = {
   options: SendReportOptions
 }
 
-export default function usePlaybackReporting(videoRef: Ref<VideoLike | null>, sendReport: SendReport) {
+export default function usePlaybackReporting(videoRef: Ref<PlaybackReportVideo | null>, sendReport: SendReport) {
   let lastVideoId: VideoId | null = null
   let lastReportedTime = 0
   let lastObservedTime = 0
