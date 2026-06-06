@@ -1,12 +1,8 @@
-"""业务无关的 MQ 基础设施（Redis Streams）。
-
-包括：消息模型、生产者、消费者、注册表、装饰器与运行器。
-业务处理逻辑请放在 processors 下，并通过装饰器进行注册。
-"""
+"""Business-neutral MQ infrastructure based on Redis Streams."""
 
 from .message import MqMessage
 from .producer import RedisStreamProducer
-from .consumer import RedisStreamConsumer, ConsumerOptions
+from .consumer import RedisStreamConsumer, ConsumerOptions, QueueHandler
 from .registry import ConsumerRegistry, ConsumerSpec
 from .decorators import queue_listener
 from .duplicate_checker import MessageDuplicateChecker, create_checker, create_simple_checker
@@ -16,6 +12,7 @@ __all__ = [
     "RedisStreamProducer",
     "RedisStreamConsumer",
     "ConsumerOptions",
+    "QueueHandler",
     "ConsumerRegistry",
     "ConsumerSpec",
     "queue_listener",
