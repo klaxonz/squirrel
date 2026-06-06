@@ -9,7 +9,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'squirrel-plugins' / 'javdb' / 'src'))
 
-from squirrel_javdb.handler import JavdbHandler
 from squirrel_javdb.proxy import JavdbProxy
 import squirrel_javdb.proxy as javdb_proxy_module
 
@@ -22,23 +21,6 @@ def _read_stream(response) -> bytes:
         return b''.join(chunks)
 
     return asyncio.run(_consume())
-
-
-def test_javdb_handler_builds_proxy_url_with_upstream_referer():
-    handler = JavdbHandler()
-
-    proxy_url = handler._build_proxy_url(
-        'https://surrit.com/example/playlist/video.m3u8',
-        'https://missav.ai/en/example-video',
-    )
-
-    parsed = urlparse(proxy_url)
-    query = parse_qs(parsed.query)
-
-    assert parsed.path == '/api/video/proxy'
-    assert query['domain'] == ['javdb.com']
-    assert query['url'] == ['https://surrit.com/example/playlist/video.m3u8']
-    assert query['referer'] == ['https://missav.ai/en/example-video']
 
 
 def test_javdb_proxy_builds_upstream_headers_from_referer(monkeypatch):

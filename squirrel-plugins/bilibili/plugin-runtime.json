@@ -48,24 +48,8 @@
         "timeout_ms": 30000
       },
       {
-        "name": "resolve_playback",
-        "description": "Resolve playback URLs for a Bilibili video.",
-        "response_schema": {
-          "type": "object"
-        },
-        "timeout_ms": 30000
-      },
-      {
         "name": "fetch_subtitles",
         "description": "Fetch subtitles for a Bilibili video.",
-        "response_schema": {
-          "type": "object"
-        },
-        "timeout_ms": 30000
-      },
-      {
-        "name": "build_mpd",
-        "description": "Build an MPD document for a Bilibili video.",
         "response_schema": {
           "type": "object"
         },
@@ -129,7 +113,6 @@
           "metadata": {
             "requires_cookies": true,
             "requires_login": true,
-            "player_url_cache": true,
             "offline_thumbnails_download": true,
             "offline_thumbnails_display": false,
             "nsfw": false
@@ -141,9 +124,7 @@
           "resolve_subscription",
           "sync_subscription",
           "extract_video",
-          "resolve_playback",
           "fetch_subtitles",
-          "build_mpd",
           "resolve_proxy_config"
         ]
       }

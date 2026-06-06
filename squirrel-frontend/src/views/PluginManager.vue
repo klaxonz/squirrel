@@ -493,9 +493,7 @@ const CAPABILITY_LABELS = {
   resolve_subscription: '解析订阅',
   sync_subscription: '同步订阅',
   extract_video: '视频信息',
-  resolve_playback: '播放解析',
   fetch_subtitles: '字幕',
-  build_mpd: '流媒体',
   resolve_proxy_config: '代理配置',
   rewrite_proxy_playlist: '代理播放',
 }

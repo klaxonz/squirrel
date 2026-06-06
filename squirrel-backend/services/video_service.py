@@ -1,11 +1,7 @@
-import json
 import logging
 from datetime import datetime, timedelta
-import hashlib
 from time import perf_counter
 from typing import Any, List, Tuple, Optional, Dict
-from urllib.parse import parse_qs, urlencode, urlparse
-from crawl.runtime_errors import RuntimeErrorCode
 from sqlalchemy import select, func, and_, case, exists, false, literal
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import selectinload, with_loader_criteria
@@ -18,7 +14,6 @@ from services.video_query import (
 from services.search_query import normalize_subscription_type_term, parse_search_query
 
 
-from core.exceptions.video_exceptions import UnsupportedDomainError, VideoUrlExtractionError
 from models.creator import Creator
 from models.links import SubscriptionVideo, UserSubscription, VideoCreator
 from models.subscription import Subscription
@@ -27,145 +22,18 @@ from models.video import Video
 from models.video_clip_marker import VideoClipMarker
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
-from plugins.manager import get_plugin_manager
-from schemas.video.dto.video_dto import QualityOptionDto, VideoUrlDto
 
 from services import user_config_service
 from services.video_clip_marker_service import serialize_marker
 from services.nsfw_policy import resolve_effective_nsfw_filter
 from utils import url_helper
-from utils.url_helper import extract_top_level_domain
 from utils.site_catalog import SiteCatalog
-from core.cache import redis_client
-from core.cookie_config import get_site_cookies_file_path
 from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
 
 logger = logging.getLogger()
 
-VIDEO_URL_CACHE_TTL = 300
-
-
 def _elapsed_ms(start_time: float) -> float:
     return round((perf_counter() - start_time) * 1000, 3)
-
-
-def _unwrap_proxy_url(url: Optional[str]) -> Optional[str]:
-    if not url:
-        return url
-
-    parsed = urlparse(url)
-    if parsed.path != '/api/video/proxy':
-        return url
-
-    query = parse_qs(parsed.query)
-    upstream_urls = query.get('url') or []
-    return upstream_urls[0] if upstream_urls else url
-
-
-def _append_direct_flag(url: Optional[str]) -> Optional[str]:
-    if not url:
-        return url
-
-    parsed = urlparse(url)
-    query = parse_qs(parsed.query, keep_blank_values=True)
-    query['direct'] = ['1']
-    return parsed._replace(query=urlencode(query, doseq=True)).geturl()
-
-
-def _playback_cache_scope(client_type: Optional[str], *, prefer_direct_urls: bool) -> str:
-    normalized_client_type = str(client_type or '').strip().lower()
-    if not normalized_client_type:
-        return 'default'
-    mode = 'direct' if prefer_direct_urls else 'proxied'
-    return f'{normalized_client_type}:{mode}'
-
-
-def _file_cache_scope(path) -> str:
-    try:
-        payload = path.read_bytes()
-    except OSError:
-        return 'none'
-    return hashlib.sha256(payload).hexdigest()[:16]
-
-
-def _auth_cache_scope(site_slug: Optional[str]) -> str:
-    if site_slug != 'youtube':
-        return 'auth:default'
-
-    from services.youtube_oauth_service import get_oauth_cache_scope
-
-    oauth_scope = get_oauth_cache_scope()
-    cookie_scope = _file_cache_scope(get_site_cookies_file_path('youtube'))
-    return f'{oauth_scope}:cookie:{cookie_scope}'
-
-
-def _finalize_video_url_dto(dto: VideoUrlDto, *, prefer_direct_urls: bool) -> VideoUrlDto:
-    finalized = dto.model_copy(deep=True)
-    if not prefer_direct_urls:
-        return finalized
-
-    finalized.video_url = _unwrap_proxy_url(finalized.video_url)
-    finalized.audio_url = _unwrap_proxy_url(finalized.audio_url)
-    finalized.mpd_url = _append_direct_flag(finalized.mpd_url)
-    return finalized
-
-
-def _looks_like_hls_url(url: Optional[str]) -> bool:
-    if not url:
-        return False
-    lowered = str(url).lower()
-    return '.m3u8' in lowered or 'format=m3u8' in lowered
-
-
-def _normalize_quality_options(qualities: Optional[List[QualityOptionDto]]) -> list[QualityOptionDto]:
-    if not qualities:
-        return []
-
-    normalized: list[QualityOptionDto] = []
-    for index, item in enumerate(qualities):
-        item_id = str(item.id or item.value or item.label or index)
-        item_value = item.value or item_id
-        normalized.append(item.model_copy(update={
-            'id': item_id,
-            'value': item_value,
-            'label': item.label or item_value,
-        }))
-
-    normalized.sort(key=lambda item: ((item.height or 0), (item.bandwidth or 0)), reverse=True)
-    return normalized
-
-
-def _infer_stream_type(dto: VideoUrlDto) -> str:
-    if dto.stream_type:
-        return dto.stream_type
-    if dto.mpd_url or (dto.video_url and dto.audio_url):
-        return 'dash'
-    if _looks_like_hls_url(dto.video_url) or _looks_like_hls_url(dto.audio_url):
-        return 'hls'
-    return 'progressive'
-
-
-def _normalize_playback_contract(dto: VideoUrlDto, *, video_id: int) -> VideoUrlDto:
-    normalized = dto.model_copy(deep=True)
-    if normalized.video_url and normalized.audio_url and not normalized.mpd_url:
-        normalized.mpd_url = f'/api/video/mpd?video_id={video_id}'
-
-    stream_type = _infer_stream_type(normalized)
-    qualities = _normalize_quality_options(normalized.qualities)
-    available_quality_ids = {str(item.id) for item in qualities if item.id}
-
-    default_quality_id = str(normalized.default_quality_id) if normalized.default_quality_id else None
-    if default_quality_id not in available_quality_ids:
-        default_quality_id = str(qualities[0].id) if qualities else None
-
-    supports_manual_quality = normalized.supports_manual_quality or len(qualities) > 1
-
-    return normalized.model_copy(update={
-        'stream_type': stream_type,
-        'qualities': qualities or None,
-        'default_quality_id': default_quality_id,
-        'supports_manual_quality': supports_manual_quality,
-    })
 
 
 def get_video_by_url(url: str) -> Video:
@@ -348,83 +216,6 @@ def get_random_video(
         ).first()
         return random_row[0] if random_row else None
 
-
-def get_video_url(video_id: int, force_refresh: bool = False, client_type: Optional[str] = None) -> VideoUrlDto:
-    video_domain = None
-    video: Optional[Video] = None
-    normalized_client_type = str(client_type or '').strip().lower() or None
-    with get_session() as session:
-        video = session.get(Video, video_id)
-        if not video:
-            raise ValueError(f"Video with ID {video_id} not found")
-
-        video_domain = extract_top_level_domain(video.url)
-
-    if video_domain is None:
-        raise ValueError(f"Invalid video URL: {video.url}")
-
-    site_slug, site_info = SiteCatalog.find_site_by_domain(video_domain)
-    metadata = (site_info or {}).get("metadata") or {}
-    prefer_direct_urls = normalized_client_type == 'desktop'
-    enable_cache = bool(metadata.get("player_url_cache"))
-    cache_scope = _playback_cache_scope(normalized_client_type, prefer_direct_urls=prefer_direct_urls)
-    cache_scope = f'{cache_scope}:{_auth_cache_scope(site_slug)}'
-
-    cache_key: Optional[str] = None
-    if enable_cache:
-        cache_key = f"video_url:{site_slug or video_domain}:{video_id}:{cache_scope}"
-        if not force_refresh:
-            try:
-                cached = redis_client.get(cache_key)
-            except Exception:
-                cached = None
-            if cached:
-                try:
-                    payload = json.loads(cached)
-                    dto = _normalize_playback_contract(VideoUrlDto.model_validate(payload), video_id=video_id)
-                    return _finalize_video_url_dto(dto, prefer_direct_urls=prefer_direct_urls)
-                except Exception:
-                    pass
-
-    payload = {
-        'video_id': video.id,
-        'url': video.url,
-        'domain': video_domain,
-        'title': video.title,
-    }
-    if normalized_client_type:
-        payload['client_type'] = normalized_client_type
-    if prefer_direct_urls:
-        payload['direct_playback'] = True
-
-    response = get_plugin_manager().gateway.invoke(
-        'resolve_playback',
-        site_name=site_slug,
-        domain=video_domain,
-        payload=payload,
-    )
-    if not response.ok:
-        message = response.error.message if response.error else f'No playback handler found for domain: {video_domain}'
-        error_code = getattr(response.error, 'code', None)
-        if (
-            error_code == RuntimeErrorCode.BAD_RESPONSE
-            and message.startswith('No runtime route found for capability:')
-        ):
-            raise UnsupportedDomainError(message)
-        raise VideoUrlExtractionError(message)
-
-    if not isinstance(response.data, dict):
-        raise TypeError('Plugin resolve_playback must return an object payload')
-
-    dto = _normalize_playback_contract(VideoUrlDto.model_validate(response.data), video_id=video_id)
-
-    if enable_cache and cache_key is not None:
-        try:
-            redis_client.setex(cache_key, VIDEO_URL_CACHE_TTL, json.dumps(dto.model_dump()))
-        except Exception:
-            pass
-
-    return _finalize_video_url_dto(dto, prefer_direct_urls=prefer_direct_urls)
 
 def _contains(column, term: str):
     return column.ilike(f'%{term}%')

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal, Optional, List
+from typing import Optional
 
 from pydantic import BaseModel, field_serializer
 from sqlalchemy_to_pydantic import sqlalchemy_to_pydantic
@@ -37,27 +37,3 @@ class VideoCountDto(BaseModel):
     preview: int
     read: int
     unread: int
-
-class QualityOptionDto(BaseModel):
-    """Single quality option for manual selection on frontend"""
-    value: str  # e.g. '1080p' | '720p' | 'audio-128k'
-    label: str  # display label
-    height: Optional[int] = None  # for video tracks
-    bandwidth: Optional[int] = None  # bps
-    codec: Optional[str] = None  # normalized codec family such as av1/vp9/avc
-    id: Optional[str] = None  # representation id / itag etc.
-    index: Optional[int] = None  # quality index in dash.js bitrateList or hls.js levels (0-based)
-
-
-class VideoUrlDto(BaseModel):
-    """DTO for video URL response"""
-    stream_type: Optional[Literal['hls', 'dash', 'progressive']] = None
-    video_url: Optional[str] = None
-    audio_url: Optional[str] = None
-    mpd_url: Optional[str] = None
-    qualities: Optional[List[QualityOptionDto]] = None
-    default_quality_id: Optional[str] = None
-    supports_manual_quality: bool = False
-
-    class Config:
-        from_attributes = True

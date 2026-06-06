@@ -11,7 +11,6 @@ Capabilities
 - `resolve_subscription`
 - `sync_subscription`
 - `extract_video`
-- `resolve_playback`
 - `resolve_proxy_config`
 - `rewrite_proxy_playlist`
 

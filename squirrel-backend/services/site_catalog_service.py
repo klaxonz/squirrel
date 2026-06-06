@@ -157,7 +157,7 @@ def _normalize_metadata(raw: Any) -> Dict[str, Any]:
     if not isinstance(raw, dict):
         raise ValueError("metadata 必须是对象")
     result: Dict[str, Any] = {}
-    for key in ("nsfw", "requires_login", "requires_cookies", "player_url_cache"):
+    for key in ("nsfw", "requires_login", "requires_cookies"):
         if key in raw:
             result[key] = _parse_bool(raw.get(key))
 

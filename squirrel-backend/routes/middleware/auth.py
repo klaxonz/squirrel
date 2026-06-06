@@ -16,7 +16,6 @@ PUBLIC_PATH_PREFIXES = [
     "/redoc",
     "/openapi.json",
     "/api/video/proxy",
-    "/api/video/mpd",
     "/api/video/thumbnail",
     "/health",
     "/health/ready",

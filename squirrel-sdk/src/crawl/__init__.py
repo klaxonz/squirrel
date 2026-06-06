@@ -134,12 +134,6 @@ from .config import (
 )
 
 # Other plugin types (Protocol-based interfaces)
-from .url_handler import (
-    VideoUrlHandler,
-)
-from .mpd import (
-    MpdBuilder,
-)
 from .subtitles import (
     SubtitlesProvider,
 )
@@ -232,8 +226,6 @@ __all__ = [
     'get_proxy_config',
     'get_rate_limit_config',
     # Other plugin types (Protocol-based)
-    'VideoUrlHandler',
-    'MpdBuilder',
     'SubtitlesProvider',
     'IdExtractor',
     'RegexIdExtractor',

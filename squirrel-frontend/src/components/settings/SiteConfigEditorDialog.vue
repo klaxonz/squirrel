@@ -89,7 +89,6 @@
                 { key: 'metadataNsfw', label: '默认标记为敏感内容' },
                 { key: 'metadataRequiresCookies', label: '需要登录凭据才可抓取' },
                 { key: 'metadataRequiresLogin', label: '需要登录状态' },
-                { key: 'metadataPlayerUrlCache', label: '启用播放链接缓存' },
                 { key: 'metadataOfflineThumbnailsDownload', label: '解析时下载封面到本地' },
                 { key: 'metadataOfflineThumbnailsDisplay', label: '优先使用本地封面显示' }
               ]" 
@@ -195,7 +194,6 @@ const createEmptyForm = () => ({
   metadataNsfw: false,
   metadataRequiresCookies: false,
   metadataRequiresLogin: false,
-  metadataPlayerUrlCache: false,
   metadataOfflineThumbnailsDownload: false,
   metadataOfflineThumbnailsDisplay: false,
 });
@@ -282,7 +280,6 @@ const buildFormFromSite = (site, catalog) => {
     metadataNsfw: !!metadata?.nsfw,
     metadataRequiresCookies: !!metadata?.requires_cookies,
     metadataRequiresLogin: !!metadata?.requires_login,
-    metadataPlayerUrlCache: !!metadata?.player_url_cache,
     metadataOfflineThumbnailsDownload: !!metadata?.offline_thumbnails_download,
     metadataOfflineThumbnailsDisplay: !!metadata?.offline_thumbnails_display,
   };
@@ -364,7 +361,6 @@ const handleSave = () => {
       nsfw: !!siteEditorForm.value.metadataNsfw,
       requires_cookies: !!siteEditorForm.value.metadataRequiresCookies,
       requires_login: !!siteEditorForm.value.metadataRequiresLogin,
-      player_url_cache: !!siteEditorForm.value.metadataPlayerUrlCache,
       offline_thumbnails_download: !!siteEditorForm.value.metadataOfflineThumbnailsDownload,
       offline_thumbnails_display: !!siteEditorForm.value.metadataOfflineThumbnailsDisplay,
     },

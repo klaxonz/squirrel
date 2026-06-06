@@ -191,14 +191,6 @@ def build_extract_video_handler(site_name: str, extractor_factory: ObjectFactory
     return _handler
 
 
-def build_resolve_playback_handler(handler_factory: ObjectFactory) -> PayloadHandler:
-    def _handler(payload: Payload) -> Dict[str, Any]:
-        handler = handler_factory()
-        return handler.get_video_url(build_video_ref(payload))
-
-    return _handler
-
-
 def build_subtitles_handler(
     provider_factory: ObjectFactory,
     *,
@@ -214,18 +206,6 @@ def build_subtitles_handler(
             'content': content,
             'filename': filename,
             'media_type': 'text/plain; charset=utf-8',
-        }
-
-    return _handler
-
-
-def build_mpd_handler(builder_factory: ObjectFactory, *, include_duration: bool = False) -> PayloadHandler:
-    def _handler(payload: Payload) -> Dict[str, Any]:
-        builder = builder_factory()
-        content = builder.build_mpd(build_video_ref(payload, include_duration=include_duration))
-        return {
-            'content': content,
-            'media_type': 'application/dash+xml',
         }
 
     return _handler

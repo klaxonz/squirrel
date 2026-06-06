@@ -54,7 +54,6 @@ DEFAULT_SITE_METADATA = {
     'metadata': {
         'requires_cookies': True,
         'requires_login': False,
-        'player_url_cache': True,
         'offline_thumbnails_download': True,
         'offline_thumbnails_display': True,
         'nsfw': True,
@@ -98,12 +97,6 @@ PLUGIN_MANIFEST = PluginManifest(
             timeout_ms=30000,
         ),
         PluginCapability(
-            name='resolve_playback',
-            description='Resolve playback URLs for a Pornhub video.',
-            response_schema={'type': 'object'},
-            timeout_ms=30000,
-        ),
-        PluginCapability(
             name='resolve_proxy_config',
             description='Resolve proxy headers and transport settings for Pornhub streams.',
             response_schema={'type': 'object'},
@@ -128,7 +121,6 @@ PLUGIN_MANIFEST = PluginManifest(
                 'resolve_subscription',
                 'sync_subscription',
                 'extract_video',
-                'resolve_playback',
                 'resolve_proxy_config',
                 'rewrite_proxy_playlist',
             ],
@@ -157,7 +149,6 @@ def get_plugin_runtime():
         subscription_factory=lambda url: _load_local_attr('subscription', 'PornhubSubscription')(url=url),
         extractor_factory=lambda: _load_local_attr('extractor', 'PornhubExtractor')(),
         extractor_site_name='pornhub',
-        playback_handler_factory=lambda: _load_local_attr('handler', 'PornhubHandler')(),
         proxy_config_builder=lambda domain: _load_local_attr('proxy', 'build_runtime_proxy_config')(domain),
         playlist_rewriter=lambda url, content, referer=None: _load_local_attr('proxy', 'rewrite_proxy_playlist')(
             url,

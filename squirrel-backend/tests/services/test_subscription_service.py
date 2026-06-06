@@ -464,7 +464,7 @@ def test_get_runtime_supported_sites_reads_enabled_routes_from_plugin_manager(mo
     registrations = [
         SimpleNamespace(capability='import_subscriptions', site_name='youtube'),
         SimpleNamespace(capability='import_subscriptions', site_name='bilibili'),
-        SimpleNamespace(capability='resolve_playback', site_name='youtube'),
+        SimpleNamespace(capability='extract_video', site_name='youtube'),
         SimpleNamespace(capability='import_subscriptions', site_name='youtube'),
     ]
 

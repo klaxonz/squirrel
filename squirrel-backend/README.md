@@ -53,13 +53,11 @@ Runtime V2 assumes plugins may be untrusted. The host tracks declared permission
 from the manifest and only routes requests through explicit capabilities such as:
 
 - `extract_video`
-- `resolve_playback`
 - `sync_subscription`
 - `import_subscriptions`
 - `resolve_subscription`
 - `check_login_status`
 - `fetch_subtitles`
-- `build_mpd`
 - `resolve_proxy_config`
 - `rewrite_proxy_playlist`
 

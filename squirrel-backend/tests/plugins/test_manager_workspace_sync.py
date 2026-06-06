@@ -64,7 +64,7 @@ def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path, monkey
                             'timeout_ms': 30000,
                         },
                         {
-                            'name': 'resolve_playback',
+                            'name': 'extract_video',
                             'response_schema': {'type': 'object'},
                             'timeout_ms': 30000,
                         },
@@ -73,7 +73,7 @@ def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path, monkey
                         {
                             'site_name': 'javdb',
                             'domains': ['javdb.com'],
-                            'features': ['check_login_status', 'resolve_playback'],
+                            'features': ['check_login_status', 'extract_video'],
                         },
                     ],
                     'permissions': [
@@ -134,7 +134,7 @@ def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path, monkey
     assert record is not None
     assert record.entrypoint == 'squirrel_javdb.runtime:get_plugin_runtime'
     assert record.runtime_path == str(plugins_root / 'src')
-    assert [item['name'] for item in record.manifest['capabilities']] == ['check_login_status', 'resolve_playback']
+    assert [item['name'] for item in record.manifest['capabilities']] == ['check_login_status', 'extract_video']
     assert record.manifest['capabilities'][0]['timeout_ms'] == 30000
     assert record.granted_permissions == ['network:http', 'cookies:read:site/javdb']
 

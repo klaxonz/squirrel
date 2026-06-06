@@ -16,7 +16,7 @@ def test_get_site_from_url_reads_runtime_registrations(monkeypatch):
             domains=['youtube.com', 'youtu.be'],
         ),
         SimpleNamespace(
-            capability='resolve_playback',
+            capability='fetch_subtitles',
             site_name='bilibili',
             domains=['bilibili.com', 'b23.tv'],
         ),

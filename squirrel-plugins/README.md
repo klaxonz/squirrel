@@ -83,13 +83,11 @@ Recommended capabilities
 Depending on the site, implement one or more of these runtime V2 capability handlers:
 
 - `extract_video`
-- `resolve_playback`
 - `sync_subscription`
 - `import_subscriptions`
 - `resolve_subscription`
 - `check_login_status`
 - `fetch_subtitles`
-- `build_mpd`
 - `resolve_proxy_config`
 - `rewrite_proxy_playlist`
 

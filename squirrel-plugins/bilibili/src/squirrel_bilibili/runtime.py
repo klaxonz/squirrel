@@ -54,7 +54,6 @@ DEFAULT_SITE_METADATA = {
     'metadata': {
         'requires_cookies': True,
         'requires_login': False,
-        'player_url_cache': True,
         'offline_thumbnails_download': True,
         'offline_thumbnails_display': True,
         'nsfw': False,
@@ -98,20 +97,8 @@ PLUGIN_MANIFEST = PluginManifest(
             timeout_ms=30000,
         ),
         PluginCapability(
-            name='resolve_playback',
-            description='Resolve playback URLs for a Bilibili video.',
-            response_schema={'type': 'object'},
-            timeout_ms=30000,
-        ),
-        PluginCapability(
             name='fetch_subtitles',
             description='Fetch subtitles for a Bilibili video.',
-            response_schema={'type': 'object'},
-            timeout_ms=30000,
-        ),
-        PluginCapability(
-            name='build_mpd',
-            description='Build an MPD document for a Bilibili video.',
             response_schema={'type': 'object'},
             timeout_ms=30000,
         ),
@@ -134,9 +121,7 @@ PLUGIN_MANIFEST = PluginManifest(
                 'resolve_subscription',
                 'sync_subscription',
                 'extract_video',
-                'resolve_playback',
                 'fetch_subtitles',
-                'build_mpd',
                 'resolve_proxy_config',
             ],
         )
@@ -221,10 +206,8 @@ def get_plugin_runtime():
         check_login=lambda: _load_local_attr('auth', 'check_bilibili_login_status')(),
         importer_factory=lambda: _load_local_attr('importer', 'BilibiliUserSubscriptionImporter')(),
         subscription_factory=lambda url: _load_local_attr('subscription', 'BilibiliSubscription')(url=url),
-        playback_handler_factory=lambda: _load_local_attr('handler', 'BilibiliHandler')(),
         subtitles_provider_factory=lambda: _load_local_attr('subtitles', 'BilibiliSubtitlesProvider')(),
         default_subtitle_lang='ai-zh',
         default_subtitle_format='srt',
-        mpd_builder_factory=lambda: _load_local_attr('mpd', 'BilibiliMpdBuilder')(),
         proxy_config_builder=_resolve_proxy_config,
     )

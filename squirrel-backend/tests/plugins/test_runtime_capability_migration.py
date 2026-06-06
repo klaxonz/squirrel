@@ -63,7 +63,7 @@ def _manifest_timeout_map(module_name: str, plugin_name: str) -> tuple[dict[str,
         (
             'bilibili',
             'squirrel_bilibili',
-            {'fetch_subtitles', 'build_mpd', 'resolve_proxy_config'},
+            {'fetch_subtitles', 'resolve_proxy_config'},
         ),
         (
             'javdb',
@@ -78,7 +78,7 @@ def _manifest_timeout_map(module_name: str, plugin_name: str) -> tuple[dict[str,
         (
             'youtube',
             'squirrel_youtube',
-            {'fetch_subtitles', 'build_mpd', 'resolve_proxy_config', 'rewrite_proxy_playlist'},
+            {'fetch_subtitles', 'resolve_proxy_config', 'rewrite_proxy_playlist'},
         ),
     ],
 )
@@ -118,7 +118,7 @@ def test_runtime_manifests_and_metadata_include_migrated_capabilities(
             'squirrel_javdb',
             'javdb',
             {
-                'resolve_playback': 120000,
+                'sync_subscription': 120000,
             },
         ),
     ],
@@ -136,17 +136,11 @@ def test_bilibili_runtime_media_capabilities_do_not_emit_legacy_registry_warning
         warnings.simplefilter('always')
         runtime_module = importlib.import_module('squirrel_bilibili.runtime')
         subtitles_module = importlib.import_module('squirrel_bilibili.subtitles')
-        mpd_module = importlib.import_module('squirrel_bilibili.mpd')
 
         monkeypatch.setattr(
             subtitles_module.BilibiliSubtitlesProvider,
             'get_subtitles',
             lambda self, video, lang, fmt='srt': ('subtitle body', 'demo.ai-zh.srt'),
-        )
-        monkeypatch.setattr(
-            mpd_module.BilibiliMpdBuilder,
-            'build_mpd',
-            lambda self, video: '<MPD></MPD>',
         )
 
         runtime = runtime_module.get_plugin_runtime()
@@ -159,19 +153,10 @@ def test_bilibili_runtime_media_capabilities_do_not_emit_legacy_registry_warning
                 'fmt': 'srt',
             },
         )
-        mpd_response = runtime.invoke(
-            'build_mpd',
-            {
-                'video_id': 1,
-                'url': 'https://www.bilibili.com/video/BV1xx411c7mD',
-            },
-        )
 
     assert subtitles_response.ok is True
     assert subtitles_response.data['content'] == 'subtitle body'
     assert subtitles_response.data['filename'] == 'demo.ai-zh.srt'
-    assert mpd_response.ok is True
-    assert mpd_response.data['content'] == '<MPD></MPD>'
     assert not [item for item in caught if 'legacy' in str(item.message).lower()]
 
 

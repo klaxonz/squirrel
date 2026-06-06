@@ -104,23 +104,9 @@ class _FakeExtractor:
         })
 
 
-class _FakePlaybackHandler:
-    def get_video_url(self, video):
-        return {
-            'video_id': video.id,
-            'url': video.url,
-            'title': video.title,
-        }
-
-
 class _FakeSubtitlesProvider:
     def get_subtitles(self, _video, lang, fmt):
         return f'subtitles:{lang}:{fmt}', f'demo.{fmt}'
-
-
-class _FakeMpdBuilder:
-    def build_mpd(self, _video):
-        return '<MPD />'
 
 
 class SharedSdkHelperTests(unittest.TestCase):
@@ -164,11 +150,11 @@ class SharedSdkHelperTests(unittest.TestCase):
         runtime = plugin_module.create_plugin_runtime(
             manifest=manifest,
             capability_handlers={
-                'resolve_playback': lambda _payload: (_ for _ in ()).throw(RuntimeError('boom')),
+                'explode': lambda _payload: (_ for _ in ()).throw(RuntimeError('boom')),
             },
         )
 
-        response = runtime.invoke('resolve_playback', {'request_id': 'req-1'})
+        response = runtime.invoke('explode', {'request_id': 'req-1'})
 
         self.assertFalse(response.ok)
         self.assertEqual(response.request_id, 'req-1')
@@ -347,11 +333,9 @@ class SharedSdkHelperTests(unittest.TestCase):
             subscription_factory=_FakeSubscription,
             extractor_factory=_FakeExtractor,
             extractor_site_name='demo',
-            playback_handler_factory=_FakePlaybackHandler,
             subtitles_provider_factory=_FakeSubtitlesProvider,
             default_subtitle_lang='en',
             default_subtitle_format='srt',
-            mpd_builder_factory=_FakeMpdBuilder,
             proxy_config_builder=lambda domain: {'domain': domain or 'demo.example.com'},
             playlist_rewriter=lambda url, content, referer=None: {
                 'content': str(content),
@@ -377,20 +361,8 @@ class SharedSdkHelperTests(unittest.TestCase):
             'demo',
         )
         self.assertEqual(
-            runtime.invoke('resolve_playback', {'url': 'https://example.com/watch?v=1', 'video_id': 'video-1'}).data,
-            {
-                'video_id': 'video-1',
-                'url': 'https://example.com/watch?v=1',
-                'title': None,
-            },
-        )
-        self.assertEqual(
             runtime.invoke('fetch_subtitles', {'url': 'https://example.com/watch?v=1'}).data['filename'],
             'demo.srt',
-        )
-        self.assertEqual(
-            runtime.invoke('build_mpd', {'url': 'https://example.com/watch?v=1'}).data['content'],
-            '<MPD />',
         )
         self.assertEqual(
             runtime.invoke('resolve_proxy_config', {'domain': 'media.example.com'}).data,

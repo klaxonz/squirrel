@@ -1,4 +1,3 @@
-import { getVideoUrlInfo } from '@/api'
 import { Logger } from '@/utils/logger'
 import type { MediaSource } from '@/components/video-player/core'
 
@@ -12,8 +11,6 @@ type PlaybackVideoLike = {
   url?: string | null
   title?: string | null
 }
-
-type ApiResult<T> = { data?: T | null; error?: any }
 
 export type VideoUrlInfo = {
   stream_type?: 'hls' | 'dash' | 'progressive'
@@ -153,12 +150,6 @@ export const isDesktopPlaybackClient = () => {
 }
 
 export default function useVideoOperations() {
-  const extractErrorCode = (msg: unknown) => {
-    if (!msg || typeof msg !== 'string') return null
-    const match = msg.match(/\(([^)]+)\)\s*$/)
-    return match ? match[1] : null
-  }
-
   const getPlaybackSource = async (
     videoId: VideoId,
     options: VideoUrlOptions = {},
@@ -169,29 +160,22 @@ export default function useVideoOperations() {
 
     try {
       let data: VideoUrlInfo | null | undefined
-      let error: any = null
       const playbackUrl = String(playbackVideo?.url || '').trim()
       const isDesktopClient = isDesktopPlaybackClient()
       const matchedDesktopProvider = findDesktopPlaybackProvider(playbackUrl)
 
-      if (isDesktopClient && matchedDesktopProvider) {
-        Logger.debug(`[getPlaybackSource] Resolving ${matchedDesktopProvider.debugLabel} playback via desktop bridge`, { videoId, forceRefresh })
-        data = await resolveDesktopPlayback(matchedDesktopProvider, playbackUrl, { forceRefresh }, playbackVideo)
+      if (!isDesktopClient) {
+        throw Object.assign(new Error('当前环境不支持播放'), { code: 'PLAYBACK_DESKTOP_REQUIRED' })
       }
 
+      if (!matchedDesktopProvider) {
+        throw Object.assign(new Error('当前站点不支持桌面端播放'), { code: 'UNSUPPORTED_PLAYBACK_SITE' })
+      }
+
+      Logger.debug(`[getPlaybackSource] Resolving ${matchedDesktopProvider.debugLabel} playback via desktop bridge`, { videoId, forceRefresh })
+      data = await resolveDesktopPlayback(matchedDesktopProvider, playbackUrl, { forceRefresh }, playbackVideo)
       if (!data) {
-        // 统一通过后端获取播放链接（VideoUrlDto），后端会在 bilibili/YouTube 情况下返回 mpd_url 与可选清晰度
-        Logger.debug('[getPlaybackSource] Fetching /api/video/url', { videoId, forceRefresh })
-        const clientType = isDesktopClient ? 'desktop' : undefined
-        const response = (await getVideoUrlInfo(videoId, { forceRefresh, clientType })) as ApiResult<VideoUrlInfo>
-        data = response.data
-        error = response.error
-      }
-
-      if (error) {
-        const msg = error.data?.msg || error.message
-        const errCode = extractErrorCode(msg) || error.data?.code || error.type || 'UNKNOWN'
-        throw Object.assign(new Error(msg || '无法获取播放链接'), { code: errCode })
+        throw Object.assign(new Error('桌面端播放解析不可用'), { code: 'DESKTOP_PLAYBACK_UNAVAILABLE' })
       }
 
       const mpdUrl = data?.mpd_url
@@ -207,17 +191,12 @@ export default function useVideoOperations() {
         codec: item.codec,
         src: item.src ?? undefined
       }))
-      const shouldSynthesizeMpd = !data?.mpd_url && !!videoUrl && !!audioUrl && !isDesktopClient
-      const synthesizedMpdUrl = shouldSynthesizeMpd
-        ? `/api/video/mpd?video_id=${encodeURIComponent(String(videoId))}`
-        : undefined
-
       const key = `${videoId}:${Date.now()}`
       const progressKey = String(videoId)
       const localMpdUrl = typeof mpdContent === 'string' && mpdContent.trim()
         ? URL.createObjectURL(new Blob([mpdContent], { type: 'application/dash+xml' }))
         : undefined
-      const resolvedMpdUrl = localMpdUrl || mpdUrl || synthesizedMpdUrl
+      const resolvedMpdUrl = localMpdUrl || mpdUrl
 
       const resolvedMetadata = { ...(data?.metadata || {}) } as Record<string, any>
       const uploaderName = String(data?.uploader_name || '').trim()

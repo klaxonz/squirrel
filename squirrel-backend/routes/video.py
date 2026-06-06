@@ -1,8 +1,7 @@
 import logging
-from fastapi import Query, APIRouter, Request, HTTPException, Depends, Response, Body
+from fastapi import Query, APIRouter, Request, HTTPException, Depends, Body
 from fastapi.responses import PlainTextResponse
 import common.response as response
-from core.exceptions.video_exceptions import UnsupportedDomainError, VideoUrlExtractionError
 from models.user import User
 from schemas.video.request.video import RemoteVideoSaveRequest, SortBy
 from services import video_service
@@ -36,43 +35,6 @@ def save_remote_video(
     except Exception:
         logger.exception("Failed to save remote video")
         return response.server_error("保存远端视频失败")
-
-
-@router.get("/api/video/url")
-def get_video_url(
-        video_id: int = Query(None, description="视频ID"),
-        force_refresh: bool = Query(False, description="强制刷新播放链接（跳过服务端缓存）", alias="force_refresh"),
-        client_type: str | None = Query(None, description="客户端类型（desktop 等）", alias="client_type"),
-):
-    try:
-        if video_id is None:
-            return response.param_error("参数错误 (VIDEO_ID_REQUIRED)")
-
-        video_urls = video_service.get_video_url(video_id, force_refresh=force_refresh, client_type=client_type)
-        # 校验是否成功提取到可播放链接（支持 DASH 的 mpd_url 返回）
-        has_video = getattr(video_urls, 'video_url', None)
-        has_audio = getattr(video_urls, 'audio_url', None)
-        has_mpd = getattr(video_urls, 'mpd_url', None)
-        if not video_urls or (not has_video and not has_audio and not has_mpd):
-            return response.not_found("无法获取播放链接 (NO_STREAM_URL)")
-        return response.success(video_urls)
-
-    except UnsupportedDomainError as e:
-        logger.warning(f"Unsupported domain for video {video_id}: {e}")
-        return response.param_error(f"{e} (UNSUPPORTED_DOMAIN)")
-    except VideoUrlExtractionError as e:
-        logger.error(f"Video URL extraction failed for {video_id}: {e}")
-        return response.server_error(f"{e} (EXTRACT_FAILED)")
-    except ValueError as e:
-        # 包括视频不存在等
-        msg = str(e)
-        if 'not found' in msg.lower():
-            return response.not_found("视频不存在 (VIDEO_NOT_FOUND)")
-        logger.error(f"Invalid request for get_video_url: {e}")
-        return response.param_error("请求不合法 (BAD_REQUEST)")
-    except Exception as e:
-        logger.exception(f"Unexpected error in get_video_url for video_id={video_id}: {e}")
-        return response.server_error("服务器内部错误 (SERVER_ERROR)")
 
 
 @router.get("/api/video/detail")
@@ -232,61 +194,6 @@ def get_video_subtitles(
     except Exception:
         logger.exception('Subtitles fetch failed')
         raise HTTPException(status_code=500, detail="Server error")
-
-
-@router.get("/api/video/mpd")
-def get_video_mpd(
-        video_id: int = Query(..., description="视频ID"),
-        direct: bool = Query(False, description="是否返回直链 MPD"),
-):
-    """
-    根据不同站点生成 MPD（站点适配在 sites/* 中实现）
-    """
-    if video_id is None:
-        raise HTTPException(status_code=400, detail="video_id is required")
-
-    video = video_service.get_video_by_id(video_id)
-    if video is None:
-        raise HTTPException(status_code=404, detail="Video not found")
-
-    direct_enabled = direct if isinstance(direct, bool) else False
-    domain = _video_domain(video.url)
-    try:
-        payload = {
-            'video_id': video.id,
-            'url': video.url,
-            'title': getattr(video, 'title', None),
-            'duration': getattr(video, 'duration', None),
-        }
-        if direct_enabled:
-            payload['direct_playback'] = True
-
-        result = get_plugin_manager().gateway.invoke(
-            'build_mpd',
-            domain=domain,
-            payload=payload,
-        )
-        if not result.ok or not isinstance(result.data, dict):
-            raise HTTPException(status_code=400, detail="MPD builder not available for this domain")
-        mpd_xml = str(result.data.get('content') or '')
-        if not mpd_xml:
-            raise HTTPException(status_code=500, detail="Failed to build MPD")
-        return Response(
-            content=mpd_xml,
-            media_type=str(result.data.get('media_type') or 'application/dash+xml'),
-            headers={
-                "Cache-Control": "no-store, max-age=0",
-                "Pragma": "no-cache"
-            }
-        )
-    except HTTPException:
-        raise
-    except ValueError as e:
-        # 未注册对应站点的 MPD 构建器
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception:
-        logger.exception("Failed to build MPD")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.get("/api/sites")

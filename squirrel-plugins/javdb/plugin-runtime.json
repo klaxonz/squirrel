@@ -48,14 +48,6 @@
         "timeout_ms": 30000
       },
       {
-        "name": "resolve_playback",
-        "description": "Resolve playback URLs for a JavDB video.",
-        "response_schema": {
-          "type": "object"
-        },
-        "timeout_ms": 120000
-      },
-      {
         "name": "resolve_proxy_config",
         "description": "Resolve proxy headers and transport settings for JavDB streams.",
         "response_schema": {
@@ -116,7 +108,6 @@
           "metadata": {
             "requires_cookies": true,
             "requires_login": true,
-            "player_url_cache": true,
             "offline_thumbnails_download": true,
             "offline_thumbnails_display": false,
             "nsfw": true
@@ -128,7 +119,6 @@
           "resolve_subscription",
           "sync_subscription",
           "extract_video",
-          "resolve_playback",
           "resolve_proxy_config",
           "rewrite_proxy_playlist"
         ]

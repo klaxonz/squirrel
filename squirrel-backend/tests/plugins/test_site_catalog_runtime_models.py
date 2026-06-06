@@ -20,7 +20,7 @@ def test_site_catalog_builds_from_backend_runtime_manifest_models(monkeypatch):
                 site_name='youtube',
                 domains=['youtube.com', 'youtu.be'],
                 test_url='https://www.youtube.com',
-                features=['extract_video', 'resolve_playback'],
+                features=['extract_video', 'fetch_subtitles'],
             )
         ],
     )
@@ -47,7 +47,7 @@ def test_site_catalog_builds_from_backend_runtime_manifest_models(monkeypatch):
             'domains': ['youtube.com', 'youtu.be'],
             'aliases': [],
             'enabled': True,
-            'features': ['extract_video', 'resolve_playback'],
+            'features': ['extract_video', 'fetch_subtitles'],
             'test_url': 'https://www.youtube.com',
             'icon_url': '/api/plugins/sites/youtube/icon',
         }

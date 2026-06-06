@@ -11,7 +11,7 @@ from services import site_login_status_service
 def test_get_supported_sites_reads_login_status_registrations(monkeypatch):
     registrations = [
         SimpleNamespace(capability='check_login_status', site_name='youtube'),
-        SimpleNamespace(capability='resolve_playback', site_name='youtube'),
+        SimpleNamespace(capability='extract_video', site_name='youtube'),
         SimpleNamespace(capability='check_login_status', site_name='bilibili'),
         SimpleNamespace(capability='check_login_status', site_name='youtube'),
         SimpleNamespace(capability='check_login_status', site_name=''),

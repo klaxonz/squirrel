@@ -96,12 +96,6 @@ PLUGIN_MANIFEST = PluginManifest(
             timeout_ms=30000,
         ),
         PluginCapability(
-            name='resolve_playback',
-            description='Resolve playback URLs for a YouPorn video.',
-            response_schema={'type': 'object'},
-            timeout_ms=30000,
-        ),
-        PluginCapability(
             name='resolve_proxy_config',
             description='Resolve proxy headers and transport settings for YouPorn streams.',
             response_schema={'type': 'object'},
@@ -126,7 +120,6 @@ PLUGIN_MANIFEST = PluginManifest(
                 'resolve_subscription',
                 'sync_subscription',
                 'extract_video',
-                'resolve_playback',
                 'resolve_proxy_config',
                 'rewrite_proxy_playlist',
             ],
@@ -155,7 +148,6 @@ def get_plugin_runtime():
         subscription_factory=lambda url: _load_local_attr('subscription', 'YouPornSubscription')(url=url),
         extractor_factory=lambda: _load_local_attr('extractor', 'YouPornExtractor')(),
         extractor_site_name='youporn',
-        playback_handler_factory=lambda: _load_local_attr('handler', 'YouPornHandler')(),
         proxy_config_builder=lambda domain: _load_local_attr('proxy', 'build_runtime_proxy_config')(domain),
         playlist_rewriter=lambda url, content, referer=None: _load_local_attr('proxy', 'rewrite_proxy_playlist')(
             url,
