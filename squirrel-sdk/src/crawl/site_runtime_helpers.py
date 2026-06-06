@@ -217,7 +217,7 @@ def build_subtitles_handler(
         return {
             'content': content,
             'filename': filename,
-            'media_type': 'text/plain; charset=utf-8',
+            'media_type': 'text/vtt; charset=utf-8' if fmt.lower() == 'vtt' else 'text/plain; charset=utf-8',
         }
 
     return _handler

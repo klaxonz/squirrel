@@ -173,3 +173,41 @@ def test_get_video_subtitles_surfaces_runtime_error_message(monkeypatch):
     except HTTPException as exc:
         assert exc.status_code == 404
         assert exc.detail == 'No subtitles available'
+
+
+def test_get_video_subtitles_rejects_incomplete_runtime_payload(monkeypatch):
+    class _FakeGateway:
+        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+            return SiteRuntimeInvokeResponse(
+                request_id='subtitles-invalid-1',
+                ok=True,
+                data={'content': 'subtitle text'},
+            )
+
+    monkeypatch.setattr(
+        video_subtitle_service.video_crud_service,
+        'get_video_by_id',
+        lambda video_id: SimpleNamespace(
+            id=video_id,
+            url='https://www.youtube.com/watch?v=demo',
+            title='Test video',
+            duration=120,
+        ),
+    )
+    monkeypatch.setattr(
+        video_subtitle_service,
+        'get_runtime_gateway',
+        lambda: _FakeGateway(),
+    )
+
+    try:
+        video_route.get_video_subtitles(
+            video_id=1,
+            lang='en',
+            fmt='srt',
+            current_user=SimpleNamespace(id=1),
+        )
+        raise AssertionError('Expected get_video_subtitles to raise HTTPException')
+    except HTTPException as exc:
+        assert exc.status_code == 400
+        assert exc.detail == 'Subtitles provider returned an invalid response'

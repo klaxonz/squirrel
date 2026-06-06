@@ -68,12 +68,19 @@ def fetch_video_subtitles(
     if not result.ok or not isinstance(result.data, dict):
         _raise_subtitle_error(result.error)
 
-    fallback_filename = f'{video.id}.{lang}.{normalized_fmt}' if lang else f'{video.id}.{normalized_fmt}'
-    fallback_media_type = 'text/vtt; charset=utf-8' if normalized_fmt == SubtitleFormat.VTT else 'text/plain; charset=utf-8'
+    content = str(result.data.get('content') or '')
+    filename = str(result.data.get('filename') or '').strip()
+    media_type = str(result.data.get('media_type') or '').strip()
+    if not filename or not media_type:
+        raise SubtitleServiceError(
+            SubtitleErrorCode.RUNTIME_ERROR,
+            'Subtitles provider returned an invalid response',
+        )
+
     return SubtitleFile(
-        content=str(result.data.get('content') or ''),
-        filename=str(result.data.get('filename') or fallback_filename),
-        media_type=str(result.data.get('media_type') or fallback_media_type),
+        content=content,
+        filename=filename,
+        media_type=media_type,
     )
 
 
