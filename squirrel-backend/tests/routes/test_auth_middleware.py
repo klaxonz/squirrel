@@ -7,8 +7,9 @@ from routes.middleware.auth import is_public_api_path
 
 
 def test_site_icon_route_is_public_without_exposing_other_plugin_site_routes():
-    assert is_public_api_path('/api/plugins/sites/youtube/icon') is True
-    assert is_public_api_path('/api/plugins/sites/bilibili/icon') is True
-    assert is_public_api_path('/api/plugins/sites') is False
-    assert is_public_api_path('/api/plugins/sites/youtube/login-status') is False
-    assert is_public_api_path('/api/plugins/sites/youtube/cookies') is False
+    assert is_public_api_path('/api/site-runtimes/sites/youtube/icon') is True
+    assert is_public_api_path('/api/site-runtimes/sites/bilibili/icon') is True
+    assert is_public_api_path('/api/site-runtimes/sites') is False
+    assert is_public_api_path('/api/site-runtimes/sites/youtube/login-status') is False
+    assert is_public_api_path('/api/site-runtimes/sites/youtube/cookies') is False
+

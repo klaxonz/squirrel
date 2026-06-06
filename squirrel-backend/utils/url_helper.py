@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 import logging
 import ipaddress
 
-from plugins.manager import get_plugin_manager
+from site_runtimes.manager import get_site_runtime_manager
 
 
 logger = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ def _normalize_registration_domain(domain: str) -> str:
 
 
 def _build_site_registration_index() -> dict[str, str]:
-    registrations = get_plugin_manager().get_snapshot().registrations
+    registrations = get_site_runtime_manager().get_snapshot().registrations
     index: dict[str, str] = {}
     for registration in registrations:
         if not registration.site_name:
@@ -162,3 +162,5 @@ def get_site_from_url(url: str) -> Optional[str]:
     except Exception as e:
         logger.error(f"get_site_from_url exception occurred: url={url}, error={str(e)}", exc_info=True)
         return None
+
+

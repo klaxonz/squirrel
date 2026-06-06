@@ -4,13 +4,13 @@ import logging
 from datetime import datetime
 from typing import Any, Dict
 
-from plugins.manager import get_plugin_manager
+from site_runtimes.manager import get_site_runtime_manager
 
 logger = logging.getLogger(__name__)
 
 
 def get_supported_sites() -> set[str]:
-    manager = get_plugin_manager()
+    manager = get_site_runtime_manager()
     return {
         registration.site_name
         for registration in manager.get_snapshot().registrations
@@ -19,7 +19,7 @@ def get_supported_sites() -> set[str]:
 
 
 def test_site_login_status(site_name: str) -> Dict[str, Any]:
-    manager = get_plugin_manager()
+    manager = get_site_runtime_manager()
     timestamp = datetime.now().isoformat()
     route = manager.gateway.resolve_route('check_login_status', site_name=site_name)
     if route is None:
@@ -60,3 +60,5 @@ def test_site_login_status(site_name: str) -> Dict[str, Any]:
     payload.setdefault('logged_in', False)
     payload.setdefault('extra', {})
     return payload
+
+

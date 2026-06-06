@@ -133,3 +133,5 @@ class PluginManifest:
             package_name=data.get('package_name'),
             entrypoint=data.get('entrypoint'),
         )
+
+

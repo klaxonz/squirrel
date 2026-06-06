@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes import plugins as plugin_routes
+from routes import site_runtimes as site_runtime_routes
 
 
 def test_get_supported_sites_merges_runtime_sites_when_catalog_is_partial(monkeypatch):
@@ -15,7 +15,7 @@ def test_get_supported_sites_merges_runtime_sites_when_catalog_is_partial(monkey
             'domains': ['youtube.com', 'youtu.be'],
             'enabled': True,
             'test_url': 'https://www.youtube.com',
-            'icon_url': '/api/plugins/sites/youtube/icon',
+            'icon_url': '/api/site-runtimes/sites/youtube/icon',
         },
         'bilibili': {
             'label': 'Bilibili',
@@ -25,10 +25,10 @@ def test_get_supported_sites_merges_runtime_sites_when_catalog_is_partial(monkey
         },
     }
 
-    monkeypatch.setattr(plugin_routes, 'get_effective_site_catalog', lambda: effective_catalog)
-    monkeypatch.setattr(plugin_routes, 'get_login_supported_sites', lambda: {'bilibili'})
+    monkeypatch.setattr(site_runtime_routes, 'get_effective_site_catalog', lambda: effective_catalog)
+    monkeypatch.setattr(site_runtime_routes, 'get_login_supported_sites', lambda: {'bilibili'})
 
-    response = plugin_routes.get_supported_sites()
+    response = site_runtime_routes.get_supported_sites()
 
     assert response['code'] == 0
 
@@ -39,7 +39,7 @@ def test_get_supported_sites_merges_runtime_sites_when_catalog_is_partial(monkey
     youtube = next(site for site in sites if site['site_name'] == 'youtube')
     bilibili = next(site for site in sites if site['site_name'] == 'bilibili')
 
-    assert youtube['icon_url'] == '/api/plugins/sites/youtube/icon'
+    assert youtube['icon_url'] == '/api/site-runtimes/sites/youtube/icon'
     assert bilibili['domains'] == ['bilibili.com']
     assert bilibili['supports_login_status'] is True
 
@@ -55,10 +55,10 @@ def test_upload_site_cookies_accepts_runtime_only_site(monkeypatch, tmp_path):
     }
     cookies_path = tmp_path / 'youporn.txt'
 
-    monkeypatch.setattr(plugin_routes, 'get_effective_site_catalog', lambda: effective_catalog)
-    monkeypatch.setattr(plugin_routes, 'get_site_cookies_file_path', lambda site_name: cookies_path)
+    monkeypatch.setattr(site_runtime_routes, 'get_effective_site_catalog', lambda: effective_catalog)
+    monkeypatch.setattr(site_runtime_routes, 'get_site_cookies_file_path', lambda site_name: cookies_path)
     monkeypatch.setattr(
-        plugin_routes,
+        site_runtime_routes,
         'test_site_login_status',
         lambda site_name: {'supported': True, 'logged_in': True, 'site_name': site_name},
     )
@@ -72,7 +72,7 @@ def test_upload_site_cookies_accepts_runtime_only_site(monkeypatch, tmp_path):
                 '.youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n'
             ).encode('utf-8')
 
-    response = asyncio.run(plugin_routes.upload_site_cookies('youporn', DummyUploadFile()))
+    response = asyncio.run(site_runtime_routes.upload_site_cookies('youporn', DummyUploadFile()))
 
     assert response['code'] == 0
     assert response['data']['site_name'] == 'youporn'
@@ -91,10 +91,10 @@ def test_upload_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_path)
     cookies_path = tmp_path / 'youporn.txt'
     writes = []
 
-    monkeypatch.setattr(plugin_routes, 'get_effective_site_catalog', lambda: effective_catalog)
-    monkeypatch.setattr(plugin_routes, 'get_site_cookies_file_path', lambda site_name: cookies_path)
+    monkeypatch.setattr(site_runtime_routes, 'get_effective_site_catalog', lambda: effective_catalog)
+    monkeypatch.setattr(site_runtime_routes, 'get_site_cookies_file_path', lambda site_name: cookies_path)
     monkeypatch.setattr(
-        plugin_routes,
+        site_runtime_routes,
         'test_site_login_status',
         lambda site_name: {'supported': True, 'logged_in': True, 'site_name': site_name},
     )
@@ -104,7 +104,7 @@ def test_upload_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_path)
         path.write_text(content, encoding='utf-8')
 
     monkeypatch.setattr(
-        plugin_routes,
+        site_runtime_routes,
         'write_cookie_text_file',
         _record_write,
         raising=False,
@@ -119,7 +119,7 @@ def test_upload_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_path)
                 '.youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n'
             ).encode('utf-8')
 
-    response = asyncio.run(plugin_routes.upload_site_cookies('youporn', DummyUploadFile()))
+    response = asyncio.run(site_runtime_routes.upload_site_cookies('youporn', DummyUploadFile()))
 
     assert response['code'] == 0
     assert writes == [
@@ -143,10 +143,10 @@ def test_import_all_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_p
     cookies_path = tmp_path / 'youporn.txt'
     writes = []
 
-    monkeypatch.setattr(plugin_routes, 'get_effective_site_catalog', lambda: effective_catalog)
-    monkeypatch.setattr(plugin_routes, 'get_site_cookies_file_path', lambda site_name: cookies_path)
+    monkeypatch.setattr(site_runtime_routes, 'get_effective_site_catalog', lambda: effective_catalog)
+    monkeypatch.setattr(site_runtime_routes, 'get_site_cookies_file_path', lambda site_name: cookies_path)
     monkeypatch.setattr(
-        plugin_routes,
+        site_runtime_routes,
         'write_cookie_text_file',
         lambda path, content: writes.append((path, content)),
         raising=False,
@@ -161,7 +161,7 @@ def test_import_all_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_p
                 '.youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n'
             ).encode('utf-8')
 
-    response = asyncio.run(plugin_routes.import_cookies_for_all_sites(DummyUploadFile()))
+    response = asyncio.run(site_runtime_routes.import_cookies_for_all_sites(DummyUploadFile()))
 
     assert response['code'] == 0
     assert writes == [
@@ -175,17 +175,17 @@ def test_import_all_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_p
 
 def test_get_site_login_status_includes_youtube_oauth_state(monkeypatch):
     monkeypatch.setattr(
-        plugin_routes,
+        site_runtime_routes,
         'get_merged_site_catalog',
         lambda: {'youtube': {'label': 'YouTube', 'domains': ['youtube.com'], 'enabled': True}},
     )
     monkeypatch.setattr(
-        plugin_routes,
+        site_runtime_routes,
         'build_site_info',
         lambda site_name, catalog: {'site_name': site_name, **catalog[site_name]},
     )
     monkeypatch.setattr(
-        plugin_routes,
+        site_runtime_routes,
         'test_site_login_status',
         lambda site_name: {'supported': True, 'logged_in': False, 'site_name': site_name},
     )
@@ -200,8 +200,9 @@ def test_get_site_login_status_includes_youtube_oauth_state(monkeypatch):
         ),
     )
 
-    response = plugin_routes.get_site_login_status('youtube')
+    response = site_runtime_routes.get_site_login_status('youtube')
 
     assert response['code'] == 0
     assert response['data']['oauth_status'] == 'authenticated'
     assert response['data']['oauth_account']['email'] == 'yt@example.com'
+

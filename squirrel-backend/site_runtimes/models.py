@@ -10,7 +10,7 @@ def utcnow_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-class PluginInstallStatus(str, Enum):
+class SiteRuntimeStatus(str, Enum):
     VALIDATED = 'validated'
     INSTALLED = 'installed'
     STARTING = 'starting'
@@ -21,7 +21,7 @@ class PluginInstallStatus(str, Enum):
     STOPPED = 'stopped'
 
 
-class PluginRuntimeState(str, Enum):
+class SiteRuntimeState(str, Enum):
     STARTING = 'starting'
     RUNNING = 'running'
     DRAINING = 'draining'
@@ -30,13 +30,13 @@ class PluginRuntimeState(str, Enum):
 
 
 @dataclass
-class PluginInstallRecord:
+class SiteRuntimeRecord:
     plugin_id: str
     version: str
     install_path: str
     entrypoint: str
     enabled: bool = False
-    status: PluginInstallStatus = PluginInstallStatus.INSTALLED
+    status: SiteRuntimeStatus = SiteRuntimeStatus.INSTALLED
     granted_permissions: List[str] = field(default_factory=list)
     manifest: Dict[str, Any] = field(default_factory=dict)
     package_path: Optional[str] = None
@@ -67,12 +67,12 @@ class PluginInstallRecord:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PluginInstallRecord':
-        status = str(data.get('status', PluginInstallStatus.INSTALLED.value))
+    def from_dict(cls, data: Dict[str, Any]) -> 'SiteRuntimeRecord':
+        status = str(data.get('status', SiteRuntimeStatus.INSTALLED.value))
         try:
-            parsed_status = PluginInstallStatus(status)
+            parsed_status = SiteRuntimeStatus(status)
         except ValueError:
-            parsed_status = PluginInstallStatus.FAILED
+            parsed_status = SiteRuntimeStatus.FAILED
 
         return cls(
             plugin_id=str(data.get('plugin_id', '')),
@@ -94,7 +94,7 @@ class PluginInstallRecord:
 
 
 @dataclass
-class PluginHealthSnapshot:
+class SiteRuntimeHealthSnapshot:
     plugin_id: str
     healthy: bool
     status: str = 'unknown'
@@ -104,16 +104,16 @@ class PluginHealthSnapshot:
 
 
 @dataclass
-class PluginRuntimeHandle:
+class SiteRuntimeHandle:
     plugin_id: str
     version: str
-    state: PluginRuntimeState = PluginRuntimeState.STOPPED
+    state: SiteRuntimeState = SiteRuntimeState.STOPPED
     process_id: Optional[int] = None
     endpoint: Optional[str] = None
     started_at: Optional[str] = None
     drained_at: Optional[str] = None
     last_error: Optional[str] = None
-    health: Optional[PluginHealthSnapshot] = None
+    health: Optional[SiteRuntimeHealthSnapshot] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -137,7 +137,7 @@ class PluginRuntimeHandle:
 
 
 @dataclass
-class PluginCapabilityRegistration:
+class SiteCapabilityRegistration:
     plugin_id: str
     version: str
     capability: str
@@ -148,7 +148,7 @@ class PluginCapabilityRegistration:
 
 
 @dataclass
-class PluginRoutingTarget:
+class SiteRuntimeTarget:
     plugin_id: str
     version: str
     capability: str
@@ -157,7 +157,9 @@ class PluginRoutingTarget:
 
 
 @dataclass
-class PluginManagerSnapshot:
-    records: List[PluginInstallRecord] = field(default_factory=list)
-    runtimes: List[PluginRuntimeHandle] = field(default_factory=list)
-    registrations: List[PluginCapabilityRegistration] = field(default_factory=list)
+class SiteRuntimeSnapshot:
+    records: List[SiteRuntimeRecord] = field(default_factory=list)
+    runtimes: List[SiteRuntimeHandle] = field(default_factory=list)
+    registrations: List[SiteCapabilityRegistration] = field(default_factory=list)
+
+

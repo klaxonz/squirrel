@@ -16,27 +16,27 @@ from typing import Dict, Optional, Sequence
 from crawl import PluginHealthStatus, PluginInvokeRequest, PluginInvokeResponse, PluginRuntimeError
 
 from .models import (
-    PluginHealthSnapshot,
-    PluginInstallRecord,
-    PluginRoutingTarget,
-    PluginRuntimeHandle,
-    PluginRuntimeState,
+    SiteRuntimeHealthSnapshot,
+    SiteRuntimeRecord,
+    SiteRuntimeTarget,
+    SiteRuntimeHandle,
+    SiteRuntimeState,
     utcnow_iso,
 )
 
 logger = logging.getLogger(__name__)
 
 
-class PluginSupervisorError(RuntimeError):
+class SiteRuntimeSupervisorError(RuntimeError):
     """Raised when runtime supervision fails."""
 
 
-class PluginRuntimeSupervisor:
-    """Manage plugin runtime subprocesses and transport requests to them."""
+class SiteRuntimeSupervisor:
+    """Manage site runtime subprocesses and transport requests to them."""
 
     def __init__(self) -> None:
-        self._handles: Dict[str, PluginRuntimeHandle] = {}
-        self._records: Dict[str, PluginInstallRecord] = {}
+        self._handles: Dict[str, SiteRuntimeHandle] = {}
+        self._records: Dict[str, SiteRuntimeRecord] = {}
         self._processes: Dict[str, subprocess.Popen] = {}
         self._log_streams: Dict[str, tuple[object, object]] = {}
         self._runtime_timers: Dict[str, threading.Timer] = {}
@@ -45,7 +45,7 @@ class PluginRuntimeSupervisor:
     def _key(self, plugin_id: str, version: str) -> str:
         return f'{plugin_id}:{version}'
 
-    def _candidate_import_paths(self, record: PluginInstallRecord) -> list[str]:
+    def _candidate_import_paths(self, record: SiteRuntimeRecord) -> list[str]:
         candidates: list[Path] = []
         if record.runtime_path:
             candidates.append(Path(record.runtime_path))
@@ -72,13 +72,13 @@ class PluginRuntimeSupervisor:
             sock.bind(('127.0.0.1', 0))
             return int(sock.getsockname()[1])
 
-    def _build_runtime_command(self, record: PluginInstallRecord, host: str, port: int) -> list[str]:
+    def _build_runtime_command(self, record: SiteRuntimeRecord, host: str, port: int) -> list[str]:
         runtime_policy = self._runtime_policy(record)
         network_policy = self._network_policy(record)
         command = [
             sys.executable,
             '-m',
-            'plugins.runtime_bridge',
+            'site_runtimes.runtime_bridge',
             '--entrypoint',
             record.entrypoint,
             '--plugin-id',
@@ -108,12 +108,12 @@ class PluginRuntimeSupervisor:
             command.extend(['--import-path', import_path])
         return command
 
-    def _runtime_policy(self, record: PluginInstallRecord) -> dict:
+    def _runtime_policy(self, record: SiteRuntimeRecord) -> dict:
         metadata = ((record.manifest or {}).get('metadata') or {})
         policy = metadata.get('runtime_policy') or {}
         return dict(policy) if isinstance(policy, dict) else {}
 
-    def _network_policy(self, record: PluginInstallRecord) -> dict:
+    def _network_policy(self, record: SiteRuntimeRecord) -> dict:
         metadata = ((record.manifest or {}).get('metadata') or {})
         policy = metadata.get('network_policy')
         if isinstance(policy, dict):
@@ -122,7 +122,7 @@ class PluginRuntimeSupervisor:
             return {'mode': 'allow_all'}
         return {'mode': 'deny_all'}
 
-    def _build_process_env(self, record: PluginInstallRecord) -> dict[str, str]:
+    def _build_process_env(self, record: SiteRuntimeRecord) -> dict[str, str]:
         process_env = dict(os.environ)
         process_env['SQUIRREL_PLUGIN_ID'] = record.plugin_id
         process_env['SQUIRREL_PLUGIN_VERSION'] = record.version
@@ -139,10 +139,10 @@ class PluginRuntimeSupervisor:
             process_env['SQUIRREL_PLUGIN_DATA_DIR'] = record.data_path
         return process_env
 
-    def _resolve_runtime_cwd(self, record: PluginInstallRecord) -> Path:
+    def _resolve_runtime_cwd(self, record: SiteRuntimeRecord) -> Path:
         return self._backend_root
 
-    def _resolve_artifact_paths(self, record: PluginInstallRecord) -> dict[str, Path]:
+    def _resolve_artifact_paths(self, record: SiteRuntimeRecord) -> dict[str, Path]:
         base_dir = Path(record.data_path or record.install_path or self._backend_root)
         log_dir = base_dir / 'runtime-logs'
         audit_dir = base_dir / 'runtime-audit'
@@ -153,7 +153,7 @@ class PluginRuntimeSupervisor:
             'audit': audit_dir / 'audit.jsonl',
         }
 
-    def _append_audit_event(self, record: PluginInstallRecord, event: str, details: Optional[dict] = None) -> Path:
+    def _append_audit_event(self, record: SiteRuntimeRecord, event: str, details: Optional[dict] = None) -> Path:
         artifact_paths = self._resolve_artifact_paths(record)
         audit_path = artifact_paths['audit']
         audit_path.parent.mkdir(parents=True, exist_ok=True)
@@ -170,9 +170,9 @@ class PluginRuntimeSupervisor:
 
     def _build_invoke_details(
         self,
-        target: PluginRoutingTarget,
+        target: SiteRuntimeTarget,
         request: PluginInvokeRequest,
-        handle: PluginRuntimeHandle,
+        handle: SiteRuntimeHandle,
         *,
         elapsed_ms: Optional[int] = None,
         reason: Optional[str] = None,
@@ -215,7 +215,7 @@ class PluginRuntimeSupervisor:
             f"process_id={details.get('process_id')}"
         )
 
-    def _schedule_runtime_expiry(self, key: str, record: PluginInstallRecord) -> None:
+    def _schedule_runtime_expiry(self, key: str, record: SiteRuntimeRecord) -> None:
         runtime_policy = self._runtime_policy(record)
         max_runtime_seconds = runtime_policy.get('max_runtime_seconds')
         if max_runtime_seconds is None:
@@ -274,17 +274,17 @@ class PluginRuntimeSupervisor:
 
         while time.monotonic() < deadline:
             if process.poll() is not None:
-                raise PluginSupervisorError('Plugin runtime exited before becoming healthy')
+                raise SiteRuntimeSupervisorError('Plugin runtime exited before becoming healthy')
             try:
                 return self._fetch_health(endpoint, timeout=1.0)
             except Exception as exc:
                 last_error = exc
                 time.sleep(0.1)
 
-        raise PluginSupervisorError(f'Plugin runtime startup timed out: {last_error}')
+        raise SiteRuntimeSupervisorError(f'Plugin runtime startup timed out: {last_error}')
 
-    def _to_health_snapshot(self, plugin_id: str, health: PluginHealthStatus) -> PluginHealthSnapshot:
-        return PluginHealthSnapshot(
+    def _to_health_snapshot(self, plugin_id: str, health: PluginHealthStatus) -> SiteRuntimeHealthSnapshot:
+        return SiteRuntimeHealthSnapshot(
             plugin_id=plugin_id,
             healthy=health.healthy,
             status=health.status,
@@ -293,12 +293,12 @@ class PluginRuntimeSupervisor:
             checked_at=health.checked_at or utcnow_iso(),
         )
 
-    def register_placeholder(self, record: PluginInstallRecord) -> PluginRuntimeHandle:
+    def register_placeholder(self, record: SiteRuntimeRecord) -> SiteRuntimeHandle:
         key = self._key(record.plugin_id, record.version)
-        handle = PluginRuntimeHandle(
+        handle = SiteRuntimeHandle(
             plugin_id=record.plugin_id,
             version=record.version,
-            state=PluginRuntimeState.STOPPED,
+            state=SiteRuntimeState.STOPPED,
         )
         self._handles[key] = handle
         self._records[key] = record
@@ -306,15 +306,15 @@ class PluginRuntimeSupervisor:
 
     def start_runtime(
         self,
-        record: PluginInstallRecord,
+        record: SiteRuntimeRecord,
         command: Optional[Sequence[str]] = None,
         cwd: Optional[Path] = None,
         endpoint: Optional[str] = None,
-    ) -> PluginRuntimeHandle:
+    ) -> SiteRuntimeHandle:
         key = self._key(record.plugin_id, record.version)
         self._records[key] = record
         handle = self._handles.get(key) or self.register_placeholder(record)
-        handle.state = PluginRuntimeState.STARTING
+        handle.state = SiteRuntimeState.STARTING
         handle.started_at = utcnow_iso()
         handle.endpoint = endpoint
         handle.last_error = None
@@ -358,11 +358,11 @@ class PluginRuntimeSupervisor:
             health = self._wait_for_runtime(process, runtime_endpoint, startup_timeout_ms)
             handle.health = self._to_health_snapshot(record.plugin_id, health)
             if not health.healthy:
-                handle.state = PluginRuntimeState.FAILED
+                handle.state = SiteRuntimeState.FAILED
                 handle.last_error = health.message
                 self._append_audit_event(record, event='runtime_unhealthy', details={'message': health.message})
             else:
-                handle.state = PluginRuntimeState.RUNNING
+                handle.state = SiteRuntimeState.RUNNING
                 self._append_audit_event(
                     record,
                     event='runtime_started',
@@ -373,7 +373,7 @@ class PluginRuntimeSupervisor:
                 )
                 self._schedule_runtime_expiry(key, record)
         except Exception as exc:
-            handle.state = PluginRuntimeState.FAILED
+            handle.state = SiteRuntimeState.FAILED
             handle.last_error = str(exc)
             self._append_audit_event(record, event='runtime_failed', details={'reason': str(exc)})
             self.stop_runtime(record.plugin_id, record.version)
@@ -382,25 +382,25 @@ class PluginRuntimeSupervisor:
         self._handles[key] = handle
         return handle
 
-    def heartbeat(self, plugin_id: str, version: str, health: PluginHealthSnapshot) -> None:
+    def heartbeat(self, plugin_id: str, version: str, health: SiteRuntimeHealthSnapshot) -> None:
         key = self._key(plugin_id, version)
         handle = self._handles.get(key)
         if handle is None:
-            raise PluginSupervisorError(f'Runtime handle not found: {key}')
+            raise SiteRuntimeSupervisorError(f'Runtime handle not found: {key}')
         handle.health = health
         if not health.healthy:
-            handle.state = PluginRuntimeState.FAILED
+            handle.state = SiteRuntimeState.FAILED
             handle.last_error = health.message
 
-    def drain_runtime(self, plugin_id: str, version: str) -> Optional[PluginRuntimeHandle]:
+    def drain_runtime(self, plugin_id: str, version: str) -> Optional[SiteRuntimeHandle]:
         handle = self._handles.get(self._key(plugin_id, version))
         if handle is None:
             return None
-        handle.state = PluginRuntimeState.DRAINING
+        handle.state = SiteRuntimeState.DRAINING
         handle.drained_at = utcnow_iso()
         return handle
 
-    def stop_runtime(self, plugin_id: str, version: str) -> Optional[PluginRuntimeHandle]:
+    def stop_runtime(self, plugin_id: str, version: str) -> Optional[SiteRuntimeHandle]:
         key = self._key(plugin_id, version)
         handle = self._handles.get(key)
         process = self._processes.pop(key, None)
@@ -428,31 +428,31 @@ class PluginRuntimeSupervisor:
                     pass
         if handle is None:
             return None
-        handle.state = PluginRuntimeState.STOPPED
+        handle.state = SiteRuntimeState.STOPPED
         record = self._records.get(key)
         if record is not None:
             self._append_audit_event(record, event='runtime_stopped', details={})
         return handle
 
-    def mark_failed(self, plugin_id: str, version: str, message: str) -> Optional[PluginRuntimeHandle]:
+    def mark_failed(self, plugin_id: str, version: str, message: str) -> Optional[SiteRuntimeHandle]:
         key = self._key(plugin_id, version)
         handle = self._handles.get(key)
         if handle is None:
             return None
-        handle.state = PluginRuntimeState.FAILED
+        handle.state = SiteRuntimeState.FAILED
         handle.last_error = message
         record = self._records.get(key)
         if record is not None:
             self._append_audit_event(record, event='runtime_marked_failed', details={'reason': message})
         return handle
 
-    def get_handle(self, plugin_id: str, version: str) -> Optional[PluginRuntimeHandle]:
+    def get_handle(self, plugin_id: str, version: str) -> Optional[SiteRuntimeHandle]:
         return self._handles.get(self._key(plugin_id, version))
 
-    def list_handles(self) -> list[PluginRuntimeHandle]:
+    def list_handles(self) -> list[SiteRuntimeHandle]:
         return list(self._handles.values())
 
-    def invoke(self, target: PluginRoutingTarget, request: PluginInvokeRequest) -> PluginInvokeResponse:
+    def invoke(self, target: SiteRuntimeTarget, request: PluginInvokeRequest) -> PluginInvokeResponse:
         handle = self._handles.get(self._key(target.plugin_id, target.version))
         if handle is None or not handle.endpoint:
             return PluginInvokeResponse(
@@ -499,7 +499,7 @@ class PluginRuntimeSupervisor:
                 try:
                     health = self._fetch_health(handle.endpoint, timeout=1.0)
                     handle.health = self._to_health_snapshot(target.plugin_id, health)
-                    handle.state = PluginRuntimeState.RUNNING if health.healthy else PluginRuntimeState.FAILED
+                    handle.state = SiteRuntimeState.RUNNING if health.healthy else SiteRuntimeState.FAILED
                 except Exception:
                     pass
             if record is not None:
@@ -589,3 +589,5 @@ class PluginRuntimeSupervisor:
                     details=details,
                 ),
             )
+
+

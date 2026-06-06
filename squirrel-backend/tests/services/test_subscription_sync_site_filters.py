@@ -68,7 +68,7 @@ def _setup_test_env(monkeypatch):
             lambda cls: {
                 'youtube': {
                     'domains': ['youtube.com', 'youtu.be'],
-                    'icon_url': '/api/plugins/sites/youtube/icon',
+                    'icon_url': '/api/site-runtimes/sites/youtube/icon',
                 }
             }
         ),
@@ -160,7 +160,7 @@ def test_list_runs_accepts_site_slug_when_projection_stores_domain(monkeypatch):
 
     assert result['total'] == 1
     assert [item['site'] for item in result['data']] == ['youtube.com']
-    assert [item['site_icon_url'] for item in result['data']] == ['/api/plugins/sites/youtube/icon']
+    assert [item['site_icon_url'] for item in result['data']] == ['/api/site-runtimes/sites/youtube/icon']
 
 
 def test_list_runs_recent_excludes_running_and_queued_statuses(monkeypatch):
@@ -777,3 +777,4 @@ def test_list_sync_center_queued_items_follow_real_task_queue_order(monkeypatch)
             ),
         ])
         session.commit()
+

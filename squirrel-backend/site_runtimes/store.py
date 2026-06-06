@@ -7,18 +7,18 @@ from pathlib import Path
 import tempfile
 from typing import Dict, List, Optional
 
-from .models import PluginInstallRecord, PluginInstallStatus, utcnow_iso
-from .paths import PluginPaths, build_plugin_paths
+from .models import SiteRuntimeRecord, SiteRuntimeStatus, utcnow_iso
+from .paths import SiteRuntimePaths, build_site_runtime_paths
 
 logger = logging.getLogger(__name__)
 
 
-class PluginInstallStore:
-    """Persist plugin runtime records as JSON."""
+class SiteRuntimeStore:
+    """Persist site runtime records as JSON."""
 
-    def __init__(self, data_path: Optional[Path] = None, paths: PluginPaths | None = None) -> None:
-        self._paths = paths or build_plugin_paths()
-        self._data_path = data_path or self._paths.installations_file
+    def __init__(self, data_path: Optional[Path] = None, paths: SiteRuntimePaths | None = None) -> None:
+        self._paths = paths or build_site_runtime_paths()
+        self._data_path = data_path or self._paths.records_file
         self._data_path.parent.mkdir(parents=True, exist_ok=True)
         self._cleanup_stale_temp_files()
 
@@ -35,7 +35,7 @@ class PluginInstallStore:
         try:
             payload = json.loads(raw_text)
         except json.JSONDecodeError as exc:
-            logger.warning('Plugin installation store is unreadable, treating it as empty: %s', exc)
+            logger.warning('Site runtime store is unreadable, treating it as empty: %s', exc)
             return {}
         if not isinstance(payload, dict):
             return {}
@@ -63,7 +63,7 @@ class PluginInstallStore:
                 try:
                     temp_path.unlink(missing_ok=True)
                 except OSError:
-                    logger.warning('Failed to remove plugin store temp file after write failure: %s', temp_path)
+                    logger.warning('Failed to remove site runtime store temp file after write failure: %s', temp_path)
             raise
 
     def _cleanup_stale_temp_files(self) -> None:
@@ -72,23 +72,23 @@ class PluginInstallStore:
             try:
                 candidate.unlink(missing_ok=True)
             except OSError:
-                logger.warning('Failed to remove stale plugin store temp file: %s', candidate)
+                logger.warning('Failed to remove stale site runtime store temp file: %s', candidate)
 
-    def list_records(self) -> List[PluginInstallRecord]:
+    def list_records(self) -> List[SiteRuntimeRecord]:
         payload = self._load_raw()
         return [
-            PluginInstallRecord.from_dict(item)
+            SiteRuntimeRecord.from_dict(item)
             for _, item in sorted(payload.items(), key=lambda entry: entry[0].lower())
         ]
 
-    def get_record(self, plugin_id: str) -> Optional[PluginInstallRecord]:
+    def get_record(self, plugin_id: str) -> Optional[SiteRuntimeRecord]:
         payload = self._load_raw()
         item = payload.get(plugin_id)
         if item is None:
             return None
-        return PluginInstallRecord.from_dict(item)
+        return SiteRuntimeRecord.from_dict(item)
 
-    def upsert(self, record: PluginInstallRecord) -> PluginInstallRecord:
+    def upsert(self, record: SiteRuntimeRecord) -> SiteRuntimeRecord:
         payload = self._load_raw()
         record.updated_at = utcnow_iso()
         payload[record.plugin_id] = record.to_dict()
@@ -101,13 +101,16 @@ class PluginInstallStore:
             del payload[plugin_id]
             self._save_raw(payload)
 
-    def set_enabled(self, plugin_id: str, enabled: bool) -> Optional[PluginInstallRecord]:
+    def set_enabled(self, plugin_id: str, enabled: bool) -> Optional[SiteRuntimeRecord]:
         record = self.get_record(plugin_id)
         if record is None:
             return None
         record.enabled = enabled
-        if enabled and record.status == PluginInstallStatus.DISABLED:
-            record.status = PluginInstallStatus.INSTALLED
+        if enabled and record.status == SiteRuntimeStatus.DISABLED:
+            record.status = SiteRuntimeStatus.INSTALLED
         if not enabled:
-            record.status = PluginInstallStatus.DISABLED
+            record.status = SiteRuntimeStatus.DISABLED
         return self.upsert(record)
+
+
+

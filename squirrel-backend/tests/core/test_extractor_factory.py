@@ -110,3 +110,4 @@ def test_get_extractor_factory_initializes_without_legacy_registry(monkeypatch):
 
     assert isinstance(factory, ExtractorFactory)
     assert factory is factory_module.get_extractor_factory()
+

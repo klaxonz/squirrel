@@ -19,7 +19,7 @@ def test_get_cached_site_catalog_reuses_cached_result_within_ttl(monkeypatch):
         return {
             'youtube': {
                 'domains': ['youtube.com'],
-                'icon_url': '/api/plugins/sites/youtube/icon',
+                'icon_url': '/api/site-runtimes/sites/youtube/icon',
             }
         }
 
@@ -30,5 +30,6 @@ def test_get_cached_site_catalog_reuses_cached_result_within_ttl(monkeypatch):
     second = subscription_sync_center_service._get_cached_site_catalog()
 
     assert first == second
-    assert first['youtube']['icon_url'] == '/api/plugins/sites/youtube/icon'
+    assert first['youtube']['icon_url'] == '/api/site-runtimes/sites/youtube/icon'
     assert len(calls) == 1
+

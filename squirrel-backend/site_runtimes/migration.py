@@ -4,7 +4,7 @@ import logging
 import shutil
 from pathlib import Path
 
-from .paths import PluginPaths
+from .paths import SiteRuntimePaths
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +27,8 @@ def _move_path_if_needed(source: Path, target: Path) -> None:
     shutil.move(str(source), str(target))
 
 
-def migrate_legacy_plugin_storage(paths: PluginPaths) -> bool:
-    if paths.installations_file.exists():
+def migrate_legacy_site_runtime_storage(paths: SiteRuntimePaths) -> bool:
+    if paths.records_file.exists():
         return False
     if not paths.legacy_root.exists():
         return False
@@ -40,7 +40,7 @@ def migrate_legacy_plugin_storage(paths: PluginPaths) -> bool:
     paths.runtime_dir.mkdir(parents=True, exist_ok=True)
     paths.plugin_data_dir.mkdir(parents=True, exist_ok=True)
 
-    _move_path_if_needed(paths.legacy_root / 'installations.json', paths.installations_file)
+    _move_path_if_needed(paths.legacy_root / 'installations.json', paths.records_file)
     _move_path_if_needed(paths.legacy_root / 'runtime', paths.runtime_dir)
     _move_path_if_needed(paths.legacy_root / 'data', paths.plugin_data_dir)
 
@@ -48,6 +48,7 @@ def migrate_legacy_plugin_storage(paths: PluginPaths) -> bool:
         try:
             stale.unlink(missing_ok=True)
         except OSError:
-            logger.warning('Failed to remove legacy plugin store temp file: %s', stale)
+            logger.warning('Failed to remove legacy site runtime store temp file: %s', stale)
 
     return True
+

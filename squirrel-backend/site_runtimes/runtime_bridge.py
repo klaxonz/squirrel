@@ -42,7 +42,7 @@ def _configure_backend_runtime_state() -> None:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='Squirrel plugin runtime bridge')
+    parser = argparse.ArgumentParser(description='Squirrel site runtime bridge')
     parser.add_argument('--entrypoint', required=True)
     parser.add_argument('--plugin-id', required=True)
     parser.add_argument('--version', required=True)
@@ -268,3 +268,5 @@ def main() -> int:
 
 if __name__ == '__main__':
     raise SystemExit(main())
+
+

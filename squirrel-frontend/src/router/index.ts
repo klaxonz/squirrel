@@ -16,7 +16,7 @@ const PlaylistView = () => import('../views/PlaylistView.vue')
 const Music = () => import('../views/MusicNew.vue')
 const Login = () => import('../views/Login.vue')
 const Register = () => import('../views/Register.vue')
-const PluginManager = () => import('../views/PluginManager.vue')
+const SiteRuntimeManager = () => import('../views/SiteRuntimeManager.vue')
 const LogViewer = () => import('../views/LogViewer.vue')
 const ScheduledTasks = () => import('../views/ScheduledTasks.vue')
 const SyncCenter = () => import('../views/SyncCenter.vue')
@@ -141,12 +141,12 @@ const routes = [
     }),
   })),
   {
-    path: '/plugins',
-    name: 'Plugins',
-    component: PluginManager,
-    meta: createNoSearchMeta('插件管理', {
-      navKey: 'plugins',
-      sectionLabel: '插件',
+    path: '/site-runtimes',
+    name: 'SiteRuntimes',
+    component: SiteRuntimeManager,
+    meta: createNoSearchMeta('站点运行时', {
+      navKey: 'site-runtimes',
+      sectionLabel: '站点运行时',
     }),
   },
   {
@@ -383,3 +383,4 @@ router.beforeEach(async (to, from, next) => {
 })
 
 export default router
+

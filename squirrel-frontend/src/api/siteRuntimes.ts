@@ -61,7 +61,7 @@ export interface YouTubeOAuthState {
   error?: string | null
 }
 
-export interface PluginListItem {
+export interface SiteRuntimeListItem {
   plugin_id: string
   display_name: string
   description?: string
@@ -75,36 +75,36 @@ export interface PluginListItem {
   active_runtime?: PluginRuntimeInfo | null
 }
 
-export const getPlugins = async () => {
-  return get<PluginListItem[]>('/api/plugins/')
+export const getSiteRuntimes = async () => {
+  return get<SiteRuntimeListItem[]>('/api/site-runtimes/')
 }
 
-export const enablePlugin = async (name: string) => {
-  return post(`/api/plugins/${encodeURIComponent(name)}/enable`, null)
+export const enableSiteRuntime = async (name: string) => {
+  return post(`/api/site-runtimes/${encodeURIComponent(name)}/enable`, null)
 }
 
-export const disablePlugin = async (name: string) => {
-  return post(`/api/plugins/${encodeURIComponent(name)}/disable`, null)
+export const disableSiteRuntime = async (name: string) => {
+  return post(`/api/site-runtimes/${encodeURIComponent(name)}/disable`, null)
 }
 
-export const reloadPlugins = async () => {
-  return post('/api/plugins/reload', null)
+export const reloadSiteRuntimes = async () => {
+  return post('/api/site-runtimes/reload', null)
 }
 
 export const getSupportedSites = async () => {
-  return get('/api/plugins/sites')
+  return get('/api/site-runtimes/sites')
 }
 
 export const testSiteConnectivity = async (siteName: string, timeout: number = 10) => {
-  return get(`/api/plugins/sites/${encodeURIComponent(siteName)}/test-connectivity`, { timeout })
+  return get(`/api/site-runtimes/sites/${encodeURIComponent(siteName)}/test-connectivity`, { timeout })
 }
 
 export const testSiteLoginStatus = async (siteName: string) => {
-  return get(`/api/plugins/sites/${encodeURIComponent(siteName)}/login-status`)
+  return get(`/api/site-runtimes/sites/${encodeURIComponent(siteName)}/login-status`)
 }
 
 export const testAllSitesConnectivity = async (timeout = 10) => {
-  return get('/api/plugins/sites/test-connectivity/all', { timeout })
+  return get('/api/site-runtimes/sites/test-connectivity/all', { timeout })
 }
 
 export const importAllSiteCookies = async (file: File | null | undefined) => {
@@ -115,7 +115,7 @@ export const importAllSiteCookies = async (file: File | null | undefined) => {
   const formData = new FormData()
   formData.append('file', file)
 
-  return post('/api/plugins/sites/cookies/import-all', formData, {
+  return post('/api/site-runtimes/sites/cookies/import-all', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
@@ -132,26 +132,28 @@ export const uploadSiteCookies = async (
   const formData = new FormData()
   formData.append('file', file)
 
-  return post(`/api/plugins/sites/${encodeURIComponent(siteName)}/cookies`, formData, {
+  return post(`/api/site-runtimes/sites/${encodeURIComponent(siteName)}/cookies`, formData, {
     params: { target },
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
 
 export const syncCookieCloudCookies = async (siteName: string | null = null) => {
-  return post('/api/plugins/sites/cookies/cookiecloud/sync', null, {
+  return post('/api/site-runtimes/sites/cookies/cookiecloud/sync', null, {
     params: siteName ? { site_name: siteName } : {},
   })
 }
 
 export const setupYouTubeOAuth = async () => {
-  return post<YouTubeOAuthState>('/api/plugins/sites/youtube/oauth/setup', null)
+  return post<YouTubeOAuthState>('/api/site-runtimes/sites/youtube/oauth/setup', null)
 }
 
 export const getYouTubeOAuthStatus = async () => {
-  return get<YouTubeOAuthState>('/api/plugins/sites/youtube/oauth/status')
+  return get<YouTubeOAuthState>('/api/site-runtimes/sites/youtube/oauth/status')
 }
 
 export const revokeYouTubeOAuth = async () => {
-  return del<{ revoked: boolean }>('/api/plugins/sites/youtube/oauth')
+  return del<{ revoked: boolean }>('/api/site-runtimes/sites/youtube/oauth')
 }
+
+

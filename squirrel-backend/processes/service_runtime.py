@@ -7,8 +7,8 @@ from contextlib import contextmanager
 from common.log import init_logging
 from core.site_config_manager import apply_site_config_overrides
 from core.database_upgrade import upgrade_database
-from plugins.manager import bootstrap_plugin_runtime, shutdown_plugin_runtime
-from plugins.reload_listener import start_reload_listener, stop_reload_listener
+from site_runtimes.manager import bootstrap_site_runtimes, shutdown_site_runtimes
+from site_runtimes.reload_listener import start_reload_listener, stop_reload_listener
 from utils.cookie import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
 from utils.runtime_http import set_cloudflare_bypass_client
 from utils.runtime_http import set_cookie_domain_resolver, set_cookie_file_resolver
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 @contextmanager
 def bootstrap_runtime(component: str):
     """
-    Initialize shared runtime pieces (logging, plugin runtime manager)
+    Initialize shared runtime pieces (logging, site runtime manager)
     for standalone worker/scheduler processes.
     """
     init_logging()
@@ -54,7 +54,7 @@ def bootstrap_runtime(component: str):
         oauth_file = get_oauth_credentials_for_daemon()
         if oauth_file:
             os.environ['YOUTUBE_OAUTH_STATE_FILE'] = oauth_file
-        bootstrap_plugin_runtime()
+        bootstrap_site_runtimes()
         try:
             from services import video_extraction_projection_service
             rebuilt_count = video_extraction_projection_service.ensure_projection_seeded()
@@ -99,7 +99,7 @@ def bootstrap_runtime(component: str):
         except Exception:
             logger.warning("[%s] Failed to stop reload listener", component, exc_info=True)
         try:
-            shutdown_plugin_runtime()
+            shutdown_site_runtimes()
         except Exception:
             logger.warning("[%s] Plugin runtime shutdown failed", component, exc_info=True)
 
@@ -129,4 +129,6 @@ def wait_for_shutdown(event: threading.Event):
             event.wait(timeout=1.0)
     except KeyboardInterrupt:
         event.set()
+
+
 

@@ -32,3 +32,4 @@ def test_workspace_plugin_imports_are_runtime_only(module_name, plugin_name, plu
         'PLUGIN_DESCRIPTION',
         'get_plugin_runtime',
     }
+

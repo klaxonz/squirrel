@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from core.site_config_manager import get_effective_site_catalog
-from plugins.manager import get_plugin_manager
-from plugins.runtime_models import PluginManifest
+from site_runtimes.manager import get_site_runtime_manager
+from site_runtimes.runtime_models import PluginManifest
 from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
 
@@ -52,8 +52,8 @@ def _normalize_plugin_item(record, snapshot, catalog: Dict[str, dict]) -> Dict[s
     }
 
 
-def list_plugins() -> List[Dict[str, Any]]:
-    manager = get_plugin_manager()
+def list_site_runtimes() -> List[Dict[str, Any]]:
+    manager = get_site_runtime_manager()
     snapshot = manager.get_snapshot()
     catalog = get_effective_site_catalog()
     return [
@@ -63,6 +63,9 @@ def list_plugins() -> List[Dict[str, Any]]:
 
 
 def set_enabled_by_name(name: str, enabled: bool) -> bool:
-    manager = get_plugin_manager()
-    record = manager.enable_plugin(name) if enabled else manager.disable_plugin(name)
+    manager = get_site_runtime_manager()
+    record = manager.enable_site_runtime(name) if enabled else manager.disable_site_runtime(name)
     return record is not None
+
+
+

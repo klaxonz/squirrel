@@ -1088,3 +1088,4 @@ def test_video_proxy_uses_runtime_chunk_size_when_not_explicitly_overridden(monk
 
     assert _read_stream(response) == b'chunk-data'
     assert observed_chunk_sizes == [131072]
+

@@ -18,7 +18,7 @@ from core.exceptions.proxy_exceptions import (
     ProxyConfigurationException,
     UnsupportedDomainException,
 )
-from plugins.manager import get_plugin_manager
+from site_runtimes.manager import get_site_runtime_manager
 from utils.cookie import filter_cookies_to_query_string
 from utils.runtime_http import get_cloudflare_bypass_client
 
@@ -505,7 +505,7 @@ class VideoProxy:
         if referer:
             payload['referer'] = referer
 
-        response = get_plugin_manager().gateway.invoke(
+        response = get_site_runtime_manager().gateway.invoke(
             'resolve_proxy_config',
             domain=self.domain,
             payload=payload,
@@ -559,7 +559,7 @@ class VideoProxy:
         return HeaderBuilder.build_headers(self.request, site_headers, custom_headers)
 
     def _rewrite_playlist(self, url: str, content: bytes, referer: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        manager = get_plugin_manager()
+        manager = get_site_runtime_manager()
         route = manager.gateway.resolve_route('rewrite_proxy_playlist', domain=self.domain)
         if route is None:
             return None
@@ -669,3 +669,5 @@ class VideoProxy:
         except Exception as e:
             logger.error(f"Unexpected error in handle_stream: {e}", exc_info=True)
             raise ProxyException(f"Internal proxy error: {str(e)}", self.domain, 500)
+
+

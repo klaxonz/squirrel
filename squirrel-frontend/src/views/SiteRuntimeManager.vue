@@ -4,8 +4,8 @@
       <aside class="hidden w-72 shrink-0 flex-col border-r border-border/50 bg-background lg:flex">
         <div class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4">
           <div class="min-w-0">
-            <h1 class="truncate text-sm font-semibold">插件</h1>
-            <p class="mt-0.5 text-xs text-muted-foreground">{{ pluginSummary.total }} 个已安装</p>
+            <h1 class="truncate text-sm font-semibold">站点运行时</h1>
+            <p class="mt-0.5 text-xs text-muted-foreground">{{ siteRuntimeSummary.total }} 个已安装</p>
           </div>
           <Button variant="ghost" size="icon" class="h-8 w-8 rounded-md" :disabled="reloading || loading" @click="handleReload">
             <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': reloading }" />
@@ -15,11 +15,11 @@
         <div class="grid shrink-0 grid-cols-2 gap-2 border-b border-border/50 p-3">
           <div class="rounded-md border border-border/50 p-2">
             <div class="text-xs text-muted-foreground">运行</div>
-            <div class="mt-1 text-lg font-semibold tabular-nums">{{ pluginSummary.running }}</div>
+            <div class="mt-1 text-lg font-semibold tabular-nums">{{ siteRuntimeSummary.running }}</div>
           </div>
           <div class="rounded-md border border-border/50 p-2">
             <div class="text-xs text-muted-foreground">需关注</div>
-            <div class="mt-1 text-lg font-semibold tabular-nums">{{ pluginSummary.attention }}</div>
+            <div class="mt-1 text-lg font-semibold tabular-nums">{{ siteRuntimeSummary.attention }}</div>
           </div>
           <div class="col-span-2 rounded-md border border-border/50 p-2">
             <div class="flex items-center justify-between">
@@ -58,8 +58,8 @@
       <main class="flex min-w-0 flex-1 flex-col bg-background">
         <header class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4 lg:px-6">
           <div class="min-w-0">
-            <h2 class="truncate text-base font-semibold">插件管理</h2>
-            <p class="mt-0.5 text-xs text-muted-foreground">{{ pluginSummary.total }} 个插件 · {{ pluginSummary.running }} 个运行</p>
+            <h2 class="truncate text-base font-semibold">站点运行时</h2>
+            <p class="mt-0.5 text-xs text-muted-foreground">{{ siteRuntimeSummary.total }} 个站点运行时 · {{ siteRuntimeSummary.running }} 个运行</p>
           </div>
 
           <div class="flex shrink-0 items-center gap-2">
@@ -67,7 +67,7 @@
               <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 v-model="searchQuery"
-                placeholder="搜索插件、站点或描述"
+                placeholder="搜索站点运行时、站点或描述"
                 class="h-9 w-full rounded-md border-border/50 pl-9 pr-8 text-sm shadow-none"
               />
               <button
@@ -89,7 +89,7 @@
             <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               v-model="searchQuery"
-              placeholder="搜索插件、站点或描述"
+              placeholder="搜索站点运行时、站点或描述"
               class="h-9 w-full rounded-md border-border/50 pl-9 pr-8 text-sm shadow-none"
             />
             <button
@@ -127,8 +127,8 @@
         <div class="flex-1 overflow-y-auto custom-scrollbar">
           <div class="mx-auto w-full max-w-[1400px] p-4 lg:p-6">
             <div class="overflow-x-auto rounded-lg border border-border/50">
-              <div class="plugin-grid min-w-[980px] border-b border-border/50 bg-muted/20 px-4 py-3 text-xs font-medium text-muted-foreground">
-                <div>插件</div>
+              <div class="site-runtime-grid min-w-[980px] border-b border-border/50 bg-muted/20 px-4 py-3 text-xs font-medium text-muted-foreground">
+                <div>站点运行时</div>
                 <div>状态</div>
                 <div>能力</div>
                 <div>网络</div>
@@ -140,23 +140,23 @@
                 <div v-for="i in 5" :key="i" class="h-16 animate-pulse rounded-lg bg-accent/30" />
               </div>
 
-              <div v-else-if="!displayPlugins.length" class="flex min-h-[20rem] flex-col items-center justify-center text-center">
+              <div v-else-if="!displaySiteRuntimes.length" class="flex min-h-[20rem] flex-col items-center justify-center text-center">
                 <AppIcon name="cube" class="h-9 w-9 text-muted-foreground/30" />
-                <h2 class="mt-4 text-sm font-semibold">{{ searchQuery ? '没有匹配的插件' : '暂无插件' }}</h2>
-                <p class="mt-1 text-sm text-muted-foreground">{{ searchQuery ? '更换搜索关键词后再试。' : '本地插件发现后会显示在这里。' }}</p>
+                <h2 class="mt-4 text-sm font-semibold">{{ searchQuery ? '没有匹配的站点运行时' : '暂无站点运行时' }}</h2>
+                <p class="mt-1 text-sm text-muted-foreground">{{ searchQuery ? '更换搜索关键词后再试。' : '本地站点运行时发现后会显示在这里。' }}</p>
               </div>
 
               <div v-else class="min-w-[980px] divide-y divide-border/50">
                 <div
-                  v-for="plugin in displayPlugins"
-                  :key="plugin.plugin_id"
-                  class="plugin-grid group items-center px-4 py-3 transition-colors hover:bg-accent/30"
+                  v-for="runtime in displaySiteRuntimes"
+                  :key="runtime.plugin_id"
+                  class="site-runtime-grid group items-center px-4 py-3 transition-colors hover:bg-accent/30"
                 >
                   <div class="flex min-w-0 items-center gap-3">
                     <SiteIcon
-                      v-if="plugin.primarySite"
-                      :icon-url="plugin.primarySite.icon_url"
-                      :label="plugin.primarySite.site_name || plugin.display_name"
+                      v-if="runtime.primarySite"
+                      :icon-url="runtime.primarySite.icon_url"
+                      :label="runtime.primarySite.site_name || runtime.display_name"
                       size="md"
                       class="rounded-md border border-border/50"
                     />
@@ -164,45 +164,45 @@
                       <AppIcon name="cube" class="h-5 w-5" />
                     </div>
                     <div class="min-w-0">
-                      <h3 class="truncate text-sm font-semibold text-foreground">{{ plugin.display_name }}</h3>
-                      <p v-if="plugin.description" class="mt-1 line-clamp-1 text-xs text-muted-foreground">{{ plugin.description }}</p>
+                      <h3 class="truncate text-sm font-semibold text-foreground">{{ runtime.display_name }}</h3>
+                      <p v-if="runtime.description" class="mt-1 line-clamp-1 text-xs text-muted-foreground">{{ runtime.description }}</p>
                     </div>
                   </div>
 
                   <div>
-                    <span class="inline-flex h-7 items-center rounded-md border px-2 text-xs font-medium" :class="getPluginStatusClass(plugin)">
-                      {{ getPluginStatusText(plugin) }}
+                    <span class="inline-flex h-7 items-center rounded-md border px-2 text-xs font-medium" :class="getSiteRuntimeStatusClass(runtime)">
+                      {{ getSiteRuntimeStatusText(runtime) }}
                     </span>
                   </div>
 
                   <div class="flex min-w-0 flex-wrap gap-1">
                     <span
-                      v-for="cap in plugin.capabilities.slice(0, 3)"
+                      v-for="cap in runtime.capabilities.slice(0, 3)"
                       :key="cap.name"
                       class="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
                       :title="cap.name"
                     >
                       {{ getCapabilityLabel(cap.name) }}
                     </span>
-                    <span v-if="plugin.capabilities.length > 3" class="text-xs text-muted-foreground">
-                      +{{ plugin.capabilities.length - 3 }}
+                    <span v-if="runtime.capabilities.length > 3" class="text-xs text-muted-foreground">
+                      +{{ runtime.capabilities.length - 3 }}
                     </span>
                   </div>
 
                   <div class="text-sm text-muted-foreground">
-                    <span v-if="plugin.siteTesting" class="inline-flex items-center gap-1">
+                    <span v-if="runtime.siteTesting" class="inline-flex items-center gap-1">
                       <AppIcon name="refresh" class="h-3.5 w-3.5 animate-spin" />
                       检测中
                     </span>
-                    <span v-else>{{ getNetworkText(plugin) }}</span>
+                    <span v-else>{{ getNetworkText(runtime) }}</span>
                   </div>
 
                   <div class="text-sm text-muted-foreground">
-                    <span v-if="plugin.siteLoginTesting" class="inline-flex items-center gap-1">
+                    <span v-if="runtime.siteLoginTesting" class="inline-flex items-center gap-1">
                       <AppIcon name="refresh" class="h-3.5 w-3.5 animate-spin" />
                       检测中
                     </span>
-                    <span v-else>{{ getLoginText(plugin) }}</span>
+                    <span v-else>{{ getLoginText(runtime) }}</span>
                   </div>
 
                   <div class="flex items-center justify-end gap-1">
@@ -210,65 +210,65 @@
                       variant="ghost"
                       size="icon"
                       class="h-8 w-8 rounded-md text-muted-foreground"
-                      :disabled="actioning === plugin.plugin_id"
-                      :title="plugin.enabled ? '停用插件' : '启用插件'"
-                      @click="plugin.enabled ? handleDisable(plugin) : handleEnable(plugin)"
+                      :disabled="actioning === runtime.plugin_id"
+                      :title="runtime.enabled ? '停用站点运行时' : '启用站点运行时'"
+                      @click="runtime.enabled ? handleDisable(runtime) : handleEnable(runtime)"
                     >
-                      <AppIcon v-if="plugin.enabled" name="pause" class="h-4 w-4" />
+                      <AppIcon v-if="runtime.enabled" name="pause" class="h-4 w-4" />
                       <AppIcon v-else name="play" class="h-4 w-4 fill-current" />
                     </Button>
                     <Button
-                      v-if="plugin.siteName"
+                      v-if="runtime.siteName"
                       variant="ghost"
                       size="icon"
                       class="h-8 w-8 rounded-md text-muted-foreground"
-                      :disabled="plugin.siteTesting"
+                      :disabled="runtime.siteTesting"
                       title="连通性测试"
-                      @click="handleTestSingleBySite(plugin.siteName)"
+                      @click="handleTestSingleBySite(runtime.siteName)"
                     >
                       <AppIcon name="bolt" class="h-4 w-4" />
                     </Button>
                     <Button
-                      v-if="plugin.siteSupportsLogin"
+                      v-if="runtime.siteSupportsLogin"
                       variant="ghost"
                       size="icon"
                       class="h-8 w-8 rounded-md text-muted-foreground"
-                      :disabled="plugin.siteLoginTesting"
+                      :disabled="runtime.siteLoginTesting"
                       title="验证登录状态"
-                      @click="handleTestLoginBySite(plugin.siteName)"
+                      @click="handleTestLoginBySite(runtime.siteName)"
                     >
                       <AppIcon name="security" class="h-4 w-4" />
                     </Button>
-                    <DropdownMenu v-if="isDesktopApp && plugin.siteDesktopLoginSupported">
+                    <DropdownMenu v-if="isDesktopApp && runtime.siteDesktopLoginSupported">
                       <DropdownMenuTrigger as-child>
                         <Button
                           variant="ghost"
                           size="icon"
                           class="h-8 w-8 rounded-md text-muted-foreground"
-                          :disabled="plugin.siteLoginTesting"
-                          :title="plugin.siteLoginStatus?.logged_in ? '桌面会话已登录' : '桌面会话'"
+                          :disabled="runtime.siteLoginTesting"
+                          :title="runtime.siteLoginStatus?.logged_in ? '桌面会话已登录' : '桌面会话'"
                         >
                           <AppIcon
-                            :name="plugin.siteLoginStatus?.logged_in ? 'statusSuccess' : 'user'"
+                            :name="runtime.siteLoginStatus?.logged_in ? 'statusSuccess' : 'user'"
                             class="h-4 w-4"
-                            :class="{ 'text-emerald-500': plugin.siteLoginStatus?.logged_in }"
+                            :class="{ 'text-emerald-500': runtime.siteLoginStatus?.logged_in }"
                           />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" class="w-44">
-                        <DropdownMenuItem @click="handleDesktopSiteLogin(plugin.siteName)">
+                        <DropdownMenuItem @click="handleDesktopSiteLogin(runtime.siteName)">
                           <AppIcon name="user" class="h-4 w-4" />
-                          <span>{{ plugin.siteLoginStatus?.logged_in ? '重新登录' : '打开桌面登录' }}</span>
+                          <span>{{ runtime.siteLoginStatus?.logged_in ? '重新登录' : '打开桌面登录' }}</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem @click="handleTestLoginBySite(plugin.siteName)">
+                        <DropdownMenuItem @click="handleTestLoginBySite(runtime.siteName)">
                           <AppIcon name="refresh" class="h-4 w-4" />
                           <span>刷新登录状态</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          :disabled="!plugin.siteLoginStatus?.logged_in"
+                          :disabled="!runtime.siteLoginStatus?.logged_in"
                           class="text-destructive focus:text-destructive"
-                          @click="handleClearDesktopSiteSession(plugin.siteName)"
+                          @click="handleClearDesktopSiteSession(runtime.siteName)"
                         >
                           <AppIcon name="logout" class="h-4 w-4" />
                           <span>清除桌面会话</span>
@@ -276,14 +276,14 @@
                       </DropdownMenuContent>
                     </DropdownMenu>
                     <Button
-                      v-if="plugin.siteName === 'youtube'"
+                      v-if="runtime.siteName === 'youtube'"
                       variant="ghost"
                       size="icon"
                       class="h-8 w-8 rounded-md text-muted-foreground"
                       title="授权管理"
-                      @click="plugin.siteOAuthStatus === 'authenticated' || plugin.siteOAuthStatus === 'pending' ? handleRevokeYouTubeOAuth() : handleStartYouTubeOAuth()"
+                      @click="runtime.siteOAuthStatus === 'authenticated' || runtime.siteOAuthStatus === 'pending' ? handleRevokeYouTubeOAuth() : handleStartYouTubeOAuth()"
                     >
-                      <AppIcon v-if="plugin.siteOAuthStatus === 'authenticated'" name="link" class="h-4 w-4" />
+                      <AppIcon v-if="runtime.siteOAuthStatus === 'authenticated'" name="link" class="h-4 w-4" />
                       <AppIcon v-else name="unlink" class="h-4 w-4" />
                     </Button>
                     <Button
@@ -291,7 +291,7 @@
                       size="icon"
                       class="h-8 w-8 rounded-md text-muted-foreground"
                       title="站点配置"
-                      @click="openSiteEditorByPlugin(plugin)"
+                      @click="openSiteEditorByRuntime(runtime)"
                     >
                       <AppIcon name="settingsPanel" class="h-4 w-4" />
                     </Button>
@@ -386,16 +386,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Logger } from '@/utils/logger'
-import { mergeLoginStatusResult, shouldRefreshLoginStatusesAfterCookieImport } from '@/utils/plugin-login-status'
+import { mergeLoginStatusResult, shouldRefreshLoginStatusesAfterCookieImport } from '@/utils/site-runtime-login-status'
 import { useSiteCatalog } from '@/composables/useSites'
 import {
-  disablePlugin,
-  enablePlugin,
-  getPlugins,
+  disableSiteRuntime,
+  enableSiteRuntime,
+  getSiteRuntimes,
   getSupportedSites,
   importAllSiteCookies,
   getYouTubeOAuthStatus,
-  reloadPlugins,
+  reloadSiteRuntimes,
   revokeYouTubeOAuth,
   setupYouTubeOAuth,
   testAllSitesConnectivity,
@@ -405,9 +405,9 @@ import {
 
 const loading = ref(false)
 const reloading = ref(false)
-const plugins = ref([])
+const siteRuntimes = ref([])
 const actioning = ref(null)
-const isInitialLoading = computed(() => loading.value && !plugins.value.length)
+const isInitialLoading = computed(() => loading.value && !siteRuntimes.value.length)
 
 const testingAll = ref(false)
 const supportedSites = ref([])
@@ -566,7 +566,7 @@ const copyYouTubeOAuthCode = async () => {
   }, 2000)
 }
 
-const enrichedPlugins = computed(() => {
+const enrichedSiteRuntimes = computed(() => {
   const resultsMap = new Map()
   if (connectivityResults.value.length > 0 && connectivityResults.value[0]?.results) {
     connectivityResults.value[0].results.forEach(result => {
@@ -576,16 +576,16 @@ const enrichedPlugins = computed(() => {
   const loginResultMap = loginStatusResults.value || {}
   const loginTestingMap = loginStatusTesting.value || {}
 
-  return (plugins.value || []).map((plugin) => {
-    const primarySite = plugin.sites?.[0] || null
+  return (siteRuntimes.value || []).map((runtime) => {
+    const primarySite = runtime.sites?.[0] || null
     const siteName = primarySite?.site_name || primarySite?.name || ''
     const siteResult = resultsMap.get(siteName) || {}
     const loginStatus = loginResultMap[siteName]
 
     return {
-      ...plugin,
-      capabilities: Array.isArray(plugin.capabilities) ? plugin.capabilities : [],
-      sites: Array.isArray(plugin.sites) ? plugin.sites : [],
+      ...runtime,
+      capabilities: Array.isArray(runtime.capabilities) ? runtime.capabilities : [],
+      sites: Array.isArray(runtime.sites) ? runtime.sites : [],
       primarySite,
       siteName,
       siteAccessible: siteResult.accessible,
@@ -600,31 +600,31 @@ const enrichedPlugins = computed(() => {
   })
 })
 
-const displayPlugins = computed(() => {
-  let list = enrichedPlugins.value
+const displaySiteRuntimes = computed(() => {
+  let list = enrichedSiteRuntimes.value
 
   if (searchQuery.value.trim()) {
     const keyword = searchQuery.value.trim().toLowerCase()
-    list = list.filter(p =>
-      p.display_name?.toLowerCase().includes(keyword) ||
-      p.plugin_id?.toLowerCase().includes(keyword) ||
-      p.description?.toLowerCase().includes(keyword) ||
-      p.siteName?.toLowerCase().includes(keyword)
+    list = list.filter(runtime =>
+      runtime.display_name?.toLowerCase().includes(keyword) ||
+      runtime.plugin_id?.toLowerCase().includes(keyword) ||
+      runtime.description?.toLowerCase().includes(keyword) ||
+      runtime.siteName?.toLowerCase().includes(keyword)
     )
   }
 
   return list
 })
 
-const pluginSummary = computed(() => ({
-  total: enrichedPlugins.value.length,
-  running: enrichedPlugins.value.filter(plugin => plugin.enabled && plugin.active_runtime?.state === 'running').length,
-  attention: enrichedPlugins.value.filter((plugin) => {
-    if (!plugin.enabled) return true
-    if (!plugin.active_runtime) return true
-    if (plugin.health?.healthy === false) return true
-    return ['failed', 'degraded', 'disabled', 'stopped'].includes(plugin.status)
-      || ['failed', 'stopped', 'draining'].includes(plugin.active_runtime?.state)
+const siteRuntimeSummary = computed(() => ({
+  total: enrichedSiteRuntimes.value.length,
+  running: enrichedSiteRuntimes.value.filter(runtime => runtime.enabled && runtime.active_runtime?.state === 'running').length,
+  attention: enrichedSiteRuntimes.value.filter((runtime) => {
+    if (!runtime.enabled) return true
+    if (!runtime.active_runtime) return true
+    if (runtime.health?.healthy === false) return true
+    return ['failed', 'degraded', 'disabled', 'stopped'].includes(runtime.status)
+      || ['failed', 'stopped', 'draining'].includes(runtime.active_runtime?.state)
   }).length,
 }))
 
@@ -658,22 +658,22 @@ const handleImportAllCookies = async () => {
 
 const handleReload = async () => {
   reloading.value = true
-  const res = await reloadPlugins()
-  if (!res.error) await fetchPlugins()
+  const res = await reloadSiteRuntimes()
+  if (!res.error) await fetchSiteRuntimes()
   reloading.value = false
 }
 
 const handleEnable = async (plugin) => {
   actioning.value = plugin.plugin_id
-  const res = await enablePlugin(plugin.plugin_id)
-  if (!res.error) await fetchPlugins()
+  const res = await enableSiteRuntime(plugin.plugin_id)
+  if (!res.error) await fetchSiteRuntimes()
   actioning.value = null
 }
 
 const handleDisable = async (plugin) => {
   actioning.value = plugin.plugin_id
-  const res = await disablePlugin(plugin.plugin_id)
-  if (!res.error) await fetchPlugins()
+  const res = await disableSiteRuntime(plugin.plugin_id)
+  if (!res.error) await fetchSiteRuntimes()
   actioning.value = null
 }
 
@@ -813,7 +813,7 @@ const upsertLoginStatus = (siteName, payload) => {
   }
 }
 
-const openSiteEditorByPlugin = (plugin) => {
+const openSiteEditorByRuntime = (plugin) => {
   const siteName = plugin.siteName
   if (!siteName) return
   const catalogInfo = siteCatalogMap.value[siteName?.toLowerCase()] || {}
@@ -845,10 +845,10 @@ const saveSiteEditor = async ({ slug, sitePayload }) => {
   }
 }
 
-const fetchPlugins = async () => {
+const fetchSiteRuntimes = async () => {
   loading.value = true
-  const { data, error } = await getPlugins()
-  if (!error) plugins.value = data || []
+  const { data, error } = await getSiteRuntimes()
+  if (!error) siteRuntimes.value = data || []
   loading.value = false
 }
 
@@ -862,14 +862,14 @@ const testLoginForAllSupportedSites = async () => {
   await Promise.all(targets.map(site => handleTestLoginBySite(site.site_name || site.name)))
 }
 
-const getPluginStatusText = (plugin) => {
+const getSiteRuntimeStatusText = (plugin) => {
   if (!plugin.enabled) return '停用'
   if (plugin.active_runtime?.state === 'running') return '运行'
   if (plugin.health?.healthy === false || plugin.active_runtime?.state === 'failed') return '异常'
   return '待检查'
 }
 
-const getPluginStatusClass = (plugin) => {
+const getSiteRuntimeStatusClass = (plugin) => {
   if (!plugin.enabled) return 'border-border/50 bg-muted text-muted-foreground'
   if (plugin.active_runtime?.state === 'running') return 'border-border/50 bg-background text-foreground'
   if (plugin.health?.healthy === false || plugin.active_runtime?.state === 'failed') return 'border-destructive/20 bg-destructive/10 text-destructive'
@@ -959,7 +959,7 @@ const handleRevokeYouTubeOAuth = async () => {
     await revokeYouTubeOAuth()
   }
   stopYouTubeOAuthPolling()
-  fetchPlugins()
+  fetchSiteRuntimes()
 }
 
 const startYouTubeOAuthPolling = () => {
@@ -1019,7 +1019,7 @@ const cleanupYouTubeOAuthUi = () => {
 }
 
 onMounted(() => {
-  fetchPlugins()
+  fetchSiteRuntimes()
   loadCatalog()
   loadResultsFromCache()
   fetchSupportedSites()
@@ -1040,7 +1040,7 @@ onUnmounted(cleanupYouTubeOAuthUi)
   transform: translateY(0.5rem);
 }
 
-.plugin-grid {
+.site-runtime-grid {
   display: grid;
   grid-template-columns: minmax(18rem, 1fr) 7rem 12rem 7rem 7rem 15rem;
   gap: 1rem;
@@ -1055,3 +1055,5 @@ onUnmounted(cleanupYouTubeOAuthUi)
   font-variant-numeric: tabular-nums;
 }
 </style>
+
+

@@ -236,3 +236,4 @@ def test_runtime_plugins_no_longer_ship_downloader_modules(module_name, plugin_n
 )
 def test_runtime_plugins_no_longer_ship_config_modules(module_name):
     assert importlib.util.find_spec(f'{module_name}.config') is None
+

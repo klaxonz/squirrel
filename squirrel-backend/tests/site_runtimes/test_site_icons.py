@@ -6,9 +6,9 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import services.plugin_service as plugin_service
-from plugins.runtime_models import PluginManifest, PluginSiteManifest
-from routes.plugins import build_site_info
+import services.site_runtime_service as plugin_service
+from site_runtimes.runtime_models import PluginManifest, PluginSiteManifest
+from routes.site_runtimes import build_site_info
 
 
 def test_build_site_info_includes_icon_url():
@@ -18,7 +18,7 @@ def test_build_site_info_includes_icon_url():
             'domains': ['youtube.com', 'youtu.be'],
             'enabled': True,
             'test_url': 'https://www.youtube.com',
-            'icon_url': '/api/plugins/sites/youtube/icon',
+            'icon_url': '/api/site-runtimes/sites/youtube/icon',
         }
     }
 
@@ -32,7 +32,7 @@ def test_build_site_info_includes_icon_url():
         'primary_domain': 'youtu.be',
         'test_url': 'https://www.youtube.com',
         'config_enabled': True,
-        'icon_url': '/api/plugins/sites/youtube/icon',
+        'icon_url': '/api/site-runtimes/sites/youtube/icon',
     }
 
 
@@ -61,7 +61,7 @@ def test_normalize_plugin_item_includes_site_icon_url_from_catalog():
     normalized = plugin_service._normalize_plugin_item(
         record,
         snapshot,
-        {'youtube': {'icon_url': '/api/plugins/sites/youtube/icon'}},
+        {'youtube': {'icon_url': '/api/site-runtimes/sites/youtube/icon'}},
     )
 
     assert normalized['sites'] == [{
@@ -70,5 +70,7 @@ def test_normalize_plugin_item_includes_site_icon_url_from_catalog():
         'test_url': 'https://www.youtube.com',
         'features': [],
         'metadata': {},
-        'icon_url': '/api/plugins/sites/youtube/icon',
+        'icon_url': '/api/site-runtimes/sites/youtube/icon',
     }]
+
+

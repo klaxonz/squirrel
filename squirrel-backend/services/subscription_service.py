@@ -14,7 +14,7 @@ from models.subscription import Subscription, ContentType
 from models.subscription_sync_state import SubscriptionSyncState, SyncMode
 from models.user import User
 from models.video_history import VideoHistory
-from plugins.manager import get_plugin_manager
+from site_runtimes.manager import get_site_runtime_manager
 from schemas.subscription.dto.subscription_dto import SubscriptionDto
 from services.search_query import normalize_subscription_type_term, parse_search_query
 from services import user_config_service
@@ -808,7 +808,7 @@ def _load_runtime_import_batch(
     if limit is not None:
         payload['limit'] = limit
 
-    response = get_plugin_manager().gateway.invoke(
+    response = get_site_runtime_manager().gateway.invoke(
         'import_subscriptions',
         payload=payload or None,
         site_name=site_name,
@@ -844,7 +844,7 @@ def _load_runtime_import_items(site_name: str) -> List[SubscriptionImportItem]:
 
 
 def get_runtime_supported_sites(capability: str) -> List[str]:
-    snapshot = get_plugin_manager().get_snapshot()
+    snapshot = get_site_runtime_manager().get_snapshot()
     return sorted({
         registration.site_name
         for registration in snapshot.registrations
@@ -873,7 +873,7 @@ def _load_runtime_subscription_meta(url: str) -> SubscriptionMeta:
         'url': url,
         'domain': domain or parsed_url.netloc.lower().split(':')[0],
     }
-    response = get_plugin_manager().gateway.invoke(
+    response = get_site_runtime_manager().gateway.invoke(
         'resolve_subscription',
         payload=payload,
         domain=domain or None,
@@ -1130,3 +1130,5 @@ def auto_import_missing_subscriptions(
         summary['failed'],
     )
     return summary
+
+

@@ -17,12 +17,12 @@ def get_redis_client() -> redis.Redis:
     return _redis_client
 
 
-def publish_plugin_reload_signal() -> bool:
+def publish_site_runtime_reload_signal() -> bool:
     try:
         client = get_redis_client()
-        client.publish("squirrel:plugin:reload", "reload")
-        logger.info("[redis] published plugin reload signal")
+        client.publish("squirrel:site-runtime:reload", "reload")
+        logger.info("[redis] published site runtime reload signal")
         return True
     except Exception as e:
-        logger.error("[redis] failed to publish plugin reload signal: %s", e)
+        logger.error("[redis] failed to publish site runtime reload signal: %s", e)
         return False

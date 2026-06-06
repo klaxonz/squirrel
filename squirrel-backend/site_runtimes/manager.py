@@ -4,58 +4,58 @@ from concurrent.futures import Future, ThreadPoolExecutor, wait
 import json
 from typing import List, Optional
 
-from .gateway import PluginGateway
-from .migration import migrate_legacy_plugin_storage
+from .gateway import SiteRuntimeGateway
+from .migration import migrate_legacy_site_runtime_storage
 from .models import (
-    PluginInstallRecord,
-    PluginInstallStatus,
-    PluginManagerSnapshot,
+    SiteRuntimeRecord,
+    SiteRuntimeStatus,
+    SiteRuntimeSnapshot,
 )
-from .paths import PluginPaths, build_plugin_paths
+from .paths import SiteRuntimePaths, build_site_runtime_paths
 from .runtime_models import PluginManifest
-from .store import PluginInstallStore
-from .supervisor import PluginRuntimeSupervisor
+from .store import SiteRuntimeStore
+from .supervisor import SiteRuntimeSupervisor
 
 
-class PluginManager:
-    """Coordinate plugin records, runtime state, and routing."""
+class SiteRuntimeManager:
+    """Coordinate site runtime records, runtime state, and routing."""
 
     def __init__(
         self,
-        store: Optional[PluginInstallStore] = None,
-        supervisor: Optional[PluginRuntimeSupervisor] = None,
-        gateway: Optional[PluginGateway] = None,
-        paths: PluginPaths | None = None,
+        store: Optional[SiteRuntimeStore] = None,
+        supervisor: Optional[SiteRuntimeSupervisor] = None,
+        gateway: Optional[SiteRuntimeGateway] = None,
+        paths: SiteRuntimePaths | None = None,
     ) -> None:
-        self._paths = paths or build_plugin_paths()
-        migrate_legacy_plugin_storage(self._paths)
-        self._store = store or PluginInstallStore(paths=self._paths)
-        self._supervisor = supervisor or PluginRuntimeSupervisor()
-        self._gateway = gateway or PluginGateway(invocation_client=self._supervisor)
+        self._paths = paths or build_site_runtime_paths()
+        migrate_legacy_site_runtime_storage(self._paths)
+        self._store = store or SiteRuntimeStore(paths=self._paths)
+        self._supervisor = supervisor or SiteRuntimeSupervisor()
+        self._gateway = gateway or SiteRuntimeGateway(invocation_client=self._supervisor)
         self._gateway.set_registration_refresh(self._refresh_gateway_registrations)
 
     @property
-    def gateway(self) -> PluginGateway:
+    def gateway(self) -> SiteRuntimeGateway:
         return self._gateway
 
-    def list_plugins(self) -> List[PluginInstallRecord]:
-        return self.discover_plugins()
+    def list_site_runtimes(self) -> List[SiteRuntimeRecord]:
+        return self.discover_site_runtimes()
 
-    def discover_plugins(self) -> List[PluginInstallRecord]:
+    def discover_site_runtimes(self) -> List[SiteRuntimeRecord]:
         return self._discover_local_runtime_plugins()
 
-    def get_plugin(self, plugin_id: str) -> Optional[PluginInstallRecord]:
-        for record in self.discover_plugins():
+    def get_site_runtime(self, plugin_id: str) -> Optional[SiteRuntimeRecord]:
+        for record in self.discover_site_runtimes():
             if record.plugin_id == plugin_id:
                 return record
         return None
 
-    def enable_plugin(self, plugin_id: str) -> Optional[PluginInstallRecord]:
-        record = self.get_plugin(plugin_id)
+    def enable_site_runtime(self, plugin_id: str) -> Optional[SiteRuntimeRecord]:
+        record = self.get_site_runtime(plugin_id)
         if record is None:
             return None
         record.enabled = True
-        record.status = PluginInstallStatus.RUNNING
+        record.status = SiteRuntimeStatus.RUNNING
         self._gateway.register_manifest(
             plugin_id=record.plugin_id,
             version=record.version,
@@ -64,26 +64,26 @@ class PluginManager:
         self._supervisor.start_runtime(record)
         return self._store.upsert(record)
 
-    def disable_plugin(self, plugin_id: str) -> Optional[PluginInstallRecord]:
-        record = self.get_plugin(plugin_id)
+    def disable_site_runtime(self, plugin_id: str) -> Optional[SiteRuntimeRecord]:
+        record = self.get_site_runtime(plugin_id)
         if record is None:
             return None
         self._gateway.unregister_plugin(plugin_id)
         self._supervisor.stop_runtime(record.plugin_id, record.version)
         record.enabled = False
-        record.status = PluginInstallStatus.DISABLED
+        record.status = SiteRuntimeStatus.DISABLED
         return self._store.upsert(record)
 
-    def get_snapshot(self) -> PluginManagerSnapshot:
-        records = self.discover_plugins()
-        return PluginManagerSnapshot(
+    def get_snapshot(self) -> SiteRuntimeSnapshot:
+        records = self.discover_site_runtimes()
+        return SiteRuntimeSnapshot(
             records=records,
             runtimes=self._supervisor.list_handles(),
             registrations=self._gateway.list_registrations(),
         )
 
-    def bootstrap_enabled_plugins(self) -> List[PluginInstallRecord]:
-        enabled_records = [record for record in self.discover_plugins() if record.enabled]
+    def bootstrap_enabled_site_runtimes(self) -> List[SiteRuntimeRecord]:
+        enabled_records = [record for record in self.discover_site_runtimes() if record.enabled]
         if not enabled_records:
             return []
 
@@ -94,8 +94,8 @@ class PluginManager:
                 manifest=PluginManifest.from_dict(record.manifest),
             )
 
-        futures: list[tuple[PluginInstallRecord, Future[object]]] = []
-        with ThreadPoolExecutor(max_workers=len(enabled_records), thread_name_prefix='plugin-bootstrap') as executor:
+        futures: list[tuple[SiteRuntimeRecord, Future[object]]] = []
+        with ThreadPoolExecutor(max_workers=len(enabled_records), thread_name_prefix='site-runtime-bootstrap') as executor:
             for record in enabled_records:
                 futures.append((record, executor.submit(self._supervisor.start_runtime, record)))
 
@@ -103,7 +103,7 @@ class PluginManager:
             if not_done:
                 wait(not_done)
 
-        started: List[PluginInstallRecord] = []
+        started: List[SiteRuntimeRecord] = []
         first_error: Exception | None = None
         for record, future in futures:
             try:
@@ -112,7 +112,7 @@ class PluginManager:
                 if first_error is None:
                     first_error = exc
                 continue
-            record.status = PluginInstallStatus.RUNNING
+            record.status = SiteRuntimeStatus.RUNNING
             self._store.upsert(record)
             started.append(record)
         if first_error is not None:
@@ -120,21 +120,21 @@ class PluginManager:
         return started
 
     def shutdown_all(self) -> None:
-        records = self.discover_plugins()
+        records = self.discover_site_runtimes()
         for record in records:
             handle = self._supervisor.stop_runtime(record.plugin_id, record.version)
             if handle is not None and record.enabled:
-                record.status = PluginInstallStatus.STOPPED
+                record.status = SiteRuntimeStatus.STOPPED
                 self._store.upsert(record)
         for record in records:
             self._gateway.unregister_plugin(record.plugin_id)
 
-    def reload_enabled_plugins(self) -> List[PluginInstallRecord]:
+    def reload_enabled_site_runtimes(self) -> List[SiteRuntimeRecord]:
         self.shutdown_all()
-        return self.bootstrap_enabled_plugins()
+        return self.bootstrap_enabled_site_runtimes()
 
     def _refresh_gateway_registrations(self) -> None:
-        records = self.discover_plugins()
+        records = self.discover_site_runtimes()
         existing_plugin_ids = {registration.plugin_id for registration in self._gateway.list_registrations()}
         active_plugin_ids: set[str] = set()
 
@@ -152,13 +152,13 @@ class PluginManager:
         for plugin_id in existing_plugin_ids - active_plugin_ids:
             self._gateway.unregister_plugin(plugin_id)
 
-    def _discover_local_runtime_plugins(self) -> List[PluginInstallRecord]:
+    def _discover_local_runtime_plugins(self) -> List[SiteRuntimeRecord]:
         records_by_id = {
             record.plugin_id: record
             for record in self._store.list_records()
             if record.metadata.get('source') == 'workspace'
         }
-        plugins_root = self._paths.workspace_plugins_dir
+        plugins_root = self._paths.workspace_runtimes_dir
         if not plugins_root.exists():
             return sorted(records_by_id.values(), key=lambda record: record.plugin_id.lower())
 
@@ -198,13 +198,13 @@ class PluginManager:
                         )
                     continue
 
-                record = PluginInstallRecord(
+                record = SiteRuntimeRecord(
                     plugin_id=manifest.plugin_id,
                     version=manifest.version,
                     install_path=str(plugin_root),
                     entrypoint=entrypoint,
                     enabled=True,
-                    status=PluginInstallStatus.INSTALLED,
+                    status=SiteRuntimeStatus.INSTALLED,
                     granted_permissions=[item.name for item in manifest.permissions],
                     manifest=manifest.to_dict(),
                     package_path=str(metadata_path),
@@ -217,23 +217,26 @@ class PluginManager:
         return sorted(records_by_id.values(), key=lambda record: record.plugin_id.lower())
 
 
-_plugin_manager: Optional[PluginManager] = None
+_site_runtime_manager: Optional[SiteRuntimeManager] = None
 
 
-def get_plugin_manager() -> PluginManager:
-    global _plugin_manager
-    if _plugin_manager is None:
-        _plugin_manager = PluginManager()
-    return _plugin_manager
+def get_site_runtime_manager() -> SiteRuntimeManager:
+    global _site_runtime_manager
+    if _site_runtime_manager is None:
+        _site_runtime_manager = SiteRuntimeManager()
+    return _site_runtime_manager
 
 
-def bootstrap_plugin_runtime() -> List[PluginInstallRecord]:
-    return get_plugin_manager().bootstrap_enabled_plugins()
+def bootstrap_site_runtimes() -> List[SiteRuntimeRecord]:
+    return get_site_runtime_manager().bootstrap_enabled_site_runtimes()
 
 
-def shutdown_plugin_runtime() -> None:
-    get_plugin_manager().shutdown_all()
+def shutdown_site_runtimes() -> None:
+    get_site_runtime_manager().shutdown_all()
 
 
-def reload_plugin_runtime() -> List[PluginInstallRecord]:
-    return get_plugin_manager().reload_enabled_plugins()
+def reload_site_runtimes() -> List[SiteRuntimeRecord]:
+    return get_site_runtime_manager().reload_enabled_site_runtimes()
+
+
+

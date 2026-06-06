@@ -4,8 +4,8 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from crawl import PluginInvokeResponse
-from plugins.gateway import PluginGateway
-from plugins.runtime_models import PluginCapability, PluginManifest, PluginSiteManifest
+from site_runtimes.gateway import SiteRuntimeGateway
+from site_runtimes.runtime_models import PluginCapability, PluginManifest, PluginSiteManifest
 
 
 class _RecordingInvocationClient:
@@ -21,7 +21,7 @@ class _RecordingInvocationClient:
 
 def test_gateway_uses_manifest_capability_timeout_when_request_timeout_is_omitted():
     client = _RecordingInvocationClient()
-    gateway = PluginGateway(invocation_client=client)
+    gateway = SiteRuntimeGateway(invocation_client=client)
     gateway.register_manifest(
         plugin_id='javdb',
         version='0.1.0',
@@ -47,7 +47,7 @@ def test_gateway_uses_manifest_capability_timeout_when_request_timeout_is_omitte
 def test_gateway_refreshes_registrations_once_before_returning_route_miss():
     client = _RecordingInvocationClient()
     refresh_calls = []
-    gateway = PluginGateway(invocation_client=client)
+    gateway = SiteRuntimeGateway(invocation_client=client)
 
     def _refresh():
         refresh_calls.append('called')
@@ -74,3 +74,5 @@ def test_gateway_refreshes_registrations_once_before_returning_route_miss():
     assert refresh_calls == ['called']
     assert client.last_target is not None
     assert client.last_target.plugin_id == 'youporn'
+
+

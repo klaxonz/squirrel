@@ -1,15 +1,15 @@
-Plugin Runtime V2
-=================
+Site Runtime
+============
 
-The backend now uses a runtime V2 plugin model:
+The backend owns a site runtime system for first-party site adapters:
 
-- plugins are discovered from workspace runtime metadata
-- each plugin exposes a `create_plugin_runtime()` entrypoint
-- host-side routing goes through `PluginManager` and `PluginGateway`
-- plugin capabilities are declared in the manifest instead of inferred from SDK registries
+- site runtimes are discovered from workspace runtime metadata
+- each runtime exposes a `create_plugin_runtime()` entrypoint through the SDK contract
+- host-side routing goes through `SiteRuntimeManager` and `SiteRuntimeGateway`
+- runtime capabilities are declared in the manifest instead of inferred from SDK registries
 - the old `plugins_ext` compatibility tree has been removed from the backend repository
 
-Runtime V2 packages are expected to ship a `plugin-runtime.json` file containing:
+Runtime packages are expected to ship a `plugin-runtime.json` file containing:
 
 - `entrypoint`
 - `manifest.plugin_id`
@@ -21,27 +21,27 @@ Runtime V2 packages are expected to ship a `plugin-runtime.json` file containing
 The backend owns runtime bootstrap state for the host process, including
 Cloudflare bypass client wiring, site config projection, backend rate-limit
 policy, and backend-side cookie resolution. `squirrel-sdk` remains the plugin
-contract and helper package, but backend runtime startup should not depend on
+runtime contract and helper package, but backend runtime startup should not depend on
 SDK-global mutable state.
 
 Discovery and activation
 ------------------------
 
-Plugins under `../squirrel-plugins/<site>/plugin-runtime.json` are auto-discovered
-and bootstrapped as local runtime V2 plugins. The backend no longer accepts plugin
-zip uploads or provisions per-plugin virtual environments. Runtime subprocesses use
+Site runtime packages under `../squirrel-plugins/<site>/plugin-runtime.json` are
+auto-discovered and bootstrapped as local site runtimes. The backend no longer
+accepts uploaded zip packages or provisions per-runtime virtual environments. Runtime subprocesses use
 the backend interpreter and receive explicit `SQUIRREL_PLUGIN_*` variables for
-plugin id, version, granted permissions, and data directory.
+runtime id, version, granted permissions, and data directory.
 
 Operators can define `manifest.metadata.runtime_policy` and
 `manifest.metadata.network_policy`; these values are passed into the runtime
-context. Runtime stdout/stderr and audit events are written under the plugin data
+context. Runtime stdout/stderr and audit events are written under the runtime data
 directory when one is configured.
 
 Permissions and trust model
 ---------------------------
 
-Runtime V2 routes requests through explicit capabilities declared by each manifest:
+Site runtime requests go through explicit capabilities declared by each manifest:
 
 - `extract_video`
 - `sync_subscription`
@@ -69,6 +69,8 @@ For production environments, install the SDK from the local package path or whee
 ```bash
 pip install /path/to/squirrel-sdk
 ```
+
+
 
 
 

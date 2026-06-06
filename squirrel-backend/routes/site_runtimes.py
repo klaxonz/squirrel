@@ -6,8 +6,8 @@ from typing import Dict, List, Literal
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 
-from services.plugin_service import (
-    list_plugins as get_plugin_list,
+from services.site_runtime_service import (
+    list_site_runtimes as get_site_runtime_list,
     set_enabled_by_name,
 )
 from services.site_login_status_service import (
@@ -15,8 +15,8 @@ from services.site_login_status_service import (
     test_site_login_status,
 )
 from services.cookiecloud_service import CookieCloudSyncError, sync_cookiecloud_to_site_files
-from plugins.manager import reload_plugin_runtime
-from utils.redis_client import publish_plugin_reload_signal
+from site_runtimes.manager import reload_site_runtimes
+from utils.redis_client import publish_site_runtime_reload_signal
 from common.response import success, error, param_error
 from routes.connectivity import test_site_connectivity
 from core.cookie_config import (
@@ -169,36 +169,36 @@ def build_site_info(site_name: str, catalog: dict) -> dict | None:
     }
 
 
-router = APIRouter(prefix="/api/plugins", tags=["plugins"])
+router = APIRouter(prefix="/api/site-runtimes", tags=["site-runtimes"])
 
 
 @router.get("/")
-def list_plugins():
-    return success(get_plugin_list())
+def list_site_runtimes():
+    return success(get_site_runtime_list())
 
 
 @router.post("/{name}/enable")
-def enable_plugin(name: str):
+def enable_site_runtime(name: str):
     ok = set_enabled_by_name(name, True)
     if ok:
-        publish_plugin_reload_signal()
+        publish_site_runtime_reload_signal()
         return success(msg="enabled")
-    return error("invalid plugin name or not found")
+    return error("invalid site runtime name or not found")
 
 
 @router.post("/{name}/disable")
-def disable_plugin(name: str):
+def disable_site_runtime(name: str):
     ok = set_enabled_by_name(name, False)
     if ok:
-        publish_plugin_reload_signal()
+        publish_site_runtime_reload_signal()
         return success(msg="disabled")
-    return error("invalid plugin name or not found")
+    return error("invalid site runtime name or not found")
 
 
 @router.post("/reload")
-def reload_all_plugins():
-    reload_plugin_runtime()
-    publish_plugin_reload_signal()
+def reload_all_site_runtimes():
+    reload_site_runtimes()
+    publish_site_runtime_reload_signal()
     return success(msg="reloaded")
 
 
@@ -749,3 +749,6 @@ def revoke_youtube_oauth():
     except Exception as exc:
         logger.exception("YouTube OAuth revoke failed: %s", exc)
         return error(f"撤销授权失败: {exc}")
+
+
+

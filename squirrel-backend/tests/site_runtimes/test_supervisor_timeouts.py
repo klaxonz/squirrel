@@ -6,24 +6,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from crawl import PluginInvokeRequest
 from crawl.runtime_errors import RuntimeErrorCode
-from plugins.models import (
-    PluginHealthSnapshot,
-    PluginInstallRecord,
-    PluginRoutingTarget,
-    PluginRuntimeHandle,
-    PluginRuntimeState,
+from site_runtimes.models import (
+    SiteRuntimeHealthSnapshot,
+    SiteRuntimeRecord,
+    SiteRuntimeTarget,
+    SiteRuntimeHandle,
+    SiteRuntimeState,
 )
-from plugins.supervisor import PluginRuntimeSupervisor
+from site_runtimes.supervisor import SiteRuntimeSupervisor
 
 
 def test_supervisor_returns_timeout_error_when_runtime_request_times_out(monkeypatch):
-    supervisor = PluginRuntimeSupervisor()
-    supervisor._handles['javdb:0.1.0'] = PluginRuntimeHandle(
+    supervisor = SiteRuntimeSupervisor()
+    supervisor._handles['javdb:0.1.0'] = SiteRuntimeHandle(
         plugin_id='javdb',
         version='0.1.0',
-        state=PluginRuntimeState.RUNNING,
+        state=SiteRuntimeState.RUNNING,
         endpoint='http://127.0.0.1:65535',
-        health=PluginHealthSnapshot(plugin_id='javdb', healthy=True, status='running'),
+        health=SiteRuntimeHealthSnapshot(plugin_id='javdb', healthy=True, status='running'),
     )
 
     def _raise_timeout(*_args, **_kwargs):
@@ -32,7 +32,7 @@ def test_supervisor_returns_timeout_error_when_runtime_request_times_out(monkeyp
     monkeypatch.setattr(supervisor, '_request_json', _raise_timeout)
 
     response = supervisor.invoke(
-        PluginRoutingTarget(
+        SiteRuntimeTarget(
             plugin_id='javdb',
             version='0.1.0',
             capability='check_login_status',
@@ -53,16 +53,16 @@ def test_supervisor_returns_timeout_error_when_runtime_request_times_out(monkeyp
 
 
 def test_supervisor_records_timeout_invoke_context_in_audit_and_response(monkeypatch, tmp_path):
-    supervisor = PluginRuntimeSupervisor()
-    supervisor._handles['youtube:0.1.0'] = PluginRuntimeHandle(
+    supervisor = SiteRuntimeSupervisor()
+    supervisor._handles['youtube:0.1.0'] = SiteRuntimeHandle(
         plugin_id='youtube',
         version='0.1.0',
-        state=PluginRuntimeState.RUNNING,
+        state=SiteRuntimeState.RUNNING,
         endpoint='http://127.0.0.1:55141',
         process_id=15120,
-        health=PluginHealthSnapshot(plugin_id='youtube', healthy=True, status='running'),
+        health=SiteRuntimeHealthSnapshot(plugin_id='youtube', healthy=True, status='running'),
     )
-    supervisor._records['youtube:0.1.0'] = PluginInstallRecord(
+    supervisor._records['youtube:0.1.0'] = SiteRuntimeRecord(
         plugin_id='youtube',
         version='0.1.0',
         install_path=str(tmp_path / 'youtube'),
@@ -74,7 +74,7 @@ def test_supervisor_records_timeout_invoke_context_in_audit_and_response(monkeyp
     audit_events = []
     monotonic_values = iter([100.0, 220.125])
 
-    monkeypatch.setattr('plugins.supervisor.time.monotonic', lambda: next(monotonic_values))
+    monkeypatch.setattr('site_runtimes.supervisor.time.monotonic', lambda: next(monotonic_values))
     monkeypatch.setattr(
         supervisor,
         '_append_audit_event',
@@ -87,7 +87,7 @@ def test_supervisor_records_timeout_invoke_context_in_audit_and_response(monkeyp
     monkeypatch.setattr(supervisor, '_request_json', _raise_timeout)
 
     response = supervisor.invoke(
-        PluginRoutingTarget(
+        SiteRuntimeTarget(
             plugin_id='youtube',
             version='0.1.0',
             capability='extract_video',
@@ -134,3 +134,5 @@ def test_supervisor_records_timeout_invoke_context_in_audit_and_response(monkeyp
         'elapsed_ms': 120125,
         'reason': 'timed out',
     }) in audit_events
+
+

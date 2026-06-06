@@ -11,7 +11,7 @@ from core.database import get_session
 from urllib.parse import urlparse
 from models.subscription import Subscription as SubscriptionModel
 from models.subscription_sync_state import SyncMode, SyncStatus
-from plugins.manager import get_plugin_manager
+from site_runtimes.manager import get_site_runtime_manager
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import download_service, subscription_service, subscription_sync_state_service, video_service
 from services.blocked_video_service import is_blocked_video
@@ -91,7 +91,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
             raise ValueError(f'No subscription route found for domain: {domain}')
 
         sync_mode = UpdateMode.FULL if request.mode == UpdateMode.FULL else UpdateMode.INCREMENTAL
-        response = get_plugin_manager().gateway.invoke(
+        response = get_site_runtime_manager().gateway.invoke(
             'sync_subscription',
             site_name=site_name,
             domain=domain,
@@ -315,3 +315,5 @@ class DefaultUpdateStrategy(UpdateStrategy):
             trigger=request.trigger.value,
             trace_id=request.trace_id,
         )
+
+

@@ -9,7 +9,7 @@ from services.site_catalog_service import save_site_overrides
 from typing import List
 from utils.site_catalog import SiteCatalog
 from core.site_config_manager import get_effective_site_catalog
-from plugins.manager import get_plugin_manager
+from site_runtimes.manager import get_site_runtime_manager
 from utils.jwt_helper import get_current_user
 from utils.url_helper import normalize_domain
 
@@ -149,7 +149,7 @@ def get_video_subtitles(
 
     domain = _video_domain(video.url)
     try:
-        result = get_plugin_manager().gateway.invoke(
+        result = get_site_runtime_manager().gateway.invoke(
             'fetch_subtitles',
             domain=domain,
             payload={
@@ -217,3 +217,5 @@ def update_sites_catalog(payload: dict = Body(...)):
     except Exception:
         logger.exception("Failed to update site catalog")
         return response.server_error("保存站点配置失败")
+
+

@@ -7,22 +7,22 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from plugins.manager import PluginManager
-from plugins.models import PluginInstallRecord, PluginInstallStatus
-from plugins.paths import build_plugin_paths
-from plugins.store import PluginInstallStore
-from plugins.runtime_models import PluginCapability, PluginManifest, PluginSiteManifest
+from site_runtimes.manager import SiteRuntimeManager
+from site_runtimes.models import SiteRuntimeRecord, SiteRuntimeStatus
+from site_runtimes.paths import build_site_runtime_paths
+from site_runtimes.store import SiteRuntimeStore
+from site_runtimes.runtime_models import PluginCapability, PluginManifest, PluginSiteManifest
 
 
-def _create_enabled_record(repo_root: Path, plugin_id: str, domain: str) -> PluginInstallRecord:
+def _create_enabled_record(repo_root: Path, plugin_id: str, domain: str) -> SiteRuntimeRecord:
     plugin_root = repo_root / 'squirrel-plugins' / plugin_id
-    return PluginInstallRecord(
+    return SiteRuntimeRecord(
         plugin_id=plugin_id,
         version='0.1.0',
         install_path=str(plugin_root),
         entrypoint=f'squirrel_{plugin_id}.runtime:get_plugin_runtime',
         enabled=True,
-        status=PluginInstallStatus.INSTALLED,
+        status=SiteRuntimeStatus.INSTALLED,
         manifest=PluginManifest(
             plugin_id=plugin_id,
             version='0.1.0',
@@ -38,11 +38,11 @@ def _create_enabled_record(repo_root: Path, plugin_id: str, domain: str) -> Plug
     )
 
 
-def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path, monkeypatch):
+def test_discover_site_runtimes_refreshes_existing_workspace_manifest(tmp_path, monkeypatch):
     repo_root = tmp_path / 'repo'
     backend_root = repo_root / 'squirrel-backend'
     backend_root.mkdir(parents=True, exist_ok=True)
-    paths = build_plugin_paths(repo_root=repo_root, backend_root=backend_root)
+    paths = build_site_runtime_paths(repo_root=repo_root, backend_root=backend_root)
     plugins_root = repo_root / 'squirrel-plugins' / 'javdb'
     plugins_root.mkdir(parents=True, exist_ok=True)
     (plugins_root / 'src').mkdir(parents=True, exist_ok=True)
@@ -87,9 +87,9 @@ def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path, monkey
         encoding='utf-8',
     )
 
-    store = PluginInstallStore(data_path=paths.installations_file, paths=paths)
+    store = SiteRuntimeStore(data_path=paths.records_file, paths=paths)
     store.upsert(
-        PluginInstallRecord(
+        SiteRuntimeRecord(
             plugin_id='javdb',
             version='0.1.0',
             install_path=str(plugins_root),
@@ -121,12 +121,12 @@ def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path, monkey
         ),
     )
 
-    manager = PluginManager(
+    manager = SiteRuntimeManager(
         store=store,
         paths=paths,
     )
 
-    manager.discover_plugins()
+    manager.discover_site_runtimes()
 
     record = store.get_record('javdb')
     assert record is not None
@@ -145,7 +145,7 @@ def test_discover_plugins_refreshes_existing_workspace_manifest(tmp_path, monkey
 
     monkeypatch.setattr(store, 'upsert', track_upsert)
 
-    manager.discover_plugins()
+    manager.discover_site_runtimes()
 
     assert upserted_plugin_ids == []
 
@@ -154,10 +154,10 @@ def test_manager_gateway_rebuilds_enabled_registrations_on_route_miss(tmp_path):
     repo_root = tmp_path / 'repo'
     backend_root = repo_root / 'squirrel-backend'
     backend_root.mkdir(parents=True, exist_ok=True)
-    paths = build_plugin_paths(repo_root=repo_root, backend_root=backend_root)
-    store = PluginInstallStore(data_path=paths.installations_file, paths=paths)
+    paths = build_site_runtime_paths(repo_root=repo_root, backend_root=backend_root)
+    store = SiteRuntimeStore(data_path=paths.records_file, paths=paths)
     store.upsert(
-        PluginInstallRecord(
+        SiteRuntimeRecord(
             plugin_id='youporn',
             version='0.1.0',
             install_path=str(repo_root / 'squirrel-plugins' / 'youporn'),
@@ -178,7 +178,7 @@ def test_manager_gateway_rebuilds_enabled_registrations_on_route_miss(tmp_path):
         ),
     )
 
-    manager = PluginManager(
+    manager = SiteRuntimeManager(
         store=store,
         paths=paths,
     )
@@ -193,10 +193,10 @@ def test_manager_ignores_non_workspace_records(tmp_path):
     repo_root = tmp_path / 'repo'
     backend_root = repo_root / 'squirrel-backend'
     backend_root.mkdir(parents=True)
-    paths = build_plugin_paths(repo_root=repo_root, backend_root=backend_root)
-    store = PluginInstallStore(data_path=paths.installations_file, paths=paths)
+    paths = build_site_runtime_paths(repo_root=repo_root, backend_root=backend_root)
+    store = SiteRuntimeStore(data_path=paths.records_file, paths=paths)
     store.upsert(
-        PluginInstallRecord(
+        SiteRuntimeRecord(
             plugin_id='uploaded',
             version='0.1.0',
             install_path=str(tmp_path / 'uploaded'),
@@ -212,11 +212,11 @@ def test_manager_ignores_non_workspace_records(tmp_path):
         ),
     )
 
-    manager = PluginManager(store=store, paths=paths)
+    manager = SiteRuntimeManager(store=store, paths=paths)
 
-    assert manager.discover_plugins() == []
-    assert manager.get_plugin('uploaded') is None
-    assert manager.enable_plugin('uploaded') is None
+    assert manager.discover_site_runtimes() == []
+    assert manager.get_site_runtime('uploaded') is None
+    assert manager.enable_site_runtime('uploaded') is None
     assert manager.gateway.resolve_route('extract_video', domain='uploaded.test') is None
 
 
@@ -224,19 +224,19 @@ def test_manager_uses_shared_paths_for_workspace_discovery(tmp_path):
     repo_root = tmp_path / 'repo'
     backend_root = repo_root / 'squirrel-backend'
     backend_root.mkdir(parents=True)
-    paths = build_plugin_paths(repo_root=repo_root, backend_root=backend_root)
+    paths = build_site_runtime_paths(repo_root=repo_root, backend_root=backend_root)
 
-    manager = PluginManager(paths=paths)
+    manager = SiteRuntimeManager(paths=paths)
 
-    assert manager._paths.workspace_plugins_dir == repo_root / 'squirrel-plugins'
+    assert manager._paths.workspace_runtimes_dir == repo_root / 'squirrel-plugins'
 
 
-def test_bootstrap_enabled_plugins_starts_runtimes_in_parallel_and_preserves_order(tmp_path):
+def test_bootstrap_enabled_site_runtimes_starts_runtimes_in_parallel_and_preserves_order(tmp_path):
     repo_root = tmp_path / 'repo'
     backend_root = repo_root / 'squirrel-backend'
     backend_root.mkdir(parents=True, exist_ok=True)
-    paths = build_plugin_paths(repo_root=repo_root, backend_root=backend_root)
-    store = PluginInstallStore(data_path=paths.installations_file, paths=paths)
+    paths = build_site_runtime_paths(repo_root=repo_root, backend_root=backend_root)
+    store = SiteRuntimeStore(data_path=paths.records_file, paths=paths)
     for plugin_id in ('alpha', 'beta', 'gamma'):
         store.upsert(_create_enabled_record(repo_root, plugin_id, f'{plugin_id}.test'))
 
@@ -246,35 +246,35 @@ def test_bootstrap_enabled_plugins_starts_runtimes_in_parallel_and_preserves_ord
             self.started: list[str] = []
             self._lock = threading.Lock()
 
-        def start_runtime(self, record: PluginInstallRecord):
+        def start_runtime(self, record: SiteRuntimeRecord):
             self.barrier.wait()
             with self._lock:
                 self.started.append(record.plugin_id)
             return object()
 
     supervisor = _ParallelSupervisor()
-    manager = PluginManager(
+    manager = SiteRuntimeManager(
         store=store,
         supervisor=supervisor,
         paths=paths,
     )
 
-    started = manager.bootstrap_enabled_plugins()
+    started = manager.bootstrap_enabled_site_runtimes()
 
     assert sorted(supervisor.started) == ['alpha', 'beta', 'gamma']
     assert [record.plugin_id for record in started] == ['alpha', 'beta', 'gamma']
-    assert store.get_record('alpha').status == PluginInstallStatus.RUNNING
-    assert store.get_record('beta').status == PluginInstallStatus.RUNNING
-    assert store.get_record('gamma').status == PluginInstallStatus.RUNNING
+    assert store.get_record('alpha').status == SiteRuntimeStatus.RUNNING
+    assert store.get_record('beta').status == SiteRuntimeStatus.RUNNING
+    assert store.get_record('gamma').status == SiteRuntimeStatus.RUNNING
     assert manager.gateway.resolve_route('resolve_subscription', domain='gamma.test').plugin_id == 'gamma'
 
 
-def test_bootstrap_enabled_plugins_raises_after_persisting_successful_starts(tmp_path):
+def test_bootstrap_enabled_site_runtimes_raises_after_persisting_successful_starts(tmp_path):
     repo_root = tmp_path / 'repo'
     backend_root = repo_root / 'squirrel-backend'
     backend_root.mkdir(parents=True, exist_ok=True)
-    paths = build_plugin_paths(repo_root=repo_root, backend_root=backend_root)
-    store = PluginInstallStore(data_path=paths.installations_file, paths=paths)
+    paths = build_site_runtime_paths(repo_root=repo_root, backend_root=backend_root)
+    store = SiteRuntimeStore(data_path=paths.records_file, paths=paths)
     for plugin_id in ('alpha', 'beta', 'gamma'):
         store.upsert(_create_enabled_record(repo_root, plugin_id, f'{plugin_id}.test'))
 
@@ -282,23 +282,26 @@ def test_bootstrap_enabled_plugins_raises_after_persisting_successful_starts(tmp
         def __init__(self) -> None:
             self.started: list[str] = []
 
-        def start_runtime(self, record: PluginInstallRecord):
+        def start_runtime(self, record: SiteRuntimeRecord):
             if record.plugin_id == 'beta':
                 raise RuntimeError('boom beta')
             self.started.append(record.plugin_id)
             return object()
 
     supervisor = _FailingSupervisor()
-    manager = PluginManager(
+    manager = SiteRuntimeManager(
         store=store,
         supervisor=supervisor,
         paths=paths,
     )
 
     with pytest.raises(RuntimeError, match='boom beta'):
-        manager.bootstrap_enabled_plugins()
+        manager.bootstrap_enabled_site_runtimes()
 
     assert sorted(supervisor.started) == ['alpha', 'gamma']
-    assert store.get_record('alpha').status == PluginInstallStatus.RUNNING
-    assert store.get_record('beta').status == PluginInstallStatus.INSTALLED
-    assert store.get_record('gamma').status == PluginInstallStatus.RUNNING
+    assert store.get_record('alpha').status == SiteRuntimeStatus.RUNNING
+    assert store.get_record('beta').status == SiteRuntimeStatus.INSTALLED
+    assert store.get_record('gamma').status == SiteRuntimeStatus.RUNNING
+
+
+

@@ -15,7 +15,7 @@ export type AppNavKey =
   | 'sync-center'
   | 'scheduled-tasks'
   | 'profile'
-  | 'plugins'
+  | 'site-runtimes'
   | 'logs'
   | 'settings'
 
@@ -222,15 +222,15 @@ export const NAV_ITEMS: NavigationItem[] = [
     activeRouteNames: ['ScheduledTasks'],
   },
   {
-    key: 'plugins',
-    name: '插件',
-    title: '插件管理',
-    mobileLabel: '插件',
-    path: '/plugins',
+    key: 'site-runtimes',
+    name: '站点运行时',
+    title: '站点运行时',
+    mobileLabel: '站点运行时',
+    path: '/site-runtimes',
     icon: 'plugins',
     group: 'system',
     showOnMobile: false,
-    activeRouteNames: ['Plugins'],
+    activeRouteNames: ['SiteRuntimes'],
   },
   {
     key: 'logs',
@@ -370,3 +370,4 @@ export function resolveRouteContext(route: RouteLocationNormalizedLoaded): Route
     breadcrumbs,
   }
 }
+

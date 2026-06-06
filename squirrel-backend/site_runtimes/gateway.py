@@ -10,30 +10,30 @@ from crawl import (
     PluginRuntimeError,
 )
 
-from .models import PluginCapabilityRegistration, PluginRoutingTarget
+from .models import SiteCapabilityRegistration, SiteRuntimeTarget
 from .runtime_models import PluginManifest
 
 logger = logging.getLogger(__name__)
 
 
-class PluginInvocationClient(Protocol):
-    """Transport abstraction between host and plugin runtimes."""
+class SiteRuntimeInvocationClient(Protocol):
+    """Transport abstraction between host and site runtimes."""
 
-    def invoke(self, target: PluginRoutingTarget, request: PluginInvokeRequest) -> PluginInvokeResponse:
+    def invoke(self, target: SiteRuntimeTarget, request: PluginInvokeRequest) -> PluginInvokeResponse:
         ...
 
 
-class PluginGateway:
+class SiteRuntimeGateway:
     """Route capability requests to runtime targets."""
 
     def __init__(
         self,
-        invocation_client: Optional[PluginInvocationClient] = None,
+        invocation_client: Optional[SiteRuntimeInvocationClient] = None,
         registration_refresh: Optional[Callable[[], None]] = None,
     ) -> None:
         self._invocation_client = invocation_client
         self._registration_refresh = registration_refresh
-        self._registrations: List[PluginCapabilityRegistration] = []
+        self._registrations: List[SiteCapabilityRegistration] = []
 
     def set_registration_refresh(self, callback: Optional[Callable[[], None]]) -> None:
         self._registration_refresh = callback
@@ -43,7 +43,7 @@ class PluginGateway:
         for capability in manifest.capabilities:
             for site in manifest.sites:
                 self._registrations.append(
-                    PluginCapabilityRegistration(
+                    SiteCapabilityRegistration(
                         plugin_id=plugin_id,
                         version=version,
                         capability=capability.name,
@@ -57,7 +57,7 @@ class PluginGateway:
     def unregister_plugin(self, plugin_id: str) -> None:
         self._registrations = [item for item in self._registrations if item.plugin_id != plugin_id]
 
-    def list_registrations(self) -> List[PluginCapabilityRegistration]:
+    def list_registrations(self) -> List[SiteCapabilityRegistration]:
         return list(self._registrations)
 
     def _find_registration(
@@ -65,7 +65,7 @@ class PluginGateway:
         capability: str,
         site_name: Optional[str] = None,
         domain: Optional[str] = None,
-    ) -> Optional[PluginCapabilityRegistration]:
+    ) -> Optional[SiteCapabilityRegistration]:
         normalized_domain = domain.lower() if domain else None
         for registration in self._registrations:
             if registration.capability != capability:
@@ -81,7 +81,7 @@ class PluginGateway:
         capability: str,
         site_name: Optional[str] = None,
         domain: Optional[str] = None,
-    ) -> Optional[PluginCapabilityRegistration]:
+    ) -> Optional[SiteCapabilityRegistration]:
         registration = self._find_registration(capability=capability, site_name=site_name, domain=domain)
         if registration is not None or self._registration_refresh is None:
             return registration
@@ -105,11 +105,11 @@ class PluginGateway:
         capability: str,
         site_name: Optional[str] = None,
         domain: Optional[str] = None,
-    ) -> Optional[PluginRoutingTarget]:
+    ) -> Optional[SiteRuntimeTarget]:
         registration = self._resolve_registration(capability=capability, site_name=site_name, domain=domain)
         if registration is None:
             return None
-        return PluginRoutingTarget(
+        return SiteRuntimeTarget(
             plugin_id=registration.plugin_id,
             version=registration.version,
             capability=capability,
@@ -135,7 +135,7 @@ class PluginGateway:
                     details={'capability': capability, 'site_name': site_name, 'domain': domain},
                 ),
             )
-        route = PluginRoutingTarget(
+        route = SiteRuntimeTarget(
             plugin_id=registration.plugin_id,
             version=registration.version,
             capability=capability,
@@ -173,3 +173,5 @@ class PluginGateway:
                 ),
             )
         return response
+
+

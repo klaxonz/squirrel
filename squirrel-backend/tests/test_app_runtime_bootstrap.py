@@ -66,7 +66,7 @@ sys.modules.setdefault('redis_lock', redis_lock_module)
 from crawl import PluginInvokeResponse
 from crawl import utils as crawl_utils
 import main as app_main
-from plugins import runtime_bridge
+from site_runtimes import runtime_bridge
 from processes import service_runtime
 from utils import runtime_http
 
@@ -78,8 +78,8 @@ def test_lifespan_configures_backend_runtime_http_state(monkeypatch):
     projection_calls = []
 
     monkeypatch.setattr(app_main, 'apply_site_config_overrides', lambda: None)
-    monkeypatch.setattr(app_main, 'bootstrap_plugin_runtime', lambda: None)
-    monkeypatch.setattr(app_main, 'shutdown_plugin_runtime', lambda: None)
+    monkeypatch.setattr(app_main, 'bootstrap_site_runtimes', lambda: None)
+    monkeypatch.setattr(app_main, 'shutdown_site_runtimes', lambda: None)
     monkeypatch.setattr(app_main, 'resolve_cookie_file_for_url', resolver)
     monkeypatch.setattr(app_main, 'resolve_cookie_match_domain_for_url', domain_resolver)
     monkeypatch.setattr('utils.cloudflare_bypass.get_default_client', lambda: client)
@@ -107,8 +107,8 @@ def test_lifespan_logs_ordered_startup_and_shutdown_sequence(monkeypatch, caplog
     domain_resolver = lambda url: 'youtube.com'
 
     monkeypatch.setattr(app_main, 'apply_site_config_overrides', lambda: None)
-    monkeypatch.setattr(app_main, 'bootstrap_plugin_runtime', lambda: None)
-    monkeypatch.setattr(app_main, 'shutdown_plugin_runtime', lambda: None)
+    monkeypatch.setattr(app_main, 'bootstrap_site_runtimes', lambda: None)
+    monkeypatch.setattr(app_main, 'shutdown_site_runtimes', lambda: None)
     monkeypatch.setattr(app_main, 'resolve_cookie_file_for_url', resolver)
     monkeypatch.setattr(app_main, 'resolve_cookie_match_domain_for_url', domain_resolver)
     monkeypatch.setattr('utils.cloudflare_bypass.get_default_client', lambda: client)
@@ -134,14 +134,14 @@ def test_lifespan_logs_ordered_startup_and_shutdown_sequence(monkeypatch, caplog
         'Startup [1/4] Site configuration overrides applied',
         'Startup [2/4] Configuring runtime HTTP helpers',
         'Startup [2/4] Runtime HTTP helpers ready',
-        'Startup [3/4] Bootstrapping plugin runtime manager',
-        'Startup [3/4] Plugin runtime manager ready',
+        'Startup [3/4] Bootstrapping site runtime manager',
+        'Startup [3/4] Site runtime manager ready',
         'Startup [4/4] Seeding video extraction projection',
         'Startup [4/4] Video extraction projection ready (rebuilt=0)',
         'Startup: complete',
         'Shutdown: begin',
-        'Shutdown [1/1] Stopping plugin runtime manager',
-        'Shutdown [1/1] Plugin runtime manager stopped',
+        'Shutdown [1/1] Stopping site runtime manager',
+        'Shutdown [1/1] Site runtime manager stopped',
         'Shutdown: complete',
     ]
 
@@ -150,7 +150,7 @@ def test_lifespan_sets_youtube_oauth_env_before_bootstrap(monkeypatch):
     captured = {}
 
     monkeypatch.setattr(app_main, 'apply_site_config_overrides', lambda: None)
-    monkeypatch.setattr(app_main, 'shutdown_plugin_runtime', lambda: None)
+    monkeypatch.setattr(app_main, 'shutdown_site_runtimes', lambda: None)
     monkeypatch.setattr('utils.cloudflare_bypass.get_default_client', lambda: object())
     monkeypatch.setattr(app_main, 'resolve_cookie_file_for_url', lambda url: url)
     monkeypatch.setattr(app_main, 'resolve_cookie_match_domain_for_url', lambda _url: 'youtube.com')
@@ -168,7 +168,7 @@ def test_lifespan_sets_youtube_oauth_env_before_bootstrap(monkeypatch):
     def _capture_bootstrap():
         captured['oauth_env'] = os.environ.get('YOUTUBE_OAUTH_STATE_FILE')
 
-    monkeypatch.setattr(app_main, 'bootstrap_plugin_runtime', _capture_bootstrap)
+    monkeypatch.setattr(app_main, 'bootstrap_site_runtimes', _capture_bootstrap)
     monkeypatch.delenv('YOUTUBE_OAUTH_STATE_FILE', raising=False)
 
     async def _run() -> None:
@@ -188,8 +188,8 @@ def test_bootstrap_runtime_configures_backend_runtime_http_state(monkeypatch):
     monkeypatch.setattr(service_runtime, 'init_logging', lambda: None)
     monkeypatch.setattr(service_runtime, 'upgrade_database', lambda: None)
     monkeypatch.setattr(service_runtime, 'apply_site_config_overrides', lambda: None)
-    monkeypatch.setattr(service_runtime, 'bootstrap_plugin_runtime', lambda: None)
-    monkeypatch.setattr(service_runtime, 'shutdown_plugin_runtime', lambda: None)
+    monkeypatch.setattr(service_runtime, 'bootstrap_site_runtimes', lambda: None)
+    monkeypatch.setattr(service_runtime, 'shutdown_site_runtimes', lambda: None)
     monkeypatch.setattr(service_runtime, 'start_reload_listener', lambda component: None)
     monkeypatch.setattr(service_runtime, 'stop_reload_listener', lambda component: None)
     monkeypatch.setitem(
@@ -227,7 +227,7 @@ def test_bootstrap_runtime_sets_youtube_oauth_env_before_bootstrap(monkeypatch):
     monkeypatch.setattr(service_runtime, 'init_logging', lambda: None)
     monkeypatch.setattr(service_runtime, 'upgrade_database', lambda: None)
     monkeypatch.setattr(service_runtime, 'apply_site_config_overrides', lambda: None)
-    monkeypatch.setattr(service_runtime, 'shutdown_plugin_runtime', lambda: None)
+    monkeypatch.setattr(service_runtime, 'shutdown_site_runtimes', lambda: None)
     monkeypatch.setattr(service_runtime, 'start_reload_listener', lambda component: None)
     monkeypatch.setattr(service_runtime, 'stop_reload_listener', lambda component: None)
     monkeypatch.setattr('utils.cloudflare_bypass.get_default_client', lambda: object())
@@ -257,7 +257,7 @@ def test_bootstrap_runtime_sets_youtube_oauth_env_before_bootstrap(monkeypatch):
     def _capture_bootstrap():
         captured['oauth_env'] = os.environ.get('YOUTUBE_OAUTH_STATE_FILE')
 
-    monkeypatch.setattr(service_runtime, 'bootstrap_plugin_runtime', _capture_bootstrap)
+    monkeypatch.setattr(service_runtime, 'bootstrap_site_runtimes', _capture_bootstrap)
     monkeypatch.delenv('YOUTUBE_OAUTH_STATE_FILE', raising=False)
 
     with service_runtime.bootstrap_runtime('worker'):
@@ -366,10 +366,13 @@ def test_runtime_bridge_logs_client_disconnect_without_traceback(monkeypatch, ca
 
     monkeypatch.setattr(handler, '_write_json', _raise_client_disconnect)
 
-    with caplog.at_level(logging.WARNING, logger='plugins.runtime_bridge'):
+    with caplog.at_level(logging.WARNING, logger='site_runtimes.runtime_bridge'):
         handler.do_POST()
 
     assert 'Plugin invoke response dropped because client disconnected' in caplog.text
     assert 'request_id=req-1' in caplog.text
     assert 'capability=extract_video' in caplog.text
     assert 'url=https://www.youtube.com/watch?v=demo' in caplog.text
+
+
+

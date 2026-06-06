@@ -2,8 +2,8 @@ import json
 import os
 from typing import Dict, List, Optional, Set
 
-from plugins.manager import get_plugin_manager
-from plugins.runtime_models import PluginManifest
+from site_runtimes.manager import get_site_runtime_manager
+from site_runtimes.runtime_models import PluginManifest
 from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
 
@@ -109,7 +109,7 @@ class SiteCatalog:
     @classmethod
     def build_plugin_site_catalog(cls) -> Dict[str, dict]:
         catalog: Dict[str, dict] = {}
-        snapshot = get_plugin_manager().get_snapshot()
+        snapshot = get_site_runtime_manager().get_snapshot()
         for record in snapshot.records:
             manifest = PluginManifest.from_dict(record.manifest)
             for site in manifest.sites:
@@ -331,3 +331,5 @@ class SiteCatalog:
             for slug, info in catalog.items()
             if str(slug).strip() and info.get('enabled', True)
         }
+
+

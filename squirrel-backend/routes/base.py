@@ -31,7 +31,7 @@ from routes.video_history import router as video_history_router
 from routes.video_interaction import router as video_interaction_router
 from routes.playlist import router as playlist_router
 from routes.system_config import router as system_config_router
-from routes.plugins import router as plugins_router
+from routes.site_runtimes import router as site_runtimes_router
 from routes.logs import router as logs_router
 from routes.search import router as search_router
 from routes.connectivity import router as connectivity_router
@@ -120,7 +120,7 @@ def create_app() -> FastAPI:
     app.include_router(video_interaction_router)
     app.include_router(playlist_router)
     app.include_router(system_config_router)
-    app.include_router(plugins_router)
+    app.include_router(site_runtimes_router)
     app.include_router(logs_router)
     app.include_router(search_router)
     app.include_router(connectivity_router)
@@ -187,3 +187,4 @@ def _register_spa_route(app: FastAPI) -> None:
             status_code=404,
             content={"code": -1, "msg": "Frontend static files not found"}
         )
+

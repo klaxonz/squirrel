@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from .contracts import ExtractionResult, ExtractionTask
 from .plugin_payloads import PluginVideoData
 
-from plugins.manager import get_plugin_manager
+from site_runtimes.manager import get_site_runtime_manager
 from core.site_config_manager import get_effective_site_catalog
 from utils.site_catalog import SiteCatalog
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class GatewayExtractorAdapter:
-    """Adapter that exposes plugin runtime capabilities as Extractor protocol."""
+    """Adapter that exposes site runtime capabilities as Extractor protocol."""
 
     def __init__(self, site_name: str, supported_domains: List[str]):
         self.site_name = site_name
@@ -37,7 +37,7 @@ class GatewayExtractorAdapter:
             return False
 
     def extract(self, task: ExtractionTask) -> ExtractionResult:
-        response = get_plugin_manager().gateway.invoke(
+        response = get_site_runtime_manager().gateway.invoke(
             'extract_video',
             site_name=self.site_name,
             payload={
@@ -67,13 +67,13 @@ class GatewayExtractorAdapter:
 
 
 class ExtractorFactory:
-    """Resolve extractors from plugin runtime registrations."""
+    """Resolve extractors from site runtime registrations."""
 
     def __init__(self):
         self._instances: Dict[str, GatewayExtractorAdapter] = {}
 
     def _create_adapter(self, site_name: str) -> Optional[GatewayExtractorAdapter]:
-        route = get_plugin_manager().gateway.resolve_route('extract_video', site_name=site_name)
+        route = get_site_runtime_manager().gateway.resolve_route('extract_video', site_name=site_name)
         if route is None:
             logger.info(f'No extract_video capability found for site: {site_name}')
             return None
@@ -157,3 +157,5 @@ def reset_factory() -> None:
     if _global_factory is not None:
         _global_factory.clear_cache()
     _global_factory = None
+
+

@@ -10,7 +10,7 @@ from common.log import init_logging
 from core.config import settings
 from core.database_upgrade import upgrade_database
 from core.site_config_manager import apply_site_config_overrides
-from plugins.manager import bootstrap_plugin_runtime, shutdown_plugin_runtime
+from site_runtimes.manager import bootstrap_site_runtimes, shutdown_site_runtimes
 from utils.cookie import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
 from utils.runtime_http import set_cloudflare_bypass_client
 from utils.runtime_http import set_cookie_domain_resolver, set_cookie_file_resolver
@@ -74,16 +74,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     else:
         _log_lifecycle_step('Startup', 2, STARTUP_TOTAL_STEPS, 'Runtime HTTP helpers ready')
 
-    _log_lifecycle_step('Startup', 3, STARTUP_TOTAL_STEPS, 'Bootstrapping plugin runtime manager')
+    _log_lifecycle_step('Startup', 3, STARTUP_TOTAL_STEPS, 'Bootstrapping site runtime manager')
     try:
         from services.youtube_oauth_service import get_oauth_credentials_for_daemon
         oauth_file = get_oauth_credentials_for_daemon()
         if oauth_file:
             os.environ['YOUTUBE_OAUTH_STATE_FILE'] = oauth_file
-        bootstrap_plugin_runtime()
-        _log_lifecycle_step('Startup', 3, STARTUP_TOTAL_STEPS, 'Plugin runtime manager ready')
+        bootstrap_site_runtimes()
+        _log_lifecycle_step('Startup', 3, STARTUP_TOTAL_STEPS, 'Site runtime manager ready')
     except Exception:
-        logger.exception('Startup [3/%s] Failed to bootstrap plugin runtime manager', STARTUP_TOTAL_STEPS)
+        logger.exception('Startup [3/%s] Failed to bootstrap site runtime manager', STARTUP_TOTAL_STEPS)
         raise
 
     _log_lifecycle_step('Startup', 4, STARTUP_TOTAL_STEPS, 'Seeding video extraction projection')
@@ -106,12 +106,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     _log_lifecycle_event('Shutdown', 'begin')
 
-    _log_lifecycle_step('Shutdown', 1, SHUTDOWN_TOTAL_STEPS, 'Stopping plugin runtime manager')
+    _log_lifecycle_step('Shutdown', 1, SHUTDOWN_TOTAL_STEPS, 'Stopping site runtime manager')
     try:
-        shutdown_plugin_runtime()
-        _log_lifecycle_step('Shutdown', 1, SHUTDOWN_TOTAL_STEPS, 'Plugin runtime manager stopped')
+        shutdown_site_runtimes()
+        _log_lifecycle_step('Shutdown', 1, SHUTDOWN_TOTAL_STEPS, 'Site runtime manager stopped')
     except Exception as exc:
-        logger.warning('Shutdown [1/%s] Error stopping plugin runtime manager (ignored): %s', SHUTDOWN_TOTAL_STEPS, exc)
+        logger.warning('Shutdown [1/%s] Error stopping site runtime manager (ignored): %s', SHUTDOWN_TOTAL_STEPS, exc)
 
     _log_lifecycle_event('Shutdown', 'complete')
 
@@ -170,3 +170,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+

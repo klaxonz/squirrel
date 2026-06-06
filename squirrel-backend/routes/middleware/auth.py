@@ -26,7 +26,7 @@ PUBLIC_PATH_PREFIXES = [
 def is_public_api_path(path: str) -> bool:
     if any(path.startswith(public_path) for public_path in PUBLIC_PATH_PREFIXES):
         return True
-    if path.startswith('/api/plugins/sites/') and path.endswith('/icon'):
+    if path.startswith('/api/site-runtimes/sites/') and path.endswith('/icon'):
         return True
     return False
 
@@ -81,3 +81,4 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if clear_cookie:
             clear_auth_cookie(unauthorized_response, request)
         return unauthorized_response
+

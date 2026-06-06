@@ -20,7 +20,7 @@ def build_site_icon_url(site_name: str | None) -> str | None:
     slug = normalize_site_slug(site_name)
     if not slug:
         return None
-    return f'/api/plugins/sites/{slug}/icon'
+    return f'/api/site-runtimes/sites/{slug}/icon'
 
 
 def resolve_site_icon_path(site_name: str | None) -> Path | None:
@@ -37,3 +37,4 @@ def resolve_site_icon_path(site_name: str | None) -> Path | None:
         if candidate.is_file():
             return candidate
     return None
+

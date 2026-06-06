@@ -430,11 +430,11 @@ def test_extraction_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(m
         return {
             'youtube': {
                 'domains': ['youtube.com', 'youtu.be'],
-                'icon_url': '/api/plugins/sites/youtube/icon',
+                'icon_url': '/api/site-runtimes/sites/youtube/icon',
             },
             'bilibili': {
                 'domains': ['bilibili.com', 'b23.tv'],
-                'icon_url': '/api/plugins/sites/bilibili/icon',
+                'icon_url': '/api/site-runtimes/sites/bilibili/icon',
             },
         }
 
@@ -442,9 +442,9 @@ def test_extraction_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(m
 
     snapshot = video_extraction_center_service.get_extraction_dashboard_snapshot(user_id=1)
 
-    assert snapshot['runningPreview'][0].site_icon_url == '/api/plugins/sites/youtube/icon'
-    assert snapshot['queuedPreview'][0].site_icon_url == '/api/plugins/sites/bilibili/icon'
-    assert snapshot['recentPreview'][0].site_icon_url == '/api/plugins/sites/youtube/icon'
+    assert snapshot['runningPreview'][0].site_icon_url == '/api/site-runtimes/sites/youtube/icon'
+    assert snapshot['queuedPreview'][0].site_icon_url == '/api/site-runtimes/sites/bilibili/icon'
+    assert snapshot['recentPreview'][0].site_icon_url == '/api/site-runtimes/sites/youtube/icon'
     assert len(calls) == 1
 
 
@@ -797,3 +797,4 @@ def test_extraction_center_reconciles_stale_active_projection(monkeypatch):
     assert recent_result.total == 1
     assert recent_result.data[0].sync_status == 'success'
     assert recent_result.data[0].completed_task_count == 2
+
