@@ -52,7 +52,7 @@ class TraceIdFilter(logging.Filter):
         try:
             trace_id = self._get_trace_id()
             record.trace_id = self._format_trace_id(trace_id)
-        except Exception:
+        except (ValueError, TypeError):
             # 如果获取失败，使用默认值
             record.trace_id = "-"
         return True
@@ -136,6 +136,6 @@ def init_logging():
             sys.stdout.reconfigure(encoding='utf-8', errors='replace')
         if hasattr(sys.stderr, 'reconfigure'):
             sys.stderr.reconfigure(encoding='utf-8', errors='replace')
-    except Exception:
+    except (OSError, ValueError, TypeError):
         pass
     logging.config.dictConfig(LOGGING_CONFIG)

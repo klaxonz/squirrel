@@ -124,11 +124,11 @@ class PornhubUserSubscriptionImporter:
 
                         page += 1
 
-            except Exception as e:
+            except Exception as e:  # inner boundary — non-fatal if username-based pages fail
                 logger.warning("Failed to fetch Pornhub subscriptions via username-based pages: %s", e)
 
             return channel_items
 
-        except Exception as e:
+        except Exception as e:  # SDK boundary — top-level import operation
             logger.error(f"Failed to import Pornhub subscriptions: {e}", exc_info=True)
             raise

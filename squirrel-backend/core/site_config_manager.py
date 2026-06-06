@@ -14,7 +14,7 @@ try:
         configure_rate_limit as configure_crawl_rate_limit,
         configure_rate_limit_enabled as configure_crawl_rate_limit_enabled,
     )
-except Exception:  # pragma: no cover - backend can still run without SDK wiring
+except ImportError:  # pragma: no cover - backend can still run without SDK wiring
     configure_crawl_rate_limit = None
     configure_crawl_rate_limit_enabled = None
 
@@ -98,7 +98,7 @@ def apply_crawl_rate_limit_overrides(catalog: Dict[str, dict] | None = None) -> 
                 continue
             if callable(configure_crawl_rate_limit):
                 configure_crawl_rate_limit(domain, min_value, max_value)
-        except Exception:
+        except (TypeError, ValueError, AttributeError):
             continue
 
 
@@ -117,5 +117,5 @@ def apply_site_config_overrides(catalog: Dict[str, dict] | None = None) -> None:
             if min_value is None or max_value is None:
                 continue
             backend_rate_limiter.add_rate_limit(domain, min_value, max_value)
-        except Exception:
+        except (TypeError, ValueError, AttributeError):
             continue

@@ -88,7 +88,7 @@ def consume_available_events(*, limit: int = 50, now: Optional[datetime] = None,
             processed += 1
         except RetryLaterError as exc:
             _reschedule_event(event_id=event_id, delay_seconds=exc.delay_seconds, now=now)
-        except Exception as exc:
+        except Exception as exc:  # event consumer boundary — catch all to mark failed
             failed += 1
             logger.exception('Failed to consume outbox event id=%s', event_id)
             _mark_event_failed(event_id=event_id, error_message=str(exc), now=now)
@@ -288,7 +288,7 @@ def run_notification_listener(stop_event: Event) -> None:
                         consume_available_events(limit=batch_size, worker_id='scheduler-listener')
                     continue
                 consume_available_events(limit=batch_size, worker_id='scheduler-listener')
-        except Exception:
+        except Exception:  # listener boundary — catch all to keep polling
             logger.exception('Outbox notification listener failed; retrying')
             stop_event.wait(1)
         finally:

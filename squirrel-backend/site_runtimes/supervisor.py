@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import socket
 import subprocess
@@ -249,7 +250,7 @@ class SiteRuntimeSupervisor:
             if handle and handle.endpoint:
                 try:
                     self._transport_client.request_json(handle.endpoint, '/stop', payload={}, timeout=2.0)
-                except Exception as exc:
+                except (TimeoutError, urllib.error.URLError, json.JSONDecodeError) as exc:
                     logger.warning(
                         'Site runtime stop request failed: runtime_id=%s, version=%s, error=%s',
                         runtime_id,
@@ -350,7 +351,7 @@ class SiteRuntimeSupervisor:
                     health = self._health_checker.fetch_health(handle.endpoint, timeout=1.0)
                     handle.health = self._to_health_snapshot(target.runtime_id, health)
                     handle.state = SiteRuntimeState.RUNNING if health.healthy else SiteRuntimeState.FAILED
-                except Exception as exc:
+                except (TimeoutError, urllib.error.URLError, json.JSONDecodeError) as exc:
                     logger.warning(
                         'Site runtime health refresh failed after invoke: runtime_id=%s, version=%s, error=%s',
                         target.runtime_id,
@@ -421,7 +422,7 @@ class SiteRuntimeSupervisor:
                     details=details,
                 ),
             )
-        except Exception as exc:
+        except (TypeError, ValueError, KeyError, json.JSONDecodeError) as exc:
             self.mark_failed(target.runtime_id, target.version, str(exc))
             details = self._build_invoke_details(
                 target,

@@ -62,7 +62,7 @@ class MetricsService:
             logger.info(f"Persisted {len(records)} metric snapshots to database")
             return len(records)
             
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             db.rollback()
             logger.error(f"Failed to persist metric snapshots: {e}")
             return 0
@@ -82,7 +82,7 @@ class MetricsService:
         try:
             snapshots = metrics.collect_snapshots(metric_names)
             return self.persist_snapshots(snapshots)
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error(f"Failed to collect and persist metrics: {e}")
             return 0
     
@@ -153,7 +153,7 @@ class MetricsService:
                 for row in results
             ]
             
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error(f"Failed to query metric timeseries for {metric_name}: {e}")
             return []
         finally:
@@ -227,7 +227,7 @@ class MetricsService:
                 "sum": float(result.sum_value) if result.sum_value else 0
             }
             
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error(f"Failed to query metric aggregation for {metric_name}: {e}")
             return {"count": 0, "min": 0, "max": 0, "avg": 0, "sum": 0}
         finally:
@@ -299,7 +299,7 @@ class MetricsService:
             
             return list(groups.values())
             
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error(f"Failed to query metrics by labels: {e}")
             return []
         finally:
@@ -329,7 +329,7 @@ class MetricsService:
             logger.info(f"Cleaned up {deleted_count} old metric records (older than {retention_days} days)")
             return deleted_count
             
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             db.rollback()
             logger.error(f"Failed to cleanup old metrics: {e}")
             return 0

@@ -194,6 +194,6 @@ class JavdbProxy:
         except httpx.HTTPError as e:
             logger.error(f'HTTP error occurred while proxying {url}: {str(e)}')
             raise HTTPException(status_code=502, detail=f'Error fetching content: {str(e)}')
-        except Exception as e:
+        except Exception as e:  # HTTP handler boundary — unexpected errors return 500
             logger.error(f'Error occurred while proxying {url}: {str(e)}')
             raise HTTPException(status_code=500, detail=f'Internal server error: {str(e)}')

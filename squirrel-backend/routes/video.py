@@ -26,6 +26,7 @@ def save_remote_video(
     except ValueError as exc:
         return response.param_error(str(exc))
     except Exception:
+        # API boundary -- convert to HTTP error response
         logger.exception("Failed to save remote video")
         return response.server_error("保存远端视频失败")
 
@@ -146,5 +147,6 @@ def get_video_subtitles(
             raise HTTPException(status_code=404, detail=exc.message)
         raise HTTPException(status_code=400, detail=exc.message)
     except Exception:
+        # API boundary -- convert to HTTP error response
         logger.exception('Subtitles fetch failed')
         raise HTTPException(status_code=500, detail="Server error")

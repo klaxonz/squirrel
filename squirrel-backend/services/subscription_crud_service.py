@@ -154,7 +154,7 @@ def update_subscription(
     try:
         from services import search_suggestion_service
         search_suggestion_service.rebuild_users_for_subscription(subscription_id)
-    except Exception as exc:
+    except (ConnectionError, OSError, ValueError, TypeError) as exc:
         logger.warning('Search suggestion subscription refresh skipped: %s', exc)
     return updated
 

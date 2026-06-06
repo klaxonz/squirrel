@@ -259,7 +259,7 @@ class ThumbnailRefreshTask(BaseTask):
                             try:
                                 future.result()
                                 processed_count += 1
-                            except Exception as e:
+                            except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
                                 logger.exception(
                                     '[ThumbnailRefreshTask] error processing video: %s', e
                                 )
@@ -333,7 +333,7 @@ class ThumbnailRefreshTask(BaseTask):
                 video.id,
             )
 
-        except Exception as e:
+        except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
             logger.warning(
                 '[ThumbnailRefreshTask] Failed to process site=%s video id=%s url=%s: %s',
                 site_name,

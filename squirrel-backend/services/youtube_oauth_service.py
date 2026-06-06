@@ -38,7 +38,7 @@ def _read_oauth_state_file() -> dict[str, Any] | None:
         return None
     try:
         return json.loads(path.read_text(encoding='utf-8'))
-    except Exception:
+    except (OSError, ValueError, TypeError):
         return None
 
 

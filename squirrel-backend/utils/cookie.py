@@ -14,10 +14,10 @@ def _get_cookie_site_catalog() -> dict:
         from core.site_config_manager import get_effective_site_catalog
 
         return get_effective_site_catalog()
-    except Exception:
+    except ImportError:
         try:
             return SiteCatalog.load_override_catalog() or {}
-        except Exception:
+        except (OSError, ValueError):
             return {}
 
 
@@ -65,7 +65,7 @@ def resolve_cookie_file_for_url(target_url: str) -> Optional[str]:
                 for d in entry.get("domains", [])
                 if d
             ]
-        except Exception:
+        except (KeyError, AttributeError, TypeError):
             continue
         for d in domains:
             if host == d or host.endswith("." + d):
@@ -109,7 +109,7 @@ def _read_cookie_file_as_query_string(path: Optional[str], target_url: str) -> s
 
     try:
         cookie_path = Path(path).expanduser()
-    except Exception:
+    except (OSError, RuntimeError):
         return ''
 
     if not cookie_path.is_file():
@@ -123,7 +123,7 @@ def _read_cookie_file_as_query_string(path: Optional[str], target_url: str) -> s
 
     try:
         jar.load(str(cookie_path), ignore_discard=True, ignore_expires=True)
-    except Exception:
+    except (OSError, ValueError):
         return ''
 
     filtered = []
@@ -131,7 +131,7 @@ def _read_cookie_file_as_query_string(path: Optional[str], target_url: str) -> s
         try:
             if item.domain.endswith(domain):
                 filtered.append(f'{item.name}={item.value}')
-        except Exception:
+        except (AttributeError, TypeError):
             continue
 
     header_value = '; '.join(filtered)

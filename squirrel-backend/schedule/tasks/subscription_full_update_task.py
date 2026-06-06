@@ -22,7 +22,7 @@ class SubscriptionFullUpdateTask(BaseTask):
                 mode=UpdateMode.FULL
             )
             logger.info(f"Full due events emitted: success={success}, failed={failed}")
-        except Exception as e:
+        except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
             logger.error(f"SubscriptionFullUpdateTask.run error: {e}", exc_info=True)
 
     @classmethod

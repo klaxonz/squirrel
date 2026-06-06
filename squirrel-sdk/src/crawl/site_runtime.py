@@ -81,6 +81,7 @@ class _GeneratedSiteRuntime:
             error = SiteRuntimeError.crashed(exc.message, details=exc.context)
             error.retryable = exc.retryable
         except Exception as exc:
+            # handler boundary: wrap unexpected capability handler errors as crashes
             error = SiteRuntimeError.crashed(
                 str(exc),
                 details={'exception_type': exc.__class__.__name__},

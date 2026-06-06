@@ -45,7 +45,7 @@ def check_youtube_login_status() -> LoginStatusResult:
     try:
         resp = request_without_limit("GET", check_url, headers=headers, timeout=timeout)
         body = resp.text or ""
-    except Exception as exc:
+    except Exception as exc:  # HTTP/API boundary — network or transport errors
         logger.warning("youtube login check failed: %s", exc, exc_info=True)
         return LoginStatusResult(
             site_name=site_name,

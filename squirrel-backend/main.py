@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     _log_lifecycle_step('Startup', 1, STARTUP_TOTAL_STEPS, 'Applying site configuration overrides')
     try:
         apply_site_config_overrides()
-    except Exception:
+    except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
         logger.exception('Startup [1/%s] Failed to apply site configuration overrides', STARTUP_TOTAL_STEPS)
         raise
     _log_lifecycle_step('Startup', 1, STARTUP_TOTAL_STEPS, 'Site configuration overrides applied')
@@ -63,14 +63,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         set_cloudflare_bypass_client(get_default_client())
         runtime_http_enabled.append('cloudflare_bypass')
         clear_optional_startup_issue('cloudflare_bypass')
-    except Exception as exc:
+    except Exception as exc:  # startup/shutdown boundary -- prevent crash during lifecycle
         record_optional_startup_issue('cloudflare_bypass', exc)
         runtime_http_degraded.append(f'cloudflare_bypass={exc}')
     try:
         set_cookie_file_resolver(resolve_cookie_file_for_url)
         set_cookie_domain_resolver(resolve_cookie_match_domain_for_url)
         runtime_http_enabled.append('cookie_resolver')
-    except Exception:
+    except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
         logger.exception('Startup [2/%s] Failed to configure cookie resolver', STARTUP_TOTAL_STEPS)
         raise
 
@@ -92,7 +92,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             os.environ['YOUTUBE_OAUTH_STATE_FILE'] = oauth_file
         bootstrap_site_runtimes()
         _log_lifecycle_step('Startup', 3, STARTUP_TOTAL_STEPS, 'Site runtime manager ready')
-    except Exception:
+    except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
         logger.exception('Startup [3/%s] Failed to bootstrap site runtime manager', STARTUP_TOTAL_STEPS)
         raise
 
@@ -106,7 +106,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             STARTUP_TOTAL_STEPS,
             f'Video extraction projection ready (rebuilt={rebuilt_count})',
         )
-    except Exception:
+    except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
         logger.exception('Startup [4/%s] Failed to seed video extraction projection', STARTUP_TOTAL_STEPS)
         raise
 
@@ -116,7 +116,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         ensure_system_tasks()
         clear_optional_startup_issue('scheduled_task_bootstrap')
         _log_lifecycle_step('Startup', 5, STARTUP_TOTAL_STEPS, 'Scheduled tasks ready')
-    except Exception as exc:
+    except Exception as exc:  # startup/shutdown boundary -- prevent crash during lifecycle
         record_optional_startup_issue('scheduled_task_bootstrap', exc)
         logger.warning(
             'Startup [5/%s] Scheduled task bootstrap degraded: %s',
@@ -135,7 +135,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         shutdown_site_runtimes()
         _log_lifecycle_step('Shutdown', 1, SHUTDOWN_TOTAL_STEPS, 'Site runtime manager stopped')
-    except Exception as exc:
+    except Exception as exc:  # cleanup during shutdown -- must not propagate
         logger.warning('Shutdown [1/%s] Error stopping site runtime manager (ignored): %s', SHUTDOWN_TOTAL_STEPS, exc)
 
     _log_lifecycle_event('Shutdown', 'complete')

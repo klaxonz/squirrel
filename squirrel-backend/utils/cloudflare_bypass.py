@@ -65,6 +65,7 @@ class CloudflareMirrorClient:
                 follow_redirects=True,
             )
         except Exception:
+            # transport boundary: close client on any HTTP/connection error before re-raising
             await self._close_client(client)
             raise
 

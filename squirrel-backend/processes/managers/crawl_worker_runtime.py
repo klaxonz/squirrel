@@ -111,7 +111,7 @@ class CrawlWorkerRuntime:
 
         try:
             self._execute_task(task)
-        except Exception as exc:
+        except Exception as exc:  # task boundary -- prevent single failure from crashing scheduler
             logger.exception("Crawl worker execution failed task_id=%s task_type=%s", task.id, task.task_type)
             try:
                 crawl_task_service.retry_task(

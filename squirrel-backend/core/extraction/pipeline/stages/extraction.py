@@ -114,13 +114,13 @@ class ExtractionStage(PipelineStage):
                 error_message=str(error),
                 error_type=type(error).__name__,
             )
-        except Exception as record_error:
+        except (ConnectionError, OSError, ValueError, TypeError) as record_error:
             logger.warning(f'Failed to record blocked video: {record_error}')
 
     def _get_extractor(self, url: str) -> Optional[Extractor]:
         """获取提取器"""
         try:
             return self.extractor_factory.create_extractor(url)
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError) as e:
             logger.error(f"Failed to create extractor: {e}")
             return None

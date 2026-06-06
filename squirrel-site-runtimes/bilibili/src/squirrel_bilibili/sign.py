@@ -241,7 +241,7 @@ def _parse_video_id(url: str) -> Tuple[Optional[str], Optional[int]]:
     if match:
         try:
             return None, int(match.group(1))
-        except Exception:
+        except (ValueError, TypeError):
             return None, None
     parsed = urlparse(url)
     query = parse_qs(parsed.query)
@@ -252,7 +252,7 @@ def _parse_video_id(url: str) -> Tuple[Optional[str], Optional[int]]:
     if aid:
         try:
             return None, int(aid)
-        except Exception:
+        except (ValueError, TypeError):
             pass
     return None, None
 
@@ -286,7 +286,7 @@ def fetch_video_info(
     bvid = info.get('bvid') or bvid
     try:
         aid = int(info.get('aid')) if info.get('aid') is not None else aid
-    except Exception:
+    except (ValueError, TypeError):
         aid = aid
 
     pages = info.get('pages') or []
@@ -298,7 +298,7 @@ def fetch_video_info(
         if page_info:
             try:
                 cid = int(page_info.get('cid')) if page_info.get('cid') is not None else None
-            except Exception:
+            except (ValueError, TypeError):
                 cid = None
 
     context = VideoContext(
@@ -404,7 +404,7 @@ def parse_subscription_target(url: str) -> ParsedSubscriptionTarget:
             if seg:
                 try:
                     mid = int(seg[-1])
-                except Exception:
+                except (ValueError, TypeError, IndexError):
                     mid = None
         series_type = ChannelSeriesType.SEASON if business == 'space_season' else ChannelSeriesType.SERIES
         id_value = (query.get('season_id') or query.get('series_id') or [None])[0]
@@ -423,7 +423,7 @@ def parse_subscription_target(url: str) -> ParsedSubscriptionTarget:
         if host.endswith('space.bilibili.com') and seg:
             try:
                 mid = int(seg[0])
-            except Exception:
+            except (ValueError, TypeError, IndexError):
                 mid = None
         sid = (query.get('sid') or query.get('series_id') or query.get('season_id') or [None])[0]
         if not sid:
@@ -576,7 +576,7 @@ def fetch_series_meta(
             try:
                 if int(item.get('season_id') or item.get('id') or 0) == series_id:
                     return item
-            except Exception:
+            except (ValueError, TypeError):
                 continue
     return {}
 

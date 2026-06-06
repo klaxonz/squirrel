@@ -206,7 +206,7 @@ class ConnectionManager:
                 client_config = self._build_client_config(domain_config)
                 self._clients[domain] = httpx.AsyncClient(**client_config)
                 logger.info(f"Created new HTTP client for domain: {domain}")
-            except Exception as e:
+            except (ValueError, TypeError) as e:
                 logger.error(f"Failed to create HTTP client for {domain}: {e}")
                 raise ProxyConfigurationException(domain, str(e))
 
@@ -227,7 +227,7 @@ class ConnectionManager:
                 try:
                     await client.aclose()
                     logger.debug(f"Closed HTTP client for domain: {domain}")
-                except Exception as e:
+                except Exception as e:  # cleanup during shutdown — must not propagate
                     logger.warning(f"Error closing client for {domain}: {e}")
             self._clients.clear()
             self._locks.clear()
@@ -402,7 +402,7 @@ class HttpRequester:
                     self.domain,
                     f"HTTP {e.response.status_code}: {UpstreamResponseAdapter.text(e.response)}",
                 )
-            except Exception as e:
+            except (OSError, ValueError, TypeError) as e:
                 last_exception = ProxyException(f"Unexpected error: {str(e)}", self.domain)
                 logger.error(f"Unexpected error on attempt {attempt + 1}: {e}", exc_info=True)
 
@@ -590,7 +590,7 @@ class VideoProxy:
             async for chunk in UpstreamResponseAdapter.iter_bytes(response, chunk_size):
                 if chunk:
                     yield chunk
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             logger.error(f"Error during streaming: {e}")
             raise
         finally:
@@ -601,7 +601,7 @@ class VideoProxy:
         client = await self._connection_manager.get_client(self.domain, self.domain_config)
         try:
             yield client
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             logger.error(f"Error in HTTP client context: {e}")
             if not isinstance(e, ProxyException):
                 await self._connection_manager.close_client(self.domain)
@@ -674,7 +674,7 @@ class VideoProxy:
 
         except ProxyException:
             raise
-        except Exception as e:
+        except Exception as e:  # API handler boundary — wrap as ProxyException
             logger.error(f"Unexpected error in handle_stream: {e}", exc_info=True)
             raise ProxyException(f"Internal proxy error: {str(e)}", self.domain, 500)
 

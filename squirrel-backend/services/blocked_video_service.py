@@ -76,6 +76,6 @@ def record_blocked_video(
     except IntegrityError:
         logger.warning('Blocked video record already exists: url=%s, reason=%s', url, reason_code)
         return None
-    except Exception as exc:
+    except (ConnectionError, OSError, ValueError, TypeError) as exc:
         logger.error('Failed to record blocked video: url=%s, reason=%s, error=%s', url, reason_code, exc)
         return None

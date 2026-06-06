@@ -22,7 +22,7 @@ class Scheduler:
             logger.info(f"Scheduled job started: {job_name}")
             try:
                 func()
-            except Exception as e:
+            except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
                 logger.exception(f"Scheduled job failed: {job_name}, error: {e}")
 
     def _run_jobs(self):

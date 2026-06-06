@@ -50,7 +50,7 @@ def _get_cached_site_catalog() -> dict[str, dict]:
 
         try:
             catalog = get_effective_site_catalog() or {}
-        except Exception:
+        except (ValueError, TypeError, AttributeError, KeyError):
             logger.warning('Failed to load effective site catalog for extraction center icons', exc_info=True)
             catalog = _site_catalog_cache or {}
 

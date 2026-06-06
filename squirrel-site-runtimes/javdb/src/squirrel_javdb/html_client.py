@@ -60,6 +60,6 @@ def fetch_javdb_html(
 
     try:
         return requester('GET', url, bypass_mode='html', **kwargs)
-    except Exception as exc:
+    except Exception as exc:  # HTTP I/O boundary — fallback retry without bypass
         logger.debug('JavDB bypass request failed for %s: %s', url, exc, exc_info=True)
         return requester('GET', url, **kwargs)

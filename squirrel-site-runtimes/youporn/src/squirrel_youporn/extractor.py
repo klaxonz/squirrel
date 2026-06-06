@@ -69,7 +69,7 @@ class YouPornExtractor(YoutubeDLExtractorBase):
                 if video_info:
                     self._process_youporn_info(video_info, url)
                 return video_info
-        except Exception as exc:
+        except Exception as exc:  # SDK boundary — translate yt-dlp errors to domain types
             error_msg = str(exc).lower()
             context = {'url': url, 'original_error': str(exc)}
 
@@ -109,7 +109,7 @@ class YouPornExtractor(YoutubeDLExtractorBase):
             if timestamp:
                 video_info['publish_date'] = datetime.fromtimestamp(timestamp)
             self._normalize_thumbnail(video_info, source_url)
-        except Exception as exc:
+        except (ValueError, TypeError) as exc:
             logger.warning('Failed to process YouPorn video info: %s', exc)
 
     def _normalize_thumbnail(self, video_info: Dict[str, Any], source_url: Optional[str]) -> None:
@@ -140,7 +140,7 @@ class YouPornExtractor(YoutubeDLExtractorBase):
 
         try:
             response = httpx.get(page_url, headers=headers, timeout=30.0, follow_redirects=True)
-        except Exception as exc:
+        except Exception as exc:  # HTTP I/O boundary — httpx may raise various transport errors
             logger.warning('Failed to fetch YouPorn page thumbnail metadata: %s', exc)
             return None
 

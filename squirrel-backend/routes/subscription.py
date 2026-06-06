@@ -383,6 +383,7 @@ def preview_subscriptions(
         logger.error(f"Invalid request for site {site}: {e}")
         return response.param_error(str(e))
     except Exception as e:
+        # API boundary -- convert to HTTP error response
         logger.exception(f"Failed to preview subscriptions from {site}: {e}")
         return response.server_error(f"预览失败: {str(e)}")
 
@@ -430,5 +431,6 @@ def import_subscriptions(
         logger.error(f"Invalid request for site {site}: {e}")
         return response.param_error(str(e))
     except Exception as e:
+        # API boundary -- convert to HTTP error response
         logger.exception(f"Failed to import subscriptions from {site}: {e}")
         return response.server_error(f"导入失败: {str(e)}")

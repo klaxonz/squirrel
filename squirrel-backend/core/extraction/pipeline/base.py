@@ -143,7 +143,7 @@ class ExtractionPipeline:
                         f"Stage '{stage.stage_name}' completed: task_id={context.task.task_id}"
                     )
 
-                except Exception as e:
+                except (ValueError, TypeError, AttributeError, KeyError) as e:
                     # Stage执行失败
                     stage.on_error(context, e)
                     if self._middleware:
@@ -174,7 +174,7 @@ class ExtractionPipeline:
                 data=context.video_dto
             )
         
-        except Exception as e:
+        except Exception as e:  # pipeline execution boundary — catch all to return ExtractionResult
             import traceback
             duration = context.get_duration()
 
@@ -196,7 +196,7 @@ class ExtractionPipeline:
                     error_type=type(e).__name__,
                     error_msg=f"{str(e)}\n\n{stack_trace}"
                 )
-            except Exception:
+            except Exception:  # metrics recording must never fail
                 pass
 
             return ExtractionResult(

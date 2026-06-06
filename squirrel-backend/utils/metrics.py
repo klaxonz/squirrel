@@ -111,6 +111,7 @@ class MetricsCollector:
             self.redis.expire(total_key, self.ttl * 24)  # 24小时
             
         except Exception as e:
+            # infrastructure boundary -- metrics must never crash the caller
             logger.error(f"Failed to record counter metric {name}: {e}")
     
     def gauge(self, name: str, value: float, tags: Optional[Dict[str, str]] = None) -> None:
@@ -134,6 +135,7 @@ class MetricsCollector:
             key = self._build_key(name, tags, metric_type="gauge")
             self.redis.set(key, value, ex=self.ttl)
         except Exception as e:
+            # infrastructure boundary -- metrics must never crash the caller
             logger.error(f"Failed to record gauge metric {name}: {e}")
     
     def histogram(self, name: str, value: float, tags: Optional[Dict[str, str]] = None) -> None:
@@ -169,6 +171,7 @@ class MetricsCollector:
             self.redis.zremrangebyscore(key, 0, cutoff)
             
         except Exception as e:
+            # infrastructure boundary -- metrics must never crash the caller
             logger.error(f"Failed to record histogram metric {name}: {e}")
     
     def record_error(self, site: str, url: str, error_type: str, error_msg: str, max_records: int = 100) -> None:
@@ -204,6 +207,7 @@ class MetricsCollector:
             self.redis.expire(key, 86400)  # 24小时过期
             
         except Exception as e:
+            # infrastructure boundary -- metrics must never crash the caller
             logger.error(f"Failed to record error detail: {e}")
     
     def get_recent_errors(self, limit: int = 50) -> list:
@@ -214,6 +218,7 @@ class MetricsCollector:
             records = self.redis.lrange(key, 0, limit - 1)
             return [json.loads(r) for r in records]
         except Exception as e:
+            # infrastructure boundary -- metrics must never crash the caller
             logger.error(f"Failed to get recent errors: {e}")
             return []
 
@@ -308,6 +313,7 @@ class MetricsCollector:
             value = self.redis.get(key)
             return int(value) if value else 0
         except Exception as e:
+            # infrastructure boundary -- metrics must never crash the caller
             logger.error(f"Failed to get counter metric {name}: {e}")
             return 0
     
@@ -327,6 +333,7 @@ class MetricsCollector:
             value = self.redis.get(key)
             return float(value) if value else None
         except Exception as e:
+            # infrastructure boundary -- metrics must never crash the caller
             logger.error(f"Failed to get gauge metric {name}: {e}")
             return None
     
@@ -389,6 +396,7 @@ class MetricsCollector:
             }
             
         except Exception as e:
+            # infrastructure boundary -- metrics must never crash the caller
             logger.error(f"Failed to get histogram stats for {name}: {e}")
             return {"count": 0, "min": 0, "max": 0, "avg": 0, "p50": 0, "p95": 0, "p99": 0}
     
@@ -431,6 +439,7 @@ class MetricsCollector:
             return [k.decode('utf-8') if isinstance(k, bytes) else k 
                     for k in self.redis.keys(pattern)]
         except Exception as e:
+            # infrastructure boundary -- metrics must never crash the caller
             logger.error(f"Failed to get metrics keys by pattern {pattern}: {e}")
             return []
     
@@ -496,13 +505,13 @@ class MetricsCollector:
                             )
                             snapshots.append(snapshot)
                             
-                    except Exception as e:
+                    except (ValueError, IndexError, TypeError, AttributeError) as e:
                         logger.debug(f"Failed to parse metric key {key}: {e}")
                         continue
-            
+
             return snapshots
-            
-        except Exception as e:
+
+        except (ConnectionError, OSError, TypeError, ValueError) as e:
             logger.error(f"Failed to collect metric snapshots: {e}")
             return []
     

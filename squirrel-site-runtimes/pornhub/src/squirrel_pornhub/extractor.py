@@ -71,7 +71,7 @@ class PornhubExtractor(YoutubeDLExtractorBase):
 
                 return video_info
 
-        except Exception as e:
+        except Exception as e:  # SDK boundary — translate yt-dlp errors to domain types
             error_msg = str(e).lower()
             context = {"url": url, "original_error": str(e)}
             cookie_file = resolve_cookie_file_path(url)
@@ -122,7 +122,7 @@ class PornhubExtractor(YoutubeDLExtractorBase):
             if 'timestamp' in video_info:
                 video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
             self._normalize_thumbnail(video_info, source_url)
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             logger.warning(f"处理Pornhub特定信息失败: {e}")
 
     def _normalize_thumbnail(self, video_info: Dict[str, Any], source_url: Optional[str]) -> None:
@@ -191,7 +191,7 @@ class PornhubExtractor(YoutubeDLExtractorBase):
                     allow_redirects=True,
                     timeout=30,
                 )
-            except Exception as exc:
+            except Exception as exc:  # HTTP I/O boundary — requests may raise various transport errors
                 logger.warning('Failed to fetch Pornhub page thumbnail metadata: %s', exc)
                 return None
 
@@ -258,7 +258,7 @@ class PornhubExtractor(YoutubeDLExtractorBase):
                 allow_redirects=False,
                 timeout=15,
             )
-        except Exception as exc:
+        except Exception as exc:  # HTTP I/O boundary — requests may raise various transport errors
             logger.warning('Failed to inspect Pornhub redirect target: %s', exc)
             return None
 

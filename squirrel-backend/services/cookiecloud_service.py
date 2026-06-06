@@ -84,7 +84,7 @@ def fetch_cookiecloud_cookie_data() -> Dict[str, Any]:
     try:
         from PyCookieCloud import PyCookieCloud
         from PyCookieCloud.PyCryptoJS import decrypt
-    except Exception as exc:
+    except ImportError as exc:
         raise CookieCloudSyncError(f"缺少依赖 PyCookieCloud: {exc}") from exc
 
     client = PyCookieCloud(url=url, uuid=uuid, password=password)
@@ -92,7 +92,7 @@ def fetch_cookiecloud_cookie_data() -> Dict[str, Any]:
     try:
         decrypted_data = decrypt(encrypted_data, client.get_the_key().encode('utf-8')).decode('utf-8')
         payload = json.loads(decrypted_data)
-    except Exception as exc:
+    except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as exc:
         raise CookieCloudSyncError(f'CookieCloud 解密失败: {exc}') from exc
 
     data = payload.get('cookie_data')
@@ -123,7 +123,7 @@ def _to_int_seconds(value: Any) -> int:
         return 0
     try:
         return int(float(value))
-    except Exception:
+    except (TypeError, ValueError):
         return 0
 
 

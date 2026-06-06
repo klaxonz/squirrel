@@ -156,7 +156,7 @@ class VideoPersistenceService:
                     f"is_new_video={is_new_video}, sync_mode={subscription_sync_mode}"
                 )
         
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error(
                 f"Failed to create subscription-video link: "
                 f"subscription_id={subscription_id}, video_id={video_id}, error={e}"

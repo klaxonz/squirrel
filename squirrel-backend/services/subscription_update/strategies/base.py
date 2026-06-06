@@ -82,7 +82,7 @@ class UpdateStrategy(ABC):
         from utils import url_helper
         try:
             domain = url_helper.extract_top_level_domain(request.url)
-        except Exception:
+        except (ValueError, TypeError):
             domain = "unknown"
         tags = {"site": domain}
         
@@ -230,7 +230,7 @@ class UpdateStrategy(ABC):
                 cursor_loop_detected=bool(getattr(fetch_result, 'cursor_loop_detected', False)),
                 scan_depth=getattr(fetch_result, 'scan_depth', None),
             )
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, KeyError) as e:
             # 记录错误指标
             metrics.counter("subscription.update.total", tags={**tags, "status": "error"})
             metrics.counter("subscription.errors.total", tags={**tags, "error_type": type(e).__name__})

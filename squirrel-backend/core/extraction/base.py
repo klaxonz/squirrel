@@ -30,7 +30,7 @@ class BaseExtractor:
                 if domain == supported_domain or domain.endswith(f'.{supported_domain}'):
                     return True
             return False
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             logger.warning(f"Failed to parse URL: {url}, error: {e}")
             return False
     
@@ -39,7 +39,7 @@ class BaseExtractor:
         try:
             result = urlparse(url)
             return all([result.scheme, result.netloc])
-        except Exception:
+        except (ValueError, TypeError):
             return False
     
     def extract(self, task: ExtractionTask) -> ExtractionResult:
@@ -106,7 +106,7 @@ class BaseTaskProcessor:
 
             return result
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError) as e:
             error_msg = f"Task processing exception: {task.task_id}, error: {str(e)}"
             logger.error(error_msg, exc_info=True)
 

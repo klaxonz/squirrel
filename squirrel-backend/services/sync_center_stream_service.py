@@ -151,5 +151,5 @@ async def stream_sync_center_events(
     finally:
         try:
             await asyncio.to_thread(pubsub.close)
-        except Exception:
+        except Exception:  # cleanup — must not propagate
             logger.warning('Failed to close sync-center pubsub cleanly', exc_info=True)

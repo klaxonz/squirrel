@@ -221,7 +221,7 @@ def _extract_info_with_hooks_once(url: str, opts: dict[str, Any], *, process: bo
 
     try:
         from yt_dlp.extractor.youtube._video import YoutubeIE
-    except Exception:
+    except ImportError:
         return _extract_info_once(url, opts, process=process)
 
     original_extract_player_responses = YoutubeIE._extract_player_responses
@@ -337,7 +337,7 @@ def _parse_playback_worker_output(stdout: str, stderr: str, returncode: int) -> 
 def _extract_with_bgutil_timeout_fallback(extract_fn, url: str, opts: dict[str, Any], *, process: bool) -> dict | None:
     try:
         return extract_fn(url, opts, process=process)
-    except Exception as exc:
+    except Exception as exc:  # yt-dlp extraction boundary — must check for specific timeout condition
         if not _is_bgutil_script_timeout(exc, opts):
             raise
 

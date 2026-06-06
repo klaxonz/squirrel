@@ -153,6 +153,6 @@ class YouPornProxy:
         except httpx.HTTPError as exc:
             logger.error('HTTP error occurred while proxying %s: %s', url, exc)
             raise HTTPException(status_code=502, detail=f'Error fetching content: {exc}')
-        except Exception as exc:
+        except Exception as exc:  # HTTP handler boundary — unexpected errors return 500
             logger.error('Error occurred while proxying %s: %s', url, exc)
             raise HTTPException(status_code=500, detail='Internal server error')

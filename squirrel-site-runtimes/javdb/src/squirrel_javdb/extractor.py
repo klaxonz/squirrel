@@ -57,7 +57,7 @@ def _fetch_video_info(url: str) -> Dict[str, Any]:
             video_info['duration'] = int(duration_text) * 60
         else:
             video_info['duration'] = None
-    except Exception:
+    except (ValueError, TypeError, AttributeError):
         video_info['duration'] = None
 
     try:
@@ -67,7 +67,7 @@ def _fetch_video_info(url: str) -> Dict[str, Any]:
             video_info['timestamp'] = timestamp
         else:
             video_info['timestamp'] = None
-    except Exception:
+    except (ValueError, TypeError, AttributeError):
         video_info['timestamp'] = None
 
     return video_info
@@ -95,7 +95,7 @@ class JavdbExtractor(VideoExtractorBase):
 
         except (AuthError, VipError, NotFoundError, ParseError):
             raise
-        except Exception as e:
+        except Exception as e:  # SDK boundary — translate unexpected errors to domain types
             error_msg = str(e).lower()
             context = {"url": url, "original_error": str(e)}
 
@@ -115,5 +115,5 @@ class JavdbExtractor(VideoExtractorBase):
             if 'timestamp' in video_info:
                 if isinstance(video_info['timestamp'], (int, float)):
                     video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             logger.warning(f"处理JavDB特定信息失败: {e}")

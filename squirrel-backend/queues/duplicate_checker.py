@@ -88,13 +88,13 @@ class MessageDuplicateChecker:
                         )
                         return True
                         
-                except Exception as e:
+                except (ValueError, TypeError, KeyError) as e:
                     logger.warning(f"Failed to parse message in queue: {e}")
                     continue
             
             return False
             
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error(f"Failed to check duplicate in {self.queue_name}: {e}")
             # 检查失败时返回 False，不阻止消息发送
             return False
@@ -154,7 +154,7 @@ def create_simple_checker(
     def match_fn(msg1: Dict, msg2: Dict) -> bool:
         try:
             return key_fn(msg1) == key_fn(msg2)
-        except Exception:
+        except (ValueError, TypeError, KeyError):
             return False
     
     return MessageDuplicateChecker(queue_name, match_fn, check_count)

@@ -28,7 +28,7 @@ class BilibiliSubtitlesProvider:
         if cookie_file:
             try:
                 original_cookie_content = open(cookie_file, 'r', encoding='utf-8').read()
-            except Exception:
+            except OSError:
                 original_cookie_content = None
 
         try:
@@ -38,7 +38,7 @@ class BilibiliSubtitlesProvider:
                 try:
                     with open(cookie_file, 'w', encoding='utf-8') as f:
                         f.write(original_cookie_content)
-                except Exception as exc:
+                except OSError as exc:
                     logger.warning('Failed to restore cookie file %s after yt-dlp: %s', cookie_file, exc)
 
     def _do_get_subtitles(self, video, lang: str) -> Tuple[str, str]:
@@ -62,7 +62,7 @@ class BilibiliSubtitlesProvider:
             try:
                 with YoutubeDL(ydl_opts) as ydl:
                     ydl.download([video.url])
-            except Exception as exc:
+            except Exception as exc:  # yt-dlp boundary — may raise various extraction/network errors
                 logger.warning('yt-dlp subtitle extraction failed for %s: %s', video.url, exc)
                 raise NoSubtitlesError(f'No subtitles available: {exc}') from exc
 

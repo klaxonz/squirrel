@@ -58,7 +58,7 @@ class SiteRuntimeStore:
                 os.fsync(handle.fileno())
                 temp_path = Path(handle.name)
             os.replace(temp_path, self._data_path)
-        except Exception:
+        except OSError:
             if temp_path is not None:
                 try:
                     temp_path.unlink(missing_ok=True)

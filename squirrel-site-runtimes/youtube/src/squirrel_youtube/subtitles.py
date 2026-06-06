@@ -14,7 +14,7 @@ from .youtubei_resolver import resolve_captions_with_youtubei
 def _safe_int(value: Any) -> int | None:
     try:
         return int(str(value))
-    except Exception:
+    except (ValueError, TypeError):
         return None
 
 

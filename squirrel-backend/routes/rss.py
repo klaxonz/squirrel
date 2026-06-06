@@ -103,6 +103,7 @@ def test_rss_account_config(req: RssAccountTestRequest, current_user: User = Dep
     except rss_service.RssServiceError as exc:
         return response.param_error(str(exc))
     except Exception as exc:
+        # API boundary -- convert to HTTP error response
         return response.error(f'RSS 服务连接失败: {exc}')
     return response.success(result)
 
@@ -112,6 +113,7 @@ def test_rss_account(account_id: int, current_user: User = Depends(get_current_u
     try:
         result = rss_service.test_account(current_user.id, account_id)
     except Exception as exc:
+        # API boundary -- convert to HTTP error response
         return response.error(f'RSS 服务连接失败: {exc}')
     if result is None:
         return response.not_found('RSS 账号不存在')
@@ -129,6 +131,7 @@ def sync_rss_account(
     except rss_service.RssServiceError as exc:
         return response.param_error(str(exc))
     except Exception as exc:
+        # API boundary -- convert to HTTP error response
         return response.error(f'RSS 同步失败: {exc}')
     return response.success(None)
 
@@ -154,6 +157,7 @@ def start_rss_sync(
         except rss_service.RssServiceError:
             pass
         except Exception:
+            # task boundary -- prevent single failure from crashing request
             logger.exception('Background RSS sync failed for account_id=%s', account_id)
 
     thread = Thread(target=_bg_sync, daemon=True)
@@ -194,6 +198,7 @@ def subscribe_rss_feed(
     except rss_service.RssServiceError as exc:
         return response.param_error(str(exc))
     except Exception as exc:
+        # API boundary -- convert to HTTP error response
         return response.error(f'RSS 订阅失败: {exc}')
     return response.success(feed)
 
@@ -223,6 +228,7 @@ def sync_rss_feed(
     except rss_service.RssServiceError as exc:
         return response.param_error(str(exc))
     except Exception as exc:
+        # API boundary -- convert to HTTP error response
         return response.error(f'RSS 同步失败: {exc}')
     return response.success(result)
 
@@ -238,6 +244,7 @@ def patch_rss_feed(
     except rss_service.RssServiceError as exc:
         return response.param_error(str(exc))
     except Exception as exc:
+        # API boundary -- convert to HTTP error response
         return response.error(f'更新订阅源失败: {exc}')
     return response.success(feed)
 

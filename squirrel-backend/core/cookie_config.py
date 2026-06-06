@@ -115,11 +115,11 @@ def write_cookie_text_file(target_path: Path, content: str, encoding: str = 'utf
                 temp_path = Path(handle.name)
 
             os.replace(temp_path, target)
-        except Exception:
+        except OSError:
             if temp_path is not None:
                 try:
                     temp_path.unlink(missing_ok=True)
-                except Exception:
+                except OSError:
                     pass
             raise
 

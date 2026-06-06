@@ -217,6 +217,6 @@ class YouTubeProxy:
         except httpx.HTTPError as e:
             logger.error('YouTube proxy transport error for %s: %s', url, e)
             raise HTTPException(status_code=502, detail=f'Error fetching content: {str(e)}')
-        except Exception as e:  # pragma: no cover
+        except Exception as e:  # HTTP handler boundary — unexpected errors return 500
             logger.exception('YouTube proxy unexpected error for %s', url)
             raise HTTPException(status_code=500, detail='Internal server error')

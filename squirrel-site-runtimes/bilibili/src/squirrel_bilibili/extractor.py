@@ -34,7 +34,7 @@ class BilibiliExtractor(VideoExtractorBase):
             info, context, page_info = fetch_video_info(url)
             base_info = build_base_info(info, context, page_info)
             return base_info
-        except Exception as e:
+        except Exception as e:  # SDK boundary — translate various errors to domain types
             error_msg = str(e).lower()
             context = {"url": url, "original_error": str(e)}
 

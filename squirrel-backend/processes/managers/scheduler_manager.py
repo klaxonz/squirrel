@@ -49,7 +49,7 @@ def _update_scheduler_status(is_running: bool, job_count: int = 0, error_message
                 status.error_message = error_message
 
             session.commit()
-    except Exception as e:
+    except (ValueError, TypeError, AttributeError, KeyError) as e:
         logger.error(f"Failed to update scheduler status: {e}")
 
 def _get_task_fingerprint(task) -> tuple:
@@ -134,7 +134,7 @@ def _heartbeat_worker() -> None:
             if _scheduler_running:
                 _sync_scheduled_tasks()
                 _consume_manual_triggers()
-        except Exception as e:
+        except Exception as e:  # process boundary -- must not crash supervisor
             logger.error(f"Heartbeat error: {e}", exc_info=True)
 
         time.sleep(5)
@@ -235,7 +235,7 @@ def scheduler_status() -> dict:
                 "started_at": status.started_at.isoformat() if status.started_at else None,
                 "heartbeat_age": heartbeat_age
             }
-    except Exception as e:
+    except (ValueError, TypeError, AttributeError, KeyError) as e:
         logger.error(f"Failed to get scheduler status: {e}")
         return {
             "running": False,

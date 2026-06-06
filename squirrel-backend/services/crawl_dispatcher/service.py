@@ -32,7 +32,7 @@ class CrawlDispatcherService:
                         now=now,
                         lease_seconds=lease_seconds,
                     )
-                except Exception:
+                except (ValueError, TypeError, AttributeError):
                     claim_attempt.rollback()
                     raise
                 if task is not None:

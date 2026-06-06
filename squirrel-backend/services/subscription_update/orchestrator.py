@@ -103,7 +103,7 @@ class SubscriptionOrchestrator:
             
             return result
             
-        except Exception as e:
+        except Exception as e:  # orchestrator boundary — always return SubscriptionUpdateResult
             logger.error(f"Orchestrator error for subscription {request.subscription_id}: {e}", exc_info=True)
             if request.sync_state_id:
                 subscription_sync_state_service.mark_sync_failed(

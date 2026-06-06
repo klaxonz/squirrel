@@ -96,6 +96,7 @@ async def _fetch_with_cloudflare_bypass(url: str):
     try:
         return await _await_if_needed(client.html(url, headers=headers))
     except Exception as exc:
+        # task boundary -- prevent single failure from crashing request
         logger.warning("Cloudflare bypass connectivity test failed for %s: %s", url, exc)
         return None
 
@@ -197,6 +198,7 @@ async def test_site_connectivity(
                 logger.warning(f"HTTP error testing {url}: {e}")
                 
     except Exception as e:
+        # task boundary -- prevent single failure from crashing request
         result.status = "error"
         result.accessible = False
         result.error_message = f"未知错误: {str(e)}"

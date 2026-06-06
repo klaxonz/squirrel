@@ -263,7 +263,7 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
             error=None,
             finished_at=datetime.now().isoformat(),
         )
-    except Exception as exc:
+    except Exception as exc:  # sync boundary — catch all to persist error state
         error_message = str(exc)
         provider = config.provider if config else 'unknown'
         logger.warning('RSS account sync failed: account_id=%s provider=%s error=%s', account_id, provider, exc)
@@ -422,7 +422,7 @@ def unsubscribe_feed(user_id: int, account_id: int, feed_id: int) -> bool:
             client.unsubscribe(external_feed_id)
         except RssServiceError:
             raise
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             logger.warning(
                 'Failed to sync unsubscribe to remote RSS service: account_id=%s feed_id=%s error=%s',
                 account_id, feed_id, e,

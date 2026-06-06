@@ -204,6 +204,7 @@ def update_sites_catalog(payload: dict = Body(...)):
     except ValueError as exc:
         return param_error(str(exc))
     except Exception:
+        # API boundary -- convert to HTTP error response
         logger.exception("Failed to update site catalog")
         return error("保存站点配置失败")
 
@@ -284,6 +285,7 @@ def get_site_login_status(site_name: str):
                 'avatar': oauth_state.account.avatar if oauth_state.account else None,
             } if oauth_state.account else None
         except Exception:
+            # task boundary -- prevent single failure from crashing request
             logger.warning('Failed to fetch YouTube OAuth status', exc_info=True)
 
     return success(status)
@@ -438,6 +440,7 @@ async def test_all_sites_connectivity(timeout: int = Query(10, ge=1, le=60)):
                 result = await test_site_connectivity(url=test_url, timeout=timeout, follow_redirects=True)
                 return site_name, test_url, site_domains, result, None
             except Exception as exc:
+                # task boundary -- prevent single failure from crashing request
                 return site_name, test_url, site_domains, None, exc
 
     tasks = [
@@ -532,6 +535,7 @@ def setup_youtube_oauth():
             "error": state.error,
         })
     except Exception as exc:
+        # API boundary -- convert to HTTP error response
         logger.exception("YouTube OAuth setup failed: %s", exc)
         return error(f"OAuth 启动失败: {exc}")
 
@@ -558,6 +562,7 @@ def get_youtube_oauth_status():
             "error": state.error,
         })
     except Exception as exc:
+        # API boundary -- convert to HTTP error response
         logger.exception("YouTube OAuth status check failed: %s", exc)
         return error(f"OAuth 状态查询失败: {exc}")
 
@@ -573,5 +578,6 @@ def revoke_youtube_oauth():
         ok = revoke_oauth_via_daemon(timeout_seconds=30.0)
         return success({"revoked": ok}, msg="已撤销 YouTube 授权" if ok else "撤销失败")
     except Exception as exc:
+        # API boundary -- convert to HTTP error response
         logger.exception("YouTube OAuth revoke failed: %s", exc)
         return error(f"撤销授权失败: {exc}")

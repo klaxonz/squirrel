@@ -33,13 +33,13 @@ def bootstrap_runtime(component: str):
 
     try:
         upgrade_database()
-    except Exception:
+    except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
         logger.exception("[%s] Database upgrade failed", component)
         raise
 
     try:
         apply_site_config_overrides()
-    except Exception:
+    except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
         logger.exception("[%s] Failed to apply site config overrides", component)
         raise
 
@@ -48,14 +48,14 @@ def bootstrap_runtime(component: str):
         set_cloudflare_bypass_client(get_default_client())
         clear_optional_startup_issue('cloudflare_bypass')
         logger.info("[%s] Cloudflare bypass client configured", component)
-    except Exception as exc:
+    except Exception as exc:  # startup/shutdown boundary -- prevent crash during lifecycle
         record_optional_startup_issue('cloudflare_bypass', exc)
         logger.warning("[%s] Failed to configure Cloudflare bypass client: %s", component, exc)
     try:
         set_cookie_file_resolver(resolve_cookie_file_for_url)
         set_cookie_domain_resolver(resolve_cookie_match_domain_for_url)
         logger.info("[%s] Cookie resolver configured", component)
-    except Exception:
+    except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
         logger.exception("[%s] Failed to configure cookie resolver", component)
         raise
 
@@ -69,7 +69,7 @@ def bootstrap_runtime(component: str):
             from services import video_extraction_projection_service
             rebuilt_count = video_extraction_projection_service.ensure_projection_seeded()
             logger.info("[%s] Video extraction projection ready (rebuilt=%s)", component, rebuilt_count)
-        except Exception:
+        except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
             logger.exception("[%s] Failed to seed video extraction projection", component)
             raise
         try:
@@ -94,10 +94,10 @@ def bootstrap_runtime(component: str):
                     running_result.get('recovered', 0),
                     retry_wait_result.get('repaired', 0),
                 )
-        except Exception:
+        except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
             logger.warning("[%s] Failed to recover stale sync states", component, exc_info=True)
         start_reload_listener(component)
-    except Exception:
+    except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
         logger.exception("[%s] Runtime bootstrap failed", component)
         raise
 
@@ -106,11 +106,11 @@ def bootstrap_runtime(component: str):
     finally:
         try:
             stop_reload_listener(component)
-        except Exception:
+        except Exception:  # cleanup during shutdown -- must not propagate
             logger.warning("[%s] Failed to stop reload listener", component, exc_info=True)
         try:
             shutdown_site_runtimes()
-        except Exception:
+        except Exception:  # cleanup during shutdown -- must not propagate
             logger.warning("[%s] Site runtime shutdown failed", component, exc_info=True)
 
 

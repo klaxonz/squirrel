@@ -45,7 +45,7 @@ def _extract_cookie_domain(target_url: str) -> str:
     if _cookie_domain_resolver is not None:
         try:
             resolved = str(_cookie_domain_resolver(target_url) or '').strip().lower()
-        except Exception:
+        except (TypeError, ValueError):
             resolved = ''
         if resolved:
             return resolved
@@ -56,7 +56,7 @@ def _resolve_cookie_file(target_url: str, cookies_file: Optional[str]) -> Option
     if cookies_file:
         try:
             return Path(cookies_file).expanduser()
-        except Exception:
+        except (OSError, RuntimeError):
             return None
 
     if _cookie_file_resolver is None:
@@ -64,7 +64,7 @@ def _resolve_cookie_file(target_url: str, cookies_file: Optional[str]) -> Option
 
     try:
         resolved_path = _cookie_file_resolver(target_url)
-    except Exception:
+    except (TypeError, ValueError):
         return None
 
     if not resolved_path:
@@ -72,7 +72,7 @@ def _resolve_cookie_file(target_url: str, cookies_file: Optional[str]) -> Option
 
     try:
         return Path(resolved_path).expanduser()
-    except Exception:
+    except (OSError, RuntimeError):
         return None
 
 
@@ -104,7 +104,7 @@ def filter_cookies_to_query_string(target_url: str, cookies_file: Optional[str] 
 
     try:
         jar.load(str(cookie_path), ignore_discard=True, ignore_expires=True)
-    except Exception:
+    except (OSError, ValueError):
         return ""
 
     domain = _extract_cookie_domain(target_url)
@@ -114,7 +114,7 @@ def filter_cookies_to_query_string(target_url: str, cookies_file: Optional[str] 
         try:
             if cookie.domain.endswith(domain):
                 filtered_cj.set_cookie(cookie)
-        except Exception:
+        except (AttributeError, TypeError):
             continue
 
     cookie_strings = [f"{cookie.name}={cookie.value}" for cookie in filtered_cj]

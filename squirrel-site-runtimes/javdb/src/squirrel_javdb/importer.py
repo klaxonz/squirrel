@@ -76,7 +76,7 @@ class JavdbUserSubscriptionImporter:
                 has_more=has_more,
                 stop_reason='batch_exhausted' if has_more else 'source_exhausted',
             )
-        except Exception as exc:
+        except Exception as exc:  # SDK boundary — top-level import batch operation
             logger.error('Failed to import JavDB subscriptions batch: %s', exc, exc_info=True)
             raise
 

@@ -81,5 +81,5 @@ def safe_cookie_header_value(domain_or_url: str) -> str:
 
     try:
         return filter_cookies_to_query_string(target)
-    except Exception:
+    except (OSError, ValueError, TypeError):
         return ''

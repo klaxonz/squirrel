@@ -59,12 +59,12 @@ class YoutubeiResult:
 def _load_cookie_header_for_target(target_url: str) -> str:
     try:
         from crawl import filter_cookies_to_query_string
-    except Exception:
+    except ImportError:
         return ''
 
     try:
         return str(filter_cookies_to_query_string(target_url) or '').strip()
-    except Exception:
+    except (OSError, ValueError, TypeError, AttributeError):
         return ''
 
 
@@ -247,7 +247,7 @@ class _YoutubeiWorkerClient:
             payload['cookie'] = cookie_header
         try:
             self.request(payload, timeout_seconds=WORKER_TIMEOUT_SECONDS)
-        except Exception:
+        except Exception:  # prewarm is best-effort — must not propagate
             return
 
     def _next_request_id(self) -> str:
@@ -311,16 +311,16 @@ class _YoutubeiWorkerClient:
         try:
             if process.stdin is not None:
                 process.stdin.close()
-        except Exception:
+        except Exception:  # cleanup during shutdown — must not propagate
             pass
         try:
             if process.poll() is None:
                 process.terminate()
                 process.wait(timeout=2)
-        except Exception:
+        except Exception:  # cleanup during shutdown — must not propagate
             try:
                 process.kill()
-            except Exception:
+            except Exception:  # cleanup during shutdown — must not propagate
                 pass
 
     def _drain_stderr(self, process: subprocess.Popen[str]) -> None:
@@ -330,7 +330,7 @@ class _YoutubeiWorkerClient:
         try:
             for line in stream:
                 self._stderr_tail.append(line)
-        except Exception:
+        except Exception:  # cleanup during shutdown — must not propagate
             return
 
 

@@ -78,7 +78,7 @@ class PersistenceStage(PipelineStage):
                 f"is_new={is_new}, url={dto.url}"
             )
         
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             raise DatabaseError(
                 f"Failed to persist video: {e}",
                 context={
@@ -98,7 +98,7 @@ class PersistenceStage(PipelineStage):
                     f"Actors processed: video_id={video_model.id}, "
                     f"count={len(dto.actors)}"
                 )
-            except Exception as e:
+            except (ValueError, TypeError, AttributeError) as e:
                 # actors处理失败不应中断流程
                 logger.warning(
                     f"Failed to process actors: video_id={video_model.id}, "

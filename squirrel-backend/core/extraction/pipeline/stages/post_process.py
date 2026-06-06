@@ -60,7 +60,7 @@ class PostProcessStage(PipelineStage):
                 logger.info(
                     f"Thumbnail download enqueued: video_id={video_model.id}"
                 )
-            except Exception as e:
+            except (ValueError, TypeError, AttributeError) as e:
                 # 缩略图下载失败不应中断流程
                 logger.warning(
                     f"Failed to enqueue thumbnail download: "

@@ -65,7 +65,7 @@ def _resolve_site(url: Optional[str]) -> Optional[str]:
         return None
     try:
         return url_helper.extract_top_level_domain(url)
-    except Exception:
+    except (ValueError, TypeError):
         return None
 
 

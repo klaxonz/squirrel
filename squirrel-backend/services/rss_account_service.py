@@ -377,7 +377,7 @@ def update_entry(
                     client = create_client(config_data)
                     if hasattr(client, 'update_entry'):
                         client.update_entry(ext_eid, is_read=read_val, is_starred=star_val)
-                except Exception as e:
+                except (OSError, ValueError, TypeError) as e:
                     logger.warning('Failed to sync RSS status to remote in background: %s', e)
 
             config_data = _config_from_account(account)
@@ -442,7 +442,7 @@ def update_entries_read_status(
             for config, external_entry_id in remote_targets:
                 try:
                     create_client(config).update_entry(external_entry_id, is_read=is_read)
-                except Exception as e:
+                except (OSError, ValueError, TypeError) as e:
                     logger.warning('Failed to sync RSS read status to remote in background: %s', e)
 
         Thread(target=_bg_update_remote, daemon=True).start()

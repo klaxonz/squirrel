@@ -100,7 +100,7 @@ class VideoExtractionHandler(BaseResultHandler):
             
             return result
         
-        except Exception as e:
+        except Exception as e:  # handler boundary — catch all to return ExtractionResult
             logger.error(
                 f"Unexpected error in VideoExtractionHandler: "
                 f"task_id={task.task_id}, error={e}",

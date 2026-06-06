@@ -95,7 +95,7 @@ class YoutubeUserSubscriptionImporter:
             logger.info(f"Final: Found {len(subscriptions)} YouTube subscriptions")
             return subscriptions
             
-        except Exception as e:
+        except Exception as e:  # SDK boundary — top-level import operation
             logger.error(f"Failed to import YouTube subscriptions: {e}", exc_info=True)
             raise
 
@@ -110,7 +110,7 @@ class YoutubeUserSubscriptionImporter:
                 return json.loads(json_str)
         except json.JSONDecodeError as e:
             logger.warning(f"Failed to parse ytInitialData: {e}")
-        except Exception as e:
+        except (TypeError, AttributeError) as e:
             logger.warning(f"Error extracting ytInitialData: {e}")
 
         return None
@@ -190,7 +190,7 @@ class YoutubeUserSubscriptionImporter:
                             name=title,
                             avatar=thumbnail_url
                         ))
-                except Exception as exc:
+                except (ValueError, TypeError, KeyError, AttributeError, IndexError) as exc:
                     logger.debug('Skipping malformed YouTube channel renderer: %s', exc, exc_info=True)
 
             # 去重
@@ -203,7 +203,7 @@ class YoutubeUserSubscriptionImporter:
 
             subscriptions = unique_subscriptions
 
-        except Exception as e:
+        except (ValueError, TypeError, KeyError, AttributeError, IndexError) as e:
             logger.warning(f"Error parsing subscriptions from ytInitialData: {e}", exc_info=True)
 
         return subscriptions

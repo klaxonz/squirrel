@@ -89,7 +89,7 @@ class ThumbnailDownloaderService:
             return
         try:
             self._http_client.close()
-        except Exception:
+        except (OSError, ValueError, TypeError):
             pass
         self._http_client = None
 
@@ -143,7 +143,7 @@ class ThumbnailDownloaderService:
                 parsed = urlparse(referer)
                 if parsed.scheme and parsed.netloc:
                     headers["Origin"] = f"{parsed.scheme}://{parsed.netloc}"
-            except Exception:
+            except (ValueError, TypeError):
                 pass
 
         if self._site_requires_cookies(site_name):
@@ -386,7 +386,7 @@ class ThumbnailDownloaderService:
                 record.exists = exists
                 record.indexed_at = now
                 record.updated_at = now
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.warning(f'Failed to update thumbnail local index: video_id={video_id}, error={e}')
 
     def _get_local_thumbnail_path_map(
@@ -410,7 +410,7 @@ class ThumbnailDownloaderService:
                         VideoThumbnailLocalIndex.exists.is_(True),
                     )
                 ).all()
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.warning(f'Failed to read thumbnail local index: error={e}')
             return {}
 
@@ -576,7 +576,7 @@ class ThumbnailDownloaderService:
             logger.info(f"Thumbnail downloaded: video_id={video_id}, path={file_path}")
             return file_path
 
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             logger.warning(
                 f"Failed to download thumbnail: video_id={video_id}, "
                 f"url={thumbnail_url[:80]}, error={e}"
@@ -611,7 +611,7 @@ class ThumbnailDownloaderService:
             site_info = catalog.get(site_name.lower(), {})
             metadata = site_info.get("metadata", {})
             return metadata.get(SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD, False)   
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, KeyError) as e:
             logger.warning(f"Failed to check thumbnail config: {e}")
             return False
 
@@ -629,7 +629,7 @@ class ThumbnailDownloaderService:
             _, ext = os.path.splitext(path)
             if ext and ext.lower() in SUPPORTED_EXTENSIONS:
                 return ext.lower()
-        except Exception:
+        except (ValueError, TypeError):
             pass
         return ".jpg"
 
@@ -663,7 +663,7 @@ class ThumbnailDownloaderService:
             site_info = catalog.get(site_name.lower(), {})
             metadata = site_info.get("metadata", {})
             return metadata.get(SITE_META_OFFLINE_THUMBNAILS_DISPLAY, False)    
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, KeyError) as e:
             logger.warning(f"Failed to check thumbnail display config: {e}")
             return False
 

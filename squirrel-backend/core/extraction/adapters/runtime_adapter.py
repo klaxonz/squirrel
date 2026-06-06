@@ -77,7 +77,7 @@ class RuntimeDataAdapter:
             
             return video_dto
         
-        except Exception as e:
+        except Exception as e:  # data transform boundary — wrap any error as DataTransformError
             self.logger.error(
                 f"Failed to adapt Video to VideoDTO: {getattr(video, 'url', 'unknown')}",
                 exc_info=True,
@@ -182,7 +182,7 @@ class RuntimeDataAdapter:
                             actor_dto = self._convert_actor(actor)
                             if actor_dto:
                                 actors.append(actor_dto)
-                        except Exception as e:
+                        except (ValueError, TypeError, AttributeError, KeyError) as e:
                             self.logger.warning(
                                 f"Failed to convert actor: {e}",
                                 extra={
@@ -191,7 +191,7 @@ class RuntimeDataAdapter:
                                 }
                             )
         
-        except Exception as e:
+        except (ValueError, TypeError, KeyError, AttributeError) as e:
             # actors获取失败不应该导致整个提取失败
             self.logger.warning(
                 f"Failed to extract actors: {video.url}, error: {e}",

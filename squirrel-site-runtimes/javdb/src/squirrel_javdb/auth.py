@@ -51,7 +51,7 @@ def check_javdb_login_status() -> LoginStatusResult:
             use_rate_limit=False,
         )
         body = resp.text or ""
-    except Exception as exc:
+    except Exception as exc:  # HTTP/API boundary — network or transport errors
         logger.warning("javdb login check failed: %s", exc, exc_info=True)
         return _transient_login_failure(
             site_name,

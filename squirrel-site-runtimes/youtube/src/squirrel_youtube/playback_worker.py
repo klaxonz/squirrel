@@ -51,7 +51,7 @@ def main() -> int:
         safe_info = youtube_ytdlp_support._sanitize_json_value(info)
         _write_payload({'info': None if safe_info is youtube_ytdlp_support._SKIP_VALUE else safe_info})
         return 0
-    except Exception as exc:
+    except Exception as exc:  # process boundary — subprocess entry point, serialize any error
         _write_payload({
             'error': {
                 'type': type(exc).__name__,

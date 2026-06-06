@@ -71,6 +71,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         try:
             validate_auth_token(token)
         except Exception:
+            # API boundary -- convert to HTTP error response
             logger.error("Invalid token", exc_info=True)
             return self._unauthorized_response(TokenExpiredError(), request=request, clear_cookie=True)
         return await call_next(request)

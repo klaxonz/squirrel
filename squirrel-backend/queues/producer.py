@@ -51,11 +51,11 @@ class RedisStreamProducer:
                 try:
                     depth = redis_client.xlen(stream)
                     metrics.gauge("queue.depth", depth, tags=tags)
-                except Exception:
+                except (ConnectionError, OSError, ValueError, TypeError):
                     pass  # 队列深度查询失败不影响主流程
                 
                 return msg_id  # type: ignore[return-value]
-            except Exception as e:
+            except (ConnectionError, OSError, ValueError, TypeError) as e:
                 last_err = e
                 if attempt < max_retries:
                     time.sleep(0.1 * (attempt + 1))

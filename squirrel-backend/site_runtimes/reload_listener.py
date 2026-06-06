@@ -30,13 +30,14 @@ def _listen_for_reload_signals(component: str):
                     reload_site_runtimes()
                     logger.info("[%s] site runtime reloaded successfully", component)
                 except Exception as e:
+                    # background thread safety net -- prevent a single reload failure from crashing the listener
                     logger.error("[%s] failed to reload site runtime: %s", component, e, exc_info=True)
-    except Exception as e:
+    except (ConnectionError, OSError, ValueError) as e:
         logger.error("[%s] site runtime reload listener error: %s", component, e, exc_info=True)
     finally:
         try:
             pubsub.close()
-        except Exception:
+        except (AttributeError, ConnectionError, OSError):
             pass
 
 

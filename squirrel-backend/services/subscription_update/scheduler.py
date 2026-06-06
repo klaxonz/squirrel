@@ -374,7 +374,7 @@ class SubscriptionScheduler:
                 'request_id': request_id,
                 'inline_video_extraction': True,
             })
-        except Exception as exc:
+        except (ValueError, TypeError, AttributeError, KeyError) as exc:
             subscription_sync_state_service.mark_sync_failed(
                 queued_state.id,
                 str(exc),
@@ -764,7 +764,7 @@ class SubscriptionScheduler:
                     success_count += 1
                 elif action_result == 'failed':
                     error_count += 1
-            except Exception:
+            except Exception:  # dispatch boundary — count error and continue
                 error_count += 1
                 logger.exception(
                     'Failed to %s due sync target subscription_id=%s sync_state_id=%s mode=%s',

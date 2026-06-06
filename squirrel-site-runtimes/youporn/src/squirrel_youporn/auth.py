@@ -50,7 +50,7 @@ def check_youporn_login_status() -> LoginStatusResult:
             headers=headers,
             timeout=timeout,
         )
-    except Exception as exc:
+    except Exception as exc:  # HTTP/API boundary — network or transport errors
         logger.warning('youporn login check failed: %s', exc, exc_info=True)
         return LoginStatusResult(
             site_name=site_name,

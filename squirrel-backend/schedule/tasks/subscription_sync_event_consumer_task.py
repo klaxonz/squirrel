@@ -15,7 +15,7 @@ class SubscriptionSyncEventConsumerTask(BaseTask):
         try:
             summary = outbox_event_service.consume_available_events(limit=50)
             logger.info('Subscription sync outbox consumer processed=%s failed=%s', summary['processed'], summary['failed'])
-        except Exception as exc:
+        except Exception as exc:  # task boundary -- prevent single failure from crashing scheduler
             logger.error('SubscriptionSyncEventConsumerTask.run error: %s', exc, exc_info=True)
 
     @classmethod

@@ -35,7 +35,7 @@ class ActorProcessorService:
         for actor_dto in actors:
             try:
                 self._process_single_actor(video_id, actor_dto)
-            except Exception as e:
+            except (ValueError, TypeError, AttributeError) as e:
                 logger.warning(
                     f"Failed to process actor: video_id={video_id}, "
                     f"actor_url={actor_dto.url}, error={e}"

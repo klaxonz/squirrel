@@ -30,7 +30,7 @@ class MetricsCollectionTask(BaseTask):
                 logger.info(f"Metrics collection completed: {count} snapshots persisted")
             else:
                 logger.debug("Metrics collection completed: no data to persist")
-        except Exception as e:
+        except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
             logger.error(f"MetricsCollectionTask.run error: {e}", exc_info=True)
 
     @classmethod
@@ -55,7 +55,7 @@ class MetricsCleanupTask(BaseTask):
                 logger.info(f"Metrics cleanup completed: {deleted} old records deleted")
             else:
                 logger.debug("Metrics cleanup completed: no old data to delete")
-        except Exception as e:
+        except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
             logger.error(f"MetricsCleanupTask.run error: {e}", exc_info=True)
 
     @classmethod

@@ -32,7 +32,7 @@ class GatewayExtractorAdapter:
     def can_handle(self, url: str) -> bool:
         try:
             domain = urlparse(url).netloc.lower().split(':')[0]
-        except Exception:
+        except (ValueError, TypeError):
             return False
         return any(domain == item or domain.endswith(f'.{item}') for item in self.supported_domains)
 
@@ -40,7 +40,7 @@ class GatewayExtractorAdapter:
         try:
             parsed = urlparse(url)
             return bool(parsed.scheme and parsed.netloc)
-        except Exception:
+        except (ValueError, TypeError):
             return False
 
     def extract(self, task: ExtractionTask) -> ExtractionResult:
@@ -103,7 +103,7 @@ class ExtractorFactory:
     def create_extractor(self, url: str) -> Optional[GatewayExtractorAdapter]:
         try:
             domain = urlparse(url).netloc.lower().split(':')[0]
-        except Exception as exc:
+        except (ValueError, TypeError) as exc:
             logger.error(f'Failed to parse extractor URL: {url}, error: {exc}')
             return None
 

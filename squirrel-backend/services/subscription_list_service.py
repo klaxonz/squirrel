@@ -102,7 +102,7 @@ def _resolve_site_slug(url: Optional[str]) -> Optional[str]:
         domain = parsed.netloc or parsed.path.split('/')[0]
         slug, _ = SiteCatalog.find_site_by_domain(domain)
         return slug
-    except Exception:
+    except (ValueError, TypeError):
         return None
 
 

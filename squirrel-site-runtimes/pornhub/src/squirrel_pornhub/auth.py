@@ -133,7 +133,7 @@ def _fetch_with_age_bypass(headers: dict, check_url: str, login_config: dict):
             headers=headers,
             timeout=timeout,
         )
-    except Exception as exc:
+    except Exception as exc:  # HTTP/API boundary — network or transport errors
         logger.warning("pornhub login check failed: %s", exc, exc_info=True)
         return LoginStatusResult(
             site_name="pornhub",
@@ -154,7 +154,7 @@ def _fetch_with_age_bypass(headers: dict, check_url: str, login_config: dict):
                 headers=extra_headers,
                 timeout=timeout,
             )
-        except Exception as exc:
+        except Exception as exc:  # HTTP/API boundary — network or transport errors during age bypass
             logger.warning("pornhub age bypass failed: %s", exc, exc_info=True)
             return resp
 

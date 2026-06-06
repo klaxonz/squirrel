@@ -493,7 +493,7 @@ class GReaderClient:
     def update_entry(self, external_entry_id: str, is_read: Optional[bool] = None, is_starred: Optional[bool] = None) -> None:
         try:
             token = self._get_token()
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             logger.warning('Failed to fetch GReader token for updating entry status: %s', e)
             return
 
@@ -519,7 +519,7 @@ class GReaderClient:
     def subscribe(self, feed_url: str) -> RemoteFeed:
         try:
             token = self._get_token()
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             raise RssServiceError(f'Failed to fetch GReader token for subscribe: {e}') from e
 
         headers = self._headers()
@@ -540,7 +540,7 @@ class GReaderClient:
     def unsubscribe(self, external_feed_id: str) -> None:
         try:
             token = self._get_token()
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             raise RssServiceError(f'Failed to fetch GReader token for unsubscribe: {e}') from e
 
         headers = self._headers()

@@ -40,7 +40,7 @@ class SiteCatalog:
             path = cls._config_path()
             if os.path.exists(path):
                 return os.path.getmtime(path)
-        except Exception:
+        except OSError:
             return None
         return None
 
@@ -103,7 +103,7 @@ class SiteCatalog:
                     normalized_slug = slug.strip().lower()
                     catalog[normalized_slug] = cls._normalize_override_entry(normalized_slug, info)
                 return catalog
-            except Exception:
+            except (OSError, ValueError):
                 return None
         return None
 
@@ -188,7 +188,7 @@ class SiteCatalog:
             from core.site_config_manager import get_effective_site_catalog
 
             return get_effective_site_catalog()
-        except Exception:
+        except ImportError:
             return cls.build_runtime_site_catalog()
 
     @classmethod

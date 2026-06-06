@@ -183,7 +183,7 @@ class PaginatedImporter(BaseImporter):
                 if not self._has_next_page(soup, page):
                     break
 
-            except Exception as e:
+            except (OSError, ValueError, TypeError) as e:
                 logger.warning(f"Error fetching page {page}: {e}")
                 break
 

@@ -28,7 +28,7 @@ class QueueBackpressureMonitor:
         """
         try:
             return crawl_task_service.count_pending_video_tasks_for_subscription(subscription_id)
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error(f"Failed to count pending videos for subscription {subscription_id}: {e}")
             return 0
     

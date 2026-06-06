@@ -33,7 +33,7 @@ class MqMessage:
         body_raw = mapped.get("body", "{}")
         try:
             body = json.loads(body_raw)
-        except Exception:
+        except (ValueError, TypeError):
             body = {"_raw": body_raw}
         
         trace_id = mapped.get("trace_id")

@@ -45,7 +45,7 @@ def process_subscribe_message(message: Dict[str, Any]):
 
     except KeyError as e:
         logger.error(f"Invalid message format: {e}", exc_info=True)
-    except Exception as e:
+    except Exception as e:  # consumer boundary -- prevent single message from crashing consumer
         logger.error(f"Failed to process subscribe message: {e}", exc_info=True)
         raise
 

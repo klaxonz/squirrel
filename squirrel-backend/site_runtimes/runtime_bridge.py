@@ -24,6 +24,7 @@ def _configure_backend_runtime_state() -> None:
 
         set_cloudflare_bypass_client(get_default_client())
     except Exception:
+        # process boundary -- optional runtime init, must not crash the subprocess
         pass
     try:
         from utils.cookie import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
@@ -32,12 +33,14 @@ def _configure_backend_runtime_state() -> None:
         set_cookie_file_resolver(resolve_cookie_file_for_url)
         set_cookie_domain_resolver(resolve_cookie_match_domain_for_url)
     except Exception:
+        # process boundary -- optional runtime init, must not crash the subprocess
         pass
     try:
         from core.site_config_manager import apply_crawl_rate_limit_overrides
 
         apply_crawl_rate_limit_overrides()
     except Exception:
+        # process boundary -- optional runtime init, must not crash the subprocess
         pass
 
 
@@ -253,6 +256,7 @@ def main() -> int:
         try:
             runtime.stop()
         except Exception:
+            # cleanup during shutdown -- must not propagate
             pass
         server.server_close()
 

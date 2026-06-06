@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional, List
 from abc import ABC, abstractmethod
 
 from .core import ExtractionTask, ExtractionResult, VideoMeta, Extractor
-from .exceptions import PluginError, ParseError
+from .exceptions import ErrorCategory, PluginError, ParseError
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ class VideoExtractorBase(ABC):
                 extra={"url": task.url}
             )
             return ExtractionResult.failure(
-                f"Unexpected error: {str(e)}",
+                PluginError(f"Unexpected error: {e}", category=ErrorCategory.INTERNAL),
                 context={"url": task.url, "error_type": type(e).__name__}
             )
 

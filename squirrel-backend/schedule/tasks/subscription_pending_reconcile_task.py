@@ -32,7 +32,7 @@ class SubscriptionPendingReconcileTask(BaseTask):
                 running_result["recovered"],
                 retry_wait_result["repaired"],
             )
-        except Exception as e:
+        except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
             logger.error(f"SubscriptionPendingReconcileTask.run error: {e}", exc_info=True)
 
     @classmethod

@@ -180,7 +180,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
                             request.sync_state_id,
                             allow_completion=False,
                         )
-                except Exception as e:
+                except (ValueError, TypeError, AttributeError, KeyError) as e:
                     if reserved_pending:
                         subscription_sync_state_service.decrement_pending_video_count(
                             request.sync_state_id,

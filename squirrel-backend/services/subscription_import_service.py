@@ -205,7 +205,7 @@ def preview_user_subscriptions(
             'stop_reason': import_batch.stop_reason,
         }
 
-    except Exception as e:
+    except Exception as e:  # API boundary — re-raise after logging
         logger.error(f"Failed to preview subscriptions from {site_name}: {e}", exc_info=True)
         raise
 
@@ -233,14 +233,14 @@ def _enqueue_subscriptions_async(subscriptions: List[SubscriptionImportItem], us
                     producer.send(constants.QUEUE_SUBSCRIBE, dump_json)
                     enqueued += 1
 
-                except Exception as e:
+                except (ConnectionError, OSError, ValueError, TypeError) as e:
                     logger.warning(f"Failed to enqueue subscription {url}: {e}")
 
             session.commit()
 
         logger.info(f"Enqueued {enqueued}/{len(subscriptions)} subscription tasks from {site_name}")
 
-    except Exception as e:
+    except (ConnectionError, OSError, ValueError, TypeError) as e:
         logger.error(f"Failed to enqueue subscriptions from {site_name}: {e}", exc_info=True)
 
 
@@ -300,7 +300,7 @@ def import_user_subscriptions(
             'skipped': selected_total - len(to_import)
         }
 
-    except Exception as e:
+    except Exception as e:  # API boundary — re-raise after logging
         logger.error(f"Failed to import subscriptions from {site_name}: {e}", exc_info=True)
         raise
 
@@ -340,7 +340,7 @@ def auto_import_missing_subscriptions(
                 )
                 summary['imported'] += int(result.get('total') or 0)
                 summary['skipped'] += int(result.get('skipped') or 0)
-            except Exception as exc:
+            except Exception as exc:  # auto-import boundary — count failure and continue
                 summary['failed'] += 1
                 logger.error(
                     "Automatic subscription import failed for user_id=%s site=%s: %s",

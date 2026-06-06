@@ -113,6 +113,7 @@ class SiteRuntimeManager:
             try:
                 future.result()
             except Exception as exc:  # pragma: no cover - exercised via tests
+                # process boundary -- one runtime startup failure should not crash the batch
                 if first_error is None:
                     first_error = exc
                 continue
@@ -225,6 +226,7 @@ class SiteRuntimeManager:
                 )
                 records_by_id[record.runtime_id] = self._store.upsert(record)
             except Exception as exc:
+                # process boundary -- one bad manifest should not crash discovery
                 errors.append(SiteRuntimeDiscoveryError(
                     metadata_path=str(metadata_path),
                     reason=str(exc),

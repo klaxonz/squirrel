@@ -161,5 +161,6 @@ def sync_cookies_from_cookiecloud(site_name: str | None = Query(None)):
     except CookieCloudSyncError as exc:
         return error(str(exc))
     except Exception as exc:
+        # API boundary -- convert to HTTP error response
         logger.exception("CookieCloud sync failed: %s", exc)
         return error(f"CookieCloud 同步失败: {exc}")

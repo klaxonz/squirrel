@@ -50,7 +50,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
 
             return video_info
 
-        except Exception as e:
+        except Exception as e:  # SDK boundary — translate yt-dlp errors to domain types
             error_msg = str(e).lower()
             context = {"url": url, "original_error": str(e)}
 
@@ -94,7 +94,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
             publish_date = self._resolve_publish_date(video_info)
             if publish_date is not None:
                 video_info['publish_date'] = publish_date
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             logger.warning(f"处理YouTube特定信息失败: {e}")
 
     def _resolve_publish_date(self, video_info: Dict[str, Any]) -> Optional[datetime]:

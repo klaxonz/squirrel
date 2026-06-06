@@ -31,7 +31,7 @@ class TaskFactory:
                     task_name = f"{task_class.__module__}.{task_class.__name__}"
                     self._task_classes[task_name] = task_class
                     logger.info(f"Discovered builtin task: {task_name}")
-        except Exception as e:
+        except ImportError as e:
             logger.error(f"Failed to discover builtin tasks: {e}")
 
     def register_task_class(self, task_class: Type[BaseTask], task_name: str = None) -> None:
@@ -69,7 +69,7 @@ class TaskFactory:
                         setattr(task_instance, key, value)
 
             return task_instance
-        except Exception as e:
+        except (TypeError, ValueError, AttributeError) as e:
             logger.error(f"Failed to create task instance for {task_config.name}: {e}")
             return None
 
@@ -122,7 +122,7 @@ class DynamicTaskManager:
             for task_config in active_tasks:
                 try:
                     self._register_task_to_scheduler(task_config)
-                except Exception as e:
+                except (ValueError, TypeError, AttributeError, KeyError) as e:
                     logger.error(f"Failed to register task {task_config.name}: {e}")
                     # 更新任务状态为错误
                     task_config.status = TaskStatus.ERROR.value
@@ -241,7 +241,7 @@ class DynamicTaskManager:
             task_name = task_snapshot.name if task_snapshot else str(task_id)
             logger.info(f"Task {task_name} executed successfully in {duration}ms")
 
-        except Exception as e:
+        except Exception as e:  # task execution boundary — persist error state and continue
             end_time = datetime.now()
             duration = int((end_time - start_time).total_seconds() * 1000)
             error_msg = str(e)
@@ -277,7 +277,7 @@ class DynamicTaskManager:
                 if not task_config:
                     return
                 task_config.next_run_at = next_run_at
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error(f"Failed to update next run time for task {task_id}: {e}")
 
     def add_task(self, task_config: ScheduledTask) -> bool:
@@ -286,7 +286,7 @@ class DynamicTaskManager:
             if task_config.is_active:
                 self._register_task_to_scheduler(task_config)
             return True
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError) as e:
             logger.error(f"Failed to add task {task_config.name}: {e}")   
             return False
 
@@ -301,7 +301,7 @@ class DynamicTaskManager:
                         self._scheduler.remove_job(job)
                     del self._active_tasks[task_id]
             return True
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError) as e:
             logger.error(f"Failed to remove task {task_id}: {e}")
             return False
 
@@ -315,7 +315,7 @@ class DynamicTaskManager:
             if task_config.is_active:
                 self._register_task_to_scheduler(task_config)
             return True
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError) as e:
             logger.error(f"Failed to update task {task_config.name}: {e}")
             return False
 
@@ -341,7 +341,7 @@ class DynamicTaskManager:
                 thread.start()
 
                 return True
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error(f"Failed to execute task {task_id} now: {e}")    
             return False
 

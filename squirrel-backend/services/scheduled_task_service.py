@@ -104,7 +104,7 @@ class ScheduledTaskService:
                 logger.info(f"Created scheduled task: {name} (ID: {task_config.id})")
                 return task_config
 
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error(f"Failed to create task {name}: {e}")
             return None
 
@@ -155,7 +155,7 @@ class ScheduledTaskService:
                 logger.info(f"Updated scheduled task: {task_config.name} (ID: {task_id})")
                 return True
 
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error(f"Failed to update task {task_id}: {e}")
             return False
 
@@ -179,7 +179,7 @@ class ScheduledTaskService:
                 logger.info(f"Deleted scheduled task: {task_config.name} (ID: {task_id})")
                 return True
 
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error(f"Failed to delete task {task_id}: {e}")
             return False
 
@@ -224,7 +224,7 @@ class ScheduledTaskService:
 
             return True
 
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error(f"Failed to execute task {task_id} now: {e}")    
             return False
 

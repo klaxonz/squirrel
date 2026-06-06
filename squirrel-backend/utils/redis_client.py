@@ -24,5 +24,6 @@ def publish_site_runtime_reload_signal() -> bool:
         logger.info("[redis] published site runtime reload signal")
         return True
     except Exception as e:
+        # infrastructure boundary -- redis publish should not crash the caller
         logger.error("[redis] failed to publish site runtime reload signal: %s", e)
         return False
