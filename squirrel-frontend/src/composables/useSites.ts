@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { getSites, saveSites } from '@/api'
+import { getSiteCatalog, getSites, saveSites } from '@/api'
 
 type SiteSlug = string
 type SiteInfo = {
@@ -19,6 +19,13 @@ type SiteInfo = {
 
 type SiteOption = { value: SiteSlug; label: string }
 type SitesResponse = Record<SiteSlug, SiteInfo>
+type SiteListItem = SiteInfo & {
+  name?: string
+  site_name?: string
+}
+type SiteListResponse = {
+  sites?: SiteListItem[]
+}
 
 type ApiResult<T> = { data?: T | null; error?: unknown | null }
 
@@ -34,18 +41,18 @@ export async function fetchSites() {
   if (cached.value || loading.value) return { data: cached.value, error: error.value }
   loading.value = true
   error.value = null
-  const { data, error: requestError } = (await getSites()) as ApiResult<SitesResponse>
+  const { data, error: requestError } = (await getSites()) as ApiResult<SiteListResponse>
   if (requestError) {
     error.value = requestError
     loading.value = false
     return { data: cached.value, error: requestError }
   }
 
-  const items = data ? Object.entries(data) : []
   const opts: SiteOption[] = []
-  for (const [slug, info] of items as Array<[SiteSlug, SiteInfo]>) {
-    if (info && info.enabled !== false) {
-      opts.push({ value: slug, label: info.label || slug })
+  for (const site of data?.sites || []) {
+    const slug = site.site_name || site.name
+    if (slug && site.config_enabled !== false) {
+      opts.push({ value: slug, label: site.label || slug })
     }
   }
   cached.value = opts
@@ -83,7 +90,7 @@ export function useSiteCatalog() {
   const loadCatalog = async () => {
     siteCatalogLoading.value = true
     siteCatalogError.value = null
-    const { data, error } = (await getSites()) as ApiResult<SitesResponse>
+    const { data, error } = (await getSiteCatalog()) as ApiResult<SitesResponse>
     if (error) {
       siteCatalogError.value = error
     } else {

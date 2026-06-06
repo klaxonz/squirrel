@@ -53,21 +53,3 @@ def test_get_videos_defaults_missing_category_to_all(monkeypatch):
     assert response.json()['code'] == 0
     assert captured['user_id'] == 7
     assert captured['category'] == 'all'
-
-
-def test_update_sites_catalog_accepts_override_payload(monkeypatch):
-    monkeypatch.setattr(
-        'routes.video.save_site_overrides',
-        lambda payload: {'youtube': {'enabled': False, 'domains': ['youtube.com']}},
-        raising=False,
-    )
-
-    app = FastAPI()
-    app.include_router(router)
-    client = TestClient(app)
-
-    response = client.put('/api/sites', json={'sites': {'youtube': {'enabled': False}}})
-
-    assert response.status_code == 200
-    assert response.json()['code'] == 0
-    assert response.json()['data']['youtube']['enabled'] is False

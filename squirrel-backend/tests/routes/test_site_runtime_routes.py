@@ -3,6 +3,9 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from routes import site_cookies as site_cookie_routes
@@ -43,6 +46,50 @@ def test_get_supported_sites_merges_runtime_sites_when_catalog_is_partial(monkey
     assert youtube['icon_url'] == '/api/sites/youtube/icon'
     assert bilibili['domains'] == ['bilibili.com']
     assert bilibili['supports_login_status'] is True
+
+
+def test_sites_api_returns_list_and_catalog_on_explicit_paths(monkeypatch):
+    effective_catalog = {
+        'youtube': {
+            'label': 'YouTube',
+            'domains': ['youtube.com'],
+            'enabled': True,
+            'test_url': 'https://www.youtube.com',
+        },
+    }
+
+    monkeypatch.setattr(site_routes, 'get_effective_site_catalog', lambda: effective_catalog)
+    monkeypatch.setattr(site_routes, 'get_login_supported_sites', lambda: set())
+
+    app = FastAPI()
+    app.include_router(site_routes.router)
+    client = TestClient(app)
+
+    sites_response = client.get('/api/sites')
+    catalog_response = client.get('/api/sites/catalog')
+
+    assert sites_response.status_code == 200
+    assert sites_response.json()['data']['sites'][0]['site_name'] == 'youtube'
+    assert catalog_response.status_code == 200
+    assert catalog_response.json()['data'] == effective_catalog
+
+
+def test_update_sites_catalog_accepts_override_payload(monkeypatch):
+    monkeypatch.setattr(
+        site_routes,
+        'save_site_overrides',
+        lambda payload: {'youtube': {'enabled': False, 'domains': ['youtube.com']}},
+    )
+
+    app = FastAPI()
+    app.include_router(site_routes.router)
+    client = TestClient(app)
+
+    response = client.put('/api/sites/catalog', json={'sites': {'youtube': {'enabled': False}}})
+
+    assert response.status_code == 200
+    assert response.json()['code'] == 0
+    assert response.json()['data']['youtube']['enabled'] is False
 
 
 def test_upload_site_cookies_accepts_runtime_only_site(monkeypatch, tmp_path):

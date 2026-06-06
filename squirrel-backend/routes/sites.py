@@ -159,7 +159,7 @@ def build_site_info(site_name: str, catalog: dict) -> dict | None:
     }
 
 
-@router.get("/")
+@router.get("")
 def get_supported_sites():
     """
     获取插件支持的所有站点信息
@@ -187,12 +187,12 @@ def get_supported_sites():
     })
 
 
-@router.get("")
+@router.get("/catalog")
 def get_sites_catalog():
     return success(get_effective_site_catalog())
 
 
-@router.put("")
+@router.put("/catalog")
 def update_sites_catalog(payload: dict = Body(...)):
     sites_payload = payload.get('sites') if isinstance(payload, dict) else None
     if not isinstance(sites_payload, dict):
