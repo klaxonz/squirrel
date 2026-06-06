@@ -17,6 +17,8 @@ let initialPath: string | null = null
 const lastNonVideoRoute = ref<RouteSnapshot | null>(null)
 const forwardDepth = ref(0)
 let isInternalNavigation = false
+const internalBackAvailable = ref(false)
+let internalBackHandler: (() => boolean) | null = null
 
 const canGoForward = computed(() => forwardDepth.value > 0)
 
@@ -44,9 +46,13 @@ export function useNavigationHistory() {
     initialPath = route.path
   }
 
-  const canGoBack = computed(() => route.path !== initialPath)
+  const canGoBack = computed(() => internalBackAvailable.value || route.path !== initialPath)
 
   async function goBack() {
+    if (internalBackAvailable.value && internalBackHandler?.()) {
+      forwardDepth.value = 0
+      return
+    }
     isInternalNavigation = true
     const pathBefore = route.fullPath
     try {
@@ -133,6 +139,20 @@ export function useNavigationHistory() {
 
   const isVideoPage = computed(() => route.name === 'VideoPlay')
 
+  function registerInternalBackHandler(handler: () => boolean) {
+    internalBackHandler = handler
+    return () => {
+      if (internalBackHandler === handler) {
+        internalBackHandler = null
+        internalBackAvailable.value = false
+      }
+    }
+  }
+
+  function setInternalBackAvailable(available: boolean) {
+    internalBackAvailable.value = available
+  }
+
   return {
     canGoBack,
     canGoForward,
@@ -142,5 +162,7 @@ export function useNavigationHistory() {
     videoBackTarget,
     isVideoPage,
     lastNonVideoRoute,
+    registerInternalBackHandler,
+    setInternalBackAvailable,
   }
 }

@@ -37,11 +37,13 @@ const variantClass = computed(() => `music-action-button--${props.variant}`)
 .music-action-button {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
+  gap: 0.875rem;
+  min-height: 4.75rem;
+  height: 100%;
+  padding: 0.625rem 0.875rem;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
@@ -88,9 +90,9 @@ const variantClass = computed(() => `music-action-button--${props.variant}`)
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 0.75rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.625rem;
   flex-shrink: 0;
   position: relative;
   z-index: 1;
@@ -125,7 +127,7 @@ const variantClass = computed(() => `music-action-button--${props.variant}`)
 
 .music-action-label {
   display: block;
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   color: hsl(var(--foreground));
 }
@@ -153,8 +155,17 @@ const variantClass = computed(() => `music-action-button--${props.variant}`)
   color: hsl(var(--foreground) / 0.6);
 }
 
+@media (max-width: 1100px) {
+  .music-action-button {
+    min-height: 4rem;
+    height: auto;
+  }
+}
+
 @media (max-width: 768px) {
   .music-action-button {
+    min-height: 3.75rem;
+    height: auto;
     padding: 0.875rem 1rem;
   }
 

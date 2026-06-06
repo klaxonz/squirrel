@@ -28,7 +28,7 @@
       <MusicLoadingState v-if="playlistsLoading" :loading="true" text="加载推荐歌单..." />
       <MusicCardGrid v-else layout="grid-auto">
         <MusicCard
-          v-for="item in playlists.slice(0, 6)"
+          v-for="item in playlists.slice(0, 8)"
           :key="item.id"
           :cover="item.cover"
           :title="item.name"
@@ -124,9 +124,10 @@ function handlePlayTrack(track: MusicTrack) {
 
 <style scoped>
 .music-home {
-  padding: 1.5rem 2rem 3rem;
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: 0.875rem 2rem 2.5rem;
+  width: 100%;
+  max-width: 1480px;
+  margin: 0;
 }
 
 @media (max-width: 768px) {

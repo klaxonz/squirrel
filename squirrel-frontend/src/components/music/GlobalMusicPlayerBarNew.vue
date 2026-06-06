@@ -387,16 +387,18 @@ onUnmounted(() => {
 <style scoped>
 .music-bar {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 0.75rem;
+  left: 1rem;
+  right: 1rem;
   z-index: 60;
-  border-top: 1px solid hsl(var(--border) / 0.28);
-  background: hsl(var(--background) / 0.97);
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 0.875rem;
+  background: hsl(var(--background) / 0.94);
   backdrop-filter: blur(18px) saturate(160%);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
   transition: left 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 -2px 16px hsl(var(--foreground) / 0.04);
+  box-shadow: 0 12px 40px hsl(var(--foreground) / 0.12);
+  overflow: hidden;
 }
 
 .music-bar--immersive {
@@ -420,7 +422,9 @@ onUnmounted(() => {
 
 @media (min-width: 768px) {
   .music-bar {
-    left: var(--sidebar-width, 240px);
+    left: calc(var(--sidebar-width, 240px) + 2rem);
+    right: 2rem;
+    max-width: 1480px;
   }
 
   .music-bar--mini {
@@ -433,8 +437,8 @@ onUnmounted(() => {
   flex-direction: row;
   align-items: center;
   gap: 0.625rem;
-  min-height: 2.625rem;
-  padding: 0.25rem 0.75rem;
+  min-height: 3rem;
+  padding: 0.375rem 0.75rem;
 }
 
 .music-bar-time-wrap {
@@ -579,7 +583,7 @@ onUnmounted(() => {
 
 @media (max-width: 767px) {
   .music-bar {
-    bottom: var(--mobile-nav-height, 0);
+    bottom: calc(var(--mobile-nav-height, 0) + 0.75rem);
     left: 0 !important;
   }
 

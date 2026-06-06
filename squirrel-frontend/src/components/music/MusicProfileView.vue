@@ -119,7 +119,7 @@
           <div class="music-profile-playlist-section">
             <h3 class="music-profile-section-title">创建的歌单 ({{ createdPlaylists.length }})</h3>
             <div v-if="createdPlaylists.length === 0" class="music-profile-playlist-empty">
-              暂无自建歌单，您可以在左侧新建歌单
+              暂无自建歌单，您可以在顶部创建歌单
             </div>
             <div v-else class="music-grid">
               <div 

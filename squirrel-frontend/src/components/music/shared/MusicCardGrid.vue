@@ -22,7 +22,7 @@ const layoutClass = computed(() => musicCardGridVariants({ layout: props.layout 
 <style scoped>
 .music-card-grid {
   display: grid;
-  gap: 1rem;
+  gap: 0.875rem;
 }
 
 .music-card-grid--cols-2 {
@@ -38,7 +38,7 @@ const layoutClass = computed(() => musicCardGridVariants({ layout: props.layout 
 }
 
 .music-card-grid--auto {
-  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(8.25rem, 1fr));
 }
 
 .music-card-grid--scroll-x {

@@ -24,7 +24,7 @@
 
     <div class="music-greeting-actions">
       <div class="music-fm-entry">
-        <button class="music-fm-main" :class="{ 'music-fm-main--active': fmActive }" @click="$emit('fm-play')">
+        <div class="music-fm-main" :class="{ 'music-fm-main--active': fmActive }">
           <div class="music-fm-icon">
             <AppIcon v-if="fmPlaying" name="playlistMusic" class="h-5 w-5" />
             <AppIcon v-else name="star" class="h-5 w-5" />
@@ -33,12 +33,7 @@
             <span class="music-fm-label">私人FM</span>
             <span class="music-fm-meta">{{ fmStateText }}</span>
           </div>
-          <span class="music-fm-play" :class="{ 'music-fm-play--active': fmPlaying }" :title="fmButtonTitle">
-            <AppIcon v-if="fmLoading" name="loadingSpinner" class="h-4 w-4 animate-spin" />
-            <AppIcon v-else-if="fmPlaying" name="pause" class="h-4 w-4" />
-            <AppIcon v-else name="play" class="h-4 w-4" />
-          </span>
-        </button>
+        </div>
 
         <div class="music-fm-controls">
           <div class="music-fm-segment">
@@ -64,19 +59,32 @@
             </button>
           </div>
         </div>
+
+        <button
+          class="music-fm-play"
+          :class="{ 'music-fm-play--active': fmPlaying }"
+          :title="fmButtonTitle"
+          @click="$emit('fm-play')"
+        >
+          <AppIcon v-if="fmLoading" name="loadingSpinner" class="h-4 w-4 animate-spin" />
+          <AppIcon v-else-if="fmPlaying" name="pause" class="h-4 w-4" />
+          <AppIcon v-else name="play" class="h-4 w-4" />
+        </button>
       </div>
-      <MusicActionButton
-        icon="time"
-        label="每日推荐"
-        variant="daily"
-        @click="$emit('everyday')"
-      />
-      <MusicActionButton
-        icon="playlists"
-        label="新歌速递"
-        variant="rank"
-        @click="$emit('new-songs')"
-      />
+      <div class="music-quick-actions">
+        <MusicActionButton
+          icon="time"
+          label="每日推荐"
+          variant="daily"
+          @click="$emit('everyday')"
+        />
+        <MusicActionButton
+          icon="playlists"
+          label="新歌速递"
+          variant="rank"
+          @click="$emit('new-songs')"
+        />
+      </div>
     </div>
   </section>
 </template>
@@ -158,7 +166,9 @@ const subtitleText = computed(() => {
 
 <style scoped>
 .music-greeting {
-  padding: 1.5rem 0 2rem;
+  padding: 0.875rem 0 1.375rem;
+  width: 100%;
+  max-width: 1480px;
 }
 
 .music-greeting-header {
@@ -166,7 +176,7 @@ const subtitleText = computed(() => {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.875rem;
 }
 
 .music-greeting-left {
@@ -177,8 +187,8 @@ const subtitleText = computed(() => {
 }
 
 .music-greeting-avatar {
-  width: 3.5rem;
-  height: 3.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 9999px;
   background: hsl(var(--muted) / 0.5);
   display: flex;
@@ -200,7 +210,7 @@ const subtitleText = computed(() => {
 }
 
 .music-greeting-title {
-  font-size: 1.5rem;
+  font-size: 1.375rem;
   font-weight: 800;
   color: hsl(var(--foreground));
   letter-spacing: -0.03em;
@@ -256,31 +266,33 @@ const subtitleText = computed(() => {
 
 .music-greeting-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: 1rem;
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(12rem, 1fr));
+  gap: 0.875rem;
+  align-items: stretch;
 }
 
 .music-fm-entry {
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-  padding: 1rem;
+  display: grid;
+  grid-template-columns: minmax(11rem, 1fr) auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 4.75rem;
+  padding: 0.75rem 0.875rem;
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 1rem;
-  background: hsl(var(--card));
+  border-radius: 0.875rem;
+  background: hsl(var(--background) / 0.72);
 }
 
 .music-fm-main {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.875rem;
   width: 100%;
   padding: 0;
   border: none;
   background: transparent;
   color: hsl(var(--foreground));
   text-align: left;
-  cursor: pointer;
 }
 
 .music-fm-main--active .music-fm-icon {
@@ -292,10 +304,10 @@ const subtitleText = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 0.75rem;
-  background: hsl(var(--accent));
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.625rem;
+  background: hsl(var(--muted) / 0.55);
   color: hsl(var(--foreground) / 0.7);
   flex-shrink: 0;
 }
@@ -307,13 +319,13 @@ const subtitleText = computed(() => {
 
 .music-fm-label {
   display: block;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 700;
 }
 
 .music-fm-meta {
   display: block;
-  margin-top: 0.25rem;
+  margin-top: 0.125rem;
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground) / 0.8);
 }
@@ -322,15 +334,17 @@ const subtitleText = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 1.875rem;
+  height: 1.875rem;
+  border: none;
   border-radius: 9999px;
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
+  cursor: pointer;
   flex-shrink: 0;
 }
 
-.music-fm-main:hover .music-fm-play {
+.music-fm-play:hover {
   background: hsl(var(--primary) / 0.9);
 }
 
@@ -339,27 +353,39 @@ const subtitleText = computed(() => {
   color: hsl(var(--background));
 }
 
-.music-fm-main:hover .music-fm-play--active {
+.music-fm-play--active:hover {
   background: hsl(var(--foreground) / 0.86);
 }
 
 .music-fm-controls {
   display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  justify-self: end;
+}
+
+.music-quick-actions {
+  display: contents;
 }
 
 .music-fm-segment {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  min-width: 0;
+  padding: 0.125rem;
+  border-radius: 0.5rem;
+  background: hsl(var(--muted) / 0.34);
 }
 
 .music-fm-chip {
-  height: 1.75rem;
+  height: 1.5rem;
+  min-width: 3rem;
+  padding: 0 0.5rem;
   border: none;
   border-radius: 0.375rem;
-  background: hsl(var(--muted) / 0.35);
+  background: transparent;
   color: hsl(var(--foreground) / 0.68);
   font-size: 0.6875rem;
   font-weight: 600;
@@ -367,18 +393,38 @@ const subtitleText = computed(() => {
 }
 
 .music-fm-chip:hover {
-  background: hsl(var(--muted) / 0.55);
+  background: hsl(var(--background) / 0.72);
   color: hsl(var(--foreground));
 }
 
 .music-fm-chip--active {
-  background: hsl(var(--primary) / 0.12);
-  color: hsl(var(--primary));
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.08);
 }
 
 @media (max-width: 768px) {
   .music-greeting-actions {
     grid-template-columns: 1fr;
+  }
+
+  .music-fm-entry {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1100px) {
+  .music-greeting-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .music-fm-entry {
+    grid-template-columns: 1fr;
+  }
+
+  .music-fm-controls {
+    flex-wrap: wrap;
+    justify-self: start;
   }
 }
 </style>

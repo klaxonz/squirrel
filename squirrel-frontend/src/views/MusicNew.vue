@@ -1,27 +1,25 @@
 <template>
   <div class="music-page">
-    <MusicSidebar
-      :active-mode="sidebarActiveMode"
-      :user-playlists="userPlaylists"
-      :selected-user-playlist="selectedUserPlaylist"
-      :auth-status="authStatus"
-      @navigate="handleNavigate"
-      @select-playlist="handleSelectUserPlaylist"
-      @create-playlist="handleCreatePlaylist"
-    />
-
     <main class="music-main">
-      <div class="music-mobile-nav" aria-label="音乐导航">
-        <button
-          v-for="item in mobileNavItems"
-          :key="item.id"
-          class="music-mobile-nav-item"
-          :class="{ 'music-mobile-nav-item--active': sidebarActiveMode === item.id }"
-          @click="handleNavigate(item.id)"
-        >
-          <AppIcon :name="item.icon" class="h-4 w-4" />
-          <span>{{ item.label }}</span>
-        </button>
+      <div class="music-top-nav" aria-label="音乐导航">
+        <div class="music-primary-tabs">
+          <button
+            v-for="item in musicNavItems"
+            :key="item.id"
+            class="music-primary-tab"
+            :class="{ 'music-primary-tab--active': sidebarActiveMode === item.id }"
+            @click="handleNavigate(item.id)"
+          >
+            <AppIcon :name="item.icon" class="h-4 w-4" />
+            <span>{{ item.label }}</span>
+          </button>
+        </div>
+
+        <MusicCreatePlaylistButton
+          v-if="authStatus?.logged_in && activeView === 'profile'"
+          class="music-top-create"
+          @create="handleCreatePlaylist"
+        />
       </div>
 
       <div class="music-content custom-scrollbar">
@@ -253,7 +251,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import type { AppIconName } from '@/icons/app-icons'
-import MusicSidebar from '@/components/music/sidebar/MusicSidebarNew.vue'
+import MusicCreatePlaylistButton from '@/components/music/sidebar/MusicCreatePlaylistButton.vue'
 import MusicHomeView from '@/components/music/home/MusicHomeViewNew.vue'
 import MusicSearchView from '@/components/music/MusicSearchViewNew.vue'
 import MusicRankGrid from '@/components/music/MusicRankGrid.vue'
@@ -269,6 +267,7 @@ import MusicQrLoginPanel from '@/components/music/MusicQrLoginPanel.vue'
 import { useMusicPlayerStore } from '@/stores/musicPlayer'
 import { useUIStore } from '@/stores/ui'
 import { useMusicNavigation } from '@/composables/useMusicNavigation'
+import { useNavigationHistory } from '@/composables/useNavigationHistory'
 import { useMusicHome } from '@/composables/useMusicHome'
 import { useMusicDetail } from '@/composables/useMusicDetail'
 import { useMusicAuth } from '@/composables/useMusicAuth'
@@ -301,10 +300,13 @@ import { Logger } from '@/utils/logger'
 const route = useRoute()
 const uiStore = useUIStore()
 const playerStore = useMusicPlayerStore()
+const appNavigation = useNavigationHistory()
 
 const {
   activeView,
   navigateTo,
+  goBack: goBackInMusic,
+  canGoBack: canGoBackInMusic,
 } = useMusicNavigation()
 
 const {
@@ -411,6 +413,7 @@ const qrStatus = ref(0)
 let qrTimer: ReturnType<typeof setInterval> | null = null
 
 const viewAlbums = ref<MusicAlbum[]>([])
+let unregisterInternalBack: (() => void) | null = null
 
 const sidebarActiveMode = computed(() => {
   if (activeView.value === 'playlist-detail') return 'playlists'
@@ -420,7 +423,7 @@ const sidebarActiveMode = computed(() => {
   return activeView.value
 })
 
-const mobileNavItems = computed<Array<{ id: string; label: string; icon: AppIconName }>>(() => [
+const musicNavItems = computed<Array<{ id: string; label: string; icon: AppIconName }>>(() => [
   { id: 'home', label: '首页', icon: 'home' },
   { id: 'ranks', label: '榜单', icon: 'list' },
   { id: 'playlists', label: '歌单', icon: 'playlistMusic' },
@@ -455,13 +458,21 @@ watch(() => uiStore.searchTrigger, () => {
   }
 })
 
+watch(canGoBackInMusic, (available) => {
+  appNavigation.setInternalBackAvailable(available)
+}, { immediate: true })
+
 onMounted(() => {
   loadAuthStatus()
   loadHomeData()
+  unregisterInternalBack = appNavigation.registerInternalBackHandler(goBackInMusic)
 })
 
 onUnmounted(() => {
   stopQrPolling()
+  unregisterInternalBack?.()
+  unregisterInternalBack = null
+  appNavigation.setInternalBackAvailable(false)
 })
 
 function handleNavigate(mode: string) {
@@ -799,40 +810,68 @@ function stopQrPolling() {
   overflow: hidden;
 }
 
-.music-mobile-nav {
-  display: none;
-  gap: 0.375rem;
-  padding: 0.625rem 0.75rem;
+.music-top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 2rem;
   border-bottom: 1px solid hsl(var(--border) / 0.35);
-  background: hsl(var(--background));
+  background: hsl(var(--background) / 0.96);
+}
+
+.music-primary-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
-.music-mobile-nav::-webkit-scrollbar {
+.music-primary-tabs::-webkit-scrollbar {
   display: none;
 }
 
-.music-mobile-nav-item {
+.music-primary-tab {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.375rem;
-  min-width: 4.25rem;
   height: 2.25rem;
   padding: 0 0.75rem;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 0.5rem;
   background: transparent;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.music-mobile-nav-item--active {
-  background: hsl(var(--accent));
+.music-primary-tab:hover {
+  background: hsl(var(--accent) / 0.7);
   color: hsl(var(--foreground));
+}
+
+.music-primary-tab--active {
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border) / 0.6);
+  color: hsl(var(--foreground));
+}
+
+.music-top-create {
+  flex: 0 0 auto;
+}
+
+.music-top-create :deep(.music-create-playlist-btn),
+.music-create-playlist-btn.music-top-create {
+  width: auto;
+  height: 2.25rem;
+  margin: 0;
+  padding: 0 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
 }
 
 .music-content {
@@ -859,8 +898,8 @@ function stopQrPolling() {
 }
 
 @media (max-width: 768px) {
-  .music-mobile-nav {
-    display: flex;
+  .music-top-nav {
+    padding: 0.625rem 1rem;
   }
 }
 </style>

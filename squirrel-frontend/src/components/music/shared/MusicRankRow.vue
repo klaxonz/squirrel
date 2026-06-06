@@ -45,18 +45,19 @@ function badgeColor(index: number): string {
 <style scoped>
 .music-rank-row {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.625rem;
 }
 
 .music-rank-card {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border) / 0.4);
-  border-radius: 1rem;
+  gap: 0.75rem;
+  min-height: 3.75rem;
+  padding: 0.5rem 0.625rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.625rem;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -73,9 +74,8 @@ function badgeColor(index: number): string {
 }
 
 .music-rank-card:hover {
-  border-color: hsl(var(--primary) / 0.2);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px hsl(var(--foreground) / 0.1);
+  border-color: hsl(var(--border) / 0.5);
+  background: hsl(var(--muted) / 0.26);
 }
 
 .music-rank-card:hover::before {
@@ -83,12 +83,12 @@ function badgeColor(index: number): string {
 }
 
 .music-rank-cover {
-  width: 4rem;
-  height: 4rem;
-  border-radius: 0.625rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.5rem;
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow: 0 4px 16px hsl(var(--foreground) / 0.12);
+  box-shadow: 0 3px 10px hsl(var(--foreground) / 0.1);
   position: relative;
   z-index: 1;
 }
@@ -103,8 +103,8 @@ function badgeColor(index: number): string {
   position: absolute;
   top: 0;
   left: 0;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.25rem;
+  height: 1.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -130,7 +130,7 @@ function badgeColor(index: number): string {
 }
 
 .music-rank-name {
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   color: hsl(var(--foreground));
   overflow: hidden;
@@ -139,9 +139,9 @@ function badgeColor(index: number): string {
 }
 
 .music-rank-meta {
-  font-size: 0.75rem;
+  font-size: 0.625rem;
   color: hsl(var(--muted-foreground) / 0.85);
-  margin-top: 0.375rem;
+  margin-top: 0.25rem;
   font-weight: 500;
 }
 
@@ -149,8 +149,8 @@ function badgeColor(index: number): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 1.75rem;
+  height: 1.75rem;
   border-radius: 9999px;
   background: hsl(var(--primary) / 0.08);
   color: hsl(var(--primary));
@@ -166,6 +166,12 @@ function badgeColor(index: number): string {
 @media (max-width: 768px) {
   .music-rank-row {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1180px) {
+  .music-rank-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

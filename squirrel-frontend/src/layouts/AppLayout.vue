@@ -70,7 +70,7 @@ const hasActiveMusicBar = computed(() =>
 )
 
 const musicBarPadding = computed(() =>
-  route.name === 'Music' && hasActiveMusicBar.value ? 'pb-12' : ''
+  route.name === 'Music' && hasActiveMusicBar.value ? 'pb-20' : ''
 )
 const mainScrollRef = ref<HTMLElement | null>(null)
 let activeScrollRoute: ScrollRouteState = {

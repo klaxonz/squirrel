@@ -27,20 +27,20 @@ defineEmits<{
 
 <style scoped>
 .music-section {
-  margin-bottom: 2.5rem;
+  margin-bottom: 1.75rem;
 }
 
 .music-section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.25rem;
-  padding-bottom: 0.75rem;
+  margin-bottom: 0.875rem;
+  padding-bottom: 0.5rem;
   border-bottom: 1px solid hsl(var(--border) / 0.25);
 }
 
 .music-section-title {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 800;
   color: hsl(var(--foreground));
   letter-spacing: -0.02em;

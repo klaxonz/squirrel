@@ -19,7 +19,7 @@ export type MusicView =
 
 export function useMusicNavigation() {
   const activeView = ref<MusicView>('home')
-  const viewHistory = ref<MusicView[]>(['home'])
+  const viewHistory = ref<MusicView[]>([])
 
   function navigateTo(view: MusicView) {
     if (view !== activeView.value) {
@@ -32,18 +32,20 @@ export function useMusicNavigation() {
   }
 
   function goBack() {
-    if (viewHistory.value.length > 1) {
-      viewHistory.value.pop()
-      activeView.value = viewHistory.value[viewHistory.value.length - 1]
+    const previousView = viewHistory.value.pop()
+    if (previousView) {
+      activeView.value = previousView
+      return true
     }
+    return false
   }
 
   function goHome() {
-    navigateTo('home')
-    viewHistory.value = ['home']
+    activeView.value = 'home'
+    viewHistory.value = []
   }
 
-  const canGoBack = computed(() => viewHistory.value.length > 1)
+  const canGoBack = computed(() => viewHistory.value.length > 0)
 
   const isDetailView = computed(() =>
     ['playlist-detail', 'user-playlist-detail', 'artist-detail', 'album-detail'].includes(activeView.value)

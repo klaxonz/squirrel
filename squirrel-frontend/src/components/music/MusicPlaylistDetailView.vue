@@ -24,32 +24,14 @@
     </div>
 
     <div v-else class="music-playlist-tracks">
-      <article
-        v-for="(track, index) in tracks"
-        :key="track.hash || index"
-        class="music-playlist-track"
-        :class="{ 'music-playlist-track--playing': isPlaying(track) }"
-        @click="handlePlay(track)"
-      >
-        <div class="music-playlist-track-info">
-          <span class="music-playlist-track-title">{{ track.title || '未知歌曲' }}</span>
-          <button
-            class="music-playlist-track-artist"
-            :disabled="!track.artist_id"
-            @click.stop="$emit('select-artist', track)"
-          >
-            {{ track.artist || '未知歌手' }}
-          </button>
-        </div>
-        <div class="music-playlist-track-actions">
-          <button class="music-playlist-track-btn" title="下一首播放" @click.stop="handleInsertNext(track)">
-            <AppIcon name="listEnd" class="h-4 w-4" />
-          </button>
-          <button class="music-playlist-track-btn" title="添加到歌单" @click.stop="$emit('add-to-playlist', track)">
-            <AppIcon name="addToPlaylist" class="h-4 w-4" />
-          </button>
-        </div>
-      </article>
+      <MusicTrackList
+        :tracks="tracks"
+        :show-mv="false"
+        :show-related="false"
+        @select-artist="$emit('select-artist', $event)"
+        @select-album="$emit('select-album', $event)"
+        @add-to-playlist="$emit('add-to-playlist', $event)"
+      />
     </div>
 
     <div v-if="hasMore" class="music-playlist-load-more">
@@ -79,6 +61,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import MusicTrackList from './MusicTrackList.vue'
 import { useMusicPlayerStore } from '@/stores/musicPlayer'
 import type { MusicPlaylist, MusicTrack } from '@/api/music'
 
@@ -109,18 +92,6 @@ defineEmits<{
 const player = useMusicPlayerStore()
 const shuffle = computed(() => player.shuffle)
 
-function isPlaying(track: MusicTrack): boolean {
-  return player.currentTrack?.hash === track.hash
-}
-
-function handlePlay(track: MusicTrack) {
-  player.playTrack(track)
-}
-
-function handleInsertNext(track: MusicTrack) {
-  player.insertNext(track)
-}
-
 function playAll() {
   player.shuffle = false
   player.playQueue(props.tracks, 0)
@@ -134,17 +105,18 @@ function shuffleAll() {
 
 <style scoped>
 .music-playlist-detail {
-  padding: 1.5rem 2rem 2rem;
-  max-width: 800px;
+  width: 100%;
+  max-width: 1480px;
+  padding: 1.25rem 2rem 2.5rem;
 }
 
 .music-playlist-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 1.25rem;
+  padding: 0.875rem 0 1.125rem;
   border-bottom: 1px solid hsl(var(--border) / 0.3);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .music-playlist-topbar-left {
@@ -155,8 +127,8 @@ function shuffleAll() {
 }
 
 .music-playlist-topbar-title {
-  font-size: 1.375rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 800;
   color: hsl(var(--foreground));
   letter-spacing: -0.02em;
   overflow: hidden;
@@ -165,7 +137,7 @@ function shuffleAll() {
 }
 
 .music-playlist-topbar-meta {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   color: hsl(var(--muted-foreground));
   flex-shrink: 0;
   font-weight: 500;
@@ -238,105 +210,7 @@ function shuffleAll() {
 }
 
 .music-playlist-tracks {
-  display: flex;
-  flex-direction: column;
-}
-
-.music-playlist-track {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 0.75rem;
-  margin: 0.125rem 0;
-  border-radius: 0.625rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.music-playlist-track:hover {
-  background: hsl(var(--muted) / 0.35);
-}
-
-.music-playlist-track--playing {
-  background: linear-gradient(90deg, hsl(var(--primary) / 0.1) 0%, hsl(var(--primary) / 0.05) 100%);
-}
-
-.music-playlist-track-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-  padding-right: 1.5rem;
-}
-
-.music-playlist-track-title {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.music-playlist-track--playing .music-playlist-track-title {
-  color: hsl(var(--primary));
-}
-
-.music-playlist-track-artist {
-  display: block;
-  margin-top: 0.25rem;
-  font-size: 0.8125rem;
-  color: hsl(var(--muted-foreground));
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 500;
-  transition: color 0.15s ease;
-}
-
-.music-playlist-track-artist:hover:not(:disabled) {
-  color: hsl(var(--primary));
-}
-
-.music-playlist-track-artist:disabled {
-  cursor: default;
-}
-
-.music-playlist-track-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  flex-shrink: 0;
-}
-
-.music-playlist-track:hover .music-playlist-track-actions {
-  opacity: 1;
-}
-
-.music-playlist-track-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border: none;
-  border-radius: 0.5rem;
-  background: none;
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.music-playlist-track-btn:hover {
-  background: hsl(var(--muted) / 0.5);
-  color: hsl(var(--foreground));
+  margin: 0 -1.5rem;
 }
 
 .music-playlist-load-more {
@@ -387,7 +261,7 @@ function shuffleAll() {
 
 .music-playlist-similar-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
   gap: 1rem;
 }
 
@@ -416,5 +290,20 @@ function shuffleAll() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .music-playlist-detail {
+    padding: 1rem 1rem 2rem;
+  }
+
+  .music-playlist-topbar {
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .music-playlist-tracks {
+    margin: 0 -1rem;
+  }
 }
 </style>
