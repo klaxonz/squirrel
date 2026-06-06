@@ -64,6 +64,7 @@ sys.modules.setdefault('redis.client', redis_client_module)
 sys.modules.setdefault('redis_lock', redis_lock_module)
 
 from crawl import PluginInvokeResponse
+from crawl import utils as crawl_utils
 import main as app_main
 from plugins import runtime_bridge
 from processes import service_runtime
@@ -93,8 +94,8 @@ def test_lifespan_configures_backend_runtime_http_state(monkeypatch):
     async def _run() -> None:
         async with app_main.lifespan(SimpleNamespace()):
             assert runtime_http.get_cloudflare_bypass_client() is client
-            assert runtime_http.get_cookie_file_resolver() is resolver
-            assert runtime_http.get_cookie_domain_resolver() is domain_resolver
+            assert crawl_utils._cookie_file_resolver is resolver
+            assert crawl_utils._cookie_domain_resolver is domain_resolver
 
     asyncio.run(_run())
     assert projection_calls == ['seeded']
@@ -214,8 +215,8 @@ def test_bootstrap_runtime_configures_backend_runtime_http_state(monkeypatch):
 
     with service_runtime.bootstrap_runtime('worker'):
         assert runtime_http.get_cloudflare_bypass_client() is client
-        assert runtime_http.get_cookie_file_resolver() is resolver
-        assert runtime_http.get_cookie_domain_resolver() is domain_resolver
+        assert crawl_utils._cookie_file_resolver is resolver
+        assert crawl_utils._cookie_domain_resolver is domain_resolver
     assert projection_calls == ['seeded']
 
 
@@ -279,8 +280,8 @@ def test_runtime_bridge_configures_backend_runtime_http_state(monkeypatch):
     runtime_bridge._configure_backend_runtime_state()
 
     assert runtime_http.get_cloudflare_bypass_client() is client
-    assert runtime_http.get_cookie_file_resolver() is resolver
-    assert runtime_http.get_cookie_domain_resolver() is domain_resolver
+    assert crawl_utils._cookie_file_resolver is resolver
+    assert crawl_utils._cookie_domain_resolver is domain_resolver
 
 
 def test_runtime_bridge_keeps_cookie_resolver_when_cloudflare_bypass_is_unavailable(monkeypatch):
@@ -298,8 +299,8 @@ def test_runtime_bridge_keeps_cookie_resolver_when_cloudflare_bypass_is_unavaila
     runtime_bridge._configure_backend_runtime_state()
 
     assert runtime_http.get_cloudflare_bypass_client() is None
-    assert runtime_http.get_cookie_file_resolver() is resolver
-    assert runtime_http.get_cookie_domain_resolver() is domain_resolver
+    assert crawl_utils._cookie_file_resolver is resolver
+    assert crawl_utils._cookie_domain_resolver is domain_resolver
 
 
 def test_runtime_bridge_syncs_site_rate_limits_into_plugin_runtime(monkeypatch):

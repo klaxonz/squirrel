@@ -3,6 +3,9 @@
 import logging
 from typing import Any
 
+import anyio
+
+from services.music import _client
 from services.music._client import (
     KUGOU_AUTH_REDIS_KEY_PREFIX,
     MusicServiceError,
@@ -18,20 +21,17 @@ logger = logging.getLogger(__name__)
 
 
 async def get_auth_status(user_id: int) -> dict[str, Any]:
-    from services import music_service
     user_cookie = await _get_user_cookie(user_id)
-    cookie = user_cookie or music_service.settings.KUGOU_MUSIC_COOKIE
+    cookie = user_cookie or _client.settings.KUGOU_MUSIC_COOKIE
     return {
         'logged_in': bool(_cookie_value(cookie, 'token') and _cookie_value(cookie, 'userid')),
-        'source': 'redis' if user_cookie else ('env' if music_service.settings.KUGOU_MUSIC_COOKIE else ''),
+        'source': 'redis' if user_cookie else ('env' if _client.settings.KUGOU_MUSIC_COOKIE else ''),
         'userid': _cookie_value(cookie, 'userid'),
     }
 
 
 async def clear_auth(user_id: int) -> None:
-    import anyio
-    from services import music_service
-    await anyio.to_thread.run_sync(music_service.redis_client.delete, _auth_redis_key(user_id))
+    await anyio.to_thread.run_sync(_client.redis_client.delete, _auth_redis_key(user_id))
 
 
 async def logout(user_id: int) -> dict[str, Any]:
@@ -72,8 +72,7 @@ async def create_qr_login() -> dict[str, Any]:
 
 
 async def check_qr_login(user_id: int, key: str) -> dict[str, Any]:
-    from services import music_service
-    payload = await _request_kugou('/login/qr/check', {'key': key, 'timestamp': music_service._timestamp_ms()})
+    payload = await _request_kugou('/login/qr/check', {'key': key, 'timestamp': _client._timestamp_ms()})
     data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
     status = int(data.get('status') or 0)
     if status == 4:
@@ -87,8 +86,6 @@ async def check_qr_login(user_id: int, key: str) -> dict[str, Any]:
 
 
 async def _save_user_cookie_from_login(user_id: int, data: dict[str, Any]) -> None:
-    import anyio
-    from services import music_service
     token = str(data.get('token') or '')
     kugou_userid = str(data.get('userid') or '')
     if not token or not kugou_userid:
@@ -104,7 +101,7 @@ async def _save_user_cookie_from_login(user_id: int, data: dict[str, Any]) -> No
         raise MusicServiceError('KuGouMusicApi did not return dfid')
 
     await anyio.to_thread.run_sync(
-        music_service.redis_client.set,
+        _client.redis_client.set,
         _auth_redis_key(user_id),
         f'token={token};userid={kugou_userid};dfid={dfid}',
     )

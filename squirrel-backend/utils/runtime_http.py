@@ -3,20 +3,17 @@ from __future__ import annotations
 from typing import Callable, Optional
 
 _cloudflare_bypass_client: object | None = None
-_cookie_file_resolver: Optional[Callable[[str], Optional[str]]] = None
-_cookie_domain_resolver: Optional[Callable[[str], str]] = None
 
 
 def set_cloudflare_bypass_client(client: object | None) -> None:
     global _cloudflare_bypass_client
     _cloudflare_bypass_client = client
-    try:
-        from crawl import configure_cloudflare_bypass_client
+    if client is None:
+        return
 
-        if client is not None:
-            configure_cloudflare_bypass_client(client)
-    except Exception:
-        pass
+    from crawl import configure_cloudflare_bypass_client
+
+    configure_cloudflare_bypass_client(client)
 
 
 def get_cloudflare_bypass_client() -> object | None:
@@ -24,55 +21,30 @@ def get_cloudflare_bypass_client() -> object | None:
 
 
 def set_cookie_file_resolver(resolver: Optional[Callable[[str], Optional[str]]]) -> None:
-    global _cookie_file_resolver
-    _cookie_file_resolver = resolver
-    try:
-        from crawl import configure_cookie_file_resolver
+    if resolver is None:
+        return
 
-        if resolver is not None:
-            configure_cookie_file_resolver(resolver)
-    except Exception:
-        pass
+    from crawl import configure_cookie_file_resolver
 
-
-def get_cookie_file_resolver() -> Optional[Callable[[str], Optional[str]]]:
-    return _cookie_file_resolver
+    configure_cookie_file_resolver(resolver)
 
 
 def set_cookie_domain_resolver(resolver: Optional[Callable[[str], str]]) -> None:
-    global _cookie_domain_resolver
-    _cookie_domain_resolver = resolver
-    try:
-        from crawl import configure_cookie_domain_resolver
+    if resolver is None:
+        return
 
-        if resolver is not None:
-            configure_cookie_domain_resolver(resolver)
-    except Exception:
-        pass
+    from crawl import configure_cookie_domain_resolver
 
-
-def get_cookie_domain_resolver() -> Optional[Callable[[str], str]]:
-    return _cookie_domain_resolver
+    configure_cookie_domain_resolver(resolver)
 
 
 def reset_runtime_http_state() -> None:
-    global _cloudflare_bypass_client, _cookie_file_resolver, _cookie_domain_resolver
-
+    global _cloudflare_bypass_client
     _cloudflare_bypass_client = None
-    _cookie_file_resolver = None
-    _cookie_domain_resolver = None
 
-    try:
-        from crawl import http as crawl_http
+    from crawl import http as crawl_http
+    from crawl import utils as crawl_utils
 
-        crawl_http._cloudflare_bypass_client = None
-    except Exception:
-        pass
-
-    try:
-        from crawl import utils as crawl_utils
-
-        crawl_utils._cookie_file_resolver = None
-        crawl_utils._cookie_domain_resolver = None
-    except Exception:
-        pass
+    crawl_http._cloudflare_bypass_client = None
+    crawl_utils._cookie_file_resolver = None
+    crawl_utils._cookie_domain_resolver = None

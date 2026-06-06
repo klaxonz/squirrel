@@ -5,14 +5,15 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from services import music_service
+from services import music as music_service
+from services.music import _client as music_client
 
 pytestmark = [pytest.mark.anyio(backend='asyncio')]
 
 
 @pytest.fixture(autouse=True)
 def reset_music_http_client(monkeypatch):
-    monkeypatch.setattr(music_service, '_http_client', None)
+    monkeypatch.setattr(music_client, '_http_client', None)
 
 
 class _FakeResponse:
@@ -108,10 +109,10 @@ async def test_search_tracks_normalizes_kugou_response(monkeypatch):
         }
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     result = await music_service.search_tracks(1, 'demo', 1, 20)
 
@@ -159,10 +160,10 @@ async def test_get_personal_fm_tracks_normalizes_items(monkeypatch):
         }
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     result = await music_service.get_personal_fm_tracks(1)
 
@@ -213,10 +214,10 @@ async def test_search_artists_normalizes_kugou_response(monkeypatch):
         }
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     result = await music_service.search_artists(1, 'demo', 1, 6)
 
@@ -263,10 +264,10 @@ async def test_search_albums_derives_unique_albums_from_song_results(monkeypatch
         }
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     result = await music_service.search_albums(1, 'demo', 1, 8)
 
@@ -343,16 +344,16 @@ async def test_complex_search_uses_typed_search_results(monkeypatch):
     assert result['songs'][0]['title'] == 'Demo Song'
     assert result['artists'][0]['name'] == 'Demo Artist'
     assert result['albums'][0]['name'] == 'Demo Album'
-    assert calls == [
+    assert sorted(calls, key=lambda item: item['params']['type']) == [
         {
             'path': '/search',
-            'params': {'keywords': 'demo', 'page': 1, 'pagesize': 50, 'type': 'song'},
+            'params': {'keywords': 'demo', 'page': 1, 'pagesize': 12, 'type': 'author'},
             'user_id': 1,
             'use_auth': True,
         },
         {
             'path': '/search',
-            'params': {'keywords': 'demo', 'page': 1, 'pagesize': 12, 'type': 'author'},
+            'params': {'keywords': 'demo', 'page': 1, 'pagesize': 50, 'type': 'song'},
             'user_id': 1,
             'use_auth': True,
         },
@@ -371,10 +372,10 @@ async def test_get_track_play_url_returns_direct_url(monkeypatch):
         ],
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     result = await music_service.get_track_play_url(1, 'ABC', '123', '128')
 
@@ -393,10 +394,10 @@ async def test_get_track_play_url_returns_string_url(monkeypatch):
         'url': 'https://cdn.example.test/demo.mp3',
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     result = await music_service.get_track_play_url(1, 'ABC', '123', '128')
 
@@ -411,11 +412,11 @@ async def test_get_track_lyric_returns_timed_lines(monkeypatch):
         {'status': 200, 'decodeContent': '[00:01.00]First line\n[00:03.50][00:04.00]Repeat line\n[ti:Demo]'},
     ]
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: client)
 
     result = await music_service.get_track_lyric(1, 'Demo Song', 'Demo Artist', 'ABC', '123', 210)
 
@@ -461,10 +462,10 @@ async def test_list_ranks_normalizes_items(monkeypatch):
         }
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     result = await music_service.list_ranks(1)
 
@@ -508,10 +509,10 @@ async def test_get_rank_tracks_normalizes_items(monkeypatch):
         },
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     result = await music_service.get_rank_tracks(1, '8888', '115390', 2, 10)
 
@@ -552,10 +553,10 @@ async def test_list_playlists_normalizes_items(monkeypatch):
         }
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     result = await music_service.list_playlists(1, 0, 1, 12)
 
@@ -592,11 +593,11 @@ async def test_search_discovery_endpoints_normalize_items(monkeypatch):
         {'data': {'info': [{'keyword': 'Suggest Song', 'type': 'song'}]}},
     ]
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: client)
 
     default = await music_service.get_default_search_keyword(1)
     hot = await music_service.list_hot_searches(1)
@@ -650,11 +651,11 @@ async def test_recommend_discovery_cards_normalize_tracks(monkeypatch):
         },
     ]
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: client)
 
     card = await music_service.get_recommend_card_tracks(1, 1, 8)
     daily = await music_service.get_daily_recommend_tracks(1, 6)
@@ -697,11 +698,11 @@ async def test_playlist_tags_and_similar_playlists_normalize_items(monkeypatch):
         },
     ]
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: client)
 
     tags = await music_service.list_playlist_tags(1)
     similar = await music_service.get_similar_playlists(1, 'collection-demo')
@@ -737,10 +738,10 @@ async def test_get_playlist_tracks_normalizes_items(monkeypatch):
         }
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     result = await music_service.get_playlist_tracks(1, 'collection-demo', 3, 15)
 
@@ -793,11 +794,11 @@ async def test_get_artist_detail_and_tracks_normalize_items(monkeypatch):
         },
     ]
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: client)
 
     detail = await music_service.get_artist_detail(1, '10')
     tracks = await music_service.get_artist_tracks(1, '10', 2, 30)
@@ -872,11 +873,11 @@ async def test_get_album_detail_and_tracks_normalize_items(monkeypatch):
         },
     ]
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: client)
 
     detail = await music_service.get_album_detail(1, '20')
     tracks = await music_service.get_album_tracks(1, '20', 1, 30)
@@ -928,10 +929,10 @@ async def test_new_songs_normalize_items(monkeypatch):
         }
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     songs = await music_service.list_new_songs(1, None, 1, 30)
 
@@ -955,10 +956,10 @@ async def test_new_albums_collect_all_regions(monkeypatch):
         }
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     albums = await music_service.list_new_albums(1, 1, 30)
 
@@ -992,10 +993,10 @@ async def test_new_albums_slice_requested_page(monkeypatch):
         }
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     albums = await music_service.list_new_albums(1, 2, 2)
 
@@ -1037,11 +1038,11 @@ async def test_track_enrichment_endpoints_normalize_items(monkeypatch):
         },
     ]
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: client)
 
     climax = await music_service.get_track_climax(1, 'HASH')
     related = await music_service.get_related_tracks(1, '30', 1, 30, 'all', None)
@@ -1056,8 +1057,8 @@ async def test_track_enrichment_endpoints_normalize_items(monkeypatch):
 
 
 async def test_request_requires_configured_base_url(monkeypatch):
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', '')
-    monkeypatch.setattr(music_service, 'redis_client', _FakeRedis())
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', '')
+    monkeypatch.setattr(music_client, 'redis_client', _FakeRedis())
 
     try:
         await music_service.search_tracks(1, 'demo', 1, 20)
@@ -1082,10 +1083,10 @@ async def test_request_reports_non_json_response(monkeypatch):
             calls.append({'url': url, 'params': params, 'headers': headers})
             return _InvalidJsonResponse()
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _InvalidJsonClient())
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _InvalidJsonClient())
 
     try:
         await music_service.search_tracks(1, 'demo', 1, 20)
@@ -1106,11 +1107,11 @@ async def test_create_qr_login_returns_key_and_image(monkeypatch):
         {'data': {'url': 'https://h5.kugou.com/login?qrcode=qr-demo', 'base64': 'data:image/png;base64,abc'}},
     ]
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: client)
 
     result = await music_service.create_qr_login()
 
@@ -1132,12 +1133,12 @@ async def test_check_qr_login_saves_redis_cookie(monkeypatch):
         {'data': {'dfid': 'dfid-demo'}},
     ]
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', '')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service, '_timestamp_ms', lambda: 1000)
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', '')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client, '_timestamp_ms', lambda: 1000)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: client)
 
     result = await music_service.check_qr_login(1, 'qr-demo')
 
@@ -1164,10 +1165,10 @@ async def test_search_tracks_prefers_redis_cookie(monkeypatch):
     redis.set('music:kugou:auth:1', 'token=redis-token;userid=9;dfid=redis-dfid')
     payload = {'data': {'total': 0, 'lists': []}}
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=env-token;userid=1;dfid=env-dfid')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', 'token=env-token;userid=1;dfid=env-dfid')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     await music_service.search_tracks(1, 'demo', 1, 20)
 
@@ -1193,10 +1194,10 @@ async def test_list_user_playlists_normalizes_kugou_response(monkeypatch):
         }
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     result = await music_service.list_user_playlists(1, 1, 30)
 
@@ -1234,10 +1235,10 @@ async def test_get_user_playlist_tracks_includes_file_id(monkeypatch):
         }
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     result = await music_service.get_user_playlist_tracks(1, '10', 1, 30)
 
@@ -1252,10 +1253,10 @@ async def test_add_track_to_user_playlist_formats_track_data(monkeypatch):
     redis = _FakeRedis()
     payload = {'status': 1}
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     result = await music_service.add_track_to_user_playlist(
         1,
@@ -1276,11 +1277,11 @@ async def test_create_and_delete_user_playlist_use_kugou_endpoints(monkeypatch):
         {'status': 1},
     ]
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: client)
 
     created = await music_service.create_user_playlist(1, 'New List', True)
     deleted = await music_service.delete_user_playlist(1, '10')
@@ -1311,11 +1312,11 @@ async def test_collect_playlist_loads_detail_before_add(monkeypatch):
         {'status': 1},
     ]
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: client)
 
     result = await music_service.collect_playlist(1, 'collection_3_42_88_0')
 
@@ -1341,11 +1342,11 @@ async def test_user_history_and_playhistory_upload_use_kugou_endpoints(monkeypat
         {'status': 1},
     ]
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
     client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: client)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: client)
 
     history = await music_service.get_user_history(1, None)
     report = await music_service.upload_play_history(1, '123', 1710000000, 1)
@@ -1367,10 +1368,10 @@ async def test_get_favorite_counts_uses_public_endpoint_without_auth(monkeypatch
         'data': {'list': [{'mixsongid': 368015985, 'count': 376527, 'count_text': '37w'}]},
     }
 
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
-    monkeypatch.setattr(music_service.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
-    monkeypatch.setattr(music_service, 'redis_client', redis)
-    monkeypatch.setattr(music_service.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_API_BASE_URL', 'http://127.0.0.1:3000')
+    monkeypatch.setattr(music_client.settings, 'KUGOU_MUSIC_COOKIE', 'token=abc;userid=1;dfid=xyz')
+    monkeypatch.setattr(music_client, 'redis_client', redis)
+    monkeypatch.setattr(music_client.httpx, 'AsyncClient', lambda **_kwargs: _FakeClient(calls, payload))
 
     result = await music_service.get_favorite_counts(1, '368015985')
 
