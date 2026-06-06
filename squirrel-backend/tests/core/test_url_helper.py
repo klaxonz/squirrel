@@ -24,7 +24,7 @@ def test_get_site_from_url_reads_runtime_registrations(monkeypatch):
 
     monkeypatch.setattr(
         url_helper,
-        'get_plugin_manager',
+        'get_site_runtime_manager',
         lambda: SimpleNamespace(
             get_snapshot=lambda: SimpleNamespace(registrations=registrations),
         ),
@@ -39,7 +39,7 @@ def test_get_site_from_url_returns_none_when_no_runtime_route(monkeypatch):
     url_helper.reset_site_lookup_cache()
     monkeypatch.setattr(
         url_helper,
-        'get_plugin_manager',
+        'get_site_runtime_manager',
         lambda: SimpleNamespace(
             get_snapshot=lambda: SimpleNamespace(registrations=[]),
         ),
@@ -66,7 +66,7 @@ def test_get_site_from_url_reuses_cached_registration_index(monkeypatch):
 
     monkeypatch.setattr(
         url_helper,
-        'get_plugin_manager',
+        'get_site_runtime_manager',
         lambda: SimpleNamespace(get_snapshot=_get_snapshot),
         raising=False,
     )

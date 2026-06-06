@@ -7,7 +7,7 @@ import sys
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'squirrel-plugins' / 'javdb' / 'src'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'squirrel-site-runtimes' / 'javdb' / 'src'))
 
 from squirrel_javdb.proxy import JavdbProxy
 import squirrel_javdb.proxy as javdb_proxy_module

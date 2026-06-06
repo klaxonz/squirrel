@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from crawl import PluginInvokeResponse
+from crawl import SiteRuntimeInvokeResponse
 from services import site_login_status_service
 
 
@@ -19,7 +19,7 @@ def test_get_supported_sites_reads_login_status_registrations(monkeypatch):
 
     monkeypatch.setattr(
         site_login_status_service,
-        'get_plugin_manager',
+        'get_site_runtime_manager',
         lambda: SimpleNamespace(
             get_snapshot=lambda: SimpleNamespace(registrations=registrations),
         ),
@@ -35,7 +35,7 @@ def test_test_site_login_status_returns_fallback_when_route_missing(monkeypatch)
 
     monkeypatch.setattr(
         site_login_status_service,
-        'get_plugin_manager',
+        'get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
 
@@ -63,7 +63,7 @@ def test_test_site_login_status_normalizes_runtime_payload(monkeypatch):
                 'domain': domain,
                 'timeout_ms': timeout_ms,
             })
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id='login-1',
                 ok=True,
                 data={
@@ -75,7 +75,7 @@ def test_test_site_login_status_normalizes_runtime_payload(monkeypatch):
 
     monkeypatch.setattr(
         site_login_status_service,
-        'get_plugin_manager',
+        'get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
 

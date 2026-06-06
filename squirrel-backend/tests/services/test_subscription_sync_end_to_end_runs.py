@@ -92,11 +92,11 @@ def _mock_site_catalog(monkeypatch):
             lambda cls: {
                 'youtube': {
                     'domains': ['youtube.com', 'youtu.be'],
-                    'icon_url': '/api/site-runtimes/sites/youtube/icon',
+                    'icon_url': '/api/sites/youtube/icon',
                 },
                 'bilibili': {
                     'domains': ['bilibili.com', 'b23.tv'],
-                    'icon_url': '/api/site-runtimes/sites/bilibili/icon',
+                    'icon_url': '/api/sites/bilibili/icon',
                 },
             }
         ),
@@ -359,10 +359,10 @@ def test_sync_center_feed_dashboard_snapshot_uses_one_consistent_result_shape(mo
     assert snapshot['overview'].awaiting_extract_count == 1
     assert [item.subscription_name for item in snapshot['runningPreview']] == ['Running Earlier']
     assert [item.subscription_name for item in snapshot['queuedPreview']] == ['Queued First', 'Queued Second']
-    assert snapshot['runningPreview'][0].site_icon_url == '/api/site-runtimes/sites/youtube/icon'
+    assert snapshot['runningPreview'][0].site_icon_url == '/api/sites/youtube/icon'
     assert [item.site_icon_url for item in snapshot['queuedPreview']] == [
-        '/api/site-runtimes/sites/bilibili/icon',
-        '/api/site-runtimes/sites/bilibili/icon',
+        '/api/sites/bilibili/icon',
+        '/api/sites/bilibili/icon',
     ]
     assert [run['run_id'] for run in snapshot['recentRuns']] == ['run-running']
 
@@ -425,11 +425,11 @@ def test_sync_center_feed_dashboard_snapshot_reuses_site_catalog_for_icon_resolu
         return {
             'youtube': {
                 'domains': ['youtube.com', 'youtu.be'],
-                'icon_url': '/api/site-runtimes/sites/youtube/icon',
+                'icon_url': '/api/sites/youtube/icon',
             },
             'bilibili': {
                 'domains': ['bilibili.com', 'b23.tv'],
-                'icon_url': '/api/site-runtimes/sites/bilibili/icon',
+                'icon_url': '/api/sites/bilibili/icon',
             },
         }
 
@@ -443,9 +443,9 @@ def test_sync_center_feed_dashboard_snapshot_reuses_site_catalog_for_icon_resolu
         date_to='2026-04-03T00:00:00',
     )
 
-    assert snapshot['runningPreview'][0].site_icon_url == '/api/site-runtimes/sites/youtube/icon'
-    assert snapshot['queuedPreview'][0].site_icon_url == '/api/site-runtimes/sites/bilibili/icon'
-    assert snapshot['recentRuns'][0]['site_icon_url'] == '/api/site-runtimes/sites/youtube/icon'
+    assert snapshot['runningPreview'][0].site_icon_url == '/api/sites/youtube/icon'
+    assert snapshot['queuedPreview'][0].site_icon_url == '/api/sites/bilibili/icon'
+    assert snapshot['recentRuns'][0]['site_icon_url'] == '/api/sites/youtube/icon'
     assert len(calls) == 1
 
 

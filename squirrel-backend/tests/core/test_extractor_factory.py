@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from crawl import PluginInvokeResponse
+from crawl import SiteRuntimeInvokeResponse
 from core.extraction.contracts import ExtractionTask
 import core.extraction.factory as factory_module
 from core.extraction.factory import ExtractorFactory
@@ -16,7 +16,7 @@ def test_gateway_extractor_adapter_extracts_via_plugin_gateway(monkeypatch):
     class _FakeGateway:
         def resolve_route(self, capability, site_name=None, domain=None):
             if capability == 'extract_video' and site_name == 'bilibili':
-                return SimpleNamespace(plugin_id='bilibili', capability=capability)
+                return SimpleNamespace(runtime_id='bilibili', capability=capability)
             return None
 
         def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
@@ -27,7 +27,7 @@ def test_gateway_extractor_adapter_extracts_via_plugin_gateway(monkeypatch):
                 'domain': domain,
                 'timeout_ms': timeout_ms,
             })
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id='extract-1',
                 ok=True,
                 data={
@@ -48,7 +48,7 @@ def test_gateway_extractor_adapter_extracts_via_plugin_gateway(monkeypatch):
             )
 
     monkeypatch.setattr(
-        'core.extraction.factory.get_plugin_manager',
+        'core.extraction.factory.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
     monkeypatch.setattr(
@@ -110,4 +110,3 @@ def test_get_extractor_factory_initializes_without_legacy_registry(monkeypatch):
 
     assert isinstance(factory, ExtractorFactory)
     assert factory is factory_module.get_extractor_factory()
-

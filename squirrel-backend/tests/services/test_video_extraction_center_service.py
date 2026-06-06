@@ -430,11 +430,11 @@ def test_extraction_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(m
         return {
             'youtube': {
                 'domains': ['youtube.com', 'youtu.be'],
-                'icon_url': '/api/site-runtimes/sites/youtube/icon',
+                'icon_url': '/api/sites/youtube/icon',
             },
             'bilibili': {
                 'domains': ['bilibili.com', 'b23.tv'],
-                'icon_url': '/api/site-runtimes/sites/bilibili/icon',
+                'icon_url': '/api/sites/bilibili/icon',
             },
         }
 
@@ -442,9 +442,9 @@ def test_extraction_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(m
 
     snapshot = video_extraction_center_service.get_extraction_dashboard_snapshot(user_id=1)
 
-    assert snapshot['runningPreview'][0].site_icon_url == '/api/site-runtimes/sites/youtube/icon'
-    assert snapshot['queuedPreview'][0].site_icon_url == '/api/site-runtimes/sites/bilibili/icon'
-    assert snapshot['recentPreview'][0].site_icon_url == '/api/site-runtimes/sites/youtube/icon'
+    assert snapshot['runningPreview'][0].site_icon_url == '/api/sites/youtube/icon'
+    assert snapshot['queuedPreview'][0].site_icon_url == '/api/sites/bilibili/icon'
+    assert snapshot['recentPreview'][0].site_icon_url == '/api/sites/youtube/icon'
     assert len(calls) == 1
 
 

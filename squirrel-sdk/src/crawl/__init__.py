@@ -24,25 +24,24 @@ def _detect_version() -> str:
 
 __version__: str = _detect_version()
 
-# Runtime V2 plugin API
+# Site runtime API
 from .runtime_errors import (
     RuntimeErrorCode,
-    PluginRuntimeError,
+    SiteRuntimeError,
 )
 from .runtime_models import (
-    PluginCapability,
-    PluginHealthStatus,
-    PluginInvokeRequest,
-    PluginInvokeResponse,
-    PluginManifest,
-    PluginPermission,
-    PluginSiteManifest,
+    SiteRuntimeCapability,
+    SiteRuntimeHealthStatus,
+    SiteRuntimeInvokeRequest,
+    SiteRuntimeInvokeResponse,
+    SiteRuntimeManifest,
+    SiteRuntimePermission,
+    SiteRuntimeSite,
 )
 from .runtime_protocol import (
-    PluginRuntime,
-    PluginRuntimeFactory,
+    SiteRuntime,
+    SiteRuntimeFactory,
 )
-from .plugin import create_plugin_runtime
 from .runtime_helpers import create_site_runtime
 from .proxy_helpers import (
     build_proxy_config_values,
@@ -153,19 +152,18 @@ from .importer import (
 
 __all__ = [
     '__version__',
-    # Runtime V2 API
+    # Site runtime API
     'RuntimeErrorCode',
-    'PluginRuntimeError',
-    'PluginCapability',
-    'PluginHealthStatus',
-    'PluginInvokeRequest',
-    'PluginInvokeResponse',
-    'PluginManifest',
-    'PluginPermission',
-    'PluginSiteManifest',
-    'PluginRuntime',
-    'PluginRuntimeFactory',
-    'create_plugin_runtime',
+    'SiteRuntimeError',
+    'SiteRuntimeCapability',
+    'SiteRuntimeHealthStatus',
+    'SiteRuntimeInvokeRequest',
+    'SiteRuntimeInvokeResponse',
+    'SiteRuntimeManifest',
+    'SiteRuntimePermission',
+    'SiteRuntimeSite',
+    'SiteRuntime',
+    'SiteRuntimeFactory',
     'create_site_runtime',
     # Core interfaces
     'TaskStatus',

@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from fastapi import HTTPException
 
-from crawl import PluginInvokeResponse, PluginRuntimeError
+from crawl import SiteRuntimeInvokeResponse, SiteRuntimeError
 from routes import video as video_route
 
 
@@ -22,7 +22,7 @@ def test_get_video_subtitles_reads_from_plugin_gateway(monkeypatch):
                 'domain': domain,
                 'timeout_ms': timeout_ms,
             })
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id='subtitles-1',
                 ok=True,
                 data={
@@ -44,7 +44,7 @@ def test_get_video_subtitles_reads_from_plugin_gateway(monkeypatch):
     )
     monkeypatch.setattr(
         video_route,
-        'get_plugin_manager',
+        'get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
         raising=False,
     )
@@ -86,7 +86,7 @@ def test_get_video_subtitles_allows_site_default_language(monkeypatch):
                 'domain': domain,
                 'timeout_ms': timeout_ms,
             })
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id='subtitles-default-1',
                 ok=True,
                 data={
@@ -108,7 +108,7 @@ def test_get_video_subtitles_allows_site_default_language(monkeypatch):
     )
     monkeypatch.setattr(
         video_route,
-        'get_plugin_manager',
+        'get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
         raising=False,
     )
@@ -141,10 +141,10 @@ def test_get_video_subtitles_allows_site_default_language(monkeypatch):
 def test_get_video_subtitles_surfaces_runtime_error_message(monkeypatch):
     class _FakeGateway:
         def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id='subtitles-error-1',
                 ok=False,
-                error=PluginRuntimeError.crashed(
+                error=SiteRuntimeError.crashed(
                     'No subtitles available: ERROR: [youtube] demo: Requested format is not available.',
                 ),
             )
@@ -161,7 +161,7 @@ def test_get_video_subtitles_surfaces_runtime_error_message(monkeypatch):
     )
     monkeypatch.setattr(
         video_route,
-        'get_plugin_manager',
+        'get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
         raising=False,
     )

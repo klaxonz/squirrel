@@ -4,15 +4,15 @@ Site Runtime
 The backend owns a site runtime system for first-party site adapters:
 
 - site runtimes are discovered from workspace runtime metadata
-- each runtime exposes a `create_plugin_runtime()` entrypoint through the SDK contract
+- each runtime exposes a `create_site_runtime()` entrypoint through the SDK contract
 - host-side routing goes through `SiteRuntimeManager` and `SiteRuntimeGateway`
 - runtime capabilities are declared in the manifest instead of inferred from SDK registries
 - the old `plugins_ext` compatibility tree has been removed from the backend repository
 
-Runtime packages are expected to ship a `plugin-runtime.json` file containing:
+Runtime packages are expected to ship a `site-runtime.json` file containing:
 
 - `entrypoint`
-- `manifest.plugin_id`
+- `manifest.runtime_id`
 - `manifest.version`
 - `manifest.capabilities`
 - `manifest.sites`
@@ -27,10 +27,10 @@ SDK-global mutable state.
 Discovery and activation
 ------------------------
 
-Site runtime packages under `../squirrel-plugins/<site>/plugin-runtime.json` are
+Site runtime packages under `../squirrel-site-runtimes/<site>/site-runtime.json` are
 auto-discovered and bootstrapped as local site runtimes. The backend no longer
 accepts uploaded zip packages or provisions per-runtime virtual environments. Runtime subprocesses use
-the backend interpreter and receive explicit `SQUIRREL_PLUGIN_*` variables for
+the backend interpreter and receive explicit `SQUIRREL_SITE_RUNTIME_*` variables for
 runtime id, version, granted permissions, and data directory.
 
 Operators can define `manifest.metadata.runtime_policy` and

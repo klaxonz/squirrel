@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from crawl import PluginInvokeResponse
+from crawl import SiteRuntimeInvokeResponse
 from models import Base
 from models.links import SubscriptionVideo, UserSubscription
 from models.subscription import Subscription
@@ -249,7 +249,7 @@ def test_preview_user_subscriptions_reads_items_from_plugin_gateway(monkeypatch)
                 'domain': domain,
                 'timeout_ms': timeout_ms,
             })
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id='preview-1',
                 ok=True,
                 data={
@@ -263,7 +263,7 @@ def test_preview_user_subscriptions_reads_items_from_plugin_gateway(monkeypatch)
 
     monkeypatch.setattr(
         subscription_service,
-        'get_plugin_manager',
+        'get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
 
@@ -298,7 +298,7 @@ def test_preview_user_subscriptions_forwards_cursor_and_limit(monkeypatch):
                 'domain': domain,
                 'timeout_ms': timeout_ms,
             })
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id='preview-2',
                 ok=True,
                 data={
@@ -315,7 +315,7 @@ def test_preview_user_subscriptions_forwards_cursor_and_limit(monkeypatch):
 
     monkeypatch.setattr(
         subscription_service,
-        'get_plugin_manager',
+        'get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
     monkeypatch.setattr(subscription_service, 'get_active_user_subscription_url_map', lambda _user_id: {})
@@ -359,7 +359,7 @@ def test_import_user_subscriptions_uses_selected_urls_without_refetching_gateway
                 'domain': domain,
                 'timeout_ms': timeout_ms,
             })
-            return PluginInvokeResponse(request_id='unexpected', ok=True, data={'items': [], 'total': 0})
+            return SiteRuntimeInvokeResponse(request_id='unexpected', ok=True, data={'items': [], 'total': 0})
 
     class _ImmediateThread:
         def __init__(self, target=None, args=(), daemon=None):
@@ -373,7 +373,7 @@ def test_import_user_subscriptions_uses_selected_urls_without_refetching_gateway
 
     monkeypatch.setattr(
         subscription_service,
-        'get_plugin_manager',
+        'get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
     monkeypatch.setattr(subscription_service, 'get_active_user_subscription_url_map', lambda _user_id: {})
@@ -424,7 +424,7 @@ def test_handle_subscribe_request_reads_subscription_meta_from_plugin_gateway(mo
                 'domain': domain,
                 'timeout_ms': timeout_ms,
             })
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id='subscribe-1',
                 ok=True,
                 data={
@@ -437,7 +437,7 @@ def test_handle_subscribe_request_reads_subscription_meta_from_plugin_gateway(mo
 
     monkeypatch.setattr(
         subscription_service,
-        'get_plugin_manager',
+        'get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
 
@@ -470,7 +470,7 @@ def test_get_runtime_supported_sites_reads_enabled_routes_from_plugin_manager(mo
 
     monkeypatch.setattr(
         subscription_service,
-        'get_plugin_manager',
+        'get_site_runtime_manager',
         lambda: SimpleNamespace(get_snapshot=lambda: SimpleNamespace(registrations=registrations)),
     )
 
@@ -542,7 +542,7 @@ def test_import_user_subscriptions_drains_all_gateway_batches_when_no_selection(
                 'timeout_ms': timeout_ms,
             })
             if len(calls) == 1:
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='import-batch-1',
                     ok=True,
                     data={
@@ -555,7 +555,7 @@ def test_import_user_subscriptions_drains_all_gateway_batches_when_no_selection(
                         'stop_reason': 'batch_exhausted',
                     },
                 )
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id='import-batch-2',
                 ok=True,
                 data={
@@ -580,7 +580,7 @@ def test_import_user_subscriptions_drains_all_gateway_batches_when_no_selection(
 
     monkeypatch.setattr(
         subscription_service,
-        'get_plugin_manager',
+        'get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
     monkeypatch.setattr(subscription_service, 'get_active_user_subscription_url_map', lambda _user_id: {})

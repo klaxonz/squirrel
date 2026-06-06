@@ -7,8 +7,8 @@ The SDK is the plugin-facing API for Squirrel Runtime V2 packages.
 New plugins should:
 
 - declare a manifest with explicit capabilities
-- expose `create_plugin_runtime()`
-- let the backend discover them from `plugin-runtime.json`
+- expose `create_site_runtime()`
+- let the backend discover them from `site-runtime.json`
 
 Legacy in-process registries and helper decorators have been removed.
 
@@ -22,11 +22,11 @@ pip install squirrel-sdk
 
 ```python
 from crawl import (
-    PluginCapability,
-    PluginManifest,
-    PluginPermission,
-    PluginSiteManifest,
-    create_plugin_runtime,
+    SiteRuntimeCapability,
+    SiteRuntimeManifest,
+    SiteRuntimePermission,
+    SiteRuntimeSite,
+    create_site_runtime,
 )
 
 
@@ -44,14 +44,14 @@ def _extract_video(payload):
     }
 
 
-def get_plugin_runtime():
-    manifest = PluginManifest(
-        plugin_id='example',
+def get_site_runtime():
+    manifest = SiteRuntimeManifest(
+        runtime_id='example',
         version='0.1.0',
         display_name='Example',
         description='Example Runtime V2 plugin',
         capabilities=[
-            PluginCapability(
+            SiteRuntimeCapability(
                 name='extract_video',
                 description='Extract metadata for an example video URL.',
                 response_schema={'type': 'object'},
@@ -59,7 +59,7 @@ def get_plugin_runtime():
             ),
         ],
         sites=[
-            PluginSiteManifest(
+            SiteRuntimeSite(
                 site_name='example',
                 domains=['example.com', 'www.example.com'],
                 test_url='https://www.example.com',
@@ -67,14 +67,14 @@ def get_plugin_runtime():
             ),
         ],
         permissions=[
-            PluginPermission(
+            SiteRuntimePermission(
                 name='network:http',
                 description='Access example.com over HTTP.',
                 required=True,
             ),
         ],
     )
-    return create_plugin_runtime(
+    return create_site_runtime(
         manifest=manifest,
         capability_handlers={'extract_video': _extract_video},
     )
@@ -82,10 +82,10 @@ def get_plugin_runtime():
 
 ## Primary APIs
 
-- `PluginManifest`, `PluginCapability`, `PluginSiteManifest`, `PluginPermission`
-- `PluginInvokeRequest`, `PluginInvokeResponse`, `PluginHealthStatus`
-- `PluginRuntime`, `PluginRuntimeFactory`
-- `create_plugin_runtime()`
+- `SiteRuntimeManifest`, `SiteRuntimeCapability`, `SiteRuntimeSite`, `SiteRuntimePermission`
+- `SiteRuntimeInvokeRequest`, `SiteRuntimeInvokeResponse`, `SiteRuntimeHealthStatus`
+- `SiteRuntime`, `SiteRuntimeFactory`
+- `create_site_runtime()`
 
 `VideoMeta`, `ExtractionTask`, and `ExtractionResult` remain available for plugin
 logic and payload shaping inside handlers.
@@ -99,7 +99,7 @@ instead of mutating SDK-global state.
 
 The SDK no longer exposes the old in-process plugin registration helpers or the
 legacy downloader registry. Runtime V2 plugins must declare capabilities in the
-manifest and expose `create_plugin_runtime()`.
+manifest and expose `create_site_runtime()`.
 
 ## Requirements
 

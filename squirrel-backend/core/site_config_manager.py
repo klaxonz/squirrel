@@ -29,15 +29,15 @@ def _deep_merge(base: dict, overrides: dict) -> dict:
     return result
 
 
-def build_plugin_site_catalog() -> Dict[str, dict]:
-    return SiteCatalog.build_plugin_site_catalog()
+def build_runtime_site_catalog() -> Dict[str, dict]:
+    return SiteCatalog.build_runtime_site_catalog()
 
 
 def get_effective_site_catalog(stored_catalog: Dict[str, dict] | None = None) -> Dict[str, dict]:
     overrides = stored_catalog if stored_catalog is not None else (SiteCatalog.load_override_catalog() or {})
     effective: Dict[str, dict] = {
         slug: deepcopy(defaults)
-        for slug, defaults in build_plugin_site_catalog().items()
+        for slug, defaults in build_runtime_site_catalog().items()
     }
 
     for slug, override in (overrides or {}).items():

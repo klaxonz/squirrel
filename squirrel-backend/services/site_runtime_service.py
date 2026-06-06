@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from core.site_config_manager import get_effective_site_catalog
 from site_runtimes.manager import get_site_runtime_manager
-from site_runtimes.runtime_models import PluginManifest
+from site_runtimes.runtime_models import SiteRuntimeManifest
 from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
 
-def _normalize_plugin_site(site_item: Dict[str, Any], catalog: Dict[str, dict]) -> Dict[str, Any]:
+def _normalize_runtime_site(site_item: Dict[str, Any], catalog: Dict[str, dict]) -> Dict[str, Any]:
     payload = dict(site_item)
     site_name = str(site_item.get('site_name', '')).strip()
     slug = site_name.lower()
@@ -21,25 +21,25 @@ def _normalize_plugin_site(site_item: Dict[str, Any], catalog: Dict[str, dict]) 
     return payload
 
 
-def _normalize_plugin_item(record, snapshot, catalog: Dict[str, dict]) -> Dict[str, Any]:
-    manifest = PluginManifest.from_dict(record.manifest)
+def _normalize_runtime_item(record, snapshot, catalog: Dict[str, dict]) -> Dict[str, Any]:
+    manifest = SiteRuntimeManifest.from_dict(record.manifest)
     runtime_handle = next(
         (
             item for item in snapshot.runtimes
-            if item.plugin_id == record.plugin_id and item.version == record.version
+            if item.runtime_id == record.runtime_id and item.version == record.version
         ),
         None,
     )
 
     return {
-        'plugin_id': record.plugin_id,
-        'display_name': manifest.display_name or record.plugin_id,
+        'runtime_id': record.runtime_id,
+        'display_name': manifest.display_name or record.runtime_id,
         'description': manifest.description,
         'version': record.version,
         'enabled': record.enabled,
         'status': record.status.value,
         'capabilities': [item.to_dict() for item in manifest.capabilities],
-        'sites': [_normalize_plugin_site(item.to_dict(), catalog) for item in manifest.sites],
+        'sites': [_normalize_runtime_site(item.to_dict(), catalog) for item in manifest.sites],
         'permissions': [item.to_dict() for item in manifest.permissions],
         'health': None if runtime_handle is None or runtime_handle.health is None else {
             'healthy': runtime_handle.health.healthy,
@@ -52,14 +52,17 @@ def _normalize_plugin_item(record, snapshot, catalog: Dict[str, dict]) -> Dict[s
     }
 
 
-def list_site_runtimes() -> List[Dict[str, Any]]:
+def list_site_runtimes() -> Dict[str, Any]:
     manager = get_site_runtime_manager()
     snapshot = manager.get_snapshot()
     catalog = get_effective_site_catalog()
-    return [
-        _normalize_plugin_item(record, snapshot, catalog)
-        for record in snapshot.records
-    ]
+    return {
+        'items': [
+            _normalize_runtime_item(record, snapshot, catalog)
+            for record in snapshot.records
+        ],
+        'discovery_errors': [item.to_dict() for item in snapshot.discovery_errors],
+    }
 
 
 def set_enabled_by_name(name: str, enabled: bool) -> bool:

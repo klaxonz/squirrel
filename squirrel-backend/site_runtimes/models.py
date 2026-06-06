@@ -31,7 +31,7 @@ class SiteRuntimeState(str, Enum):
 
 @dataclass
 class SiteRuntimeRecord:
-    plugin_id: str
+    runtime_id: str
     version: str
     install_path: str
     entrypoint: str
@@ -49,7 +49,7 @@ class SiteRuntimeRecord:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            'plugin_id': self.plugin_id,
+            'runtime_id': self.runtime_id,
             'version': self.version,
             'install_path': self.install_path,
             'entrypoint': self.entrypoint,
@@ -75,7 +75,7 @@ class SiteRuntimeRecord:
             parsed_status = SiteRuntimeStatus.FAILED
 
         return cls(
-            plugin_id=str(data.get('plugin_id', '')),
+            runtime_id=str(data.get('runtime_id', '')),
             version=str(data.get('version', '')),
             install_path=str(data.get('install_path', '')),
             entrypoint=str(data.get('entrypoint', '')),
@@ -95,7 +95,7 @@ class SiteRuntimeRecord:
 
 @dataclass
 class SiteRuntimeHealthSnapshot:
-    plugin_id: str
+    runtime_id: str
     healthy: bool
     status: str = 'unknown'
     message: str = ''
@@ -105,7 +105,7 @@ class SiteRuntimeHealthSnapshot:
 
 @dataclass
 class SiteRuntimeHandle:
-    plugin_id: str
+    runtime_id: str
     version: str
     state: SiteRuntimeState = SiteRuntimeState.STOPPED
     process_id: Optional[int] = None
@@ -117,7 +117,7 @@ class SiteRuntimeHandle:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            'plugin_id': self.plugin_id,
+            'runtime_id': self.runtime_id,
             'version': self.version,
             'state': self.state.value,
             'process_id': self.process_id,
@@ -126,7 +126,7 @@ class SiteRuntimeHandle:
             'drained_at': self.drained_at,
             'last_error': self.last_error,
             'health': None if self.health is None else {
-                'plugin_id': self.health.plugin_id,
+                'runtime_id': self.health.runtime_id,
                 'healthy': self.health.healthy,
                 'status': self.health.status,
                 'message': self.health.message,
@@ -138,7 +138,7 @@ class SiteRuntimeHandle:
 
 @dataclass
 class SiteCapabilityRegistration:
-    plugin_id: str
+    runtime_id: str
     version: str
     capability: str
     site_name: Optional[str] = None
@@ -149,7 +149,7 @@ class SiteCapabilityRegistration:
 
 @dataclass
 class SiteRuntimeTarget:
-    plugin_id: str
+    runtime_id: str
     version: str
     capability: str
     site_name: Optional[str] = None
@@ -161,5 +161,24 @@ class SiteRuntimeSnapshot:
     records: List[SiteRuntimeRecord] = field(default_factory=list)
     runtimes: List[SiteRuntimeHandle] = field(default_factory=list)
     registrations: List[SiteCapabilityRegistration] = field(default_factory=list)
+    discovery_errors: List['SiteRuntimeDiscoveryError'] = field(default_factory=list)
+
+
+@dataclass
+class SiteRuntimeDiscoveryError:
+    metadata_path: str
+    reason: str
+
+    def to_dict(self) -> Dict[str, str]:
+        return {
+            'metadata_path': self.metadata_path,
+            'reason': self.reason,
+        }
+
+
+@dataclass
+class SiteRuntimeDiscoveryResult:
+    records: List[SiteRuntimeRecord] = field(default_factory=list)
+    errors: List[SiteRuntimeDiscoveryError] = field(default_factory=list)
 
 

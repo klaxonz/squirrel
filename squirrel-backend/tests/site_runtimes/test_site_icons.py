@@ -7,8 +7,8 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import services.site_runtime_service as plugin_service
-from site_runtimes.runtime_models import PluginManifest, PluginSiteManifest
-from routes.site_runtimes import build_site_info
+from site_runtimes.runtime_models import SiteRuntimeManifest, SiteRuntimeSite
+from routes.sites import build_site_info
 
 
 def test_build_site_info_includes_icon_url():
@@ -18,7 +18,7 @@ def test_build_site_info_includes_icon_url():
             'domains': ['youtube.com', 'youtu.be'],
             'enabled': True,
             'test_url': 'https://www.youtube.com',
-            'icon_url': '/api/site-runtimes/sites/youtube/icon',
+            'icon_url': '/api/sites/youtube/icon',
         }
     }
 
@@ -32,17 +32,17 @@ def test_build_site_info_includes_icon_url():
         'primary_domain': 'youtu.be',
         'test_url': 'https://www.youtube.com',
         'config_enabled': True,
-        'icon_url': '/api/site-runtimes/sites/youtube/icon',
+        'icon_url': '/api/sites/youtube/icon',
     }
 
 
-def test_normalize_plugin_item_includes_site_icon_url_from_catalog():
-    manifest = PluginManifest(
-        plugin_id='youtube',
+def test_normalize_runtime_item_includes_site_icon_url_from_catalog():
+    manifest = SiteRuntimeManifest(
+        runtime_id='youtube',
         version='1.0.0',
         display_name='YouTube',
         sites=[
-            PluginSiteManifest(
+            SiteRuntimeSite(
                 site_name='youtube',
                 domains=['youtube.com', 'youtu.be'],
                 test_url='https://www.youtube.com',
@@ -50,7 +50,7 @@ def test_normalize_plugin_item_includes_site_icon_url_from_catalog():
         ],
     )
     record = SimpleNamespace(
-        plugin_id='youtube',
+        runtime_id='youtube',
         version='1.0.0',
         enabled=True,
         status=SimpleNamespace(value='running'),
@@ -58,10 +58,10 @@ def test_normalize_plugin_item_includes_site_icon_url_from_catalog():
     )
     snapshot = SimpleNamespace(runtimes=[])
 
-    normalized = plugin_service._normalize_plugin_item(
+    normalized = plugin_service._normalize_runtime_item(
         record,
         snapshot,
-        {'youtube': {'icon_url': '/api/site-runtimes/sites/youtube/icon'}},
+        {'youtube': {'icon_url': '/api/sites/youtube/icon'}},
     )
 
     assert normalized['sites'] == [{
@@ -70,7 +70,7 @@ def test_normalize_plugin_item_includes_site_icon_url_from_catalog():
         'test_url': 'https://www.youtube.com',
         'features': [],
         'metadata': {},
-        'icon_url': '/api/site-runtimes/sites/youtube/icon',
+        'icon_url': '/api/sites/youtube/icon',
     }]
 
 

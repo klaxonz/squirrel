@@ -3,7 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Any
 
-from core.site_config_manager import apply_site_config_overrides, build_plugin_site_catalog, get_effective_site_catalog
+from core.site_config_manager import apply_site_config_overrides, build_runtime_site_catalog, get_effective_site_catalog
 from utils.site_catalog import SiteCatalog
 from common.site_constants import (
     SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD,
@@ -269,7 +269,7 @@ def save_site_overrides(overrides: Dict[str, dict]) -> Dict[str, dict]:
     if not isinstance(overrides, dict):
         raise ValueError('sites 必须为对象')
 
-    plugin_catalog = build_plugin_site_catalog()
+    plugin_catalog = build_runtime_site_catalog()
     existing_overrides = SiteCatalog.load_override_catalog() or {}
     current_effective = get_effective_site_catalog(existing_overrides)
     catalog: Dict[str, dict] = dict(existing_overrides)

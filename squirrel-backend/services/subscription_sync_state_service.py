@@ -752,9 +752,25 @@ def reconcile_retry_wait_run_projections() -> dict[str, int]:
             )
         ).all()
 
+        subscription_ids = {
+            state.subscription_id
+            for _, _, state in rows
+            if state.subscription_id is not None
+        }
+        if not subscription_ids:
+            return {
+                'candidates': 0,
+                'repaired': 0,
+            }
+
         tasks = session.execute(
             select(CrawlTask)
-            .where(CrawlTask.task_type.in_(subscription_sync_task_types()))
+            .where(
+                CrawlTask.task_type.in_(subscription_sync_task_types()),
+                CrawlTask.status == 'retry_wait',
+                CrawlTask.last_error == 'lease_expired',
+                CrawlTask.subscription_id.in_(subscription_ids),
+            )
             .order_by(CrawlTask.id.desc())
         ).scalars().all()
 
@@ -777,13 +793,7 @@ def reconcile_retry_wait_run_projections() -> dict[str, int]:
             task_run_id = str(task_payload.get('run_id') or '').strip() or None
             if task_run_id and task_run_id != run_projection.run_id:
                 continue
-            if task.status != 'retry_wait':
-                continue
-
             error_message = str(task.last_error or state.last_error or '').strip()
-            if error_message != 'lease_expired':
-                continue
-
             occurred_at = state.queued_at or task.updated_at or now
             _append_state_event(
                 session,

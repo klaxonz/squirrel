@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, Optional, Protocol, runtime_checkable
 
-from .plugin_payloads import PluginVideoData
+from .runtime_payloads import RuntimeVideoData
 
 
 class TaskStatus(str, Enum):
@@ -59,7 +59,7 @@ class ExtractionResult:
     def from_dict(cls, data: Dict[str, Any]) -> 'ExtractionResult':
         data_payload = data.get('data')
         if data_payload and isinstance(data_payload, dict):
-            data_payload = PluginVideoData.from_dict(data_payload)
+            data_payload = RuntimeVideoData.from_dict(data_payload)
 
         return cls(
             success=bool(data.get('success', False)),

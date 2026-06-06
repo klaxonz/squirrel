@@ -8,7 +8,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from crawl import PluginInvokeResponse
+from crawl import SiteRuntimeInvokeResponse
 from core.exceptions.proxy_exceptions import ProxyConfigurationException
 from core.exceptions.proxy_exceptions import ProxyNetworkException
 from core.streaming.proxy import VideoProxy
@@ -80,7 +80,7 @@ def test_video_proxy_reads_runtime_proxy_config(monkeypatch):
                 'domain': domain,
                 'timeout_ms': timeout_ms,
             })
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id='proxy-config-1',
                 ok=True,
                 data={
@@ -102,7 +102,7 @@ def test_video_proxy_reads_runtime_proxy_config(monkeypatch):
             )
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_plugin_manager',
+        'core.streaming.proxy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
 
@@ -136,7 +136,7 @@ def test_video_proxy_caches_runtime_proxy_config_for_identical_requests(monkeypa
                 'domain': domain,
                 'timeout_ms': timeout_ms,
             })
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id='proxy-config-1',
                 ok=True,
                 data={
@@ -158,7 +158,7 @@ def test_video_proxy_caches_runtime_proxy_config_for_identical_requests(monkeypa
             )
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_plugin_manager',
+        'core.streaming.proxy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
     monkeypatch.setattr('core.streaming.proxy.filter_cookies_to_query_string', lambda _url: '')
@@ -192,14 +192,14 @@ def test_video_proxy_caches_runtime_proxy_config_for_identical_requests(monkeypa
 def test_video_proxy_raises_when_runtime_proxy_config_is_missing(monkeypatch):
     class _FakeGateway:
         def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id='proxy-config-1',
                 ok=False,
                 error={'code': 'missing'},
             )
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_plugin_manager',
+        'core.streaming.proxy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
 
@@ -213,7 +213,7 @@ def test_video_proxy_builds_cookie_header_from_target_url(monkeypatch):
     class _FakeGateway:
         def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
             if capability == 'resolve_proxy_config':
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='proxy-config-1',
                     ok=True,
                     data={
@@ -235,7 +235,7 @@ def test_video_proxy_builds_cookie_header_from_target_url(monkeypatch):
             raise AssertionError(f'unexpected capability: {capability}')
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_plugin_manager',
+        'core.streaming.proxy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
     monkeypatch.setattr(
@@ -267,7 +267,7 @@ def test_video_proxy_uses_runtime_capability_headers_for_target_specific_youtube
             })
             if capability == 'resolve_proxy_config':
                 dynamic_target = (payload or {}).get('target_url')
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='proxy-config-1',
                     ok=True,
                     data={
@@ -291,7 +291,7 @@ def test_video_proxy_uses_runtime_capability_headers_for_target_specific_youtube
             raise AssertionError(f'unexpected capability: {capability}')
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_plugin_manager',
+        'core.streaming.proxy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
     monkeypatch.setattr('core.streaming.proxy.filter_cookies_to_query_string', lambda _url: '')
@@ -325,7 +325,7 @@ def test_video_proxy_rewrites_playlist_via_runtime_capability(monkeypatch):
     class _FakeGateway:
         def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
             if capability == 'resolve_proxy_config':
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='proxy-config-1',
                     ok=True,
                     data={
@@ -346,7 +346,7 @@ def test_video_proxy_rewrites_playlist_via_runtime_capability(monkeypatch):
                     },
                 )
             if capability == 'rewrite_proxy_playlist':
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='playlist-1',
                     ok=True,
                     data={
@@ -359,11 +359,11 @@ def test_video_proxy_rewrites_playlist_via_runtime_capability(monkeypatch):
 
         def resolve_route(self, capability, site_name=None, domain=None):
             if capability == 'rewrite_proxy_playlist':
-                return SimpleNamespace(plugin_id='javdb')
+                return SimpleNamespace(runtime_id='javdb')
             return None
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_plugin_manager',
+        'core.streaming.proxy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
 
@@ -414,7 +414,7 @@ def test_video_proxy_uses_cloudflare_bypass_for_configured_domains(monkeypatch):
                 if referer:
                     site_headers['Referer'] = referer
                     site_headers['Origin'] = 'https://javdb.com'
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='proxy-config-1',
                     ok=True,
                     data={
@@ -433,7 +433,7 @@ def test_video_proxy_uses_cloudflare_bypass_for_configured_domains(monkeypatch):
                     },
                 )
             if capability == 'rewrite_proxy_playlist':
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='playlist-1',
                     ok=True,
                     data={
@@ -446,11 +446,11 @@ def test_video_proxy_uses_cloudflare_bypass_for_configured_domains(monkeypatch):
 
         def resolve_route(self, capability, site_name=None, domain=None):
             if capability == 'rewrite_proxy_playlist':
-                return SimpleNamespace(plugin_id='javdb')
+                return SimpleNamespace(runtime_id='javdb')
             return None
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_plugin_manager',
+        'core.streaming.proxy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
     monkeypatch.setattr('core.streaming.proxy.get_cloudflare_bypass_client', lambda: _BypassClient())
@@ -508,7 +508,7 @@ def test_video_proxy_accepts_requests_style_playlist_response_from_cloudflare_by
     class _FakeGateway:
         def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
             if capability == 'resolve_proxy_config':
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='proxy-config-1',
                     ok=True,
                     data={
@@ -540,7 +540,7 @@ def test_video_proxy_accepts_requests_style_playlist_response_from_cloudflare_by
         yield object()
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_plugin_manager',
+        'core.streaming.proxy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
     monkeypatch.setattr('core.streaming.proxy.get_cloudflare_bypass_client', lambda: _BypassClient())
@@ -564,7 +564,7 @@ def test_video_proxy_streams_requests_style_media_segments_from_cloudflare_bypas
     class _FakeGateway:
         def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
             if capability == 'resolve_proxy_config':
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='proxy-config-1',
                     ok=True,
                     data={
@@ -595,7 +595,7 @@ def test_video_proxy_streams_requests_style_media_segments_from_cloudflare_bypas
         yield object()
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_plugin_manager',
+        'core.streaming.proxy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
     monkeypatch.setattr('core.streaming.proxy.get_cloudflare_bypass_client', lambda: _BypassClient())
@@ -624,7 +624,7 @@ def test_video_proxy_accepts_async_cloudflare_bypass_clients(monkeypatch):
     class _FakeGateway:
         def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
             if capability == 'resolve_proxy_config':
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='proxy-config-1',
                     ok=True,
                     data={
@@ -655,7 +655,7 @@ def test_video_proxy_accepts_async_cloudflare_bypass_clients(monkeypatch):
         yield object()
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_plugin_manager',
+        'core.streaming.proxy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
     monkeypatch.setattr('core.streaming.proxy.get_cloudflare_bypass_client', lambda: _BypassClient())
@@ -696,7 +696,7 @@ def test_video_proxy_skips_cloudflare_bypass_for_cross_host_streams(monkeypatch)
                 if referer:
                     site_headers['Referer'] = referer
                     site_headers['Origin'] = 'https://missav.ai'
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='proxy-config-1',
                     ok=True,
                     data={
@@ -715,7 +715,7 @@ def test_video_proxy_skips_cloudflare_bypass_for_cross_host_streams(monkeypatch)
                     },
                 )
             if capability == 'rewrite_proxy_playlist':
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='playlist-1',
                     ok=True,
                     data={
@@ -728,11 +728,11 @@ def test_video_proxy_skips_cloudflare_bypass_for_cross_host_streams(monkeypatch)
 
         def resolve_route(self, capability, site_name=None, domain=None):
             if capability == 'rewrite_proxy_playlist':
-                return SimpleNamespace(plugin_id='javdb')
+                return SimpleNamespace(runtime_id='javdb')
             return None
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_plugin_manager',
+        'core.streaming.proxy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
     monkeypatch.setattr('core.streaming.proxy.get_cloudflare_bypass_client', lambda: _BypassClient())
@@ -809,7 +809,7 @@ def test_video_proxy_uses_cloudflare_bypass_for_explicit_cross_host_domains(monk
                 if referer:
                     site_headers['Referer'] = referer
                     site_headers['Origin'] = 'https://missav.ai'
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='proxy-config-1',
                     ok=True,
                     data={
@@ -829,7 +829,7 @@ def test_video_proxy_uses_cloudflare_bypass_for_explicit_cross_host_domains(monk
                     },
                 )
             if capability == 'rewrite_proxy_playlist':
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='playlist-1',
                     ok=True,
                     data={
@@ -842,11 +842,11 @@ def test_video_proxy_uses_cloudflare_bypass_for_explicit_cross_host_domains(monk
 
         def resolve_route(self, capability, site_name=None, domain=None):
             if capability == 'rewrite_proxy_playlist':
-                return SimpleNamespace(plugin_id='javdb')
+                return SimpleNamespace(runtime_id='javdb')
             return None
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_plugin_manager',
+        'core.streaming.proxy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
     monkeypatch.setattr('core.streaming.proxy.get_cloudflare_bypass_client', lambda: _BypassClient())
@@ -898,7 +898,7 @@ def test_video_proxy_keeps_shared_client_open_on_proxy_exception(monkeypatch):
     class _FakeGateway:
         def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
             if capability == 'resolve_proxy_config':
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='proxy-config-1',
                     ok=True,
                     data={
@@ -918,7 +918,7 @@ def test_video_proxy_keeps_shared_client_open_on_proxy_exception(monkeypatch):
             raise AssertionError(f'unexpected capability: {capability}')
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_plugin_manager',
+        'core.streaming.proxy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
 
@@ -958,7 +958,7 @@ def test_video_proxy_streams_media_segments_without_prefetching_entire_body(monk
     class _FakeGateway:
         def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
             if capability == 'resolve_proxy_config':
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='proxy-config-1',
                     ok=True,
                     data={
@@ -983,7 +983,7 @@ def test_video_proxy_streams_media_segments_without_prefetching_entire_body(monk
             return None
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_plugin_manager',
+        'core.streaming.proxy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
 
@@ -1041,7 +1041,7 @@ def test_video_proxy_uses_runtime_chunk_size_when_not_explicitly_overridden(monk
     class _FakeGateway:
         def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
             if capability == 'resolve_proxy_config':
-                return PluginInvokeResponse(
+                return SiteRuntimeInvokeResponse(
                     request_id='proxy-config-1',
                     ok=True,
                     data={
@@ -1066,7 +1066,7 @@ def test_video_proxy_uses_runtime_chunk_size_when_not_explicitly_overridden(monk
             return None
 
     monkeypatch.setattr(
-        'core.streaming.proxy.get_plugin_manager',
+        'core.streaming.proxy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
 
@@ -1088,4 +1088,3 @@ def test_video_proxy_uses_runtime_chunk_size_when_not_explicitly_overridden(monk
 
     assert _read_stream(response) == b'chunk-data'
     assert observed_chunk_sizes == [131072]
-

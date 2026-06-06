@@ -2,6 +2,6 @@
 Adapters for converting plugin data to DTO objects.
 """
 
-from .plugin_adapter import PluginDataAdapter
+from .runtime_adapter import RuntimeDataAdapter
 
-__all__ = ['PluginDataAdapter']
+__all__ = ['RuntimeDataAdapter']

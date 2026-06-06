@@ -4,26 +4,26 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from crawl import PluginInvokeRequest
+from crawl import SiteRuntimeInvokeRequest
 from site_runtimes.models import SiteRuntimeRecord, SiteRuntimeTarget, SiteRuntimeState
 from site_runtimes.supervisor import SiteRuntimeSupervisor
 
 
-def test_supervisor_runs_plugin_runtime_in_subprocess(tmp_path):
-    plugin_root = tmp_path / 'sample_plugin'
-    plugin_root.mkdir()
-    module_path = plugin_root / 'sample_runtime.py'
+def test_supervisor_runs_site_runtime_in_subprocess(tmp_path):
+    runtime_root = tmp_path / 'sample_plugin'
+    runtime_root.mkdir()
+    module_path = runtime_root / 'sample_runtime.py'
     module_path.write_text(
         """
 from datetime import datetime
 
-from crawl import PluginHealthStatus, PluginManifest, create_plugin_runtime
+from crawl import SiteRuntimeHealthStatus, SiteRuntimeManifest, create_site_runtime
 
 
-def get_plugin_runtime():
-    return create_plugin_runtime(
-        manifest=PluginManifest(
-            plugin_id='sample',
+def get_site_runtime():
+    return create_site_runtime(
+        manifest=SiteRuntimeManifest(
+            runtime_id='sample',
             version='0.1.0',
             capabilities=[],
             sites=[],
@@ -32,18 +32,18 @@ def get_plugin_runtime():
             'echo': lambda payload: {'echo': payload.get('value')},
             'echo_datetime': lambda payload: {'created_at': datetime(2024, 1, 1, 12, 0, 0)},
         },
-        health_check=lambda: PluginHealthStatus(healthy=True, status='ready', message='ok'),
+        health_check=lambda: SiteRuntimeHealthStatus(healthy=True, status='ready', message='ok'),
     )
 """.strip(),
         encoding='utf-8',
     )
 
     record = SiteRuntimeRecord(
-        plugin_id='sample',
+        runtime_id='sample',
         version='0.1.0',
-        install_path=str(plugin_root),
-        runtime_path=str(plugin_root),
-        entrypoint='sample_runtime:get_plugin_runtime',
+        install_path=str(runtime_root),
+        runtime_path=str(runtime_root),
+        entrypoint='sample_runtime:get_site_runtime',
         enabled=True,
         manifest={},
     )
@@ -57,12 +57,12 @@ def get_plugin_runtime():
 
     response = supervisor.invoke(
         SiteRuntimeTarget(
-            plugin_id='sample',
+            runtime_id='sample',
             version='0.1.0',
             capability='echo',
             site_name='sample',
         ),
-        PluginInvokeRequest(
+        SiteRuntimeInvokeRequest(
             request_id='req-1',
             capability='echo',
             payload={'value': 'hello'},
@@ -75,12 +75,12 @@ def get_plugin_runtime():
 
     datetime_response = supervisor.invoke(
         SiteRuntimeTarget(
-            plugin_id='sample',
+            runtime_id='sample',
             version='0.1.0',
             capability='echo_datetime',
             site_name='sample',
         ),
-        PluginInvokeRequest(
+        SiteRuntimeInvokeRequest(
             request_id='req-2',
             capability='echo_datetime',
             payload={},
@@ -98,15 +98,15 @@ def get_plugin_runtime():
 
 
 def test_supervisor_builds_workspace_runtime_command(tmp_path):
-    plugin_root = tmp_path / 'sample_plugin'
-    plugin_root.mkdir()
+    runtime_root = tmp_path / 'sample_plugin'
+    runtime_root.mkdir()
     record = SiteRuntimeRecord(
-        plugin_id='sample',
+        runtime_id='sample',
         version='0.1.0',
-        install_path=str(plugin_root),
-        runtime_path=str(plugin_root),
+        install_path=str(runtime_root),
+        runtime_path=str(runtime_root),
         data_path=str(tmp_path / 'data'),
-        entrypoint='sample_runtime:get_plugin_runtime',
+        entrypoint='sample_runtime:get_site_runtime',
         enabled=True,
         manifest={
             'metadata': {
@@ -133,7 +133,7 @@ def test_supervisor_builds_workspace_runtime_command(tmp_path):
 
     assert command[1:3] == ['-m', 'site_runtimes.runtime_bridge']
     assert '--import-path' in command
-    assert str(plugin_root) in command
+    assert str(runtime_root) in command
     assert '--data-dir' in command
     assert str(tmp_path / 'data') in command
     assert '--granted-permission' in command
@@ -145,9 +145,9 @@ def test_supervisor_builds_workspace_runtime_command(tmp_path):
         'deny_hosts': ['blocked.test'],
     }
     assert '--max-runtime-seconds' in command
-    assert '--memory-limit-mb' in command
-    assert '--cpu-time-limit-seconds' in command
-    assert '--max-open-files' in command
+    assert '--memory-limit-mb' not in command
+    assert '--cpu-time-limit-seconds' not in command
+    assert '--max-open-files' not in command
 
     artifact_paths = supervisor._resolve_artifact_paths(record)
     assert artifact_paths['stdout'].name == 'stdout.log'
@@ -158,12 +158,12 @@ def test_supervisor_builds_workspace_runtime_command(tmp_path):
 def test_supervisor_sets_workspace_runtime_environment(monkeypatch, tmp_path):
     monkeypatch.setenv('PATH', r'C:\Windows\System32')
     record = SiteRuntimeRecord(
-        plugin_id='sample',
+        runtime_id='sample',
         version='0.1.0',
         install_path=str(tmp_path / 'sample_plugin'),
         runtime_path=str(tmp_path / 'sample_plugin'),
         data_path=str(tmp_path / 'data'),
-        entrypoint='sample_runtime:get_plugin_runtime',
+        entrypoint='sample_runtime:get_site_runtime',
         enabled=True,
         manifest={},
         granted_permissions=['network:http'],
@@ -174,21 +174,21 @@ def test_supervisor_sets_workspace_runtime_environment(monkeypatch, tmp_path):
 
     process_env = supervisor._build_process_env(record)
 
-    assert process_env['SQUIRREL_PLUGIN_ID'] == 'sample'
-    assert process_env['SQUIRREL_PLUGIN_VERSION'] == '0.1.0'
-    assert process_env['SQUIRREL_PLUGIN_DATA_DIR'] == str(tmp_path / 'data')
-    assert process_env['SQUIRREL_PLUGIN_GRANTED_PERMISSIONS'] == 'network:http'
-    assert process_env['SQUIRREL_PLUGIN_SOURCE'] == 'workspace'
+    assert process_env['SQUIRREL_SITE_RUNTIME_ID'] == 'sample'
+    assert process_env['SQUIRREL_SITE_RUNTIME_VERSION'] == '0.1.0'
+    assert process_env['SQUIRREL_SITE_RUNTIME_DATA_DIR'] == str(tmp_path / 'data')
+    assert process_env['SQUIRREL_SITE_RUNTIME_GRANTED_PERMISSIONS'] == 'network:http'
+    assert process_env['SQUIRREL_SITE_RUNTIME_SOURCE'] == 'workspace'
 
 
 def test_supervisor_appends_audit_events(tmp_path):
     record = SiteRuntimeRecord(
-        plugin_id='sample',
+        runtime_id='sample',
         version='0.1.0',
         install_path=str(tmp_path / 'sample_plugin'),
         runtime_path=str(tmp_path / 'sample_plugin'),
         data_path=str(tmp_path / 'data'),
-        entrypoint='sample_runtime:get_plugin_runtime',
+        entrypoint='sample_runtime:get_site_runtime',
         enabled=True,
         manifest={},
     )
@@ -203,7 +203,7 @@ def test_supervisor_appends_audit_events(tmp_path):
     lines = audit_path.read_text(encoding='utf-8').strip().splitlines()
     assert len(lines) == 1
     payload = json.loads(lines[0])
-    assert payload['plugin_id'] == 'sample'
+    assert payload['runtime_id'] == 'sample'
     assert payload['version'] == '0.1.0'
     assert payload['event'] == 'runtime_started'
     assert payload['details'] == {'pid': 1234}

@@ -3,9 +3,9 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from crawl import PluginInvokeResponse
+from crawl import SiteRuntimeInvokeResponse
 from site_runtimes.gateway import SiteRuntimeGateway
-from site_runtimes.runtime_models import PluginCapability, PluginManifest, PluginSiteManifest
+from site_runtimes.runtime_models import SiteRuntimeCapability, SiteRuntimeManifest, SiteRuntimeSite
 
 
 class _RecordingInvocationClient:
@@ -16,23 +16,23 @@ class _RecordingInvocationClient:
     def invoke(self, target, request):
         self.last_target = target
         self.last_request = request
-        return PluginInvokeResponse(request_id=request.request_id, ok=True, data={'ok': True})
+        return SiteRuntimeInvokeResponse(request_id=request.request_id, ok=True, data={'ok': True})
 
 
 def test_gateway_uses_manifest_capability_timeout_when_request_timeout_is_omitted():
     client = _RecordingInvocationClient()
     gateway = SiteRuntimeGateway(invocation_client=client)
     gateway.register_manifest(
-        plugin_id='javdb',
+        runtime_id='javdb',
         version='0.1.0',
-        manifest=PluginManifest(
-            plugin_id='javdb',
+        manifest=SiteRuntimeManifest(
+            runtime_id='javdb',
             version='0.1.0',
             capabilities=[
-                PluginCapability(name='check_login_status', timeout_ms=30000),
+                SiteRuntimeCapability(name='check_login_status', timeout_ms=30000),
             ],
             sites=[
-                PluginSiteManifest(site_name='javdb', domains=['javdb.com']),
+                SiteRuntimeSite(site_name='javdb', domains=['javdb.com']),
             ],
         ),
     )
@@ -52,16 +52,16 @@ def test_gateway_refreshes_registrations_once_before_returning_route_miss():
     def _refresh():
         refresh_calls.append('called')
         gateway.register_manifest(
-            plugin_id='youporn',
+            runtime_id='youporn',
             version='0.1.0',
-            manifest=PluginManifest(
-                plugin_id='youporn',
+            manifest=SiteRuntimeManifest(
+                runtime_id='youporn',
                 version='0.1.0',
                 capabilities=[
-                    PluginCapability(name='resolve_subscription', timeout_ms=30000),
+                    SiteRuntimeCapability(name='resolve_subscription', timeout_ms=30000),
                 ],
                 sites=[
-                    PluginSiteManifest(site_name='youporn', domains=['youporn.com']),
+                    SiteRuntimeSite(site_name='youporn', domains=['youporn.com']),
                 ],
             ),
         )
@@ -73,6 +73,6 @@ def test_gateway_refreshes_registrations_once_before_returning_route_miss():
     assert response.ok is True
     assert refresh_calls == ['called']
     assert client.last_target is not None
-    assert client.last_target.plugin_id == 'youporn'
+    assert client.last_target.runtime_id == 'youporn'
 
 

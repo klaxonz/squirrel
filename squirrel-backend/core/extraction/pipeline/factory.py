@@ -12,7 +12,7 @@ from .stages import (
     PersistenceStage,
     PostProcessStage,
 )
-from ..adapters import PluginDataAdapter
+from ..adapters import RuntimeDataAdapter
 from ..services import (
     video_persistence_service,
     actor_processor_service,
@@ -42,7 +42,7 @@ class PipelineFactory:
         return ExtractionStage(extractor_factory)
 
     def _build_validation_stage(self, stage_config: StageConfig, extractor_factory) -> PipelineStage:
-        return ValidationStage(PluginDataAdapter())
+        return ValidationStage(RuntimeDataAdapter())
 
     def _build_persistence_stage(self, stage_config: StageConfig, extractor_factory) -> PipelineStage:
         return PersistenceStage(

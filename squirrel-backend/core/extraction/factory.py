@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 from .contracts import ExtractionResult, ExtractionTask
-from .plugin_payloads import PluginVideoData
+from .runtime_payloads import RuntimeVideoData
 
 from site_runtimes.manager import get_site_runtime_manager
 from core.site_config_manager import get_effective_site_catalog
@@ -62,7 +62,7 @@ class GatewayExtractorAdapter:
         if isinstance(payload, dict) and 'success' in payload:
             return ExtractionResult.from_dict(payload)
         if isinstance(payload, dict):
-            return ExtractionResult.success_result(PluginVideoData.from_dict(payload))
+            return ExtractionResult.success_result(RuntimeVideoData.from_dict(payload))
         return ExtractionResult(success=False, error='Plugin extract_video returned an invalid payload')
 
 

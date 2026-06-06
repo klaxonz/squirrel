@@ -10,12 +10,12 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 
 for plugin_name in ('bilibili', 'javdb', 'pornhub', 'youtube'):
-    sys.path.insert(0, str(ROOT / 'squirrel-plugins' / plugin_name / 'src'))
+    sys.path.insert(0, str(ROOT / 'squirrel-site-runtimes' / plugin_name / 'src'))
 
 
 def _runtime_manifest_capabilities(module_name: str) -> tuple[set[str], set[str]]:
     runtime_module = importlib.import_module(f'{module_name}.runtime')
-    runtime = runtime_module.get_plugin_runtime()
+    runtime = runtime_module.get_site_runtime()
     manifest = runtime.manifest()
     capabilities = {item.name for item in manifest.capabilities}
     features = {
@@ -27,7 +27,7 @@ def _runtime_manifest_capabilities(module_name: str) -> tuple[set[str], set[str]
 
 
 def _metadata_capabilities(plugin_name: str) -> tuple[set[str], set[str]]:
-    metadata_path = ROOT / 'squirrel-plugins' / plugin_name / 'plugin-runtime.json'
+    metadata_path = ROOT / 'squirrel-site-runtimes' / plugin_name / 'site-runtime.json'
     payload = json.loads(metadata_path.read_text(encoding='utf-8'))
     manifest = payload['manifest']
     capabilities = {item['name'] for item in manifest['capabilities']}
@@ -41,14 +41,14 @@ def _metadata_capabilities(plugin_name: str) -> tuple[set[str], set[str]]:
 
 def _manifest_timeout_map(module_name: str, plugin_name: str) -> tuple[dict[str, int | None], dict[str, int | None]]:
     runtime_module = importlib.import_module(f'{module_name}.runtime')
-    runtime = runtime_module.get_plugin_runtime()
+    runtime = runtime_module.get_site_runtime()
     runtime_manifest = runtime.manifest()
     runtime_timeouts = {
         item.name: item.timeout_ms
         for item in runtime_manifest.capabilities
     }
 
-    metadata_path = ROOT / 'squirrel-plugins' / plugin_name / 'plugin-runtime.json'
+    metadata_path = ROOT / 'squirrel-site-runtimes' / plugin_name / 'site-runtime.json'
     payload = json.loads(metadata_path.read_text(encoding='utf-8'))
     metadata_timeouts = {
         item['name']: item.get('timeout_ms')
@@ -143,7 +143,7 @@ def test_bilibili_runtime_media_capabilities_do_not_emit_legacy_registry_warning
             lambda self, video, lang, fmt='srt': ('subtitle body', 'demo.ai-zh.srt'),
         )
 
-        runtime = runtime_module.get_plugin_runtime()
+        runtime = runtime_module.get_site_runtime()
         subtitles_response = runtime.invoke(
             'fetch_subtitles',
             {
@@ -164,7 +164,7 @@ def test_javdb_runtime_proxy_capabilities_do_not_emit_legacy_registry_warnings()
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter('always')
         runtime_module = importlib.import_module('squirrel_javdb.runtime')
-        runtime = runtime_module.get_plugin_runtime()
+        runtime = runtime_module.get_site_runtime()
 
         config_response = runtime.invoke(
             'resolve_proxy_config',
@@ -222,7 +222,7 @@ def test_runtime_plugins_no_longer_ship_downloader_modules(module_name, plugin_n
 
     monkeypatch.setattr(html_client, 'fetch_javdb_html', lambda *args, **kwargs: _Response())
 
-    runtime = runtime_module.get_plugin_runtime()
+    runtime = runtime_module.get_site_runtime()
     response = runtime.invoke('extract_video', {'url': video_url})
 
     assert response.ok is True

@@ -19,14 +19,14 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
 
 FROM ${BUILD_BASE_IMAGE} AS youtube-node-builder
 
-WORKDIR /app/squirrel-plugins/youtube/src/squirrel_youtube/node
+WORKDIR /app/squirrel-site-runtimes/youtube/src/squirrel_youtube/node
 
-COPY squirrel-plugins/youtube/src/squirrel_youtube/node/package.json squirrel-plugins/youtube/src/squirrel_youtube/node/package-lock.json ./
+COPY squirrel-site-runtimes/youtube/src/squirrel_youtube/node/package.json squirrel-site-runtimes/youtube/src/squirrel_youtube/node/package-lock.json ./
 
 RUN --mount=type=cache,target=/root/.npm,sharing=locked \
     npm ci --omit=dev
 
-COPY squirrel-plugins/youtube/src/squirrel_youtube/node/ ./
+COPY squirrel-site-runtimes/youtube/src/squirrel_youtube/node/ ./
 
 FROM ${BUILD_BASE_IMAGE} AS python-builder
 
@@ -38,13 +38,13 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
     cd /app/squirrel-backend && pipenv install --deploy --system
 
 COPY squirrel-sdk /app/squirrel-sdk
-COPY squirrel-plugins /app/squirrel-plugins
+COPY squirrel-site-runtimes /app/squirrel-site-runtimes
 
 RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
     set -eux; \
     mkdir -p /tmp/wheels; \
     python -m build /app/squirrel-sdk --wheel --outdir /tmp/wheels; \
-    find /app/squirrel-plugins -mindepth 2 -maxdepth 2 -name pyproject.toml -print0 | while IFS= read -r -d '' pyproject; do \
+    find /app/squirrel-site-runtimes -mindepth 2 -maxdepth 2 -name pyproject.toml -print0 | while IFS= read -r -d '' pyproject; do \
         plugin_dir="$(dirname "${pyproject}")"; \
         echo "Building plugin wheel: ${plugin_dir}"; \
         python -m build "${plugin_dir}" --wheel --outdir /tmp/wheels; \
@@ -60,10 +60,10 @@ COPY --from=python-builder /usr/local/lib/python3.11/site-packages /usr/local/li
 
 COPY squirrel-backend ./
 COPY squirrel-sdk /app/squirrel-sdk
-COPY squirrel-plugins /app/squirrel-plugins
+COPY squirrel-site-runtimes /app/squirrel-site-runtimes
 
 COPY --from=frontend-builder /app/squirrel-frontend/dist ./static
-COPY --from=youtube-node-builder /app/squirrel-plugins/youtube/src/squirrel_youtube/node /app/squirrel-plugins/youtube/src/squirrel_youtube/node
+COPY --from=youtube-node-builder /app/squirrel-site-runtimes/youtube/src/squirrel_youtube/node /app/squirrel-site-runtimes/youtube/src/squirrel_youtube/node
 
 RUN mkdir -p /app/config /app/logs /downloads /thumbnails \
     && chmod -R 755 /app \

@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 
 @dataclass
-class PluginPermission:
+class SiteRuntimePermission:
     name: str
     description: str = ''
     required: bool = True
@@ -16,7 +16,7 @@ class PluginPermission:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PluginPermission':
+    def from_dict(cls, data: Dict[str, Any]) -> 'SiteRuntimePermission':
         return cls(
             name=str(data.get('name', '')),
             description=str(data.get('description', '')),
@@ -27,7 +27,7 @@ class PluginPermission:
 
 
 @dataclass
-class PluginCapability:
+class SiteRuntimeCapability:
     name: str
     description: str = ''
     request_schema: Dict[str, Any] = field(default_factory=dict)
@@ -40,7 +40,7 @@ class PluginCapability:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PluginCapability':
+    def from_dict(cls, data: Dict[str, Any]) -> 'SiteRuntimeCapability':
         return cls(
             name=str(data.get('name', '')),
             description=str(data.get('description', '')),
@@ -53,7 +53,7 @@ class PluginCapability:
 
 
 @dataclass
-class PluginSiteManifest:
+class SiteRuntimeSite:
     site_name: str
     domains: List[str] = field(default_factory=list)
     test_url: Optional[str] = None
@@ -64,7 +64,7 @@ class PluginSiteManifest:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PluginSiteManifest':
+    def from_dict(cls, data: Dict[str, Any]) -> 'SiteRuntimeSite':
         return cls(
             site_name=str(data.get('site_name', '')),
             domains=list(data.get('domains') or []),
@@ -75,15 +75,15 @@ class PluginSiteManifest:
 
 
 @dataclass
-class PluginManifest:
-    plugin_id: str
+class SiteRuntimeManifest:
+    runtime_id: str
     version: str
     sdk_api_version: str = '2.0'
     display_name: str = ''
     description: str = ''
-    capabilities: List[PluginCapability] = field(default_factory=list)
-    sites: List[PluginSiteManifest] = field(default_factory=list)
-    permissions: List[PluginPermission] = field(default_factory=list)
+    capabilities: List[SiteRuntimeCapability] = field(default_factory=list)
+    sites: List[SiteRuntimeSite] = field(default_factory=list)
+    permissions: List[SiteRuntimePermission] = field(default_factory=list)
     config_schema: Dict[str, Any] = field(default_factory=dict)
     health_policy: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -92,7 +92,7 @@ class PluginManifest:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            'plugin_id': self.plugin_id,
+            'runtime_id': self.runtime_id,
             'version': self.version,
             'sdk_api_version': self.sdk_api_version,
             'display_name': self.display_name,
@@ -108,23 +108,23 @@ class PluginManifest:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PluginManifest':
+    def from_dict(cls, data: Dict[str, Any]) -> 'SiteRuntimeManifest':
         return cls(
-            plugin_id=str(data.get('plugin_id', '')),
+            runtime_id=str(data.get('runtime_id', '')),
             version=str(data.get('version', '')),
             sdk_api_version=str(data.get('sdk_api_version', '2.0')),
             display_name=str(data.get('display_name', '')),
             description=str(data.get('description', '')),
             capabilities=[
-                item if isinstance(item, PluginCapability) else PluginCapability.from_dict(item)
+                item if isinstance(item, SiteRuntimeCapability) else SiteRuntimeCapability.from_dict(item)
                 for item in list(data.get('capabilities') or [])
             ],
             sites=[
-                item if isinstance(item, PluginSiteManifest) else PluginSiteManifest.from_dict(item)
+                item if isinstance(item, SiteRuntimeSite) else SiteRuntimeSite.from_dict(item)
                 for item in list(data.get('sites') or [])
             ],
             permissions=[
-                item if isinstance(item, PluginPermission) else PluginPermission.from_dict(item)
+                item if isinstance(item, SiteRuntimePermission) else SiteRuntimePermission.from_dict(item)
                 for item in list(data.get('permissions') or [])
             ],
             config_schema=dict(data.get('config_schema') or {}),

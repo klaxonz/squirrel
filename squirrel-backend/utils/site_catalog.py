@@ -3,7 +3,7 @@ import os
 from typing import Dict, List, Optional, Set
 
 from site_runtimes.manager import get_site_runtime_manager
-from site_runtimes.runtime_models import PluginManifest
+from site_runtimes.runtime_models import SiteRuntimeManifest
 from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
 
@@ -107,11 +107,11 @@ class SiteCatalog:
         return None
 
     @classmethod
-    def build_plugin_site_catalog(cls) -> Dict[str, dict]:
+    def build_runtime_site_catalog(cls) -> Dict[str, dict]:
         catalog: Dict[str, dict] = {}
         snapshot = get_site_runtime_manager().get_snapshot()
         for record in snapshot.records:
-            manifest = PluginManifest.from_dict(record.manifest)
+            manifest = SiteRuntimeManifest.from_dict(record.manifest)
             for site in manifest.sites:
                 slug = site.site_name.strip().lower()
                 defaults = dict(site.metadata or {})
@@ -188,7 +188,7 @@ class SiteCatalog:
 
             return get_effective_site_catalog()
         except Exception:
-            return cls.build_plugin_site_catalog()
+            return cls.build_runtime_site_catalog()
 
     @classmethod
     def _load_from_file(cls) -> Optional[Dict[str, dict]]:
@@ -196,7 +196,7 @@ class SiteCatalog:
 
     @classmethod
     def _build_from_manifests(cls) -> Dict[str, dict]:
-        return cls.build_plugin_site_catalog()
+        return cls.build_runtime_site_catalog()
 
     @classmethod
     def get_all_domains(cls) -> List[str]:

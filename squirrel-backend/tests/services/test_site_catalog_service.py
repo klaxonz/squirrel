@@ -15,7 +15,7 @@ def test_save_site_overrides_persists_override_only(monkeypatch, tmp_path):
     monkeypatch.setattr(site_catalog_service, '_config_path', lambda: config_path)
     monkeypatch.setattr(
         site_catalog_service,
-        'build_plugin_site_catalog',
+        'build_runtime_site_catalog',
         lambda: {
             'youtube': {
                 'label': 'YouTube',
@@ -74,7 +74,7 @@ def test_save_site_overrides_merges_patch_and_prunes_values_equal_to_plugin_defa
     monkeypatch.setattr(site_catalog_service, '_config_path', lambda: config_path)
     monkeypatch.setattr(
         site_catalog_service,
-        'build_plugin_site_catalog',
+        'build_runtime_site_catalog',
         lambda: {
             'youtube': {
                 'label': 'YouTube',

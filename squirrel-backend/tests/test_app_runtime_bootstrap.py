@@ -63,7 +63,7 @@ sys.modules.setdefault('redis', redis_module)
 sys.modules.setdefault('redis.client', redis_client_module)
 sys.modules.setdefault('redis_lock', redis_lock_module)
 
-from crawl import PluginInvokeResponse
+from crawl import SiteRuntimeInvokeResponse
 from crawl import utils as crawl_utils
 import main as app_main
 from site_runtimes import runtime_bridge
@@ -303,7 +303,7 @@ def test_runtime_bridge_keeps_cookie_resolver_when_cloudflare_bypass_is_unavaila
     assert crawl_utils._cookie_domain_resolver is domain_resolver
 
 
-def test_runtime_bridge_syncs_site_rate_limits_into_plugin_runtime(monkeypatch):
+def test_runtime_bridge_syncs_site_rate_limits_into_site_runtime(monkeypatch):
     calls: list[str] = []
 
     monkeypatch.setattr(
@@ -335,7 +335,7 @@ def test_runtime_bridge_logs_client_disconnect_without_traceback(monkeypatch, ca
                 'site_name': 'youtube',
                 'timeout_ms': 120000,
             }
-            return PluginInvokeResponse(request_id='req-1', ok=True, data={'success': True})
+            return SiteRuntimeInvokeResponse(request_id='req-1', ok=True, data={'success': True})
 
     handler = object.__new__(runtime_bridge._BridgeHandler)
     handler.path = '/invoke'
@@ -369,7 +369,7 @@ def test_runtime_bridge_logs_client_disconnect_without_traceback(monkeypatch, ca
     with caplog.at_level(logging.WARNING, logger='site_runtimes.runtime_bridge'):
         handler.do_POST()
 
-    assert 'Plugin invoke response dropped because client disconnected' in caplog.text
+    assert 'Site runtime invoke response dropped because client disconnected' in caplog.text
     assert 'request_id=req-1' in caplog.text
     assert 'capability=extract_video' in caplog.text
     assert 'url=https://www.youtube.com/watch?v=demo' in caplog.text

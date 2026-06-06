@@ -1,4 +1,4 @@
-"""Runtime error models for plugin runtime V2."""
+"""Runtime error models for site runtime V2."""
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 
 class RuntimeErrorCode(str, Enum):
-    """Stable error codes exchanged between host and plugin runtimes."""
+    """Stable error codes exchanged between host and site runtimes."""
 
     TIMEOUT = 'PLUGIN_TIMEOUT'
     CRASHED = 'PLUGIN_CRASHED'
@@ -18,7 +18,7 @@ class RuntimeErrorCode(str, Enum):
 
 
 @dataclass
-class PluginRuntimeError:
+class SiteRuntimeError:
     """Serializable runtime error payload."""
 
     code: RuntimeErrorCode
@@ -32,7 +32,7 @@ class PluginRuntimeError:
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PluginRuntimeError':
+    def from_dict(cls, data: Dict[str, Any]) -> 'SiteRuntimeError':
         raw_code = str(data.get('code', RuntimeErrorCode.CRASHED.value))
         try:
             code = RuntimeErrorCode(raw_code)
@@ -40,25 +40,25 @@ class PluginRuntimeError:
             code = RuntimeErrorCode.CRASHED
         return cls(
             code=code,
-            message=str(data.get('message', 'Plugin runtime error')),
+            message=str(data.get('message', 'Site runtime error')),
             retryable=bool(data.get('retryable', False)),
             details=dict(data.get('details') or {}),
         )
 
     @classmethod
-    def timeout(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'PluginRuntimeError':
+    def timeout(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
         return cls(RuntimeErrorCode.TIMEOUT, message, retryable=True, details=dict(details or {}))
 
     @classmethod
-    def crashed(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'PluginRuntimeError':
+    def crashed(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
         return cls(RuntimeErrorCode.CRASHED, message, retryable=False, details=dict(details or {}))
 
     @classmethod
-    def bad_response(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'PluginRuntimeError':
+    def bad_response(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
         return cls(RuntimeErrorCode.BAD_RESPONSE, message, retryable=False, details=dict(details or {}))
 
     @classmethod
-    def auth_required(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'PluginRuntimeError':
+    def auth_required(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
         return cls(RuntimeErrorCode.AUTH_REQUIRED, message, retryable=False, details=dict(details or {}))
 
     @classmethod
@@ -67,9 +67,9 @@ class PluginRuntimeError:
         message: str,
         details: Optional[Dict[str, Any]] = None,
         retryable: bool = True,
-    ) -> 'PluginRuntimeError':
+    ) -> 'SiteRuntimeError':
         return cls(RuntimeErrorCode.NETWORK_ERROR, message, retryable=retryable, details=dict(details or {}))
 
     @classmethod
-    def parse_error(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'PluginRuntimeError':
+    def parse_error(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
         return cls(RuntimeErrorCode.PARSE_ERROR, message, retryable=False, details=dict(details or {}))

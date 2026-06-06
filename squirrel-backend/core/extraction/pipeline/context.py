@@ -7,7 +7,7 @@ from datetime import datetime
 
 from ..contracts import ExtractionTask
 from ..dto import VideoDTO
-from ..plugin_payloads import PluginVideoData
+from ..runtime_payloads import RuntimeVideoData
 
 
 @dataclass
@@ -23,7 +23,7 @@ class PipelineContext:
     task: ExtractionTask
     
     # ========== 中间数据（各Stage填充） ==========
-    plugin_video: Optional[PluginVideoData] = None        # ExtractionStage fills this payload
+    plugin_video: Optional[RuntimeVideoData] = None        # ExtractionStage fills this payload
     video_dto: Optional[VideoDTO] = None              # ValidationStage填充
     video_model: Optional[Any] = None                 # PersistenceStage填充（VideoModel）
     

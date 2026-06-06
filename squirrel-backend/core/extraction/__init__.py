@@ -23,7 +23,7 @@ from .contracts import (
     TaskProcessor,
     TaskStatus,
 )
-from .plugin_payloads import PluginActorData, PluginVideoData
+from .runtime_payloads import RuntimeActorData, RuntimeVideoData
 from .base import BaseExtractor, BaseTaskProcessor, BaseResultHandler
 
 from .factory import (
@@ -44,8 +44,8 @@ __all__ = [
     'Extractor',
     'TaskProcessor',
     'ResultHandler',
-    'PluginVideoData',
-    'PluginActorData',
+    'RuntimeVideoData',
+    'RuntimeActorData',
     # 基础类
     'BaseExtractor', 'BaseTaskProcessor', 'BaseResultHandler',
 

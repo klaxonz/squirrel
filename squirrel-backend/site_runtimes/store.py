@@ -81,9 +81,9 @@ class SiteRuntimeStore:
             for _, item in sorted(payload.items(), key=lambda entry: entry[0].lower())
         ]
 
-    def get_record(self, plugin_id: str) -> Optional[SiteRuntimeRecord]:
+    def get_record(self, runtime_id: str) -> Optional[SiteRuntimeRecord]:
         payload = self._load_raw()
-        item = payload.get(plugin_id)
+        item = payload.get(runtime_id)
         if item is None:
             return None
         return SiteRuntimeRecord.from_dict(item)
@@ -91,18 +91,18 @@ class SiteRuntimeStore:
     def upsert(self, record: SiteRuntimeRecord) -> SiteRuntimeRecord:
         payload = self._load_raw()
         record.updated_at = utcnow_iso()
-        payload[record.plugin_id] = record.to_dict()
+        payload[record.runtime_id] = record.to_dict()
         self._save_raw(payload)
         return record
 
-    def delete(self, plugin_id: str) -> None:
+    def delete(self, runtime_id: str) -> None:
         payload = self._load_raw()
-        if plugin_id in payload:
-            del payload[plugin_id]
+        if runtime_id in payload:
+            del payload[runtime_id]
             self._save_raw(payload)
 
-    def set_enabled(self, plugin_id: str, enabled: bool) -> Optional[SiteRuntimeRecord]:
-        record = self.get_record(plugin_id)
+    def set_enabled(self, runtime_id: str, enabled: bool) -> Optional[SiteRuntimeRecord]:
+        record = self.get_record(runtime_id)
         if record is None:
             return None
         record.enabled = enabled

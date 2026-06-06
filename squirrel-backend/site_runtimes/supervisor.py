@@ -13,7 +13,7 @@ import urllib.request
 from pathlib import Path
 from typing import Dict, Optional, Sequence
 
-from crawl import PluginHealthStatus, PluginInvokeRequest, PluginInvokeResponse, PluginRuntimeError
+from crawl import SiteRuntimeHealthStatus, SiteRuntimeInvokeRequest, SiteRuntimeInvokeResponse, SiteRuntimeError
 
 from .models import (
     SiteRuntimeHealthSnapshot,
@@ -42,8 +42,8 @@ class SiteRuntimeSupervisor:
         self._runtime_timers: Dict[str, threading.Timer] = {}
         self._backend_root = Path(__file__).resolve().parent.parent
 
-    def _key(self, plugin_id: str, version: str) -> str:
-        return f'{plugin_id}:{version}'
+    def _key(self, runtime_id: str, version: str) -> str:
+        return f'{runtime_id}:{version}'
 
     def _candidate_import_paths(self, record: SiteRuntimeRecord) -> list[str]:
         candidates: list[Path] = []
@@ -81,8 +81,8 @@ class SiteRuntimeSupervisor:
             'site_runtimes.runtime_bridge',
             '--entrypoint',
             record.entrypoint,
-            '--plugin-id',
-            record.plugin_id,
+            '--runtime-id',
+            record.runtime_id,
             '--version',
             record.version,
             '--host',
@@ -98,12 +98,6 @@ class SiteRuntimeSupervisor:
             command.extend(['--network-policy', json.dumps(network_policy)])
         if runtime_policy.get('max_runtime_seconds') is not None:
             command.extend(['--max-runtime-seconds', str(runtime_policy['max_runtime_seconds'])])
-        if runtime_policy.get('memory_limit_mb') is not None:
-            command.extend(['--memory-limit-mb', str(runtime_policy['memory_limit_mb'])])
-        if runtime_policy.get('cpu_time_limit_seconds') is not None:
-            command.extend(['--cpu-time-limit-seconds', str(runtime_policy['cpu_time_limit_seconds'])])
-        if runtime_policy.get('max_open_files') is not None:
-            command.extend(['--max-open-files', str(runtime_policy['max_open_files'])])
         for import_path in self._candidate_import_paths(record):
             command.extend(['--import-path', import_path])
         return command
@@ -123,20 +117,35 @@ class SiteRuntimeSupervisor:
         return {'mode': 'deny_all'}
 
     def _build_process_env(self, record: SiteRuntimeRecord) -> dict[str, str]:
-        process_env = dict(os.environ)
-        process_env['SQUIRREL_PLUGIN_ID'] = record.plugin_id
-        process_env['SQUIRREL_PLUGIN_VERSION'] = record.version
-        process_env['SQUIRREL_PLUGIN_SOURCE'] = str(record.metadata.get('source') or 'workspace')
-        process_env['SQUIRREL_PLUGIN_GRANTED_PERMISSIONS'] = ','.join(record.granted_permissions)
-        process_env['SQUIRREL_PLUGIN_NETWORK_POLICY'] = json.dumps(self._network_policy(record))
-        process_env['SQUIRREL_PLUGIN_RUNTIME_POLICY'] = json.dumps(self._runtime_policy(record))
-        process_env['SQUIRREL_PLUGIN_DECLARED_PERMISSIONS'] = ','.join(
+        allowed_keys = {
+            'PATH',
+            'PATHEXT',
+            'SYSTEMROOT',
+            'WINDIR',
+            'TEMP',
+            'TMP',
+            'PYTHONPATH',
+            'PYTHONIOENCODING',
+        }
+        process_env = {
+            key: value
+            for key, value in os.environ.items()
+            if key.upper() in allowed_keys
+        }
+        process_env['PYTHONUNBUFFERED'] = '1'
+        process_env['SQUIRREL_SITE_RUNTIME_ID'] = record.runtime_id
+        process_env['SQUIRREL_SITE_RUNTIME_VERSION'] = record.version
+        process_env['SQUIRREL_SITE_RUNTIME_SOURCE'] = str(record.metadata.get('source') or 'workspace')
+        process_env['SQUIRREL_SITE_RUNTIME_GRANTED_PERMISSIONS'] = ','.join(record.granted_permissions)
+        process_env['SQUIRREL_SITE_RUNTIME_NETWORK_POLICY'] = json.dumps(self._network_policy(record))
+        process_env['SQUIRREL_SITE_RUNTIME_RUNTIME_POLICY'] = json.dumps(self._runtime_policy(record))
+        process_env['SQUIRREL_SITE_RUNTIME_DECLARED_PERMISSIONS'] = ','.join(
             str(item.get('name'))
             for item in ((record.manifest or {}).get('permissions') or [])
             if isinstance(item, dict) and item.get('name')
         )
         if record.data_path:
-            process_env['SQUIRREL_PLUGIN_DATA_DIR'] = record.data_path
+            process_env['SQUIRREL_SITE_RUNTIME_DATA_DIR'] = record.data_path
         return process_env
 
     def _resolve_runtime_cwd(self, record: SiteRuntimeRecord) -> Path:
@@ -159,7 +168,7 @@ class SiteRuntimeSupervisor:
         audit_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
             'timestamp': utcnow_iso(),
-            'plugin_id': record.plugin_id,
+            'runtime_id': record.runtime_id,
             'version': record.version,
             'event': event,
             'details': dict(details or {}),
@@ -171,7 +180,7 @@ class SiteRuntimeSupervisor:
     def _build_invoke_details(
         self,
         target: SiteRuntimeTarget,
-        request: PluginInvokeRequest,
+        request: SiteRuntimeInvokeRequest,
         handle: SiteRuntimeHandle,
         *,
         elapsed_ms: Optional[int] = None,
@@ -181,7 +190,7 @@ class SiteRuntimeSupervisor:
         details = {
             'request_id': request.request_id,
             'task_id': payload.get('task_id'),
-            'plugin_id': target.plugin_id,
+            'runtime_id': target.runtime_id,
             'version': target.version,
             'capability': target.capability,
             'site_name': request.site_name or target.site_name,
@@ -200,8 +209,8 @@ class SiteRuntimeSupervisor:
     @staticmethod
     def _format_invoke_timeout_message(details: dict) -> str:
         return (
-            'Plugin runtime request timed out: '
-            f"plugin_id={details.get('plugin_id')}, "
+            'Site runtime request timed out: '
+            f"runtime_id={details.get('runtime_id')}, "
             f"version={details.get('version')}, "
             f"capability={details.get('capability')}, "
             f"request_id={details.get('request_id')}, "
@@ -227,8 +236,8 @@ class SiteRuntimeSupervisor:
                 event='runtime_expired',
                 details={'max_runtime_seconds': max_runtime_seconds},
             )
-            self.mark_failed(record.plugin_id, record.version, 'runtime_expired')
-            self.stop_runtime(record.plugin_id, record.version)
+            self.mark_failed(record.runtime_id, record.version, 'runtime_expired')
+            self.stop_runtime(record.runtime_id, record.version)
 
         timer = threading.Timer(float(max_runtime_seconds), _expire)
         timer.daemon = True
@@ -259,33 +268,33 @@ class SiteRuntimeSupervisor:
         parsed = json.loads(raw_body or '{}')
         return parsed if isinstance(parsed, dict) else {}
 
-    def _fetch_health(self, endpoint: str, timeout: float = 5.0) -> PluginHealthStatus:
+    def _fetch_health(self, endpoint: str, timeout: float = 5.0) -> SiteRuntimeHealthStatus:
         payload = self._request_json(endpoint, '/health', timeout=timeout)
-        return PluginHealthStatus.from_dict(payload)
+        return SiteRuntimeHealthStatus.from_dict(payload)
 
     def _wait_for_runtime(
         self,
         process: subprocess.Popen,
         endpoint: str,
         startup_timeout_ms: int,
-    ) -> PluginHealthStatus:
+    ) -> SiteRuntimeHealthStatus:
         deadline = time.monotonic() + (startup_timeout_ms / 1000)
         last_error: Optional[Exception] = None
 
         while time.monotonic() < deadline:
             if process.poll() is not None:
-                raise SiteRuntimeSupervisorError('Plugin runtime exited before becoming healthy')
+                raise SiteRuntimeSupervisorError('Site runtime exited before becoming healthy')
             try:
                 return self._fetch_health(endpoint, timeout=1.0)
             except Exception as exc:
                 last_error = exc
                 time.sleep(0.1)
 
-        raise SiteRuntimeSupervisorError(f'Plugin runtime startup timed out: {last_error}')
+        raise SiteRuntimeSupervisorError(f'Site runtime startup timed out: {last_error}')
 
-    def _to_health_snapshot(self, plugin_id: str, health: PluginHealthStatus) -> SiteRuntimeHealthSnapshot:
+    def _to_health_snapshot(self, runtime_id: str, health: SiteRuntimeHealthStatus) -> SiteRuntimeHealthSnapshot:
         return SiteRuntimeHealthSnapshot(
-            plugin_id=plugin_id,
+            runtime_id=runtime_id,
             healthy=health.healthy,
             status=health.status,
             message=health.message,
@@ -294,9 +303,9 @@ class SiteRuntimeSupervisor:
         )
 
     def register_placeholder(self, record: SiteRuntimeRecord) -> SiteRuntimeHandle:
-        key = self._key(record.plugin_id, record.version)
+        key = self._key(record.runtime_id, record.version)
         handle = SiteRuntimeHandle(
-            plugin_id=record.plugin_id,
+            runtime_id=record.runtime_id,
             version=record.version,
             state=SiteRuntimeState.STOPPED,
         )
@@ -311,7 +320,7 @@ class SiteRuntimeSupervisor:
         cwd: Optional[Path] = None,
         endpoint: Optional[str] = None,
     ) -> SiteRuntimeHandle:
-        key = self._key(record.plugin_id, record.version)
+        key = self._key(record.runtime_id, record.version)
         self._records[key] = record
         handle = self._handles.get(key) or self.register_placeholder(record)
         handle.state = SiteRuntimeState.STARTING
@@ -356,7 +365,7 @@ class SiteRuntimeSupervisor:
 
         try:
             health = self._wait_for_runtime(process, runtime_endpoint, startup_timeout_ms)
-            handle.health = self._to_health_snapshot(record.plugin_id, health)
+            handle.health = self._to_health_snapshot(record.runtime_id, health)
             if not health.healthy:
                 handle.state = SiteRuntimeState.FAILED
                 handle.last_error = health.message
@@ -376,14 +385,14 @@ class SiteRuntimeSupervisor:
             handle.state = SiteRuntimeState.FAILED
             handle.last_error = str(exc)
             self._append_audit_event(record, event='runtime_failed', details={'reason': str(exc)})
-            self.stop_runtime(record.plugin_id, record.version)
+            self.stop_runtime(record.runtime_id, record.version)
             raise
 
         self._handles[key] = handle
         return handle
 
-    def heartbeat(self, plugin_id: str, version: str, health: SiteRuntimeHealthSnapshot) -> None:
-        key = self._key(plugin_id, version)
+    def heartbeat(self, runtime_id: str, version: str, health: SiteRuntimeHealthSnapshot) -> None:
+        key = self._key(runtime_id, version)
         handle = self._handles.get(key)
         if handle is None:
             raise SiteRuntimeSupervisorError(f'Runtime handle not found: {key}')
@@ -392,16 +401,16 @@ class SiteRuntimeSupervisor:
             handle.state = SiteRuntimeState.FAILED
             handle.last_error = health.message
 
-    def drain_runtime(self, plugin_id: str, version: str) -> Optional[SiteRuntimeHandle]:
-        handle = self._handles.get(self._key(plugin_id, version))
+    def drain_runtime(self, runtime_id: str, version: str) -> Optional[SiteRuntimeHandle]:
+        handle = self._handles.get(self._key(runtime_id, version))
         if handle is None:
             return None
         handle.state = SiteRuntimeState.DRAINING
         handle.drained_at = utcnow_iso()
         return handle
 
-    def stop_runtime(self, plugin_id: str, version: str) -> Optional[SiteRuntimeHandle]:
-        key = self._key(plugin_id, version)
+    def stop_runtime(self, runtime_id: str, version: str) -> Optional[SiteRuntimeHandle]:
+        key = self._key(runtime_id, version)
         handle = self._handles.get(key)
         process = self._processes.pop(key, None)
         self._cancel_runtime_timer(key)
@@ -434,8 +443,8 @@ class SiteRuntimeSupervisor:
             self._append_audit_event(record, event='runtime_stopped', details={})
         return handle
 
-    def mark_failed(self, plugin_id: str, version: str, message: str) -> Optional[SiteRuntimeHandle]:
-        key = self._key(plugin_id, version)
+    def mark_failed(self, runtime_id: str, version: str, message: str) -> Optional[SiteRuntimeHandle]:
+        key = self._key(runtime_id, version)
         handle = self._handles.get(key)
         if handle is None:
             return None
@@ -446,21 +455,21 @@ class SiteRuntimeSupervisor:
             self._append_audit_event(record, event='runtime_marked_failed', details={'reason': message})
         return handle
 
-    def get_handle(self, plugin_id: str, version: str) -> Optional[SiteRuntimeHandle]:
-        return self._handles.get(self._key(plugin_id, version))
+    def get_handle(self, runtime_id: str, version: str) -> Optional[SiteRuntimeHandle]:
+        return self._handles.get(self._key(runtime_id, version))
 
     def list_handles(self) -> list[SiteRuntimeHandle]:
         return list(self._handles.values())
 
-    def invoke(self, target: SiteRuntimeTarget, request: PluginInvokeRequest) -> PluginInvokeResponse:
-        handle = self._handles.get(self._key(target.plugin_id, target.version))
+    def invoke(self, target: SiteRuntimeTarget, request: SiteRuntimeInvokeRequest) -> SiteRuntimeInvokeResponse:
+        handle = self._handles.get(self._key(target.runtime_id, target.version))
         if handle is None or not handle.endpoint:
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id=request.request_id,
                 ok=False,
-                error=PluginRuntimeError.bad_response(
-                    'Plugin runtime is not running',
-                    details={'plugin_id': target.plugin_id, 'version': target.version},
+                error=SiteRuntimeError.bad_response(
+                    'Site runtime is not running',
+                    details={'runtime_id': target.runtime_id, 'version': target.version},
                 ),
             )
 
@@ -470,7 +479,7 @@ class SiteRuntimeSupervisor:
         payload.setdefault('timeout_ms', request.timeout_ms)
         payload.setdefault('metadata', dict(request.metadata))
 
-        outbound_request = PluginInvokeRequest(
+        outbound_request = SiteRuntimeInvokeRequest(
             request_id=request.request_id,
             capability=request.capability,
             payload=payload,
@@ -479,7 +488,7 @@ class SiteRuntimeSupervisor:
             metadata=dict(request.metadata),
         )
         started_at = time.monotonic()
-        record = self._records.get(self._key(target.plugin_id, target.version))
+        record = self._records.get(self._key(target.runtime_id, target.version))
         if record is not None:
             self._append_audit_event(
                 record,
@@ -494,11 +503,11 @@ class SiteRuntimeSupervisor:
                 payload={'request': outbound_request.to_dict()},
                 timeout=max((request.timeout_ms or 5000) / 1000, 1.0),
             )
-            response = PluginInvokeResponse.from_dict(raw_response)
+            response = SiteRuntimeInvokeResponse.from_dict(raw_response)
             if handle.endpoint:
                 try:
                     health = self._fetch_health(handle.endpoint, timeout=1.0)
-                    handle.health = self._to_health_snapshot(target.plugin_id, health)
+                    handle.health = self._to_health_snapshot(target.runtime_id, health)
                     handle.state = SiteRuntimeState.RUNNING if health.healthy else SiteRuntimeState.FAILED
                 except Exception:
                     pass
@@ -520,7 +529,7 @@ class SiteRuntimeSupervisor:
                 )
             return response
         except (TimeoutError, socket.timeout) as exc:
-            self.mark_failed(target.plugin_id, target.version, str(exc))
+            self.mark_failed(target.runtime_id, target.version, str(exc))
             details = self._build_invoke_details(
                 target,
                 request,
@@ -534,17 +543,17 @@ class SiteRuntimeSupervisor:
                     event='invoke_failed',
                     details=details,
                 )
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id=request.request_id,
                 ok=False,
-                error=PluginRuntimeError.timeout(
+                error=SiteRuntimeError.timeout(
                     self._format_invoke_timeout_message(details),
                     details=details,
                 ),
                 retryable=True,
             )
         except urllib.error.URLError as exc:
-            self.mark_failed(target.plugin_id, target.version, str(exc))
+            self.mark_failed(target.runtime_id, target.version, str(exc))
             details = self._build_invoke_details(
                 target,
                 request,
@@ -558,16 +567,16 @@ class SiteRuntimeSupervisor:
                     event='invoke_failed',
                     details=details,
                 )
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id=request.request_id,
                 ok=False,
-                error=PluginRuntimeError.network_error(
-                    'Plugin runtime request failed',
+                error=SiteRuntimeError.network_error(
+                    'Site runtime request failed',
                     details=details,
                 ),
             )
         except Exception as exc:
-            self.mark_failed(target.plugin_id, target.version, str(exc))
+            self.mark_failed(target.runtime_id, target.version, str(exc))
             details = self._build_invoke_details(
                 target,
                 request,
@@ -581,11 +590,11 @@ class SiteRuntimeSupervisor:
                     event='invoke_failed',
                     details=details,
                 )
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id=request.request_id,
                 ok=False,
-                error=PluginRuntimeError.bad_response(
-                    'Plugin runtime returned an invalid response object',
+                error=SiteRuntimeError.bad_response(
+                    'Site runtime returned an invalid response object',
                     details=details,
                 ),
             )

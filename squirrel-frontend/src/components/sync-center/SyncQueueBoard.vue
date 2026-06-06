@@ -104,7 +104,7 @@ const getSiteIconUrl = (item: SyncCenterItem) => {
   const fromMap = siteOptionMap.value.get(normalizedSite)?.iconUrl
     || siteOptionMap.value.get(normalizedSite.toLowerCase())?.iconUrl
   if (fromMap) return fromMap
-  return `/api/site-runtimes/sites/${encodeURIComponent(normalizedSite.toLowerCase())}/icon`
+  return `/api/sites/${encodeURIComponent(normalizedSite.toLowerCase())}/icon`
 }
 
 

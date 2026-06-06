@@ -1,6 +1,6 @@
 import { ApiError, del, get, post } from '@/utils/request'
 
-export interface PluginCapability {
+export interface SiteRuntimeCapability {
   name: string
   description?: string
   request_schema?: Record<string, unknown>
@@ -10,7 +10,7 @@ export interface PluginCapability {
   metadata?: Record<string, unknown>
 }
 
-export interface PluginSite {
+export interface SiteRuntimeSite {
   site_name: string
   domains: string[]
   test_url?: string | null
@@ -19,7 +19,7 @@ export interface PluginSite {
   metadata?: Record<string, unknown>
 }
 
-export interface PluginPermission {
+export interface SiteRuntimePermission {
   name: string
   description?: string
   required?: boolean
@@ -27,7 +27,7 @@ export interface PluginPermission {
   metadata?: Record<string, unknown>
 }
 
-export interface PluginHealth {
+export interface SiteRuntimeHealth {
   healthy: boolean
   status?: string
   message?: string
@@ -35,8 +35,8 @@ export interface PluginHealth {
   details?: Record<string, unknown>
 }
 
-export interface PluginRuntimeInfo {
-  plugin_id: string
+export interface SiteRuntimeInfo {
+  runtime_id: string
   version: string
   state: string
   process_id?: number | null
@@ -44,7 +44,7 @@ export interface PluginRuntimeInfo {
   started_at?: string | null
   drained_at?: string | null
   last_error?: string | null
-  health?: PluginHealth | null
+  health?: SiteRuntimeHealth | null
 }
 
 export interface YouTubeOAuthAccount {
@@ -62,21 +62,31 @@ export interface YouTubeOAuthState {
 }
 
 export interface SiteRuntimeListItem {
-  plugin_id: string
+  runtime_id: string
   display_name: string
   description?: string
   version: string
   enabled: boolean
   status: string
-  capabilities: PluginCapability[]
-  sites: PluginSite[]
-  permissions: PluginPermission[]
-  health?: PluginHealth | null
-  active_runtime?: PluginRuntimeInfo | null
+  capabilities: SiteRuntimeCapability[]
+  sites: SiteRuntimeSite[]
+  permissions: SiteRuntimePermission[]
+  health?: SiteRuntimeHealth | null
+  active_runtime?: SiteRuntimeInfo | null
+}
+
+export interface SiteRuntimeDiscoveryError {
+  metadata_path: string
+  reason: string
+}
+
+export interface SiteRuntimeListResponse {
+  items: SiteRuntimeListItem[]
+  discovery_errors: SiteRuntimeDiscoveryError[]
 }
 
 export const getSiteRuntimes = async () => {
-  return get<SiteRuntimeListItem[]>('/api/site-runtimes/')
+  return get<SiteRuntimeListResponse>('/api/site-runtimes/')
 }
 
 export const enableSiteRuntime = async (name: string) => {
@@ -92,19 +102,19 @@ export const reloadSiteRuntimes = async () => {
 }
 
 export const getSupportedSites = async () => {
-  return get('/api/site-runtimes/sites')
+  return get('/api/sites')
 }
 
 export const testSiteConnectivity = async (siteName: string, timeout: number = 10) => {
-  return get(`/api/site-runtimes/sites/${encodeURIComponent(siteName)}/test-connectivity`, { timeout })
+  return get(`/api/sites/${encodeURIComponent(siteName)}/test-connectivity`, { timeout })
 }
 
 export const testSiteLoginStatus = async (siteName: string) => {
-  return get(`/api/site-runtimes/sites/${encodeURIComponent(siteName)}/login-status`)
+  return get(`/api/sites/${encodeURIComponent(siteName)}/login-status`)
 }
 
 export const testAllSitesConnectivity = async (timeout = 10) => {
-  return get('/api/site-runtimes/sites/test-connectivity/all', { timeout })
+  return get('/api/sites/test-connectivity/all', { timeout })
 }
 
 export const importAllSiteCookies = async (file: File | null | undefined) => {
@@ -115,7 +125,7 @@ export const importAllSiteCookies = async (file: File | null | undefined) => {
   const formData = new FormData()
   formData.append('file', file)
 
-  return post('/api/site-runtimes/sites/cookies/import-all', formData, {
+  return post('/api/site-cookies/import-all', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
@@ -132,28 +142,28 @@ export const uploadSiteCookies = async (
   const formData = new FormData()
   formData.append('file', file)
 
-  return post(`/api/site-runtimes/sites/${encodeURIComponent(siteName)}/cookies`, formData, {
+  return post(`/api/site-cookies/${encodeURIComponent(siteName)}`, formData, {
     params: { target },
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
 
 export const syncCookieCloudCookies = async (siteName: string | null = null) => {
-  return post('/api/site-runtimes/sites/cookies/cookiecloud/sync', null, {
+  return post('/api/site-cookies/cookiecloud/sync', null, {
     params: siteName ? { site_name: siteName } : {},
   })
 }
 
 export const setupYouTubeOAuth = async () => {
-  return post<YouTubeOAuthState>('/api/site-runtimes/sites/youtube/oauth/setup', null)
+  return post<YouTubeOAuthState>('/api/sites/youtube/oauth/setup', null)
 }
 
 export const getYouTubeOAuthStatus = async () => {
-  return get<YouTubeOAuthState>('/api/site-runtimes/sites/youtube/oauth/status')
+  return get<YouTubeOAuthState>('/api/sites/youtube/oauth/status')
 }
 
 export const revokeYouTubeOAuth = async () => {
-  return del<{ revoked: boolean }>('/api/site-runtimes/sites/youtube/oauth')
+  return del<{ revoked: boolean }>('/api/sites/youtube/oauth')
 }
 
 

@@ -5,13 +5,13 @@ import uuid
 from typing import Callable, Dict, List, Optional, Protocol
 
 from crawl import (
-    PluginInvokeRequest,
-    PluginInvokeResponse,
-    PluginRuntimeError,
+    SiteRuntimeInvokeRequest,
+    SiteRuntimeInvokeResponse,
+    SiteRuntimeError,
 )
 
 from .models import SiteCapabilityRegistration, SiteRuntimeTarget
-from .runtime_models import PluginManifest
+from .runtime_models import SiteRuntimeManifest
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class SiteRuntimeInvocationClient(Protocol):
     """Transport abstraction between host and site runtimes."""
 
-    def invoke(self, target: SiteRuntimeTarget, request: PluginInvokeRequest) -> PluginInvokeResponse:
+    def invoke(self, target: SiteRuntimeTarget, request: SiteRuntimeInvokeRequest) -> SiteRuntimeInvokeResponse:
         ...
 
 
@@ -38,13 +38,13 @@ class SiteRuntimeGateway:
     def set_registration_refresh(self, callback: Optional[Callable[[], None]]) -> None:
         self._registration_refresh = callback
 
-    def register_manifest(self, plugin_id: str, version: str, manifest: PluginManifest) -> None:
-        self.unregister_plugin(plugin_id)
+    def register_manifest(self, runtime_id: str, version: str, manifest: SiteRuntimeManifest) -> None:
+        self.unregister_plugin(runtime_id)
         for capability in manifest.capabilities:
             for site in manifest.sites:
                 self._registrations.append(
                     SiteCapabilityRegistration(
-                        plugin_id=plugin_id,
+                        runtime_id=runtime_id,
                         version=version,
                         capability=capability.name,
                         site_name=site.site_name,
@@ -54,8 +54,8 @@ class SiteRuntimeGateway:
                     )
                 )
 
-    def unregister_plugin(self, plugin_id: str) -> None:
-        self._registrations = [item for item in self._registrations if item.plugin_id != plugin_id]
+    def unregister_plugin(self, runtime_id: str) -> None:
+        self._registrations = [item for item in self._registrations if item.runtime_id != runtime_id]
 
     def list_registrations(self) -> List[SiteCapabilityRegistration]:
         return list(self._registrations)
@@ -110,7 +110,7 @@ class SiteRuntimeGateway:
         if registration is None:
             return None
         return SiteRuntimeTarget(
-            plugin_id=registration.plugin_id,
+            runtime_id=registration.runtime_id,
             version=registration.version,
             capability=capability,
             site_name=registration.site_name,
@@ -124,19 +124,19 @@ class SiteRuntimeGateway:
         site_name: Optional[str] = None,
         domain: Optional[str] = None,
         timeout_ms: Optional[int] = None,
-    ) -> PluginInvokeResponse:
+    ) -> SiteRuntimeInvokeResponse:
         registration = self._resolve_registration(capability=capability, site_name=site_name, domain=domain)
         if registration is None:
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id='',
                 ok=False,
-                error=PluginRuntimeError.bad_response(
+                error=SiteRuntimeError.bad_response(
                     f'No runtime route found for capability: {capability}',
                     details={'capability': capability, 'site_name': site_name, 'domain': domain},
                 ),
             )
         route = SiteRuntimeTarget(
-            plugin_id=registration.plugin_id,
+            runtime_id=registration.runtime_id,
             version=registration.version,
             capability=capability,
             site_name=registration.site_name,
@@ -144,7 +144,7 @@ class SiteRuntimeGateway:
         )
         effective_timeout_ms = timeout_ms if timeout_ms is not None else registration.timeout_ms
 
-        request = PluginInvokeRequest(
+        request = SiteRuntimeInvokeRequest(
             request_id=str(uuid.uuid4()),
             capability=capability,
             payload=dict(payload or {}),
@@ -153,23 +153,23 @@ class SiteRuntimeGateway:
             metadata={'domain': domain},
         )
         if self._invocation_client is None:
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id=request.request_id,
                 ok=False,
-                error=PluginRuntimeError.bad_response(
+                error=SiteRuntimeError.bad_response(
                     'Plugin invocation client is not configured',
-                    details={'plugin_id': route.plugin_id, 'capability': capability},
+                    details={'runtime_id': route.runtime_id, 'capability': capability},
                 ),
             )
 
         response = self._invocation_client.invoke(route, request)
-        if not isinstance(response, PluginInvokeResponse):
-            return PluginInvokeResponse(
+        if not isinstance(response, SiteRuntimeInvokeResponse):
+            return SiteRuntimeInvokeResponse(
                 request_id=request.request_id,
                 ok=False,
-                error=PluginRuntimeError.bad_response(
-                    'Plugin runtime returned an invalid response object',
-                    details={'plugin_id': route.plugin_id, 'capability': capability},
+                error=SiteRuntimeError.bad_response(
+                    'Site runtime returned an invalid response object',
+                    details={'runtime_id': route.runtime_id, 'capability': capability},
                 ),
             )
         return response

@@ -6,7 +6,7 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'squirrel-sdk' / 'src'))
 
-from crawl import PluginInvokeResponse
+from crawl import SiteRuntimeInvokeResponse
 from services.subscription_update.models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateMode, UpdateTrigger
 from services.subscription_update.strategies.default_strategy import DefaultUpdateStrategy, should_schedule_total_video_backfill
 
@@ -123,7 +123,7 @@ def test_fetch_videos_uses_plugin_gateway_sync_subscription(monkeypatch):
                 'domain': domain,
                 'timeout_ms': timeout_ms,
             })
-            return PluginInvokeResponse(
+            return SiteRuntimeInvokeResponse(
                 request_id='sync-1',
                 ok=True,
                 data={
@@ -136,7 +136,7 @@ def test_fetch_videos_uses_plugin_gateway_sync_subscription(monkeypatch):
             )
 
     monkeypatch.setattr(
-        'services.subscription_update.strategies.default_strategy.get_plugin_manager',
+        'services.subscription_update.strategies.default_strategy.get_site_runtime_manager',
         lambda: SimpleNamespace(gateway=_FakeGateway()),
     )
     monkeypatch.setattr(

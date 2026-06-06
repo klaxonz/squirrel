@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises'
 const providerPath = new URL('../src/playback/providers/youtube/index.mjs', import.meta.url)
 const corePath = new URL('../src/playback/providers/youtube/youtubei_core.mjs', import.meta.url)
 const mainPath = new URL('../src/main.mjs', import.meta.url)
-const pluginCorePath = new URL('../../squirrel-plugins/youtube/src/squirrel_youtube/node/youtubei_core.mjs', import.meta.url)
+const pluginCorePath = new URL('../../squirrel-site-runtimes/youtube/src/squirrel_youtube/node/youtubei_core.mjs', import.meta.url)
 const frontendDetailPath = new URL('../../squirrel-frontend/src/composables/useVideoDetail.ts', import.meta.url)
 
 test('desktop youtube provider keeps complete dash payload for direct playback', async () => {

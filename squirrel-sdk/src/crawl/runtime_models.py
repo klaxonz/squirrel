@@ -1,14 +1,14 @@
-"""Runtime data models for plugin runtime V2."""
+"""Runtime data models for site runtime V2."""
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional
 
-from .runtime_errors import PluginRuntimeError
+from .runtime_errors import SiteRuntimeError
 
 
 @dataclass
-class PluginPermission:
+class SiteRuntimePermission:
     """Permission declaration required by a plugin."""
 
     name: str
@@ -21,7 +21,7 @@ class PluginPermission:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PluginPermission':
+    def from_dict(cls, data: Dict[str, Any]) -> 'SiteRuntimePermission':
         return cls(
             name=str(data.get('name', '')),
             description=str(data.get('description', '')),
@@ -32,8 +32,8 @@ class PluginPermission:
 
 
 @dataclass
-class PluginCapability:
-    """Capability exposed by a plugin runtime."""
+class SiteRuntimeCapability:
+    """Capability exposed by a site runtime."""
 
     name: str
     description: str = ''
@@ -47,7 +47,7 @@ class PluginCapability:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PluginCapability':
+    def from_dict(cls, data: Dict[str, Any]) -> 'SiteRuntimeCapability':
         return cls(
             name=str(data.get('name', '')),
             description=str(data.get('description', '')),
@@ -60,7 +60,7 @@ class PluginCapability:
 
 
 @dataclass
-class PluginSiteManifest:
+class SiteRuntimeSite:
     """Site metadata declared by a plugin manifest."""
 
     site_name: str
@@ -73,7 +73,7 @@ class PluginSiteManifest:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PluginSiteManifest':
+    def from_dict(cls, data: Dict[str, Any]) -> 'SiteRuntimeSite':
         return cls(
             site_name=str(data.get('site_name', '')),
             domains=list(data.get('domains') or []),
@@ -84,17 +84,17 @@ class PluginSiteManifest:
 
 
 @dataclass
-class PluginManifest:
+class SiteRuntimeManifest:
     """Top-level plugin manifest exchanged during runtime handshake."""
 
-    plugin_id: str
+    runtime_id: str
     version: str
     sdk_api_version: str = '2.0'
     display_name: str = ''
     description: str = ''
-    capabilities: List[PluginCapability] = field(default_factory=list)
-    sites: List[PluginSiteManifest] = field(default_factory=list)
-    permissions: List[PluginPermission] = field(default_factory=list)
+    capabilities: List[SiteRuntimeCapability] = field(default_factory=list)
+    sites: List[SiteRuntimeSite] = field(default_factory=list)
+    permissions: List[SiteRuntimePermission] = field(default_factory=list)
     config_schema: Dict[str, Any] = field(default_factory=dict)
     health_policy: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -103,7 +103,7 @@ class PluginManifest:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            'plugin_id': self.plugin_id,
+            'runtime_id': self.runtime_id,
             'version': self.version,
             'sdk_api_version': self.sdk_api_version,
             'display_name': self.display_name,
@@ -119,23 +119,23 @@ class PluginManifest:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PluginManifest':
+    def from_dict(cls, data: Dict[str, Any]) -> 'SiteRuntimeManifest':
         return cls(
-            plugin_id=str(data.get('plugin_id', '')),
+            runtime_id=str(data.get('runtime_id', '')),
             version=str(data.get('version', '')),
             sdk_api_version=str(data.get('sdk_api_version', '2.0')),
             display_name=str(data.get('display_name', '')),
             description=str(data.get('description', '')),
             capabilities=[
-                item if isinstance(item, PluginCapability) else PluginCapability.from_dict(item)
+                item if isinstance(item, SiteRuntimeCapability) else SiteRuntimeCapability.from_dict(item)
                 for item in list(data.get('capabilities') or [])
             ],
             sites=[
-                item if isinstance(item, PluginSiteManifest) else PluginSiteManifest.from_dict(item)
+                item if isinstance(item, SiteRuntimeSite) else SiteRuntimeSite.from_dict(item)
                 for item in list(data.get('sites') or [])
             ],
             permissions=[
-                item if isinstance(item, PluginPermission) else PluginPermission.from_dict(item)
+                item if isinstance(item, SiteRuntimePermission) else SiteRuntimePermission.from_dict(item)
                 for item in list(data.get('permissions') or [])
             ],
             config_schema=dict(data.get('config_schema') or {}),
@@ -147,8 +147,8 @@ class PluginManifest:
 
 
 @dataclass
-class PluginHealthStatus:
-    """Health payload returned by plugin runtimes."""
+class SiteRuntimeHealthStatus:
+    """Health payload returned by site runtimes."""
 
     healthy: bool
     status: str = 'unknown'
@@ -160,7 +160,7 @@ class PluginHealthStatus:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PluginHealthStatus':
+    def from_dict(cls, data: Dict[str, Any]) -> 'SiteRuntimeHealthStatus':
         return cls(
             healthy=bool(data.get('healthy', False)),
             status=str(data.get('status', 'unknown')),
@@ -171,8 +171,8 @@ class PluginHealthStatus:
 
 
 @dataclass
-class PluginInvokeRequest:
-    """Invocation request passed from host to plugin runtime."""
+class SiteRuntimeInvokeRequest:
+    """Invocation request passed from host to site runtime."""
 
     request_id: str
     capability: str
@@ -185,7 +185,7 @@ class PluginInvokeRequest:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PluginInvokeRequest':
+    def from_dict(cls, data: Dict[str, Any]) -> 'SiteRuntimeInvokeRequest':
         return cls(
             request_id=str(data.get('request_id', '')),
             capability=str(data.get('capability', '')),
@@ -197,13 +197,13 @@ class PluginInvokeRequest:
 
 
 @dataclass
-class PluginInvokeResponse:
-    """Invocation response returned by plugin runtime."""
+class SiteRuntimeInvokeResponse:
+    """Invocation response returned by site runtime."""
 
     request_id: str
     ok: bool
     data: Optional[Any] = None
-    error: Optional[PluginRuntimeError] = None
+    error: Optional[SiteRuntimeError] = None
     retryable: bool = False
     diagnostics: Dict[str, Any] = field(default_factory=dict)
 
@@ -218,14 +218,14 @@ class PluginInvokeResponse:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PluginInvokeResponse':
+    def from_dict(cls, data: Dict[str, Any]) -> 'SiteRuntimeInvokeResponse':
         raw_error = data.get('error')
         return cls(
             request_id=str(data.get('request_id', '')),
             ok=bool(data.get('ok', False)),
             data=data.get('data'),
-            error=raw_error if isinstance(raw_error, PluginRuntimeError) else (
-                PluginRuntimeError.from_dict(raw_error) if isinstance(raw_error, dict) else None
+            error=raw_error if isinstance(raw_error, SiteRuntimeError) else (
+                SiteRuntimeError.from_dict(raw_error) if isinstance(raw_error, dict) else None
             ),
             retryable=bool(data.get('retryable', False)),
             diagnostics=dict(data.get('diagnostics') or {}),

@@ -101,7 +101,7 @@ def bootstrap_runtime(component: str):
         try:
             shutdown_site_runtimes()
         except Exception:
-            logger.warning("[%s] Plugin runtime shutdown failed", component, exc_info=True)
+            logger.warning("[%s] Site runtime shutdown failed", component, exc_info=True)
 
 
 def create_shutdown_event(component: str) -> threading.Event:

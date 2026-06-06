@@ -274,7 +274,7 @@ Squirrel 支持通过插件系统扩展更多视频平台。
 
 ### 插件目录
 
-- `squirrel-plugins/` - 插件源码目录
+- `squirrel-site-runtimes/` - 插件源码目录
   - `bilibili/` - Bilibili 插件
   - `youtube/` - YouTube 插件
   - `javdb/` - JavDB 插件

@@ -126,6 +126,10 @@
 
         <div class="flex-1 overflow-y-auto custom-scrollbar">
           <div class="mx-auto w-full max-w-[1400px] p-4 lg:p-6">
+            <div v-if="discoveryErrors.length" class="mb-3 rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <div class="font-medium">发现 {{ discoveryErrors.length }} 个站点运行时失败</div>
+              <div class="mt-1 truncate text-xs">{{ discoveryErrors[0].metadata_path }} · {{ discoveryErrors[0].reason }}</div>
+            </div>
             <div class="overflow-x-auto rounded-lg border border-border/50">
               <div class="site-runtime-grid min-w-[980px] border-b border-border/50 bg-muted/20 px-4 py-3 text-xs font-medium text-muted-foreground">
                 <div>站点运行时</div>
@@ -149,7 +153,7 @@
               <div v-else class="min-w-[980px] divide-y divide-border/50">
                 <div
                   v-for="runtime in displaySiteRuntimes"
-                  :key="runtime.plugin_id"
+                  :key="runtime.runtime_id"
                   class="site-runtime-grid group items-center px-4 py-3 transition-colors hover:bg-accent/30"
                 >
                   <div class="flex min-w-0 items-center gap-3">
@@ -210,7 +214,7 @@
                       variant="ghost"
                       size="icon"
                       class="h-8 w-8 rounded-md text-muted-foreground"
-                      :disabled="actioning === runtime.plugin_id"
+                      :disabled="actioning === runtime.runtime_id"
                       :title="runtime.enabled ? '停用站点运行时' : '启用站点运行时'"
                       @click="runtime.enabled ? handleDisable(runtime) : handleEnable(runtime)"
                     >
@@ -406,6 +410,7 @@ import {
 const loading = ref(false)
 const reloading = ref(false)
 const siteRuntimes = ref([])
+const discoveryErrors = ref([])
 const actioning = ref(null)
 const isInitialLoading = computed(() => loading.value && !siteRuntimes.value.length)
 
@@ -607,7 +612,7 @@ const displaySiteRuntimes = computed(() => {
     const keyword = searchQuery.value.trim().toLowerCase()
     list = list.filter(runtime =>
       runtime.display_name?.toLowerCase().includes(keyword) ||
-      runtime.plugin_id?.toLowerCase().includes(keyword) ||
+      runtime.runtime_id?.toLowerCase().includes(keyword) ||
       runtime.description?.toLowerCase().includes(keyword) ||
       runtime.siteName?.toLowerCase().includes(keyword)
     )
@@ -664,15 +669,15 @@ const handleReload = async () => {
 }
 
 const handleEnable = async (plugin) => {
-  actioning.value = plugin.plugin_id
-  const res = await enableSiteRuntime(plugin.plugin_id)
+  actioning.value = plugin.runtime_id
+  const res = await enableSiteRuntime(plugin.runtime_id)
   if (!res.error) await fetchSiteRuntimes()
   actioning.value = null
 }
 
 const handleDisable = async (plugin) => {
-  actioning.value = plugin.plugin_id
-  const res = await disableSiteRuntime(plugin.plugin_id)
+  actioning.value = plugin.runtime_id
+  const res = await disableSiteRuntime(plugin.runtime_id)
   if (!res.error) await fetchSiteRuntimes()
   actioning.value = null
 }
@@ -848,7 +853,10 @@ const saveSiteEditor = async ({ slug, sitePayload }) => {
 const fetchSiteRuntimes = async () => {
   loading.value = true
   const { data, error } = await getSiteRuntimes()
-  if (!error) siteRuntimes.value = data || []
+  if (!error) {
+    siteRuntimes.value = data?.items || []
+    discoveryErrors.value = data?.discovery_errors || []
+  }
   loading.value = false
 }
 

@@ -12,7 +12,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-from crawl import PluginHealthStatus, PluginInvokeRequest, PluginInvokeResponse, PluginRuntime, PluginRuntimeError
+from crawl import SiteRuntimeHealthStatus, SiteRuntimeInvokeRequest, SiteRuntimeInvokeResponse, SiteRuntime, SiteRuntimeError
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ def _configure_backend_runtime_state() -> None:
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Squirrel site runtime bridge')
     parser.add_argument('--entrypoint', required=True)
-    parser.add_argument('--plugin-id', required=True)
+    parser.add_argument('--runtime-id', required=True)
     parser.add_argument('--version', required=True)
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, required=True)
@@ -52,14 +52,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument('--granted-permission', action='append', default=[])
     parser.add_argument('--network-policy')
     parser.add_argument('--max-runtime-seconds', type=float)
-    parser.add_argument('--memory-limit-mb', type=int)
-    parser.add_argument('--cpu-time-limit-seconds', type=int)
-    parser.add_argument('--max-open-files', type=int)
     parser.add_argument('--import-path', action='append', default=[])
     return parser.parse_args()
 
 
-def _load_runtime(entrypoint: str) -> PluginRuntime:
+def _load_runtime(entrypoint: str) -> SiteRuntime:
     module_name, _, factory_name = entrypoint.partition(':')
     if not module_name or not factory_name:
         raise RuntimeError(f'Invalid runtime entrypoint: {entrypoint}')
@@ -71,13 +68,13 @@ def _load_runtime(entrypoint: str) -> PluginRuntime:
         raise RuntimeError(f'Runtime factory not found: {entrypoint}')
 
     runtime = factory()
-    if not isinstance(runtime, PluginRuntime):
-        raise RuntimeError(f'Runtime factory did not return PluginRuntime: {entrypoint}')
+    if not isinstance(runtime, SiteRuntime):
+        raise RuntimeError(f'Runtime factory did not return SiteRuntime: {entrypoint}')
     return runtime
 
 
 class _BridgeServer(ThreadingHTTPServer):
-    runtime: PluginRuntime
+    runtime: SiteRuntime
 
 
 class _BridgeHandler(BaseHTTPRequestHandler):
@@ -101,7 +98,7 @@ class _BridgeHandler(BaseHTTPRequestHandler):
         return payload if isinstance(payload, dict) else {}
 
     @staticmethod
-    def _build_invoke_log_fields(request: PluginInvokeRequest, *, elapsed_ms: int | None = None) -> dict[str, Any]:
+    def _build_invoke_log_fields(request: SiteRuntimeInvokeRequest, *, elapsed_ms: int | None = None) -> dict[str, Any]:
         payload = dict(request.payload or {})
         fields = {
             'request_id': request.request_id,
@@ -118,7 +115,7 @@ class _BridgeHandler(BaseHTTPRequestHandler):
     def _log_invoke_event(
         self,
         message: str,
-        request: PluginInvokeRequest,
+        request: SiteRuntimeInvokeRequest,
         *,
         level: int,
         elapsed_ms: int | None = None,
@@ -139,8 +136,8 @@ class _BridgeHandler(BaseHTTPRequestHandler):
 
     def _write_invoke_response(
         self,
-        request: PluginInvokeRequest,
-        response: PluginInvokeResponse,
+        request: SiteRuntimeInvokeRequest,
+        response: SiteRuntimeInvokeResponse,
         *,
         elapsed_ms: int,
     ) -> None:
@@ -148,12 +145,12 @@ class _BridgeHandler(BaseHTTPRequestHandler):
             self._write_json(HTTPStatus.OK, response.to_dict())
         except (ConnectionError, OSError) as exc:
             self._log_invoke_event(
-                'Plugin invoke response dropped because client disconnected',
+                'Site runtime invoke response dropped because client disconnected',
                 request,
                 level=logging.WARNING,
                 elapsed_ms=elapsed_ms,
             )
-            logger.warning('Plugin response write failed: %s', exc)
+            logger.warning('Site runtime response write failed: %s', exc)
 
     def do_GET(self) -> None:  # noqa: N802
         if self.path != '/health':
@@ -161,37 +158,37 @@ class _BridgeHandler(BaseHTTPRequestHandler):
             return
 
         health = self.server.runtime.health()
-        if isinstance(health, PluginHealthStatus):
+        if isinstance(health, SiteRuntimeHealthStatus):
             self._write_json(HTTPStatus.OK, health.to_dict())
             return
-        self._write_json(HTTPStatus.OK, PluginHealthStatus.from_dict(health).to_dict())
+        self._write_json(HTTPStatus.OK, SiteRuntimeHealthStatus.from_dict(health).to_dict())
 
     def do_POST(self) -> None:  # noqa: N802
         if self.path == '/invoke':
             payload = self._read_json()
-            request = PluginInvokeRequest.from_dict(payload.get('request') or {})
+            request = SiteRuntimeInvokeRequest.from_dict(payload.get('request') or {})
             started_at = time.monotonic()
-            self._log_invoke_event('Plugin invoke started', request, level=logging.INFO)
+            self._log_invoke_event('Site runtime invoke started', request, level=logging.INFO)
             response = self.server.runtime.invoke(request.capability, request.payload)
             elapsed_ms = int((time.monotonic() - started_at) * 1000)
-            self._log_invoke_event('Plugin invoke finished', request, level=logging.INFO, elapsed_ms=elapsed_ms)
-            if isinstance(response, PluginInvokeResponse):
+            self._log_invoke_event('Site runtime invoke finished', request, level=logging.INFO, elapsed_ms=elapsed_ms)
+            if isinstance(response, SiteRuntimeInvokeResponse):
                 self._write_invoke_response(request, response, elapsed_ms=elapsed_ms)
                 return
             if isinstance(response, dict):
                 self._write_invoke_response(
                     request,
-                    PluginInvokeResponse.from_dict(response),
+                    SiteRuntimeInvokeResponse.from_dict(response),
                     elapsed_ms=elapsed_ms,
                 )
                 return
             self._write_invoke_response(
                 request,
-                PluginInvokeResponse(
+                SiteRuntimeInvokeResponse(
                     request_id=request.request_id,
                     ok=False,
-                    error=PluginRuntimeError.bad_response(
-                        'Plugin runtime returned an unsupported response type',
+                    error=SiteRuntimeError.bad_response(
+                        'Site runtime returned an unsupported response type',
                         details={'capability': request.capability},
                     ),
                 ),
@@ -237,18 +234,14 @@ def main() -> int:
     _configure_backend_runtime_state()
     runtime = _load_runtime(args.entrypoint)
     runtime.start({
-        'plugin_id': args.plugin_id,
+        'runtime_id': args.runtime_id,
         'version': args.version,
         'data_dir': args.data_dir,
         'granted_permissions': list(args.granted_permission or []),
         'network_policy': json.loads(args.network_policy) if args.network_policy else None,
         'runtime_policy': {
             'max_runtime_seconds': args.max_runtime_seconds,
-            'memory_limit_mb': args.memory_limit_mb,
-            'cpu_time_limit_seconds': args.cpu_time_limit_seconds,
-            'max_open_files': args.max_open_files,
         },
-        'isolated': False,
     })
 
     server = _BridgeServer((args.host, args.port), _BridgeHandler)

@@ -5,7 +5,7 @@ import logging
 
 from ..base import PipelineStage
 from ..context import PipelineContext
-from ...adapters import PluginDataAdapter
+from ...adapters import RuntimeDataAdapter
 from ...exceptions import ValidationError as ExtValidationError
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class ValidationStage(PipelineStage):
     - 保存到context.video_dto
     """
     
-    def __init__(self, adapter: PluginDataAdapter):
+    def __init__(self, adapter: RuntimeDataAdapter):
         """
         Args:
             adapter: 插件数据适配器

@@ -43,8 +43,8 @@ squirrel-backend/radar.db
 squirrel-backend/plugins_ext/
 squirrel-sdk/dist/
 squirrel-sdk/build/
-squirrel-plugins/*/dist/
-squirrel-plugins/*/*.egg-info/
+squirrel-site-runtimes/*/dist/
+squirrel-site-runtimes/*/*.egg-info/
 
 # Node
 node_modules/

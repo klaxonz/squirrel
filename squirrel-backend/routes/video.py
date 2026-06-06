@@ -1,14 +1,12 @@
 import logging
-from fastapi import Query, APIRouter, Request, HTTPException, Depends, Body
+from fastapi import Query, APIRouter, Request, HTTPException, Depends
 from fastapi.responses import PlainTextResponse
 import common.response as response
 from models.user import User
 from schemas.video.request.video import RemoteVideoSaveRequest, SortBy
 from services import video_service
-from services.site_catalog_service import save_site_overrides
 from typing import List
 from utils.site_catalog import SiteCatalog
-from core.site_config_manager import get_effective_site_catalog
 from site_runtimes.manager import get_site_runtime_manager
 from utils.jwt_helper import get_current_user
 from utils.url_helper import normalize_domain
@@ -194,28 +192,3 @@ def get_video_subtitles(
     except Exception:
         logger.exception('Subtitles fetch failed')
         raise HTTPException(status_code=500, detail="Server error")
-
-
-@router.get("/api/sites")
-def get_sites_catalog():
-    """返回完整站点配置（label, domains, aliases, enabled）。"""
-    return response.success(get_effective_site_catalog())
-
-
-@router.put("/api/sites")
-def update_sites_catalog(payload: dict = Body(...)):
-    """保存页面编辑后的站点 override 配置。"""
-    sites_payload = payload.get('sites') if isinstance(payload, dict) else None
-    if not isinstance(sites_payload, dict):
-        return response.param_error('sites 必须为对象')
-
-    try:
-        catalog = save_site_overrides(sites_payload)
-        return response.success(catalog, msg="站点配置已更新")
-    except ValueError as exc:
-        return response.param_error(str(exc))
-    except Exception:
-        logger.exception("Failed to update site catalog")
-        return response.server_error("保存站点配置失败")
-
-

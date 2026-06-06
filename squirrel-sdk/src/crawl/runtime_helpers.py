@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Optional
 
-from .plugin_runtime_helpers import (
+from .site_runtime_helpers import (
     PayloadHandler,
     build_extract_video_handler,
     build_health_check,
@@ -15,8 +15,8 @@ from .plugin_runtime_helpers import (
     build_subtitles_handler,
     build_sync_subscription_handler,
 )
-from .plugin import RuntimeStartHook, RuntimeStopHook, create_plugin_runtime
-from .runtime_models import PluginHealthStatus, PluginManifest
+from .site_runtime import RuntimeStartHook, RuntimeStopHook, create_declarative_site_runtime
+from .runtime_models import SiteRuntimeHealthStatus, SiteRuntimeManifest
 
 
 ObjectFactory = Callable[[], Any]
@@ -24,9 +24,9 @@ ObjectFactory = Callable[[], Any]
 
 def create_site_runtime(
     *,
-    manifest: PluginManifest,
+    manifest: SiteRuntimeManifest,
     health_message: Optional[str] = None,
-    health_check: Optional[Callable[[], PluginHealthStatus]] = None,
+    health_check: Optional[Callable[[], SiteRuntimeHealthStatus]] = None,
     on_start: Optional[RuntimeStartHook] = None,
     on_stop: Optional[RuntimeStopHook] = None,
     capability_handlers: Optional[Dict[str, PayloadHandler]] = None,
@@ -76,7 +76,7 @@ def create_site_runtime(
     if effective_health_check is None and health_message:
         effective_health_check = build_health_check(health_message)
 
-    return create_plugin_runtime(
+    return create_declarative_site_runtime(
         manifest=manifest,
         capability_handlers=resolved_handlers,
         on_start=on_start,

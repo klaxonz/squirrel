@@ -3,7 +3,7 @@
 本文件用于指导在本仓库工作的智能编码代理。
 
 ## 范围
-- 主要子项目：`squirrel-backend`、`squirrel-frontend`、`squirrel-desktop`、`squirrel-sdk`、`squirrel-plugins`。
+- 主要子项目：`squirrel-backend`、`squirrel-frontend`、`squirrel-desktop`、`squirrel-sdk`、`squirrel-site-runtimes`。
 - 辅助子项目：`squirrel-cf-bypass`、`squirrel-extension`。
 - 修改应尽量限制在当前任务相关子项目；不要顺手格式化或重构无关代码。
 
@@ -39,7 +39,7 @@
 - 当前仓库无 SDK 测试。
 
 ### 插件（Python）
-- 每个插件位于 `squirrel-plugins/<site>/src/...`。
+- 每个插件位于 `squirrel-site-runtimes/<site>/src/...`。
 - 插件依赖 `squirrel-sdk` 的公开接口。
 - 插件运行方式：随后端调度运行，或在 Python 中直接导入模块做针对性验证。
 
