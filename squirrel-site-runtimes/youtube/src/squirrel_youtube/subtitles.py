@@ -5,6 +5,8 @@ import re
 import xml.etree.ElementTree as ET
 from typing import Any, Tuple
 
+from crawl import NoSubtitlesError
+
 from .video_id import extract_youtube_video_id
 from .youtubei_resolver import resolve_captions_with_youtubei
 
@@ -79,7 +81,7 @@ def _extract_timedtext_entries(xml_text: str) -> list[dict[str, Any]]:
     try:
         root = ET.fromstring(xml_text)
     except ET.ParseError as exc:
-        raise ValueError('No subtitles available: invalid timedtext payload') from exc
+        raise NoSubtitlesError('No subtitles available: invalid timedtext payload') from exc
 
     entries: list[dict[str, Any]] = []
     for paragraph in root.findall('.//p'):
@@ -108,7 +110,7 @@ def _extract_timedtext_entries(xml_text: str) -> list[dict[str, Any]]:
 
 def _entries_to_srt(entries: list[dict[str, Any]]) -> str:
     if not entries:
-        raise ValueError('No subtitles available')
+        raise NoSubtitlesError()
 
     lines: list[str] = []
     for index, entry in enumerate(entries, start=1):
@@ -145,10 +147,13 @@ class YoutubeSubtitlesProvider:
 
     def _do_get_subtitles(self, video, lang: str, fmt: str) -> Tuple[str, str]:
         video_id = extract_youtube_video_id(getattr(video, 'url', '') or '') or str(getattr(video, 'id', 'video'))
-        payload = resolve_captions_with_youtubei(video_id, lang, fmt=fmt)
+        try:
+            payload = resolve_captions_with_youtubei(video_id, lang, fmt=fmt)
+        except ValueError as exc:
+            raise NoSubtitlesError(str(exc) or 'No subtitles available') from exc
         content = str(payload.get('content') or '').strip()
         if not content:
-            raise ValueError('No subtitles available')
+            raise NoSubtitlesError()
 
         resolved_language = str(payload.get('language_code') or lang or 'default').strip() or 'default'
         if fmt == 'vtt':

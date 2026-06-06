@@ -12,13 +12,15 @@ from .core import (
     SubscriptionSyncContext,
     UserSubscriptionImporter,
 )
+from .exceptions import NoSubtitlesError
 from .site_runtime import create_declarative_site_runtime
-from .runtime_models import SiteRuntimeHealthStatus, SiteRuntimeManifest
+from .runtime_errors import SiteRuntimeError
+from .runtime_models import SiteRuntimeHealthStatus, SiteRuntimeInvokeResponse, SiteRuntimeManifest
 
 
 Payload = Dict[str, Any]
 ObjectFactory = Callable[[], Any]
-PayloadHandler = Callable[[Payload], Dict[str, Any]]
+PayloadHandler = Callable[[Payload], Dict[str, Any] | SiteRuntimeInvokeResponse]
 
 
 def require_payload_str(payload: Payload, field: str, *, label: Optional[str] = None) -> str:
@@ -201,7 +203,17 @@ def build_subtitles_handler(
         provider = provider_factory()
         lang = str(payload.get('lang') or default_lang).strip() or default_lang
         fmt = str(payload.get('fmt') or default_fmt).strip() or default_fmt
-        content, filename = provider.get_subtitles(build_video_ref(payload), lang, fmt)
+        try:
+            content, filename = provider.get_subtitles(build_video_ref(payload), lang, fmt)
+        except NoSubtitlesError as exc:
+            return SiteRuntimeInvokeResponse(
+                request_id=str(payload.get('request_id') or ''),
+                ok=False,
+                error=SiteRuntimeError.subtitles_not_available(
+                    'No subtitles available',
+                    details={'reason': str(exc)},
+                ),
+            )
         return {
             'content': content,
             'filename': filename,

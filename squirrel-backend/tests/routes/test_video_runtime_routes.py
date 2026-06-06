@@ -8,6 +8,7 @@ from fastapi import HTTPException
 
 from crawl import SiteRuntimeInvokeResponse, SiteRuntimeError
 from routes import video as video_route
+from services import video_subtitle_service
 
 
 def test_get_video_subtitles_reads_from_plugin_gateway(monkeypatch):
@@ -33,7 +34,7 @@ def test_get_video_subtitles_reads_from_plugin_gateway(monkeypatch):
             )
 
     monkeypatch.setattr(
-        video_route.video_service,
+        video_subtitle_service.video_crud_service,
         'get_video_by_id',
         lambda video_id: SimpleNamespace(
             id=video_id,
@@ -43,7 +44,7 @@ def test_get_video_subtitles_reads_from_plugin_gateway(monkeypatch):
         ),
     )
     monkeypatch.setattr(
-        video_route,
+        video_subtitle_service,
         'get_runtime_gateway',
         lambda: _FakeGateway(),
     )
@@ -96,7 +97,7 @@ def test_get_video_subtitles_allows_site_default_language(monkeypatch):
             )
 
     monkeypatch.setattr(
-        video_route.video_service,
+        video_subtitle_service.video_crud_service,
         'get_video_by_id',
         lambda video_id: SimpleNamespace(
             id=video_id,
@@ -106,7 +107,7 @@ def test_get_video_subtitles_allows_site_default_language(monkeypatch):
         ),
     )
     monkeypatch.setattr(
-        video_route,
+        video_subtitle_service,
         'get_runtime_gateway',
         lambda: _FakeGateway(),
     )
@@ -142,13 +143,11 @@ def test_get_video_subtitles_surfaces_runtime_error_message(monkeypatch):
             return SiteRuntimeInvokeResponse(
                 request_id='subtitles-error-1',
                 ok=False,
-                error=SiteRuntimeError.crashed(
-                    'No subtitles available: ERROR: [youtube] demo: Requested format is not available.',
-                ),
+                error=SiteRuntimeError.subtitles_not_available('No subtitles available'),
             )
 
     monkeypatch.setattr(
-        video_route.video_service,
+        video_subtitle_service.video_crud_service,
         'get_video_by_id',
         lambda video_id: SimpleNamespace(
             id=video_id,
@@ -158,7 +157,7 @@ def test_get_video_subtitles_surfaces_runtime_error_message(monkeypatch):
         ),
     )
     monkeypatch.setattr(
-        video_route,
+        video_subtitle_service,
         'get_runtime_gateway',
         lambda: _FakeGateway(),
     )

@@ -5,19 +5,14 @@ import common.response as response
 from models.user import User
 from schemas.video.request.video import RemoteVideoSaveRequest, SortBy, VideoCategory, YesNoAll, TimeRange, DurationFilter, ContentType
 from services import video_service
+from services.video_subtitle_service import SubtitleErrorCode, SubtitleServiceError, fetch_video_subtitles
 from typing import List
 from utils.site_catalog import SiteCatalog
-from site_runtimes.ports import get_runtime_gateway
 from utils.jwt_helper import get_current_user
-from utils.url_helper import normalize_domain
 
 logger = logging.getLogger()
 
 router = APIRouter(prefix='/api/video', tags=['频道视频接口'])
-
-
-def _video_domain(url: str) -> str:
-    return normalize_domain(url) or ''
 
 
 @router.post("/remote-save")
@@ -137,58 +132,19 @@ def get_video_subtitles(
         fmt: str = Query("srt", description="返回格式：支持 srt、vtt"),
         current_user: User = Depends(get_current_user)
 ):
-    normalized_fmt = fmt.lower()
-    if normalized_fmt not in {'srt', 'vtt'}:
-        raise HTTPException(status_code=400, detail='Only srt and vtt formats are supported')
-
-    video = video_service.get_video_by_id(video_id)
-    if not video:
-        raise HTTPException(status_code=404, detail="Video not found")
-
-    domain = _video_domain(video.url)
     try:
-        result = get_runtime_gateway().invoke(
-            'fetch_subtitles',
-            domain=domain,
-            payload={
-                'video_id': video.id,
-                'url': video.url,
-                'title': getattr(video, 'title', None),
-                'duration': getattr(video, 'duration', None),
-                'lang': lang,
-                'fmt': normalized_fmt,
-            },
-        )
-        if not result.ok or not isinstance(result.data, dict):
-            error = getattr(result, 'error', None)
-            error_message = str(getattr(error, 'message', '') or '').strip()
-            if 'No subtitles available' in error_message:
-                raise HTTPException(status_code=404, detail='No subtitles available')
-            if 'No runtime route found for capability' in error_message:
-                raise HTTPException(status_code=400, detail='Subtitles provider not available for this domain')
-            if error_message:
-                raise HTTPException(status_code=400, detail=error_message)
-            raise HTTPException(status_code=400, detail='Subtitles provider not available for this domain')
-        srt_text = str(result.data.get('content') or '')
-        fallback_ext = normalized_fmt
-        fallback_filename = f'{video.id}.{lang}.{fallback_ext}' if lang else f'{video.id}.{fallback_ext}'
-        filename = str(result.data.get('filename') or fallback_filename)
-        fallback_media_type = 'text/vtt; charset=utf-8' if normalized_fmt == 'vtt' else 'text/plain; charset=utf-8'
-        media_type = str(result.data.get('media_type') or fallback_media_type)
+        subtitle_file = fetch_video_subtitles(video_id, lang=lang, fmt=fmt)
         return PlainTextResponse(
-            content=srt_text,
-            media_type=media_type,
+            content=subtitle_file.content,
+            media_type=subtitle_file.media_type,
             headers={
-                "Content-Disposition": f"inline; filename=\"{filename}\""
+                "Content-Disposition": f"inline; filename=\"{subtitle_file.filename}\""
             }
         )
-    except HTTPException:
-        raise
-    except ValueError as e:
-        detail = str(e)
-        if 'No subtitles available' in detail:
-            raise HTTPException(status_code=404, detail="No subtitles available")
-        raise HTTPException(status_code=400, detail=detail)
+    except SubtitleServiceError as exc:
+        if exc.code in {SubtitleErrorCode.VIDEO_NOT_FOUND, SubtitleErrorCode.SUBTITLES_NOT_AVAILABLE}:
+            raise HTTPException(status_code=404, detail=exc.message)
+        raise HTTPException(status_code=400, detail=exc.message)
     except Exception:
         logger.exception('Subtitles fetch failed')
         raise HTTPException(status_code=500, detail="Server error")

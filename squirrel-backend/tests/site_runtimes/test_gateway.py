@@ -3,7 +3,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from crawl import SiteRuntimeInvokeResponse
+from crawl import RuntimeErrorCode, SiteRuntimeInvokeResponse
 from site_runtimes.gateway import SiteRuntimeGateway
 from site_runtimes.runtime_models import SiteRuntimeCapability, SiteRuntimeManifest, SiteRuntimeSite
 
@@ -74,5 +74,20 @@ def test_gateway_refreshes_registrations_once_before_returning_route_miss():
     assert refresh_calls == ['called']
     assert client.last_target is not None
     assert client.last_target.runtime_id == 'youporn'
+
+
+def test_gateway_returns_stable_error_code_for_route_miss():
+    gateway = SiteRuntimeGateway(invocation_client=_RecordingInvocationClient())
+
+    response = gateway.invoke('fetch_subtitles', domain='example.com')
+
+    assert response.ok is False
+    assert response.error is not None
+    assert response.error.code == RuntimeErrorCode.ROUTE_NOT_FOUND
+    assert response.error.details == {
+        'capability': 'fetch_subtitles',
+        'site_name': None,
+        'domain': 'example.com',
+    }
 
 

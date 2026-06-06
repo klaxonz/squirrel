@@ -20,6 +20,10 @@ SUBTITLES_PATH = YOUTUBE_PACKAGE / 'subtitles.py'
 def _stub_crawl_module():
     original = sys.modules.get('crawl')
     crawl_module = types.ModuleType('crawl')
+    class NoSubtitlesError(ValueError):
+        pass
+
+    crawl_module.NoSubtitlesError = NoSubtitlesError
     crawl_module.SubtitlesProvider = object
     try:
         sys.modules['crawl'] = crawl_module
@@ -203,14 +207,14 @@ def test_youtube_subtitles_provider_returns_vtt_payload_without_srt_conversion()
 
 
 def test_youtube_subtitles_provider_surfaces_worker_errors():
-    with _stub_crawl_module(), _stub_youtube_modules() as (_video_id_module, resolver_module):
+    with _stub_crawl_module() as crawl_module, _stub_youtube_modules() as (_video_id_module, resolver_module):
         resolver_module.resolve_captions_with_youtubei = lambda _video_id, _lang, fmt='srt': (_ for _ in ()).throw(
             ValueError('No subtitles available: worker failed')
         )
         module = _load_subtitles_module()
         provider = module.YoutubeSubtitlesProvider()
 
-        with pytest.raises(ValueError, match='No subtitles available'):
+        with pytest.raises(crawl_module.NoSubtitlesError, match='No subtitles available'):
             provider.get_subtitles(
                 SimpleNamespace(id='db-id', url='https://www.youtube.com/watch?v=demo-video'),
                 'en',

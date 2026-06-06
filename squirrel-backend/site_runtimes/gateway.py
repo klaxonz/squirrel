@@ -130,7 +130,7 @@ class SiteRuntimeGateway:
             return SiteRuntimeInvokeResponse(
                 request_id='',
                 ok=False,
-                error=SiteRuntimeError.bad_response(
+                error=SiteRuntimeError.route_not_found(
                     f'No runtime route found for capability: {capability}',
                     details={'capability': capability, 'site_name': site_name, 'domain': domain},
                 ),

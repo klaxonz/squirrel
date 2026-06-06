@@ -9,7 +9,7 @@ from typing import Tuple
 
 from yt_dlp import YoutubeDL
 
-from crawl import SubtitlesProvider, resolve_cookie_file_path
+from crawl import NoSubtitlesError, SubtitlesProvider, resolve_cookie_file_path
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class BilibiliSubtitlesProvider:
                     ydl.download([video.url])
             except Exception as exc:
                 logger.warning('yt-dlp subtitle extraction failed for %s: %s', video.url, exc)
-                raise ValueError(f'No subtitles available: {exc}') from exc
+                raise NoSubtitlesError(f'No subtitles available: {exc}') from exc
 
             srt_files = glob.glob(os.path.join(tmpdir, '*.srt'))
             preferred = None
@@ -75,7 +75,7 @@ class BilibiliSubtitlesProvider:
                     break
             target_path = preferred or (srt_files[0] if srt_files else None)
             if not target_path:
-                raise ValueError('No subtitles available')
+                raise NoSubtitlesError()
 
             with open(target_path, 'r', encoding='utf-8', errors='ignore') as rf:
                 srt_text = rf.read()

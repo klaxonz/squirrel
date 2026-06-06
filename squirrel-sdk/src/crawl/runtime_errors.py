@@ -12,9 +12,11 @@ class RuntimeErrorCode(str, Enum):
     TIMEOUT = 'PLUGIN_TIMEOUT'
     CRASHED = 'PLUGIN_CRASHED'
     BAD_RESPONSE = 'PLUGIN_BAD_RESPONSE'
+    ROUTE_NOT_FOUND = 'PLUGIN_ROUTE_NOT_FOUND'
     AUTH_REQUIRED = 'PLUGIN_AUTH_REQUIRED'
     NETWORK_ERROR = 'PLUGIN_NETWORK_ERROR'
     PARSE_ERROR = 'PLUGIN_PARSE_ERROR'
+    SUBTITLES_NOT_AVAILABLE = 'SUBTITLES_NOT_AVAILABLE'
 
 
 @dataclass
@@ -58,6 +60,10 @@ class SiteRuntimeError:
         return cls(RuntimeErrorCode.BAD_RESPONSE, message, retryable=False, details=dict(details or {}))
 
     @classmethod
+    def route_not_found(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
+        return cls(RuntimeErrorCode.ROUTE_NOT_FOUND, message, retryable=False, details=dict(details or {}))
+
+    @classmethod
     def auth_required(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
         return cls(RuntimeErrorCode.AUTH_REQUIRED, message, retryable=False, details=dict(details or {}))
 
@@ -73,3 +79,7 @@ class SiteRuntimeError:
     @classmethod
     def parse_error(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
         return cls(RuntimeErrorCode.PARSE_ERROR, message, retryable=False, details=dict(details or {}))
+
+    @classmethod
+    def subtitles_not_available(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
+        return cls(RuntimeErrorCode.SUBTITLES_NOT_AVAILABLE, message, retryable=False, details=dict(details or {}))

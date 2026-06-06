@@ -101,6 +101,7 @@ from .exceptions import (
     VipError,
     NotFoundError,
     ParseError,
+    NoSubtitlesError,
 )
 
 # HTTP utilities
@@ -239,6 +240,7 @@ __all__ = [
     'VipError',
     'NotFoundError',
     'ParseError',
+    'NoSubtitlesError',
     # Importer base classes
     'BaseImporter',
     'PaginatedImporter',

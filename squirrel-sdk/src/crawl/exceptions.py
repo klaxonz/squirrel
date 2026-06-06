@@ -91,3 +91,8 @@ class ParseError(PluginError):
 
     def __init__(self, message: str, context: Optional[Dict[str, Any]] = None):
         super().__init__(message, ErrorCategory.PARSE, retryable=False, context=context)
+
+
+class NoSubtitlesError(PluginError):
+    def __init__(self, message: str = 'No subtitles available', context: Optional[Dict[str, Any]] = None):
+        super().__init__(message, ErrorCategory.NOT_FOUND, retryable=False, context=context)
