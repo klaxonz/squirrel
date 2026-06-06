@@ -7,6 +7,11 @@ from contextlib import contextmanager
 from common.log import init_logging
 from core.site_config_manager import apply_site_config_overrides
 from core.database_upgrade import upgrade_database
+from core.startup_dependencies import (
+    clear_optional_startup_issue,
+    record_optional_startup_issue,
+    reset_startup_dependency_issues,
+)
 from site_runtimes.manager import bootstrap_site_runtimes, shutdown_site_runtimes
 from site_runtimes.reload_listener import start_reload_listener, stop_reload_listener
 from utils.cookie import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
@@ -24,6 +29,7 @@ def bootstrap_runtime(component: str):
     """
     init_logging()
     logger.info("[%s] Bootstrapping runtime...", component)
+    reset_startup_dependency_issues()
 
     try:
         upgrade_database()
@@ -33,21 +39,25 @@ def bootstrap_runtime(component: str):
 
     try:
         apply_site_config_overrides()
-    except Exception as exc:
-        logger.warning("[%s] Failed to apply site config overrides: %s", component, exc)
+    except Exception:
+        logger.exception("[%s] Failed to apply site config overrides", component)
+        raise
 
     try:
         from utils.cloudflare_bypass import get_default_client
         set_cloudflare_bypass_client(get_default_client())
+        clear_optional_startup_issue('cloudflare_bypass')
         logger.info("[%s] Cloudflare bypass client configured", component)
     except Exception as exc:
+        record_optional_startup_issue('cloudflare_bypass', exc)
         logger.warning("[%s] Failed to configure Cloudflare bypass client: %s", component, exc)
     try:
         set_cookie_file_resolver(resolve_cookie_file_for_url)
         set_cookie_domain_resolver(resolve_cookie_match_domain_for_url)
         logger.info("[%s] Cookie resolver configured", component)
-    except Exception as exc:
-        logger.warning("[%s] Failed to configure cookie resolver: %s", component, exc)
+    except Exception:
+        logger.exception("[%s] Failed to configure cookie resolver", component)
+        raise
 
     try:
         from services.youtube_oauth_service import get_oauth_credentials_for_daemon

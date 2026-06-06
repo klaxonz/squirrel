@@ -10,6 +10,7 @@ from sqlalchemy import text
 
 from core.cache import redis_client
 from core.database import engine
+from core.startup_dependencies import list_optional_startup_issues
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +36,18 @@ async def health_check() -> Dict[str, Any]:
             "api": "ok",
             "database": "unknown",
             "redis": "unknown",
+            "startup_optional": "ok",
         }
     }
+
+    startup_issues = list_optional_startup_issues()
+    if startup_issues:
+        health_status["checks"]["startup_optional"] = "degraded"
+        health_status["startup_optional_issues"] = [
+            {"name": issue.name, "error": issue.error}
+            for issue in startup_issues
+        ]
+        health_status["status"] = "degraded"
     
     # 检查数据库连接
     try:

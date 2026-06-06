@@ -68,6 +68,7 @@ from crawl import utils as crawl_utils
 import main as app_main
 from site_runtimes import runtime_bridge
 from processes import service_runtime
+from routes import health
 from utils import runtime_http
 
 
@@ -87,6 +88,11 @@ def test_lifespan_configures_backend_runtime_http_state(monkeypatch):
         sys.modules,
         'services.video_extraction_projection_service',
         SimpleNamespace(ensure_projection_seeded=lambda: projection_calls.append('seeded') or 0),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        'services.scheduled_task_bootstrap',
+        SimpleNamespace(ensure_system_tasks=lambda: None),
     )
 
     runtime_http.reset_runtime_http_state()
@@ -117,6 +123,11 @@ def test_lifespan_logs_ordered_startup_and_shutdown_sequence(monkeypatch, caplog
         'services.video_extraction_projection_service',
         SimpleNamespace(ensure_projection_seeded=lambda: 0),
     )
+    monkeypatch.setitem(
+        sys.modules,
+        'services.scheduled_task_bootstrap',
+        SimpleNamespace(ensure_system_tasks=lambda: None),
+    )
 
     runtime_http.reset_runtime_http_state()
 
@@ -130,14 +141,16 @@ def test_lifespan_logs_ordered_startup_and_shutdown_sequence(monkeypatch, caplog
     messages = [record.getMessage() for record in caplog.records if record.name == 'main']
     assert messages == [
         'Startup: begin',
-        'Startup [1/4] Applying site configuration overrides',
-        'Startup [1/4] Site configuration overrides applied',
-        'Startup [2/4] Configuring runtime HTTP helpers',
-        'Startup [2/4] Runtime HTTP helpers ready',
-        'Startup [3/4] Bootstrapping site runtime manager',
-        'Startup [3/4] Site runtime manager ready',
-        'Startup [4/4] Seeding video extraction projection',
-        'Startup [4/4] Video extraction projection ready (rebuilt=0)',
+        'Startup [1/5] Applying site configuration overrides',
+        'Startup [1/5] Site configuration overrides applied',
+        'Startup [2/5] Configuring runtime HTTP helpers',
+        'Startup [2/5] Runtime HTTP helpers ready',
+        'Startup [3/5] Bootstrapping site runtime manager',
+        'Startup [3/5] Site runtime manager ready',
+        'Startup [4/5] Seeding video extraction projection',
+        'Startup [4/5] Video extraction projection ready (rebuilt=0)',
+        'Startup [5/5] Bootstrapping scheduled tasks',
+        'Startup [5/5] Scheduled tasks ready',
         'Startup: complete',
         'Shutdown: begin',
         'Shutdown [1/1] Stopping site runtime manager',
@@ -161,6 +174,11 @@ def test_lifespan_sets_youtube_oauth_env_before_bootstrap(monkeypatch):
     )
     monkeypatch.setitem(
         sys.modules,
+        'services.scheduled_task_bootstrap',
+        SimpleNamespace(ensure_system_tasks=lambda: None),
+    )
+    monkeypatch.setitem(
+        sys.modules,
         'services.youtube_oauth_service',
         SimpleNamespace(get_oauth_credentials_for_daemon=lambda: 'D:/tmp/youtube_oauth.json'),
     )
@@ -177,6 +195,93 @@ def test_lifespan_sets_youtube_oauth_env_before_bootstrap(monkeypatch):
 
     asyncio.run(_run())
     assert captured['oauth_env'] == 'D:/tmp/youtube_oauth.json'
+
+
+def test_lifespan_fails_when_site_config_overrides_fail(monkeypatch):
+    def _raise_site_config_error():
+        raise RuntimeError('invalid site config')
+
+    monkeypatch.setattr(app_main, 'apply_site_config_overrides', _raise_site_config_error)
+
+    async def _run() -> None:
+        async with app_main.lifespan(SimpleNamespace()):
+            pass
+
+    try:
+        asyncio.run(_run())
+    except RuntimeError as exc:
+        assert str(exc) == 'invalid site config'
+    else:
+        raise AssertionError('Expected lifespan to fail on site config errors')
+
+
+def test_lifespan_records_optional_scheduled_task_degradation(monkeypatch):
+    from core.startup_dependencies import list_optional_startup_issues
+
+    def _raise_scheduled_task_error():
+        raise RuntimeError('scheduler table missing')
+
+    monkeypatch.setattr(app_main, 'apply_site_config_overrides', lambda: None)
+    monkeypatch.setattr(app_main, 'bootstrap_site_runtimes', lambda: None)
+    monkeypatch.setattr(app_main, 'shutdown_site_runtimes', lambda: None)
+    monkeypatch.setattr('utils.cloudflare_bypass.get_default_client', lambda: object())
+    monkeypatch.setattr(app_main, 'resolve_cookie_file_for_url', lambda url: url)
+    monkeypatch.setattr(app_main, 'resolve_cookie_match_domain_for_url', lambda _url: 'youtube.com')
+    monkeypatch.setitem(
+        sys.modules,
+        'services.video_extraction_projection_service',
+        SimpleNamespace(ensure_projection_seeded=lambda: 0),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        'services.scheduled_task_bootstrap',
+        SimpleNamespace(ensure_system_tasks=_raise_scheduled_task_error),
+    )
+
+    async def _run() -> None:
+        async with app_main.lifespan(SimpleNamespace()):
+            issues = list_optional_startup_issues()
+            assert [(issue.name, issue.error) for issue in issues] == [
+                ('scheduled_task_bootstrap', 'scheduler table missing'),
+            ]
+
+    asyncio.run(_run())
+
+
+def test_health_reports_optional_startup_degradation(monkeypatch):
+    from core.startup_dependencies import record_optional_startup_issue, reset_startup_dependency_issues
+
+    class _Connection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def execute(self, _statement):
+            return None
+
+    class _Engine:
+        def connect(self):
+            return _Connection()
+
+    class _RedisClient:
+        def ping(self):
+            return True
+
+    reset_startup_dependency_issues()
+    record_optional_startup_issue('cloudflare_bypass', RuntimeError('service unavailable'))
+    monkeypatch.setattr(health, 'engine', _Engine())
+    monkeypatch.setattr(health, 'redis_client', _RedisClient())
+
+    result = asyncio.run(health.health_check())
+
+    assert result['status'] == 'degraded'
+    assert result['checks']['startup_optional'] == 'degraded'
+    assert result['startup_optional_issues'] == [
+        {'name': 'cloudflare_bypass', 'error': 'service unavailable'},
+    ]
+    reset_startup_dependency_issues()
 
 
 def test_bootstrap_runtime_configures_backend_runtime_http_state(monkeypatch):

@@ -10,6 +10,11 @@ from common.log import init_logging
 from core.config import settings
 from core.database_upgrade import upgrade_database
 from core.site_config_manager import apply_site_config_overrides
+from core.startup_dependencies import (
+    clear_optional_startup_issue,
+    record_optional_startup_issue,
+    reset_startup_dependency_issues,
+)
 from site_runtimes.manager import bootstrap_site_runtimes, shutdown_site_runtimes
 from utils.cookie import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
 from utils.runtime_http import set_cloudflare_bypass_client
@@ -17,7 +22,7 @@ from utils.runtime_http import set_cookie_domain_resolver, set_cookie_file_resol
 
 logger = logging.getLogger(__name__)
 
-STARTUP_TOTAL_STEPS = 4
+STARTUP_TOTAL_STEPS = 5
 SHUTDOWN_TOTAL_STEPS = 1
 
 
@@ -40,13 +45,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     关闭时优雅停止所有服务
     """
     _log_lifecycle_event('Startup', 'begin')
+    reset_startup_dependency_issues()
 
     _log_lifecycle_step('Startup', 1, STARTUP_TOTAL_STEPS, 'Applying site configuration overrides')
     try:
         apply_site_config_overrides()
-        _log_lifecycle_step('Startup', 1, STARTUP_TOTAL_STEPS, 'Site configuration overrides applied')
-    except Exception as exc:
-        logger.warning('Startup [1/%s] Site configuration overrides skipped: %s', STARTUP_TOTAL_STEPS, exc)
+    except Exception:
+        logger.exception('Startup [1/%s] Failed to apply site configuration overrides', STARTUP_TOTAL_STEPS)
+        raise
+    _log_lifecycle_step('Startup', 1, STARTUP_TOTAL_STEPS, 'Site configuration overrides applied')
 
     _log_lifecycle_step('Startup', 2, STARTUP_TOTAL_STEPS, 'Configuring runtime HTTP helpers')
     runtime_http_enabled: list[str] = []
@@ -55,14 +62,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from utils.cloudflare_bypass import get_default_client
         set_cloudflare_bypass_client(get_default_client())
         runtime_http_enabled.append('cloudflare_bypass')
+        clear_optional_startup_issue('cloudflare_bypass')
     except Exception as exc:
+        record_optional_startup_issue('cloudflare_bypass', exc)
         runtime_http_degraded.append(f'cloudflare_bypass={exc}')
     try:
         set_cookie_file_resolver(resolve_cookie_file_for_url)
         set_cookie_domain_resolver(resolve_cookie_match_domain_for_url)
         runtime_http_enabled.append('cookie_resolver')
-    except Exception as exc:
-        runtime_http_degraded.append(f'cookie_resolver={exc}')
+    except Exception:
+        logger.exception('Startup [2/%s] Failed to configure cookie resolver', STARTUP_TOTAL_STEPS)
+        raise
 
     if runtime_http_degraded:
         logger.warning(
@@ -99,6 +109,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception:
         logger.exception('Startup [4/%s] Failed to seed video extraction projection', STARTUP_TOTAL_STEPS)
         raise
+
+    _log_lifecycle_step('Startup', 5, STARTUP_TOTAL_STEPS, 'Bootstrapping scheduled tasks')
+    try:
+        from services.scheduled_task_bootstrap import ensure_system_tasks
+        ensure_system_tasks()
+        clear_optional_startup_issue('scheduled_task_bootstrap')
+        _log_lifecycle_step('Startup', 5, STARTUP_TOTAL_STEPS, 'Scheduled tasks ready')
+    except Exception as exc:
+        record_optional_startup_issue('scheduled_task_bootstrap', exc)
+        logger.warning(
+            'Startup [5/%s] Scheduled task bootstrap degraded: %s',
+            STARTUP_TOTAL_STEPS,
+            exc,
+            exc_info=True,
+        )
 
     _log_lifecycle_event('Startup', 'complete')
 
