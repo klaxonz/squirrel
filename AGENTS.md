@@ -86,11 +86,13 @@ npm install; npm run build:check  # 类型检查 + 构建
 | 命令 | 用途 | 存储位置 |
 |------|------|---------|
 | `/req <name>` | 创建需求文档 | `.opencode/requirements/<name>.md` |
-| `/design <name>` | 创建技术方案 | `.opencode/designs/<name>.md` |
-| `/bug <title>` | 报告缺陷（status=open） | `.opencode/issues/bug-{YYYY-MM-DD}-{NNN}-{title}.md`（NNN 取目前最大序号 +1） |
+| `/design <name>` | 创建技术方案 | `.opencode/designs/<name>.md`（有对应需求时，name 必须与需求一致） |
+| `/bug <title>` | 报告缺陷（status=open） | 有关联需求/设计：`.opencode/issues/<name>-<NNN>-<title>.md`；独立缺陷：`.opencode/issues/bug-{YYYY-MM-DD}-{NNN}-<title>.md`（NNN 取目前最大序号 +1） |
 | `/issues` | 列出所有 open 的 issue | — |
 | `/issue close <name>` | 关闭 issue（status→fixed） | `.opencode/issues/<name>.md`（传入文件名去除 `.md` 后缀的部分） |
 | `/issue reopen <name>` | 重新打开 issue（status→open） | 同上 |
+
+**命名关联规则：** 同一特性的需求、设计、Issue 使用相同 `<name>`，详见 feature-flow skill 的「文档命名约定」。
 
 ## 项目记忆
 <!-- 使用 /remember 添加记忆，/recall 搜索记忆 -->
