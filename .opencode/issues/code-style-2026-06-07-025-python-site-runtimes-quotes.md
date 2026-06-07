@@ -12,22 +12,14 @@ location: squirrel-site-runtimes/*/src/
 site-runtimes 各插件之间引号风格混用：
 
 - **Bilibili 插件**：双引号 `"`
-  ```python
-  'label': 'Bilibili',
-  "User-Agent": "Mozilla/5.0 ..."
-  ```
 - **YouTube 插件**：单引号 `'`
-  ```python
-  site_name = 'youtube'
-  supported_domains = ['youtube.com', 'youtu.be']
-  ```
 - **YouPorn/JavDB 插件**：单引号 `'`
 
 已有 issue #022 记录了 backend 的双引号问题，但 site-runtimes 的混用尚未覆盖。
 
 ## 影响
 
-- 同一子项目内风格分裂，阅读时需切换
+- 同一子项目内风格分裂
 - 无法统一配置 ruff 引号规则
 - 新插件开发时无明确风格指引
 
