@@ -1,6 +1,6 @@
 import logging
 import time
-from threading import Thread
+from threading import Lock, Thread
 
 logger = logging.getLogger(__name__)
 
@@ -9,6 +9,7 @@ class Scheduler:
     def __init__(self):
         self.jobs = []
         self.running = False
+        self._lock = Lock()
 
     def _resolve_job_name(self, func):
         """Return a readable job name for logging."""
@@ -29,7 +30,9 @@ class Scheduler:
         """Loop through jobs and run any that are due."""
         while self.running:
             current_time = time.time()
-            for job in self.jobs[:]:
+            with self._lock:
+                jobs_snapshot = self.jobs[:]
+            for job in jobs_snapshot:
                 if job["next_run"] <= current_time:
                     thread = Thread(target=self._run_job_with_trace, args=(job["func"], job["name"]))
                     thread.start()
@@ -66,16 +69,18 @@ class Scheduler:
             "next_run": next_run,
             "name": job_name or self._resolve_job_name(func),
         }
-        self.jobs.append(job)
+        with self._lock:
+            self.jobs.append(job)
         return job
 
     def remove_job(self, job) -> bool:
         """Remove a scheduled job."""
-        try:
-            self.jobs.remove(job)
-            return True
-        except ValueError:
-            return False
+        with self._lock:
+            try:
+                self.jobs.remove(job)
+                return True
+            except ValueError:
+                return False
 
     def start(self):
         """Start the scheduler."""

@@ -1,3 +1,4 @@
+import threading
 import time
 
 from core.database import get_session
@@ -6,15 +7,18 @@ from models.user import UserConfig
 # Simple in-memory cache (60-second expiry)
 _config_cache = {}
 _CACHE_TTL = 60  # 60 seconds
+_cache_lock = threading.Lock()
 
 
 def get_config(user_id: int, use_cache: bool = True) -> dict:
     """Get user config, with 60-second cache enabled by default"""
     # 检查缓存
-    if use_cache and user_id in _config_cache:
-        cached_config, cached_time = _config_cache[user_id]
-        if time.time() - cached_time < _CACHE_TTL:
-            return cached_config
+    if use_cache:
+        with _cache_lock:
+            if user_id in _config_cache:
+                cached_config, cached_time = _config_cache[user_id]
+                if time.time() - cached_time < _CACHE_TTL:
+                    return cached_config
 
     # 查询数据库
     with get_session() as session:
@@ -26,7 +30,8 @@ def get_config(user_id: int, use_cache: bool = True) -> dict:
             session.refresh(config)
 
         # 更新缓存
-        _config_cache[user_id] = (config.settings, time.time())
+        with _cache_lock:
+            _config_cache[user_id] = (config.settings, time.time())
         return config.settings
 
 
@@ -60,7 +65,8 @@ def update_config(
         session.refresh(config)
 
         # 更新缓存后失效缓存
-        _config_cache.pop(user_id, None)
+        with _cache_lock:
+            _config_cache.pop(user_id, None)
 
         return config.settings
 

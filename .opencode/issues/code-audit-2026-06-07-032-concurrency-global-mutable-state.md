@@ -1,6 +1,12 @@
 ---
 title: 并发 — 全局可变状态无锁竞争条件
-status: open
+status: fixed
+fixed_by: |
+  thumbnail_refresh_task.py:44 — _get_shared_http_client 加 threading.Lock
+  user_config_service.py:10 — _config_cache 加 threading.Lock
+  schedule.py:12 — Scheduler.jobs 加 threading.Lock
+  youtubei_core.mjs:257,266 — Promise.all → Promise.allSettled
+  bilibili.mjs:67 — Promise.all → Promise.allSettled
 severity: high
 category: concurrency
 location: squirrel-backend/（跨多文件）

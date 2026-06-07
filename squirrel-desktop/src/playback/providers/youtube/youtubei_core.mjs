@@ -254,7 +254,8 @@ async function collectFormats(info, player, resolutionMode = 'playback') {
     ...(streamingData.adaptive_formats || []),
   ];
   if (resolutionMode === 'all') {
-    return Promise.all(rawFormats.map((format) => normalizeFormat(format, player)));
+    const results = await Promise.allSettled(rawFormats.map((format) => normalizeFormat(format, player)));
+    return results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
   }
 
   const formats = rawFormats.map((format) => buildFormatMetadata(format));
@@ -262,7 +263,7 @@ async function collectFormats(info, player, resolutionMode = 'playback') {
   const videoOnlyIndexes = sortPlaybackCandidates(formats, (format) => format.has_video && !format.has_audio);
   const audioOnlyIndexes = sortPlaybackCandidates(formats, (format) => format.has_audio && !format.has_video);
 
-  await Promise.all([
+  await Promise.allSettled([
     resolveBestPlayableUrl(progressiveIndexes, rawFormats, formats, player),
     resolveBestPlayableUrl(videoOnlyIndexes, rawFormats, formats, player),
     resolveBestPlayableUrl(audioOnlyIndexes, rawFormats, formats, player),

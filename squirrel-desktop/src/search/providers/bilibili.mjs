@@ -64,7 +64,7 @@ export const searchBilibiliVideos = async ({ query, limit, page, fetchImpl, buil
 
   const payload = await response.json()
   const rows = Array.isArray(payload?.data?.result) ? payload.data.result : []
-  const items = await Promise.all(rows.map(async (row) => {
+  const settledResults = await Promise.allSettled(rows.map(async (row) => {
     const uploader = stripHtml(row?.author)
     const uploaderId = row?.mid || row?.up_id || null
     const uploaderUrl = uploaderId ? `https://space.bilibili.com/${uploaderId}` : ''
@@ -101,5 +101,6 @@ export const searchBilibiliVideos = async ({ query, limit, page, fetchImpl, buil
       description: stripHtml(row?.description),
     }
   }))
+  const items = settledResults.filter((r) => r.status === 'fulfilled').map((r) => r.value)
   return uniqueByUrl(items).filter((item) => item.title && item.url).slice(0, resultLimit)
 }

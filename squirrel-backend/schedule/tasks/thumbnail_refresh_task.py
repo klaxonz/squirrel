@@ -2,6 +2,7 @@ import html as html_lib
 import json
 import logging
 import re
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -40,28 +41,30 @@ _PAGE_FETCH_RETRYABLE_STATUS_CODES = {403, 408, 425, 429, 500, 502, 503, 504}
 _shared_http_client: httpx.Client | None = None
 _client_lock_time = 0.0
 _CLIENT_TTL = 300.0  # 5 minutes
+_http_client_lock = threading.Lock()
 
 def _get_shared_http_client() -> httpx.Client:
     """Get the shared HTTP client"""
     global _shared_http_client, _client_lock_time
 
-    now = time.time()
-    if _shared_http_client is None or now - _client_lock_time > _CLIENT_TTL:
-        if _shared_http_client:
-            try:
-                _shared_http_client.close()
-            except Exception:
-                pass
+    with _http_client_lock:
+        now = time.time()
+        if _shared_http_client is None or now - _client_lock_time > _CLIENT_TTL:
+            if _shared_http_client:
+                try:
+                    _shared_http_client.close()
+                except Exception:
+                    pass
 
-        _shared_http_client = httpx.Client(
-            timeout=30.0,
-            follow_redirects=True,
-            headers=_HEADERS,
-            limits=httpx.Limits(max_keepalive_connections=20, max_connections=50),
-        )
-        _client_lock_time = now
+            _shared_http_client = httpx.Client(
+                timeout=30.0,
+                follow_redirects=True,
+                headers=_HEADERS,
+                limits=httpx.Limits(max_keepalive_connections=20, max_connections=50),
+            )
+            _client_lock_time = now
 
-    return _shared_http_client
+        return _shared_http_client
 
 
 @TaskRegistry.register(interval=60 * 24, unit="minutes", start_immediately=True)
