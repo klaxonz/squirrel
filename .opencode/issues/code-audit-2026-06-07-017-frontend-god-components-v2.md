@@ -1,6 +1,6 @@
 ---
 title: Frontend 上帝组件第二轮 — VideoPlayer(2673行) / RssSources(1941行) / Music(1016行)
-status: open
+status: fixed
 severity: high
 category: architecture
 location: squirrel-frontend/src/components/video-player/VideoPlayer.vue, src/views/RssSources.vue, src/views/Music.vue

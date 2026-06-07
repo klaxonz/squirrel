@@ -32,7 +32,7 @@ scope: 全量扫描 — backend / sdk / desktop / frontend / site-runtimes / ext
 | 014 | high | security | Extension 权限过宽 + 多处安全问题 | extension |
 | 015 | medium | code-smell | Desktop 常量不统一 + 双 preload | desktop |
 | 016 | medium | test | SDK 测试覆盖不足 | sdk |
-| **017** | **high** | **architecture** | **Frontend 上帝组件 v2（VideoPlayer 2673行 / RssSources 1941行）** | **frontend** |
+| **017** | **high** | **architecture** | **Frontend 上帝组件 v2（VideoPlayer 2673行 / RssSources 1941行）** | **frontend ✅ fixed** |
 | **018** | **high** | **architecture** | **Desktop 上帝模块 v2（youtubei_core 940行 + 3处YouTube重复）** | **desktop** |
 | **019** | **high** | **architecture** | **Backend 上帝模块 v2（scheduler 917行 / routes/music 712行）** | **backend** |
 | **020** | **high** | **code-smell** | **Frontend 类型侵蚀 + 废弃双份组件** | **frontend** |
