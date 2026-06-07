@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 
 import { prewarmYoutubeiRuntime, resolveYoutubeiPayload } from './youtubei_core.mjs'
 import { loadFileCache, saveFileCache } from '../../file-cache.mjs'
+import { escapeXml } from '../shared/escape-xml.mjs'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 const RESOLVE_RETRY_DELAY_MS = 500
@@ -80,15 +81,6 @@ const sortFormats = (formats) => {
     if (heightDelta !== 0) return heightDelta
     return (right.bitrate || 0) - (left.bitrate || 0)
   })
-}
-
-const escapeXml = (value) => {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&apos;')
 }
 
 const parseMimeParts = (mimeType) => {

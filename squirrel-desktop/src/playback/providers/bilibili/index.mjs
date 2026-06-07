@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 
 import { resolveBilibiliApiPayload } from './request-runtime.mjs'
 import { loadFileCache, saveFileCache } from '../../file-cache.mjs'
+import { escapeXml } from '../shared/escape-xml.mjs'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 const playbackCache = new Map()
@@ -20,15 +21,6 @@ const QUALITY_HEIGHT_MAP = new Map([
   [126, 2160],
   [127, 4320],
 ])
-
-const escapeXml = (value) => {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&apos;')
-}
 
 const normalizeTargetUrl = (targetUrl) => {
   const value = String(targetUrl || '').trim()

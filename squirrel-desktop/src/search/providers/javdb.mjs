@@ -1,15 +1,10 @@
-import { clampLimit, clampPage, normalizeQuery, normalizeUrl, parseDuration, stripHtml, uniqueByUrl } from './shared.mjs'
+import { clampLimit, clampPage, extractAttribute, normalizeQuery, normalizeUrl, parseDuration, stripHtml, uniqueByUrl } from './shared.mjs'
 
 const SITE = 'javdb'
 const ORIGIN = 'https://javdb.com'
 
 const looksLikeBlockedPage = (html) => {
   return /has banned your access|管理員禁止了你的訪問|管理员禁止了你的访问/i.test(String(html || ''))
-}
-
-const extractAttribute = (source, name) => {
-  const match = source.match(new RegExp(`${name}=["']([^"']+)["']`, 'i'))
-  return match ? match[1] : ''
 }
 
 const extractActorLinks = (block) => {

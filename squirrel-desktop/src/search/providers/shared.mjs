@@ -90,6 +90,11 @@ export const uniqueByUrl = (items) => {
   return result
 }
 
+export const extractAttribute = (source, name) => {
+  const match = String(source || '').match(new RegExp(`${name}=["']([^"']+)["']`, 'i'))
+  return match ? match[1] : ''
+}
+
 export const fetchText = async (fetchImpl, targetUrl, options = {}) => {
   const response = await fetchImpl(targetUrl, options)
   if (!response.ok) {

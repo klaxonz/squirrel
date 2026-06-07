@@ -1,12 +1,7 @@
-import { clampLimit, clampPage, fetchText, normalizeQuery, normalizeUrl, parseDuration, stripHtml, uniqueByUrl } from './shared.mjs'
+import { clampLimit, clampPage, extractAttribute, fetchText, normalizeQuery, normalizeUrl, parseDuration, stripHtml, uniqueByUrl } from './shared.mjs'
 
 const SITE = 'pornhub'
 const ORIGIN = 'https://www.pornhub.com'
-
-const extractAttribute = (source, name) => {
-  const match = source.match(new RegExp(`${name}=["']([^"']+)["']`, 'i'))
-  return match ? match[1] : ''
-}
 
 const extractVideoLink = (block) => {
   const tag = block.match(/<a\b[^>]*href=["']([^"']*view_video\.php\?viewkey=[^"']+)["'][^>]*>/i)?.[0] || ''

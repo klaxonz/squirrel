@@ -1,4 +1,5 @@
 import { loadFileCache, saveFileCache } from '../../file-cache.mjs'
+export { mergeCookieHeaders } from '../../../cookie-header.mjs'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 
@@ -58,46 +59,6 @@ export const normalizeTargetUrl = (targetUrl) => {
   } catch {
     return ''
   }
-}
-
-const parseCookieHeader = (cookieHeader) => {
-  const cookieMap = new Map()
-
-  for (const segment of String(cookieHeader || '').split(';')) {
-    const pair = segment.trim()
-    if (!pair) {
-      continue
-    }
-
-    const equalsIndex = pair.indexOf('=')
-    if (equalsIndex <= 0) {
-      continue
-    }
-
-    const name = pair.slice(0, equalsIndex).trim()
-    const value = pair.slice(equalsIndex + 1).trim()
-    if (!name) {
-      continue
-    }
-
-    cookieMap.set(name, value)
-  }
-
-  return cookieMap
-}
-
-export const mergeCookieHeaders = (...cookieHeaders) => {
-  const cookieMap = new Map()
-
-  for (const header of cookieHeaders) {
-    for (const [name, value] of parseCookieHeader(header).entries()) {
-      cookieMap.set(name, value)
-    }
-  }
-
-  return Array.from(cookieMap.entries())
-    .map(([name, value]) => `${name}=${value}`)
-    .join('; ')
 }
 
 export const fetchPageHtml = async (
