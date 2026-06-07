@@ -27,9 +27,15 @@
 
 ### TD-028: 前端 API 层默认 `any` 弱化数据契约
 - **位置**: `squirrel-frontend/src/utils/request.ts`
-- **问题**: `RequestResult<T = any>`、`get<T = any>`、`post<T = any>` 和 `catch (err: any)` 让调用方很容易不声明返回类型。
-- **影响**: 后端 DTO 变化不容易被前端类型检查发现，组件继续出现 `(result.data as any)`。
-- **方案**: 默认泛型改为 `unknown`；为高频 API 建立具体 response type；业务错误 code 使用窄类型。
+- **完成时间**: 2026-06-07
+- **修复内容**:
+  - `RequestResult<T = any>` → `RequestResult<T = unknown>`，强制调用方声明返回类型
+  - `handleRequest<T = any>`、`get<T = any>`、`post<T = any>` 等所有请求函数默认泛型改为 `unknown`
+  - `catch (err: any)` → `catch (err: unknown)`，配合 `AxiosErrorLike` 类型窄化
+  - `getErrorType`/`formatErrorMessage` 参数从 `any` 改为 `unknown`
+  - 为高频 API 建立具体 response type：`getVideoList`、`getRandomVideo`、`saveRemoteVideo`、`getSubscriptions`、`subscribe`、`unsubscribe`、`getSearchSuggestions`、`getSupportedSites`、`getSupportedImportSites`、`updateNsfwStatus`、`updateSpecialFollowStatus`
+  - 同步更新 `subscriptionSyncHistory.ts` 泛型默认值
+  - 修复调用方类型：`useVideoPageNavigation.ts`、`VideoPlay.vue`
 
 ---
 

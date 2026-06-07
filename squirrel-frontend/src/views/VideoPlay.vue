@@ -349,7 +349,7 @@ const ensureLocalVideo = async (targetVideo: VideoPageVideo | null): Promise<Vid
       description: targetVideo.description || undefined,
       subscriptions: Array.isArray(targetVideo.subscriptions) ? targetVideo.subscriptions : [],
       actors: Array.isArray(targetVideo.actors) ? targetVideo.actors : [],
-    }).then(({ data, error }: ApiResult<VideoPageVideo>) => {
+    }).then(({ data, error }) => {
       if (error || !data?.id) return null
       return data
     })

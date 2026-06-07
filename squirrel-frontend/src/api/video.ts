@@ -1,5 +1,6 @@
 import type { AxiosRequestConfig } from 'axios'
 import { get, post } from '@/utils/request'
+import type { VideoPageVideo } from '@/types/videoPlayback'
 
 type YesNoAll = 'all' | 'yes' | 'no'
 type TimeRange = 'all' | 'today' | 'week' | 'month' | 'year'
@@ -39,7 +40,7 @@ export const getVideoDetail = async (videoId: string | number) => {
 }
 
 export const getVideoList = async (params: VideoListParams = {}, config: AxiosRequestConfig = {}) => {
-  return get('/api/video/list', params, config)
+  return get<{ data?: unknown[]; items?: unknown[] }>('/api/video/list', params, config)
 }
 
 export const getVideoSubtitles = async (
@@ -54,9 +55,9 @@ export const getVideoSubtitles = async (
 }
 
 export const getRandomVideo = async (params: RandomVideoParams = {}) => {
-  return get('/api/video/random', params)
+  return get<{ id: string | number } & Record<string, unknown>>('/api/video/random', params)
 }
 
 export const saveRemoteVideo = async (data: Record<string, unknown>) => {
-  return post('/api/video/remote-save', data)
+  return post<VideoPageVideo>('/api/video/remote-save', data)
 }

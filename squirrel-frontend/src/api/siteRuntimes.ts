@@ -102,7 +102,7 @@ export const reloadSiteRuntimes = async () => {
 }
 
 export const getSupportedSites = async () => {
-  return get('/api/sites')
+  return get<{ sites?: Array<Record<string, unknown>> }>('/api/sites')
 }
 
 export const testSiteConnectivity = async (siteName: string, timeout: number = 10) => {

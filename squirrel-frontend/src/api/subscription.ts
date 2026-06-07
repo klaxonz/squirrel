@@ -2,10 +2,10 @@ import type { AxiosRequestConfig } from 'axios'
 import { ApiError, get, post } from '@/utils/request'
 
 export const getSubscriptions = async (params: Record<string, unknown> = {}, config: AxiosRequestConfig = {}) => {
-  return get('/api/subscription/list', params, config)
+  return get<{ data?: unknown[]; items?: unknown[] }>('/api/subscription/list', params, config)
 }
 
-export const getSubscriptionOptions = async <T = any>() => {
+export const getSubscriptionOptions = async <T = unknown>() => {
   return get<T>('/api/subscription/options')
 }
 
@@ -14,7 +14,7 @@ export const getSubscriptionDetail = async (subscriptionId: string | number) => 
 }
 
 export const unsubscribe = async (subscriptionId: string | number) => {
-  return post('/api/subscription/unsubscribe', {
+  return post<{ is_subscribed: boolean, subscription_id: number | null }>('/api/subscription/unsubscribe', {
     subscription_id: subscriptionId,
   })
 }
@@ -28,7 +28,7 @@ export const getSubscriptionStatus = async (url: string) => {
 }
 
 export const updateNsfwStatus = async (subscriptionId: string | number, isNsfw: boolean) => {
-  const { data, error } = await post('/api/subscription/toggle-nsfw', {
+  const { data, error } = await post<{ success?: boolean }>('/api/subscription/toggle-nsfw', {
     subscription_id: subscriptionId,
     is_enable: isNsfw,
   })
@@ -40,7 +40,7 @@ export const updateNsfwStatus = async (subscriptionId: string | number, isNsfw: 
 }
 
 export const updateSpecialFollowStatus = async (subscriptionId: string | number, isSpecialFollowed: boolean) => {
-  const { data, error } = await post('/api/subscription/toggle-special-follow', {
+  const { data, error } = await post<{ success?: boolean }>('/api/subscription/toggle-special-follow', {
     subscription_id: subscriptionId,
     is_enable: isSpecialFollowed,
   })
@@ -92,7 +92,7 @@ export const triggerDirectRefresh = async (subscriptionId: string | number, mode
 }
 
 export const getSupportedImportSites = async () => {
-  const { data, error } = await get('/api/subscription/import/sites')
+  const { data, error } = await get<{ sites?: string[] }>('/api/subscription/import/sites')
   return { data: data?.sites || [], error }
 }
 

@@ -157,14 +157,14 @@ export default function useVideoPageNavigation({
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const response = await getRandomVideo({})
       if (!response.error && response.data?.id != null && !recentlyPlayed.value.includes(response.data.id)) {
-        await goToVideo(response.data.id, response.data)
+        await goToVideo(response.data.id as VideoId, response.data as VideoPageVideo | null)
         return
       }
     }
 
     const fallbackResponse = await getRandomVideo({})
     if (!fallbackResponse.error && fallbackResponse.data?.id != null) {
-      await goToVideo(fallbackResponse.data.id, fallbackResponse.data)
+      await goToVideo(fallbackResponse.data.id as VideoId, fallbackResponse.data as VideoPageVideo | null)
     }
   }
 
