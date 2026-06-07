@@ -57,6 +57,8 @@ def _setup_test_env(monkeypatch):
 
     monkeypatch.setattr(subscription_service, 'get_session', lambda: _managed_session(engine))
     monkeypatch.setattr(subscription_sync_state_service, 'get_session', lambda: _managed_session(engine))
+    from core import database
+    monkeypatch.setattr(database, 'get_session', lambda: _managed_session(engine))
     monkeypatch.setattr(user_video_feed_service, 'get_session', lambda: _managed_session(engine))
     return engine
 

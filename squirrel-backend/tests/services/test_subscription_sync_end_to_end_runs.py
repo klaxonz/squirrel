@@ -63,6 +63,8 @@ def _setup_state_env(monkeypatch):
     engine = create_engine('sqlite:///:memory:')
     Base.metadata.create_all(engine, tables=[SubscriptionSyncState.__table__, OutboxEvent.__table__])
     monkeypatch.setattr(subscription_sync_state_service, 'get_session', lambda: _managed_session(engine))
+    from core import database
+    monkeypatch.setattr(database, 'get_session', lambda: _managed_session(engine))
     from services import outbox_event_service
     monkeypatch.setattr(outbox_event_service, 'get_session', lambda: _managed_session(engine))
     return engine
@@ -81,6 +83,8 @@ def _setup_projection_reconcile_env(monkeypatch):
         ],
     )
     monkeypatch.setattr(subscription_sync_state_service, 'get_session', lambda: _managed_session(engine))
+    from core import database
+    monkeypatch.setattr(database, 'get_session', lambda: _managed_session(engine))
     return engine
 
 

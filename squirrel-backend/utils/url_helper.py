@@ -136,6 +136,15 @@ def _resolve_site_from_domain(domain: str) -> Optional[str]:
     return site_name
 
 
+def resolve_site(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return None
+    try:
+        return extract_top_level_domain(url)
+    except (ValueError, TypeError):
+        return None
+
+
 def reset_site_lookup_cache() -> None:
     _domain_site_cache.clear()
     global _site_registration_index, _site_registration_index_cached_at

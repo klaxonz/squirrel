@@ -38,3 +38,4 @@ concurrent-log-handler = "*"
 
 [dev-packages]
 pytest = "*"
+ruff = "*"

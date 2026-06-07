@@ -1,6 +1,7 @@
 ---
 title: 'Backend: 多个上帝模块 — subscription_sync_state_service 等超大类/文件'
-status: open
+status: fixed
+fixed_by: services/rss_client_service/__init__.py, services/subscription_sync_state_service/__init__.py, services/subscription_sync_center_queries.py, services/subscription_sync_utils.py
 severity: high
 category: code-smell
 location: squirrel-backend/services/subscription_sync_state_service.py, subscription_sync_center_service.py, rss_client_service.py
