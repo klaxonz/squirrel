@@ -9,7 +9,6 @@ from types import SimpleNamespace
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[2]
 YOUTUBE_SRC = ROOT / 'squirrel-site-runtimes' / 'youtube' / 'src'
 YOUTUBE_PACKAGE = YOUTUBE_SRC / 'squirrel_youtube'

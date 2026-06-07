@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from .core import SubscriptionSyncContext, SubscriptionSyncResult
+
+HEAD_SAMPLE_LIMIT = 10
 
 
 def resolve_subscription_limit(
@@ -80,3 +83,47 @@ def build_subscription_sync_result(
         cursor_loop_detected=cursor_loop_detected,
         scan_depth=scan_depth,
     )
+
+
+# ---------------------------------------------------------------------------
+# Pagination helpers (extracted from duplicate site-runtime subscriptions)
+# ---------------------------------------------------------------------------
+
+
+def resolve_page(context: SubscriptionSyncContext) -> int:
+    page = (context.cursor_payload or {}).get('page', 1)
+    try:
+        return max(1, int(page))
+    except (TypeError, ValueError):
+        return 1
+
+
+def build_page_url(base_url: str, page: int, extra_params: dict[str, str] | None = None) -> str:
+    if page <= 1:
+        return base_url
+    parsed = urlparse(base_url)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query['page'] = str(page)
+    if extra_params:
+        query.update(extra_params)
+    return urlunparse(parsed._replace(query=urlencode(query)))
+
+
+def resolve_count_offset(context: SubscriptionSyncContext) -> int:
+    raw_value = context.cursor_payload.get('count_offset', 0)
+    try:
+        return max(0, int(raw_value))
+    except (TypeError, ValueError):
+        return 0
+
+
+def resolve_previous_page_urls(context: SubscriptionSyncContext) -> list[str]:
+    previous_page_urls = context.cursor_payload.get('previous_page_urls')
+    if not isinstance(previous_page_urls, list):
+        return []
+    return [url for url in previous_page_urls if isinstance(url, str) and url]
+
+
+def count_page_unique_videos(page_video_urls: list[str], previous_page_urls: list[str]) -> int:
+    previous_page_url_set = set(previous_page_urls)
+    return sum(1 for url in page_video_urls if url not in previous_page_url_set)

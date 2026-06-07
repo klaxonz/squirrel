@@ -2,17 +2,15 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, List, Optional
+from typing import Any
 
 from bs4 import BeautifulSoup
-
 from crawl import (
     SubscriptionImportBatchResult,
     SubscriptionImportItem,
 )
 
 from .html_client import DEFAULT_JAVDB_TIMEOUT_SECONDS, fetch_javdb_html
-
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +43,9 @@ class JavdbUserSubscriptionImporter:
     domain = 'javdb.com'
     page_fetch_timeout = DEFAULT_JAVDB_TIMEOUT_SECONDS
 
-    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
-        items: List[SubscriptionImportItem] = []
-        cursor_payload: Optional[dict[str, Any]] = None
+    def get_user_subscriptions(self) -> list[SubscriptionImportItem]:
+        items: list[SubscriptionImportItem] = []
+        cursor_payload: dict[str, Any] | None = None
 
         while True:
             batch = self.get_user_subscriptions_batch(cursor_payload=cursor_payload)
@@ -60,8 +58,8 @@ class JavdbUserSubscriptionImporter:
 
     def get_user_subscriptions_batch(
         self,
-        cursor_payload: Optional[dict[str, Any]] = None,
-        limit: Optional[int] = None,
+        cursor_payload: dict[str, Any] | None = None,
+        limit: int | None = None,
     ) -> SubscriptionImportBatchResult:
         try:
             page = self._resolve_page(cursor_payload)
@@ -80,7 +78,7 @@ class JavdbUserSubscriptionImporter:
             logger.error('Failed to import JavDB subscriptions batch: %s', exc, exc_info=True)
             raise
 
-    def _resolve_page(self, cursor_payload: Optional[dict[str, Any]]) -> int:
+    def _resolve_page(self, cursor_payload: dict[str, Any] | None) -> int:
         try:
             page = int((cursor_payload or {}).get('page', 1) or 1)
         except (TypeError, ValueError):
@@ -106,8 +104,8 @@ class JavdbUserSubscriptionImporter:
     def _build_page_url(self, page: int) -> str:
         return f'https://{self.domain}/users/collection_actors?page={page}'
 
-    def _extract_page_items(self, soup: BeautifulSoup, page: int) -> List[SubscriptionImportItem]:
-        items: List[SubscriptionImportItem] = []
+    def _extract_page_items(self, soup: BeautifulSoup, page: int) -> list[SubscriptionImportItem]:
+        items: list[SubscriptionImportItem] = []
         seen_urls: set[str] = set()
 
         for item in soup.select('.actor-box a:has(img.avatar)'):
@@ -134,7 +132,7 @@ class JavdbUserSubscriptionImporter:
 
         return items
 
-    def _extract_total_pages(self, soup: BeautifulSoup) -> Optional[int]:
+    def _extract_total_pages(self, soup: BeautifulSoup) -> int | None:
         page_numbers: list[int] = []
         for link in soup.select('.pagination a'):
             text = str(getattr(link, 'text', '') or '').strip()
@@ -150,7 +148,7 @@ class JavdbUserSubscriptionImporter:
 
         return max(page_numbers) if page_numbers else None
 
-    def _has_more_pages(self, page: int, total_pages: Optional[int], soup: BeautifulSoup) -> bool:
+    def _has_more_pages(self, page: int, total_pages: int | None, soup: BeautifulSoup) -> bool:
         if total_pages is not None:
             return page < total_pages
 
@@ -159,9 +157,9 @@ class JavdbUserSubscriptionImporter:
 
     def _apply_limit(
         self,
-        items: List[SubscriptionImportItem],
-        limit: Optional[int],
-    ) -> List[SubscriptionImportItem]:
+        items: list[SubscriptionImportItem],
+        limit: int | None,
+    ) -> list[SubscriptionImportItem]:
         if limit is None:
             return items
         try:

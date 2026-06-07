@@ -3,18 +3,16 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Any, List
+from typing import Any
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
-
 from crawl import (
     SubscriptionImportItem,
     filter_cookies_to_query_string,
     get_http_headers,
     request_without_limit,
 )
-
 
 logger = logging.getLogger(__name__)
 SITE_SLUG = 'youporn'
@@ -29,7 +27,7 @@ class YouPornUserSubscriptionImporter:
 
     domain = 'youporn.com'
 
-    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
+    def get_user_subscriptions(self) -> list[SubscriptionImportItem]:
         cookies = filter_cookies_to_query_string(BASE_URL)
         headers = get_http_headers(SITE_SLUG, {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -46,7 +44,7 @@ class YouPornUserSubscriptionImporter:
             logger.warning('Unable to detect YouPorn user id from profile page')
             return []
 
-        items: List[SubscriptionImportItem] = []
+        items: list[SubscriptionImportItem] = []
         seen_urls: set[str] = set()
         for tab_name in ('pornstars', 'channels'):
             next_page_url = f'{BASE_URL}/user/{user_id}/{tab_name}-data/'
@@ -91,7 +89,7 @@ class YouPornUserSubscriptionImporter:
     def _collect_payload_items(
         self,
         payload: dict[str, Any],
-        items: List[SubscriptionImportItem],
+        items: list[SubscriptionImportItem],
         seen_urls: set[str],
     ) -> int:
         new_count = 0

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from importlib import import_module
-from typing import Any, Dict
+from typing import Any
 
 from crawl import (
     ExtractionResult,
@@ -13,7 +12,9 @@ from crawl import (
     build_runtime_proxy_config,
     create_site_runtime,
 )
-
+from crawl import (
+    load_local_attr as _load_local_attr,
+)
 
 DEFAULT_SITE_METADATA = {
     'label': 'Bilibili',
@@ -140,7 +141,7 @@ SITE_RUNTIME_MANIFEST = SiteRuntimeManifest(
 )
 
 
-def _extract_video(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _extract_video(payload: dict[str, Any]) -> dict[str, Any]:
     from .sign import build_base_info, fetch_video_info
 
     url = str(payload.get('url') or '').strip()
@@ -170,7 +171,7 @@ def _extract_video(payload: Dict[str, Any]) -> Dict[str, Any]:
     return ExtractionResult.success_result(video_meta).to_dict()
 
 
-def _resolve_proxy_config(domain: str | None = None) -> Dict[str, Any]:
+def _resolve_proxy_config(domain: str | None = None) -> dict[str, Any]:
     default_proxy_config = {
         'connect_timeout': 30.0,
         'read_timeout': 120.0,
@@ -191,9 +192,6 @@ def _resolve_proxy_config(domain: str | None = None) -> Dict[str, Any]:
         domain=domain,
     )
 
-
-def _load_local_attr(module_name: str, attr_name: str):
-    return getattr(import_module(f'{__package__}.{module_name}'), attr_name)
 
 
 def get_site_runtime():

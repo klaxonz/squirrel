@@ -1,6 +1,7 @@
 ---
 title: 'Site-runtimes: 跨站点代码严重重复（proxy、pagination、thumbnail、cookie）'
-status: open
+status: fixed
+fixed_by: squirrel-sdk/src/crawl/proxy.py:57 (BaseSiteProxy), runtime_helpers.py:30 (load_local_attr), subscription_helpers.py:90 (pagination helpers), utils.py:109 (thumbnail helpers), site-runtimes/*/proxy.py, runtime.py, subscription.py, extractor.py
 severity: high
 category: code-smell
 location: squirrel-site-runtimes/*/src/*/proxy.py, subscription.py, extractor.py, runtime.py

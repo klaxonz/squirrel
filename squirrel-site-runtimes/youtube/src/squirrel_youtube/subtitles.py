@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import re
 import xml.etree.ElementTree as ET
-from typing import Any, Tuple
+from typing import Any
 
 from crawl import NoSubtitlesError
 
@@ -139,13 +139,13 @@ class YoutubeSubtitlesProvider:
 
     domain = 'youtube.com'
 
-    def get_subtitles(self, video, lang: str, fmt: str = 'srt') -> Tuple[str, str]:
+    def get_subtitles(self, video, lang: str, fmt: str = 'srt') -> tuple[str, str]:
         normalized_fmt = str(fmt or 'srt').strip().lower()
         if normalized_fmt not in {'srt', 'vtt'}:
             raise ValueError('Only srt and vtt formats are supported')
         return self._do_get_subtitles(video, lang, normalized_fmt)
 
-    def _do_get_subtitles(self, video, lang: str, fmt: str) -> Tuple[str, str]:
+    def _do_get_subtitles(self, video, lang: str, fmt: str) -> tuple[str, str]:
         video_id = extract_youtube_video_id(getattr(video, 'url', '') or '') or str(getattr(video, 'id', 'video'))
         try:
             payload = resolve_captions_with_youtubei(video_id, lang, fmt=fmt)

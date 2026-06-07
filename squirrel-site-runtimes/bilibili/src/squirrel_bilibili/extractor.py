@@ -1,14 +1,15 @@
 import logging
-from typing import Optional, Dict, Any
+from typing import Any
 
 from crawl import (
-    VideoExtractorBase,
     AuthError,
     NetworkError,
     NotFoundError,
     ParseError,
+    VideoExtractorBase,
 )
-from .sign import fetch_video_info, build_base_info
+
+from .sign import build_base_info, fetch_video_info
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ class BilibiliExtractor(VideoExtractorBase):
     def __init__(self):
         super().__init__(self.site_name, self.supported_domains)
 
-    def _get_video_info(self, url: str, queue_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def _get_video_info(self, url: str, queue_name: str | None = None) -> dict[str, Any] | None:
         """Fetch video metadata from bilibili."""
         try:
             info, context, page_info = fetch_video_info(url)

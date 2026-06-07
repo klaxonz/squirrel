@@ -5,11 +5,9 @@ import logging
 import os
 import re
 import tempfile
-from typing import Tuple
 
+from crawl import NoSubtitlesError, resolve_cookie_file_path
 from yt_dlp import YoutubeDL
-
-from crawl import NoSubtitlesError, SubtitlesProvider, resolve_cookie_file_path
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +17,7 @@ class BilibiliSubtitlesProvider:
 
     domain = 'bilibili.com'
 
-    def get_subtitles(self, video, lang: str, fmt: str = 'srt') -> Tuple[str, str]:
+    def get_subtitles(self, video, lang: str, fmt: str = 'srt') -> tuple[str, str]:
         if fmt.lower() != 'srt':
             raise ValueError('Only srt format is supported')
 
@@ -27,7 +25,7 @@ class BilibiliSubtitlesProvider:
         original_cookie_content = None
         if cookie_file:
             try:
-                original_cookie_content = open(cookie_file, 'r', encoding='utf-8').read()
+                original_cookie_content = open(cookie_file, encoding='utf-8').read()
             except OSError:
                 original_cookie_content = None
 
@@ -41,7 +39,7 @@ class BilibiliSubtitlesProvider:
                 except OSError as exc:
                     logger.warning('Failed to restore cookie file %s after yt-dlp: %s', cookie_file, exc)
 
-    def _do_get_subtitles(self, video, lang: str) -> Tuple[str, str]:
+    def _do_get_subtitles(self, video, lang: str) -> tuple[str, str]:
         with tempfile.TemporaryDirectory() as tmpdir:
             ydl_opts = {
                 'quiet': True,
@@ -77,7 +75,7 @@ class BilibiliSubtitlesProvider:
             if not target_path:
                 raise NoSubtitlesError()
 
-            with open(target_path, 'r', encoding='utf-8', errors='ignore') as rf:
+            with open(target_path, encoding='utf-8', errors='ignore') as rf:
                 srt_text = rf.read()
 
             bvid_match = re.search(r'(BV[\w-]+)', video.url)

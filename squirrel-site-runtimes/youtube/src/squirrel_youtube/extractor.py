@@ -3,16 +3,17 @@ YouTube视频提取器
 """
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any
 
 from crawl import (
-    YoutubeDLExtractorBase,
-    apply_ytdlp_rate_limit,
     AuthError,
     NetworkError,
     NotFoundError,
     ParseError,
+    YoutubeDLExtractorBase,
+    apply_ytdlp_rate_limit,
 )
+
 from . import ytdlp_support as youtube_ytdlp_support
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
     def __init__(self):
         super().__init__(self.site_name, self.supported_domains)
 
-    def _extract_with_ytdlp(self, url: str, queue_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def _extract_with_ytdlp(self, url: str, queue_name: str | None = None) -> dict[str, Any] | None:
         """使用yt-dlp获取YouTube视频信息"""
         try:
             ydl_opts = self._build_ytdlp_opts(url, queue_name)
@@ -64,9 +65,9 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
                 logger.error(f"YouTube视频信息提取失败: {url}", exc_info=True)
                 raise ParseError(f"视频信息提取失败: {str(e)}", context=context)
 
-    def _build_ytdlp_opts(self, url: str, queue_name: Optional[str] = None) -> Dict[str, Any]:
+    def _build_ytdlp_opts(self, url: str, queue_name: str | None = None) -> dict[str, Any]:
         """构建yt-dlp选项"""
-        ydl_opts: Dict[str, Any] = {
+        ydl_opts: dict[str, Any] = {
             'quiet': True,
             'skip_download': True,
             'socket_timeout': 30,
@@ -97,7 +98,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
         except (ValueError, TypeError) as e:
             logger.warning(f"处理YouTube特定信息失败: {e}")
 
-    def _resolve_publish_date(self, video_info: Dict[str, Any]) -> Optional[datetime]:
+    def _resolve_publish_date(self, video_info: dict[str, Any]) -> datetime | None:
         """Resolve the most accurate publish date from yt-dlp metadata."""
         for timestamp_key in ('release_timestamp', 'timestamp'):
             timestamp = video_info.get(timestamp_key)

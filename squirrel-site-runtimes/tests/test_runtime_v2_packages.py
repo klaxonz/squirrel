@@ -3,14 +3,14 @@ from __future__ import annotations
 import importlib
 import json
 import re
-import types
 import sys
-import tomllib
+import types
 import unittest
-from dataclasses import asdict, dataclass, field
 from contextlib import contextmanager
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+import tomllib
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PLUGINS_ROOT = REPO_ROOT / 'squirrel-site-runtimes'

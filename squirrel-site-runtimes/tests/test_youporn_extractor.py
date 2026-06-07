@@ -1,11 +1,10 @@
-from pathlib import Path
 import importlib.util
 import sys
-import unittest
 import types
+import unittest
 from datetime import datetime
+from pathlib import Path
 from unittest import mock
-
 
 ROOT = Path(__file__).resolve().parents[2]
 EXTRACTOR_PATH = ROOT / 'squirrel-site-runtimes' / 'youporn' / 'src' / 'squirrel_youporn' / 'extractor.py'

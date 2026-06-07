@@ -8,7 +8,7 @@ from datetime import datetime
 from enum import Enum
 from functools import reduce
 from hashlib import md5
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from crawl import filter_cookies_to_query_string, get_http_headers, request, request_without_limit
@@ -41,7 +41,7 @@ def get_mixin_key(orig: str) -> str:
     return reduce(lambda s, i: s + orig[i], mixinKeyEncTab, '')[:32]
 
 
-def enc_wbi(params: Dict[str, str], img_key: str, sub_key: str) -> Dict[str, str]:
+def enc_wbi(params: dict[str, str], img_key: str, sub_key: str) -> dict[str, str]:
     mixin_key = get_mixin_key(img_key + sub_key)
     curr_time = round(time.time())
     params = dict(params)
@@ -81,13 +81,13 @@ def get_wbi_keys() -> tuple[str, str]:
     return img_key, sub_key
 
 
-def sign(params: Dict[str, str]) -> str:
+def sign(params: dict[str, str]) -> str:
     img_key, sub_key = get_wbi_keys()
     signed_params = enc_wbi(params, img_key, sub_key)
     return urllib.parse.urlencode(signed_params)
 
 
-def sign_params(params: Dict[str, str]) -> Dict[str, str]:
+def sign_params(params: dict[str, str]) -> dict[str, str]:
     img_key, sub_key = get_wbi_keys()
     return enc_wbi(params, img_key, sub_key)
 
@@ -97,12 +97,12 @@ SITE_SLUG = 'bilibili'
 
 @dataclass
 class VideoContext:
-    bvid: Optional[str]
-    aid: Optional[int]
+    bvid: str | None
+    aid: int | None
     url: str
     cookies: str
     page_index: int
-    cid: Optional[int]
+    cid: int | None
 
 
 class ResourceType(str, Enum):
@@ -120,10 +120,10 @@ class ChannelSeriesType(str, Enum):
 @dataclass(frozen=True)
 class ParsedSubscriptionTarget:
     resource_type: ResourceType
-    mid: Optional[int] = None
-    media_id: Optional[int] = None
-    series_id: Optional[int] = None
-    series_type: Optional[ChannelSeriesType] = None
+    mid: int | None = None
+    media_id: int | None = None
+    series_id: int | None = None
+    series_type: ChannelSeriesType | None = None
 
 
 def _cookie_source_url(target_url: str) -> str:
@@ -138,7 +138,7 @@ def build_cookies(target_url: str) -> str:
     return filter_cookies_to_query_string(_cookie_source_url(target_url))
 
 
-def _build_headers(cookies: str) -> Dict[str, str]:
+def _build_headers(cookies: str) -> dict[str, str]:
     headers = get_http_headers(SITE_SLUG, _DEFAULT_HEADERS)
     if cookies:
         headers['Cookie'] = cookies
@@ -149,13 +149,13 @@ def _send_request(
     method: str,
     url: str,
     *,
-    params: Optional[Dict[str, Any]] = None,
+    params: dict[str, Any] | None = None,
     cookies: str = '',
     timeout: float = 20,
     throttled: bool = True,
     allow_redirects: bool = True,
 ):
-    kwargs: Dict[str, Any] = {
+    kwargs: dict[str, Any] = {
         'headers': _build_headers(cookies),
         'timeout': timeout,
         'allow_redirects': allow_redirects,
@@ -170,7 +170,7 @@ def _send_request(
 def _get_json(
     url: str,
     *,
-    params: Optional[Dict[str, Any]] = None,
+    params: dict[str, Any] | None = None,
     cookies: str = '',
     throttled: bool = True,
     timeout: float = 20,
@@ -233,7 +233,7 @@ def extract_page_index(target_url: str) -> int:
     return 0
 
 
-def _parse_video_id(url: str) -> Tuple[Optional[str], Optional[int]]:
+def _parse_video_id(url: str) -> tuple[str | None, int | None]:
     match = _BV_RE.search(url)
     if match:
         return match.group(1), None
@@ -267,9 +267,9 @@ def normalize_video_url(url: str, *, cookies: str, throttled: bool = True) -> st
 
 def fetch_video_info(
     url: str,
-    cookies: Optional[str] = None,
+    cookies: str | None = None,
     throttled: bool = True,
-) -> Tuple[dict, VideoContext, Optional[dict]]:
+) -> tuple[dict, VideoContext, dict | None]:
     cookies = cookies if cookies is not None else build_cookies(url)
     resolved_url = normalize_video_url(url, cookies=cookies, throttled=throttled)
     page_index = extract_page_index(resolved_url)
@@ -290,8 +290,8 @@ def fetch_video_info(
         aid = aid
 
     pages = info.get('pages') or []
-    page_info: Optional[dict] = None
-    cid: Optional[int] = None
+    page_info: dict | None = None
+    cid: int | None = None
     if pages and isinstance(pages, list):
         page_index = min(page_index, len(pages) - 1)
         page_info = pages[page_index]
@@ -314,14 +314,14 @@ def fetch_video_info(
 
 def get_video_context(
     url: str,
-    cookies: Optional[str] = None,
+    cookies: str | None = None,
     throttled: bool = True,
 ) -> VideoContext:
     _, context, _ = fetch_video_info(url, cookies=cookies, throttled=throttled)
     return context
 
 
-def build_base_info(info: dict, context: VideoContext, page_info: Optional[dict]) -> dict:
+def build_base_info(info: dict, context: VideoContext, page_info: dict | None) -> dict:
     publish_timestamp = info.get('pubdate')
     publish_date = datetime.fromtimestamp(publish_timestamp) if publish_timestamp else None
     upload_date = publish_date.strftime('%Y%m%d') if publish_date else None
@@ -349,14 +349,14 @@ def build_base_info(info: dict, context: VideoContext, page_info: Optional[dict]
 
 def fetch_play_data(
     url: str,
-    context: Optional[VideoContext] = None,
+    context: VideoContext | None = None,
     throttled: bool = True,
-) -> Tuple[dict, VideoContext]:
+) -> tuple[dict, VideoContext]:
     context = context or get_video_context(url, throttled=throttled)
     if context.cid is None:
         raise RuntimeError('Failed to resolve cid')
 
-    params: Dict[str, str] = {
+    params: dict[str, str] = {
         'cid': str(context.cid),
         'qn': '80',
         'fnver': '0',
@@ -544,7 +544,7 @@ def fetch_fav_resource_list(
 
 def fetch_series_meta(
     *,
-    mid: Optional[int],
+    mid: int | None,
     series_id: int,
     series_type: ChannelSeriesType,
     cookies: str,
@@ -583,7 +583,7 @@ def fetch_series_meta(
 
 def fetch_series_videos(
     *,
-    mid: Optional[int],
+    mid: int | None,
     series_id: int,
     series_type: ChannelSeriesType,
     cookies: str,

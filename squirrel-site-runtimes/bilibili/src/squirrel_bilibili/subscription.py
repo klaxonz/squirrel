@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
 
 from crawl import (
     SubscriptionMeta,
@@ -13,16 +12,16 @@ from crawl import (
 )
 
 from .sign import (
-    build_cookies,
-    parse_subscription_target,
-    ResourceType,
     ChannelSeriesType,
+    ResourceType,
+    build_cookies,
     fetch_fav_folder_info,
     fetch_fav_resource_list,
     fetch_series_meta,
     fetch_series_videos,
     fetch_user_card,
     fetch_user_videos,
+    parse_subscription_target,
 )
 
 logger = logging.getLogger(__name__)
@@ -108,7 +107,7 @@ class BilibiliSubscription:
         *,
         head_sample_urls: list[str],
         anchor_found: bool | None,
-        total_available: Optional[int],
+        total_available: int | None,
     ) -> dict:
         if context.mode == 'full':
             return {'total_available': total_available}
@@ -129,12 +128,12 @@ class BilibiliSubscription:
     def _get_space_videos(
         self,
         context: SubscriptionSyncContext,
-    ) -> tuple[List[str], Optional[str], str, Optional[dict], bool, dict]:
+    ) -> tuple[list[str], str | None, str, dict | None, bool, dict]:
         if not self.target.mid:
             raise ValueError('Missing user id')
-        video_list: List[str] = []
-        latest_video_url: Optional[str] = None
-        head_sample_urls: List[str] = []
+        video_list: list[str] = []
+        latest_video_url: str | None = None
+        head_sample_urls: list[str] = []
         limit = resolve_subscription_limit(context)
         page = self._resolve_page(context)
         page_size = 50
@@ -217,13 +216,13 @@ class BilibiliSubscription:
     def _get_favlist_videos(
         self,
         context: SubscriptionSyncContext,
-    ) -> tuple[List[str], Optional[str], str, Optional[dict], bool, dict]:
+    ) -> tuple[list[str], str | None, str, dict | None, bool, dict]:
         if not self.target.media_id:
             raise ValueError('Missing favorite list id')
 
-        video_list: List[str] = []
-        latest_video_url: Optional[str] = None
-        head_sample_urls: List[str] = []
+        video_list: list[str] = []
+        latest_video_url: str | None = None
+        head_sample_urls: list[str] = []
         limit = resolve_subscription_limit(context)
         page = self._resolve_page(context)
         data = fetch_fav_resource_list(self.target.media_id, cookies=self.cookies, pn=page, ps=20, throttled=True)
@@ -303,16 +302,16 @@ class BilibiliSubscription:
     def _get_channel_videos(
         self,
         context: SubscriptionSyncContext,
-    ) -> tuple[List[str], Optional[str], str, Optional[dict], bool, dict]:
+    ) -> tuple[list[str], str | None, str, dict | None, bool, dict]:
         if not self.target.series_id:
             raise ValueError('Missing channel series id')
         if not self.target.mid:
             raise ValueError('Missing user id for channel series')
         series_type = self.target.series_type or ChannelSeriesType.SERIES
 
-        video_list: List[str] = []
-        latest_video_url: Optional[str] = None
-        head_sample_urls: List[str] = []
+        video_list: list[str] = []
+        latest_video_url: str | None = None
+        head_sample_urls: list[str] = []
         limit = resolve_subscription_limit(context)
         page = self._resolve_page(context)
         page_size = 100

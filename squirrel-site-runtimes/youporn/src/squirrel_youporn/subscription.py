@@ -1,27 +1,29 @@
 from __future__ import annotations
 
-from typing import Optional
-from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
+from urllib.parse import parse_qsl, urljoin, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
-
 from crawl import (
+    HEAD_SAMPLE_LIMIT,
     SubscriptionMeta,
     SubscriptionSyncContext,
     SubscriptionSyncResult,
     append_subscription_video_url,
+    build_page_url,
     build_subscription_sync_result,
+    count_page_unique_videos,
     filter_cookies_to_query_string,
-    resolve_subscription_limit,
     request,
+    resolve_count_offset,
+    resolve_page,
+    resolve_previous_page_urls,
+    resolve_subscription_limit,
 )
-
 
 DEFAULT_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Accept-Language': 'en-US,en;q=0.9',
 }
-HEAD_SAMPLE_LIMIT = 10
 
 
 class YouPornSubscription:
@@ -45,16 +47,16 @@ class YouPornSubscription:
         )
 
     def sync_videos(self, context: SubscriptionSyncContext) -> SubscriptionSyncResult:
-        page = self._resolve_page(context)
-        count_offset = self._resolve_count_offset(context)
-        previous_page_urls = self._resolve_previous_page_urls(context)
-        response = request('GET', self._build_page_url(page), headers=self._build_headers(), timeout=15)
+        page = resolve_page(context)
+        count_offset = resolve_count_offset(context)
+        previous_page_urls = resolve_previous_page_urls(context)
+        response = request('GET', build_page_url(self._canonical_url(), page), headers=self._build_headers(), timeout=15)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
         base_url = self._base_url()
         limit = resolve_subscription_limit(context)
-        latest_video_url: Optional[str] = None
+        latest_video_url: str | None = None
         video_urls: list[str] = []
         seen_urls: set[str] = set()
         head_sample_urls: list[str] = []
@@ -89,7 +91,7 @@ class YouPornSubscription:
                         anchor_found=True if stop_reason == 'cursor_hit' and context.mode != 'full' else None,
                     )
 
-        page_unique_count = self._count_page_unique_videos(page_video_urls, previous_page_urls)
+        page_unique_count = count_page_unique_videos(page_video_urls, previous_page_urls)
         if context.mode == 'full':
             next_page = self._resolve_next_page(soup, page)
             if next_page is not None:
@@ -131,43 +133,7 @@ class YouPornSubscription:
         parsed = urlparse(self.url)
         return f'{parsed.scheme}://{parsed.netloc}'
 
-    def _resolve_page(self, context: SubscriptionSyncContext) -> int:
-        page = (context.cursor_payload or {}).get('page', 1)
-        try:
-            return max(1, int(page))
-        except (TypeError, ValueError):
-            return 1
-
-    @staticmethod
-    def _resolve_count_offset(context: SubscriptionSyncContext) -> int:
-        raw_value = context.cursor_payload.get('count_offset', 0)
-        try:
-            return max(0, int(raw_value))
-        except (TypeError, ValueError):
-            return 0
-
-    @staticmethod
-    def _resolve_previous_page_urls(context: SubscriptionSyncContext) -> list[str]:
-        previous_page_urls = context.cursor_payload.get('previous_page_urls')
-        if not isinstance(previous_page_urls, list):
-            return []
-        return [url for url in previous_page_urls if isinstance(url, str) and url]
-
-    @staticmethod
-    def _count_page_unique_videos(page_video_urls: list[str], previous_page_urls: list[str]) -> int:
-        previous_page_url_set = set(previous_page_urls)
-        return sum(1 for url in page_video_urls if url not in previous_page_url_set)
-
-    def _build_page_url(self, page: int) -> str:
-        if page <= 1:
-            return self._canonical_url()
-
-        parsed = urlparse(self.url)
-        query = dict(parse_qsl(parsed.query, keep_blank_values=True))
-        query['page'] = str(page)
-        return urlunparse(parsed._replace(query=urlencode(query)))
-
-    def _resolve_next_page(self, soup: BeautifulSoup, current_page: int) -> Optional[int]:
+    def _resolve_next_page(self, soup: BeautifulSoup, current_page: int) -> int | None:
         next_pages: list[int] = []
         for element in soup.select('a.tm_pagination_link.pagination_number_link'):
             candidate = element.get('data-page-number')
@@ -195,7 +161,7 @@ class YouPornSubscription:
                 return str(element.text).strip()
         raise ValueError(f'Cannot find subscription name in {self.url}')
 
-    def _extract_channel_id(self, soup: BeautifulSoup) -> Optional[str]:
+    def _extract_channel_id(self, soup: BeautifulSoup) -> str | None:
         for selector in (
             '.channel_subscription_button',
             '.pornstar_subscription_button',
@@ -210,7 +176,7 @@ class YouPornSubscription:
                     return value.strip()
         return None
 
-    def _extract_avatar(self, soup: BeautifulSoup) -> Optional[str]:
+    def _extract_avatar(self, soup: BeautifulSoup) -> str | None:
         for selector in (
             '.avatar-wrapper img',
             '.profile-avatar img',

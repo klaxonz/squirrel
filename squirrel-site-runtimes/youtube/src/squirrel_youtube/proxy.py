@@ -4,16 +4,16 @@ import logging
 from urllib.parse import parse_qs, urlparse, urlunparse
 
 import httpx
-from fastapi import HTTPException
-from starlette.responses import StreamingResponse
-
 from crawl import (
-    build_proxy_config_values,
-    build_runtime_proxy_config as build_shared_runtime_proxy_config,
+    BaseSiteProxy,
     rewrite_playlist_for_proxy,
     safe_cookie_header_value,
 )
-
+from crawl import (
+    build_runtime_proxy_config as build_shared_runtime_proxy_config,
+)
+from fastapi import HTTPException
+from starlette.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +41,6 @@ DEFAULT_PROXY_CONFIG = {
     'follow_redirects': True,
     'enable_http2': True,
 }
-
-
-def _proxy_config_values() -> dict:
-    return build_proxy_config_values(SITE_SLUG, DEFAULT_PROXY_CONFIG)
 
 
 def _normalize_proxy_payload(payload: object | None) -> tuple[object | None, str | None, str | None]:
@@ -126,38 +122,14 @@ def rewrite_proxy_playlist(url: str, content: str | bytes, referer: str | None =
     )
 
 
-class YouTubeProxy:
+class YouTubeProxy(BaseSiteProxy):
     """YouTube video proxy implementation."""
 
     domain = SITE_DOMAIN
     site_slug = SITE_SLUG
+    default_proxy_config = DEFAULT_PROXY_CONFIG
+    playlist_extensions = ('ts', 'm4s', 'mp4', 'm3u8', 'jpg', 'jpeg', 'vtt')
     _request = None
-
-    async def handle_m3u8(self, url: str, content: bytes, referer: str | None = None) -> StreamingResponse:
-        rewritten = rewrite_proxy_playlist(url, content, referer=referer)
-        return StreamingResponse(
-            iter([str(rewritten['content']).encode()]),
-            media_type=str(rewritten['media_type']),
-            headers=dict(rewritten['headers']),
-        )
-
-    def _build_client_params(self):
-        proxy_cfg = _proxy_config_values()
-        timeout_config = httpx.Timeout(
-            connect=float(proxy_cfg.get('connect_timeout', 30.0)),
-            read=float(proxy_cfg.get('read_timeout', 180.0)),
-            write=float(proxy_cfg.get('write_timeout', 30.0)),
-            pool=float(proxy_cfg.get('pool_timeout', 30.0)),
-        )
-
-        limits = httpx.Limits(
-            max_keepalive_connections=int(proxy_cfg.get('max_keepalive_connections', 50)),
-            max_connections=int(proxy_cfg.get('max_connections', 100)),
-            keepalive_expiry=float(proxy_cfg.get('keepalive_expiry', 60.0)),
-        )
-        follow_redirects = bool(proxy_cfg.get('follow_redirects', True))
-        http2_enabled = bool(proxy_cfg.get('enable_http2', True))
-        return timeout_config, limits, follow_redirects, http2_enabled
 
     async def handle_stream(self, url: str, **kwargs) -> StreamingResponse:
         try:
@@ -217,6 +189,6 @@ class YouTubeProxy:
         except httpx.HTTPError as e:
             logger.error('YouTube proxy transport error for %s: %s', url, e)
             raise HTTPException(status_code=502, detail=f'Error fetching content: {str(e)}')
-        except Exception as e:  # HTTP handler boundary — unexpected errors return 500
+        except Exception:  # HTTP handler boundary — unexpected errors return 500
             logger.exception('YouTube proxy unexpected error for %s', url)
             raise HTTPException(status_code=500, detail='Internal server error')

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import logging
-from typing import List
 
 from crawl import SubscriptionImportItem
-from .sign import build_cookies, fetch_followings, fetch_nav
 
+from .sign import build_cookies, fetch_followings, fetch_nav
 
 logger = logging.getLogger(__name__)
 SITE_SLUG = "bilibili"
@@ -16,9 +15,9 @@ class BilibiliUserSubscriptionImporter:
     从 Bilibili 导入用户的关注列表
     需要登录 cookies 才能获取
     """
-    
+
     domain = 'bilibili.com'
-    
+
     def _get_current_user_mid(self, cookies: str) -> str:
         """获取当前登录用户的 mid"""
         nav = fetch_nav(cookies=cookies, throttled=False)
@@ -26,8 +25,8 @@ class BilibiliUserSubscriptionImporter:
         if not mid:
             raise ValueError("User not logged in or cookies expired")
         return str(mid)
-    
-    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
+
+    def get_user_subscriptions(self) -> list[SubscriptionImportItem]:
         """
         获取用户在 Bilibili 的关注列表
         
@@ -41,7 +40,7 @@ class BilibiliUserSubscriptionImporter:
         page = 1
         page_size = 50
 
-        items: List[SubscriptionImportItem] = []
+        items: list[SubscriptionImportItem] = []
         while True:
             data = fetch_followings(
                 int(mid),

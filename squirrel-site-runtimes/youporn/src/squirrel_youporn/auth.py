@@ -11,7 +11,6 @@ from crawl import (
     request_without_limit,
 )
 
-
 logger = logging.getLogger(__name__)
 
 CHECK_URL = 'https://www.youporn.com/'

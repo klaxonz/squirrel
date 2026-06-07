@@ -3,17 +3,14 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import List, Optional
 
 from bs4 import BeautifulSoup
-
 from crawl import (
     SubscriptionImportItem,
     filter_cookies_to_query_string,
-    request_without_limit,
     get_http_headers,
+    request_without_limit,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +20,10 @@ class YoutubeUserSubscriptionImporter:
     从 YouTube 导入用户的订阅列表
     需要登录 cookies 才能获取
     """
-    
+
     domain = 'youtube.com'
-    
-    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
+
+    def get_user_subscriptions(self) -> list[SubscriptionImportItem]:
         """
         获取用户在 YouTube 的订阅列表
         
@@ -41,14 +38,14 @@ class YoutubeUserSubscriptionImporter:
                 'Accept-Language': 'en-US,en;q=0.9'
             })
             headers['Cookie'] = cookies
-            
+
             # 访问订阅页面
             subscriptions_url = f'{base_url}/feed/channels'
             resp = request_without_limit('GET', subscriptions_url, headers=headers, timeout=30)
             resp.raise_for_status()
-            
+
             # 解析页面获取频道信息
-            subscriptions: List[SubscriptionImportItem] = []
+            subscriptions: list[SubscriptionImportItem] = []
 
             # YouTube 的订阅页面需要解析 JavaScript 数据
             # 寻找包含频道信息的数据
@@ -74,7 +71,7 @@ class YoutubeUserSubscriptionImporter:
                         continue
                     channel_url = f'https://www.youtube.com/channel/{channel_id}'
                     subscriptions.append(SubscriptionImportItem(url=channel_url))
-            
+
             logger.info(f"Found {len(subscriptions)} YouTube subscriptions")
 
             # 如果没有找到任何频道，尝试使用 BeautifulSoup 解析
@@ -94,12 +91,12 @@ class YoutubeUserSubscriptionImporter:
 
             logger.info(f"Final: Found {len(subscriptions)} YouTube subscriptions")
             return subscriptions
-            
+
         except Exception as e:  # SDK boundary — top-level import operation
             logger.error(f"Failed to import YouTube subscriptions: {e}", exc_info=True)
             raise
 
-    def _extract_yt_initial_data(self, html_content: str) -> Optional[dict]:
+    def _extract_yt_initial_data(self, html_content: str) -> dict | None:
         """从 HTML 中提取 ytInitialData"""
         try:
             # 寻找 ytInitialData 的定义
@@ -115,7 +112,7 @@ class YoutubeUserSubscriptionImporter:
 
         return None
 
-    def _parse_subscriptions_from_yt_data(self, yt_data: dict) -> List[SubscriptionImportItem]:
+    def _parse_subscriptions_from_yt_data(self, yt_data: dict) -> list[SubscriptionImportItem]:
         """从 ytInitialData 中解析订阅信息"""
         subscriptions = []
 
@@ -208,7 +205,7 @@ class YoutubeUserSubscriptionImporter:
 
         return subscriptions
 
-    def _find_channel_renderers(self, data: dict) -> List[dict]:
+    def _find_channel_renderers(self, data: dict) -> list[dict]:
         """递归查找所有包含 channelRenderer 的项目"""
         renderers = []
 

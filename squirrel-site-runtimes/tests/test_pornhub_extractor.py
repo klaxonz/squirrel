@@ -1,10 +1,9 @@
-from pathlib import Path
 import importlib.util
 import sys
 import types
+from pathlib import Path
 
 import pytest
-
 
 ROOT = Path(__file__).resolve().parents[2]
 EXTRACTOR_PATH = ROOT / 'squirrel-site-runtimes' / 'pornhub' / 'src' / 'squirrel_pornhub' / 'extractor.py'

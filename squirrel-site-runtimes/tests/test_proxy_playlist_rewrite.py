@@ -9,7 +9,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlencode, urljoin, urlparse
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 PROXY_MODULES = {

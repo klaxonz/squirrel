@@ -7,7 +7,6 @@ import unittest
 from contextlib import contextmanager
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 ID_EXTRACTOR_MODULES = {

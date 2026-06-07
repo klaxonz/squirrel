@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from importlib import import_module
-
 from crawl import (
     SiteRuntimeCapability,
     SiteRuntimeManifest,
@@ -9,12 +7,11 @@ from crawl import (
     SiteRuntimeSite,
     create_site_runtime,
 )
+from crawl import (
+    load_local_attr as _load_local_attr,
+)
+
 from .youtubei_resolver import prewarm_youtubei_worker, shutdown_youtubei_worker
-
-
-def _load_local_attr(module_name: str, attr_name: str):
-    return getattr(import_module(f'{__package__}.{module_name}'), attr_name)
-
 
 DEFAULT_SITE_METADATA = {
     'label': 'YouTube',

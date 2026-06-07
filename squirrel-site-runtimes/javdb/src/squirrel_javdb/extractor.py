@@ -3,27 +3,27 @@ JavDB视频提取器
 """
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any
 
 from bs4 import BeautifulSoup
-
 from crawl import (
-    VideoExtractorBase,
     AuthError,
-    VipError,
     NotFoundError,
     ParseError,
+    VideoExtractorBase,
+    VipError,
 )
+
 from .html_client import fetch_javdb_html
 
 logger = logging.getLogger(__name__)
 
 
-def _fetch_video_info(url: str) -> Dict[str, Any]:
+def _fetch_video_info(url: str) -> dict[str, Any]:
     response = fetch_javdb_html(url)
     html = response.text
     soup = BeautifulSoup(html, 'html.parser')
-    video_info: Dict[str, Any] = {}
+    video_info: dict[str, Any] = {}
 
     vip_keywords = ['永久VIP', 'Join VIP']
     login_keywords = ['欢迎登入', '歡迎登入', 'requires login to view']
@@ -86,7 +86,7 @@ class JavdbExtractor(VideoExtractorBase):
     def __init__(self):
         super().__init__(self.site_name, self.supported_domains)
 
-    def _get_video_info(self, url: str, queue_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def _get_video_info(self, url: str, queue_name: str | None = None) -> dict[str, Any] | None:
         """获取JavDB视频信息"""
         try:
             video_info = _fetch_video_info(url)

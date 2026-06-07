@@ -8,7 +8,6 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 JAVDB_AUTH_PATH = REPO_ROOT / 'squirrel-site-runtimes' / 'javdb' / 'src' / 'squirrel_javdb' / 'auth.py'
 

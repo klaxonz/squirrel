@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import logging
-from typing import List
-from bs4 import BeautifulSoup
 
+from bs4 import BeautifulSoup
 from crawl import (
     SubscriptionImportItem,
     filter_cookies_to_query_string,
-    request_without_limit,
     get_http_headers,
+    request_without_limit,
 )
-
 
 logger = logging.getLogger(__name__)
 SITE_SLUG = 'pornhub'
@@ -21,10 +19,10 @@ class PornhubUserSubscriptionImporter:
     从 Pornhub 导入用户的订阅列表
     需要登录 cookies 才能获取
     """
-    
+
     domain = 'pornhub.com'
-    
-    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
+
+    def get_user_subscriptions(self) -> list[SubscriptionImportItem]:
         """
         获取用户在 Pornhub 的订阅列表
         
@@ -40,7 +38,7 @@ class PornhubUserSubscriptionImporter:
             headers['Cookie'] = cookies
 
             channel_items = []
-            subscription_urls: List[str] = []
+            subscription_urls: list[str] = []
 
             # 优先使用新的 /users/<username>/subscriptions?page=N 页面结构
             try:

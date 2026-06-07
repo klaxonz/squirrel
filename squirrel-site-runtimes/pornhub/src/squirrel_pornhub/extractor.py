@@ -1,28 +1,26 @@
 """
 Pornhub视频提取器
 """
-import html as html_lib
 import logging
-import re
-import time
 from datetime import datetime
+from typing import Any
 from urllib.parse import urljoin, urlparse
-from typing import Optional, Dict, Any
 
-import requests
-from yt_dlp import YoutubeDL
-
+import httpx
 from crawl import (
-    YoutubeDLExtractorBase,
-    apply_ytdlp_rate_limit,
-    filter_cookies_to_query_string,
-    resolve_cookie_file_path,
-    get_http_headers,
     AuthError,
     NetworkError,
     NotFoundError,
     ParseError,
+    YoutubeDLExtractorBase,
+    apply_ytdlp_rate_limit,
+    build_cookie_header,
+    fetch_page_thumbnail_url,
+    get_http_headers,
+    normalize_thumbnail,
+    resolve_cookie_file_path,
 )
+from yt_dlp import YoutubeDL
 
 logger = logging.getLogger(__name__)
 SITE_DOMAIN = 'pornhub.com'
@@ -34,14 +32,6 @@ AGE_GATE_COOKIES = {
     'accessAgeDisclaimerUK': '1',
     'accessPH': '1',
 }
-_META_THUMBNAIL_PATTERNS = (
-    re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
-    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', re.I),
-    re.compile(r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
-    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image["\']', re.I),
-)
-_PAGE_FETCH_MAX_ATTEMPTS = 3
-_PAGE_FETCH_RETRYABLE_STATUS_CODES = {403, 408, 425, 429, 500, 502, 503, 504}
 
 
 class PornhubExtractor(YoutubeDLExtractorBase):
@@ -58,7 +48,7 @@ class PornhubExtractor(YoutubeDLExtractorBase):
     def __init__(self):
         super().__init__(self.site_name, self.supported_domains)
 
-    def _extract_with_ytdlp(self, url: str, queue_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def _extract_with_ytdlp(self, url: str, queue_name: str | None = None) -> dict[str, Any] | None:
         """使用yt-dlp获取Pornhub视频信息"""
         try:
             ydl_opts = self._build_ytdlp_opts(url, queue_name)
@@ -93,11 +83,11 @@ class PornhubExtractor(YoutubeDLExtractorBase):
                 logger.error(f"Pornhub视频信息提取失败: {url}", exc_info=True)
                 raise ParseError(f"视频信息提取失败: {str(e)}", context=context)
 
-    def _build_ytdlp_opts(self, url: str, queue_name: Optional[str] = None) -> Dict[str, Any]:
+    def _build_ytdlp_opts(self, url: str, queue_name: str | None = None) -> dict[str, Any]:
         """构建yt-dlp选项"""
         cookie_file = resolve_cookie_file_path(url)
         headers = self._build_ytdlp_headers(url, cookie_file)
-        ydl_opts: Dict[str, Any] = {
+        ydl_opts: dict[str, Any] = {
             'quiet': True,
             'skip_download': True,
             'socket_timeout': 30,
@@ -116,106 +106,20 @@ class PornhubExtractor(YoutubeDLExtractorBase):
 
         return apply_ytdlp_rate_limit(self.site_name, ydl_opts)
 
-    def _process_pornhub_info(self, video_info: dict, source_url: Optional[str] = None) -> None:
+    def _process_pornhub_info(self, video_info: dict, source_url: str | None = None) -> None:
         """处理Pornhub特定信息"""
         try:
             if 'timestamp' in video_info:
                 video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
-            self._normalize_thumbnail(video_info, source_url)
+            normalize_thumbnail(video_info, source_url, self._fetch_page_thumbnail_url)
         except (ValueError, TypeError) as e:
             logger.warning(f"处理Pornhub特定信息失败: {e}")
 
-    def _normalize_thumbnail(self, video_info: Dict[str, Any], source_url: Optional[str]) -> None:
-        thumbnail_url = str(video_info.get('thumbnail') or '').strip()
-        if not self._looks_like_expiring_preview_thumbnail(thumbnail_url):
-            return
+    def _fetch_page_thumbnail_url(self, url: str) -> str | None:
+        cookie_file = resolve_cookie_file_path(url)
+        return fetch_page_thumbnail_url(url, cookie_file, self._build_ytdlp_headers)
 
-        fresh_thumbnail_url = self._fetch_page_thumbnail_url(source_url or str(video_info.get('webpage_url') or '').strip())
-        if not fresh_thumbnail_url:
-            return
-
-        video_info['thumbnail'] = fresh_thumbnail_url
-        if isinstance(video_info.get('thumbnails'), list) and video_info['thumbnails']:
-            video_info['thumbnails'][0]['url'] = fresh_thumbnail_url
-
-    @staticmethod
-    def _looks_like_expiring_preview_thumbnail(url: str) -> bool:
-        normalized = str(url or '').strip().lower()
-        return bool(normalized) and '/plain/' in normalized and (
-            'validto=' in normalized or 'hdnea=' in normalized
-        )
-
-    @staticmethod
-    def _thumbnail_expiry_score(url: str) -> float:
-        normalized = str(url or '').strip().lower()
-        if not normalized:
-            return -1
-        if not any(token in normalized for token in ('validto=', 'hdnea=', 'hmac=', 'hash=')):
-            return float('inf')
-
-        validto_match = re.search(r'[?&]validto=(\d+)', normalized)
-        if validto_match:
-            return float(validto_match.group(1))
-
-        hdnea_exp_match = re.search(r'(?:^|[~&])exp=(\d+)', normalized)
-        if hdnea_exp_match:
-            return float(hdnea_exp_match.group(1))
-
-        return 0
-
-    def _pick_best_thumbnail_url(self, thumbnail_urls: list[str]) -> Optional[str]:
-        unique_urls = []
-        for thumbnail_url in thumbnail_urls:
-            normalized = html_lib.unescape(str(thumbnail_url or '').strip())
-            if normalized and normalized not in unique_urls:
-                unique_urls.append(normalized)
-
-        if not unique_urls:
-            return None
-
-        return max(unique_urls, key=self._thumbnail_expiry_score)
-
-    def _fetch_page_thumbnail_url(self, url: str) -> Optional[str]:
-        page_url = str(url or '').strip()
-        if not page_url:
-            return None
-
-        cookie_file = resolve_cookie_file_path(page_url)
-        headers = self._build_ytdlp_headers(page_url, cookie_file)
-
-        for attempt in range(1, _PAGE_FETCH_MAX_ATTEMPTS + 1):
-            try:
-                response = requests.get(
-                    page_url,
-                    headers=headers,
-                    allow_redirects=True,
-                    timeout=30,
-                )
-            except Exception as exc:  # HTTP I/O boundary — requests may raise various transport errors
-                logger.warning('Failed to fetch Pornhub page thumbnail metadata: %s', exc)
-                return None
-
-            if response.status_code == 200:
-                thumbnail_urls = []
-                for pattern in _META_THUMBNAIL_PATTERNS:
-                    for match in pattern.finditer(response.text):
-                        thumbnail_url = html_lib.unescape(match.group(1).strip())
-                        if thumbnail_url:
-                            thumbnail_urls.append(thumbnail_url)
-                return self._pick_best_thumbnail_url(thumbnail_urls)
-
-            if (
-                response.status_code in _PAGE_FETCH_RETRYABLE_STATUS_CODES
-                and attempt < _PAGE_FETCH_MAX_ATTEMPTS
-            ):
-                time.sleep(min(5.0, 0.8 * attempt))
-                continue
-
-            return None
-
-        return None
-
-    def _build_ytdlp_headers(self, url: str, cookie_file: Optional[str]) -> Dict[str, str]:
+    def _build_ytdlp_headers(self, url: str, cookie_file: str | None) -> dict[str, str]:
         headers = get_http_headers(self.site_name, {
             'User-Agent': DEFAULT_USER_AGENT,
             'Referer': f'{SITE_URL}/',
@@ -228,48 +132,32 @@ class PornhubExtractor(YoutubeDLExtractorBase):
         headers['Referer'] = f'{referer}/'
 
         if not cookie_file:
-            headers['Cookie'] = self._build_cookie_header(url)
+            headers['Cookie'] = build_cookie_header(url, AGE_GATE_COOKIES)
 
         return headers
 
-    def _build_cookie_header(self, url: str) -> str:
-        cookies = {}
-        raw_cookie_header = filter_cookies_to_query_string(url)
-
-        for segment in raw_cookie_header.split(';'):
-            item = segment.strip()
-            if not item or '=' not in item:
-                continue
-            name, value = item.split('=', 1)
-            cookies[name.strip()] = value.strip()
-
-        for name, value in AGE_GATE_COOKIES.items():
-            cookies.setdefault(name, value)
-
-        return '; '.join(f'{name}={value}' for name, value in cookies.items())
-
-    def _resolve_redirect_target(self, url: str, cookie_file: Optional[str]) -> Optional[str]:
+    def _resolve_redirect_target(self, url: str, cookie_file: str | None) -> str | None:
         headers = self._build_ytdlp_headers(url, cookie_file)
 
         try:
-            response = requests.get(
+            response = httpx.get(
                 url,
                 headers=headers,
-                allow_redirects=False,
+                follow_redirects=False,
                 timeout=15,
             )
-        except Exception as exc:  # HTTP I/O boundary — requests may raise various transport errors
+        except Exception as exc:  # HTTP I/O boundary — httpx may raise various transport errors
             logger.warning('Failed to inspect Pornhub redirect target: %s', exc)
             return None
 
-        if response.is_redirect or response.is_permanent_redirect:
+        if response.status_code in (301, 302, 303, 307, 308):
             location = response.headers.get('location')
             if location:
                 return urljoin(url, location)
-        return response.url
+        return str(response.url)
 
     @staticmethod
-    def _is_shorties_url(target_url: Optional[str]) -> bool:
+    def _is_shorties_url(target_url: str | None) -> bool:
         if not target_url:
             return False
         parsed = urlparse(target_url)

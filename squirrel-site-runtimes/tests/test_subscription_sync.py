@@ -9,7 +9,6 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BILIBILI_SUBSCRIPTION_PATH = (
     REPO_ROOT / 'squirrel-site-runtimes' / 'bilibili' / 'src' / 'squirrel_bilibili' / 'subscription.py'

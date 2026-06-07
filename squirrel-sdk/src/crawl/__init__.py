@@ -105,6 +105,7 @@ from .playlist_rewrite import (
     rewrite_proxy_playlist_content,
 )
 from .proxy import (
+    BaseSiteProxy,
     ProxyConfigProvider,
     ProxyDomainConfig,
     VideoProxy,
@@ -118,7 +119,7 @@ from .runtime_errors import (
     RuntimeErrorCode,
     SiteRuntimeError,
 )
-from .runtime_helpers import create_site_runtime
+from .runtime_helpers import create_site_runtime, load_local_attr
 from .runtime_models import (
     SiteRuntimeCapability,
     SiteRuntimeHealthStatus,
@@ -133,8 +134,14 @@ from .runtime_protocol import (
     SiteRuntimeFactory,
 )
 from .subscription_helpers import (
+    HEAD_SAMPLE_LIMIT,
     append_subscription_video_url,
+    build_page_url,
     build_subscription_sync_result,
+    count_page_unique_videos,
+    resolve_count_offset,
+    resolve_page,
+    resolve_previous_page_urls,
     resolve_subscription_limit,
 )
 
@@ -143,9 +150,15 @@ from .subtitles import (
     SubtitlesProvider,
 )
 from .utils import (
+    META_THUMBNAIL_PATTERNS,
+    build_cookie_header,
     configure_cookie_domain_resolver,
     configure_cookie_file_resolver,
+    fetch_page_thumbnail_url,
     filter_cookies_to_query_string,
+    looks_like_expiring_preview_thumbnail,
+    normalize_thumbnail,
+    pick_best_thumbnail_url,
     resolve_cookie_file_path,
 )
 from .ytdlp import apply_ytdlp_rate_limit
@@ -184,6 +197,7 @@ __all__ = [
     # Base classes
     'VideoExtractorBase',
     'YoutubeDLExtractorBase',
+    'BaseSiteProxy',
     # Utilities
     'SubscriptionMeta',
     'SubscriptionSyncContext',
@@ -200,6 +214,20 @@ __all__ = [
     'append_subscription_video_url',
     'build_subscription_sync_result',
     'resolve_subscription_limit',
+    'HEAD_SAMPLE_LIMIT',
+    # Shared helpers (extracted from duplicate site-runtimes)
+    'load_local_attr',
+    'resolve_page',
+    'build_page_url',
+    'resolve_count_offset',
+    'resolve_previous_page_urls',
+    'count_page_unique_videos',
+    'META_THUMBNAIL_PATTERNS',
+    'looks_like_expiring_preview_thumbnail',
+    'pick_best_thumbnail_url',
+    'normalize_thumbnail',
+    'build_cookie_header',
+    'fetch_page_thumbnail_url',
     # HTTP utilities
     'RateLimit',
     'RateLimiter',

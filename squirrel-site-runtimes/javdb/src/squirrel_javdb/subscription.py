@@ -1,23 +1,25 @@
 from __future__ import annotations
 
 import re
-from typing import List, Optional
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
-
 from crawl import (
+    HEAD_SAMPLE_LIMIT,
     SubscriptionMeta,
     SubscriptionSyncContext,
     SubscriptionSyncResult,
     append_subscription_video_url,
+    build_page_url,
     build_subscription_sync_result,
+    count_page_unique_videos,
+    resolve_count_offset,
+    resolve_page,
+    resolve_previous_page_urls,
     resolve_subscription_limit,
 )
 
 from .html_client import fetch_javdb_html
-
-HEAD_SAMPLE_LIMIT = 10
 
 
 class JavdbSubscription:
@@ -41,7 +43,7 @@ class JavdbSubscription:
 
         return SubscriptionMeta(channel_id, name, avatar, self.url)
 
-    def _extract_avatar(self, bs4: BeautifulSoup) -> Optional[str]:
+    def _extract_avatar(self, bs4: BeautifulSoup) -> str | None:
         avatar_els = bs4.select('.avatar')
         if not avatar_els:
             return None
@@ -59,19 +61,19 @@ class JavdbSubscription:
         return None
 
     def sync_videos(self, context: SubscriptionSyncContext) -> SubscriptionSyncResult:
-        page = self._resolve_page(context)
-        count_offset = self._resolve_count_offset(context)
-        previous_page_urls = self._resolve_previous_page_urls(context)
-        response = fetch_javdb_html(self._build_page_url(page))
+        page = resolve_page(context)
+        count_offset = resolve_count_offset(context)
+        previous_page_urls = resolve_previous_page_urls(context)
+        response = fetch_javdb_html(build_page_url(self.url, page, {'sort_type': '0'}))
         html = response.text
 
         parsed_url = urlparse(self.url)
         base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-        video_list: List[str] = []
+        video_list: list[str] = []
         seen_urls: set[str] = set()
         head_sample_urls: list[str] = []
         page_video_urls: list[str] = []
-        latest_video_url: Optional[str] = None
+        latest_video_url: str | None = None
         limit = resolve_subscription_limit(context)
 
         bs4 = BeautifulSoup(html, 'html.parser')
@@ -86,7 +88,7 @@ class JavdbSubscription:
             head_sample_urls,
             page_video_urls,
         )
-        page_unique_count = self._count_page_unique_videos(page_video_urls, previous_page_urls)
+        page_unique_count = count_page_unique_videos(page_video_urls, previous_page_urls)
         if stop_reason:
             return build_subscription_sync_result(
                 video_urls=video_list,
@@ -123,24 +125,7 @@ class JavdbSubscription:
             anchor_found=False if context.mode != 'full' and context.last_seen_video_url else None,
         )
 
-    def _resolve_page(self, context: SubscriptionSyncContext) -> int:
-        page = context.cursor_payload.get('page', 1)
-        try:
-            return max(1, int(page))
-        except (TypeError, ValueError):
-            return 1
-
-    def _build_page_url(self, page: int) -> str:
-        if page <= 1:
-            return self.url
-
-        parsed = urlparse(self.url)
-        query = dict(parse_qsl(parsed.query, keep_blank_values=True))
-        query['page'] = str(page)
-        query['sort_type'] = '0'
-        return urlunparse(parsed._replace(query=urlencode(query)))
-
-    def _resolve_next_page(self, bs4: BeautifulSoup) -> Optional[int]:
+    def _resolve_next_page(self, bs4: BeautifulSoup) -> int | None:
         page_next_list = bs4.select('a.pagination-link[rel="next"]')
         if not page_next_list:
             return None
@@ -151,26 +136,6 @@ class JavdbSubscription:
         except ValueError:
             return None
 
-    @staticmethod
-    def _resolve_count_offset(context: SubscriptionSyncContext) -> int:
-        raw_value = context.cursor_payload.get('count_offset', 0)
-        try:
-            return max(0, int(raw_value))
-        except (TypeError, ValueError):
-            return 0
-
-    @staticmethod
-    def _resolve_previous_page_urls(context: SubscriptionSyncContext) -> list[str]:
-        previous_page_urls = context.cursor_payload.get('previous_page_urls')
-        if not isinstance(previous_page_urls, list):
-            return []
-        return [url for url in previous_page_urls if isinstance(url, str) and url]
-
-    @staticmethod
-    def _count_page_unique_videos(page_video_urls: list[str], previous_page_urls: list[str]) -> int:
-        previous_page_url_set = set(previous_page_urls)
-        return sum(1 for url in page_video_urls if url not in previous_page_url_set)
-
     def _extract_video_urls(
         self,
         bs4: BeautifulSoup,
@@ -178,11 +143,11 @@ class JavdbSubscription:
         video_list: list,
         seen_urls: set[str],
         context: SubscriptionSyncContext,
-        latest_video_url: Optional[str],
-        limit: Optional[int],
+        latest_video_url: str | None,
+        limit: int | None,
         head_sample_urls: list[str],
         page_video_urls: list[str],
-    ) -> tuple[Optional[str], Optional[str]]:
+    ) -> tuple[str | None, str | None]:
         video_els = bs4.select('.movie-list .item a.box')
         for el in video_els:
             video_url = f'{base_url}{el["href"]}'

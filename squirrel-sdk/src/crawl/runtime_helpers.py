@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from importlib import import_module
 from typing import Any
 
 from .runtime_models import SiteRuntimeHealthStatus, SiteRuntimeManifest
@@ -20,6 +21,15 @@ from .site_runtime_helpers import (
 )
 
 ObjectFactory = Callable[[], Any]
+
+
+def load_local_attr(module_name: str, attr_name: str):
+    """Lazy-load an attribute from a sibling module by name.
+
+    Replaces the identical ``_load_local_attr`` helper duplicated across every
+    site runtime plugin.
+    """
+    return getattr(import_module(f'{__package__}.{module_name}'), attr_name)
 
 
 def create_site_runtime(

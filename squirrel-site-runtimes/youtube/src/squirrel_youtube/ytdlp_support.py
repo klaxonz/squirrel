@@ -16,7 +16,6 @@ from typing import Any
 
 from crawl import filter_cookies_to_query_string, resolve_cookie_file_path
 
-
 YOUTUBE_PLAYER_CLIENT = 'android'
 YOUTUBE_COOKIE_PLAYER_CLIENTS = ['tv', 'web']
 YOUTUBE_POT_PLAYER_CLIENTS = ['mweb']

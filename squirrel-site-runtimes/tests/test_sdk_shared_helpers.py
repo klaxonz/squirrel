@@ -8,7 +8,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SDK_CRAWL_ROOT = REPO_ROOT / 'squirrel-sdk' / 'src' / 'crawl'
 

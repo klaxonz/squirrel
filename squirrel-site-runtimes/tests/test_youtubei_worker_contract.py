@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[2]
 YOUTUBE_RESOLVER_PATH = ROOT / 'squirrel-site-runtimes' / 'youtube' / 'src' / 'squirrel_youtube' / 'youtubei_resolver.py'
 

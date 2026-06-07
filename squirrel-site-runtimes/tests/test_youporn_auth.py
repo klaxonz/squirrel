@@ -8,7 +8,6 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 YOUPORN_AUTH_PATH = REPO_ROOT / 'squirrel-site-runtimes' / 'youporn' / 'src' / 'squirrel_youporn' / 'auth.py'
 

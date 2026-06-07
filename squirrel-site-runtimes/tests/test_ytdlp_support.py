@@ -7,7 +7,6 @@ import types
 from contextlib import contextmanager
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 YOUTUBE_SRC = ROOT / 'squirrel-site-runtimes' / 'youtube' / 'src'
 YTDLP_SUPPORT_PATH = YOUTUBE_SRC / 'squirrel_youtube' / 'ytdlp_support.py'
