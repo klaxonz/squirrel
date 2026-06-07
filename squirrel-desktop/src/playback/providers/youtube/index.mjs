@@ -48,6 +48,7 @@ const cacheScopeForOAuth = () => {
   try {
     return `oauth:${createHash('sha1').update(readFileSync(stateFile)).digest('hex').slice(0, 16)}`
   } catch {
+    console.debug('[squirrel-desktop] youtube/index: cacheScopeForOAuth read failed', stateFile)
     return 'oauth:none'
   }
 }
@@ -156,6 +157,7 @@ const getFormatDurationSeconds = (format) => {
     const duration = Number(new URL(format?.url || '').searchParams.get('dur'))
     return Number.isFinite(duration) && duration > 0 ? duration : null
   } catch {
+    console.debug('[squirrel-desktop] youtube/index: getFormatDurationSeconds URL parse failed')
     return null
   }
 }

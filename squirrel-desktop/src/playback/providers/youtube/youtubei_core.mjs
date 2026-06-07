@@ -28,6 +28,7 @@ function loadOAuthState() {
   try {
     return JSON.parse(readFileSync(stateFile, 'utf-8'));
   } catch {
+    console.debug('[squirrel-desktop] youtubei_core: loadOAuthState failed', stateFile);
     return null;
   }
 }
@@ -58,6 +59,7 @@ function extractAccountInfo(yt) {
       '';
     return { name: account, email, avatar };
   } catch {
+    console.debug('[squirrel-desktop] youtubei_core: extractAccountInfo failed');
     return { name: '', email: '', avatar: '' };
   }
 }
@@ -80,6 +82,7 @@ async function resolveFormatUrl(format, player) {
     try {
       return await format.decipher(player);
     } catch {
+      console.warn('[squirrel-desktop] youtubei_core: resolveFormatUrl decipher failed');
       return format.url ?? null;
     }
   }
@@ -133,6 +136,7 @@ async function decipherManifestUrl(url, player, poToken, isDash) {
     decipheredUrlObject.search = '';
     return decipheredUrlObject.toString();
   } catch {
+    console.warn('[squirrel-desktop] youtubei_core: decipherManifestUrl failed');
     return url ?? null;
   }
 }
@@ -166,6 +170,7 @@ async function buildLocalDashManifest(info) {
       },
     });
   } catch {
+    console.debug('[squirrel-desktop] youtubei_core: buildLocalDashManifest toDash failed');
     return null;
   }
 }
@@ -562,7 +567,7 @@ async function getRuntime(cookie) {
       await testYt.session.signIn(oauthCredentials);
       // Sign-in succeeded, proceed with OAuth
     } catch {
-      // OAuth credentials are invalid or expired, clear them
+      console.debug('[squirrel-desktop] youtubei_core: getRuntime OAuth credentials invalid/expired');
       oauthCredentials = null;
     }
   }
@@ -642,7 +647,7 @@ async function resolveOAuthSetup() {
         account: extractAccountInfo(validatorYt),
       };
     } catch {
-      // Credentials are invalid/expired, clear the file and start fresh
+      console.debug('[squirrel-desktop] youtubei_core: resolveOAuthSetup credentials invalid/expired');
       saveOAuthState({ pending: false, error: null });
     }
   }
@@ -761,6 +766,7 @@ async function resolveOAuthStatus() {
       account: extractAccountInfo(yt),
     };
   } catch {
+    console.debug('[squirrel-desktop] youtubei_core: resolveOAuthStatus signIn failed, expired');
     return { status: 'expired' };
   }
 }
@@ -786,7 +792,7 @@ async function resolveOAuthRevoke() {
       await yt.session.signIn(state.credentials);
       await yt.session.signOut();
     } catch {
-      // Ignore errors
+      console.debug('[squirrel-desktop] youtubei_core: resolveOAuthRevoke signOut failed');
     }
   }
 
@@ -794,7 +800,7 @@ async function resolveOAuthRevoke() {
     const { unlinkSync } = await import('node:fs');
     unlinkSync(stateFile);
   } catch {
-    // Ignore
+    console.debug('[squirrel-desktop] youtubei_core: resolveOAuthRevoke unlink failed', stateFile);
   }
 
   return { status: 'done' };

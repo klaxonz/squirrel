@@ -112,6 +112,7 @@ const normalizeSiteName = (siteName) => {
       .replace(/^www\./, '')
       .replace(/^\./, '')
   } catch {
+    console.debug('[squirrel-desktop] site-login: normalizeSiteName failed', rawValue)
     normalizedSite = normalizedSite.replace(/^www\./, '')
   }
 
@@ -155,6 +156,7 @@ const buildSessionCookieHeaderForUrl = async (targetUrl) => {
       .map((cookie) => `${cookie.name}=${cookie.value}`)
       .join('; ')
   } catch {
+    console.debug('[squirrel-desktop] site-login: buildSessionCookieHeaderForUrl failed', targetUrl)
     return ''
   }
 }
@@ -455,6 +457,7 @@ const buildYouPornLoginWindowStatus = async (profile, loginWindow) => {
       }
     })()`, true)
   } catch {
+    console.debug('[squirrel-desktop] site-login: buildYouPornLoginWindowStatus JS eval failed')
     return null
   }
 

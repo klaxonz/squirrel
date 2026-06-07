@@ -42,6 +42,7 @@ export const loadWindowState = (userDataPath) => {
       isMaximized: parsedState.isMaximized === true,
     }
   } catch {
+    console.debug('[squirrel-desktop] window-state: loadWindowState failed, using defaults')
     return {
       width: DEFAULT_WINDOW_STATE.width,
       height: DEFAULT_WINDOW_STATE.height,

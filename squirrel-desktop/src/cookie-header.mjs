@@ -15,6 +15,7 @@ export const normalizeTargetUrl = (targetUrl) => {
   try {
     return new URL(value).toString()
   } catch {
+    console.debug('[squirrel-desktop] cookie-header: normalizeTargetUrl failed to parse', value)
     return ''
   }
 }
@@ -29,6 +30,7 @@ export const isJavdbCookieTarget = (targetUrl) => {
     const hostname = new URL(normalizedUrl).hostname.toLowerCase()
     return hostname === 'javdb.com' || hostname.endsWith('.javdb.com')
   } catch {
+    console.debug('[squirrel-desktop] cookie-header: isJavdbCookieTarget URL parse failed', normalizedUrl)
     return false
   }
 }
@@ -43,6 +45,7 @@ export const isMissavDocumentTarget = (targetUrl) => {
     const hostname = new URL(normalizedUrl).hostname.toLowerCase()
     return hostname === 'missav.ai' || hostname.endsWith('.missav.ai')
   } catch {
+    console.debug('[squirrel-desktop] cookie-header: isMissavDocumentTarget URL parse failed', normalizedUrl)
     return false
   }
 }
@@ -63,6 +66,7 @@ export const isBilibiliCookieTarget = (targetUrl) => {
       || hostname.endsWith('.hdslb.com')
       || hostname.endsWith('.acgvideo.com')
   } catch {
+    console.debug('[squirrel-desktop] cookie-header: isBilibiliCookieTarget URL parse failed', normalizedUrl)
     return false
   }
 }
@@ -79,6 +83,7 @@ export const isPornhubCookieTarget = (targetUrl) => {
       || hostname.endsWith('.pornhub.com')
       || hostname.endsWith('.phncdn.com')
   } catch {
+    console.debug('[squirrel-desktop] cookie-header: isPornhubCookieTarget URL parse failed', normalizedUrl)
     return false
   }
 }
@@ -95,6 +100,7 @@ export const isYouPornCookieTarget = (targetUrl) => {
       || hostname.endsWith('.youporn.com')
       || hostname.endsWith('.ypncdn.com')
   } catch {
+    console.debug('[squirrel-desktop] cookie-header: isYouPornCookieTarget URL parse failed', normalizedUrl)
     return false
   }
 }
@@ -140,6 +146,7 @@ export const readNetscapeCookieFileHeader = (cookieFilePath, domainSuffixes) => 
 
     return pairs.join('; ')
   } catch {
+    console.debug('[squirrel-desktop] cookie-header: readNetscapeCookieFileHeader failed', cookieFilePath)
     return ''
   }
 }

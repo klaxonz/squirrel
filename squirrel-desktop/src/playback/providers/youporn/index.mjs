@@ -66,6 +66,7 @@ const extractMediaDefinitions = (htmlText) => {
     try {
       return JSON.parse(directMatch[1])
     } catch {
+      console.debug('[squirrel-desktop] youporn: extractMediaDefinitions JSON parse failed')
       return []
     }
   }
@@ -94,6 +95,7 @@ const fetchRemoteDefinitions = async (targetUrl, cookie, requestContext, fetchIm
     const payload = JSON.parse(text)
     return Array.isArray(payload) ? payload : []
   } catch {
+    console.debug('[squirrel-desktop] youporn: fetchRemoteDefinitions JSON parse failed')
     return []
   }
 }

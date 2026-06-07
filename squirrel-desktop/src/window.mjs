@@ -21,6 +21,7 @@ const isTrustedNavigation = (targetUrl) => {
   try {
     return new URL(targetUrl).origin === rendererOrigin
   } catch {
+    console.debug('[squirrel-desktop] window: isTrustedNavigation invalid URL', targetUrl)
     return false
   }
 }

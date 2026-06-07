@@ -1,9 +1,10 @@
 ---
 title: Desktop 零可观测性 — 所有错误被 bare catch {} 吞没
-status: open
+status: fixed
 severity: high
 category: error-handling
 location: squirrel-desktop/src/（全量）
+fixed_by: 跨 10 文件 ~34 行改动
 ---
 
 ## 问题描述

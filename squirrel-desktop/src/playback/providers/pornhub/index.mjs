@@ -70,6 +70,7 @@ const extractMediaDefinitions = (htmlText) => {
     try {
       return JSON.parse(directMatch[1])
     } catch {
+      console.debug('[squirrel-desktop] pornhub: extractMediaDefinitions JSON parse failed')
       return []
     }
   }

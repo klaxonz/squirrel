@@ -49,6 +49,7 @@ export const normalizeUrl = (value, origin) => {
   try {
     return new URL(rawValue, origin).toString()
   } catch {
+    console.debug('[squirrel-desktop] search/shared: normalizeUrl failed', rawValue)
     return ''
   }
 }

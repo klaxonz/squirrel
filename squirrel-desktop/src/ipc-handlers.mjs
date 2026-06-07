@@ -28,11 +28,13 @@ const loadServerConfig = () => {
       try {
         return new URL(url).origin
       } catch {
+        console.debug('[squirrel-desktop] ipc-handlers: loadServerConfig invalid URL', url)
         return ''
       }
     }
     return ''
   } catch {
+    console.debug('[squirrel-desktop] ipc-handlers: loadServerConfig read/parse failed', getServerConfigPath())
     return ''
   }
 }
@@ -43,6 +45,7 @@ const saveServerConfig = (url) => {
     fs.writeFileSync(getServerConfigPath(), JSON.stringify({ serverUrl: url }, null, 2), 'utf8')
     return true
   } catch {
+    console.error('[squirrel-desktop] ipc-handlers: saveServerConfig failed', getServerConfigPath())
     return false
   }
 }
@@ -298,6 +301,7 @@ export const installDesktopBridgeHandlers = () => {
 
       return ok ? finalUrl : false
     } catch {
+      console.debug('[squirrel-desktop] ipc-handlers: server:set-url invalid URL', normalized)
       return false
     }
   })
@@ -307,7 +311,7 @@ export const installDesktopBridgeHandlers = () => {
     try {
       fs.rmSync(getServerConfigPath())
     } catch {
-      // ignore
+      console.debug('[squirrel-desktop] ipc-handlers: server:clear-url no config to remove')
     }
 
     BrowserWindow.getAllWindows().forEach((win) => {
