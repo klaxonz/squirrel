@@ -6,9 +6,12 @@
     leave-to-class="translate-y-full opacity-0"
   >
     <div
-      v-if="store.currentTrack"
+      v-if="store.currentTrack && (store.resolvingUrl || store.audioSrc || store.error)"
       class="music-bar"
-      :class="{ 'music-bar--immersive': showImmersive }"
+      :class="{
+        'music-bar--mini': !isMusicPage,
+        'music-bar--immersive': showImmersive,
+      }"
     >
       <audio
         ref="audioEl"
@@ -16,415 +19,225 @@
         @play="store.syncPlayState()"
         @pause="store.syncPlayState()"
         @ended="store._onEnded()"
+        @error="handleAudioError"
         @timeupdate="store.syncAudioState()"
         @loadedmetadata="store.syncAudioState()"
+        @waiting="isBuffering = true"
+        @canplay="isBuffering = false"
+        @playing="isBuffering = false"
       />
 
-      <div class="music-bar-inner">
-        <button class="music-bar-track" @click="openImmersive" title="显示歌词面板">
-          <div class="music-bar-cover">
-            <img
-              v-if="store.currentTrack.cover"
-              :src="store.currentTrack.cover"
-              alt=""
-              class="h-full w-full object-cover"
-            />
-            <AppIcon v-else name="playlistMusic" class="h-4 w-4 text-muted-foreground" />
+      <template v-if="isMusicPage">
+        <MusicProgressBar
+          :current="store.currentTime"
+          :total="store.duration"
+          @seek="handleSeek"
+        />
+
+        <div class="music-bar-inner">
+          <MusicBarTrackInfo
+            :track="store.currentTrack"
+            :clickable="true"
+            :error="store.error"
+            @click="openImmersive"
+          />
+
+          <MusicBarControls
+            :playing="store.playing"
+            :shuffle="store.shuffle"
+            :repeat="store.repeat"
+            :can-step="canStep"
+            :loading="store.resolvingUrl || isBuffering"
+            @toggle="store.togglePlayback()"
+            @previous="store.playPrevious()"
+            @next="store.playNext()"
+            @shuffle="store.shuffle = !store.shuffle"
+            @repeat="cycleRepeat"
+          >
+            <template #time>
+              <div class="music-bar-time-wrap">
+                <span class="music-bar-time">{{ formatDuration(store.currentTime) }}</span>
+                <span class="music-bar-time">{{ formatDuration(store.duration) }}</span>
+              </div>
+            </template>
+          </MusicBarControls>
+
+          <MusicBarActions
+            :track="store.currentTrack"
+            :liked="isTrackLiked"
+            :volume="store.volume"
+            :queue-count="store.queue.length"
+            @like="toggleLike"
+            @toggle-mute="toggleMute"
+            @volume="store.setVolume"
+            @queue="showQueue = !showQueue"
+          />
+        </div>
+      </template>
+
+      <div v-else class="music-mini">
+        <button class="music-mini-track" title="打开沉浸播放" @click="openImmersive">
+          <div class="music-mini-cover">
+            <img v-if="store.currentTrack.cover" :src="store.currentTrack.cover" alt="" />
+            <AppIcon v-else name="playlistMusic" class="h-4 w-4" />
           </div>
-          <div class="min-w-0">
-            <div class="truncate text-sm font-medium leading-tight">
-              {{ store.currentTrack.title || '未知歌曲' }}
-            </div>
-            <div class="mt-0.5 truncate text-xs text-muted-foreground leading-tight">
-              {{ store.currentTrack.artist || '酷狗音乐' }}
-            </div>
+          <div class="music-mini-text">
+            <span class="music-mini-title">{{ store.currentTrack.title || '未知歌曲' }}</span>
+            <span v-if="store.error" class="music-mini-error" :title="store.error">{{ store.error }}</span>
+            <span v-else class="music-mini-artist">{{ store.currentTrack.artist || '未知歌手' }}</span>
           </div>
         </button>
 
-        <div class="music-bar-controls">
-          <button
-            class="music-bar-btn"
-            :disabled="!canStep"
-            title="上一首"
-            @click="store.playPrevious()"
-          >
+        <div class="music-mini-controls">
+          <button class="music-mini-btn" :disabled="!canStep" title="上一首" @click="store.playPrevious()">
             <AppIcon name="previous" class="h-4 w-4" />
           </button>
           <button
-            class="music-bar-btn music-bar-btn--play"
-            :disabled="store.resolvingUrl"
+            class="music-mini-btn music-mini-btn--play"
+            :disabled="store.resolvingUrl || isBuffering"
             title="播放/暂停"
             @click="store.togglePlayback()"
           >
-            <AppIcon v-if="store.resolvingUrl" name="loadingSpinner" class="h-5 w-5 animate-spin" stroke-width="2.5" />
-            <AppIcon v-else-if="store.playing" name="pause" class="h-5 w-5 fill-current" stroke-width="2.5" />
-            <AppIcon v-else name="play" class="h-5 w-5 fill-current" stroke-width="2.5" />
+            <AppIcon v-if="store.resolvingUrl || isBuffering" name="loadingSpinner" class="h-4 w-4 animate-spin" />
+            <AppIcon v-else-if="store.playing" name="pause" class="h-4 w-4" />
+            <AppIcon v-else name="play" class="h-4 w-4" />
           </button>
-          <button
-            class="music-bar-btn"
-            :disabled="!canStep"
-            title="下一首"
-            @click="store.playNext()"
-          >
+          <button class="music-mini-btn" :disabled="!canStep" title="下一首" @click="store.playNext()">
             <AppIcon name="next" class="h-4 w-4" />
           </button>
-        </div>
-
-        <div class="music-bar-progress-wrap">
-          <span class="music-bar-time">{{ formatDuration(store.currentTime) }}</span>
-          <input
-            class="music-bar-range"
-            type="range"
-            min="0"
-            :max="store.duration || 0"
-            :value="store.currentTime"
-            :disabled="!store.audioSrc"
-            @input="onSeek"
-            :style="{ '--slider-progress': `${(store.currentTime / (store.duration || 1)) * 100}%` }"
-          />
-          <span class="music-bar-time">{{ formatDuration(store.duration) }}</span>
-        </div>
-
-        <div class="music-bar-actions">
-          <button
-            class="music-bar-btn"
-            :class="{ 'text-primary': store.shuffle }"
-            title="随机播放"
-            @click="store.shuffle = !store.shuffle"
-          >
-            <AppIcon name="shuffle" class="h-4 w-4" />
+          <button class="music-mini-btn" title="播放队列" @click="showQueue = !showQueue">
+            <AppIcon name="playlistMusic" class="h-4 w-4" />
           </button>
-          <button
-            class="music-bar-btn"
-            :class="{ 'text-primary': store.repeat !== 'none' }"
-            :title="repeatTitle"
-            @click="cycleRepeat"
-          >
-            <AppIcon v-if="store.repeat === 'one'" name="repeatOne" class="h-4 w-4" />
-            <AppIcon v-else name="refresh" class="h-4 w-4" />
-          </button>
-          <div class="music-bar-volume">
-            <button class="music-bar-btn" title="音量" @click="toggleMute">
-              <AppIcon :name="volumeIcon" class="h-4 w-4" />
-            </button>
-            <input
-              class="music-bar-range music-bar-range--volume"
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              :value="store.volume"
-              @input="onVolume"
-              :style="{ '--slider-progress': `${store.volume * 100}%` }"
-            />
-          </div>
         </div>
       </div>
+
+      <MusicQueuePanel
+        :visible="showQueue"
+        :queue="store.queue"
+        :current-index="store.queueIndex"
+        :playing="store.playing"
+        @close="showQueue = false"
+        @clear="store.clearQueue()"
+        @play="playQueueItem"
+        @remove="removeQueueItem"
+        @drag-start="onDragStart"
+        @drop="onDrop"
+      />
     </div>
   </Transition>
 
-  <!-- Immersive Fullscreen Player Modal -->
-  <Transition
-    enter-active-class="transition-all duration-500 ease-out"
-    leave-active-class="transition-all duration-350 ease-in"
-    enter-from-class="translate-y-full opacity-0 scale-95"
-    leave-to-class="translate-y-full opacity-0 scale-95"
-  >
-    <div v-if="showImmersive" class="immersive-player">
-      <!-- High-saturation ambient color background -->
-      <div 
-        class="immersive-bg" 
-        v-if="store.currentTrack?.cover" 
-        :style="{ backgroundImage: `url(${store.currentTrack.cover})` }"
-      ></div>
-      <div class="immersive-overlay"></div>
-
-      <!-- Main Layout -->
-      <div class="immersive-container">
-        <!-- Top Toolbar -->
-        <header class="immersive-header">
-          <button class="immersive-close-btn" @click="closeImmersive" title="收起">
-            <AppIcon name="chevronDown" class="h-5 w-5" />
-          </button>
-          <div class="immersive-header-title">正在播放</div>
-          <div class="w-10"></div> <!-- Placeholder for layout balance -->
-        </header>
-
-        <!-- Dynamic Body -->
-        <main class="immersive-body">
-          <!-- Left Column: Album Art & Info -->
-          <div class="immersive-left">
-            <div class="immersive-art-wrapper" :class="{ 'immersive-art-wrapper--playing': store.playing }">
-              <img
-                v-if="store.currentTrack?.cover"
-                :src="store.currentTrack.cover"
-                alt=""
-                class="immersive-cover"
-              />
-              <div v-else class="immersive-cover-fallback">
-                <AppIcon name="playlistMusic" class="h-24 w-24 text-muted-foreground/30" />
-              </div>
-            </div>
-            
-            <div class="immersive-meta">
-              <h2 class="immersive-title" :title="store.currentTrack?.title">{{ store.currentTrack?.title || '未知歌曲' }}</h2>
-              <p class="immersive-artist">{{ store.currentTrack?.artist || '未知歌手' }}</p>
-              <p v-if="store.currentTrack?.album" class="immersive-album">{{ store.currentTrack.album }}</p>
-            </div>
-
-            <!-- Controls (under cover on desktop/mobile) -->
-            <div class="immersive-controls-section">
-              <div class="immersive-progress-wrap">
-                <span class="immersive-time">{{ formatDuration(store.currentTime) }}</span>
-                <input
-                  class="immersive-range immersive-range--seek"
-                  type="range"
-                  min="0"
-                  :max="store.duration || 0"
-                  :value="store.currentTime"
-                  :disabled="!store.audioSrc"
-                  @input="onSeek"
-                  :style="{ '--slider-progress': `${(store.currentTime / (store.duration || 1)) * 100}%` }"
-                />
-                <span class="immersive-time">{{ formatDuration(store.duration) }}</span>
-              </div>
-
-              <div class="immersive-buttons">
-                <button
-                  class="immersive-btn"
-                  :class="{ 'immersive-btn--active': store.shuffle }"
-                  title="随机播放"
-                  @click="store.shuffle = !store.shuffle"
-                >
-                  <AppIcon name="shuffle" class="h-5 w-5" />
-                </button>
-                <button
-                  class="immersive-btn"
-                  :disabled="!canStep"
-                  title="上一首"
-                  @click="store.playPrevious()"
-                >
-                  <AppIcon name="previous" class="h-5 w-5" />
-                </button>
-                <button
-                  class="immersive-btn immersive-btn--play"
-                  :disabled="store.resolvingUrl"
-                  title="播放/暂停"
-                  @click="store.togglePlayback()"
-                >
-                  <AppIcon v-if="store.resolvingUrl" name="loadingSpinner" class="h-6 w-6 animate-spin" stroke-width="2.5" />
-                  <AppIcon v-else-if="store.playing" name="pause" class="h-6 w-6 fill-current" />
-                  <AppIcon v-else name="play" class="h-6 w-6 fill-current" />
-                </button>
-                <button
-                  class="immersive-btn"
-                  :disabled="!canStep"
-                  title="下一首"
-                  @click="store.playNext()"
-                >
-                  <AppIcon name="next" class="h-5 w-5" />
-                </button>
-                <button
-                  class="immersive-btn"
-                  :class="{ 'immersive-btn--active': store.repeat !== 'none' }"
-                  :title="repeatTitle"
-                  @click="cycleRepeat"
-                >
-                  <AppIcon v-if="store.repeat === 'one'" name="repeatOne" class="h-5 w-5" />
-                  <AppIcon v-else name="refresh" class="h-5 w-5" />
-                </button>
-              </div>
-
-            </div>
-          </div>
-
-          <!-- Right Column: Scrollable Immersive Lyrics / Comments -->
-          <div class="immersive-right">
-            <div class="immersive-tabs">
-              <button
-                class="immersive-tab"
-                :class="{ 'immersive-tab--active': immersiveTab === 'lyrics' }"
-                @click="immersiveTab = 'lyrics'"
-              >歌词</button>
-              <button
-                class="immersive-tab"
-                :class="{ 'immersive-tab--active': immersiveTab === 'comments' }"
-                @click="switchToComments"
-              >
-                评论
-                <span v-if="commentCount > 0" class="immersive-tab-badge">{{ commentCount > 999 ? '999+' : commentCount }}</span>
-              </button>
-            </div>
-
-            <div v-if="immersiveTab === 'lyrics'" class="immersive-lyrics-box" ref="lyricsContainer">
-              <div v-if="store.lyricLoading" class="immersive-lyric-state">
-                <AppIcon name="loadingSpinner" class="h-6 w-6 animate-spin" />
-                <span>歌词加载中...</span>
-              </div>
-              <div v-else-if="store.lyricError" class="immersive-lyric-state text-destructive">
-                <span>{{ store.lyricError }}</span>
-              </div>
-              <div v-else-if="store.lyricLines.length === 0" class="immersive-lyric-state">
-                <span>暂无歌词</span>
-              </div>
-              <div v-else class="immersive-lyric-scrollable">
-                <p
-                  v-for="(line, index) in store.lyricLines"
-                  :key="`${line.time}-${index}`"
-                  class="immersive-lyric-line"
-                  :class="{ 'immersive-lyric-line--active': index === store.currentLyricIndex }"
-                  @click="seekToLine(line.time)"
-                >
-                  {{ line.text || '·' }}
-                </p>
-              </div>
-            </div>
-
-            <div v-else class="immersive-comments-box">
-              <div v-if="commentsLoading" class="immersive-lyric-state">
-                <AppIcon name="loadingSpinner" class="h-6 w-6 animate-spin" />
-                <span>评论加载中...</span>
-              </div>
-              <div v-else-if="commentsError" class="immersive-lyric-state text-destructive">
-                <span>{{ commentsError }}</span>
-              </div>
-              <div v-else-if="comments.length === 0" class="immersive-lyric-state">
-                <AppIcon name="messageCircle" class="h-6 w-6 text-muted-foreground/40" />
-                <span>暂无评论</span>
-              </div>
-              <div v-else class="immersive-comments-scrollable">
-                <div v-for="comment in comments" :key="comment.id" class="immersive-comment">
-                  <div class="immersive-comment-avatar">
-                    <img v-if="comment.user_avatar" :src="comment.user_avatar" alt="" />
-                    <AppIcon v-else name="user" class="h-4 w-4 text-muted-foreground/50" />
-                  </div>
-                  <div class="immersive-comment-body">
-                    <div class="immersive-comment-header">
-                      <span class="immersive-comment-user">{{ comment.user_name || '匿名用户' }}</span>
-                      <span v-if="comment.created_at" class="immersive-comment-time">{{ comment.created_at }}</span>
-                    </div>
-                    <p class="immersive-comment-text">{{ comment.content }}</p>
-                    <div class="immersive-comment-actions">
-                      <span class="immersive-comment-stat">
-                        <AppIcon name="heart" class="h-3 w-3" />
-                        {{ comment.like_count || 0 }}
-                      </span>
-                      <span v-if="comment.reply_count" class="immersive-comment-stat">
-                        <AppIcon name="messageCircle" class="h-3 w-3" />
-                        {{ comment.reply_count }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div v-if="commentsHasMore" class="immersive-comments-more">
-                  <button class="music-chip" :disabled="commentsLoading" @click="handleLoadMoreComments">
-                    加载更多评论
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
-    </div>
-  </Transition>
+  <MusicImmersivePlayer
+    :visible="showImmersive"
+    :track="store.currentTrack"
+    :playing="store.playing"
+    :loading="store.resolvingUrl"
+    :shuffle="store.shuffle"
+    :repeat="store.repeat"
+    :can-step="canStep"
+    :current-time="store.currentTime"
+    :duration="store.duration"
+    :audio-src="store.audioSrc"
+    :error="store.error"
+    :lyric-lines="store.lyricLines"
+    :current-lyric-index="store.currentLyricIndex"
+    :lyric-loading="store.lyricLoading"
+    :lyric-error="store.lyricError"
+    :comments="comments"
+    :comments-loading="commentsLoading"
+    :comments-error="commentsError"
+    :comments-has-more="commentsHasMore"
+    :comment-count="commentCount"
+    @close="closeImmersive"
+    @seek="store.seekTo"
+    @seek-input="handleSeekInput"
+    @toggle="store.togglePlayback()"
+    @previous="store.playPrevious()"
+    @next="store.playNext()"
+    @toggle-shuffle="store.shuffle = !store.shuffle"
+    @toggle-repeat="cycleRepeat"
+    @switch-comments="switchToComments"
+    @load-more-comments="loadMoreComments"
+  />
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { useMusicPlayerStore } from '@/stores/musicPlayer'
-import { useMusicComments } from '@/composables/useMusicComments'
+import MusicProgressBar from './player/MusicProgressBar.vue'
+import MusicBarTrackInfo from './player/MusicBarTrackInfo.vue'
+import MusicBarControls from './player/MusicBarControls.vue'
+import MusicBarActions from './player/MusicBarActions.vue'
+import MusicQueuePanel from './player/MusicQueuePanel.vue'
+import MusicImmersivePlayer from './player/MusicImmersivePlayer.vue'
+import {
+  getMusicSongComments,
+  getMusicCommentCounts,
+  addMusicFavorite,
+  removeMusicFavorite,
+  type MusicComment,
+} from '@/api/music'
 import { Logger } from '@/utils/logger'
 
 const store = useMusicPlayerStore()
-const router = useRouter()
+const route = useRoute()
 
 const audioEl = ref<HTMLAudioElement | null>(null)
+const isBuffering = ref(false)
+const showQueue = ref(false)
+const showImmersive = ref(false)
+const dragIndex = ref<number | null>(null)
+const likedTracks = ref<Set<string>>(new Set())
+const likeLoading = ref(false)
 
-// --- Immersive player comments ---
-const immersiveTab = ref<'lyrics' | 'comments'>('lyrics')
-const {
-  comments,
-  loading: commentsLoading,
-  error: commentsError,
-  page: commentsPage,
-  total: commentsTotal,
-  count: commentCount,
-  hasMore: commentsHasMore,
-  load: loadComments,
-  loadMore: loadMoreComments,
-  loadCount: loadCommentCount,
-  switchToComments: switchToCommentTab,
-  resetForNewTrack: resetComments,
-} = useMusicComments()
+const comments = ref<MusicComment[]>([])
+const commentsLoading = ref(false)
+const commentsError = ref('')
+const commentsPage = ref(1)
+const commentsTotal = ref(0)
+const commentCount = ref(0)
 
-function handleLoadMoreComments() {
-  const track = store.currentTrack
-  if (track?.album_audio_id) {
-    loadMoreComments(track.album_audio_id)
-  }
-}
+let lastCommentTrackId = ''
 
-function switchToComments() {
-  immersiveTab.value = 'comments'
-  const track = store.currentTrack
-  if (!track?.album_audio_id) return
-  switchToCommentTab(track.album_audio_id)
-}
-
-watch(() => store.currentTrack?.album_audio_id, (newId) => {
-  if (newId) {
-    resetComments()
-    if (immersiveTab.value === 'comments') {
-      switchToCommentTab(newId)
-    }
-    const track = store.currentTrack
-    if (track?.hash) {
-      loadCommentCount(track.hash)
-    }
-  }
-})
-
-watch(commentCount, () => {})
-
-void (async () => {
-  const track = store.currentTrack
-  if (track?.hash) {
-    loadCommentCount(track.hash)
-  }
-})()
-
+const isMusicPage = computed(() => route.name === 'Music')
 const canStep = computed(() => store.queue.length > 1)
 
-const repeatTitle = computed(() => {
-  if (store.repeat === 'all') return '列表循环'
-  if (store.repeat === 'one') return '单曲循环'
-  return '顺序播放'
+const isTrackLiked = computed(() => {
+  const track = store.currentTrack
+  if (!track?.album_audio_id) return false
+  return likedTracks.value.has(track.album_audio_id)
 })
 
-const volumeIcon = computed(() => {
-  if (store.volume === 0) return 'volumeOff'
-  if (store.volume < 0.4) return 'volumeLow'
-  return 'volumeHigh'
-})
+const commentsHasMore = computed(() => comments.value.length < commentsTotal.value)
+
+function formatDuration(seconds: number): string {
+  if (!seconds || Number.isNaN(seconds)) return '00:00'
+  const rounded = Math.floor(seconds)
+  const minutes = Math.floor(rounded / 60)
+  const rest = rounded % 60
+  return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
+}
+
+function handleSeek(time: number) {
+  store.seekTo(time)
+}
+
+function handleSeekInput(time: number) {
+  store.seekTo(time)
+}
+
+function handleAudioError() {
+  store.markPlaybackError('音频加载失败，当前歌曲可能不可播放')
+}
+
+function cycleRepeat() {
+  if (store.repeat === 'none') store.repeat = 'all'
+  else if (store.repeat === 'all') store.repeat = 'one'
+  else store.repeat = 'none'
+}
 
 let previousVolume = 0.7
-
-function goToMusic() {
-  router.push('/music')
-}
-
-function onSeek(e: Event) {
-  const val = Number((e.target as HTMLInputElement).value)
-  store.seekTo(val)
-}
-
-function onVolume(e: Event) {
-  const val = Number((e.target as HTMLInputElement).value)
-  store.setVolume(val)
-}
 
 function toggleMute() {
   if (store.volume === 0) {
@@ -435,64 +248,114 @@ function toggleMute() {
   }
 }
 
-const formatDuration = (seconds: number) => {
-  if (!seconds || Number.isNaN(seconds)) return '00:00'
-  const rounded = Math.floor(seconds)
-  const minutes = Math.floor(rounded / 60)
-  const rest = rounded % 60
-  return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
+async function toggleLike() {
+  const track = store.currentTrack
+  if (!track?.album_audio_id || likeLoading.value) return
+  likeLoading.value = true
+  try {
+    if (isTrackLiked.value) {
+      const { error } = await removeMusicFavorite(track.album_audio_id)
+      if (!error) likedTracks.value.delete(track.album_audio_id)
+    } else {
+      const { error } = await addMusicFavorite(track.album_audio_id)
+      if (!error) likedTracks.value.add(track.album_audio_id)
+    }
+  } finally {
+    likeLoading.value = false
+  }
 }
 
-function cycleRepeat() {
-  if (store.repeat === 'none') store.repeat = 'all'
-  else if (store.repeat === 'all') store.repeat = 'one'
-  else store.repeat = 'none'
+async function loadComments(trackAlbumAudioId: string, reset = true) {
+  if (reset) {
+    comments.value = []
+    commentsPage.value = 1
+    commentsTotal.value = 0
+  }
+  commentsLoading.value = true
+  commentsError.value = ''
+  const { data, error: err } = await getMusicSongComments({
+    mixsongid: trackAlbumAudioId,
+    page: commentsPage.value,
+    page_size: 20,
+  })
+  commentsLoading.value = false
+  if (err) {
+    commentsError.value = err.message || '加载评论失败'
+    return
+  }
+  const items = data?.items || []
+  comments.value = reset ? items : [...comments.value, ...items]
+  commentsTotal.value = data?.total || comments.value.length
 }
 
-const showImmersive = ref(false)
-const lyricsContainer = ref<HTMLElement | null>(null)
+function switchToComments() {
+  const track = store.currentTrack
+  if (!track?.album_audio_id || track.album_audio_id === lastCommentTrackId) return
+  lastCommentTrackId = track.album_audio_id
+  void loadComments(track.album_audio_id, true)
+}
+
+async function loadMoreComments() {
+  if (commentsLoading.value || !commentsHasMore.value) return
+  commentsPage.value++
+  const track = store.currentTrack
+  if (!track?.album_audio_id) return
+  await loadComments(track.album_audio_id, false)
+}
+
+watch(() => store.currentTrack?.album_audio_id, async (newId) => {
+  if (newId && newId !== lastCommentTrackId) {
+    comments.value = []
+    lastCommentTrackId = ''
+    const track = store.currentTrack
+    if (track?.hash) {
+      commentCount.value = 0
+      const { data } = await getMusicCommentCounts(track.hash)
+      if (data) commentCount.value = data.count
+    }
+  }
+})
+
+function playQueueItem(index: number) {
+  if (store.queueIndex === index) {
+    store.togglePlayback()
+  } else {
+    const track = store.queue[index]
+    if (track) {
+      store.playTrack(track)
+    }
+  }
+}
+
+function removeQueueItem(index: number) {
+  const track = store.queue[index]
+  if (track) {
+    store.removeFromQueue(track.hash)
+  }
+}
+
+function onDragStart(index: number, _event: DragEvent) {
+  dragIndex.value = index
+}
+
+function onDrop(targetIndex: number, _event: DragEvent) {
+  if (dragIndex.value === null || dragIndex.value === targetIndex) return
+  store.reorderQueue(dragIndex.value, targetIndex)
+  dragIndex.value = null
+}
 
 function openImmersive() {
   showImmersive.value = true
-  document.body.style.overflow = 'hidden' // Lock body scroll
+  document.body.style.overflow = 'hidden'
 }
 
 function closeImmersive() {
   showImmersive.value = false
-  document.body.style.overflow = '' // Restore body scroll
+  document.body.style.overflow = ''
 }
-
-function seekToLine(time: number) {
-  store.seekTo(time)
-}
-
-function handleKeyDown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && showImmersive.value) {
-    closeImmersive()
-  }
-}
-
-watch(() => store.currentLyricIndex, (idx) => {
-  if (!showImmersive.value || idx === -1 || !lyricsContainer.value) return
-  setTimeout(() => {
-    const container = lyricsContainer.value
-    const activeEl = container?.querySelector<HTMLElement>('.immersive-lyric-line--active')
-    if (!container || !activeEl) return
-
-    const containerRect = container.getBoundingClientRect()
-    const activeRect = activeEl.getBoundingClientRect()
-    const top = container.scrollTop
-      + activeRect.top
-      - containerRect.top
-      - (container.clientHeight - activeRect.height) / 2
-
-    container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
-  }, 50)
-})
 
 onMounted(() => {
   store.setAudioRef(audioEl.value)
-  window.addEventListener('keydown', handleKeyDown)
 })
 
 watch(audioEl, (el) => {
@@ -504,13 +367,19 @@ watch(() => store.audioSrc, (src) => {
   if (src) {
     audioEl.value.src = src
     audioEl.value.volume = store.volume
-    audioEl.value.play().catch((err) => Logger.error('Failed to play music audio', err))
+    audioEl.value.play().catch((err) => {
+      store.markPlaybackError('播放失败，当前歌曲可能不可播放')
+      Logger.error('Failed to play music audio', err)
+    })
+  } else {
+    audioEl.value.removeAttribute('src')
+    audioEl.value.load()
+    store.syncPlayState()
   }
 })
 
 onUnmounted(() => {
   store.setAudioRef(null)
-  window.removeEventListener('keydown', handleKeyDown)
   document.body.style.overflow = ''
 })
 </script>
@@ -518,17 +387,18 @@ onUnmounted(() => {
 <style scoped>
 .music-bar {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 0.875rem;
+  left: 1rem;
+  right: 1rem;
   z-index: 60;
-  height: 4rem;
-  border-top: 1px solid hsl(var(--border) / 0.35);
-  background: hsl(var(--background) / 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  padding: 0 1.5rem;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 0.75rem;
+  background: hsl(var(--background) / 0.94);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
   transition: left 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 10px 32px hsl(var(--foreground) / 0.1);
+  overflow: hidden;
 }
 
 .music-bar--immersive {
@@ -536,831 +406,214 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
+.music-bar--mini {
+  left: 0;
+  right: auto;
+  bottom: 0;
+  width: var(--sidebar-width, 14rem);
+  max-width: none;
+  border-top: 1px solid hsl(var(--border) / 0.5);
+  border-right: 1px solid hsl(var(--border));
+  border-radius: 0;
+  background: hsl(var(--background) / 0.82);
+  box-shadow: none;
+  overflow: hidden;
+}
+
 @media (min-width: 768px) {
   .music-bar {
-    left: var(--sidebar-width, 240px);
+    left: calc(var(--sidebar-width, 240px) + 2rem);
+    right: 2rem;
+    max-width: 1480px;
+  }
+
+  .music-bar--mini {
+    left: 0;
   }
 }
 
 .music-bar-inner {
   display: flex;
-  height: 100%;
+  flex-direction: row;
   align-items: center;
-  gap: 1.25rem;
-  max-width: 1280px;
-  margin: 0 auto;
+  gap: 0.875rem;
+  min-height: 2.75rem;
+  padding: 0.25rem 0.875rem 0.5rem;
 }
 
-.music-bar-track {
+.music-bar :deep(.music-progress-bar) {
+  width: calc(100% - 1.75rem);
+  margin: 0.375rem auto 0;
+  padding: 0;
+}
+
+.music-bar-time-wrap {
   display: flex;
-  min-width: 0;
-  flex: 1;
+  gap: 0.25rem;
   align-items: center;
-  gap: 0.75rem;
-  cursor: pointer;
-  border-radius: 0.375rem;
-  padding: 0.375rem;
+  justify-content: center;
+}
+
+.music-bar-time-wrap::after {
+  content: '/';
+  order: 1;
+  color: hsl(var(--muted-foreground) / 0.45);
+  font-size: 0.625rem;
+}
+
+.music-bar-time {
+  font-size: 0.625rem;
+  color: hsl(var(--muted-foreground) / 0.7);
+  min-width: 2.25rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.music-bar-time:first-child {
+  order: 0;
+  text-align: right;
+}
+
+.music-bar-time:last-child {
+  order: 2;
+  text-align: left;
+}
+
+.music-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem 0.625rem;
+}
+
+.music-mini-track {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  min-width: 0;
   border: none;
   background: none;
   color: inherit;
   text-align: left;
-  transition: background-color 0.15s ease;
-}
-
-.music-bar-track:hover {
-  background: hsl(var(--muted) / 0.5);
-}
-
-.music-bar-cover {
-  display: flex;
-  width: 2.5rem;
-  height: 2.5rem;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border-radius: 0.25rem;
-  background: hsl(var(--muted) / 0.4);
-}
-
-.music-bar-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  flex-shrink: 0;
-}
-
-.music-bar-btn {
-  display: flex;
-  height: 2rem;
-  width: 2rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.375rem;
-  border: none;
-  background: none;
-  color: hsl(var(--foreground));
   cursor: pointer;
-  transition: all 0.15s ease;
+  border-radius: 0.375rem;
+  padding: 0.125rem;
+}
+
+.music-mini-track:hover {
+  background: hsl(var(--muted) / 0.45);
+}
+
+.music-mini-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.875rem;
+  height: 1.875rem;
   flex-shrink: 0;
-  position: relative;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--muted-foreground));
 }
 
-.music-bar-btn:hover {
-  background: hsl(var(--muted) / 0.6);
+.music-mini-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.music-bar-btn:disabled {
+.music-mini-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.music-mini-title,
+.music-mini-artist {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-mini-title {
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: hsl(var(--foreground));
+}
+
+.music-mini-artist {
+  margin-top: 0.0625rem;
+  font-size: 0.625rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.music-mini-error {
+  display: block;
+  margin-top: 0.0625rem;
+  overflow: hidden;
+  color: hsl(var(--destructive));
+  font-size: 0.625rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-mini-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.music-mini-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.625rem;
+  height: 1.625rem;
+  border: none;
+  border-radius: 0.375rem;
+  background: none;
+  color: hsl(var(--foreground) / 0.64);
+  cursor: pointer;
+}
+
+.music-mini-btn:hover {
+  background: hsl(var(--muted) / 0.65);
+  color: hsl(var(--foreground));
+}
+
+.music-mini-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
 
-.music-bar-btn--play {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 9999px;
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.9));
-  color: hsl(var(--primary-foreground));
-  border: none;
-  box-shadow:
-    0 2px 8px hsl(var(--primary) / 0.18),
-    0 0 0 3px hsl(var(--primary) / 0.06);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.music-bar-btn--play:hover {
-  background: linear-gradient(135deg, hsl(var(--primary) / 0.92), hsl(var(--primary) / 0.82));
-  box-shadow:
-    0 4px 16px hsl(var(--primary) / 0.28),
-    0 0 0 6px hsl(var(--primary) / 0.08);
-  transform: scale(1.05);
-}
-
-.music-bar-btn--play:active {
-  transform: scale(0.96);
-}
-
-.music-bar-btn--play:disabled {
-  background: linear-gradient(135deg, hsl(var(--muted-foreground) / 0.25), hsl(var(--muted-foreground) / 0.18));
-  color: hsl(var(--muted-foreground) / 0.4);
-  box-shadow: none;
-}
-
-.music-bar-progress-wrap {
-  display: flex;
-  flex: 2;
-  align-items: center;
-  gap: 0.625rem;
-  min-width: 8rem;
-}
-
-.music-bar-time {
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground) / 0.85);
-  tabular-nums: normal;
-  flex-shrink: 0;
-  min-width: 3ch;
-}
-
-.music-bar-range {
-  -webkit-appearance: none;
-  appearance: none;
-  flex: 1;
-  height: 3px;
-  border-radius: 9999px;
-  background: linear-gradient(to right, hsl(var(--primary)) var(--slider-progress, 0%), hsl(var(--border) / 0.45) var(--slider-progress, 0%));
-  outline: none;
-  cursor: pointer;
-  min-width: 0;
-  transition: height 0.1s ease;
-}
-
-.music-bar-range:hover {
-  height: 5px;
-}
-
-.music-bar-range::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 9px;
-  height: 9px;
+.music-mini-btn--play {
   border-radius: 9999px;
   background: hsl(var(--primary));
-  border: none;
-  opacity: 0;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.music-bar-range:hover::-webkit-slider-thumb {
-  opacity: 1;
-  transform: scale(1.1);
-}
-
-.music-bar-range--volume {
-  width: 4.5rem;
-  flex: none;
-  background: linear-gradient(to right, hsl(var(--foreground)) var(--slider-progress, 0%), hsl(var(--border) / 0.45) var(--slider-progress, 0%));
-}
-
-.music-bar-range--volume::-webkit-slider-thumb {
-  background: hsl(var(--foreground));
-}
-
-.music-bar-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  flex-shrink: 0;
-}
-
-.music-bar-volume {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.music-bar-badge {
-  position: absolute;
-  top: 0.15rem;
-  right: 0.15rem;
-  font-size: 0.55rem;
-  line-height: 1;
-  background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
-  padding: 1px 3px;
-  border-radius: 9999px;
+}
+
+.music-mini-btn--play:hover {
+  background: hsl(var(--primary) / 0.9);
+  color: hsl(var(--primary-foreground));
 }
 
 @media (max-width: 767px) {
   .music-bar {
-    bottom: var(--mobile-nav-height);
+    bottom: calc(var(--mobile-nav-height, 0) + 0.75rem);
     left: 0 !important;
   }
 
-  .music-bar-progress-wrap,
-  .music-bar-actions {
-    display: none;
-  }
-}
-
-/* Immersive Player Fullscreen Overlay */
-.immersive-player {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-  width: 100vw;
-  height: 100dvh;
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  overflow: hidden;
-  overscroll-behavior: contain;
-}
-
-/* Ambient Backlight Blur */
-.immersive-bg {
-  position: absolute;
-  top: -20%;
-  left: -20%;
-  width: 140%;
-  height: 140%;
-  background-size: cover;
-  background-position: center;
-  filter: blur(90px) saturate(2.5) brightness(0.95);
-  opacity: 0.65;
-  transform: translateZ(0);
-  pointer-events: none;
-  z-index: 1;
-}
-
-.immersive-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: radial-gradient(
-    circle at 50% 50%,
-    transparent 0%,
-    hsl(var(--background) / 0.5) 60%,
-    hsl(var(--background) / 0.95) 100%
-  );
-  pointer-events: none;
-  z-index: 2;
-}
-
-.immersive-container {
-  position: relative;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1.5rem;
-}
-
-/* Header */
-.immersive-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 3.5rem;
-  margin-bottom: 2rem;
-  flex-shrink: 0;
-}
-
-.immersive-close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 9999px;
-  border: none;
-  background: hsl(var(--foreground) / 0.05);
-  color: hsl(var(--foreground));
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.immersive-close-btn:hover {
-  background: hsl(var(--foreground) / 0.1);
-  transform: translateY(2px);
-}
-
-.immersive-header-title {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: hsl(var(--foreground) / 0.5);
-}
-
-/* Body Split */
-.immersive-body {
-  display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 4rem;
-  flex: 1;
-  min-height: 0;
-  align-items: center;
-}
-
-/* Left Side */
-.immersive-left {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  height: 100%;
-  gap: 2rem;
-}
-
-@keyframes coverFloat {
-  0% {
-    transform: translateY(0) scale(1);
-    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2);
-  }
-  50% {
-    transform: translateY(-8px) scale(1.015);
-    box-shadow: 0 30px 50px -8px rgba(0, 0, 0, 0.25);
-  }
-  100% {
-    transform: translateY(0) scale(1);
-    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2);
-  }
-}
-
-.immersive-art-wrapper {
-  position: relative;
-  width: min(24rem, 80vw);
-  aspect-ratio: 1;
-  border-radius: 1rem;
-  overflow: hidden;
-  background: hsl(var(--muted) / 0.2);
-  box-shadow: 0 20px 40px -10px rgba(0,0,0,0.2);
-  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.immersive-art-wrapper--playing {
-  animation: coverFloat 6s ease-in-out infinite;
-}
-
-.immersive-art-wrapper:hover {
-  transform: scale(1.02);
-}
-
-.immersive-cover {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.immersive-cover-fallback {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  align-items: center;
-  justify-content: center;
-}
-
-.immersive-meta {
-  width: min(24rem, 80vw);
-  text-align: left;
-}
-
-.immersive-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.immersive-artist {
-  font-size: 1rem;
-  font-weight: 500;
-  color: hsl(var(--primary));
-  margin-top: 0.375rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.immersive-album {
-  font-size: 0.8125rem;
-  color: hsl(var(--foreground) / 0.45);
-  margin-top: 0.125rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Controls inside Immersive */
-.immersive-controls-section {
-  width: min(24rem, 80vw);
-}
-
-.immersive-progress-wrap {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.immersive-time {
-  font-size: 0.75rem;
-  font-family: monospace;
-  color: hsl(var(--foreground) / 0.45);
-  min-width: 4ch;
-  text-align: center;
-}
-
-.immersive-range {
-  -webkit-appearance: none;
-  appearance: none;
-  height: 4px;
-  border-radius: 9999px;
-  outline: none;
-  cursor: pointer;
-  transition: height 0.15s ease;
-}
-
-.immersive-range:hover {
-  height: 6px;
-}
-
-.immersive-range--seek {
-  flex: 1;
-  background: linear-gradient(
-    to right,
-    hsl(var(--primary)) var(--slider-progress, 0%),
-    hsl(var(--foreground) / 0.15) var(--slider-progress, 0%)
-  );
-}
-
-.immersive-range--seek::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 9999px;
-  background: hsl(var(--primary));
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.immersive-range--seek:hover::-webkit-slider-thumb {
-  opacity: 1;
-}
-
-.immersive-buttons {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 1.25rem;
-  padding: 0 0.5rem;
-}
-
-.immersive-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 9999px;
-  border: none;
-  background: none;
-  color: hsl(var(--foreground) / 0.65);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.immersive-btn:hover {
-  color: hsl(var(--foreground));
-  background: hsl(var(--foreground) / 0.05);
-}
-
-.immersive-btn:disabled {
-  opacity: 0.25;
-  cursor: not-allowed;
-}
-
-.immersive-btn--active {
-  color: hsl(var(--primary)) !important;
-}
-
-.immersive-btn--play {
-  width: 3.5rem;
-  height: 3.5rem;
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.88));
-  color: hsl(var(--primary-foreground));
-  border: none;
-  box-shadow:
-    0 4px 20px hsl(var(--primary) / 0.22),
-    0 0 0 5px hsl(var(--primary) / 0.05);
-}
-
-.immersive-btn--play:hover {
-  background: linear-gradient(135deg, hsl(var(--primary) / 0.92), hsl(var(--primary) / 0.8));
-  color: hsl(var(--primary-foreground));
-  transform: scale(1.05);
-  box-shadow:
-    0 6px 32px hsl(var(--primary) / 0.32),
-    0 0 0 10px hsl(var(--primary) / 0.07);
-}
-
-.immersive-btn--play:active {
-  transform: scale(0.95);
-}
-
-.immersive-btn--play:disabled {
-  background: linear-gradient(135deg, hsl(var(--muted-foreground) / 0.22), hsl(var(--muted-foreground) / 0.15));
-  color: hsl(var(--muted-foreground) / 0.3);
-  box-shadow: none;
-}
-
-.immersive-badge {
-  position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
-  font-size: 0.55rem;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  padding: 1px 3px;
-  border-radius: 9999px;
-}
-
-/* Right Side: Lyrics Box */
-.immersive-right {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.immersive-tabs {
-  display: flex;
-  gap: 0.25rem;
-  padding: 0 1rem;
-  margin-bottom: 0.5rem;
-  flex-shrink: 0;
-}
-
-.immersive-tab {
-  padding: 0.375rem 0.875rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: hsl(var(--foreground) / 0.5);
-  background: transparent;
-  border: 1px solid hsl(var(--border) / 0.3);
-  border-radius: 9999px;
-  cursor: pointer;
-  transition: all 0.15s;
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-
-.immersive-tab:hover {
-  color: hsl(var(--foreground) / 0.8);
-  background: hsl(var(--foreground) / 0.05);
-}
-
-.immersive-tab--active {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.1);
-  border-color: hsl(var(--primary) / 0.3);
-}
-
-.immersive-tab-badge {
-  font-size: 0.625rem;
-  padding: 0.0625rem 0.375rem;
-  border-radius: 9999px;
-  background: hsl(var(--primary) / 0.15);
-  color: hsl(var(--primary));
-  font-weight: 600;
-}
-
-.immersive-lyrics-box {
-  width: 100%;
-  flex: 1;
-  overflow-y: auto;
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    black 15%,
-    black 85%,
-    transparent 100%
-  );
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    black 15%,
-    black 85%,
-    transparent 100%
-  );
-  padding: 4rem 1rem;
-}
-
-/* Hide scrollbar but keep scroll behavior */
-.immersive-lyrics-box::-webkit-scrollbar {
-  display: none;
-}
-
-.immersive-lyrics-box {
-  scrollbar-width: none;
-}
-
-.immersive-comments-box {
-  width: 100%;
-  flex: 1;
-  overflow-y: auto;
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    black 8%,
-    black 92%,
-    transparent 100%
-  );
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    black 8%,
-    black 92%,
-    transparent 100%
-  );
-  padding: 1rem;
-}
-
-.immersive-comments-box::-webkit-scrollbar {
-  display: none;
-}
-
-.immersive-comments-box {
-  scrollbar-width: none;
-}
-
-.immersive-comments-scrollable {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding-bottom: 2rem;
-}
-
-.immersive-comment {
-  display: flex;
-  gap: 0.625rem;
-  align-items: flex-start;
-}
-
-.immersive-comment-avatar {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 9999px;
-  background: hsl(var(--muted));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.immersive-comment-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.immersive-comment-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.immersive-comment-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.25rem;
-}
-
-.immersive-comment-user {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: hsl(var(--foreground) / 0.85);
-}
-
-.immersive-comment-time {
-  font-size: 0.625rem;
-  color: hsl(var(--foreground) / 0.35);
-}
-
-.immersive-comment-text {
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  color: hsl(var(--foreground) / 0.7);
-  word-break: break-word;
-}
-
-.immersive-comment-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 0.375rem;
-}
-
-.immersive-comment-stat {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.625rem;
-  color: hsl(var(--foreground) / 0.4);
-}
-
-.immersive-comments-more {
-  display: flex;
-  justify-content: center;
-  padding-top: 0.5rem;
-}
-
-.immersive-lyric-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 0.75rem;
-  color: hsl(var(--foreground) / 0.45);
-  font-size: 1.125rem;
-}
-
-.immersive-lyric-scrollable {
-  display: flex;
-  flex-direction: column;
-  gap: 1.75rem;
-  padding: 2rem 0;
-}
-
-.immersive-lyric-line {
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.5;
-  color: hsl(var(--foreground) / 0.38);
-  cursor: pointer;
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  text-align: left;
-  transform-origin: left center;
-  padding: 0.5rem 0;
-}
-
-.immersive-lyric-line:hover {
-  color: hsl(var(--foreground) / 0.75);
-}
-
-.immersive-lyric-line--active {
-  color: hsl(var(--foreground)) !important;
-  font-size: 2rem;
-  font-weight: 800;
-  transform: scale(1.03);
-  text-shadow: 0 4px 24px hsl(var(--foreground) / 0.08);
-}
-
-/* Responsive Stacking */
-@media (max-width: 868px) {
-  .immersive-body {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    overflow-y: auto;
-    align-items: start;
-    padding-bottom: 2rem;
-  }
-  
-  .immersive-left {
-    height: auto;
-    padding-top: 1rem;
-  }
-  
-  .immersive-art-wrapper {
-    width: min(15rem, 60vw);
-  }
-  
-  .immersive-meta {
-    width: 100%;
-    text-align: center;
-  }
-  
-  .immersive-controls-section {
-    width: 100%;
-  }
-  
-  .immersive-right {
-    height: auto;
-  }
-
-  .immersive-lyrics-box {
-    max-height: 18rem;
-    padding: 2rem 0.5rem;
-  }
-
-  .immersive-comments-box {
-    max-height: 18rem;
-    padding: 0.5rem;
-  }
-  
-  .immersive-lyric-line {
-    font-size: 1.125rem;
-    text-align: center;
-    transform-origin: center center;
-  }
-  
-  .immersive-lyric-line--active {
-    font-size: 1.375rem;
+  .music-bar--mini {
+    right: 1rem;
+    left: 1rem !important;
+    width: auto;
   }
 }
 </style>
