@@ -1,12 +1,15 @@
 # Squirrel — 智能编码助手指引
 
-## 开发流程
+## 开发流程（code-implement skill）
 
-1. **需求** → 读 `.opencode/requirements/<name>.md` 理解需求，或用 `/req` 新建
-2. **设计** → 输出技术方案到 `.opencode/designs/<name>.md`，或用 `/design` 新建
-3. **实现** → 按设计方案编码，保持变更最小化
-4. **审查** → 对照设计方案 review 代码
-5. **测试** → 按验收标准验证
+完整实现链路使用 `code-implement` skill 自动化，含以下步骤：
+
+1. **需求** → 读 `.opencode/requirements/<name>.md` 或用 `/req` 新建
+2. **设计** → 调研代码，输出方案到 `.opencode/designs/<name>.md`
+3. **实现** → 按设计方案编码，保持最小变更
+4. **审查** → 对照设计方案逐条覆盖
+5. **测试** → lint + 类型检查 + 相关测试
+6. **收尾** → 报告改动，问 commit
 
 ## 项目结构
 
