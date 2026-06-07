@@ -568,12 +568,6 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { formatTime } from '@/utils/dateFormat'
 import { usePlayer, type PlayerOptions } from './runtime/usePlayer'
-import {
-  getNextControlsVisibilityOnTouchTap,
-  shouldHandlePointerVisibility,
-  shouldAutoHideControls,
-  shouldTogglePlayOnVideoClick
-} from './runtime/mobileControls'
 import type { Chapter, MediaSource, QualityLevel, SubtitleTrack } from './core'
 import { getCodecFamily } from './core/codec'
 import type { ThemeName } from './themes'
@@ -668,9 +662,7 @@ const {
   adapter: props.adapter ?? undefined,
   theme: props.theme,
   i18nOptions: props.i18nOptions,
-  onTouchTap: () => {
-    toggleControls(getNextControlsVisibilityOnTouchTap(store.controlsVisible))
-  },
+
   onPlay: () => emit('play'),
   onPause: () => emit('pause'),
   onEnded: () => emit('ended'),
@@ -754,7 +746,7 @@ const previewPercent = ref(0)
 const isScrubbing = ref(false)
 const isVolumeScrubbing = ref(false)
 const isVolumeHovered = ref(false)
-const lastPointerType = ref('mouse')
+
 const pendingUserVolumeHud = ref<number | null>(null)
 const pendingWidescreenValue = ref<boolean | null>(null)
 const shouldResumeAfterSourceSwap = ref(false)
@@ -1202,11 +1194,7 @@ const hideControls = () => {
 }
 const syncHideTimer = () => {
   clearHideTimer()
-  if (shouldAutoHideControls({
-    controlsVisible: store.controlsVisible,
-    isPlaying: isPlaying.value,
-    isScrubbing: isScrubbing.value
-  })) {
+  if (store.controlsVisible && isPlaying.value && !isScrubbing.value) {
     hideTimer = setTimeout(() => hideControls(), 3000)
   }
 }
@@ -1228,16 +1216,13 @@ const toggleControls = (nextVisible = !store.controlsVisible) => {
   hideControls()
 }
 const handleVideoClick = () => {
-  if (!shouldTogglePlayOnVideoClick(lastPointerType.value)) return
   togglePlay()
 }
-const onPointerEnter = (event: PointerEvent) => {
-  if (!shouldHandlePointerVisibility(event.pointerType)) return
+const onPointerEnter = () => {
   showControls()
 }
 
 const onPointerMove = (event: PointerEvent) => {
-  if (!shouldHandlePointerVisibility(event.pointerType)) return
   showControls()
   if (isFullscreen.value && containerRef.value) {
     const rect = containerRef.value.getBoundingClientRect()
@@ -1250,8 +1235,7 @@ const onPointerMove = (event: PointerEvent) => {
   }
 }
 
-const onPointerLeave = (event: PointerEvent) => {
-  if (!shouldHandlePointerVisibility(event.pointerType)) return
+const onPointerLeave = () => {
   if (!isScrubbing.value) hideControls()
 }
 let activeProgressPointerId: number | null = null
@@ -1492,9 +1476,7 @@ const isQualityActive = (quality: { id: string | number }) => (
 )
 
 const markPlayerActive = () => {}
-const handlePointerDown = (event: PointerEvent) => {
-  lastPointerType.value = event.pointerType || 'mouse'
-}
+const handlePointerDown = () => {}
 
 // ===== Fullscreen features =====
 

@@ -1,6 +1,7 @@
 ---
 title: 桌面端不支持移动端，清理相关代码
-status: open
+status: fixed
+fixed_by: multiple files (see design doc)
 severity: medium
 category: cleanup
 location: squirrel-frontend/src/

@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   RouteLocationNormalizedLoaded,
   RouteLocationRaw,
   RouteRecordName,
@@ -23,11 +23,9 @@ export interface NavigationItem {
   key: AppNavKey
   name: string
   title: string
-  mobileLabel?: string
   path: string
   icon: AppIconName
   group: 'content' | 'operations' | 'system'
-  showOnMobile?: boolean
   activePrefixes?: string[]
   activeRouteNames?: string[]
 }
@@ -116,11 +114,9 @@ export const NAV_ITEMS: NavigationItem[] = [
     key: 'videos',
     name: '首页',
     title: '内容总览',
-    mobileLabel: '首页',
     path: '/videos/all',
     icon: 'home',
     group: 'content',
-    showOnMobile: true,
     activePrefixes: ['/videos', '/video/'],
     activeRouteNames: [
       'LatestVideos',
@@ -137,11 +133,9 @@ export const NAV_ITEMS: NavigationItem[] = [
     key: 'subscribed',
     name: '订阅',
     title: '订阅中心',
-    mobileLabel: '订阅',
     path: '/subscribed',
     icon: 'subscriptions',
     group: 'content',
-    showOnMobile: true,
     activePrefixes: ['/subscribed', '/subscription/'],
     activeRouteNames: [
       'Subscribed',
@@ -159,99 +153,81 @@ export const NAV_ITEMS: NavigationItem[] = [
     key: 'rss-sources',
     name: 'RSS',
     title: 'RSS 内容源',
-    mobileLabel: 'RSS',
     path: '/rss',
     icon: 'rss',
     group: 'content',
-    showOnMobile: false,
     activeRouteNames: ['RssSources'],
   },
   {
     key: 'music',
     name: '音乐',
     title: '音乐',
-    mobileLabel: '音乐',
     path: '/music',
     icon: 'playlistMusic',
     group: 'content',
-    showOnMobile: true,
     activeRouteNames: ['Music'],
   },
   {
     key: 'history',
     name: '历史',
     title: '历史记录',
-    mobileLabel: '历史',
     path: '/history',
     icon: 'history',
     group: 'content',
-    showOnMobile: true,
     activeRouteNames: ['History'],
   },
   {
     key: 'playlists',
     name: '播放列表',
     title: '播放列表',
-    mobileLabel: '播放列表',
     path: '/playlists',
     icon: 'playlists',
     group: 'content',
-    showOnMobile: true,
     activeRouteNames: ['Playlists'],
   },
   {
     key: 'sync-center',
     name: '采集',
     title: '同步中心',
-    mobileLabel: '采集',
     path: '/sync-center',
     icon: 'sync',
     group: 'operations',
-    showOnMobile: true,
     activeRouteNames: ['SyncCenter'],
   },
   {
     key: 'scheduled-tasks',
     name: '定时',
     title: '计划任务',
-    mobileLabel: '定时',
     path: '/scheduled-tasks',
     icon: 'scheduledTasks',
     group: 'operations',
-    showOnMobile: false,
     activeRouteNames: ['ScheduledTasks'],
   },
   {
     key: 'site-runtimes',
     name: '站点运行时',
     title: '站点运行时',
-    mobileLabel: '站点运行时',
     path: '/site-runtimes',
     icon: 'plugins',
     group: 'system',
-    showOnMobile: false,
     activeRouteNames: ['SiteRuntimes'],
   },
   {
     key: 'logs',
     name: '日志',
     title: '日志查看器',
-    mobileLabel: '日志',
     path: '/logs',
     icon: 'logs',
     group: 'system',
-    showOnMobile: true,
     activeRouteNames: ['Logs'],
   },
   {
     key: 'settings',
     name: '设置',
     title: '系统设置',
-    mobileLabel: '设置',
     path: SETTINGS_TABS.find((tab) => tab.key === DEFAULT_SETTINGS_TAB)?.path || '/settings/appearance',
     icon: 'settingsNav',
     group: 'system',
-    showOnMobile: true,
     activePrefixes: ['/settings'],
     activeRouteNames: ['Settings', ...SETTINGS_TABS.map((tab) => tab.routeName)],
   },
@@ -275,7 +251,6 @@ export const NAV_GROUPS: NavigationGroup[] = [
   },
 ]
 
-export const MOBILE_NAV_ITEMS = NAV_ITEMS.filter((item) => item.showOnMobile)
 
 const normalizeRouteName = (routeName: RouteRecordName | null | undefined): string => {
   return typeof routeName === 'string' ? routeName : ''

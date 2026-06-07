@@ -5,10 +5,7 @@
 
     <div class="flex flex-1 min-h-0 overflow-hidden">
       <!-- 2. Sidebar (Fixed Width, Full Height) -->
-      <AppSidebar 
-        v-if="!isMobile" 
-        class="w-[var(--sidebar-width)] shrink-0 border-r border-border/40 z-50" 
-      />
+      <AppSidebar class="w-[var(--sidebar-width)] shrink-0 border-r border-border/40 z-50" />
 
       <!-- 3. Main Container -->
       <main class="flex-1 min-w-0 flex flex-col relative">
@@ -24,14 +21,8 @@
         >
           <GlobalVideoPlayerHost />
           <slot />
-          
-          <!-- Mobile Nav Spacer -->
-          <div v-if="isMobile" class="h-nav shrink-0" />
         </div>
       </main>
-
-      <!-- Mobile Navigation (Fixed at bottom) -->
-      <MobileNavigation v-if="isMobile" class="fixed bottom-0 left-0 right-0 z-50 h-nav" />
     </div>
 
     <!-- Global Music Player Bar -->
@@ -45,10 +36,8 @@ import { useRoute } from 'vue-router'
 import DesktopTitleBar from '@/components/shell/DesktopTitleBar.vue'
 import AppSidebar from '@/components/shell/AppSidebar.vue'
 import AppHeader from '@/components/shell/AppHeader.vue'
-import MobileNavigation from '@/components/shell/MobileNavigation.vue'
 import GlobalVideoPlayerHost from '@/components/video-player/GlobalVideoPlayerHost.vue'
 import GlobalMusicPlayerBar from '@/components/music/GlobalMusicPlayerBar.vue'
-import { isMobile } from '@/composables/useMobile'
 import { useThemeStore } from '@/stores/theme'
 import { useMusicPlayerStore } from '@/stores/musicPlayer'
 import { useNavigationHistory } from '@/composables/useNavigationHistory'

@@ -213,7 +213,7 @@ function formatDuration(seconds: number): string {
   display: flex;
   flex-direction: column;
   width: 100vw;
-  height: 100dvh;
+  height: 100vh;
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   overflow: hidden;

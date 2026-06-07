@@ -348,7 +348,6 @@ defineExpose({ scrollToOffset, scrollToIndex, reset, container, range, totalHeig
 .virtual-list-container {
   position: relative;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   overflow-anchor: none;
 }

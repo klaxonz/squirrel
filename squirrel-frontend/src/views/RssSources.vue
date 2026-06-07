@@ -810,81 +810,7 @@
       </DialogContent>
     </Dialog>
 
-    <!-- 6. Premium Slide-over Reader View Drawer (Mobile Fallback) -->
-    <Sheet :open="isMobile && !!readingEntry" @update:open="closeReader">
-      <SheetContent class="w-full sm:max-w-[640px] md:max-w-[768px] lg:max-w-[900px] border-l border-border/20 bg-background/95 backdrop-blur-xl p-0 flex flex-col h-full shadow-2xl">
-        <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden">
-          <!-- Reader Header -->
-          <header class="shrink-0 border-b border-border/10 p-5 bg-background/50 backdrop-blur-sm pr-16 flex flex-col gap-3 relative z-20">
-            <!-- Top Metadata & Controls Row -->
-            <div class="flex items-center justify-between">
-              <!-- Metadata (Feed Source & Date) -->
-              <div class="flex items-center gap-2 text-xs text-muted-foreground/80">
-                <span class="px-2 py-0.5 rounded bg-primary/10 text-primary font-bold uppercase tracking-wider text-[9px]">
-                  {{ getFeedCategory(readingEntry.feed_id) }}
-                </span>
-                <span>•</span>
-                <span class="font-bold text-foreground/80">{{ getFeedTitle(readingEntry.feed_id) }}</span>
-                <span>•</span>
-                <span class="tabular-nums text-muted-foreground/60 text-[11px]">{{ formatDate(readingEntry.published_at) }}</span>
-              </div>
-              
-              <!-- Clean Flat Action Buttons -->
-              <div class="flex items-center gap-1.5 pr-2">
-                <!-- 访问原始网页 -->
-                <a 
-                  :href="readingEntry.canonical_url" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  class="h-7 w-7 rounded-lg bg-accent/40 hover:bg-accent/60 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all"
-                  title="访问原始网页"
-                >
-                  <AppIcon name="externalLink" class="h-4 w-4" />
-                </a>
 
-                <!-- Mobile Reading Preferences Menu -->
-                <div class="relative" ref="mobileReaderSettingsRef">
-                  <button 
-                    @click="showMobileReaderSettings = !showMobileReaderSettings"
-                    class="h-7 w-7 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all cursor-pointer"
-                    title="阅读设置"
-                  >
-                    <AppIcon name="settingsPanel" class="h-4 w-4" />
-                  </button>
-                  
-                  <ReaderSettingsPanel
-                    :visible="showMobileReaderSettings"
-                    :font-family="readerFontFamily"
-                    :font-size="readerFontSize"
-                    @update:visible="showMobileReaderSettings = $event"
-                    @update:font-family="readerFontFamily = $event; saveReaderPrefs()"
-                    @update:font-size="readerFontSize = $event"
-                    @save="saveReaderPrefs()"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <!-- Title -->
-            <h3 class="text-base md:text-lg font-bold tracking-tight text-foreground leading-snug">
-              {{ readingEntry.title }}
-            </h3>
-          </header>
-          
-          <!-- Reader Body Scroll Container -->
-          <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
-            <!-- Description / HTML content -->
-            <div 
-              class="reader-content prose prose-sm dark:prose-invert max-w-none text-foreground/80 py-2 space-y-0"
-              :class="readerFontClass"
-              :style="{ fontSize: readerFontSize + 'px' }"
-              @click="handleContentClick"
-              v-html="cleanAndDecodeHtml(readingEntry.summary) || '<p class=text-muted-foreground>该文章暂无正文内容。</p>'"
-            />
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
 
     <!-- Beautiful Full-screen Image Lightbox -->
     <div 
@@ -1144,7 +1070,6 @@ import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { formatDate } from '../utils/dateFormat'
 import { useRssAccounts } from '@/composables/useRssAccounts'
 import { useRssFeeds } from '@/composables/useRssFeeds'
@@ -1280,8 +1205,7 @@ const {
   readerFontFamily,
   showReaderSettings,
   readerSettingsRef,
-  showMobileReaderSettings,
-  mobileReaderSettingsRef,
+
   showInAppBrowser,
   iframeLoading,
   iframeLoadKey,
@@ -1290,7 +1214,7 @@ const {
   iframeRef,
   activeLightboxImg,
   lightboxScale,
-  isMobile,
+
   readerFontClass,
   setReaderFontSize,
   saveReaderPrefs,
@@ -1306,7 +1230,7 @@ const {
   closeReader,
   openRecentEntry,
   unsubscribeCurrentFeedFromReader,
-  checkIfMobile,
+
 } = useRssReader({
   selectedAccountId,
   feeds,
@@ -1543,8 +1467,6 @@ watch(selectedAccountId, () => {
 
 // Lifecycle
 onMounted(async () => {
-  checkIfMobile()
-  window.addEventListener('resize', checkIfMobile)
   window.addEventListener('keydown', handleKeyDown)
   window.addEventListener('click', closeContextMenu)
   window.addEventListener('contextmenu', closeContextMenu)
@@ -1557,7 +1479,6 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', checkIfMobile)
   window.removeEventListener('keydown', handleKeyDown)
   window.removeEventListener('click', closeContextMenu)
   window.removeEventListener('contextmenu', closeContextMenu)

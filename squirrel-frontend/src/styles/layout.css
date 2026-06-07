@@ -17,8 +17,6 @@
   --sidebar-item-height: 2.25rem;
   --sidebar-item-gap: 2px;
 
-  --mobile-nav-height: 56px;
-
   --app-control-bg: hsl(var(--secondary));
   --app-control-radius: var(--radius-md);
   --app-control-item-radius: var(--radius-sm);

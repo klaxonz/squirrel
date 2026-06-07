@@ -9,7 +9,7 @@ import { createDefaultPlayerPlugins } from '../core/defaultPlugins'
 import { BUILT_IN_PRESETS } from '../plugins/subtitles'
 import { useA11y } from './useA11y'
 import { useControlsLayout } from './useControlsLayout'
-import { useGestures } from './useGestures'
+
 import { useIcons } from '../core/useIcons'
 import { DEFAULT_SHORTCUTS, type KeyboardShortcutsConfig } from './keyboardShortcuts'
 import type { UserConfig } from '../core/PlayerAdapter'
@@ -31,7 +31,7 @@ export interface PlayerOptions {
   enableDash?: boolean
   enableSubtitles?: boolean
   enableAnalytics?: boolean
-  enableGestures?: boolean
+
   enableQualityFallback?: boolean
   keyboardShortcuts?: KeyboardShortcutsConfig
 
@@ -42,7 +42,7 @@ export interface PlayerOptions {
   onPlay?: () => void
   onPause?: () => void
   onEnded?: () => void
-  onTouchTap?: (zone: 'left' | 'center' | 'right') => void
+
   onError?: (error: PlayerError) => void
   onTimeUpdate?: (time: number) => void
   onQualityChange?: (quality: string) => void
@@ -174,7 +174,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     enableDash = true,
     enableSubtitles = true,
     enableAnalytics = false,
-    enableGestures = true,
+
     enableQualityFallback = true,
     keyboardShortcuts,
     adapter,
@@ -183,7 +183,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     onPlay,
     onPause,
     onEnded,
-    onTouchTap,
+
     onError,
     onTimeUpdate,
     onQualityChange,
@@ -581,36 +581,6 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
   const loadProgress = async (key: string): Promise<number | null> => {
     return await engine.loadProgress(key)
-  }
-
-  if (enableGestures) {
-    useGestures({
-      element: containerElement,
-      callbacks: {
-        onTap: (zone) => {
-          onTouchTap?.(zone)
-        },
-        onSeek: (delta) => {
-          const newTime = Math.max(0, Math.min(store.duration, store.currentTime + delta))
-          seek(newTime)
-        },
-        onVolumeChange: (delta) => {
-          setVolume(store.volume + delta)
-        },
-        onDoubleTapLeft: () => {
-          seek(Math.max(0, store.currentTime - 10))
-          announce(t('skipBackward'))
-        },
-        onDoubleTapRight: () => {
-          seek(Math.min(store.duration, store.currentTime + 10))
-          announce(t('skipForward'))
-        },
-        onDoubleTapCenter: () => {
-          if (store.playing) pause()
-          else void play()
-        }
-      }
-    })
   }
 
   onMounted(async () => {

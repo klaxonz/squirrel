@@ -604,16 +604,5 @@ onUnmounted(() => {
   color: hsl(var(--primary-foreground));
 }
 
-@media (max-width: 767px) {
-  .music-bar {
-    bottom: calc(var(--mobile-nav-height, 0) + 0.75rem);
-    left: 0 !important;
-  }
 
-  .music-bar--mini {
-    right: 1rem;
-    left: 1rem !important;
-    width: auto;
-  }
-}
 </style>

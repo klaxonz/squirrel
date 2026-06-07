@@ -23,9 +23,6 @@ export function useRssReader(options: {
   const readerFontFamily = ref(localStorage.getItem('rss_reader_font_family') || 'serif')
   const showReaderSettings = ref(false)
   const readerSettingsRef = ref<HTMLElement | null>(null)
-  const showMobileReaderSettings = ref(false)
-  const mobileReaderSettingsRef = ref<HTMLElement | null>(null)
-
   // In-App Browser Overlay
   const showInAppBrowser = ref(false)
   const iframeLoading = ref(false)
@@ -38,18 +35,11 @@ export function useRssReader(options: {
   const activeLightboxImg = ref<string | null>(null)
   const lightboxScale = ref(1)
 
-  // Mobile
-  const isMobile = ref(false)
-
   let progressTimer: number | null = null
 
   onClickOutside(readerSettingsRef, () => {
     showReaderSettings.value = false
   })
-  onClickOutside(mobileReaderSettingsRef, () => {
-    showMobileReaderSettings.value = false
-  })
-
   const readerFontClass = computed(() => {
     switch (readerFontFamily.value) {
       case 'outfit':
@@ -233,13 +223,8 @@ export function useRssReader(options: {
     await options?.onRefreshEntries?.(true)
   }
 
-  const checkIfMobile = () => {
-    isMobile.value = window.innerWidth < 1024
-  }
-
   watch(readingEntry, () => {
     showReaderSettings.value = false
-    showMobileReaderSettings.value = false
     showInAppBrowser.value = false
     iframeLoading.value = false
     resetIframeState()
@@ -257,8 +242,6 @@ export function useRssReader(options: {
     readerFontFamily,
     showReaderSettings,
     readerSettingsRef,
-    showMobileReaderSettings,
-    mobileReaderSettingsRef,
     showInAppBrowser,
     iframeLoading,
     iframeLoadKey,
@@ -267,7 +250,6 @@ export function useRssReader(options: {
     iframeRef,
     activeLightboxImg,
     lightboxScale,
-    isMobile,
     readerFontClass,
     setReaderFontSize,
     saveReaderPrefs,
@@ -287,6 +269,5 @@ export function useRssReader(options: {
     closeReader,
     openRecentEntry,
     unsubscribeCurrentFeedFromReader,
-    checkIfMobile,
   }
 }
