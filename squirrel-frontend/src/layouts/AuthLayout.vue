@@ -10,5 +10,5 @@
 <script setup lang="ts">
 import DesktopTitleBar from '@/components/shell/DesktopTitleBar.vue'
 
-const isDesktop = (window as any).desktopApp?.isDesktop === true
+const isDesktop = window.desktopApp?.isDesktop === true
 </script>

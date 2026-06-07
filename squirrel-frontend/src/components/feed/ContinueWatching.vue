@@ -80,6 +80,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import useVideoHistory from '@/composables/useVideoHistory'
 import { formatDuration } from '@/utils/dateFormat'
+import { Logger } from '@/utils/logger'
 
 const emit = defineEmits(['openModal', 'viewMore'])
 
@@ -129,7 +130,7 @@ onMounted(async () => {
     await nextTick()
     updateScrollState()
   } catch (e) {
-    console.error('Failed to load continue watching history:', e)
+    Logger.error('Failed to load continue watching history:', e)
   }
 })
 </script>

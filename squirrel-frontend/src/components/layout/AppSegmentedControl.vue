@@ -22,23 +22,10 @@
 
 <script setup>
 const props = defineProps({
-  modelValue: {
-    type: [String, Number],
-    required: true,
-  },
-  options: {
-    type: Array,
-    required: true,
-  },
-  ariaLabel: {
-    type: String,
-    default: '切换选项',
-  },
-  size: {
-    type: String,
-    default: 'default',
-    validator: (value) => ['default', 'sm'].includes(value),
-  },
+  modelValue: { type: [String, Number], required: true },
+  options: { type: Array, required: true },
+  ariaLabel: { type: String, default: '' },
+  size: { type: String, default: 'default' }
 })
 
 const emit = defineEmits(['update:modelValue', 'change'])

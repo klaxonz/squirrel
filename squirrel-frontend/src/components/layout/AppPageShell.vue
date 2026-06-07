@@ -13,22 +13,12 @@
   </section>
 </template>
 
-<script setup>
-defineProps({
-  variant: {
-    type: String,
-    default: 'default',
-    validator: (value) => ['default', 'compact'].includes(value),
-  },
-  fill: {
-    type: Boolean,
-    default: true,
-  },
-  scrollable: {
-    type: Boolean,
-    default: false,
-  },
-})
+<script setup lang="ts">
+defineProps<{
+  variant?: 'default' | 'compact'
+  fill?: boolean
+  scrollable?: boolean
+}>()
 </script>
 
 <style scoped>

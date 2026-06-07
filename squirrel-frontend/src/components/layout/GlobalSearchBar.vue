@@ -5,7 +5,7 @@
       class="flex items-center h-9 p-1 rounded-lg bg-accent/30 border border-border/20 transition-all duration-300 group focus-within:bg-background focus-within:border-primary/20 focus-within:ring-4 focus-within:ring-primary/5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]"
     >
       <!-- Scope Toggle (Local/Remote) -->
-      <div v-if="searchModes.length > 0" class="shrink-0">
+      <div v-if="searchModesList.length > 0" class="shrink-0">
         <button
           type="button"
           class="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -16,7 +16,7 @@
         </button>
       </div>
       
-      <div v-if="searchModes.length > 0" class="w-px h-3 bg-border/40 mx-1.5 shrink-0" />
+      <div v-if="searchModesList.length > 0" class="w-px h-3 bg-border/40 mx-1.5 shrink-0" />
       <AppIcon v-else name="search" class="w-3.5 h-3.5 text-muted-foreground/40 group-focus-within:text-primary transition-colors ml-2 mr-1.5" :stroke-width="2.5" />
       
       <input
@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, watch, type PropType } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { getSearchSuggestions } from '@/api/search'
@@ -115,13 +115,13 @@ type SearchModeOption = {
   label: string
 }
 
-const props = defineProps({
-  modelValue: { type: String, default: '' },
-  placeholder: { type: String, default: '搜索或输入命令...' },
-  suggestionScope: { type: String, default: 'home' },
-  searchModes: { type: Array as PropType<readonly SearchModeOption[]>, default: () => [] },
-  activeSearchMode: { type: String, default: '' },
-})
+const props = defineProps<{
+  modelValue?: string
+  placeholder?: string
+  suggestionScope?: string
+  searchModes?: readonly SearchModeOption[]
+  activeSearchMode?: string
+}>()
 
 const emit = defineEmits(['update:modelValue', 'search', 'clear', 'search-mode-change'])
 const uiStore = useUIStore()
@@ -143,8 +143,9 @@ let suggestionTimeout: any = null
 
 const trimmedInputValue = computed(() => inputValue.value.trim())
 const showSuggestions = computed(() => isPanelOpen.value && isFocused.value)
+const searchModesList = computed(() => props.searchModes ?? [])
 const activeSearchModeLabel = computed(() => {
-  return props.searchModes.find((mode) => mode.value === props.activeSearchMode)?.label || ''
+  return searchModesList.value.find((mode: any) => mode.value === props.activeSearchMode)?.label || ''
 })
 const selectableItems = computed(() => [...suggestionItems.value])
 
@@ -287,6 +288,7 @@ function selectMode(mode: string) {
 }
 
 function toggleMode() {
+  if (!props.searchModes) return
   const currentIndex = props.searchModes.findIndex((mode) => mode.value === props.activeSearchMode)
   const nextMode = props.searchModes[(currentIndex + 1) % props.searchModes.length]
   if (nextMode) selectMode(nextMode.value)

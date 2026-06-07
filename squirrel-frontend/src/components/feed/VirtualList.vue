@@ -13,11 +13,11 @@
       class="visible-items"
       :style="itemStyle"
     >
-      <div
-        v-for="entry in visibleItems"
-        :key="entry.item[keyField]"
-        class="list-item"
-      >
+    <div
+      v-for="entry in visibleItems"
+      :key="entry.item[keyField || 'id']"
+      class="list-item"
+    >
         <slot
           name="item"
           :item="entry.item"
@@ -30,67 +30,36 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, shallowRef, watch } from 'vue';
 
 const MAX_SCROLL_POSITIONS = 50;
 const scrollPositions = new Map();
 
-const props = defineProps({
-  items: {
-    type: Array,
-    default: () => []
-  },
-  itemSize: {
-    type: Number,
-    default: 50
-  },
-  keyField: {
-    type: String,
-    default: 'id'
-  },
-  buffer: {
-    type: Number,
-    default: 5
-  },
-  gridItems: {
-    type: Number,
-    default: 1
-  },
-  prerender: {
-    type: Number,
-    default: 0
-  },
-  bufferMode: {
-    type: String,
-    default: 'px',
-    validator: (v) => ['px', 'rows', 'auto'].includes(v)
-  },
-  rangeChangeThrottleMs: {
-    type: Number,
-    default: 0
-  },
-  bottomPadding: {
-    type: Number,
-    default: 0
-  },
-  cacheKey: {
-    type: String,
-    default: ''
-  },
-});
+const props = defineProps<{
+  items?: unknown[]
+  itemSize?: number
+  keyField?: string
+  buffer?: number
+  gridItems?: number
+  prerender?: number
+  bufferMode?: 'px' | 'rows' | 'auto'
+  rangeChangeThrottleMs?: number
+  bottomPadding?: number
+  cacheKey?: string
+}>()
 
 const emit = defineEmits(['scroll', 'range-change', 'reach-start', 'reach-end']);
 
-const container = ref(null);
+const container = ref<HTMLElement | null>(null);
 const scrollTop = ref(0);
 const containerHeight = ref(typeof window !== 'undefined' ? window.innerHeight : 1000); 
 
-const itemsRef = shallowRef(props.items);
+const itemsRef = shallowRef<unknown[]>(props.items ?? []);
 
 const instanceId = ref(Symbol('virtual-list-instance'));
-let resizeObserver = null;
-let rangeThrottleTimer = null;
+let resizeObserver: ResizeObserver | null = null;
+let rangeThrottleTimer: ReturnType<typeof setTimeout> | null = null;
 let rangeThrottleLast = 0;
 
 const stopObservingContainer = () => {
@@ -103,7 +72,7 @@ const getScrollCacheKey = () => {
   return props.cacheKey || instanceId.value;
 };
 
-const saveScrollPosition = (position) => {
+const saveScrollPosition = (position: number) => {
   const key = getScrollCacheKey();
   if (!key) {
     return;
@@ -123,13 +92,13 @@ const restoreScrollPosition = () => {
     return;
   }
 
-  const targetPos = scrollPositions.get(key);
+  const targetPos = scrollPositions.get(key) ?? 0;
   scrollToOffset(targetPos);
 };
 
 const columnCount = computed(() => Math.max(1, props.gridItems || 1));
 const rowHeight = computed(() => Math.max(1, Math.floor(props.itemSize || 300)));
-const rowCount = computed(() => Math.ceil(itemsRef.value.length / columnCount.value));
+const rowCount = computed(() => Math.ceil((itemsRef.value ?? []).length / columnCount.value));
 
 const itemStyle = computed(() => ({
   display: 'grid',
@@ -140,10 +109,11 @@ const itemStyle = computed(() => ({
 }));
 
 const bufferRows = computed(() => {
-  if (props.bufferMode === 'rows') return Math.max(0, Math.ceil(props.buffer));
-  const bufferPx = props.bufferMode === 'auto' && props.buffer <= 50
-    ? props.buffer * rowHeight.value
-    : props.buffer;
+  const b = props.buffer ?? 0;
+  if (props.bufferMode === 'rows') return Math.max(0, Math.ceil(b));
+  const bufferPx = props.bufferMode === 'auto' && b <= 50
+    ? b * rowHeight.value
+    : b;
   return Math.max(0, Math.ceil(bufferPx / rowHeight.value));
 });
 
@@ -153,7 +123,8 @@ const prerenderRows = computed(() => {
 });
 
 const range = computed(() => {
-  const len = itemsRef.value.length;
+  const items = itemsRef.value ?? [];
+  const len = items.length;
   if (len === 0) return { startRow: 0, endRow: 0, startIndex: 0, endIndex: 0 };
 
   const safeScrollTop = Math.max(0, scrollTop.value);
@@ -172,8 +143,8 @@ const range = computed(() => {
 
 const visibleItems = computed(() => {
   const { startIndex, endIndex } = range.value;
-  const items = itemsRef.value;
-  const result = [];
+  const items = itemsRef.value ?? [];
+  const result: { item: any; index: number; row: number; column: number }[] = [];
   const cols = columnCount.value;
   for (let i = startIndex; i < endIndex; i++) {
     const item = items[i];
@@ -190,7 +161,7 @@ const visibleItems = computed(() => {
 });
 
 const totalHeight = computed(() => {
-  return rowCount.value * rowHeight.value + props.bottomPadding;
+  return rowCount.value * rowHeight.value + (props.bottomPadding ?? 0);
 });
 
 const offset = computed(() => range.value.startRow * rowHeight.value);
@@ -198,10 +169,10 @@ const maxScrollTop = computed(() => Math.max(0, totalHeight.value - containerHei
 
 const emitRangeChange = () => {
   const now = performance.now();
-  if (props.rangeChangeThrottleMs > 0) {
+  if ((props.rangeChangeThrottleMs ?? 0) > 0) {
     if (rangeThrottleTimer) return;
     const elapsed = now - rangeThrottleLast;
-    const wait = Math.max(0, props.rangeChangeThrottleMs - elapsed);
+    const wait = Math.max(0, (props.rangeChangeThrottleMs ?? 0) - elapsed);
     rangeThrottleTimer = setTimeout(() => {
       rangeThrottleTimer = null;
       rangeThrottleLast = performance.now();
@@ -251,7 +222,7 @@ const onScroll = () => {
   if (st + containerHeight.value >= totalHeight.value - 1) emit('reach-end');
 };
 
-const scrollToOffset = (offsetPx) => {
+const scrollToOffset = (offsetPx: number) => {
   if (!container.value) return;
   const nextOffset = Math.max(0, Math.min(offsetPx, maxScrollTop.value));
   container.value.scrollTop = nextOffset;
@@ -259,8 +230,8 @@ const scrollToOffset = (offsetPx) => {
   saveScrollPosition(nextOffset);
 };
 
-const scrollToIndex = (index, align = 'start') => {
-  const clamped = Math.max(0, Math.min(index, itemsRef.value.length - 1));
+const scrollToIndex = (index: number, align: string = 'start') => {
+  const clamped = Math.max(0, Math.min(index, (itemsRef.value ?? []).length - 1));
   const row = Math.floor(clamped / columnCount.value);
   const base = row * rowHeight.value;
   let target = base;
@@ -273,7 +244,7 @@ const reset = () => {
   scrollToOffset(0);
 };
 
-const isItemsEqual = (a, b) => {
+const isItemsEqual = (a: any[], b: any[]) => {
   if (a === b) return true;
   if (!a || !b) return false;
   if (a.length !== b.length) return false;
@@ -290,12 +261,12 @@ const isItemsEqual = (a, b) => {
 
 watch(
   () => props.items,
-  (newItems) => {
-    const oldItems = itemsRef.value;
+  (newItems: any[] | undefined) => {
+    const oldItems = itemsRef.value ?? [];
     const newLen = newItems ? newItems.length : 0;
     const oldLen = oldItems ? oldItems.length : 0;
 
-    const appended = oldLen > 0 && newLen > oldLen && isItemsEqual(oldItems.slice(0, oldLen), newItems.slice(0, oldLen));
+    const appended = oldLen > 0 && newLen > oldLen && isItemsEqual(oldItems.slice(0, oldLen), (newItems ?? []).slice(0, oldLen));
     itemsRef.value = newItems || [];
 
     if (!appended) {
@@ -314,7 +285,7 @@ watch(
   () => [columnCount.value, rowHeight.value],
   ([newCols, newRowH], [oldCols, oldRowH]) => {
     const anchorRow = Math.floor(scrollTop.value / oldRowH);
-    const anchorIndex = Math.min(itemsRef.value.length - 1, anchorRow * oldCols);
+    const anchorIndex = Math.min((itemsRef.value ?? []).length - 1, anchorRow * oldCols);
     nextTick(() => {
       updateContainerHeight();
       if (anchorIndex >= 0) {

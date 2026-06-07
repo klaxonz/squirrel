@@ -37,13 +37,10 @@
   </div>
 </template>
 
-<script setup>
-defineProps({
-  delay: {
-    type: Number,
-    default: 0,
-  },
-})
+<script setup lang="ts">
+defineProps<{
+  delay?: number
+}>()
 </script>
 
 <style scoped>

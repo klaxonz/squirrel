@@ -8,17 +8,11 @@
   </section>
 </template>
 
-<script setup>
-defineProps({
-  title: {
-    type: String,
-    required: true,
-  },
-  copy: {
-    type: String,
-    default: '',
-  },
-})
+<script setup lang="ts">
+defineProps<{
+  title: string
+  copy?: string
+}>()
 </script>
 
 <style scoped>

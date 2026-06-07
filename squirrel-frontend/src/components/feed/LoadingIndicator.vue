@@ -14,24 +14,14 @@
   </Transition>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 
-const props = defineProps({
-  loading: { 
-    type: Boolean, 
-    default: true 
-  },
-  text: { 
-    type: String, 
-    default: '' 
-  },
-  size: { 
-    type: String, 
-    default: 'md',
-    validator: (value) => ['sm', 'md', 'lg'].includes(value)
-  }
-});
+const props = defineProps<{
+  loading?: boolean
+  text?: string
+  size?: 'sm' | 'md' | 'lg'
+}>()
 
 const sizeClass = computed(() => `size-${props.size}`);
 </script>

@@ -12,9 +12,8 @@ import {
   getDefaultPlaylist,
 } from '@/api/playlist'
 import type { Playlist, PlaylistDetail, PlaylistItem, VideoBasic, PlaylistId, VideoId } from '@/types/playlist'
+import type { ApiResult } from '@/types/api'
 import { Logger } from '@/utils/logger'
-
-type ApiResult<T> = { data?: T | null; error?: any }
 
 const createPlaylistStore = () => {
   const playlists = ref<Playlist[]>([])

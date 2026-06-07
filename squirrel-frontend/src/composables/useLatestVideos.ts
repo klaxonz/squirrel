@@ -1,5 +1,6 @@
 import { computed, shallowRef, ref } from 'vue'
 import { getVideoList } from '@/api'
+import type { ApiResult } from '@/types/api'
 
 type VideoId = string | number
 
@@ -24,7 +25,6 @@ type InitialState = {
   special?: string
 }
 
-type ApiResult<T> = { data?: T | null; error?: unknown | null }
 type VideoListResponse = { data?: unknown[] }
 type ApiErrorLike = { type?: string | null }
 type VideoListParams = {

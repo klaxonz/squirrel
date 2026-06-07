@@ -214,10 +214,7 @@ import { useImageFallback } from '@/composables/useImageFallback'
 import { useSiteCatalog } from '@/composables/useSites'
 
 const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false,
-  },
+  show: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['close', 'imported'])

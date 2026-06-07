@@ -140,27 +140,12 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 
 const props = defineProps({
-  visible: {
-    type: Boolean,
-    default: false,
-  },
-  site: {
-    type: Object,
-    default: null,
-  },
-  catalog: {
-    type: Object,
-    default: () => ({}),
-  },
-  saving: {
-    type: Boolean,
-    default: false,
-  },
-  errorMessage: {
-    type: String,
-    default: '',
-  },
-});
+  visible: { type: Boolean, default: false },
+  site: { type: Object, default: null },
+  catalog: { type: Object, default: () => ({}) },
+  saving: { type: Boolean, default: false },
+  errorMessage: { type: String, default: '' }
+})
 
 const emit = defineEmits(['close', 'save']);
 

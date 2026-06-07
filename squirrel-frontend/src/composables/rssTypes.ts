@@ -1,4 +1,4 @@
-export type ApiResult<T = any> = { data: T | null; error: any | null }
+export type { ApiResult } from '@/types/api'
 
 export type RssAccount = {
   id: number

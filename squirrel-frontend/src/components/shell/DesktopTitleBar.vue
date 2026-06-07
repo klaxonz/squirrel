@@ -42,23 +42,18 @@ import { useNavigationHistory } from '@/composables/useNavigationHistory'
 
 const nav = useNavigationHistory()
 
-const desktop = (window as any).desktopApp
+const desktop = window.desktopApp
 const isMaximized = ref(false)
 let removeWindowStateListener: (() => void) | undefined
 
-const controls = computed<Array<{
-  icon: AppIconName
-  action: () => Promise<void> | void
-  label: string
-  type?: 'close'
-}>>(() => ([
-  { icon: 'minimizeWindow', action: () => desktop?.minimizeWindow(), label: '最小化' },
-  { icon: isMaximized.value ? 'restoreWindow' : 'maximizeWindow', action: toggleMaximize, label: isMaximized.value ? '还原' : '最大化' },
-  { icon: 'close', action: () => desktop?.closeWindow(), label: '关闭', type: 'close' },
+const controls = computed(() => ([
+  { icon: 'minimizeWindow' as AppIconName, action: () => { desktop?.minimizeWindow?.() }, label: '最小化' },
+  { icon: (isMaximized.value ? 'restoreWindow' : 'maximizeWindow') as AppIconName, action: toggleMaximize, label: isMaximized.value ? '还原' : '最大化' },
+  { icon: 'close' as AppIconName, action: () => { desktop?.closeWindow?.() }, label: '关闭', type: 'close' as 'close' },
 ]))
 
 async function toggleMaximize() {
-  const state = await desktop?.toggleMaximizeWindow()
+  const state = await desktop?.toggleMaximizeWindow?.()
   isMaximized.value = state?.isMaximized === true
 }
 

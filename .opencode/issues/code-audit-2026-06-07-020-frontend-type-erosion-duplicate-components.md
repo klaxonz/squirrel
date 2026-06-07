@@ -1,6 +1,22 @@
 ---
 title: Frontend 类型侵蚀 + 废弃重复组件
-status: open
+status: fixed
+fixed_by: |
+  src/types/api.ts — 统一 ApiResult<T>
+  src/composables/rssTypes.ts — 改为 re-export
+  src/types/videoPlayback.ts — 改为 re-export
+  src/composables/{useSites,useLatestVideos,usePlaylist,useUserSettings,useUser,useSystemConfig,useVideoHistory}.ts — 移除局部定义
+  src/composables/useGlobalVideoPlayer{.js→.ts} — .js 转 .ts
+  src/components/playlist/PlaylistPanel.vue — 删除（无引用死代码）
+  src/components/feed/ContinueWatching.vue — console.error → Logger
+  src/{layouts/AppLayout,AuthLayout}.vue — 移除 window as any
+  src/components/shell/DesktopTitleBar.vue — 移除 window as any + 修复类型
+  src/composables/useRssReader.ts — 移除 window as any
+  src/composables/{useRssFeeds,useRssAccounts,useRssEntries}.ts — 统一 error.message 访问
+  src/composables/useVideoHistory.ts — 统一 error.message 访问
+  src/views/{RssSources,SyncCenter}.vue — 统一 error.status 访问
+  src/components/{PageHeader,SubscriptionSkeleton,AppToolbarFrame,AppEmptyState,AppPageShell,LoadingIndicator,AddChannelDialog,ImportSubscriptionDialog,ChannelHeader,ContextMenu,MobileNav,AppSegmentedControl,VirtualList,GlobalSearchBar,Switch,TaskDialog,SiteConfigEditorDialog}.vue — defineProps({}) → defineProps<{...}>()
+  src/views/RssSources.vue — ApiResult import 路径更新
 severity: high
 category: code-smell
 location: squirrel-frontend/src/

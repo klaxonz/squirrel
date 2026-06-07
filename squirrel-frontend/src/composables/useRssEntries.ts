@@ -106,7 +106,7 @@ export function useRssEntries(options: {
 
     const result = await getRssEntries(params) as ApiResult<{ data: RssEntry[], total: number }>
     if (result.error) {
-      options?.onStatus?.(result.error.message || '加载条目失败', true)
+      options?.onStatus?.((result.error as { message?: string })?.message || '加载条目失败', true)
       return
     }
 
@@ -136,7 +136,7 @@ export function useRssEntries(options: {
     const result = await getRssEntries(params) as ApiResult<{ data: RssEntry[], total: number }>
     loadingMoreEntries.value = false
     if (result.error) {
-      options?.onStatus?.(result.error.message || '加载条目失败', true)
+      options?.onStatus?.((result.error as { message?: string })?.message || '加载条目失败', true)
       return
     }
     const fetched = result.data?.data || []
@@ -212,7 +212,7 @@ export function useRssEntries(options: {
       if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
         options.readingEntry.value.is_read = !newStatus
       }
-      options?.onStatus?.(result.error.message || '更新已读状态失败', true)
+      options?.onStatus?.((result.error as { message?: string })?.message || '更新已读状态失败', true)
       return
     }
     if (reloadFilteredList && shouldReloadAfterEntryUpdate(entry)) {
@@ -254,7 +254,7 @@ export function useRssEntries(options: {
           options.readingEntry.value.is_read = previousIsRead
         }
       })
-      options?.onStatus?.(result.error.message || '批量更新已读状态失败', true)
+      options?.onStatus?.((result.error as { message?: string })?.message || '批量更新已读状态失败', true)
       return
     }
     options?.onStatus?.(`已更新 ${result.data?.updated ?? targets.length} 篇文章`)
@@ -275,7 +275,7 @@ export function useRssEntries(options: {
       if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
         options.readingEntry.value.is_starred = !newStatus
       }
-      options?.onStatus?.(result.error.message || '更新星标状态失败', true)
+      options?.onStatus?.((result.error as { message?: string })?.message || '更新星标状态失败', true)
       return
     }
     options?.onStatus?.(newStatus ? '已收藏' : '已取消收藏')

@@ -18,10 +18,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import { isNavigationItemActive } from '@/constants/sidebar'
 
 defineProps({
-  routes: {
-    type: Array,
-    required: true,
-  },
+  routes: { type: Array, required: true }
 })
 </script>
 

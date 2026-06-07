@@ -41,7 +41,7 @@
   </Dialog>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { subscribe } from '@/api'
@@ -57,9 +57,9 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 
-const props = defineProps({
-  show: Boolean,
-})
+const props = defineProps<{
+  show?: boolean
+}>()
 
 const emit = defineEmits(['close', 'added'])
 
@@ -74,7 +74,7 @@ watch(() => props.show, (visible) => {
   }
 })
 
-const handleOpenChange = (open) => {
+const handleOpenChange = (open: boolean) => {
   if (!open) {
     emit('close')
   }

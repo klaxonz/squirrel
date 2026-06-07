@@ -31,7 +31,7 @@ export function useRssReader(options: {
   const iframeLoading = ref(false)
   const iframeLoadKey = ref(0)
   const iframeProgress = ref(0)
-  const isElectron = computed(() => (window as any).desktopApp?.isDesktop === true)
+  const isElectron = computed(() => window.desktopApp?.isDesktop === true)
   const iframeRef = ref<HTMLIFrameElement | null>(null)
 
   // Image Lightbox

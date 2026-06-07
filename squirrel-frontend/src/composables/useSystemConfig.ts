@@ -1,8 +1,8 @@
 import { ref } from 'vue'
 import { getSystemConfig, saveSystemConfig } from '@/api'
+import type { ApiResult } from '@/types/api'
 
 type SystemConfig = Record<string, unknown>
-type ApiResult<T> = { data?: T | null; error?: unknown | null }
 
 const config = ref<SystemConfig | null>(null)
 const loading = ref(false)

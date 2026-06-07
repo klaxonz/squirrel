@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { getUserMeConfig, updateUserMeConfig } from '@/api'
+import type { ApiResult } from '@/types/api'
 
 type UserSettings = {
   showNsfw: boolean
@@ -8,8 +9,6 @@ type UserSettings = {
   loop: boolean
   [key: string]: unknown
 }
-
-type ApiResult<T> = { data?: T | null; error?: unknown | null }
 
 const settingsState = ref<UserSettings>({
   showNsfw: false,

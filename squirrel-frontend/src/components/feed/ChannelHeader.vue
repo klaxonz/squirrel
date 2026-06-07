@@ -161,7 +161,7 @@ import { notifySubscriptionRemoved } from '@/utils/subscriptionEvents'
 
 const props = defineProps({
   subscriptionId: { type: [String, Number], required: true },
-  mode: { type: String, default: 'local' },
+  mode: { type: String, default: undefined }
 })
 
 const emit = defineEmits(['update:mode', 'loaded', 'synced'])

@@ -394,7 +394,7 @@ const verifyDashboardStreamAuth = async () => {
   dashboardStreamAuthChecking = true
   try {
     const result = await getCurrentUser()
-    if (result.error?.status === 401) {
+    if ((result.error as { status?: number } | null)?.status === 401) {
       closeDashboardStream()
       await logoutAndRedirect()
     }

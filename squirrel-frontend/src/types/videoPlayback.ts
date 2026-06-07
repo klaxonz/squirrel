@@ -50,7 +50,4 @@ export type VideoPageVideo = {
   uploader_name?: string
 }
 
-export type ApiResult<T> = {
-  data?: T
-  error?: unknown
-}
+export type { ApiResult } from '@/types/api'

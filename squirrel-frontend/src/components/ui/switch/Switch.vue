@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { SwitchRootProps } from 'reka-ui'
-import type { HTMLAttributes, PropType } from 'vue'
+import type { HTMLAttributes } from 'vue'
 import { computed } from 'vue'
 import { reactiveOmit } from '@vueuse/core'
 import {
@@ -15,60 +15,21 @@ type SwitchProps = Omit<SwitchRootProps<boolean>, 'modelValue'> & {
   modelValue?: boolean | null
 }
 
-const props = defineProps({
-  defaultValue: {
-    type: null as unknown as PropType<SwitchProps['defaultValue']>,
-    default: undefined,
-  },
-  disabled: {
-    type: Boolean,
-    default: false,
-  },
-  id: {
-    type: String,
-    default: undefined,
-  },
-  value: {
-    type: String,
-    default: 'on',
-  },
-  trueValue: {
-    type: null as unknown as PropType<SwitchProps['trueValue']>,
-    default: undefined,
-  },
-  falseValue: {
-    type: null as unknown as PropType<SwitchProps['falseValue']>,
-    default: undefined,
-  },
-  asChild: {
-    type: Boolean,
-    default: false,
-  },
-  as: {
-    type: null as unknown as PropType<SwitchProps['as']>,
-    default: 'button',
-  },
-  name: {
-    type: String,
-    default: undefined,
-  },
-  required: {
-    type: Boolean,
-    default: false,
-  },
-  class: {
-    type: null as unknown as PropType<SwitchProps['class']>,
-    default: undefined,
-  },
-  checked: {
-    type: null as unknown as PropType<SwitchProps['checked']>,
-    default: undefined,
-  },
-  modelValue: {
-    type: null as unknown as PropType<SwitchProps['modelValue']>,
-    default: undefined,
-  },
-})
+const props = defineProps<{
+  defaultValue?: SwitchProps['defaultValue']
+  disabled?: boolean
+  id?: string
+  value?: string
+  trueValue?: SwitchProps['trueValue']
+  falseValue?: SwitchProps['falseValue']
+  asChild?: boolean
+  as?: SwitchProps['as']
+  name?: string
+  required?: boolean
+  class?: SwitchProps['class']
+  checked?: SwitchProps['checked']
+  modelValue?: SwitchProps['modelValue']
+}>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]

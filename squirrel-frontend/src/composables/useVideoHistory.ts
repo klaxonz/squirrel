@@ -2,9 +2,9 @@ import { batchUpdateVideoHistory, clearVideoHistory, deleteVideoHistory, listVid
 import { Logger } from '@/utils/logger'
 import { toPersistedVideoId, useVideoHistorySync } from './useVideoHistorySync'
 import type { ReportData } from './useVideoHistorySync'
+import type { ApiResult } from '@/types/api'
 
 type VideoId = string | number
-type ApiResult<T> = { data?: T | null; error?: any }
 
 type SendReportOptions = {
   force?: boolean
@@ -168,7 +168,8 @@ export default function useVideoHistory() {
       
       const { data, error } = (await listVideoHistory(params)) as ApiResult<any>
       if (error) {
-        const message = typeof error?.message === 'string' ? error.message : '加载历史失败'
+        const e = error as { message?: string }
+        const message = typeof e?.message === 'string' ? e.message : '加载历史失败'
         throw new Error(message)
       }
 
@@ -190,7 +191,8 @@ export default function useVideoHistory() {
     try {
       const { error } = (await clearVideoHistory(videoIds)) as ApiResult<unknown>
       if (error) {
-        const message = typeof error?.message === 'string' ? error.message : '清空历史失败'
+        const e = error as { message?: string }
+        const message = typeof e?.message === 'string' ? e.message : '清空历史失败'
         throw new Error(message)
       }
       return true;
@@ -204,7 +206,8 @@ export default function useVideoHistory() {
     try {
       const { error } = (await deleteVideoHistory(historyId)) as ApiResult<unknown>
       if (error) {
-        const message = typeof error?.message === 'string' ? error.message : '删除历史失败'
+        const e = error as { message?: string }
+        const message = typeof e?.message === 'string' ? e.message : '删除历史失败'
         throw new Error(message)
       }
       return true

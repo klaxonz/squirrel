@@ -59,7 +59,7 @@ type ScrollRouteState = {
 }
 
 const scrollPositions = new Map<string, number>()
-const isDesktop = (window as any).desktopApp?.isDesktop === true
+const isDesktop = window.desktopApp?.isDesktop === true
 const themeStore = useThemeStore()
 const musicPlayerStore = useMusicPlayerStore()
 const nav = useNavigationHistory()

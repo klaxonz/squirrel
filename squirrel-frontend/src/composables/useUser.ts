@@ -1,9 +1,9 @@
 import { ref } from 'vue'
 import { getUserMe, loginUser, logoutUser, registerUser, updateUserMe } from '@/api'
 import { clearAuthStorage } from '@/utils/auth'
+import type { ApiResult } from '@/types/api'
 
 type User = Record<string, unknown>
-type ApiResult<T> = { data?: T | null; error?: any }
 
 const currentUser = ref<User | null>(null)
 const isAuthenticated = ref(false)
@@ -65,7 +65,7 @@ export function useUser() {
 
     const result = (await getUserMe()) as ApiResult<User>
 
-    if (result.error?.status === 401) {
+    if ((result.error as { status?: number } | null)?.status === 401) {
       clearUserState()
     } else if (!result.error) {
       currentUser.value = result.data || null

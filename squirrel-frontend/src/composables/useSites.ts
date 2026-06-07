@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { getSiteCatalog, getSites, saveSites } from '@/api'
+import type { ApiResult } from '@/types/api'
 
 type SiteSlug = string
 type SiteInfo = {
@@ -26,8 +27,6 @@ type SiteListItem = SiteInfo & {
 type SiteListResponse = {
   sites?: SiteListItem[]
 }
-
-type ApiResult<T> = { data?: T | null; error?: unknown | null }
 
 const cached = ref<SiteOption[] | null>(null)
 const loading = ref(false)

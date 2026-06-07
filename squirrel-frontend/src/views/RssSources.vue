@@ -1151,7 +1151,7 @@ import { useRssFeeds } from '@/composables/useRssFeeds'
 import { useRssEntries } from '@/composables/useRssEntries'
 import { useRssReader } from '@/composables/useRssReader'
 import type { RssEntry, RecentEntry } from '@/composables/rssTypes'
-import type { ApiResult } from '@/composables/rssTypes'
+import type { ApiResult } from '@/types/api'
 
 // Cross-cutting UI state
 const loading = ref(false)
@@ -1464,7 +1464,7 @@ const pollSyncProgress = () => {
       clearInterval(syncPollTimer!)
       syncPollTimer = null
       syncing.value = false
-      setStatus(result.error.message || '获取同步状态失败', true)
+      setStatus((result.error as { message?: string })?.message || '获取同步状态失败', true)
       return
     }
     const data = result.data
@@ -1513,7 +1513,7 @@ const syncSelectedAccount = async (forceFullSync = false) => {
   const result = await syncRssAccount(selectedAccountId.value, undefined, forceFullSync)
   if (result.error) {
     syncing.value = false
-    setStatus(result.error.message || '启动同步失败', true)
+    setStatus((result.error as { message?: string })?.message || '启动同步失败', true)
     return
   }
   pollSyncProgress()

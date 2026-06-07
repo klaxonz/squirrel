@@ -66,18 +66,9 @@ import { onMounted, onUnmounted } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
-  position: {
-    type: Object,
-    required: true,
-  },
-  isOpen: {
-    type: Boolean,
-    required: true,
-  },
-  video: {
-    type: Object,
-    required: true,
-  },
+  position: { type: Object, required: true },
+  isOpen: { type: Boolean, required: true },
+  video: { type: Object, required: true }
 })
 
 const emit = defineEmits([
