@@ -25,12 +25,6 @@
 - **影响**: 播放问题排查成本高，新增能力容易继续堆进大文件，`pluginManager.get<any>()` 让类型边界失效。
 - **方案**: 按媒体元素生命周期、错误恢复、字幕、进度、质量控制拆分模块；插件接口改为显式能力类型，恢复策略收敛到单一入口。
 
-### TD-022: 播放会话 store 使用 `any` 承载核心跨页面契约
-- **位置**: `squirrel-frontend/src/stores/player.ts`
-- **问题**: `source`、`subtitles`、`clipMarkers`、`adapter`、`videoSnapshot`、`relatedVideos`、`activateSession(payload)` 等关键字段都是 `any` 或 `any[]`。
-- **影响**: 播放源、视频快照、桌面解析源、字幕和回调契约无法被 TypeScript 保护，容易把快照误当作可复用播放源。
-- **方案**: 定义 `PlayerSessionSource`、`PlayerSessionSnapshot`、`PlayerSessionAdapter`、`PlayerSessionPayload` 等显式类型；`activateSession` 不再接收任意对象。
-
 ### TD-028: 前端 API 层默认 `any` 弱化数据契约
 - **位置**: `squirrel-frontend/src/utils/request.ts`
 - **问题**: `RequestResult<T = any>`、`get<T = any>`、`post<T = any>` 和 `catch (err: any)` 让调用方很容易不声明返回类型。
@@ -70,6 +64,16 @@
 ---
 
 ## ✅ 已完成
+
+### TD-022: 播放会话 store 使用 `any` 承载核心跨页面契约
+- **位置**: `squirrel-frontend/src/stores/player.ts`
+- **完成时间**: 2026-06-07
+- **修复内容**:
+  - 新增 `types/playerSession.ts`，定义 `PlayerSessionState`、`PlaylistEntry`、`PlayerHandlers`、`ExternalErrorState` 显式接口
+  - `stores/player.ts` 所有 `any` 字段替换为显式类型；`activateSession(payload: Partial<PlayerSessionState>)` 替代 `payload: any`
+  - `usePlaybackOrchestrator.ts` 的 `ExternalErrorState` 定义迁移到 `types/playerSession.ts` 并 re-export
+  - `useVideoPlaybackShell.ts` 移除局部 `ActivateSessionPayload` / `GlobalPlaybackSessionLike` 类型，改用 `PlayerSessionState` 族
+  - `GlobalVideoPlayerHost.vue` 移除 4 处 `as any` 转型，显式标志 clipMarkers 类型边界
 
 ### TD-030: 仓库内参考代码和 IDE shelf 污染代码扫描
 - **位置**:
@@ -332,9 +336,9 @@
 
 | 状态 | 数量 |
 |------|------|
-| ✅ 已完成 | 27 (TD-001, 002, 004, 005, 007, 008, 008-rest, 009, 010, 011, 012, 013, 014, 015, 016, 017, 018, 019-stage1, 020, 023, 024, 025, 026, 027, 032) |
+| ✅ 已完成 | 28 (TD-001, 002, 004, 005, 007, 008, 008-rest, 009, 010, 011, 012, 013, 014, 015, 016, 017, 018, 019-stage1, 020, 022, 023, 024, 025, 026, 027, 032) |
 | ⏸️ 延后 | 3 (TD-003, 005-rest, 006) |
-| 🔴 待处理 | 6 (TD-021, 022, 028, 029, 030, 031) |
+| 🔴 待处理 | 5 (TD-021, 028, 029, 030, 031) |
 
 ---
 
@@ -370,6 +374,7 @@
 | 2026-06-07 | 完成 TD-019 第一阶段: 拆分桌面窗口状态模块并补 Node 测试 |
 | 2026-06-07 | 新增 TD-021~TD-032: 记录全面代码分析发现的播放器、runtime、启动、队列、API 类型、桌面主进程、扫描噪音和异常处理技术债 |
 | 2026-06-07 | 完成 TD-024: 后端启动依赖显式区分 required/optional，optional 降级暴露到 health |
+| 2026-06-07 | 完成 TD-022: 播放会话 store `any` 字段全部替换为显式类型，新增 `types/playerSession.ts` |
 | 2026-06-07 | 完成 TD-025: 字幕获取编排移入 service，runtime route miss 和字幕不可用改用稳定错误 code |
 | 2026-06-07 | 完成 TD-027: 拆分 runtime supervisor 的 process launcher、transport client、audit writer 和 health checker |
 | 2026-06-07 | 完成 TD-026: Redis Stream consumer 改为显式 handler protocol、失败策略和 stop event |

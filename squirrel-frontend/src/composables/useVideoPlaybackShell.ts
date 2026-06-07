@@ -3,61 +3,15 @@ import type { Ref } from 'vue'
 
 import { Logger } from '@/utils/logger'
 import type { ClipMarker, VideoId, VideoPageVideo, VideoProfile } from '@/types/videoPlayback'
-import type { MediaSource } from '@/components/video-player/core'
+import type { MediaSource, IPlayerAdapter } from '@/components/video-player/core'
 import type { SubtitleTrack } from '@/components/video-player/plugins/subtitles'
-import type { ExternalErrorState } from './usePlaybackOrchestrator'
+import type { ExternalErrorState, PlayerSessionState } from '@/types/playerSession'
 
 type PlaybackSourceLike = MediaSource | null
 type VideoSeedGetter = (videoId: unknown) => VideoPageVideo | null
 
 type RouteLike = {
   params: Record<string, unknown>
-}
-
-type GlobalPlaybackSessionLike = {
-  currentVideoId?: string | number | null
-  source?: PlaybackSourceLike
-  uploader?: string
-  externalError?: ExternalErrorState | null
-  externalLoading?: boolean
-  videoSnapshot?: VideoPageVideo | null
-  subtitles?: SubtitleTrack[]
-  relatedVideos?: VideoPageVideo[]
-  loadingRelated?: boolean
-  pictureInPicture?: boolean
-}
-
-type ActivateSessionPayload = {
-  target: HTMLElement | null
-  source: PlaybackSourceLike
-  subtitles: SubtitleTrack[]
-  clipMarkers: ClipMarker[]
-  title: string
-  uploader: string
-  initialTime: number | null | undefined
-  hasPrev: boolean
-  hasNext: boolean
-  externalError: ExternalErrorState | null
-  widescreen: boolean
-  externalLoading: boolean
-  adapter: unknown
-  theme: unknown
-  currentVideoId: string
-  videoSnapshot: VideoPageVideo | null
-  relatedVideos: VideoPageVideo[]
-  loadingRelated: boolean
-  handlers: {
-    onPlay: (() => void) | null
-    onPause: (() => void) | null
-    onEnded: ((event?: { autoplay?: boolean; autoplayNext?: boolean; loop?: boolean }) => void | Promise<void>) | null
-    onTimeUpdate: ((currentTime: number) => void) | null
-    onPrev: (() => void | Promise<void>) | null
-    onNext: (() => void | Promise<void>) | null
-    onRetry: (() => void | Promise<void>) | null
-    onWidescreenChange: ((enabled: boolean) => void) | null
-    onClipMarkerSelect: ((time: number) => void | Promise<void>) | null
-    onClipMarkersUpdated: ((markers: ClipMarker[]) => void) | null
-  }
 }
 
 import { useUIStore } from '@/stores/ui'
@@ -100,7 +54,7 @@ export default function useVideoPlaybackShell({
   flushPendingReport,
 }: {
   route: RouteLike
-  playerAdapter: unknown
+  playerAdapter: IPlayerAdapter
   video: Ref<VideoPageVideo | null>
   playbackSource: Ref<PlaybackSourceLike>
   subtitleTracks: Ref<SubtitleTrack[]>
@@ -110,13 +64,24 @@ export default function useVideoPlaybackShell({
   hasNextVideo: Ref<boolean>
   externalError: Ref<ExternalErrorState | null>
   isResolvingPlayback: Ref<boolean>
-  effectiveTheme: Ref<unknown>
+  effectiveTheme: Ref<string>
   relatedVideos: Ref<VideoPageVideo[]>
   loadingRelated: Ref<boolean>
   hasPrev: Ref<boolean>
   hasNext: Ref<boolean>
-  globalVideoPlayerSession: GlobalPlaybackSessionLike
-  activateGlobalVideoPlayerSession: (payload: ActivateSessionPayload) => void
+  globalVideoPlayerSession: {
+    currentVideoId?: string | number | null
+    source?: MediaSource | null
+    uploader?: string
+    externalError?: ExternalErrorState | null
+    externalLoading?: boolean
+    videoSnapshot?: VideoPageVideo | null
+    subtitles?: SubtitleTrack[]
+    relatedVideos?: VideoPageVideo[]
+    loadingRelated?: boolean
+    pictureInPicture?: boolean
+  }
+  activateGlobalVideoPlayerSession: (payload: Partial<PlayerSessionState>) => void
   clearGlobalVideoPlayerSession: () => void
   registerGlobalVideoPlayerTarget: (target: HTMLElement) => void
   unregisterGlobalVideoPlayerTarget: () => void
@@ -297,7 +262,7 @@ export default function useVideoPlaybackShell({
         clipMarkers: nextClipMarkers || [],
         title: String(nextTitle || ''),
         uploader: nextUploader,
-        initialTime: nextInitialTime,
+        initialTime: nextInitialTime ?? undefined,
         hasPrev: !!nextHasPrev,
         hasNext: !!nextHasNext,
         externalError: nextExternalError,

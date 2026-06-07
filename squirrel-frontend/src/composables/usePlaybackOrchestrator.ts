@@ -6,13 +6,9 @@ import { Logger } from '@/utils/logger'
 import type { MediaSource } from '@/components/video-player/core'
 import type { SubtitleTrack } from '@/components/video-player/plugins/subtitles'
 import type { VideoId, VideoPageVideo, VideoProfile } from '@/types/videoPlayback'
+import type { ExternalErrorState } from '@/types/playerSession'
 
-export type ExternalErrorState = {
-  code: string
-  title: string
-  message: string
-  canRetry: boolean
-}
+export type { ExternalErrorState }
 
 type PlayOptions = Record<string, unknown>
 

@@ -33,6 +33,7 @@ import { usePlayerStore } from '@/stores/player'
 import VideoPlayer from './VideoPlayer.vue'
 import { BackendPlayerAdapter } from './core/BackendPlayerAdapter'
 import type { ThemeName } from './themes'
+import type { VideoClipMarker } from '@/types/videoClipMarker'
 
 const playerStore = usePlayerStore()
 const detachedHostRef = ref<HTMLElement | null>(null)
@@ -45,9 +46,9 @@ const backendAdapter = shallowRef<BackendPlayerAdapter | null>(null)
 const teleportTarget = computed(() => playerStore.session.target || detachedHostRef.value)
 
 const playerProps = computed(() => ({
-  source: playerStore.session.source as any,
-  subtitles: playerStore.session.subtitles as any[],
-  clipMarkers: playerStore.session.clipMarkers as any[],
+  source: playerStore.session.source,
+  subtitles: playerStore.session.subtitles,
+  clipMarkers: playerStore.session.clipMarkers as unknown as VideoClipMarker[],
   videoId: playerStore.session.currentVideoId || null,
   title: playerStore.session.title,
   uploader: playerStore.session.uploader,
@@ -57,7 +58,7 @@ const playerProps = computed(() => ({
   externalError: playerStore.session.externalError,
   widescreen: playerStore.session.widescreen,
   externalLoading: playerStore.session.externalLoading,
-  adapter: (playerStore.session.adapter || backendAdapter.value) as any,
+  adapter: playerStore.session.adapter || backendAdapter.value,
   theme: (playerStore.session.theme || 'dark') as ThemeName,
   playlistEntries: playerStore.session.playlist || [],
   playlistIndex: playerStore.session.playlistIndex ?? -1,
