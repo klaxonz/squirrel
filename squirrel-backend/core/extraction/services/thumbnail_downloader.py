@@ -90,6 +90,64 @@ class ThumbnailDownloaderService:
             pass
         self._http_client = None
 
+    def _request_thumbnail(
+        self,
+        target_url: str,
+        site_name: str | None,
+        source_url: str | None,
+        video_id: int,
+    ) -> httpx.Response | None:
+        headers = self.build_request_headers(
+            site_name,
+            source_url=source_url,
+            target_url=target_url,
+        )
+        resp: httpx.Response | None = None
+
+        for attempt in range(1, _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS + 1):
+            try:
+                client = self._get_http_client()
+                resp = client.get(target_url, headers=headers)
+            except httpx.TransportError as exc:
+                if attempt >= _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS:
+                    raise
+
+                logger.info(
+                    "Retrying thumbnail download after transport error: "
+                    "video_id=%s, attempt=%s/%s, url=%s, error=%s",
+                    video_id,
+                    attempt,
+                    _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS,
+                    target_url[:80],
+                    exc,
+                )
+                self._reset_http_client()
+                time.sleep(self._build_retry_delay(attempt))
+                continue
+
+            if resp.status_code == 200:
+                return resp
+
+            if (
+                self._should_retry_download_status(resp.status_code)
+                and attempt < _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS
+            ):
+                logger.info(
+                    "Retrying thumbnail download after HTTP %s: "
+                    "video_id=%s, attempt=%s/%s, url=%s",
+                    resp.status_code,
+                    video_id,
+                    attempt,
+                    _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS,
+                    target_url[:80],
+                )
+                time.sleep(self._build_retry_delay(attempt))
+                continue
+
+            return resp
+
+        return resp
+
     @staticmethod
     def _parse_cookie_header(cookie_header: str | None) -> dict[str, str]:
         cookies: dict[str, str] = {}
@@ -467,59 +525,7 @@ class ThumbnailDownloaderService:
                 self._upsert_local_thumbnail_index(video_id, batch_name, os.path.basename(file_path), exists=True)
                 return file_path
 
-            def request_thumbnail(target_url: str) -> httpx.Response | None:
-                headers = self.build_request_headers(
-                    site_name,
-                    source_url=source_url,
-                    target_url=target_url,
-                )
-                resp: httpx.Response | None = None
-
-                for attempt in range(1, _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS + 1):
-                    try:
-                        client = self._get_http_client()
-                        resp = client.get(target_url, headers=headers)
-                    except httpx.TransportError as exc:
-                        if attempt >= _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS:
-                            raise
-
-                        logger.info(
-                            "Retrying thumbnail download after transport error: "
-                            "video_id=%s, attempt=%s/%s, url=%s, error=%s",
-                            video_id,
-                            attempt,
-                            _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS,
-                            target_url[:80],
-                            exc,
-                        )
-                        self._reset_http_client()
-                        time.sleep(self._build_retry_delay(attempt))
-                        continue
-
-                    if resp.status_code == 200:
-                        return resp
-
-                    if (
-                        self._should_retry_download_status(resp.status_code)
-                        and attempt < _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS
-                    ):
-                        logger.info(
-                            "Retrying thumbnail download after HTTP %s: "
-                            "video_id=%s, attempt=%s/%s, url=%s",
-                            resp.status_code,
-                            video_id,
-                            attempt,
-                            _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS,
-                            target_url[:80],
-                        )
-                        time.sleep(self._build_retry_delay(attempt))
-                        continue
-
-                    return resp
-
-                return resp
-
-            resp = request_thumbnail(thumbnail_url)
+            resp = self._request_thumbnail(thumbnail_url, site_name, source_url, video_id)
             if resp is None:
                 return None
 
@@ -546,7 +552,7 @@ class ThumbnailDownloaderService:
                         self._upsert_local_thumbnail_index(video_id, batch_name, os.path.basename(file_path), exists=True)
                         return file_path
 
-                    resp = request_thumbnail(thumbnail_url)
+                    resp = self._request_thumbnail(thumbnail_url, site_name, source_url, video_id)
                     if resp is None:
                         return None
 

@@ -83,6 +83,56 @@ class SubscriptionScheduler:
             True,
         )
 
+    @staticmethod
+    def _emit_deferred_event(
+        subscription_id: int,
+        sync_state_id: int | None,
+        domain: str | None,
+        resolved_mode: UpdateMode,
+        trigger: UpdateTrigger,
+        trace_id: str,
+        run_id: str | None,
+        reason: str,
+    ) -> SyncRunContext:
+        run_context, emit_run_created = SubscriptionScheduler._build_run_context(
+            subscription_id=subscription_id,
+            sync_state_id=sync_state_id,
+            site=domain,
+            sync_mode=resolved_mode.value,
+            trigger=trigger.value,
+            trace_id=trace_id,
+            run_id=run_id,
+        )
+        if emit_run_created:
+            append_event(SyncEventInput(
+                stream_id=run_context.run_id,
+                subscription_id=subscription_id,
+                sync_state_id=sync_state_id,
+                site=domain,
+                sync_mode=resolved_mode.value,
+                trigger=trigger.value,
+                trace_id=trace_id,
+                event_type=SyncEventType.RUN_CREATED,
+                event_phase=SyncPhase.INIT,
+                event_status=SyncRunStatus.CREATED,
+                payload={"pending_video_count": 0},
+                occurred_at=run_context.created_at,
+            ))
+        append_event(SyncEventInput(
+            stream_id=run_context.run_id,
+            subscription_id=subscription_id,
+            sync_state_id=sync_state_id,
+            site=domain,
+            sync_mode=resolved_mode.value,
+            trigger=trigger.value,
+            trace_id=trace_id,
+            event_type=SyncEventType.DEFERRED,
+            event_phase=SyncPhase.DEFERRED,
+            event_status=SyncRunStatus.DEFERRED,
+            payload={"reason": reason, "error_message": reason},
+        ))
+        return run_context
+
     def schedule_one(
         self,
         subscription_id: int,
@@ -167,109 +217,39 @@ class SubscriptionScheduler:
         domain = subscription_sync_state_service._resolve_site(url)
 
         if not domain or not SiteCatalog.is_site_enabled(domain=domain):
-            run_context, emit_run_created = self._build_run_context(
-                subscription_id=subscription_id,
-                sync_state_id=None,
-                site=domain,
-                sync_mode=resolved_mode.value,
-                trigger=trigger.value,
-                trace_id=trace_id,
-                run_id=run_id,
-            )
-            if emit_run_created:
-                append_event(SyncEventInput(
-                    stream_id=run_context.run_id,
-                    subscription_id=subscription_id,
-                    sync_state_id=None,
-                    site=domain,
-                    sync_mode=resolved_mode.value,
-                    trigger=trigger.value,
-                    trace_id=trace_id,
-                    event_type=SyncEventType.RUN_CREATED,
-                    event_phase=SyncPhase.INIT,
-                    event_status=SyncRunStatus.CREATED,
-                    payload={"pending_video_count": 0},
-                    occurred_at=run_context.created_at,
-                ))
-            append_event(SyncEventInput(
-                stream_id=run_context.run_id,
-                subscription_id=subscription_id,
-                sync_state_id=None,
-                site=domain,
-                sync_mode=resolved_mode.value,
-                trigger=trigger.value,
-                trace_id=trace_id,
-                event_type=SyncEventType.DEFERRED,
-                event_phase=SyncPhase.DEFERRED,
-                event_status=SyncRunStatus.DEFERRED,
-                payload={"reason": "site_disabled", "error_message": "site_disabled"},
-            ))
-            result = SubscriptionUpdateResult(
-                subscription_id=subscription_id,
-                success=True,
-                videos_found=0,
-                videos_enqueued=0,
-                skipped_reason="site_disabled",
+            run_context = self._emit_deferred_event(
+                subscription_id, None, domain, resolved_mode, trigger, trace_id, run_id, "site_disabled",
             )
             return SubscriptionDirectRunResult(
                 subscription_id,
                 None,
                 "site_disabled",
                 run_id=run_context.run_id,
-                result=result,
+                result=SubscriptionUpdateResult(
+                    subscription_id=subscription_id,
+                    success=True,
+                    videos_found=0,
+                    videos_enqueued=0,
+                    skipped_reason="site_disabled",
+                ),
             )
 
         if not self._has_active_subscribers(subscription_id):
-            run_context, emit_run_created = self._build_run_context(
-                subscription_id=subscription_id,
-                sync_state_id=None,
-                site=domain,
-                sync_mode=resolved_mode.value,
-                trigger=trigger.value,
-                trace_id=trace_id,
-                run_id=run_id,
-            )
-            if emit_run_created:
-                append_event(SyncEventInput(
-                    stream_id=run_context.run_id,
-                    subscription_id=subscription_id,
-                    sync_state_id=None,
-                    site=domain,
-                    sync_mode=resolved_mode.value,
-                    trigger=trigger.value,
-                    trace_id=trace_id,
-                    event_type=SyncEventType.RUN_CREATED,
-                    event_phase=SyncPhase.INIT,
-                    event_status=SyncRunStatus.CREATED,
-                    payload={"pending_video_count": 0},
-                    occurred_at=run_context.created_at,
-                ))
-            append_event(SyncEventInput(
-                stream_id=run_context.run_id,
-                subscription_id=subscription_id,
-                sync_state_id=None,
-                site=domain,
-                sync_mode=resolved_mode.value,
-                trigger=trigger.value,
-                trace_id=trace_id,
-                event_type=SyncEventType.DEFERRED,
-                event_phase=SyncPhase.DEFERRED,
-                event_status=SyncRunStatus.DEFERRED,
-                payload={"reason": "no_subscribers", "error_message": "no_subscribers"},
-            ))
-            result = SubscriptionUpdateResult(
-                subscription_id=subscription_id,
-                success=True,
-                videos_found=0,
-                videos_enqueued=0,
-                skipped_reason="no_subscribers",
+            run_context = self._emit_deferred_event(
+                subscription_id, None, domain, resolved_mode, trigger, trace_id, run_id, "no_subscribers",
             )
             return SubscriptionDirectRunResult(
                 subscription_id,
                 None,
                 "no_subscribers",
                 run_id=run_context.run_id,
-                result=result,
+                result=SubscriptionUpdateResult(
+                    subscription_id=subscription_id,
+                    success=True,
+                    videos_found=0,
+                    videos_enqueued=0,
+                    skipped_reason="no_subscribers",
+                ),
             )
 
         sync_state, state_status = subscription_sync_state_service.prepare_sync_state_for_enqueue(
@@ -415,84 +395,16 @@ class SubscriptionScheduler:
         resolved_mode = self._resolve_mode(mode)
         domain = subscription_sync_state_service._resolve_site(url)
         if not domain or not SiteCatalog.is_site_enabled(domain=domain):
-            run_context, emit_run_created = self._build_run_context(
-                subscription_id=subscription_id,
-                sync_state_id=None,
-                site=domain,
-                sync_mode=resolved_mode.value,
-                trigger=trigger.value,
-                trace_id=trace_id,
-                run_id=run_id,
+            run_context = self._emit_deferred_event(
+                subscription_id, None, domain, resolved_mode, trigger, trace_id, run_id, "site_disabled",
             )
-            if emit_run_created:
-                append_event(SyncEventInput(
-                    stream_id=run_context.run_id,
-                    subscription_id=subscription_id,
-                    sync_state_id=None,
-                    site=domain,
-                    sync_mode=resolved_mode.value,
-                    trigger=trigger.value,
-                    trace_id=trace_id,
-                    event_type=SyncEventType.RUN_CREATED,
-                    event_phase=SyncPhase.INIT,
-                    event_status=SyncRunStatus.CREATED,
-                    payload={"pending_video_count": 0},
-                    occurred_at=run_context.created_at,
-                ))
-            append_event(SyncEventInput(
-                stream_id=run_context.run_id,
-                subscription_id=subscription_id,
-                sync_state_id=None,
-                site=domain,
-                sync_mode=resolved_mode.value,
-                trigger=trigger.value,
-                trace_id=trace_id,
-                event_type=SyncEventType.DEFERRED,
-                event_phase=SyncPhase.DEFERRED,
-                event_status=SyncRunStatus.DEFERRED,
-                payload={"reason": "site_disabled", "error_message": "site_disabled"},
-            ))
             logger.info(f"Skip scheduling subscription {subscription_id} because site is disabled: {domain}")
             return SubscriptionScheduleResult(subscription_id, None, "site_disabled", run_id=run_context.run_id)
 
         if not self._has_active_subscribers(subscription_id):
-            run_context, emit_run_created = self._build_run_context(
-                subscription_id=subscription_id,
-                sync_state_id=None,
-                site=domain,
-                sync_mode=resolved_mode.value,
-                trigger=trigger.value,
-                trace_id=trace_id,
-                run_id=run_id,
+            run_context = self._emit_deferred_event(
+                subscription_id, None, domain, resolved_mode, trigger, trace_id, run_id, "no_subscribers",
             )
-            if emit_run_created:
-                append_event(SyncEventInput(
-                    stream_id=run_context.run_id,
-                    subscription_id=subscription_id,
-                    sync_state_id=None,
-                    site=domain,
-                    sync_mode=resolved_mode.value,
-                    trigger=trigger.value,
-                    trace_id=trace_id,
-                    event_type=SyncEventType.RUN_CREATED,
-                    event_phase=SyncPhase.INIT,
-                    event_status=SyncRunStatus.CREATED,
-                    payload={"pending_video_count": 0},
-                    occurred_at=run_context.created_at,
-                ))
-            append_event(SyncEventInput(
-                stream_id=run_context.run_id,
-                subscription_id=subscription_id,
-                sync_state_id=None,
-                site=domain,
-                sync_mode=resolved_mode.value,
-                trigger=trigger.value,
-                trace_id=trace_id,
-                event_type=SyncEventType.DEFERRED,
-                event_phase=SyncPhase.DEFERRED,
-                event_status=SyncRunStatus.DEFERRED,
-                payload={"reason": "no_subscribers", "error_message": "no_subscribers"},
-            ))
             logger.info(f"Skip scheduling subscription {subscription_id} because no active subscribers")
             return SubscriptionScheduleResult(subscription_id, None, "no_subscribers", run_id=run_context.run_id)
 

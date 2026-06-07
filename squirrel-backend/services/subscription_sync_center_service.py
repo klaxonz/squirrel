@@ -1,7 +1,5 @@
 import logging
 from datetime import datetime
-from threading import Lock
-from time import monotonic
 from typing import Any
 
 from sqlalchemy import and_, case, func, or_, select
@@ -9,7 +7,6 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from core.database import get_session
-from core.site_config_manager import get_effective_site_catalog
 from models.crawl_task import CrawlTask
 from models.links import UserSubscription
 from models.subscription import Subscription
@@ -21,6 +18,8 @@ from schemas.subscription.dto.sync_center_dto import (
 )
 from services.crawl_tasks.models import CrawlTaskStatus
 from services.crawl_tasks.task_types import subscription_sync_task_types
+from services.site_catalog_cache import format_datetime as _format_datetime
+from services.site_catalog_cache import parse_datetime as _parse_datetime
 from services.subscription_sync_center_queries import (
     DUE_SOON_WINDOW,
     FEED_RECENT_PHASES,
@@ -39,35 +38,12 @@ from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 SYNC_CENTER_PREVIEW_LIMIT = 40
 SYNC_CENTER_RECENT_SCAN_MULTIPLIER = 4
 SYNC_CENTER_RECENT_SCAN_MAX = 200
-SITE_CATALOG_CACHE_TTL_SECONDS = 30
-_site_catalog_cache_lock = Lock()
-_site_catalog_cache: dict[str, dict] | None = None
-_site_catalog_cache_expires_at_monotonic: float | None = None
 _site_icon_url_cache: dict[str, str | None] = {}
 
 # 服务端缓存：记录上一轮 snapshot 返回过的 recent run_id，用于计算新增的已完成运行
 _recent_run_snapshot_cache: dict[int, set[str]] = {}
 
 logger = logging.getLogger(__name__)
-
-
-def _format_datetime(value: datetime | None) -> str:
-    return value.strftime("%Y-%m-%d %H:%M:%S") if value else ""
-
-
-def _parse_datetime(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    normalized = str(value).strip()
-    if not normalized:
-        return None
-    try:
-        return datetime.fromisoformat(normalized)
-    except ValueError:
-        try:
-            return datetime.strptime(normalized, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            return None
 
 
 def _safe_metric_int(value: Any) -> int:
@@ -115,34 +91,9 @@ def _summarize_error(message: str | None) -> str | None:
     return first_line[:77] + "..."
 
 
-def _get_cached_site_catalog() -> dict[str, dict]:
-    global _site_catalog_cache
-    global _site_catalog_cache_expires_at_monotonic
-
-    now_tick = monotonic()
-    if (
-        _site_catalog_cache is not None
-        and _site_catalog_cache_expires_at_monotonic is not None
-        and now_tick < _site_catalog_cache_expires_at_monotonic
-    ):
-        return _site_catalog_cache
-
-    with _site_catalog_cache_lock:
-        now_tick = monotonic()
-        if (
-            _site_catalog_cache is not None
-            and _site_catalog_cache_expires_at_monotonic is not None
-            and now_tick < _site_catalog_cache_expires_at_monotonic
-        ):
-            return _site_catalog_cache
-
-        _site_catalog_cache = get_effective_site_catalog() or {}
-        _site_icon_url_cache.clear()
-        _site_catalog_cache_expires_at_monotonic = now_tick + SITE_CATALOG_CACHE_TTL_SECONDS
-        return _site_catalog_cache
-
-
 def _resolve_site_icon_url(site: str | None) -> str | None:
+    from services.site_catalog_cache import get_cached_site_catalog
+
     normalized_site = str(site or "").strip().lower()
     if not normalized_site:
         return None
@@ -151,7 +102,7 @@ def _resolve_site_icon_url(site: str | None) -> str | None:
     if normalized_site in _site_icon_url_cache:
         return cached_icon_url
 
-    catalog = _get_cached_site_catalog()
+    catalog = get_cached_site_catalog()
 
     if normalized_site in catalog:
         site_slug = normalized_site

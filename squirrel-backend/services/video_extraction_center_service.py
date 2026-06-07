@@ -1,67 +1,23 @@
 import logging
-from datetime import datetime
-from threading import Lock
-from time import monotonic
 from typing import Any
 
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from core.database import get_session
-from core.site_config_manager import get_effective_site_catalog
 from models.crawl_task import CrawlTask
 from models.links import UserSubscription
 from models.subscription import Subscription
 from models.video_extraction_projection import VideoExtractionProjection
 from schemas.subscription.dto.sync_center_dto import SyncCenterItemDto, SyncCenterListDto, SyncCenterOverviewDto
 from services import video_extraction_projection_service
+from services.site_catalog_cache import format_datetime as _format_datetime
 from utils.site_catalog import SiteCatalog
 from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
 EXTRACTION_PREVIEW_LIMIT = 40
-SITE_CATALOG_CACHE_TTL_SECONDS = 30
-_site_catalog_cache_lock = Lock()
-_site_catalog_cache: dict[str, dict] | None = None
-_site_catalog_cache_expires_at_monotonic: float | None = None
 _site_icon_url_cache: dict[str, str | None] = {}
 logger = logging.getLogger(__name__)
-
-
-def _get_cached_site_catalog() -> dict[str, dict]:
-    global _site_catalog_cache
-    global _site_catalog_cache_expires_at_monotonic
-
-    now_tick = monotonic()
-    if (
-        _site_catalog_cache is not None
-        and _site_catalog_cache_expires_at_monotonic is not None
-        and now_tick < _site_catalog_cache_expires_at_monotonic
-    ):
-        return _site_catalog_cache
-
-    with _site_catalog_cache_lock:
-        now_tick = monotonic()
-        if (
-            _site_catalog_cache is not None
-            and _site_catalog_cache_expires_at_monotonic is not None
-            and now_tick < _site_catalog_cache_expires_at_monotonic
-        ):
-            return _site_catalog_cache
-
-        try:
-            catalog = get_effective_site_catalog() or {}
-        except (ValueError, TypeError, AttributeError, KeyError):
-            logger.warning("Failed to load effective site catalog for extraction center icons", exc_info=True)
-            catalog = _site_catalog_cache or {}
-
-        _site_catalog_cache = catalog
-        _site_icon_url_cache.clear()
-        _site_catalog_cache_expires_at_monotonic = now_tick + SITE_CATALOG_CACHE_TTL_SECONDS
-        return _site_catalog_cache
-
-
-def _format_datetime(value: datetime | None) -> str:
-    return value.strftime("%Y-%m-%d %H:%M:%S") if value else ""
 
 
 def _summarize_error(message: str | None) -> str | None:
@@ -87,6 +43,8 @@ def _summarize_error(message: str | None) -> str | None:
 
 
 def _resolve_site_icon_url(site: str | None) -> str | None:
+    from services.site_catalog_cache import get_cached_site_catalog
+
     normalized_site = str(site or "").strip().lower()
     if not normalized_site:
         return None
@@ -95,7 +53,7 @@ def _resolve_site_icon_url(site: str | None) -> str | None:
     if normalized_site in _site_icon_url_cache:
         return cached_icon_url
 
-    catalog = _get_cached_site_catalog()
+    catalog = get_cached_site_catalog()
 
     if normalized_site in catalog:
         site_slug = normalized_site
