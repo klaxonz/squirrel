@@ -1,6 +1,11 @@
 ---
 title: 'Site-runtimes: bilibili sign.py 上帝模块 (536行)'
-status: open
+status: fixed
+fixed_by: |
+  squirrel-site-runtimes/bilibili/src/squirrel_bilibili/sign.py
+  squirrel-site-runtimes/bilibili/src/squirrel_bilibili/api_client.py
+  squirrel-site-runtimes/bilibili/src/squirrel_bilibili/video_api.py
+  squirrel-site-runtimes/bilibili/src/squirrel_bilibili/subscription_api.py
 severity: high
 category: code-smell
 location: squirrel-site-runtimes/bilibili/src/squirrel_bilibili/sign.py

@@ -4,7 +4,8 @@ import logging
 
 from crawl import SubscriptionImportItem
 
-from .sign import build_cookies, fetch_followings, fetch_nav
+from .api_client import build_cookies
+from .subscription_api import fetch_followings, fetch_nav
 
 logger = logging.getLogger(__name__)
 SITE_SLUG = "bilibili"
@@ -29,7 +30,7 @@ class BilibiliUserSubscriptionImporter:
     def get_user_subscriptions(self) -> list[SubscriptionImportItem]:
         """
         获取用户在 Bilibili 的关注列表
-        
+
         Returns:
             订阅列表
         """

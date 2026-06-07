@@ -9,7 +9,7 @@ from crawl import (
     VideoExtractorBase,
 )
 
-from .sign import build_base_info, fetch_video_info
+from .video_api import build_base_info, fetch_video_info
 
 logger = logging.getLogger(__name__)
 

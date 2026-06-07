@@ -142,7 +142,7 @@ SITE_RUNTIME_MANIFEST = SiteRuntimeManifest(
 
 
 def _extract_video(payload: dict[str, Any]) -> dict[str, Any]:
-    from .sign import build_base_info, fetch_video_info
+    from .video_api import build_base_info, fetch_video_info
 
     url = str(payload.get('url') or '').strip()
     if not url:

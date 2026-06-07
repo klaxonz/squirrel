@@ -11,10 +11,10 @@ from crawl import (
     resolve_subscription_limit,
 )
 
-from .sign import (
+from .api_client import build_cookies
+from .subscription_api import (
     ChannelSeriesType,
     ResourceType,
-    build_cookies,
     fetch_fav_folder_info,
     fetch_fav_resource_list,
     fetch_series_meta,
