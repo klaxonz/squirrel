@@ -8,6 +8,7 @@ squirrel-cf-bypass = {editable = true, path = "."}
 
 [dev-packages]
 pytest = "==9.0.2"
+ruff = "*"
 
 [requires]
 python_version = "3.11"

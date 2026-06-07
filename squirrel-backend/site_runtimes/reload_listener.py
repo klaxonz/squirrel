@@ -51,7 +51,7 @@ def start_reload_listener(component: str):
         target=_listen_for_reload_signals,
         args=(component,),
         daemon=True,
-        name=f"site-runtime-reload-listener-{component}"
+        name=f"site-runtime-reload-listener-{component}",
     )
     _listener_thread.start()
     logger.info("[%s] started site runtime reload listener", component)

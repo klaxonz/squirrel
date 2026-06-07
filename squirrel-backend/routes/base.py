@@ -1,7 +1,6 @@
 import logging
 import os
 from pathlib import Path
-from typing import Union
 
 from fastapi import FastAPI, status
 from fastapi.exceptions import HTTPException as FastAPIHTTPException
@@ -9,38 +8,37 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.exceptions import ExceptionMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, FileResponse
+from starlette.responses import FileResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
 
 from common.response import ErrorCode
 from core.config import settings
-from core.database import engine
-from routes.middleware.auth import (
-    AuthMiddleware,
-    AuthenticationError,
-    TokenMissingError,
-    TokenExpiredError,
-)
-from routes.middleware.access_log import AccessLogMiddleware
-from routes.middleware.trace import RequestContextMiddleware
+from routes.connectivity import router as connectivity_router
 from routes.health import router as health_router
+from routes.logs import router as logs_router
+from routes.middleware.access_log import AccessLogMiddleware
+from routes.middleware.auth import (
+    AuthenticationError,
+    AuthMiddleware,
+    TokenExpiredError,
+    TokenMissingError,
+)
+from routes.middleware.trace import RequestContextMiddleware
+from routes.music import router as music_router
+from routes.playlist import router as playlist_router
+from routes.rss import router as rss_router
+from routes.scheduler import router as scheduler_router
+from routes.search import router as search_router
+from routes.site_cookies import router as site_cookies_router
+from routes.site_runtimes import router as site_runtimes_router
+from routes.sites import router as sites_router
 from routes.subscription import router as subscription_router
+from routes.system_config import router as system_config_router
 from routes.user import router as user_router
 from routes.video import router as video_router
 from routes.video_clip_marker import router as video_clip_marker_router
 from routes.video_history import router as video_history_router
 from routes.video_interaction import router as video_interaction_router
-from routes.playlist import router as playlist_router
-from routes.system_config import router as system_config_router
-from routes.site_runtimes import router as site_runtimes_router
-from routes.sites import router as sites_router
-from routes.site_cookies import router as site_cookies_router
-from routes.logs import router as logs_router
-from routes.search import router as search_router
-from routes.connectivity import router as connectivity_router
-from routes.scheduler import router as scheduler_router
-from routes.rss import router as rss_router
-from routes.music import router as music_router
 
 logger = logging.getLogger(__name__)
 
@@ -53,10 +51,10 @@ def create_app() -> FastAPI:
         logger.error(f"AuthenticationError: {exc.detail}", exc_info=True)
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"code": ErrorCode.UNAUTHORIZED, "msg": exc.detail}
+            content={"code": ErrorCode.UNAUTHORIZED, "msg": exc.detail},
         )
 
-    async def http_exception_handler(request: Request, exc: Union[StarletteHTTPException, FastAPIHTTPException]):
+    async def http_exception_handler(request: Request, exc: StarletteHTTPException | FastAPIHTTPException):
         """处理 HTTP 异常"""
         logger.error(f"HTTPException: {exc.detail}", exc_info=True)
         code = exc.status_code if exc.status_code in {
@@ -66,15 +64,15 @@ def create_app() -> FastAPI:
         } else ErrorCode.UNKNOWN_ERROR
         return JSONResponse(
             status_code=exc.status_code,
-            content={"code": code, "msg": exc.detail}
+            content={"code": code, "msg": exc.detail},
         )
 
     async def default_exception_handler(request: Request, exc: Exception):
         """处理未捕获的异常"""
-        logger.error(f"DefaultException: {str(exc)}", exc_info=True)
+        logger.error(f"DefaultException: {exc!s}", exc_info=True)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"code": ErrorCode.SERVER_ERROR, "msg": "服务器内部错误"}
+            content={"code": ErrorCode.SERVER_ERROR, "msg": "服务器内部错误"},
         )
 
     # 配置认证中间件
@@ -90,7 +88,7 @@ def create_app() -> FastAPI:
             AuthenticationError: authentication_error_handler,
             TokenMissingError: authentication_error_handler,
             TokenExpiredError: authentication_error_handler,
-        }
+        },
     )
 
     # 应用层访问日志需要运行在请求上下文内，并覆盖认证/异常分支。
@@ -157,7 +155,7 @@ def _mount_clip_marker_previews(app: FastAPI) -> None:
 
 def _mount_static_files(app: FastAPI) -> None:
     static_dir = str(settings.static_dir)
-    
+
     if os.path.exists(static_dir):
         app.mount("/static", StaticFiles(directory=static_dir), name="static")
         logger.info(f"Static files mounted: {static_dir}")
@@ -171,7 +169,7 @@ def _register_spa_route(app: FastAPI) -> None:
     async def serve_spa(full_path: str):
         """服务于前端 SPA 的路由处理器"""
         file_static_dir = str(settings.static_dir)
-        
+
         static_file = Path(file_static_dir) / full_path
 
         # 如果是静态文件，直接返回
@@ -182,9 +180,9 @@ def _register_spa_route(app: FastAPI) -> None:
         index_file = Path(file_static_dir) / "index.html"
         if index_file.exists():
             return FileResponse(index_file)
-        
+
         # 如果静态文件目录不存在，返回友好提示
         return JSONResponse(
             status_code=404,
-            content={"code": ErrorCode.NOT_FOUND, "msg": "Frontend static files not found"}
+            content={"code": ErrorCode.NOT_FOUND, "msg": "Frontend static files not found"},
         )

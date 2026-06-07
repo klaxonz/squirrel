@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import inspect
+from collections.abc import Callable
 from types import SimpleNamespace
-from typing import Any, Callable, Dict, Optional, cast
+from typing import Any, cast
 
 from .core import (
     ExtractionTask,
@@ -13,17 +14,16 @@ from .core import (
     UserSubscriptionImporter,
 )
 from .exceptions import NoSubtitlesError
-from .site_runtime import create_declarative_site_runtime
 from .runtime_errors import SiteRuntimeError
 from .runtime_models import SiteRuntimeHealthStatus, SiteRuntimeInvokeResponse, SiteRuntimeManifest
+from .site_runtime import create_declarative_site_runtime
 
-
-Payload = Dict[str, Any]
+Payload = dict[str, Any]
 ObjectFactory = Callable[[], Any]
-PayloadHandler = Callable[[Payload], Dict[str, Any] | SiteRuntimeInvokeResponse]
+PayloadHandler = Callable[[Payload], dict[str, Any] | SiteRuntimeInvokeResponse]
 
 
-def require_payload_str(payload: Payload, field: str, *, label: Optional[str] = None) -> str:
+def require_payload_str(payload: Payload, field: str, *, label: str | None = None) -> str:
     value = str(payload.get(field) or '').strip()
     if not value:
         raise ValueError(f'Missing {label or field}')
@@ -67,10 +67,10 @@ def build_health_check(message: str, *, status: str = 'ready') -> Callable[[], S
 
 def build_site_runtime(
     manifest: SiteRuntimeManifest,
-    capability_handlers: Dict[str, PayloadHandler],
+    capability_handlers: dict[str, PayloadHandler],
     *,
-    health_message: Optional[str] = None,
-    health_check: Optional[Callable[[], SiteRuntimeHealthStatus]] = None,
+    health_message: str | None = None,
+    health_check: Callable[[], SiteRuntimeHealthStatus] | None = None,
 ):
     effective_health_check = health_check
     if effective_health_check is None and health_message:
@@ -84,14 +84,14 @@ def build_site_runtime(
 
 
 def build_login_status_handler(checker: Callable[[], Any]) -> PayloadHandler:
-    def _handler(_payload: Payload) -> Dict[str, Any]:
+    def _handler(_payload: Payload) -> dict[str, Any]:
         return checker().to_dict()
 
     return _handler
 
 
 def build_import_subscriptions_handler(importer_factory: ObjectFactory) -> PayloadHandler:
-    def _handler(payload: Payload) -> Dict[str, Any]:
+    def _handler(payload: Payload) -> dict[str, Any]:
         importer = importer_factory()
         cursor_payload = dict(payload.get('cursor_payload') or {})
         limit = payload.get('limit')
@@ -128,7 +128,7 @@ def build_import_subscriptions_handler(importer_factory: ObjectFactory) -> Paylo
 def _build_import_batch_from_items(
     items: list[Any],
     *,
-    cursor_payload: Optional[Dict[str, Any]] = None,
+    cursor_payload: dict[str, Any] | None = None,
     limit: Any = None,
 ) -> SubscriptionImportBatchResult:
     offset = 0
@@ -138,7 +138,7 @@ def _build_import_batch_from_items(
         except (TypeError, ValueError):
             offset = 0
 
-    normalized_limit: Optional[int]
+    normalized_limit: int | None
     try:
         normalized_limit = int(limit) if limit is not None else None
     except (TypeError, ValueError):
@@ -167,7 +167,7 @@ def _build_import_batch_from_items(
 
 
 def build_resolve_subscription_handler(subscription_factory: Callable[[str], Any]) -> PayloadHandler:
-    def _handler(payload: Payload) -> Dict[str, Any]:
+    def _handler(payload: Payload) -> dict[str, Any]:
         url = require_payload_str(payload, 'url', label='subscription url')
         return subscription_factory(url).get_subscribe_info().to_dict()
 
@@ -175,7 +175,7 @@ def build_resolve_subscription_handler(subscription_factory: Callable[[str], Any
 
 
 def build_sync_subscription_handler(subscription_factory: Callable[[str], Any]) -> PayloadHandler:
-    def _handler(payload: Payload) -> Dict[str, Any]:
+    def _handler(payload: Payload) -> dict[str, Any]:
         url = require_payload_str(payload, 'url', label='subscription url')
         subscription = subscription_factory(url)
         context = build_subscription_sync_context(payload)
@@ -185,7 +185,7 @@ def build_sync_subscription_handler(subscription_factory: Callable[[str], Any]) 
 
 
 def build_extract_video_handler(site_name: str, extractor_factory: ObjectFactory) -> PayloadHandler:
-    def _handler(payload: Payload) -> Dict[str, Any]:
+    def _handler(payload: Payload) -> dict[str, Any]:
         url = require_payload_str(payload, 'url', label='video url')
         extractor = extractor_factory()
         return extractor.extract(ExtractionTask(url=url, site_name=site_name)).to_dict()
@@ -199,7 +199,7 @@ def build_subtitles_handler(
     default_lang: str,
     default_fmt: str = 'srt',
 ) -> PayloadHandler:
-    def _handler(payload: Payload) -> Dict[str, Any]:
+    def _handler(payload: Payload) -> dict[str, Any]:
         provider = provider_factory()
         lang = str(payload.get('lang') or default_lang).strip() or default_lang
         fmt = str(payload.get('fmt') or default_fmt).strip() or default_fmt
@@ -223,8 +223,8 @@ def build_subtitles_handler(
     return _handler
 
 
-def build_proxy_config_handler(builder: Callable[[Any], Dict[str, Any]]) -> PayloadHandler:
-    def _handler(payload: Payload) -> Dict[str, Any]:
+def build_proxy_config_handler(builder: Callable[[Any], dict[str, Any]]) -> PayloadHandler:
+    def _handler(payload: Payload) -> dict[str, Any]:
         signature = inspect.signature(builder)
         params = list(signature.parameters.values())
         if not params:
@@ -243,8 +243,8 @@ def build_proxy_config_handler(builder: Callable[[Any], Dict[str, Any]]) -> Payl
     return _handler
 
 
-def build_rewrite_proxy_playlist_handler(rewriter: Callable[[str, str | bytes, Optional[str]], Dict[str, Any]]) -> PayloadHandler:
-    def _handler(payload: Payload) -> Dict[str, Any]:
+def build_rewrite_proxy_playlist_handler(rewriter: Callable[[str, str | bytes, str | None], dict[str, Any]]) -> PayloadHandler:
+    def _handler(payload: Payload) -> dict[str, Any]:
         url = require_payload_str(payload, 'url', label='playlist url')
         return rewriter(
             url,

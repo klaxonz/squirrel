@@ -48,7 +48,7 @@ def reorganize_thumbnails():
         print(f"  {src.parent.name}/{filename} -> {batch}/{filename}")
 
     confirm = input("\nProceed with moving files? (y/n): ")
-    if confirm.lower() != 'y':
+    if confirm.lower() != "y":
         print("Aborted.")
         return
 

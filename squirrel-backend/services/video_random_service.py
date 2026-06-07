@@ -1,6 +1,5 @@
-from typing import Optional, List
 
-from sqlalchemy import select, func
+from sqlalchemy import func
 
 from core.database import get_session
 from models.video import Video
@@ -10,15 +9,15 @@ from services.video_query import build_base_video_query, category_predicate
 
 def get_random_video(
         user_id: int,
-        category: Optional[str] = None,
-        subscription_id: Optional[int] = None,
+        category: str | None = None,
+        subscription_id: int | None = None,
         nsfw: str = 'all',
-        domains: Optional[List[str]] = None,
-        query: Optional[str] = None,
+        domains: list[str] | None = None,
+        query: str | None = None,
         time_range: str = 'all',
         duration: str = 'all',
         content_type: str = 'all',
-) -> Optional[Video]:
+) -> Video | None:
     user_config = user_config_service.get_config(user_id)
     show_nsfw = user_config.get('showNsfw', False)
 

@@ -3,18 +3,17 @@ import logging
 from sqlalchemy.exc import IntegrityError
 
 from schemas.video.dto.video_dto import VideoExtractDto
-from services.crawl_tasks import service as crawl_task_service
 from services import video_service
+from services.crawl_tasks import service as crawl_task_service
+from utils.metrics import metrics
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import extract_top_level_domain
-from utils.metrics import metrics
 
 logger = logging.getLogger(__name__)
 
 
 def enqueue_video_extraction(params: VideoExtractDto) -> bool:
-    """
-    将视频提取任务加入队列
+    """将视频提取任务加入队列
     注意：在批量调用时，订阅存在性检查应在外层完成，避免重复查询
     """
     domain = extract_top_level_domain(params.url)
@@ -56,16 +55,16 @@ def _send_to_extract_queue(params: VideoExtractDto) -> bool:
 def _send_to_extract_task(content: dict, params: VideoExtractDto, priority: str) -> bool:
     domain = extract_top_level_domain(params.url)
     dedupe_key = None if params.is_manual else _build_video_dedupe_key(params.url)
-    source_type = 'manual' if params.is_manual else 'scheduled'
+    source_type = "manual" if params.is_manual else "scheduled"
 
     try:
         crawl_task_service.create_job_with_task(
-            job_type='video_extract',
+            job_type="video_extract",
             source_type=source_type,
             site=domain,
             subscription_id=params.subscription_id,
             priority=priority,
-            task_type='video_extract',
+            task_type="video_extract",
             payload=content,
             dedupe_key=dedupe_key,
             video_url=params.url,

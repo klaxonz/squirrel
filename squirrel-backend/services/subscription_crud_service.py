@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Any
 
 from sqlalchemy import select
 
@@ -17,7 +17,7 @@ def get_subscription_by_url_and_name(url: str, name: str) -> Subscription:
     with get_session() as session:
         subscription = session.scalars(select(Subscription).where(
             Subscription.url == url,
-            Subscription.name == name
+            Subscription.name == name,
         )).first()
         return subscription
 
@@ -29,15 +29,15 @@ def get_active_user_subscription_by_url(user_id: int, url: str) -> Subscription:
             .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
             .where(
                 Subscription.url == url,
-                Subscription.is_deleted == False,
+                not Subscription.is_deleted,
                 UserSubscription.user_id == user_id,
-                UserSubscription.is_deleted == False,
-            )
+                not UserSubscription.is_deleted,
+            ),
         ).scalar_one_or_none()
         return subscription
 
 
-def get_active_user_subscription_url_map(user_id: int) -> Dict[str, int]:
+def get_active_user_subscription_url_map(user_id: int) -> dict[str, int]:
     with get_session() as session:
         rows = session.execute(
             select(Subscription.url, Subscription.id)
@@ -47,7 +47,7 @@ def get_active_user_subscription_url_map(user_id: int) -> Dict[str, int]:
                 Subscription.url.is_not(None),
                 UserSubscription.user_id == user_id,
                 UserSubscription.is_deleted.is_(False),
-            )
+            ),
         ).all()
         return {url: subscription_id for url, subscription_id in rows if url}
 
@@ -61,59 +61,59 @@ def get_deleted_user_subscription_urls(user_id: int) -> set[str]:
                 Subscription.url.is_not(None),
                 UserSubscription.user_id == user_id,
                 UserSubscription.is_deleted.is_(True),
-            )
+            ),
         ).all()
         return {url for url, in rows if url}
 
 
-def check_subscription_status(user_id: int, url: str) -> Dict[str, Any]:
+def check_subscription_status(user_id: int, url: str) -> dict[str, Any]:
     if not url:
         return {
-            'is_subscribed': False,
-            'subscription_id': None,
+            "is_subscribed": False,
+            "subscription_id": None,
         }
     with get_session() as session:
         subscription = session.scalars(
             select(Subscription).where(
                 Subscription.url == url,
                 Subscription.is_deleted.is_(False),
-            )
+            ),
         ).first()
         return {
-            'is_subscribed': subscription is not None,
-            'subscription_id': subscription.id if subscription else None,
+            "is_subscribed": subscription is not None,
+            "subscription_id": subscription.id if subscription else None,
         }
 
 
-def get_user_subscription_nsfw(user_id: int, subscription_id: int) -> Optional[bool]:
+def get_user_subscription_nsfw(user_id: int, subscription_id: int) -> bool | None:
     with get_session() as session:
         user_sub = session.scalars(
             select(UserSubscription).where(
                 UserSubscription.user_id == user_id,
                 UserSubscription.subscription_id == subscription_id,
-                UserSubscription.is_deleted.is_(False)
-            )
+                UserSubscription.is_deleted.is_(False),
+            ),
         ).first()
         if user_sub:
             return user_sub.is_nsfw
         return None
 
 
-def get_user_subscription_special_followed(user_id: int, subscription_id: int) -> Optional[bool]:
+def get_user_subscription_special_followed(user_id: int, subscription_id: int) -> bool | None:
     with get_session() as session:
         user_sub = session.scalars(
             select(UserSubscription).where(
                 UserSubscription.user_id == user_id,
                 UserSubscription.subscription_id == subscription_id,
-                UserSubscription.is_deleted.is_(False)
-            )
+                UserSubscription.is_deleted.is_(False),
+            ),
         ).first()
         if user_sub:
             return user_sub.is_special_followed
         return None
 
 
-def verify_subscription_access(user_id: int, subscription_id: int) -> Tuple[Optional[Subscription], str]:
+def verify_subscription_access(user_id: int, subscription_id: int) -> tuple[Subscription | None, str]:
     with get_session() as session:
         subscription = session.get(Subscription, subscription_id)
         if not subscription or subscription.is_deleted:
@@ -123,8 +123,8 @@ def verify_subscription_access(user_id: int, subscription_id: int) -> Tuple[Opti
             select(UserSubscription).where(
                 UserSubscription.user_id == user_id,
                 UserSubscription.subscription_id == subscription_id,
-                UserSubscription.is_deleted.is_(False)
-            )
+                UserSubscription.is_deleted.is_(False),
+            ),
         ).first()
         if not user_subscription:
             return None, "forbidden"
@@ -135,7 +135,7 @@ def verify_subscription_access(user_id: int, subscription_id: int) -> Tuple[Opti
 
 def update_subscription(
         subscription_id: int,
-        update_data: Dict[str, Any]
+        update_data: dict[str, Any],
 ) -> bool:
     import logging
     logger = logging.getLogger(__name__)
@@ -155,7 +155,7 @@ def update_subscription(
         from services import search_suggestion_service
         search_suggestion_service.rebuild_users_for_subscription(subscription_id)
     except (ConnectionError, OSError, ValueError, TypeError) as exc:
-        logger.warning('Search suggestion subscription refresh skipped: %s', exc)
+        logger.warning("Search suggestion subscription refresh skipped: %s", exc)
     return updated
 
 

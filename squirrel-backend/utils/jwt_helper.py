@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
 from fastapi import Cookie, HTTPException, Request, Response, status
 from jose import JWTError, jwt
@@ -12,10 +11,10 @@ from services import user_service
 logger = logging.getLogger(__name__)
 
 ALGORITHM = "HS256"
-AUTH_COOKIE_NAME = 'squirrel_auth'
+AUTH_COOKIE_NAME = "squirrel_auth"
 PERSISTENT_AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
-TOKEN_VERSION_CLAIM = 'tv'
-REMEMBER_ME_CLAIM = 'rm'
+TOKEN_VERSION_CLAIM = "tv"
+REMEMBER_ME_CLAIM = "rm"
 
 
 def _get_secret_key() -> str:
@@ -25,14 +24,13 @@ def _get_secret_key() -> str:
 def _credentials_exception() -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail='Could not validate credentials',
-        headers={'WWW-Authenticate': 'Bearer'},
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
     )
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """
-    Create JWT access token
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    """Create JWT access token
     """
     to_encode = data.copy()
     if expires_delta:
@@ -49,11 +47,11 @@ def _should_use_secure_cookie(request: Request | None) -> bool:
     if request is None:
         return False
 
-    forwarded_proto = str(request.headers.get('x-forwarded-proto') or '').split(',', 1)[0].strip().lower()
+    forwarded_proto = str(request.headers.get("x-forwarded-proto") or "").split(",", 1)[0].strip().lower()
     if forwarded_proto:
-        return forwarded_proto == 'https'
+        return forwarded_proto == "https"
 
-    return request.url.scheme == 'https'
+    return request.url.scheme == "https"
 
 
 def set_auth_cookie(
@@ -69,11 +67,11 @@ def set_auth_cookie(
         value=token,
         httponly=True,
         secure=secure,
-        samesite='lax',
-        path='/',
+        samesite="lax",
+        path="/",
     )
     if persistent:
-        cookie_options['max_age'] = PERSISTENT_AUTH_COOKIE_MAX_AGE
+        cookie_options["max_age"] = PERSISTENT_AUTH_COOKIE_MAX_AGE
 
     response.set_cookie(**cookie_options)
 
@@ -82,16 +80,15 @@ def clear_auth_cookie(response: Response, request: Request | None = None) -> Non
     secure = _should_use_secure_cookie(request)
     response.delete_cookie(
         key=AUTH_COOKIE_NAME,
-        path='/',
+        path="/",
         httponly=True,
         secure=secure,
-        samesite='lax',
+        samesite="lax",
     )
 
 
-async def get_current_user(token: str | None = Cookie(default=None, alias=AUTH_COOKIE_NAME)) -> Optional[User]:
-    """
-    Validate token and return current user with config preloaded
+async def get_current_user(token: str | None = Cookie(default=None, alias=AUTH_COOKIE_NAME)) -> User | None:
+    """Validate token and return current user with config preloaded
     """
     _, user = validate_auth_token(token)
 
@@ -109,7 +106,7 @@ def validate_auth_token(token: str | None) -> tuple[dict, User]:
 
     try:
         payload = jwt.decode(token, _get_secret_key(), algorithms=[ALGORITHM])
-        subject = payload.get('sub')
+        subject = payload.get("sub")
         if subject is None:
             raise credentials_exception
 
@@ -119,7 +116,7 @@ def validate_auth_token(token: str | None) -> tuple[dict, User]:
             raise credentials_exception
 
         token_version = int(payload.get(TOKEN_VERSION_CLAIM, 0))
-        current_version = int(getattr(user, 'token_version', 0) or 0)
+        current_version = int(getattr(user, "token_version", 0) or 0)
         if token_version != current_version:
             raise credentials_exception
 
@@ -144,8 +141,7 @@ def should_persist_auth_cookie(token: str | None) -> bool:
 
 
 def decode_token(token: str) -> dict:
-    """
-    Decode JWT token
+    """Decode JWT token
     """
     try:
         payload = jwt.decode(token, _get_secret_key(), algorithms=[ALGORITHM])

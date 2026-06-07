@@ -1,24 +1,24 @@
 """Business-neutral MQ infrastructure based on Redis Streams."""
 
-from .message import MqMessage
-from .producer import RedisStreamProducer
-from .consumer import RedisStreamConsumer, ConsumerOptions, QueueHandler
-from .registry import ConsumerRegistry, ConsumerSpec
+from .consumer import ConsumerOptions, QueueHandler, RedisStreamConsumer
 from .decorators import queue_listener
 from .duplicate_checker import MessageDuplicateChecker, create_checker, create_simple_checker
+from .message import MqMessage
+from .producer import RedisStreamProducer
+from .registry import ConsumerRegistry, ConsumerSpec
 
 __all__ = [
-    "MqMessage",
-    "RedisStreamProducer",
-    "RedisStreamConsumer",
     "ConsumerOptions",
-    "QueueHandler",
     "ConsumerRegistry",
     "ConsumerSpec",
-    "queue_listener",
     "MessageDuplicateChecker",
+    "MqMessage",
+    "QueueHandler",
+    "RedisStreamConsumer",
+    "RedisStreamProducer",
     "create_checker",
     "create_simple_checker",
+    "queue_listener",
 ]
 
 

@@ -1,15 +1,16 @@
 # Squirrel — 智能编码助手指引
 
-## 开发流程（code-implement skill）
+## 开发流程（feature-flow skill）
 
-完整实现链路使用 `code-implement` skill 自动化，含以下步骤：
+完整实现链路使用 `feature-flow` skill 自动化，从需求到代码合入全流程：
 
-1. **需求** → 读 `.opencode/requirements/<name>.md` 或用 `/req` 新建
-2. **设计** → 调研代码，输出方案到 `.opencode/designs/<name>.md`
-3. **实现** → 按设计方案编码，保持最小变更
+0. **需求获取** → 用 template 创建 `.opencode/requirements/<name>.md`，用户确认
+1. **需求理解** → 确认范围、子项目、红线
+2. **设计方案** → 调研代码，输出方案到 `.opencode/designs/<name>.md`，用户确认后开干
+3. **编码实现** → 按设计方案最小变更
 4. **审查** → 对照设计方案逐条覆盖
 5. **测试** → lint + 类型检查 + 相关测试
-6. **收尾** → 报告改动，问 commit
+6. **收尾** → 更新文档状态，报告改动，问 commit
 
 ## 项目结构
 

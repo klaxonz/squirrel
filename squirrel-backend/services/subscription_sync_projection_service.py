@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from math import ceil
-from typing import Optional
 
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
@@ -31,7 +30,7 @@ def _payload_text(payload: dict | None, key: str, default: str | None = None) ->
     if not payload:
         return default
     value = payload.get(key)
-    if value in (None, ''):
+    if value in (None, ""):
         return default
     return str(value)
 
@@ -50,22 +49,22 @@ def _payload_datetime(payload: dict | None, key: str) -> datetime | None:
             return datetime.fromisoformat(normalized)
         except ValueError:
             try:
-                return datetime.strptime(normalized, '%Y-%m-%d %H:%M:%S')
+                return datetime.strptime(normalized, "%Y-%m-%d %H:%M:%S")
             except ValueError:
                 return None
     return None
 
 
 def _normalize_dim(value: str | None) -> str:
-    return str(value or '').strip()
+    return str(value or "").strip()
 
 
 def _advisory_lock(session: Session, key: str) -> None:
-    session.execute(text('SELECT pg_advisory_xact_lock(hashtext(:key))'), {'key': key})
+    session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key))"), {"key": key})
 
 
 def _bucket_time(value: datetime, granularity: str) -> datetime:
-    if granularity == 'day':
+    if granularity == "day":
         return value.replace(hour=0, minute=0, second=0, microsecond=0)
     return value.replace(minute=0, second=0, microsecond=0)
 
@@ -100,7 +99,7 @@ def _resolve_duration_bucket(duration_ms: int) -> str:
     for bucket in TREND_DURATION_BUCKETS_MS:
         if duration_ms <= bucket:
             return str(bucket)
-    return 'overflow'
+    return "overflow"
 
 
 def _resolve_histogram_percentile(histogram: dict | None, percentile: float) -> int:
@@ -112,16 +111,16 @@ def _resolve_histogram_percentile(histogram: dict | None, percentile: float) -> 
 
     threshold = max(1, ceil(total * percentile))
     cumulative = 0
-    ordered_keys = [str(bucket) for bucket in TREND_DURATION_BUCKETS_MS] + ['overflow']
+    ordered_keys = [str(bucket) for bucket in TREND_DURATION_BUCKETS_MS] + ["overflow"]
     for key in ordered_keys:
         cumulative += int(histogram.get(key, 0) or 0)
         if cumulative >= threshold:
-            return TREND_DURATION_BUCKETS_MS[-1] if key == 'overflow' else int(key)
+            return TREND_DURATION_BUCKETS_MS[-1] if key == "overflow" else int(key)
     return TREND_DURATION_BUCKETS_MS[-1]
 
 
 def _get_or_create_run_projection(session: Session, event: SubscriptionSyncEvent) -> SubscriptionSyncRunProjection:
-    _advisory_lock(session, f'run-sync-projection:{event.stream_id}')
+    _advisory_lock(session, f"run-sync-projection:{event.stream_id}")
     projection = session.get(SubscriptionSyncRunProjection, event.stream_id)
     if projection:
         return projection
@@ -148,7 +147,7 @@ def _get_or_create_run_projection(session: Session, event: SubscriptionSyncEvent
 
 
 def _get_or_create_subscription_projection(session: Session, event: SubscriptionSyncEvent) -> SubscriptionSyncSubscriptionProjection:
-    _advisory_lock(session, f'subscription-sync-projection:{event.subscription_id}')
+    _advisory_lock(session, f"subscription-sync-projection:{event.subscription_id}")
     projection = session.get(SubscriptionSyncSubscriptionProjection, event.subscription_id)
     if projection:
         return projection
@@ -156,7 +155,7 @@ def _get_or_create_subscription_projection(session: Session, event: Subscription
     projection = SubscriptionSyncSubscriptionProjection(
         subscription_id=event.subscription_id,
         latest_run_id=None,
-        current_status='idle',
+        current_status="idle",
         current_phase=None,
         last_event_seq_no=0,
         updated_at=event.occurred_at,
@@ -177,7 +176,7 @@ def _get_or_create_trend_projection(
 ) -> SubscriptionSyncTrendProjection:
     _advisory_lock(
         session,
-        f'trend-sync-projection:{bucket_granularity}:{bucket_time.isoformat()}:{site}:{sync_mode}:{trigger}',
+        f"trend-sync-projection:{bucket_granularity}:{bucket_time.isoformat()}:{site}:{sync_mode}:{trigger}",
     )
     projection = session.execute(
         select(SubscriptionSyncTrendProjection).where(
@@ -186,7 +185,7 @@ def _get_or_create_trend_projection(
             SubscriptionSyncTrendProjection.site == site,
             SubscriptionSyncTrendProjection.sync_mode == sync_mode,
             SubscriptionSyncTrendProjection.trigger == trigger,
-        )
+        ),
     ).scalar_one_or_none()
     if projection:
         return projection
@@ -206,17 +205,17 @@ def _get_or_create_trend_projection(
 
 def _apply_counter_payload(projection: SubscriptionSyncRunProjection, event: SubscriptionSyncEvent) -> None:
     counter_by_event_type = {
-        SyncEventType.VIDEO_FOUND: 'videos_found',
-        SyncEventType.VIDEO_ENQUEUED: 'videos_enqueued',
-        SyncEventType.VIDEO_EXTRACTED: 'videos_extracted',
-        SyncEventType.VIDEO_SKIPPED: 'videos_skipped',
+        SyncEventType.VIDEO_FOUND: "videos_found",
+        SyncEventType.VIDEO_ENQUEUED: "videos_enqueued",
+        SyncEventType.VIDEO_EXTRACTED: "videos_extracted",
+        SyncEventType.VIDEO_SKIPPED: "videos_skipped",
     }
     counter_name = counter_by_event_type.get(event.event_type)
     if not counter_name:
         return
 
     payload = event.payload or {}
-    delta_key = f'{counter_name}_delta'
+    delta_key = f"{counter_name}_delta"
     if delta_key in payload:
         current_value = getattr(projection, counter_name)
         setattr(projection, counter_name, max(0, current_value + _payload_int(payload, delta_key)))
@@ -261,8 +260,8 @@ def _apply_run_projection(projection: SubscriptionSyncRunProjection, event: Subs
     if projection.started_at and projection.finished_at:
         projection.duration_ms = max(0, int((projection.finished_at - projection.started_at).total_seconds() * 1000))
 
-    if 'failure_count' in payload:
-        projection.failure_count = _payload_int(payload, 'failure_count', projection.failure_count)
+    if "failure_count" in payload:
+        projection.failure_count = _payload_int(payload, "failure_count", projection.failure_count)
     elif event.event_type in {
         SyncEventType.FAILED,
         SyncEventType.TIMEOUT_RECOVERED,
@@ -271,9 +270,9 @@ def _apply_run_projection(projection: SubscriptionSyncRunProjection, event: Subs
     }:
         projection.failure_count += 1
 
-    projection.pending_video_count = _payload_int(payload, 'pending_video_count', projection.pending_video_count)
-    projection.error_type = _payload_text(payload, 'error_type', projection.error_type)
-    projection.error_message = _payload_text(payload, 'error_message', projection.error_message)
+    projection.pending_video_count = _payload_int(payload, "pending_video_count", projection.pending_video_count)
+    projection.error_type = _payload_text(payload, "error_type", projection.error_type)
+    projection.error_message = _payload_text(payload, "error_message", projection.error_message)
     _apply_counter_payload(projection, event)
 
 
@@ -298,9 +297,9 @@ def _apply_subscription_projection(projection: SubscriptionSyncSubscriptionProje
     projection.current_phase = event.event_phase or projection.current_phase
     projection.last_event_seq_no = event.seq_no
     projection.updated_at = event.occurred_at
-    projection.pending_video_count = _payload_int(payload, 'pending_video_count', projection.pending_video_count)
+    projection.pending_video_count = _payload_int(payload, "pending_video_count", projection.pending_video_count)
 
-    next_sync_at = _payload_datetime(payload, 'next_sync_at')
+    next_sync_at = _payload_datetime(payload, "next_sync_at")
     if next_sync_at:
         projection.next_sync_at = next_sync_at
 
@@ -324,19 +323,19 @@ def _apply_subscription_projection(projection: SubscriptionSyncSubscriptionProje
         SyncEventType.STALE_RUNNING_RECOVERED,
         SyncEventType.STALE_QUEUED_RECOVERED,
     }:
-        projection.last_error_message = _payload_text(payload, 'error_message', event.message)
+        projection.last_error_message = _payload_text(payload, "error_message", event.message)
         projection.failure_streak += 1
     elif event.event_type == SyncEventType.DEFERRED:
-        projection.last_error_message = _payload_text(payload, 'error_message', event.message)
+        projection.last_error_message = _payload_text(payload, "error_message", event.message)
 
 
 def _apply_trend_projection(session: Session, event: SubscriptionSyncEvent) -> None:
     dimensions = {
-        'site': _normalize_dim(event.site),
-        'sync_mode': _normalize_dim(event.sync_mode),
-        'trigger': _normalize_dim(event.trigger),
+        "site": _normalize_dim(event.site),
+        "sync_mode": _normalize_dim(event.sync_mode),
+        "trigger": _normalize_dim(event.trigger),
     }
-    for granularity in ('hour', 'day'):
+    for granularity in ("hour", "day"):
         projection = _get_or_create_trend_projection(
             session,
             bucket_time=_bucket_time(event.occurred_at, granularity),
@@ -368,16 +367,16 @@ def _apply_trend_projection(session: Session, event: SubscriptionSyncEvent) -> N
             projection.runs_deferred += 1
 
         for event_type, field_name in (
-            (SyncEventType.VIDEO_FOUND, 'videos_found'),
-            (SyncEventType.VIDEO_ENQUEUED, 'videos_enqueued'),
-            (SyncEventType.VIDEO_EXTRACTED, 'videos_extracted'),
-            (SyncEventType.VIDEO_SKIPPED, 'videos_skipped'),
+            (SyncEventType.VIDEO_FOUND, "videos_found"),
+            (SyncEventType.VIDEO_ENQUEUED, "videos_enqueued"),
+            (SyncEventType.VIDEO_EXTRACTED, "videos_extracted"),
+            (SyncEventType.VIDEO_SKIPPED, "videos_skipped"),
         ):
             if event.event_type == event_type:
-                delta = _payload_int(payload, f'{field_name}_delta', 1)
+                delta = _payload_int(payload, f"{field_name}_delta", 1)
                 setattr(projection, field_name, max(0, getattr(projection, field_name) + delta))
 
-        duration_ms = _payload_int(payload, 'duration_ms', 0)
+        duration_ms = _payload_int(payload, "duration_ms", 0)
         if duration_ms > 0 and event.event_type in {
             SyncEventType.COMPLETED,
             SyncEventType.FAILED,
@@ -394,7 +393,7 @@ def _apply_trend_projection(session: Session, event: SubscriptionSyncEvent) -> N
             projection.duration_histogram = histogram
             projection.p95_duration_ms = _resolve_histogram_percentile(histogram, 0.95)
 
-def apply_event(event: SubscriptionSyncEvent, *, session: Optional[Session] = None) -> SubscriptionSyncEvent:
+def apply_event(event: SubscriptionSyncEvent, *, session: Session | None = None) -> SubscriptionSyncEvent:
     if session is not None:
         if event.projected_at:
             return event
@@ -411,7 +410,7 @@ def apply_event(event: SubscriptionSyncEvent, *, session: Optional[Session] = No
         return apply_event(event, session=managed_session)
 
 
-def apply_events(events: list[SubscriptionSyncEvent], *, session: Optional[Session] = None) -> list[SubscriptionSyncEvent]:
+def apply_events(events: list[SubscriptionSyncEvent], *, session: Session | None = None) -> list[SubscriptionSyncEvent]:
     if session is not None:
         ordered_events = sorted(events, key=lambda event: (event.occurred_at, event.stream_id, event.seq_no, event.id or 0))
         for event in ordered_events:

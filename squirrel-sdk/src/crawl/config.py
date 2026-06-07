@@ -2,22 +2,20 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional
-
-SiteConfig = Dict[str, dict]
+SiteConfig = dict[str, dict]
 
 
 _site_configs: SiteConfig = {}
 
 
-def _normalize_slug(slug: Optional[str]) -> Optional[str]:
+def _normalize_slug(slug: str | None) -> str | None:
     if slug is None:
         return None
     clean = str(slug).strip().lower()
     return clean or None
 
 
-def set_site_config(slug: str, config: Optional[dict]) -> None:
+def set_site_config(slug: str, config: dict | None) -> None:
     """Register/override a single site configuration."""
     normalized = _normalize_slug(slug)
     if not normalized:
@@ -25,22 +23,22 @@ def set_site_config(slug: str, config: Optional[dict]) -> None:
     _site_configs[normalized] = dict(config or {})
 
 
-def set_site_configs(configs: Optional[dict]) -> None:
+def set_site_configs(configs: dict | None) -> None:
     """Replace all site configs at once."""
     _site_configs.clear()
     for slug, cfg in (configs or {}).items():
         set_site_config(slug, cfg or {})
 
 
-def get_site_config(slug: Optional[str]) -> dict:
+def get_site_config(slug: str | None) -> dict:
     normalized = _normalize_slug(slug)
     if not normalized:
         return {}
     return _site_configs.get(normalized, {})
 
 
-def _merge_headers(base: Optional[Dict[str, str]], overrides: Optional[Dict[str, str]]) -> Dict[str, str]:
-    headers: Dict[str, str] = {}
+def _merge_headers(base: dict[str, str] | None, overrides: dict[str, str] | None) -> dict[str, str]:
+    headers: dict[str, str] = {}
     if base:
         headers.update({str(k): str(v) for k, v in base.items() if v is not None})
     if overrides:
@@ -48,7 +46,7 @@ def _merge_headers(base: Optional[Dict[str, str]], overrides: Optional[Dict[str,
     return headers
 
 
-def get_http_headers(slug: str, base: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+def get_http_headers(slug: str, base: dict[str, str] | None = None) -> dict[str, str]:
     """Return merged HTTP headers using the site's overrides."""
     config = get_site_config(slug).get("http") or {}
     return _merge_headers(base, config.get("headers"))
@@ -58,7 +56,7 @@ def get_login_config(slug: str) -> dict:
     return get_site_config(slug).get("login") or {}
 
 
-def get_login_headers(slug: str, base: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+def get_login_headers(slug: str, base: dict[str, str] | None = None) -> dict[str, str]:
     config = get_login_config(slug)
     headers_override = config.get("headers") if isinstance(config, dict) else None
     # login headers should build on top of default HTTP headers as well

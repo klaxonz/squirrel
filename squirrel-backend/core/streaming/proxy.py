@@ -3,19 +3,21 @@ import inspect
 import logging
 import threading
 import time
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import Optional, Dict, AsyncIterator, Any
+from typing import Any
 from urllib.parse import urlparse
+
 import httpx
 from fastapi import Request
 from starlette.responses import StreamingResponse
 
 from core.exceptions.proxy_exceptions import (
-    ProxyException,
-    ProxyTimeoutException,
-    ProxyNetworkException,
     ProxyConfigurationException,
+    ProxyException,
+    ProxyNetworkException,
+    ProxyTimeoutException,
     UnsupportedDomainException,
 )
 from site_runtimes.gateway import SiteRuntimeGateway
@@ -29,7 +31,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ProxyRequest:
     url: str
-    headers: Dict[str, str] = field(default_factory=dict)
+    headers: dict[str, str] = field(default_factory=dict)
     timeout: float = 120.0
     max_retries: int = 3
     chunk_size: int = 1024 * 1024  # 1MB for better streaming performance
@@ -49,7 +51,7 @@ class RetryStrategy:
     def __init__(self, max_retries: int = 3):
         self.max_retries = max_retries
 
-    def should_retry(self, attempt: int, status_code: Optional[int] = None) -> bool:
+    def should_retry(self, attempt: int, status_code: int | None = None) -> bool:
         if attempt >= self.max_retries:
             return False
         if status_code and status_code in self.TERMINAL_STATUS_CODES:
@@ -64,21 +66,21 @@ class RetryStrategy:
 
 
 class HeaderBuilder:
-    FORWARDED_HEADERS = ('user-agent', 'accept', 'accept-encoding', 'referer')
+    FORWARDED_HEADERS = ("user-agent", "accept", "accept-encoding", "referer")
 
     @staticmethod
     def build_headers(
         request: Request,
-        site_headers: Optional[Dict[str, str]],
-        custom_headers: Optional[Dict[str, str]] = None
-    ) -> Dict[str, str]:
+        site_headers: dict[str, str] | None,
+        custom_headers: dict[str, str] | None = None,
+    ) -> dict[str, str]:
         headers = {}
-        
+
         if site_headers:
             headers.update(site_headers)
 
-        if 'range' in request.headers:
-            headers['Range'] = request.headers['range']
+        if "range" in request.headers:
+            headers["Range"] = request.headers["range"]
 
         for header_name in HeaderBuilder.FORWARDED_HEADERS:
             value = request.headers.get(header_name)
@@ -93,47 +95,47 @@ class HeaderBuilder:
 
 class ResponseBuilder:
     IMPORTANT_HEADERS = [
-        'content-type', 'content-length', 'content-range',
-        'accept-ranges', 'last-modified', 'etag', 'cache-control',
+        "content-type", "content-length", "content-range",
+        "accept-ranges", "last-modified", "etag", "cache-control",
     ]
 
     @staticmethod
-    def build_response_headers(upstream_response: Any) -> Dict[str, str]:
-        headers: Dict[str, str] = {}
+    def build_response_headers(upstream_response: Any) -> dict[str, str]:
+        headers: dict[str, str] = {}
         for header in ResponseBuilder.IMPORTANT_HEADERS:
             if header in upstream_response.headers:
                 headers[header] = upstream_response.headers[header]
-        if 'accept-ranges' not in headers:
-            headers['accept-ranges'] = 'bytes'
+        if "accept-ranges" not in headers:
+            headers["accept-ranges"] = "bytes"
         return headers
 
 
 class UpstreamResponseAdapter:
     @staticmethod
     async def read(response: Any) -> bytes:
-        if hasattr(response, 'aread'):
+        if hasattr(response, "aread"):
             return await response.aread()
-        content = getattr(response, 'content', b'')
+        content = getattr(response, "content", b"")
         return content if isinstance(content, bytes) else bytes(content)
 
     @staticmethod
     async def close(response: Any) -> None:
-        if hasattr(response, 'aclose'):
+        if hasattr(response, "aclose"):
             await response.aclose()
             return
-        close_fn = getattr(response, 'close', None)
+        close_fn = getattr(response, "close", None)
         if callable(close_fn):
             close_fn()
 
     @staticmethod
     async def iter_bytes(response: Any, chunk_size: int) -> AsyncIterator[bytes]:
-        if hasattr(response, 'aiter_bytes'):
+        if hasattr(response, "aiter_bytes"):
             async for chunk in response.aiter_bytes(chunk_size):
                 if chunk:
                     yield chunk
             return
 
-        iter_content = getattr(response, 'iter_content', None)
+        iter_content = getattr(response, "iter_content", None)
         if callable(iter_content):
             for chunk in iter_content(chunk_size=chunk_size):
                 if chunk:
@@ -146,22 +148,22 @@ class UpstreamResponseAdapter:
 
     @staticmethod
     def text(response: Any) -> str:
-        text = getattr(response, 'text', None)
+        text = getattr(response, "text", None)
         if text is not None:
             return str(text)
-        content = getattr(response, 'content', b'')
+        content = getattr(response, "content", b"")
         if isinstance(content, bytes):
-            return content.decode('utf-8', errors='ignore')
+            return content.decode("utf-8", errors="ignore")
         return str(content)
 
 
 class ConnectionManager:
     def __init__(self):
-        self._clients: Dict[str, httpx.AsyncClient] = {}
-        self._locks: Dict[str, asyncio.Lock] = {}
+        self._clients: dict[str, httpx.AsyncClient] = {}
+        self._locks: dict[str, asyncio.Lock] = {}
         self._main_lock = asyncio.Lock()
 
-    def _build_client_config(self, domain_config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    def _build_client_config(self, domain_config: dict[str, Any] | None) -> dict[str, Any]:
         if domain_config:
             connect_timeout = float(domain_config.get("connect_timeout", 10.0))
             read_timeout = float(domain_config.get("read_timeout", 120.0))
@@ -190,7 +192,7 @@ class ConnectionManager:
             "follow_redirects": True,
         }
 
-    async def get_client(self, domain: str, domain_config: Optional[Dict[str, Any]]) -> httpx.AsyncClient:
+    async def get_client(self, domain: str, domain_config: dict[str, Any] | None) -> httpx.AsyncClient:
         if domain in self._clients:
             return self._clients[domain]
 
@@ -245,26 +247,26 @@ class HttpRequester:
         self.retry_strategy = retry_strategy
 
     @staticmethod
-    def _normalize_host(host_or_domain: Optional[str]) -> str:
-        value = str(host_or_domain or '').strip().lower()
-        if value.startswith('www.'):
+    def _normalize_host(host_or_domain: str | None) -> str:
+        value = str(host_or_domain or "").strip().lower()
+        if value.startswith("www."):
             value = value[4:]
         return value
 
     @staticmethod
-    def _bypass_mode(domain_config: Optional[Dict[str, Any]]) -> Optional[str]:
-        mode = str((domain_config or {}).get('bypass_mode') or '').strip().lower()
-        return mode if mode in {'html', 'mirror'} else None
+    def _bypass_mode(domain_config: dict[str, Any] | None) -> str | None:
+        mode = str((domain_config or {}).get("bypass_mode") or "").strip().lower()
+        return mode if mode in {"html", "mirror"} else None
 
     @classmethod
-    def _bypass_domain(cls, domain_config: Optional[Dict[str, Any]], fallback_domain: str) -> str:
-        configured_domain = ''
+    def _bypass_domain(cls, domain_config: dict[str, Any] | None, fallback_domain: str) -> str:
+        configured_domain = ""
         if isinstance(domain_config, dict):
-            configured_domain = cls._normalize_host(domain_config.get('domain'))
+            configured_domain = cls._normalize_host(domain_config.get("domain"))
         return configured_domain or cls._normalize_host(fallback_domain)
 
     @classmethod
-    def _bypass_hosts(cls, domain_config: Optional[Dict[str, Any]], fallback_domain: str) -> set[str]:
+    def _bypass_hosts(cls, domain_config: dict[str, Any] | None, fallback_domain: str) -> set[str]:
         hosts: set[str] = set()
         configured_domain = cls._bypass_domain(domain_config, fallback_domain)
         if configured_domain:
@@ -273,11 +275,11 @@ class HttpRequester:
         if not isinstance(domain_config, dict):
             return hosts
 
-        explicit_hosts = domain_config.get('bypass_domains')
+        explicit_hosts = domain_config.get("bypass_domains")
         if not isinstance(explicit_hosts, (list, tuple, set)):
             explicit_hosts = [
-                domain_config.get('bypass_domain'),
-                domain_config.get('bypass_host'),
+                domain_config.get("bypass_domain"),
+                domain_config.get("bypass_host"),
             ]
 
         for item in explicit_hosts:
@@ -291,7 +293,7 @@ class HttpRequester:
     def _should_bypass_request(
         cls,
         proxy_request: ProxyRequest,
-        domain_config: Optional[Dict[str, Any]],
+        domain_config: dict[str, Any] | None,
         fallback_domain: str,
     ) -> bool:
         configured_hosts = cls._bypass_hosts(domain_config, fallback_domain)
@@ -302,27 +304,27 @@ class HttpRequester:
         if not target_host:
             return False
         return any(
-            target_host == configured_host or target_host.endswith(f'.{configured_host}')
+            target_host == configured_host or target_host.endswith(f".{configured_host}")
             for configured_host in configured_hosts
         )
 
     async def _execute_bypass_request(
         self,
         proxy_request: ProxyRequest,
-        headers: Dict[str, str],
+        headers: dict[str, str],
         bypass_mode: str,
         *,
         stream: bool = False,
     ):
         client = get_cloudflare_bypass_client()
         if client is None:
-            raise ProxyConfigurationException(self.domain, 'cloudflare bypass client is not configured')
+            raise ProxyConfigurationException(self.domain, "cloudflare bypass client is not configured")
 
-        bypass_method = client.html if bypass_mode == 'html' else client.mirror
-        kwargs = {'headers': headers}
+        bypass_method = client.html if bypass_mode == "html" else client.mirror
+        kwargs = {"headers": headers}
         try:
-            if 'stream' in inspect.signature(bypass_method).parameters:
-                kwargs['stream'] = stream
+            if "stream" in inspect.signature(bypass_method).parameters:
+                kwargs["stream"] = stream
         except (TypeError, ValueError):
             pass
 
@@ -335,8 +337,8 @@ class HttpRequester:
         self,
         client: httpx.AsyncClient,
         proxy_request: ProxyRequest,
-        headers: Dict[str, str],
-        domain_config: Optional[Dict[str, Any]] = None,
+        headers: dict[str, str],
+        domain_config: dict[str, Any] | None = None,
         stream: bool = False,
     ):
         last_exception = None
@@ -354,7 +356,7 @@ class HttpRequester:
                     )
                 else:
                     request = client.build_request(
-                        'GET',
+                        "GET",
                         proxy_request.url,
                         headers=headers,
                         timeout=proxy_request.timeout,
@@ -371,7 +373,7 @@ class HttpRequester:
 
                     if self.retry_strategy.is_terminal_error(response.status_code):
                         raise httpx.HTTPStatusError(
-                            f'HTTP {response.status_code}',
+                            f"HTTP {response.status_code}",
                             request=None,
                             response=response,
                         )
@@ -382,7 +384,7 @@ class HttpRequester:
                         continue
 
                     raise httpx.HTTPStatusError(
-                        f'HTTP {response.status_code}',
+                        f"HTTP {response.status_code}",
                         request=None,
                         response=response,
                     )
@@ -403,7 +405,7 @@ class HttpRequester:
                     f"HTTP {e.response.status_code}: {UpstreamResponseAdapter.text(e.response)}",
                 )
             except (OSError, ValueError, TypeError) as e:
-                last_exception = ProxyException(f"Unexpected error: {str(e)}", self.domain)
+                last_exception = ProxyException(f"Unexpected error: {e!s}", self.domain)
                 logger.error(f"Unexpected error on attempt {attempt + 1}: {e}", exc_info=True)
 
             if self.retry_strategy.should_retry(attempt):
@@ -415,27 +417,27 @@ class HttpRequester:
 
 
 class VideoProxy:
-    domain: Optional[str] = None
+    domain: str | None = None
     _connection_manager = ConnectionManager()
-    _runtime_config_cache: Dict[tuple[str, Optional[str], Optional[str]], tuple[float, Dict[str, str], Optional[Dict[str, Any]]]] = {}
+    _runtime_config_cache: dict[tuple[str, str | None, str | None], tuple[float, dict[str, str], dict[str, Any] | None]] = {}
     _runtime_config_cache_lock = threading.Lock()
     _runtime_config_cache_ttl = 5.0
 
     def __init__(
         self,
         request: Request,
-        domain: Optional[str] = None,
+        domain: str | None = None,
         runtime_gateway: SiteRuntimeGateway | None = None,
     ):
         self.request = request
         self.domain = domain or self.domain or self._extract_domain_from_request(request)
         if not self.domain:
             raise UnsupportedDomainException("unknown")
-        self.site_headers: Dict[str, str] = {}
-        self.domain_config: Optional[Dict[str, Any]] = None
+        self.site_headers: dict[str, str] = {}
+        self.domain_config: dict[str, Any] | None = None
         self._runtime_gateway = runtime_gateway
 
-    def _extract_domain_from_request(self, request: Request) -> Optional[str]:
+    def _extract_domain_from_request(self, request: Request) -> str | None:
         return None
 
     @classmethod
@@ -443,9 +445,9 @@ class VideoProxy:
         cls,
         domain: str,
         *,
-        target_url: Optional[str] = None,
-        referer: Optional[str] = None,
-    ) -> tuple[str, Optional[str], Optional[str]]:
+        target_url: str | None = None,
+        referer: str | None = None,
+    ) -> tuple[str, str | None, str | None]:
         normalized_target_url = (str(target_url).strip() or None) if target_url else None
         normalized_referer = (str(referer).strip() or None) if referer else None
         return str(domain).strip().lower(), normalized_target_url, normalized_referer
@@ -455,9 +457,9 @@ class VideoProxy:
         cls,
         domain: str,
         *,
-        target_url: Optional[str] = None,
-        referer: Optional[str] = None,
-    ) -> Optional[tuple[Dict[str, str], Optional[Dict[str, Any]]]]:
+        target_url: str | None = None,
+        referer: str | None = None,
+    ) -> tuple[dict[str, str], dict[str, Any] | None] | None:
         cache_key = cls._runtime_config_cache_key(domain, target_url=target_url, referer=referer)
         now = time.monotonic()
         with cls._runtime_config_cache_lock:
@@ -477,10 +479,10 @@ class VideoProxy:
         cls,
         domain: str,
         *,
-        target_url: Optional[str] = None,
-        referer: Optional[str] = None,
-        site_headers: Dict[str, str],
-        domain_config: Optional[Dict[str, Any]],
+        target_url: str | None = None,
+        referer: str | None = None,
+        site_headers: dict[str, str],
+        domain_config: dict[str, Any] | None,
     ) -> None:
         cache_key = cls._runtime_config_cache_key(domain, target_url=target_url, referer=referer)
         expires_at = time.monotonic() + float(cls._runtime_config_cache_ttl)
@@ -495,9 +497,9 @@ class VideoProxy:
     def _load_runtime_proxy_config(
         self,
         *,
-        target_url: Optional[str] = None,
-        referer: Optional[str] = None,
-    ) -> tuple[Dict[str, str], Optional[Dict[str, Any]]]:
+        target_url: str | None = None,
+        referer: str | None = None,
+    ) -> tuple[dict[str, str], dict[str, Any] | None]:
         cached = self._get_cached_runtime_proxy_config(
             self.domain,
             target_url=target_url,
@@ -506,32 +508,32 @@ class VideoProxy:
         if cached is not None:
             return cached
 
-        payload = {'domain': self.domain}
+        payload = {"domain": self.domain}
         if target_url:
-            payload['target_url'] = target_url
+            payload["target_url"] = target_url
         if referer:
-            payload['referer'] = referer
+            payload["referer"] = referer
 
         runtime_gateway = self._runtime_gateway or get_runtime_gateway()
         response = runtime_gateway.invoke(
-            'resolve_proxy_config',
+            "resolve_proxy_config",
             domain=self.domain,
             payload=payload,
         )
         if not response.ok or not isinstance(response.data, dict):
-            raise ProxyConfigurationException(self.domain, 'no runtime proxy config provider')
+            raise ProxyConfigurationException(self.domain, "no runtime proxy config provider")
 
         payload = dict(response.data)
-        domain_configs = payload.get('domain_configs') or []
+        domain_configs = payload.get("domain_configs") or []
         domain_config = None
         for item in domain_configs:
             if not isinstance(item, dict):
                 continue
-            if str(item.get('domain', '')).lower() == self.domain:
+            if str(item.get("domain", "")).lower() == self.domain:
                 domain_config = dict(item)
                 break
 
-        site_headers = dict(payload.get('site_headers') or {})
+        site_headers = dict(payload.get("site_headers") or {})
         self._set_cached_runtime_proxy_config(
             self.domain,
             target_url=target_url,
@@ -544,41 +546,41 @@ class VideoProxy:
     def _resolve_runtime_proxy_config(
         self,
         *,
-        target_url: Optional[str] = None,
-        referer: Optional[str] = None,
-    ) -> tuple[Dict[str, str], Optional[Dict[str, Any]]]:
+        target_url: str | None = None,
+        referer: str | None = None,
+    ) -> tuple[dict[str, str], dict[str, Any] | None]:
         site_headers, domain_config = self._load_runtime_proxy_config(target_url=target_url, referer=referer)
         self.site_headers = dict(site_headers)
         if domain_config is not None:
             self.domain_config = dict(domain_config)
         return dict(site_headers), dict(domain_config) if isinstance(domain_config, dict) else None
 
-    def _build_runtime_headers(self, target_url: str, referer: Optional[str] = None) -> Dict[str, str]:
+    def _build_runtime_headers(self, target_url: str, referer: str | None = None) -> dict[str, str]:
         site_headers = self.site_headers
         if target_url or referer or not site_headers:
             site_headers, _ = self._resolve_runtime_proxy_config(target_url=target_url, referer=referer)
 
-        custom_headers: Dict[str, str] = {}
+        custom_headers: dict[str, str] = {}
 
         cookie_header = filter_cookies_to_query_string(target_url)
         if cookie_header:
-            custom_headers['Cookie'] = cookie_header
+            custom_headers["Cookie"] = cookie_header
 
         return HeaderBuilder.build_headers(self.request, site_headers, custom_headers)
 
-    def _rewrite_playlist(self, url: str, content: bytes, referer: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def _rewrite_playlist(self, url: str, content: bytes, referer: str | None = None) -> dict[str, Any] | None:
         runtime_gateway = self._runtime_gateway or get_runtime_gateway()
-        route = runtime_gateway.resolve_route('rewrite_proxy_playlist', domain=self.domain)
+        route = runtime_gateway.resolve_route("rewrite_proxy_playlist", domain=self.domain)
         if route is None:
             return None
 
         response = runtime_gateway.invoke(
-            'rewrite_proxy_playlist',
+            "rewrite_proxy_playlist",
             domain=self.domain,
             payload={
-                'url': url,
-                'content': content.decode('utf-8', errors='ignore'),
-                'referer': referer,
+                "url": url,
+                "content": content.decode("utf-8", errors="ignore"),
+                "referer": referer,
             },
         )
         if not response.ok or not isinstance(response.data, dict):
@@ -609,20 +611,20 @@ class VideoProxy:
 
     async def handle_stream(self, url: str, **kwargs) -> StreamingResponse:
         try:
-            referer = kwargs.get('referer')
+            referer = kwargs.get("referer")
             headers = self._build_runtime_headers(url, referer)
-            explicit_chunk_size = kwargs.get('chunk_size')
+            explicit_chunk_size = kwargs.get("chunk_size")
             effective_chunk_size = explicit_chunk_size
             if effective_chunk_size is None:
-                effective_chunk_size = int((self.domain_config or {}).get('chunk_size') or ProxyRequest.chunk_size)
+                effective_chunk_size = int((self.domain_config or {}).get("chunk_size") or ProxyRequest.chunk_size)
 
             proxy_request = ProxyRequest(
                 url=url,
-                timeout=kwargs.get('timeout', 120.0),
-                max_retries=kwargs.get('max_retries', 3),
+                timeout=kwargs.get("timeout", 120.0),
+                max_retries=kwargs.get("max_retries", 3),
                 chunk_size=effective_chunk_size,
-                headers=kwargs.get('headers', {}),
-                follow_redirects=kwargs.get('follow_redirects', True),
+                headers=kwargs.get("headers", {}),
+                follow_redirects=kwargs.get("follow_redirects", True),
             )
 
             retry_strategy = RetryStrategy(max_retries=proxy_request.max_retries)
@@ -638,20 +640,20 @@ class VideoProxy:
                     self.domain_config,
                     stream=True,
                 )
-                content_type = response.headers.get('content-type', '')
+                content_type = response.headers.get("content-type", "")
                 path_lower = urlparse(url).path.lower()
-                if path_lower.endswith('.m3u8') or 'application/vnd.apple.mpegurl' in content_type.lower():
+                if path_lower.endswith(".m3u8") or "application/vnd.apple.mpegurl" in content_type.lower():
                     playlist_content = await UpstreamResponseAdapter.read(response)
                     await UpstreamResponseAdapter.close(response)
 
                     rewritten = self._rewrite_playlist(url, playlist_content, referer=referer)
                     if rewritten is not None:
-                        body = str(rewritten.get('content') or '').encode('utf-8')
+                        body = str(rewritten.get("content") or "").encode("utf-8")
                         return StreamingResponse(
                             iter([body]),
                             status_code=response.status_code,
-                            headers=dict(rewritten.get('headers') or {}),
-                            media_type=str(rewritten.get('media_type') or content_type or 'application/vnd.apple.mpegurl'),
+                            headers=dict(rewritten.get("headers") or {}),
+                            media_type=str(rewritten.get("media_type") or content_type or "application/vnd.apple.mpegurl"),
                         )
 
                     response_headers = ResponseBuilder.build_response_headers(response)
@@ -659,7 +661,7 @@ class VideoProxy:
                         iter([playlist_content]),
                         status_code=response.status_code,
                         headers=response_headers,
-                        media_type=content_type or 'application/vnd.apple.mpegurl',
+                        media_type=content_type or "application/vnd.apple.mpegurl",
                     )
 
                 response_headers = ResponseBuilder.build_response_headers(response)
@@ -669,13 +671,13 @@ class VideoProxy:
                     stream,
                     status_code=response.status_code,
                     headers=response_headers,
-                    media_type=content_type or 'application/octet-stream',
+                    media_type=content_type or "application/octet-stream",
                 )
 
         except ProxyException:
             raise
         except Exception as e:  # API handler boundary — wrap as ProxyException
             logger.error(f"Unexpected error in handle_stream: {e}", exc_info=True)
-            raise ProxyException(f"Internal proxy error: {str(e)}", self.domain, 500)
+            raise ProxyException(f"Internal proxy error: {e!s}", self.domain, 500)
 
 

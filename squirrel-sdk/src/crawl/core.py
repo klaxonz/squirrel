@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol, Union, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 # Public API of this module is stable – add to __all__ in parent __init__.
 
@@ -48,16 +48,16 @@ class VideoMeta:
 
     title: str
     url: str
-    thumbnail: Optional[str] = None
-    duration: Optional[int] = None  # seconds
-    publish_date: Optional[Any] = None  # str | int
-    extra_data: Optional[Dict[str, Any]] = None
+    thumbnail: str | None = None
+    duration: int | None = None  # seconds
+    publish_date: Any | None = None  # str | int
+    extra_data: dict[str, Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "VideoMeta":
+    def from_dict(cls, data: dict[str, Any]) -> VideoMeta:
         return cls(**data)
 
 
@@ -72,13 +72,13 @@ class ExtractionResult:
     """
 
     success: bool
-    data: Optional[VideoMeta] = None
-    error: Optional[str] = None
-    error_category: Optional[str] = None
+    data: VideoMeta | None = None
+    error: str | None = None
+    error_category: str | None = None
     retryable: bool = False
-    error_context: Optional[Dict[str, Any]] = None
+    error_context: dict[str, Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize result to dictionary."""
         return {
             "success": self.success,
@@ -90,7 +90,7 @@ class ExtractionResult:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ExtractionResult":
+    def from_dict(cls, data: dict[str, Any]) -> ExtractionResult:
         """Deserialize result from dictionary."""
         data_payload = data.get("data")
         if data_payload and isinstance(data_payload, dict):
@@ -110,9 +110,9 @@ class ExtractionResult:
     @classmethod
     def failure(
         cls,
-        error: Union[str, Exception],
-        context: Optional[Dict[str, Any]] = None
-    ) -> "ExtractionResult":
+        error: str | Exception,
+        context: dict[str, Any] | None = None
+    ) -> ExtractionResult:
         """Create a failure result from error."""
         from .exceptions import PluginError
 
@@ -131,7 +131,7 @@ class ExtractionResult:
         )
 
     @classmethod
-    def success_result(cls, data: VideoMeta) -> "ExtractionResult":
+    def success_result(cls, data: VideoMeta) -> ExtractionResult:
         """Create a success result with data."""
         return cls(success=True, data=data)
 
@@ -146,7 +146,7 @@ class ExtractionTask:
     priority: TaskPriority = TaskPriority.NORMAL
     retry_count: int = 0
     max_retries: int = 3
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:  # noqa: D401 – not a docstring for public API
         # Generate deterministic id from url + site for idempotency within a process
@@ -157,36 +157,36 @@ class ExtractionTask:
         return self.retry_count < self.max_retries
 
     # -------------------- convenience --------------------
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         from dataclasses import asdict
 
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ExtractionTask":
+    def from_dict(cls, data: dict[str, Any]) -> ExtractionTask:
         return cls(**data)  # type: ignore[arg-type]
 
 
 @runtime_checkable
 class Extractor(Protocol):
     """Protocol for extractor plugins.
-    
+
     This is a structural interface - any class implementing these methods
     is considered an extractor, regardless of inheritance.
     """
-    
+
     # Class-level metadata (recommended for performance)
     site_name: str
-    supported_domains: List[str]
-    
+    supported_domains: list[str]
+
     def can_handle(self, url: str) -> bool:
         """Return True if the given URL is supported by this extractor."""
         ...
-    
+
     def extract(self, task: ExtractionTask) -> ExtractionResult:
         """Execute the extraction and return the result."""
         ...
-    
+
     def validate_url(self, url: str) -> bool:
         """Lightweight URL validation prior to queueing the task."""
         ...
@@ -195,11 +195,11 @@ class Extractor(Protocol):
 @runtime_checkable
 class TaskProcessor(Protocol):
     """Protocol for higher-level task processors that orchestrate multiple extractors."""
-    
+
     def process(self, task: ExtractionTask) -> ExtractionResult:
         """Process a task and return the result."""
         ...
-    
+
     def can_process(self, task: ExtractionTask) -> bool:
         """Return True if this processor can handle the task."""
         ...
@@ -208,7 +208,7 @@ class TaskProcessor(Protocol):
 @runtime_checkable
 class ResultHandler(Protocol):
     """Protocol for processing results – store to DB, enqueue messages, etc."""
-    
+
     def handle_success(self, task: ExtractionTask, result: ExtractionResult) -> None:
         """Handle a successful extraction result."""
         ...
@@ -222,15 +222,15 @@ class SubscriptionSyncContext:
     """Context passed into subscription sync plugins."""
 
     mode: str
-    cursor_payload: Optional[Dict[str, Any]] = None
-    last_seen_video_url: Optional[str] = None
-    limit: Optional[int] = None
+    cursor_payload: dict[str, Any] | None = None
+    last_seen_video_url: str | None = None
+    limit: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SubscriptionSyncContext":
+    def from_dict(cls, data: dict[str, Any]) -> SubscriptionSyncContext:
         return cls(**data)
 
 
@@ -238,43 +238,43 @@ class SubscriptionSyncContext:
 class SubscriptionSyncResult:
     """Result returned by subscription sync plugins."""
 
-    video_urls: List[str]
-    latest_video_url: Optional[str] = None
-    cursor_payload: Optional[Dict[str, Any]] = None
+    video_urls: list[str]
+    latest_video_url: str | None = None
+    cursor_payload: dict[str, Any] | None = None
     has_more: bool = False
-    stop_reason: Optional[str] = None
-    source_video_count: Optional[int] = None
-    total_available: Optional[int] = None
-    head_sample_urls: Optional[List[str]] = None
-    anchor_found: Optional[bool] = None
-    oldest_scanned_url: Optional[str] = None
-    cursor_invalid: Optional[bool] = None
-    cursor_loop_detected: Optional[bool] = None
-    scan_depth: Optional[int] = None
+    stop_reason: str | None = None
+    source_video_count: int | None = None
+    total_available: int | None = None
+    head_sample_urls: list[str] | None = None
+    anchor_found: bool | None = None
+    oldest_scanned_url: str | None = None
+    cursor_invalid: bool | None = None
+    cursor_loop_detected: bool | None = None
+    scan_depth: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SubscriptionSyncResult":
+    def from_dict(cls, data: dict[str, Any]) -> SubscriptionSyncResult:
         return cls(**data)
 
 
 @runtime_checkable
 class Subscription(Protocol):
     """Protocol for channel/actor subscriptions.
-    
+
     Implementations should be lightweight and rely only on stdlib and the
     SDK's pure-Python utilities. Network and heavy logic should live in the
     plugin package itself.
     """
-    
+
     url: str
-    
+
     def get_subscribe_info(self) -> Any:
         """Return channel metadata; typically a SubscriptionMeta instance."""
         ...
-    
+
     def sync_videos(self, context: SubscriptionSyncContext) -> SubscriptionSyncResult:
         """Return cursor-aware sync results for this subscription."""
         ...
@@ -283,20 +283,20 @@ class Subscription(Protocol):
 @runtime_checkable
 class UserSubscriptionImporter(Protocol):
     """Protocol for importing user's subscriptions from a site.
-    
+
     This is used to bulk-import all subscriptions that a user has on a particular
     video site (e.g., all followed channels on Bilibili, all subscribed channels on YouTube).
     """
-    
-    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
+
+    def get_user_subscriptions(self) -> list[SubscriptionImportItem]:
         """Return a list of subscriptions from the user's account.
 
         Returns:
             List of subscriptions with metadata (url/name/avatar).
 
         Note:
-            This method should use cookies to authenticate and fetch the user's 
-            subscription list. The cookies are resolved via the SDK's cookie    
+            This method should use cookies to authenticate and fetch the user's
+            subscription list. The cookies are resolved via the SDK's cookie
             configuration.
         """
         ...
@@ -304,13 +304,13 @@ class UserSubscriptionImporter(Protocol):
 
 @dataclass
 class SubscriptionImportBatchResult:
-    items: List[SubscriptionImportItem]
-    cursor_payload: Optional[Dict[str, Any]] = None
+    items: list[SubscriptionImportItem]
+    cursor_payload: dict[str, Any] | None = None
     has_more: bool = False
-    stop_reason: Optional[str] = None
-    total_available: Optional[int] = None
+    stop_reason: str | None = None
+    total_available: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             'items': [item.to_dict() for item in self.items],
             'cursor_payload': self.cursor_payload,
@@ -320,7 +320,7 @@ class SubscriptionImportBatchResult:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'SubscriptionImportBatchResult':
+    def from_dict(cls, data: dict[str, Any]) -> SubscriptionImportBatchResult:
         return cls(
             items=[
                 item if isinstance(item, SubscriptionImportItem) else SubscriptionImportItem.from_dict(item)
@@ -337,8 +337,8 @@ class SubscriptionImportBatchResult:
 class PaginatedUserSubscriptionImporter(Protocol):
     def get_user_subscriptions_batch(
         self,
-        cursor_payload: Optional[Dict[str, Any]] = None,
-        limit: Optional[int] = None,
+        cursor_payload: dict[str, Any] | None = None,
+        limit: int | None = None,
     ) -> SubscriptionImportBatchResult:
         ...
 
@@ -351,12 +351,12 @@ class LoginStatusResult:
 
     site_name: str
     logged_in: bool
-    username: Optional[str] = None
-    user_id: Optional[str] = None
-    message: Optional[str] = None
-    extra: Optional[Dict[str, Any]] = None
+    username: str | None = None
+    user_id: str | None = None
+    message: str | None = None
+    extra: dict[str, Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "site_name": self.site_name,
             "logged_in": self.logged_in,
@@ -373,15 +373,15 @@ class LoginStatusResult:
 class ActorMeta:
     """Data class for actor/channel metadata."""
     url: str
-    name: Optional[str] = None
-    avatar: Optional[str] = None
-    extra_data: Optional[Dict[str, Any]] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    name: str | None = None
+    avatar: str | None = None
+    extra_data: dict[str, Any] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ActorMeta":
+    def from_dict(cls, data: dict[str, Any]) -> ActorMeta:
         return cls(**data)
 
 
@@ -390,31 +390,31 @@ class SubscriptionImportItem:
     """Subscription item returned by UserSubscriptionImporter."""
 
     url: str
-    name: Optional[str] = None
-    avatar: Optional[str] = None
-    extra_data: Optional[Dict[str, Any]] = None
+    name: str | None = None
+    avatar: str | None = None
+    extra_data: dict[str, Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SubscriptionImportItem":
+    def from_dict(cls, data: dict[str, Any]) -> SubscriptionImportItem:
         return cls(**data)
 
 
 @dataclass
 class SubscriptionMeta:
     """Subscription metadata for channel/actor information."""
-    
+
     id: str
     name: str
-    avatar: Optional[str] = None
+    avatar: str | None = None
     url: str = ""
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SubscriptionMeta":
+    def from_dict(cls, data: dict[str, Any]) -> SubscriptionMeta:
         return cls(**data)
 

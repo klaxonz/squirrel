@@ -1,9 +1,8 @@
-"""
-任务管理器
+"""任务管理器
 """
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from .contracts import ExtractionTask, TaskPriority
 from .factory import get_extractor_factory
@@ -15,24 +14,20 @@ class ICacheManager(ABC):
     """缓存管理器接口"""
 
     @abstractmethod
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """获取缓存"""
-        pass
 
     @abstractmethod
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """设置缓存"""
-        pass
 
     @abstractmethod
     def delete(self, key: str) -> None:
         """删除缓存"""
-        pass
 
     @abstractmethod
     def exists(self, key: str) -> bool:
         """检查缓存是否存在"""
-        pass
 
 
 class TaskManager:
@@ -40,11 +35,10 @@ class TaskManager:
 
     def create_task(self,
                     url: str,
-                    site_name: Optional[str] = None,
+                    site_name: str | None = None,
                     priority: TaskPriority = TaskPriority.NORMAL,
-                    metadata: Optional[dict[str, Any]] = None) -> ExtractionTask:
+                    metadata: dict[str, Any] | None = None) -> ExtractionTask:
         """创建提取任务"""
-
         # 如果没有指定网站名，尝试从URL推断
         if not site_name:
             extractor = get_extractor_factory().create_extractor(url)
@@ -55,5 +49,5 @@ class TaskManager:
             url=url,
             site_name=site_name or "unknown",
             priority=priority,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )

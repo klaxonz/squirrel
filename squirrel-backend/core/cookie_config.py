@@ -1,9 +1,9 @@
 import os
-from pathlib import Path
 import tempfile
 import threading
 import time
-from typing import Iterator
+from collections.abc import Iterator
+from pathlib import Path
 
 try:
     import fcntl
@@ -24,12 +24,12 @@ _COOKIE_FILE_LOCKS_GUARD = threading.Lock()
 
 
 def get_site_cookies_dir() -> Path:
-    return settings.config_dir / 'site_cookies'
+    return settings.config_dir / "site_cookies"
 
 
 def get_site_cookies_file_path(site_slug: str) -> Path:
-    safe_slug = (site_slug or '').strip().lower() or 'default'
-    return get_site_cookies_dir() / f'{safe_slug}.txt'
+    safe_slug = (site_slug or "").strip().lower() or "default"
+    return get_site_cookies_dir() / f"{safe_slug}.txt"
 
 
 def _get_cookie_file_thread_lock(lock_path: Path) -> threading.Lock:
@@ -49,14 +49,14 @@ def _lock_file_handle(handle) -> None:
 
     if msvcrt is not None:
         handle.seek(0)
-        if handle.tell() == 0 and handle.read(1) == b'':
-            handle.write(b'0')
+        if handle.tell() == 0 and handle.read(1) == b"":
+            handle.write(b"0")
             handle.flush()
         handle.seek(0)
         msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
         return
 
-    raise RuntimeError('No file locking implementation is available')
+    raise RuntimeError("No file locking implementation is available")
 
 
 def _unlock_file_handle(handle) -> None:
@@ -75,39 +75,38 @@ def _site_cookie_file_lock(lock_path: Path, timeout_seconds: float = 30.0) -> It
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     thread_lock = _get_cookie_file_thread_lock(lock_path)
 
-    with thread_lock:
-        with open(lock_path, 'a+b') as handle:
-            deadline = time.monotonic() + timeout_seconds
-            while True:
-                try:
-                    _lock_file_handle(handle)
-                    break
-                except OSError:
-                    if time.monotonic() >= deadline:
-                        raise TimeoutError(f'Failed to acquire cookie file lock: {lock_path}')
-                    time.sleep(0.05)
-
+    with thread_lock, open(lock_path, "a+b") as handle:
+        deadline = time.monotonic() + timeout_seconds
+        while True:
             try:
-                yield
-            finally:
-                _unlock_file_handle(handle)
+                _lock_file_handle(handle)
+                break
+            except OSError:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(f"Failed to acquire cookie file lock: {lock_path}")
+                time.sleep(0.05)
+
+        try:
+            yield
+        finally:
+            _unlock_file_handle(handle)
 
 
-def write_cookie_text_file(target_path: Path, content: str, encoding: str = 'utf-8') -> None:
+def write_cookie_text_file(target_path: Path, content: str, encoding: str = "utf-8") -> None:
     target = Path(target_path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    lock_path = target.with_name(f'{target.name}.lock')
+    lock_path = target.with_name(f"{target.name}.lock")
 
     with _site_cookie_file_lock(lock_path):
         temp_path: Path | None = None
         try:
             with tempfile.NamedTemporaryFile(
-                'w',
+                "w",
                 encoding=encoding,
                 dir=target.parent,
                 delete=False,
-                prefix=f'{target.stem}.',
-                suffix='.tmp',
+                prefix=f"{target.stem}.",
+                suffix=".tmp",
             ) as handle:
                 handle.write(content)
                 handle.flush()

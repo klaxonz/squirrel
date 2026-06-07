@@ -1,16 +1,14 @@
 import asyncio
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
-import sys
-
-import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'squirrel-site-runtimes' / 'javdb' / 'src'))
 
-from squirrel_javdb.proxy import JavdbProxy
 import squirrel_javdb.proxy as javdb_proxy_module
+from squirrel_javdb.proxy import JavdbProxy
 
 
 def _read_stream(response) -> bytes:

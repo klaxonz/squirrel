@@ -1,5 +1,5 @@
-from pathlib import Path
 import sys
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -14,7 +14,7 @@ def test_create_subscription_link_refreshes_feed_for_incremental_sync(monkeypatc
         return object(), True
 
     monkeypatch.setattr(
-        'core.extraction.services.video_persistence.subscription_video_service.create_subscription_video',
+        "core.extraction.services.video_persistence.subscription_video_service.create_subscription_video",
         fake_create_subscription_video,
     )
 
@@ -23,7 +23,7 @@ def test_create_subscription_link_refreshes_feed_for_incremental_sync(monkeypatc
         subscription_id=10,
         video_id=20,
         is_new_video=True,
-        subscription_sync_mode='incremental',
+        subscription_sync_mode="incremental",
     )
 
     assert calls == [(10, 20, True)]
@@ -37,7 +37,7 @@ def test_create_subscription_link_skips_feed_refresh_for_full_sync(monkeypatch):
         return object(), True
 
     monkeypatch.setattr(
-        'core.extraction.services.video_persistence.subscription_video_service.create_subscription_video',
+        "core.extraction.services.video_persistence.subscription_video_service.create_subscription_video",
         fake_create_subscription_video,
     )
 
@@ -46,7 +46,7 @@ def test_create_subscription_link_skips_feed_refresh_for_full_sync(monkeypatch):
         subscription_id=10,
         video_id=20,
         is_new_video=True,
-        subscription_sync_mode='full',
+        subscription_sync_mode="full",
     )
 
     assert calls == [(10, 20, False)]

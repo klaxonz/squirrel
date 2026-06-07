@@ -1,7 +1,7 @@
+import sys
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
-import sys
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -27,7 +27,7 @@ def _managed_session(engine):
 
 
 def _setup_test_env(monkeypatch):
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(
         engine,
         tables=[
@@ -35,8 +35,8 @@ def _setup_test_env(monkeypatch):
             TaskExecutionLog.__table__,
         ],
     )
-    monkeypatch.setattr(scheduled_task_service, 'get_session', lambda: _managed_session(engine))
-    monkeypatch.setattr(scheduled_task_service, 'ensure_system_tasks', lambda: None)
+    monkeypatch.setattr(scheduled_task_service, "get_session", lambda: _managed_session(engine))
+    monkeypatch.setattr(scheduled_task_service, "ensure_system_tasks", lambda: None)
     return engine
 
 
@@ -48,20 +48,20 @@ def test_get_task_list_serializes_only_current_page(monkeypatch):
         for index in range(30):
             session.add(
                 ScheduledTask(
-                    name=f'Task {index}',
+                    name=f"Task {index}",
                     task_type=TaskType.USER.value,
                     description=None,
                     interval=60,
-                    unit='seconds',
+                    unit="seconds",
                     start_immediately=True,
                     max_retries=3,
                     status=TaskStatus.ENABLED.value,
                     is_active=True,
-                    task_class='tests.Task',
+                    task_class="tests.Task",
                     task_params={},
                     created_at=now + timedelta(minutes=index),
                     updated_at=now + timedelta(minutes=index),
-                )
+                ),
             )
         session.commit()
 
@@ -69,12 +69,12 @@ def test_get_task_list_serializes_only_current_page(monkeypatch):
 
     def fake_to_dict(task):
         serialized_ids.append(task.id)
-        return {'id': task.id, 'name': task.name}
+        return {"id": task.id, "name": task.name}
 
-    monkeypatch.setattr(ScheduledTask, 'to_dict', fake_to_dict)
+    monkeypatch.setattr(ScheduledTask, "to_dict", fake_to_dict)
 
     result = scheduled_task_service.ScheduledTaskService.get_task_list(page=2, page_size=5)
 
-    assert result['total'] == 30
-    assert len(result['data']) == 5
+    assert result["total"] == 30
+    assert len(result["data"]) == 5
     assert serialized_ids == [25, 24, 23, 22, 21]

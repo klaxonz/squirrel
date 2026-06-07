@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List
 
 
 @dataclass
@@ -16,7 +16,7 @@ class ConsumerSpec:
 
 
 class ConsumerRegistry:
-    _consumers: List[ConsumerSpec] = []
+    _consumers: list[ConsumerSpec] = []
 
     @classmethod
     def register(
@@ -40,11 +40,11 @@ class ConsumerRegistry:
                 consumer_count=consumer_count,
                 block_ms=block_ms,
                 read_count=read_count,
-            )
+            ),
         )
 
     @classmethod
-    def all(cls) -> List[ConsumerSpec]:
+    def all(cls) -> list[ConsumerSpec]:
         return list(cls._consumers)
 
 

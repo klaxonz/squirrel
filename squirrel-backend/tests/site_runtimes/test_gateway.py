@@ -1,9 +1,10 @@
-from pathlib import Path
 import sys
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from crawl import RuntimeErrorCode, SiteRuntimeInvokeResponse
+
 from site_runtimes.gateway import SiteRuntimeGateway
 from site_runtimes.runtime_models import SiteRuntimeCapability, SiteRuntimeManifest, SiteRuntimeSite
 
@@ -16,28 +17,28 @@ class _RecordingInvocationClient:
     def invoke(self, target, request):
         self.last_target = target
         self.last_request = request
-        return SiteRuntimeInvokeResponse(request_id=request.request_id, ok=True, data={'ok': True})
+        return SiteRuntimeInvokeResponse(request_id=request.request_id, ok=True, data={"ok": True})
 
 
 def test_gateway_uses_manifest_capability_timeout_when_request_timeout_is_omitted():
     client = _RecordingInvocationClient()
     gateway = SiteRuntimeGateway(invocation_client=client)
     gateway.register_manifest(
-        runtime_id='javdb',
-        version='0.1.0',
+        runtime_id="javdb",
+        version="0.1.0",
         manifest=SiteRuntimeManifest(
-            runtime_id='javdb',
-            version='0.1.0',
+            runtime_id="javdb",
+            version="0.1.0",
             capabilities=[
-                SiteRuntimeCapability(name='check_login_status', timeout_ms=30000),
+                SiteRuntimeCapability(name="check_login_status", timeout_ms=30000),
             ],
             sites=[
-                SiteRuntimeSite(site_name='javdb', domains=['javdb.com']),
+                SiteRuntimeSite(site_name="javdb", domains=["javdb.com"]),
             ],
         ),
     )
 
-    response = gateway.invoke('check_login_status', site_name='javdb')
+    response = gateway.invoke("check_login_status", site_name="javdb")
 
     assert response.ok is True
     assert client.last_request is not None
@@ -50,44 +51,44 @@ def test_gateway_refreshes_registrations_once_before_returning_route_miss():
     gateway = SiteRuntimeGateway(invocation_client=client)
 
     def _refresh():
-        refresh_calls.append('called')
+        refresh_calls.append("called")
         gateway.register_manifest(
-            runtime_id='youporn',
-            version='0.1.0',
+            runtime_id="youporn",
+            version="0.1.0",
             manifest=SiteRuntimeManifest(
-                runtime_id='youporn',
-                version='0.1.0',
+                runtime_id="youporn",
+                version="0.1.0",
                 capabilities=[
-                    SiteRuntimeCapability(name='resolve_subscription', timeout_ms=30000),
+                    SiteRuntimeCapability(name="resolve_subscription", timeout_ms=30000),
                 ],
                 sites=[
-                    SiteRuntimeSite(site_name='youporn', domains=['youporn.com']),
+                    SiteRuntimeSite(site_name="youporn", domains=["youporn.com"]),
                 ],
             ),
         )
 
     gateway.set_registration_refresh(_refresh)
 
-    response = gateway.invoke('resolve_subscription', domain='youporn.com')
+    response = gateway.invoke("resolve_subscription", domain="youporn.com")
 
     assert response.ok is True
-    assert refresh_calls == ['called']
+    assert refresh_calls == ["called"]
     assert client.last_target is not None
-    assert client.last_target.runtime_id == 'youporn'
+    assert client.last_target.runtime_id == "youporn"
 
 
 def test_gateway_returns_stable_error_code_for_route_miss():
     gateway = SiteRuntimeGateway(invocation_client=_RecordingInvocationClient())
 
-    response = gateway.invoke('fetch_subtitles', domain='example.com')
+    response = gateway.invoke("fetch_subtitles", domain="example.com")
 
     assert response.ok is False
     assert response.error is not None
     assert response.error.code == RuntimeErrorCode.ROUTE_NOT_FOUND
     assert response.error.details == {
-        'capability': 'fetch_subtitles',
-        'site_name': None,
-        'domain': 'example.com',
+        "capability": "fetch_subtitles",
+        "site_name": None,
+        "domain": "example.com",
     }
 
 

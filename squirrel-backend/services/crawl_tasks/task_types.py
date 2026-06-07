@@ -1,10 +1,10 @@
-INCREMENTAL_SUBSCRIPTION_SYNC_TASK_TYPE = 'subscription_sync_incremental'
-FULL_SUBSCRIPTION_SYNC_TASK_TYPE = 'subscription_sync_full'
-LEGACY_SUBSCRIPTION_SYNC_TASK_TYPE = 'subscription_sync'
+INCREMENTAL_SUBSCRIPTION_SYNC_TASK_TYPE = "subscription_sync_incremental"
+FULL_SUBSCRIPTION_SYNC_TASK_TYPE = "subscription_sync_full"
+LEGACY_SUBSCRIPTION_SYNC_TASK_TYPE = "subscription_sync"
 
 
 def resolve_subscription_sync_task_type(mode: str | None) -> str:
-    if str(mode or '').lower() == 'full':
+    if str(mode or "").lower() == "full":
         return FULL_SUBSCRIPTION_SYNC_TASK_TYPE
     return INCREMENTAL_SUBSCRIPTION_SYNC_TASK_TYPE
 
@@ -18,4 +18,4 @@ def subscription_sync_task_types() -> tuple[str, ...]:
 
 
 def is_subscription_sync_task_type(task_type: str | None) -> bool:
-    return str(task_type or '') in subscription_sync_task_types()
+    return str(task_type or "") in subscription_sync_task_types()

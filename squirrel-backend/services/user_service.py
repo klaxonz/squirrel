@@ -1,33 +1,32 @@
-import bcrypt
 from datetime import datetime
-from typing import Optional, Tuple
 
+import bcrypt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.database import get_session
-from models.user import User, Account, AccountType
+from models.user import Account, AccountType, User
 
 
 def hash_password(password: str) -> str:
-    password_bytes = password.encode('utf-8')
+    password_bytes = password.encode("utf-8")
     salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password_bytes, salt).decode('utf-8')
+    return bcrypt.hashpw(password_bytes, salt).decode("utf-8")
 
 
 def verify_password(password: str, hashed_password: str) -> bool:
-    password_bytes = password.encode('utf-8')
-    hashed_bytes = hashed_password.encode('utf-8')
+    password_bytes = password.encode("utf-8")
+    hashed_bytes = hashed_password.encode("utf-8")
     return bcrypt.checkpw(password_bytes, hashed_bytes)
 
 
-def create_user(nickname: str, email: str, password: str) -> Tuple[User, Account]:
+def create_user(nickname: str, email: str, password: str) -> tuple[User, Account]:
     with get_session() as session:
         existing_account = session.scalars(
             select(Account).where(
                 Account.account_type == AccountType.EMAIL,
-                Account.identifier == email
-            )
+                Account.identifier == email,
+            ),
         ).first()
 
         if existing_account:
@@ -43,7 +42,7 @@ def create_user(nickname: str, email: str, password: str) -> Tuple[User, Account
             identifier=email,
             credential=hash_password(password),
             is_verified=False,
-            last_login_at=datetime.now()
+            last_login_at=datetime.now(),
         )
         session.add(account)
         session.commit()
@@ -51,27 +50,27 @@ def create_user(nickname: str, email: str, password: str) -> Tuple[User, Account
     return user, account
 
 
-def _get_email_account_by_user_id(session: Session, user_id: int) -> Optional[Account]:
+def _get_email_account_by_user_id(session: Session, user_id: int) -> Account | None:
     return session.scalars(
         select(Account).where(
             Account.user_id == user_id,
-            Account.account_type == AccountType.EMAIL
-        )
+            Account.account_type == AccountType.EMAIL,
+        ),
     ).first()
 
 
-def get_email_account_by_user_id(user_id: int) -> Optional[Account]:
+def get_email_account_by_user_id(user_id: int) -> Account | None:
     with get_session() as session:
         return _get_email_account_by_user_id(session, user_id)
 
 
-def authenticate(email: str, password: str) -> Optional[Tuple[User, Account]]:
+def authenticate(email: str, password: str) -> tuple[User, Account] | None:
     with get_session() as session:
         account = session.scalars(
             select(Account).where(
                 Account.account_type == AccountType.EMAIL,
-                Account.identifier == email
-            )
+                Account.identifier == email,
+            ),
         ).first()
 
         if not account or not verify_password(password, account.credential):
@@ -87,26 +86,26 @@ def authenticate(email: str, password: str) -> Optional[Tuple[User, Account]]:
     return user, account
 
 
-def get_user_by_id(user_id: int) -> Optional[User]:
+def get_user_by_id(user_id: int) -> User | None:
     with get_session() as session:
         return session.get(User, user_id)
 
 
-def update_password(user_id: int, current_password: str, new_password: str) -> Tuple[User, Account]:
+def update_password(user_id: int, current_password: str, new_password: str) -> tuple[User, Account]:
     with get_session() as session:
         user = session.get(User, user_id)
         if not user:
-            raise ValueError('用户不存在')
+            raise ValueError("用户不存在")
 
         account = _get_email_account_by_user_id(session, user_id)
         if not account:
-            raise ValueError('邮箱账号不存在')
+            raise ValueError("邮箱账号不存在")
 
         if not verify_password(current_password, account.credential):
-            raise ValueError('当前密码错误')
+            raise ValueError("当前密码错误")
 
         if verify_password(new_password, account.credential):
-            raise ValueError('新密码不能与当前密码相同')
+            raise ValueError("新密码不能与当前密码相同")
 
         account.credential = hash_password(new_password)
         account.last_login_at = datetime.now()
@@ -122,7 +121,7 @@ def rotate_token_version(user_id: int) -> User:
     with get_session() as session:
         user = session.get(User, user_id)
         if not user:
-            raise ValueError('用户不存在')
+            raise ValueError("用户不存在")
 
         user.token_version = int(user.token_version or 0) + 1
         session.commit()
@@ -131,7 +130,7 @@ def rotate_token_version(user_id: int) -> User:
     return user
 
 
-def update_user(user_id: int, nickname: str = None, avatar: str = None) -> Optional[User]:
+def update_user(user_id: int, nickname: str = None, avatar: str = None) -> User | None:
     with get_session() as session:
         user = get_user_by_id(user_id)
         if not user:

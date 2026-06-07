@@ -1,9 +1,9 @@
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 from core.database import get_session
 from core.dynamic_task_manager import dynamic_task_manager
-from models.scheduled_task import ScheduledTask, TaskType, TaskStatus
+from models.scheduled_task import ScheduledTask, TaskStatus, TaskType
 from schedule.task import TaskRegistry
 
 logger = logging.getLogger(__name__)

@@ -1,8 +1,8 @@
 # Base queues
-QUEUE_SUBSCRIBE = 'queue:video:subscribe'
+QUEUE_SUBSCRIBE = "queue:video:subscribe"
 
 # Redis keys
-REDIS_KEY_SUBSCRIPTION_MANUAL_PENDING_PREFIX = 'subscription:update:manual_pending:'
+REDIS_KEY_SUBSCRIPTION_MANUAL_PENDING_PREFIX = "subscription:update:manual_pending:"
 
 
 # System config keys

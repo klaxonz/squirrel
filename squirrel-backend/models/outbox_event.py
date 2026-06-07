@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Index, Integer, JSON, TEXT, UniqueConstraint, VARCHAR
+from sqlalchemy import JSON, TEXT, VARCHAR, DateTime, Index, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models import Base
@@ -8,12 +8,12 @@ from models.mixins.serializer import SerializerMixin
 
 
 class OutboxEvent(Base, SerializerMixin):
-    __tablename__ = 'outbox_event'
+    __tablename__ = "outbox_event"
 
     __table_args__ = (
-        UniqueConstraint('event_key', name='uix_outbox_event_event_key'),
-        Index('ix_outbox_event_status_available', 'status', 'available_at'),
-        Index('ix_outbox_event_aggregate_lookup', 'aggregate_type', 'aggregate_id', 'created_at'),
+        UniqueConstraint("event_key", name="uix_outbox_event_event_key"),
+        Index("ix_outbox_event_status_available", "status", "available_at"),
+        Index("ix_outbox_event_aggregate_lookup", "aggregate_type", "aggregate_id", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -22,8 +22,8 @@ class OutboxEvent(Base, SerializerMixin):
     aggregate_type: Mapped[str] = mapped_column(VARCHAR(64), nullable=False)
     aggregate_id: Mapped[str] = mapped_column(VARCHAR(64), nullable=False)
     payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    status: Mapped[str] = mapped_column(VARCHAR(16), nullable=False, default='pending')
-    priority: Mapped[str] = mapped_column(VARCHAR(16), nullable=False, default='normal')
+    status: Mapped[str] = mapped_column(VARCHAR(16), nullable=False, default="pending")
+    priority: Mapped[str] = mapped_column(VARCHAR(16), nullable=False, default="normal")
     available_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=3)

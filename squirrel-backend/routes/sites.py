@@ -1,16 +1,11 @@
 import asyncio
 import logging
 import mimetypes
-from typing import Dict, List, Literal
 
 from fastapi import APIRouter, Body, HTTPException, Query
 from fastapi.responses import FileResponse
 
-from services.site_login_status_service import (
-    get_supported_sites as get_login_supported_sites,
-    test_site_login_status,
-)
-from common.response import success, error, param_error
+from common.response import error, param_error, success
 from routes.connectivity import test_site_connectivity
 from services.site_catalog_service import (
     build_site_info,
@@ -18,20 +13,26 @@ from services.site_catalog_service import (
     merge_site_names,
     save_site_overrides,
 )
+from services.site_login_status_service import (
+    get_supported_sites as get_login_supported_sites,
+)
+from services.site_login_status_service import (
+    test_site_login_status,
+)
 from utils.site_icons import resolve_site_icon_path
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix='/api/sites', tags=['sites'])
+router = APIRouter(prefix="/api/sites", tags=["sites"])
 
 
 @router.get("")
 def get_supported_sites():
-    """
-    获取插件支持的所有站点信息
+    """获取插件支持的所有站点信息
 
     Returns:
         每个站点的详细信息，包括名称和对应的域名列表
+
     """
     catalog = get_merged_site_catalog()
     login_supported_sites = get_login_supported_sites()
@@ -49,7 +50,7 @@ def get_supported_sites():
 
     return success({
         "sites": sites_info,
-        "total": len(sites_info)
+        "total": len(sites_info),
     })
 
 
@@ -60,9 +61,9 @@ def get_sites_catalog():
 
 @router.put("/catalog")
 def update_sites_catalog(payload: dict = Body(...)):
-    sites_payload = payload.get('sites') if isinstance(payload, dict) else None
+    sites_payload = payload.get("sites") if isinstance(payload, dict) else None
     if not isinstance(sites_payload, dict):
-        return param_error('sites 必须为对象')
+        return param_error("sites 必须为对象")
 
     try:
         catalog = save_site_overrides(sites_payload)
@@ -75,19 +76,18 @@ def update_sites_catalog(payload: dict = Body(...)):
         return error("保存站点配置失败")
 
 
-@router.get('/{site_name}/icon', include_in_schema=False)
+@router.get("/{site_name}/icon", include_in_schema=False)
 def get_site_icon(site_name: str):
     icon_path = resolve_site_icon_path(site_name)
     if icon_path is None:
-        raise HTTPException(status_code=404, detail=f'No icon asset for site: {site_name}')
+        raise HTTPException(status_code=404, detail=f"No icon asset for site: {site_name}")
     media_type, _ = mimetypes.guess_type(icon_path.name)
-    return FileResponse(path=icon_path, media_type=media_type or 'application/octet-stream')
+    return FileResponse(path=icon_path, media_type=media_type or "application/octet-stream")
 
 
 @router.get("/{site_name}/test-connectivity")
 async def test_site_connectivity_endpoint(site_name: str, timeout: int = Query(10, ge=1, le=60)):
-    """
-    测试指定站点的连通性
+    """测试指定站点的连通性
 
     Args:
         site_name: 站点名称（如: youtube, bilibili等）
@@ -95,6 +95,7 @@ async def test_site_connectivity_endpoint(site_name: str, timeout: int = Query(1
 
     Returns:
         连通性测试结果
+
     """
     catalog = get_merged_site_catalog()
     site_info = build_site_info(site_name, catalog)
@@ -113,7 +114,7 @@ async def test_site_connectivity_endpoint(site_name: str, timeout: int = Query(1
     result = await test_site_connectivity(
         url=test_url,
         timeout=timeout,
-        follow_redirects=True
+        follow_redirects=True,
     )
 
     return success({
@@ -126,7 +127,7 @@ async def test_site_connectivity_endpoint(site_name: str, timeout: int = Query(1
         "response_time": result.response_time,
         "dns_resolved": result.dns_resolved,
         "ip_address": result.ip_address,
-        "error_message": result.error_message
+        "error_message": result.error_message,
     })
 
 
@@ -140,30 +141,29 @@ def get_site_login_status(site_name: str):
     status = test_site_login_status(site_name)
 
     # For YouTube, also include OAuth status
-    if site_name.lower() == 'youtube':
+    if site_name.lower() == "youtube":
         try:
             from services.youtube_oauth_service import get_oauth_state
             oauth_state = get_oauth_state()
-            status['oauth_status'] = oauth_state.status
-            status['oauth_account'] = {
-                'name': oauth_state.account.name if oauth_state.account else None,
-                'email': oauth_state.account.email if oauth_state.account else None,
-                'avatar': oauth_state.account.avatar if oauth_state.account else None,
+            status["oauth_status"] = oauth_state.status
+            status["oauth_account"] = {
+                "name": oauth_state.account.name if oauth_state.account else None,
+                "email": oauth_state.account.email if oauth_state.account else None,
+                "avatar": oauth_state.account.avatar if oauth_state.account else None,
             } if oauth_state.account else None
         except Exception:
             # task boundary -- prevent single failure from crashing request
-            logger.warning('Failed to fetch YouTube OAuth status', exc_info=True)
+            logger.warning("Failed to fetch YouTube OAuth status", exc_info=True)
 
     return success(status)
 
 
 @router.post("/test-connectivity/batch")
 async def test_batch_sites_connectivity(
-    site_names: List[str] = Query(..., description="站点名称列表"),
-    timeout: int = Query(10, ge=1, le=60)
+    site_names: list[str] = Query(..., description="站点名称列表"),
+    timeout: int = Query(10, ge=1, le=60),
 ):
-    """
-    批量测试多个站点的连通性
+    """批量测试多个站点的连通性
 
     Args:
         site_names: 站点名称列表（最多20个）
@@ -171,6 +171,7 @@ async def test_batch_sites_connectivity(
 
     Returns:
         批量测试结果
+
     """
     if len(site_names) > 20:
         return param_error("最多支持同时测试20个站点")
@@ -216,7 +217,7 @@ async def test_batch_sites_connectivity(
                 "test_url": test_url_used,
                 "accessible": False,
                 "status": "error",
-                "error_message": str(result)
+                "error_message": str(result),
             })
             failed_count += 1
         else:
@@ -230,7 +231,7 @@ async def test_batch_sites_connectivity(
                 "response_time": result.response_time,
                 "dns_resolved": result.dns_resolved,
                 "ip_address": result.ip_address,
-                "error_message": result.error_message
+                "error_message": result.error_message,
             })
 
             if result.accessible:
@@ -256,21 +257,21 @@ async def test_batch_sites_connectivity(
             "accessible": accessible_count,
             "failed": failed_count,
             "success_rate": round(accessible_count / total * 100, 2) if total > 0 else 0,
-            "avg_response_time": avg_response_time
-        }
+            "avg_response_time": avg_response_time,
+        },
     })
 
 
 @router.get("/test-connectivity/all")
 async def test_all_sites_connectivity(timeout: int = Query(10, ge=1, le=60)):
-    """
-    测试所有插件支持站点的连通性
+    """测试所有插件支持站点的连通性
 
     Args:
         timeout: 超时时间（秒）
 
     Returns:
         所有站点的测试结果
+
     """
     catalog = get_merged_site_catalog()
     site_names = merge_site_names(catalog)
@@ -283,8 +284,8 @@ async def test_all_sites_connectivity(timeout: int = Query(10, ge=1, le=60)):
                 "accessible": 0,
                 "failed": 0,
                 "success_rate": 0,
-                "avg_response_time": None
-            }
+                "avg_response_time": None,
+            },
         })
 
     test_sites = []
@@ -333,7 +334,7 @@ async def test_all_sites_connectivity(timeout: int = Query(10, ge=1, le=60)):
                 "test_url": test_url_used,
                 "accessible": False,
                 "status": "error",
-                "error_message": str(error)
+                "error_message": str(error),
             })
             failed_count += 1
         else:
@@ -347,7 +348,7 @@ async def test_all_sites_connectivity(timeout: int = Query(10, ge=1, le=60)):
                 "response_time": success_result.response_time,
                 "dns_resolved": success_result.dns_resolved,
                 "ip_address": success_result.ip_address,
-                "error_message": success_result.error_message
+                "error_message": success_result.error_message,
             })
 
             if success_result.accessible:
@@ -372,8 +373,8 @@ async def test_all_sites_connectivity(timeout: int = Query(10, ge=1, le=60)):
             "accessible": accessible_count,
             "failed": failed_count,
             "success_rate": round(accessible_count / total * 100, 2) if total > 0 else 0,
-            "avg_response_time": avg_response_time
-        }
+            "avg_response_time": avg_response_time,
+        },
     })
 
 
@@ -381,8 +382,7 @@ async def test_all_sites_connectivity(timeout: int = Query(10, ge=1, le=60)):
 
 @router.post("/youtube/oauth/setup")
 def setup_youtube_oauth():
-    """
-    Start YouTube TV OAuth flow.
+    """Start YouTube TV OAuth flow.
     Returns verification URL and user code for user to complete authorization in browser.
     """
     try:
@@ -408,8 +408,7 @@ def setup_youtube_oauth():
 
 @router.get("/youtube/oauth/status")
 def get_youtube_oauth_status():
-    """
-    Poll current YouTube OAuth status.
+    """Poll current YouTube OAuth status.
     Call this periodically after oauth/setup to detect when user completes authorization.
     """
     try:
@@ -435,8 +434,7 @@ def get_youtube_oauth_status():
 
 @router.delete("/youtube/oauth")
 def revoke_youtube_oauth():
-    """
-    Revoke YouTube OAuth credentials and sign out.
+    """Revoke YouTube OAuth credentials and sign out.
     """
     try:
         from services.youtube_oauth_service import revoke_oauth_via_daemon

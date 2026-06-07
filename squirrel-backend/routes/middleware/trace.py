@@ -13,19 +13,19 @@ class RequestContextMiddleware:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope['type'] != 'http':
+        if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
 
         headers = Headers(scope=scope)
-        trace_id = headers.get('x-trace-id') or generate_trace_id()
+        trace_id = headers.get("x-trace-id") or generate_trace_id()
         token = bind_trace_id(trace_id)
-        scope.setdefault('state', {})['trace_id'] = trace_id
+        scope.setdefault("state", {})["trace_id"] = trace_id
 
         async def send_with_trace_id(message: Message) -> None:
-            if message['type'] == 'http.response.start':
+            if message["type"] == "http.response.start":
                 response_headers = MutableHeaders(scope=message)
-                response_headers['X-Trace-Id'] = trace_id
+                response_headers["X-Trace-Id"] = trace_id
             await send(message)
 
         try:

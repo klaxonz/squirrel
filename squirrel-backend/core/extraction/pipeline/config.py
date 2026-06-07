@@ -1,8 +1,7 @@
-"""
-Pipeline配置模块
+"""Pipeline配置模块
 """
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Type, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .base import PipelineStage
@@ -11,17 +10,19 @@ if TYPE_CHECKING:
 @dataclass
 class StageConfig:
     """Stage配置"""
-    stage_class: Type["PipelineStage"]
+
+    stage_class: type["PipelineStage"]
     enabled: bool = True
     critical: bool = True
-    params: Dict[str, Any] = field(default_factory=dict)
+    params: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class PipelineConfig:
     """Pipeline配置"""
-    stages: List[StageConfig] = field(default_factory=list)
-    critical_stages: List[str] = field(default_factory=lambda: [
+
+    stages: list[StageConfig] = field(default_factory=list)
+    critical_stages: list[str] = field(default_factory=lambda: [
         "extraction",
         "validation",
         "persistence",
@@ -29,10 +30,10 @@ class PipelineConfig:
 
     def add_stage(
         self,
-        stage_class: Type["PipelineStage"],
+        stage_class: type["PipelineStage"],
         enabled: bool = True,
         critical: bool = True,
-        **params: Any
+        **params: Any,
     ) -> "PipelineConfig":
         self.stages.append(StageConfig(
             stage_class=stage_class,
@@ -42,16 +43,16 @@ class PipelineConfig:
         ))
         return self
 
-    def get_enabled_stages(self) -> List[StageConfig]:
+    def get_enabled_stages(self) -> list[StageConfig]:
         return [s for s in self.stages if s.enabled]
 
     @classmethod
     def default(cls) -> "PipelineConfig":
         from .stages import (
             ExtractionStage,
-            ValidationStage,
             PersistenceStage,
             PostProcessStage,
+            ValidationStage,
         )
         config = cls()
         config.add_stage(ExtractionStage, critical=True)

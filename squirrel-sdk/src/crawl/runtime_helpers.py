@@ -1,8 +1,11 @@
 """Convenience helpers for composing runtime V2 plugin packages."""
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any
 
+from .runtime_models import SiteRuntimeHealthStatus, SiteRuntimeManifest
+from .site_runtime import RuntimeStartHook, RuntimeStopHook, create_declarative_site_runtime
 from .site_runtime_helpers import (
     PayloadHandler,
     build_extract_video_handler,
@@ -15,9 +18,6 @@ from .site_runtime_helpers import (
     build_subtitles_handler,
     build_sync_subscription_handler,
 )
-from .site_runtime import RuntimeStartHook, RuntimeStopHook, create_declarative_site_runtime
-from .runtime_models import SiteRuntimeHealthStatus, SiteRuntimeManifest
-
 
 ObjectFactory = Callable[[], Any]
 
@@ -25,21 +25,21 @@ ObjectFactory = Callable[[], Any]
 def create_site_runtime(
     *,
     manifest: SiteRuntimeManifest,
-    health_message: Optional[str] = None,
-    health_check: Optional[Callable[[], SiteRuntimeHealthStatus]] = None,
-    on_start: Optional[RuntimeStartHook] = None,
-    on_stop: Optional[RuntimeStopHook] = None,
-    capability_handlers: Optional[Dict[str, PayloadHandler]] = None,
-    check_login: Optional[Callable[[], Any]] = None,
-    importer_factory: Optional[ObjectFactory] = None,
-    subscription_factory: Optional[Callable[[str], Any]] = None,
-    extractor_factory: Optional[ObjectFactory] = None,
-    extractor_site_name: Optional[str] = None,
-    subtitles_provider_factory: Optional[ObjectFactory] = None,
+    health_message: str | None = None,
+    health_check: Callable[[], SiteRuntimeHealthStatus] | None = None,
+    on_start: RuntimeStartHook | None = None,
+    on_stop: RuntimeStopHook | None = None,
+    capability_handlers: dict[str, PayloadHandler] | None = None,
+    check_login: Callable[[], Any] | None = None,
+    importer_factory: ObjectFactory | None = None,
+    subscription_factory: Callable[[str], Any] | None = None,
+    extractor_factory: ObjectFactory | None = None,
+    extractor_site_name: str | None = None,
+    subtitles_provider_factory: ObjectFactory | None = None,
     default_subtitle_lang: str = 'en',
     default_subtitle_format: str = 'srt',
-    proxy_config_builder: Optional[Callable[[Any], Dict[str, Any]]] = None,
-    playlist_rewriter: Optional[Callable[[str, str | bytes, Optional[str]], Dict[str, Any]]] = None,
+    proxy_config_builder: Callable[[Any], dict[str, Any]] | None = None,
+    playlist_rewriter: Callable[[str, str | bytes, str | None], dict[str, Any]] | None = None,
 ):
     resolved_handlers = dict(capability_handlers or {})
 

@@ -18,7 +18,7 @@ from services.music._normalizers import (
 
 async def get_personal_fm_tracks(
     user_id: int,
-    mode: str = 'normal',
+    mode: str = "normal",
     song_pool_id: str | None = None,
     action: str | None = None,
     hash: str | None = None,
@@ -27,143 +27,143 @@ async def get_personal_fm_tracks(
     is_overplay: bool = False,
     remain_songcnt: int = 0,
 ) -> dict[str, Any]:
-    params: dict[str, Any] = {'mode': mode}
+    params: dict[str, Any] = {"mode": mode}
     if song_pool_id is not None:
-        params['song_pool_id'] = song_pool_id
+        params["song_pool_id"] = song_pool_id
     if action is not None:
-        params['action'] = action
+        params["action"] = action
     if hash is not None:
-        params['hash'] = hash
+        params["hash"] = hash
     if songid is not None:
-        params['songid'] = songid
+        params["songid"] = songid
     if playtime is not None:
-        params['playtime'] = playtime
+        params["playtime"] = playtime
     if is_overplay:
-        params['is_overplay'] = 1
+        params["is_overplay"] = 1
     if remain_songcnt > 0:
-        params['remain_songcnt'] = remain_songcnt
+        params["remain_songcnt"] = remain_songcnt
 
-    payload = await _request_kugou('/personal/fm', params, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
-    rows = data.get('song_list')
+    payload = await _request_kugou("/personal/fm", params, user_id=user_id)
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    rows = data.get("song_list")
     if not isinstance(rows, list):
         rows = []
 
     return {
-        'items': [_normalize_track(row) for row in rows],
-        'page': 1,
-        'page_size': len(rows),
-        'total': len(rows),
+        "items": [_normalize_track(row) for row in rows],
+        "page": 1,
+        "page_size": len(rows),
+        "total": len(rows),
     }
 
 
 async def get_recommend_card_tracks(user_id: int, card_id: int, page_size: int) -> dict[str, Any]:
-    payload = await _request_kugou('/top/card', {'card_id': card_id}, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
-    rows = _first_list(data, ('song_list', 'songs', 'songlist', 'info', 'list', 'data'))
+    payload = await _request_kugou("/top/card", {"card_id": card_id}, user_id=user_id)
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+    rows = _first_list(data, ("song_list", "songs", "songlist", "info", "list", "data"))
     if page_size > 0:
         rows = rows[:page_size]
     if isinstance(data, dict):
-        title = str(data.get('rec_desc') or data.get('title') or '')
-        total = data.get('song_list_size') or data.get('total') or len(rows)
+        title = str(data.get("rec_desc") or data.get("title") or "")
+        total = data.get("song_list_size") or data.get("total") or len(rows)
     else:
-        title = ''
+        title = ""
         total = len(rows)
 
     return {
-        'items': [_normalize_track(row) for row in rows],
-        'page': 1,
-        'page_size': page_size,
-        'total': total,
-        'card_id': card_id,
-        'title': title.strip('「」'),
+        "items": [_normalize_track(row) for row in rows],
+        "page": 1,
+        "page_size": page_size,
+        "total": total,
+        "card_id": card_id,
+        "title": title.strip("「」"),
     }
 
 
 async def get_daily_recommend_tracks(user_id: int, page_size: int) -> dict[str, Any]:
-    payload = await _request_kugou('/recommend/songs', {}, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
-    rows = _first_list(data, ('song_list', 'songs', 'songlist', 'info', 'list', 'data'))
+    payload = await _request_kugou("/recommend/songs", {}, user_id=user_id)
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+    rows = _first_list(data, ("song_list", "songs", "songlist", "info", "list", "data"))
     if page_size > 0:
         rows = rows[:page_size]
     if isinstance(data, dict):
-        total = data.get('song_list_size') or data.get('total') or len(rows)
-        cover = _format_image_url(str(data.get('cover_img_url') or data.get('cover') or ''))
+        total = data.get("song_list_size") or data.get("total") or len(rows)
+        cover = _format_image_url(str(data.get("cover_img_url") or data.get("cover") or ""))
     else:
         total = len(rows)
-        cover = ''
+        cover = ""
 
     return {
-        'items': [_normalize_track(row) for row in rows],
-        'page': 1,
-        'page_size': page_size,
-        'total': total,
-        'cover': cover,
+        "items": [_normalize_track(row) for row in rows],
+        "page": 1,
+        "page_size": page_size,
+        "total": total,
+        "cover": cover,
     }
 
 
 async def list_ranks(user_id: int) -> dict[str, Any]:
-    payload = await _request_kugou('/rank/list', {'withsong': 0}, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
-    rows = data.get('info')
+    payload = await _request_kugou("/rank/list", {"withsong": 0}, user_id=user_id)
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    rows = data.get("info")
     if not isinstance(rows, list):
         rows = []
 
     return {
-        'items': [_normalize_rank(row) for row in rows],
-        'total': data.get('total') or len(rows),
+        "items": [_normalize_rank(row) for row in rows],
+        "total": data.get("total") or len(rows),
     }
 
 
 async def get_rank_tracks(user_id: int, rank_id: str, rank_cid: str | None, page: int, page_size: int) -> dict[str, Any]:
     params = {
-        'rankid': rank_id,
-        'page': page,
-        'pagesize': page_size,
+        "rankid": rank_id,
+        "page": page,
+        "pagesize": page_size,
     }
     if rank_cid:
-        params['rank_cid'] = rank_cid
+        params["rank_cid"] = rank_cid
 
-    payload = await _request_kugou('/rank/audio', params, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
-    rows = _first_list(data, ('songlist', 'songs', 'list', 'info', 'data'))
+    payload = await _request_kugou("/rank/audio", params, user_id=user_id)
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    rows = _first_list(data, ("songlist", "songs", "list", "info", "data"))
 
     return {
-        'items': [_normalize_track(row) for row in rows],
-        'page': page,
-        'page_size': page_size,
-        'total': data.get('total') or payload.get('total') or len(rows),
+        "items": [_normalize_track(row) for row in rows],
+        "page": page,
+        "page_size": page_size,
+        "total": data.get("total") or payload.get("total") or len(rows),
     }
 
 
 async def list_new_songs(user_id: int, category_type: int | None, page: int, page_size: int) -> dict[str, Any]:
     params: dict[str, Any] = {
-        'page': page,
-        'pagesize': page_size,
+        "page": page,
+        "pagesize": page_size,
     }
     if category_type is not None:
-        params['type'] = category_type
-    payload = await _request_kugou('/top/song', params, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
-    rows = _first_list(data, ('songs', 'songlist', 'info', 'list', 'data'))
+        params["type"] = category_type
+    payload = await _request_kugou("/top/song", params, user_id=user_id)
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+    rows = _first_list(data, ("songs", "songlist", "info", "list", "data"))
     if isinstance(data, dict):
-        total = data.get('total') or data.get('count') or len(rows)
+        total = data.get("total") or data.get("count") or len(rows)
     else:
         total = len(rows)
 
     return {
-        'items': [_normalize_track(row) for row in rows],
-        'page': page,
-        'page_size': page_size,
-        'total': total,
+        "items": [_normalize_track(row) for row in rows],
+        "page": page,
+        "page_size": page_size,
+        "total": total,
     }
 
 
 async def list_new_albums(user_id: int, page: int, page_size: int) -> dict[str, Any]:
-    payload = await _request_kugou('/top/album', {}, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    payload = await _request_kugou("/top/album", {}, user_id=user_id)
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
     rows = []
-    for key in ('chn', 'eur', 'jpn', 'kor'):
+    for key in ("chn", "eur", "jpn", "kor"):
         region = data.get(key)
         if isinstance(region, list):
             rows.extend(item for item in region if isinstance(item, dict))
@@ -171,87 +171,87 @@ async def list_new_albums(user_id: int, page: int, page_size: int) -> dict[str, 
     end = start + page_size
     page_rows = rows[start:end]
     if isinstance(data, dict):
-        total = data.get('total') or data.get('count') or len(rows)
+        total = data.get("total") or data.get("count") or len(rows)
     else:
         total = len(rows)
 
     return {
-        'items': [_normalize_album(row) for row in page_rows],
-        'page': page,
-        'page_size': page_size,
-        'total': total,
+        "items": [_normalize_album(row) for row in page_rows],
+        "page": page,
+        "page_size": page_size,
+        "total": total,
     }
 
 
 async def get_ai_recommend_tracks(user_id: int, page_size: int) -> dict[str, Any]:
-    payload = await _request_kugou('/ai/recommend', {
-        'pagesize': page_size,
+    payload = await _request_kugou("/ai/recommend", {
+        "pagesize": page_size,
     }, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
-    rows = _first_list(data, ('songs', 'song_list', 'info', 'list', 'data'))
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+    rows = _first_list(data, ("songs", "song_list", "info", "list", "data"))
     return {
-        'items': [_normalize_track(row) for row in rows],
+        "items": [_normalize_track(row) for row in rows],
     }
 
 
 async def get_brush_feed(user_id: int, page_size: int) -> dict[str, Any]:
-    payload = await _request_kugou('/brush', {
-        'pagesize': page_size,
+    payload = await _request_kugou("/brush", {
+        "pagesize": page_size,
     }, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
-    rows = _first_list(data, ('songs', 'song_list', 'info', 'list', 'data'))
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+    rows = _first_list(data, ("songs", "song_list", "info", "list", "data"))
     return {
-        'items': [_normalize_track(row) for row in rows],
+        "items": [_normalize_track(row) for row in rows],
     }
 
 
 async def get_everyday_recommend(user_id: int) -> dict[str, Any]:
-    payload = await _request_kugou('/everyday/recommend', {}, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
-    rows = _first_list(data, ('songs', 'song_list', 'info', 'list', 'data'))
+    payload = await _request_kugou("/everyday/recommend", {}, user_id=user_id)
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+    rows = _first_list(data, ("songs", "song_list", "info", "list", "data"))
     return {
-        'items': [_normalize_track(row) for row in rows],
+        "items": [_normalize_track(row) for row in rows],
     }
 
 
 async def get_style_recommend(user_id: int) -> dict[str, Any]:
-    payload = await _request_kugou('/everyday/style/recommend', {}, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
-    rows = _first_list(data, ('songs', 'song_list', 'info', 'list', 'data'))
+    payload = await _request_kugou("/everyday/style/recommend", {}, user_id=user_id)
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+    rows = _first_list(data, ("songs", "song_list", "info", "list", "data"))
     return {
-        'items': [_normalize_track(row) for row in rows],
+        "items": [_normalize_track(row) for row in rows],
     }
 
 
 async def get_rank_detail(user_id: int, rank_id: str) -> dict[str, Any]:
-    payload = await _request_kugou('/rank/info', {'rankid': rank_id}, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    payload = await _request_kugou("/rank/info", {"rankid": rank_id}, user_id=user_id)
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
     return {
-        'id': str(data.get('rankid') or rank_id),
-        'name': str(data.get('name') or data.get('rankname') or ''),
-        'cover': _format_image_url(str(data.get('img') or data.get('cover') or data.get('banner') or '')),
-        'intro': str(data.get('intro') or data.get('description') or ''),
-        'update_frequency': str(data.get('update_frequency') or data.get('update') or ''),
-        'song_count': int(data.get('song_count') or data.get('total') or 0),
+        "id": str(data.get("rankid") or rank_id),
+        "name": str(data.get("name") or data.get("rankname") or ""),
+        "cover": _format_image_url(str(data.get("img") or data.get("cover") or data.get("banner") or "")),
+        "intro": str(data.get("intro") or data.get("description") or ""),
+        "update_frequency": str(data.get("update_frequency") or data.get("update") or ""),
+        "song_count": int(data.get("song_count") or data.get("total") or 0),
     }
 
 
 async def get_banner_list(user_id: int) -> dict[str, Any]:
-    payload = await _request_kugou('/yueku/banner', {}, user_id=user_id)
-    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
-    rows = _first_list(data, ('banner', 'banners', 'list', 'data'))
+    payload = await _request_kugou("/yueku/banner", {}, user_id=user_id)
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+    rows = _first_list(data, ("banner", "banners", "list", "data"))
     items = []
     for row in rows:
         if not isinstance(row, dict):
             continue
         items.append({
-            'id': str(row.get('id') or row.get('banner_id') or ''),
-            'title': str(row.get('title') or row.get('name') or ''),
-            'cover': _format_image_url(str(row.get('img') or row.get('image') or row.get('cover') or '')),
-            'type': str(row.get('type') or row.get('action_type') or ''),
-            'target_id': str(row.get('target_id') or row.get('id_extra') or ''),
+            "id": str(row.get("id") or row.get("banner_id") or ""),
+            "title": str(row.get("title") or row.get("name") or ""),
+            "cover": _format_image_url(str(row.get("img") or row.get("image") or row.get("cover") or "")),
+            "type": str(row.get("type") or row.get("action_type") or ""),
+            "target_id": str(row.get("target_id") or row.get("id_extra") or ""),
         })
-    return {'items': items}
+    return {"items": items}
 
 
 async def get_complex_search(user_id: int, query: str) -> dict[str, Any]:
@@ -260,33 +260,33 @@ async def get_complex_search(user_id: int, query: str) -> dict[str, Any]:
 
     async def load_songs() -> None:
         nonlocal song_payload
-        song_payload = await _request_kugou('/search', {
-            'keywords': query,
-            'page': 1,
-            'pagesize': 50,
-            'type': 'song',
+        song_payload = await _request_kugou("/search", {
+            "keywords": query,
+            "page": 1,
+            "pagesize": 50,
+            "type": "song",
         }, user_id=user_id)
 
     async def load_artists() -> None:
         nonlocal artist_payload
-        artist_payload = await _request_kugou('/search', {
-            'keywords': query,
-            'page': 1,
-            'pagesize': 12,
-            'type': 'author',
+        artist_payload = await _request_kugou("/search", {
+            "keywords": query,
+            "page": 1,
+            "pagesize": 12,
+            "type": "author",
         }, user_id=user_id)
 
     async with anyio.create_task_group() as task_group:
         task_group.start_soon(load_songs)
         task_group.start_soon(load_artists)
 
-    song_data = song_payload.get('data') if isinstance(song_payload.get('data'), dict) else {}
-    song_rows = song_data.get('lists')
+    song_data = song_payload.get("data") if isinstance(song_payload.get("data"), dict) else {}
+    song_rows = song_data.get("lists")
     if not isinstance(song_rows, list):
         song_rows = []
 
-    artist_data = artist_payload.get('data') if isinstance(artist_payload.get('data'), dict) else {}
-    artist_rows = artist_data.get('lists')
+    artist_data = artist_payload.get("data") if isinstance(artist_payload.get("data"), dict) else {}
+    artist_rows = artist_data.get("lists")
     if not isinstance(artist_rows, list):
         artist_rows = []
 
@@ -298,15 +298,15 @@ async def get_complex_search(user_id: int, query: str) -> dict[str, Any]:
         if not isinstance(row, dict):
             continue
         album = _normalize_album_from_track(row)
-        if not album['id'] or album['id'] in seen_album_ids:
+        if not album["id"] or album["id"] in seen_album_ids:
             continue
-        seen_album_ids.add(album['id'])
+        seen_album_ids.add(album["id"])
         albums.append(album)
         if len(albums) >= 12:
             break
 
     return {
-        'songs': songs[:50],
-        'artists': artists[:12],
-        'albums': albums[:12],
+        "songs": songs[:50],
+        "artists": artists[:12],
+        "albums": albums[:12],
     }

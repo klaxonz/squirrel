@@ -2,24 +2,23 @@ from __future__ import annotations
 
 import json
 import logging
-import socket
 import subprocess
 import threading
 import time
 import urllib.error
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Dict, Optional, Sequence
 
-from crawl import SiteRuntimeInvokeRequest, SiteRuntimeInvokeResponse, SiteRuntimeError
+from crawl import SiteRuntimeError, SiteRuntimeInvokeRequest, SiteRuntimeInvokeResponse
 
 from .audit import SiteRuntimeAuditWriter
 from .health import SiteRuntimeHealthChecker, SiteRuntimeHealthCheckError, to_health_snapshot
 from .models import (
+    SiteRuntimeHandle,
     SiteRuntimeHealthSnapshot,
     SiteRuntimeRecord,
-    SiteRuntimeTarget,
-    SiteRuntimeHandle,
     SiteRuntimeState,
+    SiteRuntimeTarget,
     utcnow_iso,
 )
 from .process_launcher import SiteRuntimeProcessLauncher
@@ -36,11 +35,11 @@ class SiteRuntimeSupervisor:
     """Manage site runtime subprocesses and transport requests to them."""
 
     def __init__(self) -> None:
-        self._handles: Dict[str, SiteRuntimeHandle] = {}
-        self._records: Dict[str, SiteRuntimeRecord] = {}
-        self._processes: Dict[str, subprocess.Popen] = {}
-        self._log_streams: Dict[str, tuple[object, object]] = {}
-        self._runtime_timers: Dict[str, threading.Timer] = {}
+        self._handles: dict[str, SiteRuntimeHandle] = {}
+        self._records: dict[str, SiteRuntimeRecord] = {}
+        self._processes: dict[str, subprocess.Popen] = {}
+        self._log_streams: dict[str, tuple[object, object]] = {}
+        self._runtime_timers: dict[str, threading.Timer] = {}
         self._backend_root = Path(__file__).resolve().parent.parent
         self._audit_writer = SiteRuntimeAuditWriter(self._backend_root)
         self._transport_client = SiteRuntimeTransportClient()
@@ -48,7 +47,7 @@ class SiteRuntimeSupervisor:
         self._process_launcher = SiteRuntimeProcessLauncher(self._backend_root, self._audit_writer)
 
     def _key(self, runtime_id: str, version: str) -> str:
-        return f'{runtime_id}:{version}'
+        return f"{runtime_id}:{version}"
 
     def _build_invoke_details(
         self,
@@ -56,33 +55,33 @@ class SiteRuntimeSupervisor:
         request: SiteRuntimeInvokeRequest,
         handle: SiteRuntimeHandle,
         *,
-        elapsed_ms: Optional[int] = None,
-        reason: Optional[str] = None,
+        elapsed_ms: int | None = None,
+        reason: str | None = None,
     ) -> dict:
         payload = dict(request.payload or {})
         details = {
-            'request_id': request.request_id,
-            'task_id': payload.get('task_id'),
-            'runtime_id': target.runtime_id,
-            'version': target.version,
-            'capability': target.capability,
-            'site_name': request.site_name or target.site_name,
-            'domain': target.domain or request.metadata.get('domain'),
-            'url': payload.get('url'),
-            'timeout_ms': request.timeout_ms,
-            'endpoint': handle.endpoint,
-            'process_id': handle.process_id,
+            "request_id": request.request_id,
+            "task_id": payload.get("task_id"),
+            "runtime_id": target.runtime_id,
+            "version": target.version,
+            "capability": target.capability,
+            "site_name": request.site_name or target.site_name,
+            "domain": target.domain or request.metadata.get("domain"),
+            "url": payload.get("url"),
+            "timeout_ms": request.timeout_ms,
+            "endpoint": handle.endpoint,
+            "process_id": handle.process_id,
         }
         if elapsed_ms is not None:
-            details['elapsed_ms'] = elapsed_ms
+            details["elapsed_ms"] = elapsed_ms
         if reason is not None:
-            details['reason'] = reason
+            details["reason"] = reason
         return details
 
     @staticmethod
     def _format_invoke_timeout_message(details: dict) -> str:
         return (
-            'Site runtime request timed out: '
+            "Site runtime request timed out: "
             f"runtime_id={details.get('runtime_id')}, "
             f"version={details.get('version')}, "
             f"capability={details.get('capability')}, "
@@ -99,17 +98,17 @@ class SiteRuntimeSupervisor:
 
     def _schedule_runtime_expiry(self, key: str, record: SiteRuntimeRecord) -> None:
         runtime_policy = self._process_launcher.runtime_policy(record)
-        max_runtime_seconds = runtime_policy.get('max_runtime_seconds')
+        max_runtime_seconds = runtime_policy.get("max_runtime_seconds")
         if max_runtime_seconds is None:
             return
 
         def _expire() -> None:
             self._audit_writer.append_event(
                 record,
-                event='runtime_expired',
-                details={'max_runtime_seconds': max_runtime_seconds},
+                event="runtime_expired",
+                details={"max_runtime_seconds": max_runtime_seconds},
             )
-            self.mark_failed(record.runtime_id, record.version, 'runtime_expired')
+            self.mark_failed(record.runtime_id, record.version, "runtime_expired")
             self.stop_runtime(record.runtime_id, record.version)
 
         timer = threading.Timer(float(max_runtime_seconds), _expire)
@@ -150,9 +149,9 @@ class SiteRuntimeSupervisor:
     def start_runtime(
         self,
         record: SiteRuntimeRecord,
-        command: Optional[Sequence[str]] = None,
-        cwd: Optional[Path] = None,
-        endpoint: Optional[str] = None,
+        command: Sequence[str] | None = None,
+        cwd: Path | None = None,
+        endpoint: str | None = None,
     ) -> SiteRuntimeHandle:
         key = self._key(record.runtime_id, record.version)
         self._records[key] = record
@@ -162,23 +161,23 @@ class SiteRuntimeSupervisor:
         handle.endpoint = endpoint
         handle.last_error = None
 
-        host = '127.0.0.1'
+        host = "127.0.0.1"
         port = self._process_launcher.pick_port()
-        runtime_endpoint = endpoint or f'http://{host}:{port}'
+        runtime_endpoint = endpoint or f"http://{host}:{port}"
         process_command = list(command) if command else self._process_launcher.build_runtime_command(record, host, port)
         startup_timeout_ms = int(
-            ((record.manifest or {}).get('health_policy') or {}).get('startup_timeout_ms')
-            or 10000
+            ((record.manifest or {}).get("health_policy") or {}).get("startup_timeout_ms")
+            or 10000,
         )
         process_cwd = cwd or self._process_launcher.resolve_runtime_cwd(record)
         process_env = self._process_launcher.build_process_env(record)
         stdout_handle, stderr_handle = self._process_launcher.open_log_streams(record)
         self._audit_writer.append_event(
             record,
-            event='runtime_starting',
+            event="runtime_starting",
             details={
-                'cwd': str(process_cwd),
-                'command': process_command,
+                "cwd": str(process_cwd),
+                "command": process_command,
             },
         )
 
@@ -201,22 +200,22 @@ class SiteRuntimeSupervisor:
             if not health.healthy:
                 handle.state = SiteRuntimeState.FAILED
                 handle.last_error = health.message
-                self._audit_writer.append_event(record, event='runtime_unhealthy', details={'message': health.message})
+                self._audit_writer.append_event(record, event="runtime_unhealthy", details={"message": health.message})
             else:
                 handle.state = SiteRuntimeState.RUNNING
                 self._audit_writer.append_event(
                     record,
-                    event='runtime_started',
+                    event="runtime_started",
                     details={
-                        'pid': process.pid,
-                        'endpoint': runtime_endpoint,
+                        "pid": process.pid,
+                        "endpoint": runtime_endpoint,
                     },
                 )
                 self._schedule_runtime_expiry(key, record)
         except Exception as exc:
             handle.state = SiteRuntimeState.FAILED
             handle.last_error = str(exc)
-            self._audit_writer.append_event(record, event='runtime_failed', details={'reason': str(exc)})
+            self._audit_writer.append_event(record, event="runtime_failed", details={"reason": str(exc)})
             self.stop_runtime(record.runtime_id, record.version)
             raise
 
@@ -227,13 +226,13 @@ class SiteRuntimeSupervisor:
         key = self._key(runtime_id, version)
         handle = self._handles.get(key)
         if handle is None:
-            raise SiteRuntimeSupervisorError(f'Runtime handle not found: {key}')
+            raise SiteRuntimeSupervisorError(f"Runtime handle not found: {key}")
         handle.health = health
         if not health.healthy:
             handle.state = SiteRuntimeState.FAILED
             handle.last_error = health.message
 
-    def drain_runtime(self, runtime_id: str, version: str) -> Optional[SiteRuntimeHandle]:
+    def drain_runtime(self, runtime_id: str, version: str) -> SiteRuntimeHandle | None:
         handle = self._handles.get(self._key(runtime_id, version))
         if handle is None:
             return None
@@ -241,7 +240,7 @@ class SiteRuntimeSupervisor:
         handle.drained_at = utcnow_iso()
         return handle
 
-    def stop_runtime(self, runtime_id: str, version: str) -> Optional[SiteRuntimeHandle]:
+    def stop_runtime(self, runtime_id: str, version: str) -> SiteRuntimeHandle | None:
         key = self._key(runtime_id, version)
         handle = self._handles.get(key)
         process = self._processes.pop(key, None)
@@ -249,10 +248,10 @@ class SiteRuntimeSupervisor:
         if process is not None and process.poll() is None:
             if handle and handle.endpoint:
                 try:
-                    self._transport_client.request_json(handle.endpoint, '/stop', payload={}, timeout=2.0)
+                    self._transport_client.request_json(handle.endpoint, "/stop", payload={}, timeout=2.0)
                 except (TimeoutError, urllib.error.URLError, json.JSONDecodeError) as exc:
                     logger.warning(
-                        'Site runtime stop request failed: runtime_id=%s, version=%s, error=%s',
+                        "Site runtime stop request failed: runtime_id=%s, version=%s, error=%s",
                         runtime_id,
                         version,
                         exc,
@@ -272,7 +271,7 @@ class SiteRuntimeSupervisor:
                     stream.close()
                 except OSError as exc:
                     logger.warning(
-                        'Site runtime log stream close failed: runtime_id=%s, version=%s, error=%s',
+                        "Site runtime log stream close failed: runtime_id=%s, version=%s, error=%s",
                         runtime_id,
                         version,
                         exc,
@@ -282,10 +281,10 @@ class SiteRuntimeSupervisor:
         handle.state = SiteRuntimeState.STOPPED
         record = self._records.get(key)
         if record is not None:
-            self._audit_writer.append_event(record, event='runtime_stopped', details={})
+            self._audit_writer.append_event(record, event="runtime_stopped", details={})
         return handle
 
-    def mark_failed(self, runtime_id: str, version: str, message: str) -> Optional[SiteRuntimeHandle]:
+    def mark_failed(self, runtime_id: str, version: str, message: str) -> SiteRuntimeHandle | None:
         key = self._key(runtime_id, version)
         handle = self._handles.get(key)
         if handle is None:
@@ -294,10 +293,10 @@ class SiteRuntimeSupervisor:
         handle.last_error = message
         record = self._records.get(key)
         if record is not None:
-            self._audit_writer.append_event(record, event='runtime_marked_failed', details={'reason': message})
+            self._audit_writer.append_event(record, event="runtime_marked_failed", details={"reason": message})
         return handle
 
-    def get_handle(self, runtime_id: str, version: str) -> Optional[SiteRuntimeHandle]:
+    def get_handle(self, runtime_id: str, version: str) -> SiteRuntimeHandle | None:
         return self._handles.get(self._key(runtime_id, version))
 
     def list_handles(self) -> list[SiteRuntimeHandle]:
@@ -310,16 +309,16 @@ class SiteRuntimeSupervisor:
                 request_id=request.request_id,
                 ok=False,
                 error=SiteRuntimeError.bad_response(
-                    'Site runtime is not running',
-                    details={'runtime_id': target.runtime_id, 'version': target.version},
+                    "Site runtime is not running",
+                    details={"runtime_id": target.runtime_id, "version": target.version},
                 ),
             )
 
         payload = dict(request.payload)
-        payload.setdefault('request_id', request.request_id)
-        payload.setdefault('site_name', request.site_name)
-        payload.setdefault('timeout_ms', request.timeout_ms)
-        payload.setdefault('metadata', dict(request.metadata))
+        payload.setdefault("request_id", request.request_id)
+        payload.setdefault("site_name", request.site_name)
+        payload.setdefault("timeout_ms", request.timeout_ms)
+        payload.setdefault("metadata", dict(request.metadata))
 
         outbound_request = SiteRuntimeInvokeRequest(
             request_id=request.request_id,
@@ -334,15 +333,15 @@ class SiteRuntimeSupervisor:
         if record is not None:
             self._audit_writer.append_event(
                 record,
-                event='invoke_started',
+                event="invoke_started",
                 details=self._build_invoke_details(target, request, handle),
             )
 
         try:
             raw_response = self._transport_client.request_json(
                 handle.endpoint,
-                '/invoke',
-                payload={'request': outbound_request.to_dict()},
+                "/invoke",
+                payload={"request": outbound_request.to_dict()},
                 timeout=max((request.timeout_ms or 5000) / 1000, 1.0),
             )
             response = SiteRuntimeInvokeResponse.from_dict(raw_response)
@@ -353,7 +352,7 @@ class SiteRuntimeSupervisor:
                     handle.state = SiteRuntimeState.RUNNING if health.healthy else SiteRuntimeState.FAILED
                 except (TimeoutError, urllib.error.URLError, json.JSONDecodeError) as exc:
                     logger.warning(
-                        'Site runtime health refresh failed after invoke: runtime_id=%s, version=%s, error=%s',
+                        "Site runtime health refresh failed after invoke: runtime_id=%s, version=%s, error=%s",
                         target.runtime_id,
                         target.version,
                         exc,
@@ -362,7 +361,7 @@ class SiteRuntimeSupervisor:
                 elapsed_ms = int((time.monotonic() - started_at) * 1000)
                 self._audit_writer.append_event(
                     record,
-                    event='invoke_completed',
+                    event="invoke_completed",
                     details={
                         **self._build_invoke_details(
                             target,
@@ -370,12 +369,12 @@ class SiteRuntimeSupervisor:
                             handle,
                             elapsed_ms=elapsed_ms,
                         ),
-                        'ok': response.ok,
-                        'error_code': response.error.code if response.error else None,
+                        "ok": response.ok,
+                        "error_code": response.error.code if response.error else None,
                     },
                 )
             return response
-        except (TimeoutError, socket.timeout) as exc:
+        except TimeoutError as exc:
             self.mark_failed(target.runtime_id, target.version, str(exc))
             details = self._build_invoke_details(
                 target,
@@ -387,7 +386,7 @@ class SiteRuntimeSupervisor:
             if record is not None:
                 self._audit_writer.append_event(
                     record,
-                    event='invoke_failed',
+                    event="invoke_failed",
                     details=details,
                 )
             return SiteRuntimeInvokeResponse(
@@ -411,14 +410,14 @@ class SiteRuntimeSupervisor:
             if record is not None:
                 self._audit_writer.append_event(
                     record,
-                    event='invoke_failed',
+                    event="invoke_failed",
                     details=details,
                 )
             return SiteRuntimeInvokeResponse(
                 request_id=request.request_id,
                 ok=False,
                 error=SiteRuntimeError.network_error(
-                    'Site runtime request failed',
+                    "Site runtime request failed",
                     details=details,
                 ),
             )
@@ -434,14 +433,14 @@ class SiteRuntimeSupervisor:
             if record is not None:
                 self._audit_writer.append_event(
                     record,
-                    event='invoke_failed',
+                    event="invoke_failed",
                     details=details,
                 )
             return SiteRuntimeInvokeResponse(
                 request_id=request.request_id,
                 ok=False,
                 error=SiteRuntimeError.bad_response(
-                    'Site runtime returned an invalid response object',
+                    "Site runtime returned an invalid response object",
                     details=details,
                 ),
             )

@@ -1,7 +1,7 @@
+import sys
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
-import sys
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
@@ -35,31 +35,31 @@ def _seed_history(engine, histories):
     with Session(engine, expire_on_commit=False) as session:
         seen_video_ids = set()
         for item in histories:
-            if item['video_id'] not in seen_video_ids:
-                seen_video_ids.add(item['video_id'])
+            if item["video_id"] not in seen_video_ids:
+                seen_video_ids.add(item["video_id"])
                 video = Video(
-                    id=item['video_id'],
-                    title=item.get('title', f"Video {item['video_id']}"),
-                    url=item.get('url', f"https://{item['domain']}/watch/{item['video_id']}"),
-                    domain=item['domain'],
-                    duration=item.get('duration', 120),
-                    thumbnail=item.get('thumbnail', f"https://img.example.com/{item['video_id']}.jpg"),
-                    publish_date=item.get('publish_date', datetime(2024, 1, 1)),
-                    created_at=item.get('video_created_at', datetime(2024, 1, 1)),
-                    updated_at=item.get('video_updated_at', datetime(2024, 1, 1)),
+                    id=item["video_id"],
+                    title=item.get("title", f"Video {item['video_id']}"),
+                    url=item.get("url", f"https://{item['domain']}/watch/{item['video_id']}"),
+                    domain=item["domain"],
+                    duration=item.get("duration", 120),
+                    thumbnail=item.get("thumbnail", f"https://img.example.com/{item['video_id']}.jpg"),
+                    publish_date=item.get("publish_date", datetime(2024, 1, 1)),
+                    created_at=item.get("video_created_at", datetime(2024, 1, 1)),
+                    updated_at=item.get("video_updated_at", datetime(2024, 1, 1)),
                     is_deleted=False,
                 )
                 session.add(video)
             history = VideoHistory(
-                user_id=item.get('user_id', 1),
-                video_id=item['video_id'],
-                start_time=item['end_time'] - timedelta(minutes=10),
-                end_time=item['end_time'],
-                duration=item.get('history_duration', 0),
-                watch_duration=item.get('watch_duration', 0),
-                last_position=item.get('last_position', 0),
-                created_at=item.get('history_created_at', item['end_time']),
-                updated_at=item.get('history_updated_at', item['end_time']),
+                user_id=item.get("user_id", 1),
+                video_id=item["video_id"],
+                start_time=item["end_time"] - timedelta(minutes=10),
+                end_time=item["end_time"],
+                duration=item.get("history_duration", 0),
+                watch_duration=item.get("watch_duration", 0),
+                last_position=item.get("last_position", 0),
+                created_at=item.get("history_created_at", item["end_time"]),
+                updated_at=item.get("history_updated_at", item["end_time"]),
             )
             session.add(history)
 
@@ -70,36 +70,36 @@ def _seed_subscription_links(engine, items):
     with Session(engine, expire_on_commit=False) as session:
         for item in items:
             subscription = Subscription(
-                id=item['subscription_id'],
-                type=item.get('type', 'CHANNEL'),
-                name=item['subscription_name'],
-                url=item.get('subscription_url', f"https://sub.example.com/{item['subscription_id']}"),
-                avatar=item.get('subscription_avatar'),
+                id=item["subscription_id"],
+                type=item.get("type", "CHANNEL"),
+                name=item["subscription_name"],
+                url=item.get("subscription_url", f"https://sub.example.com/{item['subscription_id']}"),
+                avatar=item.get("subscription_avatar"),
                 is_deleted=False,
             )
             session.merge(subscription)
 
             session.merge(
                 SubscriptionVideo(
-                    subscription_id=item['subscription_id'],
-                    video_id=item['video_id'],
-                )
+                    subscription_id=item["subscription_id"],
+                    video_id=item["video_id"],
+                ),
             )
             session.merge(
                 UserSubscription(
-                    id=item.get('user_subscription_id', item['subscription_id']),
-                    user_id=item.get('user_id', 1),
-                    subscription_id=item['subscription_id'],
+                    id=item.get("user_subscription_id", item["subscription_id"]),
+                    user_id=item.get("user_id", 1),
+                    subscription_id=item["subscription_id"],
                     is_deleted=False,
-                    is_nsfw=item.get('is_nsfw', False),
-                )
+                    is_nsfw=item.get("is_nsfw", False),
+                ),
             )
 
         session.commit()
 
 
 def _setup_test_env(monkeypatch):
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(
         engine,
         tables=[
@@ -113,28 +113,28 @@ def _setup_test_env(monkeypatch):
         ],
     )
     with engine.begin() as connection:
-        connection.execute(text('DROP INDEX ux_video_history_user_video'))
+        connection.execute(text("DROP INDEX ux_video_history_user_video"))
 
-    monkeypatch.setattr(video_history_service, 'get_session', lambda: _managed_session(engine))
+    monkeypatch.setattr(video_history_service, "get_session", lambda: _managed_session(engine))
     monkeypatch.setattr(
         video_history_service.user_config_service,
-        'get_config',
-        lambda _user_id: {'showNsfw': False},
+        "get_config",
+        lambda _user_id: {"showNsfw": False},
     )
     monkeypatch.setattr(
         video_history_service.thumbnail_downloader_service,
-        'get_thumbnail_url',
+        "get_thumbnail_url",
         lambda video_id, remote_url, video_url=None: remote_url,
     )
     monkeypatch.setattr(
         video_history_service,
-        'get_site_from_url',
-        lambda url: 'match' if 'match.test' in url else 'other',
+        "get_site_from_url",
+        lambda url: "match" if "match.test" in url else "other",
     )
     monkeypatch.setattr(
         video_history_service.SiteCatalog,
-        'resolve_domains',
-        lambda key: ['match.test'] if key == 'match' else [],
+        "resolve_domains",
+        lambda key: ["match.test"] if key == "match" else [],
     )
 
     return engine
@@ -145,16 +145,16 @@ def test_list_histories_returns_filtered_total_instead_of_current_page_size(monk
     _seed_history(
         engine,
         [
-            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 3, 12, 0, 0)},
-            {'video_id': 2, 'domain': 'beta.example.com', 'end_time': datetime(2024, 1, 2, 12, 0, 0)},
-            {'video_id': 3, 'domain': 'gamma.example.com', 'end_time': datetime(2024, 1, 1, 12, 0, 0)},
+            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 3, 12, 0, 0)},
+            {"video_id": 2, "domain": "beta.example.com", "end_time": datetime(2024, 1, 2, 12, 0, 0)},
+            {"video_id": 3, "domain": "gamma.example.com", "end_time": datetime(2024, 1, 1, 12, 0, 0)},
         ],
     )
 
     result = video_history_service.list_histories(user_id=1, filters={}, page=1, page_size=2)
 
-    assert len(result['items']) == 2
-    assert result['total'] == 3
+    assert len(result["items"]) == 2
+    assert result["total"] == 3
 
 
 def test_list_histories_applies_site_filter_before_pagination(monkeypatch):
@@ -162,20 +162,20 @@ def test_list_histories_applies_site_filter_before_pagination(monkeypatch):
     _seed_history(
         engine,
         [
-            {'video_id': 1, 'domain': 'other.test', 'url': 'https://other.test/watch/1', 'end_time': datetime(2024, 1, 3, 12, 0, 0)},
-            {'video_id': 2, 'domain': 'match.test', 'url': 'https://match.test/watch/2', 'end_time': datetime(2024, 1, 2, 12, 0, 0)},
+            {"video_id": 1, "domain": "other.test", "url": "https://other.test/watch/1", "end_time": datetime(2024, 1, 3, 12, 0, 0)},
+            {"video_id": 2, "domain": "match.test", "url": "https://match.test/watch/2", "end_time": datetime(2024, 1, 2, 12, 0, 0)},
         ],
     )
 
     result = video_history_service.list_histories(
         user_id=1,
-        filters={'site': 'match'},
+        filters={"site": "match"},
         page=1,
         page_size=1,
     )
 
-    assert result['total'] == 1
-    assert [item['id'] for item in result['items']] == [2]
+    assert result["total"] == 1
+    assert [item["id"] for item in result["items"]] == [2]
 
 
 def test_list_histories_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
@@ -183,31 +183,31 @@ def test_list_histories_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
     _seed_history(
         engine,
         [
-            {'video_id': 1, 'domain': 'match.test', 'url': 'https://match.test/watch/1', 'end_time': datetime(2024, 1, 3, 12, 0, 0)},
+            {"video_id": 1, "domain": "match.test", "url": "https://match.test/watch/1", "end_time": datetime(2024, 1, 3, 12, 0, 0)},
         ],
     )
     _seed_subscription_links(
         engine,
         [
             {
-                'subscription_id': 1,
-                'video_id': 1,
-                'subscription_name': 'Hidden NSFW feed',
-                'subscription_url': 'https://match.test/channel/1',
-                'is_nsfw': True,
+                "subscription_id": 1,
+                "video_id": 1,
+                "subscription_name": "Hidden NSFW feed",
+                "subscription_url": "https://match.test/channel/1",
+                "is_nsfw": True,
             },
         ],
     )
 
     result = video_history_service.list_histories(
         user_id=1,
-        filters={'nsfw': 'yes'},
+        filters={"nsfw": "yes"},
         page=1,
         page_size=10,
     )
 
-    assert result['total'] == 0
-    assert result['items'] == []
+    assert result["total"] == 0
+    assert result["items"] == []
 
 
 def test_list_histories_deduplicates_same_video_id(monkeypatch):
@@ -215,17 +215,17 @@ def test_list_histories_deduplicates_same_video_id(monkeypatch):
     _seed_history(
         engine,
         [
-            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 3, 12, 0, 0), 'last_position': 30},
-            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 2, 12, 0, 0), 'last_position': 10},
-            {'video_id': 2, 'domain': 'beta.example.com', 'end_time': datetime(2024, 1, 1, 12, 0, 0), 'last_position': 20},
+            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 3, 12, 0, 0), "last_position": 30},
+            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 2, 12, 0, 0), "last_position": 10},
+            {"video_id": 2, "domain": "beta.example.com", "end_time": datetime(2024, 1, 1, 12, 0, 0), "last_position": 20},
         ],
     )
 
     result = video_history_service.list_histories(user_id=1, filters={}, page=1, page_size=10)
 
-    assert result['total'] == 2
-    assert [item['id'] for item in result['items']] == [1, 2]
-    assert result['items'][0]['last_position'] == 30
+    assert result["total"] == 2
+    assert [item["id"] for item in result["items"]] == [1, 2]
+    assert result["items"][0]["last_position"] == 30
 
 
 def test_list_histories_returns_latest_history_id(monkeypatch):
@@ -234,8 +234,8 @@ def test_list_histories_returns_latest_history_id(monkeypatch):
     _seed_history(
         engine,
         [
-            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': latest_end_time, 'last_position': 30},
-            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 2, 12, 0, 0), 'last_position': 10},
+            {"video_id": 1, "domain": "alpha.example.com", "end_time": latest_end_time, "last_position": 30},
+            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 2, 12, 0, 0), "last_position": 10},
         ],
     )
 
@@ -244,8 +244,8 @@ def test_list_histories_returns_latest_history_id(monkeypatch):
 
     result = video_history_service.list_histories(user_id=1, filters={}, page=1, page_size=10)
 
-    assert result['items'][0]['id'] == 1
-    assert result['items'][0]['history_id'] == latest_history.id
+    assert result["items"][0]["id"] == 1
+    assert result["items"][0]["history_id"] == latest_history.id
 
 
 def test_list_histories_exposes_played_at_from_history_end_time(monkeypatch):
@@ -255,18 +255,18 @@ def test_list_histories_exposes_played_at_from_history_end_time(monkeypatch):
         engine,
         [
             {
-                'video_id': 1,
-                'domain': 'alpha.example.com',
-                'end_time': latest_end_time,
-                'video_created_at': datetime(2023, 12, 1, 8, 0, 0),
+                "video_id": 1,
+                "domain": "alpha.example.com",
+                "end_time": latest_end_time,
+                "video_created_at": datetime(2023, 12, 1, 8, 0, 0),
             },
         ],
     )
 
     result = video_history_service.list_histories(user_id=1, filters={}, page=1, page_size=10)
 
-    assert result['items'][0]['played_at'] == '2024-01-03 12:00:00'
-    assert result['items'][0]['created_at'] == '2023-12-01 08:00:00'
+    assert result["items"][0]["played_at"] == "2024-01-03 12:00:00"
+    assert result["items"][0]["created_at"] == "2023-12-01 08:00:00"
 
 
 def test_list_histories_filters_date_range_by_played_at(monkeypatch):
@@ -275,16 +275,16 @@ def test_list_histories_filters_date_range_by_played_at(monkeypatch):
         engine,
         [
             {
-                'video_id': 1,
-                'domain': 'alpha.example.com',
-                'end_time': datetime(2024, 1, 3, 12, 0, 0),
-                'history_created_at': datetime(2024, 1, 1, 8, 0, 0),
+                "video_id": 1,
+                "domain": "alpha.example.com",
+                "end_time": datetime(2024, 1, 3, 12, 0, 0),
+                "history_created_at": datetime(2024, 1, 1, 8, 0, 0),
             },
             {
-                'video_id': 2,
-                'domain': 'beta.example.com',
-                'end_time': datetime(2024, 1, 1, 12, 0, 0),
-                'history_created_at': datetime(2024, 1, 4, 8, 0, 0),
+                "video_id": 2,
+                "domain": "beta.example.com",
+                "end_time": datetime(2024, 1, 1, 12, 0, 0),
+                "history_created_at": datetime(2024, 1, 4, 8, 0, 0),
             },
         ],
     )
@@ -292,15 +292,15 @@ def test_list_histories_filters_date_range_by_played_at(monkeypatch):
     result = video_history_service.list_histories(
         user_id=1,
         filters={
-            'start_date': datetime(2024, 1, 2, 0, 0, 0),
-            'end_date': datetime(2024, 1, 3, 23, 59, 59),
+            "start_date": datetime(2024, 1, 2, 0, 0, 0),
+            "end_date": datetime(2024, 1, 3, 23, 59, 59),
         },
         page=1,
         page_size=10,
     )
 
-    assert result['total'] == 1
-    assert [item['id'] for item in result['items']] == [1]
+    assert result["total"] == 1
+    assert [item["id"] for item in result["items"]] == [1]
 
 
 def test_list_histories_filters_by_video_title_query(monkeypatch):
@@ -308,20 +308,20 @@ def test_list_histories_filters_by_video_title_query(monkeypatch):
     _seed_history(
         engine,
         [
-            {'video_id': 1, 'domain': 'alpha.example.com', 'title': 'Daily Coding Notes', 'end_time': datetime(2024, 1, 3, 12, 0, 0)},
-            {'video_id': 2, 'domain': 'beta.example.com', 'title': 'Weekend Travel Log', 'end_time': datetime(2024, 1, 2, 12, 0, 0)},
+            {"video_id": 1, "domain": "alpha.example.com", "title": "Daily Coding Notes", "end_time": datetime(2024, 1, 3, 12, 0, 0)},
+            {"video_id": 2, "domain": "beta.example.com", "title": "Weekend Travel Log", "end_time": datetime(2024, 1, 2, 12, 0, 0)},
         ],
     )
 
     result = video_history_service.list_histories(
         user_id=1,
-        filters={'query': 'coding'},
+        filters={"query": "coding"},
         page=1,
         page_size=10,
     )
 
-    assert result['total'] == 1
-    assert [item['id'] for item in result['items']] == [1]
+    assert result["total"] == 1
+    assert [item["id"] for item in result["items"]] == [1]
 
 
 def test_delete_history_removes_only_target_history_for_current_user(monkeypatch):
@@ -329,9 +329,9 @@ def test_delete_history_removes_only_target_history_for_current_user(monkeypatch
     _seed_history(
         engine,
         [
-            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 3, 12, 0, 0), 'user_id': 1},
-            {'video_id': 2, 'domain': 'beta.example.com', 'end_time': datetime(2024, 1, 2, 12, 0, 0), 'user_id': 1},
-            {'video_id': 3, 'domain': 'gamma.example.com', 'end_time': datetime(2024, 1, 1, 12, 0, 0), 'user_id': 2},
+            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 3, 12, 0, 0), "user_id": 1},
+            {"video_id": 2, "domain": "beta.example.com", "end_time": datetime(2024, 1, 2, 12, 0, 0), "user_id": 1},
+            {"video_id": 3, "domain": "gamma.example.com", "end_time": datetime(2024, 1, 1, 12, 0, 0), "user_id": 2},
         ],
     )
 
@@ -354,27 +354,27 @@ def test_list_histories_filters_by_subscription_name_query(monkeypatch):
     _seed_history(
         engine,
         [
-            {'video_id': 1, 'domain': 'alpha.example.com', 'title': 'Episode One', 'end_time': datetime(2024, 1, 3, 12, 0, 0)},
-            {'video_id': 2, 'domain': 'beta.example.com', 'title': 'Episode Two', 'end_time': datetime(2024, 1, 2, 12, 0, 0)},
+            {"video_id": 1, "domain": "alpha.example.com", "title": "Episode One", "end_time": datetime(2024, 1, 3, 12, 0, 0)},
+            {"video_id": 2, "domain": "beta.example.com", "title": "Episode Two", "end_time": datetime(2024, 1, 2, 12, 0, 0)},
         ],
     )
     _seed_subscription_links(
         engine,
         [
-            {'subscription_id': 101, 'subscription_name': 'Search Match Channel', 'video_id': 1, 'user_id': 1},
-            {'subscription_id': 102, 'subscription_name': 'Another Channel', 'video_id': 2, 'user_id': 1},
+            {"subscription_id": 101, "subscription_name": "Search Match Channel", "video_id": 1, "user_id": 1},
+            {"subscription_id": 102, "subscription_name": "Another Channel", "video_id": 2, "user_id": 1},
         ],
     )
 
     result = video_history_service.list_histories(
         user_id=1,
-        filters={'query': 'match'},
+        filters={"query": "match"},
         page=1,
         page_size=1,
     )
 
-    assert result['total'] == 1
-    assert [item['id'] for item in result['items']] == [1]
+    assert result["total"] == 1
+    assert [item["id"] for item in result["items"]] == [1]
 
 
 def test_list_histories_supports_field_search_tokens(monkeypatch):
@@ -382,27 +382,27 @@ def test_list_histories_supports_field_search_tokens(monkeypatch):
     _seed_history(
         engine,
         [
-            {'video_id': 1, 'domain': 'alpha.example.com', 'title': 'Episode One', 'url': 'https://alpha.example.com/watch/1', 'end_time': datetime(2024, 1, 3, 12, 0, 0)},
-            {'video_id': 2, 'domain': 'beta.example.com', 'title': 'Episode Two', 'url': 'https://beta.example.com/watch/2', 'end_time': datetime(2024, 1, 2, 12, 0, 0)},
+            {"video_id": 1, "domain": "alpha.example.com", "title": "Episode One", "url": "https://alpha.example.com/watch/1", "end_time": datetime(2024, 1, 3, 12, 0, 0)},
+            {"video_id": 2, "domain": "beta.example.com", "title": "Episode Two", "url": "https://beta.example.com/watch/2", "end_time": datetime(2024, 1, 2, 12, 0, 0)},
         ],
     )
     _seed_subscription_links(
         engine,
         [
-            {'subscription_id': 101, 'subscription_name': 'Alpha Channel', 'video_id': 1, 'user_id': 1},
-            {'subscription_id': 102, 'subscription_name': 'Beta Match Channel', 'video_id': 2, 'user_id': 1},
+            {"subscription_id": 101, "subscription_name": "Alpha Channel", "video_id": 1, "user_id": 1},
+            {"subscription_id": 102, "subscription_name": "Beta Match Channel", "video_id": 2, "user_id": 1},
         ],
     )
 
     result = video_history_service.list_histories(
         user_id=1,
-        filters={'query': 'channel:"Beta Match" url:watch/2'},
+        filters={"query": 'channel:"Beta Match" url:watch/2'},
         page=1,
         page_size=10,
     )
 
-    assert result['total'] == 1
-    assert [item['id'] for item in result['items']] == [2]
+    assert result["total"] == 1
+    assert [item["id"] for item in result["items"]] == [2]
 
 
 def test_update_history_merges_duplicate_rows_for_same_video(monkeypatch):
@@ -410,8 +410,8 @@ def test_update_history_merges_duplicate_rows_for_same_video(monkeypatch):
     _seed_history(
         engine,
         [
-            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 3, 12, 0, 0), 'last_position': 30},
-            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 2, 12, 0, 0), 'last_position': 10},
+            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 3, 12, 0, 0), "last_position": 30},
+            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 2, 12, 0, 0), "last_position": 10},
         ],
     )
 
@@ -432,24 +432,24 @@ def test_batch_update_histories_updates_existing_rows_and_creates_missing_rows(m
     _seed_history(
         engine,
         [
-            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 3, 12, 0, 0), 'last_position': 30},
-            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': datetime(2024, 1, 2, 12, 0, 0), 'last_position': 10},
+            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 3, 12, 0, 0), "last_position": 30},
+            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 2, 12, 0, 0), "last_position": 10},
         ],
     )
     with Session(engine, expire_on_commit=False) as session:
         session.add(
             Video(
                 id=2,
-                title='Video 2',
-                url='https://beta.example.com/watch/2',
-                domain='beta.example.com',
+                title="Video 2",
+                url="https://beta.example.com/watch/2",
+                domain="beta.example.com",
                 duration=120,
-                thumbnail='https://img.example.com/2.jpg',
+                thumbnail="https://img.example.com/2.jpg",
                 publish_date=datetime(2024, 1, 1),
                 created_at=datetime(2024, 1, 1),
                 updated_at=datetime(2024, 1, 1),
                 is_deleted=False,
-            )
+            ),
         )
         session.commit()
 
@@ -478,7 +478,7 @@ def test_update_history_ignores_stale_timestamp_that_would_rewind_progress(monke
     _seed_history(
         engine,
         [
-            {'video_id': 1, 'domain': 'alpha.example.com', 'end_time': existing_end_time, 'last_position': 42},
+            {"video_id": 1, "domain": "alpha.example.com", "end_time": existing_end_time, "last_position": 42},
         ],
     )
 
@@ -502,16 +502,16 @@ def test_batch_update_histories_prefers_latest_timestamp_per_video(monkeypatch):
         session.add(
             Video(
                 id=1,
-                title='Video 1',
-                url='https://alpha.example.com/watch/1',
-                domain='alpha.example.com',
+                title="Video 1",
+                url="https://alpha.example.com/watch/1",
+                domain="alpha.example.com",
                 duration=120,
-                thumbnail='https://img.example.com/1.jpg',
+                thumbnail="https://img.example.com/1.jpg",
                 publish_date=datetime(2024, 1, 1),
                 created_at=datetime(2024, 1, 1),
                 updated_at=datetime(2024, 1, 1),
                 is_deleted=False,
-            )
+            ),
         )
         session.commit()
 

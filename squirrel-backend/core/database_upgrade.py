@@ -1,8 +1,9 @@
 import logging
 import os
 
-from alembic import command
 from alembic.config import Config as AlembicConfig
+
+from alembic import command
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import List, Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -11,7 +11,7 @@ class IdExtractor(Protocol):
     Extractors extract video/channel IDs from URLs.
     """
 
-    domains: List[str]
+    domains: list[str]
     url: str
 
     def extract_id(self) -> str:
@@ -32,9 +32,9 @@ class RegexIdExtractor:
     implement `extract_id()` directly.
     """
 
-    domains: List[str] = []
-    domain: Optional[str] = None
-    pattern: Optional[str] = None
+    domains: list[str] = []
+    domain: str | None = None
+    pattern: str | None = None
     group_index: int = 1
 
     def __init__(self, url: str):

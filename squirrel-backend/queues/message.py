@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 @dataclass
@@ -15,17 +15,17 @@ class MqMessage:
     - 可扩展：headers_xxx
     """
 
-    body: Dict[str, Any]
-    trace_id: Optional[str] = field(default=None)
+    body: dict[str, Any]
+    trace_id: str | None = field(default=None)
 
-    def to_stream_fields(self) -> Dict[str, str]:
+    def to_stream_fields(self) -> dict[str, str]:
         fields = {"body": json.dumps(self.body, ensure_ascii=False)}
         if self.trace_id:
             fields["trace_id"] = self.trace_id
         return fields
 
     @classmethod
-    def from_stream_fields(cls, fields: Dict[bytes, bytes]) -> "MqMessage":
+    def from_stream_fields(cls, fields: dict[bytes, bytes]) -> MqMessage:
         def _b2s(b: bytes) -> str:
             return b.decode("utf-8") if isinstance(b, (bytes, bytearray)) else str(b)
 
@@ -35,7 +35,7 @@ class MqMessage:
             body = json.loads(body_raw)
         except (ValueError, TypeError):
             body = {"_raw": body_raw}
-        
+
         trace_id = mapped.get("trace_id")
         return cls(body=body, trace_id=trace_id)
 

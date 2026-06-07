@@ -1,10 +1,17 @@
-from datetime import datetime
+from __future__ import annotations
 
-from sqlalchemy import Integer, Index, Float
-from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Index, Integer
+from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from models import Base
 from models.mixins.serializer import SerializerMixin
+
+if TYPE_CHECKING:
+    from models.playlist import Playlist
+    from models.video import Video
 
 
 def _playlist_join():
@@ -18,11 +25,11 @@ def _video_join():
 
 
 class PlaylistItem(Base, SerializerMixin):
-    __tablename__ = 'playlist_item'
+    __tablename__ = "playlist_item"
 
     __table_args__ = (
-        Index('ix_playlist_item_playlist_position', 'playlist_id', 'position'),
-        Index('ix_playlist_item_user_video', 'user_id', 'video_id'),
+        Index("ix_playlist_item_playlist_position", "playlist_id", "position"),
+        Index("ix_playlist_item_user_video", "user_id", "video_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -32,13 +39,13 @@ class PlaylistItem(Base, SerializerMixin):
     position: Mapped[int] = mapped_column(Integer, default=0)
     added_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
 
-    playlist: Mapped["Playlist"] = relationship(
+    playlist: Mapped[Playlist] = relationship(
         "Playlist",
         primaryjoin=_playlist_join,
         back_populates="items",
         viewonly=True,
     )
-    video: Mapped["Video"] = relationship(
+    video: Mapped[Video] = relationship(
         "Video",
         primaryjoin=_video_join,
         viewonly=True,

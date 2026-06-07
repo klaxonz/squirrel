@@ -1,7 +1,7 @@
 import os
-from secrets import token_urlsafe
 from functools import lru_cache
 from pathlib import Path
+from secrets import token_urlsafe
 
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
@@ -19,31 +19,31 @@ class Settings(BaseSettings):
     }
 
 
-    REDIS_HOST: str = 'localhost'
+    REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
-    REDIS_PASSWORD: str = ''
+    REDIS_PASSWORD: str = ""
     REDIS_MAX_CONNECTIONS: int = 256
     REDIS_POOL_TIMEOUT: int = 10
-    POSTGRES_HOST: str = 'localhost'
+    POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
-    POSTGRES_USER: str = 'postgres'
-    POSTGRES_PASSWORD: str = 'postgres'
-    POSTGRES_DATABASE: str = 'squirrel'
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DATABASE: str = "squirrel"
     PORT: int = 8001
-    THUMBNAILS_PATH: str = ''
-    CLIP_MARKER_PREVIEWS_PATH: str = ''
-    CLOUDFLARE_BYPASS_SERVICE_URL: str = ''
-    COOKIECLOUD_URL: str = ''
-    COOKIECLOUD_UUID: str = ''
-    COOKIECLOUD_PASSWORD: str = ''
-    KUGOU_MUSIC_API_BASE_URL: str = ''
-    KUGOU_MUSIC_COOKIE: str = ''
+    THUMBNAILS_PATH: str = ""
+    CLIP_MARKER_PREVIEWS_PATH: str = ""
+    CLOUDFLARE_BYPASS_SERVICE_URL: str = ""
+    COOKIECLOUD_URL: str = ""
+    COOKIECLOUD_UUID: str = ""
+    COOKIECLOUD_PASSWORD: str = ""
+    KUGOU_MUSIC_API_BASE_URL: str = ""
+    KUGOU_MUSIC_COOKIE: str = ""
     JWT_SECRET_KEY: str = token_urlsafe(32)
-    CORS_ALLOW_ORIGINS: str = 'http://localhost:5173,http://127.0.0.1:5173'
-    SQUIRREL_YOUTUBE_POT_PROVIDER_MODE: str = 'auto'
-    SQUIRREL_YOUTUBE_POT_PROVIDER_BASE_URL: str = ''
-    SQUIRREL_YOUTUBE_POT_PROVIDER_SERVER_HOME: str = ''
+    CORS_ALLOW_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+    SQUIRREL_YOUTUBE_POT_PROVIDER_MODE: str = "auto"
+    SQUIRREL_YOUTUBE_POT_PROVIDER_BASE_URL: str = ""
+    SQUIRREL_YOUTUBE_POT_PROVIDER_SERVER_HOME: str = ""
 
     POOL_SIZE: int = 30
     POOL_MAX_SIZE: int = 60
@@ -51,14 +51,14 @@ class Settings(BaseSettings):
     CHANNEL_UPDATE_DEFAULT_SIZE: int = 30
 
     MQ_CONSUMER_DEFAULT_COUNT: int = 1
-    MQ_CONSUMER_COUNT_OVERRIDES: str = ''
+    MQ_CONSUMER_COUNT_OVERRIDES: str = ""
     CRAWL_DEFAULT_SITE_CONCURRENCY: int = 2
-    CRAWL_SITE_CONCURRENCY_OVERRIDES: str = ''
-    CRAWL_TASK_TYPE_LIMITS: str = 'subscription_sync_incremental=2,subscription_sync_full=1,video_extract=8'
+    CRAWL_SITE_CONCURRENCY_OVERRIDES: str = ""
+    CRAWL_TASK_TYPE_LIMITS: str = "subscription_sync_incremental=2,subscription_sync_full=1,video_extract=8"
     CRAWL_SLOTS_PER_PROCESS: int = 8
     CRAWL_WORKER_LEASE_SECONDS: int = 60
     CRAWL_WORKER_POLL_INTERVAL_MS: int = 1000
-    OUTBOX_NOTIFY_CHANNEL: str = 'outbox_events'
+    OUTBOX_NOTIFY_CHANNEL: str = "outbox_events"
     OUTBOX_NOTIFY_POLL_TIMEOUT_SECONDS: int = 5
     OUTBOX_CONSUME_BATCH_SIZE: int = 50
     FULL_SYNC_MAX_INFLIGHT: int = 2
@@ -87,7 +87,7 @@ class Settings(BaseSettings):
 
     @property
     def config_dir(self) -> Path:
-        return base_dir.parent / 'config'
+        return base_dir.parent / "config"
 
     @property
     def base_dir(self) -> Path:
@@ -115,10 +115,10 @@ class Settings(BaseSettings):
 
     @property
     def cors_allow_origins(self) -> list[str]:
-        return [origin.strip() for origin in self.CORS_ALLOW_ORIGINS.split(',') if origin.strip()]
+        return [origin.strip() for origin in self.CORS_ALLOW_ORIGINS.split(",") if origin.strip()]
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     env_file = f".env.{os.getenv('ENV')}" if os.getenv("ENV") else ".env"
     env_path = base_dir.parent / env_file

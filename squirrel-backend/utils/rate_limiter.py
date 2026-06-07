@@ -3,7 +3,6 @@ import random
 import threading
 import time
 from dataclasses import dataclass
-from typing import Optional, Dict, Set
 
 from .url_helper import extract_second_level_domain
 
@@ -13,6 +12,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RateLimit:
     """Rate limit configuration"""
+
     min_interval: float  # Minimum interval between requests
     max_interval: float  # Maximum interval between requests
     domain: str  # Domain this rate limit applies to
@@ -27,19 +27,19 @@ class RateLimiter:
     """
 
     # Site-specific defaults are driven by site configs; keep the map empty here
-    DEFAULT_LIMITS: Dict[str, RateLimit] = {}
+    DEFAULT_LIMITS: dict[str, RateLimit] = {}
 
     # Global default rate limit config (used for unknown domains)
-    DEFAULT_RATE_LIMIT = RateLimit(3, 5, '*')
+    DEFAULT_RATE_LIMIT = RateLimit(3, 5, "*")
 
     def __init__(self):
         # key: second-level domain, value: last request timestamp
-        self._last_request_time: Dict[str, float] = {}
+        self._last_request_time: dict[str, float] = {}
         # key: second-level domain, value: RateLimit
-        self._rate_limits: Dict[str, RateLimit] = self.DEFAULT_LIMITS.copy()
-        self._disabled_domains: Set[str] = set()
+        self._rate_limits: dict[str, RateLimit] = self.DEFAULT_LIMITS.copy()
+        self._disabled_domains: set[str] = set()
         # per-domain locks to ensure thread safety per bucket
-        self._domain_locks: Dict[str, threading.Lock] = {}
+        self._domain_locks: dict[str, threading.Lock] = {}
         # protect maps for lazy lock creation
         self._locks_map_lock = threading.Lock()
 
@@ -69,9 +69,9 @@ class RateLimiter:
                     self._domain_locks[sld] = lock
         return lock
 
-    def wait(self, domain: Optional[str] = None):
+    def wait(self, domain: str | None = None):
         """Wait according to rate limit per second-level domain"""
-        sld = extract_second_level_domain(domain) if domain else '*'
+        sld = extract_second_level_domain(domain) if domain else "*"
         if sld in self._disabled_domains:
             return
 
@@ -79,7 +79,7 @@ class RateLimiter:
         rate_limit = self._rate_limits.get(sld, self.DEFAULT_RATE_LIMIT)
 
         # unknown domains should still have independent buckets keyed by sld
-        bucket_key = sld if sld and sld != '' else '*'
+        bucket_key = sld if sld and sld != "" else "*"
         lock = self._get_lock(bucket_key)
 
         with lock:

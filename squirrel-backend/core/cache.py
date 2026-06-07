@@ -12,16 +12,16 @@ logger = logging.getLogger(__name__)
 
 def get_redis_connection_kwargs() -> dict[str, Any]:
     return {
-        'host': settings.REDIS_HOST,
-        'port': settings.REDIS_PORT,
-        'db': settings.REDIS_DB,
-        'password': settings.REDIS_PASSWORD or None,
-        'decode_responses': True,
-        'retry_on_timeout': True,
-        'socket_keepalive': True,
-        'socket_keepalive_options': {},
-        'socket_connect_timeout': 5,
-        'health_check_interval': 30,
+        "host": settings.REDIS_HOST,
+        "port": settings.REDIS_PORT,
+        "db": settings.REDIS_DB,
+        "password": settings.REDIS_PASSWORD or None,
+        "decode_responses": True,
+        "retry_on_timeout": True,
+        "socket_keepalive": True,
+        "socket_keepalive_options": {},
+        "socket_connect_timeout": 5,
+        "health_check_interval": 30,
     }
 
 
@@ -49,12 +49,12 @@ logger.info("Redis client initialized")
 def get_distributed_lock(
     lock_key: str,
     timeout: int = 180,
-    auto_renewal: bool = True
+    auto_renewal: bool = True,
 ) -> RedisLock:
     return RedisLock(
         redis_client,
         lock_key,
         expire=timeout,
         auto_renewal=auto_renewal,
-        strict=True  # 严格模式：确保锁由当前线程持有
+        strict=True,  # 严格模式：确保锁由当前线程持有
     )

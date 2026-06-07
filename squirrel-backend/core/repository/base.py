@@ -1,6 +1,7 @@
-from typing import Generic, TypeVar, Type, Optional, List, Any
+from typing import Generic, TypeVar
 
-from sqlalchemy import select, delete as sa_delete
+from sqlalchemy import delete as sa_delete
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.database import get_session
@@ -9,9 +10,9 @@ T = TypeVar("T")
 
 
 class BaseRepository(Generic[T]):
-    model: Type[T]
+    model: type[T]
 
-    def __init__(self, session: Optional[Session] = None):
+    def __init__(self, session: Session | None = None):
         self._external_session = session
 
     def _get_session(self):
@@ -19,19 +20,19 @@ class BaseRepository(Generic[T]):
             return self._external_session
         return get_session()
 
-    def get_by_id(self, id: int) -> Optional[T]:
+    def get_by_id(self, id: int) -> T | None:
         with self._get_session() as session:
             return session.get(self.model, id)
 
-    def get_by_ids(self, ids: List[int]) -> List[T]:
+    def get_by_ids(self, ids: list[int]) -> list[T]:
         if not ids:
             return []
         with self._get_session() as session:
             return list(session.scalars(
-                select(self.model).where(self.model.id.in_(ids))
+                select(self.model).where(self.model.id.in_(ids)),
             ).all())
 
-    def get_all(self) -> List[T]:
+    def get_all(self) -> list[T]:
         with self._get_session() as session:
             return list(session.scalars(select(self.model)).all())
 
@@ -52,17 +53,17 @@ class BaseRepository(Generic[T]):
     def delete(self, id: int) -> bool:
         with self._get_session() as session:
             result = session.execute(
-                sa_delete(self.model).where(self.model.id == id)
+                sa_delete(self.model).where(self.model.id == id),
             )
             session.commit()
             return result.rowcount > 0
 
-    def delete_by_ids(self, ids: List[int]) -> int:
+    def delete_by_ids(self, ids: list[int]) -> int:
         if not ids:
             return 0
         with self._get_session() as session:
             result = session.execute(
-                sa_delete(self.model).where(self.model.id.in_(ids))
+                sa_delete(self.model).where(self.model.id.in_(ids)),
             )
             session.commit()
             return result.rowcount

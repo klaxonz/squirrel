@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from bs4 import BeautifulSoup
 
+from .config import get_http_headers
 from .core import SubscriptionImportItem
 from .http import request_without_limit
-from .config import get_http_headers
 from .utils import filter_cookies_to_query_string
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class BaseImporter(ABC):
     def base_url(self) -> str:
         return f"https://www.{self.domain}"
 
-    def _get_headers(self, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    def _get_headers(self, extra: dict[str, str] | None = None) -> dict[str, str]:
         """Get HTTP headers with cookies."""
         base = {"User-Agent": self.user_agent}
         if extra:
@@ -57,7 +57,7 @@ class BaseImporter(ABC):
             headers["Cookie"] = cookies
         return headers
 
-    def _fetch_page(self, path: str, headers: Optional[Dict[str, str]] = None) -> BeautifulSoup:
+    def _fetch_page(self, path: str, headers: dict[str, str] | None = None) -> BeautifulSoup:
         """Fetch a page and return parsed BeautifulSoup."""
         url = self._to_full_url(path)
         hdrs = headers or self._get_headers()
@@ -65,7 +65,7 @@ class BaseImporter(ABC):
         resp.raise_for_status()
         return BeautifulSoup(resp.text, "html.parser")
 
-    def _fetch_page_raw(self, path: str, headers: Optional[Dict[str, str]] = None) -> str:
+    def _fetch_page_raw(self, path: str, headers: dict[str, str] | None = None) -> str:
         """Fetch a page and return raw HTML text."""
         url = self._to_full_url(path)
         hdrs = headers or self._get_headers()
@@ -87,8 +87,8 @@ class BaseImporter(ABC):
         self,
         soup: BeautifulSoup,
         selector: str,
-        url_filter: Optional[str] = None
-    ) -> List[str]:
+        url_filter: str | None = None
+    ) -> list[str]:
         """Extract links from soup using CSS selector.
 
         Args:
@@ -99,7 +99,7 @@ class BaseImporter(ABC):
         Returns:
             List of full URLs
         """
-        urls: List[str] = []
+        urls: list[str] = []
         items = soup.select(selector)
         for item in items:
             href = item.get("href")
@@ -113,7 +113,7 @@ class BaseImporter(ABC):
         return urls
 
     @abstractmethod
-    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
+    def get_user_subscriptions(self) -> list[SubscriptionImportItem]:
         """Get user's subscriptions. Must be implemented by subclasses."""
         pass
 
@@ -144,9 +144,9 @@ class PaginatedImporter(BaseImporter):
     max_pages: int = 100
     page_param: str = "page"
 
-    def get_user_subscriptions(self) -> List[SubscriptionImportItem]:
+    def get_user_subscriptions(self) -> list[SubscriptionImportItem]:
         """Paginated subscription fetching."""
-        subscription_urls: List[str] = []
+        subscription_urls: list[str] = []
         headers = self._get_headers()
 
         for page in range(1, self.max_pages + 1):
@@ -195,7 +195,7 @@ class PaginatedImporter(BaseImporter):
         separator = "&" if "?" in base else "?"
         return f"{base}{separator}{self.page_param}={page}"
 
-    def _extract_url_from_item(self, item: Any) -> Optional[str]:
+    def _extract_url_from_item(self, item: Any) -> str | None:
         """Extract URL from a single item. Override in subclass."""
         href = item.get("href")
         return self._to_full_url(href) if href else None

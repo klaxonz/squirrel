@@ -1,18 +1,15 @@
-"""
-默认更新策略（适用于所有站点）
+"""默认更新策略（适用于所有站点）
 """
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
+from urllib.parse import urlparse
 
 from sqlalchemy import update
+
 from core.config import settings
 from core.database import get_session
-from urllib.parse import urlparse
 from models.subscription import Subscription as SubscriptionModel
 from models.subscription_sync_state import SyncMode, SyncStatus
-from site_runtimes.gateway import SiteRuntimeGateway
-from site_runtimes.ports import get_runtime_gateway
 from schemas.video.dto.video_dto import VideoExtractDto
 from services import download_service, subscription_service, subscription_sync_state_service, video_service
 from services.blocked_video_service import is_blocked_video
@@ -20,10 +17,13 @@ from services.subscription_runtime_models import SubscriptionSyncResult
 from services.subscription_sync_event_service import SyncEventInput, append_event
 from services.subscription_sync_run_service import SyncEventType, SyncRunStatus
 from services.video_extraction import extract_video
-from utils.site_catalog import SiteCatalog
+from site_runtimes.gateway import SiteRuntimeGateway
+from site_runtimes.ports import get_runtime_gateway
 from utils.metrics import metrics
-from .base import UpdateStrategy
+from utils.site_catalog import SiteCatalog
+
 from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateMode, UpdateTrigger
+from .base import UpdateStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +33,12 @@ FULL_BACKFILL_STALE_AFTER = timedelta(days=3)
 
 def should_schedule_total_video_backfill(
     sync_mode: str,
-    local_total_videos: Optional[int],
-    observed_total_available: Optional[int],
-    full_sync_status: Optional[str],
-    full_last_success_at: Optional[datetime],
+    local_total_videos: int | None,
+    observed_total_available: int | None,
+    full_sync_status: str | None,
+    full_last_success_at: datetime | None,
     *,
-    now: Optional[datetime] = None,
+    now: datetime | None = None,
 ) -> bool:
     current_time = now or datetime.now()
 
@@ -78,41 +78,41 @@ class DefaultUpdateStrategy(UpdateStrategy):
             self._record_gap_observation(request, result)
             self._schedule_total_video_backfill(request, result)
         return result
-    
-    def should_update(self, request: SubscriptionUpdateRequest) -> tuple[bool, Optional[str]]:
+
+    def should_update(self, request: SubscriptionUpdateRequest) -> tuple[bool, str | None]:
         """检查是否需要更新"""
         sub = subscription_service.get_subscription_detail(request.subscription_id)
         if not sub or sub.is_deleted:
             return False, "subscription_not_found"
         return True, None
-    
+
     def fetch_videos(self, request: SubscriptionUpdateRequest) -> SubscriptionSyncResult:
         """获取视频列表"""
         parsed_url = urlparse(request.url)
-        domain = parsed_url.netloc.lower().split(':')[0]
+        domain = parsed_url.netloc.lower().split(":")[0]
         site_name, _ = SiteCatalog.find_site_by_domain(domain)
         if not site_name:
-            raise ValueError(f'No subscription route found for domain: {domain}')
+            raise ValueError(f"No subscription route found for domain: {domain}")
 
         sync_mode = UpdateMode.FULL if request.mode == UpdateMode.FULL else UpdateMode.INCREMENTAL
         runtime_gateway = self._runtime_gateway or get_runtime_gateway()
         response = runtime_gateway.invoke(
-            'sync_subscription',
+            "sync_subscription",
             site_name=site_name,
             domain=domain,
             payload={
-                'url': request.url,
-                'mode': sync_mode.value,
-                'cursor_payload': request.cursor_payload or {},
-                'last_seen_video_url': request.last_seen_video_url,
-                'limit': None if sync_mode == UpdateMode.FULL else settings.CHANNEL_UPDATE_DEFAULT_SIZE,
+                "url": request.url,
+                "mode": sync_mode.value,
+                "cursor_payload": request.cursor_payload or {},
+                "last_seen_video_url": request.last_seen_video_url,
+                "limit": None if sync_mode == UpdateMode.FULL else settings.CHANNEL_UPDATE_DEFAULT_SIZE,
             },
         )
         if not response.ok:
-            message = response.error.message if response.error else f'Subscription sync failed for domain: {domain}'
+            message = response.error.message if response.error else f"Subscription sync failed for domain: {domain}"
             raise ValueError(message)
         if not isinstance(response.data, dict):
-            raise ValueError(f'Subscription sync payload must be an object for domain: {domain}')
+            raise ValueError(f"Subscription sync payload must be an object for domain: {domain}")
 
         result = SubscriptionSyncResult.from_dict(response.data)
 
@@ -120,7 +120,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
             self._update_total_videos(request.subscription_id, result.total_available)
 
         return result
-    
+
     def enqueue_extraction(self, fetch_result: SubscriptionSyncResult, request: SubscriptionUpdateRequest) -> int:
         """将视频加入提取队列"""
         enqueued = 0
@@ -162,7 +162,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
                         run_id=request.run_id,
                         trigger=request.trigger.value,
                         is_manual=request.trigger == UpdateTrigger.MANUAL,
-                        is_extract_all=is_full_update
+                        is_extract_all=is_full_update,
                     )
                     subscription_sync_state_service.increment_pending_video_count(request.sync_state_id, 1)
                     reserved_pending = True
@@ -201,10 +201,10 @@ class DefaultUpdateStrategy(UpdateStrategy):
                     request_id=request.request_id,
                     trace_id=request.trace_id,
                     event_type=SyncEventType.VIDEO_FOUND,
-                    event_phase='calculating_delta',
+                    event_phase="calculating_delta",
                     event_status=SyncRunStatus.RUNNING,
-                    payload={'videos_found_delta': total, 'videos_found': total},
-                )
+                    payload={"videos_found_delta": total, "videos_found": total},
+                ),
             )
             append_event(
                 SyncEventInput(
@@ -217,10 +217,10 @@ class DefaultUpdateStrategy(UpdateStrategy):
                     request_id=request.request_id,
                     trace_id=request.trace_id,
                     event_type=SyncEventType.VIDEO_ENQUEUED,
-                    event_phase='enqueueing',
+                    event_phase="enqueueing",
                     event_status=SyncRunStatus.RUNNING,
-                    payload={'videos_enqueued_delta': enqueued, 'videos_enqueued': enqueued},
-                )
+                    payload={"videos_enqueued_delta": enqueued, "videos_enqueued": enqueued},
+                ),
             )
             skipped_total = existing_count + blocked_count
             if skipped_total > 0:
@@ -235,10 +235,10 @@ class DefaultUpdateStrategy(UpdateStrategy):
                         request_id=request.request_id,
                         trace_id=request.trace_id,
                         event_type=SyncEventType.VIDEO_SKIPPED,
-                        event_phase='enqueueing',
+                        event_phase="enqueueing",
                         event_status=SyncRunStatus.RUNNING,
-                        payload={'videos_skipped_delta': skipped_total, 'videos_skipped': skipped_total},
-                    )
+                        payload={"videos_skipped_delta": skipped_total, "videos_skipped": skipped_total},
+                    ),
                 )
 
         logger.debug(
@@ -254,7 +254,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
             failed_count,
         )
         return enqueued
-    
+
     @staticmethod
     def _update_total_videos(subscription_id: int, total: int) -> None:
         """更新订阅总视频数"""
@@ -262,7 +262,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
             session.execute(
                 update(SubscriptionModel)
                 .where(SubscriptionModel.id == subscription_id)
-                .values(total_videos=total)
+                .values(total_videos=total),
             )
 
     @staticmethod
@@ -308,7 +308,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
             return
 
         subscription = subscription_service.get_subscription_by_id(request.subscription_id)
-        local_total = getattr(subscription, 'total_videos', None) if subscription else None
+        local_total = getattr(subscription, "total_videos", None) if subscription else None
         subscription_sync_state_service.record_gap_observation(
             sync_state_id=request.sync_state_id,
             head_sample_urls=result.head_sample_urls,

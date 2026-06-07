@@ -4,17 +4,17 @@ import logging
 import time
 from dataclasses import dataclass
 from threading import Event
-from typing import Any, Dict, Literal, Optional, Protocol
+from typing import Any, Literal, Protocol
 
 from core.cache import redis_client as default_redis_client
-from .message import MqMessage
 
+from .message import MqMessage
 
 logger = logging.getLogger(__name__)
 
 
 class QueueHandler(Protocol):
-    def __call__(self, message: Dict[str, Any]) -> None:
+    def __call__(self, message: dict[str, Any]) -> None:
         ...
 
 
@@ -25,15 +25,15 @@ class ConsumerOptions:
     block_ms: int = 1000
     read_count: int = 1
     auto_ack: bool = True
-    retry_dlq: Optional[str] = None
+    retry_dlq: str | None = None
     max_delivery: int = 16
-    failure_action: Literal['retry', 'dlq', 'ack_delete'] = 'dlq'
+    failure_action: Literal["retry", "dlq", "ack_delete"] = "dlq"
 
     def __post_init__(self) -> None:
-        if self.failure_action == 'dlq' and not self.retry_dlq:
-            raise ValueError('retry_dlq is required when failure_action is dlq')
+        if self.failure_action == "dlq" and not self.retry_dlq:
+            raise ValueError("retry_dlq is required when failure_action is dlq")
         if self.max_delivery < 1:
-            raise ValueError('max_delivery must be >= 1')
+            raise ValueError("max_delivery must be >= 1")
 
 
 class RedisStreamConsumer:
@@ -98,18 +98,18 @@ class RedisStreamConsumer:
         if acked:
             self._redis.xdel(self.stream, message_id)
 
-    def _handle_failed_message(self, message_id: str, body: Dict[str, Any]) -> None:
-        if self.options.failure_action == 'retry':
+    def _handle_failed_message(self, message_id: str, body: dict[str, Any]) -> None:
+        if self.options.failure_action == "retry":
             logger.warning(
-                'Message left pending for retry stream=%s message_id=%s',
+                "Message left pending for retry stream=%s message_id=%s",
                 self.stream,
                 message_id,
             )
             return
-        if self.options.failure_action == 'ack_delete':
+        if self.options.failure_action == "ack_delete":
             self._ack_delete(message_id)
             logger.warning(
-                'Failed message acknowledged and deleted stream=%s message_id=%s',
+                "Failed message acknowledged and deleted stream=%s message_id=%s",
                 self.stream,
                 message_id,
             )
@@ -130,7 +130,7 @@ class RedisStreamConsumer:
                 )
                 return
             logger.warning(
-                'Message left pending until max delivery stream=%s message_id=%s delivery_count=%s max_delivery=%s',
+                "Message left pending until max delivery stream=%s message_id=%s delivery_count=%s max_delivery=%s",
                 self.stream,
                 message_id,
                 deliveries,
@@ -152,7 +152,7 @@ class RedisStreamConsumer:
                 count=self.options.read_count,
                 block=0,
             )
-            
+
             if not results or not results[0][1]:
                 results = self._redis.xreadgroup(
                     groupname=self.options.group,
@@ -176,7 +176,7 @@ class RedisStreamConsumer:
                     try:
                         from utils.trace import set_trace_id
                         set_trace_id(msg.trace_id)
-                        
+
                         logger.debug(
                             "Handling message stream=%s message_id=%s",
                             self.stream,
@@ -236,6 +236,6 @@ class RedisStreamConsumer:
             time.sleep(sleep_sec)
             return False
 
-    def start_loop(self, stop_event: Optional[Event] = None) -> None:
+    def start_loop(self, stop_event: Event | None = None) -> None:
         while stop_event is None or not stop_event.is_set():
             self.poll_once()

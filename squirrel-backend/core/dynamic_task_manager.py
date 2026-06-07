@@ -1,10 +1,10 @@
 import logging
-from typing import Dict, Type, Any, Optional
 from datetime import datetime
 from threading import Lock
+from typing import Any
 
 from core.database import get_session
-from models.scheduled_task import ScheduledTask, TaskStatus, TaskExecutionLog
+from models.scheduled_task import ScheduledTask, TaskExecutionLog, TaskStatus
 from schedule.task import BaseTask
 from utils import module_discovery
 
@@ -15,7 +15,7 @@ class TaskFactory:
     """任务工厂类，负责动态创建任务实例"""
 
     def __init__(self):
-        self._task_classes: Dict[str, Type[BaseTask]] = {}
+        self._task_classes: dict[str, type[BaseTask]] = {}
         self._lock = Lock()
 
     def discover_builtin_tasks(self) -> None:
@@ -23,7 +23,7 @@ class TaskFactory:
         try:
             # 发现所有继承BaseTask的类
             task_classes = module_discovery.import_classes_from_package(
-                "schedule.tasks", base_class=BaseTask
+                "schedule.tasks", base_class=BaseTask,
             )
 
             with self._lock:
@@ -34,7 +34,7 @@ class TaskFactory:
         except ImportError as e:
             logger.error(f"Failed to discover builtin tasks: {e}")
 
-    def register_task_class(self, task_class: Type[BaseTask], task_name: str = None) -> None:
+    def register_task_class(self, task_class: type[BaseTask], task_name: str = None) -> None:
         """注册任务类"""
         if task_name is None:
             task_name = f"{task_class.__module__}.{task_class.__name__}"
@@ -43,12 +43,12 @@ class TaskFactory:
             self._task_classes[task_name] = task_class
             logger.info(f"Registered task class: {task_name}")
 
-    def get_task_class(self, task_class_name: str) -> Optional[Type[BaseTask]]:
+    def get_task_class(self, task_class_name: str) -> type[BaseTask] | None:
         """获取任务类"""
         with self._lock:
             return self._task_classes.get(task_class_name)
 
-    def create_task_instance(self, task_config: ScheduledTask) -> Optional[BaseTask]:
+    def create_task_instance(self, task_config: ScheduledTask) -> BaseTask | None:
         """根据配置创建任务实例"""
         task_class = self.get_task_class(task_config.task_class)
         if not task_class:
@@ -73,19 +73,19 @@ class TaskFactory:
             logger.error(f"Failed to create task instance for {task_config.name}: {e}")
             return None
 
-    def get_available_task_classes(self) -> Dict[str, Dict[str, Any]]:
+    def get_available_task_classes(self) -> dict[str, dict[str, Any]]:
         """获取所有可用的任务类信息"""
         result = {}
         with self._lock:
             for task_name, task_class in self._task_classes.items():
                 result[task_name] = {
-                    'name': task_name,
-                    'description': (getattr(task_class, '__doc__', '') or '').strip() or 'No description',
-                    'module': task_class.__module__,
-                    'class_name': task_class.__name__,
-                    'default_interval': getattr(task_class, 'interval', 60),
-                    'default_unit': getattr(task_class, 'unit', 'seconds'),
-                    'default_start_immediately': getattr(task_class, 'start_immediately', True),
+                    "name": task_name,
+                    "description": (getattr(task_class, "__doc__", "") or "").strip() or "No description",
+                    "module": task_class.__module__,
+                    "class_name": task_class.__name__,
+                    "default_interval": getattr(task_class, "interval", 60),
+                    "default_unit": getattr(task_class, "unit", "seconds"),
+                    "default_start_immediately": getattr(task_class, "start_immediately", True),
                 }
         return result
 
@@ -96,7 +96,7 @@ class DynamicTaskManager:
     def __init__(self):
         self.task_factory = TaskFactory()
         self._scheduler = None
-        self._active_tasks: Dict[int, Any] = {}  # task_id -> scheduler_job
+        self._active_tasks: dict[int, Any] = {}  # task_id -> scheduler_job
         self._lock = Lock()
 
     def initialize(self, scheduler_instance):
@@ -114,7 +114,7 @@ class DynamicTaskManager:
         with get_session() as session:
             # 获取所有活跃任务
             active_tasks = session.query(ScheduledTask).filter(
-                ScheduledTask.is_active == True
+                ScheduledTask.is_active,
             ).all()
 
             logger.info(f"Loading {len(active_tasks)} active tasks from database")
@@ -139,7 +139,7 @@ class DynamicTaskManager:
             raise ValueError(f"Cannot create task instance for {task_config.name}")
 
         task_id = task_config.id
-        job_ref: Dict[str, Any] = {}
+        job_ref: dict[str, Any] = {}
 
         def task_wrapper():
             job = job_ref.get("job")
@@ -168,13 +168,13 @@ class DynamicTaskManager:
     def _execute_task_with_logging(
         self,
         task_id: int,
-        next_run_at: Optional[datetime] = None,
-        execution_log_id: Optional[int] = None,
+        next_run_at: datetime | None = None,
+        execution_log_id: int | None = None,
         executed_by: str = "system",
     ) -> None:
         """执行任务并记录日志"""
         start_time = datetime.now()
-        task_snapshot: Optional[ScheduledTask] = None
+        task_snapshot: ScheduledTask | None = None
 
         try:
             with get_session() as session:
@@ -191,7 +191,7 @@ class DynamicTaskManager:
                         execution_log_id = None
                     else:
                         existing_log.started_at = start_time
-                        existing_log.status = 'running'
+                        existing_log.status = "running"
                         existing_log.executed_by = executed_by
                         task_config.status = TaskStatus.RUNNING.value
                         session.flush()
@@ -201,8 +201,8 @@ class DynamicTaskManager:
                         task_id=task_id,
                         task_name=task_config.name,
                         started_at=start_time,
-                        status='running',
-                        executed_by=executed_by
+                        status="running",
+                        executed_by=executed_by,
                     )
                     session.add(execution_log)
                     task_config.status = TaskStatus.RUNNING.value
@@ -234,8 +234,8 @@ class DynamicTaskManager:
                     if persisted_log:
                         persisted_log.finished_at = end_time
                         persisted_log.duration = duration
-                        persisted_log.status = 'success'
-                        persisted_log.result_data = result if result else {}
+                        persisted_log.status = "success"
+                        persisted_log.result_data = result or {}
                         persisted_log.error_message = None
 
             task_name = task_snapshot.name if task_snapshot else str(task_id)
@@ -262,7 +262,7 @@ class DynamicTaskManager:
                     if persisted_log:
                         persisted_log.finished_at = end_time
                         persisted_log.duration = duration
-                        persisted_log.status = 'error'
+                        persisted_log.status = "error"
                         persisted_log.error_message = error_msg
                         persisted_log.result_data = None
 
@@ -287,7 +287,7 @@ class DynamicTaskManager:
                 self._register_task_to_scheduler(task_config)
             return True
         except (ValueError, TypeError, AttributeError) as e:
-            logger.error(f"Failed to add task {task_config.name}: {e}")   
+            logger.error(f"Failed to add task {task_config.name}: {e}")
             return False
 
     def remove_task(self, task_id: int) -> bool:
@@ -297,7 +297,7 @@ class DynamicTaskManager:
                 if task_id in self._active_tasks:
                     # 从调度器中移除任务
                     job = self._active_tasks[task_id]
-                    if hasattr(self._scheduler, 'remove_job'):
+                    if hasattr(self._scheduler, "remove_job"):
                         self._scheduler.remove_job(job)
                     del self._active_tasks[task_id]
             return True
@@ -319,7 +319,7 @@ class DynamicTaskManager:
             logger.error(f"Failed to update task {task_config.name}: {e}")
             return False
 
-    def execute_task_now(self, task_id: int, execution_log_id: Optional[int] = None, executed_by: str = "system") -> bool:
+    def execute_task_now(self, task_id: int, execution_log_id: int | None = None, executed_by: str = "system") -> bool:
         """立即执行任务"""
         try:
             with get_session() as session:
@@ -342,7 +342,7 @@ class DynamicTaskManager:
 
                 return True
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error(f"Failed to execute task {task_id} now: {e}")    
+            logger.error(f"Failed to execute task {task_id} now: {e}")
             return False
 
 

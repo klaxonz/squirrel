@@ -1,16 +1,16 @@
-from sqlalchemy import delete, select, func, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from core.database import get_session
 from models.playlist import Playlist
 from models.playlist_item import PlaylistItem
 from models.video import Video
-from schemas.playlist import PlaylistCreate, PlaylistUpdate, PlaylistItemReorder
+from schemas.playlist import PlaylistCreate, PlaylistItemReorder, PlaylistUpdate
 
 
 def _serialize_playlist(playlist: Playlist, video_count: int = 0) -> dict:
     payload = playlist.to_dict()
-    payload['video_count'] = video_count
+    payload["video_count"] = video_count
     return payload
 
 
@@ -23,14 +23,14 @@ def _get_or_create_default_playlist(session: Session, user_id: int) -> Playlist:
     default = session.scalar(
         select(Playlist).where(
             Playlist.user_id == user_id,
-            Playlist.is_default == True,
-        )
+            Playlist.is_default,
+        ),
     )
     if not default:
         default = Playlist(
             user_id=user_id,
-            name='稍后再看',
-            description='稍后再看的视频列表',
+            name="稍后再看",
+            description="稍后再看的视频列表",
             is_default=True,
         )
         session.add(default)
@@ -43,14 +43,14 @@ def list_playlists(user_id: int) -> list[dict]:
         playlists = session.scalars(
             select(Playlist)
             .where(Playlist.user_id == user_id)
-            .order_by(Playlist.is_default.desc(), Playlist.created_at.desc())
+            .order_by(Playlist.is_default.desc(), Playlist.created_at.desc()),
         ).all()
 
         result = []
         for p in playlists:
             count = session.scalar(
                 select(func.count(PlaylistItem.id))
-                .where(PlaylistItem.playlist_id == p.id)
+                .where(PlaylistItem.playlist_id == p.id),
             ) or 0
             result.append(_serialize_playlist(p, count))
         return result
@@ -62,14 +62,14 @@ def get_playlist(user_id: int, playlist_id: int) -> dict | None:
             select(Playlist).where(
                 Playlist.id == playlist_id,
                 Playlist.user_id == user_id,
-            )
+            ),
         )
         if not playlist:
             return None
 
         count = session.scalar(
             select(func.count(PlaylistItem.id))
-            .where(PlaylistItem.playlist_id == playlist.id)
+            .where(PlaylistItem.playlist_id == playlist.id),
         ) or 0
 
         return _serialize_playlist(playlist, count)
@@ -81,7 +81,7 @@ def get_playlist_items(user_id: int, playlist_id: int) -> list[dict] | None:
             select(Playlist).where(
                 Playlist.id == playlist_id,
                 Playlist.user_id == user_id,
-            )
+            ),
         )
         if not playlist:
             return None
@@ -89,7 +89,7 @@ def get_playlist_items(user_id: int, playlist_id: int) -> list[dict] | None:
         items = session.scalars(
             select(PlaylistItem)
             .where(PlaylistItem.playlist_id == playlist_id)
-            .order_by(PlaylistItem.position.asc(), PlaylistItem.added_at.asc())
+            .order_by(PlaylistItem.position.asc(), PlaylistItem.added_at.asc()),
         ).all()
 
         return [_serialize_item(item) for item in items]
@@ -101,24 +101,24 @@ def get_playlist_detail(user_id: int, playlist_id: int) -> dict | None:
             select(Playlist).where(
                 Playlist.id == playlist_id,
                 Playlist.user_id == user_id,
-            )
+            ),
         )
         if not playlist:
             return None
 
         count = session.scalar(
             select(func.count(PlaylistItem.id))
-            .where(PlaylistItem.playlist_id == playlist.id)
+            .where(PlaylistItem.playlist_id == playlist.id),
         ) or 0
 
         items = session.scalars(
             select(PlaylistItem)
             .where(PlaylistItem.playlist_id == playlist_id)
-            .order_by(PlaylistItem.position.asc(), PlaylistItem.added_at.asc())
+            .order_by(PlaylistItem.position.asc(), PlaylistItem.added_at.asc()),
         ).all()
 
         payload = _serialize_playlist(playlist, count)
-        payload['items'] = [_serialize_item(item) for item in items]
+        payload["items"] = [_serialize_item(item) for item in items]
         return payload
 
 
@@ -142,13 +142,13 @@ def update_playlist(user_id: int, playlist_id: int, data: PlaylistUpdate) -> dic
             select(Playlist).where(
                 Playlist.id == playlist_id,
                 Playlist.user_id == user_id,
-            )
+            ),
         )
         if not playlist:
             return None
 
         if playlist.is_default:
-            raise ValueError('Cannot modify default playlist')
+            raise ValueError("Cannot modify default playlist")
 
         if data.name is not None:
             playlist.name = data.name
@@ -160,7 +160,7 @@ def update_playlist(user_id: int, playlist_id: int, data: PlaylistUpdate) -> dic
 
         count = session.scalar(
             select(func.count(PlaylistItem.id))
-            .where(PlaylistItem.playlist_id == playlist.id)
+            .where(PlaylistItem.playlist_id == playlist.id),
         ) or 0
 
         return _serialize_playlist(playlist, count)
@@ -172,16 +172,16 @@ def delete_playlist(user_id: int, playlist_id: int) -> bool:
             select(Playlist).where(
                 Playlist.id == playlist_id,
                 Playlist.user_id == user_id,
-            )
+            ),
         )
         if not playlist:
             return False
 
         if playlist.is_default:
-            raise ValueError('Cannot delete default playlist')
+            raise ValueError("Cannot delete default playlist")
 
         session.execute(
-            delete(PlaylistItem).where(PlaylistItem.playlist_id == playlist_id)
+            delete(PlaylistItem).where(PlaylistItem.playlist_id == playlist_id),
         )
         session.delete(playlist)
         session.commit()
@@ -191,18 +191,18 @@ def delete_playlist(user_id: int, playlist_id: int) -> bool:
 def add_video_to_playlist(user_id: int, video_id: int, playlist_id: int | None = None) -> dict:
     with get_session() as session:
         video = session.get(Video, video_id)
-        if not video or getattr(video, 'is_deleted', False):
-            raise ValueError('Video not found')
+        if not video or getattr(video, "is_deleted", False):
+            raise ValueError("Video not found")
 
         if playlist_id:
             playlist = session.scalar(
                 select(Playlist).where(
                     Playlist.id == playlist_id,
                     Playlist.user_id == user_id,
-                )
+                ),
             )
             if not playlist:
-                raise ValueError('Playlist not found')
+                raise ValueError("Playlist not found")
         else:
             playlist = _get_or_create_default_playlist(session, user_id)
 
@@ -210,14 +210,14 @@ def add_video_to_playlist(user_id: int, video_id: int, playlist_id: int | None =
             select(PlaylistItem).where(
                 PlaylistItem.playlist_id == playlist.id,
                 PlaylistItem.video_id == video_id,
-            )
+            ),
         )
         if existing:
             return _serialize_item(existing)
 
         max_position = session.scalar(
             select(func.max(PlaylistItem.position))
-            .where(PlaylistItem.playlist_id == playlist.id)
+            .where(PlaylistItem.playlist_id == playlist.id),
         ) or 0
 
         item = PlaylistItem(
@@ -239,7 +239,7 @@ def remove_video_from_playlist(user_id: int, playlist_id: int, video_id: int) ->
                 PlaylistItem.playlist_id == playlist_id,
                 PlaylistItem.user_id == user_id,
                 PlaylistItem.video_id == video_id,
-            )
+            ),
         )
         if not item:
             return False
@@ -254,7 +254,7 @@ def remove_video_from_playlist(user_id: int, playlist_id: int, video_id: int) ->
                 PlaylistItem.playlist_id == playlist_id,
                 PlaylistItem.position > deleted_position,
             )
-            .values(position=PlaylistItem.position - 1)
+            .values(position=PlaylistItem.position - 1),
         )
 
         session.commit()
@@ -268,7 +268,7 @@ def reorder_playlist_item(user_id: int, data: PlaylistItemReorder) -> dict | Non
                 PlaylistItem.playlist_id == data.playlist_id,
                 PlaylistItem.user_id == user_id,
                 PlaylistItem.video_id == data.video_id,
-            )
+            ),
         )
         if not item:
             return None
@@ -278,7 +278,7 @@ def reorder_playlist_item(user_id: int, data: PlaylistItemReorder) -> dict | Non
 
         max_pos_result = session.scalar(
             select(func.max(PlaylistItem.position))
-            .where(PlaylistItem.playlist_id == data.playlist_id)
+            .where(PlaylistItem.playlist_id == data.playlist_id),
         )
         max_position = max_pos_result if max_pos_result is not None else 0
         new_position = max(1, min(new_position, max_position))
@@ -294,7 +294,7 @@ def reorder_playlist_item(user_id: int, data: PlaylistItemReorder) -> dict | Non
                     PlaylistItem.position > old_position,
                     PlaylistItem.position <= new_position,
                 )
-                .values(position=PlaylistItem.position - 1)
+                .values(position=PlaylistItem.position - 1),
             )
         else:
             session.execute(
@@ -304,7 +304,7 @@ def reorder_playlist_item(user_id: int, data: PlaylistItemReorder) -> dict | Non
                     PlaylistItem.position >= new_position,
                     PlaylistItem.position < old_position,
                 )
-                .values(position=PlaylistItem.position + 1)
+                .values(position=PlaylistItem.position + 1),
             )
 
         item.position = new_position
@@ -318,22 +318,22 @@ def get_playlist_items_with_videos(user_id: int, playlist_id: int) -> list[dict]
     if items is None:
         return None
 
-    video_ids = [item['video_id'] for item in items]
+    video_ids = [item["video_id"] for item in items]
     if not video_ids:
         return items
 
     with get_session() as session:
         videos = session.scalars(
-            select(Video).where(Video.id.in_(video_ids))
+            select(Video).where(Video.id.in_(video_ids)),
         ).all()
         video_map = {v.id: v for v in videos}
 
     enriched = []
     for item in items:
-        video = video_map.get(item['video_id'])
+        video = video_map.get(item["video_id"])
         if video:
             item = item.copy()
-            item['video'] = video.to_dict()
+            item["video"] = video.to_dict()
         enriched.append(item)
 
     return enriched
@@ -345,7 +345,7 @@ def play_next_video(user_id: int, playlist_id: int, video_id: int) -> dict | Non
             select(Playlist).where(
                 Playlist.id == playlist_id,
                 Playlist.user_id == user_id,
-            )
+            ),
         )
         if not playlist:
             return None
@@ -354,16 +354,16 @@ def play_next_video(user_id: int, playlist_id: int, video_id: int) -> dict | Non
             select(PlaylistItem).where(
                 PlaylistItem.playlist_id == playlist_id,
                 PlaylistItem.video_id == video_id,
-            )
+            ),
         )
         if not current_item:
-            return {'error': '视频不在播放列表中'}
+            return {"error": "视频不在播放列表中"}
 
         next_item = session.scalar(
             select(PlaylistItem).where(
                 PlaylistItem.playlist_id == playlist_id,
                 PlaylistItem.position > current_item.position,
-            ).order_by(PlaylistItem.position.asc())
+            ).order_by(PlaylistItem.position.asc()),
         )
 
         if not next_item:
@@ -371,7 +371,7 @@ def play_next_video(user_id: int, playlist_id: int, video_id: int) -> dict | Non
                 select(PlaylistItem).where(
                     PlaylistItem.playlist_id == playlist_id,
                     PlaylistItem.position < current_item.position,
-                ).order_by(PlaylistItem.position.asc())
+                ).order_by(PlaylistItem.position.asc()),
             )
 
         if not next_item:
@@ -393,15 +393,15 @@ def get_default_playlist(user_id: int) -> dict | None:
         playlist = session.scalar(
             select(Playlist).where(
                 Playlist.user_id == user_id,
-                Playlist.is_default == True,
-            )
+                Playlist.is_default,
+            ),
         )
         if not playlist:
             return None
 
         count = session.scalar(
             select(func.count(PlaylistItem.id))
-            .where(PlaylistItem.playlist_id == playlist.id)
+            .where(PlaylistItem.playlist_id == playlist.id),
         ) or 0
 
         return _serialize_playlist(playlist, count)

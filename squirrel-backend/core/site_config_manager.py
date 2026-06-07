@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Dict, Any
+from typing import Any
 
 from utils.rate_limiter import rate_limiter as backend_rate_limiter
 from utils.runtime_site_config import set_site_configs
@@ -12,6 +12,8 @@ from utils.site_catalog import SiteCatalog
 try:
     from crawl import (
         configure_rate_limit as configure_crawl_rate_limit,
+    )
+    from crawl import (
         configure_rate_limit_enabled as configure_crawl_rate_limit_enabled,
     )
 except ImportError:  # pragma: no cover - backend can still run without SDK wiring
@@ -29,13 +31,13 @@ def _deep_merge(base: dict, overrides: dict) -> dict:
     return result
 
 
-def build_runtime_site_catalog() -> Dict[str, dict]:
+def build_runtime_site_catalog() -> dict[str, dict]:
     return SiteCatalog.build_runtime_site_catalog()
 
 
-def get_effective_site_catalog(stored_catalog: Dict[str, dict] | None = None) -> Dict[str, dict]:
+def get_effective_site_catalog(stored_catalog: dict[str, dict] | None = None) -> dict[str, dict]:
     overrides = stored_catalog if stored_catalog is not None else (SiteCatalog.load_override_catalog() or {})
-    effective: Dict[str, dict] = {
+    effective: dict[str, dict] = {
         slug: deepcopy(defaults)
         for slug, defaults in build_runtime_site_catalog().items()
     }
@@ -63,15 +65,15 @@ def _parse_bool(value: Any, default: bool = True) -> bool:
     return default
 
 
-def _iter_rate_limit_entries(effective_catalog: Dict[str, dict]):
+def _iter_rate_limit_entries(effective_catalog: dict[str, dict]):
     for info in effective_catalog.values():
-        rate_limit = info.get('rate_limit') or {}
-        rate_limit_enabled = _parse_bool(rate_limit.get('enabled'), True)
-        min_interval = rate_limit.get('min_interval')
-        max_interval = rate_limit.get('max_interval')
+        rate_limit = info.get("rate_limit") or {}
+        rate_limit_enabled = _parse_bool(rate_limit.get("enabled"), True)
+        min_interval = rate_limit.get("min_interval")
+        max_interval = rate_limit.get("max_interval")
         min_value: float | None = None
         max_value: float | None = None
-        if min_interval not in (None, '') and max_interval not in (None, ''):
+        if min_interval not in (None, "") and max_interval not in (None, ""):
             try:
                 min_value = float(min_interval)
                 max_value = float(max_interval)
@@ -79,12 +81,12 @@ def _iter_rate_limit_entries(effective_catalog: Dict[str, dict]):
                 min_value = None
                 max_value = None
 
-        for domain in info.get('domains', []) or []:
+        for domain in info.get("domains", []) or []:
             if domain:
                 yield domain, rate_limit_enabled, min_value, max_value
 
 
-def apply_crawl_rate_limit_overrides(catalog: Dict[str, dict] | None = None) -> None:
+def apply_crawl_rate_limit_overrides(catalog: dict[str, dict] | None = None) -> None:
     """Apply site rate limits to the SDK runtime used by plugin processes."""
     effective_catalog = get_effective_site_catalog(catalog)
 
@@ -102,7 +104,7 @@ def apply_crawl_rate_limit_overrides(catalog: Dict[str, dict] | None = None) -> 
             continue
 
 
-def apply_site_config_overrides(catalog: Dict[str, dict] | None = None) -> None:
+def apply_site_config_overrides(catalog: dict[str, dict] | None = None) -> None:
     """Apply the current site catalog to backend-owned runtime state."""
     effective_catalog = get_effective_site_catalog(catalog)
 

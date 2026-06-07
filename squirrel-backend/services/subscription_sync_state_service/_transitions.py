@@ -1,21 +1,21 @@
 ﻿from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Optional
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from . import get_session
 from models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
 from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus
-from ._intervals import get_mode_interval, build_retry_delay, build_success_delay, INCREMENTAL_PENDING_THRESHOLD
+
+from . import get_session
 from ._crud import _get_or_create_sync_state_in_session
 from ._events import _append_state_event
-from ._stale import _recover_stale_running_state, _can_complete_drained_state
+from ._intervals import INCREMENTAL_PENDING_THRESHOLD, build_retry_delay, build_success_delay, get_mode_interval
+from ._stale import _can_complete_drained_state, _recover_stale_running_state
 
 
-def deactivate_sync_states(subscription_id: int, *, reason: str = 'deactivated') -> int:
+def deactivate_sync_states(subscription_id: int, *, reason: str = "deactivated") -> int:
     now = datetime.now()
     updated_count = 0
 
@@ -23,7 +23,7 @@ def deactivate_sync_states(subscription_id: int, *, reason: str = 'deactivated')
         states = session.execute(
             select(SubscriptionSyncState).where(
                 SubscriptionSyncState.subscription_id == subscription_id,
-            )
+            ),
         ).scalars().all()
 
         for state in states:
@@ -42,36 +42,36 @@ def deactivate_sync_states(subscription_id: int, *, reason: str = 'deactivated')
 
 def prepare_sync_state_for_enqueue(
     subscription_id: int,
-    url: Optional[str],
+    url: str | None,
     mode: str,
     *,
     scheduled: bool,
-) -> tuple[Optional[SubscriptionSyncState], str]:
+) -> tuple[SubscriptionSyncState | None, str]:
     now = datetime.now()
     with get_session() as session:
         state = _get_or_create_sync_state_in_session(session, subscription_id, mode, url)
         _recover_stale_running_state(state, now)
 
         if state.sync_status == SyncStatus.RUNNING.value:
-            return state, 'in_progress'
+            return state, "in_progress"
         if state.sync_status == SyncStatus.QUEUED.value:
-            return state, 'queued'
+            return state, "queued"
 
         if scheduled and has_incremental_backpressure(state):
             state.sync_status = SyncStatus.SUCCESS.value
             state.last_sync_at = now
-            state.last_error = 'queue_backpressure'
+            state.last_error = "queue_backpressure"
             state.queue_token = None
             state.queued_at = None
             state.locked_at = None
             state.next_sync_at = now + get_mode_interval(state.sync_mode)
             state.version += 1
-            return state, 'deferred'
+            return state, "deferred"
 
-        return state, 'ready'
+        return state, "ready"
 
 
-def queue_sync_state(sync_state_id: int, queue_token: str) -> Optional[SubscriptionSyncState]:
+def queue_sync_state(sync_state_id: int, queue_token: str) -> SubscriptionSyncState | None:
     now = datetime.now()
     with get_session() as session:
         session.execute(
@@ -79,7 +79,7 @@ def queue_sync_state(sync_state_id: int, queue_token: str) -> Optional[Subscript
             .where(
                 SubscriptionSyncState.id == sync_state_id,
                 SubscriptionSyncState.sync_status.notin_(
-                    [SyncStatus.QUEUED.value, SyncStatus.RUNNING.value]
+                    [SyncStatus.QUEUED.value, SyncStatus.RUNNING.value],
                 ),
             )
             .values(
@@ -89,10 +89,10 @@ def queue_sync_state(sync_state_id: int, queue_token: str) -> Optional[Subscript
                 locked_at=None,
                 last_error=None,
                 version=SubscriptionSyncState.version + 1,
-            )
+            ),
         )
         return session.execute(
-            select(SubscriptionSyncState).where(SubscriptionSyncState.id == sync_state_id)
+            select(SubscriptionSyncState).where(SubscriptionSyncState.id == sync_state_id),
         ).scalar_one_or_none()
 
 
@@ -100,11 +100,11 @@ def claim_sync_state(
     sync_state_id: int,
     queue_token: str,
     *,
-    run_id: Optional[str] = None,
-    request_id: Optional[str] = None,
-    trace_id: Optional[str] = None,
-    trigger: Optional[str] = None,
-) -> Optional[SubscriptionSyncState]:
+    run_id: str | None = None,
+    request_id: str | None = None,
+    trace_id: str | None = None,
+    trigger: str | None = None,
+) -> SubscriptionSyncState | None:
     now = datetime.now()
     with get_session() as session:
         result = session.execute(
@@ -119,12 +119,12 @@ def claim_sync_state(
                 locked_at=now,
                 last_sync_at=now,
                 version=SubscriptionSyncState.version + 1,
-            )
+            ),
         )
         if result.rowcount == 0:
             return None
         state = session.execute(
-            select(SubscriptionSyncState).where(SubscriptionSyncState.id == sync_state_id)
+            select(SubscriptionSyncState).where(SubscriptionSyncState.id == sync_state_id),
         ).scalar_one_or_none()
         if not state:
             return None
@@ -139,8 +139,8 @@ def claim_sync_state(
             event_phase=SyncPhase.CLAIMED,
             event_status=SyncRunStatus.RUNNING,
             payload={
-                'pending_video_count': state.pending_video_count,
-                'queue_token': queue_token,
+                "pending_video_count": state.pending_video_count,
+                "queue_token": queue_token,
             },
             occurred_at=now,
         )
@@ -148,29 +148,29 @@ def claim_sync_state(
 
 
 def reconcile_task_retry_state(
-    sync_state_id: Optional[int],
-    queue_token: Optional[str],
+    sync_state_id: int | None,
+    queue_token: str | None,
     *,
-    now: Optional[datetime] = None,
+    now: datetime | None = None,
     retryable: bool,
-    error_message: Optional[str] = None,
-    run_id: Optional[str] = None,
-    request_id: Optional[str] = None,
-    trace_id: Optional[str] = None,
-    trigger: Optional[str] = None,
-) -> Optional[SubscriptionSyncState]:
+    error_message: str | None = None,
+    run_id: str | None = None,
+    request_id: str | None = None,
+    trace_id: str | None = None,
+    trigger: str | None = None,
+) -> SubscriptionSyncState | None:
     if not sync_state_id:
         return None
 
     now = now or datetime.now()
-    expected_token = str(queue_token or '').strip() or None
+    expected_token = str(queue_token or "").strip() or None
 
     with get_session() as session:
         state = session.get(SubscriptionSyncState, sync_state_id)
         if not state:
             return None
 
-        current_token = str(state.queue_token or '').strip() or None
+        current_token = str(state.queue_token or "").strip() or None
         if expected_token and current_token and current_token != expected_token:
             return state
 
@@ -194,10 +194,10 @@ def reconcile_task_retry_state(
                 event_phase=SyncPhase.QUEUED,
                 event_status=SyncRunStatus.QUEUED,
                 payload={
-                    'queue_token': state.queue_token,
-                    'queued_at': state.queued_at,
-                    'pending_video_count': state.pending_video_count,
-                    'error_message': error_message,
+                    "queue_token": state.queue_token,
+                    "queued_at": state.queued_at,
+                    "pending_video_count": state.pending_video_count,
+                    "error_message": error_message,
                 },
                 message=error_message,
                 occurred_at=now,
@@ -210,7 +210,7 @@ def reconcile_task_retry_state(
         state.failure_count += 1
         state.sync_status = SyncStatus.FAILED.value
         state.last_sync_at = now
-        state.last_error = error_message or 'task_retry_exhausted'
+        state.last_error = error_message or "task_retry_exhausted"
         state.queue_token = None
         state.queued_at = None
         state.locked_at = None
@@ -228,10 +228,10 @@ def reconcile_task_retry_state(
             event_phase=SyncPhase.FAILED,
             event_status=SyncRunStatus.FAILED,
             payload={
-                'error_message': state.last_error,
-                'failure_count': state.failure_count,
-                'pending_video_count': state.pending_video_count,
-                'next_sync_at': state.next_sync_at,
+                "error_message": state.last_error,
+                "failure_count": state.failure_count,
+                "pending_video_count": state.pending_video_count,
+                "next_sync_at": state.next_sync_at,
             },
             message=state.last_error,
             occurred_at=now,
@@ -243,14 +243,14 @@ def _complete_sync_success_in_session(
     session: Session,
     *,
     state: SubscriptionSyncState,
-    source_video_count: Optional[int] = None,
+    source_video_count: int | None = None,
     videos_found: int = 0,
     videos_enqueued: int = 0,
-    next_sync_at: Optional[datetime] = None,
-    run_id: Optional[str] = None,
-    request_id: Optional[str] = None,
-    trace_id: Optional[str] = None,
-    trigger: Optional[str] = None,
+    next_sync_at: datetime | None = None,
+    run_id: str | None = None,
+    request_id: str | None = None,
+    trace_id: str | None = None,
+    trigger: str | None = None,
 ) -> SubscriptionSyncState:
     now = datetime.now()
     started_at = state.locked_at or state.last_sync_at
@@ -281,15 +281,15 @@ def _complete_sync_success_in_session(
         event_phase=SyncPhase.COMPLETED,
         event_status=SyncRunStatus.SUCCESS,
         payload={
-            'cursor_payload': state.cursor_payload,
-            'latest_video_url': state.last_seen_video_url,
-            'source_video_count': source_video_count,
-            'videos_found': videos_found,
-            'videos_enqueued': videos_enqueued,
-            'pending_video_count': state.pending_video_count,
-            'failure_count': state.failure_count,
-            'next_sync_at': state.next_sync_at,
-            'duration_ms': int((now - started_at).total_seconds() * 1000) if started_at else 0,
+            "cursor_payload": state.cursor_payload,
+            "latest_video_url": state.last_seen_video_url,
+            "source_video_count": source_video_count,
+            "videos_found": videos_found,
+            "videos_enqueued": videos_enqueued,
+            "pending_video_count": state.pending_video_count,
+            "failure_count": state.failure_count,
+            "next_sync_at": state.next_sync_at,
+            "duration_ms": int((now - started_at).total_seconds() * 1000) if started_at else 0,
         },
         occurred_at=now,
     )
@@ -299,16 +299,16 @@ def _complete_sync_success_in_session(
 def continue_full_sync_batch(
     sync_state_id: int,
     *,
-    cursor_payload: Optional[dict],
-    latest_video_url: Optional[str],
-    source_video_count: Optional[int] = None,
+    cursor_payload: dict | None,
+    latest_video_url: str | None,
+    source_video_count: int | None = None,
     videos_found: int = 0,
     videos_enqueued: int = 0,
-    run_id: Optional[str] = None,
-    request_id: Optional[str] = None,
-    trace_id: Optional[str] = None,
-    trigger: Optional[str] = None,
-) -> Optional[SubscriptionSyncState]:
+    run_id: str | None = None,
+    request_id: str | None = None,
+    trace_id: str | None = None,
+    trigger: str | None = None,
+) -> SubscriptionSyncState | None:
     now = datetime.now()
     with get_session() as session:
         state = session.get(SubscriptionSyncState, sync_state_id)
@@ -338,14 +338,14 @@ def continue_full_sync_batch(
             event_phase=SyncPhase.FINALIZING,
             event_status=SyncRunStatus.RUNNING,
             payload={
-                'cursor_payload': state.cursor_payload,
-                'latest_video_url': latest_video_url,
-                'source_video_count': source_video_count,
-                'videos_found_delta': videos_found,
-                'videos_enqueued_delta': videos_enqueued,
-                'pending_video_count': state.pending_video_count,
-                'next_sync_at': state.next_sync_at,
-                'has_more': True,
+                "cursor_payload": state.cursor_payload,
+                "latest_video_url": latest_video_url,
+                "source_video_count": source_video_count,
+                "videos_found_delta": videos_found,
+                "videos_enqueued_delta": videos_enqueued,
+                "pending_video_count": state.pending_video_count,
+                "next_sync_at": state.next_sync_at,
+                "has_more": True,
             },
             occurred_at=now,
         )
@@ -355,17 +355,17 @@ def continue_full_sync_batch(
 def mark_sync_success(
     sync_state_id: int,
     *,
-    cursor_payload: Optional[dict],
-    latest_video_url: Optional[str],
-    source_video_count: Optional[int] = None,
+    cursor_payload: dict | None,
+    latest_video_url: str | None,
+    source_video_count: int | None = None,
     videos_found: int = 0,
     videos_enqueued: int = 0,
-    next_sync_at: Optional[datetime] = None,
-    run_id: Optional[str] = None,
-    request_id: Optional[str] = None,
-    trace_id: Optional[str] = None,
-    trigger: Optional[str] = None,
-) -> Optional[SubscriptionSyncState]:
+    next_sync_at: datetime | None = None,
+    run_id: str | None = None,
+    request_id: str | None = None,
+    trace_id: str | None = None,
+    trigger: str | None = None,
+) -> SubscriptionSyncState | None:
     with get_session() as session:
         state = session.get(SubscriptionSyncState, sync_state_id)
         if not state:
@@ -396,13 +396,13 @@ def mark_sync_success(
                 event_phase=SyncPhase.EXTRACTING,
                 event_status=SyncRunStatus.RUNNING,
                 payload={
-                    'cursor_payload': state.cursor_payload,
-                    'latest_video_url': state.last_seen_video_url,
-                    'source_video_count': source_video_count,
-                    'videos_found': videos_found,
-                    'videos_enqueued': videos_enqueued,
-                    'pending_video_count': state.pending_video_count,
-                    'feed_completed': True,
+                    "cursor_payload": state.cursor_payload,
+                    "latest_video_url": state.last_seen_video_url,
+                    "source_video_count": source_video_count,
+                    "videos_found": videos_found,
+                    "videos_enqueued": videos_enqueued,
+                    "pending_video_count": state.pending_video_count,
+                    "feed_completed": True,
                 },
                 occurred_at=now,
             )
@@ -426,16 +426,16 @@ def mark_sync_success(
 def mark_sync_skipped(
     sync_state_id: int,
     *,
-    next_sync_at: Optional[datetime] = None,
-    run_id: Optional[str] = None,
-    request_id: Optional[str] = None,
-    trace_id: Optional[str] = None,
-    trigger: Optional[str] = None,
-    reason: Optional[str] = None,
+    next_sync_at: datetime | None = None,
+    run_id: str | None = None,
+    request_id: str | None = None,
+    trace_id: str | None = None,
+    trigger: str | None = None,
+    reason: str | None = None,
     event_type: str = SyncEventType.DEFERRED,
     event_phase: str = SyncPhase.DEFERRED,
     event_status: str = SyncRunStatus.DEFERRED,
-) -> Optional[SubscriptionSyncState]:
+) -> SubscriptionSyncState | None:
     now = datetime.now()
     with get_session() as session:
         state = session.get(SubscriptionSyncState, sync_state_id)
@@ -461,9 +461,9 @@ def mark_sync_skipped(
             event_phase=event_phase,
             event_status=event_status,
             payload={
-                'reason': reason,
-                'next_sync_at': state.next_sync_at,
-                'pending_video_count': state.pending_video_count,
+                "reason": reason,
+                "next_sync_at": state.next_sync_at,
+                "pending_video_count": state.pending_video_count,
             },
             message=reason,
             occurred_at=now,
@@ -475,12 +475,12 @@ def mark_sync_failed(
     sync_state_id: int,
     error_message: str,
     *,
-    run_id: Optional[str] = None,
-    request_id: Optional[str] = None,
-    trace_id: Optional[str] = None,
-    error_type: Optional[str] = None,
-    trigger: Optional[str] = None,
-) -> Optional[SubscriptionSyncState]:
+    run_id: str | None = None,
+    request_id: str | None = None,
+    trace_id: str | None = None,
+    error_type: str | None = None,
+    trigger: str | None = None,
+) -> SubscriptionSyncState | None:
     now = datetime.now()
     with get_session() as session:
         state = session.get(SubscriptionSyncState, sync_state_id)
@@ -508,12 +508,12 @@ def mark_sync_failed(
             event_phase=SyncPhase.FAILED,
             event_status=SyncRunStatus.FAILED,
             payload={
-                'error_type': error_type or 'sync_failed',
-                'error_message': error_message,
-                'failure_count': state.failure_count,
-                'pending_video_count': state.pending_video_count,
-                'next_sync_at': state.next_sync_at,
-                'duration_ms': int((now - started_at).total_seconds() * 1000) if started_at else 0,
+                "error_type": error_type or "sync_failed",
+                "error_message": error_message,
+                "failure_count": state.failure_count,
+                "pending_video_count": state.pending_video_count,
+                "next_sync_at": state.next_sync_at,
+                "duration_ms": int((now - started_at).total_seconds() * 1000) if started_at else 0,
             },
             message=error_message,
             occurred_at=now,
@@ -525,12 +525,12 @@ def defer_sync_state(
     sync_state_id: int,
     *,
     delay: timedelta,
-    error_message: Optional[str] = None,
-    run_id: Optional[str] = None,
-    request_id: Optional[str] = None,
-    trace_id: Optional[str] = None,
-    trigger: Optional[str] = None,
-) -> Optional[SubscriptionSyncState]:
+    error_message: str | None = None,
+    run_id: str | None = None,
+    request_id: str | None = None,
+    trace_id: str | None = None,
+    trigger: str | None = None,
+) -> SubscriptionSyncState | None:
     now = datetime.now()
     with get_session() as session:
         state = session.get(SubscriptionSyncState, sync_state_id)
@@ -556,9 +556,9 @@ def defer_sync_state(
             event_phase=SyncPhase.DEFERRED,
             event_status=SyncRunStatus.DEFERRED,
             payload={
-                'error_message': error_message,
-                'pending_video_count': state.pending_video_count,
-                'next_sync_at': state.next_sync_at,
+                "error_message": error_message,
+                "pending_video_count": state.pending_video_count,
+                "next_sync_at": state.next_sync_at,
             },
             message=error_message,
             occurred_at=now,
@@ -567,13 +567,13 @@ def defer_sync_state(
 
 
 def decrement_pending_video_count(
-    sync_state_id: Optional[int],
+    sync_state_id: int | None,
     count: int = 1,
     *,
-    run_id: Optional[str] = None,
-    request_id: Optional[str] = None,
-    trace_id: Optional[str] = None,
-    trigger: Optional[str] = None,
+    run_id: str | None = None,
+    request_id: str | None = None,
+    trace_id: str | None = None,
+    trigger: str | None = None,
     allow_completion: bool = True,
 ) -> None:
     if not sync_state_id or count <= 0:

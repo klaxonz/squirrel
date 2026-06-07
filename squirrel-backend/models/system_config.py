@@ -1,15 +1,16 @@
 from datetime import datetime
 
-from sqlalchemy import Integer, Text, VARCHAR, DateTime, func, UniqueConstraint, Boolean
-from sqlalchemy.orm import mapped_column, Mapped
+from sqlalchemy import VARCHAR, DateTime, Integer, Text, UniqueConstraint, func
+from sqlalchemy.orm import Mapped, mapped_column
+
 from models import Base
 from models.mixins.serializer import SerializerMixin
 
 
 class SystemConfig(Base, SerializerMixin):
-    __tablename__ = 'system_config'
+    __tablename__ = "system_config"
     __table_args__ = (
-        UniqueConstraint('key', name='uq_system_config_key'),
+        UniqueConstraint("key", name="uq_system_config_key"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

@@ -4,26 +4,13 @@ import logging
 import urllib.parse
 from dataclasses import replace
 from datetime import datetime
-from threading import Lock
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from core.database import get_session
 from models.rss import RssAccount, RssEntry, RssEntryView, RssFeed
-from services.rss_client_service import (
-    G_READER_CONTENT_BATCH_SIZE,
-    G_READER_PAGE_SIZE,
-    G_READER_QUICK_ENTRIES_PER_FEED,
-    G_READER_QUICK_MAX_ENTRIES,
-    GReaderClient,
-    RssAccountConfig,
-    RssServiceError,
-    RemoteEntry,
-    RemoteFeed,
-    create_client,
-)
 from services.rss_account_service import (
     _config_from_account,
     _get_account,
@@ -31,22 +18,31 @@ from services.rss_account_service import (
     _sync_lock_for_account,
     serialize_feed,
 )
-from services.rss_credential_service import decrypt_credential
+from services.rss_client_service import (
+    G_READER_CONTENT_BATCH_SIZE,
+    G_READER_QUICK_ENTRIES_PER_FEED,
+    G_READER_QUICK_MAX_ENTRIES,
+    GReaderClient,
+    RemoteEntry,
+    RemoteFeed,
+    RssServiceError,
+    create_client,
+)
 
 logger = logging.getLogger(__name__)
 
 
-def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = None, force_full_sync: bool = False) -> Optional[dict[str, Any]]:
+def sync_account(user_id: int, account_id: int, *, entry_limit: int | None = None, force_full_sync: bool = False) -> dict[str, Any] | None:
     sync_lock = _sync_lock_for_account(account_id)
     if not sync_lock.acquire(blocking=False):
-        raise RssServiceError('RSS account sync is already running')
+        raise RssServiceError("RSS account sync is already running")
 
     _set_sync_progress(
         account_id,
         running=True,
-        phase='starting',
-        message='Starting RSS sync',
-        sync_mode='full' if force_full_sync else 'incremental',
+        phase="starting",
+        message="Starting RSS sync",
+        sync_mode="full" if force_full_sync else "incremental",
         feeds_total=None,
         feeds_synced=0,
         entries_fetched=0,
@@ -71,12 +67,12 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
         effective_entry_limit = entry_limit if entry_limit is not None else configured_entry_limit
 
         client = create_client(config)
-        _set_sync_progress(account_id, phase='feeds_fetching', message='Fetching RSS feeds')
+        _set_sync_progress(account_id, phase="feeds_fetching", message="Fetching RSS feeds")
         remote_feeds = client.list_feeds()
         _set_sync_progress(
             account_id,
-            phase='feeds_saving',
-            message='Saving RSS feeds',
+            phase="feeds_saving",
+            message="Saving RSS feeds",
             feeds_total=len(remote_feeds),
         )
         feed_refs: list[tuple[int, str, bool]] = []
@@ -107,15 +103,15 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
 
             _set_sync_progress(
                 account_id,
-                phase='entries_fetching',
-                message='Fetching RSS entries',
+                phase="entries_fetching",
+                message="Fetching RSS entries",
                 entry_limit=greader_entry_limit,
             )
 
-            def _on_entries_fetched(entry_count: int, continuation: Optional[str]) -> None:
+            def _on_entries_fetched(entry_count: int, continuation: str | None) -> None:
                 _set_sync_progress(
                     account_id,
-                    phase='entries_fetching',
+                    phase="entries_fetching",
                     entries_fetched=entry_count,
                     has_more=bool(continuation),
                 )
@@ -127,7 +123,7 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
                     feeds_by_external_id.update(new_feeds)
                     batch_entries = _upsert_remote_entries_batch(session, feeds_by_external_id, page)
                     synced_entries += batch_entries
-                    _set_sync_progress(account_id, phase='entries_saving', entries_synced=synced_entries)
+                    _set_sync_progress(account_id, phase="entries_saving", entries_synced=synced_entries)
                     session.commit()
                     if not force_full_sync and batch_entries == 0:
                         break
@@ -136,7 +132,7 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
             with get_session() as session:
                 local_rows = session.execute(
                     select(RssEntry.id, RssEntry.external_entry_id, RssEntry.is_read)
-                    .where(RssEntry.account_id == account_id)
+                    .where(RssEntry.account_id == account_id),
                 ).all()
                 local_by_eid = {
                     row.external_entry_id: (row.id, row.is_read)
@@ -147,13 +143,13 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
                 for external_entry_id, (entry_id, is_read) in local_by_eid.items():
                     should_read = external_entry_id not in unread_ids
                     if is_read != should_read:
-                        read_updates.append({'id': entry_id, 'is_read': should_read})
+                        read_updates.append({"id": entry_id, "is_read": should_read})
                 if read_updates:
                     session.bulk_update_mappings(RssEntry, read_updates)
                     session.commit()
 
             if missing_unread_ids:
-                _set_sync_progress(account_id, phase='entries_fetching', message='Fetching unread RSS entries')
+                _set_sync_progress(account_id, phase="entries_fetching", message="Fetching unread RSS entries")
                 with get_session() as session:
                     feeds_by_external_id: dict[str, RssFeed] = {}
                     for index in range(0, len(missing_unread_ids), G_READER_CONTENT_BATCH_SIZE):
@@ -166,21 +162,21 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
                         feeds_by_external_id.update(new_feeds)
                         batch_entries = _upsert_remote_entries_batch(session, feeds_by_external_id, page)
                         synced_entries += batch_entries
-                        _set_sync_progress(account_id, phase='entries_saving', entries_synced=synced_entries)
+                        _set_sync_progress(account_id, phase="entries_saving", entries_synced=synced_entries)
                         session.commit()
 
             if force_full_sync:
-                reading_ids_raw = client.fetch_all_item_ids('reading-list', limit=200000)
+                reading_ids_raw = client.fetch_all_item_ids("reading-list", limit=200000)
                 if reading_ids_raw:
-                    _set_sync_progress(account_id, phase='entries_saving', message='Syncing read/starred state')
-                    read_ids = set(client.fetch_all_item_ids('user/-/state/com.google/read', limit=200000))
-                    starred_ids = set(client.fetch_all_item_ids('user/-/state/com.google/starred', limit=50000))
+                    _set_sync_progress(account_id, phase="entries_saving", message="Syncing read/starred state")
+                    read_ids = set(client.fetch_all_item_ids("user/-/state/com.google/read", limit=200000))
+                    starred_ids = set(client.fetch_all_item_ids("user/-/state/com.google/starred", limit=50000))
                     reading_ids = set(reading_ids_raw)
 
                     with get_session() as session:
                         local_rows = session.execute(
                             select(RssEntry.id, RssEntry.external_entry_id, RssEntry.is_read, RssEntry.is_starred)
-                            .where(RssEntry.account_id == account_id)
+                            .where(RssEntry.account_id == account_id),
                         ).all()
 
                         local_by_eid: dict[str, tuple[int, bool, bool]] = {
@@ -204,7 +200,7 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
                             should_read = eid in read_ids
                             should_starred = eid in starred_ids
                             if is_read != should_read or is_starred != should_starred:
-                                update_dicts.append({'id': eid_id, 'is_read': should_read, 'is_starred': should_starred})
+                                update_dicts.append({"id": eid_id, "is_read": should_read, "is_starred": should_starred})
 
                         if update_dicts:
                             session.bulk_update_mappings(RssEntry, update_dicts)
@@ -213,15 +209,15 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
                             session.commit()
         else:
             if effective_entry_limit is None:
-                raise RssServiceError('Sync entry limit is required for this RSS provider')
+                raise RssServiceError("Sync entry limit is required for this RSS provider")
             with get_session() as session:
                 for feed_id, external_feed_id, enabled in feed_refs:
                     if not enabled:
                         continue
                     _set_sync_progress(
                         account_id,
-                        phase='entries_fetching',
-                        message='Fetching RSS entries',
+                        phase="entries_fetching",
+                        message="Fetching RSS entries",
                         current_feed_id=feed_id,
                         feeds_synced=synced_feeds,
                     )
@@ -231,7 +227,7 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
                             RssFeed.id == feed_id,
                             RssFeed.user_id == user_id,
                             RssFeed.account_id == account_id,
-                        )
+                        ),
                     ).first()
                     if not feed:
                         continue
@@ -243,7 +239,7 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
                     feed.last_entry_sync_at = datetime.now()
                     _set_sync_progress(
                         account_id,
-                        phase='entries_saving',
+                        phase="entries_saving",
                         entries_synced=synced_entries,
                     )
                     session.commit()
@@ -256,8 +252,8 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
         _set_sync_progress(
             account_id,
             running=False,
-            phase='completed',
-            message='RSS sync completed',
+            phase="completed",
+            message="RSS sync completed",
             feeds_synced=synced_feeds,
             entries_synced=synced_entries,
             error=None,
@@ -265,8 +261,8 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
         )
     except Exception as exc:  # sync boundary — catch all to persist error state
         error_message = str(exc)
-        provider = config.provider if config else 'unknown'
-        logger.warning('RSS account sync failed: account_id=%s provider=%s error=%s', account_id, provider, exc)
+        provider = config.provider if config else "unknown"
+        logger.warning("RSS account sync failed: account_id=%s provider=%s error=%s", account_id, provider, exc)
         with get_session() as session:
             account = _get_account(session, user_id, account_id)
             if account:
@@ -275,8 +271,8 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
         _set_sync_progress(
             account_id,
             running=False,
-            phase='failed',
-            message='RSS sync failed',
+            phase="failed",
+            message="RSS sync failed",
             feeds_synced=synced_feeds,
             entries_synced=synced_entries,
             error=error_message,
@@ -287,10 +283,10 @@ def sync_account(user_id: int, account_id: int, *, entry_limit: Optional[int] = 
         sync_lock.release()
 
     return {
-        'account_id': account_id,
-        'feeds': synced_feeds,
-        'entries': synced_entries,
-        'error': error_message,
+        "account_id": account_id,
+        "feeds": synced_feeds,
+        "entries": synced_entries,
+        "error": error_message,
     }
 
 
@@ -298,21 +294,21 @@ def subscribe_feed(
     user_id: int,
     account_id: int,
     feed_url: str,
-    category: Optional[str] = None,
+    category: str | None = None,
 ) -> dict[str, Any]:
     from services.rss_client_service import RssServiceError
 
-    feed_url = str(feed_url or '').strip()
+    feed_url = str(feed_url or "").strip()
     if not feed_url:
-        raise RssServiceError('Feed URL is required')
+        raise RssServiceError("Feed URL is required")
     parsed = urllib.parse.urlparse(feed_url)
-    if parsed.scheme not in {'http', 'https'} or not parsed.netloc:
-        raise RssServiceError('Feed URL must be an HTTP or HTTPS URL')
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise RssServiceError("Feed URL must be an HTTP or HTTPS URL")
 
     with get_session() as session:
         account = _get_account(session, user_id, account_id)
         if not account:
-            raise RssServiceError('RSS account not found')
+            raise RssServiceError("RSS account not found")
 
         config = _config_from_account(account)
 
@@ -323,7 +319,7 @@ def subscribe_feed(
             select(RssFeed).where(
                 RssFeed.account_id == account_id,
                 RssFeed.external_feed_id == remote_feed.external_feed_id,
-            )
+            ),
         ).first()
 
         if existing:
@@ -366,14 +362,14 @@ def sync_feed(user_id: int, feed_id: int, *, entry_limit: int = 50) -> dict[str,
             select(RssFeed).where(
                 RssFeed.id == feed_id,
                 RssFeed.user_id == user_id,
-            )
+            ),
         ).first()
         if not feed:
-            raise RssServiceError('RSS 订阅源不存在')
+            raise RssServiceError("RSS 订阅源不存在")
 
         account = _get_account(session, user_id, feed.account_id)
         if not account or not account.enabled:
-            raise RssServiceError('RSS 账号不可用')
+            raise RssServiceError("RSS 账号不可用")
 
         config = _config_from_account(account)
         client = create_client(config)
@@ -393,7 +389,7 @@ def sync_feed(user_id: int, feed_id: int, *, entry_limit: int = 50) -> dict[str,
         account.last_error = None
         session.commit()
 
-    return {'feed_id': feed_id, 'entries': synced}
+    return {"feed_id": feed_id, "entries": synced}
 
 
 def unsubscribe_feed(user_id: int, account_id: int, feed_id: int) -> bool:
@@ -405,7 +401,7 @@ def unsubscribe_feed(user_id: int, account_id: int, feed_id: int) -> bool:
                 RssFeed.id == feed_id,
                 RssFeed.account_id == account_id,
                 RssFeed.user_id == user_id,
-            )
+            ),
         ).first()
         if not feed:
             return False
@@ -424,10 +420,10 @@ def unsubscribe_feed(user_id: int, account_id: int, feed_id: int) -> bool:
             raise
         except (OSError, ValueError, TypeError) as e:
             logger.warning(
-                'Failed to sync unsubscribe to remote RSS service: account_id=%s feed_id=%s error=%s',
+                "Failed to sync unsubscribe to remote RSS service: account_id=%s feed_id=%s error=%s",
                 account_id, feed_id, e,
             )
-            raise RssServiceError(f'Failed to unsubscribe from remote RSS service: {e}') from e
+            raise RssServiceError(f"Failed to unsubscribe from remote RSS service: {e}") from e
 
     with get_session() as session:
         feed = session.scalars(
@@ -435,21 +431,21 @@ def unsubscribe_feed(user_id: int, account_id: int, feed_id: int) -> bool:
                 RssFeed.id == feed_id,
                 RssFeed.account_id == account_id,
                 RssFeed.user_id == user_id,
-            )
+            ),
         ).first()
         if not feed:
             return True
 
         entry_rows = session.execute(
-            select(RssEntry.id).where(RssEntry.feed_id == feed_id)
+            select(RssEntry.id).where(RssEntry.feed_id == feed_id),
         ).all()
         entry_ids = [row.id for row in entry_rows]
         if entry_ids:
             session.execute(
-                delete(RssEntryView).where(RssEntryView.entry_id.in_(entry_ids))
+                delete(RssEntryView).where(RssEntryView.entry_id.in_(entry_ids)),
             )
         session.execute(
-            delete(RssEntry).where(RssEntry.feed_id == feed_id)
+            delete(RssEntry).where(RssEntry.feed_id == feed_id),
         )
         session.delete(feed)
         session.commit()
@@ -465,7 +461,7 @@ def _upsert_feeds(session: Session, account: RssAccount, remotes: list[RemoteFee
             select(RssFeed).where(
                 RssFeed.account_id == account.id,
                 RssFeed.external_feed_id.in_(external_feed_ids),
-            )
+            ),
         ).all()
         existing_by_id = {f.external_feed_id: f for f in existing_rows}
 
@@ -517,7 +513,7 @@ def _upsert_remote_entries_batch(
             select(RssEntry).where(
                 RssEntry.feed_id.in_(feed_ids),
                 RssEntry.external_entry_id.in_(entry_ids),
-            )
+            ),
         ).all()
         existing = {(e.feed_id, e.external_entry_id): e for e in existing_rows}
 
@@ -552,8 +548,8 @@ def _upsert_remote_entries_batch(
         )
 
         if entry is None:
-            common['created_at'] = now
-            common['updated_at'] = now
+            common["created_at"] = now
+            common["updated_at"] = now
             new_dicts.append(common)
         else:
             if (entry.title == remote_entry.title
@@ -566,8 +562,8 @@ def _upsert_remote_entries_batch(
                     and entry.published_at == remote_entry.published_at):
                 continue
 
-            common['id'] = entry.id
-            common['updated_at'] = now
+            common["id"] = entry.id
+            common["updated_at"] = now
             update_dicts.append(common)
 
         if feed.id not in touched_feeds:
@@ -586,7 +582,7 @@ def _load_feeds_by_external_id(
     session,
     account_id: int,
     remote_entries: list[RemoteEntry],
-    known_feeds: Optional[dict[str, RssFeed]] = None,
+    known_feeds: dict[str, RssFeed] | None = None,
 ) -> dict[str, RssFeed]:
     feed_ids = {entry.external_feed_id for entry in remote_entries if entry.external_feed_id}
     if not feed_ids:
@@ -599,6 +595,6 @@ def _load_feeds_by_external_id(
         select(RssFeed).where(
             RssFeed.account_id == account_id,
             RssFeed.external_feed_id.in_(sorted(feed_ids)),
-        )
+        ),
     ).all()
     return {feed.external_feed_id: feed for feed in feeds if feed.enabled}

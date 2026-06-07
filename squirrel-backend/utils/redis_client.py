@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import redis
 
@@ -7,7 +6,7 @@ from core.cache import create_redis_client
 
 logger = logging.getLogger(__name__)
 
-_redis_client: Optional[redis.Redis] = None
+_redis_client: redis.Redis | None = None
 
 
 def get_redis_client() -> redis.Redis:

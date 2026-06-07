@@ -370,9 +370,7 @@ class BrowserSolver:
         custom_headers: dict[str, str] | None = None,
     ) -> HtmlResult | None:
         from camoufox.async_api import AsyncCamoufox
-        from playwright_captcha import CaptchaType
-        from playwright_captcha import ClickSolver
-        from playwright_captcha import FrameworkType
+        from playwright_captcha import CaptchaType, ClickSolver, FrameworkType
 
         key = self._key(url, proxy)
         async with self._lock_for(key):

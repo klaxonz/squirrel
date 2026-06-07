@@ -28,4 +28,16 @@ where = ["src"]
 [tool.setuptools.package-data]
 "*" = ["*.md"]
 
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = ["E501"]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+"src/crawl/__init__.py" = ["E402"]
+
 

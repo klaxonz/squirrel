@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class RuntimeErrorCode(str, Enum):
@@ -26,15 +26,15 @@ class SiteRuntimeError:
     code: RuntimeErrorCode
     message: str
     retryable: bool = False
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data['code'] = self.code.value
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'SiteRuntimeError':
+    def from_dict(cls, data: dict[str, Any]) -> SiteRuntimeError:
         raw_code = str(data.get('code', RuntimeErrorCode.CRASHED.value))
         try:
             code = RuntimeErrorCode(raw_code)
@@ -48,38 +48,38 @@ class SiteRuntimeError:
         )
 
     @classmethod
-    def timeout(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
+    def timeout(cls, message: str, details: dict[str, Any] | None = None) -> SiteRuntimeError:
         return cls(RuntimeErrorCode.TIMEOUT, message, retryable=True, details=dict(details or {}))
 
     @classmethod
-    def crashed(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
+    def crashed(cls, message: str, details: dict[str, Any] | None = None) -> SiteRuntimeError:
         return cls(RuntimeErrorCode.CRASHED, message, retryable=False, details=dict(details or {}))
 
     @classmethod
-    def bad_response(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
+    def bad_response(cls, message: str, details: dict[str, Any] | None = None) -> SiteRuntimeError:
         return cls(RuntimeErrorCode.BAD_RESPONSE, message, retryable=False, details=dict(details or {}))
 
     @classmethod
-    def route_not_found(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
+    def route_not_found(cls, message: str, details: dict[str, Any] | None = None) -> SiteRuntimeError:
         return cls(RuntimeErrorCode.ROUTE_NOT_FOUND, message, retryable=False, details=dict(details or {}))
 
     @classmethod
-    def auth_required(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
+    def auth_required(cls, message: str, details: dict[str, Any] | None = None) -> SiteRuntimeError:
         return cls(RuntimeErrorCode.AUTH_REQUIRED, message, retryable=False, details=dict(details or {}))
 
     @classmethod
     def network_error(
         cls,
         message: str,
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
         retryable: bool = True,
-    ) -> 'SiteRuntimeError':
+    ) -> SiteRuntimeError:
         return cls(RuntimeErrorCode.NETWORK_ERROR, message, retryable=retryable, details=dict(details or {}))
 
     @classmethod
-    def parse_error(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
+    def parse_error(cls, message: str, details: dict[str, Any] | None = None) -> SiteRuntimeError:
         return cls(RuntimeErrorCode.PARSE_ERROR, message, retryable=False, details=dict(details or {}))
 
     @classmethod
-    def subtitles_not_available(cls, message: str, details: Optional[Dict[str, Any]] = None) -> 'SiteRuntimeError':
+    def subtitles_not_available(cls, message: str, details: dict[str, Any] | None = None) -> SiteRuntimeError:
         return cls(RuntimeErrorCode.SUBTITLES_NOT_AVAILABLE, message, retryable=False, details=dict(details or {}))

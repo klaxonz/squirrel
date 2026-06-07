@@ -6,7 +6,6 @@ from processes.managers.worker_manager import worker_start, worker_stop
 from processes.service_runtime import bootstrap_runtime, create_shutdown_event
 from services import system_config_service
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -1,8 +1,8 @@
-import logging
 import json
-from datetime import datetime, timezone
+import logging
+from datetime import UTC, datetime
 from pathlib import PurePosixPath
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -18,7 +18,7 @@ class CookieCloudSyncError(RuntimeError):
     pass
 
 
-def _get_cookiecloud_config() -> Tuple[str, str, str]:
+def _get_cookiecloud_config() -> tuple[str, str, str]:
     url = (settings.COOKIECLOUD_URL or "").strip()
     uuid = (settings.COOKIECLOUD_UUID or "").strip()
     password = (settings.COOKIECLOUD_PASSWORD or "").strip()
@@ -30,17 +30,17 @@ def is_cookiecloud_configured() -> bool:
     return bool(url and uuid and password)
 
 
-def _decode_cookiecloud_response_json(response: requests.Response) -> Dict[str, Any]:
-    payload = response.content or b''
+def _decode_cookiecloud_response_json(response: requests.Response) -> dict[str, Any]:
+    payload = response.content or b""
     attempted_encodings: list[str] = []
     last_error: Exception | None = None
 
     encodings = [
         response.encoding,
-        getattr(response, 'apparent_encoding', None),
-        'utf-8',
-        'utf-8-sig',
-        'latin-1',
+        getattr(response, "apparent_encoding", None),
+        "utf-8",
+        "utf-8-sig",
+        "latin-1",
     ]
 
     for encoding in encodings:
@@ -53,32 +53,32 @@ def _decode_cookiecloud_response_json(response: requests.Response) -> Dict[str, 
             last_error = exc
 
     raise CookieCloudSyncError(
-        'CookieCloud 响应不是有效的 JSON 数据，请检查服务端编码或反向代理压缩配置'
+        "CookieCloud 响应不是有效的 JSON 数据，请检查服务端编码或反向代理压缩配置",
     ) from last_error
 
 
 def _fetch_cookiecloud_encrypted_data(url: str, uuid: str) -> str:
-    api_root = urlparse(url).path or '/'
-    request_path = str(PurePosixPath(api_root, 'get', uuid))
+    api_root = urlparse(url).path or "/"
+    request_path = str(PurePosixPath(api_root, "get", uuid))
 
     try:
         response = requests.get(urljoin(url, request_path), timeout=15)
         response.raise_for_status()
     except requests.RequestException as exc:
-        raise CookieCloudSyncError(f'CookieCloud 请求失败: {exc}') from exc
+        raise CookieCloudSyncError(f"CookieCloud 请求失败: {exc}") from exc
 
     payload = _decode_cookiecloud_response_json(response)
-    encrypted_data = payload.get('encrypted')
+    encrypted_data = payload.get("encrypted")
     if not isinstance(encrypted_data, str) or not encrypted_data.strip():
-        raise CookieCloudSyncError('CookieCloud 响应缺少 encrypted 字段')
+        raise CookieCloudSyncError("CookieCloud 响应缺少 encrypted 字段")
     return encrypted_data
 
 
-def fetch_cookiecloud_cookie_data() -> Dict[str, Any]:
+def fetch_cookiecloud_cookie_data() -> dict[str, Any]:
     url, uuid, password = _get_cookiecloud_config()
     if not url or not uuid or not password:
         raise CookieCloudSyncError(
-            "CookieCloud 未配置，请设置 COOKIECLOUD_URL / COOKIECLOUD_UUID / COOKIECLOUD_PASSWORD"
+            "CookieCloud 未配置，请设置 COOKIECLOUD_URL / COOKIECLOUD_UUID / COOKIECLOUD_PASSWORD",
         )
 
     try:
@@ -90,12 +90,12 @@ def fetch_cookiecloud_cookie_data() -> Dict[str, Any]:
     client = PyCookieCloud(url=url, uuid=uuid, password=password)
     encrypted_data = _fetch_cookiecloud_encrypted_data(url=url, uuid=uuid)
     try:
-        decrypted_data = decrypt(encrypted_data, client.get_the_key().encode('utf-8')).decode('utf-8')
+        decrypted_data = decrypt(encrypted_data, client.get_the_key().encode("utf-8")).decode("utf-8")
         payload = json.loads(decrypted_data)
     except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as exc:
-        raise CookieCloudSyncError(f'CookieCloud 解密失败: {exc}') from exc
+        raise CookieCloudSyncError(f"CookieCloud 解密失败: {exc}") from exc
 
-    data = payload.get('cookie_data')
+    data = payload.get("cookie_data")
     if not isinstance(data, dict) or not data:
         raise CookieCloudSyncError("CookieCloud 返回为空或解密失败")
     return data
@@ -127,7 +127,7 @@ def _to_int_seconds(value: Any) -> int:
         return 0
 
 
-def _cookie_to_netscape_line(cookie: Dict[str, Any]) -> Optional[str]:
+def _cookie_to_netscape_line(cookie: dict[str, Any]) -> str | None:
     name = cookie.get("name")
     value = cookie.get("value")
     raw_domain = cookie.get("domain")
@@ -159,11 +159,11 @@ def _cookie_to_netscape_line(cookie: Dict[str, Any]) -> Optional[str]:
     return "\t".join([domain_out, flag_out, path_out, secure_out, expires_out, str(name), str(value)])
 
 
-def sync_cookiecloud_to_site_files(site_slug: Optional[str] = None) -> Dict[str, Any]:
+def sync_cookiecloud_to_site_files(site_slug: str | None = None) -> dict[str, Any]:
     cookie_data = fetch_cookiecloud_cookie_data()
     catalog = get_effective_site_catalog()
 
-    site_domains: Dict[str, list[str]] = {}
+    site_domains: dict[str, list[str]] = {}
     for slug, info in catalog.items():
         if site_slug and slug.lower() != site_slug.strip().lower():
             continue
@@ -178,7 +178,7 @@ def sync_cookiecloud_to_site_files(site_slug: Optional[str] = None) -> Dict[str,
     if not site_domains:
         raise CookieCloudSyncError("未找到可同步的站点域名配置")
 
-    flattened: list[Dict[str, Any]] = []
+    flattened: list[dict[str, Any]] = []
     for host, entries in (cookie_data or {}).items():
         if not isinstance(entries, list):
             continue
@@ -192,9 +192,9 @@ def sync_cookiecloud_to_site_files(site_slug: Optional[str] = None) -> Dict[str,
 
     get_site_cookies_dir().mkdir(parents=True, exist_ok=True)
 
-    result_sites: Dict[str, Dict[str, Any]] = {}
+    result_sites: dict[str, dict[str, Any]] = {}
     for slug, domains in site_domains.items():
-        matched: Dict[tuple[str, str, str], Dict[str, Any]] = {}
+        matched: dict[tuple[str, str, str], dict[str, Any]] = {}
         for cookie in flattened:
             raw_domain = cookie.get("domain")
             cookie_domain = _normalize_domain(raw_domain)
@@ -230,13 +230,13 @@ def sync_cookiecloud_to_site_files(site_slug: Optional[str] = None) -> Dict[str,
                 lines.append(line)
 
         path = get_site_cookies_file_path(slug)
-        write_cookie_text_file(path, '\n'.join(lines) + '\n')
+        write_cookie_text_file(path, "\n".join(lines) + "\n")
         result_sites[slug] = {
             "cookies": max(0, len(lines) - 1),
             "path": str(path),
         }
 
-    synced_at = datetime.now(timezone.utc).isoformat()
+    synced_at = datetime.now(UTC).isoformat()
     return {
         "synced_at": synced_at,
         "total_cookie_entries": len(flattened),

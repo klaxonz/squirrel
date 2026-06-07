@@ -2,8 +2,7 @@ import time
 
 from fastapi.testclient import TestClient
 
-from squirrel_cf_bypass.app.core.models import ClearanceRecord
-from squirrel_cf_bypass.app.core.models import HtmlResult
+from squirrel_cf_bypass.app.core.models import ClearanceRecord, HtmlResult
 from squirrel_cf_bypass.app.main import create_app
 
 

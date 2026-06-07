@@ -1,5 +1,4 @@
-"""
-缩略图下载服务 - 负责下载缩略图到本地
+"""缩略图下载服务 - 负责下载缩略图到本地
 """
 import html as html_lib
 import json
@@ -9,15 +8,14 @@ import re
 import time
 from collections import OrderedDict
 from datetime import datetime
-from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
 from sqlalchemy import select
 
-from core.database import get_session
+from common.site_constants import SITE_META_OFFLINE_THUMBNAILS_DISPLAY, SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD
 from core.config import settings
-from common.site_constants import SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD, SITE_META_OFFLINE_THUMBNAILS_DISPLAY
+from core.database import get_session
 from core.site_config_manager import get_effective_site_catalog
 from models.video_thumbnail_local_index import VideoThumbnailLocalIndex
 from utils.cookie import filter_cookies_to_query_string
@@ -33,12 +31,12 @@ _BATCH_INDEX_CACHE_MAX_BATCHES = 64
 _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS = 3
 _THUMBNAIL_DOWNLOAD_RETRYABLE_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
 _EXPIRING_PREVIEW_REFRESH_STATUS_CODES = {403, 404, 410, 472}
-_LDJSON_THUMBNAIL_RE = re.compile(r'<script\s+type=["\']application/ld\+json["\']>(.*?)</script>', re.I | re.S)
+_LDJSON_THUMBNAIL_RE = re.compile(r'<script\s+type=["\']application/ld\+json["\']>(.*?)</script>', re.IGNORECASE | re.DOTALL)
 _META_THUMBNAIL_PATTERNS = (
-    re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
-    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', re.I),
-    re.compile(r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']', re.I),
-    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image["\']', re.I),
+    re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', re.IGNORECASE),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', re.IGNORECASE),
+    re.compile(r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']', re.IGNORECASE),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image["\']', re.IGNORECASE),
 )
 
 _DEFAULT_HEADERS = {
@@ -50,18 +48,17 @@ _DEFAULT_HEADERS = {
 }
 
 _SITE_COOKIE_DEFAULTS: dict[str, dict[str, str]] = {
-    'pornhub': {
-        'age_verified': '1',
-        'accessAgeDisclaimerPH': '1',
-        'accessAgeDisclaimerUK': '1',
-        'accessPH': '1',
+    "pornhub": {
+        "age_verified": "1",
+        "accessAgeDisclaimerPH": "1",
+        "accessAgeDisclaimerUK": "1",
+        "accessPH": "1",
     },
 }
 
 
 class ThumbnailDownloaderService:
-    """
-    缩略图下载服务
+    """缩略图下载服务
 
     职责：
     - 检查站点配置
@@ -70,8 +67,8 @@ class ThumbnailDownloaderService:
     """
 
     def __init__(self):
-        self._http_client: Optional[httpx.Client] = None
-        self._effective_catalog: Optional[dict] = None
+        self._http_client: httpx.Client | None = None
+        self._effective_catalog: dict | None = None
         self._effective_catalog_cached_at = 0.0
         self._batch_index_cache: OrderedDict[str, tuple[dict[int, str], float]] = OrderedDict()
 
@@ -94,34 +91,34 @@ class ThumbnailDownloaderService:
         self._http_client = None
 
     @staticmethod
-    def _parse_cookie_header(cookie_header: Optional[str]) -> dict[str, str]:
+    def _parse_cookie_header(cookie_header: str | None) -> dict[str, str]:
         cookies: dict[str, str] = {}
-        for segment in str(cookie_header or '').split(';'):
+        for segment in str(cookie_header or "").split(";"):
             item = segment.strip()
-            if not item or '=' not in item:
+            if not item or "=" not in item:
                 continue
-            name, value = item.split('=', 1)
+            name, value = item.split("=", 1)
             clean_name = name.strip()
             if not clean_name:
                 continue
             cookies[clean_name] = value.strip()
         return cookies
 
-    def _site_info(self, site_name: Optional[str]) -> dict:
+    def _site_info(self, site_name: str | None) -> dict:
         if not site_name:
             return {}
         return self._get_effective_catalog().get(site_name.lower(), {})
 
-    def _site_requires_cookies(self, site_name: Optional[str]) -> bool:
-        metadata = (self._site_info(site_name).get('metadata') or {})
-        return bool(metadata.get('requires_cookies'))
+    def _site_requires_cookies(self, site_name: str | None) -> bool:
+        metadata = (self._site_info(site_name).get("metadata") or {})
+        return bool(metadata.get("requires_cookies"))
 
     def build_request_headers(
         self,
-        site_name: Optional[str],
+        site_name: str | None,
         *,
-        source_url: Optional[str] = None,
-        target_url: Optional[str] = None,
+        source_url: str | None = None,
+        target_url: str | None = None,
     ) -> dict[str, str]:
         headers = dict(_DEFAULT_HEADERS)
         if not site_name:
@@ -133,9 +130,9 @@ class ThumbnailDownloaderService:
             if value is not None:
                 headers[str(key)] = str(value)
 
-        effective_referer = str(source_url or headers.get('Referer') or '').strip()
+        effective_referer = str(source_url or headers.get("Referer") or "").strip()
         if effective_referer:
-            headers['Referer'] = effective_referer
+            headers["Referer"] = effective_referer
 
         referer = headers.get("Referer")
         if referer and "Origin" not in headers:
@@ -147,7 +144,7 @@ class ThumbnailDownloaderService:
                 pass
 
         if self._site_requires_cookies(site_name):
-            cookies = self._parse_cookie_header(headers.get('Cookie'))
+            cookies = self._parse_cookie_header(headers.get("Cookie"))
             cookie_lookup_url = source_url or target_url
             if cookie_lookup_url:
                 cookies.update(self._parse_cookie_header(filter_cookies_to_query_string(cookie_lookup_url)))
@@ -156,7 +153,7 @@ class ThumbnailDownloaderService:
                 cookies.setdefault(name, value)
 
             if cookies:
-                headers['Cookie'] = '; '.join(f'{name}={value}' for name, value in cookies.items())
+                headers["Cookie"] = "; ".join(f"{name}={value}" for name, value in cookies.items())
 
         return headers
 
@@ -220,7 +217,7 @@ class ThumbnailDownloaderService:
         self._batch_index_cache.move_to_end(batch_dir)
 
     def _build_static_thumbnail_url(self, batch_name: str, filename: str) -> str:
-        return f'/static/thumbnails/{batch_name}/{filename}'
+        return f"/static/thumbnails/{batch_name}/{filename}"
 
     @staticmethod
     def _should_retry_download_status(status_code: int) -> bool:
@@ -231,38 +228,38 @@ class ThumbnailDownloaderService:
         return min(2.0, 0.5 * attempt)
 
     @staticmethod
-    def _looks_like_expiring_preview_thumbnail(url: Optional[str]) -> bool:
-        normalized = str(url or '').strip().lower()
+    def _looks_like_expiring_preview_thumbnail(url: str | None) -> bool:
+        normalized = str(url or "").strip().lower()
         if not normalized:
             return False
-        if 'phncdn.com/videos/' in normalized:
+        if "phncdn.com/videos/" in normalized:
             return True
-        return '/plain/' in normalized and (
-            'validto=' in normalized or 'hdnea=' in normalized
+        return "/plain/" in normalized and (
+            "validto=" in normalized or "hdnea=" in normalized
         )
 
     @staticmethod
     def _thumbnail_expiry_score(url: str) -> float:
-        normalized = str(url or '').strip().lower()
+        normalized = str(url or "").strip().lower()
         if not normalized:
             return -1
-        if not any(token in normalized for token in ('validto=', 'hdnea=', 'hmac=', 'hash=')):
-            return float('inf')
+        if not any(token in normalized for token in ("validto=", "hdnea=", "hmac=", "hash=")):
+            return float("inf")
 
-        validto_match = re.search(r'[?&]validto=(\d+)', normalized)
+        validto_match = re.search(r"[?&]validto=(\d+)", normalized)
         if validto_match:
             return float(validto_match.group(1))
 
-        hdnea_exp_match = re.search(r'(?:^|[~&])exp=(\d+)', normalized)
+        hdnea_exp_match = re.search(r"(?:^|[~&])exp=(\d+)", normalized)
         if hdnea_exp_match:
             return float(hdnea_exp_match.group(1))
 
         return 0
 
-    def _pick_best_thumbnail_url(self, thumbnail_urls: list[str]) -> Optional[str]:
+    def _pick_best_thumbnail_url(self, thumbnail_urls: list[str]) -> str | None:
         unique_urls = []
         for thumbnail_url in thumbnail_urls:
-            normalized = html_lib.unescape(str(thumbnail_url or '').strip())
+            normalized = html_lib.unescape(str(thumbnail_url or "").strip())
             if normalized and normalized not in unique_urls:
                 unique_urls.append(normalized)
 
@@ -271,9 +268,9 @@ class ThumbnailDownloaderService:
 
         return max(unique_urls, key=self._thumbnail_expiry_score)
 
-    def _extract_thumbnail_url_from_html(self, html_text: str) -> Optional[str]:
+    def _extract_thumbnail_url_from_html(self, html_text: str) -> str | None:
         thumbnail_urls: list[str] = []
-        for match in _LDJSON_THUMBNAIL_RE.finditer(str(html_text or '')):
+        for match in _LDJSON_THUMBNAIL_RE.finditer(str(html_text or "")):
             try:
                 payload = json.loads(match.group(1).strip())
             except (json.JSONDecodeError, TypeError):
@@ -288,13 +285,13 @@ class ThumbnailDownloaderService:
                 if not isinstance(item, dict):
                     continue
 
-                graph = item.get('@graph')
+                graph = item.get("@graph")
                 if isinstance(graph, list):
                     pending.extend(graph)
                 elif isinstance(graph, dict):
                     pending.append(graph)
 
-                for key in ('thumbnailUrl', 'thumbnail', 'contentUrl'):
+                for key in ("thumbnailUrl", "thumbnail", "contentUrl"):
                     value = item.get(key)
                     if isinstance(value, str) and value.strip():
                         thumbnail_urls.append(value.strip())
@@ -304,7 +301,7 @@ class ThumbnailDownloaderService:
                                 thumbnail_urls.append(candidate.strip())
 
         for pattern in _META_THUMBNAIL_PATTERNS:
-            for match in pattern.finditer(str(html_text or '')):
+            for match in pattern.finditer(str(html_text or "")):
                 thumbnail_url = html_lib.unescape(match.group(1).strip())
                 if thumbnail_url:
                     thumbnail_urls.append(thumbnail_url)
@@ -313,10 +310,10 @@ class ThumbnailDownloaderService:
 
     def _fetch_fresh_thumbnail_url(
         self,
-        site_name: Optional[str],
-        source_url: Optional[str],
-        current_thumbnail_url: Optional[str],
-    ) -> Optional[str]:
+        site_name: str | None,
+        source_url: str | None,
+        current_thumbnail_url: str | None,
+    ) -> str | None:
         if not site_name or not source_url:
             return None
         if not self._looks_like_expiring_preview_thumbnail(current_thumbnail_url):
@@ -332,7 +329,7 @@ class ThumbnailDownloaderService:
             response = self._get_http_client().get(source_url, headers=headers)
         except httpx.TransportError as exc:
             logger.info(
-                'Failed to refresh expiring thumbnail from source page: site=%s, url=%s, error=%s',
+                "Failed to refresh expiring thumbnail from source page: site=%s, url=%s, error=%s",
                 site_name,
                 source_url[:120],
                 exc,
@@ -342,8 +339,8 @@ class ThumbnailDownloaderService:
 
         if response.status_code != 200:
             logger.info(
-                'Failed to refresh expiring thumbnail from source page: site=%s, '
-                'url=%s, status=%s',
+                "Failed to refresh expiring thumbnail from source page: site=%s, "
+                "url=%s, status=%s",
                 site_name,
                 source_url[:120],
                 response.status_code,
@@ -367,7 +364,7 @@ class ThumbnailDownloaderService:
             with get_session() as session:
                 record = session.scalars(
                     select(VideoThumbnailLocalIndex)
-                    .where(VideoThumbnailLocalIndex.video_id == video_id)
+                    .where(VideoThumbnailLocalIndex.video_id == video_id),
                 ).first()
                 if record is None:
                     session.add(VideoThumbnailLocalIndex(
@@ -387,11 +384,11 @@ class ThumbnailDownloaderService:
                 record.indexed_at = now
                 record.updated_at = now
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.warning(f'Failed to update thumbnail local index: video_id={video_id}, error={e}')
+            logger.warning(f"Failed to update thumbnail local index: video_id={video_id}, error={e}")
 
     def _get_local_thumbnail_path_map(
         self,
-        indexed_items: list[tuple[int, Optional[str], Optional[str]]],
+        indexed_items: list[tuple[int, str | None, str | None]],
     ) -> dict[int, str]:
         video_ids = [video_id for video_id, _remote_url, _video_url in indexed_items]
         if not video_ids:
@@ -408,10 +405,10 @@ class ThumbnailDownloaderService:
                     .where(
                         VideoThumbnailLocalIndex.video_id.in_(video_ids),
                         VideoThumbnailLocalIndex.exists.is_(True),
-                    )
+                    ),
                 ).all()
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.warning(f'Failed to read thumbnail local index: error={e}')
+            logger.warning(f"Failed to read thumbnail local index: error={e}")
             return {}
 
         results: dict[int, str] = {}
@@ -435,11 +432,10 @@ class ThumbnailDownloaderService:
         self,
         video_id: int,
         thumbnail_url: str,
-        site_name: Optional[str] = None,
-        source_url: Optional[str] = None,
-    ) -> Optional[str]:
-        """
-        下载缩略图到本地
+        site_name: str | None = None,
+        source_url: str | None = None,
+    ) -> str | None:
+        """下载缩略图到本地
 
         Args:
             video_id: 视频ID
@@ -449,6 +445,7 @@ class ThumbnailDownloaderService:
 
         Returns:
             本地文件路径，失败返回 None
+
         """
         if not thumbnail_url:
             return None
@@ -470,13 +467,13 @@ class ThumbnailDownloaderService:
                 self._upsert_local_thumbnail_index(video_id, batch_name, os.path.basename(file_path), exists=True)
                 return file_path
 
-            def request_thumbnail(target_url: str) -> Optional[httpx.Response]:
+            def request_thumbnail(target_url: str) -> httpx.Response | None:
                 headers = self.build_request_headers(
                     site_name,
                     source_url=source_url,
                     target_url=target_url,
                 )
-                resp: Optional[httpx.Response] = None
+                resp: httpx.Response | None = None
 
                 for attempt in range(1, _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS + 1):
                     try:
@@ -487,8 +484,8 @@ class ThumbnailDownloaderService:
                             raise
 
                         logger.info(
-                            'Retrying thumbnail download after transport error: '
-                            'video_id=%s, attempt=%s/%s, url=%s, error=%s',
+                            "Retrying thumbnail download after transport error: "
+                            "video_id=%s, attempt=%s/%s, url=%s, error=%s",
                             video_id,
                             attempt,
                             _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS,
@@ -507,8 +504,8 @@ class ThumbnailDownloaderService:
                         and attempt < _THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS
                     ):
                         logger.info(
-                            'Retrying thumbnail download after HTTP %s: '
-                            'video_id=%s, attempt=%s/%s, url=%s',
+                            "Retrying thumbnail download after HTTP %s: "
+                            "video_id=%s, attempt=%s/%s, url=%s",
                             resp.status_code,
                             video_id,
                             attempt,
@@ -534,11 +531,11 @@ class ThumbnailDownloaderService:
                 )
                 if refreshed_thumbnail_url and refreshed_thumbnail_url != thumbnail_url:
                     logger.info(
-                        'Retrying thumbnail download with refreshed source URL: '
-                        'video_id=%s, status=%s, site=%s',
+                        "Retrying thumbnail download with refreshed source URL: "
+                        "video_id=%s, status=%s, site=%s",
                         video_id,
                         resp.status_code,
-                        site_name or 'unknown',
+                        site_name or "unknown",
                     )
                     thumbnail_url = refreshed_thumbnail_url
                     ext = self._get_extension(thumbnail_url)
@@ -556,7 +553,7 @@ class ThumbnailDownloaderService:
             if resp.status_code != 200:
                 logger.warning(
                     f"Failed to download thumbnail: video_id={video_id}, "
-                    f"status={resp.status_code}, url={thumbnail_url[:80]}"
+                    f"status={resp.status_code}, url={thumbnail_url[:80]}",
                 )
                 return None
 
@@ -564,7 +561,7 @@ class ThumbnailDownloaderService:
             if content_type and not content_type.startswith("image/"):
                 logger.warning(
                     f"Invalid content type for thumbnail: video_id={video_id}, "
-                    f"content_type={content_type}"
+                    f"content_type={content_type}",
                 )
                 return None
 
@@ -579,7 +576,7 @@ class ThumbnailDownloaderService:
         except (OSError, ValueError, TypeError) as e:
             logger.warning(
                 f"Failed to download thumbnail: video_id={video_id}, "
-                f"url={thumbnail_url[:80]}, error={e}"
+                f"url={thumbnail_url[:80]}, error={e}",
             )
             return None
 
@@ -588,10 +585,9 @@ class ThumbnailDownloaderService:
         video_id: int,
         thumbnail_url: str,
         site_name: str,
-        source_url: Optional[str] = None,
-    ) -> Optional[str]:
-        """
-        下载缩略图（同步执行）
+        source_url: str | None = None,
+    ) -> str | None:
+        """下载缩略图（同步执行）
 
         Args:
             video_id: 视频ID
@@ -601,6 +597,7 @@ class ThumbnailDownloaderService:
 
         Returns:
             本地文件路径，失败返回 None
+
         """
         return self.download_thumbnail(video_id, thumbnail_url, site_name, source_url=source_url)
 
@@ -610,7 +607,7 @@ class ThumbnailDownloaderService:
             catalog = self._get_effective_catalog()
             site_info = catalog.get(site_name.lower(), {})
             metadata = site_info.get("metadata", {})
-            return metadata.get(SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD, False)   
+            return metadata.get(SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD, False)
         except (ValueError, TypeError, AttributeError, KeyError) as e:
             logger.warning(f"Failed to check thumbnail config: {e}")
             return False
@@ -638,7 +635,7 @@ class ThumbnailDownloaderService:
         batch_dir = self._get_batch_dir(video_id)
         return video_id in self._get_batch_index(batch_dir)
 
-    def _get_local_thumbnail_path(self, video_id: int, remote_url: Optional[str] = None) -> Optional[str]:
+    def _get_local_thumbnail_path(self, video_id: int, remote_url: str | None = None) -> str | None:
         """获取本地封面的静态URL路径"""
         batch_dir = self._get_batch_dir(video_id)
         batch_name = os.path.basename(batch_dir)
@@ -662,18 +659,18 @@ class ThumbnailDownloaderService:
             catalog = self._get_effective_catalog()
             site_info = catalog.get(site_name.lower(), {})
             metadata = site_info.get("metadata", {})
-            return metadata.get(SITE_META_OFFLINE_THUMBNAILS_DISPLAY, False)    
+            return metadata.get(SITE_META_OFFLINE_THUMBNAILS_DISPLAY, False)
         except (ValueError, TypeError, AttributeError, KeyError) as e:
             logger.warning(f"Failed to check thumbnail display config: {e}")
             return False
 
     def get_thumbnail_url_map(
         self,
-        items: list[tuple[int, Optional[str], Optional[str]]]
-    ) -> dict[int, Optional[str]]:
-        results: dict[int, Optional[str]] = {}
+        items: list[tuple[int, str | None, str | None]],
+    ) -> dict[int, str | None]:
+        results: dict[int, str | None] = {}
         offline_enabled_cache: dict[str, bool] = {}
-        offline_items: list[tuple[int, Optional[str], Optional[str]]] = []
+        offline_items: list[tuple[int, str | None, str | None]] = []
 
         for video_id, remote_url, video_url in items:
             if not remote_url:
@@ -709,9 +706,8 @@ class ThumbnailDownloaderService:
 
         return results
 
-    def get_thumbnail_url(self, video_id: int, remote_url: Optional[str], video_url: Optional[str] = None) -> Optional[str]:
-        """
-        获取封面的完整URL
+    def get_thumbnail_url(self, video_id: int, remote_url: str | None, video_url: str | None = None) -> str | None:
+        """获取封面的完整URL
 
         Args:
             video_id: 视频ID
@@ -720,6 +716,7 @@ class ThumbnailDownloaderService:
 
         Returns:
             本地静态路径或远程URL
+
         """
         return self.get_thumbnail_url_map([
             (video_id, remote_url, video_url),

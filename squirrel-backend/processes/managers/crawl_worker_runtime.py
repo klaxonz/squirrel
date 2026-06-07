@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from concurrent.futures import Future, ThreadPoolExecutor
-from dataclasses import dataclass
 import logging
 import threading
+from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import dataclass
 from datetime import datetime
 
 from core.config import settings
 from services.crawl_dispatcher.service import CrawlDispatcherService
 from services.crawl_executors.subscription_sync_executor import execute_subscription_sync_task
-from services.crawl_tasks.task_types import is_subscription_sync_task_type
-from services.crawl_tasks.errors import CrawlTaskNotFoundError, CrawlTaskOwnershipError
 from services.crawl_executors.video_extract_executor import execute_video_extract_task
 from services.crawl_tasks import service as crawl_task_service
+from services.crawl_tasks.errors import CrawlTaskNotFoundError, CrawlTaskOwnershipError
+from services.crawl_tasks.task_types import is_subscription_sync_task_type
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class CrawlWorkerRuntime:
         self,
         *,
         dispatcher: CrawlDispatcherService | None = None,
-        worker_id: str = 'crawl-worker-1',
+        worker_id: str = "crawl-worker-1",
         lease_seconds: int | None = None,
         retry_delay_seconds: int = 30,
         poll_interval_seconds: float = 1.0,
@@ -56,7 +56,7 @@ class CrawlWorkerRuntime:
     def run_loop(self, stop_event: threading.Event) -> None:
         with ThreadPoolExecutor(
             max_workers=self.max_concurrency,
-            thread_name_prefix=f'{self.worker_id}-slot',
+            thread_name_prefix=f"{self.worker_id}-slot",
         ) as executor:
             while not stop_event.is_set():
                 self._reap_completed_futures()
@@ -90,20 +90,20 @@ class CrawlWorkerRuntime:
             self._reap_completed_futures()
 
     def _execute_task(self, task) -> None:
-        if task.task_type == 'video_extract':
+        if task.task_type == "video_extract":
             execute_video_extract_task(task)
             return
         if is_subscription_sync_task_type(task.task_type):
             execute_subscription_sync_task(task)
             return
-        raise ValueError(f'Unsupported crawl task type: {task.task_type}')
+        raise ValueError(f"Unsupported crawl task type: {task.task_type}")
 
     def _run_task(self, task, claimed_at: datetime) -> None:
         try:
             crawl_task_service.start_task(task_id=task.id, worker_id=self.worker_id, now=claimed_at)
         except (CrawlTaskOwnershipError, CrawlTaskNotFoundError):
             logger.warning(
-                'Skip crawl task start because lease is no longer owned: task_id=%s worker_id=%s',
+                "Skip crawl task start because lease is no longer owned: task_id=%s worker_id=%s",
                 task.id,
                 self.worker_id,
             )
@@ -124,7 +124,7 @@ class CrawlWorkerRuntime:
                 )
             except (CrawlTaskOwnershipError, CrawlTaskNotFoundError):
                 logger.warning(
-                    'Skip crawl task retry because lease is no longer owned: task_id=%s worker_id=%s',
+                    "Skip crawl task retry because lease is no longer owned: task_id=%s worker_id=%s",
                     task.id,
                     self.worker_id,
                 )
@@ -134,7 +134,7 @@ class CrawlWorkerRuntime:
             crawl_task_service.complete_task(task_id=task.id, worker_id=self.worker_id, now=datetime.now())
         except (CrawlTaskOwnershipError, CrawlTaskNotFoundError):
             logger.warning(
-                'Skip crawl task completion because lease is no longer owned: task_id=%s worker_id=%s',
+                "Skip crawl task completion because lease is no longer owned: task_id=%s worker_id=%s",
                 task.id,
                 self.worker_id,
             )
@@ -165,7 +165,7 @@ class CrawlWorkerRuntime:
                 )
             except (CrawlTaskOwnershipError, CrawlTaskNotFoundError):
                 logger.warning(
-                    'Stop renewing crawl task lease because ownership is lost: task_id=%s worker_id=%s',
+                    "Stop renewing crawl task lease because ownership is lost: task_id=%s worker_id=%s",
                     lease.task_id,
                     self.worker_id,
                 )

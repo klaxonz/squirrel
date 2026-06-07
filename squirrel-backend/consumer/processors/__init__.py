@@ -6,5 +6,5 @@
 from . import subscribe_task
 
 __all__ = [
-    'subscribe_task',
+    "subscribe_task",
 ]

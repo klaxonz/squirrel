@@ -1,10 +1,18 @@
-from datetime import datetime
+from __future__ import annotations
 
-from sqlalchemy import Integer, UniqueConstraint, Boolean, Index
-from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, Index, Integer, UniqueConstraint
+from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from models import Base
 from models.mixins.serializer import SerializerMixin
+
+if TYPE_CHECKING:
+    from models.creator import Creator
+    from models.subscription import Subscription
+    from models.video import Video
 
 
 def _subscription_video_subscription_join():
@@ -36,21 +44,21 @@ class SubscriptionVideo(Base, SerializerMixin):
     __tablename__ = "subscription_video"
 
     __table_args__ = (
-        Index('ix_subscription_video_subscription_id', 'subscription_id'),
-        Index('ix_subscription_video_video_id', 'video_id'),
+        Index("ix_subscription_video_subscription_id", "subscription_id"),
+        Index("ix_subscription_video_video_id", "video_id"),
     )
 
     subscription_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     video_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
 
-    subscription: Mapped["Subscription"] = relationship(
+    subscription: Mapped[Subscription] = relationship(
         "Subscription",
         primaryjoin=_subscription_video_subscription_join,
         back_populates="video_links",
         viewonly=True,
     )
-    video: Mapped["Video"] = relationship(
+    video: Mapped[Video] = relationship(
         "Video",
         primaryjoin=_subscription_video_video_join,
         back_populates="subscription_links",
@@ -62,21 +70,21 @@ class VideoCreator(Base):
     __tablename__ = "video_creator"
 
     __table_args__ = (
-        Index('ix_video_creator_video_id', 'video_id'),
-        Index('ix_video_creator_creator_id', 'creator_id'),
+        Index("ix_video_creator_video_id", "video_id"),
+        Index("ix_video_creator_creator_id", "creator_id"),
     )
 
     video_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     creator_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
 
-    video: Mapped["Video"] = relationship(
+    video: Mapped[Video] = relationship(
         "Video",
         primaryjoin=_video_creator_video_join,
         back_populates="creator_links",
         viewonly=True,
     )
-    creator: Mapped["Creator"] = relationship(
+    creator: Mapped[Creator] = relationship(
         "Creator",
         primaryjoin=_video_creator_creator_join,
         back_populates="video_links",
@@ -96,10 +104,10 @@ class UserSubscription(Base, SerializerMixin):
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
     updated_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(),
-        onupdate=lambda: datetime.now()
+        onupdate=lambda: datetime.now(),
     )
 
-    subscription: Mapped["Subscription"] = relationship(
+    subscription: Mapped[Subscription] = relationship(
         "Subscription",
         primaryjoin=_user_subscription_subscription_join,
         back_populates="user_subscriptions",
@@ -107,11 +115,11 @@ class UserSubscription(Base, SerializerMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint('user_id', 'subscription_id', name='uix_user_subscription'),
-        Index('ix_user_subscription_user_id', 'user_id'),
-        Index('ix_user_subscription_subscription_id', 'subscription_id'),
-        Index('ix_user_subscription_is_deleted', 'is_deleted'),
-        Index('ix_user_subscription_user_deleted_nsfw', 'user_id', 'is_deleted', 'is_nsfw'),
-        Index('ix_user_subscription_user_deleted_special', 'user_id', 'is_deleted', 'is_special_followed'),
-        Index('ix_user_subscription_sub_user_deleted', 'subscription_id', 'user_id', 'is_deleted'),
+        UniqueConstraint("user_id", "subscription_id", name="uix_user_subscription"),
+        Index("ix_user_subscription_user_id", "user_id"),
+        Index("ix_user_subscription_subscription_id", "subscription_id"),
+        Index("ix_user_subscription_is_deleted", "is_deleted"),
+        Index("ix_user_subscription_user_deleted_nsfw", "user_id", "is_deleted", "is_nsfw"),
+        Index("ix_user_subscription_user_deleted_special", "user_id", "is_deleted", "is_special_followed"),
+        Index("ix_user_subscription_sub_user_deleted", "subscription_id", "user_id", "is_deleted"),
     )

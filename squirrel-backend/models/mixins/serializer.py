@@ -1,9 +1,10 @@
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Set, Dict, Type, TypeVar
+from typing import Any, TypeVar
+
 from sqlalchemy.orm import class_mapper
 
-T = TypeVar('T', bound='SerializerMixin')
+T = TypeVar("T", bound="SerializerMixin")
 
 
 class SerializerMixin:
@@ -11,19 +12,19 @@ class SerializerMixin:
 
     def to_dict(
             self,
-            exclude: Set[str] = None,
-            include: Set[str] = None,
+            exclude: set[str] = None,
+            include: set[str] = None,
             nested: bool = False,
-            nested_depth: int = 1
-    ) -> Dict[str, Any]:
-        """
-        Convert SQLAlchemy model instance to dictionary
-        
+            nested_depth: int = 1,
+    ) -> dict[str, Any]:
+        """Convert SQLAlchemy model instance to dictionary
+
         Args:
             exclude: Fields to exclude
             include: Fields to include (if set, only these fields will be included)
             nested: Whether to include relationships
             nested_depth: How deep to follow relationships
+
         """
         data = {}
         exclude = exclude or set()
@@ -52,38 +53,38 @@ class SerializerMixin:
                     data[relation.key] = [
                         item.to_dict(
                             nested=True,
-                            nested_depth=nested_depth - 1
-                        ) if hasattr(item, 'to_dict') else item
+                            nested_depth=nested_depth - 1,
+                        ) if hasattr(item, "to_dict") else item
                         for item in value
                     ]
                 else:
                     data[relation.key] = value.to_dict(
                         nested=True,
-                        nested_depth=nested_depth - 1
-                    ) if hasattr(value, 'to_dict') else value
+                        nested_depth=nested_depth - 1,
+                    ) if hasattr(value, "to_dict") else value
 
         return data
 
     def _serialize_value(self, value: Any) -> Any:
         """Serialize a value based on its type"""
         if isinstance(value, (datetime, date)):
-            return value.strftime('%Y-%m-%d %H:%M:%S') if value else None
-        elif isinstance(value, Decimal):
+            return value.strftime("%Y-%m-%d %H:%M:%S") if value else None
+        if isinstance(value, Decimal):
             return str(value)
-        elif isinstance(value, bytes):
-            return value.decode('utf-8')
+        if isinstance(value, bytes):
+            return value.decode("utf-8")
         return value
 
     @classmethod
-    def from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
-        """
-        Create model instance from dictionary
-        
+    def from_dict(cls: type[T], data: dict[str, Any]) -> T:
+        """Create model instance from dictionary
+
         Args:
             data: Dictionary containing model data
-            
+
         Returns:
             Model instance
+
         """
         # Filter out invalid fields
         mapper = class_mapper(cls)
@@ -94,14 +95,14 @@ class SerializerMixin:
             if key in mapper.columns.keys():
                 model_data[key] = cls._deserialize_value(
                     value,
-                    mapper.columns[key].type.python_type
+                    mapper.columns[key].type.python_type,
                 )
 
         # Create instance
         return cls(**model_data)
 
     @staticmethod
-    def _deserialize_value(value: Any, target_type: Type) -> Any:
+    def _deserialize_value(value: Any, target_type: type) -> Any:
         """Convert value to appropriate Python type"""
         if value is None:
             return None
@@ -109,7 +110,7 @@ class SerializerMixin:
         try:
             if target_type == datetime:
                 if isinstance(value, str):
-                    return datetime.fromisoformat(value.replace('Z', '+00:00'))
+                    return datetime.fromisoformat(value.replace("Z", "+00:00"))
                 return value
             return target_type(value)
         except (ValueError, TypeError):

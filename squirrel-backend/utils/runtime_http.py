@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 _cloudflare_bypass_client: object | None = None
 
@@ -20,7 +20,7 @@ def get_cloudflare_bypass_client() -> object | None:
     return _cloudflare_bypass_client
 
 
-def set_cookie_file_resolver(resolver: Optional[Callable[[str], Optional[str]]]) -> None:
+def set_cookie_file_resolver(resolver: Callable[[str], str | None] | None) -> None:
     if resolver is None:
         return
 
@@ -29,7 +29,7 @@ def set_cookie_file_resolver(resolver: Optional[Callable[[str], Optional[str]]])
     configure_cookie_file_resolver(resolver)
 
 
-def set_cookie_domain_resolver(resolver: Optional[Callable[[str], str]]) -> None:
+def set_cookie_domain_resolver(resolver: Callable[[str], str] | None) -> None:
     if resolver is None:
         return
 

@@ -6,11 +6,11 @@ using the Extractor Protocol directly, but these base classes are provided for
 convenience.
 """
 import logging
-from typing import Dict, Any, Optional, List
 from abc import ABC, abstractmethod
+from typing import Any
 
-from .core import ExtractionTask, ExtractionResult, VideoMeta, Extractor
-from .exceptions import ErrorCategory, PluginError, ParseError
+from .core import ExtractionResult, ExtractionTask, VideoMeta
+from .exceptions import ErrorCategory, ParseError, PluginError
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +24,9 @@ class VideoExtractorBase(ABC):
     The result data is always VideoMeta.
     """
 
-    url_patterns: List[str] = []
+    url_patterns: list[str] = []
 
-    def __init__(self, site_name: str, supported_domains: List[str]):
+    def __init__(self, site_name: str, supported_domains: list[str]):
         self.site_name = site_name
         self.supported_domains = supported_domains
 
@@ -87,7 +87,7 @@ class VideoExtractorBase(ABC):
             )
 
     @abstractmethod
-    def _get_video_info(self, url: str, queue_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def _get_video_info(self, url: str, queue_name: str | None = None) -> dict[str, Any] | None:
         """Get video information. Must be implemented by subclasses.
 
         Returns:
@@ -95,7 +95,7 @@ class VideoExtractorBase(ABC):
         """
         pass
 
-    def _is_playlist(self, video_info: Dict[str, Any]) -> bool:
+    def _is_playlist(self, video_info: dict[str, Any]) -> bool:
         """Check if the video info represents a playlist."""
         return video_info.get('_type') == 'playlist'
 
@@ -107,16 +107,16 @@ class YoutubeDLExtractorBase(VideoExtractorBase):
     subclasses to provide concrete implementations.
     """
 
-    def _get_video_info(self, url: str, queue_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def _get_video_info(self, url: str, queue_name: str | None = None) -> dict[str, Any] | None:
         """Get video information using yt-dlp. Subclasses must provide concrete implementation."""
         return self._extract_with_ytdlp(url, queue_name)
 
     @abstractmethod
-    def _extract_with_ytdlp(self, url: str, queue_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def _extract_with_ytdlp(self, url: str, queue_name: str | None = None) -> dict[str, Any] | None:
         """Extract video information using yt-dlp. Must be implemented by subclasses."""
         pass
 
     @abstractmethod
-    def _build_ytdlp_opts(self, url: str, queue_name: Optional[str] = None) -> Dict[str, Any]:
+    def _build_ytdlp_opts(self, url: str, queue_name: str | None = None) -> dict[str, Any]:
         """Build yt-dlp options. Must be implemented by subclasses."""
         pass

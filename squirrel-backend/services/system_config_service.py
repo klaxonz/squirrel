@@ -1,5 +1,5 @@
-from typing import Any, Dict, List, Optional
 import logging
+from typing import Any
 
 from sqlalchemy import select
 
@@ -13,7 +13,7 @@ TRUE_SET = {"true", "1", "yes", "y", "on"}
 FALSE_SET = {"false", "0", "no", "n", "off"}
 
 
-def _to_bool(val: Optional[str], default: bool) -> bool:
+def _to_bool(val: str | None, default: bool) -> bool:
     if val is None:
         return default
     v = str(val).strip().lower()
@@ -28,9 +28,8 @@ def _from_bool(val: bool) -> str:
     return "true" if bool(val) else "false"
 
 
-def get_value(key: str, default: Optional[str] = None) -> Optional[str]:
-    """
-    读取指定 key 的值，若不存在返回 default
+def get_value(key: str, default: str | None = None) -> str | None:
+    """读取指定 key 的值，若不存在返回 default
     """
     with get_session() as session:
         row = session.scalars(select(SystemConfig).where(SystemConfig.key == key)).first()
@@ -40,8 +39,7 @@ def get_value(key: str, default: Optional[str] = None) -> Optional[str]:
 
 
 def set_value(key: str, value: str) -> None:
-    """
-    设置/更新指定 key 的值
+    """设置/更新指定 key 的值
     """
     with get_session() as session:
         row = session.scalars(select(SystemConfig).where(SystemConfig.key == key)).first()
@@ -51,13 +49,12 @@ def set_value(key: str, value: str) -> None:
         else:
             row.value = value
         session.commit()
-        logger.info(f"[system_config] set %s=%s", key, value)
+        logger.info("[system_config] set %s=%s", key, value)
 
 
 def get_bool(key: str, default: bool) -> bool:
-    """
-    读取布尔配置，使用 'true'/'false' 等字符串解析
-    
+    """读取布尔配置，使用 'true'/'false' 等字符串解析
+
     优先级：数据库配置 > 默认值
     """
     # 从数据库读取
@@ -71,21 +68,19 @@ def get_bool(key: str, default: bool) -> bool:
 
 
 def set_bool(key: str, value: bool) -> None:
-    """
-    写入布尔配置，统一存储为 'true'/'false'
+    """写入布尔配置，统一存储为 'true'/'false'
     """
     set_value(key, _from_bool(value))
 
 
-def get_many(keys: List[str], defaults: Dict[str, Any]) -> Dict[str, str]:
-    """
-    批量读取，返回 key->value 字典；不存在的 key 使用 defaults 中的默认字符串或空串
+def get_many(keys: list[str], defaults: dict[str, Any]) -> dict[str, str]:
+    """批量读取，返回 key->value 字典；不存在的 key 使用 defaults 中的默认字符串或空串
     """
     with get_session() as session:
         if not keys:
             return {}
         rows = session.scalars(select(SystemConfig).where(SystemConfig.key.in_(keys))).all()
-        result: Dict[str, str] = {}
+        result: dict[str, str] = {}
         found_keys = set()
         for r in rows:
             result[r.key] = r.value
@@ -97,9 +92,8 @@ def get_many(keys: List[str], defaults: Dict[str, Any]) -> Dict[str, str]:
         return result
 
 
-def get_all_configs() -> Dict[str, str]:
-    """
-    获取所有系统配置
+def get_all_configs() -> dict[str, str]:
+    """获取所有系统配置
     """
     with get_session() as session:
         rows = session.scalars(select(SystemConfig)).all()

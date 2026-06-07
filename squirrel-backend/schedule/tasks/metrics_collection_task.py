@@ -1,20 +1,19 @@
-"""
-指标收集定时任务
+"""指标收集定时任务
 
 定期从 Redis 收集指标快照并持久化到数据库，同时清理过期数据。
 """
 import logging
-from schedule.task import TaskRegistry, BaseTask
+
+from schedule.task import BaseTask, TaskRegistry
 from services.metrics_service import metrics_service
 
 logger = logging.getLogger(__name__)
 
 
-@TaskRegistry.register(interval=5, unit='minutes')
+@TaskRegistry.register(interval=5, unit="minutes")
 class MetricsCollectionTask(BaseTask):
-    """
-    指标收集定时任务
-    
+    """指标收集定时任务
+
     频率：每 5 分钟执行一次
     职责：
     1. 从 Redis 收集指标快照
@@ -38,11 +37,10 @@ class MetricsCollectionTask(BaseTask):
         logger.info("MetricsCollectionTask task shutdown")
 
 
-@TaskRegistry.register(interval=1, unit='days')
+@TaskRegistry.register(interval=1, unit="days")
 class MetricsCleanupTask(BaseTask):
-    """
-    指标清理定时任务
-    
+    """指标清理定时任务
+
     频率：每天执行一次
     职责：清理超过保留期限的历史指标数据
     """

@@ -2,18 +2,17 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import List
 
 from core.config import settings
 from utils import module_discovery
 
-from .consumer import RedisStreamConsumer, ConsumerOptions
+from .consumer import ConsumerOptions, RedisStreamConsumer
 from .registry import ConsumerRegistry
 
 
 class WorkerRunner:
     def __init__(self):
-        self._threads: List[threading.Thread] = []
+        self._threads: list[threading.Thread] = []
         self._logger = logging.getLogger(__name__)
 
     def _parse_consumer_count_overrides(self) -> tuple[dict[str, int], list[tuple[str, int]]]:
@@ -69,13 +68,13 @@ class WorkerRunner:
     def start(self) -> None:
         # 1. 导入所有 processor 模块（注册 @queue_listener 装饰的消费者）
         module_discovery.import_classes_from_package(
-            package='consumer',
+            package="consumer",
             recursive=True,
         )
 
         # 2. 启动所有已注册的消费者
         exact, prefixes = self._parse_consumer_count_overrides()
-        consumers: List[RedisStreamConsumer] = []
+        consumers: list[RedisStreamConsumer] = []
         for spec in ConsumerRegistry.all():
             consumer_count = self._resolve_consumer_count(
                 spec.stream,
@@ -106,5 +105,5 @@ class WorkerRunner:
             t.start()
             self._threads.append(t)
 
-    def threads(self) -> List[threading.Thread]:
+    def threads(self) -> list[threading.Thread]:
         return self._threads

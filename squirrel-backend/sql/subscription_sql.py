@@ -1,6 +1,6 @@
 def get_subscriptions_sql():
     return """
-        select 
+        select
             s.*,
             case
                 when coalesce(vc.video_count, 0) > coalesce(s.total_videos, 0) then coalesce(vc.video_count, 0)
@@ -21,7 +21,7 @@ def get_subscriptions_sql():
             on ss.subscription_id = s.id
             and ss.sync_mode = 'incremental'
         left join (
-            select 
+            select
                 subscription_id,
                 count(video_id) as video_count
             from subscription_video
@@ -30,7 +30,7 @@ def get_subscriptions_sql():
         where us.is_deleted is false
         and us.user_id = :user_id
         /*{if query}*/
-        and (s.name like concat('%%', :query, '%%') 
+        and (s.name like concat('%%', :query, '%%')
              or s.description like concat('%%', :query, '%%'))
         /*{endif}*/
         /*{if type}*/
@@ -58,7 +58,7 @@ def get_subscriptions_count_sql():
         where us.is_deleted is false
         and us.user_id = :user_id
         /*{if query}*/
-        and (s.name like concat('%%', :query, '%%') 
+        and (s.name like concat('%%', :query, '%%')
              or s.description like concat('%%', :query, '%%'))
         /*{endif}*/
         /*{if type}*/
@@ -78,7 +78,7 @@ def get_subscriptions_count_sql():
 
 def get_subscription_sql():
     return """
-        select 
+        select
             s.*,
             case
                 when coalesce(vc.video_count, 0) > coalesce(s.total_videos, 0) then coalesce(vc.video_count, 0)
@@ -98,7 +98,7 @@ def get_subscription_sql():
             on ss.subscription_id = s.id
             and ss.sync_mode = 'incremental'
         left join (
-            select 
+            select
                 subscription_id,
                 count(video_id) as video_count
             from subscription_video

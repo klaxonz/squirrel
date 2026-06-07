@@ -1,12 +1,10 @@
-import time
-from typing import Optional
-from urllib.parse import urlparse
-import logging
 import ipaddress
+import logging
+import time
+from urllib.parse import urlparse
 
 from site_runtimes.models import SiteRuntimeSnapshot
 from site_runtimes.ports import get_runtime_snapshot
-
 
 logger = logging.getLogger(__name__)
 
@@ -14,23 +12,21 @@ _SITE_REGISTRATION_INDEX_TTL = 30.0
 _DOMAIN_SITE_CACHE_TTL = 300.0
 _site_registration_index: dict[str, str] = {}
 _site_registration_index_cached_at = 0.0
-_domain_site_cache: dict[str, tuple[Optional[str], float]] = {}
+_domain_site_cache: dict[str, tuple[str | None, float]] = {}
 
 
 def extract_top_level_domain(url):
-    """
-    Extract top-level domain from URL (including second level if exists, e.g., example.com).
+    """Extract top-level domain from URL (including second level if exists, e.g., example.com).
 
     :param url: Full URL string
     :return: Top-level domain string
     """
     parsed_url = urlparse(url)
-    domain_parts = parsed_url.netloc.split('.')
+    domain_parts = parsed_url.netloc.split(".")
 
     if len(domain_parts) == 2:
         return parsed_url.netloc
-    else:
-        return '.'.join(domain_parts[-2:])
+    return ".".join(domain_parts[-2:])
 
 
 def extract_second_level_domain(domain_or_url: str) -> str:
@@ -38,23 +34,23 @@ def extract_second_level_domain(domain_or_url: str) -> str:
     if not domain_or_url:
         return domain_or_url
 
-    if '://' in domain_or_url:
+    if "://" in domain_or_url:
         parsed = urlparse(domain_or_url)
         domain = parsed.hostname or domain_or_url
     else:
         domain = domain_or_url
 
     # Split domain parts
-    parts = domain.lower().split('.')
+    parts = domain.lower().split(".")
 
     # Return last two parts for second level domain
     if len(parts) >= 2:
-        return '.'.join(parts[-2:])
+        return ".".join(parts[-2:])
 
     return domain
 
 
-def normalize_domain(domain_or_url: str) -> Optional[str]:
+def normalize_domain(domain_or_url: str) -> str | None:
     """Normalize a URL or domain to a lower-cased second-level domain."""
     if not domain_or_url:
         return domain_or_url
@@ -63,12 +59,12 @@ def normalize_domain(domain_or_url: str) -> Optional[str]:
     if not value:
         return value
 
-    if '://' not in value:
+    if "://" not in value:
         value = f"http://{value}"
 
     parsed = urlparse(value)
     hostname = parsed.hostname or domain_or_url
-    hostname = hostname.split(':')[0].lower()
+    hostname = hostname.split(":")[0].lower()
 
     try:
         ipaddress.ip_address(hostname)
@@ -76,18 +72,18 @@ def normalize_domain(domain_or_url: str) -> Optional[str]:
     except ValueError:
         pass
 
-    parts = hostname.split('.')
+    parts = hostname.split(".")
     if len(parts) >= 2:
-        return '.'.join(parts[-2:])
+        return ".".join(parts[-2:])
 
     return hostname
 
 
 def _normalize_registration_domain(domain: str) -> str:
-    value = str(domain or '').strip().lower()
+    value = str(domain or "").strip().lower()
     if not value:
-        return ''
-    return value.lstrip('.')
+        return ""
+    return value.lstrip(".")
 
 
 def _build_site_registration_index(snapshot: SiteRuntimeSnapshot | None = None) -> dict[str, str]:
@@ -115,7 +111,7 @@ def _get_site_registration_index() -> dict[str, str]:
     return _site_registration_index
 
 
-def _resolve_site_from_domain(domain: str) -> Optional[str]:
+def _resolve_site_from_domain(domain: str) -> str | None:
     now = time.time()
     cached = _domain_site_cache.get(domain)
     if cached is not None:
@@ -124,10 +120,10 @@ def _resolve_site_from_domain(domain: str) -> Optional[str]:
             return site_name
 
     index = _get_site_registration_index()
-    parts = domain.split('.')
+    parts = domain.split(".")
     site_name = None
     for start in range(len(parts)):
-        candidate = '.'.join(parts[start:])
+        candidate = ".".join(parts[start:])
         if candidate in index:
             site_name = index[candidate]
             break
@@ -136,7 +132,7 @@ def _resolve_site_from_domain(domain: str) -> Optional[str]:
     return site_name
 
 
-def resolve_site(url: Optional[str]) -> Optional[str]:
+def resolve_site(url: str | None) -> str | None:
     if not url:
         return None
     try:
@@ -153,9 +149,8 @@ def reset_site_lookup_cache() -> None:
 
 
 
-def get_site_from_url(url: str) -> Optional[str]:
-    """
-    Get site name from URL using runtime capability registrations.
+def get_site_from_url(url: str) -> str | None:
+    """Get site name from URL using runtime capability registrations.
 
     :param url: Full URL string
     :return: Site name, or None if not found
@@ -164,13 +159,13 @@ def get_site_from_url(url: str) -> Optional[str]:
         return None
     try:
         parsed = urlparse(url)
-        domain = (parsed.hostname or '').lower()
+        domain = (parsed.hostname or "").lower()
         if not domain:
             return None
 
         return _resolve_site_from_domain(domain)
     except (ValueError, AttributeError, TypeError) as e:
-        logger.error(f"get_site_from_url exception occurred: url={url}, error={str(e)}", exc_info=True)
+        logger.error(f"get_site_from_url exception occurred: url={url}, error={e!s}", exc_info=True)
         return None
 
 

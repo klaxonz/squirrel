@@ -1,10 +1,16 @@
-from datetime import datetime
+from __future__ import annotations
 
-from sqlalchemy import Integer, VARCHAR, Index
-from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+from sqlalchemy import VARCHAR, Index, Integer
+from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from models import Base
 from models.mixins.serializer import SerializerMixin
+
+if TYPE_CHECKING:
+    from models.playlist_item import PlaylistItem
 
 
 def _items_join():
@@ -13,11 +19,11 @@ def _items_join():
 
 
 class Playlist(Base, SerializerMixin):
-    __tablename__ = 'playlist'
+    __tablename__ = "playlist"
 
     __table_args__ = (
-        Index('ix_playlist_user_created_at', 'user_id', 'created_at'),
-        Index('ix_playlist_user_name', 'user_id', 'name'),
+        Index("ix_playlist_user_created_at", "user_id", "created_at"),
+        Index("ix_playlist_user_name", "user_id", "name"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -28,10 +34,10 @@ class Playlist(Base, SerializerMixin):
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
     updated_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(),
-        onupdate=lambda: datetime.now()
+        onupdate=lambda: datetime.now(),
     )
 
-    items: Mapped[list["PlaylistItem"]] = relationship(
+    items: Mapped[list[PlaylistItem]] = relationship(
         "PlaylistItem",
         primaryjoin=_items_join,
         back_populates="playlist",

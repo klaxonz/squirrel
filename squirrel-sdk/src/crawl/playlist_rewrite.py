@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 import re
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
 from urllib.parse import urlencode, urljoin
-
 
 DEFAULT_PLAYLIST_EXTENSIONS: Sequence[str] = ('ts', 'm4s', 'mp4', 'jpeg', 'jpg', 'm3u8', 'vtt')
 _ABSOLUTE_URL_RE = re.compile(r'^[a-z][a-z0-9+.-]*://', re.IGNORECASE)

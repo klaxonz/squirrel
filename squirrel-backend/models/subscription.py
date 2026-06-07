@@ -1,12 +1,18 @@
-from datetime import datetime
-from typing import Optional, List
+from __future__ import annotations
 
-from sqlalchemy import Integer, VARCHAR, Text, Boolean, Index
-from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+from sqlalchemy import VARCHAR, Boolean, Index, Integer, Text
+from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 from sqlalchemy.types import JSON
 
 from models import Base
 from models.mixins.serializer import SerializerMixin
+
+if TYPE_CHECKING:
+    from models.links import SubscriptionVideo, UserSubscription
+    from models.video import Video
 
 
 def _video_links_join():
@@ -38,40 +44,40 @@ class Subscription(Base, SerializerMixin):
     __tablename__ = "subscription"
 
     __table_args__ = (
-        Index('ix_subscription_is_deleted', 'is_deleted'),
-        Index('ix_subscription_type', 'type'),
-        Index('ix_subscription_deleted_id', 'is_deleted', 'id'),
+        Index("ix_subscription_is_deleted", "is_deleted"),
+        Index("ix_subscription_type", "type"),
+        Index("ix_subscription_deleted_id", "is_deleted", "id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     type: Mapped[str] = mapped_column(VARCHAR(32), nullable=False)
     name: Mapped[str] = mapped_column(VARCHAR(128), nullable=False)
-    url: Mapped[Optional[str]] = mapped_column(VARCHAR(2048), nullable=True)
-    avatar: Mapped[Optional[str]] = mapped_column(VARCHAR(2048), nullable=True)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    url: Mapped[str | None] = mapped_column(VARCHAR(2048), nullable=True)
+    avatar: Mapped[str | None] = mapped_column(VARCHAR(2048), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     total_videos: Mapped[int] = mapped_column(Integer, default=0)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
-    extra_data: Mapped[Optional[dict]] = mapped_column(JSON, default=None)
+    extra_data: Mapped[dict | None] = mapped_column(JSON, default=None)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
     updated_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(),
-        onupdate=lambda: datetime.now()
+        onupdate=lambda: datetime.now(),
     )
 
-    video_links: Mapped[List["SubscriptionVideo"]] = relationship(
+    video_links: Mapped[list[SubscriptionVideo]] = relationship(
         "SubscriptionVideo",
         primaryjoin=_video_links_join,
         back_populates="subscription",
         viewonly=True,
     )
-    videos: Mapped[List["Video"]] = relationship(
+    videos: Mapped[list[Video]] = relationship(
         "Video",
         secondary="subscription_video",
         primaryjoin=_video_links_join,
         secondaryjoin=_videos_secondary_join,
         viewonly=True,
     )
-    user_subscriptions: Mapped[List["UserSubscription"]] = relationship(
+    user_subscriptions: Mapped[list[UserSubscription]] = relationship(
         "UserSubscription",
         primaryjoin=_user_subscriptions_join,
         back_populates="subscription",

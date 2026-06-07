@@ -25,3 +25,12 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ['src']
+
+[tool.ruff]
+line-length = 120
+target-version = 'py311'
+
+[tool.ruff.lint]
+select = ['E', 'F', 'W', 'I', 'UP']
+ignore = ['E501']
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"

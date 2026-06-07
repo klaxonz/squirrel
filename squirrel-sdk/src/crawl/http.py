@@ -9,7 +9,6 @@ import random
 import threading
 import time
 from dataclasses import dataclass
-from typing import Dict, Optional, Set
 from urllib.parse import urlparse
 
 import requests
@@ -21,7 +20,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_TIMEOUT_SECONDS = 20
 
 
-def _extract_domain(url: str) -> Optional[str]:
+def _extract_domain(url: str) -> str | None:
     if not url:
         return None
     parsed = urlparse(url)
@@ -57,15 +56,15 @@ class RateLimit:
 class RateLimiter:
     def __init__(
         self,
-        default_limit: Optional[RateLimit] = None,
-        domain_limits: Optional[Dict[str, RateLimit]] = None,
+        default_limit: RateLimit | None = None,
+        domain_limits: dict[str, RateLimit] | None = None,
     ) -> None:
         self._default_limit = default_limit or RateLimit(3, 5, "*")
         provided_limits = domain_limits or {}
-        self._rate_limits: Dict[str, RateLimit] = dict(provided_limits)
-        self._last_request_time: Dict[str, float] = {}
-        self._disabled_domains: Set[str] = set()
-        self._locks: Dict[str, threading.Lock] = {}
+        self._rate_limits: dict[str, RateLimit] = dict(provided_limits)
+        self._last_request_time: dict[str, float] = {}
+        self._disabled_domains: set[str] = set()
+        self._locks: dict[str, threading.Lock] = {}
         self._locks_guard = threading.Lock()
 
     def set_default(self, min_interval: float, max_interval: float) -> None:
@@ -85,7 +84,7 @@ class RateLimiter:
             return
         self._disabled_domains.add(sld)
 
-    def get_rate_limit(self, domain: Optional[str]) -> RateLimit:
+    def get_rate_limit(self, domain: str | None) -> RateLimit:
         if not domain:
             return self._default_limit
         sld = _extract_second_level_domain(domain)
@@ -101,7 +100,7 @@ class RateLimiter:
                     self._locks[bucket] = lock
         return lock
 
-    def wait(self, domain: Optional[str] = None) -> None:
+    def wait(self, domain: str | None = None) -> None:
         bucket = _extract_second_level_domain(domain) if domain else "*"
         if not bucket:
             bucket = "*"
@@ -128,7 +127,7 @@ class RateLimiter:
 class RateLimitedSession(requests.Session):
     def __init__(
         self,
-        rate_limiter: Optional[RateLimiter] = None,
+        rate_limiter: RateLimiter | None = None,
         retries: int = 3,
         backoff_factor: float = 0.3,
     ) -> None:
@@ -158,7 +157,7 @@ class RateLimitedSession(requests.Session):
 
 
 _default_rate_limiter = RateLimiter()
-_shared_session: Optional[RateLimitedSession] = None
+_shared_session: RateLimitedSession | None = None
 _session_lock = threading.Lock()
 
 
@@ -330,7 +329,7 @@ def post(url: str, **kwargs):
     return request('POST', url, **kwargs)
 
 
-_cloudflare_bypass_client: Optional[object] = None
+_cloudflare_bypass_client: object | None = None
 
 
 def configure_cloudflare_bypass_client(client: object) -> None:

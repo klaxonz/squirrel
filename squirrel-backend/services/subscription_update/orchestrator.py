@@ -1,8 +1,10 @@
-"""
-订阅更新编排器
+"""订阅更新编排器
 统一入口，负责协调整个更新流程
 """
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
@@ -11,37 +13,40 @@ from models.links import UserSubscription
 from services import subscription_sync_state_service
 from utils import url_helper
 from utils.metrics import metrics
-from .models import SubscriptionUpdateRequest, SubscriptionUpdateResult
-from .strategies.registry import StrategyRegistry
-from .strategies.default_strategy import DefaultUpdateStrategy
 from utils.site_catalog import SiteCatalog
+
+from .models import SubscriptionUpdateRequest, SubscriptionUpdateResult
+from .strategies.default_strategy import DefaultUpdateStrategy
+from .strategies.registry import StrategyRegistry
+
+if TYPE_CHECKING:
+    from services.subscription_update.strategies.base import UpdateStrategy
 
 logger = logging.getLogger(__name__)
 
 
 class SubscriptionOrchestrator:
-    """
-    订阅更新编排器
-    
+    """订阅更新编排器
+
     职责：
     1. 接收更新请求
     2. 选择合适的更新策略
     3. 执行更新流程
     4. 返回更新结果
     """
-    
+
     def __init__(self):
         self.default_strategy = DefaultUpdateStrategy()
-    
+
     def update(self, request: SubscriptionUpdateRequest) -> SubscriptionUpdateResult:
-        """
-        执行订阅更新
-        
+        """执行订阅更新
+
         Args:
             request: 更新请求
-            
+
         Returns:
             更新结果
+
         """
         try:
             domain = url_helper.extract_top_level_domain(request.url)
@@ -55,7 +60,7 @@ class SubscriptionOrchestrator:
                         request_id=request.request_id,
                         trace_id=request.trace_id,
                         trigger=request.trigger.value,
-                        reason='site_disabled',
+                        reason="site_disabled",
                     )
                 # 记录跳过指标
                 metrics.counter("subscription.update.total", tags={"site": domain, "status": "skipped", "reason": "site_disabled"})
@@ -64,7 +69,7 @@ class SubscriptionOrchestrator:
                     success=True,
                     videos_found=0,
                     videos_enqueued=0,
-                    skipped_reason="site_disabled"
+                    skipped_reason="site_disabled",
                 )
 
             if not self._has_active_subscribers(request.subscription_id):
@@ -77,7 +82,7 @@ class SubscriptionOrchestrator:
                         request_id=request.request_id,
                         trace_id=request.trace_id,
                         trigger=request.trigger.value,
-                        reason='no_subscribers',
+                        reason="no_subscribers",
                     )
                 metrics.counter("subscription.update.total", tags={"site": domain, "status": "skipped", "reason": "no_subscribers"})
                 return SubscriptionUpdateResult(
@@ -85,12 +90,12 @@ class SubscriptionOrchestrator:
                     success=True,
                     videos_found=0,
                     videos_enqueued=0,
-                    skipped_reason="no_subscribers"
+                    skipped_reason="no_subscribers",
                 )
 
             site_name = self._resolve_site(request.url)
             strategy = self._select_strategy(site_name)
-            
+
             logger.debug(
                 "Updating subscription %s using %s strategy (trigger=%s, mode=%s)",
                 request.subscription_id,
@@ -98,11 +103,11 @@ class SubscriptionOrchestrator:
                 request.trigger.value,
                 request.mode.value,
             )
-            
+
             result = strategy.execute(request)
-            
+
             return result
-            
+
         except Exception as e:  # orchestrator boundary — always return SubscriptionUpdateResult
             logger.error(f"Orchestrator error for subscription {request.subscription_id}: {e}", exc_info=True)
             if request.sync_state_id:
@@ -115,13 +120,13 @@ class SubscriptionOrchestrator:
                     error_type=type(e).__name__,
                     trigger=request.trigger.value,
                 )
-            
+
             return SubscriptionUpdateResult(
                 subscription_id=request.subscription_id,
                 success=False,
                 videos_found=0,
                 videos_enqueued=0,
-                    error_message=str(e)
+                    error_message=str(e),
             )
 
     @staticmethod
@@ -132,10 +137,10 @@ class SubscriptionOrchestrator:
                     UserSubscription.subscription_id == subscription_id,
                     UserSubscription.is_deleted.is_(False),
                 )
-                .limit(1)
+                .limit(1),
             ).first()
             return row is not None
-    
+
     def _resolve_site(self, url: str) -> str:
         """解析站点名称"""
         domain = url_helper.extract_top_level_domain(url)
@@ -145,17 +150,17 @@ class SubscriptionOrchestrator:
             return site_key
 
         return "default"
-    
-    def _select_strategy(self, site_name: str) -> 'UpdateStrategy':
+
+    def _select_strategy(self, site_name: str) -> UpdateStrategy:
         """选择更新策略"""
         strategy = StrategyRegistry.get_strategy(site_name)
         if strategy:
             logger.debug(f"Using {site_name} strategy")
             return strategy
-        
+
         logger.debug(f"No specific strategy for {site_name}, using default")
         return self.default_strategy
-    
+
 
 orchestrator = SubscriptionOrchestrator()
 

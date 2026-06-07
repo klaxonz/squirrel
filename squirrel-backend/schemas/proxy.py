@@ -1,4 +1,3 @@
-from typing import Optional
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, field_validator
@@ -6,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 
 class VideoProxyRequest(BaseModel):
     """视频代理请求模型"""
+
     domain: str = Field(..., description="目标域名")
     url: str = Field(..., description="目标URL")
 
@@ -37,6 +37,7 @@ class VideoProxyRequest(BaseModel):
 
 class ProxyErrorResponse(BaseModel):
     """代理错误响应模型"""
+
     error: str = Field(..., description="错误信息")
-    domain: Optional[str] = Field(None, description="相关域名")
+    domain: str | None = Field(None, description="相关域名")
     status_code: int = Field(..., description="HTTP状态码")

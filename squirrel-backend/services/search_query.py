@@ -1,35 +1,35 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import re
 import shlex
-from typing import Iterable
+from collections.abc import Iterable
+from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
 FIELD_ALIASES = {
-    'title': 'title',
-    '标题': 'title',
-    'name': 'subscription',
-    'channel': 'subscription',
-    'subscription': 'subscription',
-    '频道': 'subscription',
-    'creator': 'creator',
-    'actor': 'creator',
-    '演员': 'creator',
-    'site': 'domain',
-    'domain': 'domain',
-    '站点': 'domain',
-    'desc': 'description',
-    'description': 'description',
-    '简介': 'description',
-    'url': 'url',
-    'link': 'url',
-    '链接': 'url',
-    'type': 'type',
-    '类型': 'type',
+    "title": "title",
+    "标题": "title",
+    "name": "subscription",
+    "channel": "subscription",
+    "subscription": "subscription",
+    "频道": "subscription",
+    "creator": "creator",
+    "actor": "creator",
+    "演员": "creator",
+    "site": "domain",
+    "domain": "domain",
+    "站点": "domain",
+    "desc": "description",
+    "description": "description",
+    "简介": "description",
+    "url": "url",
+    "link": "url",
+    "链接": "url",
+    "type": "type",
+    "类型": "type",
 }
 
-FIELD_TOKEN_PATTERN = re.compile(r'^(?P<key>[^:：\s]+)\s*[:：]\s*(?P<value>.+)$')
+FIELD_TOKEN_PATTERN = re.compile(r"^(?P<key>[^:：\s]+)\s*[:：]\s*(?P<value>.+)$")
 
 
 @dataclass
@@ -61,30 +61,30 @@ class ParsedSearchQuery:
 
 
 SUBSCRIPTION_TYPE_ALIASES = {
-    'channel': 'CHANNEL',
-    '频道': 'CHANNEL',
-    'playlist': 'PLAYLIST',
-    '播放列表': 'PLAYLIST',
-    'actress': 'ACTRESS',
-    '女优': 'ACTRESS',
-    'movie': 'MOVIE',
-    '电影': 'MOVIE',
-    'tv_series': 'TV_SERIES',
-    'tv-series': 'TV_SERIES',
-    'series': 'TV_SERIES',
-    '剧集': 'TV_SERIES',
-    'actor': 'ACTOR',
-    '演员': 'ACTOR',
+    "channel": "CHANNEL",
+    "频道": "CHANNEL",
+    "playlist": "PLAYLIST",
+    "播放列表": "PLAYLIST",
+    "actress": "ACTRESS",
+    "女优": "ACTRESS",
+    "movie": "MOVIE",
+    "电影": "MOVIE",
+    "tv_series": "TV_SERIES",
+    "tv-series": "TV_SERIES",
+    "series": "TV_SERIES",
+    "剧集": "TV_SERIES",
+    "actor": "ACTOR",
+    "演员": "ACTOR",
 }
 
 
 def _normalize_term(value: str) -> str:
-    return ' '.join(str(value or '').strip().lower().split())
+    return " ".join(str(value or "").strip().lower().split())
 
 
 def parse_search_query(query: str | None) -> ParsedSearchQuery:
     parsed = ParsedSearchQuery()
-    raw_query = str(query or '').strip()
+    raw_query = str(query or "").strip()
     if not raw_query:
         return parsed
 
@@ -94,15 +94,15 @@ def parse_search_query(query: str | None) -> ParsedSearchQuery:
         tokens = raw_query.split()
 
     for raw_token in tokens:
-        token = str(raw_token or '').strip()
+        token = str(raw_token or "").strip()
         if not token:
             continue
 
         matched = FIELD_TOKEN_PATTERN.match(token)
         normalized_value = None
         if matched:
-            key = _normalize_term(matched.group('key'))
-            normalized_value = _normalize_term(matched.group('value'))
+            key = _normalize_term(matched.group("key"))
+            normalized_value = _normalize_term(matched.group("value"))
             target_field = FIELD_ALIASES.get(key)
             if target_field and normalized_value:
                 getattr(parsed, target_field).append(normalized_value)
@@ -127,18 +127,18 @@ def contains_all_terms(values: Iterable[str | None], terms: Iterable[str]) -> bo
 
 
 def extract_search_domain(url: str | None) -> str:
-    raw_url = str(url or '').strip()
+    raw_url = str(url or "").strip()
     if not raw_url:
-        return ''
-    parsed = urlparse(raw_url if '://' in raw_url else f'https://{raw_url}')
-    host = (parsed.netloc or parsed.path or '').strip().lower()
-    if host.startswith('www.'):
+        return ""
+    parsed = urlparse(raw_url if "://" in raw_url else f"https://{raw_url}")
+    host = (parsed.netloc or parsed.path or "").strip().lower()
+    if host.startswith("www."):
         host = host[4:]
-    return host.split(':')[0]
+    return host.split(":")[0]
 
 
 def normalize_subscription_type_term(value: str | None) -> str | None:
-    normalized_value = _normalize_term(value or '')
+    normalized_value = _normalize_term(value or "")
     if not normalized_value:
         return None
     return SUBSCRIPTION_TYPE_ALIASES.get(normalized_value, normalized_value.upper())

@@ -1,5 +1,5 @@
-from pathlib import Path
 import sys
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -30,25 +30,25 @@ def test_crawl_worker_start_uses_configured_worker_count(monkeypatch):
     runtimes = []
     threads = []
 
-    monkeypatch.setattr(crawl_worker_manager.settings, 'CRAWL_SLOTS_PER_PROCESS', 3, raising=False)
+    monkeypatch.setattr(crawl_worker_manager.settings, "CRAWL_SLOTS_PER_PROCESS", 3, raising=False)
     monkeypatch.setattr(
         crawl_worker_manager,
-        'CrawlWorkerRuntime',
+        "CrawlWorkerRuntime",
         lambda **kwargs: runtimes.append(_FakeRuntime(**kwargs)) or runtimes[-1],
     )
     monkeypatch.setattr(
         crawl_worker_manager.threading,
-        'Thread',
+        "Thread",
         lambda **kwargs: threads.append(_FakeThread(**kwargs)) or threads[-1],
     )
-    monkeypatch.setattr(crawl_worker_manager, '_workers_running', False)
-    monkeypatch.setattr(crawl_worker_manager, '_worker_threads', [])
-    monkeypatch.setattr(crawl_worker_manager, '_stop_event', None)
+    monkeypatch.setattr(crawl_worker_manager, "_workers_running", False)
+    monkeypatch.setattr(crawl_worker_manager, "_worker_threads", [])
+    monkeypatch.setattr(crawl_worker_manager, "_stop_event", None)
 
     crawl_worker_manager.crawl_worker_start()
 
-    assert [runtime.kwargs['worker_id'] for runtime in runtimes] == ['crawl-runtime-1']
-    assert runtimes[0].kwargs['max_concurrency'] == 3
-    assert [thread.name for thread in threads] == ['crawl-runtime-1']
+    assert [runtime.kwargs["worker_id"] for runtime in runtimes] == ["crawl-runtime-1"]
+    assert runtimes[0].kwargs["max_concurrency"] == 3
+    assert [thread.name for thread in threads] == ["crawl-runtime-1"]
     assert all(thread.started for thread in threads)
-    assert crawl_worker_manager.crawl_worker_status() == {'running': True, 'count': 1}
+    assert crawl_worker_manager.crawl_worker_status() == {"running": True, "count": 1}

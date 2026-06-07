@@ -1,15 +1,9 @@
 import os
 import re
-import tempfile
 
 import requests
-
 from camoufox.__main__ import CamoufoxUpdate
-from camoufox.pkgman import CamoufoxFetcher
-from camoufox.pkgman import INSTALL_DIR
-from camoufox.pkgman import OS_NAME
-from camoufox.pkgman import Version
-
+from camoufox.pkgman import INSTALL_DIR, OS_NAME, CamoufoxFetcher, Version
 
 RELEASES_URL = 'https://github.com/daijro/camoufox/releases'
 

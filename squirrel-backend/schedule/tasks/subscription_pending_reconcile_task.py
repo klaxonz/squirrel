@@ -1,15 +1,14 @@
 import logging
 
-from schedule.task import TaskRegistry, BaseTask
+from schedule.task import BaseTask, TaskRegistry
 from services import subscription_sync_state_service
 
 logger = logging.getLogger(__name__)
 
 
-@TaskRegistry.register(interval=10, unit='minutes')
+@TaskRegistry.register(interval=10, unit="minutes")
 class SubscriptionPendingReconcileTask(BaseTask):
-    """
-    对账订阅待处理视频计数
+    """对账订阅待处理视频计数
     频率：每 10 分钟执行一次
     职责：扫描视频提取队列并回写 subscription_sync_state.pending_video_count
     """

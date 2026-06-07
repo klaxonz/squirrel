@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from core.config import settings
 
 
 def _parse_limit_mapping(raw: str) -> dict[str, int]:
     limits: dict[str, int] = {}
-    for token in (raw or '').replace(';', ',').split(','):
+    for token in (raw or "").replace(";", ",").split(","):
         token = token.strip()
-        if not token or '=' not in token:
+        if not token or "=" not in token:
             continue
-        key, value = token.split('=', 1)
+        key, value = token.split("=", 1)
         key = key.strip()
         value = value.strip()
         if not key:
@@ -31,15 +29,15 @@ class CrawlDispatcherPolicy:
         self,
         *,
         default_site_concurrency: int = 2,
-        site_concurrency_overrides: Optional[dict[str, int]] = None,
-        task_type_limits: Optional[dict[str, int]] = None,
+        site_concurrency_overrides: dict[str, int] | None = None,
+        task_type_limits: dict[str, int] | None = None,
     ):
         self.default_site_concurrency = max(1, default_site_concurrency)
         self.site_concurrency_overrides = site_concurrency_overrides or {}
         self.task_type_limits = task_type_limits or {}
 
     @classmethod
-    def from_settings(cls) -> 'CrawlDispatcherPolicy':
+    def from_settings(cls) -> CrawlDispatcherPolicy:
         return cls(
             default_site_concurrency=settings.CRAWL_DEFAULT_SITE_CONCURRENCY,
             site_concurrency_overrides=_parse_limit_mapping(settings.CRAWL_SITE_CONCURRENCY_OVERRIDES),
@@ -49,7 +47,7 @@ class CrawlDispatcherPolicy:
     def get_site_limit(self, site: str) -> int:
         return self.site_concurrency_overrides.get(site, self.default_site_concurrency)
 
-    def get_task_type_limit(self, task_type: str) -> Optional[int]:
+    def get_task_type_limit(self, task_type: str) -> int | None:
         return self.task_type_limits.get(task_type)
 
     def is_site_available(self, site: str, running_count: int) -> bool:

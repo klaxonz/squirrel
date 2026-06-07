@@ -6,7 +6,6 @@ from processes.managers.scheduler_manager import scheduler_start, scheduler_stop
 from processes.service_runtime import bootstrap_runtime, create_shutdown_event
 from services import system_config_service
 
-
 logger = logging.getLogger(__name__)
 
 

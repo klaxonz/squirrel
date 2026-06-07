@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, Index, UniqueConstraint, VARCHAR
+from sqlalchemy import VARCHAR, DateTime, Index, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models import Base
@@ -8,11 +8,11 @@ from models.mixins.serializer import SerializerMixin
 
 
 class CrawlDispatchScope(Base, SerializerMixin):
-    __tablename__ = 'crawl_dispatch_scope'
+    __tablename__ = "crawl_dispatch_scope"
 
     __table_args__ = (
-        UniqueConstraint('scope_type', 'scope_key', name='uq_crawl_dispatch_scope_type_key'),
-        Index('ix_crawl_dispatch_scope_type_key', 'scope_type', 'scope_key'),
+        UniqueConstraint("scope_type", "scope_key", name="uq_crawl_dispatch_scope_type_key"),
+        Index("ix_crawl_dispatch_scope_type_key", "scope_type", "scope_key"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

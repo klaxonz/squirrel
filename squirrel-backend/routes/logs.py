@@ -1,15 +1,14 @@
 import logging
-from typing import Optional
 
-from fastapi import Query, APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
+from common import response
 from models.user import User
-from utils.jwt_helper import get_current_user
-import common.response as response
 from services import log_service
+from utils.jwt_helper import get_current_user
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix='/api/logs', tags=['日志管理'])
+router = APIRouter(prefix="/api/logs", tags=["日志管理"])
 
 
 @router.get("/files")
@@ -26,37 +25,36 @@ def get_log_files(current_user: User = Depends(get_current_user)):
 
 @router.get("/query")
 def query_logs(
-    filename: str = Query('app.log', description="日志文件名"),
-    keyword: Optional[str] = Query(None, description="搜索关键词"),
-    level: Optional[str] = Query(None, description="日志级别 (INFO, WARNING, ERROR, DEBUG)"),
+    filename: str = Query("app.log", description="日志文件名"),
+    keyword: str | None = Query(None, description="搜索关键词"),
+    level: str | None = Query(None, description="日志级别 (INFO, WARNING, ERROR, DEBUG)"),
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(500, ge=1, le=2000, alias="pageSize", description="每页数量"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
-    """
-    查询日志内容
-    
+    """查询日志内容
+
     支持按关键词和日志级别过滤
     """
     try:
         start_line = (page - 1) * page_size
-        
+
         lines, total_count, has_more = log_service.read_log_lines(
             filename=filename,
             keyword=keyword,
             level=level,
             start_line=start_line,
-            limit=page_size
+            limit=page_size,
         )
-        
+
         return response.success({
-            'logs': lines,
-            'total': total_count,
-            'page': page,
-            'page_size': page_size,
-            'has_more': has_more
+            "logs": lines,
+            "total": total_count,
+            "page": page,
+            "page_size": page_size,
+            "has_more": has_more,
         })
-    
+
     except Exception as e:
         # API boundary -- convert to HTTP error response
         logger.exception(f"Failed to query logs: {e}")

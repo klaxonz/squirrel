@@ -58,8 +58,8 @@ def count_videos_sql():
         inner join subscription_video sv on sv.subscription_id = us.subscription_id
         inner join video v on sv.video_id = v.id
         left join video_history vh on vh.video_id = v.id and vh.user_id = :user_id
-        where sp.is_deleted = 0 
-            and us.is_deleted = 0 
+        where sp.is_deleted = 0
+            and us.is_deleted = 0
             and v.is_deleted = 0
             and us.user_id = :user_id
         /*{if subscription_id}*/
@@ -83,8 +83,8 @@ def count_like_videos_sql():
         inner join subscription_video sv on sv.subscription_id = us.subscription_id
         inner join video v on sv.video_id = v.id
         inner join video_interaction vi on vi.video_id = v.id and vi.user_id = :user_id and vi.interaction_type = 1
-        where sp.is_deleted = 0 
-            and us.is_deleted = 0 
+        where sp.is_deleted = 0
+            and us.is_deleted = 0
             and v.is_deleted = 0
             and us.user_id = :user_id
         /*{if subscription_id}*/

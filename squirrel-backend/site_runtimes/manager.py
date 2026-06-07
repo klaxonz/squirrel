@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from concurrent.futures import Future, ThreadPoolExecutor, wait
 import json
-from typing import List, Optional
+from concurrent.futures import Future, ThreadPoolExecutor, wait
 
 from .gateway import SiteRuntimeGateway
 from .models import (
     SiteRuntimeDiscoveryError,
     SiteRuntimeDiscoveryResult,
     SiteRuntimeRecord,
-    SiteRuntimeStatus,
     SiteRuntimeSnapshot,
+    SiteRuntimeStatus,
 )
 from .paths import SiteRuntimePaths, build_site_runtime_paths
 from .runtime_models import SiteRuntimeManifest
@@ -23,9 +22,9 @@ class SiteRuntimeManager:
 
     def __init__(
         self,
-        store: Optional[SiteRuntimeStore] = None,
-        supervisor: Optional[SiteRuntimeSupervisor] = None,
-        gateway: Optional[SiteRuntimeGateway] = None,
+        store: SiteRuntimeStore | None = None,
+        supervisor: SiteRuntimeSupervisor | None = None,
+        gateway: SiteRuntimeGateway | None = None,
         paths: SiteRuntimePaths | None = None,
     ) -> None:
         self._paths = paths or build_site_runtime_paths()
@@ -38,22 +37,22 @@ class SiteRuntimeManager:
     def gateway(self) -> SiteRuntimeGateway:
         return self._gateway
 
-    def list_site_runtimes(self) -> List[SiteRuntimeRecord]:
+    def list_site_runtimes(self) -> list[SiteRuntimeRecord]:
         return self.discover_site_runtimes()
 
-    def discover_site_runtimes(self) -> List[SiteRuntimeRecord]:
+    def discover_site_runtimes(self) -> list[SiteRuntimeRecord]:
         return self.discover_site_runtime_result().records
 
     def discover_site_runtime_result(self) -> SiteRuntimeDiscoveryResult:
         return self._discover_workspace_site_runtimes()
 
-    def get_site_runtime(self, runtime_id: str) -> Optional[SiteRuntimeRecord]:
+    def get_site_runtime(self, runtime_id: str) -> SiteRuntimeRecord | None:
         for record in self.discover_site_runtimes():
             if record.runtime_id == runtime_id:
                 return record
         return None
 
-    def enable_site_runtime(self, runtime_id: str) -> Optional[SiteRuntimeRecord]:
+    def enable_site_runtime(self, runtime_id: str) -> SiteRuntimeRecord | None:
         record = self.get_site_runtime(runtime_id)
         if record is None:
             return None
@@ -67,7 +66,7 @@ class SiteRuntimeManager:
         self._supervisor.start_runtime(record)
         return self._store.upsert(record)
 
-    def disable_site_runtime(self, runtime_id: str) -> Optional[SiteRuntimeRecord]:
+    def disable_site_runtime(self, runtime_id: str) -> SiteRuntimeRecord | None:
         record = self.get_site_runtime(runtime_id)
         if record is None:
             return None
@@ -86,7 +85,7 @@ class SiteRuntimeManager:
             discovery_errors=self.discover_site_runtime_result().errors,
         )
 
-    def bootstrap_enabled_site_runtimes(self) -> List[SiteRuntimeRecord]:
+    def bootstrap_enabled_site_runtimes(self) -> list[SiteRuntimeRecord]:
         enabled_records = [record for record in self.discover_site_runtimes() if record.enabled]
         if not enabled_records:
             return []
@@ -99,15 +98,15 @@ class SiteRuntimeManager:
             )
 
         futures: list[tuple[SiteRuntimeRecord, Future[object]]] = []
-        with ThreadPoolExecutor(max_workers=len(enabled_records), thread_name_prefix='site-runtime-bootstrap') as executor:
+        with ThreadPoolExecutor(max_workers=len(enabled_records), thread_name_prefix="site-runtime-bootstrap") as executor:
             for record in enabled_records:
                 futures.append((record, executor.submit(self._supervisor.start_runtime, record)))
 
-            _done, not_done = wait([future for _, future in futures], return_when='FIRST_EXCEPTION')
+            _done, not_done = wait([future for _, future in futures], return_when="FIRST_EXCEPTION")
             if not_done:
                 wait(not_done)
 
-        started: List[SiteRuntimeRecord] = []
+        started: list[SiteRuntimeRecord] = []
         first_error: Exception | None = None
         for record, future in futures:
             try:
@@ -134,7 +133,7 @@ class SiteRuntimeManager:
         for record in records:
             self._gateway.unregister_plugin(record.runtime_id)
 
-    def reload_enabled_site_runtimes(self) -> List[SiteRuntimeRecord]:
+    def reload_enabled_site_runtimes(self) -> list[SiteRuntimeRecord]:
         self.shutdown_all()
         return self.bootstrap_enabled_site_runtimes()
 
@@ -161,7 +160,7 @@ class SiteRuntimeManager:
         records_by_id = {
             record.runtime_id: record
             for record in self._store.list_records()
-            if record.metadata.get('source') == 'workspace'
+            if record.metadata.get("source") == "workspace"
         }
         errors: list[SiteRuntimeDiscoveryError] = []
         runtimes_root = self._paths.workspace_runtimes_dir
@@ -171,21 +170,21 @@ class SiteRuntimeManager:
                 errors=[],
             )
 
-        for metadata_path in runtimes_root.glob('*/site-runtime.json'):
+        for metadata_path in runtimes_root.glob("*/site-runtime.json"):
             try:
-                payload = json.loads(metadata_path.read_text(encoding='utf-8'))
-                manifest_payload = payload.get('manifest') or {}
-                entrypoint = str(payload.get('entrypoint', '')).strip()
+                payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+                manifest_payload = payload.get("manifest") or {}
+                entrypoint = str(payload.get("entrypoint", "")).strip()
                 manifest = SiteRuntimeManifest.from_dict(manifest_payload)
                 if not manifest.runtime_id or not entrypoint:
                     errors.append(SiteRuntimeDiscoveryError(
                         metadata_path=str(metadata_path),
-                        reason='missing runtime_id or entrypoint',
+                        reason="missing runtime_id or entrypoint",
                     ))
                     continue
 
                 runtime_root = metadata_path.parent
-                runtime_path = runtime_root / 'src'
+                runtime_path = runtime_root / "src"
                 existing = records_by_id.get(manifest.runtime_id)
                 if existing is not None:
                     before = existing.to_dict()
@@ -196,9 +195,9 @@ class SiteRuntimeManager:
                     existing.manifest = manifest.to_dict()
                     existing.package_path = str(metadata_path)
                     existing.runtime_path = str(runtime_path if runtime_path.exists() else runtime_root)
-                    existing.metadata = {'source': 'workspace'}
+                    existing.metadata = {"source": "workspace"}
                     after = existing.to_dict()
-                    after['updated_at'] = before.get('updated_at')
+                    after["updated_at"] = before.get("updated_at")
                     if after != before:
                         records_by_id[existing.runtime_id] = self._store.upsert(existing)
 
@@ -222,7 +221,7 @@ class SiteRuntimeManager:
                     manifest=manifest.to_dict(),
                     package_path=str(metadata_path),
                     runtime_path=str(runtime_path if runtime_path.exists() else runtime_root),
-                    metadata={'source': 'workspace'},
+                    metadata={"source": "workspace"},
                 )
                 records_by_id[record.runtime_id] = self._store.upsert(record)
             except Exception as exc:
@@ -237,7 +236,7 @@ class SiteRuntimeManager:
         )
 
 
-_site_runtime_manager: Optional[SiteRuntimeManager] = None
+_site_runtime_manager: SiteRuntimeManager | None = None
 
 
 def get_site_runtime_manager() -> SiteRuntimeManager:
@@ -247,7 +246,7 @@ def get_site_runtime_manager() -> SiteRuntimeManager:
     return _site_runtime_manager
 
 
-def bootstrap_site_runtimes() -> List[SiteRuntimeRecord]:
+def bootstrap_site_runtimes() -> list[SiteRuntimeRecord]:
     return get_site_runtime_manager().bootstrap_enabled_site_runtimes()
 
 
@@ -255,7 +254,7 @@ def shutdown_site_runtimes() -> None:
     get_site_runtime_manager().shutdown_all()
 
 
-def reload_site_runtimes() -> List[SiteRuntimeRecord]:
+def reload_site_runtimes() -> list[SiteRuntimeRecord]:
     return get_site_runtime_manager().reload_enabled_site_runtimes()
 
 

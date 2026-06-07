@@ -1,12 +1,11 @@
 import logging
-from typing import List, Type
 
 logger = logging.getLogger(__name__)
 
 
 class BaseTask:
     interval: int = 60
-    unit: str = 'seconds'
+    unit: str = "seconds"
     start_immediately: bool = True
 
     @classmethod
@@ -15,10 +14,10 @@ class BaseTask:
 
 
 class TaskRegistry:
-    tasks: List[Type[BaseTask]] = []
+    tasks: list[type[BaseTask]] = []
 
     @classmethod
-    def register(cls, interval: int, unit: str = 'seconds', start_immediately: bool = True):
+    def register(cls, interval: int, unit: str = "seconds", start_immediately: bool = True):
         def decorator(task_class):
             task_class.interval = interval
             task_class.unit = unit

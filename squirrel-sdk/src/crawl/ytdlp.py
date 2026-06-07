@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from .config import get_rate_limit_config
 
@@ -29,7 +29,7 @@ def _parse_float(value: Any) -> float | None:
         return None
 
 
-def apply_ytdlp_rate_limit(site_slug: str, options: Dict[str, Any] | None = None) -> Dict[str, Any]:
+def apply_ytdlp_rate_limit(site_slug: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
     ydl_opts = dict(options or {})
     rate_limit = get_rate_limit_config(site_slug)
     if not rate_limit or not _parse_bool(rate_limit.get('enabled'), True):

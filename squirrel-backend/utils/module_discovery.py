@@ -4,23 +4,22 @@ import importlib
 import inspect
 import logging
 import pkgutil
+from collections.abc import Sequence
 from types import ModuleType
-from typing import List, Sequence, Type, Union
 
 logger = logging.getLogger(__name__)
 
 
 def import_classes_from_package(
-    package: Union[str, ModuleType],
-    base_class: Type | None = None,
+    package: str | ModuleType,
+    base_class: type | None = None,
     recursive: bool = True,
     exclude_modules: Sequence[str] | None = None,
     exclude_classes: Sequence[str] | None = None,
     include_private_modules: bool = False,
     defined_in_module_only: bool = True,
-) -> List[Type]:
-    """
-    Discover and import classes from a package using pkgutil + importlib + inspect.
+) -> list[type]:
+    """Discover and import classes from a package using pkgutil + importlib + inspect.
 
     Args:
         package: Package object or package name (string).
@@ -47,11 +46,11 @@ def import_classes_from_package(
         logger.error("Failed to import package '%s': %s", package, e)
         return []
 
-    results: list[Type] = []
+    results: list[type] = []
 
     def should_exclude_module(candidate_name: str) -> bool:
-        base = candidate_name.rsplit('.', 1)[-1]
-        if not include_private_modules and base.startswith('_'):
+        base = candidate_name.rsplit(".", 1)[-1]
+        if not include_private_modules and base.startswith("_"):
             return True
         # Allow excluding by full dotted name or by basename
         return candidate_name in exclude_modules or base in exclude_modules
@@ -65,7 +64,7 @@ def import_classes_from_package(
 
         for _, cls in inspect.getmembers(module, inspect.isclass):
             # Optionally only keep classes defined in this module
-            if defined_in_module_only and getattr(cls, '__module__', None) != module.__name__:
+            if defined_in_module_only and getattr(cls, "__module__", None) != module.__name__:
                 continue
             if cls.__name__ in exclude_classes:
                 continue
@@ -80,7 +79,7 @@ def import_classes_from_package(
                 results.append(cls)
 
     # If it's a simple module (not a package), just scan it directly
-    if not hasattr(pkg_mod, '__path__'):
+    if not hasattr(pkg_mod, "__path__"):
         scan_module(pkg_mod.__name__)
         return results
 

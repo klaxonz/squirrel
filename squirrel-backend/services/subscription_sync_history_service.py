@@ -1,16 +1,16 @@
-from datetime import datetime, timedelta
-from typing import Any, Optional
+from datetime import datetime
+from typing import Any
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from core.database import get_session
+from core.site_config_manager import get_effective_site_catalog
 from models.links import UserSubscription
 from models.subscription import Subscription
 from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
-from core.site_config_manager import get_effective_site_catalog
 from services.subscription_sync_progress import build_progress_snapshot
 from services.subscription_sync_run_service import SyncEventType
 from utils.site_catalog import SiteCatalog
@@ -22,7 +22,7 @@ FEED_HANDOFF_EVENT_TYPES = {'phase_changed', 'continued'}
 FEED_HANDOFF_PHASES = {'extracting', 'finalizing'}
 
 
-def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
+def _parse_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
     normalized = str(value).strip()
@@ -37,11 +37,11 @@ def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
             return None
 
 
-def _serialize_datetime(value: Optional[datetime]) -> str:
+def _serialize_datetime(value: datetime | None) -> str:
     return value.strftime('%Y-%m-%d %H:%M:%S') if value else ''
 
 
-def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
+def _resolve_site_icon_url(site: str | None) -> str | None:
     normalized_site = str(site or '').strip().lower()
     if not normalized_site:
         return None
@@ -74,7 +74,7 @@ def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
     return None
 
 
-def _payload_metric_value(session: Session, run_id: str, key: str) -> Optional[int]:
+def _payload_metric_value(session: Session, run_id: str, key: str) -> int | None:
     payloads = session.execute(
         select(SubscriptionSyncEvent.payload)
         .where(SubscriptionSyncEvent.stream_id == run_id)
@@ -176,13 +176,13 @@ def _run_exists_for_user(session: Session, run_id: str, user_id: int) -> bool:
 def list_runs(
     user_id: int,
     *,
-    status: Optional[str] = None,
-    site: Optional[str] = None,
-    subscription_id: Optional[int] = None,
-    mode: Optional[str] = None,
-    trigger: Optional[str] = None,
-    date_from: Optional[str] = None,
-    date_to: Optional[str] = None,
+    status: str | None = None,
+    site: str | None = None,
+    subscription_id: int | None = None,
+    mode: str | None = None,
+    trigger: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
@@ -309,7 +309,7 @@ def list_runs(
     }
 
 
-def get_run_detail(run_id: str, user_id: int) -> Optional[dict]:
+def get_run_detail(run_id: str, user_id: int) -> dict | None:
     with get_session() as session:
         row = session.execute(
             _base_run_query(user_id).where(SubscriptionSyncRunProjection.run_id == run_id)

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from .registry import ConsumerRegistry
 
 
-def queue_listener(stream: str, group: str, consumer_name: Optional[str] = None, *, block_ms: int = 1000, read_count: int = 1, consumer_count: int = 1) -> Callable:
+def queue_listener(stream: str, group: str, consumer_name: str | None = None, *, block_ms: int = 1000, read_count: int = 1, consumer_count: int = 1) -> Callable:
     """标记函数为 MQ 消费者，并注册到注册表。"""
     def decorator(func: Callable) -> Callable:
         base = consumer_name or func.__name__

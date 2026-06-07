@@ -1,6 +1,6 @@
-from pathlib import Path
 import sys
 from enum import StrEnum
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -17,10 +17,10 @@ def test_video_filter_enums_are_str_enums():
 
 
 def test_video_filter_enum_values_match_query_contract():
-    assert SortBy.UPLOADED_AT == 'publish_date'
-    assert VideoCategory.ALL == 'all'
-    assert VideoCategory.LIKED == 'liked'
-    assert YesNoAll.YES == 'yes'
-    assert TimeRange.MONTH == 'month'
-    assert DurationFilter.LONG == 'long'
-    assert ContentType.TV_SERIES == 'TV_SERIES'
+    assert SortBy.UPLOADED_AT == "publish_date"
+    assert VideoCategory.ALL == "all"
+    assert VideoCategory.LIKED == "liked"
+    assert YesNoAll.YES == "yes"
+    assert TimeRange.MONTH == "month"
+    assert DurationFilter.LONG == "long"
+    assert ContentType.TV_SERIES == "TV_SERIES"

@@ -4,7 +4,6 @@ from collections import defaultdict
 from datetime import datetime
 from threading import Lock
 from time import monotonic
-from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -14,13 +13,12 @@ from models.crawl_task import CrawlTask
 from models.video_extraction_projection import VideoExtractionProjection
 from services import sync_center_stream_service
 
-
-RUNNING_TASK_STATUSES = {'leased', 'running'}
-QUEUED_TASK_STATUSES = {'pending', 'retry_wait'}
-FAILED_TASK_STATUSES = {'dead', 'cancelled'}
-COMPLETED_TASK_STATUSES = {'succeeded'}
-VIDEO_EXTRACT_TASK_TYPE = 'video_extract'
-ACTIVE_PROJECTION_STATUSES = {'running', 'queued'}
+RUNNING_TASK_STATUSES = {"leased", "running"}
+QUEUED_TASK_STATUSES = {"pending", "retry_wait"}
+FAILED_TASK_STATUSES = {"dead", "cancelled"}
+COMPLETED_TASK_STATUSES = {"succeeded"}
+VIDEO_EXTRACT_TASK_TYPE = "video_extract"
+ACTIVE_PROJECTION_STATUSES = {"running", "queued"}
 RECONCILE_INTERVAL_SECONDS = 30
 
 _seed_lock = Lock()
@@ -29,18 +27,18 @@ _group_key_layout_checked = False
 
 
 def _sync_state_value_expr():
-    return func.nullif(CrawlTask.payload['sync_state_id'].as_string(), '')
+    return func.nullif(CrawlTask.payload["sync_state_id"].as_string(), "")
 
 
 def _derive_group_key(task: CrawlTask) -> tuple[str, str]:
     payload = task.payload or {}
-    run_id = payload.get('run_id')
-    if run_id not in (None, ''):
-        return 'run', str(run_id)
-    sync_state_id = payload.get('sync_state_id')
-    if sync_state_id not in (None, ''):
-        return 'state', str(sync_state_id)
-    return 'job', str(task.job_id)
+    run_id = payload.get("run_id")
+    if run_id not in (None, ""):
+        return "run", str(run_id)
+    sync_state_id = payload.get("sync_state_id")
+    if sync_state_id not in (None, ""):
+        return "state", str(sync_state_id)
+    return "job", str(task.job_id)
 
 
 def _compute_projection_snapshot(tasks: list[CrawlTask]) -> dict[str, object]:
@@ -52,21 +50,21 @@ def _compute_projection_snapshot(tasks: list[CrawlTask]) -> dict[str, object]:
     active_count = queued_count + running_count
 
     if running_count > 0:
-        sync_status = 'running'
-        display_status = 'running'
-        current_phase = 'extracting'
+        sync_status = "running"
+        display_status = "running"
+        current_phase = "extracting"
     elif active_count > 0:
-        sync_status = 'queued'
-        display_status = 'queued'
-        current_phase = 'queued'
+        sync_status = "queued"
+        display_status = "queued"
+        current_phase = "queued"
     elif failed_count > 0:
-        sync_status = 'failed'
-        display_status = 'failed'
-        current_phase = 'completed'
+        sync_status = "failed"
+        display_status = "failed"
+        current_phase = "completed"
     else:
-        sync_status = 'success'
-        display_status = 'healthy'
-        current_phase = 'completed'
+        sync_status = "success"
+        display_status = "healthy"
+        current_phase = "completed"
 
     latest_failed_task = max(
         (task for task in tasks if task.status in FAILED_TASK_STATUSES),
@@ -84,21 +82,21 @@ def _compute_projection_snapshot(tasks: list[CrawlTask]) -> dict[str, object]:
     first_task = tasks[0] if tasks else None
 
     return {
-        'site': first_task.site if first_task else None,
-        'sync_status': sync_status,
-        'display_status': display_status,
-        'current_phase': current_phase,
-        'last_error': latest_failed_task.last_error if latest_failed_task else None,
-        'queued_at': queued_at,
-        'locked_at': locked_at,
-        'last_success_at': last_success_at if sync_status == 'success' else None,
-        'pending_video_count': active_count,
-        'batch_task_count': total_count,
-        'queued_task_count': queued_count,
-        'running_task_count': running_count,
-        'completed_task_count': completed_count,
-        'failed_task_count': failed_count,
-        'updated_at': updated_at or datetime.now(),
+        "site": first_task.site if first_task else None,
+        "sync_status": sync_status,
+        "display_status": display_status,
+        "current_phase": current_phase,
+        "last_error": latest_failed_task.last_error if latest_failed_task else None,
+        "queued_at": queued_at,
+        "locked_at": locked_at,
+        "last_success_at": last_success_at if sync_status == "success" else None,
+        "pending_video_count": active_count,
+        "batch_task_count": total_count,
+        "queued_task_count": queued_count,
+        "running_task_count": running_count,
+        "completed_task_count": completed_count,
+        "failed_task_count": failed_count,
+        "updated_at": updated_at or datetime.now(),
     }
 
 
@@ -115,7 +113,7 @@ def _upsert_projection(
             VideoExtractionProjection.subscription_id == subscription_id,
             VideoExtractionProjection.group_kind == group_kind,
             VideoExtractionProjection.group_value == group_value,
-        )
+        ),
     ).scalar_one_or_none()
 
     if projection is None:
@@ -130,7 +128,7 @@ def _upsert_projection(
         setattr(projection, key, value)
 
 
-def refresh_projection_for_task(task: CrawlTask, *, session: Optional[Session] = None) -> None:
+def refresh_projection_for_task(task: CrawlTask, *, session: Session | None = None) -> None:
     if task.task_type != VIDEO_EXTRACT_TASK_TYPE or task.subscription_id is None:
         return
 
@@ -141,7 +139,7 @@ def refresh_projection_for_task(task: CrawlTask, *, session: Optional[Session] =
             session,
             lambda: sync_center_stream_service.publish_sync_center_invalidation(
                 sync_center_stream_service.SYNC_CENTER_EXTRACT_CHANNEL,
-                {'run_id': (task.payload or {}).get('run_id')},
+                {"run_id": (task.payload or {}).get("run_id")},
             ),
         )
         return
@@ -157,7 +155,7 @@ def refresh_projection_for_task(task: CrawlTask, *, session: Optional[Session] =
             managed_session,
             lambda: sync_center_stream_service.publish_sync_center_invalidation(
                 sync_center_stream_service.SYNC_CENTER_EXTRACT_CHANNEL,
-                {'run_id': (task.payload or {}).get('run_id')},
+                {"run_id": (task.payload or {}).get("run_id")},
             ),
         )
 
@@ -175,7 +173,7 @@ def _refresh_projection_group(
             CrawlTask.task_type == VIDEO_EXTRACT_TASK_TYPE,
             CrawlTask.subscription_id == subscription_id,
         )
-        .order_by(CrawlTask.created_at.asc(), CrawlTask.id.asc())
+        .order_by(CrawlTask.created_at.asc(), CrawlTask.id.asc()),
     ).scalars().all()
     tasks = [
         task for task in subscription_tasks
@@ -187,7 +185,7 @@ def _refresh_projection_group(
             VideoExtractionProjection.subscription_id == subscription_id,
             VideoExtractionProjection.group_kind == group_kind,
             VideoExtractionProjection.group_value == group_value,
-        )
+        ),
     ).scalar_one_or_none()
 
     if not tasks:
@@ -205,7 +203,7 @@ def _refresh_projection_group(
     )
 
 
-def rebuild_all_projections(*, session: Optional[Session] = None) -> int:
+def rebuild_all_projections(*, session: Session | None = None) -> int:
     if session is not None:
         return _rebuild_all(session)
 
@@ -217,7 +215,7 @@ def _rebuild_all(session: Session) -> int:
     tasks = session.execute(
         select(CrawlTask)
         .where(CrawlTask.task_type == VIDEO_EXTRACT_TASK_TYPE)
-        .order_by(CrawlTask.subscription_id.asc(), CrawlTask.job_id.asc(), CrawlTask.created_at.asc(), CrawlTask.id.asc())
+        .order_by(CrawlTask.subscription_id.asc(), CrawlTask.job_id.asc(), CrawlTask.created_at.asc(), CrawlTask.id.asc()),
     ).scalars().all()
 
     session.execute(VideoExtractionProjection.__table__.delete())
@@ -248,7 +246,7 @@ def _load_active_task_group_keys(session: Session) -> set[tuple[int, str, str]]:
             CrawlTask.task_type == VIDEO_EXTRACT_TASK_TYPE,
             CrawlTask.status.in_(RUNNING_TASK_STATUSES | QUEUED_TASK_STATUSES),
             CrawlTask.subscription_id.is_not(None),
-        )
+        ),
     ).scalars().all()
 
     keys: set[tuple[int, str, str]] = set()
@@ -266,7 +264,7 @@ def _load_active_projection_group_keys(session: Session) -> set[tuple[int, str, 
             VideoExtractionProjection.subscription_id,
             VideoExtractionProjection.group_kind,
             VideoExtractionProjection.group_value,
-        ).where(VideoExtractionProjection.display_status.in_(ACTIVE_PROJECTION_STATUSES))
+        ).where(VideoExtractionProjection.display_status.in_(ACTIVE_PROJECTION_STATUSES)),
     ).all()
     return {
         (int(subscription_id), str(group_kind), str(group_value))
@@ -279,7 +277,7 @@ def _projection_requires_group_key_rebuild(session: Session) -> bool:
         select(
             VideoExtractionProjection.subscription_id,
             VideoExtractionProjection.group_value,
-        ).where(VideoExtractionProjection.group_kind == 'state')
+        ).where(VideoExtractionProjection.group_kind == "state"),
     ).all()
     if not state_rows:
         return False
@@ -293,16 +291,16 @@ def _projection_requires_group_key_rebuild(session: Session) -> bool:
         .where(
             CrawlTask.task_type == VIDEO_EXTRACT_TASK_TYPE,
             CrawlTask.subscription_id.is_not(None),
-        )
+        ),
     ).scalars().all()
 
     for task in tasks:
         if task.subscription_id is None:
             continue
         payload = task.payload or {}
-        run_id = payload.get('run_id')
-        sync_state_id = payload.get('sync_state_id')
-        if run_id in (None, '') or sync_state_id in (None, ''):
+        run_id = payload.get("run_id")
+        sync_state_id = payload.get("sync_state_id")
+        if run_id in (None, "") or sync_state_id in (None, ""):
             continue
         if (int(task.subscription_id), str(sync_state_id)) in state_keys:
             return True
@@ -310,7 +308,7 @@ def _projection_requires_group_key_rebuild(session: Session) -> bool:
     return False
 
 
-def reconcile_active_projection_drift(*, force: bool = False, session: Optional[Session] = None) -> int:
+def reconcile_active_projection_drift(*, force: bool = False, session: Session | None = None) -> int:
     global _last_reconcile_monotonic
 
     now_tick = monotonic()
@@ -357,34 +355,33 @@ def _reconcile_active_projection_drift(session: Session) -> int:
 def ensure_projection_seeded() -> int:
     global _group_key_layout_checked, _last_reconcile_monotonic
 
-    with _seed_lock:
-        with get_session() as session:
-            projection_count = int(session.execute(select(func.count(VideoExtractionProjection.id))).scalar() or 0)
-            if projection_count > 0:
-                if not _group_key_layout_checked:
-                    if _projection_requires_group_key_rebuild(session):
-                        rebuilt = _rebuild_all(session)
-                        _group_key_layout_checked = True
-                        _last_reconcile_monotonic = monotonic()
-                        return rebuilt
+    with _seed_lock, get_session() as session:
+        projection_count = int(session.execute(select(func.count(VideoExtractionProjection.id))).scalar() or 0)
+        if projection_count > 0:
+            if not _group_key_layout_checked:
+                if _projection_requires_group_key_rebuild(session):
+                    rebuilt = _rebuild_all(session)
                     _group_key_layout_checked = True
-                now_tick = monotonic()
-                if _last_reconcile_monotonic is not None:
-                    if now_tick - _last_reconcile_monotonic < RECONCILE_INTERVAL_SECONDS:
-                        return 0
-                refreshed = _reconcile_active_projection_drift(session)
-                _last_reconcile_monotonic = now_tick
-                return refreshed
+                    _last_reconcile_monotonic = monotonic()
+                    return rebuilt
+                _group_key_layout_checked = True
+            now_tick = monotonic()
+            if _last_reconcile_monotonic is not None:
+                if now_tick - _last_reconcile_monotonic < RECONCILE_INTERVAL_SECONDS:
+                    return 0
+            refreshed = _reconcile_active_projection_drift(session)
+            _last_reconcile_monotonic = now_tick
+            return refreshed
 
-            task_count = int(
-                session.execute(
-                    select(func.count(CrawlTask.id)).where(CrawlTask.task_type == VIDEO_EXTRACT_TASK_TYPE)
-                ).scalar()
-                or 0
-            )
-            if task_count == 0:
-                return 0
+        task_count = int(
+            session.execute(
+                select(func.count(CrawlTask.id)).where(CrawlTask.task_type == VIDEO_EXTRACT_TASK_TYPE),
+            ).scalar()
+            or 0,
+        )
+        if task_count == 0:
+            return 0
 
-            rebuilt = _rebuild_all(session)
-            _group_key_layout_checked = True
-            return rebuilt
+        rebuilt = _rebuild_all(session)
+        _group_key_layout_checked = True
+        return rebuilt

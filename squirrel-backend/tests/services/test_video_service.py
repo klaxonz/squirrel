@@ -1,7 +1,7 @@
+import sys
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-import sys
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
@@ -10,14 +10,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
 from models.creator import Creator
-from models.links import SubscriptionVideo, UserSubscription
+from models.links import SubscriptionVideo, UserSubscription, VideoCreator
 from models.subscription import Subscription
+from models.user_video_feed import UserVideoFeed
 from models.video import Video
 from models.video_clip_marker import VideoClipMarker
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
-from models.user_video_feed import UserVideoFeed
-from models.links import VideoCreator
 from services import video_service
 
 
@@ -34,7 +33,7 @@ def _managed_session(engine):
         session.close()
 
 
-@event.listens_for(Session, 'before_flush')
+@event.listens_for(Session, "before_flush")
 def _mirror_user_video_feed_into_subscription_video(session, flush_context, instances):
     pending_pairs = {
         (row.subscription_id, row.video_id)
@@ -60,7 +59,7 @@ def _mirror_user_video_feed_into_subscription_video(session, flush_context, inst
 
 
 def _setup_test_env(monkeypatch):
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(
         engine,
         tables=[
@@ -76,153 +75,153 @@ def _setup_test_env(monkeypatch):
             UserVideoFeed.__table__,
         ],
     )
-    monkeypatch.setattr(video_service, 'get_session', lambda: _managed_session(engine))
+    monkeypatch.setattr(video_service, "get_session", lambda: _managed_session(engine))
     monkeypatch.setattr(
         video_service.user_config_service,
-        'get_config',
-        lambda user_id: {'showNsfw': False},
+        "get_config",
+        lambda user_id: {"showNsfw": False},
     )
     monkeypatch.setattr(
         video_service.thumbnail_downloader_service,
-        'get_thumbnail_url',
+        "get_thumbnail_url",
         lambda video_id, remote_url, video_url=None: remote_url,
     )
     monkeypatch.setattr(
         video_service.thumbnail_downloader_service,
-        'get_thumbnail_url_map',
+        "get_thumbnail_url_map",
         lambda items: {video_id: remote_url for video_id, remote_url, _video_url in items},
         raising=False,
     )
     monkeypatch.setattr(
         video_service.SiteCatalog,
-        'find_site_by_domain',
-        lambda domain: ('bilibili', {'metadata': {}}),
+        "find_site_by_domain",
+        lambda domain: ("bilibili", {"metadata": {}}),
     )
     return engine
 
 
-def _seed_video(engine, *, video_id=1, url='https://www.bilibili.com/video/BV1xx411c7mD'):
+def _seed_video(engine, *, video_id=1, url="https://www.bilibili.com/video/BV1xx411c7mD"):
     with Session(engine, expire_on_commit=False) as session:
         session.add(
             Video(
                 id=video_id,
-                title='Test video',
+                title="Test video",
                 url=url,
-                domain='bilibili.com',
+                domain="bilibili.com",
                 duration=120,
-                thumbnail='https://img.example.com/video.jpg',
+                thumbnail="https://img.example.com/video.jpg",
                 publish_date=datetime(2024, 1, 1),
                 created_at=datetime(2024, 1, 1),
                 updated_at=datetime(2024, 1, 1),
                 is_deleted=False,
-            )
+            ),
         )
         session.commit()
 
 
 def test_save_remote_video_creates_local_video(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+    _setup_test_env(monkeypatch)
 
     video = video_service.save_remote_video({
-        'site': 'youtube',
-        'url': 'https://www.youtube.com/watch?v=remote-demo',
-        'title': 'Remote Demo',
-        'thumbnail': 'https://img.example.com/remote.jpg',
-        'duration': 240,
-        'publish_date': '2024-05-01T12:30:00Z',
-        'description': 'Saved from remote search',
-        'subscriptions': [{'name': 'Remote Channel', 'url': 'https://www.youtube.com/@remote'}],
-        'actors': [{'name': 'Remote Actor'}],
+        "site": "youtube",
+        "url": "https://www.youtube.com/watch?v=remote-demo",
+        "title": "Remote Demo",
+        "thumbnail": "https://img.example.com/remote.jpg",
+        "duration": 240,
+        "publish_date": "2024-05-01T12:30:00Z",
+        "description": "Saved from remote search",
+        "subscriptions": [{"name": "Remote Channel", "url": "https://www.youtube.com/@remote"}],
+        "actors": [{"name": "Remote Actor"}],
     })
 
     assert video.id is not None
-    assert video.title == 'Remote Demo'
-    assert video.url == 'https://www.youtube.com/watch?v=remote-demo'
-    assert video.domain == 'youtube.com'
-    assert video.thumbnail == 'https://img.example.com/remote.jpg'
+    assert video.title == "Remote Demo"
+    assert video.url == "https://www.youtube.com/watch?v=remote-demo"
+    assert video.domain == "youtube.com"
+    assert video.thumbnail == "https://img.example.com/remote.jpg"
     assert video.duration == 240
-    assert video.description == 'Saved from remote search'
-    assert video.extra_data['source'] == 'remote'
-    assert video.extra_data['site'] == 'youtube'
-    assert video.extra_data['subscriptions'][0]['name'] == 'Remote Channel'
+    assert video.description == "Saved from remote search"
+    assert video.extra_data["source"] == "remote"
+    assert video.extra_data["site"] == "youtube"
+    assert video.extra_data["subscriptions"][0]["name"] == "Remote Channel"
 
 
 def test_get_video_returns_remote_profiles_from_saved_video_metadata(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+    _setup_test_env(monkeypatch)
 
     saved_video = video_service.save_remote_video({
-        'site': 'youtube',
-        'url': 'https://www.youtube.com/watch?v=remote-profile',
-        'title': 'Remote Profile Demo',
-        'thumbnail': 'https://img.example.com/remote-profile.jpg',
-        'publish_date': '2024-05-01T12:30:00Z',
-        'subscriptions': [{
-            'id': 'UCremote',
-            'type': 'CHANNEL',
-            'name': 'Remote Channel',
-            'url': 'https://www.youtube.com/@remote',
-            'avatar': 'https://img.example.com/channel.jpg',
-            'is_nsfw': False,
+        "site": "youtube",
+        "url": "https://www.youtube.com/watch?v=remote-profile",
+        "title": "Remote Profile Demo",
+        "thumbnail": "https://img.example.com/remote-profile.jpg",
+        "publish_date": "2024-05-01T12:30:00Z",
+        "subscriptions": [{
+            "id": "UCremote",
+            "type": "CHANNEL",
+            "name": "Remote Channel",
+            "url": "https://www.youtube.com/@remote",
+            "avatar": "https://img.example.com/channel.jpg",
+            "is_nsfw": False,
         }],
-        'actors': [{
-            'id': 'actor-1',
-            'type': 'ACTOR',
-            'name': 'Remote Actor',
-            'url': 'https://example.com/actor',
-            'avatar': 'https://img.example.com/actor.jpg',
+        "actors": [{
+            "id": "actor-1",
+            "type": "ACTOR",
+            "name": "Remote Actor",
+            "url": "https://example.com/actor",
+            "avatar": "https://img.example.com/actor.jpg",
         }],
     })
 
     video = video_service.get_video(user_id=7, video_id=saved_video.id)
 
-    assert video['subscriptions'] == [{
-        'id': 'UCremote',
-        'name': 'Remote Channel',
-        'url': 'https://www.youtube.com/@remote',
-        'type': 'CHANNEL',
-        'avatar': 'https://img.example.com/channel.jpg',
-        'is_nsfw': False,
+    assert video["subscriptions"] == [{
+        "id": "UCremote",
+        "name": "Remote Channel",
+        "url": "https://www.youtube.com/@remote",
+        "type": "CHANNEL",
+        "avatar": "https://img.example.com/channel.jpg",
+        "is_nsfw": False,
     }]
-    assert video['actors'] == [{
-        'id': 'actor-1',
-        'name': 'Remote Actor',
-        'url': 'https://example.com/actor',
-        'type': 'ACTOR',
-        'avatar': 'https://img.example.com/actor.jpg',
-        'is_nsfw': None,
+    assert video["actors"] == [{
+        "id": "actor-1",
+        "name": "Remote Actor",
+        "url": "https://example.com/actor",
+        "type": "ACTOR",
+        "avatar": "https://img.example.com/actor.jpg",
+        "is_nsfw": None,
     }]
 
 
 def test_save_remote_video_reuses_existing_url(monkeypatch):
     engine = _setup_test_env(monkeypatch)
-    _seed_video(engine, video_id=42, url='https://www.youtube.com/watch?v=existing')
+    _seed_video(engine, video_id=42, url="https://www.youtube.com/watch?v=existing")
 
     video = video_service.save_remote_video({
-        'site': 'youtube',
-        'url': 'https://www.youtube.com/watch?v=existing',
-        'title': 'New Remote Title',
+        "site": "youtube",
+        "url": "https://www.youtube.com/watch?v=existing",
+        "title": "New Remote Title",
     })
 
     assert video.id == 42
-    assert video.title == 'Test video'
+    assert video.title == "Test video"
 
 
 def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
     engine = _setup_test_env(monkeypatch)
     statements = []
 
-    @event.listens_for(engine, 'before_cursor_execute')
+    @event.listens_for(engine, "before_cursor_execute")
     def _capture_sql(conn, cursor, statement, parameters, context, executemany):
-        statements.append(' '.join(str(statement).split()))
+        statements.append(" ".join(str(statement).split()))
 
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
             Subscription(
                 id=1,
-                type='CHANNEL',
-                name='Feed A',
-                url='https://www.youtube.com/channel/A',
-                avatar='https://img.example.com/a.jpg',
+                type="CHANNEL",
+                name="Feed A",
+                url="https://www.youtube.com/channel/A",
+                avatar="https://img.example.com/a.jpg",
                 description=None,
                 total_videos=0,
                 is_deleted=False,
@@ -232,10 +231,10 @@ def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
             ),
             Subscription(
                 id=2,
-                type='CHANNEL',
-                name='Feed B',
-                url='https://www.youtube.com/channel/B',
-                avatar='https://img.example.com/b.jpg',
+                type="CHANNEL",
+                name="Feed B",
+                url="https://www.youtube.com/channel/B",
+                avatar="https://img.example.com/b.jpg",
                 description=None,
                 total_videos=0,
                 is_deleted=False,
@@ -247,11 +246,11 @@ def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
             UserSubscription(id=2, user_id=7, subscription_id=2, is_deleted=False, is_nsfw=False, created_at=datetime(2024, 1, 1), updated_at=datetime(2024, 1, 1)),
             Video(
                 id=101,
-                title='Newest video',
-                url='https://www.youtube.com/watch?v=101',
-                domain='youtube.com',
+                title="Newest video",
+                url="https://www.youtube.com/watch?v=101",
+                domain="youtube.com",
                 duration=240,
-                thumbnail='https://img.example.com/101.jpg',
+                thumbnail="https://img.example.com/101.jpg",
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -259,11 +258,11 @@ def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
             ),
             Video(
                 id=100,
-                title='Older video',
-                url='https://www.youtube.com/watch?v=100',
-                domain='youtube.com',
+                title="Older video",
+                url="https://www.youtube.com/watch?v=100",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/100.jpg',
+                thumbnail="https://img.example.com/100.jpg",
                 publish_date=datetime(2024, 1, 2, 12, 0, 0),
                 created_at=datetime(2024, 1, 2, 12, 0, 0),
                 updated_at=datetime(2024, 1, 2, 12, 0, 0),
@@ -275,7 +274,7 @@ def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
                 video_id=101,
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 3, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -286,7 +285,7 @@ def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
                 video_id=101,
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 3, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -297,7 +296,7 @@ def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
                 video_id=100,
                 publish_date=datetime(2024, 1, 2, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 2, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 2, 12, 0, 0),
                 updated_at=datetime(2024, 1, 2, 12, 0, 0),
@@ -320,9 +319,9 @@ def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
         user_id=7,
         query=None,
         subscription_id=None,
-        category='all',
-        sort_by='publish_date',
-        nsfw='all',
+        category="all",
+        sort_by="publish_date",
+        nsfw="all",
         domains=None,
         page=1,
         page_size=2,
@@ -330,15 +329,15 @@ def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
     )
 
     assert total == 2
-    assert [video['id'] for video in videos] == [101, 100]
-    assert videos[0]['last_position'] == 91
-    assert {sub['id'] for sub in videos[0]['subscriptions']} == {1, 2}
+    assert [video["id"] for video in videos] == [101, 100]
+    assert videos[0]["last_position"] == 91
+    assert {sub["id"] for sub in videos[0]["subscriptions"]} == {1, 2}
     feed_page_statements = [
         statement for statement in statements
-        if 'FROM user_video_feed' in statement and ' LIMIT ' in statement
+        if "FROM user_video_feed" in statement and " LIMIT " in statement
     ]
     assert feed_page_statements
-    assert all('GROUP BY' not in statement for statement in feed_page_statements)
+    assert all("GROUP BY" not in statement for statement in feed_page_statements)
 
 
 def test_list_videos_returns_remote_thumbnail_urls_directly(monkeypatch):
@@ -348,10 +347,10 @@ def test_list_videos_returns_remote_thumbnail_urls_directly(monkeypatch):
         session.add_all([
             Subscription(
                 id=1,
-                type='CHANNEL',
-                name='Feed A',
-                url='https://www.youtube.com/channel/A',
-                avatar='https://img.example.com/a.jpg',
+                type="CHANNEL",
+                name="Feed A",
+                url="https://www.youtube.com/channel/A",
+                avatar="https://img.example.com/a.jpg",
                 description=None,
                 total_videos=0,
                 is_deleted=False,
@@ -370,11 +369,11 @@ def test_list_videos_returns_remote_thumbnail_urls_directly(monkeypatch):
             ),
             Video(
                 id=111,
-                title='Bulk thumbnail video',
-                url='https://www.youtube.com/watch?v=111',
-                domain='youtube.com',
+                title="Bulk thumbnail video",
+                url="https://www.youtube.com/watch?v=111",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/111.jpg',
+                thumbnail="https://img.example.com/111.jpg",
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -386,7 +385,7 @@ def test_list_videos_returns_remote_thumbnail_urls_directly(monkeypatch):
                 video_id=111,
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 3, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -398,9 +397,9 @@ def test_list_videos_returns_remote_thumbnail_urls_directly(monkeypatch):
         user_id=7,
         query=None,
         subscription_id=None,
-        category='all',
-        sort_by='publish_date',
-        nsfw='all',
+        category="all",
+        sort_by="publish_date",
+        nsfw="all",
         domains=None,
         page=1,
         page_size=10,
@@ -408,7 +407,7 @@ def test_list_videos_returns_remote_thumbnail_urls_directly(monkeypatch):
     )
 
     assert total is None
-    assert videos[0]['thumbnail'] == 'https://img.example.com/111.jpg'
+    assert videos[0]["thumbnail"] == "https://img.example.com/111.jpg"
 
 
 def test_list_videos_filters_special_followed_subscriptions(monkeypatch):
@@ -418,9 +417,9 @@ def test_list_videos_filters_special_followed_subscriptions(monkeypatch):
         session.add_all([
             Subscription(
                 id=1,
-                type='CHANNEL',
-                name='Special Feed',
-                url='https://www.youtube.com/channel/special',
+                type="CHANNEL",
+                name="Special Feed",
+                url="https://www.youtube.com/channel/special",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -431,9 +430,9 @@ def test_list_videos_filters_special_followed_subscriptions(monkeypatch):
             ),
             Subscription(
                 id=2,
-                type='CHANNEL',
-                name='Regular Feed',
-                url='https://www.youtube.com/channel/regular',
+                type="CHANNEL",
+                name="Regular Feed",
+                url="https://www.youtube.com/channel/regular",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -463,11 +462,11 @@ def test_list_videos_filters_special_followed_subscriptions(monkeypatch):
             ),
             Video(
                 id=201,
-                title='Special video',
-                url='https://www.youtube.com/watch?v=201',
-                domain='youtube.com',
+                title="Special video",
+                url="https://www.youtube.com/watch?v=201",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/201.jpg',
+                thumbnail="https://img.example.com/201.jpg",
                 publish_date=datetime(2024, 1, 4, 12, 0, 0),
                 created_at=datetime(2024, 1, 4, 12, 0, 0),
                 updated_at=datetime(2024, 1, 4, 12, 0, 0),
@@ -475,11 +474,11 @@ def test_list_videos_filters_special_followed_subscriptions(monkeypatch):
             ),
             Video(
                 id=202,
-                title='Regular video',
-                url='https://www.youtube.com/watch?v=202',
-                domain='youtube.com',
+                title="Regular video",
+                url="https://www.youtube.com/watch?v=202",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/202.jpg',
+                thumbnail="https://img.example.com/202.jpg",
                 publish_date=datetime(2024, 1, 5, 12, 0, 0),
                 created_at=datetime(2024, 1, 5, 12, 0, 0),
                 updated_at=datetime(2024, 1, 5, 12, 0, 0),
@@ -491,7 +490,7 @@ def test_list_videos_filters_special_followed_subscriptions(monkeypatch):
                 video_id=201,
                 publish_date=datetime(2024, 1, 4, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 4, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 4, 12, 0, 0),
                 updated_at=datetime(2024, 1, 4, 12, 0, 0),
@@ -502,7 +501,7 @@ def test_list_videos_filters_special_followed_subscriptions(monkeypatch):
                 video_id=202,
                 publish_date=datetime(2024, 1, 5, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 5, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 5, 12, 0, 0),
                 updated_at=datetime(2024, 1, 5, 12, 0, 0),
@@ -514,37 +513,37 @@ def test_list_videos_filters_special_followed_subscriptions(monkeypatch):
         user_id=7,
         query=None,
         subscription_id=None,
-        category='all',
-        sort_by='publish_date',
-        nsfw='all',
+        category="all",
+        sort_by="publish_date",
+        nsfw="all",
         domains=None,
         page=1,
         page_size=10,
         with_total=True,
-        special='yes',
+        special="yes",
     )
 
     assert total == 1
-    assert [video['id'] for video in videos] == [201]
-    assert videos[0]['subscriptions'][0]['is_special_followed'] is True
+    assert [video["id"] for video in videos] == [201]
+    assert videos[0]["subscriptions"][0]["is_special_followed"] is True
 
 
 def test_list_videos_filters_domains_from_user_video_feed(monkeypatch):
     engine = _setup_test_env(monkeypatch)
     statements = []
 
-    @event.listens_for(engine, 'before_cursor_execute')
+    @event.listens_for(engine, "before_cursor_execute")
     def _capture_sql(conn, cursor, statement, parameters, context, executemany):
-        statements.append(' '.join(str(statement).split()))
+        statements.append(" ".join(str(statement).split()))
 
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
             Subscription(
                 id=1,
-                type='CHANNEL',
-                name='Bilibili Feed',
-                url='https://space.bilibili.com/1',
-                avatar='https://img.example.com/a.jpg',
+                type="CHANNEL",
+                name="Bilibili Feed",
+                url="https://space.bilibili.com/1",
+                avatar="https://img.example.com/a.jpg",
                 description=None,
                 total_videos=0,
                 is_deleted=False,
@@ -563,11 +562,11 @@ def test_list_videos_filters_domains_from_user_video_feed(monkeypatch):
             ),
             Video(
                 id=121,
-                title='Bilibili video',
-                url='https://www.bilibili.com/video/BV121',
-                domain='bilibili.com',
+                title="Bilibili video",
+                url="https://www.bilibili.com/video/BV121",
+                domain="bilibili.com",
                 duration=180,
-                thumbnail='https://img.example.com/121.jpg',
+                thumbnail="https://img.example.com/121.jpg",
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -575,11 +574,11 @@ def test_list_videos_filters_domains_from_user_video_feed(monkeypatch):
             ),
             Video(
                 id=122,
-                title='Youtube video',
-                url='https://www.youtube.com/watch?v=122',
-                domain='youtube.com',
+                title="Youtube video",
+                url="https://www.youtube.com/watch?v=122",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/122.jpg',
+                thumbnail="https://img.example.com/122.jpg",
                 publish_date=datetime(2024, 1, 4, 12, 0, 0),
                 created_at=datetime(2024, 1, 4, 12, 0, 0),
                 updated_at=datetime(2024, 1, 4, 12, 0, 0),
@@ -591,7 +590,7 @@ def test_list_videos_filters_domains_from_user_video_feed(monkeypatch):
                 video_id=121,
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 3, 12, 0, 0),
-                domain='bilibili.com',
+                domain="bilibili.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -602,7 +601,7 @@ def test_list_videos_filters_domains_from_user_video_feed(monkeypatch):
                 video_id=122,
                 publish_date=datetime(2024, 1, 4, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 4, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 4, 12, 0, 0),
                 updated_at=datetime(2024, 1, 4, 12, 0, 0),
@@ -614,10 +613,10 @@ def test_list_videos_filters_domains_from_user_video_feed(monkeypatch):
         user_id=7,
         query=None,
         subscription_id=None,
-        category='all',
-        sort_by='publish_date',
-        nsfw='all',
-        domains=['bilibili.com', 'b23.tv'],
+        category="all",
+        sort_by="publish_date",
+        nsfw="all",
+        domains=["bilibili.com", "b23.tv"],
         page=1,
         page_size=10,
         with_total=False,
@@ -625,14 +624,14 @@ def test_list_videos_filters_domains_from_user_video_feed(monkeypatch):
 
     page_statements = [
         statement for statement in statements
-        if 'FROM user_video_feed' in statement and ' LIMIT ' in statement
+        if "FROM user_video_feed" in statement and " LIMIT " in statement
     ]
 
     assert total is None
-    assert [video['id'] for video in videos] == [121]
+    assert [video["id"] for video in videos] == [121]
     assert page_statements
-    assert all('EXISTS (SELECT 1 FROM subscription_video' not in statement for statement in page_statements)
-    assert any('user_video_feed.domain IN' in statement for statement in page_statements)
+    assert all("EXISTS (SELECT 1 FROM subscription_video" not in statement for statement in page_statements)
+    assert any("user_video_feed.domain IN" in statement for statement in page_statements)
 
 
 def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkeypatch):
@@ -642,10 +641,10 @@ def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkey
         session.add_all([
             Subscription(
                 id=1,
-                type='CHANNEL',
-                name='Feed A',
-                url='https://www.youtube.com/channel/A',
-                avatar='https://img.example.com/a.jpg',
+                type="CHANNEL",
+                name="Feed A",
+                url="https://www.youtube.com/channel/A",
+                avatar="https://img.example.com/a.jpg",
                 description=None,
                 total_videos=0,
                 is_deleted=False,
@@ -655,10 +654,10 @@ def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkey
             ),
             Subscription(
                 id=2,
-                type='CHANNEL',
-                name='Feed B',
-                url='https://www.youtube.com/channel/B',
-                avatar='https://img.example.com/b.jpg',
+                type="CHANNEL",
+                name="Feed B",
+                url="https://www.youtube.com/channel/B",
+                avatar="https://img.example.com/b.jpg",
                 description=None,
                 total_videos=0,
                 is_deleted=False,
@@ -670,11 +669,11 @@ def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkey
             UserSubscription(id=2, user_id=7, subscription_id=2, is_deleted=False, is_nsfw=False, created_at=datetime(2024, 1, 1), updated_at=datetime(2024, 1, 1)),
             Video(
                 id=103,
-                title='Newest duplicate video',
-                url='https://www.youtube.com/watch?v=103',
-                domain='youtube.com',
+                title="Newest duplicate video",
+                url="https://www.youtube.com/watch?v=103",
+                domain="youtube.com",
                 duration=240,
-                thumbnail='https://img.example.com/103.jpg',
+                thumbnail="https://img.example.com/103.jpg",
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -682,11 +681,11 @@ def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkey
             ),
             Video(
                 id=102,
-                title='Second video',
-                url='https://www.youtube.com/watch?v=102',
-                domain='youtube.com',
+                title="Second video",
+                url="https://www.youtube.com/watch?v=102",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/102.jpg',
+                thumbnail="https://img.example.com/102.jpg",
                 publish_date=datetime(2024, 1, 2, 12, 0, 0),
                 created_at=datetime(2024, 1, 2, 12, 0, 0),
                 updated_at=datetime(2024, 1, 2, 12, 0, 0),
@@ -694,11 +693,11 @@ def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkey
             ),
             Video(
                 id=101,
-                title='Third video',
-                url='https://www.youtube.com/watch?v=101',
-                domain='youtube.com',
+                title="Third video",
+                url="https://www.youtube.com/watch?v=101",
+                domain="youtube.com",
                 duration=120,
-                thumbnail='https://img.example.com/101.jpg',
+                thumbnail="https://img.example.com/101.jpg",
                 publish_date=datetime(2024, 1, 1, 12, 0, 0),
                 created_at=datetime(2024, 1, 1, 12, 0, 0),
                 updated_at=datetime(2024, 1, 1, 12, 0, 0),
@@ -710,7 +709,7 @@ def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkey
                 video_id=103,
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 3, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -721,7 +720,7 @@ def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkey
                 video_id=103,
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 3, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -732,7 +731,7 @@ def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkey
                 video_id=102,
                 publish_date=datetime(2024, 1, 2, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 2, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 2, 12, 0, 0),
                 updated_at=datetime(2024, 1, 2, 12, 0, 0),
@@ -743,7 +742,7 @@ def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkey
                 video_id=101,
                 publish_date=datetime(2024, 1, 1, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 1, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 1, 12, 0, 0),
                 updated_at=datetime(2024, 1, 1, 12, 0, 0),
@@ -755,9 +754,9 @@ def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkey
         user_id=7,
         query=None,
         subscription_id=None,
-        category='all',
-        sort_by='publish_date',
-        nsfw='all',
+        category="all",
+        sort_by="publish_date",
+        nsfw="all",
         domains=None,
         page=2,
         page_size=1,
@@ -765,7 +764,7 @@ def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkey
     )
 
     assert total is None
-    assert [video['id'] for video in videos] == [102]
+    assert [video["id"] for video in videos] == [102]
 
 
 def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_rows(monkeypatch):
@@ -774,32 +773,31 @@ def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_row
     duplicate_subscription_count = 205
     statements = []
 
-    @event.listens_for(engine, 'before_cursor_execute')
+    @event.listens_for(engine, "before_cursor_execute")
     def _capture_sql(conn, cursor, statement, parameters, context, executemany):
-        normalized = ' '.join(str(statement).split())
+        normalized = " ".join(str(statement).split())
         statements.append(normalized)
 
     with Session(engine, expire_on_commit=False) as session:
         subscriptions = []
         user_subscriptions = []
         feed_rows = []
-        interactions = []
 
         for subscription_id in range(1, duplicate_subscription_count + 1):
             subscriptions.append(
                 Subscription(
                     id=subscription_id,
-                    type='CHANNEL',
-                    name=f'Feed {subscription_id}',
-                    url=f'https://www.youtube.com/channel/{subscription_id}',
-                    avatar=f'https://img.example.com/{subscription_id}.jpg',
+                    type="CHANNEL",
+                    name=f"Feed {subscription_id}",
+                    url=f"https://www.youtube.com/channel/{subscription_id}",
+                    avatar=f"https://img.example.com/{subscription_id}.jpg",
                     description=None,
                     total_videos=0,
                     is_deleted=False,
                     extra_data={},
                     created_at=datetime(2024, 1, 1),
                     updated_at=datetime(2024, 1, 1),
-                )
+                ),
             )
             user_subscriptions.append(
                 UserSubscription(
@@ -810,7 +808,7 @@ def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_row
                     is_nsfw=False,
                     created_at=datetime(2024, 1, 1),
                     updated_at=datetime(2024, 1, 1),
-                )
+                ),
             )
             feed_rows.append(
                 UserVideoFeed(
@@ -819,27 +817,27 @@ def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_row
                     video_id=301,
                     publish_date=datetime(2024, 1, 3, 12, 0, 0),
                     video_created_at=datetime(2024, 1, 3, 12, 0, 0),
-                    domain='youtube.com',
+                    domain="youtube.com",
                     is_nsfw=False,
                     created_at=datetime(2024, 1, 3, 12, 0, 0),
                     updated_at=datetime(2024, 1, 3, 12, 0, 0),
-                )
+                ),
             )
 
         subscriptions.append(
             Subscription(
                 id=duplicate_subscription_count + 1,
-                type='CHANNEL',
-                name='Feed secondary',
-                url='https://www.youtube.com/channel/secondary',
-                avatar='https://img.example.com/secondary.jpg',
+                type="CHANNEL",
+                name="Feed secondary",
+                url="https://www.youtube.com/channel/secondary",
+                avatar="https://img.example.com/secondary.jpg",
                 description=None,
                 total_videos=0,
                 is_deleted=False,
                 extra_data={},
                 created_at=datetime(2024, 1, 1),
                 updated_at=datetime(2024, 1, 1),
-            )
+            ),
         )
         user_subscriptions.append(
             UserSubscription(
@@ -850,7 +848,7 @@ def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_row
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 1),
                 updated_at=datetime(2024, 1, 1),
-            )
+            ),
         )
         feed_rows.append(
             UserVideoFeed(
@@ -859,11 +857,11 @@ def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_row
                 video_id=302,
                 publish_date=datetime(2024, 1, 2, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 2, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 2, 12, 0, 0),
                 updated_at=datetime(2024, 1, 2, 12, 0, 0),
-            )
+            ),
         )
 
         session.add_all(subscriptions)
@@ -871,11 +869,11 @@ def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_row
         session.add_all([
             Video(
                 id=301,
-                title='Primary liked video',
-                url='https://www.youtube.com/watch?v=301',
-                domain='youtube.com',
+                title="Primary liked video",
+                url="https://www.youtube.com/watch?v=301",
+                domain="youtube.com",
                 duration=240,
-                thumbnail='https://img.example.com/301.jpg',
+                thumbnail="https://img.example.com/301.jpg",
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -883,11 +881,11 @@ def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_row
             ),
             Video(
                 id=302,
-                title='Secondary liked video',
-                url='https://www.youtube.com/watch?v=302',
-                domain='youtube.com',
+                title="Secondary liked video",
+                url="https://www.youtube.com/watch?v=302",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/302.jpg',
+                thumbnail="https://img.example.com/302.jpg",
                 publish_date=datetime(2024, 1, 2, 12, 0, 0),
                 created_at=datetime(2024, 1, 2, 12, 0, 0),
                 updated_at=datetime(2024, 1, 2, 12, 0, 0),
@@ -917,9 +915,9 @@ def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_row
         user_id=7,
         query=None,
         subscription_id=None,
-        category='liked',
-        sort_by='publish_date',
-        nsfw='all',
+        category="liked",
+        sort_by="publish_date",
+        nsfw="all",
         domains=None,
         page=1,
         page_size=2,
@@ -928,14 +926,14 @@ def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_row
 
     liked_page_scans = [
         statement for statement in statements
-        if 'FROM user_video_feed' in statement
-        and 'video_interaction' in statement
-        and 'GROUP BY' not in statement
-        and 'JOIN subscription ON subscription.id = user_video_feed.subscription_id' not in statement
+        if "FROM user_video_feed" in statement
+        and "video_interaction" in statement
+        and "GROUP BY" not in statement
+        and "JOIN subscription ON subscription.id = user_video_feed.subscription_id" not in statement
     ]
 
     assert total is None
-    assert [video['id'] for video in videos] == [301, 302]
+    assert [video["id"] for video in videos] == [301, 302]
     assert liked_page_scans == []
 
 
@@ -946,11 +944,11 @@ def test_list_videos_search_matches_subscription_name(monkeypatch):
         session.add_all([
             Subscription(
                 id=1,
-                type='CHANNEL',
-                name='Alpha Feed',
-                url='https://www.youtube.com/channel/alpha',
+                type="CHANNEL",
+                name="Alpha Feed",
+                url="https://www.youtube.com/channel/alpha",
                 avatar=None,
-                description='Alpha channel',
+                description="Alpha channel",
                 total_videos=0,
                 is_deleted=False,
                 extra_data={},
@@ -959,11 +957,11 @@ def test_list_videos_search_matches_subscription_name(monkeypatch):
             ),
             Subscription(
                 id=2,
-                type='CHANNEL',
-                name='Beta Search Match',
-                url='https://www.youtube.com/channel/beta',
+                type="CHANNEL",
+                name="Beta Search Match",
+                url="https://www.youtube.com/channel/beta",
                 avatar=None,
-                description='Beta channel',
+                description="Beta channel",
                 total_videos=0,
                 is_deleted=False,
                 extra_data={},
@@ -974,11 +972,11 @@ def test_list_videos_search_matches_subscription_name(monkeypatch):
             UserSubscription(id=2, user_id=7, subscription_id=2, is_deleted=False, is_nsfw=False, created_at=datetime(2024, 1, 1), updated_at=datetime(2024, 1, 1)),
             Video(
                 id=501,
-                title='First unrelated video',
-                url='https://www.youtube.com/watch?v=501',
-                domain='youtube.com',
+                title="First unrelated video",
+                url="https://www.youtube.com/watch?v=501",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/501.jpg',
+                thumbnail="https://img.example.com/501.jpg",
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -986,11 +984,11 @@ def test_list_videos_search_matches_subscription_name(monkeypatch):
             ),
             Video(
                 id=502,
-                title='Second unrelated video',
-                url='https://www.youtube.com/watch?v=502',
-                domain='youtube.com',
+                title="Second unrelated video",
+                url="https://www.youtube.com/watch?v=502",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/502.jpg',
+                thumbnail="https://img.example.com/502.jpg",
                 publish_date=datetime(2024, 1, 2, 12, 0, 0),
                 created_at=datetime(2024, 1, 2, 12, 0, 0),
                 updated_at=datetime(2024, 1, 2, 12, 0, 0),
@@ -1002,7 +1000,7 @@ def test_list_videos_search_matches_subscription_name(monkeypatch):
                 video_id=501,
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 3, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -1013,7 +1011,7 @@ def test_list_videos_search_matches_subscription_name(monkeypatch):
                 video_id=502,
                 publish_date=datetime(2024, 1, 2, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 2, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 2, 12, 0, 0),
                 updated_at=datetime(2024, 1, 2, 12, 0, 0),
@@ -1025,9 +1023,9 @@ def test_list_videos_search_matches_subscription_name(monkeypatch):
         user_id=7,
         query='channel:"Beta Search Match"',
         subscription_id=None,
-        category='all',
-        sort_by='publish_date',
-        nsfw='all',
+        category="all",
+        sort_by="publish_date",
+        nsfw="all",
         domains=None,
         page=1,
         page_size=10,
@@ -1035,7 +1033,7 @@ def test_list_videos_search_matches_subscription_name(monkeypatch):
     )
 
     assert total == 1
-    assert [video['id'] for video in videos] == [502]
+    assert [video["id"] for video in videos] == [502]
 
 
 def test_list_videos_default_search_matches_title_only(monkeypatch):
@@ -1045,9 +1043,9 @@ def test_list_videos_default_search_matches_title_only(monkeypatch):
         session.add_all([
             Subscription(
                 id=1,
-                type='CHANNEL',
-                name='Archive Feed',
-                url='https://www.youtube.com/channel/archive',
+                type="CHANNEL",
+                name="Archive Feed",
+                url="https://www.youtube.com/channel/archive",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -1058,9 +1056,9 @@ def test_list_videos_default_search_matches_title_only(monkeypatch):
             ),
             Subscription(
                 id=2,
-                type='CHANNEL',
-                name='Gamma Subscription',
-                url='https://www.youtube.com/channel/gamma',
+                type="CHANNEL",
+                name="Gamma Subscription",
+                url="https://www.youtube.com/channel/gamma",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -1073,11 +1071,11 @@ def test_list_videos_default_search_matches_title_only(monkeypatch):
             UserSubscription(id=2, user_id=7, subscription_id=2, is_deleted=False, is_nsfw=False, created_at=datetime(2024, 1, 1), updated_at=datetime(2024, 1, 1)),
             Video(
                 id=511,
-                title='Gamma title match',
-                url='https://www.youtube.com/watch?v=511',
-                domain='youtube.com',
+                title="Gamma title match",
+                url="https://www.youtube.com/watch?v=511",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/511.jpg',
+                thumbnail="https://img.example.com/511.jpg",
                 publish_date=datetime(2024, 1, 1, 12, 0, 0),
                 created_at=datetime(2024, 1, 1, 12, 0, 0),
                 updated_at=datetime(2024, 1, 1, 12, 0, 0),
@@ -1085,11 +1083,11 @@ def test_list_videos_default_search_matches_title_only(monkeypatch):
             ),
             Video(
                 id=512,
-                title='Fresh unrelated upload',
-                url='https://www.youtube.com/watch?v=512',
-                domain='youtube.com',
+                title="Fresh unrelated upload",
+                url="https://www.youtube.com/watch?v=512",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/512.jpg',
+                thumbnail="https://img.example.com/512.jpg",
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -1101,7 +1099,7 @@ def test_list_videos_default_search_matches_title_only(monkeypatch):
                 video_id=511,
                 publish_date=datetime(2024, 1, 1, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 1, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 1, 12, 0, 0),
                 updated_at=datetime(2024, 1, 1, 12, 0, 0),
@@ -1112,7 +1110,7 @@ def test_list_videos_default_search_matches_title_only(monkeypatch):
                 video_id=512,
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 3, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -1122,11 +1120,11 @@ def test_list_videos_default_search_matches_title_only(monkeypatch):
 
     videos, total = video_service.list_videos(
         user_id=7,
-        query='gamma',
+        query="gamma",
         subscription_id=None,
-        category='all',
-        sort_by='publish_date',
-        nsfw='all',
+        category="all",
+        sort_by="publish_date",
+        nsfw="all",
         domains=None,
         page=1,
         page_size=10,
@@ -1134,7 +1132,7 @@ def test_list_videos_default_search_matches_title_only(monkeypatch):
     )
 
     assert total == 1
-    assert [video['id'] for video in videos] == [511]
+    assert [video["id"] for video in videos] == [511]
 
 
 def test_list_videos_search_no_longer_matches_creator_name(monkeypatch):
@@ -1144,9 +1142,9 @@ def test_list_videos_search_no_longer_matches_creator_name(monkeypatch):
         session.add_all([
             Subscription(
                 id=1,
-                type='CHANNEL',
-                name='Plain Feed',
-                url='https://www.youtube.com/channel/plain',
+                type="CHANNEL",
+                name="Plain Feed",
+                url="https://www.youtube.com/channel/plain",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -1166,11 +1164,11 @@ def test_list_videos_search_no_longer_matches_creator_name(monkeypatch):
             ),
             Video(
                 id=521,
-                title='Plain title',
-                url='https://www.youtube.com/watch?v=521',
-                domain='youtube.com',
+                title="Plain title",
+                url="https://www.youtube.com/watch?v=521",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/521.jpg',
+                thumbnail="https://img.example.com/521.jpg",
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -1182,15 +1180,15 @@ def test_list_videos_search_no_longer_matches_creator_name(monkeypatch):
                 video_id=521,
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 3, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
             ),
             Creator(
                 id=1,
-                name='Unique Creator Keyword',
-                url='https://example.com/creator/1',
+                name="Unique Creator Keyword",
+                url="https://example.com/creator/1",
                 description=None,
                 is_deleted=False,
                 created_at=datetime(2024, 1, 1),
@@ -1204,9 +1202,9 @@ def test_list_videos_search_no_longer_matches_creator_name(monkeypatch):
         user_id=7,
         query='creator:"Unique Creator Keyword"',
         subscription_id=None,
-        category='all',
-        sort_by='publish_date',
-        nsfw='all',
+        category="all",
+        sort_by="publish_date",
+        nsfw="all",
         domains=None,
         page=1,
         page_size=10,
@@ -1224,9 +1222,9 @@ def test_list_videos_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
         session.add_all([
             Subscription(
                 id=1,
-                type='CHANNEL',
-                name='Hidden NSFW feed',
-                url='https://www.youtube.com/channel/nsfw',
+                type="CHANNEL",
+                name="Hidden NSFW feed",
+                url="https://www.youtube.com/channel/nsfw",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -1246,11 +1244,11 @@ def test_list_videos_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
             ),
             Video(
                 id=601,
-                title='Hidden NSFW video',
-                url='https://www.youtube.com/watch?v=601',
-                domain='youtube.com',
+                title="Hidden NSFW video",
+                url="https://www.youtube.com/watch?v=601",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/601.jpg',
+                thumbnail="https://img.example.com/601.jpg",
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -1262,7 +1260,7 @@ def test_list_videos_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
                 video_id=601,
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 3, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=True,
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -1274,9 +1272,9 @@ def test_list_videos_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
         user_id=7,
         query=None,
         subscription_id=None,
-        category='all',
-        sort_by='publish_date',
-        nsfw='yes',
+        category="all",
+        sort_by="publish_date",
+        nsfw="yes",
         domains=None,
         page=1,
         page_size=10,
@@ -1294,9 +1292,9 @@ def test_list_videos_ignores_deleted_user_subscription_feed_rows(monkeypatch):
         session.add_all([
             Subscription(
                 id=1,
-                type='CHANNEL',
-                name='Removed feed',
-                url='https://www.youtube.com/channel/removed',
+                type="CHANNEL",
+                name="Removed feed",
+                url="https://www.youtube.com/channel/removed",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -1316,11 +1314,11 @@ def test_list_videos_ignores_deleted_user_subscription_feed_rows(monkeypatch):
             ),
             Video(
                 id=801,
-                title='Removed subscription video',
-                url='https://www.youtube.com/watch?v=801',
-                domain='youtube.com',
+                title="Removed subscription video",
+                url="https://www.youtube.com/watch?v=801",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/801.jpg',
+                thumbnail="https://img.example.com/801.jpg",
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -1332,7 +1330,7 @@ def test_list_videos_ignores_deleted_user_subscription_feed_rows(monkeypatch):
                 video_id=801,
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 3, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -1344,9 +1342,9 @@ def test_list_videos_ignores_deleted_user_subscription_feed_rows(monkeypatch):
         user_id=7,
         query=None,
         subscription_id=None,
-        category='all',
-        sort_by='publish_date',
-        nsfw='all',
+        category="all",
+        sort_by="publish_date",
+        nsfw="all",
         domains=None,
         page=1,
         page_size=10,
@@ -1363,10 +1361,10 @@ def test_list_videos_subscription_metadata_ignores_deleted_feed_links(monkeypatc
         session.add_all([
             Subscription(
                 id=1,
-                type='CHANNEL',
-                name='Active feed',
-                url='https://www.youtube.com/channel/active',
-                avatar='https://img.example.com/active.jpg',
+                type="CHANNEL",
+                name="Active feed",
+                url="https://www.youtube.com/channel/active",
+                avatar="https://img.example.com/active.jpg",
                 description=None,
                 total_videos=0,
                 is_deleted=False,
@@ -1376,10 +1374,10 @@ def test_list_videos_subscription_metadata_ignores_deleted_feed_links(monkeypatc
             ),
             Subscription(
                 id=2,
-                type='CHANNEL',
-                name='Removed feed',
-                url='https://www.youtube.com/channel/removed',
-                avatar='https://img.example.com/removed.jpg',
+                type="CHANNEL",
+                name="Removed feed",
+                url="https://www.youtube.com/channel/removed",
+                avatar="https://img.example.com/removed.jpg",
                 description=None,
                 total_videos=0,
                 is_deleted=False,
@@ -1391,11 +1389,11 @@ def test_list_videos_subscription_metadata_ignores_deleted_feed_links(monkeypatc
             UserSubscription(id=2, user_id=7, subscription_id=2, is_deleted=True, is_nsfw=False, created_at=datetime(2024, 1, 1), updated_at=datetime(2024, 1, 2)),
             Video(
                 id=802,
-                title='Shared video',
-                url='https://www.youtube.com/watch?v=802',
-                domain='youtube.com',
+                title="Shared video",
+                url="https://www.youtube.com/watch?v=802",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/802.jpg',
+                thumbnail="https://img.example.com/802.jpg",
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -1407,7 +1405,7 @@ def test_list_videos_subscription_metadata_ignores_deleted_feed_links(monkeypatc
                 video_id=802,
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 3, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -1418,7 +1416,7 @@ def test_list_videos_subscription_metadata_ignores_deleted_feed_links(monkeypatc
                 video_id=802,
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 video_created_at=datetime(2024, 1, 3, 12, 0, 0),
-                domain='youtube.com',
+                domain="youtube.com",
                 is_nsfw=False,
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -1430,9 +1428,9 @@ def test_list_videos_subscription_metadata_ignores_deleted_feed_links(monkeypatc
         user_id=7,
         query=None,
         subscription_id=None,
-        category='all',
-        sort_by='publish_date',
-        nsfw='all',
+        category="all",
+        sort_by="publish_date",
+        nsfw="all",
         domains=None,
         page=1,
         page_size=10,
@@ -1440,8 +1438,8 @@ def test_list_videos_subscription_metadata_ignores_deleted_feed_links(monkeypatc
     )
 
     assert total == 1
-    assert [video['id'] for video in videos] == [802]
-    assert [subscription['id'] for subscription in videos[0]['subscriptions']] == [1]
+    assert [video["id"] for video in videos] == [802]
+    assert [subscription["id"] for subscription in videos[0]["subscriptions"]] == [1]
 
 
 def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale(monkeypatch):
@@ -1451,9 +1449,9 @@ def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale
         session.add_all([
             Subscription(
                 id=1,
-                type='CHANNEL',
-                name='Deep Channel',
-                url='https://www.youtube.com/channel/deep-channel',
+                type="CHANNEL",
+                name="Deep Channel",
+                url="https://www.youtube.com/channel/deep-channel",
                 avatar=None,
                 description=None,
                 total_videos=1,
@@ -1473,11 +1471,11 @@ def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale
             ),
             Video(
                 id=701,
-                title='Deep Dive',
-                url='https://www.youtube.com/watch?v=701',
-                domain='youtube.com',
+                title="Deep Dive",
+                url="https://www.youtube.com/watch?v=701",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/701.jpg',
+                thumbnail="https://img.example.com/701.jpg",
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -1485,11 +1483,11 @@ def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale
             ),
             Video(
                 id=702,
-                title='Deep Dive 2',
-                url='https://www.youtube.com/watch?v=702',
-                domain='youtube.com',
+                title="Deep Dive 2",
+                url="https://www.youtube.com/watch?v=702",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/702.jpg',
+                thumbnail="https://img.example.com/702.jpg",
                 publish_date=datetime(2024, 1, 4, 12, 0, 0),
                 created_at=datetime(2024, 1, 4, 12, 0, 0),
                 updated_at=datetime(2024, 1, 4, 12, 0, 0),
@@ -1501,9 +1499,9 @@ def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale
                 id=1,
                 user_id=7,
                 video_id=701,
-                title='Best part',
-                note='Use this in share links',
-                preview_image_url='/static/clip-markers/user_7/video_701/marker_1.jpg',
+                title="Best part",
+                note="Use this in share links",
+                preview_image_url="/static/clip-markers/user_7/video_701/marker_1.jpg",
                 start_time=42,
                 end_time=63,
                 created_at=datetime(2024, 1, 3, 12, 30, 0),
@@ -1515,16 +1513,16 @@ def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale
     video = video_service.get_video(user_id=7, video_id=701)
 
     assert video is not None
-    assert video['subscriptions'][0]['total_extract'] == 2
-    assert video['subscriptions'][0]['total_videos'] == 2
-    assert len(video['clip_markers']) == 1
-    assert video['clip_markers'][0]['title'] == 'Best part'
-    assert video['clip_markers'][0]['duration_seconds'] == 21
-    assert video['clip_markers'][0]['preview_image_url'].startswith('/static/clip-markers/user_7/video_701/marker_1.jpg')
+    assert video["subscriptions"][0]["total_extract"] == 2
+    assert video["subscriptions"][0]["total_videos"] == 2
+    assert len(video["clip_markers"]) == 1
+    assert video["clip_markers"][0]["title"] == "Best part"
+    assert video["clip_markers"][0]["duration_seconds"] == 21
+    assert video["clip_markers"][0]["preview_image_url"].startswith("/static/clip-markers/user_7/video_701/marker_1.jpg")
 
 
 def test_get_video_gracefully_skips_clip_markers_when_table_is_missing(monkeypatch):
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(
         engine,
         tables=[
@@ -1539,10 +1537,10 @@ def test_get_video_gracefully_skips_clip_markers_when_table_is_missing(monkeypat
             UserVideoFeed.__table__,
         ],
     )
-    monkeypatch.setattr(video_service, 'get_session', lambda: _managed_session(engine))
+    monkeypatch.setattr(video_service, "get_session", lambda: _managed_session(engine))
     monkeypatch.setattr(
         video_service.thumbnail_downloader_service,
-        'get_thumbnail_url',
+        "get_thumbnail_url",
         lambda video_id, remote_url, video_url=None: remote_url,
     )
 
@@ -1550,10 +1548,10 @@ def test_get_video_gracefully_skips_clip_markers_when_table_is_missing(monkeypat
         session.add_all([
             Subscription(
                 id=1,
-                name='Fallback Channel',
-                url='https://www.youtube.com/@fallback',
-                type='CHANNEL',
-                avatar='https://img.example.com/channel.jpg',
+                name="Fallback Channel",
+                url="https://www.youtube.com/@fallback",
+                type="CHANNEL",
+                avatar="https://img.example.com/channel.jpg",
                 total_videos=1,
                 is_deleted=False,
                 created_at=datetime(2024, 1, 1),
@@ -1570,11 +1568,11 @@ def test_get_video_gracefully_skips_clip_markers_when_table_is_missing(monkeypat
             ),
             Video(
                 id=901,
-                title='No marker table',
-                url='https://www.youtube.com/watch?v=901',
-                domain='youtube.com',
+                title="No marker table",
+                url="https://www.youtube.com/watch?v=901",
+                domain="youtube.com",
                 duration=180,
-                thumbnail='https://img.example.com/901.jpg',
+                thumbnail="https://img.example.com/901.jpg",
                 publish_date=datetime(2024, 1, 3, 12, 0, 0),
                 created_at=datetime(2024, 1, 3, 12, 0, 0),
                 updated_at=datetime(2024, 1, 3, 12, 0, 0),
@@ -1587,5 +1585,5 @@ def test_get_video_gracefully_skips_clip_markers_when_table_is_missing(monkeypat
     video = video_service.get_video(user_id=7, video_id=901)
 
     assert video is not None
-    assert video['id'] == 901
-    assert video['clip_markers'] == []
+    assert video["id"] == 901
+    assert video["clip_markers"] == []

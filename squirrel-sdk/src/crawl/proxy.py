@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable
 class VideoProxy(Protocol):
     """Protocol for video proxy handlers."""
 
-    domains: List[str]
+    domains: list[str]
 
     async def handle_stream(self, url: str) -> Callable:
         """Handle a video stream request and return a callable handler."""
@@ -31,14 +32,14 @@ class ProxyDomainConfig:
 class ProxyConfigProvider(Protocol):
     """Protocol for proxy configuration providers."""
 
-    domains: List[str]
+    domains: list[str]
 
     @classmethod
-    def get_site_headers(cls) -> Dict[str, str]:
+    def get_site_headers(cls) -> dict[str, str]:
         """Get site-specific HTTP headers for proxy requests."""
         ...
 
     @classmethod
-    def get_domain_configs(cls) -> List[ProxyDomainConfig]:
+    def get_domain_configs(cls) -> list[ProxyDomainConfig]:
         """Get domain-specific proxy configurations."""
         ...

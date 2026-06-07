@@ -1,5 +1,5 @@
 import logging
-from typing import Callable, Optional
+from collections.abc import Callable
 from urllib.parse import urlparse
 
 import httpx
@@ -13,7 +13,7 @@ class CloudflareMirrorClient:
     def __init__(self, service_url: str, timeout: int = 120):
         if not service_url:
             raise ValueError("service_url 不能为空")
-        self.service_url = service_url.rstrip('/')
+        self.service_url = service_url.rstrip("/")
         self.timeout = timeout
         self._client_factory: Callable[[], httpx.AsyncClient] = lambda: httpx.AsyncClient(
             timeout=self.timeout,
@@ -22,13 +22,13 @@ class CloudflareMirrorClient:
 
     @staticmethod
     async def _close_client(client) -> None:
-        close = getattr(client, 'aclose', None)
+        close = getattr(client, "aclose", None)
         if callable(close):
             await close()
 
     async def _bind_streaming_response(self, response, client):
-        original_aclose = getattr(response, 'aclose', None)
-        close = getattr(response, 'close', None)
+        original_aclose = getattr(response, "aclose", None)
+        close = getattr(response, "close", None)
 
         async def close_with_client():
             try:
@@ -47,8 +47,8 @@ class CloudflareMirrorClient:
         method: str,
         url: str,
         *,
-        params: Optional[dict] = None,
-        headers: Optional[dict] = None,
+        params: dict | None = None,
+        headers: dict | None = None,
         stream: bool = False,
     ):
         client = self._client_factory()
@@ -78,11 +78,11 @@ class CloudflareMirrorClient:
     async def html(
         self,
         url: str,
-        headers: Optional[dict] = None,
+        headers: dict | None = None,
         stream: bool = False,
     ):
         return await self._send(
-            'GET',
+            "GET",
             f"{self.service_url}/html",
             params={"url": url},
             headers=headers,
@@ -92,7 +92,7 @@ class CloudflareMirrorClient:
     async def mirror(
         self,
         url: str,
-        headers: Optional[dict] = None,
+        headers: dict | None = None,
         stream: bool = False,
     ):
         request_headers = headers.copy() if headers else {}
@@ -112,7 +112,7 @@ class CloudflareMirrorClient:
         headers.update(request_headers)
 
         return await self._send(
-            'GET',
+            "GET",
             service_url,
             headers=headers,
             stream=stream,
@@ -121,18 +121,18 @@ class CloudflareMirrorClient:
 
     async def clear_cache(self):
         return await self._send(
-            'POST',
+            "POST",
             f"{self.service_url}/cache/clear",
         )
 
     async def health(self):
         return await self._send(
-            'GET',
-            f'{self.service_url}/health',
+            "GET",
+            f"{self.service_url}/health",
         )
 
 
-_default_client: Optional[CloudflareMirrorClient] = None
+_default_client: CloudflareMirrorClient | None = None
 
 
 def get_default_client() -> CloudflareMirrorClient:

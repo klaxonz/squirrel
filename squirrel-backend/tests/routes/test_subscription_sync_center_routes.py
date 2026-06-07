@@ -1,5 +1,5 @@
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -9,10 +9,10 @@ from routes.subscription import router
 
 
 @pytest.mark.parametrize(
-    ('path', 'method'),
+    ("path", "method"),
     [
-        ('/api/subscription/sync-center/retry-failed', 'POST'),
-        ('/api/subscription/sync-center/reconcile', 'POST'),
+        ("/api/subscription/sync-center/retry-failed", "POST"),
+        ("/api/subscription/sync-center/reconcile", "POST"),
     ],
 )
 def test_manual_sync_center_action_routes_are_removed(path, method):

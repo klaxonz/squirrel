@@ -1,12 +1,15 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Text, Float
+
+from sqlalchemy import Column, DateTime, Float, Integer, String, Text
+
 from models import Base
 from models.mixins.serializer import SerializerMixin
 
 
 class ExternalRequestLog(Base, SerializerMixin):
     """External API request log model"""
-    __tablename__ = 'external_request_log'
+
+    __tablename__ = "external_request_log"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     url = Column(Text, nullable=False)

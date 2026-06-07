@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from threading import Lock
 from time import monotonic
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.exc import OperationalError
@@ -20,21 +20,22 @@ from schemas.subscription.dto.sync_center_dto import (
     SyncCenterOverviewDto,
 )
 from services.crawl_tasks.models import CrawlTaskStatus
-from services.subscription_sync_progress import ACTIVE_EXTRACTION_PHASES, build_progress_snapshot
 from services.crawl_tasks.task_types import subscription_sync_task_types
 from services.subscription_sync_center_queries import (
     DUE_SOON_WINDOW,
     FEED_RECENT_PHASES,
-    _projection_status_expr,
-    _projection_phase_expr,
-    _projection_pending_videos_expr,
-    _projection_filter_clauses,
-    _load_projection_rows,
     _load_feed_completed_at_map,
+    _load_projection_rows,
+    _projection_filter_clauses,
+    _projection_pending_videos_expr,
+    _projection_phase_expr,
+    _projection_status_expr,
 )
+from services.subscription_sync_progress import ACTIVE_EXTRACTION_PHASES, build_progress_snapshot
 from utils.metrics import metrics
 from utils.site_catalog import SiteCatalog
 from utils.site_icons import build_site_icon_url, resolve_site_icon_path
+
 SYNC_CENTER_PREVIEW_LIMIT = 40
 SYNC_CENTER_RECENT_SCAN_MULTIPLIER = 4
 SYNC_CENTER_RECENT_SCAN_MAX = 200
@@ -42,7 +43,7 @@ SITE_CATALOG_CACHE_TTL_SECONDS = 30
 _site_catalog_cache_lock = Lock()
 _site_catalog_cache: dict[str, dict] | None = None
 _site_catalog_cache_expires_at_monotonic: float | None = None
-_site_icon_url_cache: dict[str, Optional[str]] = {}
+_site_icon_url_cache: dict[str, str | None] = {}
 
 # 服务端缓存：记录上一轮 snapshot 返回过的 recent run_id，用于计算新增的已完成运行
 _recent_run_snapshot_cache: dict[int, set[str]] = {}
@@ -50,11 +51,11 @@ _recent_run_snapshot_cache: dict[int, set[str]] = {}
 logger = logging.getLogger(__name__)
 
 
-def _format_datetime(value: Optional[datetime]) -> str:
-    return value.strftime('%Y-%m-%d %H:%M:%S') if value else ''
+def _format_datetime(value: datetime | None) -> str:
+    return value.strftime("%Y-%m-%d %H:%M:%S") if value else ""
 
 
-def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
+def _parse_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
     normalized = str(value).strip()
@@ -64,13 +65,13 @@ def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
         return datetime.fromisoformat(normalized)
     except ValueError:
         try:
-            return datetime.strptime(normalized, '%Y-%m-%d %H:%M:%S')
+            return datetime.strptime(normalized, "%Y-%m-%d %H:%M:%S")
         except ValueError:
             return None
 
 
 def _safe_metric_int(value: Any) -> int:
-    if value in (None, ''):
+    if value in (None, ""):
         return 0
     try:
         return int(float(value))
@@ -78,7 +79,7 @@ def _safe_metric_int(value: Any) -> int:
         return 0
 
 
-def _summarize_error(message: Optional[str]) -> Optional[str]:
+def _summarize_error(message: str | None) -> str | None:
     if not message:
         return None
 
@@ -88,30 +89,30 @@ def _summarize_error(message: Optional[str]) -> Optional[str]:
 
     lowered = normalized.lower()
     mapping = {
-        'queue_backpressure': '队列积压，已延后',
-        'stale_running_timeout': '同步超时，状态已回收',
-        'stale_queued_missing_message': '队列消息丢失，状态已回收',
-        'site_disabled': '站点已禁用',
-        'no_subscribers': '没有可用订阅者',
+        "queue_backpressure": "队列积压，已延后",
+        "stale_running_timeout": "同步超时，状态已回收",
+        "stale_queued_missing_message": "队列消息丢失，状态已回收",
+        "site_disabled": "站点已禁用",
+        "no_subscribers": "没有可用订阅者",
     }
     if normalized in mapping:
         return mapping[normalized]
 
-    if 'cookie' in lowered and ('expired' in lowered or 'invalid' in lowered or 'login' in lowered):
-        return 'Cookie 可能已失效'
-    if 'forbidden' in lowered or '403' in lowered:
-        return '请求被拒绝'
-    if 'timeout' in lowered:
-        return '请求超时'
-    if 'extract' in lowered:
-        return '解析失败'
-    if 'network' in lowered or 'connection' in lowered:
-        return '网络异常'
+    if "cookie" in lowered and ("expired" in lowered or "invalid" in lowered or "login" in lowered):
+        return "Cookie 可能已失效"
+    if "forbidden" in lowered or "403" in lowered:
+        return "请求被拒绝"
+    if "timeout" in lowered:
+        return "请求超时"
+    if "extract" in lowered:
+        return "解析失败"
+    if "network" in lowered or "connection" in lowered:
+        return "网络异常"
 
     first_line = normalized.splitlines()[0].strip()
     if len(first_line) <= 80:
         return first_line
-    return first_line[:77] + '...'
+    return first_line[:77] + "..."
 
 
 def _get_cached_site_catalog() -> dict[str, dict]:
@@ -141,8 +142,8 @@ def _get_cached_site_catalog() -> dict[str, dict]:
         return _site_catalog_cache
 
 
-def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
-    normalized_site = str(site or '').strip().lower()
+def _resolve_site_icon_url(site: str | None) -> str | None:
+    normalized_site = str(site or "").strip().lower()
     if not normalized_site:
         return None
 
@@ -161,13 +162,13 @@ def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
             site_slug = None
             catalog_entry = None
             for slug, info in catalog.items():
-                aliases = [str(alias or '').strip().lower() for alias in info.get('aliases', []) if alias]
+                aliases = [str(alias or "").strip().lower() for alias in info.get("aliases", []) if alias]
                 if normalized_site in aliases:
                     site_slug = slug
                     catalog_entry = info
                     break
 
-    icon_url = str((catalog_entry or {}).get('icon_url') or '').strip() or None
+    icon_url = str((catalog_entry or {}).get("icon_url") or "").strip() or None
     if icon_url:
         _site_icon_url_cache[normalized_site] = icon_url
         return icon_url
@@ -182,38 +183,38 @@ def _resolve_site_icon_url(site: Optional[str]) -> Optional[str]:
     return None
 
 
-def _resolve_display_status(current_status: Optional[str], next_sync_at: Optional[datetime]) -> str:
-    status = str(current_status or '').strip().lower()
+def _resolve_display_status(current_status: str | None, next_sync_at: datetime | None) -> str:
+    status = str(current_status or "").strip().lower()
     now = datetime.now()
-    if status == 'running':
-        return 'running'
-    if status == 'queued':
-        return 'queued'
-    if status in {'failed', 'timeout'}:
-        return 'failed'
-    if status == 'deferred':
-        return 'deferred'
+    if status == "running":
+        return "running"
+    if status == "queued":
+        return "queued"
+    if status in {"failed", "timeout"}:
+        return "failed"
+    if status == "deferred":
+        return "deferred"
     if next_sync_at and now <= next_sync_at <= now + DUE_SOON_WINDOW:
-        return 'scheduled'
-    return 'healthy'
+        return "scheduled"
+    return "healthy"
 
 
 def _is_feed_running_item(item: SyncCenterItemDto) -> bool:
-    return item.display_status == 'running' and not item.feed_completed
+    return item.display_status == "running" and not item.feed_completed
 
 
 def _is_awaiting_extract_item(item: SyncCenterItemDto) -> bool:
-    return item.display_status == 'running' and item.feed_completed
+    return item.display_status == "running" and item.feed_completed
 
 
 def _queue_metrics_overview() -> tuple[int, int]:
     queue_depth = sum(
         _safe_metric_int(metrics.redis.get(key))
-        for key in metrics.get_metrics_keys_by_pattern('metrics:gauge:queue.depth:*')
+        for key in metrics.get_metrics_keys_by_pattern("metrics:gauge:queue.depth:*")
     )
     queue_messages = sum(
         _safe_metric_int(metrics.redis.get(key))
-        for key in metrics.get_metrics_keys_by_pattern('metrics:counter:queue.messages.total:*')
+        for key in metrics.get_metrics_keys_by_pattern("metrics:counter:queue.messages.total:*")
     )
     return queue_depth, queue_messages
 
@@ -223,13 +224,13 @@ def _load_projection_items(
     session: Session,
     *,
     user_id: int,
-    filter_status: Optional[str] = None,
-    order_status: Optional[str] = None,
-    site_candidates: Optional[set[str]] = None,
-    normalized_query: str = '',
-    page: Optional[int] = None,
-    page_size: Optional[int] = None,
-    limit: Optional[int] = None,
+    filter_status: str | None = None,
+    order_status: str | None = None,
+    site_candidates: set[str] | None = None,
+    normalized_query: str = "",
+    page: int | None = None,
+    page_size: int | None = None,
+    limit: int | None = None,
 ) -> list[SyncCenterItemDto]:
     rows = _load_projection_rows(
         session,
@@ -250,14 +251,14 @@ def _load_projection_items(
 
 def _build_sync_center_item(
     subscription: Subscription,
-    subscription_projection: Optional[SubscriptionSyncSubscriptionProjection],
-    run_projection: Optional[SubscriptionSyncRunProjection],
+    subscription_projection: SubscriptionSyncSubscriptionProjection | None,
+    run_projection: SubscriptionSyncRunProjection | None,
 ) -> SyncCenterItemDto:
     current_status = subscription_projection.current_status if subscription_projection else None
     next_sync_at = subscription_projection.next_sync_at if subscription_projection else None
     display_status = _resolve_display_status(current_status, next_sync_at)
-    sync_mode = (run_projection.sync_mode if run_projection and run_projection.sync_mode else 'incremental')
-    sync_status = current_status or (run_projection.status if run_projection else 'idle')
+    sync_mode = (run_projection.sync_mode if run_projection and run_projection.sync_mode else "incremental")
+    sync_status = current_status or (run_projection.status if run_projection else "idle")
     pending_video_count = (
         subscription_projection.pending_video_count
         if subscription_projection
@@ -298,25 +299,25 @@ def _build_sync_center_item(
         locked_at=_format_datetime(run_projection.started_at if run_projection else None),
         updated_at=_format_datetime(subscription_projection.updated_at if subscription_projection else (run_projection.updated_at if run_projection else None)),
         pending_video_count=pending_video_count,
-        feed_completed=bool(progress_snapshot['feed_completed']),
+        feed_completed=bool(progress_snapshot["feed_completed"]),
         has_more_pages=False,
         videos_found=run_projection.videos_found if run_projection else 0,
         videos_enqueued=run_projection.videos_enqueued if run_projection else 0,
         videos_extracted=run_projection.videos_extracted if run_projection else 0,
         videos_skipped=run_projection.videos_skipped if run_projection else 0,
-        progress_percent=int(progress_snapshot['progress_percent']),
-        progress_label=str(progress_snapshot['progress_label']),
-        is_deferred=display_status == 'deferred',
-        defer_reason='queue_backpressure' if display_status == 'deferred' else None,
+        progress_percent=int(progress_snapshot["progress_percent"]),
+        progress_label=str(progress_snapshot["progress_label"]),
+        is_deferred=display_status == "deferred",
+        defer_reason="queue_backpressure" if display_status == "deferred" else None,
     )
 
 
 def _collect_projection_items(
     user_id: int,
     *,
-    status: Optional[str] = None,
-    site_candidates: Optional[set[str]] = None,
-    normalized_query: str = '',
+    status: str | None = None,
+    site_candidates: set[str] | None = None,
+    normalized_query: str = "",
 ) -> list[SyncCenterItemDto]:
     with get_session() as session:
         return _load_projection_items(
@@ -338,9 +339,9 @@ def _query_queued_task_rank_map(
         return {}, {}
 
     priority_order = case(
-        (CrawlTask.priority == 'manual', 3),
-        (CrawlTask.priority == 'normal', 2),
-        (CrawlTask.priority == 'low', 1),
+        (CrawlTask.priority == "manual", 3),
+        (CrawlTask.priority == "normal", 2),
+        (CrawlTask.priority == "low", 1),
         else_=0,
     )
 
@@ -359,13 +360,13 @@ def _query_queued_task_rank_map(
             CrawlTask.next_run_at.asc(),
             CrawlTask.created_at.asc(),
             CrawlTask.id.asc(),
-        )
+        ),
     ).all()
 
     from services.crawl_dispatcher.service import CrawlDispatcherService
 
     candidate_task_ids = session.execute(
-        CrawlDispatcherService()._build_candidate_query(datetime.now())
+        CrawlDispatcherService()._build_candidate_query(datetime.now()),
     ).scalars().all()
 
     queued_task_map = {int(task_id): int(subscription_id) for task_id, subscription_id in queued_task_rows}
@@ -401,14 +402,14 @@ def _load_queued_task_rank_map(user_id: int, items: list[SyncCenterItemDto]) -> 
         with get_session() as session:
             return _query_queued_task_rank_map(session, user_id, items)
     except OperationalError:
-        logger.warning('Falling back to projection queue ordering because crawl_task lookup is unavailable')
+        logger.warning("Falling back to projection queue ordering because crawl_task lookup is unavailable")
         return {}, {}
 
 
 def _serialize_feed_recent_run(
     run_projection: SubscriptionSyncRunProjection,
     subscription: Subscription,
-    feed_completed_at: Optional[datetime],
+    feed_completed_at: datetime | None,
 ) -> dict:
     progress_snapshot = build_progress_snapshot(
         status=run_projection.status,
@@ -419,50 +420,50 @@ def _serialize_feed_recent_run(
         pending_video_count=run_projection.pending_video_count,
     )
     return {
-        'run_id': run_projection.run_id,
-        'subscription_id': subscription.id,
-        'subscription_name': subscription.name,
-        'subscription_avatar': subscription.avatar,
-        'site': run_projection.site,
-        'site_icon_url': _resolve_site_icon_url(run_projection.site),
-        'sync_mode': run_projection.sync_mode,
-        'trigger': run_projection.trigger,
-        'status': run_projection.status,
-        'current_phase': run_projection.current_phase,
-        'request_id': run_projection.request_id,
-        'trace_id': run_projection.trace_id,
-        'queued_at': _format_datetime(run_projection.queued_at),
-        'started_at': _format_datetime(run_projection.started_at),
-        'finished_at': _format_datetime(run_projection.finished_at),
-        'duration_ms': run_projection.duration_ms,
-        'failure_count': run_projection.failure_count,
-        'error_type': run_projection.error_type,
-        'error_message': run_projection.error_message,
-        'videos_found': run_projection.videos_found,
-        'videos_enqueued': run_projection.videos_enqueued,
-        'videos_extracted': run_projection.videos_extracted,
-        'videos_skipped': run_projection.videos_skipped,
-        'pending_video_count': run_projection.pending_video_count,
-        'feed_completed': progress_snapshot['feed_completed'],
-        'progress_percent': progress_snapshot['progress_percent'],
-        'progress_label': progress_snapshot['progress_label'],
-        'feed_completed_at': _format_datetime(feed_completed_at),
-        'last_event_at': _format_datetime(run_projection.last_event_at),
+        "run_id": run_projection.run_id,
+        "subscription_id": subscription.id,
+        "subscription_name": subscription.name,
+        "subscription_avatar": subscription.avatar,
+        "site": run_projection.site,
+        "site_icon_url": _resolve_site_icon_url(run_projection.site),
+        "sync_mode": run_projection.sync_mode,
+        "trigger": run_projection.trigger,
+        "status": run_projection.status,
+        "current_phase": run_projection.current_phase,
+        "request_id": run_projection.request_id,
+        "trace_id": run_projection.trace_id,
+        "queued_at": _format_datetime(run_projection.queued_at),
+        "started_at": _format_datetime(run_projection.started_at),
+        "finished_at": _format_datetime(run_projection.finished_at),
+        "duration_ms": run_projection.duration_ms,
+        "failure_count": run_projection.failure_count,
+        "error_type": run_projection.error_type,
+        "error_message": run_projection.error_message,
+        "videos_found": run_projection.videos_found,
+        "videos_enqueued": run_projection.videos_enqueued,
+        "videos_extracted": run_projection.videos_extracted,
+        "videos_skipped": run_projection.videos_skipped,
+        "pending_video_count": run_projection.pending_video_count,
+        "feed_completed": progress_snapshot["feed_completed"],
+        "progress_percent": progress_snapshot["progress_percent"],
+        "progress_label": progress_snapshot["progress_label"],
+        "feed_completed_at": _format_datetime(feed_completed_at),
+        "last_event_at": _format_datetime(run_projection.last_event_at),
     }
 
 
 def _sort_items(
     items: list[SyncCenterItemDto],
-    status: Optional[str],
+    status: str | None,
     *,
-    queued_candidate_rank_map: Optional[dict[int, int]] = None,
-    queued_backlog_rank_map: Optional[dict[int, int]] = None,
+    queued_candidate_rank_map: dict[int, int] | None = None,
+    queued_backlog_rank_map: dict[int, int] | None = None,
 ) -> list[SyncCenterItemDto]:
     def parse_dt(value: str, *, fallback: datetime) -> datetime:
         if not value:
             return fallback
         try:
-            return datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+            return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
         except ValueError:
             return fallback
 
@@ -477,9 +478,9 @@ def _sort_items(
         return max(candidates)
 
     def sort_key(item: SyncCenterItemDto) -> Any:
-        if status == 'running':
+        if status == "running":
             return parse_dt(item.locked_at, fallback=datetime.min), item.subscription_id
-        if status == 'queued':
+        if status == "queued":
             candidate_rank = (queued_candidate_rank_map or {}).get(item.subscription_id)
             if candidate_rank is not None:
                 return 0, candidate_rank, datetime.min, item.subscription_id
@@ -487,29 +488,29 @@ def _sort_items(
             if backlog_rank is not None:
                 return 1, backlog_rank, datetime.min, item.subscription_id
             return 2, 0, parse_dt(item.queued_at, fallback=datetime.max), item.subscription_id
-        if status == 'scheduled':
+        if status == "scheduled":
             return parse_dt(item.next_sync_at, fallback=datetime.max), item.subscription_id
-        if status == 'recent':
+        if status == "recent":
             return recent_dt(item), item.subscription_id
         return parse_dt(item.last_sync_at, fallback=datetime.min), item.subscription_id
 
-    reverse = status not in {'queued', 'scheduled', 'running'}
-    if status == 'recent':
+    reverse = status not in {"queued", "scheduled", "running"}
+    if status == "recent":
         reverse = True
     return sorted(items, key=sort_key, reverse=reverse)
 
 
 def get_feed_dashboard_snapshot(
     user_id: int,
-    site: Optional[str],
-    query: Optional[str],
-    date_from: Optional[str],
-    date_to: Optional[str],
+    site: str | None,
+    query: str | None,
+    date_from: str | None,
+    date_to: str | None,
     recent_limit: int = SYNC_CENTER_PREVIEW_LIMIT,
 ) -> dict:
-    normalized_site = (site or '').strip().lower() or None
+    normalized_site = (site or "").strip().lower() or None
     site_candidates = set(SiteCatalog.expand_site_filter_values(normalized_site)) if normalized_site else set()
-    normalized_query = (query or '').strip().lower()
+    normalized_query = (query or "").strip().lower()
     parsed_from = _parse_datetime(date_from)
     parsed_to = _parse_datetime(date_to)
     resolved_recent_limit = max(1, int(recent_limit or SYNC_CENTER_PREVIEW_LIMIT))
@@ -529,31 +530,31 @@ def get_feed_dashboard_snapshot(
             select(
                 func.coalesce(func.sum(case((
                     and_(
-                        current_status == 'running',
+                        current_status == "running",
                         current_phase.notin_(ACTIVE_EXTRACTION_PHASES),
                     ),
                     1,
-                ), else_=0)), 0).label('running_count'),
+                ), else_=0)), 0).label("running_count"),
                 func.coalesce(func.sum(case((
                     and_(
-                        current_status == 'running',
+                        current_status == "running",
                         current_phase.in_(ACTIVE_EXTRACTION_PHASES),
                     ),
                     1,
-                ), else_=0)), 0).label('awaiting_extract_count'),
-                func.coalesce(func.sum(case(((current_status == 'queued'), 1), else_=0)), 0).label('queued_count'),
-                func.coalesce(func.sum(case(((current_status.in_({'failed', 'timeout'})), 1), else_=0)), 0).label('failed_count'),
+                ), else_=0)), 0).label("awaiting_extract_count"),
+                func.coalesce(func.sum(case(((current_status == "queued"), 1), else_=0)), 0).label("queued_count"),
+                func.coalesce(func.sum(case(((current_status.in_({"failed", "timeout"})), 1), else_=0)), 0).label("failed_count"),
                 func.coalesce(func.sum(case((
                     and_(
-                        current_status.notin_({'running', 'queued', 'failed', 'timeout', 'deferred'}),
+                        current_status.notin_({"running", "queued", "failed", "timeout", "deferred"}),
                         SubscriptionSyncSubscriptionProjection.next_sync_at.is_not(None),
                         SubscriptionSyncSubscriptionProjection.next_sync_at >= now,
                         SubscriptionSyncSubscriptionProjection.next_sync_at <= now + DUE_SOON_WINDOW,
                     ),
                     1,
-                ), else_=0)), 0).label('due_soon_count'),
-                func.coalesce(func.sum(case(((current_status == 'deferred'), 1), else_=0)), 0).label('deferred_count'),
-                func.coalesce(func.sum(pending_videos), 0).label('pending_videos'),
+                ), else_=0)), 0).label("due_soon_count"),
+                func.coalesce(func.sum(case(((current_status == "deferred"), 1), else_=0)), 0).label("deferred_count"),
+                func.coalesce(func.sum(pending_videos), 0).label("pending_videos"),
             )
             .select_from(Subscription)
             .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
@@ -570,13 +571,13 @@ def get_feed_dashboard_snapshot(
                 UserSubscription.is_deleted.is_(False),
                 Subscription.is_deleted.is_(False),
             )
-            .where(*_projection_filter_clauses(site_candidates=site_candidates, normalized_query=normalized_query))
+            .where(*_projection_filter_clauses(site_candidates=site_candidates, normalized_query=normalized_query)),
         ).one()
 
         running_preview = _load_projection_items(
             session,
             user_id=user_id,
-            filter_status='running',
+            filter_status="running",
             site_candidates=site_candidates,
             normalized_query=normalized_query,
             limit=int(overview_row.running_count or 0),
@@ -585,7 +586,7 @@ def get_feed_dashboard_snapshot(
         queued_preview = _load_projection_items(
             session,
             user_id=user_id,
-            filter_status='queued',
+            filter_status="queued",
             site_candidates=site_candidates,
             normalized_query=normalized_query,
             limit=int(overview_row.queued_count or 0),
@@ -597,11 +598,11 @@ def get_feed_dashboard_snapshot(
                 queued_preview,
             )
         except OperationalError:
-            logger.warning('Falling back to projection queue ordering because crawl_task lookup is unavailable')
+            logger.warning("Falling back to projection queue ordering because crawl_task lookup is unavailable")
             queued_candidate_rank_map, queued_backlog_rank_map = {}, {}
         queued_preview = _sort_items(
             queued_preview,
-            'queued',
+            "queued",
             queued_candidate_rank_map=queued_candidate_rank_map,
             queued_backlog_rank_map=queued_backlog_rank_map,
         )
@@ -622,9 +623,9 @@ def get_feed_dashboard_snapshot(
                 Subscription.is_deleted.is_(False),
                 SubscriptionSyncSubscriptionProjection.latest_run_id == SubscriptionSyncRunProjection.run_id,
                 or_(
-                    SubscriptionSyncRunProjection.status.in_({'success', 'failed', 'deferred', 'timeout'}),
+                    SubscriptionSyncRunProjection.status.in_({"success", "failed", "deferred", "timeout"}),
                     and_(
-                        SubscriptionSyncRunProjection.status == 'running',
+                        SubscriptionSyncRunProjection.status == "running",
                         SubscriptionSyncRunProjection.current_phase.in_(FEED_RECENT_PHASES),
                     ),
                 ),
@@ -633,7 +634,7 @@ def get_feed_dashboard_snapshot(
         if site_candidates:
             recent_query = recent_query.where(SubscriptionSyncRunProjection.site.in_(site_candidates))
         if normalized_query:
-            recent_query = recent_query.where(Subscription.name.ilike(f'%{normalized_query}%'))
+            recent_query = recent_query.where(Subscription.name.ilike(f"%{normalized_query}%"))
         if parsed_from:
             recent_query = recent_query.where(SubscriptionSyncRunProjection.last_event_at >= parsed_from)
         if parsed_to:
@@ -665,10 +666,10 @@ def get_feed_dashboard_snapshot(
 
     # 计算新增的已完成运行（上一轮未返回过的）
     previous_run_ids = _recent_run_snapshot_cache.get(user_id, set())
-    current_run_ids = {run['run_id'] for run in recent_runs}
+    current_run_ids = {run["run_id"] for run in recent_runs}
     newly_completed = [
         run for run in recent_runs
-        if run['run_id'] not in previous_run_ids
+        if run["run_id"] not in previous_run_ids
     ][:5]
 
     # 更新缓存为当前轮次的 run_id 集合
@@ -687,9 +688,9 @@ def get_feed_dashboard_snapshot(
     )
 
     return {
-        'overview': overview,
-        'runningPreview': running_preview,
-        'queuedPreview': queued_preview,
-        'recentRuns': recent_runs,
-        'recentlyCompletedRuns': newly_completed,
+        "overview": overview,
+        "runningPreview": running_preview,
+        "queuedPreview": queued_preview,
+        "recentRuns": recent_runs,
+        "recentlyCompletedRuns": newly_completed,
     }

@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import replace
 from datetime import datetime
 from threading import Lock, Thread
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.database import get_session
@@ -14,8 +13,6 @@ from models.rss import RssAccount, RssEntry, RssEntryView, RssFeed
 from services.rss_client_service import (
     RssAccountConfig,
     RssServiceError,
-    RemoteEntry,
-    RemoteFeed,
     create_client,
 )
 from services.rss_credential_service import decrypt_credential, encrypt_credential
@@ -48,7 +45,7 @@ def _set_sync_progress(account_id: int, **values: Any) -> None:
         _SYNC_PROGRESS[account_id] = current
 
 
-def get_sync_progress(user_id: int, account_id: int) -> Optional[dict[str, Any]]:
+def get_sync_progress(user_id: int, account_id: int) -> dict[str, Any] | None:
     with get_session() as session:
         account = _get_account(session, user_id, account_id)
         if not account:
@@ -115,7 +112,7 @@ def serialize_entry(entry: RssEntry) -> dict[str, Any]:
     }
 
 
-def _get_account(session: Session, user_id: int, account_id: int) -> Optional[RssAccount]:
+def _get_account(session: Session, user_id: int, account_id: int) -> RssAccount | None:
     return session.scalars(
         select(RssAccount).where(
             RssAccount.id == account_id,
@@ -150,12 +147,12 @@ def create_account(
     provider: str,
     name: str,
     base_url: str,
-    username: Optional[str],
+    username: str | None,
     credential: str,
     enabled: bool = True,
-    sync_entry_limit: Optional[int] = None,
+    sync_entry_limit: int | None = None,
 ) -> dict[str, Any]:
-    from services.rss_client_service import normalize_provider, normalize_base_url, normalize_sync_entry_limit
+    from services.rss_client_service import normalize_base_url, normalize_provider, normalize_sync_entry_limit
 
     provider = normalize_provider(provider)
     base_url = normalize_base_url(base_url)
@@ -189,15 +186,15 @@ def update_account(
     user_id: int,
     account_id: int,
     *,
-    provider: Optional[str] = None,
-    name: Optional[str] = None,
-    base_url: Optional[str] = None,
-    username: Optional[str] = None,
-    credential: Optional[str] = None,
-    enabled: Optional[bool] = None,
+    provider: str | None = None,
+    name: str | None = None,
+    base_url: str | None = None,
+    username: str | None = None,
+    credential: str | None = None,
+    enabled: bool | None = None,
     sync_entry_limit: Any = UNSET,
-) -> Optional[dict[str, Any]]:
-    from services.rss_client_service import normalize_provider, normalize_base_url, normalize_sync_entry_limit
+) -> dict[str, Any] | None:
+    from services.rss_client_service import normalize_base_url, normalize_provider, normalize_sync_entry_limit
 
     with get_session() as session:
         account = _get_account(session, user_id, account_id)
@@ -242,10 +239,10 @@ def test_account_config(
     *,
     provider: str,
     base_url: str,
-    username: Optional[str],
+    username: str | None,
     credential: str,
 ) -> dict[str, Any]:
-    from services.rss_client_service import normalize_provider, normalize_base_url
+    from services.rss_client_service import normalize_base_url, normalize_provider
 
     config = RssAccountConfig(
         provider=normalize_provider(provider),
@@ -259,7 +256,7 @@ def test_account_config(
     return {'ok': True, 'feed_count': feed_count}
 
 
-def test_account(user_id: int, account_id: int) -> Optional[dict[str, Any]]:
+def test_account(user_id: int, account_id: int) -> dict[str, Any] | None:
     with get_session() as session:
         account = _get_account(session, user_id, account_id)
         if not account:
@@ -269,7 +266,7 @@ def test_account(user_id: int, account_id: int) -> Optional[dict[str, Any]]:
     return {'ok': True, 'feed_count': feed_count}
 
 
-def list_feeds(user_id: int, account_id: Optional[int] = None) -> list[dict[str, Any]]:
+def list_feeds(user_id: int, account_id: int | None = None) -> list[dict[str, Any]]:
     with get_session() as session:
         statement = select(RssFeed).where(RssFeed.user_id == user_id)
         if account_id is not None:
@@ -305,10 +302,10 @@ def update_feed(user_id: int, feed_id: int, **kwargs: Any) -> dict[str, Any]:
 def list_entries(
     user_id: int,
     *,
-    account_id: Optional[int] = None,
-    feed_id: Optional[int] = None,
-    is_read: Optional[bool] = None,
-    is_starred: Optional[bool] = None,
+    account_id: int | None = None,
+    feed_id: int | None = None,
+    is_read: bool | None = None,
+    is_starred: bool | None = None,
     page: int = 1,
     page_size: int = 30,
 ) -> dict[str, Any]:
@@ -345,9 +342,9 @@ def update_entry(
     user_id: int,
     entry_id: int,
     *,
-    is_read: Optional[bool] = None,
-    is_starred: Optional[bool] = None,
-) -> Optional[dict[str, Any]]:
+    is_read: bool | None = None,
+    is_starred: bool | None = None,
+) -> dict[str, Any] | None:
     with get_session() as session:
         entry = session.scalars(
             select(RssEntry).where(

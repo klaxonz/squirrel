@@ -1,8 +1,5 @@
-from fastapi import APIRouter
-from fastapi import HTTPException
-from fastapi import Request
-from fastapi.responses import HTMLResponse
-from fastapi.responses import Response
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse, Response
 
 router = APIRouter()
 

@@ -1,19 +1,20 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime, timedelta
-from typing import Optional, Sequence
 
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
 from core.database import get_session
 from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
 from services import video_extraction_projection_service
-from services.crawl_tasks.task_types import is_subscription_sync_task_type, subscription_sync_task_types
 from services.crawl_tasks.errors import CrawlTaskNotFoundError, CrawlTaskOwnershipError, CrawlTaskStateError
 from services.crawl_tasks.models import CrawlJobStatus, CrawlTaskStatus
+from services.crawl_tasks.task_types import is_subscription_sync_task_type, subscription_sync_task_types
 
 ACTIVE_TASK_STATUSES = [
     CrawlTaskStatus.PENDING.value,
@@ -31,12 +32,12 @@ def create_job(
     *,
     job_type: str,
     source_type: str,
-    site: Optional[str],
-    subscription_id: Optional[int] = None,
-    priority: str = 'normal',
+    site: str | None,
+    subscription_id: int | None = None,
+    priority: str = "normal",
     status: str = CrawlJobStatus.PENDING.value,
-    trace_id: Optional[str] = None,
-    payload: Optional[dict] = None,
+    trace_id: str | None = None,
+    payload: dict | None = None,
 ) -> CrawlJob:
     with get_session() as session:
         job = CrawlJob(
@@ -59,20 +60,20 @@ def create_task(
     job_id: int,
     task_type: str,
     site: str,
-    priority: str = 'normal',
-    payload: Optional[dict] = None,
-    dedupe_key: Optional[str] = None,
-    parent_task_id: Optional[int] = None,
-    subscription_id: Optional[int] = None,
-    video_id: Optional[int] = None,
-    video_url: Optional[str] = None,
-    trace_id: Optional[str] = None,
+    priority: str = "normal",
+    payload: dict | None = None,
+    dedupe_key: str | None = None,
+    parent_task_id: int | None = None,
+    subscription_id: int | None = None,
+    video_id: int | None = None,
+    video_url: str | None = None,
+    trace_id: str | None = None,
     max_attempts: int = 3,
-    next_run_at: Optional[datetime] = None,
+    next_run_at: datetime | None = None,
 ) -> CrawlTask:
     with get_session() as session:
-        _ensure_dispatch_scope(session, scope_type='site', scope_key=site)
-        _ensure_dispatch_scope(session, scope_type='task_type', scope_key=task_type)
+        _ensure_dispatch_scope(session, scope_type="site", scope_key=site)
+        _ensure_dispatch_scope(session, scope_type="task_type", scope_key=task_type)
         task = CrawlTask(
             job_id=job_id,
             parent_task_id=parent_task_id,
@@ -101,19 +102,19 @@ def create_job_with_task(
     site: str,
     task_type: str,
     payload: dict,
-    subscription_id: Optional[int] = None,
-    priority: str = 'normal',
-    dedupe_key: Optional[str] = None,
-    parent_task_id: Optional[int] = None,
-    video_id: Optional[int] = None,
-    video_url: Optional[str] = None,
-    trace_id: Optional[str] = None,
+    subscription_id: int | None = None,
+    priority: str = "normal",
+    dedupe_key: str | None = None,
+    parent_task_id: int | None = None,
+    video_id: int | None = None,
+    video_url: str | None = None,
+    trace_id: str | None = None,
     max_attempts: int = 3,
-    next_run_at: Optional[datetime] = None,
+    next_run_at: datetime | None = None,
 ) -> tuple[CrawlJob, CrawlTask]:
     with get_session() as session:
-        _ensure_dispatch_scope(session, scope_type='site', scope_key=site)
-        _ensure_dispatch_scope(session, scope_type='task_type', scope_key=task_type)
+        _ensure_dispatch_scope(session, scope_type="site", scope_key=site)
+        _ensure_dispatch_scope(session, scope_type="task_type", scope_key=task_type)
         job = CrawlJob(
             job_type=job_type,
             source_type=source_type,
@@ -151,16 +152,16 @@ def create_job_with_task(
 def claim_next_task(
     *,
     worker_id: str,
-    now: Optional[datetime] = None,
+    now: datetime | None = None,
     lease_seconds: int = 60,
-    allowed_sites: Optional[Sequence[str]] = None,
-    allowed_task_types: Optional[Sequence[str]] = None,
-) -> Optional[CrawlTask]:
+    allowed_sites: Sequence[str] | None = None,
+    allowed_task_types: Sequence[str] | None = None,
+) -> CrawlTask | None:
     now = now or datetime.now()
     priority_order = case(
-        (CrawlTask.priority == 'manual', 3),
-        (CrawlTask.priority == 'normal', 2),
-        (CrawlTask.priority == 'low', 1),
+        (CrawlTask.priority == "manual", 3),
+        (CrawlTask.priority == "normal", 2),
+        (CrawlTask.priority == "low", 1),
         else_=0,
     )
     query = (
@@ -170,7 +171,7 @@ def claim_next_task(
                 [
                     CrawlTaskStatus.PENDING.value,
                     CrawlTaskStatus.RETRY_WAIT.value,
-                ]
+                ],
             ),
             CrawlTask.next_run_at <= now,
             or_(CrawlTask.lease_until.is_(None), CrawlTask.lease_until < now),
@@ -203,9 +204,9 @@ def renew_task_lease(
     *,
     task_id: int,
     worker_id: str,
-    now: Optional[datetime] = None,
+    now: datetime | None = None,
     lease_seconds: int = 60,
-) -> Optional[CrawlTask]:
+) -> CrawlTask | None:
     now = now or datetime.now()
 
     with get_session() as session:
@@ -219,7 +220,7 @@ def start_task(
     *,
     task_id: int,
     worker_id: str,
-    now: Optional[datetime] = None,
+    now: datetime | None = None,
 ) -> CrawlTask:
     now = now or datetime.now()
 
@@ -237,7 +238,7 @@ def complete_task(
     *,
     task_id: int,
     worker_id: str,
-    now: Optional[datetime] = None,
+    now: datetime | None = None,
 ) -> CrawlTask:
     now = now or datetime.now()
 
@@ -259,9 +260,9 @@ def retry_task(
     *,
     task_id: int,
     worker_id: str,
-    error_message: Optional[str],
-    error_type: Optional[str],
-    now: Optional[datetime] = None,
+    error_message: str | None,
+    error_type: str | None,
+    now: datetime | None = None,
     delay_seconds: int = 30,
 ) -> CrawlTask:
     now = now or datetime.now()
@@ -284,21 +285,21 @@ def retry_task(
 def cancel_task(
     *,
     task_id: int,
-    now: Optional[datetime] = None,
-    reason: str = 'cancelled',
+    now: datetime | None = None,
+    reason: str = "cancelled",
 ) -> CrawlTask:
     now = now or datetime.now()
 
     with get_session() as session:
         task = session.get(CrawlTask, task_id)
         if not task:
-            raise CrawlTaskNotFoundError(f'Crawl task not found: {task_id}')
+            raise CrawlTaskNotFoundError(f"Crawl task not found: {task_id}")
         if task.status in {
             CrawlTaskStatus.SUCCEEDED.value,
             CrawlTaskStatus.DEAD.value,
             CrawlTaskStatus.CANCELLED.value,
         }:
-            raise CrawlTaskStateError(f'Crawl task {task_id} can not be cancelled from status {task.status}')
+            raise CrawlTaskStateError(f"Crawl task {task_id} can not be cancelled from status {task.status}")
 
         task.status = CrawlTaskStatus.CANCELLED.value
         task.finished_at = now
@@ -315,16 +316,16 @@ def cancel_task(
 def replay_dead_task(
     *,
     task_id: int,
-    now: Optional[datetime] = None,
+    now: datetime | None = None,
 ) -> CrawlTask:
     now = now or datetime.now()
 
     with get_session() as session:
         task = session.get(CrawlTask, task_id)
         if not task:
-            raise CrawlTaskNotFoundError(f'Crawl task not found: {task_id}')
+            raise CrawlTaskNotFoundError(f"Crawl task not found: {task_id}")
         if task.status != CrawlTaskStatus.DEAD.value:
-            raise CrawlTaskStateError(f'Crawl task {task_id} can not be replayed from status {task.status}')
+            raise CrawlTaskStateError(f"Crawl task {task_id} can not be replayed from status {task.status}")
 
         task.status = CrawlTaskStatus.PENDING.value
         task.attempt = 0
@@ -341,7 +342,7 @@ def replay_dead_task(
         return task
 
 
-def recover_expired_tasks(*, now: Optional[datetime] = None, retry_delay_seconds: int = 30) -> int:
+def recover_expired_tasks(*, now: datetime | None = None, retry_delay_seconds: int = 30) -> int:
     now = now or datetime.now()
 
     with get_session() as session:
@@ -352,12 +353,12 @@ def recover_expired_tasks(*, now: Optional[datetime] = None, retry_delay_seconds
                     [
                         CrawlTaskStatus.LEASED.value,
                         CrawlTaskStatus.RUNNING.value,
-                    ]
+                    ],
                 ),
                 CrawlTask.lease_until.is_not(None),
                 CrawlTask.lease_until < now,
             )
-            .order_by(CrawlTask.lease_until.asc(), CrawlTask.id.asc())
+            .order_by(CrawlTask.lease_until.asc(), CrawlTask.id.asc()),
         ).scalars().all()
 
         touched_job_ids: set[int] = set()
@@ -365,8 +366,8 @@ def recover_expired_tasks(*, now: Optional[datetime] = None, retry_delay_seconds
             _move_task_to_retry_or_dead(
                 task,
                 now=now,
-                error_message='lease_expired',
-                error_type='lease_expired',
+                error_message="lease_expired",
+                error_type="lease_expired",
                 delay_seconds=retry_delay_seconds,
             )
             touched_job_ids.add(task.job_id)
@@ -383,10 +384,10 @@ def count_pending_video_tasks_for_subscription(subscription_id: int) -> int:
     with get_session() as session:
         value = session.execute(
             select(func.count(CrawlTask.id)).where(
-                CrawlTask.task_type == 'video_extract',
+                CrawlTask.task_type == "video_extract",
                 CrawlTask.subscription_id == subscription_id,
                 CrawlTask.status.in_(ACTIVE_TASK_STATUSES),
-            )
+            ),
         ).scalar_one()
     return int(value or 0)
 
@@ -394,7 +395,7 @@ def count_pending_video_tasks_for_subscription(subscription_id: int) -> int:
 def clear_task_dedupe_key(dedupe_key: str) -> int:
     with get_session() as session:
         tasks = session.execute(
-            select(CrawlTask).where(CrawlTask.dedupe_key == dedupe_key)
+            select(CrawlTask).where(CrawlTask.dedupe_key == dedupe_key),
         ).scalars().all()
         for task in tasks:
             task.dedupe_key = None
@@ -407,14 +408,14 @@ def count_pending_video_tasks_by_sync_state() -> dict[int, int]:
         tasks = session.execute(
             select(CrawlTask)
             .where(
-                CrawlTask.task_type == 'video_extract',
+                CrawlTask.task_type == "video_extract",
                 CrawlTask.status.in_(ACTIVE_TASK_STATUSES),
-            )
+            ),
         ).scalars().all()
     counts: dict[int, int] = {}
     for task in tasks:
-        sync_state_id = (task.payload or {}).get('sync_state_id')
-        if sync_state_id in (None, ''):
+        sync_state_id = (task.payload or {}).get("sync_state_id")
+        if sync_state_id in (None, ""):
             continue
         counts[int(sync_state_id)] = counts.get(int(sync_state_id), 0) + 1
     return counts
@@ -423,41 +424,41 @@ def count_pending_video_tasks_by_sync_state() -> dict[int, int]:
 def summarize_video_task_states_by_sync_state() -> dict[int, dict[str, object]]:
     with get_session() as session:
         tasks = session.execute(
-            select(CrawlTask).where(CrawlTask.task_type == 'video_extract')
+            select(CrawlTask).where(CrawlTask.task_type == "video_extract"),
         ).scalars().all()
 
     summary: dict[int, dict[str, object]] = {}
     for task in tasks:
-        sync_state_id = (task.payload or {}).get('sync_state_id')
-        if sync_state_id in (None, ''):
+        sync_state_id = (task.payload or {}).get("sync_state_id")
+        if sync_state_id in (None, ""):
             continue
 
         key = int(sync_state_id)
         bucket = summary.setdefault(
             key,
             {
-                'active_count': 0,
-                'failed_count': 0,
-                'last_error': None,
-                'last_error_at': datetime.min,
+                "active_count": 0,
+                "failed_count": 0,
+                "last_error": None,
+                "last_error_at": datetime.min,
             },
         )
 
         if task.status in ACTIVE_TASK_STATUSES:
-            bucket['active_count'] = int(bucket['active_count']) + 1
+            bucket["active_count"] = int(bucket["active_count"]) + 1
             continue
 
         if task.status not in FAILED_TASK_STATUSES:
             continue
 
-        bucket['failed_count'] = int(bucket['failed_count']) + 1
+        bucket["failed_count"] = int(bucket["failed_count"]) + 1
         error_at = task.updated_at or task.finished_at or task.created_at or datetime.min
-        if error_at >= bucket['last_error_at']:
-            bucket['last_error_at'] = error_at
-            bucket['last_error'] = task.last_error or task.last_error_type or 'video_extract_failed'
+        if error_at >= bucket["last_error_at"]:
+            bucket["last_error_at"] = error_at
+            bucket["last_error"] = task.last_error or task.last_error_type or "video_extract_failed"
 
     for bucket in summary.values():
-        bucket.pop('last_error_at', None)
+        bucket.pop("last_error_at", None)
 
     return summary
 
@@ -469,12 +470,12 @@ def list_active_subscription_sync_state_ids() -> set[int]:
             .where(
                 CrawlTask.task_type.in_(subscription_sync_task_types()),
                 CrawlTask.status.in_(ACTIVE_TASK_STATUSES),
-            )
+            ),
         ).scalars().all()
     state_ids: set[int] = set()
     for task in tasks:
-        sync_state_id = (task.payload or {}).get('sync_state_id')
-        if sync_state_id in (None, ''):
+        sync_state_id = (task.payload or {}).get("sync_state_id")
+        if sync_state_id in (None, ""):
             continue
         state_ids.add(int(sync_state_id))
     return state_ids
@@ -483,9 +484,9 @@ def list_active_subscription_sync_state_ids() -> set[int]:
 def _get_owned_task(session: Session, *, task_id: int, worker_id: str) -> CrawlTask:
     task = session.get(CrawlTask, task_id)
     if not task:
-        raise CrawlTaskNotFoundError(f'Crawl task not found: {task_id}')
+        raise CrawlTaskNotFoundError(f"Crawl task not found: {task_id}")
     if task.worker_id != worker_id:
-        raise CrawlTaskOwnershipError(f'Crawl task {task_id} is not owned by worker {worker_id}')
+        raise CrawlTaskOwnershipError(f"Crawl task {task_id} is not owned by worker {worker_id}")
     return task
 
 
@@ -493,8 +494,8 @@ def _move_task_to_retry_or_dead(
     task: CrawlTask,
     *,
     now: datetime,
-    error_message: Optional[str],
-    error_type: Optional[str],
+    error_message: str | None,
+    error_type: str | None,
     delay_seconds: int,
 ) -> None:
     task.attempt += 1
@@ -530,7 +531,7 @@ def _refresh_job_status(session: Session, *, job_id: int, now: datetime) -> None
         return
 
     tasks = session.execute(
-        select(CrawlTask).where(CrawlTask.job_id == job_id).order_by(CrawlTask.id.asc())
+        select(CrawlTask).where(CrawlTask.job_id == job_id).order_by(CrawlTask.id.asc()),
     ).scalars().all()
     if not tasks:
         return
@@ -567,13 +568,13 @@ def _refresh_job_status(session: Session, *, job_id: int, now: datetime) -> None
 
     if cancelled_count == len(tasks):
         job.status = CrawlJobStatus.CANCELLED.value
-        job.error_message = 'cancelled'
+        job.error_message = "cancelled"
     elif dead_count == len(tasks):
         job.status = CrawlJobStatus.FAILED.value
-        job.error_message = 'job_failed'
+        job.error_message = "job_failed"
     elif dead_count or cancelled_count:
         job.status = CrawlJobStatus.PARTIAL_FAILED.value
-        job.error_message = 'partial_failed'
+        job.error_message = "partial_failed"
     elif succeeded_count == len(tasks):
         job.status = CrawlJobStatus.SUCCEEDED.value
         job.error_message = None
@@ -590,7 +591,7 @@ def _ensure_dispatch_scope(session: Session, *, scope_type: str, scope_key: str)
         select(CrawlDispatchScope).where(
             CrawlDispatchScope.scope_type == scope_type,
             CrawlDispatchScope.scope_key == scope_key,
-        )
+        ),
     ).scalar_one_or_none()
     if scope:
         return scope
@@ -608,7 +609,7 @@ def _ensure_dispatch_scope(session: Session, *, scope_type: str, scope_key: str)
         select(CrawlDispatchScope).where(
             CrawlDispatchScope.scope_type == scope_type,
             CrawlDispatchScope.scope_key == scope_key,
-        )
+        ),
     ).scalar_one()
     return scope
 
@@ -618,14 +619,14 @@ def _reconcile_subscription_sync_state_for_retry(
     *,
     now: datetime,
     retryable: bool,
-    error_message: Optional[str],
+    error_message: str | None,
 ) -> None:
     if not is_subscription_sync_task_type(task.task_type):
         return
 
     payload = task.payload or {}
-    sync_state_id = payload.get('sync_state_id')
-    if sync_state_id in (None, ''):
+    sync_state_id = payload.get("sync_state_id")
+    if sync_state_id in (None, ""):
         return
 
     try:
@@ -637,14 +638,14 @@ def _reconcile_subscription_sync_state_for_retry(
 
     subscription_sync_state_service.reconcile_task_retry_state(
         sync_state_id,
-        payload.get('queue_token'),
+        payload.get("queue_token"),
         now=now,
         retryable=retryable,
         error_message=error_message,
-        run_id=payload.get('run_id'),
-        request_id=payload.get('request_id'),
-        trace_id=payload.get('trace_id'),
-        trigger=payload.get('trigger'),
+        run_id=payload.get("run_id"),
+        request_id=payload.get("request_id"),
+        trace_id=payload.get("trace_id"),
+        trigger=payload.get("trigger"),
     )
 
 

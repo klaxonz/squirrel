@@ -1,7 +1,6 @@
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import BigInteger, DateTime, Index, Integer, JSON, UniqueConstraint, VARCHAR
+from sqlalchemy import JSON, VARCHAR, BigInteger, DateTime, Index, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models import Base
@@ -9,28 +8,28 @@ from models.mixins.serializer import SerializerMixin
 
 
 class SubscriptionSyncTrendProjection(Base, SerializerMixin):
-    __tablename__ = 'subscription_sync_trend_projection'
+    __tablename__ = "subscription_sync_trend_projection"
 
     __table_args__ = (
         UniqueConstraint(
-            'bucket_time',
-            'bucket_granularity',
-            'site',
-            'sync_mode',
-            'trigger',
-            name='uix_subscription_sync_trend_bucket_dims',
+            "bucket_time",
+            "bucket_granularity",
+            "site",
+            "sync_mode",
+            "trigger",
+            name="uix_subscription_sync_trend_bucket_dims",
         ),
-        Index('ix_subscription_sync_trend_bucket_time', 'bucket_time'),
-        Index('ix_subscription_sync_trend_site_bucket', 'site', 'bucket_time'),
-        Index('ix_subscription_sync_trend_dims_bucket', 'site', 'sync_mode', 'trigger', 'bucket_time'),
+        Index("ix_subscription_sync_trend_bucket_time", "bucket_time"),
+        Index("ix_subscription_sync_trend_site_bucket", "site", "bucket_time"),
+        Index("ix_subscription_sync_trend_dims_bucket", "site", "sync_mode", "trigger", "bucket_time"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     bucket_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    bucket_granularity: Mapped[str] = mapped_column(VARCHAR(16), nullable=False, default='hour')
-    site: Mapped[str] = mapped_column(VARCHAR(64), nullable=False, default='')
-    sync_mode: Mapped[str] = mapped_column(VARCHAR(16), nullable=False, default='')
-    trigger: Mapped[str] = mapped_column(VARCHAR(32), nullable=False, default='')
+    bucket_granularity: Mapped[str] = mapped_column(VARCHAR(16), nullable=False, default="hour")
+    site: Mapped[str] = mapped_column(VARCHAR(64), nullable=False, default="")
+    sync_mode: Mapped[str] = mapped_column(VARCHAR(16), nullable=False, default="")
+    trigger: Mapped[str] = mapped_column(VARCHAR(32), nullable=False, default="")
     runs_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     runs_success: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     runs_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

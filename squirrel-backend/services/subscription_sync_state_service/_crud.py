@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
-from . import get_session
 from models.links import UserSubscription
 from models.subscription import Subscription
 from models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
 from utils.url_helper import resolve_site
+
+from . import get_session
 from ._intervals import SYNC_BATCH_SIZE
 
 
@@ -18,13 +18,13 @@ def _get_or_create_sync_state_in_session(
     session: Session,
     subscription_id: int,
     mode: str,
-    url: Optional[str],
+    url: str | None,
 ) -> SubscriptionSyncState:
     state = session.execute(
         select(SubscriptionSyncState).where(
             SubscriptionSyncState.subscription_id == subscription_id,
             SubscriptionSyncState.sync_mode == mode,
-        )
+        ),
     ).scalar_one_or_none()
     if state:
         if not state.site:
@@ -46,35 +46,35 @@ def _get_or_create_sync_state_in_session(
     return state
 
 
-def ensure_sync_states(subscription_id: int, url: Optional[str]) -> dict[str, SubscriptionSyncState]:
+def ensure_sync_states(subscription_id: int, url: str | None) -> dict[str, SubscriptionSyncState]:
     with get_session() as session:
         states = {
             SyncMode.INCREMENTAL.value: _get_or_create_sync_state_in_session(
-                session, subscription_id, SyncMode.INCREMENTAL.value, url
+                session, subscription_id, SyncMode.INCREMENTAL.value, url,
             ),
             SyncMode.FULL.value: _get_or_create_sync_state_in_session(
-                session, subscription_id, SyncMode.FULL.value, url
+                session, subscription_id, SyncMode.FULL.value, url,
             ),
         }
         return states
 
 
-def ensure_incremental_sync_state(subscription_id: int, url: Optional[str]) -> SubscriptionSyncState:
+def ensure_incremental_sync_state(subscription_id: int, url: str | None) -> SubscriptionSyncState:
     with get_session() as session:
         return _get_or_create_sync_state_in_session(session, subscription_id, SyncMode.INCREMENTAL.value, url)
 
 
-def get_sync_state(subscription_id: int, mode: str) -> Optional[SubscriptionSyncState]:
+def get_sync_state(subscription_id: int, mode: str) -> SubscriptionSyncState | None:
     with get_session() as session:
         return session.execute(
             select(SubscriptionSyncState).where(
                 SubscriptionSyncState.subscription_id == subscription_id,
                 SubscriptionSyncState.sync_mode == mode,
-            )
+            ),
         ).scalar_one_or_none()
 
 
-def get_sync_state_by_id(sync_state_id: int) -> Optional[SubscriptionSyncState]:
+def get_sync_state_by_id(sync_state_id: int) -> SubscriptionSyncState | None:
     with get_session() as session:
         return session.get(SubscriptionSyncState, sync_state_id)
 
@@ -83,7 +83,7 @@ def list_due_sync_states(
     mode: str,
     limit: int = SYNC_BATCH_SIZE,
     *,
-    now: Optional[datetime] = None,
+    now: datetime | None = None,
 ) -> list[tuple[SubscriptionSyncState, str]]:
     now = now or datetime.now()
     from ._recovery import _recover_stale_running_states_in_session
@@ -101,22 +101,22 @@ def list_due_sync_states(
                         SyncStatus.IDLE.value,
                         SyncStatus.SUCCESS.value,
                         SyncStatus.FAILED.value,
-                    ]
+                    ],
                 ),
                 exists(
                     select(1).select_from(UserSubscription).where(
                         UserSubscription.subscription_id == Subscription.id,
                         UserSubscription.is_deleted.is_(False),
-                    )
+                    ),
                 ),
             )
             .order_by(SubscriptionSyncState.next_sync_at.asc(), SubscriptionSyncState.id.asc())
-            .limit(limit)
+            .limit(limit),
         ).all()
         return [(row[0], row[1]) for row in rows]
 
 
-def increment_pending_video_count(sync_state_id: Optional[int], count: int = 1) -> None:
+def increment_pending_video_count(sync_state_id: int | None, count: int = 1) -> None:
     if not sync_state_id or count <= 0:
         return
     with get_session() as session:

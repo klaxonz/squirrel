@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Dict, List, Optional
 
 from sqlalchemy import select
 
@@ -14,12 +13,12 @@ def get_video_by_url(url: str) -> Video:
         return video
 
 
-def get_videos_by_urls(urls: List[str]) -> Dict[str, Video]:
+def get_videos_by_urls(urls: list[str]) -> dict[str, Video]:
     if not urls:
         return {}
     with get_session() as session:
         rows = session.scalars(
-            select(Video).where(Video.url.in_(urls))
+            select(Video).where(Video.url.in_(urls)),
         ).all()
         return {video.url: video for video in rows}
 
@@ -35,7 +34,7 @@ def create_video(
     title: str,
     publish_date: datetime,
     thumbnail: str,
-    duration: int
+    duration: int,
 ) -> Video:
     with get_session() as session:
         video = Video()
@@ -50,7 +49,7 @@ def create_video(
         return video
 
 
-def _parse_optional_datetime(value: Optional[str]) -> Optional[datetime]:
+def _parse_optional_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
 
@@ -59,30 +58,30 @@ def _parse_optional_datetime(value: Optional[str]) -> Optional[datetime]:
         return None
 
     try:
-        return datetime.fromisoformat(normalized.replace('Z', '+00:00'))
+        return datetime.fromisoformat(normalized.replace("Z", "+00:00"))
     except ValueError:
         return None
 
 
 def save_remote_video(data: dict) -> Video:
-    url = str(data.get('url') or '').strip()
-    title = str(data.get('title') or '').strip()
+    url = str(data.get("url") or "").strip()
+    title = str(data.get("title") or "").strip()
     if not url:
-        raise ValueError('url is required')
+        raise ValueError("url is required")
     if not title:
-        raise ValueError('title is required')
+        raise ValueError("title is required")
 
     with get_session() as session:
         video = session.scalars(select(Video).where(Video.url == url)).first()
         if video:
             return video
 
-        publish_date = _parse_optional_datetime(data.get('publish_date') or data.get('uploaded_at'))
+        publish_date = _parse_optional_datetime(data.get("publish_date") or data.get("uploaded_at"))
         extra_data = {
-            'source': 'remote',
-            'site': data.get('site') or None,
-            'subscriptions': data.get('subscriptions') or [],
-            'actors': data.get('actors') or [],
+            "source": "remote",
+            "site": data.get("site") or None,
+            "subscriptions": data.get("subscriptions") or [],
+            "actors": data.get("actors") or [],
         }
 
         video = Video(
@@ -90,9 +89,9 @@ def save_remote_video(data: dict) -> Video:
             domain=url_helper.normalize_domain(url),
             title=title,
             publish_date=publish_date,
-            thumbnail=data.get('thumbnail') or None,
-            duration=data.get('duration'),
-            description=data.get('description') or None,
+            thumbnail=data.get("thumbnail") or None,
+            duration=data.get("duration"),
+            description=data.get("description") or None,
             extra_data=extra_data,
         )
         session.add(video)

@@ -1,15 +1,12 @@
 import logging
 import time
 from http.cookies import SimpleCookie
-from urllib.parse import urlparse
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 from curl_cffi.requests import AsyncSession
 
 from squirrel_cf_bypass.app.core.cache import ClearanceCache
-from squirrel_cf_bypass.app.core.models import ClearanceRecord
-from squirrel_cf_bypass.app.core.models import HtmlResult
-from squirrel_cf_bypass.app.core.models import MirrorResult
+from squirrel_cf_bypass.app.core.models import ClearanceRecord, HtmlResult, MirrorResult
 from squirrel_cf_bypass.app.core.session_pool import SessionPool
 
 logger = logging.getLogger(__name__)

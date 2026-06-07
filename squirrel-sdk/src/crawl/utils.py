@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import http.cookiejar as cookielib
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 from urllib.parse import urlparse
 
 
@@ -16,11 +16,11 @@ def _extract_top_level_domain_from_url(target_url: str) -> str:
     return host
 
 
-CookieFileResolver = Callable[[str], Optional[str]]
+CookieFileResolver = Callable[[str], str | None]
 CookieDomainResolver = Callable[[str], str]
 
-_cookie_file_resolver: Optional[CookieFileResolver] = None
-_cookie_domain_resolver: Optional[CookieDomainResolver] = None
+_cookie_file_resolver: CookieFileResolver | None = None
+_cookie_domain_resolver: CookieDomainResolver | None = None
 
 
 def configure_cookie_file_resolver(resolver: CookieFileResolver) -> None:
@@ -52,7 +52,7 @@ def _extract_cookie_domain(target_url: str) -> str:
     return str(_extract_top_level_domain_from_url(target_url) or '').strip().lower()
 
 
-def _resolve_cookie_file(target_url: str, cookies_file: Optional[str]) -> Optional[Path]:
+def _resolve_cookie_file(target_url: str, cookies_file: str | None) -> Path | None:
     if cookies_file:
         try:
             return Path(cookies_file).expanduser()
@@ -76,7 +76,7 @@ def _resolve_cookie_file(target_url: str, cookies_file: Optional[str]) -> Option
         return None
 
 
-def resolve_cookie_file_path(target_url: str, cookies_file: Optional[str] = None) -> Optional[str]:
+def resolve_cookie_file_path(target_url: str, cookies_file: str | None = None) -> str | None:
     """Return the cookie file path if available for the given URL.
 
     This leverages either a user-provided ``cookies_file`` argument or the
@@ -89,7 +89,7 @@ def resolve_cookie_file_path(target_url: str, cookies_file: Optional[str] = None
     return str(cookie_path)
 
 
-def filter_cookies_to_query_string(target_url: str, cookies_file: Optional[str] = None) -> str:
+def filter_cookies_to_query_string(target_url: str, cookies_file: str | None = None) -> str:
     """Read a Netscape cookie file and return cookies for target domain as a header string.
 
     The caller is responsible for providing the cookie file path, either directly

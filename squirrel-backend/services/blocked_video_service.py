@@ -1,7 +1,6 @@
 import logging
 from collections.abc import Iterable
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -16,7 +15,7 @@ def is_blocked_video(
     url: str,
     session: Session,
     *,
-    reason_codes: Optional[Iterable[str]] = None,
+    reason_codes: Iterable[str] | None = None,
 ) -> bool:
     query = session.query(BlockedVideoRecord).filter(
         BlockedVideoRecord.url == url,
@@ -30,9 +29,9 @@ def record_blocked_video(
     *,
     url: str,
     reason_code: str,
-    error_message: Optional[str] = None,
-    error_type: Optional[str] = None,
-) -> Optional[BlockedVideoRecord]:
+    error_message: str | None = None,
+    error_type: str | None = None,
+) -> BlockedVideoRecord | None:
     from core.database import get_session
 
     try:
@@ -52,7 +51,7 @@ def record_blocked_video(
                 session.commit()
 
                 logger.info(
-                    'Updated blocked video record: url=%s, reason=%s, retry_count=%s',
+                    "Updated blocked video record: url=%s, reason=%s, retry_count=%s",
                     url,
                     reason_code,
                     existing.retry_count,
@@ -70,12 +69,12 @@ def record_blocked_video(
             session.add(record)
             session.commit()
 
-            logger.info('Created blocked video record: url=%s, site=%s, reason=%s', url, site, reason_code)
+            logger.info("Created blocked video record: url=%s, site=%s, reason=%s", url, site, reason_code)
             return record
 
     except IntegrityError:
-        logger.warning('Blocked video record already exists: url=%s, reason=%s', url, reason_code)
+        logger.warning("Blocked video record already exists: url=%s, reason=%s", url, reason_code)
         return None
     except (ConnectionError, OSError, ValueError, TypeError) as exc:
-        logger.error('Failed to record blocked video: url=%s, reason=%s, error=%s', url, reason_code, exc)
+        logger.error("Failed to record blocked video: url=%s, reason=%s, error=%s", url, reason_code, exc)
         return None

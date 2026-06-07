@@ -1,10 +1,16 @@
-from datetime import datetime
+from __future__ import annotations
 
-from sqlalchemy import DateTime, Float, Index, Integer, Text, VARCHAR
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+from sqlalchemy import VARCHAR, Float, Index, Integer, Text
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from models import Base
 from models.mixins.serializer import SerializerMixin
+
+if TYPE_CHECKING:
+    from models.video import Video
 
 
 def _video_join():
@@ -13,11 +19,11 @@ def _video_join():
 
 
 class VideoClipMarker(Base, SerializerMixin):
-    __tablename__ = 'video_clip_marker'
+    __tablename__ = "video_clip_marker"
 
     __table_args__ = (
-        Index('ix_video_clip_marker_user_video', 'user_id', 'video_id'),
-        Index('ix_video_clip_marker_user_created_at', 'user_id', 'created_at'),
+        Index("ix_video_clip_marker_user_video", "user_id", "video_id"),
+        Index("ix_video_clip_marker_user_created_at", "user_id", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -34,9 +40,9 @@ class VideoClipMarker(Base, SerializerMixin):
         onupdate=lambda: datetime.now(),
     )
 
-    video: Mapped['Video'] = relationship(
-        'Video',
+    video: Mapped[Video] = relationship(
+        "Video",
         primaryjoin=_video_join,
-        back_populates='clip_markers',
+        back_populates="clip_markers",
         viewonly=True,
     )

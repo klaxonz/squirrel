@@ -1,24 +1,24 @@
 from fastapi import APIRouter, Depends, Query
 
-import common.response as response
+from common import response
 from models.user import User
 from schemas.video_clip_marker import ClipMarkerCreate, ClipMarkerPreviewUpload, ClipMarkerUpdate
 from services import video_clip_marker_service
 from utils.jwt_helper import get_current_user
 
-router = APIRouter(prefix='/api/video-clip-markers', tags=['视频片段标记'])
+router = APIRouter(prefix="/api/video-clip-markers", tags=["视频片段标记"])
 
 
-@router.get('')
+@router.get("")
 def list_video_clip_markers(
-        video_id: int = Query(..., description='视频ID'),
+        video_id: int = Query(..., description="视频ID"),
         user: User = Depends(get_current_user),
 ):
     markers = video_clip_marker_service.list_markers(user.id, video_id)
     return response.success(markers)
 
 
-@router.post('')
+@router.post("")
 def create_video_clip_marker(
         data: ClipMarkerCreate,
         user: User = Depends(get_current_user),
@@ -30,7 +30,7 @@ def create_video_clip_marker(
     return response.success(marker)
 
 
-@router.put('/{marker_id}')
+@router.put("/{marker_id}")
 def update_video_clip_marker(
         marker_id: int,
         data: ClipMarkerUpdate,
@@ -42,11 +42,11 @@ def update_video_clip_marker(
         return response.param_error(str(exc))
 
     if not marker:
-        return response.not_found('片段标记不存在')
+        return response.not_found("片段标记不存在")
     return response.success(marker)
 
 
-@router.post('/{marker_id}/preview')
+@router.post("/{marker_id}/preview")
 def upload_video_clip_marker_preview(
         marker_id: int,
         data: ClipMarkerPreviewUpload,
@@ -58,16 +58,16 @@ def upload_video_clip_marker_preview(
         return response.param_error(str(exc))
 
     if not marker:
-        return response.not_found('片段标记不存在')
+        return response.not_found("片段标记不存在")
     return response.success(marker)
 
 
-@router.delete('/{marker_id}')
+@router.delete("/{marker_id}")
 def delete_video_clip_marker(
         marker_id: int,
         user: User = Depends(get_current_user),
 ):
     deleted_count = video_clip_marker_service.delete_marker(user.id, marker_id)
     if deleted_count == 0:
-        return response.not_found('片段标记不存在')
+        return response.not_found("片段标记不存在")
     return response.success()

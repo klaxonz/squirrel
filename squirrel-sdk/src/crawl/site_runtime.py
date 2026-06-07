@@ -1,7 +1,8 @@
 """Site runtime helpers."""
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any
 
 from .exceptions import AuthError, NetworkError, ParseError, PluginError, RateLimitError
 from .runtime_errors import SiteRuntimeError
@@ -12,9 +13,8 @@ from .runtime_models import (
 )
 from .runtime_protocol import SiteRuntime
 
-
-CapabilityHandler = Callable[[Dict[str, Any]], Any]
-RuntimeStartHook = Callable[[Optional[Dict[str, Any]]], None]
+CapabilityHandler = Callable[[dict[str, Any]], Any]
+RuntimeStartHook = Callable[[dict[str, Any] | None], None]
 RuntimeStopHook = Callable[[], None]
 HealthCheckHook = Callable[[], SiteRuntimeHealthStatus]
 
@@ -25,10 +25,10 @@ class _GeneratedSiteRuntime:
     def __init__(
         self,
         manifest: SiteRuntimeManifest,
-        capability_handlers: Dict[str, CapabilityHandler],
-        on_start: Optional[RuntimeStartHook] = None,
-        on_stop: Optional[RuntimeStopHook] = None,
-        health_check: Optional[HealthCheckHook] = None,
+        capability_handlers: dict[str, CapabilityHandler],
+        on_start: RuntimeStartHook | None = None,
+        on_stop: RuntimeStopHook | None = None,
+        health_check: HealthCheckHook | None = None,
     ) -> None:
         self._manifest = manifest
         self._capability_handlers = dict(capability_handlers)
@@ -39,7 +39,7 @@ class _GeneratedSiteRuntime:
     def manifest(self) -> SiteRuntimeManifest:
         return self._manifest
 
-    def start(self, context: Optional[Dict[str, Any]] = None) -> None:
+    def start(self, context: dict[str, Any] | None = None) -> None:
         if self._on_start is not None:
             self._on_start(context or {})
 
@@ -52,7 +52,7 @@ class _GeneratedSiteRuntime:
             return self._health_check()
         return SiteRuntimeHealthStatus(healthy=True, status='running')
 
-    def invoke(self, capability: str, payload: Optional[Dict[str, Any]] = None) -> SiteRuntimeInvokeResponse:
+    def invoke(self, capability: str, payload: dict[str, Any] | None = None) -> SiteRuntimeInvokeResponse:
         request_payload = dict(payload or {})
         request_id = str(request_payload.get('request_id', ''))
         handler = self._capability_handlers.get(capability)
@@ -97,10 +97,10 @@ class _GeneratedSiteRuntime:
 
 def create_declarative_site_runtime(
     manifest: SiteRuntimeManifest,
-    capability_handlers: Dict[str, CapabilityHandler],
-    on_start: Optional[RuntimeStartHook] = None,
-    on_stop: Optional[RuntimeStopHook] = None,
-    health_check: Optional[HealthCheckHook] = None,
+    capability_handlers: dict[str, CapabilityHandler],
+    on_start: RuntimeStartHook | None = None,
+    on_stop: RuntimeStopHook | None = None,
+    health_check: HealthCheckHook | None = None,
 ) -> SiteRuntime:
     """Create a site runtime object from declarative handlers."""
     return _GeneratedSiteRuntime(

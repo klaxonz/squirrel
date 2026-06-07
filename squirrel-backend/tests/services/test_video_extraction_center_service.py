@@ -1,7 +1,7 @@
+import sys
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
-import sys
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -14,14 +14,13 @@ from models.crawl_task import CrawlTask
 from models.links import UserSubscription
 from models.subscription import Subscription
 from models.video_extraction_projection import VideoExtractionProjection
-from services import video_extraction_center_service
-from services import video_extraction_projection_service
+from services import video_extraction_center_service, video_extraction_projection_service
 
 
 def _reset_extraction_site_catalog_cache(monkeypatch):
-    monkeypatch.setattr(video_extraction_center_service, '_site_catalog_cache', None)
-    monkeypatch.setattr(video_extraction_center_service, '_site_catalog_cache_expires_at_monotonic', None)
-    monkeypatch.setattr(video_extraction_center_service, '_site_icon_url_cache', {})
+    monkeypatch.setattr(video_extraction_center_service, "_site_catalog_cache", None)
+    monkeypatch.setattr(video_extraction_center_service, "_site_catalog_cache_expires_at_monotonic", None)
+    monkeypatch.setattr(video_extraction_center_service, "_site_icon_url_cache", {})
 
 
 @contextmanager
@@ -38,7 +37,7 @@ def _managed_session(engine):
 
 
 def _setup_env(monkeypatch):
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(
         engine,
         tables=[
@@ -49,10 +48,10 @@ def _setup_env(monkeypatch):
             VideoExtractionProjection.__table__,
         ],
     )
-    monkeypatch.setattr(video_extraction_center_service, 'get_session', lambda: _managed_session(engine))
-    monkeypatch.setattr(video_extraction_projection_service, 'get_session', lambda: _managed_session(engine))
-    monkeypatch.setattr(video_extraction_projection_service, '_last_reconcile_monotonic', None, raising=False)
-    monkeypatch.setattr(video_extraction_projection_service, '_group_key_layout_checked', False, raising=False)
+    monkeypatch.setattr(video_extraction_center_service, "get_session", lambda: _managed_session(engine))
+    monkeypatch.setattr(video_extraction_projection_service, "get_session", lambda: _managed_session(engine))
+    monkeypatch.setattr(video_extraction_projection_service, "_last_reconcile_monotonic", None, raising=False)
+    monkeypatch.setattr(video_extraction_projection_service, "_group_key_layout_checked", False, raising=False)
     return engine
 
 
@@ -62,9 +61,9 @@ def _seed_tasks(engine):
         session.add_all([
             Subscription(
                 id=1,
-                type='CHANNEL',
-                name='Extract Running',
-                url='https://www.youtube.com/channel/extract-running',
+                type="CHANNEL",
+                name="Extract Running",
+                url="https://www.youtube.com/channel/extract-running",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -75,9 +74,9 @@ def _seed_tasks(engine):
             ),
             Subscription(
                 id=2,
-                type='CHANNEL',
-                name='Extract Queued',
-                url='https://space.bilibili.com/extract-queued',
+                type="CHANNEL",
+                name="Extract Queued",
+                url="https://space.bilibili.com/extract-queued",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -88,9 +87,9 @@ def _seed_tasks(engine):
             ),
             Subscription(
                 id=3,
-                type='CHANNEL',
-                name='Extract Success',
-                url='https://www.youtube.com/channel/extract-success',
+                type="CHANNEL",
+                name="Extract Success",
+                url="https://www.youtube.com/channel/extract-success",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -101,9 +100,9 @@ def _seed_tasks(engine):
             ),
             Subscription(
                 id=4,
-                type='CHANNEL',
-                name='Extract Failed',
-                url='https://www.youtube.com/channel/extract-failed',
+                type="CHANNEL",
+                name="Extract Failed",
+                url="https://www.youtube.com/channel/extract-failed",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -120,20 +119,20 @@ def _seed_tasks(engine):
             UserSubscription(id=4, user_id=1, subscription_id=4, is_deleted=False, is_nsfw=False, created_at=now, updated_at=now),
         ])
         session.add_all([
-            CrawlJob(id=101, job_type='video_extract', source_type='subscription_sync', site='youtube.com', subscription_id=1, status='running', created_at=now - timedelta(minutes=5), updated_at=now - timedelta(minutes=1)),
-            CrawlJob(id=102, job_type='video_extract', source_type='subscription_sync', site='bilibili.com', subscription_id=2, status='pending', created_at=now - timedelta(minutes=4), updated_at=now - timedelta(minutes=2)),
-            CrawlJob(id=103, job_type='video_extract', source_type='subscription_sync', site='youtube.com', subscription_id=3, status='succeeded', created_at=now - timedelta(minutes=8), updated_at=now - timedelta(minutes=3), finished_at=now - timedelta(minutes=3)),
-            CrawlJob(id=104, job_type='video_extract', source_type='subscription_sync', site='youtube.com', subscription_id=4, status='partial_failed', created_at=now - timedelta(minutes=7), updated_at=now - timedelta(minutes=1), finished_at=now - timedelta(minutes=1)),
+            CrawlJob(id=101, job_type="video_extract", source_type="subscription_sync", site="youtube.com", subscription_id=1, status="running", created_at=now - timedelta(minutes=5), updated_at=now - timedelta(minutes=1)),
+            CrawlJob(id=102, job_type="video_extract", source_type="subscription_sync", site="bilibili.com", subscription_id=2, status="pending", created_at=now - timedelta(minutes=4), updated_at=now - timedelta(minutes=2)),
+            CrawlJob(id=103, job_type="video_extract", source_type="subscription_sync", site="youtube.com", subscription_id=3, status="succeeded", created_at=now - timedelta(minutes=8), updated_at=now - timedelta(minutes=3), finished_at=now - timedelta(minutes=3)),
+            CrawlJob(id=104, job_type="video_extract", source_type="subscription_sync", site="youtube.com", subscription_id=4, status="partial_failed", created_at=now - timedelta(minutes=7), updated_at=now - timedelta(minutes=1), finished_at=now - timedelta(minutes=1)),
         ])
         session.add_all([
             CrawlTask(
                 id=1001,
                 job_id=101,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=1,
-                status='succeeded',
-                payload={'sync_state_id': 501},
+                status="succeeded",
+                payload={"sync_state_id": 501},
                 created_at=now - timedelta(minutes=5),
                 updated_at=now - timedelta(minutes=3),
                 started_at=now - timedelta(minutes=5),
@@ -142,12 +141,12 @@ def _seed_tasks(engine):
             CrawlTask(
                 id=1002,
                 job_id=101,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=1,
-                status='running',
-                worker_id='worker-a',
-                payload={'sync_state_id': 501},
+                status="running",
+                worker_id="worker-a",
+                payload={"sync_state_id": 501},
                 created_at=now - timedelta(minutes=4),
                 updated_at=now - timedelta(minutes=1),
                 started_at=now - timedelta(minutes=2),
@@ -155,44 +154,44 @@ def _seed_tasks(engine):
             CrawlTask(
                 id=1003,
                 job_id=101,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=1,
-                status='pending',
-                payload={'sync_state_id': 501},
+                status="pending",
+                payload={"sync_state_id": 501},
                 created_at=now - timedelta(minutes=4),
                 updated_at=now - timedelta(minutes=1),
             ),
             CrawlTask(
                 id=2001,
                 job_id=102,
-                task_type='video_extract',
-                site='bilibili.com',
+                task_type="video_extract",
+                site="bilibili.com",
                 subscription_id=2,
-                status='pending',
-                payload={'sync_state_id': 502, 'is_extract_all': True},
+                status="pending",
+                payload={"sync_state_id": 502, "is_extract_all": True},
                 created_at=now - timedelta(minutes=4),
                 updated_at=now - timedelta(minutes=4),
             ),
             CrawlTask(
                 id=2002,
                 job_id=102,
-                task_type='video_extract',
-                site='bilibili.com',
+                task_type="video_extract",
+                site="bilibili.com",
                 subscription_id=2,
-                status='retry_wait',
-                payload={'sync_state_id': 502, 'is_extract_all': True},
+                status="retry_wait",
+                payload={"sync_state_id": 502, "is_extract_all": True},
                 created_at=now - timedelta(minutes=3),
                 updated_at=now - timedelta(minutes=2),
             ),
             CrawlTask(
                 id=3001,
                 job_id=103,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=3,
-                status='succeeded',
-                payload={'sync_state_id': 503},
+                status="succeeded",
+                payload={"sync_state_id": 503},
                 created_at=now - timedelta(minutes=8),
                 updated_at=now - timedelta(minutes=4),
                 started_at=now - timedelta(minutes=8),
@@ -201,11 +200,11 @@ def _seed_tasks(engine):
             CrawlTask(
                 id=3002,
                 job_id=103,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=3,
-                status='succeeded',
-                payload={'sync_state_id': 503},
+                status="succeeded",
+                payload={"sync_state_id": 503},
                 created_at=now - timedelta(minutes=7),
                 updated_at=now - timedelta(minutes=3),
                 started_at=now - timedelta(minutes=7),
@@ -214,11 +213,11 @@ def _seed_tasks(engine):
             CrawlTask(
                 id=4001,
                 job_id=104,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=4,
-                status='succeeded',
-                payload={'sync_state_id': 504},
+                status="succeeded",
+                payload={"sync_state_id": 504},
                 created_at=now - timedelta(minutes=7),
                 updated_at=now - timedelta(minutes=2),
                 started_at=now - timedelta(minutes=7),
@@ -227,12 +226,12 @@ def _seed_tasks(engine):
             CrawlTask(
                 id=4002,
                 job_id=104,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=4,
-                status='dead',
-                last_error='extract_failed',
-                payload={'sync_state_id': 504},
+                status="dead",
+                last_error="extract_failed",
+                payload={"sync_state_id": 504},
                 created_at=now - timedelta(minutes=6),
                 updated_at=now - timedelta(minutes=1),
                 started_at=now - timedelta(minutes=6),
@@ -249,7 +248,7 @@ def test_extraction_center_lists_running_queued_and_recent_batches(monkeypatch):
     overview = video_extraction_center_service.get_extraction_center_overview(user_id=1)
     running_result = video_extraction_center_service.list_extraction_center_items(
         user_id=1,
-        status='running',
+        status="running",
         site=None,
         query=None,
         page=1,
@@ -257,7 +256,7 @@ def test_extraction_center_lists_running_queued_and_recent_batches(monkeypatch):
     )
     queued_result = video_extraction_center_service.list_extraction_center_items(
         user_id=1,
-        status='queued',
+        status="queued",
         site=None,
         query=None,
         page=1,
@@ -265,7 +264,7 @@ def test_extraction_center_lists_running_queued_and_recent_batches(monkeypatch):
     )
     recent_result = video_extraction_center_service.list_extraction_center_items(
         user_id=1,
-        status='recent',
+        status="recent",
         site=None,
         query=None,
         page=1,
@@ -277,35 +276,35 @@ def test_extraction_center_lists_running_queued_and_recent_batches(monkeypatch):
     assert overview.failed_count == 1
     assert overview.pending_videos == 4
 
-    assert [item.subscription_name for item in running_result.data] == ['Extract Running']
+    assert [item.subscription_name for item in running_result.data] == ["Extract Running"]
     running_item = running_result.data[0]
-    assert running_item.current_phase == 'extracting'
+    assert running_item.current_phase == "extracting"
     assert running_item.batch_task_count == 3
     assert running_item.queued_task_count == 1
     assert running_item.running_task_count == 1
     assert running_item.completed_task_count == 1
     assert running_item.failed_task_count == 0
-    assert running_item.sync_mode == 'incremental'
+    assert running_item.sync_mode == "incremental"
     assert running_item.progress_percent == 33
-    assert running_item.progress_label == '1 / 3'
+    assert running_item.progress_label == "1 / 3"
 
-    assert [item.subscription_name for item in queued_result.data] == ['Extract Queued']
+    assert [item.subscription_name for item in queued_result.data] == ["Extract Queued"]
     assert [item.queue_position for item in queued_result.data] == [1]
     queued_item = queued_result.data[0]
-    assert queued_item.current_phase == 'queued'
+    assert queued_item.current_phase == "queued"
     assert queued_item.batch_task_count == 2
     assert queued_item.queued_task_count == 2
     assert queued_item.running_task_count == 0
     assert queued_item.completed_task_count == 0
-    assert queued_item.sync_mode == 'full'
+    assert queued_item.sync_mode == "full"
 
-    assert [item.subscription_name for item in recent_result.data] == ['Extract Failed', 'Extract Success']
-    assert recent_result.data[0].sync_status == 'failed'
+    assert [item.subscription_name for item in recent_result.data] == ["Extract Failed", "Extract Success"]
+    assert recent_result.data[0].sync_status == "failed"
     assert recent_result.data[0].failed_task_count == 1
-    assert recent_result.data[0].sync_mode == 'incremental'
-    assert recent_result.data[1].sync_status == 'success'
+    assert recent_result.data[0].sync_mode == "incremental"
+    assert recent_result.data[1].sync_status == "success"
     assert recent_result.data[1].completed_task_count == 2
-    assert recent_result.data[1].sync_mode == 'incremental'
+    assert recent_result.data[1].sync_mode == "incremental"
 
 
 def test_extraction_dashboard_snapshot_does_not_trim_running_or_queued_items(monkeypatch):
@@ -317,9 +316,9 @@ def test_extraction_dashboard_snapshot_does_not_trim_running_or_queued_items(mon
         session.add_all([
             Subscription(
                 id=5,
-                type='CHANNEL',
-                name='Extract Running 2',
-                url='https://www.youtube.com/channel/extract-running-2',
+                type="CHANNEL",
+                name="Extract Running 2",
+                url="https://www.youtube.com/channel/extract-running-2",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -330,9 +329,9 @@ def test_extraction_dashboard_snapshot_does_not_trim_running_or_queued_items(mon
             ),
             Subscription(
                 id=6,
-                type='CHANNEL',
-                name='Extract Queued 2',
-                url='https://space.bilibili.com/extract-queued-2',
+                type="CHANNEL",
+                name="Extract Queued 2",
+                url="https://space.bilibili.com/extract-queued-2",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -345,33 +344,33 @@ def test_extraction_dashboard_snapshot_does_not_trim_running_or_queued_items(mon
             UserSubscription(id=6, user_id=1, subscription_id=6, is_deleted=False, is_nsfw=False, created_at=now, updated_at=now),
             CrawlJob(
                 id=105,
-                job_type='video_extract',
-                source_type='subscription_sync',
-                site='youtube.com',
+                job_type="video_extract",
+                source_type="subscription_sync",
+                site="youtube.com",
                 subscription_id=5,
-                status='running',
+                status="running",
                 created_at=now - timedelta(minutes=4),
                 updated_at=now - timedelta(minutes=1),
             ),
             CrawlJob(
                 id=106,
-                job_type='video_extract',
-                source_type='subscription_sync',
-                site='bilibili.com',
+                job_type="video_extract",
+                source_type="subscription_sync",
+                site="bilibili.com",
                 subscription_id=6,
-                status='pending',
+                status="pending",
                 created_at=now - timedelta(minutes=3),
                 updated_at=now - timedelta(minutes=2),
             ),
             CrawlTask(
                 id=5001,
                 job_id=105,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=5,
-                status='running',
-                worker_id='worker-b',
-                payload={'sync_state_id': 505},
+                status="running",
+                worker_id="worker-b",
+                payload={"sync_state_id": 505},
                 created_at=now - timedelta(minutes=4),
                 updated_at=now - timedelta(minutes=1),
                 started_at=now - timedelta(minutes=2),
@@ -379,33 +378,33 @@ def test_extraction_dashboard_snapshot_does_not_trim_running_or_queued_items(mon
             CrawlTask(
                 id=5002,
                 job_id=105,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=5,
-                status='pending',
-                payload={'sync_state_id': 505},
+                status="pending",
+                payload={"sync_state_id": 505},
                 created_at=now - timedelta(minutes=4),
                 updated_at=now - timedelta(minutes=1),
             ),
             CrawlTask(
                 id=6001,
                 job_id=106,
-                task_type='video_extract',
-                site='bilibili.com',
+                task_type="video_extract",
+                site="bilibili.com",
                 subscription_id=6,
-                status='pending',
-                payload={'sync_state_id': 506},
+                status="pending",
+                payload={"sync_state_id": 506},
                 created_at=now - timedelta(minutes=3),
                 updated_at=now - timedelta(minutes=3),
             ),
             CrawlTask(
                 id=6002,
                 job_id=106,
-                task_type='video_extract',
-                site='bilibili.com',
+                task_type="video_extract",
+                site="bilibili.com",
                 subscription_id=6,
-                status='retry_wait',
-                payload={'sync_state_id': 506},
+                status="retry_wait",
+                payload={"sync_state_id": 506},
                 created_at=now - timedelta(minutes=2),
                 updated_at=now - timedelta(minutes=2),
             ),
@@ -414,8 +413,8 @@ def test_extraction_dashboard_snapshot_does_not_trim_running_or_queued_items(mon
 
     snapshot = video_extraction_center_service.get_extraction_dashboard_snapshot(user_id=1, preview_limit=1)
 
-    assert sorted(item.subscription_name for item in snapshot['runningPreview']) == ['Extract Running', 'Extract Running 2']
-    assert sorted(item.subscription_name for item in snapshot['queuedPreview']) == ['Extract Queued', 'Extract Queued 2']
+    assert sorted(item.subscription_name for item in snapshot["runningPreview"]) == ["Extract Running", "Extract Running 2"]
+    assert sorted(item.subscription_name for item in snapshot["queuedPreview"]) == ["Extract Queued", "Extract Queued 2"]
 
 
 def test_extraction_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(monkeypatch):
@@ -428,23 +427,23 @@ def test_extraction_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(m
     def _fake_get_effective_site_catalog():
         calls.append(1)
         return {
-            'youtube': {
-                'domains': ['youtube.com', 'youtu.be'],
-                'icon_url': '/api/sites/youtube/icon',
+            "youtube": {
+                "domains": ["youtube.com", "youtu.be"],
+                "icon_url": "/api/sites/youtube/icon",
             },
-            'bilibili': {
-                'domains': ['bilibili.com', 'b23.tv'],
-                'icon_url': '/api/sites/bilibili/icon',
+            "bilibili": {
+                "domains": ["bilibili.com", "b23.tv"],
+                "icon_url": "/api/sites/bilibili/icon",
             },
         }
 
-    monkeypatch.setattr(video_extraction_center_service, 'get_effective_site_catalog', _fake_get_effective_site_catalog)
+    monkeypatch.setattr(video_extraction_center_service, "get_effective_site_catalog", _fake_get_effective_site_catalog)
 
     snapshot = video_extraction_center_service.get_extraction_dashboard_snapshot(user_id=1)
 
-    assert snapshot['runningPreview'][0].site_icon_url == '/api/sites/youtube/icon'
-    assert snapshot['queuedPreview'][0].site_icon_url == '/api/sites/bilibili/icon'
-    assert snapshot['recentPreview'][0].site_icon_url == '/api/sites/youtube/icon'
+    assert snapshot["runningPreview"][0].site_icon_url == "/api/sites/youtube/icon"
+    assert snapshot["queuedPreview"][0].site_icon_url == "/api/sites/bilibili/icon"
+    assert snapshot["recentPreview"][0].site_icon_url == "/api/sites/youtube/icon"
     assert len(calls) == 1
 
 
@@ -452,11 +451,11 @@ def test_extraction_site_icon_resolution_degrades_when_site_catalog_load_fails(m
     _reset_extraction_site_catalog_cache(monkeypatch)
     monkeypatch.setattr(
         video_extraction_center_service,
-        'get_effective_site_catalog',
-        lambda: (_ for _ in ()).throw(PermissionError('installations.json is locked')),
+        "get_effective_site_catalog",
+        lambda: (_ for _ in ()).throw(PermissionError("installations.json is locked")),
     )
 
-    icon_url = video_extraction_center_service._resolve_site_icon_url('youtube.com')
+    icon_url = video_extraction_center_service._resolve_site_icon_url("youtube.com")
 
     assert icon_url is None
 
@@ -469,9 +468,9 @@ def test_extraction_center_groups_tasks_by_job_when_sync_state_id_missing(monkey
         session.add(
             Subscription(
                 id=10,
-                type='CHANNEL',
-                name='Fallback Group',
-                url='https://www.youtube.com/channel/fallback-group',
+                type="CHANNEL",
+                name="Fallback Group",
+                url="https://www.youtube.com/channel/fallback-group",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -479,7 +478,7 @@ def test_extraction_center_groups_tasks_by_job_when_sync_state_id_missing(monkey
                 extra_data={},
                 created_at=now,
                 updated_at=now,
-            )
+            ),
         )
         session.add(
             UserSubscription(
@@ -490,28 +489,28 @@ def test_extraction_center_groups_tasks_by_job_when_sync_state_id_missing(monkey
                 is_nsfw=False,
                 created_at=now,
                 updated_at=now,
-            )
+            ),
         )
         session.add(
             CrawlJob(
                 id=110,
-                job_type='video_extract',
-                source_type='subscription_sync',
-                site='youtube.com',
+                job_type="video_extract",
+                source_type="subscription_sync",
+                site="youtube.com",
                 subscription_id=10,
-                status='running',
+                status="running",
                 created_at=now - timedelta(minutes=3),
                 updated_at=now - timedelta(minutes=1),
-            )
+            ),
         )
         session.add_all([
             CrawlTask(
                 id=11001,
                 job_id=110,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=10,
-                status='running',
+                status="running",
                 payload={},
                 created_at=now - timedelta(minutes=3),
                 updated_at=now - timedelta(minutes=1),
@@ -520,11 +519,11 @@ def test_extraction_center_groups_tasks_by_job_when_sync_state_id_missing(monkey
             CrawlTask(
                 id=11002,
                 job_id=110,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=10,
-                status='pending',
-                payload={'sync_state_id': ''},
+                status="pending",
+                payload={"sync_state_id": ""},
                 created_at=now - timedelta(minutes=2),
                 updated_at=now - timedelta(minutes=1),
             ),
@@ -533,16 +532,16 @@ def test_extraction_center_groups_tasks_by_job_when_sync_state_id_missing(monkey
 
     running_result = video_extraction_center_service.list_extraction_center_items(
         user_id=1,
-        status='running',
+        status="running",
         site=None,
-        query='Fallback',
+        query="Fallback",
         page=1,
         page_size=20,
     )
 
     assert running_result.total == 1
     assert len(running_result.data) == 1
-    assert running_result.data[0].run_id == 'extract:job:110'
+    assert running_result.data[0].run_id == "extract:job:110"
     assert running_result.data[0].batch_task_count == 2
     assert running_result.data[0].queued_task_count == 1
     assert running_result.data[0].running_task_count == 1
@@ -556,9 +555,9 @@ def test_extraction_center_separates_reused_sync_state_by_run_id(monkeypatch):
         session.add(
             Subscription(
                 id=15,
-                type='CHANNEL',
-                name='YouTube Reused State',
-                url='https://www.youtube.com/channel/reused-state',
+                type="CHANNEL",
+                name="YouTube Reused State",
+                url="https://www.youtube.com/channel/reused-state",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -566,7 +565,7 @@ def test_extraction_center_separates_reused_sync_state_by_run_id(monkeypatch):
                 extra_data={},
                 created_at=now,
                 updated_at=now,
-            )
+            ),
         )
         session.add(
             UserSubscription(
@@ -577,27 +576,27 @@ def test_extraction_center_separates_reused_sync_state_by_run_id(monkeypatch):
                 is_nsfw=False,
                 created_at=now,
                 updated_at=now,
-            )
+            ),
         )
         session.add_all([
             CrawlJob(
                 id=115,
-                job_type='video_extract',
-                source_type='subscription_sync',
-                site='youtube.com',
+                job_type="video_extract",
+                source_type="subscription_sync",
+                site="youtube.com",
                 subscription_id=15,
-                status='partial_failed',
+                status="partial_failed",
                 created_at=now - timedelta(minutes=12),
                 updated_at=now - timedelta(minutes=10),
                 finished_at=now - timedelta(minutes=10),
             ),
             CrawlJob(
                 id=116,
-                job_type='video_extract',
-                source_type='subscription_sync',
-                site='youtube.com',
+                job_type="video_extract",
+                source_type="subscription_sync",
+                site="youtube.com",
                 subscription_id=15,
-                status='succeeded',
+                status="succeeded",
                 created_at=now - timedelta(minutes=4),
                 updated_at=now - timedelta(minutes=1),
                 finished_at=now - timedelta(minutes=1),
@@ -607,12 +606,12 @@ def test_extraction_center_separates_reused_sync_state_by_run_id(monkeypatch):
             CrawlTask(
                 id=11501,
                 job_id=115,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=15,
-                status='dead',
-                last_error='extract_failed',
-                payload={'sync_state_id': 880, 'run_id': 'run-old'},
+                status="dead",
+                last_error="extract_failed",
+                payload={"sync_state_id": 880, "run_id": "run-old"},
                 created_at=now - timedelta(minutes=12),
                 updated_at=now - timedelta(minutes=10),
                 started_at=now - timedelta(minutes=12),
@@ -621,12 +620,12 @@ def test_extraction_center_separates_reused_sync_state_by_run_id(monkeypatch):
             CrawlTask(
                 id=11502,
                 job_id=115,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=15,
-                status='dead',
-                last_error='extract_failed',
-                payload={'sync_state_id': 880, 'run_id': 'run-old'},
+                status="dead",
+                last_error="extract_failed",
+                payload={"sync_state_id": 880, "run_id": "run-old"},
                 created_at=now - timedelta(minutes=11),
                 updated_at=now - timedelta(minutes=10),
                 started_at=now - timedelta(minutes=11),
@@ -635,11 +634,11 @@ def test_extraction_center_separates_reused_sync_state_by_run_id(monkeypatch):
             CrawlTask(
                 id=11601,
                 job_id=116,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=15,
-                status='succeeded',
-                payload={'sync_state_id': 880, 'run_id': 'run-new'},
+                status="succeeded",
+                payload={"sync_state_id": 880, "run_id": "run-new"},
                 created_at=now - timedelta(minutes=4),
                 updated_at=now - timedelta(minutes=2),
                 started_at=now - timedelta(minutes=4),
@@ -648,11 +647,11 @@ def test_extraction_center_separates_reused_sync_state_by_run_id(monkeypatch):
             CrawlTask(
                 id=11602,
                 job_id=116,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=15,
-                status='succeeded',
-                payload={'sync_state_id': 880, 'run_id': 'run-new'},
+                status="succeeded",
+                payload={"sync_state_id": 880, "run_id": "run-new"},
                 created_at=now - timedelta(minutes=3),
                 updated_at=now - timedelta(minutes=1),
                 started_at=now - timedelta(minutes=3),
@@ -663,16 +662,16 @@ def test_extraction_center_separates_reused_sync_state_by_run_id(monkeypatch):
 
     recent_result = video_extraction_center_service.list_extraction_center_items(
         user_id=1,
-        status='recent',
+        status="recent",
         site=None,
-        query='Reused State',
+        query="Reused State",
         page=1,
         page_size=20,
     )
 
     assert recent_result.total == 2
-    assert [item.run_id for item in recent_result.data] == ['extract:run:run-new', 'extract:run:run-old']
-    assert [item.sync_status for item in recent_result.data] == ['success', 'failed']
+    assert [item.run_id for item in recent_result.data] == ["extract:run:run-new", "extract:run:run-old"]
+    assert [item.sync_status for item in recent_result.data] == ["success", "failed"]
     assert [item.batch_task_count for item in recent_result.data] == [2, 2]
     assert [item.completed_task_count for item in recent_result.data] == [2, 0]
     assert [item.failed_task_count for item in recent_result.data] == [0, 2]
@@ -686,9 +685,9 @@ def test_extraction_center_reconciles_stale_active_projection(monkeypatch):
         session.add(
             Subscription(
                 id=20,
-                type='CHANNEL',
-                name='Projection Drift',
-                url='https://www.youtube.com/channel/projection-drift',
+                type="CHANNEL",
+                name="Projection Drift",
+                url="https://www.youtube.com/channel/projection-drift",
                 avatar=None,
                 description=None,
                 total_videos=0,
@@ -696,7 +695,7 @@ def test_extraction_center_reconciles_stale_active_projection(monkeypatch):
                 extra_data={},
                 created_at=now,
                 updated_at=now,
-            )
+            ),
         )
         session.add(
             UserSubscription(
@@ -707,30 +706,30 @@ def test_extraction_center_reconciles_stale_active_projection(monkeypatch):
                 is_nsfw=False,
                 created_at=now,
                 updated_at=now,
-            )
+            ),
         )
         session.add(
             CrawlJob(
                 id=120,
-                job_type='video_extract',
-                source_type='subscription_sync',
-                site='youtube.com',
+                job_type="video_extract",
+                source_type="subscription_sync",
+                site="youtube.com",
                 subscription_id=20,
-                status='succeeded',
+                status="succeeded",
                 created_at=now - timedelta(minutes=5),
                 updated_at=now - timedelta(minutes=1),
                 finished_at=now - timedelta(minutes=1),
-            )
+            ),
         )
         session.add_all([
             CrawlTask(
                 id=12001,
                 job_id=120,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=20,
-                status='succeeded',
-                payload={'sync_state_id': 900},
+                status="succeeded",
+                payload={"sync_state_id": 900},
                 created_at=now - timedelta(minutes=5),
                 updated_at=now - timedelta(minutes=2),
                 started_at=now - timedelta(minutes=5),
@@ -739,11 +738,11 @@ def test_extraction_center_reconciles_stale_active_projection(monkeypatch):
             CrawlTask(
                 id=12002,
                 job_id=120,
-                task_type='video_extract',
-                site='youtube.com',
+                task_type="video_extract",
+                site="youtube.com",
                 subscription_id=20,
-                status='succeeded',
-                payload={'sync_state_id': 900},
+                status="succeeded",
+                payload={"sync_state_id": 900},
                 created_at=now - timedelta(minutes=4),
                 updated_at=now - timedelta(minutes=1),
                 started_at=now - timedelta(minutes=4),
@@ -753,12 +752,12 @@ def test_extraction_center_reconciles_stale_active_projection(monkeypatch):
         session.add(
             VideoExtractionProjection(
                 subscription_id=20,
-                group_kind='state',
-                group_value='900',
-                site='youtube.com',
-                sync_status='running',
-                display_status='running',
-                current_phase='extracting',
+                group_kind="state",
+                group_value="900",
+                site="youtube.com",
+                sync_status="running",
+                display_status="running",
+                current_phase="extracting",
                 queued_at=now - timedelta(minutes=5),
                 locked_at=now - timedelta(minutes=5),
                 pending_video_count=24,
@@ -769,24 +768,24 @@ def test_extraction_center_reconciles_stale_active_projection(monkeypatch):
                 failed_task_count=0,
                 created_at=now - timedelta(minutes=5),
                 updated_at=now - timedelta(minutes=5),
-            )
+            ),
         )
         session.commit()
 
     overview = video_extraction_center_service.get_extraction_center_overview(user_id=1)
     running_result = video_extraction_center_service.list_extraction_center_items(
         user_id=1,
-        status='running',
+        status="running",
         site=None,
-        query='Projection Drift',
+        query="Projection Drift",
         page=1,
         page_size=20,
     )
     recent_result = video_extraction_center_service.list_extraction_center_items(
         user_id=1,
-        status='recent',
+        status="recent",
         site=None,
-        query='Projection Drift',
+        query="Projection Drift",
         page=1,
         page_size=20,
     )
@@ -795,6 +794,6 @@ def test_extraction_center_reconciles_stale_active_projection(monkeypatch):
     assert overview.pending_videos == 0
     assert running_result.total == 0
     assert recent_result.total == 1
-    assert recent_result.data[0].sync_status == 'success'
+    assert recent_result.data[0].sync_status == "success"
     assert recent_result.data[0].completed_task_count == 2
 

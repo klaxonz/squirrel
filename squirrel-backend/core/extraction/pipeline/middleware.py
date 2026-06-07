@@ -1,14 +1,13 @@
-"""
-Pipeline中间件机制
+"""Pipeline中间件机制
 """
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .context import PipelineContext
     from .base import PipelineStage
+    from .context import PipelineContext
 
 logger = logging.getLogger(__name__)
 
@@ -19,16 +18,13 @@ class PipelineMiddleware(ABC):
     @abstractmethod
     def before_stage(self, context: "PipelineContext", stage: "PipelineStage") -> None:
         """Stage执行前调用"""
-        pass
 
     @abstractmethod
     def after_stage(self, context: "PipelineContext", stage: "PipelineStage") -> None:
         """Stage执行后调用"""
-        pass
 
     def on_error(self, context: "PipelineContext", stage: "PipelineStage", error: Exception) -> None:
         """Stage执行出错时调用"""
-        pass
 
 
 class LoggingMiddleware(PipelineMiddleware):
@@ -66,7 +62,7 @@ class TimingMiddleware(PipelineMiddleware):
 class MiddlewareChain:
     """中间件链"""
 
-    def __init__(self, middlewares: List[PipelineMiddleware] = None):
+    def __init__(self, middlewares: list[PipelineMiddleware] = None):
         self._middlewares = middlewares or []
 
     def add(self, middleware: PipelineMiddleware) -> "MiddlewareChain":

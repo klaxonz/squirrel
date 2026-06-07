@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Optional, Dict
 
 from core.cache import redis_client
-from .message import MqMessage
 from utils.metrics import metrics
+
+from .message import MqMessage
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +23,13 @@ class RedisStreamProducer:
         ...
 
     @staticmethod
-    def _resolve_message_trace_id(message: Dict) -> Optional[str]:
-        trace_id = message.get('trace_id')
-        if trace_id in (None, ''):
+    def _resolve_message_trace_id(message: dict) -> str | None:
+        trace_id = message.get("trace_id")
+        if trace_id in (None, ""):
             return None
         return str(trace_id)
 
-    def send(self, stream: str, message: Dict, max_retries: int = 3, approximate_maxlen: Optional[int] = 100000, trace_id: Optional[str] = None) -> str:
+    def send(self, stream: str, message: dict, max_retries: int = 3, approximate_maxlen: int | None = 100000, trace_id: str | None = None) -> str:
         if trace_id is None:
             trace_id = self._resolve_message_trace_id(message)
         if trace_id is None:
@@ -38,22 +38,22 @@ class RedisStreamProducer:
 
         payload = MqMessage(body=message, trace_id=trace_id).to_stream_fields()
         tags = {"queue": stream}
-        
+
         for attempt in range(max_retries + 1):
             try:
                 # 使用近似裁剪，避免无界增长
                 msg_id = redis_client.xadd(stream, payload, maxlen=approximate_maxlen, approximate=True)
-                
+
                 # 记录消息发送成功
                 metrics.counter("queue.messages.total", tags={**tags, "action": "publish", "status": "success"})
-                
+
                 # 更新队列深度
                 try:
                     depth = redis_client.xlen(stream)
                     metrics.gauge("queue.depth", depth, tags=tags)
                 except (ConnectionError, OSError, ValueError, TypeError):
                     pass  # 队列深度查询失败不影响主流程
-                
+
                 return msg_id  # type: ignore[return-value]
             except (ConnectionError, OSError, ValueError, TypeError) as e:
                 last_err = e

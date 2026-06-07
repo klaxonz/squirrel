@@ -9,7 +9,8 @@ Design principles:
 - VideoMeta as the primary data model
 - Composition over inheritance
 """
-from importlib.metadata import PackageNotFoundError, version as _pkg_version
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 
 
 def _detect_version() -> str:
@@ -25,10 +26,99 @@ def _detect_version() -> str:
 __version__: str = _detect_version()
 
 # Site runtime API
+# Site configuration
+from .config import (
+    get_http_headers,
+    get_login_config,
+    get_login_headers,
+    get_proxy_config,
+    get_rate_limit_config,
+    get_site_config,
+    set_site_config,
+    set_site_configs,
+)
+
+# Core interfaces and data models
+from .core import (
+    ActorMeta,
+    ExtractionResult,
+    ExtractionTask,
+    Extractor,
+    LoginStatusResult,
+    PaginatedUserSubscriptionImporter,
+    ResultHandler,
+    Subscription,
+    SubscriptionImportBatchResult,
+    SubscriptionImportItem,
+    SubscriptionMeta,
+    SubscriptionSyncContext,
+    SubscriptionSyncResult,
+    TaskPriority,
+    TaskProcessor,
+    TaskStatus,
+    UserSubscriptionImporter,
+    VideoMeta,
+)
+
+# Exceptions
+from .exceptions import (
+    AuthError,
+    ErrorCategory,
+    NetworkError,
+    NoSubtitlesError,
+    NotFoundError,
+    ParseError,
+    PluginError,
+    RateLimitError,
+    VipError,
+)
+from .extractor import (
+    VideoExtractorBase,
+    YoutubeDLExtractorBase,
+)
+
+# HTTP utilities
+from .http import (
+    RateLimit,
+    RateLimitedSession,
+    RateLimiter,
+    configure_cloudflare_bypass_client,
+    configure_rate_limit,
+    configure_rate_limit_enabled,
+    get,
+    get_http_session,
+    get_rate_limiter,
+    post,
+    request,
+    request_without_limit,
+)
+from .id_extractor import (
+    IdExtractor,
+    RegexIdExtractor,
+)
+from .importer import (
+    BaseImporter,
+    PaginatedImporter,
+)
+from .playlist_rewrite import (
+    rewrite_playlist_for_proxy,
+    rewrite_proxy_playlist_content,
+)
+from .proxy import (
+    ProxyConfigProvider,
+    ProxyDomainConfig,
+    VideoProxy,
+)
+from .proxy_helpers import (
+    build_proxy_config_values,
+    build_runtime_proxy_config,
+    safe_cookie_header_value,
+)
 from .runtime_errors import (
     RuntimeErrorCode,
     SiteRuntimeError,
 )
+from .runtime_helpers import create_site_runtime
 from .runtime_models import (
     SiteRuntimeCapability,
     SiteRuntimeHealthStatus,
@@ -42,114 +132,23 @@ from .runtime_protocol import (
     SiteRuntime,
     SiteRuntimeFactory,
 )
-from .runtime_helpers import create_site_runtime
-from .proxy_helpers import (
-    build_proxy_config_values,
-    build_runtime_proxy_config,
-    safe_cookie_header_value,
-)
-from .playlist_rewrite import (
-    rewrite_playlist_for_proxy,
-    rewrite_proxy_playlist_content,
-)
 from .subscription_helpers import (
     append_subscription_video_url,
     build_subscription_sync_result,
     resolve_subscription_limit,
 )
 
-# Core interfaces and data models
-from .core import (
-    TaskStatus,
-    TaskPriority,
-    ExtractionTask,
-    ExtractionResult,
-    VideoMeta,
-    ActorMeta,
-    SubscriptionImportItem,
-    SubscriptionImportBatchResult,
-    Extractor,
-    TaskProcessor,
-    ResultHandler,
-    Subscription,
-    UserSubscriptionImporter,
-    PaginatedUserSubscriptionImporter,
-    LoginStatusResult,
-    SubscriptionMeta,
-    SubscriptionSyncContext,
-    SubscriptionSyncResult,
-)
-
-from .extractor import (
-    VideoExtractorBase,
-    YoutubeDLExtractorBase,
-)
-from .utils import (
-    filter_cookies_to_query_string,
-    configure_cookie_domain_resolver,
-    configure_cookie_file_resolver,
-    resolve_cookie_file_path,
-)
-
-# Exceptions
-from .exceptions import (
-    ErrorCategory,
-    PluginError,
-    NetworkError,
-    RateLimitError,
-    AuthError,
-    VipError,
-    NotFoundError,
-    ParseError,
-    NoSubtitlesError,
-)
-
-# HTTP utilities
-from .http import (
-    RateLimit,
-    RateLimiter,
-    RateLimitedSession,
-    configure_rate_limit,
-    configure_rate_limit_enabled,
-    get_rate_limiter,
-    get_http_session,
-    request,
-    request_without_limit,
-    get,
-    post,
-    configure_cloudflare_bypass_client
-)
-from .ytdlp import apply_ytdlp_rate_limit
-
-# Site configuration
-from .config import (
-    set_site_config,
-    set_site_configs,
-    get_site_config,
-    get_http_headers,
-    get_login_config,
-    get_login_headers,
-    get_proxy_config,
-    get_rate_limit_config,
-)
-
 # Other plugin types (Protocol-based interfaces)
 from .subtitles import (
     SubtitlesProvider,
 )
-from .id_extractor import (
-    IdExtractor,
-    RegexIdExtractor,
+from .utils import (
+    configure_cookie_domain_resolver,
+    configure_cookie_file_resolver,
+    filter_cookies_to_query_string,
+    resolve_cookie_file_path,
 )
-from .proxy import (
-    VideoProxy,
-    ProxyConfigProvider,
-    ProxyDomainConfig,
-)
-from .importer import (
-    BaseImporter,
-    PaginatedImporter,
-)
+from .ytdlp import apply_ytdlp_rate_limit
 
 __all__ = [
     '__version__',

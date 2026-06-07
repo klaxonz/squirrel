@@ -1,4 +1,3 @@
-from typing import Optional
 
 from sqlalchemy import select
 
@@ -6,7 +5,7 @@ from core.database import get_session
 from models.links import VideoCreator
 
 
-def get_video_creator(video_id: int, creator_id: int) -> Optional[VideoCreator]:
+def get_video_creator(video_id: int, creator_id: int) -> VideoCreator | None:
     with get_session() as session:
         video_creator = session.scalars(select(VideoCreator).where(
             VideoCreator.video_id == video_id,

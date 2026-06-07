@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -26,7 +25,7 @@ PUBLIC_PATH_PREFIXES = [
 def is_public_api_path(path: str) -> bool:
     if any(path.startswith(public_path) for public_path in PUBLIC_PATH_PREFIXES):
         return True
-    if path.startswith('/api/sites/') and path.endswith('/icon'):
+    if path.startswith("/api/sites/") and path.endswith("/icon"):
         return True
     return False
 
@@ -54,14 +53,14 @@ class TokenExpiredError(AuthenticationError):
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, public_paths: List[str] = None):
+    def __init__(self, app, public_paths: list[str] = None):
         super().__init__(app)
         self.public_paths = public_paths or list(PUBLIC_PATH_PREFIXES)
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
 
-        if not path.startswith('/api') or is_public_api_path(path):
+        if not path.startswith("/api") or is_public_api_path(path):
             return await call_next(request)
 
         token = request.cookies.get(AUTH_COOKIE_NAME)

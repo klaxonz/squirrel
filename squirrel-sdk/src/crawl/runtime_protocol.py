@@ -1,7 +1,8 @@
 """Protocol definitions for site runtime V2."""
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional, Protocol, runtime_checkable
+from collections.abc import Callable
+from typing import Any, Protocol, runtime_checkable
 
 from .runtime_models import SiteRuntimeHealthStatus, SiteRuntimeInvokeResponse, SiteRuntimeManifest
 
@@ -14,7 +15,7 @@ class SiteRuntime(Protocol):
         """Return the static plugin manifest."""
         ...
 
-    def start(self, context: Optional[Dict[str, Any]] = None) -> None:
+    def start(self, context: dict[str, Any] | None = None) -> None:
         """Initialize runtime resources."""
         ...
 
@@ -26,7 +27,7 @@ class SiteRuntime(Protocol):
         """Return current runtime health."""
         ...
 
-    def invoke(self, capability: str, payload: Optional[Dict[str, Any]] = None) -> SiteRuntimeInvokeResponse:
+    def invoke(self, capability: str, payload: dict[str, Any] | None = None) -> SiteRuntimeInvokeResponse:
         """Invoke a named capability."""
         ...
 

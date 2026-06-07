@@ -1,7 +1,6 @@
 from typing import Protocol
 
-from squirrel_cf_bypass.app.core.models import ClearanceRecord
-from squirrel_cf_bypass.app.core.models import HtmlResult
+from squirrel_cf_bypass.app.core.models import ClearanceRecord, HtmlResult
 
 
 class Solver(Protocol):

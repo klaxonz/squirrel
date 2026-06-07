@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
@@ -19,24 +19,24 @@ class TaskCreateRequest(BaseModel):
     name: str = Field(..., description="任务名称", min_length=1, max_length=100)
     task_class: str = Field(..., description="任务类名", min_length=1)
     task_type: str = Field(default="user", description="任务类型")
-    description: Optional[str] = Field(None, description="任务描述")
+    description: str | None = Field(None, description="任务描述")
     interval: int = Field(default=60, ge=1, description="执行间隔数值")
     unit: str = Field(default="seconds", description="时间单位", pattern="^(seconds|minutes|hours|days)$")
     start_immediately: bool = Field(default=True, description="是否立即执行")
     max_retries: int = Field(default=3, ge=0, description="最大重试次数")
-    task_params: Dict[str, Any] = Field(default_factory=dict, description="任务参数")
+    task_params: dict[str, Any] = Field(default_factory=dict, description="任务参数")
     is_active: bool = Field(default=True, description="是否激活")
 
 
 class TaskUpdateRequest(BaseModel):
-    name: Optional[str] = Field(None, description="任务名称", min_length=1, max_length=100)
-    description: Optional[str] = Field(None, description="任务描述")
-    interval: Optional[int] = Field(None, ge=1, description="执行间隔数值")
-    unit: Optional[str] = Field(None, description="时间单位", pattern="^(seconds|minutes|hours|days)$")
-    start_immediately: Optional[bool] = Field(None, description="是否立即执行")
-    max_retries: Optional[int] = Field(None, ge=0, description="最大重试次数")
-    task_params: Optional[Dict[str, Any]] = Field(None, description="任务参数")
-    is_active: Optional[bool] = Field(None, description="是否激活")
+    name: str | None = Field(None, description="任务名称", min_length=1, max_length=100)
+    description: str | None = Field(None, description="任务描述")
+    interval: int | None = Field(None, ge=1, description="执行间隔数值")
+    unit: str | None = Field(None, description="时间单位", pattern="^(seconds|minutes|hours|days)$")
+    start_immediately: bool | None = Field(None, description="是否立即执行")
+    max_retries: int | None = Field(None, ge=0, description="最大重试次数")
+    task_params: dict[str, Any] | None = Field(None, description="任务参数")
+    is_active: bool | None = Field(None, description="是否激活")
 
 
 @router.get("/status")
@@ -55,9 +55,9 @@ def get_task_statistics():
 def get_scheduled_tasks(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(10, ge=1, le=100, description="每页数量"),
-    search: Optional[str] = Query(None, description="搜索关键词"),
-    status: Optional[str] = Query(None, description="任务状态"),
-    task_type: Optional[str] = Query(None, description="任务类型")
+    search: str | None = Query(None, description="搜索关键词"),
+    status: str | None = Query(None, description="任务状态"),
+    task_type: str | None = Query(None, description="任务类型"),
 ):
     """获取定时任务列表"""
     return response.success(ScheduledTaskService.get_task_list(
@@ -65,7 +65,7 @@ def get_scheduled_tasks(
         page_size=page_size,
         search=search,
         status=status,
-        task_type=task_type
+        task_type=task_type,
     ))
 
 
@@ -82,7 +82,7 @@ def create_task(request: TaskCreateRequest):
         start_immediately=request.start_immediately,
         max_retries=request.max_retries,
         task_params=request.task_params,
-        is_active=request.is_active
+        is_active=request.is_active,
     )
 
     if not task:
@@ -103,7 +103,7 @@ def update_task(task_id: int, request: TaskUpdateRequest):
         start_immediately=request.start_immediately,
         max_retries=request.max_retries,
         task_params=request.task_params,
-        is_active=request.is_active
+        is_active=request.is_active,
     )
 
     if not result:

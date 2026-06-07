@@ -1,12 +1,13 @@
 import logging
-from typing import Dict, Any, Optional
 from datetime import datetime
-from sqlalchemy import or_, and_, desc, func
+from typing import Any
+
+from sqlalchemy import and_, desc, func, or_
 
 from core.database import get_session
-from models.scheduled_task import ScheduledTask, TaskExecutionLog, TaskStatus, TaskType
 from core.dynamic_task_manager import dynamic_task_manager
-from services.scheduled_task_bootstrap import ensure_system_tasks, discover_task_classes
+from models.scheduled_task import ScheduledTask, TaskExecutionLog, TaskStatus, TaskType
+from services.scheduled_task_bootstrap import discover_task_classes, ensure_system_tasks
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +19,10 @@ class ScheduledTaskService:
     def get_task_list(
         page: int = 1,
         page_size: int = 10,
-        search: Optional[str] = None,
-        status: Optional[str] = None,
-        task_type: Optional[str] = None
-    ) -> Dict[str, Any]:
+        search: str | None = None,
+        status: str | None = None,
+        task_type: str | None = None,
+    ) -> dict[str, Any]:
         """获取任务列表"""
         ensure_system_tasks()
 
@@ -32,8 +33,8 @@ class ScheduledTaskService:
                 db_tasks = db_tasks.filter(
                     or_(
                         ScheduledTask.name.ilike(f"%{search}%"),
-                        ScheduledTask.description.ilike(f"%{search}%")
-                    )
+                        ScheduledTask.description.ilike(f"%{search}%"),
+                    ),
                 )
 
             if status:
@@ -56,7 +57,7 @@ class ScheduledTaskService:
             "page": page,
             "page_size": page_size,
             "total": total,
-            "data": paginated_tasks
+            "data": paginated_tasks,
         }
 
     @staticmethod
@@ -64,15 +65,15 @@ class ScheduledTaskService:
         name: str,
         task_class: str,
         task_type: str = TaskType.USER.value,
-        description: Optional[str] = None,
+        description: str | None = None,
         interval: int = 60,
-        unit: str = 'seconds',
+        unit: str = "seconds",
         start_immediately: bool = True,
         max_retries: int = 3,
-        task_params: Optional[Dict[str, Any]] = None,
+        task_params: dict[str, Any] | None = None,
         is_active: bool = True,
-        created_by: Optional[str] = None
-    ) -> Optional[ScheduledTask]:
+        created_by: str | None = None,
+    ) -> ScheduledTask | None:
         """创建新任务"""
         try:
             discover_task_classes()
@@ -93,7 +94,7 @@ class ScheduledTaskService:
                 task_class=task_class,
                 task_params=task_params or {},
                 created_by=created_by,
-                updated_by=created_by
+                updated_by=created_by,
             )
 
             with get_session() as session:
@@ -111,15 +112,15 @@ class ScheduledTaskService:
     @staticmethod
     def update_task(
         task_id: int,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        interval: Optional[int] = None,
-        unit: Optional[str] = None,
-        start_immediately: Optional[bool] = None,
-        max_retries: Optional[int] = None,
-        task_params: Optional[Dict[str, Any]] = None,
-        is_active: Optional[bool] = None,
-        updated_by: Optional[str] = None
+        name: str | None = None,
+        description: str | None = None,
+        interval: int | None = None,
+        unit: str | None = None,
+        start_immediately: bool | None = None,
+        max_retries: int | None = None,
+        task_params: dict[str, Any] | None = None,
+        is_active: bool | None = None,
+        updated_by: str | None = None,
     ) -> bool:
         """更新任务配置"""
         try:
@@ -184,25 +185,25 @@ class ScheduledTaskService:
             return False
 
     @staticmethod
-    def enable_task(task_id: int, updated_by: Optional[str] = None) -> bool:
+    def enable_task(task_id: int, updated_by: str | None = None) -> bool:
         """启用任务"""
         return ScheduledTaskService.update_task(
             task_id=task_id,
             is_active=True,
-            updated_by=updated_by
+            updated_by=updated_by,
         )
 
     @staticmethod
-    def disable_task(task_id: int, updated_by: Optional[str] = None) -> bool:
+    def disable_task(task_id: int, updated_by: str | None = None) -> bool:
         """禁用任务"""
         return ScheduledTaskService.update_task(
             task_id=task_id,
             is_active=False,
-            updated_by=updated_by
+            updated_by=updated_by,
         )
 
     @staticmethod
-    def execute_task_now(task_id: int, executed_by: Optional[str] = None) -> bool:
+    def execute_task_now(task_id: int, executed_by: str | None = None) -> bool:
         """立即执行任务"""
         try:
             # 记录执行请求
@@ -216,8 +217,8 @@ class ScheduledTaskService:
                     task_id=task_id,
                     task_name=task_config.name,
                     started_at=datetime.now(),
-                    status='manual_trigger',
-                    executed_by=executed_by or 'manual'
+                    status="manual_trigger",
+                    executed_by=executed_by or "manual",
                 )
                 session.add(execution_log)
                 session.commit()
@@ -225,34 +226,34 @@ class ScheduledTaskService:
             return True
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error(f"Failed to execute task {task_id} now: {e}")    
+            logger.error(f"Failed to execute task {task_id} now: {e}")
             return False
 
     @staticmethod
-    def get_available_task_classes() -> Dict[str, Any]:
+    def get_available_task_classes() -> dict[str, Any]:
         """获取可用的任务类"""
         discover_task_classes()
         return dynamic_task_manager.task_factory.get_available_task_classes()
 
     @staticmethod
-    def get_task_statistics() -> Dict[str, Any]:
+    def get_task_statistics() -> dict[str, Any]:
         """获取任务统计信息"""
         ensure_system_tasks()
 
         with get_session() as session:
             db_total_tasks = session.query(ScheduledTask).count()
             db_active_tasks = session.query(ScheduledTask).filter(
-                and_(ScheduledTask.is_active == True, ScheduledTask.status == TaskStatus.ENABLED.value)
+                and_(ScheduledTask.is_active, ScheduledTask.status == TaskStatus.ENABLED.value),
             ).count()
             running_tasks = session.query(ScheduledTask).filter(
-                ScheduledTask.status == TaskStatus.RUNNING.value
+                ScheduledTask.status == TaskStatus.RUNNING.value,
             ).count()
             error_tasks = session.query(ScheduledTask).filter(
-                ScheduledTask.status == TaskStatus.ERROR.value
+                ScheduledTask.status == TaskStatus.ERROR.value,
             ).count()
 
             recent_executions = session.query(TaskExecutionLog).filter(
-                TaskExecutionLog.started_at >= datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                TaskExecutionLog.started_at >= datetime.now().replace(hour=0, minute=0, second=0, microsecond=0),
             ).count()
 
             return {
@@ -260,6 +261,6 @@ class ScheduledTaskService:
                 "active_tasks": db_active_tasks,
                 "running_tasks": running_tasks,
                 "error_tasks": error_tasks,
-                "today_executions": recent_executions
+                "today_executions": recent_executions,
             }
 

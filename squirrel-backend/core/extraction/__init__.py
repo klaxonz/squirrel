@@ -1,5 +1,4 @@
-"""
-数据提取核心模块
+"""数据提取核心模块
 
 重构后的数据爬取框架，提供了统一的接口和可扩展的架构。
 
@@ -14,6 +13,7 @@
 """
 
 
+from .base import BaseExtractor, BaseResultHandler, BaseTaskProcessor
 from .contracts import (
     ExtractionResult,
     ExtractionTask,
@@ -23,40 +23,36 @@ from .contracts import (
     TaskProcessor,
     TaskStatus,
 )
-from .runtime_payloads import RuntimeActorData, RuntimeVideoData
-from .base import BaseExtractor, BaseTaskProcessor, BaseResultHandler
-
 from .factory import (
     ExtractorFactory,
     get_extractor_factory,
     reset_factory,
 )
-
+from .handlers.video_handler import VideoExtractionHandler
+from .runtime_payloads import RuntimeActorData, RuntimeVideoData
 from .task_manager import TaskManager
 
-from .handlers.video_handler import VideoExtractionHandler
-
 __all__ = [
-    'TaskStatus',
-    'TaskPriority',
-    'ExtractionTask',
-    'ExtractionResult',
-    'Extractor',
-    'TaskProcessor',
-    'ResultHandler',
-    'RuntimeVideoData',
-    'RuntimeActorData',
+    "TaskStatus",
+    "TaskPriority",
+    "ExtractionTask",
+    "ExtractionResult",
+    "Extractor",
+    "TaskProcessor",
+    "ResultHandler",
+    "RuntimeVideoData",
+    "RuntimeActorData",
     # 基础类
-    'BaseExtractor', 'BaseTaskProcessor', 'BaseResultHandler',
+    "BaseExtractor", "BaseTaskProcessor", "BaseResultHandler",
 
     # 工厂和注册
-    'ExtractorFactory',
-    'get_extractor_factory',
-    'reset_factory',
+    "ExtractorFactory",
+    "get_extractor_factory",
+    "reset_factory",
 
     # 任务管理
-    'TaskManager',
+    "TaskManager",
 
     # 处理器
-    'VideoExtractionHandler',
+    "VideoExtractionHandler",
 ]

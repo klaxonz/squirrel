@@ -1,24 +1,33 @@
 import logging
-from fastapi import Query, APIRouter, Request, HTTPException, Depends
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
-import common.response as response
+
+from common import response
 from models.user import User
-from schemas.video.request.video import RemoteVideoSaveRequest, SortBy, VideoCategory, YesNoAll, TimeRange, DurationFilter, ContentType
+from schemas.video.request.video import (
+    ContentType,
+    DurationFilter,
+    RemoteVideoSaveRequest,
+    SortBy,
+    TimeRange,
+    VideoCategory,
+    YesNoAll,
+)
 from services import video_service
 from services.video_subtitle_service import SubtitleErrorCode, SubtitleServiceError, fetch_video_subtitles
-from typing import List
-from utils.site_catalog import SiteCatalog
 from utils.jwt_helper import get_current_user
+from utils.site_catalog import SiteCatalog
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix='/api/video', tags=['频道视频接口'])
+router = APIRouter(prefix="/api/video", tags=["频道视频接口"])
 
 
 @router.post("/remote-save")
 def save_remote_video(
         data: RemoteVideoSaveRequest,
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
 ):
     try:
         video = video_service.save_remote_video(data.model_dump())
@@ -34,7 +43,7 @@ def save_remote_video(
 @router.get("/detail")
 def get_video(
         video_id: int = Query(None, description="视频ID"),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
 ):
     video = video_service.get_video(current_user.id, video_id)
     return response.success(video)
@@ -55,16 +64,16 @@ def get_videos(
         time_range: TimeRange = Query(TimeRange.ALL, description="时间范围: all|today|week|month|year"),
         duration: DurationFilter = Query(DurationFilter.ALL, description="时长: all|short|medium|long"),
         content_type: ContentType = Query(ContentType.ALL, description="内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR"),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
 ):
 
-    domains_list: List[str] | None = None
+    domains_list: list[str] | None = None
     if site:
         resolved = SiteCatalog.resolve_domains(site)
-        domains_list = resolved if resolved else None
+        domains_list = resolved or None
 
-    if hasattr(current_user, '_cached_config'):
-        logger.info(f"[Performance] Route: Using cached user config")
+    if hasattr(current_user, "_cached_config"):
+        logger.info("[Performance] Route: Using cached user config")
 
     videos, total_counts = video_service.list_videos(
         current_user.id, query, subscription_id, category.value, sort_by.value, nsfw.value, domains_list, page, page_size,
@@ -75,7 +84,7 @@ def get_videos(
         "total": total_counts,
         "page": page,
         "pageSize": page_size,
-        "data": videos
+        "data": videos,
     })
 
     return result
@@ -91,12 +100,12 @@ def get_random_video(
         time_range: TimeRange = Query(TimeRange.ALL, description="时间范围: all|today|week|month|year"),
         duration: DurationFilter = Query(DurationFilter.ALL, description="时长: all|short|medium|long"),
         content_type: ContentType = Query(ContentType.ALL, description="内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR"),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
 ):
-    domains_list: List[str] | None = None
+    domains_list: list[str] | None = None
     if site:
         resolved = SiteCatalog.resolve_domains(site)
-        domains_list = resolved if resolved else None
+        domains_list = resolved or None
 
     video = video_service.get_random_video(
         current_user.id,
@@ -131,7 +140,7 @@ def get_video_subtitles(
         video_id: int = Query(..., description="视频ID"),
         lang: str | None = Query(None, description="字幕语言代码；留空时走站点默认值"),
         fmt: str = Query("srt", description="返回格式：支持 srt、vtt"),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
 ):
     try:
         subtitle_file = fetch_video_subtitles(video_id, lang=lang, fmt=fmt)
@@ -139,8 +148,8 @@ def get_video_subtitles(
             content=subtitle_file.content,
             media_type=subtitle_file.media_type,
             headers={
-                "Content-Disposition": f"inline; filename=\"{subtitle_file.filename}\""
-            }
+                "Content-Disposition": f'inline; filename="{subtitle_file.filename}"',
+            },
         )
     except SubtitleServiceError as exc:
         if exc.code in {SubtitleErrorCode.VIDEO_NOT_FOUND, SubtitleErrorCode.SUBTITLES_NOT_AVAILABLE}:
@@ -148,5 +157,5 @@ def get_video_subtitles(
         raise HTTPException(status_code=400, detail=exc.message)
     except Exception:
         # API boundary -- convert to HTTP error response
-        logger.exception('Subtitles fetch failed')
+        logger.exception("Subtitles fetch failed")
         raise HTTPException(status_code=500, detail="Server error")

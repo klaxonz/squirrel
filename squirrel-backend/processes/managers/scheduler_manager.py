@@ -1,23 +1,23 @@
 import logging
-from threading import Lock, Thread
-from typing import Optional
 from datetime import datetime
-from schedule.schedule import Scheduler
-from core.dynamic_task_manager import dynamic_task_manager
+from threading import Lock, Thread
+
 from core.database import get_session
+from core.dynamic_task_manager import dynamic_task_manager
 from models.scheduler_status import SchedulerStatus
+from schedule.schedule import Scheduler
 from services import outbox_event_service
 from services.scheduled_task_bootstrap import ensure_system_tasks
 
 logger = logging.getLogger(__name__)
 
 # module-scope state
-_scheduler: Optional[Scheduler] = None
+_scheduler: Scheduler | None = None
 _scheduler_running: bool = False
 _scheduler_lock = Lock()
-_heartbeat_thread: Optional[Thread] = None
+_heartbeat_thread: Thread | None = None
 _heartbeat_running: bool = False
-_outbox_listener_thread: Optional[Thread] = None
+_outbox_listener_thread: Thread | None = None
 _outbox_listener_stop_event = None
 _task_sync_lock = Lock()
 _task_fingerprints: dict[int, tuple] = {}
@@ -28,11 +28,11 @@ def _update_scheduler_status(is_running: bool, job_count: int = 0, error_message
     try:
         with get_session() as session:
             status = session.query(SchedulerStatus).filter(
-                SchedulerStatus.process_name == 'scheduler'
+                SchedulerStatus.process_name == "scheduler",
             ).first()
 
             if not status:
-                status = SchedulerStatus(process_name='scheduler')
+                status = SchedulerStatus(process_name="scheduler")
                 session.add(status)
 
             status.is_running = is_running
@@ -75,30 +75,29 @@ def _sync_scheduled_tasks() -> None:
 
     global _task_fingerprints
 
-    with _task_sync_lock:
-        with get_session() as session:
-            tasks = session.query(ScheduledTask).all()
-            current_ids = set()
+    with _task_sync_lock, get_session() as session:
+        tasks = session.query(ScheduledTask).all()
+        current_ids = set()
 
-            for task in tasks:
-                current_ids.add(task.id)
-                fingerprint = _get_task_fingerprint(task)
-                prev_fingerprint = _task_fingerprints.get(task.id)
+        for task in tasks:
+            current_ids.add(task.id)
+            fingerprint = _get_task_fingerprint(task)
+            prev_fingerprint = _task_fingerprints.get(task.id)
 
-                if prev_fingerprint is None:
-                    if task.is_active:
-                        dynamic_task_manager.add_task(task)
-                    _task_fingerprints[task.id] = fingerprint
-                    continue
+            if prev_fingerprint is None:
+                if task.is_active:
+                    dynamic_task_manager.add_task(task)
+                _task_fingerprints[task.id] = fingerprint
+                continue
 
-                if fingerprint != prev_fingerprint:
-                    dynamic_task_manager.update_task(task)
-                    _task_fingerprints[task.id] = fingerprint
+            if fingerprint != prev_fingerprint:
+                dynamic_task_manager.update_task(task)
+                _task_fingerprints[task.id] = fingerprint
 
-            removed_ids = set(_task_fingerprints.keys()) - current_ids
-            for task_id in removed_ids:
-                dynamic_task_manager.remove_task(task_id)
-                del _task_fingerprints[task_id]
+        removed_ids = set(_task_fingerprints.keys()) - current_ids
+        for task_id in removed_ids:
+            dynamic_task_manager.remove_task(task_id)
+            del _task_fingerprints[task_id]
 
 def _consume_manual_triggers() -> None:
     from models.scheduled_task import TaskExecutionLog
@@ -106,7 +105,7 @@ def _consume_manual_triggers() -> None:
     pending: list[tuple[int, int, str]] = []
     with get_session() as session:
         logs = session.query(TaskExecutionLog).filter(
-            TaskExecutionLog.status == "manual_trigger"
+            TaskExecutionLog.status == "manual_trigger",
         ).order_by(TaskExecutionLog.started_at).limit(20).all()
 
         for log in logs:
@@ -128,7 +127,7 @@ def _heartbeat_worker() -> None:
         try:
             job_count = 0
             if _scheduler and _scheduler_running:
-                job_count = len(_scheduler.jobs) if hasattr(_scheduler, 'jobs') else 0
+                job_count = len(_scheduler.jobs) if hasattr(_scheduler, "jobs") else 0
 
             _update_scheduler_status(is_running=_scheduler_running, job_count=job_count)
             if _scheduler_running:
@@ -160,7 +159,7 @@ def scheduler_start() -> None:
         _scheduler = scheduler
         _scheduler_running = True
 
-        job_count = len(scheduler.jobs) if hasattr(scheduler, 'jobs') else 0
+        job_count = len(scheduler.jobs) if hasattr(scheduler, "jobs") else 0
 
         _update_scheduler_status(is_running=True, job_count=job_count)
 
@@ -214,7 +213,7 @@ def scheduler_status() -> dict:
     try:
         with get_session() as session:
             status = session.query(SchedulerStatus).filter(
-                SchedulerStatus.process_name == 'scheduler'
+                SchedulerStatus.process_name == "scheduler",
             ).first()
 
             if not status:
@@ -222,7 +221,7 @@ def scheduler_status() -> dict:
                     "running": False,
                     "job_count": 0,
                     "last_heartbeat": None,
-                    "started_at": None
+                    "started_at": None,
                 }
 
             heartbeat_age = (datetime.now() - status.last_heartbeat).total_seconds()
@@ -233,12 +232,12 @@ def scheduler_status() -> dict:
                 "job_count": status.job_count,
                 "last_heartbeat": status.last_heartbeat.isoformat() if status.last_heartbeat else None,
                 "started_at": status.started_at.isoformat() if status.started_at else None,
-                "heartbeat_age": heartbeat_age
+                "heartbeat_age": heartbeat_age,
             }
     except (ValueError, TypeError, AttributeError, KeyError) as e:
         logger.error(f"Failed to get scheduler status: {e}")
         return {
             "running": False,
             "job_count": 0,
-            "error": str(e)
+            "error": str(e),
         }

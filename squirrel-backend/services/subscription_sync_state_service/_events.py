@@ -1,7 +1,6 @@
 ﻿from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -32,15 +31,15 @@ def _append_recovery_run_events(
             run_id=run_projection.run_id,
             request_id=run_projection.request_id,
             trace_id=run_projection.trace_id,
-            trigger=run_projection.trigger or 'system',
+            trigger=run_projection.trigger or "system",
             event_type=event_type,
             event_phase=event_phase,
             event_status=event_status,
             payload={
-                'reason': reason,
-                'error_message': reason,
-                'pending_video_count': state.pending_video_count,
-                'next_sync_at': state.next_sync_at,
+                "reason": reason,
+                "error_message": reason,
+                "pending_video_count": state.pending_video_count,
+                "next_sync_at": state.next_sync_at,
             },
             message=reason,
             occurred_at=occurred_at,
@@ -52,7 +51,7 @@ def _append_recovery_run_events(
         sync_state_id=state.id,
         site=state.site,
         sync_mode=state.sync_mode,
-        trigger='system',
+        trigger="system",
         occurred_at=occurred_at,
     )
     append_event(
@@ -62,11 +61,11 @@ def _append_recovery_run_events(
             sync_state_id=state.id,
             site=state.site,
             sync_mode=state.sync_mode,
-            trigger='system',
+            trigger="system",
             event_type=SyncEventType.RUN_CREATED,
             event_phase=SyncPhase.INIT,
             event_status=SyncRunStatus.CREATED,
-            payload={'pending_video_count': state.pending_video_count},
+            payload={"pending_video_count": state.pending_video_count},
             occurred_at=occurred_at,
         ),
         session=session,
@@ -78,15 +77,15 @@ def _append_recovery_run_events(
             sync_state_id=state.id,
             site=state.site,
             sync_mode=state.sync_mode,
-            trigger='system',
+            trigger="system",
             event_type=event_type,
             event_phase=event_phase,
             event_status=event_status,
             payload={
-                'reason': reason,
-                'error_message': reason,
-                'pending_video_count': state.pending_video_count,
-                'next_sync_at': state.next_sync_at,
+                "reason": reason,
+                "error_message": reason,
+                "pending_video_count": state.pending_video_count,
+                "next_sync_at": state.next_sync_at,
             },
             message=reason,
             occurred_at=occurred_at,
@@ -103,7 +102,7 @@ def _append_terminal_reconcile_run_events(
     event_phase: str,
     event_status: str,
     reason: str,
-    error_message: Optional[str],
+    error_message: str | None,
     occurred_at: datetime,
 ) -> None:
     run_projection = _get_latest_state_run_projection(session, state)
@@ -115,17 +114,17 @@ def _append_terminal_reconcile_run_events(
             run_id=run_projection.run_id,
             request_id=run_projection.request_id,
             trace_id=run_projection.trace_id,
-            trigger=run_projection.trigger or 'system',
+            trigger=run_projection.trigger or "system",
             event_type=event_type,
             event_phase=event_phase,
             event_status=event_status,
             payload={
-                'reason': reason,
-                'error_message': error_message,
-                'failure_count': state.failure_count,
-                'pending_video_count': state.pending_video_count,
-                'next_sync_at': state.next_sync_at,
-                'duration_ms': int((occurred_at - started_at).total_seconds() * 1000) if started_at else 0,
+                "reason": reason,
+                "error_message": error_message,
+                "failure_count": state.failure_count,
+                "pending_video_count": state.pending_video_count,
+                "next_sync_at": state.next_sync_at,
+                "duration_ms": int((occurred_at - started_at).total_seconds() * 1000) if started_at else 0,
             },
             message=error_message or reason,
             occurred_at=occurred_at,
@@ -137,7 +136,7 @@ def _append_terminal_reconcile_run_events(
         sync_state_id=state.id,
         site=state.site,
         sync_mode=state.sync_mode,
-        trigger='system',
+        trigger="system",
         occurred_at=occurred_at,
     )
     append_event(
@@ -147,11 +146,11 @@ def _append_terminal_reconcile_run_events(
             sync_state_id=state.id,
             site=state.site,
             sync_mode=state.sync_mode,
-            trigger='system',
+            trigger="system",
             event_type=SyncEventType.RUN_CREATED,
             event_phase=SyncPhase.INIT,
             event_status=SyncRunStatus.CREATED,
-            payload={'pending_video_count': state.pending_video_count},
+            payload={"pending_video_count": state.pending_video_count},
             occurred_at=occurred_at,
         ),
         session=session,
@@ -165,17 +164,17 @@ def _append_terminal_reconcile_run_events(
             sync_state_id=state.id,
             site=state.site,
             sync_mode=state.sync_mode,
-            trigger='system',
+            trigger="system",
             event_type=event_type,
             event_phase=event_phase,
             event_status=event_status,
             payload={
-                'reason': reason,
-                'error_message': error_message,
-                'failure_count': state.failure_count,
-                'pending_video_count': state.pending_video_count,
-                'next_sync_at': state.next_sync_at,
-                'duration_ms': int((occurred_at - started_at).total_seconds() * 1000) if started_at else 0,
+                "reason": reason,
+                "error_message": error_message,
+                "failure_count": state.failure_count,
+                "pending_video_count": state.pending_video_count,
+                "next_sync_at": state.next_sync_at,
+                "duration_ms": int((occurred_at - started_at).total_seconds() * 1000) if started_at else 0,
             },
             message=error_message or reason,
             occurred_at=occurred_at,
@@ -188,16 +187,16 @@ def _append_state_event(
     session: Session,
     *,
     state: SubscriptionSyncState,
-    run_id: Optional[str],
-    request_id: Optional[str],
-    trace_id: Optional[str],
-    trigger: Optional[str],
+    run_id: str | None,
+    request_id: str | None,
+    trace_id: str | None,
+    trigger: str | None,
     event_type: str,
-    event_phase: Optional[str],
-    event_status: Optional[str],
-    payload: Optional[dict] = None,
-    message: Optional[str] = None,
-    occurred_at: Optional[datetime] = None,
+    event_phase: str | None,
+    event_status: str | None,
+    payload: dict | None = None,
+    message: str | None = None,
+    occurred_at: datetime | None = None,
 ) -> None:
     if not run_id:
         return
@@ -225,7 +224,7 @@ def _append_state_event(
 def _get_latest_state_run_projection(
     session: Session,
     state: SubscriptionSyncState,
-) -> Optional[SubscriptionSyncRunProjection]:
+) -> SubscriptionSyncRunProjection | None:
     try:
         return session.execute(
             select(SubscriptionSyncRunProjection)
@@ -237,7 +236,7 @@ def _get_latest_state_run_projection(
                 SubscriptionSyncSubscriptionProjection.subscription_id == state.subscription_id,
                 SubscriptionSyncRunProjection.sync_state_id == state.id,
             )
-            .limit(1)
+            .limit(1),
         ).scalar_one_or_none()
     except SQLAlchemyError:
         return None

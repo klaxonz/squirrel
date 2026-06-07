@@ -1,16 +1,13 @@
+import json
 import logging
 import threading
-import json
-from typing import Dict, Any, List, Optional
+from typing import Any
 
-from sqlalchemy import select
-
+from common import constants
 from core.database import get_session
-from models.links import UserSubscription
 from models.message import Message
 from models.subscription import Subscription
-from services import user_video_feed_service
-from services import subscription_sync_state_service
+from queues.producer import RedisStreamProducer
 from services.subscription_crud_service import (
     get_active_user_subscription_by_url,
     get_active_user_subscription_url_map,
@@ -20,8 +17,8 @@ from services.subscription_crud_service import (
 )
 from services.subscription_manage_service import (
     create_subscription,
-    restore_subscription,
     list_user_ids,
+    restore_subscription,
 )
 from services.subscription_runtime_models import (
     SubscriptionImportBatchResult,
@@ -32,9 +29,7 @@ from site_runtimes.gateway import SiteRuntimeGateway
 from site_runtimes.models import SiteRuntimeSnapshot
 from site_runtimes.ports import get_runtime_gateway, get_runtime_snapshot
 from utils.site_catalog import SiteCatalog
-from utils.url_helper import extract_top_level_domain, get_site_from_url
-from common import constants
-from queues.producer import RedisStreamProducer
+from utils.url_helper import extract_top_level_domain
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +37,7 @@ logger = logging.getLogger(__name__)
 def get_runtime_supported_sites(
     capability: str,
     snapshot: SiteRuntimeSnapshot | None = None,
-) -> List[str]:
+) -> list[str]:
     snapshot = snapshot or get_runtime_snapshot()
     return sorted({
         registration.site_name
@@ -51,10 +46,10 @@ def get_runtime_supported_sites(
     })
 
 
-def get_enabled_runtime_import_sites() -> List[str]:
+def get_enabled_runtime_import_sites() -> list[str]:
     return [
         site
-        for site in get_runtime_supported_sites('import_subscriptions')
+        for site in get_runtime_supported_sites("import_subscriptions")
         if SiteCatalog.is_site_enabled(site=site)
     ]
 
@@ -67,26 +62,26 @@ def _load_runtime_subscription_meta(
     domain = extract_top_level_domain(url)
     parsed_url = urlparse(url)
     payload = {
-        'url': url,
-        'domain': domain or parsed_url.netloc.lower().split(':')[0],
+        "url": url,
+        "domain": domain or parsed_url.netloc.lower().split(":")[0],
     }
     runtime_gateway = gateway or get_runtime_gateway()
     response = runtime_gateway.invoke(
-        'resolve_subscription',
+        "resolve_subscription",
         payload=payload,
         domain=domain or None,
     )
     if not response.ok:
-        message = response.error.message if response.error else f'Plugin subscription resolution failed for url: {url}'
+        message = response.error.message if response.error else f"Plugin subscription resolution failed for url: {url}"
         raise ValueError(message)
 
     if not isinstance(response.data, dict):
-        raise ValueError(f'Plugin resolve_subscription payload must be an object for url: {url}')
+        raise ValueError(f"Plugin resolve_subscription payload must be an object for url: {url}")
 
     return SubscriptionMeta.from_dict(response.data)
 
 
-def _dedupe_import_items(subscriptions: List[SubscriptionImportItem]) -> List[SubscriptionImportItem]:
+def _dedupe_import_items(subscriptions: list[SubscriptionImportItem]) -> list[SubscriptionImportItem]:
     seen_urls = set()
     result = []
     for sub in subscriptions:
@@ -100,38 +95,38 @@ def _dedupe_import_items(subscriptions: List[SubscriptionImportItem]) -> List[Su
 def _load_runtime_import_batch(
     site_name: str,
     *,
-    cursor_payload: Optional[Dict[str, Any]] = None,
-    limit: Optional[int] = None,
+    cursor_payload: dict[str, Any] | None = None,
+    limit: int | None = None,
     gateway: SiteRuntimeGateway | None = None,
 ) -> SubscriptionImportBatchResult:
-    payload: Dict[str, Any] = {}
+    payload: dict[str, Any] = {}
     if cursor_payload:
-        payload['cursor_payload'] = dict(cursor_payload)
+        payload["cursor_payload"] = dict(cursor_payload)
     if limit is not None:
-        payload['limit'] = limit
+        payload["limit"] = limit
 
     runtime_gateway = gateway or get_runtime_gateway()
     response = runtime_gateway.invoke(
-        'import_subscriptions',
+        "import_subscriptions",
         payload=payload or None,
         site_name=site_name,
     )
     if not response.ok:
-        message = response.error.message if response.error else f'Plugin import failed for site: {site_name}'
+        message = response.error.message if response.error else f"Plugin import failed for site: {site_name}"
         raise ValueError(message)
 
     payload = response.data
     if not isinstance(payload, dict):
-        raise ValueError(f'Plugin import payload must be an object for site: {site_name}')
+        raise ValueError(f"Plugin import payload must be an object for site: {site_name}")
 
     batch = SubscriptionImportBatchResult.from_dict(payload)
     batch.items = _dedupe_import_items(batch.items)
     return batch
 
 
-def _load_runtime_import_items(site_name: str) -> List[SubscriptionImportItem]:
-    items: List[SubscriptionImportItem] = []
-    cursor_payload: Optional[Dict[str, Any]] = None
+def _load_runtime_import_items(site_name: str) -> list[SubscriptionImportItem]:
+    items: list[SubscriptionImportItem] = []
+    cursor_payload: dict[str, Any] | None = None
 
     while True:
         batch = _load_runtime_import_batch(
@@ -167,9 +162,9 @@ def preview_user_subscriptions(
     site_name: str,
     user_id: int,
     *,
-    cursor_payload: Optional[Dict[str, Any]] = None,
-    limit: Optional[int] = None,
-) -> Dict[str, Any]:
+    cursor_payload: dict[str, Any] | None = None,
+    limit: int | None = None,
+) -> dict[str, Any]:
     try:
         import_batch = _load_runtime_import_batch(
             site_name,
@@ -194,15 +189,15 @@ def preview_user_subscriptions(
             preview_subscriptions.append(data)
 
         return {
-            'site': site_name,
-            'total': import_batch.total_available if import_batch.total_available is not None else len(subscriptions),
-            'loaded': len(subscriptions),
-            'imported': imported_count,
-            'not_imported': len(subscriptions) - imported_count,
-            'subscriptions': preview_subscriptions,
-            'has_more': import_batch.has_more,
-            'cursor_payload': import_batch.cursor_payload,
-            'stop_reason': import_batch.stop_reason,
+            "site": site_name,
+            "total": import_batch.total_available if import_batch.total_available is not None else len(subscriptions),
+            "loaded": len(subscriptions),
+            "imported": imported_count,
+            "not_imported": len(subscriptions) - imported_count,
+            "subscriptions": preview_subscriptions,
+            "has_more": import_batch.has_more,
+            "cursor_payload": import_batch.cursor_payload,
+            "stop_reason": import_batch.stop_reason,
         }
 
     except Exception as e:  # API boundary — re-raise after logging
@@ -210,7 +205,7 @@ def preview_user_subscriptions(
         raise
 
 
-def _enqueue_subscriptions_async(subscriptions: List[SubscriptionImportItem], user_id: int, site_name: str):
+def _enqueue_subscriptions_async(subscriptions: list[SubscriptionImportItem], user_id: int, site_name: str):
     try:
         enqueued = 0
         producer = RedisStreamProducer()
@@ -223,7 +218,7 @@ def _enqueue_subscriptions_async(subscriptions: List[SubscriptionImportItem], us
                         "url": url,
                         "name": sub.name,
                         "avatar": sub.avatar,
-                        "user_id": user_id
+                        "user_id": user_id,
                     }
                     message = Message(body=json.dumps(task))
                     session.add(message)
@@ -247,11 +242,11 @@ def _enqueue_subscriptions_async(subscriptions: List[SubscriptionImportItem], us
 def import_user_subscriptions(
     site_name: str,
     user_id: int,
-    selected_urls: Optional[List[str]] = None,
+    selected_urls: list[str] | None = None,
     *,
     use_background_thread: bool = True,
     respect_manual_unsubscribe: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     try:
         if selected_urls is not None:
             subscriptions = _dedupe_import_items([
@@ -283,7 +278,7 @@ def import_user_subscriptions(
                 thread = threading.Thread(
                     target=_enqueue_subscriptions_async,
                     args=(to_import, user_id, site_name),
-                    daemon=True
+                    daemon=True,
                 )
                 thread.start()
                 logger.info(f"Started background thread to enqueue {len(to_import)} subscriptions")
@@ -294,10 +289,10 @@ def import_user_subscriptions(
             logger.info("No new subscriptions to import")
 
         return {
-            'total': len(to_import),
-            'found': found_total,
-            'selected': selected_total,
-            'skipped': selected_total - len(to_import)
+            "total": len(to_import),
+            "found": found_total,
+            "selected": selected_total,
+            "skipped": selected_total - len(to_import),
         }
 
     except Exception as e:  # API boundary — re-raise after logging
@@ -307,18 +302,18 @@ def import_user_subscriptions(
 
 def auto_import_missing_subscriptions(
     *,
-    user_ids: Optional[List[int]] = None,
-    site_names: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    user_ids: list[int] | None = None,
+    site_names: list[str] | None = None,
+) -> dict[str, Any]:
     resolved_user_ids = list(dict.fromkeys(user_ids or list_user_ids()))
     resolved_site_names = list(dict.fromkeys(site_names or get_enabled_runtime_import_sites()))
 
     summary = {
-        'users': len(resolved_user_ids),
-        'sites': len(resolved_site_names),
-        'imported': 0,
-        'skipped': 0,
-        'failed': 0,
+        "users": len(resolved_user_ids),
+        "sites": len(resolved_site_names),
+        "imported": 0,
+        "skipped": 0,
+        "failed": 0,
     }
 
     if not resolved_user_ids or not resolved_site_names:
@@ -338,10 +333,10 @@ def auto_import_missing_subscriptions(
                     use_background_thread=False,
                     respect_manual_unsubscribe=True,
                 )
-                summary['imported'] += int(result.get('total') or 0)
-                summary['skipped'] += int(result.get('skipped') or 0)
+                summary["imported"] += int(result.get("total") or 0)
+                summary["skipped"] += int(result.get("skipped") or 0)
             except Exception as exc:  # auto-import boundary — count failure and continue
-                summary['failed'] += 1
+                summary["failed"] += 1
                 logger.error(
                     "Automatic subscription import failed for user_id=%s site=%s: %s",
                     user_id,
@@ -352,10 +347,10 @@ def auto_import_missing_subscriptions(
 
     logger.info(
         "Automatic subscription import completed: users=%s, sites=%s, imported=%s, skipped=%s, failed=%s",
-        summary['users'],
-        summary['sites'],
-        summary['imported'],
-        summary['skipped'],
-        summary['failed'],
+        summary["users"],
+        summary["sites"],
+        summary["imported"],
+        summary["skipped"],
+        summary["failed"],
     )
     return summary

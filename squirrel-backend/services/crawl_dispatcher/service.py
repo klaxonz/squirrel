@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import case, func, literal, or_, select
 from sqlalchemy.orm import Session
@@ -9,15 +9,15 @@ from sqlalchemy.orm import Session
 from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_task import CrawlTask
 from services.crawl_dispatcher.policy import CrawlDispatcherPolicy
-from services.crawl_tasks.models import CrawlTaskStatus
 from services.crawl_tasks import service as crawl_task_service
+from services.crawl_tasks.models import CrawlTaskStatus
 
 
 class CrawlDispatcherService:
-    def __init__(self, *, policy: Optional[CrawlDispatcherPolicy] = None) -> None:
+    def __init__(self, *, policy: CrawlDispatcherPolicy | None = None) -> None:
         self.policy = policy or CrawlDispatcherPolicy.from_settings()
 
-    def claim_next(self, *, worker_id: str, now: Optional[datetime] = None, lease_seconds: int = 60) -> Optional[CrawlTask]:
+    def claim_next(self, *, worker_id: str, now: datetime | None = None, lease_seconds: int = 60) -> CrawlTask | None:
         now = now or datetime.now()
         with crawl_task_service.get_session() as session:
             candidate_rows = session.execute(self._build_candidate_query(now)).mappings().all()
@@ -27,7 +27,7 @@ class CrawlDispatcherService:
                 try:
                     task = self._try_claim_candidate(
                         session,
-                        task_id=int(candidate_row['task_id']),
+                        task_id=int(candidate_row["task_id"]),
                         worker_id=worker_id,
                         now=now,
                         lease_seconds=lease_seconds,
@@ -43,19 +43,19 @@ class CrawlDispatcherService:
 
     def _build_candidate_query(self, now: datetime) -> Any:
         priority_order = case(
-            (CrawlTask.priority == 'manual', 3),
-            (CrawlTask.priority == 'normal', 2),
-            (CrawlTask.priority == 'low', 1),
+            (CrawlTask.priority == "manual", 3),
+            (CrawlTask.priority == "normal", 2),
+            (CrawlTask.priority == "low", 1),
             else_=0,
         )
         runnable_tasks = (
             select(
-                CrawlTask.id.label('task_id'),
-                CrawlTask.site.label('site'),
-                CrawlTask.task_type.label('task_type'),
-                priority_order.label('priority_rank'),
-                CrawlTask.next_run_at.label('next_run_at'),
-                CrawlTask.created_at.label('created_at'),
+                CrawlTask.id.label("task_id"),
+                CrawlTask.site.label("site"),
+                CrawlTask.task_type.label("task_type"),
+                priority_order.label("priority_rank"),
+                CrawlTask.next_run_at.label("next_run_at"),
+                CrawlTask.created_at.label("created_at"),
                 func.row_number().over(
                     partition_by=(CrawlTask.site, CrawlTask.task_type),
                     order_by=(
@@ -64,7 +64,7 @@ class CrawlDispatcherService:
                         CrawlTask.created_at.asc(),
                         CrawlTask.id.asc(),
                     ),
-                ).label('site_rank'),
+                ).label("site_rank"),
                 func.row_number().over(
                     partition_by=CrawlTask.task_type,
                     order_by=(
@@ -73,7 +73,7 @@ class CrawlDispatcherService:
                         CrawlTask.created_at.asc(),
                         CrawlTask.id.asc(),
                     ),
-                ).label('task_type_rank'),
+                ).label("task_type_rank"),
             )
             .where(
                 CrawlTask.status.in_([CrawlTaskStatus.PENDING.value, CrawlTaskStatus.RETRY_WAIT.value]),
@@ -86,7 +86,7 @@ class CrawlDispatcherService:
             runnable_tasks.c.task_id,
             runnable_tasks.c.site,
             runnable_tasks.c.task_type,
-            literal(1).label('source_rank'),
+            literal(1).label("source_rank"),
             runnable_tasks.c.priority_rank,
             runnable_tasks.c.next_run_at,
             runnable_tasks.c.created_at,
@@ -95,7 +95,7 @@ class CrawlDispatcherService:
             runnable_tasks.c.task_id,
             runnable_tasks.c.site,
             runnable_tasks.c.task_type,
-            literal(0).label('source_rank'),
+            literal(0).label("source_rank"),
             runnable_tasks.c.priority_rank,
             runnable_tasks.c.next_run_at,
             runnable_tasks.c.created_at,
@@ -103,13 +103,13 @@ class CrawlDispatcherService:
         candidate_pool = site_heads.union_all(task_type_heads).subquery()
         candidate_rows = (
             select(
-                candidate_pool.c.task_id.label('task_id'),
-                candidate_pool.c.site.label('site'),
-                candidate_pool.c.task_type.label('task_type'),
-                func.min(candidate_pool.c.source_rank).label('source_rank'),
-                func.max(candidate_pool.c.priority_rank).label('priority_rank'),
-                func.min(candidate_pool.c.next_run_at).label('next_run_at'),
-                func.min(candidate_pool.c.created_at).label('created_at'),
+                candidate_pool.c.task_id.label("task_id"),
+                candidate_pool.c.site.label("site"),
+                candidate_pool.c.task_type.label("task_type"),
+                func.min(candidate_pool.c.source_rank).label("source_rank"),
+                func.max(candidate_pool.c.priority_rank).label("priority_rank"),
+                func.min(candidate_pool.c.next_run_at).label("next_run_at"),
+                func.min(candidate_pool.c.created_at).label("created_at"),
             )
             .group_by(candidate_pool.c.task_id, candidate_pool.c.site, candidate_pool.c.task_type)
             .subquery()
@@ -141,14 +141,14 @@ class CrawlDispatcherService:
         if not candidate_rows:
             return []
 
-        candidate_sites = {str(row['site']) for row in candidate_rows if row['site']}
-        candidate_task_types = {str(row['task_type']) for row in candidate_rows if row['task_type']}
+        candidate_sites = {str(row["site"]) for row in candidate_rows if row["site"]}
+        candidate_task_types = {str(row["task_type"]) for row in candidate_rows if row["task_type"]}
         running_by_site = self._count_running_tasks_by_site(session, candidate_sites)
         running_by_task_type = self._count_running_tasks_by_task_type(session, candidate_task_types)
 
         def _sort_key(row: Any) -> tuple:
-            site = str(row['site'] or '')
-            task_type = str(row['task_type'] or '')
+            site = str(row["site"] or "")
+            task_type = str(row["task_type"] or "")
             site_limit = max(1, self.policy.get_site_limit(site))
             task_type_limit = self.policy.get_task_type_limit(task_type)
             site_pressure = running_by_site.get(site, 0) / site_limit
@@ -160,11 +160,11 @@ class CrawlDispatcherService:
             return (
                 task_type_pressure,
                 site_pressure,
-                int(row['source_rank']),
-                -int(row['priority_rank']),
-                row['next_run_at'],
-                row['created_at'],
-                int(row['task_id']),
+                int(row["source_rank"]),
+                -int(row["priority_rank"]),
+                row["next_run_at"],
+                row["created_at"],
+                int(row["task_id"]),
             )
 
         return sorted(candidate_rows, key=_sort_key)
@@ -177,7 +177,7 @@ class CrawlDispatcherService:
         worker_id: str,
         now: datetime,
         lease_seconds: int,
-    ) -> Optional[CrawlTask]:
+    ) -> CrawlTask | None:
         task = session.execute(
             select(CrawlTask)
             .where(
@@ -186,14 +186,14 @@ class CrawlDispatcherService:
                 CrawlTask.next_run_at <= now,
                 or_(CrawlTask.lease_until.is_(None), CrawlTask.lease_until < now),
             )
-            .with_for_update(skip_locked=True)
+            .with_for_update(skip_locked=True),
         ).scalar_one_or_none()
         if task is None:
             return None
 
-        if self._lock_scope(session, scope_type='site', scope_key=task.site) is None:
+        if self._lock_scope(session, scope_type="site", scope_key=task.site) is None:
             return None
-        if self._lock_scope(session, scope_type='task_type', scope_key=task.task_type) is None:
+        if self._lock_scope(session, scope_type="task_type", scope_key=task.task_type) is None:
             return None
 
         site_running = self._count_running_tasks(session, site=task.site)
@@ -210,7 +210,7 @@ class CrawlDispatcherService:
         session.flush()
         return task
 
-    def _lock_scope(self, session: Session, *, scope_type: str, scope_key: str) -> Optional[CrawlDispatchScope]:
+    def _lock_scope(self, session: Session, *, scope_type: str, scope_key: str) -> CrawlDispatchScope | None:
         crawl_task_service._ensure_dispatch_scope(session, scope_type=scope_type, scope_key=scope_key)
         scope = session.execute(
             select(CrawlDispatchScope)
@@ -218,14 +218,14 @@ class CrawlDispatcherService:
                 CrawlDispatchScope.scope_type == scope_type,
                 CrawlDispatchScope.scope_key == scope_key,
             )
-            .with_for_update(skip_locked=True)
+            .with_for_update(skip_locked=True),
         ).scalar_one_or_none()
         return scope
 
     @staticmethod
-    def _count_running_tasks(session: Session, *, site: Optional[str] = None, task_type: Optional[str] = None) -> int:
+    def _count_running_tasks(session: Session, *, site: str | None = None, task_type: str | None = None) -> int:
         query = select(func.count(CrawlTask.id)).where(
-            CrawlTask.status.in_([CrawlTaskStatus.LEASED.value, CrawlTaskStatus.RUNNING.value])
+            CrawlTask.status.in_([CrawlTaskStatus.LEASED.value, CrawlTaskStatus.RUNNING.value]),
         )
         if site is not None:
             query = query.where(CrawlTask.site == site)
@@ -244,7 +244,7 @@ class CrawlDispatcherService:
                 CrawlTask.status.in_([CrawlTaskStatus.LEASED.value, CrawlTaskStatus.RUNNING.value]),
                 CrawlTask.site.in_(list(sites)),
             )
-            .group_by(CrawlTask.site)
+            .group_by(CrawlTask.site),
         ).all()
         return {str(site): int(count or 0) for site, count in rows}
 
@@ -258,6 +258,6 @@ class CrawlDispatcherService:
                 CrawlTask.status.in_([CrawlTaskStatus.LEASED.value, CrawlTaskStatus.RUNNING.value]),
                 CrawlTask.task_type.in_(list(task_types)),
             )
-            .group_by(CrawlTask.task_type)
+            .group_by(CrawlTask.task_type),
         ).all()
         return {str(task_type): int(count or 0) for task_type, count in rows}

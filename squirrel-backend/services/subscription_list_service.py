@@ -1,15 +1,15 @@
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from urllib.parse import urlparse
 
-from sqlalchemy import select, func, and_, or_, false, case, literal
+from sqlalchemy import and_, case, false, func, literal, or_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
 from core.database import get_session
-from models.links import UserSubscription, SubscriptionVideo
-from models.subscription import Subscription, ContentType
+from models.links import SubscriptionVideo, UserSubscription
+from models.subscription import Subscription
 from models.subscription_sync_state import SubscriptionSyncState, SyncMode
 from models.video_history import VideoHistory
 from schemas.subscription.dto.subscription_dto import SubscriptionDto
@@ -25,15 +25,15 @@ logger = logging.getLogger(__name__)
 
 
 def _contains(column: Any, term: str) -> ColumnElement[bool]:
-    return column.ilike(f'%{term}%')
+    return column.ilike(f"%{term}%")
 
 
-def _build_subscription_search_clauses(query: Optional[str]) -> List[Any]:
+def _build_subscription_search_clauses(query: str | None) -> list[Any]:
     parsed_query = parse_search_query(query)
     if not parsed_query.has_terms:
         return []
 
-    clauses: List[Any] = []
+    clauses: list[Any] = []
 
     for term in parsed_query.text_terms:
         clauses.append(
@@ -41,31 +41,31 @@ def _build_subscription_search_clauses(query: Optional[str]) -> List[Any]:
                 _contains(Subscription.name, term),
                 _contains(Subscription.description, term),
                 _contains(Subscription.url, term),
-            )
+            ),
         )
 
-    for term in parsed_query.get('subscription'):
+    for term in parsed_query.get("subscription"):
         clauses.append(
             or_(
                 _contains(Subscription.name, term),
                 _contains(Subscription.description, term),
                 _contains(Subscription.url, term),
-            )
+            ),
         )
 
-    for term in parsed_query.get('url'):
+    for term in parsed_query.get("url"):
         clauses.append(_contains(Subscription.url, term))
 
-    for term in parsed_query.get('domain'):
+    for term in parsed_query.get("domain"):
         clauses.append(_contains(Subscription.url, term))
 
-    for term in parsed_query.get('description'):
+    for term in parsed_query.get("description"):
         clauses.append(_contains(Subscription.description, term))
 
-    for term in parsed_query.get('title'):
+    for term in parsed_query.get("title"):
         clauses.append(_contains(Subscription.name, term))
 
-    for term in parsed_query.get('type'):
+    for term in parsed_query.get("type"):
         normalized_type = normalize_subscription_type_term(term)
         if normalized_type:
             clauses.append(Subscription.type == normalized_type)
@@ -86,11 +86,11 @@ def _resolve_subscription_nsfw(url: str) -> bool:
     slug, info = SiteCatalog.find_site_by_domain(extract_top_level_domain(url))
     if not info:
         return False
-    metadata = info.get('metadata', {})
-    return bool(metadata.get('nsfw', False))
+    metadata = info.get("metadata", {})
+    return bool(metadata.get("nsfw", False))
 
 
-def _resolve_site_slug(url: Optional[str]) -> Optional[str]:
+def _resolve_site_slug(url: str | None) -> str | None:
     if not url:
         return None
     try:
@@ -99,24 +99,24 @@ def _resolve_site_slug(url: Optional[str]) -> Optional[str]:
             return slug
 
         parsed = urlparse(url)
-        domain = parsed.netloc or parsed.path.split('/')[0]
+        domain = parsed.netloc or parsed.path.split("/")[0]
         slug, _ = SiteCatalog.find_site_by_domain(domain)
         return slug
     except (ValueError, TypeError):
         return None
 
 
-def _load_subscription_extract_counts(session: Session, subscription_ids: List[int]) -> Dict[int, int]:
+def _load_subscription_extract_counts(session: Session, subscription_ids: list[int]) -> dict[int, int]:
     if not subscription_ids:
         return {}
 
     rows = session.execute(
         select(
             SubscriptionVideo.subscription_id,
-            func.count(SubscriptionVideo.video_id).label('total_extract'),
+            func.count(SubscriptionVideo.video_id).label("total_extract"),
         )
         .where(SubscriptionVideo.subscription_id.in_(subscription_ids))
-        .group_by(SubscriptionVideo.subscription_id)
+        .group_by(SubscriptionVideo.subscription_id),
     ).all()
     return {
         int(subscription_id): int(total_extract or 0)
@@ -124,14 +124,14 @@ def _load_subscription_extract_counts(session: Session, subscription_ids: List[i
     }
 
 
-def _load_subscription_unread_counts(session: Session, user_id: int, subscription_ids: List[int]) -> Dict[int, int]:
+def _load_subscription_unread_counts(session: Session, user_id: int, subscription_ids: list[int]) -> dict[int, int]:
     if not subscription_ids:
         return {}
 
     rows = session.execute(
         select(
             SubscriptionVideo.subscription_id,
-            func.count(SubscriptionVideo.video_id).label('unread_count'),
+            func.count(SubscriptionVideo.video_id).label("unread_count"),
         )
         .outerjoin(
             VideoHistory,
@@ -142,9 +142,9 @@ def _load_subscription_unread_counts(session: Session, user_id: int, subscriptio
         )
         .where(
             SubscriptionVideo.subscription_id.in_(subscription_ids),
-            VideoHistory.video_id == None,
+            VideoHistory.video_id is None,
         )
-        .group_by(SubscriptionVideo.subscription_id)
+        .group_by(SubscriptionVideo.subscription_id),
     ).all()
     return {
         int(subscription_id): int(unread_count or 0)
@@ -152,7 +152,7 @@ def _load_subscription_unread_counts(session: Session, user_id: int, subscriptio
     }
 
 
-def _load_recent_videos(session: Session, subscription_ids: List[int], limit: int = 10) -> Dict[int, List[Dict[str, Any]]]:
+def _load_recent_videos(session: Session, subscription_ids: list[int], limit: int = 10) -> dict[int, list[dict[str, Any]]]:
     if not subscription_ids:
         return {}
 
@@ -160,17 +160,17 @@ def _load_recent_videos(session: Session, subscription_ids: List[int], limit: in
 
     ranked_videos = (
         select(
-            SubscriptionVideo.subscription_id.label('subscription_id'),
-            Video.id.label('id'),
-            Video.title.label('title'),
-            Video.url.label('url'),
-            Video.thumbnail.label('thumbnail'),
-            Video.duration.label('duration'),
-            Video.publish_date.label('publish_date'),
+            SubscriptionVideo.subscription_id.label("subscription_id"),
+            Video.id.label("id"),
+            Video.title.label("title"),
+            Video.url.label("url"),
+            Video.thumbnail.label("thumbnail"),
+            Video.duration.label("duration"),
+            Video.publish_date.label("publish_date"),
             func.row_number().over(
                 partition_by=SubscriptionVideo.subscription_id,
                 order_by=(Video.publish_date.desc().nullslast(), Video.created_at.desc()),
-            ).label('rank'),
+            ).label("rank"),
         )
         .select_from(SubscriptionVideo)
         .join(Video, Video.id == SubscriptionVideo.video_id)
@@ -192,77 +192,76 @@ def _load_recent_videos(session: Session, subscription_ids: List[int], limit: in
             ranked_videos.c.publish_date,
         )
         .where(ranked_videos.c.rank <= limit)
-        .order_by(ranked_videos.c.subscription_id.asc(), ranked_videos.c.rank.asc())
+        .order_by(ranked_videos.c.subscription_id.asc(), ranked_videos.c.rank.asc()),
     ).all()
 
-    grouped: Dict[int, List[Dict[str, Any]]] = {}
+    grouped: dict[int, list[dict[str, Any]]] = {}
     for row in rows:
         sub_id = int(row.subscription_id)
         videos = grouped.setdefault(sub_id, [])
         videos.append({
-            'id': int(row.id),
-            'title': row.title or '',
-            'url': row.url,
-            'thumbnail': row.thumbnail,
-            'duration': int(row.duration or 0),
-            'publish_date': _serialize_datetime(row.publish_date),
+            "id": int(row.id),
+            "title": row.title or "",
+            "url": row.url,
+            "thumbnail": row.thumbnail,
+            "duration": int(row.duration or 0),
+            "publish_date": _serialize_datetime(row.publish_date),
         })
 
     return grouped
 
 
-def _serialize_datetime(dt: Optional[datetime]) -> str:
-    from datetime import datetime
-    return dt.strftime('%Y-%m-%d %H:%M:%S') if dt else ''
+def _serialize_datetime(dt: datetime | None) -> str:
+    return dt.strftime("%Y-%m-%d %H:%M:%S") if dt else ""
 
 
-def _serialize_subscription_list_item(row: Any, total_extract: int, recent_videos: Optional[List[Dict[str, Any]]] = None, unread_count: int = 0) -> Dict[str, Any]:
+def _serialize_subscription_list_item(row: Any, total_extract: int, recent_videos: list[dict[str, Any]] | None = None, unread_count: int = 0) -> dict[str, Any]:
     row_data = row if isinstance(row, dict) else dict(row)
-    total_videos = max(int(row_data['total_videos'] or 0), total_extract)
-    url = row_data['url']
+    total_videos = max(int(row_data["total_videos"] or 0), total_extract)
+    url = row_data["url"]
 
     return {
-        'id': int(row_data['id']),
-        'type': row_data['type'],
-        'name': row_data['name'],
-        'url': url,
-        'avatar': row_data['avatar'],
-        'description': row_data['description'],
-        'total_videos': total_videos,
-        'is_deleted': bool(row_data['is_deleted']),
-        'extra_data': row_data['extra_data'],
-        'created_at': _serialize_datetime(row_data['created_at']),
-        'updated_at': _serialize_datetime(row_data['updated_at']),
-        'is_nsfw': bool(row_data['is_nsfw']),
-        'is_special_followed': bool(row_data['is_special_followed']),
-        'total_extract': total_extract,
-        'unread_count': unread_count,
-        'sync_status': row_data['sync_status'] or 'idle',
-        'last_sync_at': _serialize_datetime(row_data['last_sync_at']),
-        'last_success_at': _serialize_datetime(row_data['last_success_at']),
-        'next_sync_at': _serialize_datetime(row_data['next_sync_at']),
-        'last_error': row_data['last_error'],
-        'pending_video_count': int(row_data['pending_video_count'] or 0),
-        'site': _resolve_site_slug(url),
-        'recent_videos': recent_videos or [],
+        "id": int(row_data["id"]),
+        "type": row_data["type"],
+        "name": row_data["name"],
+        "url": url,
+        "avatar": row_data["avatar"],
+        "description": row_data["description"],
+        "total_videos": total_videos,
+        "is_deleted": bool(row_data["is_deleted"]),
+        "extra_data": row_data["extra_data"],
+        "created_at": _serialize_datetime(row_data["created_at"]),
+        "updated_at": _serialize_datetime(row_data["updated_at"]),
+        "is_nsfw": bool(row_data["is_nsfw"]),
+        "is_special_followed": bool(row_data["is_special_followed"]),
+        "total_extract": total_extract,
+        "unread_count": unread_count,
+        "sync_status": row_data["sync_status"] or "idle",
+        "last_sync_at": _serialize_datetime(row_data["last_sync_at"]),
+        "last_success_at": _serialize_datetime(row_data["last_success_at"]),
+        "next_sync_at": _serialize_datetime(row_data["next_sync_at"]),
+        "last_error": row_data["last_error"],
+        "pending_video_count": int(row_data["pending_video_count"] or 0),
+        "site": _resolve_site_slug(url),
+        "recent_videos": recent_videos or [],
     }
 
 
 def list_subscriptions(
         user_id: int,
-        query: Optional[str],
-        type: Optional[str],
+        query: str | None,
+        type: str | None,
         nsfw: str,
         page: int,
         page_size: int,
-        domains: Optional[List[str]] = None,
-        special: str = 'all',
-) -> Tuple[List[Dict[str, Any]], int]:
+        domains: list[str] | None = None,
+        special: str = "all",
+) -> tuple[list[dict[str, Any]], int]:
     user_config = user_config_service.get_config(user_id)
-    show_nsfw = user_config.get('showNsfw', False)
+    show_nsfw = user_config.get("showNsfw", False)
 
     with get_session() as session:
-        conditions: List[Any] = [
+        conditions: list[Any] = [
             UserSubscription.user_id == user_id,
             UserSubscription.is_deleted.is_(False),
             Subscription.is_deleted.is_(False),
@@ -273,23 +272,23 @@ def list_subscriptions(
 
         effective_nsfw = resolve_effective_nsfw_filter(nsfw, show_nsfw)
 
-        if effective_nsfw == 'blocked':
+        if effective_nsfw == "blocked":
             conditions.append(false())
-        elif effective_nsfw == 'yes':
+        elif effective_nsfw == "yes":
             conditions.append(UserSubscription.is_nsfw.is_(True))
-        elif effective_nsfw == 'no':
+        elif effective_nsfw == "no":
             conditions.append(UserSubscription.is_nsfw.is_(False))
 
-        if special == 'yes':
+        if special == "yes":
             conditions.append(UserSubscription.is_special_followed.is_(True))
-        elif special == 'no':
+        elif special == "no":
             conditions.append(UserSubscription.is_special_followed.is_(False))
 
         if domains:
             normalized_domains = [domain for domain in dict.fromkeys(domains) if domain]
             if normalized_domains:
                 conditions.append(
-                    or_(*[_contains(Subscription.url, domain) for domain in normalized_domains])
+                    or_(*[_contains(Subscription.url, domain) for domain in normalized_domains]),
                 )
 
         conditions.extend(_build_subscription_search_clauses(query))
@@ -310,20 +309,20 @@ def list_subscriptions(
                 Subscription.url,
                 Subscription.avatar,
                 Subscription.description,
-                func.coalesce(Subscription.total_videos, 0).label('total_videos'),
+                func.coalesce(Subscription.total_videos, 0).label("total_videos"),
                 Subscription.is_deleted,
                 Subscription.extra_data,
                 Subscription.created_at,
                 Subscription.updated_at,
-                UserSubscription.is_nsfw.label('is_nsfw'),
-                UserSubscription.is_special_followed.label('is_special_followed'),
-                literal(0).label('total_extract'),
-                func.coalesce(SubscriptionSyncState.sync_status, 'idle').label('sync_status'),
-                SubscriptionSyncState.last_sync_at.label('last_sync_at'),
-                SubscriptionSyncState.last_success_at.label('last_success_at'),
-                SubscriptionSyncState.next_sync_at.label('next_sync_at'),
-                SubscriptionSyncState.last_error.label('last_error'),
-                func.coalesce(SubscriptionSyncState.pending_video_count, 0).label('pending_video_count'),
+                UserSubscription.is_nsfw.label("is_nsfw"),
+                UserSubscription.is_special_followed.label("is_special_followed"),
+                literal(0).label("total_extract"),
+                func.coalesce(SubscriptionSyncState.sync_status, "idle").label("sync_status"),
+                SubscriptionSyncState.last_sync_at.label("last_sync_at"),
+                SubscriptionSyncState.last_success_at.label("last_success_at"),
+                SubscriptionSyncState.next_sync_at.label("next_sync_at"),
+                SubscriptionSyncState.last_error.label("last_error"),
+                func.coalesce(SubscriptionSyncState.pending_video_count, 0).label("pending_video_count"),
             )
             .select_from(UserSubscription)
             .join(Subscription, Subscription.id == UserSubscription.subscription_id)
@@ -341,7 +340,7 @@ def list_subscriptions(
         )
 
         results = session.execute(statement).all()
-        subscription_ids = [int(row._mapping['id']) for row in results]
+        subscription_ids = [int(row._mapping["id"]) for row in results]
         extract_count_map = _load_subscription_extract_counts(session, subscription_ids)
         unread_count_map = _load_subscription_unread_counts(session, user_id, subscription_ids)
         recent_videos_map = _load_recent_videos(session, subscription_ids)
@@ -349,7 +348,7 @@ def list_subscriptions(
         subscriptions = []
         for row in results:
             row_mapping = row._mapping
-            sub_id = int(row_mapping['id'])
+            sub_id = int(row_mapping["id"])
             total_extract = extract_count_map.get(sub_id, 0)
             unread_count = unread_count_map.get(sub_id, 0)
             recent_videos = recent_videos_map.get(sub_id, [])
@@ -363,7 +362,7 @@ def get_subscription_detail(subscription_id: int) -> SubscriptionDto:
     with get_session() as session:
         sql = get_subscription_sql()
         params = {
-            'subscription_id': subscription_id
+            "subscription_id": subscription_id,
         }
         parse_dynamic_sql(sql, params)
         subscription = session.execute(text(sql), params).first()
@@ -374,7 +373,7 @@ def get_subscription_detail(subscription_id: int) -> SubscriptionDto:
         return dto
 
 
-def list_subscription_options(user_id: int) -> List[Dict[str, Any]]:
+def list_subscription_options(user_id: int) -> list[dict[str, Any]]:
     with get_session() as session:
         rows = session.execute(
             select(Subscription.id, Subscription.name, Subscription.avatar)
@@ -385,14 +384,14 @@ def list_subscription_options(user_id: int) -> List[Dict[str, Any]]:
                 Subscription.is_deleted.is_(False),
             )
             .distinct()
-            .order_by(Subscription.name.asc(), Subscription.id.asc())
+            .order_by(Subscription.name.asc(), Subscription.id.asc()),
         ).all()
 
     return [
         {
-            'subscription_id': subscription_id,
-            'subscription_name': subscription_name,
-            'subscription_avatar': subscription_avatar,
+            "subscription_id": subscription_id,
+            "subscription_name": subscription_name,
+            "subscription_avatar": subscription_avatar,
         }
         for subscription_id, subscription_name, subscription_avatar in rows
     ]

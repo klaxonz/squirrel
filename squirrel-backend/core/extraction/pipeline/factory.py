@@ -1,35 +1,32 @@
-"""
-Pipeline工厂 - 创建配置好的Pipeline实例
+"""Pipeline工厂 - 创建配置好的Pipeline实例
 """
 import logging
-from typing import Optional
 
+from ..adapters import RuntimeDataAdapter
+from ..services import (
+    actor_processor_service,
+    thumbnail_downloader_service,
+    video_persistence_service,
+)
 from .base import ExtractionPipeline, PipelineStage
 from .config import PipelineConfig, StageConfig
 from .stages import (
     ExtractionStage,
-    ValidationStage,
     PersistenceStage,
     PostProcessStage,
-)
-from ..adapters import RuntimeDataAdapter
-from ..services import (
-    video_persistence_service,
-    actor_processor_service,
-    thumbnail_downloader_service,
+    ValidationStage,
 )
 
 logger = logging.getLogger(__name__)
 
 
 class PipelineFactory:
-    """
-    Pipeline工厂
+    """Pipeline工厂
 
     负责创建配置好的Pipeline实例。
     """
 
-    def __init__(self, config: Optional[PipelineConfig] = None):
+    def __init__(self, config: PipelineConfig | None = None):
         self.config = config or PipelineConfig.default()
         self._stage_builders = {
             ExtractionStage: self._build_extraction_stage,
@@ -47,13 +44,13 @@ class PipelineFactory:
     def _build_persistence_stage(self, stage_config: StageConfig, extractor_factory) -> PipelineStage:
         return PersistenceStage(
             video_persistence_service,
-            actor_processor_service
+            actor_processor_service,
         )
 
     def _build_post_process_stage(self, stage_config: StageConfig, extractor_factory) -> PipelineStage:
         return PostProcessStage(thumbnail_downloader_service)
 
-    def _build_stage(self, stage_config: StageConfig, extractor_factory) -> Optional[PipelineStage]:
+    def _build_stage(self, stage_config: StageConfig, extractor_factory) -> PipelineStage | None:
         builder = self._stage_builders.get(stage_config.stage_class)
         if builder:
             return builder(stage_config, extractor_factory)
@@ -73,14 +70,14 @@ class PipelineFactory:
 
     @staticmethod
     def create_video_extraction_pipeline(extractor_factory) -> ExtractionPipeline:
-        """
-        创建视频提取Pipeline（向后兼容的静态方法）
+        """创建视频提取Pipeline（向后兼容的静态方法）
 
         Args:
             extractor_factory: 提取器工厂实例
 
         Returns:
             配置好的ExtractionPipeline
+
         """
         factory = PipelineFactory()
         return factory.create_pipeline(extractor_factory)

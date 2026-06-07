@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -17,17 +17,17 @@ class SyncEventInput:
     subscription_id: int
     sync_mode: str
     event_type: str
-    sync_state_id: Optional[int] = None
-    site: Optional[str] = None
-    trigger: Optional[str] = None
-    request_id: Optional[str] = None
-    trace_id: Optional[str] = None
-    event_phase: Optional[str] = None
-    event_status: Optional[str] = None
-    payload: Optional[dict] = None
-    message: Optional[str] = None
-    occurred_at: Optional[datetime] = None
-    seq_no: Optional[int] = None
+    sync_state_id: int | None = None
+    site: str | None = None
+    trigger: str | None = None
+    request_id: str | None = None
+    trace_id: str | None = None
+    event_phase: str | None = None
+    event_status: str | None = None
+    payload: dict | None = None
+    message: str | None = None
+    occurred_at: datetime | None = None
+    seq_no: int | None = None
 
 
 def _serialize_value(value: Any) -> Any:
@@ -40,13 +40,13 @@ def _serialize_value(value: Any) -> Any:
     return value
 
 
-def serialize_payload(payload: Optional[dict]) -> dict:
+def serialize_payload(payload: dict | None) -> dict:
     if not payload:
         return {}
     return _serialize_value(dict(payload))
 
 
-def build_event(event_input: SyncEventInput, *, session: Optional[Session] = None) -> SubscriptionSyncEvent:
+def build_event(event_input: SyncEventInput, *, session: Session | None = None) -> SubscriptionSyncEvent:
     event_time = event_input.occurred_at or datetime.now()
     seq_no = event_input.seq_no
     if seq_no is None:
@@ -56,7 +56,7 @@ def build_event(event_input: SyncEventInput, *, session: Optional[Session] = Non
         stream_id=event_input.stream_id,
         subscription_id=event_input.subscription_id,
         sync_state_id=event_input.sync_state_id,
-        site=(event_input.site or '').strip() or None,
+        site=(event_input.site or "").strip() or None,
         sync_mode=event_input.sync_mode,
         trigger=event_input.trigger,
         request_id=event_input.request_id,
@@ -72,7 +72,7 @@ def build_event(event_input: SyncEventInput, *, session: Optional[Session] = Non
     )
 
 
-def append_event(event_input: SyncEventInput, *, session: Optional[Session] = None, project: bool = True) -> SubscriptionSyncEvent:
+def append_event(event_input: SyncEventInput, *, session: Session | None = None, project: bool = True) -> SubscriptionSyncEvent:
     if session is not None:
         event = build_event(event_input, session=session)
         session.add(event)
@@ -89,7 +89,7 @@ def append_event(event_input: SyncEventInput, *, session: Optional[Session] = No
             session,
             lambda: sync_center_stream_service.publish_sync_center_invalidation(
                 sync_center_stream_service.SYNC_CENTER_RUN_CHANNEL,
-                {'run_id': event.stream_id},
+                {"run_id": event.stream_id},
             ),
         )
         return event
@@ -98,7 +98,7 @@ def append_event(event_input: SyncEventInput, *, session: Optional[Session] = No
         return append_event(event_input, session=managed_session, project=project)
 
 
-def append_events(event_inputs: list[SyncEventInput], *, session: Optional[Session] = None, project: bool = True) -> list[SubscriptionSyncEvent]:
+def append_events(event_inputs: list[SyncEventInput], *, session: Session | None = None, project: bool = True) -> list[SubscriptionSyncEvent]:
     if session is not None:
         ordered_inputs = sorted(
             event_inputs,
@@ -138,7 +138,7 @@ def append_events(event_inputs: list[SyncEventInput], *, session: Optional[Sessi
                     session,
                     lambda run_id=event.stream_id: sync_center_stream_service.publish_sync_center_invalidation(
                         sync_center_stream_service.SYNC_CENTER_RUN_CHANNEL,
-                        {'run_id': run_id},
+                        {"run_id": run_id},
                     ),
                 )
         return events

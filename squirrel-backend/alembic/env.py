@@ -1,8 +1,8 @@
 from logging.config import fileConfig
 
+from sqlalchemy import engine_from_config, pool
+
 from alembic import context
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
 from core.config import settings
 from models import Base
 from utils import module_discovery
@@ -16,7 +16,7 @@ config = context.config
 if config.config_file_name is not None and not config.attributes.get("skip_logging_config"):
     fileConfig(config.config_file_name)
 
-config.set_main_option('sqlalchemy.url', settings.database_url)
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -69,7 +69,7 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, target_metadata=target_metadata,
         )
 
         with context.begin_transaction():

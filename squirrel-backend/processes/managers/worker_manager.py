@@ -1,7 +1,6 @@
 import logging
 import threading
 from threading import Lock
-from typing import List
 
 from processes.managers.crawl_worker_manager import crawl_worker_start, crawl_worker_status, crawl_worker_stop
 from queues.runner import WorkerRunner
@@ -9,7 +8,7 @@ from queues.runner import WorkerRunner
 _logger = logging.getLogger(__name__)
 
 # module-scope state
-_worker_threads: List[threading.Thread] = []
+_worker_threads: list[threading.Thread] = []
 _workers_running: bool = False
 _workers_lock = Lock()
 _runner: WorkerRunner | None = None
@@ -33,7 +32,7 @@ def worker_start() -> None:
         _logger.info(
             "[worker] started %d queue worker threads and %d crawl worker threads",
             len(_worker_threads),
-            crawl_worker_status()['count'],
+            crawl_worker_status()["count"],
         )
 
 
@@ -60,6 +59,6 @@ def worker_stop() -> None:
 def worker_status() -> dict:
     crawl_status = crawl_worker_status()
     return {
-        "running": _workers_running or crawl_status['running'],
-        "count": len(_worker_threads) + crawl_status['count'],
+        "running": _workers_running or crawl_status["running"],
+        "count": len(_worker_threads) + crawl_status["count"],
     }

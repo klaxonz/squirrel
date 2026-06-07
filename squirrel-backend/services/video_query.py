@@ -1,14 +1,14 @@
-from typing import Any, Optional, List
-from datetime import datetime, timedelta
+from datetime import timedelta
+from typing import Any
 
-from sqlalchemy import select, func, and_, exists, or_, false
-from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy import and_, exists, false, func, or_, select
 from sqlalchemy.orm import aliased
+from sqlalchemy.sql.elements import ColumnElement
 
 from models.creator import Creator
-from models.video import Video
 from models.links import SubscriptionVideo, UserSubscription, VideoCreator
 from models.subscription import Subscription
+from models.video import Video
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
 from services.nsfw_policy import resolve_effective_nsfw_filter
@@ -17,7 +17,7 @@ from utils import url_helper
 
 
 def _contains(column: Any, term: str) -> ColumnElement[bool]:
-    return column.ilike(f'%{term}%')
+    return column.ilike(f"%{term}%")
 
 
 def _video_match_clause(*, video_id_column: Any, term: str) -> Any:
@@ -34,7 +34,7 @@ def _video_match_clause(*, video_id_column: Any, term: str) -> Any:
                 _contains(video_alias.url, term),
                 _contains(video_alias.domain, term),
             ),
-        )
+        ),
     )
 
 
@@ -59,7 +59,7 @@ def _subscription_match_clause(*, user_id: int, video_id_column: Any = None, sub
                     _contains(Subscription.url, term),
                     _contains(Subscription.description, term),
                 ),
-            )
+            ),
         )
 
     return exists(
@@ -82,11 +82,11 @@ def _subscription_match_clause(*, user_id: int, video_id_column: Any = None, sub
                 _contains(Subscription.url, term),
                 _contains(Subscription.description, term),
             ),
-        )
+        ),
     )
 
 
-def _subscription_type_clause(*, user_id: int, video_id_column: Any = None, subscription_id_column: Any = None, value: str) -> Optional[Any]:
+def _subscription_type_clause(*, user_id: int, video_id_column: Any = None, subscription_id_column: Any = None, value: str) -> Any | None:
     normalized_type = normalize_subscription_type_term(value)
     if not normalized_type:
         return None
@@ -107,7 +107,7 @@ def _subscription_type_clause(*, user_id: int, video_id_column: Any = None, subs
                 Subscription.id == subscription_id_column,
                 Subscription.is_deleted.is_(False),
                 Subscription.type == normalized_type,
-            )
+            ),
         )
 
     return exists(
@@ -126,7 +126,7 @@ def _subscription_type_clause(*, user_id: int, video_id_column: Any = None, subs
             SubscriptionVideo.video_id == video_id_column,
             Subscription.is_deleted.is_(False),
             Subscription.type == normalized_type,
-        )
+        ),
     )
 
 
@@ -143,11 +143,11 @@ def _creator_match_clause(*, video_id_column: Any, term: str) -> Any:
                 _contains(Creator.url, term),
                 _contains(Creator.description, term),
             ),
-        )
+        ),
     )
 
 
-def build_video_search_clauses(*, user_id: int, query: Optional[str], video_id_column: Any, subscription_id_column: Any = None) -> List[Any]:
+def build_video_search_clauses(*, user_id: int, query: str | None, video_id_column: Any, subscription_id_column: Any = None) -> list[Any]:
     parsed_query = parse_search_query(query)
     if not parsed_query.has_terms:
         return []
@@ -165,10 +165,10 @@ def build_video_search_clauses(*, user_id: int, query: Optional[str], video_id_c
                     term=term,
                 ),
                 _creator_match_clause(video_id_column=video_id_column, term=term),
-            )
+            ),
         )
 
-    for term in parsed_query.get('title'):
+    for term in parsed_query.get("title"):
         video_alias = aliased(Video)
         clauses.append(
             exists(
@@ -178,11 +178,11 @@ def build_video_search_clauses(*, user_id: int, query: Optional[str], video_id_c
                     video_alias.id == video_id_column,
                     video_alias.is_deleted.is_(False),
                     _contains(video_alias.title, term),
-                )
-            )
+                ),
+            ),
         )
 
-    for term in parsed_query.get('url'):
+    for term in parsed_query.get("url"):
         video_alias = aliased(Video)
         clauses.append(
             exists(
@@ -192,11 +192,11 @@ def build_video_search_clauses(*, user_id: int, query: Optional[str], video_id_c
                     video_alias.id == video_id_column,
                     video_alias.is_deleted.is_(False),
                     _contains(video_alias.url, term),
-                )
-            )
+                ),
+            ),
         )
 
-    for term in parsed_query.get('domain'):
+    for term in parsed_query.get("domain"):
         video_alias = aliased(Video)
         clauses.append(
             exists(
@@ -206,11 +206,11 @@ def build_video_search_clauses(*, user_id: int, query: Optional[str], video_id_c
                     video_alias.id == video_id_column,
                     video_alias.is_deleted.is_(False),
                     _contains(video_alias.domain, term),
-                )
-            )
+                ),
+            ),
         )
 
-    for term in parsed_query.get('description'):
+    for term in parsed_query.get("description"):
         clauses.append(
             or_(
                 _video_match_clause(video_id_column=video_id_column, term=term),
@@ -221,23 +221,23 @@ def build_video_search_clauses(*, user_id: int, query: Optional[str], video_id_c
                     term=term,
                 ),
                 _creator_match_clause(video_id_column=video_id_column, term=term),
-            )
+            ),
         )
 
-    for term in parsed_query.get('subscription'):
+    for term in parsed_query.get("subscription"):
         clauses.append(
             _subscription_match_clause(
                 user_id=user_id,
                 video_id_column=video_id_column,
                 subscription_id_column=subscription_id_column,
                 term=term,
-            )
+            ),
         )
 
-    for term in parsed_query.get('creator'):
+    for term in parsed_query.get("creator"):
         clauses.append(_creator_match_clause(video_id_column=video_id_column, term=term))
 
-    for term in parsed_query.get('type'):
+    for term in parsed_query.get("type"):
         type_clause = _subscription_type_clause(
             user_id=user_id,
             video_id_column=video_id_column,
@@ -253,19 +253,19 @@ def build_video_search_clauses(*, user_id: int, query: Optional[str], video_id_c
 def _build_base_video_conditions(
         user_id: int,
         show_nsfw: bool,
-        subscription_id: Optional[int] = None,
-        query: Optional[str] = None,
-        nsfw: str = 'all',
-        domains: Optional[List[str]] = None,
-        time_range: str = 'all',
-        duration: str = 'all',
-        content_type: str = 'all',
-) -> List[Any]:
+        subscription_id: int | None = None,
+        query: str | None = None,
+        nsfw: str = "all",
+        domains: list[str] | None = None,
+        time_range: str = "all",
+        duration: str = "all",
+        content_type: str = "all",
+) -> list[Any]:
     conditions = [
-        Video.is_deleted == False,
-        UserSubscription.is_deleted == False,
-        Subscription.is_deleted == False,
-        UserSubscription.user_id == user_id
+        not Video.is_deleted,
+        not UserSubscription.is_deleted,
+        not Subscription.is_deleted,
+        UserSubscription.user_id == user_id,
     ]
 
     if subscription_id:
@@ -273,12 +273,12 @@ def _build_base_video_conditions(
 
     effective_nsfw = resolve_effective_nsfw_filter(nsfw, show_nsfw)
 
-    if effective_nsfw == 'blocked':
+    if effective_nsfw == "blocked":
         conditions.append(false())
-    elif effective_nsfw == 'yes':
-        conditions.append(UserSubscription.is_nsfw == True)
-    elif effective_nsfw == 'no':
-        conditions.append(UserSubscription.is_nsfw == False)
+    elif effective_nsfw == "yes":
+        conditions.append(UserSubscription.is_nsfw)
+    elif effective_nsfw == "no":
+        conditions.append(not UserSubscription.is_nsfw)
 
     conditions.extend(build_video_search_clauses(
         user_id=user_id,
@@ -303,17 +303,17 @@ def _build_base_video_conditions(
 def build_base_video_query(
         user_id: int,
         show_nsfw: bool,
-        subscription_id: Optional[int] = None,
-        query: Optional[str] = None,
-        nsfw: str = 'all',
-        domains: Optional[List[str]] = None,
-        time_range: str = 'all',
-        duration: str = 'all',
-        content_type: str = 'all',
+        subscription_id: int | None = None,
+        query: str | None = None,
+        nsfw: str = "all",
+        domains: list[str] | None = None,
+        time_range: str = "all",
+        duration: str = "all",
+        content_type: str = "all",
 ) -> Any:
     """构建基础视频查询，以 Video 为主表。"""
     base_query = (
-        select(Video, SubscriptionVideo.subscription_id.label('subscription_id'))
+        select(Video, SubscriptionVideo.subscription_id.label("subscription_id"))
         .select_from(Video)
         .join(SubscriptionVideo, Video.id == SubscriptionVideo.video_id)
         .join(UserSubscription, SubscriptionVideo.subscription_id == UserSubscription.subscription_id)
@@ -324,31 +324,31 @@ def build_base_video_query(
         and_(*_build_base_video_conditions(
             user_id, show_nsfw, subscription_id, query, nsfw, domains,
             time_range, duration, content_type,
-        ))
+        )),
     )
 
 
 def build_video_count_source_query(
         user_id: int,
         show_nsfw: bool,
-        subscription_id: Optional[int] = None,
-        query: Optional[str] = None,
-        nsfw: str = 'all',
-        domains: Optional[List[str]] = None,
-        time_range: str = 'all',
-        duration: str = 'all',
-        content_type: str = 'all',
+        subscription_id: int | None = None,
+        query: str | None = None,
+        nsfw: str = "all",
+        domains: list[str] | None = None,
+        time_range: str = "all",
+        duration: str = "all",
+        content_type: str = "all",
 ) -> Any:
     user_subscriptions = (
-        select(UserSubscription.subscription_id.label('subscription_id'))
+        select(UserSubscription.subscription_id.label("subscription_id"))
         .select_from(UserSubscription)
         .join(Subscription, Subscription.id == UserSubscription.subscription_id)
         .where(
             and_(
-                UserSubscription.is_deleted == False,
-                Subscription.is_deleted == False,
-                UserSubscription.user_id == user_id
-            )
+                not UserSubscription.is_deleted,
+                not Subscription.is_deleted,
+                UserSubscription.user_id == user_id,
+            ),
         )
     )
 
@@ -357,24 +357,24 @@ def build_video_count_source_query(
 
     effective_nsfw = resolve_effective_nsfw_filter(nsfw, show_nsfw)
 
-    if effective_nsfw == 'blocked':
+    if effective_nsfw == "blocked":
         user_subscriptions = user_subscriptions.where(false())
-    elif effective_nsfw == 'yes':
-        user_subscriptions = user_subscriptions.where(UserSubscription.is_nsfw == True)
-    elif effective_nsfw == 'no':
-        user_subscriptions = user_subscriptions.where(UserSubscription.is_nsfw == False)
+    elif effective_nsfw == "yes":
+        user_subscriptions = user_subscriptions.where(UserSubscription.is_nsfw)
+    elif effective_nsfw == "no":
+        user_subscriptions = user_subscriptions.where(not UserSubscription.is_nsfw)
 
-    user_subscriptions = user_subscriptions.cte('user_subscriptions')
+    user_subscriptions = user_subscriptions.cte("user_subscriptions")
 
     count_source = (
         select(
-            Video.id.label('video_id'),
-            Video.publish_date.label('publish_date')
+            Video.id.label("video_id"),
+            Video.publish_date.label("publish_date"),
         )
         .select_from(user_subscriptions)
         .join(SubscriptionVideo, SubscriptionVideo.subscription_id == user_subscriptions.c.subscription_id)
         .join(Video, Video.id == SubscriptionVideo.video_id)
-        .where(Video.is_deleted == False)
+        .where(not Video.is_deleted)
     )
 
     search_clauses = build_video_search_clauses(
@@ -414,37 +414,37 @@ def build_video_count_source_query(
     return count_source.distinct()
 
 
-def category_predicate(user_id: int, category: Optional[str]) -> Any:
+def category_predicate(user_id: int, category: str | None) -> Any:
     """返回分类筛选条件，复用在列表/计数/随机。"""
     published = Video.publish_date <= func.now()
 
-    if category == 'preview':
+    if category == "preview":
         return Video.publish_date > func.now()
-    if category == 'read':
+    if category == "read":
         return and_(
             published,
             exists(
                 select(1).where(
                     and_(
                         VideoHistory.user_id == user_id,
-                        VideoHistory.video_id == Video.id
-                    )
-                )
-            )
+                        VideoHistory.video_id == Video.id,
+                    ),
+                ),
+            ),
         )
-    if category == 'unread':
+    if category == "unread":
         return and_(
             published,
             ~exists(
                 select(1).where(
                     and_(
                         VideoHistory.user_id == user_id,
-                        VideoHistory.video_id == Video.id
-                    )
-                )
-            )
+                        VideoHistory.video_id == Video.id,
+                    ),
+                ),
+            ),
         )
-    if category == 'liked':
+    if category == "liked":
         return and_(
             published,
             exists(
@@ -452,12 +452,12 @@ def category_predicate(user_id: int, category: Optional[str]) -> Any:
                     and_(
                         VideoInteraction.user_id == user_id,
                         VideoInteraction.video_id == Video.id,
-                        VideoInteraction.interaction_type == 1
-                    )
-                )
-            )
+                        VideoInteraction.interaction_type == 1,
+                    ),
+                ),
+            ),
         )
-    if category == 'later':
+    if category == "later":
         return and_(
             published,
             exists(
@@ -465,56 +465,56 @@ def category_predicate(user_id: int, category: Optional[str]) -> Any:
                     and_(
                         VideoInteraction.user_id == user_id,
                         VideoInteraction.video_id == Video.id,
-                        VideoInteraction.interaction_type == 3
-                    )
-                )
-            )
+                        VideoInteraction.interaction_type == 3,
+                    ),
+                ),
+            ),
         )
 
     return published
 
 
 def resolve_sort_column(sort_by: str) -> Any:
-    if sort_by == 'created_at':
+    if sort_by == "created_at":
         return Video.created_at
     return Video.publish_date
 
 
-def time_range_predicate(time_range: str) -> List[Any]:
+def time_range_predicate(time_range: str) -> list[Any]:
     """返回 publish_date 时间范围过滤条件。"""
-    if time_range == 'all':
+    if time_range == "all":
         return []
     now = func.now()
-    if time_range == 'today':
+    if time_range == "today":
         return [Video.publish_date >= func.date(now)]
-    if time_range == 'week':
-        start = now - timedelta(days=now.extract('dow') - 1)
+    if time_range == "week":
+        start = now - timedelta(days=now.extract("dow") - 1)
         return [Video.publish_date >= func.date(start)]
-    if time_range == 'month':
+    if time_range == "month":
         return [
-            func.extract('year', Video.publish_date) == func.extract('year', now),
-            func.extract('month', Video.publish_date) == func.extract('month', now),
+            func.extract("year", Video.publish_date) == func.extract("year", now),
+            func.extract("month", Video.publish_date) == func.extract("month", now),
         ]
-    if time_range == 'year':
-        return [func.extract('year', Video.publish_date) == func.extract('year', now)]
+    if time_range == "year":
+        return [func.extract("year", Video.publish_date) == func.extract("year", now)]
     return []
 
 
-def duration_predicate(duration: str) -> List[Any]:
+def duration_predicate(duration: str) -> list[Any]:
     """返回视频时长过滤条件（秒）。"""
-    if duration == 'all':
+    if duration == "all":
         return []
-    if duration == 'short':
+    if duration == "short":
         return [Video.duration < 300]
-    if duration == 'medium':
+    if duration == "medium":
         return [Video.duration >= 300, Video.duration <= 1800]
-    if duration == 'long':
+    if duration == "long":
         return [Video.duration > 1800]
     return []
 
 
-def content_type_predicate(content_type: str) -> List[Any]:
+def content_type_predicate(content_type: str) -> list[Any]:
     """返回订阅类型过滤条件（需要 JOIN Subscription）。"""
-    if content_type == 'all':
+    if content_type == "all":
         return []
     return [Subscription.type == content_type]

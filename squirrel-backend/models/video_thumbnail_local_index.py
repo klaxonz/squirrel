@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Index, Integer, VARCHAR
+from sqlalchemy import VARCHAR, Boolean, DateTime, Index, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models import Base
@@ -8,13 +8,13 @@ from models.mixins.serializer import SerializerMixin
 
 
 class VideoThumbnailLocalIndex(Base, SerializerMixin):
-    __tablename__ = 'video_thumbnail_local_index'
+    __tablename__ = "video_thumbnail_local_index"
 
     __table_args__ = (
-        Index('ux_video_thumbnail_local_index_video_id', 'video_id', unique=True),
-        Index('ix_video_thumbnail_local_index_batch_exists', 'batch_name', 'exists'),
-        Index('ix_video_thumbnail_local_index_exists_indexed', 'exists', 'indexed_at'),
-        Index('ix_video_thumbnail_local_index_updated_at', 'updated_at'),
+        Index("ux_video_thumbnail_local_index_video_id", "video_id", unique=True),
+        Index("ix_video_thumbnail_local_index_batch_exists", "batch_name", "exists"),
+        Index("ix_video_thumbnail_local_index_exists_indexed", "exists", "indexed_at"),
+        Index("ix_video_thumbnail_local_index_updated_at", "updated_at"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

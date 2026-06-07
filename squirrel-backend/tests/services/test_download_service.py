@@ -1,6 +1,6 @@
+import sys
 from contextlib import contextmanager
 from pathlib import Path
-import sys
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -30,7 +30,7 @@ def _managed_session(engine):
 
 
 def _setup_task_store(monkeypatch):
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(
         engine,
         tables=[
@@ -39,23 +39,23 @@ def _setup_task_store(monkeypatch):
             CrawlDispatchScope.__table__,
         ],
     )
-    monkeypatch.setattr(crawl_task_service, 'get_session', lambda: _managed_session(engine))
+    monkeypatch.setattr(crawl_task_service, "get_session", lambda: _managed_session(engine))
     return engine
 
 
 def test_enqueue_video_extraction_writes_crawl_task_when_v2_enabled(monkeypatch):
     engine = _setup_task_store(monkeypatch)
 
-    monkeypatch.setattr(download_service.video_service, 'get_video_by_url', lambda url: None)
+    monkeypatch.setattr(download_service.video_service, "get_video_by_url", lambda url: None)
 
     params = VideoExtractDto(
-        url='https://www.youtube.com/watch?v=demo',
+        url="https://www.youtube.com/watch?v=demo",
         subscribed=True,
         only_extract=True,
         subscription_id=1,
         sync_state_id=2,
-        run_id='run-1',
-        trigger='manual',
+        run_id="run-1",
+        trigger="manual",
         is_manual=True,
         is_extract_all=False,
     )
@@ -69,27 +69,27 @@ def test_enqueue_video_extraction_writes_crawl_task_when_v2_enabled(monkeypatch)
         tasks = session.query(CrawlTask).all()
 
     assert len(jobs) == 1
-    assert jobs[0].job_type == 'video_extract'
-    assert jobs[0].site == 'youtube.com'
+    assert jobs[0].job_type == "video_extract"
+    assert jobs[0].site == "youtube.com"
     assert len(tasks) == 1
-    assert tasks[0].task_type == 'video_extract'
-    assert tasks[0].video_url == 'https://www.youtube.com/watch?v=demo'
-    assert tasks[0].payload['run_id'] == 'run-1'
+    assert tasks[0].task_type == "video_extract"
+    assert tasks[0].video_url == "https://www.youtube.com/watch?v=demo"
+    assert tasks[0].payload["run_id"] == "run-1"
 
 
 def test_enqueue_video_extraction_uses_task_dedupe_when_v2_enabled(monkeypatch):
     engine = _setup_task_store(monkeypatch)
 
-    monkeypatch.setattr(download_service.video_service, 'get_video_by_url', lambda url: None)
+    monkeypatch.setattr(download_service.video_service, "get_video_by_url", lambda url: None)
 
     params = VideoExtractDto(
-        url='https://www.youtube.com/watch?v=demo',
+        url="https://www.youtube.com/watch?v=demo",
         subscribed=True,
         only_extract=True,
         subscription_id=1,
         sync_state_id=2,
-        run_id='run-1',
-        trigger='scheduled',
+        run_id="run-1",
+        trigger="scheduled",
         is_manual=False,
         is_extract_all=False,
     )
@@ -106,33 +106,33 @@ def test_enqueue_video_extraction_uses_task_dedupe_when_v2_enabled(monkeypatch):
 
     assert len(jobs) == 1
     assert len(tasks) == 1
-    assert tasks[0].dedupe_key == 'dedupe:video_extract:https://www.youtube.com/watch?v=demo'
+    assert tasks[0].dedupe_key == "dedupe:video_extract:https://www.youtube.com/watch?v=demo"
 
 
 def test_enqueue_video_extraction_deduplicates_same_url_across_full_and_incremental(monkeypatch):
     engine = _setup_task_store(monkeypatch)
 
-    monkeypatch.setattr(download_service.video_service, 'get_video_by_url', lambda url: None)
+    monkeypatch.setattr(download_service.video_service, "get_video_by_url", lambda url: None)
 
     full_params = VideoExtractDto(
-        url='https://www.youtube.com/watch?v=demo',
+        url="https://www.youtube.com/watch?v=demo",
         subscribed=True,
         only_extract=True,
         subscription_id=1,
         sync_state_id=2,
-        run_id='run-full',
-        trigger='scheduled',
+        run_id="run-full",
+        trigger="scheduled",
         is_manual=False,
         is_extract_all=True,
     )
     incr_params = VideoExtractDto(
-        url='https://www.youtube.com/watch?v=demo',
+        url="https://www.youtube.com/watch?v=demo",
         subscribed=True,
         only_extract=True,
         subscription_id=1,
         sync_state_id=3,
-        run_id='run-incr',
-        trigger='scheduled',
+        run_id="run-incr",
+        trigger="scheduled",
         is_manual=False,
         is_extract_all=False,
     )
@@ -147,5 +147,5 @@ def test_enqueue_video_extraction_deduplicates_same_url_across_full_and_incremen
         tasks = session.query(CrawlTask).all()
 
     assert len(tasks) == 1
-    assert tasks[0].priority == 'full'
-    assert tasks[0].dedupe_key == 'dedupe:video_extract:https://www.youtube.com/watch?v=demo'
+    assert tasks[0].priority == "full"
+    assert tasks[0].dedupe_key == "dedupe:video_extract:https://www.youtube.com/watch?v=demo"

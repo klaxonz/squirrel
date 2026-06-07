@@ -1,39 +1,37 @@
-"""
-Base extraction implementations.
+"""Base extraction implementations.
 """
 import logging
-from typing import List, Optional
 from urllib.parse import urlparse
 
-from .contracts import Extractor, ExtractionTask, ExtractionResult, ResultHandler, TaskProcessor
+from .contracts import ExtractionResult, ExtractionTask, Extractor, ResultHandler
 
 logger = logging.getLogger(__name__)
 
 
 class BaseExtractor:
     """Base extractor implementation."""
-    
-    def __init__(self, site_name: str, supported_domains: List[str]):
+
+    def __init__(self, site_name: str, supported_domains: list[str]):
         self.site_name = site_name
         self._supported_domains = supported_domains
-    
+
     @property
-    def supported_sites(self) -> List[str]:
+    def supported_sites(self) -> list[str]:
         return [self.site_name]
-    
+
     def can_handle(self, url: str) -> bool:
         """Check if the extractor can handle the given URL."""
         try:
             parsed = urlparse(url)
             domain = parsed.netloc.lower()
             for supported_domain in self._supported_domains:
-                if domain == supported_domain or domain.endswith(f'.{supported_domain}'):
+                if domain == supported_domain or domain.endswith(f".{supported_domain}"):
                     return True
             return False
         except (ValueError, TypeError) as e:
             logger.warning(f"Failed to parse URL: {url}, error: {e}")
             return False
-    
+
     def validate_url(self, url: str) -> bool:
         """Validate URL format."""
         try:
@@ -41,23 +39,23 @@ class BaseExtractor:
             return all([result.scheme, result.netloc])
         except (ValueError, TypeError):
             return False
-    
+
     def extract(self, task: ExtractionTask) -> ExtractionResult:
         """Base extraction implementation; subclasses should override."""
         if not self.can_handle(task.url):
             return ExtractionResult(
                 success=False,
-                error=f"Unsupported URL: {task.url}"
+                error=f"Unsupported URL: {task.url}",
             )
-        
+
         if not self.validate_url(task.url):
             return ExtractionResult(
                 success=False,
-                error=f"Invalid URL format: {task.url}"
+                error=f"Invalid URL format: {task.url}",
             )
-        
+
         return self._do_extract(task)
-    
+
     def _do_extract(self, task: ExtractionTask) -> ExtractionResult:
         """Concrete extraction logic; must be implemented by subclasses."""
         raise NotImplementedError("Subclasses must implement _do_extract.")
@@ -65,16 +63,16 @@ class BaseExtractor:
 
 class BaseTaskProcessor:
     """Base task processor."""
-    
+
     def __init__(self, extractor: Extractor, result_handler: ResultHandler):
         self.extractor = extractor
         self.result_handler = result_handler
-    
+
     def can_process(self, task: ExtractionTask) -> bool:
         """Check whether the task can be processed."""
         extractor = self._get_extractor_for_task(task)
         return extractor.can_handle(task.url) if extractor else False
-    
+
     def process(self, task: ExtractionTask) -> ExtractionResult:
         """Process the given task."""
         extractor = self._get_extractor_for_task(task)
@@ -82,7 +80,7 @@ class BaseTaskProcessor:
             raise ValueError("No available extractor found.")
         return self._process_with_extractor(extractor, task)
 
-    def _get_extractor_for_task(self, task: ExtractionTask) -> Optional[Extractor]:
+    def _get_extractor_for_task(self, task: ExtractionTask) -> Extractor | None:
         """Return the extractor to use for the task; defaults to the provided extractor."""
         return self.extractor
 
@@ -107,12 +105,12 @@ class BaseTaskProcessor:
             return result
 
         except (ValueError, TypeError, AttributeError) as e:
-            error_msg = f"Task processing exception: {task.task_id}, error: {str(e)}"
+            error_msg = f"Task processing exception: {task.task_id}, error: {e!s}"
             logger.error(error_msg, exc_info=True)
 
             result = ExtractionResult(
                 success=False,
-                error=error_msg
+                error=error_msg,
             )
 
             self.result_handler.handle_failure(task, result)
@@ -121,11 +119,11 @@ class BaseTaskProcessor:
 
 class BaseResultHandler:
     """Base result handler."""
-    
+
     def handle_success(self, task: ExtractionTask, result: ExtractionResult) -> None:
         """Handle successful extraction results."""
         logger.info(f"Task succeeded: {task.task_id}")
-    
+
     def handle_failure(self, task: ExtractionTask, result: ExtractionResult) -> None:
         """Handle failed extraction results."""
         logger.error(f"Task failed: {task.task_id}, error: {result.error}")

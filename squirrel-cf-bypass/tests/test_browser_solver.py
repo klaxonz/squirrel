@@ -2,7 +2,6 @@ import asyncio
 
 import camoufox.async_api
 import playwright_captcha
-
 from playwright_captcha import CaptchaType
 
 import squirrel_cf_bypass.app.core.browser_solver as browser_solver_module

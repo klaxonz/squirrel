@@ -1,23 +1,28 @@
 import logging
-from typing import Dict, List, Literal
+from typing import Literal
 
 from fastapi import APIRouter, File, Query, UploadFile
 
-from common.response import success, error, param_error
+from common.response import error, param_error, success
 from core.cookie_config import get_site_cookies_dir, get_site_cookies_file_path, write_cookie_text_file
 from services.cookiecloud_service import CookieCloudSyncError, sync_cookiecloud_to_site_files
+from services.site_catalog_service import (
+    build_site_info,
+    get_merged_site_catalog,
+    merge_site_names,
+    normalize_cookie_domain,
+)
 from services.site_login_status_service import test_site_login_status
-from services.site_catalog_service import build_site_info, get_merged_site_catalog, merge_site_names, normalize_cookie_domain
 
-router = APIRouter(prefix='/api/site-cookies', tags=['site-cookies'])
+router = APIRouter(prefix="/api/site-cookies", tags=["site-cookies"])
 logger = logging.getLogger(__name__)
 
 
-@router.post('/{site_name}')
+@router.post("/{site_name}")
 async def upload_site_cookies(
     site_name: str,
     file: UploadFile = File(...),
-    target: Literal["default", "http"] = Query("default")
+    target: Literal["default", "http"] = Query("default"),
 ):
     catalog = get_merged_site_catalog()
     site_info = build_site_info(site_name, catalog)
@@ -35,8 +40,8 @@ async def upload_site_cookies(
     if not site_domains:
         return error(f"站点 {site_name} 没有关联的域名，无法从 cookies 文件中切分")
 
-    header_lines: List[str] = []
-    body_lines: List[str] = []
+    header_lines: list[str] = []
+    body_lines: list[str] = []
     for line in lines:
         if not line:
             continue
@@ -56,13 +61,13 @@ async def upload_site_cookies(
     site_cookies_path = get_site_cookies_file_path(site_name)
     site_cookies_path.parent.mkdir(parents=True, exist_ok=True)
 
-    output_lines: List[str] = []
-    output_lines.extend(l for l in header_lines if l)
+    output_lines: list[str] = []
+    output_lines.extend(line for line in header_lines if line)
     if not output_lines or not output_lines[0].startswith("# Netscape HTTP Cookie File"):
         output_lines.insert(0, "# Netscape HTTP Cookie File")
     output_lines.extend(body_lines)
 
-    write_cookie_text_file(site_cookies_path, '\n'.join(output_lines) + '\n')
+    write_cookie_text_file(site_cookies_path, "\n".join(output_lines) + "\n")
 
     status = test_site_login_status(site_name)
     return success(
@@ -73,7 +78,7 @@ async def upload_site_cookies(
             "site_cookies_bytes": site_cookies_path.stat().st_size,
             "login_status": status,
         },
-        msg="Cookies 已更新"
+        msg="Cookies 已更新",
     )
 
 
@@ -89,8 +94,8 @@ async def import_cookies_for_all_sites(file: UploadFile = File(...)):
     catalog = get_merged_site_catalog()
     site_names = merge_site_names(catalog)
 
-    domain_to_sites: Dict[str, List[str]] = {}
-    site_to_domains: Dict[str, List[str]] = {}
+    domain_to_sites: dict[str, list[str]] = {}
+    site_to_domains: dict[str, list[str]] = {}
     for site_name in site_names:
         info = build_site_info(site_name, catalog)
         if not info:
@@ -102,8 +107,8 @@ async def import_cookies_for_all_sites(file: UploadFile = File(...)):
         for d in domains:
             domain_to_sites.setdefault(d, []).append(site_name)
 
-    site_lines: Dict[str, List[str]] = {name: [] for name in site_to_domains.keys()}
-    header_lines: List[str] = []
+    site_lines: dict[str, list[str]] = {name: [] for name in site_to_domains}
+    header_lines: list[str] = []
 
     for line in lines:
         if not line:
@@ -115,7 +120,7 @@ async def import_cookies_for_all_sites(file: UploadFile = File(...)):
         if not parts:
             continue
         raw_domain = normalize_cookie_domain(parts[0])
-        matched_sites: List[str] = []
+        matched_sites: list[str] = []
         for d, names in domain_to_sites.items():
             if raw_domain == d or raw_domain.endswith("." + d):
                 matched_sites.extend(names)
@@ -126,17 +131,17 @@ async def import_cookies_for_all_sites(file: UploadFile = File(...)):
 
     get_site_cookies_dir().mkdir(parents=True, exist_ok=True)
 
-    result_summary: Dict[str, Dict[str, int]] = {}
+    result_summary: dict[str, dict[str, int]] = {}
     for site_name, body in site_lines.items():
         if not body:
             continue
         path = get_site_cookies_file_path(site_name)
-        output: List[str] = []
-        output.extend(l for l in header_lines if l)
+        output: list[str] = []
+        output.extend(line for line in header_lines if line)
         if not output or not output[0].startswith("# Netscape HTTP Cookie File"):
             output.insert(0, "# Netscape HTTP Cookie File")
         output.extend(body)
-        write_cookie_text_file(path, '\n'.join(output) + '\n')
+        write_cookie_text_file(path, "\n".join(output) + "\n")
         result_summary[site_name] = {"cookies": len(body)}
 
     total_lines = len(lines)
@@ -149,7 +154,7 @@ async def import_cookies_for_all_sites(file: UploadFile = File(...)):
             "matched_lines": matched_lines,
             "sites": result_summary,
         },
-        msg="Cookies 已按站点拆分导入"
+        msg="Cookies 已按站点拆分导入",
     )
 
 
