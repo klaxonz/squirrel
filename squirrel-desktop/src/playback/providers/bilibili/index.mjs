@@ -1,10 +1,9 @@
 import { createHash } from 'node:crypto'
 
-import { CACHE_TTL_MS } from '../../../constants.mjs'
 import { resolveBilibiliApiPayload, fetchBrowserJson, extractVideoId } from './request-runtime.mjs'
-import { loadFileCache, saveFileCache } from '../../file-cache.mjs'
 import { escapeXml } from '../shared/escape-xml.mjs'
-const playbackCache = new Map()
+import { createPlaybackCache } from '../shared/playback-cache.mjs'
+const cache = createPlaybackCache('bilibili')
 
 const QUALITY_HEIGHT_MAP = new Map([
   [16, 360],
@@ -31,29 +30,6 @@ const normalizeTargetUrl = (targetUrl) => {
     console.debug('[squirrel-desktop] bilibili normalizeTargetUrl error', err)
     return ''
   }
-}
-
-const isExpired = (entry) => {
-  return !entry || entry.expiresAt <= Date.now()
-}
-
-const getCachedPayload = (cacheKey) => {
-  const cached = playbackCache.get(cacheKey)
-  if (isExpired(cached)) {
-    playbackCache.delete(cacheKey)
-    return null
-  }
-  return cached.value
-}
-
-const setCachedPayload = (cacheKey, value) => {
-  playbackCache.set(cacheKey, {
-    value,
-    expiresAt: Date.now() + CACHE_TTL_MS,
-  })
-  saveFileCache(cacheKey, value, CACHE_TTL_MS).catch((err) => {
-    console.debug('[squirrel-desktop] bilibili cache save error', err)
-  })
 }
 
 const cacheScopeForCookie = (cookie) => {
@@ -423,14 +399,14 @@ export async function resolveBilibiliSubtitles(targetUrl, { cookie = '', lang = 
 }
 
 export const clearBilibiliPlaybackCache = () => {
-  playbackCache.clear()
+  cache.clearCache()
 }
 
 export async function resolveBilibiliPlayback(targetUrl, { cookie = '', forceRefresh = false, fetchImpl = null } = {}) {
   const normalizedUrl = await normalizeVideoUrl(targetUrl, cookie)
   const cacheKey = `${normalizedUrl}|${cacheScopeForCookie(cookie)}`
   if (!forceRefresh) {
-    const cached = getCachedPayload(cacheKey)
+    const cached = await cache.getCachedPayload(cacheKey)
     if (cached) {
       return cached
     }
@@ -438,6 +414,6 @@ export async function resolveBilibiliPlayback(targetUrl, { cookie = '', forceRef
 
   const response = await fetchPlayData(normalizedUrl, { cookie, fetchImpl })
   const payload = mapPlaybackPayload(response)
-  setCachedPayload(cacheKey, payload)
+  await cache.setCachedPayload(cacheKey, payload)
   return payload
 }

@@ -1,12 +1,11 @@
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
-import { CACHE_TTL_MS } from '../../../constants.mjs'
 import { prewarmYoutubeiRuntime, resolveYoutubeiPayload } from './youtubei_core.mjs'
-import { loadFileCache, saveFileCache } from '../../file-cache.mjs'
 import { escapeXml } from '../shared/escape-xml.mjs'
+import { createPlaybackCache } from '../shared/playback-cache.mjs'
 const RESOLVE_RETRY_DELAY_MS = 500
-const playbackCache = new Map()
+const cache = createPlaybackCache('youtube')
 
 const YOUTUBE_ID_PATTERNS = [
   /[?&]v=([\w-]{11})/i,
@@ -27,29 +26,6 @@ const extractYouTubeVideoId = (targetUrl) => {
   }
 
   return ''
-}
-
-const isExpired = (entry) => {
-  return !entry || entry.expiresAt <= Date.now()
-}
-
-const getCachedPayload = (cacheKey) => {
-  const cached = playbackCache.get(cacheKey)
-  if (isExpired(cached)) {
-    playbackCache.delete(cacheKey)
-    return null
-  }
-  return cached.value
-}
-
-const setCachedPayload = (cacheKey, value) => {
-  playbackCache.set(cacheKey, {
-    value,
-    expiresAt: Date.now() + CACHE_TTL_MS,
-  })
-  saveFileCache(cacheKey, value, CACHE_TTL_MS).catch((err) => {
-    console.debug('[squirrel-desktop] youtube cache save error', err)
-  })
 }
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -407,7 +383,7 @@ const mapPlaybackPayload = (response) => {
 }
 
 export const clearYouTubePlaybackCache = () => {
-  playbackCache.clear()
+  cache.clearCache()
 }
 
 export const resolveYouTubeOAuthSetup = () => {
@@ -461,8 +437,8 @@ export async function resolveYouTubePlayback(targetUrl, { cookie = '', forceRefr
   }
 
   const cacheKey = `${videoId}|${cacheScopeForCookie(cookie)}|${cacheScopeForOAuth()}`
-  const cached = getCachedPayload(cacheKey)
   if (!forceRefresh) {
+    const cached = await cache.getCachedPayload(cacheKey)
     if (cached) {
       return cached
     }
@@ -507,6 +483,6 @@ export async function resolveYouTubePlayback(targetUrl, { cookie = '', forceRefr
   }
 
   const payload = mapPlaybackPayload(response)
-  setCachedPayload(cacheKey, payload)
+  await cache.setCachedPayload(cacheKey, payload)
   return payload
 }

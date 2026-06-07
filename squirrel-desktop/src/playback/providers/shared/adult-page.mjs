@@ -1,53 +1,14 @@
-import { loadFileCache, saveFileCache } from '../../file-cache.mjs'
-import { CACHE_TTL_MS, desktopChromeUserAgent } from '../../../constants.mjs'
+import { desktopChromeUserAgent } from '../../../constants.mjs'
+import { createPlaybackCache } from './playback-cache.mjs'
 export { mergeCookieHeaders } from '../../../cookie-header.mjs'
 
-const playbackCache = new Map()
+const cache = createPlaybackCache('adult-page')
 
 export const DEFAULT_USER_AGENT = desktopChromeUserAgent
 
-const isExpired = (entry) => {
-  return !entry || entry.expiresAt <= Date.now()
-}
-
-const fileCacheLoading = new Set()
-
-export const getCachedPayload = async (cacheKey) => {
-  const cached = playbackCache.get(cacheKey)
-  if (cached) {
-    if (isExpired(cached)) {
-      playbackCache.delete(cacheKey)
-    } else {
-      return cached.value
-    }
-  }
-  if (fileCacheLoading.has(cacheKey)) return null
-  fileCacheLoading.add(cacheKey)
-  try {
-    const diskValue = await loadFileCache(cacheKey, CACHE_TTL_MS)
-    if (diskValue) {
-      playbackCache.set(cacheKey, { value: diskValue, expiresAt: Date.now() + CACHE_TTL_MS })
-      return diskValue
-    }
-  } finally {
-    fileCacheLoading.delete(cacheKey)
-  }
-  return null
-}
-
-export const setCachedPayload = (cacheKey, value) => {
-  playbackCache.set(cacheKey, {
-    value,
-    expiresAt: Date.now() + CACHE_TTL_MS,
-  })
-  saveFileCache(cacheKey, value, CACHE_TTL_MS).catch((err) => {
-    console.debug('[squirrel-desktop] adult-page cache save error', err)
-  })
-}
-
-export const clearAdultPlaybackCache = () => {
-  playbackCache.clear()
-}
+export const getCachedPayload = (cacheKey) => cache.getCachedPayload(cacheKey)
+export const setCachedPayload = (cacheKey, value) => cache.setCachedPayload(cacheKey, value)
+export const clearAdultPlaybackCache = () => cache.clearCache()
 
 export const normalizeTargetUrl = (targetUrl) => {
   const value = String(targetUrl || '').trim()
