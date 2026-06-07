@@ -1,7 +1,7 @@
 ---
 title: 测试 — 后端过度 Mock（1190 处 patch/monkeypatch）
 status: fixed
-fixed_by: services/music/__init__.py (first DI service), services/video_history_service.py (session_factory DI), services/system_config_service.py (session_factory DI), services/*.py (60+ services converted to class-based DI)
+fixed_by: services/*.py (60+ services converted to class-based DI), tests/services/*.py (all test files rewritten to use DI instead of monkeypatch, 0 monkeypatch remaining), routes/*.py (16 route files updated to use FastAPI Depends for service injection)
 severity: medium
 category: test-quality
 location: squirrel-backend/tests/（全量 89 个测试文件）
