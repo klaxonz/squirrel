@@ -259,6 +259,7 @@ export const createMainWindow = () => {
           titleBarStyle: 'hidden',
         }),
     webPreferences: {
+      sandbox: false,
       preload: path.join(__dirname, 'preload.mjs'),
       contextIsolation: true,
       nodeIntegration: false,

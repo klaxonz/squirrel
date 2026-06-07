@@ -77,6 +77,41 @@ const canResolveDesktopYouTubeSubtitles = () => {
   return bridge?.isDesktop === true && typeof bridge.resolveYouTubeSubtitles === 'function'
 }
 
+const canResolveDesktopBilibiliSubtitles = () => {
+  const bridge = getDesktopBridge()
+  return bridge?.isDesktop === true && typeof bridge.resolveBilibiliSubtitles === 'function'
+}
+
+const buildDesktopBilibiliSubtitleTracks = async (
+  videoUrl: string,
+  candidates: SubtitleCandidate[],
+): Promise<VideoSubtitle[]> => {
+  const desktopBridge = getDesktopBridge()
+  if (!desktopBridge?.resolveBilibiliSubtitles) return []
+
+  const tracks: VideoSubtitle[] = []
+  for (const [index, candidate] of candidates.entries()) {
+    try {
+      const payload = await desktopBridge.resolveBilibiliSubtitles(videoUrl, {
+        lang: candidate.lang,
+      })
+      const content = String(payload?.content || '').trim()
+      if (!content) continue
+
+      tracks.push({
+        id: candidate.id,
+        label: candidate.language,
+        language: candidate.language,
+        content,
+        default: index === 0,
+      })
+    } catch {
+      // Skip unavailable desktop subtitle tracks.
+    }
+  }
+  return tracks
+}
+
 export default function useVideoDetail(initialVideo: VideoPageVideo | null = null) {
   const video = ref<VideoPageVideo | null>(initialVideo)
   let detailRequestSeq = 0
@@ -139,27 +174,12 @@ export default function useVideoDetail(initialVideo: VideoPageVideo | null = nul
       return
     }
 
-    const subtitlePlaceholders = missingCandidates
-      .map((candidate, index) => {
-        const params = new URLSearchParams({
-          video_id: String(videoId),
-          fmt: isYouTubeUrl(snapshotUrl) ? 'vtt' : 'srt',
-        })
-        if (candidate.lang) {
-          params.set('lang', candidate.lang)
-        }
-
-        return {
-          id: candidate.id,
-          label: candidate.language,
-          language: candidate.language,
-          url: `/api/video/subtitles?${params.toString()}`,
-          default: index === 0,
-        } satisfies VideoSubtitle
-      })
-
-    if (!subtitlePlaceholders.length) return
-    snapshot.subtitles = [...existingSubtitles, ...subtitlePlaceholders]
+    if (canResolveDesktopBilibiliSubtitles()) {
+      const desktopTracks = await buildDesktopBilibiliSubtitleTracks(snapshotUrl || '', missingCandidates)
+      if (!desktopTracks.length) return
+      snapshot.subtitles = [...existingSubtitles, ...desktopTracks]
+      return
+    }
   }
 
   return {

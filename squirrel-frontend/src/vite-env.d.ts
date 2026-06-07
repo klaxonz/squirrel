@@ -28,6 +28,7 @@ interface DesktopAppBridge {
   resolveYouPornPlayback?: DesktopPlaybackResolver
   resolveYouTubePlayback?: DesktopPlaybackResolver
   resolveYouTubeSubtitles?: DesktopSubtitleResolver
+  resolveBilibiliSubtitles?: DesktopSubtitleResolver
   searchRemoteVideos?: DesktopRemoteSearchResolver
   getRemoteChannel?: DesktopRemoteChannelResolver
   getYouPornProfileAvatar?: (profileUrl: string) => Promise<string>

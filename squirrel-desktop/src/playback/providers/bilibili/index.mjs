@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 
 import { CACHE_TTL_MS } from '../../../constants.mjs'
-import { resolveBilibiliApiPayload } from './request-runtime.mjs'
+import { resolveBilibiliApiPayload, fetchBrowserJson, extractVideoId } from './request-runtime.mjs'
 import { loadFileCache, saveFileCache } from '../../file-cache.mjs'
 import { escapeXml } from '../shared/escape-xml.mjs'
 const playbackCache = new Map()
@@ -343,6 +343,83 @@ const mapPlaybackPayload = ({ playData, context, info }) => {
   }
 
   throw new Error(`Bilibili provider did not return a playable payload: ${summarizeUnplayablePayload(playData)}`)
+}
+
+function convertBilibiliSubtitleToSrt(body) {
+  if (!Array.isArray(body)) return ''
+
+  return body
+    .map((item, index) => {
+      const from = formatBilibiliSubtitleTime(item.from)
+      const to = formatBilibiliSubtitleTime(item.to)
+      const content = (item.content || '').trim()
+      if (!content) return ''
+      return `${index + 1}\n${from} --> ${to}\n${content}\n`
+    })
+    .filter(Boolean)
+    .join('\n')
+}
+
+function formatBilibiliSubtitleTime(seconds) {
+  const totalMs = Math.round(Number(seconds || 0) * 1000)
+  const hrs = Math.floor(totalMs / 3600000)
+  const mins = Math.floor((totalMs % 3600000) / 60000)
+  const secs = Math.floor((totalMs % 60000) / 1000)
+  const ms = totalMs % 1000
+  return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')},${String(ms).padStart(3, '0')}`
+}
+
+export async function resolveBilibiliSubtitles(targetUrl, { cookie = '', lang = '', format = 'srt' } = {}) {
+  const { bvid, aid } = extractVideoId(targetUrl)
+  if (!bvid && !aid) {
+    throw new Error('Invalid Bilibili URL')
+  }
+
+  const infoParams = bvid ? { bvid } : { aid: String(aid) }
+  const info = await fetchBrowserJson('https://api.bilibili.com/x/web-interface/view', {
+    cookie,
+    params: infoParams,
+  })
+
+  const subtitleList = Array.isArray(info?.subtitle?.list) ? info.subtitle.list : []
+  if (!subtitleList.length) {
+    throw new Error('No subtitles available')
+  }
+
+  let subtitle = lang
+    ? subtitleList.find((s) => s.lan === lang)
+    : null
+  if (!subtitle) {
+    subtitle = subtitleList[0]
+  }
+
+  const subtitleUrl = subtitle.subtitle_url
+    ? (subtitle.subtitle_url.startsWith('//') ? `https:${subtitle.subtitle_url}` : subtitle.subtitle_url)
+    : null
+  if (!subtitleUrl) {
+    throw new Error('Subtitle URL not found')
+  }
+
+  const response = await fetch(subtitleUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      Referer: 'https://www.bilibili.com/',
+    },
+  })
+  const subtitleData = await response.json()
+  const body = Array.isArray(subtitleData?.body) ? subtitleData.body : []
+
+  const srtContent = convertBilibiliSubtitleToSrt(body)
+  if (!srtContent.trim()) {
+    throw new Error('Subtitle content is empty')
+  }
+
+  return {
+    content: srtContent,
+    format,
+    language_code: subtitle.lan,
+    language_name: subtitle.lan_doc,
+  }
 }
 
 export const clearBilibiliPlaybackCache = () => {

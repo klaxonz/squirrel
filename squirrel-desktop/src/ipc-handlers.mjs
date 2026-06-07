@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
-import { resolveBilibiliPlayback } from './playback/providers/bilibili/index.mjs'
+import { resolveBilibiliPlayback, resolveBilibiliSubtitles } from './playback/providers/bilibili/index.mjs'
 import { resolveJavdbMetadata, resolveJavdbPlayback } from './playback/providers/javdb/index.mjs'
 import { resolvePornhubPlayback } from './playback/providers/pornhub/index.mjs'
 import { resolveYouPornPlayback } from './playback/providers/youporn/index.mjs'
@@ -81,6 +81,20 @@ export const installDesktopBridgeHandlers = () => {
     return resolveYouTubeSubtitles(normalizedUrl, {
       lang: String(options?.lang || '').trim(),
       format: String(options?.format || 'vtt').trim().toLowerCase(),
+    })
+  })
+
+  ipcMain.removeHandler('desktop:resolve-bilibili-subtitles')
+  ipcMain.handle('desktop:resolve-bilibili-subtitles', async (_event, targetUrl, options = {}) => {
+    const normalizedUrl = normalizeTargetUrl(targetUrl)
+    if (!normalizedUrl) {
+      throw new Error('Invalid Bilibili URL')
+    }
+
+    const cookie = await buildCookieHeaderForUrl(normalizedUrl)
+    return resolveBilibiliSubtitles(normalizedUrl, {
+      cookie,
+      lang: String(options?.lang || '').trim(),
     })
   })
 

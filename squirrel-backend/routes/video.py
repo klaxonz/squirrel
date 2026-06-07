@@ -1,7 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import PlainTextResponse
+from fastapi import APIRouter, Depends, Query
 
 from common import response
 from models.user import User
@@ -15,7 +14,6 @@ from schemas.video.request.video import (
     YesNoAll,
 )
 from services import video_service
-from services.video_subtitle_service import SubtitleErrorCode, SubtitleServiceError, fetch_video_subtitles
 from utils.jwt_helper import get_current_user
 from utils.site_catalog import SiteCatalog
 
@@ -126,36 +124,4 @@ def get_random_video(
     return response.success(detail)
 
 
-@router.get("/proxy")
-async def proxy_video(domain: str, url: str, request: Request, referer: str | None = None):
-    """代理视频文件，用于解决跨域问题"""
-    from core.streaming.proxy import VideoProxy
 
-    proxy = VideoProxy(request, domain=domain)
-    return await proxy.handle_stream(url, referer=referer)
-
-
-@router.get("/subtitles")
-def get_video_subtitles(
-        video_id: int = Query(..., description="视频ID"),
-        lang: str | None = Query(None, description="字幕语言代码；留空时走站点默认值"),
-        fmt: str = Query("srt", description="返回格式：支持 srt、vtt"),
-        current_user: User = Depends(get_current_user),
-):
-    try:
-        subtitle_file = fetch_video_subtitles(video_id, lang=lang, fmt=fmt)
-        return PlainTextResponse(
-            content=subtitle_file.content,
-            media_type=subtitle_file.media_type,
-            headers={
-                "Content-Disposition": f'inline; filename="{subtitle_file.filename}"',
-            },
-        )
-    except SubtitleServiceError as exc:
-        if exc.code in {SubtitleErrorCode.VIDEO_NOT_FOUND, SubtitleErrorCode.SUBTITLES_NOT_AVAILABLE}:
-            raise HTTPException(status_code=404, detail=exc.message)
-        raise HTTPException(status_code=400, detail=exc.message)
-    except Exception:
-        # API boundary -- convert to HTTP error response
-        logger.exception("Subtitles fetch failed")
-        raise HTTPException(status_code=500, detail="Server error")

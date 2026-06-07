@@ -1,10 +1,10 @@
 import { signBilibiliWbiParams } from '../../../shared/bilibili-sign.mjs'
 import { desktopChromeUserAgent, desktopChromeMajorVersion } from '../../../constants.mjs'
 
-const USER_AGENT = desktopChromeUserAgent
-const BILIBILI_REFERER = 'https://www.bilibili.com/'
+export const USER_AGENT = desktopChromeUserAgent
+export const BILIBILI_REFERER = 'https://www.bilibili.com/'
 
-const buildHeaders = (cookie = '') => ({
+export const buildHeaders = (cookie = '') => ({
   accept: 'application/json, text/plain, */*',
   'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8',
   'cache-control': 'no-cache',
@@ -21,7 +21,7 @@ const buildHeaders = (cookie = '') => ({
   ...(cookie ? { cookie } : {}),
 })
 
-const fetchBrowserJson = async (url, { cookie = '', params = null, timeoutMs = 25000, fetchImpl = null } = {}) => {
+export const fetchBrowserJson = async (url, { cookie = '', params = null, timeoutMs = 25000, fetchImpl = null } = {}) => {
   const target = new URL(url)
   if (params) {
     for (const [key, value] of Object.entries(params)) {
@@ -78,7 +78,7 @@ const extractPageIndex = (targetUrl) => {
   }
 }
 
-const extractVideoId = (targetUrl) => {
+export const extractVideoId = (targetUrl) => {
   const input = String(targetUrl || '')
   const bvidMatch = input.match(/(BV[0-9A-Za-z]{10,})/)
   if (bvidMatch?.[1]) {

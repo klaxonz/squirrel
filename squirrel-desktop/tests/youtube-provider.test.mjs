@@ -105,7 +105,7 @@ test('desktop youtube subtitles are resolved through the electron bridge', async
   assert.match(ipcSource, /desktop:resolve-youtube-subtitles/)
   assert.match(frontendSource, /bridge\.resolveYouTubeSubtitles\(videoUrl/)
   assert.match(frontendSource, /content,/)
-  assert.match(frontendSource, /url: `\/api\/video\/subtitles\?\$\{params\.toString\(\)\}`/)
+  assert.doesNotMatch(frontendSource, /\/api\/video\/subtitles/)
 })
 
 test('desktop youtube auth does not merge cookies into playback requests', async () => {
