@@ -21,72 +21,17 @@
 
         <!-- Controls: Dropdown & Search -->
         <div class="shrink-0 space-y-3 border-b border-border/10 p-4 bg-background/20 backdrop-blur-sm z-10">
-          <!-- Account Dropdown Selector -->
-          <div class="relative w-full" ref="accountDropdownRef">
-            <button
-              @click="showAccountDropdown = !showAccountDropdown"
-              class="flex h-8 w-full items-center justify-between rounded-lg border border-transparent bg-accent/40 hover:bg-accent/60 px-2.5 text-xs font-semibold transition-all"
-              :class="selectedAccountId ? 'text-foreground border-primary/20 bg-primary/5' : 'text-muted-foreground'"
-            >
-              <div class="flex items-center gap-2 min-w-0">
-                <AppIcon name="rss" class="h-3.5 w-3.5 shrink-0 text-primary" />
-                <span class="truncate">{{ selectedAccount?.name || '选择账号...' }}</span>
-              </div>
-              <AppIcon 
-                name="chevronDown" 
-                class="h-3.5 w-3.5 transition-transform text-muted-foreground shrink-0" 
-                :class="{ 'rotate-180': showAccountDropdown }" 
-              />
-            </button>
-            
-            <!-- Accounts Dropdown -->
-            <div 
-              v-if="showAccountDropdown" 
-              class="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-border/50 bg-background/95 backdrop-blur-xl p-1 shadow-lg ring-1 ring-black/5"
-            >
-              <div class="max-h-[220px] overflow-y-auto custom-scrollbar pr-1 space-y-0.5">
-                <div 
-                  v-for="acc in accounts" 
-                  :key="acc.id" 
-                  @click="selectAccount(acc.id); showAccountDropdown = false" 
-                  class="flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-xs font-medium transition-colors hover:bg-accent cursor-pointer group/item" 
-                  :class="selectedAccountId === acc.id ? 'text-foreground bg-accent/50 font-semibold' : 'text-muted-foreground'"
-                >
-                  <AppIcon name="rss" class="h-3.5 w-3.5 shrink-0 opacity-70" />
-                  <span class="flex-1 truncate">
-                    {{ acc.name }} 
-                    <span class="text-[9px] text-muted-foreground/80 block">({{ acc.provider }})</span>
-                  </span>
-                  <!-- Action tools inside dropdown (pencil & delete) -->
-                  <div class="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                    <button 
-                      @click.stop="openEditAccount(acc); showAccountDropdown = false" 
-                      class="h-7 w-7 rounded-md hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                      title="编辑账号"
-                    >
-                      <AppIcon name="pencil" class="h-3.5 w-3.5" />
-                    </button>
-                    <button 
-                      @click.stop="confirmDeleteAccount(acc); showAccountDropdown = false" 
-                      class="h-7 w-7 rounded-md hover:bg-destructive/15 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
-                      title="删除账号"
-                    >
-                      <AppIcon name="trash" class="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-                <div v-if="!accounts.length" class="py-4 text-center text-xs text-muted-foreground">暂无账号</div>
-                <div class="h-px w-full bg-border/50 my-1"></div>
-                <button 
-                  @click="openAddAccount(); showAccountDropdown = false" 
-                  class="flex h-9 w-full items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold text-primary hover:bg-primary/5 transition-colors"
-                >
-                  <AppIcon name="plus" class="h-4 w-4" />
-                  添加服务账号
-                </button>
-              </div>
-            </div>
-          </div>
+          <AccountDropdown
+            :accounts="accounts"
+            :selected-id="selectedAccountId"
+            :selected-name="selectedAccount?.name || ''"
+            :open="showAccountDropdown"
+            @toggle="showAccountDropdown = !showAccountDropdown"
+            @select="(id) => { selectAccount(id); showAccountDropdown = false }"
+            @edit="(acc) => { openEditAccount(acc); showAccountDropdown = false }"
+            @delete="(acc) => { confirmDeleteAccount(acc); showAccountDropdown = false }"
+            @add="openAddAccount(); showAccountDropdown = false"
+          />
 
           <!-- Selected Account Sync Info -->
           <div 
@@ -1252,6 +1197,7 @@ import {
 import AppIcon from '@/components/common/AppIcon.vue'
 import SiteIcon from '@/components/common/SiteIcon.vue'
 import ReaderSettingsPanel from '@/components/rss/ReaderSettingsPanel.vue'
+import AccountDropdown from '@/components/rss/AccountDropdown.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
