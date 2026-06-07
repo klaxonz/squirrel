@@ -454,7 +454,7 @@
                 <AppIcon name="close" class="h-4 w-4" />
               </button>
 
-              <!-- 阅读设置 -->
+              <!-- Reader Settings -->
               <div class="relative" ref="readerSettingsRef">
                 <button 
                   @click="showReaderSettings = !showReaderSettings"
@@ -464,74 +464,15 @@
                   <AppIcon name="settingsPanel" class="h-4 w-4" />
                 </button>
                 
-                <!-- Preference dropdown (opens to left) -->
-                <div 
-                  v-if="showReaderSettings" 
-                  class="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-border/30 bg-popover text-popover-foreground p-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] space-y-3 animate-fade-in"
-                >
-                  <!-- Font Family toggle -->
-                  <div class="space-y-1">
-                    <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">排版字体</span>
-                    <div class="grid grid-cols-2 gap-1 bg-accent/20 p-0.5 rounded-lg border border-border/5">
-                      <button 
-                        @click="readerFontFamily = 'sans'; saveReaderPrefs()"
-                        class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
-                        :class="readerFontFamily === 'sans' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-                        title="极简现代 (Inter)"
-                      >
-                        Inter
-                      </button>
-                      <button 
-                        @click="readerFontFamily = 'outfit'; saveReaderPrefs()"
-                        class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
-                        :class="readerFontFamily === 'outfit' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-                        title="优雅圆润 (Outfit)"
-                      >
-                        Outfit
-                      </button>
-                      <button 
-                        @click="readerFontFamily = 'serif'; saveReaderPrefs()"
-                        class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
-                        :class="readerFontFamily === 'serif' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-                        title="经典衬线 (Georgia)"
-                      >
-                        Georgia
-                      </button>
-                      <button 
-                        @click="readerFontFamily = 'lora'; saveReaderPrefs()"
-                        class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
-                        :class="readerFontFamily === 'lora' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-                        title="人文阅读 (Lora)"
-                      >
-                        Lora
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <!-- Font Size toggle -->
-                  <div class="space-y-1">
-                    <div class="flex items-center justify-between">
-                      <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">字号大小</span>
-                      <span class="text-[10px] font-semibold tabular-nums text-foreground/80">{{ readerFontSize }}px</span>
-                    </div>
-                    <div class="flex items-center gap-1">
-                      <button 
-                        @click="setReaderFontSize(readerFontSize - 1)" 
-                        class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
-                        :disabled="readerFontSize <= 12"
-                      >
-                        A-
-                      </button>
-                      <button 
-                        @click="setReaderFontSize(readerFontSize + 1)" 
-                        class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
-                        :disabled="readerFontSize >= 24"
-                      >
-                        A+
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <ReaderSettingsPanel
+                  :visible="showReaderSettings"
+                  :font-family="readerFontFamily"
+                  :font-size="readerFontSize"
+                  @update:visible="showReaderSettings = $event"
+                  @update:font-family="readerFontFamily = $event; saveReaderPrefs()"
+                  @update:font-size="readerFontSize = $event"
+                  @save="saveReaderPrefs()"
+                />
               </div>
             </div>
           </header>
@@ -1025,73 +966,15 @@
                     <AppIcon name="settingsPanel" class="h-4 w-4" />
                   </button>
                   
-                  <div 
-                    v-if="showMobileReaderSettings" 
-                    class="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-border/30 bg-popover text-popover-foreground p-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] space-y-3 animate-fade-in"
-                  >
-                    <!-- Font Family toggle -->
-                    <div class="space-y-1">
-                      <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">排版字体</span>
-                      <div class="grid grid-cols-2 gap-1 bg-accent/20 p-0.5 rounded-lg border border-border/5">
-                        <button 
-                          @click="readerFontFamily = 'sans'; saveReaderPrefs()"
-                          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
-                          :class="readerFontFamily === 'sans' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-                          title="极简现代 (Inter)"
-                        >
-                          Inter
-                        </button>
-                        <button 
-                          @click="readerFontFamily = 'outfit'; saveReaderPrefs()"
-                          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
-                          :class="readerFontFamily === 'outfit' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-                          title="优雅圆润 (Outfit)"
-                        >
-                          Outfit
-                        </button>
-                        <button 
-                          @click="readerFontFamily = 'serif'; saveReaderPrefs()"
-                          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
-                          :class="readerFontFamily === 'serif' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-                          title="经典衬线 (Georgia)"
-                        >
-                          Georgia
-                        </button>
-                        <button 
-                          @click="readerFontFamily = 'lora'; saveReaderPrefs()"
-                          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
-                          :class="readerFontFamily === 'lora' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-                          title="人文阅读 (Lora)"
-                        >
-                          Lora
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <!-- Font Size toggle -->
-                    <div class="space-y-1">
-                      <div class="flex items-center justify-between">
-                        <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">字号大小</span>
-                        <span class="text-[10px] font-semibold tabular-nums text-foreground/80">{{ readerFontSize }}px</span>
-                      </div>
-                      <div class="flex items-center gap-1">
-                        <button 
-                          @click="setReaderFontSize(readerFontSize - 1)" 
-                          class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
-                          :disabled="readerFontSize <= 12"
-                        >
-                          A-
-                        </button>
-                        <button 
-                          @click="setReaderFontSize(readerFontSize + 1)" 
-                          class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
-                          :disabled="readerFontSize >= 24"
-                        >
-                          A+
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  <ReaderSettingsPanel
+                    :visible="showMobileReaderSettings"
+                    :font-family="readerFontFamily"
+                    :font-size="readerFontSize"
+                    @update:visible="showMobileReaderSettings = $event"
+                    @update:font-family="readerFontFamily = $event; saveReaderPrefs()"
+                    @update:font-size="readerFontSize = $event"
+                    @save="saveReaderPrefs()"
+                  />
                 </div>
               </div>
             </div>
@@ -1368,6 +1251,7 @@ import {
 } from '@/api'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SiteIcon from '@/components/common/SiteIcon.vue'
+import ReaderSettingsPanel from '@/components/rss/ReaderSettingsPanel.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
