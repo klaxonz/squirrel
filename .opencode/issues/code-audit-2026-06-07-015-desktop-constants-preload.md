@@ -1,6 +1,7 @@
 ---
 title: 'Desktop: 硬编码常量散落 + 重复 preload + 空 feed 目录'
-status: open
+status: fixed
+fixed_by: constants.mjs, media-headers.mjs, window.mjs (+11 files)
 severity: medium
 category: code-smell
 location: 全局 — constants.mjs:57, playback/file-cache.mjs:20, playback/providers/shared/adult-page.mjs:3, preload.cjs/preload.mjs, src/feed/

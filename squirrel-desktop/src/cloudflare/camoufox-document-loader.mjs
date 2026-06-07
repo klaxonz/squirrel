@@ -72,7 +72,8 @@ const findShadowRootElements = async (queryable, selector) => {
     return [...properties.values()]
       .map((property) => property.asElement())
       .filter(Boolean)
-  } catch {
+  } catch (err) {
+    console.debug('[squirrel-desktop] findShadowRootElements error', err)
     return []
   }
 }
@@ -80,7 +81,8 @@ const findShadowRootElements = async (queryable, selector) => {
 const findCloudflareFrames = async (page) => {
   try {
     return await findShadowRootElements(page, 'iframe')
-  } catch {
+  } catch (err) {
+    console.debug('[squirrel-desktop] findCloudflareFrames error', err)
     return []
   }
 }
@@ -125,7 +127,9 @@ export class CamoufoxDocumentLoader {
     const entries = Array.from(this.entries.values())
     this.entries.clear()
     await Promise.all(entries.map(async (entry) => {
-      await entry.context.close().catch(() => {})
+      await entry.context.close().catch((err) => {
+        console.debug('[squirrel-desktop] context close error', err)
+      })
     }))
   }
 
@@ -149,7 +153,9 @@ export class CamoufoxDocumentLoader {
         await this.syncCookiesToElectron(entry.context, normalizedUrl)
         return html
       } finally {
-        await page.close().catch(() => {})
+        await page.close().catch((err) => {
+          console.debug('[squirrel-desktop] page close error', err)
+        })
       }
     })
   }
@@ -188,7 +194,9 @@ export class CamoufoxDocumentLoader {
     const current = previous.then(() => next, () => next)
     this.locks.set(key, current)
 
-    await previous.catch(() => {})
+    await previous.catch((err) => {
+      console.debug('[squirrel-desktop] lock previous error', err)
+    })
     try {
       return await task()
     } finally {

@@ -13,6 +13,7 @@ import {
 } from './shared.mjs'
 
 import { signBilibiliWbiParams } from '../../shared/bilibili-sign.mjs'
+import { desktopChromeUserAgent } from '../../constants.mjs'
 
 const BILIBILI_ORIGIN = 'https://www.bilibili.com'
 const BILIBILI_SPACE_ORIGIN = 'https://space.bilibili.com'
@@ -20,7 +21,7 @@ const YOUTUBE_ORIGIN = 'https://www.youtube.com'
 const JAVDB_ORIGIN = 'https://javdb.com'
 const PORNHUB_ORIGIN = 'https://www.pornhub.com'
 const YOUPORN_ORIGIN = 'https://www.youporn.com'
-const DESKTOP_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36'
+const DESKTOP_USER_AGENT = desktopChromeUserAgent
 const BILIBILI_WEB_LOCATION_SPACE = '1550101'
 
 const SITE_ALIASES = {

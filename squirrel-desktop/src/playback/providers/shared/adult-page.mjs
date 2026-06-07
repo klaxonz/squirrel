@@ -1,11 +1,10 @@
 import { loadFileCache, saveFileCache } from '../../file-cache.mjs'
+import { CACHE_TTL_MS, desktopChromeUserAgent } from '../../../constants.mjs'
 export { mergeCookieHeaders } from '../../../cookie-header.mjs'
-
-const CACHE_TTL_MS = 5 * 60 * 1000
 
 const playbackCache = new Map()
 
-export const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+export const DEFAULT_USER_AGENT = desktopChromeUserAgent
 
 const isExpired = (entry) => {
   return !entry || entry.expiresAt <= Date.now()
@@ -41,7 +40,9 @@ export const setCachedPayload = (cacheKey, value) => {
     value,
     expiresAt: Date.now() + CACHE_TTL_MS,
   })
-  saveFileCache(cacheKey, value, CACHE_TTL_MS).catch(() => {})
+  saveFileCache(cacheKey, value, CACHE_TTL_MS).catch((err) => {
+    console.debug('[squirrel-desktop] adult-page cache save error', err)
+  })
 }
 
 export const clearAdultPlaybackCache = () => {
@@ -56,7 +57,8 @@ export const normalizeTargetUrl = (targetUrl) => {
 
   try {
     return new URL(value).toString()
-  } catch {
+  } catch (err) {
+    console.debug('[squirrel-desktop] normalizeTargetUrl error', err)
     return ''
   }
 }
@@ -199,7 +201,8 @@ export const extractJsonArrayFromObjectLiteral = (objectLiteral, keyName) => {
 
   try {
     return JSON.parse(arrayLiteral)
-  } catch {
+  } catch (err) {
+    console.debug('[squirrel-desktop] extractJsonArrayFromObjectLiteral error', err)
     return null
   }
 }

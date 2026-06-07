@@ -1,10 +1,9 @@
 import { createHash } from 'node:crypto'
 
+import { CACHE_TTL_MS } from '../../../constants.mjs'
 import { resolveBilibiliApiPayload } from './request-runtime.mjs'
 import { loadFileCache, saveFileCache } from '../../file-cache.mjs'
 import { escapeXml } from '../shared/escape-xml.mjs'
-
-const CACHE_TTL_MS = 5 * 60 * 1000
 const playbackCache = new Map()
 
 const QUALITY_HEIGHT_MAP = new Map([
@@ -28,7 +27,8 @@ const normalizeTargetUrl = (targetUrl) => {
 
   try {
     return new URL(value).toString()
-  } catch {
+  } catch (err) {
+    console.debug('[squirrel-desktop] bilibili normalizeTargetUrl error', err)
     return ''
   }
 }
@@ -51,7 +51,9 @@ const setCachedPayload = (cacheKey, value) => {
     value,
     expiresAt: Date.now() + CACHE_TTL_MS,
   })
-  saveFileCache(cacheKey, value, CACHE_TTL_MS).catch(() => {})
+  saveFileCache(cacheKey, value, CACHE_TTL_MS).catch((err) => {
+    console.debug('[squirrel-desktop] bilibili cache save error', err)
+  })
 }
 
 const cacheScopeForCookie = (cookie) => {

@@ -1,11 +1,10 @@
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
+import { CACHE_TTL_MS } from '../../../constants.mjs'
 import { prewarmYoutubeiRuntime, resolveYoutubeiPayload } from './youtubei_core.mjs'
 import { loadFileCache, saveFileCache } from '../../file-cache.mjs'
 import { escapeXml } from '../shared/escape-xml.mjs'
-
-const CACHE_TTL_MS = 5 * 60 * 1000
 const RESOLVE_RETRY_DELAY_MS = 500
 const playbackCache = new Map()
 
@@ -48,7 +47,9 @@ const setCachedPayload = (cacheKey, value) => {
     value,
     expiresAt: Date.now() + CACHE_TTL_MS,
   })
-  saveFileCache(cacheKey, value, CACHE_TTL_MS).catch(() => {})
+  saveFileCache(cacheKey, value, CACHE_TTL_MS).catch((err) => {
+    console.debug('[squirrel-desktop] youtube cache save error', err)
+  })
 }
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))

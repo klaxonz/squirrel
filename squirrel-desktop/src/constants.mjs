@@ -12,6 +12,8 @@ export const SERVER_CONFIG_FILE = 'server-config.json'
 export const desktopChromeVersion = process.versions.chrome || '124.0.0.0'
 export const desktopChromeMajorVersion = desktopChromeVersion.split('.')[0] || '124'
 export const desktopChromeUserAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${desktopChromeVersion} Safari/537.36`
+export const desktopMacChromeUserAgent = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${desktopChromeVersion} Safari/537.36`
+export const androidMobileChromeUserAgent = `Mozilla/5.0 (Linux; Android 12; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${desktopChromeVersion} Mobile Safari/537.36`
 export const desktopChromeAcceptLanguage = 'en-US,en;q=0.9'
 export const desktopChromeClientHints = {
   'sec-ch-ua': `"Chromium";v="${desktopChromeMajorVersion}", "Google Chrome";v="${desktopChromeMajorVersion}", "Not-A.Brand";v="99"`,
@@ -53,6 +55,8 @@ export const SITE_SESSION_STORAGE_TYPES = [
   'cachestorage',
   'websql',
 ]
+
+export const CACHE_TTL_MS = 5 * 60 * 1000
 
 export const DOCUMENT_READ_TIMEOUT_MS = 10000
 

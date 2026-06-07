@@ -3,6 +3,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir, tmpdir } from 'node:os'
+import { CACHE_TTL_MS } from '../constants.mjs'
 
 const CACHE_DIR = join(homedir(), '.squirrel', 'playback-cache')
 
@@ -17,7 +18,7 @@ const ensureCacheDir = async () => {
   }
 }
 
-export const loadFileCache = async (cacheKey, ttlMs = 5 * 60 * 1000) => {
+export const loadFileCache = async (cacheKey, ttlMs = CACHE_TTL_MS) => {
   try {
     await ensureCacheDir()
     const filePath = getCacheFilePath(cacheKey)
@@ -27,16 +28,19 @@ export const loadFileCache = async (cacheKey, ttlMs = 5 * 60 * 1000) => {
       return null
     }
     return entry.value
-  } catch {
+  } catch (err) {
+    console.debug('[squirrel-desktop] file-cache load error', err)
     return null
   }
 }
 
-export const saveFileCache = async (cacheKey, value, ttlMs = 5 * 60 * 1000) => {
+export const saveFileCache = async (cacheKey, value, ttlMs = CACHE_TTL_MS) => {
   try {
     await ensureCacheDir()
     const filePath = getCacheFilePath(cacheKey)
     const entry = { value, expiresAt: Date.now() + ttlMs }
     await writeFile(filePath, JSON.stringify(entry), 'utf-8')
-  } catch {}
+  } catch (err) {
+    console.debug('[squirrel-desktop] file-cache save error', err)
+  }
 }

@@ -3,6 +3,8 @@ import { buildCookieHeaderForUrl } from './site-login.mjs'
 import { mergeCookieHeaders } from './cookie-header.mjs'
 import {
   desktopChromeUserAgent,
+  desktopMacChromeUserAgent,
+  androidMobileChromeUserAgent,
   desktopChromeClientHints,
   desktopChromeAcceptLanguage,
 } from './constants.mjs'
@@ -38,7 +40,7 @@ const MEDIA_HEADER_RULES = [
     headers: {
       Referer: 'https://m.youtube.com/',
       Origin: 'https://m.youtube.com',
-      'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Mobile Safari/537.36',
+      'User-Agent': androidMobileChromeUserAgent,
     },
   },
   {
@@ -46,7 +48,7 @@ const MEDIA_HEADER_RULES = [
     headers: {
       Referer: 'https://www.youtube.com/',
       Origin: 'https://www.youtube.com',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+      'User-Agent': desktopChromeUserAgent,
     },
   },
   {
@@ -54,7 +56,7 @@ const MEDIA_HEADER_RULES = [
     headers: {
       Referer: 'https://www.pornhub.com/',
       Origin: 'https://www.pornhub.com',
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'User-Agent': desktopMacChromeUserAgent,
     },
   },
   {
@@ -62,7 +64,7 @@ const MEDIA_HEADER_RULES = [
     headers: {
       Referer: 'https://www.youporn.com/',
       Origin: 'https://www.youporn.com',
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'User-Agent': desktopMacChromeUserAgent,
     },
   },
   {
@@ -70,7 +72,7 @@ const MEDIA_HEADER_RULES = [
     headers: {
       Referer: 'https://missav.ai/',
       Origin: 'https://missav.ai',
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'User-Agent': desktopMacChromeUserAgent,
     },
   },
   {
@@ -120,7 +122,8 @@ const matchMediaHeaderRule = (targetUrl) => {
     return MEDIA_HEADER_RULES.find((rule) => {
       return hostMatchesAnyRule(hostname, rule.hosts)
     }) || null
-  } catch {
+  } catch (err) {
+    console.debug('[squirrel-desktop] matchMediaHeaderRule error', err)
     return null
   }
 }
@@ -129,7 +132,8 @@ const shouldRelaxCrossOriginResponseHeaders = (targetUrl) => {
   try {
     const hostname = new URL(targetUrl).hostname.toLowerCase()
     return hostMatchesAnyRule(hostname, RELAXED_CROSS_ORIGIN_HOSTS)
-  } catch {
+  } catch (err) {
+    console.debug('[squirrel-desktop] shouldRelaxCrossOriginResponseHeaders error', err)
     return false
   }
 }
@@ -170,7 +174,8 @@ export const installDesktopMediaHeaders = () => {
       }
 
       callback({ requestHeaders })
-    }).catch(() => {
+    }).catch((err) => {
+      console.debug('[squirrel-desktop] buildCookieHeaderForUrl error', err)
       callback({ requestHeaders })
     })
   })

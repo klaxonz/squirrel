@@ -1,6 +1,7 @@
 import { signBilibiliWbiParams } from '../../../shared/bilibili-sign.mjs'
+import { desktopChromeUserAgent, desktopChromeMajorVersion } from '../../../constants.mjs'
 
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36'
+const USER_AGENT = desktopChromeUserAgent
 const BILIBILI_REFERER = 'https://www.bilibili.com/'
 
 const buildHeaders = (cookie = '') => ({
@@ -10,7 +11,7 @@ const buildHeaders = (cookie = '') => ({
   pragma: 'no-cache',
   referer: BILIBILI_REFERER,
   origin: BILIBILI_REFERER.replace(/\/$/, ''),
-  'sec-ch-ua': '"Chromium";v="135", "Not-A.Brand";v="8"',
+  'sec-ch-ua': `"Chromium";v="${desktopChromeMajorVersion}", "Not-A.Brand";v="8"`,
   'sec-ch-ua-mobile': '?0',
   'sec-ch-ua-platform': '"Windows"',
   'sec-fetch-dest': 'empty',
@@ -71,7 +72,8 @@ const extractPageIndex = (targetUrl) => {
     const page = url.searchParams.get('p') || url.searchParams.get('page')
     const numericPage = Number.parseInt(page || '', 10)
     return Number.isFinite(numericPage) ? Math.max(numericPage - 1, 0) : 0
-  } catch {
+  } catch (err) {
+    console.debug('[squirrel-desktop] bilibili extractPageIndex error', err)
     return 0
   }
 }
@@ -99,8 +101,8 @@ const extractVideoId = (targetUrl) => {
     if (Number.isFinite(numericAid)) {
       return { bvid: null, aid: numericAid }
     }
-  } catch {
-    // Ignore URL parse failures.
+  } catch (err) {
+    console.debug('[squirrel-desktop] bilibili extractVideoId error', err)
   }
 
   return { bvid: null, aid: null }
