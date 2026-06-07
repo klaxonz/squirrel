@@ -29,8 +29,10 @@ FAILED_TASK_STATUSES = [
 
 
 class CrawlTaskService:
-    def __init__(self, session_factory=None):
+    def __init__(self, session_factory=None, sync_state_service=None, video_extraction_projection_svc=None):
         self.session_factory = session_factory or get_session
+        self._sync_state_service = sync_state_service
+        self._video_extraction_projection_svc = video_extraction_projection_svc
 
     def create_job(
         self,
@@ -633,9 +635,12 @@ class CrawlTaskService:
         except (TypeError, ValueError):
             return
 
-        from services import subscription_sync_state_service
+        sync_svc = self._sync_state_service
+        if sync_svc is None:
+            from services import subscription_sync_state_service
+            sync_svc = subscription_sync_state_service
 
-        subscription_sync_state_service.reconcile_task_retry_state(
+        sync_svc.reconcile_task_retry_state(
             sync_state_id,
             payload.get("queue_token"),
             now=now,
@@ -647,9 +652,9 @@ class CrawlTaskService:
             trigger=payload.get("trigger"),
         )
 
-    @staticmethod
-    def _refresh_video_extraction_projection(session: Session, task: CrawlTask) -> None:
-        video_extraction_projection_service.refresh_projection_for_task(task, session=session)
+    def _refresh_video_extraction_projection(self, session: Session, task: CrawlTask) -> None:
+        svc = self._video_extraction_projection_svc or video_extraction_projection_service
+        svc.refresh_projection_for_task(task, session=session)
 
 
 _default = CrawlTaskService()

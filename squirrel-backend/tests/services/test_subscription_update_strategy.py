@@ -1,6 +1,8 @@
-from datetime import datetime, timedelta
+﻿from datetime import datetime, timedelta
 from types import SimpleNamespace
+from unittest.mock import patch
 
+from services.subscription_update import scheduler as _scheduler_instance
 from services.subscription_update.models import (
     SubscriptionUpdateRequest,
     SubscriptionUpdateResult,
@@ -88,32 +90,31 @@ def test_should_schedule_total_video_backfill_when_full_is_stale_even_without_ob
     ) is True
 
 
-def test_inline_video_extraction_does_not_schedule_total_video_backfill(monkeypatch):
-    monkeypatch.setattr(
+def test_inline_video_extraction_does_not_schedule_total_video_backfill():
+    with patch(
         "services.subscription_update.strategies.default_strategy.subscription_service.get_subscription_by_id",
-        lambda subscription_id: (_ for _ in ()).throw(AssertionError("inline extraction should not schedule backfill")),
-    )
+        side_effect=lambda subscription_id: (_ for _ in ()).throw(AssertionError("inline extraction should not schedule backfill")),
+    ):
+        request = SubscriptionUpdateRequest(
+            subscription_id=1,
+            sync_state_id=2,
+            url="https://www.youtube.com/channel/demo",
+            trigger=UpdateTrigger.MANUAL,
+            mode=UpdateMode.INCREMENTAL,
+            inline_video_extraction=True,
+        )
+        result = SubscriptionUpdateResult(
+            subscription_id=1,
+            success=True,
+            videos_found=1,
+            videos_enqueued=1,
+            total_available=10,
+        )
 
-    request = SubscriptionUpdateRequest(
-        subscription_id=1,
-        sync_state_id=2,
-        url="https://www.youtube.com/channel/demo",
-        trigger=UpdateTrigger.MANUAL,
-        mode=UpdateMode.INCREMENTAL,
-        inline_video_extraction=True,
-    )
-    result = SubscriptionUpdateResult(
-        subscription_id=1,
-        success=True,
-        videos_found=1,
-        videos_enqueued=1,
-        total_available=10,
-    )
-
-    DefaultUpdateStrategy._schedule_total_video_backfill(request, result)
+        DefaultUpdateStrategy._schedule_total_video_backfill(request, result)
 
 
-def test_fetch_videos_uses_plugin_gateway_sync_subscription(monkeypatch):
+def test_fetch_videos_uses_plugin_gateway_sync_subscription():
     calls = []
 
     class _FakeGateway:
@@ -137,21 +138,20 @@ def test_fetch_videos_uses_plugin_gateway_sync_subscription(monkeypatch):
                 },
             )
 
-    monkeypatch.setattr(
+    with patch(
         "services.subscription_update.strategies.default_strategy.SiteCatalog.find_site_by_domain",
-        lambda domain: ("bilibili", {"domains": ["bilibili.com"]}),
-    )
+        return_value=("bilibili", {"domains": ["bilibili.com"]}),
+    ):
+        request = SubscriptionUpdateRequest(
+            subscription_id=1,
+            url="https://space.bilibili.com/42",
+            trigger=UpdateTrigger.MANUAL,
+            mode=UpdateMode.INCREMENTAL,
+            cursor_payload={"cursor": "1"},
+            last_seen_video_url="https://www.bilibili.com/video/OLD",
+        )
 
-    request = SubscriptionUpdateRequest(
-        subscription_id=1,
-        url="https://space.bilibili.com/42",
-        trigger=UpdateTrigger.MANUAL,
-        mode=UpdateMode.INCREMENTAL,
-        cursor_payload={"cursor": "1"},
-        last_seen_video_url="https://www.bilibili.com/video/OLD",
-    )
-
-    result = DefaultUpdateStrategy(runtime_gateway=_FakeGateway()).fetch_videos(request)
+        result = DefaultUpdateStrategy(runtime_gateway=_FakeGateway()).fetch_videos(request)
 
     assert calls == [{
         "capability": "sync_subscription",
@@ -171,7 +171,7 @@ def test_fetch_videos_uses_plugin_gateway_sync_subscription(monkeypatch):
     assert result.total_available == 1
 
 
-def test_enqueue_extraction_skips_blocked_video_urls(monkeypatch):
+def test_enqueue_extraction_skips_blocked_video_urls():
     counter_calls = []
     enqueue_calls = []
 
@@ -182,55 +182,36 @@ def test_enqueue_extraction_skips_blocked_video_urls(monkeypatch):
         def __exit__(self, exc_type, exc, tb):
             return False
 
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.video_service.get_videos_by_urls",
-        lambda urls: {},
-    )
-    import services.subscription_update.strategies.default_strategy as _ds_mod
     from utils.url_helper import extract_top_level_domain
-    _ds_mod.subscription_sync_state_service._resolve_site = lambda url: extract_top_level_domain(url) or "unknown"
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.get_session",
-        lambda: _DummySessionContext(),
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.is_blocked_video",
-        lambda url, session: url.endswith("blocked"),
-        raising=False,
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.download_service.enqueue_video_extraction",
-        lambda params: enqueue_calls.append(params.url) or True,
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.subscription_sync_state_service.increment_pending_video_count",
-        lambda sync_state_id, count: None,
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.metrics.counter",
-        lambda name, tags=None: counter_calls.append((name, tags or {})),
-    )
 
-    request = SubscriptionUpdateRequest(
-        subscription_id=1,
-        sync_state_id=2,
-        url="https://www.pornhub.com/model/demo",
-        trigger=UpdateTrigger.MANUAL,
-        mode=UpdateMode.INCREMENTAL,
-    )
-    fetch_result = SimpleNamespace(video_urls=[
-        "https://www.pornhub.com/view_video.php?viewkey=blocked",
-        "https://www.pornhub.com/view_video.php?viewkey=normal",
-    ])
+    with patch("services.subscription_update.strategies.default_strategy.video_service.get_videos_by_urls", return_value={}), \
+         patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service._resolve_site", side_effect=lambda url: extract_top_level_domain(url) or "unknown", create=True), \
+         patch("services.subscription_update.strategies.default_strategy.get_session", return_value=_DummySessionContext()), \
+         patch("services.subscription_update.strategies.default_strategy.is_blocked_video", side_effect=lambda url, session: url.endswith("blocked")), \
+         patch("services.subscription_update.strategies.default_strategy.download_service.enqueue_video_extraction", side_effect=lambda params: enqueue_calls.append(params.url) or True), \
+         patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service.increment_pending_video_count"), \
+         patch("services.subscription_update.strategies.default_strategy.metrics.counter", side_effect=lambda name, tags=None: counter_calls.append((name, tags or {}))):
 
-    enqueued = DefaultUpdateStrategy().enqueue_extraction(fetch_result, request)
+        request = SubscriptionUpdateRequest(
+            subscription_id=1,
+            sync_state_id=2,
+            url="https://www.pornhub.com/model/demo",
+            trigger=UpdateTrigger.MANUAL,
+            mode=UpdateMode.INCREMENTAL,
+        )
+        fetch_result = SimpleNamespace(video_urls=[
+            "https://www.pornhub.com/view_video.php?viewkey=blocked",
+            "https://www.pornhub.com/view_video.php?viewkey=normal",
+        ])
+
+        enqueued = DefaultUpdateStrategy().enqueue_extraction(fetch_result, request)
 
     assert enqueued == 1
     assert enqueue_calls == ["https://www.pornhub.com/view_video.php?viewkey=normal"]
     assert ("crawl.tasks.total", {"site": "pornhub.com", "status": "skipped", "reason": "blocked_video"}) in counter_calls
 
 
-def test_enqueue_extraction_reserves_pending_count_before_dispatching_video_task(monkeypatch):
+def test_enqueue_extraction_reserves_pending_count_before_dispatching_video_task():
     pending_counts = {2: 0}
 
     class _DummySessionContext:
@@ -250,59 +231,37 @@ def test_enqueue_extraction_reserves_pending_count_before_dispatching_video_task
         _decrement_pending(params.sync_state_id)
         return True
 
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.video_service.get_videos_by_urls",
-        lambda urls: {},
-    )
-    import services.subscription_update.strategies.default_strategy as _ds_mod
     from utils.url_helper import extract_top_level_domain
-    _ds_mod.subscription_sync_state_service._resolve_site = lambda url: extract_top_level_domain(url) or "unknown"
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.get_session",
-        lambda: _DummySessionContext(),
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.is_blocked_video",
-        lambda url, session: False,
-        raising=False,
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.subscription_sync_state_service.increment_pending_video_count",
-        _increment_pending,
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.subscription_sync_state_service.decrement_pending_video_count",
-        _decrement_pending,
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.download_service.enqueue_video_extraction",
-        _enqueue_video,
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.metrics.counter",
-        lambda *args, **kwargs: None,
-    )
 
-    request = SubscriptionUpdateRequest(
-        subscription_id=1,
-        sync_state_id=2,
-        url="https://www.youtube.com/channel/demo",
-        trigger=UpdateTrigger.MANUAL,
-        mode=UpdateMode.INCREMENTAL,
-    )
-    fetch_result = SimpleNamespace(
-        video_urls=["https://www.youtube.com/watch?v=demo"],
-        latest_video_url="https://www.youtube.com/watch?v=demo",
-        source_video_count=1,
-    )
+    with patch("services.subscription_update.strategies.default_strategy.video_service.get_videos_by_urls", return_value={}), \
+         patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service._resolve_site", side_effect=lambda url: extract_top_level_domain(url) or "unknown", create=True), \
+         patch("services.subscription_update.strategies.default_strategy.get_session", return_value=_DummySessionContext()), \
+         patch("services.subscription_update.strategies.default_strategy.is_blocked_video", return_value=False), \
+         patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service.increment_pending_video_count", side_effect=_increment_pending), \
+         patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service.decrement_pending_video_count", side_effect=_decrement_pending), \
+         patch("services.subscription_update.strategies.default_strategy.download_service.enqueue_video_extraction", side_effect=_enqueue_video), \
+         patch("services.subscription_update.strategies.default_strategy.metrics.counter"):
 
-    enqueued = DefaultUpdateStrategy().enqueue_extraction(fetch_result, request)
+        request = SubscriptionUpdateRequest(
+            subscription_id=1,
+            sync_state_id=2,
+            url="https://www.youtube.com/channel/demo",
+            trigger=UpdateTrigger.MANUAL,
+            mode=UpdateMode.INCREMENTAL,
+        )
+        fetch_result = SimpleNamespace(
+            video_urls=["https://www.youtube.com/watch?v=demo"],
+            latest_video_url="https://www.youtube.com/watch?v=demo",
+            source_video_count=1,
+        )
+
+        enqueued = DefaultUpdateStrategy().enqueue_extraction(fetch_result, request)
 
     assert enqueued == 1
     assert pending_counts[2] == 0
 
 
-def test_enqueue_extraction_extracts_inline_without_creating_video_task(monkeypatch):
+def test_enqueue_extraction_extracts_inline_without_creating_video_task():
     extract_calls = []
 
     class _DummySessionContext:
@@ -312,50 +271,28 @@ def test_enqueue_extraction_extracts_inline_without_creating_video_task(monkeypa
         def __exit__(self, exc_type, exc, tb):
             return False
 
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.video_service.get_videos_by_urls",
-        lambda urls: {},
-    )
-    import services.subscription_update.strategies.default_strategy as _ds_mod
     from utils.url_helper import extract_top_level_domain
-    _ds_mod.subscription_sync_state_service._resolve_site = lambda url: extract_top_level_domain(url) or "unknown"
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.get_session",
-        lambda: _DummySessionContext(),
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.is_blocked_video",
-        lambda url, session: False,
-        raising=False,
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.subscription_sync_state_service.increment_pending_video_count",
-        lambda sync_state_id, count: None,
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.download_service.enqueue_video_extraction",
-        lambda params: (_ for _ in ()).throw(AssertionError("inline extraction should not enqueue video task")),
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.extract_video",
-        lambda params: extract_calls.append(params) or SimpleNamespace(success=True),
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.metrics.counter",
-        lambda *args, **kwargs: None,
-    )
 
-    request = SubscriptionUpdateRequest(
-        subscription_id=1,
-        sync_state_id=2,
-        url="https://www.youtube.com/channel/demo",
-        trigger=UpdateTrigger.MANUAL,
-        mode=UpdateMode.INCREMENTAL,
-        inline_video_extraction=True,
-    )
-    fetch_result = SimpleNamespace(video_urls=["https://www.youtube.com/watch?v=demo"])
+    with patch("services.subscription_update.strategies.default_strategy.video_service.get_videos_by_urls", return_value={}), \
+         patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service._resolve_site", side_effect=lambda url: extract_top_level_domain(url) or "unknown", create=True), \
+         patch("services.subscription_update.strategies.default_strategy.get_session", return_value=_DummySessionContext()), \
+         patch("services.subscription_update.strategies.default_strategy.is_blocked_video", return_value=False), \
+         patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service.increment_pending_video_count"), \
+         patch("services.subscription_update.strategies.default_strategy.download_service.enqueue_video_extraction", side_effect=lambda params: (_ for _ in ()).throw(AssertionError("inline extraction should not enqueue video task"))), \
+         patch("services.subscription_update.strategies.default_strategy.extract_video", side_effect=lambda params: extract_calls.append(params) or SimpleNamespace(success=True)), \
+         patch("services.subscription_update.strategies.default_strategy.metrics.counter"):
 
-    enqueued = DefaultUpdateStrategy().enqueue_extraction(fetch_result, request)
+        request = SubscriptionUpdateRequest(
+            subscription_id=1,
+            sync_state_id=2,
+            url="https://www.youtube.com/channel/demo",
+            trigger=UpdateTrigger.MANUAL,
+            mode=UpdateMode.INCREMENTAL,
+            inline_video_extraction=True,
+        )
+        fetch_result = SimpleNamespace(video_urls=["https://www.youtube.com/watch?v=demo"])
+
+        enqueued = DefaultUpdateStrategy().enqueue_extraction(fetch_result, request)
 
     assert enqueued == 1
     assert len(extract_calls) == 1
@@ -363,55 +300,43 @@ def test_enqueue_extraction_extracts_inline_without_creating_video_task(monkeypa
     assert extract_calls[0].is_manual is True
 
 
-def test_execute_full_sync_with_more_batches_continues_without_marking_success(monkeypatch):
+def test_execute_full_sync_with_more_batches_continues_without_marking_success():
     continuation_calls = []
     success_calls = []
     schedule_calls = []
 
-    monkeypatch.setattr(DefaultUpdateStrategy, "_schedule_total_video_backfill", staticmethod(lambda request, result: None))
-    monkeypatch.setattr(DefaultUpdateStrategy, "should_update", lambda self, request: (True, None))
-    monkeypatch.setattr(
-        DefaultUpdateStrategy,
-        "fetch_videos",
-        lambda self, request: SimpleNamespace(
-            video_urls=["https://example.com/a", "https://example.com/b"],
-            latest_video_url="https://example.com/a",
-            cursor_payload={"page": 2},
-            source_video_count=2,
-            total_available=2,
-            has_more=True,
-        ),
-    )
-    monkeypatch.setattr(DefaultUpdateStrategy, "enqueue_extraction", lambda self, fetch_result, request: 2)
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.base.subscription_sync_state_service.mark_sync_success",
-        lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs)),
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.base.subscription_sync_state_service.continue_full_sync_batch",
-        lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs)),
-        raising=False,
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.scheduler.schedule_one",
-        lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued", run_id=kwargs.get("run_id")),
-    )
-    monkeypatch.setattr("services.subscription_update.strategies.base.metrics.counter", lambda *args, **kwargs: None)
-    monkeypatch.setattr("services.subscription_update.strategies.base.append_event", lambda *args, **kwargs: None)
+    with patch.object(DefaultUpdateStrategy, "_schedule_total_video_backfill"), \
+         patch.object(DefaultUpdateStrategy, "should_update", return_value=(True, None)), \
+         patch.object(DefaultUpdateStrategy, "fetch_videos", return_value=SimpleNamespace(
+             video_urls=["https://example.com/a", "https://example.com/b"],
+             latest_video_url="https://example.com/a",
+             cursor_payload={"page": 2},
+             source_video_count=2,
+             total_available=2,
+             has_more=True,
+         )), \
+         patch.object(DefaultUpdateStrategy, "enqueue_extraction", return_value=2), \
+         patch("services.subscription_update.strategies.base.subscription_sync_state_service.mark_sync_success", side_effect=lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs))), \
+         patch("services.subscription_update.strategies.base.subscription_sync_state_service.continue_full_sync_batch", side_effect=lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs))), \
+         patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued", run_id=kwargs.get("run_id"))), \
+         patch("services.subscription_update.strategies.base.subscription_sync_state_service._resolve_site", create=True, return_value="bilibili.com"), \
+         patch("services.subscription_update.strategies.base.metrics.counter"), \
+         patch("services.subscription_update.strategies.base.append_event"), \
+         patch("core.database.get_session"):
 
-    request = SubscriptionUpdateRequest(
-        subscription_id=1,
-        sync_state_id=2,
-        url="https://space.bilibili.com/42",
-        trigger=UpdateTrigger.MANUAL,
-        mode=UpdateMode.FULL,
-        cursor_payload={"page": 1},
-        run_id="run-1",
-        request_id="req-1",
-        trace_id="trace-1",
-    )
+        request = SubscriptionUpdateRequest(
+            subscription_id=1,
+            sync_state_id=2,
+            url="https://space.bilibili.com/42",
+            trigger=UpdateTrigger.MANUAL,
+            mode=UpdateMode.FULL,
+            cursor_payload={"page": 1},
+            run_id="run-1",
+            request_id="req-1",
+            trace_id="trace-1",
+        )
 
-    result = DefaultUpdateStrategy().execute(request)
+        result = DefaultUpdateStrategy().execute(request)
 
     assert result.success is True
     assert result.cursor_payload == {"page": 2}
@@ -446,55 +371,43 @@ def test_execute_full_sync_with_more_batches_continues_without_marking_success(m
     ]
 
 
-def test_execute_final_full_sync_batch_marks_success(monkeypatch):
+def test_execute_final_full_sync_batch_marks_success():
     success_calls = []
     continuation_calls = []
     schedule_calls = []
 
-    monkeypatch.setattr(DefaultUpdateStrategy, "_schedule_total_video_backfill", staticmethod(lambda request, result: None))
-    monkeypatch.setattr(DefaultUpdateStrategy, "should_update", lambda self, request: (True, None))
-    monkeypatch.setattr(
-        DefaultUpdateStrategy,
-        "fetch_videos",
-        lambda self, request: SimpleNamespace(
-            video_urls=["https://example.com/c"],
-            latest_video_url="https://example.com/c",
-            cursor_payload={"page": 3},
-            source_video_count=1,
-            total_available=3,
-            has_more=False,
-        ),
-    )
-    monkeypatch.setattr(DefaultUpdateStrategy, "enqueue_extraction", lambda self, fetch_result, request: 1)
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.base.subscription_sync_state_service.mark_sync_success",
-        lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs)),
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.base.subscription_sync_state_service.continue_full_sync_batch",
-        lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs)),
-        raising=False,
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.scheduler.schedule_one",
-        lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued", run_id=kwargs.get("run_id")),
-    )
-    monkeypatch.setattr("services.subscription_update.strategies.base.metrics.counter", lambda *args, **kwargs: None)
-    monkeypatch.setattr("services.subscription_update.strategies.base.append_event", lambda *args, **kwargs: None)
+    with patch.object(DefaultUpdateStrategy, "_schedule_total_video_backfill"), \
+         patch.object(DefaultUpdateStrategy, "should_update", return_value=(True, None)), \
+         patch.object(DefaultUpdateStrategy, "fetch_videos", return_value=SimpleNamespace(
+             video_urls=["https://example.com/c"],
+             latest_video_url="https://example.com/c",
+             cursor_payload={"page": 3},
+             source_video_count=1,
+             total_available=3,
+             has_more=False,
+         )), \
+         patch.object(DefaultUpdateStrategy, "enqueue_extraction", return_value=1), \
+         patch("services.subscription_update.strategies.base.subscription_sync_state_service.mark_sync_success", side_effect=lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs))), \
+         patch("services.subscription_update.strategies.base.subscription_sync_state_service.continue_full_sync_batch", side_effect=lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs))), \
+         patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued", run_id=kwargs.get("run_id"))), \
+         patch("services.subscription_update.strategies.base.subscription_sync_state_service._resolve_site", create=True, return_value="bilibili.com"), \
+         patch("services.subscription_update.strategies.base.metrics.counter"), \
+         patch("services.subscription_update.strategies.base.append_event"), \
+         patch("core.database.get_session"):
 
-    request = SubscriptionUpdateRequest(
-        subscription_id=1,
-        sync_state_id=2,
-        url="https://space.bilibili.com/42",
-        trigger=UpdateTrigger.MANUAL,
-        mode=UpdateMode.FULL,
-        cursor_payload={"page": 2},
-        run_id="run-1",
-        request_id="req-2",
-        trace_id="trace-1",
-    )
+        request = SubscriptionUpdateRequest(
+            subscription_id=1,
+            sync_state_id=2,
+            url="https://space.bilibili.com/42",
+            trigger=UpdateTrigger.MANUAL,
+            mode=UpdateMode.FULL,
+            cursor_payload={"page": 2},
+            run_id="run-1",
+            request_id="req-2",
+            trace_id="trace-1",
+        )
 
-    result = DefaultUpdateStrategy().execute(request)
+        result = DefaultUpdateStrategy().execute(request)
 
     assert result.success is True
     assert continuation_calls == []
@@ -517,50 +430,40 @@ def test_execute_final_full_sync_batch_marks_success(monkeypatch):
     ]
 
 
-def test_execute_incremental_schedules_full_backfill_when_observed_total_grows(monkeypatch):
+def test_execute_incremental_schedules_full_backfill_when_observed_total_grows():
     schedule_calls = []
 
-    monkeypatch.setattr(DefaultUpdateStrategy, "should_update", lambda self, request: (True, None))
-    monkeypatch.setattr(
-        DefaultUpdateStrategy,
-        "fetch_videos",
-        lambda self, request: SimpleNamespace(
-            video_urls=["https://example.com/new"],
-            latest_video_url="https://example.com/new",
-            cursor_payload={"cursor": "next"},
-            source_video_count=1,
-            total_available=15,
-            has_more=False,
-        ),
-    )
-    monkeypatch.setattr(DefaultUpdateStrategy, "enqueue_extraction", lambda self, fetch_result, request: 1)
-    monkeypatch.setattr(DefaultUpdateStrategy, "_record_gap_observation", staticmethod(lambda request, result: None))
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.subscription_service.get_subscription_by_id",
-        lambda subscription_id: SimpleNamespace(total_videos=10),
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.subscription_sync_state_service.get_sync_state",
-        lambda subscription_id, mode: SimpleNamespace(
-            sync_status="success",
-            last_success_at=datetime(2026, 4, 8, 10, 0, 0),
-        ),
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.scheduler.schedule_one",
-        lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued"),
-    )
-    monkeypatch.setattr("services.subscription_update.strategies.base.metrics.counter", lambda *args, **kwargs: None)
+    with patch.object(DefaultUpdateStrategy, "should_update", return_value=(True, None)), \
+         patch.object(DefaultUpdateStrategy, "fetch_videos", return_value=SimpleNamespace(
+             video_urls=["https://example.com/new"],
+             latest_video_url="https://example.com/new",
+             cursor_payload={"cursor": "next"},
+             source_video_count=1,
+             total_available=15,
+             has_more=False,
+         )), \
+         patch.object(DefaultUpdateStrategy, "enqueue_extraction", return_value=1), \
+         patch.object(DefaultUpdateStrategy, "_record_gap_observation"), \
+         patch("services.subscription_update.strategies.default_strategy.subscription_service.get_subscription_by_id", return_value=SimpleNamespace(total_videos=10)), \
+         patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service.get_sync_state", return_value=SimpleNamespace(
+             sync_status="success",
+             last_success_at=datetime(2026, 4, 8, 10, 0, 0),
+         )), \
+         patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued")), \
+         patch("services.subscription_update.strategies.base.subscription_sync_state_service._resolve_site", create=True, return_value="bilibili.com"), \
+         patch("services.subscription_update.strategies.base.metrics.counter"), \
+         patch("services.subscription_update.strategies.base.append_event"), \
+         patch("core.database.get_session"):
 
-    request = SubscriptionUpdateRequest(
-        subscription_id=1,
-        url="https://space.bilibili.com/42",
-        trigger=UpdateTrigger.SCHEDULED,
-        mode=UpdateMode.INCREMENTAL,
-        trace_id="trace-1",
-    )
+        request = SubscriptionUpdateRequest(
+            subscription_id=1,
+            url="https://space.bilibili.com/42",
+            trigger=UpdateTrigger.SCHEDULED,
+            mode=UpdateMode.INCREMENTAL,
+            trace_id="trace-1",
+        )
 
-    result = DefaultUpdateStrategy().execute(request)
+        result = DefaultUpdateStrategy().execute(request)
 
     assert result.success is True
     assert schedule_calls == [
@@ -574,50 +477,41 @@ def test_execute_incremental_schedules_full_backfill_when_observed_total_grows(m
     ]
 
 
-def test_execute_incremental_does_not_schedule_full_backfill_when_full_already_running(monkeypatch):
+def test_execute_incremental_does_not_schedule_full_backfill_when_full_already_running():
     schedule_calls = []
 
-    monkeypatch.setattr(DefaultUpdateStrategy, "should_update", lambda self, request: (True, None))
-    monkeypatch.setattr(
-        DefaultUpdateStrategy,
-        "fetch_videos",
-        lambda self, request: SimpleNamespace(
-            video_urls=["https://example.com/new"],
-            latest_video_url="https://example.com/new",
-            cursor_payload={"cursor": "next"},
-            source_video_count=1,
-            total_available=15,
-            has_more=False,
-        ),
-    )
-    monkeypatch.setattr(DefaultUpdateStrategy, "enqueue_extraction", lambda self, fetch_result, request: 1)
-    monkeypatch.setattr(DefaultUpdateStrategy, "_record_gap_observation", staticmethod(lambda request, result: None))
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.subscription_service.get_subscription_by_id",
-        lambda subscription_id: SimpleNamespace(total_videos=10),
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.strategies.default_strategy.subscription_sync_state_service.get_sync_state",
-        lambda subscription_id, mode: SimpleNamespace(
-            sync_status="running",
-            last_success_at=datetime(2026, 4, 8, 10, 0, 0),
-        ),
-    )
-    monkeypatch.setattr(
-        "services.subscription_update.scheduler.schedule_one",
-        lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued"),
-    )
-    monkeypatch.setattr("services.subscription_update.strategies.base.metrics.counter", lambda *args, **kwargs: None)
+    with patch.object(DefaultUpdateStrategy, "_schedule_total_video_backfill"), \
+         patch.object(DefaultUpdateStrategy, "should_update", return_value=(True, None)), \
+         patch.object(DefaultUpdateStrategy, "fetch_videos", return_value=SimpleNamespace(
+             video_urls=["https://example.com/new"],
+             latest_video_url="https://example.com/new",
+             cursor_payload={"cursor": "next"},
+             source_video_count=1,
+             total_available=15,
+             has_more=False,
+         )), \
+         patch.object(DefaultUpdateStrategy, "enqueue_extraction", return_value=1), \
+         patch.object(DefaultUpdateStrategy, "_record_gap_observation"), \
+         patch("services.subscription_update.strategies.default_strategy.subscription_service.get_subscription_by_id", return_value=SimpleNamespace(total_videos=10)), \
+         patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service.get_sync_state", return_value=SimpleNamespace(
+             sync_status="running",
+             last_success_at=datetime(2026, 4, 8, 10, 0, 0),
+         )), \
+         patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued")), \
+         patch("services.subscription_update.strategies.base.subscription_sync_state_service._resolve_site", create=True, return_value="bilibili.com"), \
+         patch("services.subscription_update.strategies.base.metrics.counter"), \
+         patch("services.subscription_update.strategies.base.append_event"), \
+         patch("core.database.get_session"):
 
-    request = SubscriptionUpdateRequest(
-        subscription_id=1,
-        url="https://space.bilibili.com/42",
-        trigger=UpdateTrigger.SCHEDULED,
-        mode=UpdateMode.INCREMENTAL,
-        trace_id="trace-1",
-    )
+        request = SubscriptionUpdateRequest(
+            subscription_id=1,
+            url="https://space.bilibili.com/42",
+            trigger=UpdateTrigger.SCHEDULED,
+            mode=UpdateMode.INCREMENTAL,
+            trace_id="trace-1",
+        )
 
-    result = DefaultUpdateStrategy().execute(request)
+        result = DefaultUpdateStrategy().execute(request)
 
     assert result.success is True
     assert schedule_calls == []

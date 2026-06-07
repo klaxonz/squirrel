@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
-from importlib import import_module
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -56,55 +56,54 @@ def test_publish_event_persists_pending_outbox_row(engine, svc):
     assert stored.payload["sync_state_id"] == 11
 
 
-def test_consume_due_event_creates_subscription_sync_task(engine, session_factory, svc, monkeypatch):
+def test_consume_due_event_creates_subscription_sync_task(engine, session_factory, svc):
     now = datetime(2026, 4, 4, 12, 0, 0)
 
     from core import database
-    monkeypatch.setattr(database, "get_session", session_factory)
-
-    _scheduler_mod = import_module("services.subscription_update.scheduler")
-    monkeypatch.setattr(_scheduler_mod.SiteCatalog, "is_site_enabled", lambda domain=None, site=None: True)
-    monkeypatch.setattr(SubscriptionScheduler, "_has_active_subscribers", staticmethod(lambda subscription_id: True))
-    monkeypatch.setattr(_scheduler_mod, "create_run", lambda **kwargs: SimpleNamespace(run_id="run-1", created_at=now))
-    monkeypatch.setattr(_scheduler_mod, "append_event", lambda *args, **kwargs: None)
-
+    from services import subscription_sync_state_service as ssss
+    from services.crawl_tasks import service as crawl_task_service_mod
     from services.crawl_tasks.service import CrawlTaskService
+
     injected_cts = CrawlTaskService(session_factory=session_factory)
-    for func_name in [
-        "create_job_with_task", "create_job", "create_task", "recover_expired_tasks",
-        "claim_next_task", "start_task", "complete_task", "cancel_task",
-        "replay_dead_task", "retry_task", "renew_task_lease", "clear_task_dedupe_key",
-    ]:
-        monkeypatch.setattr(_scheduler_mod.crawl_task_service, func_name, getattr(injected_cts, func_name))
 
-    with Session(engine, expire_on_commit=False) as session:
-        state = SubscriptionSyncState(
-            id=11,
-            subscription_id=1,
-            site="bilibili.com",
-            sync_mode="incremental",
-            sync_status="idle",
-            next_sync_at=now - timedelta(minutes=1),
-        )
-        session.add(state)
-        session.commit()
+    with patch.object(database, 'register_after_commit', lambda session, callback: None):
+        with patch.object(database, 'get_session', session_factory):
+            with patch.object(ssss, '_resolve_site', return_value='bilibili.com', create=True):
+                with patch('utils.site_catalog.SiteCatalog.is_site_enabled', return_value=True):
+                    with patch.object(SubscriptionScheduler, '_has_active_subscribers', return_value=True):
+                        with patch('services.subscription_update.scheduler.create_run', return_value=SimpleNamespace(run_id="run-1", created_at=now)):
+                            with patch('services.subscription_update.scheduler.append_event', return_value=None):
+                                with patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task):
+                                    with patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job):
+                                        with patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task):
+                                            with Session(engine, expire_on_commit=False) as session:
+                                                state = SubscriptionSyncState(
+                                                    id=11,
+                                                    subscription_id=1,
+                                                    site="bilibili.com",
+                                                    sync_mode="incremental",
+                                                    sync_status="idle",
+                                                    next_sync_at=now - timedelta(minutes=1),
+                                                )
+                                                session.add(state)
+                                                session.commit()
 
-    svc.publish_event(
-        event_type="incremental_sync_due",
-        event_key="incremental_sync_due:11:2026-04-04T12:00",
-        aggregate_type="subscription_sync_state",
-        aggregate_id="11",
-        payload={
-            "subscription_id": 1,
-            "sync_state_id": 11,
-            "url": "https://space.bilibili.com/1",
-            "mode": "incremental",
-            "trigger": "scheduled",
-        },
-        available_at=now - timedelta(seconds=1),
-    )
+                                            svc.publish_event(
+                                                event_type="incremental_sync_due",
+                                                event_key="incremental_sync_due:11:2026-04-04T12:00",
+                                                aggregate_type="subscription_sync_state",
+                                                aggregate_id="11",
+                                                payload={
+                                                    "subscription_id": 1,
+                                                    "sync_state_id": 11,
+                                                    "url": "https://space.bilibili.com/1",
+                                                    "mode": "incremental",
+                                                    "trigger": "scheduled",
+                                                },
+                                                available_at=now - timedelta(seconds=1),
+                                            )
 
-    summary = svc.consume_available_events(limit=10, now=now)
+                                            summary = svc.consume_available_events(limit=10, now=now)
 
     assert summary == {"processed": 1, "failed": 0}
 
@@ -118,40 +117,45 @@ def test_consume_due_event_creates_subscription_sync_task(engine, session_factor
     assert events[0].status == "done"
 
 
-def test_full_backfill_request_is_deferred_when_full_budget_is_exhausted(engine, svc, monkeypatch):
+def test_full_backfill_request_is_deferred_when_full_budget_is_exhausted(engine, session_factory, svc):
     now = datetime(2026, 4, 4, 12, 0, 0)
-    monkeypatch.setattr(svc.settings, "FULL_SYNC_MAX_INFLIGHT", 1, raising=False)
-    monkeypatch.setattr(svc.settings, "FULL_SYNC_SITE_MAX_INFLIGHT", 1, raising=False)
-    monkeypatch.setattr(svc.settings, "FULL_BACKFILL_RETRY_SECONDS", 300, raising=False)
 
-    with Session(engine, expire_on_commit=False) as session:
-        session.add(
-            SubscriptionSyncState(
-                id=30,
-                subscription_id=3,
-                site="youtube.com",
-                sync_mode="full",
-                sync_status="running",
-                next_sync_at=now,
-            ),
+    from core import database
+    from core.config import settings
+
+    with patch.object(settings, 'FULL_SYNC_MAX_INFLIGHT', 1), \
+         patch.object(settings, 'FULL_SYNC_SITE_MAX_INFLIGHT', 1), \
+         patch.object(settings, 'FULL_BACKFILL_RETRY_SECONDS', 300), \
+         patch.object(database, 'get_session', session_factory):
+
+        with Session(engine, expire_on_commit=False) as session:
+            session.add(
+                SubscriptionSyncState(
+                    id=30,
+                    subscription_id=3,
+                    site="youtube.com",
+                    sync_mode="full",
+                    sync_status="running",
+                    next_sync_at=now,
+                ),
+            )
+            session.commit()
+
+        svc.publish_event(
+            event_type="full_backfill_requested",
+            event_key="full_backfill_requested:7:gap:20260404",
+            aggregate_type="subscription",
+            aggregate_id="7",
+            payload={
+                "subscription_id": 7,
+                "sync_state_id": 21,
+                "site": "youtube.com",
+                "trigger": "scheduled",
+            },
+            available_at=now - timedelta(seconds=1),
         )
-        session.commit()
 
-    svc.publish_event(
-        event_type="full_backfill_requested",
-        event_key="full_backfill_requested:7:gap:20260404",
-        aggregate_type="subscription",
-        aggregate_id="7",
-        payload={
-            "subscription_id": 7,
-            "sync_state_id": 21,
-            "site": "youtube.com",
-            "trigger": "scheduled",
-        },
-        available_at=now - timedelta(seconds=1),
-    )
-
-    summary = svc.consume_available_events(limit=10, now=now)
+        summary = svc.consume_available_events(limit=10, now=now)
 
     assert summary == {"processed": 0, "failed": 0}
 

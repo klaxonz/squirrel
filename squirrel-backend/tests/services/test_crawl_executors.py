@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 from models.crawl_task import CrawlTask
 from services.crawl_executors.subscription_sync_executor import CrawlExecutorService as SubscriptionSyncExecutor
@@ -6,13 +7,28 @@ from services.crawl_executors.video_extract_executor import CrawlExecutorService
 from services.subscription_update.models import SubscriptionUpdateResult, UpdateMode, UpdateTrigger
 
 
-def test_execute_video_extract_task_builds_dto_from_task_payload(monkeypatch):
-    calls = []
-
-    monkeypatch.setattr(
-        "services.crawl_executors.video_extract_executor.extract_video",
-        lambda params: calls.append(params) or SimpleNamespace(success=True),
+def _make_video_extract_svc(extract_video_func=None):
+    return VideoExtractExecutor(
+        session_factory=None,
+        get_type_mapping=None,
+        extract_video_func=extract_video_func,
     )
+
+
+def _make_sync_svc(sync_state_service=None, orchestrator_service=None, subscription_svc=None):
+    return SubscriptionSyncExecutor(
+        session_factory=None,
+        get_type_mapping=None,
+        sync_state_service=sync_state_service,
+        orchestrator_service=orchestrator_service,
+        subscription_svc=subscription_svc,
+    )
+
+
+def test_execute_video_extract_task_builds_dto_from_task_payload():
+    extract_video_mock = MagicMock(return_value=SimpleNamespace(success=True))
+
+    svc = _make_video_extract_svc(extract_video_func=extract_video_mock)
 
     task = CrawlTask(
         job_id=1,
@@ -31,19 +47,19 @@ def test_execute_video_extract_task_builds_dto_from_task_payload(monkeypatch):
         },
     )
 
-    result = VideoExtractExecutor.execute_video_extract_task(task)
+    result = svc.execute_video_extract_task(task)
 
     assert result.success is True
-    assert len(calls) == 1
-    assert calls[0].url == "https://www.youtube.com/watch?v=demo"
-    assert calls[0].run_id == "run-1"
+    assert extract_video_mock.call_count == 1
+    params = extract_video_mock.call_args[0][0]
+    assert params.url == "https://www.youtube.com/watch?v=demo"
+    assert params.run_id == "run-1"
 
 
-def test_execute_video_extract_task_raises_when_extraction_result_is_failed(monkeypatch):
-    monkeypatch.setattr(
-        "services.crawl_executors.video_extract_executor.extract_video",
-        lambda params: SimpleNamespace(success=False, error="extract_failed"),
-    )
+def test_execute_video_extract_task_raises_when_extraction_result_is_failed():
+    extract_video_mock = MagicMock(return_value=SimpleNamespace(success=False, error="extract_failed"))
+
+    svc = _make_video_extract_svc(extract_video_func=extract_video_mock)
 
     task = CrawlTask(
         job_id=1,
@@ -58,35 +74,45 @@ def test_execute_video_extract_task_raises_when_extraction_result_is_failed(monk
     )
 
     try:
-        VideoExtractExecutor.execute_video_extract_task(task)
+        svc.execute_video_extract_task(task)
     except ValueError as exc:
         assert str(exc) == "extract_failed"
     else:
         raise AssertionError("Expected execute_video_extract_task to raise ValueError for failed extraction result")
 
 
-def test_execute_subscription_sync_task_builds_request_from_payload(monkeypatch):
-    calls = []
+def test_execute_subscription_sync_task_builds_request_from_payload():
     claims = []
-    monkeypatch.setattr(
-        "services.crawl_executors.subscription_sync_executor.subscription_sync_state_service.claim_sync_state",
-        lambda sync_state_id, queue_token, **kwargs: claims.append((sync_state_id, queue_token, kwargs)) or SimpleNamespace(
-            id=sync_state_id,
-            site="bilibili",
-            sync_mode="full",
-            pending_video_count=0,
-            cursor_payload={"page": 2},
-            last_seen_video_url="https://example.com/old",
-        ),
-    )
-    monkeypatch.setattr(
-        "services.crawl_executors.subscription_sync_executor.orchestrator.update",
-        lambda request: calls.append(request) or SubscriptionUpdateResult(
-            subscription_id=request.subscription_id,
-            success=True,
-            videos_found=3,
-            videos_enqueued=2,
-        ),
+
+    class FakeSyncStateService:
+        @staticmethod
+        def claim_sync_state(sync_state_id, queue_token, **kwargs):
+            claims.append((sync_state_id, queue_token, kwargs))
+            return SimpleNamespace(
+                id=sync_state_id,
+                site="bilibili",
+                sync_mode="full",
+                pending_video_count=0,
+                cursor_payload={"page": 2},
+                last_seen_video_url="https://example.com/old",
+            )
+
+    calls = []
+
+    class FakeOrchestrator:
+        @staticmethod
+        def update(request):
+            calls.append(request)
+            return SubscriptionUpdateResult(
+                subscription_id=request.subscription_id,
+                success=True,
+                videos_found=3,
+                videos_enqueued=2,
+            )
+
+    svc = _make_sync_svc(
+        sync_state_service=FakeSyncStateService,
+        orchestrator_service=FakeOrchestrator,
     )
 
     task = CrawlTask(
@@ -111,7 +137,7 @@ def test_execute_subscription_sync_task_builds_request_from_payload(monkeypatch)
         },
     )
 
-    result = SubscriptionSyncExecutor.execute_subscription_sync_task(task)
+    result = svc.execute_subscription_sync_task(task)
 
     assert result.success is True
     assert claims == [
@@ -136,19 +162,25 @@ def test_execute_subscription_sync_task_builds_request_from_payload(monkeypatch)
     assert calls[0].inline_video_extraction is True
 
 
-def test_execute_subscription_sync_task_uses_subscription_url_fallback(monkeypatch):
-    monkeypatch.setattr(
-        "services.crawl_executors.subscription_sync_executor.subscription_service.get_subscription_by_id",
-        lambda subscription_id: SimpleNamespace(url="https://www.youtube.com/channel/demo"),
-    )
-    monkeypatch.setattr(
-        "services.crawl_executors.subscription_sync_executor.orchestrator.update",
-        lambda request: SubscriptionUpdateResult(
-            subscription_id=request.subscription_id,
-            success=True,
-            videos_found=0,
-            videos_enqueued=0,
-        ),
+def test_execute_subscription_sync_task_uses_subscription_url_fallback():
+    class FakeSubscriptionService:
+        @staticmethod
+        def get_subscription_by_id(subscription_id):
+            return SimpleNamespace(url="https://www.youtube.com/channel/demo")
+
+    class FakeOrchestrator:
+        @staticmethod
+        def update(request):
+            return SubscriptionUpdateResult(
+                subscription_id=request.subscription_id,
+                success=True,
+                videos_found=0,
+                videos_enqueued=0,
+            )
+
+    svc = _make_sync_svc(
+        subscription_svc=FakeSubscriptionService,
+        orchestrator_service=FakeOrchestrator,
     )
 
     task = CrawlTask(
@@ -162,6 +194,6 @@ def test_execute_subscription_sync_task_uses_subscription_url_fallback(monkeypat
         },
     )
 
-    result = SubscriptionSyncExecutor.execute_subscription_sync_task(task)
+    result = svc.execute_subscription_sync_task(task)
 
     assert result.success is True

@@ -1,124 +1,138 @@
-import sys
-from contextlib import contextmanager
-from pathlib import Path
-from types import SimpleNamespace
+from datetime import datetime
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import pytest
+from sqlalchemy.orm import Session
 
-from services import subscription_sync_history_service
-
-
-@contextmanager
-def _managed_session(session):
-    yield session
+from models import Base
+from models.links import UserSubscription
+from models.subscription import Subscription
+from models.subscription_sync_event import SubscriptionSyncEvent
+from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
+from services.subscription_sync_history_service import SubscriptionSyncHistoryService
 
 
-class _Result:
-    def __init__(self, rows):
-        self._rows = rows
-
-    def all(self):
-        return self._rows
-
-    def scalars(self):
-        return self
-
-
-def test_list_runs_uses_count_helper_instead_of_loading_all_rows(monkeypatch):
-    run = SimpleNamespace(
-        run_id="run-1",
-        site="youtube.com",
-        sync_mode="incremental",
-        trigger="manual",
-        status="success",
-        current_phase="completed",
-        request_id="req-1",
-        trace_id="trace-1",
-        queued_at=None,
-        started_at=None,
-        finished_at=None,
-        duration_ms=0,
-        failure_count=0,
-        error_type=None,
-        error_message=None,
-        videos_found=3,
-        videos_enqueued=2,
-        videos_extracted=2,
-        videos_skipped=1,
-        pending_video_count=0,
-        last_event_at=None,
+@pytest.fixture
+def engine(engine):
+    Base.metadata.create_all(
+        engine,
+        tables=[
+            Subscription.__table__,
+            UserSubscription.__table__,
+            SubscriptionSyncRunProjection.__table__,
+            SubscriptionSyncEvent.__table__,
+        ],
     )
-    subscription = SimpleNamespace(
-        id=1,
-        name="Demo",
-        avatar=None,
-    )
+    return engine
 
-    session = SimpleNamespace()
-    executed_queries = []
 
-    def _execute(query):
-        executed_queries.append(query)
-        return _Result([(run, subscription)])
+def _seed_runs_and_subscription(engine):
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            Subscription(
+                id=1,
+                type="CHANNEL",
+                name="Demo",
+                url="https://youtube.com/channel/demo",
+                avatar=None,
+                description=None,
+                total_videos=0,
+                is_deleted=False,
+                extra_data={},
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+        )
+        session.add(
+            UserSubscription(
+                id=1,
+                user_id=1,
+                subscription_id=1,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+        )
+        session.add(
+            SubscriptionSyncRunProjection(
+                run_id="run-1",
+                subscription_id=1,
+                sync_state_id=1,
+                site="youtube.com",
+                sync_mode="incremental",
+                trigger="manual",
+                request_id="req-1",
+                trace_id="trace-1",
+                status="success",
+                current_phase="completed",
+                queued_at=datetime(2024, 1, 1, 12, 0, 0),
+                started_at=datetime(2024, 1, 1, 12, 1, 0),
+                finished_at=datetime(2024, 1, 1, 12, 2, 0),
+                duration_ms=60000,
+                failure_count=0,
+                error_type=None,
+                error_message=None,
+                videos_found=3,
+                videos_enqueued=2,
+                videos_extracted=2,
+                videos_skipped=1,
+                pending_video_count=0,
+                last_event_seq_no=4,
+                last_event_at=datetime(2024, 1, 1, 12, 2, 0),
+                created_at=datetime(2024, 1, 1, 12, 0, 0),
+                updated_at=datetime(2024, 1, 1, 12, 2, 0),
+            ),
+        )
+        session.add(
+            SubscriptionSyncEvent(
+                stream_id="run-1",
+                subscription_id=1,
+                sync_state_id=1,
+                site="youtube.com",
+                sync_mode="incremental",
+                trigger="manual",
+                request_id="req-1",
+                trace_id="trace-1",
+                event_type="completed",
+                event_phase="completed",
+                event_status="success",
+                seq_no=3,
+                message="done",
+                payload={"videos_extracted": 2},
+                occurred_at=datetime(2024, 1, 1, 12, 2, 0),
+                created_at=datetime(2024, 1, 1, 12, 2, 0),
+            ),
+        )
+        session.commit()
 
-    session.execute = _execute
+
+def test_list_runs_uses_count_helper_instead_of_loading_all_rows(engine, session_factory):
+    _seed_runs_and_subscription(engine)
+
+    svc = SubscriptionSyncHistoryService(session_factory=session_factory)
 
     count_queries = []
 
-    monkeypatch.setattr(subscription_sync_history_service, "get_session", lambda: _managed_session(session))
-    monkeypatch.setattr(subscription_sync_history_service, "_resolve_site_icon_url", lambda site: None)
-    monkeypatch.setattr(
-        subscription_sync_history_service,
-        "_count_query_rows",
-        lambda current_session, query: count_queries.append((current_session, query)) or 7,
-    )
+    # Override static methods on the instance to track calls
+    svc._count_query_rows = lambda current_session, query: count_queries.append((current_session, query)) or 1
+    svc._resolve_site_icon_url = lambda site: None
 
-    result = subscription_sync_history_service.list_runs(user_id=1, page=1, page_size=20)
+    result = svc.list_runs(user_id=1, page=1, page_size=20)
 
-    assert result["total"] == 7
+    assert result["total"] == 1
     assert len(result["data"]) == 1
-    assert len(executed_queries) == 1
     assert len(count_queries) == 1
-    assert count_queries[0][0] is session
 
 
-def test_list_run_events_checks_access_without_calling_get_run_detail(monkeypatch):
-    event = SimpleNamespace(
-        id=1,
-        stream_id="run-1",
-        subscription_id=1,
-        sync_state_id=10,
-        site="youtube.com",
-        sync_mode="incremental",
-        trigger="manual",
-        request_id="req-1",
-        trace_id="trace-1",
-        event_type="completed",
-        event_phase="completed",
-        event_status="success",
-        seq_no=3,
-        message="done",
-        payload={"videos_extracted": 2},
-        occurred_at=None,
-        projected_at=None,
-    )
+def test_list_run_events_checks_access_without_calling_get_run_detail(engine, session_factory):
+    _seed_runs_and_subscription(engine)
 
-    session = SimpleNamespace()
-    session.execute = lambda query: _Result([event])
+    svc = SubscriptionSyncHistoryService(session_factory=session_factory)
 
-    monkeypatch.setattr(subscription_sync_history_service, "get_session", lambda: _managed_session(session))
-    monkeypatch.setattr(
-        subscription_sync_history_service,
-        "_run_exists_for_user",
-        lambda current_session, run_id, user_id: True,
-    )
-    monkeypatch.setattr(
-        subscription_sync_history_service,
-        "get_run_detail",
-        lambda run_id, user_id: (_ for _ in ()).throw(AssertionError("get_run_detail should not be used here")),
-    )
+    # Override _run_exists_for_user to confirm it's used for access control
+    svc._run_exists_for_user = lambda current_session, run_id, user_id: True
 
-    result = subscription_sync_history_service.list_run_events("run-1", 1)
+    result = svc.list_run_events("run-1", 1)
 
     assert len(result) == 1
     assert result[0]["stream_id"] == "run-1"

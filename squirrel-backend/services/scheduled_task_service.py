@@ -15,8 +15,11 @@ logger = logging.getLogger(__name__)
 class ScheduledTaskService:
     """Scheduled task service"""
 
-    @staticmethod
+    def __init__(self, session_factory=None):
+        self.session_factory = session_factory or get_session
+
     def get_task_list(
+        self,
         page: int = 1,
         page_size: int = 10,
         search: str | None = None,
@@ -26,7 +29,7 @@ class ScheduledTaskService:
         """Get task list"""
         ensure_system_tasks()
 
-        with get_session() as session:
+        with self.session_factory() as session:
             db_tasks = session.query(ScheduledTask)
 
             if search:

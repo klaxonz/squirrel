@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import create_engine
@@ -119,15 +120,14 @@ def test_list_histories_returns_filtered_total_instead_of_current_page_size(engi
     assert len(result['items']) == 1
 
 
-def test_list_histories_applies_site_filter_before_pagination(engine, svc, monkeypatch):
-    import utils.site_catalog as sc_mod
-    monkeypatch.setattr(sc_mod.SiteCatalog, 'resolve_domains', lambda _: ['site-a.com'])
-    _seed_history(engine, [
-        {'video_id': 1, 'domain': 'site-a.com', 'end_time': datetime(2024, 6, 1)},
-        {'video_id': 2, 'domain': 'site-b.com', 'end_time': datetime(2024, 6, 2)},
-    ])
+def test_list_histories_applies_site_filter_before_pagination(engine, svc):
+    with patch('utils.site_catalog.SiteCatalog.resolve_domains', return_value=['site-a.com']):
+        _seed_history(engine, [
+            {'video_id': 1, 'domain': 'site-a.com', 'end_time': datetime(2024, 6, 1)},
+            {'video_id': 2, 'domain': 'site-b.com', 'end_time': datetime(2024, 6, 2)},
+        ])
 
-    result = svc.list_histories(1, {'site': 'site-a.com'}, 1, 20)
+        result = svc.list_histories(1, {'site': 'site-a.com'}, 1, 20)
 
     assert result['total'] == 1
     assert result['items'][0]['id'] == 1
@@ -227,19 +227,18 @@ def test_delete_history_removes_only_target_history_for_current_user(engine, svc
     assert remaining['items'][0]['id'] == 2
 
 
-def test_list_histories_filters_by_subscription_name_query(engine, svc, monkeypatch):
-    import utils.site_catalog as sc_mod
-    monkeypatch.setattr(sc_mod.SiteCatalog, 'resolve_domains', lambda _: ['example.com'])
-    _seed_history(engine, [
-        {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 1)},
-        {'video_id': 2, 'domain': 'example.com', 'end_time': datetime(2024, 6, 2)},
-    ])
-    _seed_subscription_links(engine, [
-        {'video_id': 1, 'subscription_id': 1, 'subscription_name': 'Tech Channel'},
-        {'video_id': 2, 'subscription_id': 2, 'subscription_name': 'Music Channel'},
-    ])
+def test_list_histories_filters_by_subscription_name_query(engine, svc):
+    with patch('utils.site_catalog.SiteCatalog.resolve_domains', return_value=['example.com']):
+        _seed_history(engine, [
+            {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 1)},
+            {'video_id': 2, 'domain': 'example.com', 'end_time': datetime(2024, 6, 2)},
+        ])
+        _seed_subscription_links(engine, [
+            {'video_id': 1, 'subscription_id': 1, 'subscription_name': 'Tech Channel'},
+            {'video_id': 2, 'subscription_id': 2, 'subscription_name': 'Music Channel'},
+        ])
 
-    result = svc.list_histories(1, {'query': 'tech'}, 1, 20)
+        result = svc.list_histories(1, {'query': 'tech'}, 1, 20)
 
     assert result['total'] == 1, f'expected 1 but got {result}'
     assert result['items'][0]['id'] == 1

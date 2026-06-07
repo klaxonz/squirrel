@@ -1,4 +1,5 @@
 from datetime import datetime
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import Text, select
@@ -6,7 +7,6 @@ from sqlalchemy.orm import Session
 
 from models import Base
 from models.rss import RssAccount, RssEntry, RssFeed
-from services import rss_sync_service
 from services.rss_account_service import RssAccountService
 from services.rss_client_service import (
     G_READER_QUICK_ENTRIES_PER_FEED,
@@ -27,11 +27,9 @@ def account_svc(session_factory):
 
 
 @pytest.fixture
-def sync_svc(session_factory, account_svc, monkeypatch):
-    from services import rss_sync_service as rss_sync_service_mod
-
-    monkeypatch.setattr(rss_sync_service_mod, '_set_sync_progress', account_svc._set_sync_progress)
-    return RssSyncService(session_factory=session_factory)
+def sync_svc(session_factory, account_svc):
+    with patch('services.rss_sync_service._set_sync_progress', account_svc._set_sync_progress):
+        yield RssSyncService(session_factory=session_factory)
 
 
 def _create_tables(engine):
@@ -68,7 +66,7 @@ def test_create_account_encrypts_credential_and_hides_it_from_api(engine, sessio
         assert decrypt_credential(row.credential_encrypted) == 'secret-token'
 
 
-def test_sync_account_upserts_feeds_and_entries(engine, session_factory, account_svc, sync_svc, monkeypatch):
+def test_sync_account_upserts_feeds_and_entries(engine, session_factory, account_svc, sync_svc):
     _create_tables(engine)
     account = account_svc.create_account(
         1,
@@ -103,9 +101,8 @@ def test_sync_account_upserts_feeds_and_entries(engine, session_factory, account
                 ),
             ]
 
-    monkeypatch.setattr(rss_sync_service, 'create_client', lambda config: _FakeClient())
-
-    result = sync_svc.sync_account(1, account['id'], entry_limit=20)
+    with patch('services.rss_sync_service.create_client', lambda config: _FakeClient()):
+        result = sync_svc.sync_account(1, account['id'], entry_limit=20)
     entries = account_svc.list_entries(1)
 
     assert result == {'account_id': account['id'], 'feeds': 1, 'entries': 1, 'error': None}
@@ -413,7 +410,7 @@ def test_greader_client_paginates_reading_list():
     assert 'c=next-page' in http_client.urls[1]
 
 
-def test_sync_greader_uses_reading_list_entries(engine, session_factory, account_svc, sync_svc, monkeypatch):
+def test_sync_greader_uses_reading_list_entries(engine, session_factory, account_svc, sync_svc):
     _create_tables(engine)
     account = account_svc.create_account(
         1,
@@ -472,16 +469,15 @@ def test_sync_greader_uses_reading_list_entries(engine, session_factory, account
             return []
 
     client = _FakeGReaderClient()
-    monkeypatch.setattr(rss_sync_service, 'create_client', lambda config: client)
-
-    result = sync_svc.sync_account(1, account['id'])
+    with patch('services.rss_sync_service.create_client', lambda config: client):
+        result = sync_svc.sync_account(1, account['id'])
     entries = account_svc.list_entries(1)
 
     assert result == {'account_id': account['id'], 'feeds': 1, 'entries': 1, 'error': None}
     assert entries['data'][0]['title'] == 'Entry One'
 
 
-def test_sync_greader_imports_missing_unread_entries(engine, session_factory, account_svc, sync_svc, monkeypatch):
+def test_sync_greader_imports_missing_unread_entries(engine, session_factory, account_svc, sync_svc):
     _create_tables(engine)
     account = account_svc.create_account(
         1,
@@ -572,9 +568,8 @@ def test_sync_greader_imports_missing_unread_entries(engine, session_factory, ac
             raise AssertionError('incremental sync should not run full state reconciliation')
 
     client = _FakeGReaderClient()
-    monkeypatch.setattr(rss_sync_service, 'create_client', lambda config: client)
-
-    sync_svc.sync_account(1, account['id'])
+    with patch('services.rss_sync_service.create_client', lambda config: client):
+        sync_svc.sync_account(1, account['id'])
 
     unread = account_svc.list_entries(1, account_id=account['id'], is_read=False)
     with Session(engine) as session:
@@ -594,7 +589,7 @@ def test_sync_greader_imports_missing_unread_entries(engine, session_factory, ac
     assert client.content_requests == [['entry-missing-unread']]
 
 
-def test_sync_progress_reports_completed_state(engine, session_factory, account_svc, sync_svc, monkeypatch):
+def test_sync_progress_reports_completed_state(engine, session_factory, account_svc, sync_svc):
     _create_tables(engine)
     account = account_svc.create_account(
         1,
@@ -646,9 +641,8 @@ def test_sync_progress_reports_completed_state(engine, session_factory, account_
         def fetch_items_contents(self, entry_ids):
             return []
 
-    monkeypatch.setattr(rss_sync_service, 'create_client', lambda config: _FakeGReaderClient())
-
-    sync_svc.sync_account(1, account['id'])
+    with patch('services.rss_sync_service.create_client', lambda config: _FakeGReaderClient()):
+        sync_svc.sync_account(1, account['id'])
     progress = account_svc.get_sync_progress(1, account['id'])
 
     assert progress['running'] is False
@@ -658,7 +652,7 @@ def test_sync_progress_reports_completed_state(engine, session_factory, account_
 
 
 def test_greader_incremental_sync_stops_when_page_has_no_changes(
-    engine, session_factory, account_svc, sync_svc, monkeypatch
+    engine, session_factory, account_svc, sync_svc
 ):
     _create_tables(engine)
     account = account_svc.create_account(
@@ -743,9 +737,8 @@ def test_greader_incremental_sync_stops_when_page_has_no_changes(
             return []
 
     client = _FakeGReaderClient()
-    monkeypatch.setattr(rss_sync_service, 'create_client', lambda config: client)
-
-    result = sync_svc.sync_account(1, account['id'])
+    with patch('services.rss_sync_service.create_client', lambda config: client):
+        result = sync_svc.sync_account(1, account['id'])
     progress = account_svc.get_sync_progress(1, account['id'])
 
     assert result == {'account_id': account['id'], 'feeds': 1, 'entries': 0, 'error': None}
@@ -755,7 +748,7 @@ def test_greader_incremental_sync_stops_when_page_has_no_changes(
 
 
 def test_greader_full_sync_reconciles_read_and_starred_state(
-    engine, session_factory, account_svc, sync_svc, monkeypatch
+    engine, session_factory, account_svc, sync_svc
 ):
     _create_tables(engine)
     account = account_svc.create_account(
@@ -874,9 +867,8 @@ def test_greader_full_sync_reconciles_read_and_starred_state(
             return []
 
     client = _FakeGReaderClient()
-    monkeypatch.setattr(rss_sync_service, 'create_client', lambda config: client)
-
-    sync_svc.sync_account(1, account['id'], force_full_sync=True)
+    with patch('services.rss_sync_service.create_client', lambda config: client):
+        sync_svc.sync_account(1, account['id'], force_full_sync=True)
 
     with Session(engine) as session:
         entry = session.scalars(

@@ -11,6 +11,8 @@ from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_state import SubscriptionSyncState
 from models.video_extraction_projection import VideoExtractionProjection
 from services.crawl_tasks.service import CrawlTaskService
+from services.subscription_sync_event_service import SyncEventInput
+from services.video_extraction_projection_service import VideoExtractionProjectionService
 
 
 @pytest.fixture
@@ -34,6 +36,76 @@ def svc(session_factory):
     return CrawlTaskService(session_factory=session_factory)
 
 
+class FakeSyncStateService:
+    """Simulates subscription_sync_state_service.reconcile_task_retry_state
+    using the test's session_factory so no monkeypatching is needed."""
+
+    def __init__(self, session_factory, captured_events=None):
+        self.session_factory = session_factory
+        self.captured_events = captured_events if captured_events is not None else []
+
+    def reconcile_task_retry_state(
+        self,
+        sync_state_id,
+        queue_token,
+        *,
+        now=None,
+        retryable=False,
+        error_message=None,
+        run_id=None,
+        request_id=None,
+        trace_id=None,
+        trigger=None,
+    ):
+        if not sync_state_id:
+            return None
+        now = now or datetime.now()
+        with self.session_factory() as session:
+            state = session.get(SubscriptionSyncState, int(sync_state_id))
+            if not state:
+                return None
+            if retryable:
+                state.sync_status = 'queued'
+                state.queue_token = queue_token or state.queue_token
+                state.queued_at = now
+                state.locked_at = None
+                state.last_error = error_message
+                event_type = 'queued'
+            else:
+                state.sync_status = 'failed'
+                state.queue_token = None
+                state.locked_at = None
+                state.failure_count = (state.failure_count or 0) + 1
+                event_type = 'failed'
+
+            session.flush()
+
+            payload = (
+                {'queue_token': queue_token or state.queue_token, 'pending_video_count': state.pending_video_count or 0}
+                if retryable
+                else {'failure_count': state.failure_count, 'pending_video_count': state.pending_video_count or 0}
+            )
+
+            event = SyncEventInput(
+                stream_id=run_id or '',
+                subscription_id=state.subscription_id,
+                sync_mode=state.sync_mode,
+                sync_state_id=state.id,
+                site=state.site,
+                trigger=trigger,
+                request_id=request_id,
+                trace_id=trace_id,
+                event_type=event_type,
+                event_phase=event_type,
+                event_status=event_type,
+                payload=payload,
+                message=error_message,
+                occurred_at=now,
+            )
+            self.captured_events.append(event)
+            return state
+
+
 def _create_job(engine) -> int:
     with Session(engine, expire_on_commit=False) as session:
         job = CrawlJob(
@@ -46,19 +118,6 @@ def _create_job(engine) -> int:
         session.add(job)
         session.commit()
         return job.id
-
-
-def _patch_postgres(monkeypatch, session_factory):
-    from core import database
-    monkeypatch.setattr(database, "register_after_commit", lambda session, callback: None)
-    monkeypatch.setattr(database, "get_session", session_factory)
-
-    from services.subscription_sync_run_service import _default as run_svc_default
-    run_svc_default.next_seq_no = lambda stream_id, *, session=None: 1
-
-    from services.subscription_sync_projection_service import _default as proj_default
-    proj_default._advisory_lock = staticmethod(lambda session, key: None)
-    proj_default.apply_event = lambda event, session=None: event
 
 
 def test_create_job_and_task_persists_defaults(engine, svc):
@@ -182,24 +241,13 @@ def test_recover_expired_tasks_moves_retriable_task_to_retry_wait(engine, svc):
     assert stored_task.next_run_at == now + timedelta(seconds=45)
 
 
-def test_recover_expired_subscription_sync_task_requeues_matching_sync_state(engine, session_factory, svc, monkeypatch):
-    from core import database
-    monkeypatch.setattr(database, "register_after_commit", lambda session, callback: None)
-    monkeypatch.setattr(database, "get_session", session_factory)
-
-    from services.subscription_sync_run_service import _default as run_svc_default
-    run_svc_default.next_seq_no = lambda stream_id, *, session=None: 1
-
-    from services.subscription_sync_projection_service import _default as proj_default
-    proj_default._advisory_lock = staticmethod(lambda session, key: None)
-    proj_default.apply_event = lambda event, session=None: event
+def test_recover_expired_subscription_sync_task_requeues_matching_sync_state(engine, session_factory, svc):
+    captured_events = []
+    fake_sync_svc = FakeSyncStateService(session_factory=session_factory, captured_events=captured_events)
+    svc_with_fake = CrawlTaskService(session_factory=session_factory, sync_state_service=fake_sync_svc)
 
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
-    captured_events = []
-
-    from services import subscription_sync_state_service as sss_mod
-    monkeypatch.setattr(sss_mod, "append_event", lambda event, session=None: captured_events.append(event))
 
     with Session(engine, expire_on_commit=False) as session:
         session.add(
@@ -240,7 +288,7 @@ def test_recover_expired_subscription_sync_task_requeues_matching_sync_state(eng
         session.commit()
         task_id = task.id
 
-    recovered = svc.recover_expired_tasks(now=now, retry_delay_seconds=45)
+    recovered = svc_with_fake.recover_expired_tasks(now=now, retry_delay_seconds=45)
 
     assert recovered == 1
 
@@ -299,14 +347,13 @@ def test_recover_expired_tasks_moves_exhausted_task_to_dead(engine, svc):
     assert stored_task.finished_at == now
 
 
-def test_recover_expired_subscription_sync_task_marks_sync_state_failed_when_dead(engine, session_factory, svc, monkeypatch):
-    _patch_postgres(monkeypatch, session_factory)
+def test_recover_expired_subscription_sync_task_marks_sync_state_failed_when_dead(engine, session_factory):
+    captured_events = []
+    fake_sync_svc = FakeSyncStateService(session_factory=session_factory, captured_events=captured_events)
+    svc = CrawlTaskService(session_factory=session_factory, sync_state_service=fake_sync_svc)
+
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
-    captured_events = []
-
-    from services import subscription_sync_state_service as sss_mod
-    monkeypatch.setattr(sss_mod, "append_event", lambda event, session=None: captured_events.append(event))
 
     with Session(engine, expire_on_commit=False) as session:
         session.add(
@@ -579,9 +626,15 @@ def test_complete_and_dead_mix_marks_job_partial_failed(engine, svc):
     assert stored_job.status == "partial_failed"
 
 
-def test_video_extract_task_lifecycle_updates_projection(engine, session_factory, svc, monkeypatch):
-    from core import database
-    monkeypatch.setattr(database, "get_session", session_factory)
+def test_video_extract_task_lifecycle_updates_projection(engine, session_factory):
+    projection_svc = VideoExtractionProjectionService(
+        session_factory=session_factory,
+        publish_sync_center_invalidation=lambda channel, payload=None: None,
+    )
+    svc = CrawlTaskService(
+        session_factory=session_factory,
+        video_extraction_projection_svc=projection_svc,
+    )
 
     now = datetime(2026, 4, 1, 12, 0, 0)
 

@@ -5,16 +5,15 @@ from sqlalchemy.orm import Session
 
 from models import Base
 from models.scheduled_task import ScheduledTask, TaskExecutionLog, TaskStatus, TaskType
-from services import scheduled_task_service
+from services.scheduled_task_service import ScheduledTaskService
 
 
 @pytest.fixture
-def patch_scheduled_task_service(monkeypatch, session_factory):
-    monkeypatch.setattr(scheduled_task_service, 'get_session', session_factory)
-    monkeypatch.setattr(scheduled_task_service, 'ensure_system_tasks', lambda: None)
+def svc(session_factory):
+    return ScheduledTaskService(session_factory=session_factory)
 
 
-def test_get_task_list_serializes_only_current_page(engine, patch_scheduled_task_service):
+def test_get_task_list_serializes_only_current_page(engine, svc):
     Base.metadata.create_all(
         engine,
         tables=[
@@ -54,7 +53,7 @@ def test_get_task_list_serializes_only_current_page(engine, patch_scheduled_task
     from unittest.mock import patch
 
     with patch.object(ScheduledTask, 'to_dict', fake_to_dict):
-        result = scheduled_task_service.ScheduledTaskService.get_task_list(page=2, page_size=5)
+        result = svc.get_task_list(page=2, page_size=5)
 
     assert result['total'] == 30
     assert len(result['data']) == 5

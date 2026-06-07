@@ -1,5 +1,6 @@
 from datetime import datetime
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from models.crawl_task import CrawlTask
 from services import sync_center_stream_service
@@ -15,27 +16,21 @@ def test_encode_sse_event_uses_named_event_with_json_payload():
     assert encoded == 'event: feed_snapshot\ndata: {"overview": {"running_count": 1}}\n\n'
 
 
-def test_append_event_publishes_feed_and_run_invalidations(monkeypatch):
-    sses_svc = SubscriptionSyncEventService()
+def test_append_event_publishes_feed_and_run_invalidations():
     published = []
+    mock_projection = SimpleNamespace(apply_event=lambda event, session=None: None)
+    mock_run = SimpleNamespace(next_seq_no=lambda stream_id, session=None: 1)
+    mock_stream = SimpleNamespace(
+        publish_sync_center_invalidation=lambda channel, payload=None: published.append((channel, payload)),
+        SYNC_CENTER_FEED_CHANNEL=sync_center_stream_service.SYNC_CENTER_FEED_CHANNEL,
+        SYNC_CENTER_RUN_CHANNEL=sync_center_stream_service.SYNC_CENTER_RUN_CHANNEL,
+    )
 
-    stream_svc = sses_svc.stream_service
-    stream_svc.SYNC_CENTER_FEED_CHANNEL = sync_center_stream_service.SYNC_CENTER_FEED_CHANNEL
-    stream_svc.SYNC_CENTER_RUN_CHANNEL = sync_center_stream_service.SYNC_CENTER_RUN_CHANNEL
-    monkeypatch.setattr(
-        stream_svc,
-        "publish_sync_center_invalidation",
-        lambda channel, payload=None: published.append((channel, payload)),
-    )
-    monkeypatch.setattr(
-        sses_svc.projection_service,
-        "apply_event",
-        lambda event, session=None: None,
-    )
-    monkeypatch.setattr(
-        sses_svc.run_service,
-        "next_seq_no",
-        lambda stream_id, session=None: 1,
+    sses_svc = SubscriptionSyncEventService(
+        session_factory=lambda: SimpleNamespace(__enter__=lambda s: s, __exit__=lambda *a: None),
+        projection_service=mock_projection,
+        run_service=mock_run,
+        stream_service=mock_stream,
     )
 
     event = sses_svc.append_event(
@@ -64,30 +59,23 @@ def test_append_event_publishes_feed_and_run_invalidations(monkeypatch):
     assert (sync_center_stream_service.SYNC_CENTER_RUN_CHANNEL, {"run_id": "run-9"}) in published
 
 
-def test_refresh_projection_for_task_publishes_extract_invalidations(monkeypatch):
+def test_refresh_projection_for_task_publishes_extract_invalidations():
     from services.video_extraction_projection_service import VideoExtractionProjectionService
-    svc = VideoExtractionProjectionService()
+
     published = []
+    svc = VideoExtractionProjectionService(
+        publish_sync_center_invalidation=lambda channel, payload=None: published.append((channel, payload)),
+        sync_center_extract_channel=sync_center_stream_service.SYNC_CENTER_EXTRACT_CHANNEL,
+    )
 
-    monkeypatch.setattr(
-        svc,
-        "_get_publish_sync_center_invalidation",
-        lambda: lambda channel, payload=None: published.append((channel, payload)),
-    )
-    monkeypatch.setattr(
-        svc,
-        "_get_sync_center_extract_channel",
-        lambda: sync_center_stream_service.SYNC_CENTER_EXTRACT_CHANNEL,
-    )
-    monkeypatch.setattr(svc, "_refresh_projection_group", lambda *args, **kwargs: None)
-
-    task = CrawlTask(
-        job_id=1,
-        task_type="video_extract",
-        site="youtube",
-        subscription_id=9,
-        payload={"run_id": "run-9"},
-    )
-    svc.refresh_projection_for_task(task, session=object())
+    with patch.object(svc, '_refresh_projection_group'):
+        task = CrawlTask(
+            job_id=1,
+            task_type="video_extract",
+            site="youtube",
+            subscription_id=9,
+            payload={"run_id": "run-9"},
+        )
+        svc.refresh_projection_for_task(task, session=object())
 
     assert (sync_center_stream_service.SYNC_CENTER_EXTRACT_CHANNEL, {"run_id": "run-9"}) in published

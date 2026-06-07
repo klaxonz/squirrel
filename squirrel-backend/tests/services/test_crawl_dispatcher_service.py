@@ -9,12 +9,18 @@ from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
 from services.crawl_dispatcher.policy import CrawlDispatcherPolicy
 from services.crawl_dispatcher.service import CrawlDispatcherService
-from services.crawl_tasks import service as crawl_task_service
+from services.crawl_tasks.service import CrawlTaskService
 
 
 @pytest.fixture
-def patch_get_session(monkeypatch, session_factory):
-    monkeypatch.setattr(crawl_task_service, 'get_session', session_factory)
+def svc(session_factory):
+    return CrawlDispatcherService(
+        policy=CrawlDispatcherPolicy(
+            default_site_concurrency=2,
+            task_type_limits={},
+        ),
+        session_factory=session_factory,
+    )
 
 
 def _create_tables(engine):
@@ -37,7 +43,7 @@ def _create_job(session, *, site: str = 'youtube') -> int:
     return job.id
 
 
-def test_dispatcher_skips_site_when_site_quota_is_full(engine, patch_get_session):
+def test_dispatcher_skips_site_when_site_quota_is_full(engine, svc):
     _create_tables(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -80,6 +86,7 @@ def test_dispatcher_skips_site_when_site_quota_is_full(engine, patch_get_session
 
     dispatcher = CrawlDispatcherService(
         policy=CrawlDispatcherPolicy(default_site_concurrency=1),
+        session_factory=svc.session_factory,
     )
     claimed = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
 
@@ -87,7 +94,7 @@ def test_dispatcher_skips_site_when_site_quota_is_full(engine, patch_get_session
     assert claimed.site == 'bilibili'
 
 
-def test_dispatcher_skips_task_type_when_quota_is_full(engine, patch_get_session):
+def test_dispatcher_skips_task_type_when_quota_is_full(engine, svc):
     _create_tables(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -133,6 +140,7 @@ def test_dispatcher_skips_task_type_when_quota_is_full(engine, patch_get_session
             default_site_concurrency=2,
             task_type_limits={'subscription_sync': 1, 'video_extract': 4},
         ),
+        session_factory=svc.session_factory,
     )
     claimed = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
 
@@ -140,7 +148,7 @@ def test_dispatcher_skips_task_type_when_quota_is_full(engine, patch_get_session
     assert claimed.task_type == 'video_extract'
 
 
-def test_dispatcher_respects_priority_within_available_capacity(engine, patch_get_session):
+def test_dispatcher_respects_priority_within_available_capacity(engine, svc):
     _create_tables(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -170,6 +178,7 @@ def test_dispatcher_respects_priority_within_available_capacity(engine, patch_ge
 
     dispatcher = CrawlDispatcherService(
         policy=CrawlDispatcherPolicy(default_site_concurrency=2),
+        session_factory=svc.session_factory,
     )
     claimed = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
 
@@ -177,7 +186,7 @@ def test_dispatcher_respects_priority_within_available_capacity(engine, patch_ge
     assert claimed.priority == 'manual'
 
 
-def test_dispatcher_claim_next_creates_missing_dispatch_scopes_for_legacy_tasks(engine, patch_get_session):
+def test_dispatcher_claim_next_creates_missing_dispatch_scopes_for_legacy_tasks(engine, svc):
     _create_tables(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -199,6 +208,7 @@ def test_dispatcher_claim_next_creates_missing_dispatch_scopes_for_legacy_tasks(
 
     dispatcher = CrawlDispatcherService(
         policy=CrawlDispatcherPolicy(default_site_concurrency=2),
+        session_factory=svc.session_factory,
     )
     claimed = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
 
@@ -216,7 +226,7 @@ def test_dispatcher_claim_next_creates_missing_dispatch_scopes_for_legacy_tasks(
     ]
 
 
-def test_dispatcher_considers_other_sites_when_one_site_fills_candidate_window(engine, patch_get_session):
+def test_dispatcher_considers_other_sites_when_one_site_fills_candidate_window(engine, svc):
     _create_tables(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -250,6 +260,7 @@ def test_dispatcher_considers_other_sites_when_one_site_fills_candidate_window(e
 
     dispatcher = CrawlDispatcherService(
         policy=CrawlDispatcherPolicy(default_site_concurrency=1),
+        session_factory=svc.session_factory,
     )
 
     first = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
@@ -260,7 +271,7 @@ def test_dispatcher_considers_other_sites_when_one_site_fills_candidate_window(e
     assert {first.site, second.site} == {'youtube', 'bilibili'}
 
 
-def test_dispatcher_considers_other_task_types_when_one_type_fills_candidate_window(engine, patch_get_session):
+def test_dispatcher_considers_other_task_types_when_one_type_fills_candidate_window(engine, svc):
     _create_tables(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -298,6 +309,7 @@ def test_dispatcher_considers_other_task_types_when_one_type_fills_candidate_win
             default_site_concurrency=1,
             task_type_limits={'video_extract': 1, 'subscription_sync': 1},
         ),
+        session_factory=svc.session_factory,
     )
 
     first = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
@@ -309,7 +321,7 @@ def test_dispatcher_considers_other_task_types_when_one_type_fills_candidate_win
     assert second.task_type == 'subscription_sync'
 
 
-def test_dispatcher_rotates_sites_before_filling_second_slot_for_one_hot_site(engine, patch_get_session):
+def test_dispatcher_rotates_sites_before_filling_second_slot_for_one_hot_site(engine, svc):
     _create_tables(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -353,6 +365,7 @@ def test_dispatcher_rotates_sites_before_filling_second_slot_for_one_hot_site(en
 
     dispatcher = CrawlDispatcherService(
         policy=CrawlDispatcherPolicy(default_site_concurrency=2),
+        session_factory=svc.session_factory,
     )
 
     first = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
@@ -364,7 +377,7 @@ def test_dispatcher_rotates_sites_before_filling_second_slot_for_one_hot_site(en
     assert second.site == 'bilibili'
 
 
-def test_dispatcher_gives_subscription_sync_a_slot_when_video_extract_backlog_is_older(engine, patch_get_session):
+def test_dispatcher_gives_subscription_sync_a_slot_when_video_extract_backlog_is_older(engine, svc):
     _create_tables(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -401,6 +414,7 @@ def test_dispatcher_gives_subscription_sync_a_slot_when_video_extract_backlog_is
             default_site_concurrency=2,
             task_type_limits={'subscription_sync': 2, 'video_extract': 8},
         ),
+        session_factory=svc.session_factory,
     )
 
     claimed = [dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60) for _ in range(8)]
@@ -408,7 +422,7 @@ def test_dispatcher_gives_subscription_sync_a_slot_when_video_extract_backlog_is
     assert any(task is not None and task.task_type == 'subscription_sync' for task in claimed)
 
 
-def test_dispatcher_considers_next_task_type_for_same_site_when_site_head_type_is_full(engine, patch_get_session):
+def test_dispatcher_considers_next_task_type_for_same_site_when_site_head_type_is_full(engine, svc):
     _create_tables(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -484,6 +498,7 @@ def test_dispatcher_considers_next_task_type_for_same_site_when_site_head_type_i
             default_site_concurrency=2,
             task_type_limits={'subscription_sync': 1, 'video_extract': 8},
         ),
+        session_factory=svc.session_factory,
     )
 
     claimed = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
@@ -493,7 +508,7 @@ def test_dispatcher_considers_next_task_type_for_same_site_when_site_head_type_i
     assert claimed.task_type == 'video_extract'
 
 
-def test_dispatcher_treats_full_and_incremental_sync_as_separate_task_types(engine, patch_get_session):
+def test_dispatcher_treats_full_and_incremental_sync_as_separate_task_types(engine, svc):
     _create_tables(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -536,6 +551,7 @@ def test_dispatcher_treats_full_and_incremental_sync_as_separate_task_types(engi
             default_site_concurrency=3,
             task_type_limits={'subscription_sync_full': 1, 'subscription_sync_incremental': 2},
         ),
+        session_factory=svc.session_factory,
     )
 
     claimed = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
@@ -544,9 +560,7 @@ def test_dispatcher_treats_full_and_incremental_sync_as_separate_task_types(engi
     assert claimed.task_type == 'subscription_sync_incremental'
 
 
-def test_dispatcher_rolls_back_failed_candidate_attempts_before_trying_next_candidate(
-    engine, patch_get_session, monkeypatch
-):
+def test_dispatcher_rolls_back_failed_candidate_attempts_before_trying_next_candidate(engine, svc):
     _create_tables(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -577,44 +591,33 @@ def test_dispatcher_rolls_back_failed_candidate_attempts_before_trying_next_cand
         )
         session.commit()
 
-    original_try_claim_candidate = CrawlDispatcherService._try_claim_candidate
-    attempts = 0
+    class FailingFirstClaimDispatcher(CrawlDispatcherService):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._attempt_count = 0
+            self._original_try_claim_candidate = CrawlDispatcherService._try_claim_candidate
 
-    def _try_claim_candidate_with_failed_first_attempt(
-        self,
-        session,
-        *,
-        task_id: int,
-        worker_id: str,
-        now: datetime,
-        lease_seconds: int,
-    ):
-        nonlocal attempts
-        attempts += 1
-        if attempts == 1:
-            crawl_task_service._ensure_dispatch_scope(
+        def _try_claim_candidate(self, session, *, task_id, worker_id, now, lease_seconds):
+            self._attempt_count += 1
+            if self._attempt_count == 1:
+                CrawlTaskService._ensure_dispatch_scope(
+                    session,
+                    scope_type='site',
+                    scope_key='youtube',
+                )
+                return None
+            return self._original_try_claim_candidate(
+                self,
                 session,
-                scope_type='site',
-                scope_key='youtube',
+                task_id=task_id,
+                worker_id=worker_id,
+                now=now,
+                lease_seconds=lease_seconds,
             )
-            return None
-        return original_try_claim_candidate(
-            self,
-            session,
-            task_id=task_id,
-            worker_id=worker_id,
-            now=now,
-            lease_seconds=lease_seconds,
-        )
 
-    monkeypatch.setattr(
-        CrawlDispatcherService,
-        '_try_claim_candidate',
-        _try_claim_candidate_with_failed_first_attempt,
-    )
-
-    dispatcher = CrawlDispatcherService(
+    dispatcher = FailingFirstClaimDispatcher(
         policy=CrawlDispatcherPolicy(default_site_concurrency=2),
+        session_factory=svc.session_factory,
     )
     claimed = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)
 
@@ -637,7 +640,7 @@ def test_dispatcher_rolls_back_failed_candidate_attempts_before_trying_next_cand
     ]
 
 
-def test_dispatcher_skips_candidate_when_task_type_scope_is_locked(engine, patch_get_session, monkeypatch):
+def test_dispatcher_skips_candidate_when_task_type_scope_is_locked(engine, svc):
     _create_tables(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -667,20 +670,13 @@ def test_dispatcher_skips_candidate_when_task_type_scope_is_locked(engine, patch
         )
         session.commit()
 
-    original_lock_scope = CrawlDispatcherService._lock_scope
+    class BusyFullSyncScopeDispatcher(CrawlDispatcherService):
+        def _lock_scope(self, session, *, scope_type, scope_key):
+            if scope_type == 'task_type' and scope_key == 'subscription_sync_full':
+                return None
+            return super()._lock_scope(session, scope_type=scope_type, scope_key=scope_key)
 
-    def _lock_scope_with_busy_full_sync_scope(self, session, *, scope_type: str, scope_key: str):
-        if scope_type == 'task_type' and scope_key == 'subscription_sync_full':
-            return None
-        return original_lock_scope(self, session, scope_type=scope_type, scope_key=scope_key)
-
-    monkeypatch.setattr(
-        CrawlDispatcherService,
-        '_lock_scope',
-        _lock_scope_with_busy_full_sync_scope,
-    )
-
-    dispatcher = CrawlDispatcherService(
+    dispatcher = BusyFullSyncScopeDispatcher(
         policy=CrawlDispatcherPolicy(
             default_site_concurrency=2,
             task_type_limits={
@@ -688,6 +684,7 @@ def test_dispatcher_skips_candidate_when_task_type_scope_is_locked(engine, patch
                 'subscription_sync_incremental': 1,
             },
         ),
+        session_factory=svc.session_factory,
     )
 
     claimed = dispatcher.claim_next(worker_id='worker-1', now=now, lease_seconds=60)

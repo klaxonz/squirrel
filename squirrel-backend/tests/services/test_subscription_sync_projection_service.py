@@ -1,18 +1,15 @@
-import sys
 from datetime import datetime, timedelta
-from pathlib import Path
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
 from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
 from models.subscription_sync_trend_projection import SubscriptionSyncTrendProjection
-from services import subscription_sync_projection_service
+from services.subscription_sync_projection_service import SubscriptionSyncProjectionService
 from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus
 
 
@@ -45,7 +42,21 @@ def _build_event(
     )
 
 
-def test_apply_events_keeps_run_counters_cumulative_across_full_sync_batches(monkeypatch):
+@pytest.fixture(autouse=True)
+def _patch_advisory_lock():
+    """Make PostgreSQL-specific _advisory_lock a no-op for SQLite tests."""
+    original = SubscriptionSyncProjectionService._advisory_lock
+    SubscriptionSyncProjectionService._advisory_lock = staticmethod(lambda session, key: None)
+    yield
+    SubscriptionSyncProjectionService._advisory_lock = original
+
+
+@pytest.fixture
+def svc():
+    return SubscriptionSyncProjectionService()
+
+
+def test_apply_events_keeps_run_counters_cumulative_across_full_sync_batches(svc):
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(
         engine,
@@ -55,7 +66,6 @@ def test_apply_events_keeps_run_counters_cumulative_across_full_sync_batches(mon
             SubscriptionSyncTrendProjection.__table__,
         ],
     )
-    monkeypatch.setattr(subscription_sync_projection_service, "_advisory_lock", lambda session, key: None)
 
     started_at = datetime(2026, 4, 2, 12, 0, 0)
     events = [
@@ -166,7 +176,7 @@ def test_apply_events_keeps_run_counters_cumulative_across_full_sync_batches(mon
     ]
 
     with Session(engine, expire_on_commit=False) as session:
-        subscription_sync_projection_service.apply_events(events, session=session)
+        svc.apply_events(events, session=session)
         run_projection = session.get(SubscriptionSyncRunProjection, "run-full-1")
 
     assert run_projection is not None
@@ -176,7 +186,7 @@ def test_apply_events_keeps_run_counters_cumulative_across_full_sync_batches(mon
     assert run_projection.videos_skipped == 2
 
 
-def test_apply_subscription_projection_ignores_late_progress_from_previous_run(monkeypatch):
+def test_apply_subscription_projection_ignores_late_progress_from_previous_run(svc):
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(
         engine,
@@ -186,7 +196,6 @@ def test_apply_subscription_projection_ignores_late_progress_from_previous_run(m
             SubscriptionSyncTrendProjection.__table__,
         ],
     )
-    monkeypatch.setattr(subscription_sync_projection_service, "_advisory_lock", lambda session, key: None)
 
     started_at = datetime(2026, 4, 2, 12, 0, 0)
     events = [
@@ -226,7 +235,7 @@ def test_apply_subscription_projection_ignores_late_progress_from_previous_run(m
     ]
 
     with Session(engine, expire_on_commit=False) as session:
-        subscription_sync_projection_service.apply_events(events, session=session)
+        svc.apply_events(events, session=session)
         projection = session.get(SubscriptionSyncSubscriptionProjection, 101)
 
     assert projection is not None

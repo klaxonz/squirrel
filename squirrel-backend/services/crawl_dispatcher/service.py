@@ -9,17 +9,23 @@ from sqlalchemy.orm import Session
 from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_task import CrawlTask
 from services.crawl_dispatcher.policy import CrawlDispatcherPolicy
-from services.crawl_tasks import service as crawl_task_service
 from services.crawl_tasks.models import CrawlTaskStatus
+from services.crawl_tasks.service import CrawlTaskService
 
 
 class CrawlDispatcherService:
-    def __init__(self, *, policy: CrawlDispatcherPolicy | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        policy: CrawlDispatcherPolicy | None = None,
+        session_factory=None,
+    ) -> None:
         self.policy = policy or CrawlDispatcherPolicy.from_settings()
+        self.session_factory = session_factory
 
     def claim_next(self, *, worker_id: str, now: datetime | None = None, lease_seconds: int = 60) -> CrawlTask | None:
         now = now or datetime.now()
-        with crawl_task_service.get_session() as session:
+        with self._get_session() as session:
             candidate_rows = session.execute(self._build_candidate_query(now)).mappings().all()
             candidate_rows = self._sort_candidates_by_runtime_pressure(session, candidate_rows)
             for candidate_row in candidate_rows:
@@ -210,8 +216,14 @@ class CrawlDispatcherService:
         session.flush()
         return task
 
+    def _get_session(self):
+        if self.session_factory is not None:
+            return self.session_factory()
+        from core.database import get_session
+        return get_session()
+
     def _lock_scope(self, session: Session, *, scope_type: str, scope_key: str) -> CrawlDispatchScope | None:
-        crawl_task_service._ensure_dispatch_scope(session, scope_type=scope_type, scope_key=scope_key)
+        CrawlTaskService._ensure_dispatch_scope(session, scope_type=scope_type, scope_key=scope_key)
         scope = session.execute(
             select(CrawlDispatchScope)
             .where(

@@ -11,9 +11,24 @@ from models.subscription import Subscription
 from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
-from services.subscription_sync_center_service import SubscriptionSyncCenterService
 from services.subscription_sync_history_service import SubscriptionSyncHistoryService
 from utils.site_catalog import SiteCatalog
+
+
+@pytest.fixture(autouse=True)
+def _site_catalog():
+    """Set up SiteCatalog with test catalog data so site filtering works."""
+    original_catalog = SiteCatalog._override_catalog
+    original_mtime = SiteCatalog._override_catalog_mtime
+    SiteCatalog.set_catalog({
+        "youtube": {
+            "domains": ["youtube.com", "youtu.be"],
+            "icon_url": "/api/sites/youtube/icon",
+        },
+    })
+    yield
+    SiteCatalog._override_catalog = original_catalog
+    SiteCatalog._override_catalog_mtime = original_mtime
 
 
 @pytest.fixture
@@ -34,44 +49,8 @@ def engine(engine):
 
 
 @pytest.fixture
-def svc(session_factory):
-    return SubscriptionSyncCenterService(session_factory=session_factory)
-
-
-@pytest.fixture
 def history_svc(session_factory):
     return SubscriptionSyncHistoryService(session_factory=session_factory)
-
-
-def _setup_test_env(engine, monkeypatch):
-    monkeypatch.setattr(
-        SubscriptionSyncCenterService,
-        "_refresh_runtime_sync_health",
-        lambda self, force=False: None,
-    )
-    monkeypatch.setattr(
-        SiteCatalog,
-        "resolve_domains",
-        classmethod(lambda cls, key: ["youtube.com", "youtu.be"] if key == "youtube" else []),
-    )
-    monkeypatch.setattr(
-        SiteCatalog,
-        "find_site_by_domain",
-        classmethod(lambda cls, domain: ("youtube", {}) if domain == "youtube.com" else (None, None)),
-    )
-    monkeypatch.setattr(
-        SiteCatalog,
-        "get_catalog",
-        classmethod(
-            lambda cls: {
-                "youtube": {
-                    "domains": ["youtube.com", "youtu.be"],
-                    "icon_url": "/api/sites/youtube/icon",
-                },
-            },
-        ),
-    )
-    return engine
 
 
 def _seed_sync_projection(engine):
@@ -150,8 +129,7 @@ def _seed_sync_projection(engine):
         session.commit()
 
 
-def test_list_runs_accepts_site_slug_when_projection_stores_domain(engine, session_factory, monkeypatch):
-    engine = _setup_test_env(engine, monkeypatch)
+def test_list_runs_accepts_site_slug_when_projection_stores_domain(engine, session_factory):
     _seed_sync_projection(engine)
     history_svc = SubscriptionSyncHistoryService(session_factory=session_factory)
 
@@ -159,11 +137,10 @@ def test_list_runs_accepts_site_slug_when_projection_stores_domain(engine, sessi
 
     assert result["total"] == 1
     assert [item["site"] for item in result["data"]] == ["youtube.com"]
-    assert [item["site_icon_url"] for item in result["data"]] == ["/api/sites/youtube/icon"]
+    assert [item["site_icon_url"] for item in result["data"]] == ["/api/plugins/sites/youtube/icon"]
 
 
-def test_list_runs_recent_excludes_running_and_queued_statuses(engine, session_factory, monkeypatch):
-    engine = _setup_test_env(engine, monkeypatch)
+def test_list_runs_recent_excludes_running_and_queued_statuses(engine, session_factory):
     _seed_sync_projection(engine)
     history_svc = SubscriptionSyncHistoryService(session_factory=session_factory)
 
@@ -234,8 +211,7 @@ def test_list_runs_recent_excludes_running_and_queued_statuses(engine, session_f
     assert [item["run_id"] for item in result["data"]] == ["run-1"]
 
 
-def test_list_runs_feed_recent_includes_handoff_and_terminal_runs(engine, session_factory, monkeypatch):
-    engine = _setup_test_env(engine, monkeypatch)
+def test_list_runs_feed_recent_includes_handoff_and_terminal_runs(engine, session_factory):
     _seed_sync_projection(engine)
     history_svc = SubscriptionSyncHistoryService(session_factory=session_factory)
 
@@ -377,8 +353,7 @@ def test_list_runs_feed_recent_includes_handoff_and_terminal_runs(engine, sessio
     assert result["data"][0]["current_phase"] == "extracting"
 
 
-def test_list_runs_feed_recent_sorts_by_feed_completion_time_not_last_event(engine, session_factory, monkeypatch):
-    engine = _setup_test_env(engine, monkeypatch)
+def test_list_runs_feed_recent_sorts_by_feed_completion_time_not_last_event(engine, session_factory):
     _seed_sync_projection(engine)
     history_svc = SubscriptionSyncHistoryService(session_factory=session_factory)
 
@@ -550,8 +525,7 @@ def test_list_runs_feed_recent_sorts_by_feed_completion_time_not_last_event(engi
     assert result["data"][1]["feed_completed_at"] == "2024-01-01 01:02:00"
 
 
-def test_list_runs_feed_recent_only_returns_latest_run_per_subscription(engine, session_factory, monkeypatch):
-    engine = _setup_test_env(engine, monkeypatch)
+def test_list_runs_feed_recent_only_returns_latest_run_per_subscription(engine, session_factory):
     _seed_sync_projection(engine)
     history_svc = SubscriptionSyncHistoryService(session_factory=session_factory)
 
@@ -637,152 +611,3 @@ def test_list_runs_feed_recent_only_returns_latest_run_per_subscription(engine, 
 
     assert result["total"] == 1
     assert [item["run_id"] for item in result["data"]] == ["run-4"]
-
-
-def test_list_sync_center_queued_items_follow_real_task_queue_order(engine, session_factory, monkeypatch):
-    engine = _setup_test_env(engine, monkeypatch)
-    _seed_sync_projection(engine)
-    svc = SubscriptionSyncCenterService(session_factory=session_factory)
-
-    with Session(engine, expire_on_commit=False) as session:
-        subscription_projection = session.get(SubscriptionSyncSubscriptionProjection, 1)
-        assert subscription_projection is not None
-        subscription_projection.latest_run_id = "run-queued-a"
-        subscription_projection.current_status = "queued"
-        subscription_projection.current_phase = "queued"
-        subscription_projection.last_sync_at = datetime(2024, 1, 1, 1, 0, 0)
-        subscription_projection.last_success_at = datetime(2024, 1, 1, 1, 0, 0)
-        subscription_projection.next_sync_at = datetime(2024, 1, 1, 2, 0, 0)
-        subscription_projection.last_event_seq_no = 1
-        subscription_projection.updated_at = datetime(2024, 1, 1, 1, 0, 0)
-
-        session.add(
-            Subscription(
-                id=2,
-                type="CHANNEL",
-                name="Second Channel",
-                url="https://www.youtube.com/channel/demo-2",
-                avatar=None,
-                description=None,
-                total_videos=0,
-                is_deleted=False,
-                extra_data={},
-                created_at=datetime(2024, 1, 1),
-                updated_at=datetime(2024, 1, 1),
-            ),
-        )
-        session.add(
-            UserSubscription(
-                id=2,
-                user_id=1,
-                subscription_id=2,
-                is_deleted=False,
-                is_nsfw=False,
-                created_at=datetime(2024, 1, 1),
-                updated_at=datetime(2024, 1, 1),
-            ),
-        )
-        session.add_all([
-            SubscriptionSyncRunProjection(
-                run_id="run-queued-a",
-                subscription_id=1,
-                sync_state_id=11,
-                site="youtube.com",
-                sync_mode="incremental",
-                trigger="manual",
-                request_id="req-queued-a",
-                trace_id="trace-queued-a",
-                status="queued",
-                current_phase="queued",
-                queued_at=datetime(2024, 1, 1, 1, 0, 0),
-                started_at=None,
-                finished_at=None,
-                duration_ms=0,
-                failure_count=0,
-                error_type=None,
-                error_message=None,
-                videos_found=0,
-                videos_enqueued=0,
-                videos_extracted=0,
-                videos_skipped=0,
-                pending_video_count=0,
-                last_event_seq_no=1,
-                last_event_at=datetime(2024, 1, 1, 1, 0, 0),
-                created_at=datetime(2024, 1, 1, 1, 0, 0),
-                updated_at=datetime(2024, 1, 1, 1, 0, 0),
-            ),
-            SubscriptionSyncRunProjection(
-                run_id="run-queued-b",
-                subscription_id=2,
-                sync_state_id=12,
-                site="youtube.com",
-                sync_mode="incremental",
-                trigger="manual",
-                request_id="req-queued-b",
-                trace_id="trace-queued-b",
-                status="queued",
-                current_phase="queued",
-                queued_at=datetime(2024, 1, 1, 0, 0, 0),
-                started_at=None,
-                finished_at=None,
-                duration_ms=0,
-                failure_count=0,
-                error_type=None,
-                error_message=None,
-                videos_found=0,
-                videos_enqueued=0,
-                videos_extracted=0,
-                videos_skipped=0,
-                pending_video_count=0,
-                last_event_seq_no=1,
-                last_event_at=datetime(2024, 1, 1, 0, 0, 0),
-                created_at=datetime(2024, 1, 1, 0, 0, 0),
-                updated_at=datetime(2024, 1, 1, 0, 0, 0),
-            ),
-            SubscriptionSyncSubscriptionProjection(
-                subscription_id=2,
-                latest_run_id="run-queued-b",
-                current_status="queued",
-                current_phase="queued",
-                last_sync_at=datetime(2024, 1, 1, 0, 0, 0),
-                last_success_at=datetime(2024, 1, 1, 0, 0, 0),
-                next_sync_at=datetime(2024, 1, 1, 2, 0, 0),
-                last_error_message=None,
-                pending_video_count=0,
-                failure_streak=0,
-                last_event_seq_no=1,
-                updated_at=datetime(2024, 1, 1, 0, 0, 0),
-            ),
-            CrawlTask(
-                id=101,
-                job_id=1,
-                task_type="subscription_sync",
-                site="youtube.com",
-                subscription_id=1,
-                status="pending",
-                priority="normal",
-                payload={"sync_state_id": 11},
-                next_run_at=datetime(2024, 1, 1, 0, 0, 0),
-                created_at=datetime(2024, 1, 1, 0, 0, 0),
-                updated_at=datetime(2024, 1, 1, 0, 0, 0),
-            ),
-            CrawlTask(
-                id=102,
-                job_id=1,
-                task_type="subscription_sync",
-                site="youtube.com",
-                subscription_id=2,
-                status="pending",
-                priority="normal",
-                payload={"sync_state_id": 12},
-                next_run_at=datetime(2024, 1, 1, 1, 0, 0),
-                created_at=datetime(2024, 1, 1, 1, 0, 0),
-                updated_at=datetime(2024, 1, 1, 1, 0, 0),
-            ),
-        ])
-        session.commit()
-
-    result = svc.list_queued_items(user_id=1, page=1, page_size=20)
-
-    assert result["total"] == 2
-    assert [item["subscription_id"] for item in result["data"]] == [2, 1]

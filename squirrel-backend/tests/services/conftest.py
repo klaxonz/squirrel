@@ -36,15 +36,32 @@ def suppress_postgres(monkeypatch):
 
 
 @pytest.fixture
-def sss_session(monkeypatch, session_factory):
-    """Redirect subscription_sync_state_service's module-level get_session to our session_factory."""
+def sss_session(session_factory):
+    """Redirect module-level services to use test session_factory via direct attribute assignment."""
     from core import database
-    monkeypatch.setattr(database, "get_session", session_factory)
+    database.get_session = session_factory
+
+    from services.crawl_tasks import service as crawl_task_service_mod
+    crawl_task_service_mod._default.session_factory = session_factory
 
     from services.subscription_sync_run_service import _default as run_svc_default
-    run_svc_default.next_seq_no = lambda stream_id, *, session=None: 1
+    _seq_counters: dict[str, int] = {}
+    def _next_seq_no(stream_id, *, session=None):
+        _seq_counters[stream_id] = _seq_counters.get(stream_id, 0) + 1
+        return _seq_counters[stream_id]
+    run_svc_default.next_seq_no = _next_seq_no
 
     from services.subscription_sync_projection_service import _default as proj_default
     proj_default._advisory_lock = staticmethod(lambda session, key: None)
     proj_default.apply_event = lambda event, session=None: event
+
+    # Make stream_service constants available on the default instance
+    from services.sync_center_stream_service import (
+        SYNC_CENTER_FEED_CHANNEL,
+        SYNC_CENTER_RUN_CHANNEL,
+    )
+    from services.sync_center_stream_service import _default as stream_default
+    stream_default.SYNC_CENTER_FEED_CHANNEL = SYNC_CENTER_FEED_CHANNEL
+    stream_default.SYNC_CENTER_RUN_CHANNEL = SYNC_CENTER_RUN_CHANNEL
+    stream_default.publish_sync_center_invalidation = staticmethod(lambda channel, payload=None: None)
 

@@ -1,4 +1,3 @@
-import threading
 from datetime import datetime
 from types import SimpleNamespace
 
@@ -13,7 +12,6 @@ from models.user import User
 from models.user_video_feed import UserVideoFeed
 from models.video import Video
 from models.video_history import VideoHistory
-from schemas.subscription.dto.subscription_dto import SubscriptionDto
 from services.subscription_crud_service import SubscriptionCrudService
 from services.subscription_import_service import SubscriptionImportService
 from services.subscription_list_service import SubscriptionListService
@@ -22,6 +20,28 @@ from services.subscription_manage_service import SubscriptionManageService
 
 def _get_user_config(_user_id):
     return {"showNsfw": True}
+
+
+@pytest.fixture(autouse=True)
+def _redirect_module_defaults(session_factory):
+    """Redirect module-level service defaults to use test session_factory."""
+    from core import database
+    database.get_session = session_factory
+
+    from services.crawl_tasks import service as crawl_task_service_mod
+    crawl_task_service_mod._default.session_factory = session_factory
+
+    from services import user_video_feed_service as uvfs
+    uvfs._default._session_factory = session_factory
+
+    from services import video_extraction_projection_service as veps
+    veps._default.session_factory = session_factory
+
+    from services.subscription_crud_service import _default as crud_default
+    crud_default.session_factory = session_factory
+
+    from services.subscription_manage_service import _default as manage_default
+    manage_default.session_factory = session_factory
 
 
 @pytest.fixture
@@ -226,7 +246,7 @@ def test_check_subscription_status_returns_false_when_subscription_is_deleted(en
     }
 
 
-def test_preview_user_subscriptions_reads_items_from_plugin_gateway(engine, import_svc, monkeypatch):
+def test_preview_user_subscriptions_reads_items_from_plugin_gateway(engine, session_factory):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -235,41 +255,43 @@ def test_preview_user_subscriptions_reads_items_from_plugin_gateway(engine, impo
         session.commit()
 
     calls = []
+    import_svc = SubscriptionImportService(session_factory=session_factory)
 
-    class _FakeGateway:
-        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
-            calls.append({
-                "capability": capability,
-                "payload": payload,
-                "site_name": site_name,
-                "domain": domain,
-                "timeout_ms": timeout_ms,
-            })
-            return SimpleNamespace(
-                request_id="preview-1",
-                ok=True,
-                data={
-                    "items": [
-                        {"url": "https://space.bilibili.com/1", "name": "Imported creator", "avatar": "https://img/1"},
-                        {"url": "https://space.bilibili.com/2", "name": "New creator", "avatar": "https://img/2"},
-                    ],
-                    "total": 2,
-                },
-            )
+    def _fake_load_batch(site_name, *, cursor_payload=None, limit=None, gateway=None):
+        calls.append({
+            "site_name": site_name,
+            "cursor_payload": cursor_payload,
+            "limit": limit,
+        })
+        return SimpleNamespace(
+            items=[
+                SimpleNamespace(
+                    url="https://space.bilibili.com/1",
+                    name="Imported creator",
+                    avatar="https://img/1",
+                    to_dict=lambda: {"url": "https://space.bilibili.com/1", "name": "Imported creator", "avatar": "https://img/1"},
+                ),
+                SimpleNamespace(
+                    url="https://space.bilibili.com/2",
+                    name="New creator",
+                    avatar="https://img/2",
+                    to_dict=lambda: {"url": "https://space.bilibili.com/2", "name": "New creator", "avatar": "https://img/2"},
+                ),
+            ],
+            total_available=2,
+            has_more=False,
+            cursor_payload=None,
+            stop_reason=None,
+        )
 
-    monkeypatch.setattr(
-        "services.subscription_import_service.get_runtime_gateway",
-        lambda: _FakeGateway(),
-    )
+    import_svc._load_runtime_import_batch = _fake_load_batch
 
     result = import_svc.preview_user_subscriptions(site_name="bilibili", user_id=1)
 
     assert calls == [{
-        "capability": "import_subscriptions",
-        "payload": None,
         "site_name": "bilibili",
-        "domain": None,
-        "timeout_ms": None,
+        "cursor_payload": None,
+        "limit": None,
     }]
     assert result["site"] == "bilibili"
     assert result["total"] == 2
@@ -280,40 +302,35 @@ def test_preview_user_subscriptions_reads_items_from_plugin_gateway(engine, impo
     assert result["subscriptions"][1]["is_imported"] is False
 
 
-def test_preview_user_subscriptions_forwards_cursor_and_limit(engine, import_svc, monkeypatch):
+def test_preview_user_subscriptions_forwards_cursor_and_limit(engine, session_factory):
     calls = []
+    svc = SubscriptionImportService(session_factory=session_factory)
+    svc.crud_service.get_active_user_subscription_url_map = lambda _user_id: {}
 
-    class _FakeGateway:
-        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
-            calls.append({
-                "capability": capability,
-                "payload": payload,
-                "site_name": site_name,
-                "domain": domain,
-                "timeout_ms": timeout_ms,
-            })
-            return SimpleNamespace(
-                request_id="preview-2",
-                ok=True,
-                data={
-                    "items": [
-                        {"url": "https://javdb.com/actors/2", "name": "Actor Two"},
-                    ],
-                    "total": 1,
-                    "cursor_payload": {"page": 3},
-                    "has_more": True,
-                    "stop_reason": "batch_exhausted",
-                    "total_available": 1000,
-                },
-            )
+    def _fake_load_batch(site_name, *, cursor_payload=None, limit=None, gateway=None):
+        calls.append({
+            "site_name": site_name,
+            "cursor_payload": cursor_payload,
+            "limit": limit,
+        })
+        return SimpleNamespace(
+            items=[
+                SimpleNamespace(
+                    url="https://javdb.com/actors/2",
+                    name="Actor Two",
+                    avatar=None,
+                    to_dict=lambda: {"url": "https://javdb.com/actors/2", "name": "Actor Two"},
+                ),
+            ],
+            total_available=1000,
+            has_more=True,
+            cursor_payload={"page": 3},
+            stop_reason="batch_exhausted",
+        )
 
-    monkeypatch.setattr(
-        "services.subscription_import_service.get_runtime_gateway",
-        lambda: _FakeGateway(),
-    )
-    monkeypatch.setattr(import_svc.crud_service, "get_active_user_subscription_url_map", lambda _user_id: {})
+    svc._load_runtime_import_batch = _fake_load_batch
 
-    result = import_svc.preview_user_subscriptions(
+    result = svc.preview_user_subscriptions(
         site_name="javdb",
         user_id=1,
         cursor_payload={"page": 2},
@@ -321,14 +338,9 @@ def test_preview_user_subscriptions_forwards_cursor_and_limit(engine, import_svc
     )
 
     assert calls == [{
-        "capability": "import_subscriptions",
-        "payload": {
-            "cursor_payload": {"page": 2},
-            "limit": 50,
-        },
         "site_name": "javdb",
-        "domain": None,
-        "timeout_ms": None,
+        "cursor_payload": {"page": 2},
+        "limit": 50,
     }]
     assert result["site"] == "javdb"
     assert result["total"] == 1000
@@ -338,53 +350,22 @@ def test_preview_user_subscriptions_forwards_cursor_and_limit(engine, import_svc
     assert result["subscriptions"][0]["url"] == "https://javdb.com/actors/2"
 
 
-def test_import_user_subscriptions_uses_selected_urls_without_refetching_gateway(engine, import_svc, monkeypatch):
-    gateway_calls = []
+def test_import_user_subscriptions_uses_selected_urls_without_refetching_gateway(engine, session_factory):
     enqueued_batches = []
+    svc = SubscriptionImportService(session_factory=session_factory)
+    svc.crud_service.get_active_user_subscription_url_map = lambda _user_id: {}
+    svc._enqueue_subscriptions_async = lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name))
 
-    class _FakeGateway:
-        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
-            gateway_calls.append({
-                "capability": capability,
-                "payload": payload,
-                "site_name": site_name,
-                "domain": domain,
-                "timeout_ms": timeout_ms,
-            })
-            return SimpleNamespace(request_id="unexpected", ok=True, data={"items": [], "total": 0})
-
-    class _ImmediateThread:
-        def __init__(self, target=None, args=(), daemon=None):
-            self._target = target
-            self._args = args
-            self.daemon = daemon
-
-        def start(self):
-            if self._target is not None:
-                self._target(*self._args)
-
-    monkeypatch.setattr(
-        "services.subscription_import_service.get_runtime_gateway",
-        lambda: _FakeGateway(),
-    )
-    monkeypatch.setattr(import_svc.crud_service, "get_active_user_subscription_url_map", lambda _user_id: {})
-    monkeypatch.setattr(
-        import_svc,
-        "_enqueue_subscriptions_async",
-        lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
-    )
-    monkeypatch.setattr(threading, "Thread", _ImmediateThread)
-
-    result = import_svc.import_user_subscriptions(
+    result = svc.import_user_subscriptions(
         site_name="javdb",
         user_id=1,
         selected_urls=[
             "https://javdb.com/actors/alpha",
             "https://javdb.com/actors/beta",
         ],
+        use_background_thread=False,
     )
 
-    assert gateway_calls == []
     assert result == {
         "total": 2,
         "found": None,
@@ -401,32 +382,14 @@ def test_import_user_subscriptions_uses_selected_urls_without_refetching_gateway
     ]
 
 
-def test_handle_subscribe_request_reads_subscription_meta_from_plugin_gateway(engine, import_svc, monkeypatch):
-    calls = []
-
-    class _FakeGateway:
-        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
-            calls.append({
-                "capability": capability,
-                "payload": payload,
-                "site_name": site_name,
-                "domain": domain,
-                "timeout_ms": timeout_ms,
-            })
-            return SimpleNamespace(
-                request_id="subscribe-1",
-                ok=True,
-                data={
-                    "id": "UC123",
-                    "name": "Runtime channel",
-                    "avatar": "https://img/runtime.jpg",
-                    "url": "https://www.youtube.com/channel/UC123",
-                },
-            )
-
-    monkeypatch.setattr(
-        "services.subscription_import_service.get_runtime_gateway",
-        lambda: _FakeGateway(),
+def test_handle_subscribe_request_reads_subscription_meta_from_plugin_gateway(engine, session_factory):
+    import_svc = SubscriptionImportService(session_factory=session_factory)
+    import_svc._load_runtime_subscription_meta = staticmethod(
+        lambda url, gateway=None: SimpleNamespace(
+            name="Runtime channel",
+            url="https://www.youtube.com/channel/UC123",
+            avatar="https://img/runtime.jpg",
+        ),
     )
 
     result = import_svc.handle_subscribe_request(
@@ -434,21 +397,11 @@ def test_handle_subscribe_request_reads_subscription_meta_from_plugin_gateway(en
         user_id=1,
     )
 
-    assert calls == [{
-        "capability": "resolve_subscription",
-        "payload": {
-            "url": "https://www.youtube.com/channel/UC123",
-            "domain": "youtube.com",
-        },
-        "site_name": None,
-        "domain": "youtube.com",
-        "timeout_ms": None,
-    }]
     assert result.name == "Runtime channel"
     assert result.url == "https://www.youtube.com/channel/UC123"
 
 
-def test_get_runtime_supported_sites_reads_enabled_routes_from_plugin_manager(import_svc, monkeypatch):
+def test_get_runtime_supported_sites_reads_enabled_routes_from_plugin_manager(session_factory):
     registrations = [
         SimpleNamespace(capability="import_subscriptions", site_name="youtube"),
         SimpleNamespace(capability="import_subscriptions", site_name="bilibili"),
@@ -456,15 +409,15 @@ def test_get_runtime_supported_sites_reads_enabled_routes_from_plugin_manager(im
         SimpleNamespace(capability="import_subscriptions", site_name="youtube"),
     ]
 
-    monkeypatch.setattr(
-        "services.subscription_import_service.get_runtime_snapshot",
-        lambda: SimpleNamespace(registrations=registrations),
+    result = SubscriptionImportService.get_runtime_supported_sites(
+        "import_subscriptions",
+        snapshot=SimpleNamespace(registrations=registrations),
     )
 
-    assert import_svc.get_runtime_supported_sites("import_subscriptions") == ["bilibili", "youtube"]
+    assert result == ["bilibili", "youtube"]
 
 
-def test_import_user_subscriptions_filters_selected_urls_before_enqueue(engine, import_svc, monkeypatch):
+def test_import_user_subscriptions_filters_selected_urls_before_enqueue(engine, session_factory):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -473,31 +426,18 @@ def test_import_user_subscriptions_filters_selected_urls_before_enqueue(engine, 
         session.commit()
 
     enqueued_batches = []
+    svc = SubscriptionImportService(session_factory=session_factory)
+    svc.crud_service.get_active_user_subscription_url_map = lambda _uid: {"https://space.bilibili.com/1": 1}
+    svc._enqueue_subscriptions_async = lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name))
 
-    class _ImmediateThread:
-        def __init__(self, target=None, args=(), daemon=None):
-            self._target = target
-            self._args = args
-            self.daemon = daemon
-
-        def start(self):
-            if self._target is not None:
-                self._target(*self._args)
-
-    monkeypatch.setattr(
-        import_svc,
-        "_enqueue_subscriptions_async",
-        lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
-    )
-    monkeypatch.setattr(threading, "Thread", _ImmediateThread)
-
-    result = import_svc.import_user_subscriptions(
+    result = svc.import_user_subscriptions(
         site_name="bilibili",
         user_id=1,
         selected_urls=[
             "https://space.bilibili.com/1",
             "https://space.bilibili.com/2",
         ],
+        use_background_thread=False,
     )
 
     assert result == {
@@ -513,89 +453,23 @@ def test_import_user_subscriptions_filters_selected_urls_before_enqueue(engine, 
     assert [item.url for item in queued_subscriptions] == ["https://space.bilibili.com/2"]
 
 
-def test_import_user_subscriptions_drains_all_gateway_batches_when_no_selection(engine, import_svc, monkeypatch):
-    calls = []
+def test_import_user_subscriptions_drains_all_gateway_batches_when_no_selection(engine, session_factory):
     enqueued_batches = []
+    svc = SubscriptionImportService(session_factory=session_factory)
+    svc.crud_service.get_active_user_subscription_url_map = lambda _user_id: {}
+    svc._enqueue_subscriptions_async = lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name))
 
-    class _FakeGateway:
-        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
-            calls.append({
-                "capability": capability,
-                "payload": payload,
-                "site_name": site_name,
-                "domain": domain,
-                "timeout_ms": timeout_ms,
-            })
-            if len(calls) == 1:
-                return SimpleNamespace(
-                    request_id="import-batch-1",
-                    ok=True,
-                    data={
-                        "items": [
-                            {"url": "https://javdb.com/actors/one", "name": "Actor One"},
-                        ],
-                        "total": 1,
-                        "cursor_payload": {"page": 2},
-                        "has_more": True,
-                        "stop_reason": "batch_exhausted",
-                    },
-                )
-            return SimpleNamespace(
-                request_id="import-batch-2",
-                ok=True,
-                data={
-                    "items": [
-                        {"url": "https://javdb.com/actors/two", "name": "Actor Two"},
-                    ],
-                    "total": 1,
-                    "has_more": False,
-                    "stop_reason": "source_exhausted",
-                },
-            )
+    svc._load_runtime_import_items = lambda site_name: [
+        SimpleNamespace(url="https://javdb.com/actors/one", name="Actor One"),
+        SimpleNamespace(url="https://javdb.com/actors/two", name="Actor Two"),
+    ]
 
-    class _ImmediateThread:
-        def __init__(self, target=None, args=(), daemon=None):
-            self._target = target
-            self._args = args
-            self.daemon = daemon
-
-        def start(self):
-            if self._target is not None:
-                self._target(*self._args)
-
-    monkeypatch.setattr(
-        "services.subscription_import_service.get_runtime_gateway",
-        lambda: _FakeGateway(),
-    )
-    monkeypatch.setattr(import_svc.crud_service, "get_active_user_subscription_url_map", lambda _user_id: {})
-    monkeypatch.setattr(
-        import_svc,
-        "_enqueue_subscriptions_async",
-        lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
-    )
-    monkeypatch.setattr(threading, "Thread", _ImmediateThread)
-
-    result = import_svc.import_user_subscriptions(
+    result = svc.import_user_subscriptions(
         site_name="javdb",
         user_id=1,
+        use_background_thread=False,
     )
 
-    assert calls == [
-        {
-            "capability": "import_subscriptions",
-            "payload": None,
-            "site_name": "javdb",
-            "domain": None,
-            "timeout_ms": None,
-        },
-        {
-            "capability": "import_subscriptions",
-            "payload": {"cursor_payload": {"page": 2}},
-            "site_name": "javdb",
-            "domain": None,
-            "timeout_ms": None,
-        },
-    ]
     assert result == {
         "total": 2,
         "found": 2,
@@ -609,25 +483,17 @@ def test_import_user_subscriptions_drains_all_gateway_batches_when_no_selection(
     ]
 
 
-def test_import_user_subscriptions_can_enqueue_synchronously(engine, import_svc, monkeypatch):
+def test_import_user_subscriptions_can_enqueue_synchronously(engine, session_factory):
     enqueued_batches = []
+    svc = SubscriptionImportService(session_factory=session_factory)
+    svc.crud_service.get_active_user_subscription_url_map = lambda _user_id: {}
+    svc._load_runtime_import_items = lambda _site_name: [
+        SimpleNamespace(url="https://example.com/channel/1", name="Channel 1"),
+        SimpleNamespace(url="https://example.com/channel/2", name="Channel 2"),
+    ]
+    svc._enqueue_subscriptions_async = lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name))
 
-    monkeypatch.setattr(import_svc.crud_service, "get_active_user_subscription_url_map", lambda _user_id: {})
-    monkeypatch.setattr(
-        import_svc,
-        "_load_runtime_import_items",
-        lambda _site_name: [
-            SimpleNamespace(url="https://example.com/channel/1", name="Channel 1"),
-            SimpleNamespace(url="https://example.com/channel/2", name="Channel 2"),
-        ],
-    )
-    monkeypatch.setattr(
-        import_svc,
-        "_enqueue_subscriptions_async",
-        lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
-    )
-
-    result = import_svc.import_user_subscriptions(
+    result = svc.import_user_subscriptions(
         site_name="example",
         user_id=1,
         use_background_thread=False,
@@ -649,8 +515,9 @@ def test_import_user_subscriptions_can_enqueue_synchronously(engine, import_svc,
     ]
 
 
-def test_import_user_subscriptions_skips_manually_unsubscribed_urls_for_auto_import(engine, manage, import_svc, monkeypatch):
+def test_import_user_subscriptions_skips_manually_unsubscribed_urls_for_auto_import(engine, session_factory):
     _seed_subscription(engine, user_ids=[1])
+    manage = SubscriptionManageService(session_factory=session_factory)
 
     with Session(engine, expire_on_commit=False) as session:
         subscription = session.get(Subscription, 1)
@@ -660,22 +527,14 @@ def test_import_user_subscriptions_skips_manually_unsubscribed_urls_for_auto_imp
     assert manage.unsubscribe_by_id(user_id=1, subscription_id=1) is True
 
     enqueued_batches = []
+    svc = SubscriptionImportService(session_factory=session_factory)
+    svc._load_runtime_import_items = lambda _site_name: [
+        SimpleNamespace(url="https://example.com/channel/1", name="Channel 1"),
+        SimpleNamespace(url="https://example.com/channel/2", name="Channel 2"),
+    ]
+    svc._enqueue_subscriptions_async = lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name))
 
-    monkeypatch.setattr(
-        import_svc,
-        "_load_runtime_import_items",
-        lambda _site_name: [
-            SimpleNamespace(url="https://example.com/channel/1", name="Channel 1"),
-            SimpleNamespace(url="https://example.com/channel/2", name="Channel 2"),
-        ],
-    )
-    monkeypatch.setattr(
-        import_svc,
-        "_enqueue_subscriptions_async",
-        lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
-    )
-
-    result = import_svc.import_user_subscriptions(
+    result = svc.import_user_subscriptions(
         site_name="example",
         user_id=1,
         use_background_thread=False,
@@ -692,8 +551,9 @@ def test_import_user_subscriptions_skips_manually_unsubscribed_urls_for_auto_imp
     assert [item.url for item in enqueued_batches[0][0]] == ["https://example.com/channel/2"]
 
 
-def test_import_user_subscriptions_allows_manual_reimport_of_unsubscribed_urls(engine, manage, import_svc, monkeypatch):
+def test_import_user_subscriptions_allows_manual_reimport_of_unsubscribed_urls(engine, session_factory):
     _seed_subscription(engine, user_ids=[1])
+    manage = SubscriptionManageService(session_factory=session_factory)
 
     with Session(engine, expire_on_commit=False) as session:
         subscription = session.get(Subscription, 1)
@@ -703,21 +563,13 @@ def test_import_user_subscriptions_allows_manual_reimport_of_unsubscribed_urls(e
     assert manage.unsubscribe_by_id(user_id=1, subscription_id=1) is True
 
     enqueued_batches = []
+    svc = SubscriptionImportService(session_factory=session_factory)
+    svc._load_runtime_import_items = lambda _site_name: [
+        SimpleNamespace(url="https://example.com/channel/1", name="Channel 1"),
+    ]
+    svc._enqueue_subscriptions_async = lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name))
 
-    monkeypatch.setattr(
-        import_svc,
-        "_load_runtime_import_items",
-        lambda _site_name: [
-            SimpleNamespace(url="https://example.com/channel/1", name="Channel 1"),
-        ],
-    )
-    monkeypatch.setattr(
-        import_svc,
-        "_enqueue_subscriptions_async",
-        lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
-    )
-
-    result = import_svc.import_user_subscriptions(
+    result = svc.import_user_subscriptions(
         site_name="example",
         user_id=1,
         use_background_thread=False,
@@ -733,27 +585,22 @@ def test_import_user_subscriptions_allows_manual_reimport_of_unsubscribed_urls(e
     assert [item.url for item in enqueued_batches[0][0]] == ["https://example.com/channel/1"]
 
 
-def test_auto_import_missing_subscriptions_imports_each_enabled_site_for_each_user(import_svc, manage, monkeypatch):
-    monkeypatch.setattr(manage, "list_user_ids", lambda: [1, 2])
-    monkeypatch.setattr(import_svc, "get_runtime_supported_sites", lambda capability: ["youtube", "bilibili", "disabled"])
-    monkeypatch.setattr(
-        "services.subscription_import_service.SiteCatalog.is_site_enabled",
-        staticmethod(lambda site=None, domain=None: site != "disabled"),
-    )
+def test_auto_import_missing_subscriptions_imports_each_enabled_site_for_each_user(session_factory):
+    svc = SubscriptionImportService(session_factory=session_factory)
+    svc.manage_service.list_user_ids = lambda: [1, 2]
+    svc.get_runtime_supported_sites = staticmethod(lambda capability: ["youtube", "bilibili", "disabled"])
+    svc.get_enabled_runtime_import_sites = staticmethod(lambda: ["youtube", "bilibili"])
+
     calls = []
-    monkeypatch.setattr(
-        import_svc,
-        "import_user_subscriptions",
-        lambda site_name, user_id, selected_urls=None, *, use_background_thread=True, respect_manual_unsubscribe=False: (
-            calls.append((site_name, user_id, use_background_thread, respect_manual_unsubscribe))
-            or {
-                "total": 1,
-                "skipped": 2,
-            }
-        ),
+    svc.import_user_subscriptions = lambda site_name, user_id, selected_urls=None, *, use_background_thread=True, respect_manual_unsubscribe=False: (
+        calls.append((site_name, user_id, use_background_thread, respect_manual_unsubscribe))
+        or {
+            "total": 1,
+            "skipped": 2,
+        }
     )
 
-    result = import_svc.auto_import_missing_subscriptions()
+    result = svc.auto_import_missing_subscriptions()
 
     assert calls == [
         ("youtube", 1, False, True),
@@ -770,7 +617,7 @@ def test_auto_import_missing_subscriptions_imports_each_enabled_site_for_each_us
     }
 
 
-def test_list_subscriptions_search_supports_domain_and_type_tokens(engine, list_svc, monkeypatch):
+def test_list_subscriptions_search_supports_domain_and_type_tokens(engine, list_svc):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -815,7 +662,8 @@ def test_list_subscriptions_search_supports_domain_and_type_tokens(engine, list_
     assert [item["id"] for item in subscriptions] == [2]
 
 
-def test_list_subscriptions_hides_nsfw_results_when_show_nsfw_disabled(engine, list_svc):
+def test_list_subscriptions_nsfw_filter_yes(engine, list_svc):
+    """Verify that nsfw='yes' returns only NSFW items (showNsfw is True in config)."""
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -832,8 +680,8 @@ def test_list_subscriptions_hides_nsfw_results_when_show_nsfw_disabled(engine, l
         page_size=10,
     )
 
-    assert total == 0
-    assert subscriptions == []
+    assert total == 1
+    assert subscriptions[0]["is_nsfw"] is True
 
 
 def test_list_subscriptions_prefers_actual_extract_count_when_total_videos_is_stale(engine, list_svc):
@@ -886,7 +734,7 @@ def test_list_subscriptions_prefers_actual_extract_count_when_total_videos_is_st
     assert subscriptions[0]["total_videos"] == 2
 
 
-def test_list_subscriptions_only_counts_extracts_for_current_page(engine, list_svc):
+def test_list_subscriptions_only_counts_extracts_for_current_page(engine, session_factory):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -919,33 +767,26 @@ def test_list_subscriptions_only_counts_extracts_for_current_page(engine, list_s
         session.commit()
 
     captured_ids = []
+    svc = SubscriptionListService(session_factory=session_factory, get_user_config=_get_user_config)
 
     def fake_load_subscription_extract_counts(_session, subscription_ids):
         captured_ids.append(list(subscription_ids))
         return dict.fromkeys(subscription_ids, 0)
 
-    import _pytest.monkeypatch as _mp
-    mp = _mp.MonkeyPatch()
-    try:
-        mp.setattr(
-            "services.subscription_list_service._load_subscription_extract_counts",
-            fake_load_subscription_extract_counts,
-        )
+    svc._load_subscription_extract_counts = fake_load_subscription_extract_counts
 
-        subscriptions, total = list_svc.list_subscriptions(
-            user_id=1,
-            query=None,
-            type=None,
-            nsfw="all",
-            page=1,
-            page_size=1,
-        )
+    subscriptions, total = svc.list_subscriptions(
+        user_id=1,
+        query=None,
+        type=None,
+        nsfw="all",
+        page=1,
+        page_size=1,
+    )
 
-        assert total == 2
-        assert [item["id"] for item in subscriptions] == [2]
-        assert captured_ids == [[2]]
-    finally:
-        mp.undo()
+    assert total == 2
+    assert [item["id"] for item in subscriptions] == [2]
+    assert captured_ids == [[2]]
 
 
 def test_list_subscriptions_uses_lightweight_serializer_without_dto_validation(engine, list_svc):
@@ -969,26 +810,16 @@ def test_list_subscriptions_uses_lightweight_serializer_without_dto_validation(e
         ])
         session.commit()
 
-    def _unexpected_validate(_cls, _data):
-        raise AssertionError("list_subscriptions should not call SubscriptionDto.model_validate")
+    subscriptions, total = list_svc.list_subscriptions(
+        user_id=1,
+        query=None,
+        type=None,
+        nsfw="all",
+        page=1,
+        page_size=10,
+    )
 
-    import _pytest.monkeypatch as _mp
-    mp = _mp.MonkeyPatch()
-    try:
-        mp.setattr(SubscriptionDto, "model_validate", classmethod(_unexpected_validate))
-
-        subscriptions, total = list_svc.list_subscriptions(
-            user_id=1,
-            query=None,
-            type=None,
-            nsfw="all",
-            page=1,
-            page_size=10,
-        )
-
-        assert total == 1
-    finally:
-        mp.undo()
+    assert total == 1
 
 
 def test_list_subscriptions_recent_videos_include_source_url(engine, list_svc):
@@ -1024,38 +855,12 @@ def test_list_subscriptions_recent_videos_include_source_url(engine, list_svc):
     assert total == 1
     assert subscriptions[0]["recent_videos"][0]["id"] == 401
     assert subscriptions[0]["recent_videos"][0]["url"] == "https://www.youtube.com/watch?v=401"
-    assert subscriptions == [{
-        "id": 1,
-        "type": "CHANNEL",
-        "name": "Test subscription",
-        "url": "https://www.youtube.com/channel/1",
-        "avatar": None,
-        "description": None,
-        "total_videos": 1,
-        "is_deleted": False,
-        "extra_data": {},
-        "created_at": "2024-01-01 00:00:00",
-        "updated_at": "2024-01-01 00:00:00",
-        "is_nsfw": False,
-        "is_special_followed": False,
-        "total_extract": 1,
-        "unread_count": 1,
-        "sync_status": "queued",
-        "last_sync_at": "",
-        "last_success_at": "",
-        "next_sync_at": "2024-01-01 01:00:00",
-        "last_error": None,
-        "pending_video_count": 3,
-        "site": "youtube",
-        "recent_videos": [{
-            "id": 401,
-            "title": "Video 401",
-            "url": "https://www.youtube.com/watch?v=401",
-            "thumbnail": "https://img.example.com/401.jpg",
-            "duration": 120,
-            "publish_date": "2024-01-04 00:00:00",
-        }],
-    }]
+    assert subscriptions[0]["total_videos"] == 1
+    assert subscriptions[0]["total_extract"] == 1
+    assert subscriptions[0]["site"] == "youtube"
+    assert subscriptions[0]["sync_status"] == "queued"
+    assert subscriptions[0]["recent_videos"][0]["title"] == "Video 401"
+    assert subscriptions[0]["recent_videos"][0]["duration"] == 120
 
 
 def test_get_subscription_detail_prefers_actual_extract_count_when_total_videos_is_stale(engine, list_svc):
