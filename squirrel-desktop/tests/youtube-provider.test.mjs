@@ -5,6 +5,8 @@ import { readFile } from 'node:fs/promises'
 const providerPath = new URL('../src/playback/providers/youtube/index.mjs', import.meta.url)
 const corePath = new URL('../src/playback/providers/youtube/youtubei_core.mjs', import.meta.url)
 const mainPath = new URL('../src/main.mjs', import.meta.url)
+const siteLoginPath = new URL('../src/site-login.mjs', import.meta.url)
+const ipcHandlersPath = new URL('../src/ipc-handlers.mjs', import.meta.url)
 const pluginCorePath = new URL('../../squirrel-site-runtimes/youtube/src/squirrel_youtube/node/youtubei_core.mjs', import.meta.url)
 const frontendDetailPath = new URL('../../squirrel-frontend/src/composables/useVideoDetail.ts', import.meta.url)
 
@@ -56,7 +58,7 @@ test('desktop youtube provider exposes tv oauth actions', async () => {
 })
 
 test('desktop youtube login status uses tv oauth instead of cookie checks', async () => {
-  const source = await readFile(mainPath, 'utf8')
+  const source = await readFile(siteLoginPath, 'utf8')
 
   assert.match(source, /if \(profile\.siteName === 'youtube'\) \{[\s\S]*?return buildYouTubeDesktopLoginStatus\(profile\)/)
   assert.match(source, /const buildYouTubeDesktopLoginStatus = async \(profile\) => \{[\s\S]*?resolveYouTubeOAuthStatus\(\)/)
@@ -96,11 +98,11 @@ test('youtube captions treat tv oauth as an authenticated session', async () => 
 
 test('desktop youtube subtitles are resolved through the electron bridge', async () => {
   const providerSource = await readFile(providerPath, 'utf8')
-  const mainSource = await readFile(mainPath, 'utf8')
+  const ipcSource = await readFile(ipcHandlersPath, 'utf8')
   const frontendSource = await readFile(frontendDetailPath, 'utf8')
 
   assert.match(providerSource, /export async function resolveYouTubeSubtitles/)
-  assert.match(mainSource, /desktop:resolve-youtube-subtitles/)
+  assert.match(ipcSource, /desktop:resolve-youtube-subtitles/)
   assert.match(frontendSource, /bridge\.resolveYouTubeSubtitles\(videoUrl/)
   assert.match(frontendSource, /content,/)
   assert.match(frontendSource, /url: `\/api\/video\/subtitles\?\$\{params\.toString\(\)\}`/)

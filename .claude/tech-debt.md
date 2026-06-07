@@ -31,12 +31,6 @@
 - **影响**: 后端 DTO 变化不容易被前端类型检查发现，组件继续出现 `(result.data as any)`。
 - **方案**: 默认泛型改为 `unknown`；为高频 API 建立具体 response type；业务错误 code 使用窄类型。
 
-### TD-029: 桌面主进程仍过大
-- **位置**: `squirrel-desktop/src/main.mjs` (约 1931 行)
-- **问题**: 虽然已拆出窗口状态第一阶段，但主进程仍集中 Electron lifecycle、IPC、窗口、配置和站点能力入口。
-- **影响**: 单实例、窗口生命周期、播放 IPC、站点能力互相干扰，桌面薄壳边界继续膨胀。
-- **方案**: 主进程只做 app/window/IPC registration 组合根；IPC handler 按功能模块注册；播放 provider 保持独立。
-
 ---
 
 ## ⏸️ 延后项
@@ -74,6 +68,22 @@
   - `usePlaybackOrchestrator.ts` 的 `ExternalErrorState` 定义迁移到 `types/playerSession.ts` 并 re-export
   - `useVideoPlaybackShell.ts` 移除局部 `ActivateSessionPayload` / `GlobalPlaybackSessionLike` 类型，改用 `PlayerSessionState` 族
   - `GlobalVideoPlayerHost.vue` 移除 4 处 `as any` 转型，显式标志 clipMarkers 类型边界
+
+### TD-029: 桌面主进程仍过大
+- **位置**: `squirrel-desktop/src/main.mjs` (原约 1931 行，现 84 行)
+- **完成时间**: 2026-06-07
+- **修复内容**:
+  - main.mjs 精简为纯组合根（app lifecycle + renderer URL resolve + 启动编排），仅 84 行
+  - 新增 `constants.mjs`：集中管理 Chrome UA、站点 origin/pattern 常量、文件路径等
+  - 新增 `cookie-header.mjs`：Cookie 目标检测（isJavdbCookieTarget 等）、Netscape cookie 文件读取、mergeCookieHeaders
+  - 新增 `site-login.mjs`：站点登录 profiles/aliases、登录态检测（javdb/pornhub/youporn/youtube）、登录窗口管理、会话清除、buildCookieHeaderForUrl
+  - 新增 `document-loader.mjs`：Camoufox 文档加载、BrowserWindow HTML 抓取、createSessionFetch
+  - 新增 `media-headers.mjs`：MEDIA_HEADER_RULES 媒体请求头注入、跨域响应头松弛
+  - 新增 `shell-pages.mjs`：Shell 错误页面 HTML 构建 (buildShellPageUrl/showErrorShell)
+  - 新增 `ipc-handlers.mjs`：所有 IPC handler 按功能注册（播放/search/站点登录/窗口/服务端配置）
+  - 新增 `window.mjs`：窗口创建、导航、键盘/菜单/上下文菜单行为
+  - 播放 provider 保持独立，不受影响
+  - 更新 site-login.test.mjs 和 youtube-provider.test.mjs 指向新模块路径
 
 ### TD-030: 仓库内参考代码和 IDE shelf 污染代码扫描
 - **位置**:
@@ -336,9 +346,9 @@
 
 | 状态 | 数量 |
 |------|------|
-| ✅ 已完成 | 28 (TD-001, 002, 004, 005, 007, 008, 008-rest, 009, 010, 011, 012, 013, 014, 015, 016, 017, 018, 019-stage1, 020, 022, 023, 024, 025, 026, 027, 032) |
+| ✅ 已完成 | 29 (TD-001, 002, 004, 005, 007, 008, 008-rest, 009, 010, 011, 012, 013, 014, 015, 016, 017, 018, 019-stage1, 020, 022, 023, 024, 025, 026, 027, 029, 030, 031, 032) |
 | ⏸️ 延后 | 3 (TD-003, 005-rest, 006) |
-| 🔴 待处理 | 5 (TD-021, 028, 029, 030, 031) |
+| 🔴 待处理 | 2 (TD-021, 028) |
 
 ---
 
@@ -379,3 +389,4 @@
 | 2026-06-07 | 完成 TD-027: 拆分 runtime supervisor 的 process launcher、transport client、audit writer 和 health checker |
 | 2026-06-07 | 完成 TD-026: Redis Stream consumer 改为显式 handler protocol、失败策略和 stop event |
 | 2026-06-07 | 完成 TD-032: 全面窄化中间层 except Exception 为具体异常类型或添加边界注释（后端 utils/site_runtimes/core/services/queues/routes/main/processes/schedule/consumer + SDK + site runtimes 共 80+ 文件） |
+| 2026-06-07 | 完成 TD-029: 桌面主进程从 2174 行精简为 84 行组合根；拆分为 constants/cookie-header/site-login/document-loader/media-headers/shell-pages/ipc-handlers/window 8 个模块；更新 site-login/youtube-provider 测试 |
