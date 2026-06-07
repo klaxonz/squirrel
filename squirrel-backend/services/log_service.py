@@ -60,7 +60,6 @@ def read_log_lines(
         r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) (DEBUG|INFO|WARNING|ERROR|CRITICAL) (.+?): (.+)$",
     )
 
-    all_lines = []
     filtered_lines = []
 
     with open(filepath, encoding="utf-8", errors="ignore") as f:
@@ -68,7 +67,6 @@ def read_log_lines(
 
         for line_num, line in enumerate(f, start=1):
             line = line.rstrip("\n")
-            all_lines.append(line)
 
             # 先尝试匹配新格式（带 trace_id）
             match = log_pattern_new.match(line)

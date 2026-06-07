@@ -291,7 +291,8 @@ def _projection_requires_group_key_rebuild(session: Session) -> bool:
         .where(
             CrawlTask.task_type == VIDEO_EXTRACT_TASK_TYPE,
             CrawlTask.subscription_id.is_not(None),
-        ),
+        )
+        .limit(1000),
     ).scalars().all()
 
     for task in tasks:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
+from copy import copy
 from typing import Any
 
 from utils.rate_limiter import rate_limiter as backend_rate_limiter
@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover - backend can still run without SDK wiri
 
 
 def _deep_merge(base: dict, overrides: dict) -> dict:
-    result = deepcopy(base)
+    result = copy(base)
     for key, value in overrides.items():
         if isinstance(value, dict) and isinstance(result.get(key), dict):
             result[key] = _deep_merge(result.get(key, {}), value)
@@ -38,7 +38,7 @@ def build_runtime_site_catalog() -> dict[str, dict]:
 def get_effective_site_catalog(stored_catalog: dict[str, dict] | None = None) -> dict[str, dict]:
     overrides = stored_catalog if stored_catalog is not None else (SiteCatalog.load_override_catalog() or {})
     effective: dict[str, dict] = {
-        slug: deepcopy(defaults)
+        slug: copy(defaults)
         for slug, defaults in build_runtime_site_catalog().items()
     }
 

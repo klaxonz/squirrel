@@ -17,6 +17,7 @@ from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
 EXTRACTION_PREVIEW_LIMIT = 40
 _site_icon_url_cache: dict[str, str | None] = {}
+_site_domain_index: dict[str, str] | None = None
 logger = logging.getLogger(__name__)
 
 
@@ -42,6 +43,18 @@ def _summarize_error(message: str | None) -> str | None:
     return first_line[:77] + "..."
 
 
+def _build_site_domain_index(catalog: dict[str, dict]) -> dict[str, str]:
+    index: dict[str, str] = {}
+    for slug, info in catalog.items():
+        for domain in info.get('domains', []):
+            if domain:
+                index[str(domain).strip().lower()] = slug
+        for alias in info.get('aliases', []):
+            if alias:
+                index[str(alias).strip().lower()] = slug
+    return index
+
+
 def _resolve_site_icon_url(site: str | None) -> str | None:
     from services.site_catalog_cache import get_cached_site_catalog
 
@@ -62,22 +75,14 @@ def _resolve_site_icon_url(site: str | None) -> str | None:
         site_slug = None
         catalog_entry = None
 
-        for slug, info in catalog.items():
-            domains = [str(domain or "").strip().lower() for domain in info.get("domains", []) if domain]
-            if any(normalized_site == domain or normalized_site.endswith(f".{domain}") for domain in domains):
-                site_slug = slug
-                catalog_entry = info
-                break
+        global _site_domain_index
+        if _site_domain_index is None:
+            _site_domain_index = _build_site_domain_index(catalog)
 
-        if not site_slug:
-            site_slug = None
-            catalog_entry = None
-            for slug, info in catalog.items():
-                aliases = [str(alias or "").strip().lower() for alias in info.get("aliases", []) if alias]
-                if normalized_site in aliases:
-                    site_slug = slug
-                    catalog_entry = info
-                    break
+        slug = _site_domain_index.get(normalized_site)
+        if slug:
+            site_slug = slug
+            catalog_entry = catalog.get(slug)
 
     icon_url = str((catalog_entry or {}).get("icon_url") or "").strip() or None
     if icon_url:
@@ -131,6 +136,34 @@ def _resolve_task_sync_mode(task: CrawlTask) -> str:
     return "extract"
 
 
+def _preload_sync_mode_cache(
+    session: Session,
+    subscription_ids: set[int],
+    cache: dict[tuple[int, str, str], str],
+) -> None:
+    if not subscription_ids:
+        return
+
+    tasks = (
+        session.execute(
+            select(CrawlTask)
+            .where(
+                CrawlTask.task_type == "video_extract",
+                CrawlTask.subscription_id.in_(subscription_ids),
+            )
+            .order_by(CrawlTask.created_at.asc(), CrawlTask.id.asc()),
+        )
+        .scalars()
+        .all()
+    )
+
+    for task in tasks:
+        group_key = _derive_projection_group_key(task)
+        cache_key = (int(task.subscription_id), group_key[0], group_key[1])
+        if cache_key not in cache:
+            cache[cache_key] = _resolve_task_sync_mode(task)
+
+
 def _resolve_projection_sync_mode(
     session: Session,
     projection: VideoExtractionProjection,
@@ -140,25 +173,6 @@ def _resolve_projection_sync_mode(
     cached_mode = cache.get(cache_key)
     if cached_mode:
         return cached_mode
-
-    tasks = (
-        session.execute(
-            select(CrawlTask)
-            .where(
-                CrawlTask.task_type == "video_extract",
-                CrawlTask.subscription_id == projection.subscription_id,
-            )
-            .order_by(CrawlTask.created_at.asc(), CrawlTask.id.asc()),
-        )
-        .scalars()
-        .all()
-    )
-
-    for task in tasks:
-        if _derive_projection_group_key(task) == (projection.group_kind, str(projection.group_value)):
-            resolved_mode = _resolve_task_sync_mode(task)
-            cache[cache_key] = resolved_mode
-            return resolved_mode
 
     cache[cache_key] = "extract"
     return "extract"
@@ -369,6 +383,8 @@ def list_extraction_center_items(
             ordered_query.offset(start).limit(page_size),
         ).all()
         sync_mode_cache: dict[tuple[int, str, str], str] = {}
+        sub_ids = {int(projection.subscription_id) for projection, _ in rows}
+        _preload_sync_mode_cache(session, sub_ids, sync_mode_cache)
         items = [_build_item(session, projection, subscription, sync_mode_cache) for projection, subscription in rows]
 
     if normalized_status == "queued":

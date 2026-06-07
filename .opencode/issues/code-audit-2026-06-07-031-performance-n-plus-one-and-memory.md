@@ -1,9 +1,10 @@
 ---
 title: 性能 — 多处 N+1 查询 + 无界内存读取 + 冗余 deepcopy
-status: open
+status: fixed
 severity: high
 category: performance
 location: squirrel-backend/services/（跨多文件）
+fixed_by: multiple files (see below)
 ---
 
 ## 问题描述

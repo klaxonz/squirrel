@@ -596,8 +596,15 @@ class SubscriptionScheduler:
             ).all()
             ids = [row[0] for row in rows]
 
+        if ids:
+            url_rows = self._batch_get_subscription_urls(ids)
+            url_map = dict(url_rows)
+        else:
+            url_map = {}
+
         for subscription_id in ids:
-            result = self.schedule_one(subscription_id, self._get_subscription_url(subscription_id), trigger)
+            url = url_map.get(subscription_id, '')
+            result = self.schedule_one(subscription_id, url, trigger)
             if result.status == "queued":
                 success_count += 1
             elif result.status == "failed":
@@ -767,11 +774,30 @@ class SubscriptionScheduler:
                 .order_by(Subscription.id.asc()),
             ).all()
 
+        if not rows:
+            return []
+
+        sub_ids = [row[0] for row in rows]
+        url_map = {row[0]: row[1] for row in rows}
+
+        from models.subscription_sync_state import SubscriptionSyncState
+
+        with get_session() as session:
+            state_rows = session.execute(
+                select(SubscriptionSyncState)
+                .where(
+                    SubscriptionSyncState.subscription_id.in_(sub_ids),
+                    SubscriptionSyncState.sync_mode == mode.value,
+                ),
+            ).scalars().all()
+
+        state_map: dict[int, SubscriptionSyncState] = {s.subscription_id: s for s in state_rows}
+
         due_subscriptions: list[tuple[int, str]] = []
-        for subscription_id, url in rows:
-            sync_state = subscription_sync_state_service.get_sync_state(subscription_id, mode.value)
+        for subscription_id in sub_ids:
+            sync_state = state_map.get(subscription_id)
             if sync_state is None:
-                due_subscriptions.append((subscription_id, url))
+                due_subscriptions.append((subscription_id, url_map[subscription_id]))
                 continue
 
             sync_status = getattr(sync_state, "sync_status", None)
@@ -780,7 +806,7 @@ class SubscriptionScheduler:
 
             next_sync_at = getattr(sync_state, "next_sync_at", None)
             if next_sync_at is None or next_sync_at <= now:
-                due_subscriptions.append((subscription_id, url))
+                due_subscriptions.append((subscription_id, url_map[subscription_id]))
 
         return due_subscriptions
 
@@ -824,6 +850,20 @@ class SubscriptionScheduler:
 
         subscription = subscription_service.get_subscription_by_id(subscription_id)
         return subscription.url if subscription and subscription.url else ""
+
+    @staticmethod
+    def _batch_get_subscription_urls(subscription_ids: list[int]) -> list[tuple[int, str]]:
+        from sqlalchemy import select
+
+        from core.database import get_session
+        from models.subscription import Subscription
+
+        with get_session() as session:
+            rows = session.execute(
+                select(Subscription.id, Subscription.url)
+                .where(Subscription.id.in_(subscription_ids)),
+            ).all()
+            return [(row[0], row[1] or '') for row in rows]
 
 
 scheduler = SubscriptionScheduler()

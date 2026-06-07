@@ -1,5 +1,5 @@
 import json
-from copy import deepcopy
+from copy import copy
 from pathlib import Path
 from typing import Any
 
@@ -346,7 +346,7 @@ def _normalize_override_entry(slug: str, raw: Any) -> dict[str, Any]:
 
 
 def _deep_merge_dicts(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
-    result = deepcopy(base)
+    result = copy(base)
     for key, value in patch.items():
         if isinstance(value, dict) and isinstance(result.get(key), dict):
             result[key] = _deep_merge_dicts(result.get(key, {}), value)

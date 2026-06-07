@@ -46,13 +46,18 @@ def list_playlists(user_id: int) -> list[dict]:
             .order_by(Playlist.is_default.desc(), Playlist.created_at.desc()),
         ).all()
 
-        result = []
-        for p in playlists:
-            count = session.scalar(
-                select(func.count(PlaylistItem.id))
-                .where(PlaylistItem.playlist_id == p.id),
-            ) or 0
-            result.append(_serialize_playlist(p, count))
+        playlist_ids = [p.id for p in playlists]
+        if playlist_ids:
+            count_rows = session.execute(
+                select(PlaylistItem.playlist_id, func.count(PlaylistItem.id))
+                .where(PlaylistItem.playlist_id.in_(playlist_ids))
+                .group_by(PlaylistItem.playlist_id),
+            ).all()
+            count_map = dict(count_rows)
+        else:
+            count_map = {}
+
+        result = [_serialize_playlist(p, count_map.get(p.id, 0)) for p in playlists]
         return result
 
 
