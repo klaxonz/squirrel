@@ -1363,24 +1363,8 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 import {
-  createRssAccount,
-  deleteRssAccount,
-  getRssAccounts,
-  getRssEntries,
-  getRssFeeds,
-  getRssRecentlyViewed,
   getRssSyncStatus,
-  recordRssEntryView,
-  subscribeRssFeed,
   syncRssAccount,
-  syncRssFeed,
-  updateRssFeed,
-  markRssFeedAsRead,
-  testRssAccountConfig,
-  unsubscribeRssFeed,
-  updateRssAccount,
-  updateRssEntries,
-  updateRssEntry,
 } from '@/api'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SiteIcon from '@/components/common/SiteIcon.vue'
@@ -1390,125 +1374,44 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { formatDate } from '../utils/dateFormat'
-import type { AppIconName } from '@/icons/app-icons'
+import { useRssAccounts } from '@/composables/useRssAccounts'
+import { useRssFeeds } from '@/composables/useRssFeeds'
+import { useRssEntries } from '@/composables/useRssEntries'
+import { useRssReader } from '@/composables/useRssReader'
+import type { RssEntry, RecentEntry } from '@/composables/rssTypes'
+import type { ApiResult } from '@/composables/rssTypes'
 
-const providers: { value: 'greader' | 'miniflux' | 'fever'; name: string; desc: string; icon: AppIconName }[] = [
-  { value: 'greader', name: 'Google Reader', desc: 'Reader API', icon: 'rss' },
-  { value: 'miniflux', name: 'Miniflux', desc: 'RSS Service', icon: 'siteFallback' },
-  { value: 'fever', name: 'Fever', desc: 'Fever API', icon: 'brand' }
-]
+// Cross-cutting UI state
+const loading = ref(false)
+const statusMessage = ref('')
+const statusError = ref(false)
 
-type ApiResult<T = any> = { data: T | null; error: any | null }
-type RssAccount = {
-  id: number
-  provider: string
-  name: string
-  base_url: string
-  username?: string | null
-  enabled: boolean
-  last_sync_at?: string | null
-  last_error?: string | null
-  created_at?: string | null
-  updated_at?: string | null
-}
-type RssFeed = {
-  id: number
-  account_id: number
-  title: string
-  feed_url?: string | null
-  site_url?: string | null
-  icon_url?: string | null
-  category?: string | null
-  open_method?: string | null
-}
-type RssEntry = {
-  id: number
-  account_id: number
-  feed_id: number
-  external_entry_id: string
-  canonical_url: string
-  title: string
-  summary?: string | null
-  thumbnail?: string | null
-  author?: string | null
-  published_at?: string | null
-  is_read: boolean
-  is_starred: boolean
-}
-type ReadBatchMode = 'above' | 'below' | 'all'
+let statusTimeout: ReturnType<typeof setTimeout> | null = null
 
-type RecentEntry = RssEntry & {
-  viewed_at: string
-}
-
-// Reactive Data State
-const accounts = ref<RssAccount[]>([])
-const feeds = ref<RssFeed[]>([])
-const entries = ref<RssEntry[]>([])
-const selectedAccountId = ref<number | null>(null)
-const selectedFeedId = ref<number | null>(null)
-const activeFilter = ref<'all' | 'unread' | 'starred' | 'recent'>('unread')
-
-// Context Menu States
-const showContextMenu = ref(false)
-const contextMenuPosition = ref({ x: 0, y: 0 })
-const contextMenuEntry = ref<RssEntry | null>(null)
-const contextMenuRef = ref<HTMLElement | null>(null)
-
-const showFeedContextMenuState = ref(false)
-const feedContextMenuRef = ref<HTMLElement | null>(null)
-const feedContextMenuPosition = ref({ x: 0, y: 0 })
-const contextMenuFeed = ref<RssFeed | null>(null)
-
-// Reader Customization State
-const readerFontSize = ref(Number(localStorage.getItem('rss_reader_font_size')) || 17)
-const readerFontFamily = ref(localStorage.getItem('rss_reader_font_family') || 'serif')
-const showReaderSettings = ref(false)
-const readerSettingsRef = ref<HTMLElement | null>(null)
-const showMobileReaderSettings = ref(false)
-const mobileReaderSettingsRef = ref<HTMLElement | null>(null)
-
-// Reeder-style In-App Browser Overlay States (omitting mobile view as requested)
-const showInAppBrowser = ref(false)
-const iframeLoading = ref(false)
-const iframeLoadKey = ref(0)
-const iframeProgress = ref(0)
-const isElectron = computed(() => (window as any).desktopApp?.isDesktop === true)
-const iframeRef = ref<HTMLIFrameElement | null>(null)
-
-let progressTimer: number | null = null
-
-const startProgress = () => {
-  if (progressTimer) {
-    clearInterval(progressTimer)
+const setStatus = (message: string, isError = false) => {
+  statusMessage.value = message
+  statusError.value = isError
+  if (statusTimeout) clearTimeout(statusTimeout)
+  if (message && !message.includes('同步中')) {
+    statusTimeout = setTimeout(() => {
+      statusMessage.value = ''
+      statusError.value = false
+    }, 6000)
   }
-  iframeProgress.value = 8
-  progressTimer = window.setInterval(() => {
-    if (iframeProgress.value < 75) {
-      iframeProgress.value += Math.floor(Math.random() * 8 + 4)
-    } else if (iframeProgress.value < 90) {
-      iframeProgress.value += Math.floor(Math.random() * 3 + 1)
-    } else if (iframeProgress.value < 98) {
-      iframeProgress.value += 0.2
-    }
-  }, 120)
 }
 
-const completeProgress = () => {
-  if (progressTimer) {
-    clearInterval(progressTimer)
-    progressTimer = null
-  }
-  iframeProgress.value = 100
+// Sync state
+const syncing = ref(false)
+const showSyncMenu = ref(false)
+const syncDropdownRef = ref<HTMLElement | null>(null)
+let syncPollTimer: ReturnType<typeof setInterval> | null = null
+
+const getRssSyncModeLabel = (syncMode?: string) => {
+  return syncMode === 'full' ? '全量同步' : '轻量同步'
 }
 
-const resetIframeState = () => {
-  if (progressTimer) {
-    clearInterval(progressTimer)
-    progressTimer = null
-  }
-  iframeProgress.value = 0
-}
+// Forward ref for loadAll (defined after composables)
+let loadAllImpl: () => Promise<void> = async () => {}
 
 const getDisplayDomain = (urlStr?: string | null) => {
   if (!urlStr) return ''
@@ -1519,206 +1422,176 @@ const getDisplayDomain = (urlStr?: string | null) => {
   }
 }
 
-const refreshIframe = () => {
-  if (!showInAppBrowser.value || !readingEntry.value?.canonical_url) return
-  iframeLoading.value = true
-  iframeLoadKey.value += 1
-  startProgress()
-}
-
-const openInAppBrowser = () => {
-  showInAppBrowser.value = true
-  iframeLoading.value = true
-  iframeLoadKey.value += 1
-  startProgress()
-}
-
-const handleIframeLoad = (event: Event) => {
-  const target = event.currentTarget as HTMLIFrameElement | null
-  if (!target || target.dataset.loadKey !== String(iframeLoadKey.value)) return
-  completeProgress()
-  iframeLoading.value = false
-}
-
-// Interactive Image Lightbox State
-const activeLightboxImg = ref<string | null>(null)
-const lightboxScale = ref(1)
-
-// Reading progress container scroll ref
-const readerScrollContainer = ref<HTMLElement | null>(null)
-
-// UI Loading/Transition states
-const loading = ref(false)
-const saving = ref(false)
-const testing = ref(false)
-const syncing = ref(false)
-const statusMessage = ref('')
-const statusError = ref(false)
-
-// Modals, Dropdowns & Sidebar Search
-const showAddEditModal = ref(false)
-const showDeleteConfirmModal = ref(false)
-const accountToDelete = ref<RssAccount | null>(null)
-const showAccountDropdown = ref(false)
-const accountDropdownRef = ref<HTMLElement | null>(null)
-const showSyncMenu = ref(false)
-const syncDropdownRef = ref<HTMLElement | null>(null)
-const feedSearch = ref('')
-const collapsedFolders = ref<Record<string, boolean>>({})
-
-// Articles grid Filtering, Searching & Pagination
-const entrySearch = ref('')
-const page = ref(1)
-const pageSize = ref(30)
-const totalEntries = ref(0)
-const loadingMoreEntries = ref(false)
-const readingEntry = ref<RssEntry | null>(null)
-const recentlyViewed = ref<RecentEntry[]>([])
-
-// Navigation stack for feed-to-feed jumps from reader
-const feedNavStack = ref<{
-  selectedFeedId: number | null
-  activeFilter: string
-  page: number
-  entries: RssEntry[]
-  totalEntries: number
-  readingEntry: RssEntry | null
-} | null>(null)
-
-const loadRecentlyViewed = async () => {
-  const result = await getRssRecentlyViewed() as ApiResult<{ data: RecentEntry[] }>
-  if (!result.error) {
-    recentlyViewed.value = result.data?.data || []
-  }
-}
-
-const isMobile = ref(false)
-
-// Scroll containers and Infinite scroll observer refs
-const entriesContainer = ref<HTMLElement | null>(null)
-const loadMoreTrigger = ref<HTMLElement | null>(null)
-let entriesObserver: IntersectionObserver | null = null
-
-// Subscribe Feed state
-const showSubscribeModal = ref(false)
-const subscribingFeed = ref(false)
-const showCategoryDropdown = ref(false)
-const showCustomCategoryInput = ref(false)
-const customCategoryInputRef = ref<HTMLElement | null>(null)
-const categoryDropdownRef = ref<HTMLElement | null>(null)
-const subscribeForm = ref({
-  feedUrl: '',
-  category: '',
-  customCategory: '',
-})
-const subscribeMessage = ref('')
-const subscribeError = ref(false)
-
-// Account Form state
-const accountForm = ref({
-  id: null as number | null,
-  provider: 'greader',
-  name: '',
-  base_url: '',
-  username: '',
-  credential: '',
-  enabled: true,
-})
-const formMessage = ref('')
-const formError = ref(false)
-
-// Click outside account dropdown logic
-onClickOutside(accountDropdownRef, () => {
-  showAccountDropdown.value = false
-})
-onClickOutside(syncDropdownRef, () => {
-  showSyncMenu.value = false
-})
-onClickOutside(readerSettingsRef, () => {
-  showReaderSettings.value = false
-})
-onClickOutside(mobileReaderSettingsRef, () => {
-  showMobileReaderSettings.value = false
-})
-onClickOutside(categoryDropdownRef, () => {
-  showCategoryDropdown.value = false
+// Initialize composables
+const {
+  providers,
+  accounts,
+  selectedAccountId,
+  showAddEditModal,
+  showDeleteConfirmModal,
+  accountToDelete,
+  showAccountDropdown,
+  accountDropdownRef,
+  saving,
+  testing,
+  accountForm,
+  formMessage,
+  formError,
+  selectedAccount,
+  defaultAccountName,
+  baseUrlPlaceholder,
+  credentialPlaceholder,
+  canSaveForm,
+  canTestForm,
+  openAddAccount,
+  openEditAccount,
+  confirmDeleteAccount,
+  loadAccounts,
+  saveAccount,
+  testForm,
+  handleDeleteAccount,
+} = useRssAccounts({
+  onRefresh: () => loadAllImpl(),
+  onStatus: setStatus,
 })
 
-// Computeds
-const selectedAccount = computed(() => accounts.value.find((account) => account.id === selectedAccountId.value) || null)
-
-const defaultAccountName = computed(() => {
-  const baseUrl = accountForm.value.base_url.trim()
-  if (baseUrl) {
-    try {
-      return new URL(baseUrl).host
-    } catch {
-      return baseUrl
-    }
-  }
-  return accountForm.value.provider
+const {
+  feeds,
+  selectedFeedId,
+  showSubscribeModal,
+  subscribingFeed,
+  showCategoryDropdown,
+  showCustomCategoryInput,
+  customCategoryInputRef,
+  categoryDropdownRef,
+  subscribeForm,
+  subscribeMessage,
+  subscribeError,
+  feedSearch,
+  collapsedFolders,
+  showFeedContextMenuState,
+  feedContextMenuRef,
+  feedContextMenuPosition,
+  contextMenuFeed,
+  filteredFeeds,
+  existingCategories,
+  feedFolders,
+  loadFeeds,
+  confirmCustomCategory,
+  closeSubscribeModal,
+  handleSubscribeFeed,
+  toggleFolder,
+  selectFeed,
+  findFeedByEntry,
+  getFeedTitle,
+  getFeedCategory,
+  getFeedIconUrl,
+  handleUnsubscribeFeed,
+  showFeedContextMenu,
+  closeFeedContextMenu,
+  setFeedOpenMethod,
+  syncFeedFromContextMenu,
+  markFeedAllAsRead,
+  copyFeedLink,
+  openFeedSiteInExternalBrowser,
+  unsubscribeFeedFromContextMenu,
+} = useRssFeeds({
+  selectedAccountId,
+  onRefreshEntries: (isReset) => loadEntries(isReset ?? true),
+  onStatus: setStatus,
 })
 
-const baseUrlPlaceholder = computed(() => {
-  if (accountForm.value.provider === 'greader') return 'https://reader.example.com/api/greader.php'
-  return 'https://reader.example.com'
+const {
+  readingEntry,
+  readerScrollContainer,
+  readerFontSize,
+  readerFontFamily,
+  showReaderSettings,
+  readerSettingsRef,
+  showMobileReaderSettings,
+  mobileReaderSettingsRef,
+  showInAppBrowser,
+  iframeLoading,
+  iframeLoadKey,
+  iframeProgress,
+  isElectron,
+  iframeRef,
+  activeLightboxImg,
+  lightboxScale,
+  isMobile,
+  readerFontClass,
+  setReaderFontSize,
+  saveReaderPrefs,
+  handleContentClick,
+  closeLightbox,
+  handleKeyDown,
+  refreshIframe,
+  openInAppBrowser,
+  handleIframeLoad,
+  cleanAndDecodeHtml,
+  stripHtmlTags,
+  formatRelativeTime,
+  closeReader,
+  openRecentEntry,
+  unsubscribeCurrentFeedFromReader,
+  checkIfMobile,
+} = useRssReader({
+  selectedAccountId,
+  feeds,
+  findFeedByEntry,
+  getFeedTitle,
+  getFeedCategory,
+  getFeedIconUrl,
+  onStatus: setStatus,
+  onRefreshFeeds: loadFeeds,
+  onRefreshEntries: (isReset) => loadEntries(isReset ?? true),
 })
 
-const credentialPlaceholder = computed(() => {
-  if (accountForm.value.provider === 'miniflux') return 'API Token'
-  return 'API 密码或 Token'
+const {
+  entries,
+  activeFilter,
+  entrySearch,
+  page,
+  pageSize,
+  totalEntries,
+  loadingMoreEntries,
+  recentlyViewed,
+  entriesContainer,
+  loadMoreTrigger,
+  feedNavStack,
+  showContextMenu,
+  contextMenuPosition,
+  contextMenuEntry,
+  contextMenuRef,
+  hasMoreEntries,
+  filteredEntries,
+  loadEntries,
+  loadMore,
+  loadRecentlyViewed,
+  recordRecentlyViewed,
+  resetScroll,
+  pushFeedNavStack,
+  goBackFromFeed,
+  toggleReadStatus,
+  getBatchReadTargets,
+  batchUpdateReadStatus,
+  toggleStarStatus,
+  showArticleContextMenu,
+  closeContextMenu: entriesCloseContextMenu,
+  copyArticleLink,
+  openInExternalBrowser,
+  goToFeedFromContextMenu,
+  initObserver,
+} = useRssEntries({
+  selectedAccountId,
+  selectedFeedId,
+  feeds,
+  getFeedTitle,
+  readingEntry,
+  onStatus: setStatus,
 })
 
-const filteredFeeds = computed(() => {
-  if (!selectedAccountId.value) return feeds.value
-  return feeds.value.filter((feed) => feed.account_id === selectedAccountId.value)
-})
-
-const canSaveForm = computed(() => {
-  return !!accountForm.value.base_url.trim() && (!!accountForm.value.id || !!accountForm.value.credential.trim())
-})
-
-const canTestForm = computed(() => {
-  return !!accountForm.value.base_url.trim() && !!accountForm.value.credential.trim()
-})
-
-const hasMoreEntries = computed(() => {
-  if (activeFilter.value === 'recent') return false
-  return entries.value.length < totalEntries.value
-})
-
-// Categories / Folders collapsible tree grouping
-const feedFolders = computed(() => {
-  const groups: Record<string, RssFeed[]> = {}
-  const query = feedSearch.value.trim().toLowerCase()
-  const feedsToGroup = filteredFeeds.value.filter(feed => {
-    if (!query) return true
-    return feed.title.toLowerCase().includes(query) || 
-           (feed.feed_url && feed.feed_url.toLowerCase().includes(query)) ||
-           (feed.category && feed.category.toLowerCase().includes(query))
-  })
-  
-  feedsToGroup.forEach(feed => {
-    const cat = feed.category || '未分类'
-    if (!groups[cat]) groups[cat] = []
-    groups[cat].push(feed)
-  })
-  
-  return Object.entries(groups).map(([name, feeds]) => ({ name, feeds }))
-})
-
-// Article grid titles & totals
-const existingCategories = computed(() => {
-  const cats = new Set<string>()
-  const targetAccountId = selectedAccountId.value
-  feeds.value.forEach(f => {
-    if (f.account_id === targetAccountId && f.category) {
-      cats.add(f.category)
-    }
-  })
-  return [...cats].sort()
-})
-
+// Cross-composable computed properties
 const selectedFeedTitle = computed(() => {
   if (activeFilter.value === 'recent') return '最近浏览'
   if (selectedFeedId.value) {
@@ -1739,454 +1612,62 @@ const selectedFeedSubtitle = computed(() => {
   return '浏览您的 RSS 服务内容源'
 })
 
-// Client side filtering for article cards
-const filteredEntries = computed(() => {
-  if (activeFilter.value === 'recent') {
-    let list = recentlyViewed.value
-    const query = entrySearch.value.trim().toLowerCase()
-    if (query) {
-      list = list.filter(entry => {
-        const matchTitle = entry.title.toLowerCase().includes(query)
-        const matchSummary = entry.summary ? entry.summary.toLowerCase().includes(query) : false
-        return matchTitle || matchSummary
-      })
-    }
-    return list
-  }
-  let list = entries.value
-  const query = entrySearch.value.trim().toLowerCase()
-  
-  if (query) {
-    list = list.filter(entry => {
-      const matchTitle = entry.title.toLowerCase().includes(query)
-      const matchSummary = entry.summary ? entry.summary.toLowerCase().includes(query) : false
-      return matchTitle || matchSummary
-    })
-  }
-  
-  return list
-})
-
-// Reader Personalization & Scroll Functions
-const setReaderFontSize = (size: number) => {
-  readerFontSize.value = Math.max(12, Math.min(24, size))
-  localStorage.setItem('rss_reader_font_size', String(readerFontSize.value))
+// Orchestration functions
+const closeContextMenu = () => {
+  entriesCloseContextMenu()
+  closeFeedContextMenu()
 }
 
-const saveReaderPrefs = () => {
-  localStorage.setItem('rss_reader_font_family', readerFontFamily.value)
-}
-
-const readerFontClass = computed(() => {
-  switch (readerFontFamily.value) {
-    case 'outfit':
-      return 'font-outfit tracking-wide leading-loose'
-    case 'serif':
-      return 'font-serif tracking-normal leading-loose'
-    case 'lora':
-      return 'font-lora tracking-normal leading-loose'
-    case 'sans':
-    default:
-      return 'font-sans tracking-normal leading-loose'
-  }
-})
-
-
-
-const handleContentClick = (e: MouseEvent) => {
-  const target = e.target as HTMLElement
-  if (target.tagName === 'IMG') {
-    activeLightboxImg.value = (target as HTMLImageElement).src
-    lightboxScale.value = 1
-  }
-}
-
-const closeLightbox = () => {
-  activeLightboxImg.value = null
-}
-
-const handleKeyDown = (e: KeyboardEvent) => {
-  if (e.key === 'Escape' && activeLightboxImg.value) {
-    closeLightbox()
-  }
-}
-
-// Helper methods for resolving article grid metadata
-const getFeedTitle = (feedId: number) => {
-  const feed = feeds.value.find(f => f.id === feedId)
-  return feed ? feed.title : '未知源'
-}
-
-const getFeedCategory = (feedId: number) => {
-  const feed = feeds.value.find(f => f.id === feedId)
-  return feed ? feed.category || '未分类' : '未分类'
-}
-
-const getFeedIconUrl = (feedId: number) => {
-  const feed = feeds.value.find(f => f.id === feedId)
-  return feed?.icon_url || null
-}
-
-const getFeedInitials = (feedId: number) => {
-  const title = getFeedTitle(feedId)
-  return title.trim().charAt(0) || 'R'
-}
-
-const formatRelativeTime = (dateStr: string) => {
-  const now = Date.now()
-  const date = new Date(dateStr).getTime()
-  const diff = now - date
-  if (diff < 0) return '刚刚'
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return '刚刚'
-  if (minutes < 60) return `${minutes} 分钟前`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} 小时前`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days} 天前`
-  return formatDate(dateStr)
-}
-
-const recordRecentlyViewed = (entry: RssEntry) => {
-  recordRssEntryView(entry.id)
-  const recent: RecentEntry = {
-    ...entry,
-    viewed_at: new Date().toISOString(),
-  }
-  const idx = recentlyViewed.value.findIndex(e => String(e.id) === String(entry.id))
-  if (idx !== -1) {
-    recentlyViewed.value.splice(idx, 1)
-  }
-  recentlyViewed.value.unshift(recent)
-
-}
-
-// Safely decode HTML entities using a temporary textarea
-const decodeHtmlEntities = (str: string) => {
-  if (!str) return ''
-  const txt = document.createElement('textarea')
-  txt.innerHTML = str
-  return txt.value
-}
-
-// Clean and recursively decode escaped HTML to support both single and double escaped markup
-const cleanAndDecodeHtml = (html: string | null | undefined): string => {
-  if (!html) return ''
-  
-  let decoded = html
-  // Detect if it contains escaped HTML tags like &lt;p or &amp;lt;p
-  const escapedHtmlRegex = /&(amp;)?lt;\/?(p|div|h[1-6]|a|span|br|strong|em|ul|ol|li|blockquote|img|table|tr|td|th|section|article|pre|code)\b/i
-  
-  let iterations = 0
-  while (escapedHtmlRegex.test(decoded) && iterations < 3) {
-    decoded = decodeHtmlEntities(decoded)
-    iterations++
-  }
-  
-  return decoded
-}
-
-// Clean summary HTML tags for compact card summary rendering
-const stripHtmlTags = (html: string) => {
-  if (!html) return ''
-  // Pre-decode escaped HTML tags so we operate on unescaped HTML
-  const decodedHtml = cleanAndDecodeHtml(html)
-  let text = decodedHtml.replace(/<(script|style)\b[^>]*>([\s\S]*?)<\/\1>/gi, '')
-  text = text.replace(/<[^>]+>/g, ' ')
-  text = text
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-  return text.replace(/\s+/g, ' ').trim()
-}
-
-let statusTimeout: ReturnType<typeof setTimeout> | null = null
-const getRssSyncModeLabel = (syncMode?: string) => {
-  return syncMode === 'full' ? '全量同步' : '轻量同步'
-}
-
-const setStatus = (message: string, isError = false) => {
-  statusMessage.value = message
-  statusError.value = isError
-  
-  if (statusTimeout) clearTimeout(statusTimeout)
-  if (message && !message.includes('同步中')) {
-    statusTimeout = setTimeout(() => {
-      statusMessage.value = ''
-      statusError.value = false
-    }, 6000)
-  }
-}
-
-const resetScroll = () => {
-  if (entriesContainer.value) {
-    entriesContainer.value.scrollTop = 0
-  }
-}
-
-const resetForm = () => {
-  accountForm.value = {
-    id: null,
-    provider: 'greader',
-    name: '',
-    base_url: '',
-    username: '',
-    credential: '',
-    enabled: true,
-  }
-  formMessage.value = ''
-  formError.value = false
-}
-
-const openAddAccount = () => {
-  resetForm()
-  showAddEditModal.value = true
-}
-
-const openEditAccount = (account: RssAccount) => {
-  accountForm.value = {
-    id: account.id,
-    provider: account.provider,
-    name: account.name,
-    base_url: account.base_url,
-    username: account.username || '',
-    credential: '',
-    enabled: account.enabled,
-  }
-  formMessage.value = ''
-  formError.value = false
-  showAddEditModal.value = true
-}
-
-const confirmDeleteAccount = (account: RssAccount) => {
-  accountToDelete.value = account
-  showDeleteConfirmModal.value = true
-}
-
-const confirmCustomCategory = () => {
-  const name = subscribeForm.value.customCategory.trim()
-  if (name) {
-    subscribeForm.value.category = name
-  }
-  showCustomCategoryInput.value = false
-  showCategoryDropdown.value = false
-}
-
-const closeSubscribeModal = () => {
-  showSubscribeModal.value = false
-  showCategoryDropdown.value = false
-  showCustomCategoryInput.value = false
-  subscribeForm.value = { feedUrl: '', category: '', customCategory: '' }
-  subscribeMessage.value = ''
-  subscribeError.value = false
-}
-
-const handleSubscribeFeed = async () => {
-  if (!selectedAccountId.value || !subscribeForm.value.feedUrl.trim()) return
-  subscribingFeed.value = true
-  subscribeMessage.value = ''
-  subscribeError.value = false
-
-  const result = await subscribeRssFeed({
-    accountId: selectedAccountId.value,
-    feedUrl: subscribeForm.value.feedUrl.trim(),
-    category: subscribeForm.value.category.trim() || undefined,
-  })
-
-  subscribingFeed.value = false
-
-  if (result.error) {
-    subscribeError.value = true
-    subscribeMessage.value = result.error.message || '订阅失败'
-    return
-  }
-
-  subscribeMessage.value = '订阅成功'
-  setTimeout(() => {
-    closeSubscribeModal()
-    loadFeeds()
-  }, 1000)
-}
-
-const findFeedByEntry = (entry: RssEntry): RssFeed | undefined => {
-  return feeds.value.find(f => f.id === entry.feed_id)
-}
-
-const pushFeedNavStack = () => {
-  feedNavStack.value = {
-    selectedFeedId: selectedFeedId.value,
-    activeFilter: activeFilter.value,
-    page: page.value,
-    entries: [...entries.value],
-    totalEntries: totalEntries.value,
-    readingEntry: readingEntry.value,
-  }
-}
-
-const goBackFromFeed = async () => {
-  const stack = feedNavStack.value
-  if (!stack) return
-
-  selectedFeedId.value = stack.selectedFeedId
-  activeFilter.value = stack.activeFilter as any
-  page.value = stack.page
-  entries.value = stack.entries
-  totalEntries.value = stack.totalEntries
-  readingEntry.value = stack.readingEntry
-  feedNavStack.value = null
-  resetScroll()
-}
-
-const goToFeedFromContextMenu = async (entry: RssEntry) => {
-  closeContextMenu()
-  pushFeedNavStack()
-  await selectFeed(entry.feed_id)
-}
-
-const unsubscribeCurrentFeed = async (entry: RssEntry) => {
-  const feed = findFeedByEntry(entry)
-  if (!feed) {
-    setStatus('未找到对应的订阅源', true)
-    return
-  }
-  closeContextMenu()
-  await handleUnsubscribeFeed(feed)
-}
-
-const unsubscribeCurrentFeedFromReader = async () => {
-  if (!readingEntry.value) return
-  const feed = findFeedByEntry(readingEntry.value)
-  if (!feed) {
-    setStatus('未找到对应的订阅源', true)
-    return
-  }
-  await handleUnsubscribeFeed(feed)
-}
-
-const handleUnsubscribeFeed = async (feed: RssFeed) => {
-  if (!selectedAccountId.value) return
-
-  const result = await unsubscribeRssFeed(feed.id, selectedAccountId.value)
-  if (result.error) {
-    setStatus(result.error.message || '取消订阅失败', true)
-    return
-  }
-
-  if (selectedFeedId.value === feed.id) {
-    selectedFeedId.value = null
-  }
-  readingEntry.value = null
-  setStatus(`已取消订阅「${feed.title}」`)
-  await loadFeeds()
-  await loadEntries(true)
-}
-
-const handleDeleteAccount = async () => {
-  if (!accountToDelete.value) return
-  loading.value = true
-  const result = await deleteRssAccount(accountToDelete.value.id)
-  loading.value = false
-  if (result.error) {
-    setStatus(result.error.message || '删除账号失败', true)
-    showDeleteConfirmModal.value = false
-    return
-  }
-  
-  setStatus(`已成功删除账号「${accountToDelete.value.name}」`)
-  showDeleteConfirmModal.value = false
-  if (selectedAccountId.value === accountToDelete.value.id) {
-    selectedAccountId.value = null
-    selectedFeedId.value = null
-  }
-  accountToDelete.value = null
-  await loadAll()
-}
-
-const toggleFolder = (name: string) => {
-  collapsedFolders.value[name] = !collapsedFolders.value[name]
-}
-
-const loadAccounts = async () => {
-  const result = await getRssAccounts() as ApiResult<{ data: RssAccount[] }>
-  if (result.error) {
-    setStatus(result.error.message || '加载 RSS 账号失败', true)
-    return
-  }
-  accounts.value = result.data?.data || []
-  if (!selectedAccountId.value && accounts.value.length) {
-    selectedAccountId.value = accounts.value[0].id
-  }
-}
-
-const loadFeeds = async () => {
-  const result = await getRssFeeds(selectedAccountId.value ? { accountId: selectedAccountId.value } : {}) as ApiResult<{ data: RssFeed[] }>
-  if (result.error) {
-    setStatus(result.error.message || '加载 Feed 失败', true)
-    return
-  }
-  feeds.value = result.data?.data || []
-}
-
-const loadEntries = async (isReset = false) => {
-  if (activeFilter.value === 'recent') {
-    await loadRecentlyViewed()
-    if (isReset) resetScroll()
-    return
-  }
-  if (isReset) loading.value = true
-  else loadingMoreEntries.value = true
-
-  if (isReset) {
-    page.value = 1
-    entries.value = []
-    resetScroll()
-  }
-  const params: Record<string, unknown> = { page: page.value, pageSize: pageSize.value }
-  if (selectedAccountId.value) params.accountId = selectedAccountId.value
-  if (selectedFeedId.value) params.feedId = selectedFeedId.value
-  if (activeFilter.value === 'unread') {
-    params.isRead = false
-  } else if (activeFilter.value === 'starred') {
-    params.isStarred = true
-  }
-  
-  const result = await getRssEntries(params) as ApiResult<{ data: RssEntry[], total: number }>
-
-  if (result.error) {
-    if (isReset) loading.value = false
-    else loadingMoreEntries.value = false
-    setStatus(result.error.message || '加载条目失败', true)
-    return
-  }
-  
-  const fetched = result.data?.data || []
-  totalEntries.value = (result.data as any)?.total || 0
-  
-  if (isReset) {
-    entries.value = fetched
-  } else {
-    entries.value.push(...fetched)
-  }
-
-  if (isReset) loading.value = false
-  else loadingMoreEntries.value = false
-}
-
-const loadMore = async () => {
-  if (loadingMoreEntries.value || !hasMoreEntries.value) return
-  page.value += 1
-  await loadEntries(false)
-}
-
-const loadAll = async () => {
+loadAllImpl = async () => {
   loading.value = true
   await loadAccounts()
   await loadFeeds()
   await loadEntries(true)
   loading.value = false
+}
+
+const loadAll = loadAllImpl
+
+const openReader = (entry: RssEntry) => {
+  readingEntry.value = entry
+  showInAppBrowser.value = false
+  iframeLoading.value = false
+  resetIframeState()
+
+  const feed = findFeedByEntry(entry.feed_id)
+  const method = feed?.open_method
+
+  if (method === 'external_browser') {
+    window.open(entry.canonical_url, '_blank')
+    if (!entry.is_read) {
+      toggleReadStatus(entry, false)
+    }
+    recordRecentlyViewed(entry)
+    return
+  }
+
+  if (!entry.is_read) {
+    toggleReadStatus(entry, false)
+  }
+  recordRecentlyViewed(entry)
+
+  if (method === 'app_browser') {
+    nextTick(() => openInAppBrowser())
+  }
+}
+
+const resetIframeState = () => {
+  iframeProgress.value = 0
+}
+
+const unsubscribeCurrentFeed = async (entry: RssEntry) => {
+  const feed = findFeedByEntry(entry.feed_id)
+  if (!feed) {
+    setStatus('未找到对应的订阅源', true)
+    return
+  }
+  entriesCloseContextMenu()
+  await handleUnsubscribeFeed(feed)
 }
 
 const selectAccount = async (accountId: number) => {
@@ -2196,57 +1677,7 @@ const selectAccount = async (accountId: number) => {
   await loadEntries(true)
 }
 
-const selectFeed = async (feedId: number) => {
-  selectedFeedId.value = selectedFeedId.value === feedId ? null : feedId
-  await loadEntries(true)
-}
-
-const saveAccount = async () => {
-  saving.value = true
-  formMessage.value = ''
-  const payload: Record<string, unknown> = {
-    provider: accountForm.value.provider,
-    name: accountForm.value.name.trim() || defaultAccountName.value,
-    base_url: accountForm.value.base_url,
-    username: accountForm.value.username,
-    enabled: accountForm.value.enabled,
-  }
-  if (accountForm.value.credential.trim()) {
-    payload.credential = accountForm.value.credential
-  }
-  const result = accountForm.value.id
-    ? await updateRssAccount(accountForm.value.id, payload)
-    : await createRssAccount(payload as any)
-  saving.value = false
-  if (result.error) {
-    formError.value = true
-    formMessage.value = result.error.message || '保存失败'
-    return
-  }
-  formError.value = false
-  formMessage.value = '已保存'
-  showAddEditModal.value = false
-  resetForm()
-  await loadAll()
-}
-
-const testForm = async () => {
-  testing.value = true
-  formMessage.value = ''
-  const result = await testRssAccountConfig({
-    provider: accountForm.value.provider,
-    name: accountForm.value.name || accountForm.value.provider,
-    base_url: accountForm.value.base_url,
-    username: accountForm.value.username,
-    credential: accountForm.value.credential,
-  })
-  testing.value = false
-  formError.value = !!result.error
-  formMessage.value = result.error ? result.error.message || '连接失败' : `连接成功，发现 ${(result.data as any)?.feed_count ?? 0} 个 Feed`
-}
-
-let syncPollTimer: ReturnType<typeof setInterval> | null = null
-
+// Sync polling
 const pollSyncProgress = () => {
   if (syncPollTimer) clearInterval(syncPollTimer)
   const accountId = selectedAccountId.value
@@ -2316,319 +1747,6 @@ const syncSelectedAccount = async (forceFullSync = false) => {
   pollSyncProgress()
 }
 
-const openReader = (entry: RssEntry) => {
-  readingEntry.value = entry
-  showInAppBrowser.value = false
-  iframeLoading.value = false
-  resetIframeState()
-
-  const feed = findFeedByEntry(entry)
-  const method = feed?.open_method
-
-  if (method === 'external_browser') {
-    window.open(entry.canonical_url, '_blank')
-    if (!entry.is_read) {
-      toggleReadStatus(entry, false)
-    }
-    recordRecentlyViewed(entry)
-    return
-  }
-
-  if (!entry.is_read) {
-    toggleReadStatus(entry, false)
-  }
-  recordRecentlyViewed(entry)
-
-  if (method === 'app_browser') {
-    nextTick(() => openInAppBrowser())
-  }
-}
-
-const openRecentEntry = (recent: RecentEntry) => {
-  if (readingEntry.value && String(readingEntry.value.id) === String(recent.id)) return
-  const existing = entries.value.find(e => String(e.id) === String(recent.id))
-  if (existing) {
-    openReader(existing)
-    return
-  }
-  openReader(recent as unknown as RssEntry)
-}
-
-const closeReader = () => {
-  readingEntry.value = null
-}
-
-// Custom Context Menu functions
-const showArticleContextMenu = (entry: RssEntry, event: MouseEvent) => {
-  contextMenuEntry.value = entry
-  let x = event.clientX
-  let y = event.clientY
-  const menuWidth = 200
-  if (x + menuWidth > window.innerWidth) {
-    x = window.innerWidth - menuWidth - 8
-  }
-  contextMenuPosition.value = { x, y }
-  showContextMenu.value = true
-  nextTick(() => {
-    const el = contextMenuRef.value
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    if (rect.bottom > window.innerHeight) {
-      contextMenuPosition.value = { x, y: window.innerHeight - rect.height - 8 }
-    }
-  })
-}
-
-const closeContextMenu = () => {
-  showContextMenu.value = false
-  contextMenuEntry.value = null
-  closeFeedContextMenu()
-}
-
-const showFeedContextMenu = (feed: RssFeed, event: MouseEvent) => {
-  contextMenuFeed.value = feed
-  let x = event.clientX
-  let y = event.clientY
-  const menuWidth = 200
-  if (x + menuWidth > window.innerWidth) {
-    x = window.innerWidth - menuWidth - 8
-  }
-  feedContextMenuPosition.value = { x, y }
-  showFeedContextMenuState.value = true
-  nextTick(() => {
-    const el = feedContextMenuRef.value
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    if (rect.bottom > window.innerHeight) {
-      feedContextMenuPosition.value = { x, y: window.innerHeight - rect.height - 8 }
-    }
-  })
-}
-
-const closeFeedContextMenu = () => {
-  showFeedContextMenuState.value = false
-  contextMenuFeed.value = null
-}
-
-const setFeedOpenMethod = async (feed: RssFeed, method: string | null) => {
-  const result = await updateRssFeed(feed.id, { open_method: method }) as ApiResult
-  if (result.error) {
-    setStatus(result.error.message || '更新失败', true)
-    return
-  }
-  feed.open_method = method
-  closeFeedContextMenu()
-  setStatus(method === 'external_browser' ? '已设为系统浏览器打开' : method === 'app_browser' ? '已设为应用内浏览器打开' : '已设为内嵌阅读')
-}
-
-const syncFeedFromContextMenu = async (feed: RssFeed) => {
-  closeFeedContextMenu()
-  loading.value = true
-  const result = await syncRssFeed(feed.id) as ApiResult
-  loading.value = false
-  if (result.error) {
-    setStatus(result.error.message || '同步失败', true)
-    return
-  }
-  const count = result.data?.entries ?? 0
-  setStatus(`已同步「${feed.title}」，更新 ${count} 篇文章`)
-  await loadEntries(true)
-}
-
-const markFeedAllAsRead = async (feed: RssFeed) => {
-  closeFeedContextMenu()
-  loading.value = true
-  const result = await markRssFeedAsRead(feed.id) as ApiResult
-  loading.value = false
-  if (result.error) {
-    setStatus(result.error.message || '标记已读失败', true)
-    return
-  }
-  setStatus(`已将「${feed.title}」全部文章标记为已读`)
-  await loadEntries(true)
-}
-
-const copyFeedLink = async (feed: RssFeed) => {
-  closeFeedContextMenu()
-  if (!feed.feed_url) {
-    setStatus('订阅源地址为空', true)
-    return
-  }
-  try {
-    await navigator.clipboard.writeText(feed.feed_url)
-    setStatus('已成功复制订阅源地址到剪贴板')
-  } catch (err) {
-    setStatus('复制链接失败', true)
-  }
-}
-
-const openFeedSiteInExternalBrowser = (feed: RssFeed) => {
-  closeFeedContextMenu()
-  if (feed.site_url) {
-    window.open(feed.site_url, '_blank')
-  }
-}
-
-const unsubscribeFeedFromContextMenu = (feed: RssFeed) => {
-  closeFeedContextMenu()
-  handleUnsubscribeFeed(feed)
-}
-
-const shouldReloadAfterEntryUpdate = (entry: RssEntry) => {
-  if (activeFilter.value === 'unread') {
-    return entry.is_read
-  }
-  if (activeFilter.value === 'starred') {
-    return !entry.is_starred
-  }
-  return false
-}
-
-const toggleReadStatus = async (entry: RssEntry, reloadFilteredList = true) => {
-  const newStatus = !entry.is_read
-  entry.is_read = newStatus
-
-  // If the currently reading entry is this entry, update its local copy too
-  if (readingEntry.value && String(readingEntry.value.id) === String(entry.id)) {
-    readingEntry.value.is_read = newStatus
-  }
-
-  const result = await updateRssEntry(entry.id, { isRead: newStatus })
-  if (result.error) {
-    entry.is_read = !newStatus
-    if (readingEntry.value && String(readingEntry.value.id) === String(entry.id)) {
-      readingEntry.value.is_read = !newStatus
-    }
-    setStatus(result.error.message || '更新已读状态失败', true)
-    return
-  }
-
-  if (reloadFilteredList && shouldReloadAfterEntryUpdate(entry)) {
-    await loadEntries(true)
-  }
-}
-
-const getBatchReadTargets = (mode: ReadBatchMode) => {
-  if (!contextMenuEntry.value) return []
-  const list = filteredEntries.value
-  if (mode === 'all') return list
-
-  const index = list.findIndex(entry => String(entry.id) === String(contextMenuEntry.value?.id))
-  if (index < 0) return []
-  if (mode === 'above') return list.slice(0, index)
-  return list.slice(index + 1)
-}
-
-const batchUpdateReadStatus = async (mode: ReadBatchMode, isRead: boolean) => {
-  const targets = getBatchReadTargets(mode).filter(entry => entry.is_read !== isRead)
-  if (targets.length === 0) {
-    setStatus('没有需要更新的文章')
-    return
-  }
-
-  const previous = targets.map(entry => ({ entry, isRead: entry.is_read }))
-  targets.forEach(entry => {
-    entry.is_read = isRead
-    if (readingEntry.value && String(readingEntry.value.id) === String(entry.id)) {
-      readingEntry.value.is_read = isRead
-    }
-  })
-
-  const result = await updateRssEntries({
-    entryIds: targets.map(entry => entry.id),
-    isRead,
-  }) as ApiResult<{ updated: number }>
-
-  if (result.error) {
-    previous.forEach(({ entry, isRead: previousIsRead }) => {
-      entry.is_read = previousIsRead
-      if (readingEntry.value && String(readingEntry.value.id) === String(entry.id)) {
-        readingEntry.value.is_read = previousIsRead
-      }
-    })
-    setStatus(result.error.message || '批量更新已读状态失败', true)
-    return
-  }
-
-  setStatus(`已更新 ${result.data?.updated ?? targets.length} 篇文章`)
-  if (targets.some(shouldReloadAfterEntryUpdate)) {
-    await loadEntries(true)
-  }
-}
-
-const toggleStarStatus = async (entry: RssEntry) => {
-  const newStatus = !entry.is_starred
-  entry.is_starred = newStatus
-
-  if (readingEntry.value && String(readingEntry.value.id) === String(entry.id)) {
-    readingEntry.value.is_starred = newStatus
-  }
-
-  const result = await updateRssEntry(entry.id, { isStarred: newStatus })
-  if (result.error) {
-    entry.is_starred = !newStatus
-    if (readingEntry.value && String(readingEntry.value.id) === String(entry.id)) {
-      readingEntry.value.is_starred = !newStatus
-    }
-    setStatus(result.error.message || '更新星标状态失败', true)
-    return
-  }
-
-  setStatus(newStatus ? '已收藏' : '已取消收藏')
-}
-
-const copyArticleLink = async (entry: RssEntry) => {
-  try {
-    await navigator.clipboard.writeText(entry.canonical_url)
-    setStatus('已成功复制链接到剪贴板')
-  } catch (err) {
-    setStatus('复制链接失败', true)
-  }
-}
-
-const openInExternalBrowser = (entry: RssEntry) => {
-  window.open(entry.canonical_url, '_blank')
-}
-
-// Watch activeFilter to reload
-watch(activeFilter, () => {
-  loadEntries(true)
-})
-
-// Infinite Scroll Automatic Observer Setup
-const initObserver = () => {
-  entriesObserver?.disconnect()
-  entriesObserver = new IntersectionObserver((entriesList) => {
-    if (entriesList[0].isIntersecting && !loading.value && !loadingMoreEntries.value && hasMoreEntries.value) {
-      loadMore()
-    }
-  }, {
-    root: entriesContainer.value,
-    rootMargin: '400px'
-  })
-  if (loadMoreTrigger.value) {
-    entriesObserver.observe(loadMoreTrigger.value)
-  }
-}
-
-// Watchers
-watch(selectedAccountId, () => {
-  collapsedFolders.value = {}
-})
-
-watch(readingEntry, () => {
-  showReaderSettings.value = false
-  showMobileReaderSettings.value = false
-  showInAppBrowser.value = false
-  iframeLoading.value = false
-  resetIframeState()
-  nextTick(() => {
-    if (readerScrollContainer.value) {
-      readerScrollContainer.value.scrollTop = 0
-    }
-  })
-})
-
 const resumeSyncPollingIfRunning = async () => {
   const accountId = selectedAccountId.value
   if (!accountId) return
@@ -2641,10 +1759,17 @@ const resumeSyncPollingIfRunning = async () => {
   }
 }
 
-const checkIfMobile = () => {
-  isMobile.value = window.innerWidth < 1024
-}
+// Click outside handlers (for component-level refs)
+onClickOutside(syncDropdownRef, () => {
+  showSyncMenu.value = false
+})
 
+// Watchers
+watch(selectedAccountId, () => {
+  collapsedFolders.value = {}
+})
+
+// Lifecycle
 onMounted(async () => {
   checkIfMobile()
   window.addEventListener('resize', checkIfMobile)
@@ -2664,7 +1789,6 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
   window.removeEventListener('click', closeContextMenu)
   window.removeEventListener('contextmenu', closeContextMenu)
-  entriesObserver?.disconnect()
   if (syncPollTimer) {
     clearInterval(syncPollTimer)
     syncPollTimer = null

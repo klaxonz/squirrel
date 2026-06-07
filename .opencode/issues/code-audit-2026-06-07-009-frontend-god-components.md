@@ -1,6 +1,7 @@
 ---
 title: 'Frontend: 超级组件 — VideoPlayer.vue (3418行) 和 RssSources.vue (2962行)'
-status: open
+status: fixed
+fixed_by: squirrel-frontend/src/components/video-player/VideoPlayer.vue, squirrel-frontend/src/views/RssSources.vue, squirrel-frontend/src/components/video-player/core/createPlayerEngine.ts
 severity: high
 category: code-smell
 location: squirrel-frontend/src/components/video-player/VideoPlayer.vue, src/views/RssSources.vue

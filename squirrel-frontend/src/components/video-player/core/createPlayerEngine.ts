@@ -2,6 +2,7 @@ import { EventEmitter } from './EventEmitter'
 import { PluginManager } from './PluginManager'
 import { MemoryAdapter, type IPlayerAdapter, type UserConfig, type PlaybackProgress } from './PlayerAdapter'
 import { playerLogger } from './logger'
+import { createErrorRecovery, MAX_VOLUME, detectSourceType } from './error-recovery'
 import type {
   MediaSource,
   PlayerError,
@@ -99,15 +100,6 @@ export type PlayerEngine = {
   off: EventEmitter<PlayerEvents>['off']
 }
 
-const MAX_VOLUME = 200
-
-const detectSourceType = (src: string): 'hls' | 'dash' | 'native' => {
-  const url = src.toLowerCase()
-  if (url.includes('.m3u8') || url.includes('format=m3u8')) return 'hls'
-  if (url.includes('.mpd') || url.includes('/mpd') || url.includes('format=mpd')) return 'dash'
-  return 'native'
-}
-
 export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEngine {
   const logger = playerLogger
   const adapter = options.adapter ?? new MemoryAdapter()
@@ -168,11 +160,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   const retryDelay = options.errorRecovery?.retryDelay ?? 2000
   const enableQualityFallback = options.errorRecovery?.enableQualityFallback ?? false
 
-  let isRecovering = false
   let pluginHandlingError = false
   let retryCount = 0
-  let waitingRecoveryTimer: ReturnType<typeof setTimeout> | null = null
-  let waitingRecoverySuppressedUntil = 0
 
   const releaseVideoElementMedia = (video: HTMLVideoElement | null): void => {
     if (!video) return
@@ -204,34 +193,6 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       resetProgressState()
     }
     progressKey = key
-  }
-
-  const clearWaitingRecovery = (): void => {
-    if (!waitingRecoveryTimer) return
-    clearTimeout(waitingRecoveryTimer)
-    waitingRecoveryTimer = null
-  }
-
-  const scheduleWaitingRecovery = (): void => {
-    clearWaitingRecovery()
-    const stalledAtTime = videoElement?.currentTime ?? 0
-    const suppressionDelay = Math.max(0, waitingRecoverySuppressedUntil - Date.now())
-    waitingRecoveryTimer = setTimeout(() => {
-      waitingRecoveryTimer = null
-      if (!videoElement || !loading || videoElement.ended) return
-      if (Math.abs((videoElement.currentTime ?? 0) - stalledAtTime) > 1) return
-
-      const err: PlayerError = {
-        code: 'STALL_DETECTED',
-        message: 'Playback stalled while waiting for media',
-        fatal: false,
-      }
-      void handleRecoveryError(err)
-        .then((recovered) => {
-          if (!recovered) reportFatalError(err)
-        })
-        .catch(() => reportFatalError(err))
-    }, Math.max(retryDelay * 2, 5000) + suppressionDelay)
   }
 
   const getState = (): PlayerState => {
@@ -309,20 +270,6 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     applyMediaSettings(videoElement)
   }
 
-  const reportFatalError = (error: PlayerError): void => {
-    loading = false
-    events.emit('error', error)
-    options.onError?.(error)
-    void adapter.reportError({
-      sourceUrl: currentSource?.src,
-      errorCode: error.code,
-      errorMessage: error.message,
-      progressKey: progressKey ?? undefined,
-      timestamp: Date.now(),
-    }).catch(() => {})
-    adapter.trackEvent?.('error', { code: error.code, message: error.message, fatal: error.fatal })
-  }
-
   const resolveMediaUrl = (src: string): string => {
     try {
       return new URL(src, window.location.href).href
@@ -350,184 +297,36 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     return mediaLoadStartedForCurrentSource && mediaMetadataLoadedForCurrentSource
   }
 
-  const setRecoveryQualities = (qs: QualityLevel[]): void => {
-    qualities = qs
-    retryCount = 0
-  }
-
-  const getNextLowerQuality = (): QualityLevel | null => {
-    const sorted = [...qualities].sort((a, b) => (b.height || 0) - (a.height || 0))
-    const currentId = registeredQualityId
-    const currentInSorted = sorted.findIndex(q => q.id === currentId)
-    if (currentInSorted >= 0 && currentInSorted < sorted.length - 1) {
-      return sorted[currentInSorted + 1]
-    }
-    if (currentInSorted === -1 && sorted.length > 1) {
-      return sorted[sorted.length - 1]
-    }
-    return null
-  }
-
-  const determineRecoveryStrategy = (error: PlayerError): 'retry' | 'quality-fallback' | 'none' => {
-    const code = String(error.code || '')
-
-    if (code.includes('NOT_SUPPORTED') || code.includes('CAPABILITY')) {
-      return 'none'
-    }
-
-    if (code.includes('NETWORK') || code.includes('TIMEOUT')) {
-      if (retryCount < maxRetries) return 'retry'
-      if (enableQualityFallback && getNextLowerQuality()) return 'quality-fallback'
-    }
-
-    if (code.includes('MEDIA') || code.includes('DECODE') || code.includes('BUFFER') || code.includes('STALL')) {
-      if (enableQualityFallback && getNextLowerQuality()) return 'quality-fallback'
-    }
-
-    if (!error.fatal && retryCount < maxRetries) return 'retry'
-    if (error.fatal && retryCount < maxRetries) return 'retry'
-    return 'none'
-  }
-
-  const executeQualityFallback = (): boolean => {
-    const nextQuality = getNextLowerQuality()
-    if (!nextQuality) return false
-
-    logger.debug(`[ErrorRecovery] Falling back to quality: ${nextQuality.label}`)
-    retryCount = 0
-    setQuality(nextQuality.id ?? nextQuality.label)
-    return true
-  }
-
-  const getStreamController = (): any => {
-    const preferredDashPlugin = currentSource?.playbackEngine === 'shaka' ? 'shaka-dash' : 'dash'
-    if (currentSourceType === 'hls') return pluginManager.get<any>('hls')
-    if (currentSourceType === 'dash') return pluginManager.get<any>(preferredDashPlugin)
-    return pluginManager.get<any>('shaka-dash') || pluginManager.get<any>('dash') || pluginManager.get<any>('hls')
-  }
-
-  const buildRecoveryContext = (): PlaybackRecoveryContext => ({
-    retryCount,
-    maxRetries,
-    retryDelay,
-    source: currentSource ? { ...currentSource } : null,
-    currentTime: videoElement?.currentTime ?? 0,
-    wasPlaying: !!videoElement && !videoElement.paused && !videoElement.ended
+  const errorRecovery = createErrorRecovery({
+    getVideoElement: () => videoElement,
+    getLoading: () => loading,
+    setLoading: (v) => { loading = v },
+    getRetryCount: () => retryCount,
+    setRetryCount: (v) => { retryCount = v },
+    getQualities: () => qualities,
+    setQualities: (qs) => { qualities = qs },
+    getRegisteredQualityId: () => registeredQualityId,
+    getCurrentSource: () => currentSource,
+    getCurrentSourceType: () => currentSourceType,
+    getCurrentSourceKey: () => currentSourceKey,
+    setCurrentSourceKey: (k) => { currentSourceKey = k },
+    getPendingSourceKey: () => pendingSourceKey,
+    setPendingSourceKey: (k) => { pendingSourceKey = k },
+    getAutoPlayOnReady: () => autoPlayOnReady,
+    setAutoPlayOnReady: (v) => { autoPlayOnReady = v },
+    getProgressKey: () => progressKey,
+    getMaxRetries: () => maxRetries,
+    getRetryDelay: () => retryDelay,
+    getEnableQualityFallback: () => enableQualityFallback,
+    events,
+    pluginManager,
+    logger,
+    adapter,
+    onError: options.onError,
+    play: () => play(),
+    setQuality: (q) => setQuality(q),
+    doLoadSource: (s) => doLoadSource(s),
   })
-
-  const reloadCurrentSource = (): boolean => {
-    if (!currentSource) return false
-
-    const altSources = currentSource.alternativeSources || []
-    if (altSources.length > 0 && retryCount >= maxRetries) {
-      const altIndex = (retryCount - maxRetries) % altSources.length
-      const alt = altSources[altIndex]
-      if (alt && alt.src) {
-        logger.debug(`[ErrorRecovery] Switching to alternative source type=${alt.type}: ${alt.src}`)
-        const altSource: MediaSource = {
-          ...currentSource,
-          src: alt.src,
-          type: alt.type,
-        }
-        currentSourceKey = ''
-        pendingSourceKey = ''
-        doLoadSource(altSource)
-        currentSource = altSource
-        return true
-      }
-    }
-
-    const sourceToReload = { ...currentSource }
-    const resumeTime = videoElement?.currentTime ?? 0
-    const shouldResumePlayback = !!videoElement && !videoElement.paused && !videoElement.ended
-
-    if (videoElement && Number.isFinite(resumeTime) && resumeTime > 0) {
-      videoElement.addEventListener('loadedmetadata', () => {
-        if (!videoElement) return
-        const nextTime = Number.isFinite(videoElement.duration) && videoElement.duration > 0
-          ? Math.min(resumeTime, videoElement.duration)
-          : resumeTime
-        try {
-          videoElement.currentTime = Math.max(0, nextTime)
-        } catch (error) {
-          logger.warn('[ErrorRecovery] Failed to restore playback position after reload', error)
-        }
-      }, { once: true })
-    }
-
-    currentSourceKey = ''
-    pendingSourceKey = ''
-    doLoadSource(sourceToReload)
-
-    if (shouldResumePlayback) {
-      autoPlayOnReady = true
-    }
-
-    logger.debug('[ErrorRecovery] Reloaded current source')
-    return true
-  }
-
-  const executeRetry = async (error: PlayerError): Promise<boolean> => {
-    retryCount += 1
-    logger.debug(`[ErrorRecovery] Retry attempt ${retryCount}/${maxRetries}`)
-    await new Promise((resolve) => setTimeout(resolve, retryDelay))
-
-    const controller = getStreamController()
-    const recoveryAction: PlaybackRecoveryAction =
-      typeof controller?.recoverPlayback === 'function'
-        ? await controller.recoverPlayback(error, {
-            ...buildRecoveryContext(),
-            retryCount
-          })
-        : 'reload-source'
-
-    if (recoveryAction === 'handled') {
-      return true
-    }
-
-    if (recoveryAction === 'reload-source') {
-      return reloadCurrentSource()
-    }
-
-    return false
-  }
-
-  const handleRecoveryError = async (error: PlayerError): Promise<boolean> => {
-    if (isRecovering) {
-      logger.debug('[ErrorRecovery] Already recovering, skipping')
-      return false
-    }
-
-    const code = String(error.code || '')
-    if (code.includes('STALL')) {
-      if (videoElement && !videoElement.ended && videoElement.paused) {
-        try {
-          await videoElement.play()
-          logger.debug('[ErrorRecovery] Recovered stall via play()')
-          return true
-        } catch {}
-      }
-      return false
-    }
-
-    isRecovering = true
-    try {
-      const strategy = determineRecoveryStrategy(error)
-      logger.debug(`[ErrorRecovery] Strategy: ${strategy}, Error`, error)
-
-      if (strategy === 'retry') {
-        return await executeRetry(error)
-      }
-
-      if (strategy === 'quality-fallback') {
-        return executeQualityFallback()
-      }
-
-      return false
-    } finally {
-      isRecovering = false
-    }
-  }
 
   const createPluginContext = (): PluginContext => ({
     get videoElement() { return videoElement },
@@ -539,13 +338,13 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     emit(event, payload) {
       if (event === 'waiting') {
         loading = true
-        scheduleWaitingRecovery()
+        errorRecovery.scheduleWaitingRecovery()
       }
 
       if (event === 'canplay') {
         loading = false
         retryCount = 0
-        clearWaitingRecovery()
+        errorRecovery.clearWaitingRecovery()
 
         if (autoPlayOnReady) {
           autoPlayOnReady = false
@@ -568,7 +367,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     getQualities() { return qualities },
     registerQualities(qs) {
       qualities = qs
-      setRecoveryQualities(qs)
+      errorRecovery.setRecoveryQualities(qs)
       if (registeredQualityId !== null) {
         const match = qs.find((item) => item.id === registeredQualityId)
         if (match?.label) {
@@ -607,13 +406,13 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
     reportError(error) {
       pluginHandlingError = true
-      void handleRecoveryError(error)
+      void errorRecovery.handleRecoveryError(error)
         .then((recovered) => {
-          if (!recovered) reportFatalError(error)
+          if (!recovered) errorRecovery.reportFatalError(error)
           pluginHandlingError = false
         })
         .catch(() => {
-          reportFatalError(error)
+          errorRecovery.reportFatalError(error)
           pluginHandlingError = false
         })
     },
@@ -694,7 +493,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
     bufferedProgress = 0
     markSourceLoadingStarted()
-    clearWaitingRecovery()
+    errorRecovery.clearWaitingRecovery()
     qualities = []
     currentQualityLabel = null
     currentQualityId = null
@@ -726,7 +525,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     const video = videoElement
 
     const onPlay = () => {
-      clearWaitingRecovery()
+      errorRecovery.clearWaitingRecovery()
       events.emit('play', undefined)
       options.onPlay?.()
       adapter.trackEvent?.('play', { sourceType: currentSourceType, currentTime: video.currentTime })
@@ -734,18 +533,18 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     const onPlaying = () => {
       loading = false
       retryCount = 0
-      clearWaitingRecovery()
+      errorRecovery.clearWaitingRecovery()
       events.emit('playing', undefined)
     }
     const onPause = () => {
-      clearWaitingRecovery()
+      errorRecovery.clearWaitingRecovery()
       flushProgress()
       events.emit('pause', undefined)
       options.onPause?.()
       adapter.trackEvent?.('pause', { sourceType: currentSourceType, currentTime: video.currentTime })
     }
     const onEnded = () => {
-      clearWaitingRecovery()
+      errorRecovery.clearWaitingRecovery()
       flushProgress()
       events.emit('ended', undefined)
       options.onEnded?.()
@@ -789,7 +588,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     }
     const onWaiting = () => {
       loading = true
-      scheduleWaitingRecovery()
+      errorRecovery.scheduleWaitingRecovery()
       events.emit('waiting', undefined)
     }
     const onStalled = () => {
@@ -799,7 +598,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       if (!canAcceptNativeCanPlay()) return
       loading = false
       retryCount = 0
-      clearWaitingRecovery()
+      errorRecovery.clearWaitingRecovery()
       events.emit('canplay', undefined)
 
       if (autoPlayOnReady) {
@@ -813,7 +612,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
         return
       }
 
-      clearWaitingRecovery()
+      errorRecovery.clearWaitingRecovery()
       const mediaErrorCode = videoElement?.error?.code
       const errorCode = mediaErrorCode === MediaError.MEDIA_ERR_NETWORK
         ? 'NETWORK_ERROR'
@@ -828,11 +627,11 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
         fatal: true,
         details: e
       }
-      void handleRecoveryError(err)
+      void errorRecovery.handleRecoveryError(err)
         .then((recovered) => {
-          if (!recovered) reportFatalError(err)
+          if (!recovered) errorRecovery.reportFatalError(err)
         })
-        .catch(() => reportFatalError(err))
+        .catch(() => errorRecovery.reportFatalError(err))
     }
     const onEnterPiP = () => {
       events.emit('enterpictureinpicture', undefined)
@@ -914,7 +713,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       removeVideoListeners()
     }
 
-    clearWaitingRecovery()
+    errorRecovery.clearWaitingRecovery()
     if (typeof document !== 'undefined') {
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
     }
@@ -936,7 +735,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       removeVideoListeners()
     }
 
-    clearWaitingRecovery()
+    errorRecovery.clearWaitingRecovery()
     releaseVideoElementMedia(previousVideoElement)
     videoElement = el
     setupVideoListeners()
@@ -974,8 +773,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   const seek = (time: number): void => {
     if (!videoElement) return
-    clearWaitingRecovery()
-    waitingRecoverySuppressedUntil = Date.now() + Math.max(retryDelay * 2, 4000)
+    errorRecovery.clearWaitingRecovery()
+    errorRecovery.suppressWaitingRecovery(Math.max(retryDelay * 2, 4000))
     videoElement.currentTime = time
     events.emit('seeking', time)
     adapter.trackEvent?.('seek', { currentTime: time, duration: videoElement.duration })
@@ -1088,7 +887,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   }
 
   const setQuality = (quality: QualitySelectionRequest): void => {
-    waitingRecoverySuppressedUntil = Date.now() + Math.max(retryDelay * 2, 4000)
+    errorRecovery.suppressWaitingRecovery(Math.max(retryDelay * 2, 4000))
     const { controllerQuality, emittedLabel, isAutoQuality } = resolveQualitySelection(quality)
 
     const getQualityController = (): any => {

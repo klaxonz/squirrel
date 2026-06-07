@@ -16,54 +16,42 @@
     <!-- 暗角遮罩-->
     <div class="sp-vignette-overlay"></div>
 
-    <!-- 视频信息浮层 -->
-    <transition name="sp-info-fade">
-      <div v-if="isFullscreen && showVideoInfo" class="sp-video-info-overlay">
-        <div class="sp-video-info-title">{{ props.title || 'Untitled' }}</div>
-        <div v-if="props.uploader" class="sp-video-info-meta">{{ props.uploader }}</div>
-      </div>
-    </transition>
+    <VideoInfoOverlay
+      :visible="showVideoInfo"
+      :fullscreen="isFullscreen"
+      :title="props.title"
+      :uploader="props.uploader"
+    />
 
-    <!-- 睡眠定时器角标 -->
-    <div v-if="isFullscreen && store.sleepTimerMinutes !== null" class="sp-sleep-badge">
-      <PlayerIcon name="sleepTimer" />
-      <span>{{ formatSleepRemaining() }}</span>
-    </div>
+    <SleepTimerBadge
+      :fullscreen="isFullscreen"
+      :visible="store.sleepTimerMinutes !== null"
+      :remaining-text="formatSleepRemaining()"
+    />
 
-    <!-- AB 循环指示器 -->
     <div v-if="store.abLoopActive" class="sp-abloop-indicator">
       <PlayerIcon name="loopAB" /> {{ t('abLoopActive') }}
       <span class="sp-abloop-times">{{ formatTime(store.loopAPoint ?? 0) }} - {{ formatTime(store.loopBPoint ?? 0) }}</span>
     </div>
 
-    <!-- 下一集倒计时 -->
-    <transition name="sp-info-fade">
-      <div v-if="showUpNext" class="sp-upnext-overlay" @click.stop="handleStartNow">
-        <div class="sp-upnext-label">{{ t('upNext') }}</div>
-        <div class="sp-upnext-title">{{ nextEpisodeTitle }}</div>
-        <div class="sp-upnext-countdown">{{ upNextCountdown }}s</div>
-        <button class="sp-upnext-btn" @click.stop="handleStartNow">{{ t('startNow') }}</button>
-      </div>
-    </transition>
+    <UpNextOverlay
+      :visible="showUpNext"
+      :label="t('upNext')"
+      :next-title="nextEpisodeTitle"
+      :countdown="upNextCountdown"
+      :start-now-label="t('startNow')"
+      @start-now="handleStartNow"
+    />
 
-    <!-- 章节浮层 -->
-    <transition name="sp-info-fade">
-      <div v-if="showChapterOverlay" class="sp-chapter-overlay" @mouseleave="showChapterOverlay = false">
-        <div class="sp-chapter-overlay-title">{{ t('chapters') }}</div>
-        <div
-          v-for="chapter in normalizedChapters"
-          :key="chapter.id"
-          class="sp-chapter-overlay-item"
-          :class="{ 'is-active': isCurrentChapter(chapter) }"
-          @click="handleChapterClick(chapter.startTime)"
-        >
-          <span class="sp-chapter-overlay-time">{{ formatTime(chapter.startTime) }}</span>
-          <span class="sp-chapter-overlay-name">{{ chapter.title }}</span>
-        </div>
-      </div>
-    </transition>
-
-    <!-- 快捷速度选择 -->
+    <ChapterOverlay
+      :visible="showChapterOverlay"
+      :chapters="normalizedChapters"
+      :chapters-label="t('chapters')"
+      :current-time="currentTime"
+      :duration="duration"
+      @close="showChapterOverlay = false"
+      @select="handleChapterClick"
+    />
 
 
     <!-- ???? -->
@@ -86,15 +74,7 @@
         <div v-for="n in 5" :key="n" class="sp-audio-dot" :class="{ 'is-active': isPlaying }"></div>
       </div>
     </div>
-    <!-- ?? HUD ????-->
-    <transition name="sp-hud-fade">
-      <div v-if="centralHud.visible" class="sp-central-hud">
-        <div class="sp-central-hud-content">
-          <PlayerIcon :name="centralHud.icon" class="sp-central-hud-icon" />
-          <div class="sp-central-hud-value">{{ centralHud.value }}</div>
-        </div>
-      </div>
-    </transition>
+    <CentralHudOverlay :hud="centralHud" />
 
     <!-- ?????-->
     <Transition name="sp-loading-fade" @after-enter="onLoadingEnter" @after-leave="onLoadingLeave">
@@ -147,7 +127,7 @@
           <!-- ????????-->
           <div class="sp-progress-container">
             <div ref="progressAreaRef"
-                 class="sp-progress-area" 
+                 class="sp-progress-area" data-progress-area
                  @pointerdown.prevent="onProgressPointerDown"
                  @pointermove="onProgressPointerMove"
                  @pointerleave="onProgressPointerLeave"
@@ -563,7 +543,7 @@
             <div
               class="sp-menu-item"
               :class="{ 'is-active': store.sleepTimerMinutes === null }"
-              @click="handleSleepTimerSelect(null)"
+              @click="sleepTimerSelect(null)"
             >
               {{ t('sleepTimerOff') }}
             </div>
@@ -572,7 +552,7 @@
               :key="mins"
               class="sp-menu-item"
               :class="{ 'is-active': store.sleepTimerMinutes === mins }"
-              @click="handleSleepTimerSelect(mins)"
+              @click="sleepTimerSelect(mins)"
             >
               {{ t('sleepTimerMinutes', { minutes: mins }) }}
             </div>
@@ -594,23 +574,22 @@ import {
   shouldAutoHideControls,
   shouldTogglePlayOnVideoClick
 } from './runtime/mobileControls'
-import {
-  createPointMarkerDraft,
-  createSegmentMarkerDraft,
-  isClipMarkerActive,
-  isPointMarker,
-  resolveClipMarkerVideoId,
-} from './runtime/clipMarkers'
 import type { MediaSource, SubtitleTrack } from './core'
 import { getCodecFamily } from './core/codec'
 import type { ThemeName } from './themes'
-import type { IconName } from './core/useIcons'
 import type { VideoClipMarker } from '@/types/videoClipMarker'
-import { createVideoClipMarker, deleteVideoClipMarker, updateVideoClipMarker, uploadVideoClipMarkerPreview } from '@/api/videoClipMarkers'
 import { usePlayerStore } from '@/stores/player'
 import PlayerIcon from './PlayerIcon.vue'
 import StatsOverlay from './StatsOverlay.vue'
 import PlaylistPanel from './PlaylistPanel.vue'
+import CentralHudOverlay from './CentralHudOverlay.vue'
+import VideoInfoOverlay from './VideoInfoOverlay.vue'
+import SleepTimerBadge from './SleepTimerBadge.vue'
+import ChapterOverlay from './ChapterOverlay.vue'
+import UpNextOverlay from './UpNextOverlay.vue'
+import { useClipMarkers } from './composables/useClipMarkers'
+import { useSleepTimer } from './composables/useSleepTimer'
+import { useCentralHud } from './composables/useCentralHud'
 
 import './themes/variables.css'
 import './themes/dark.css'
@@ -739,396 +718,31 @@ const nextEpisodeTitle = computed(() => {
   }
   return ''
 })
-let sleepTimerInterval: ReturnType<typeof setInterval> | null = null
 let videoInfoTimer: ReturnType<typeof setTimeout> | null = null
 let upNextTimer: ReturnType<typeof setInterval> | null = null
 
-const sleepTimerOptions = [15, 30, 45, 60, 90, 120]
+const { centralHud, showCentralHud } = useCentralHud()
 
-// Clip Markers state
-const localClipMarkers = ref<VideoClipMarker[]>([])
-const clipMarkerVideoId = ref<string | number | null>(null)
-const hoveredMarkerId = ref<number | null>(null)
-const pendingSegmentStartTime = ref<number | null>(null)
-const pendingSegmentEndTime = ref<number | null>(null)
-const pendingSegmentPreviewImageDataUrl = ref<string | null>(null)
-
-const hasPendingSegment = computed(() => pendingSegmentStartTime.value !== null)
-const isSavingMarker = ref(false)
-const pendingSegmentPreviewEnd = computed(() => {
-  const end = pendingSegmentEndTime.value
-  if (end === null) return currentTime.value
-  if (pendingSegmentStartTime.value !== null && end < pendingSegmentStartTime.value) {
-    return pendingSegmentStartTime.value
-  }
-  return end
+const clipMarkersState = useClipMarkers({
+  clipMarkers: computed(() => props.clipMarkers),
+  videoId: computed(() => props.videoId),
+  source: computed(() => props.source),
+  currentTime,
+  duration,
+  seek,
+  showCentralHud,
+  onClipMarkerSelect: (time) => emit('clipmarkerselect', time),
+  onClipMarkersUpdated: (markers) => emit('clipmarkersupdated', markers),
 })
-const draggingMarker = ref<{
-  markerId: number
-  pointerId: number
-  dragType: 'start' | 'end' | 'move'
-  startX: number
-  originalStart: number
-  originalEnd: number
-  previewStart: number
-  previewEnd: number
-  moved: boolean
-} | null>(null)
-let activeMarkerPointerTarget: HTMLElement | null = null
-let suppressMarkerClickUntil = 0
 
-const handleOverlaySeek = (time: number) => {
-  seek(time)
-  emit('clipmarkerselect', time)
-}
-
-const syncLocalClipMarkers = (markers: VideoClipMarker[]) => {
-  localClipMarkers.value = [...markers].sort((a, b) => a.start_time - b.start_time)
-  emit('clipmarkersupdated', localClipMarkers.value)
-}
-
-const captureCurrentFrameDataUrl = (): string | null => {
-  const video = videoRef.value
-  if (
-    !video
-    || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
-    || video.videoWidth <= 0
-    || video.videoHeight <= 0
-  ) {
-    return null
-  }
-
-  const canvas = document.createElement('canvas')
-  canvas.width = video.videoWidth
-  canvas.height = video.videoHeight
-  const context = canvas.getContext('2d')
-  if (!context) return null
-
-  try {
-    context.drawImage(video, 0, 0, canvas.width, canvas.height)
-    return canvas.toDataURL('image/jpeg', 0.82)
-  } catch {
-    return null
-  }
-}
-
-const uploadMarkerPreviewIfAvailable = async (marker: VideoClipMarker, imageDataUrl: string | null): Promise<VideoClipMarker> => {
-  if (!imageDataUrl) return marker
-
-  const { data, error } = await uploadVideoClipMarkerPreview(marker.id, {
-    image_data_url: imageDataUrl,
-  })
-
-  if (error || !data) {
-    return marker
-  }
-
-  return data
-}
-
-const markCurrentPoint = async () => {
-  if (!clipMarkerVideoId.value || isSavingMarker.value) return
-  const t = currentTime.value
-  const previewImageDataUrl = captureCurrentFrameDataUrl()
-  isSavingMarker.value = true
-  try {
-    const { data, error } = await createVideoClipMarker({
-      video_id: clipMarkerVideoId.value,
-      start_time: t,
-      end_time: t,
-    })
-
-    isSavingMarker.value = false
-    if (error || !data) {
-      showCentralHud('error', error?.message || '标记失败', 'play')
-      return
-    }
-
-    const markerWithPreview = await uploadMarkerPreviewIfAvailable(data, previewImageDataUrl)
-    syncLocalClipMarkers([...localClipMarkers.value, markerWithPreview])
-    showCentralHud('marker', `标记 ${formatTime(t)}`, 'play')
-  } finally {
-    isSavingMarker.value = false
-  }
-}
-
-const startSegmentCapture = () => {
-  if (isSavingMarker.value) return
-  const t = currentTime.value
-  if (!isFinite(t) || t < 0 || !duration.value) return
-  const draft = createPointMarkerDraft({ currentTime: t, duration: duration.value })
-  pendingSegmentStartTime.value = draft.startTime
-  pendingSegmentPreviewImageDataUrl.value = captureCurrentFrameDataUrl()
-  showCentralHud('marker', `起点 ${formatTime(draft.startTime)}`, 'skipBackward')
-}
-
-const finishSegmentCapture = async () => {
-  if (!clipMarkerVideoId.value || pendingSegmentStartTime.value === null || isSavingMarker.value) return
-  const startTime = pendingSegmentStartTime.value
-  const endTime = pendingSegmentEndTime.value ?? currentTime.value
-  const draft = createSegmentMarkerDraft({
-    startTime,
-    currentTime: endTime,
-    duration: duration.value,
-  })
-  pendingSegmentStartTime.value = null
-  pendingSegmentEndTime.value = null
-  const previewImageDataUrl = pendingSegmentPreviewImageDataUrl.value
-  pendingSegmentPreviewImageDataUrl.value = null
-  isSavingMarker.value = true
-
-  try {
-    const { data, error } = await createVideoClipMarker({
-      video_id: clipMarkerVideoId.value,
-      start_time: draft.startTime,
-      end_time: draft.endTime,
-    })
-
-    if (error || !data) {
-      isSavingMarker.value = false
-      showCentralHud('error', error?.message || '保存失败', 'play')
-      return
-    }
-
-    const markerWithPreview = await uploadMarkerPreviewIfAvailable(data, previewImageDataUrl)
-    syncLocalClipMarkers([...localClipMarkers.value, markerWithPreview])
-    showCentralHud('segment', `片段 ${formatTime(draft.startTime)}`, 'skipForward')
-  } finally {
-    isSavingMarker.value = false
-  }
-}
-
-const cancelSegmentCapture = () => {
-  pendingSegmentStartTime.value = null
-  pendingSegmentEndTime.value = null
-  pendingSegmentPreviewImageDataUrl.value = null
-  showCentralHud('seek', '已取消', 'play')
-}
-
-const deleteMarkerFromPanel = async (marker: { id: number }) => {
-  const { error } = await deleteVideoClipMarker(marker.id)
-  if (error) {
-    showCentralHud('error', error.message || '删除失败', 'play')
-    return
-  }
-  syncLocalClipMarkers(localClipMarkers.value.filter((item) => item.id !== marker.id))
-  hoveredMarkerId.value = null
-}
-
-// ---- Marker drag ----
-const getProgressRect = () => progressAreaRef.value?.getBoundingClientRect()
-
-const getTimeFromPointerX = (clientX: number) => {
-  const rect = getProgressRect()
-  if (!rect || !duration.value) return null
-  const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-  return ratio * duration.value
-}
-
-const addMarkerDragListeners = () => {
-  window.addEventListener('pointermove', onWindowMarkerPointerMove)
-  window.addEventListener('pointerup', onWindowMarkerPointerUp)
-  window.addEventListener('pointercancel', onWindowMarkerPointerUp)
-}
-
-const removeMarkerDragListeners = () => {
-  window.removeEventListener('pointermove', onWindowMarkerPointerMove)
-  window.removeEventListener('pointerup', onWindowMarkerPointerUp)
-  window.removeEventListener('pointercancel', onWindowMarkerPointerUp)
-}
-
-const addProgressScrubListeners = () => {
-  window.addEventListener('pointermove', onWindowProgressPointerMove)
-  window.addEventListener('pointerup', onWindowProgressPointerUp)
-  window.addEventListener('pointercancel', onWindowProgressPointerUp)
-}
-
-const removeProgressScrubListeners = () => {
-  window.removeEventListener('pointermove', onWindowProgressPointerMove)
-  window.removeEventListener('pointerup', onWindowProgressPointerUp)
-  window.removeEventListener('pointercancel', onWindowProgressPointerUp)
-}
-
-const onMarkerPointerDown = (e: PointerEvent, marker: ReturnType<typeof normalizedClipMarkers.value.find>) => {
-  if (isSavingMarker.value || !marker) return
-  const rect = getProgressRect()
-  if (!rect) return
-  const ratio = (e.clientX - rect.left) / rect.width
-  const markerStartRatio = marker.startPercent / 100
-  const markerEndRatio = (marker.startPercent + marker.widthPercent) / 100
-
-  let dragType: 'start' | 'end' | 'move' = 'move'
-  if (!marker.isPoint && marker.widthPercent > 0.5) {
-    const startDist = Math.abs(ratio - markerStartRatio)
-    const endDist = Math.abs(ratio - markerEndRatio)
-    if (startDist < endDist) dragType = 'start'
-    else if (endDist < startDist) dragType = 'end'
-  }
-
-  draggingMarker.value = {
-    markerId: marker.id,
-    pointerId: e.pointerId,
-    dragType,
-    startX: e.clientX,
-    originalStart: marker.startTime,
-    originalEnd: marker.endTime,
-    previewStart: marker.startTime,
-    previewEnd: marker.endTime,
-    moved: false,
-  }
-  addMarkerDragListeners()
-
-  if (e.currentTarget instanceof HTMLElement && typeof e.currentTarget.setPointerCapture === 'function') {
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId)
-      activeMarkerPointerTarget = e.currentTarget
-    } catch {
-      activeMarkerPointerTarget = null
-    }
-  }
-}
-
-const onPointerMove = (event: PointerEvent) => {
-  if (!shouldHandlePointerVisibility(event.pointerType)) return
-  showControls()
-
-  // Chapter overlay on fullscreen: show when cursor near top
-  if (isFullscreen.value && containerRef.value) {
-    const rect = containerRef.value.getBoundingClientRect()
-    const y = event.clientY - rect.top
-    if (y < 60) {
-      showChapterOverlay.value = true
-    } else if (y > 200) {
-      showChapterOverlay.value = false
-    }
-  }
-}
-
-const releaseMarkerPointerCapture = () => {
-  const markerPointerId = draggingMarker.value?.pointerId
-  if (!activeMarkerPointerTarget || markerPointerId === undefined || markerPointerId === null) {
-    activeMarkerPointerTarget = null
-    return
-  }
-  if (typeof activeMarkerPointerTarget.hasPointerCapture !== 'function') {
-    activeMarkerPointerTarget = null
-    return
-  }
-  if (!activeMarkerPointerTarget.hasPointerCapture(markerPointerId)) {
-    activeMarkerPointerTarget = null
-    return
-  }
-
-  try {
-    activeMarkerPointerTarget.releasePointerCapture(markerPointerId)
-  } catch {
-    // Ignore browsers that reject release when capture is already gone.
-  }
-
-  activeMarkerPointerTarget = null
-}
-
-const updateDragPreview = (deltaTime: number) => {
-  const d = draggingMarker.value
-  if (!d) return
-  const rect = getProgressRect()
-  if (!rect || !duration.value) return
-
-  const rawStart = d.originalStart + deltaTime
-  const rawEnd = d.originalEnd + deltaTime
-
-  let newStart: number, newEnd: number
-  if (d.dragType === 'move') {
-    const span = d.originalEnd - d.originalStart
-    newStart = Math.max(0, Math.min(duration.value - span, rawStart))
-    newEnd = newStart + span
-  } else if (d.dragType === 'start') {
-    newStart = Math.max(0, Math.min(d.originalEnd - 0.1, rawStart))
-    newEnd = d.originalEnd
-  } else {
-    newStart = d.originalStart
-    newEnd = Math.min(duration.value, Math.max(d.originalStart + 0.1, rawEnd))
-  }
-
-  d.previewStart = newStart
-  d.previewEnd = newEnd
-  d.moved = d.moved
-    || Math.abs(newStart - d.originalStart) > 0.01
-    || Math.abs(newEnd - d.originalEnd) > 0.01
-
-  showCentralHud('seek', `${formatTime(newStart)} → ${formatTime(newEnd)}`, 'skipForward')
-}
-
-const commitDrag = () => {
-  const d = draggingMarker.value
-  if (!d) return
-  const normMarker = normalizedClipMarkers.value.find((m) => m.id === d.markerId)
-  if (!normMarker || !duration.value) {
-    releaseMarkerPointerCapture()
-    removeMarkerDragListeners()
-    draggingMarker.value = null
-    return
-  }
-
-  const newStart = Math.max(0, Math.min(duration.value, d.previewStart))
-  const newEnd = Math.max(newStart, Math.min(duration.value, d.previewEnd))
-
-  releaseMarkerPointerCapture()
-  removeMarkerDragListeners()
-  draggingMarker.value = null
-  if (d.moved) {
-    suppressMarkerClickUntil = Date.now() + 250
-  }
-
-  if (normMarker.isPoint || Math.abs(newStart - newEnd) < 0.1) {
-    updateVideoClipMarker(d.markerId, { start_time: newStart, end_time: newStart }).then(({ data, error }) => {
-      if (error || !data) {
-        showCentralHud('error', error?.message || '更新失败', 'play')
-        return
-      }
-      syncLocalClipMarkers(localClipMarkers.value.map((m) => m.id === d.markerId ? data : m))
-      showCentralHud('marker', `标记 ${formatTime(newStart)}`, 'skipForward')
-    })
-    return
-  }
-
-  updateVideoClipMarker(d.markerId, { start_time: newStart, end_time: newEnd }).then(({ data, error }) => {
-    if (error || !data) {
-      showCentralHud('error', error?.message || '更新失败', 'play')
-      return
-    }
-    syncLocalClipMarkers(localClipMarkers.value.map((m) => m.id === d.markerId ? data : m))
-    showCentralHud('segment', `${formatTime(newStart)} → ${formatTime(newEnd)}`, 'skipForward')
-  })
-}
-
-const onWindowMarkerPointerMove = (event: PointerEvent) => {
-  if (!draggingMarker.value) return
-  if (event.pointerId !== draggingMarker.value.pointerId) return
-
-  const rect = getProgressRect()
-  if (!rect || !duration.value) return
-
-  const deltaX = event.clientX - draggingMarker.value.startX
-  const deltaTime = (deltaX / rect.width) * duration.value
-  updateDragPreview(deltaTime)
-}
-
-const onWindowMarkerPointerUp = (event: PointerEvent) => {
-  if (!draggingMarker.value) return
-  if (event.pointerId !== draggingMarker.value.pointerId) return
-  commitDrag()
-}
-// ---- end marker drag ----
-
-// Sync local markers from prop
-watch(() => props.clipMarkers, (markers) => {
-  localClipMarkers.value = Array.isArray(markers) ? [...markers] : []
-}, { immediate: true, deep: true })
-
-watch(() => [props.videoId, props.source] as const, ([videoId, source]) => {
-  clipMarkerVideoId.value = resolveClipMarkerVideoId(videoId, source as any)
-}, { immediate: true })
+const {
+  sleepTimerOptions,
+  sleepTimerLabel,
+  formatSleepRemaining,
+  handleSleepTimerSelect,
+  stopSleepTimer,
+  startSleepTimer,
+} = useSleepTimer({ store, pause, showCentralHud, t: t as (key: string, params?: Record<string, string | number>) => string })
 
 const showSettingsMenu = ref(false)
 const showQualityMenu = ref(false)
@@ -1149,9 +763,6 @@ const handleRetry = () => {
   errorState.value.show = false
   emit('retry')
 }
-const centralHud = ref<{ visible: boolean; type: string; value: string; icon: IconName; percent: number }>({ 
-  visible: false, type: '', value: '', icon: 'play', percent: 0 
-})
 const showLoadingOverlay = computed(() => (store.loading || props.externalLoading) && !errorState.value.show)
 const isAudioOnly = computed(() => !!(props.source as any)?.audioOnly)
 const loadingStageText = computed(() => {
@@ -1190,13 +801,6 @@ const updateVideoRotationScale = () => {
 // Loading state control
 const onLoadingEnter = () => {}
 const onLoadingLeave = () => {}
-
-let centralHudTimer: ReturnType<typeof setTimeout>
-const showCentralHud = (type: string, value: string, icon: IconName, percent: number = 0) => {
-  clearTimeout(centralHudTimer)
-  centralHud.value = { visible: true, type, value, icon, percent }
-  centralHudTimer = setTimeout(() => { centralHud.value.visible = false }, 1500)
-}
 
 watch(volume, (newVol, oldVol) => {
   if (Math.abs(newVol - oldVol) < 0.1) return
@@ -1272,64 +876,31 @@ const handleChapterClick = (time: number) => {
   showCentralHud('seek', formatTime(time), 'skipForward')
 }
 
-const COLORS = [
-  'hsl(24 100% 50%)',
-  'hsl(186 100% 50%)',
-  'hsl(145 70% 50%)',
-  'hsl(280 80% 60%)',
-  'hsl(38 92% 55%)',
-]
-const normalizedClipMarkers = computed(() => {
-  if (!duration.value || duration.value <= 0) return []
-
-  return localClipMarkers.value.map((marker, index) => {
-    const dragPreview = draggingMarker.value?.markerId === marker.id
-      ? {
-          startTime: draggingMarker.value.previewStart,
-          endTime: draggingMarker.value.previewEnd,
-        }
-      : null
-    const startTime = Math.max(
-      Number(dragPreview?.startTime ?? marker.start_time) || 0,
-      0
-    )
-    const rawEndTime = Number(dragPreview?.endTime ?? marker.end_time)
-    const endTime = Number.isFinite(rawEndTime) ? Math.max(rawEndTime, startTime) : startTime
-    const isPoint = isPointMarker({ startTime, endTime })
-    const startPercent = Math.min((startTime / duration.value) * 100, 100)
-    const widthPercent = isPoint ? 0.001 : Math.max(((endTime - startTime) / duration.value) * 100, 0.35)
-
-    return {
-      id: marker.id,
-      title: marker.title,
-      startTime,
-      endTime,
-      isPoint,
-      startPercent,
-      widthPercent,
-      color: COLORS[index % COLORS.length],
-    }
-  })
-})
-const markerColorById = computed(() => Object.fromEntries(
-  normalizedClipMarkers.value.map((marker) => [marker.id, marker.color])
-))
-const activeClipMarkerId = computed(() => {
-  const activeMarker = normalizedClipMarkers.value.find((marker) => isClipMarkerActive(marker, currentTime.value))
-  return activeMarker?.id ?? null
-})
-const getMarkerTitle = (marker: { title?: string | null; start_time?: number; startTime?: number; end_time?: number; endTime?: number }) => {
-  if (marker.title) return marker.title
-  const startTime = Number(marker.start_time ?? marker.startTime ?? 0)
-  return isPointMarker(marker) ? `?? ${formatTime(startTime)}` : `?? ${formatTime(startTime)}`
-}
-const getMarkerTimeText = (marker: { start_time?: number; startTime?: number; end_time?: number; endTime?: number }) => {
-  const startTime = Number(marker.start_time ?? marker.startTime ?? 0)
-  const endTime = Number(marker.end_time ?? marker.endTime ?? startTime)
-  return isPointMarker(marker)
-    ? `????${formatTime(startTime)}`
-    : `${formatTime(startTime)} ??${formatTime(endTime)}`
-}
+const {
+  localClipMarkers,
+  hoveredMarkerId,
+  hasPendingSegment,
+  pendingSegmentStartTime,
+  pendingSegmentEndTime,
+  pendingSegmentPreviewEnd,
+  isSavingMarker,
+  draggingMarker,
+  normalizedClipMarkers,
+  markerColorById,
+  activeClipMarkerId,
+  getMarkerTitle,
+  getMarkerTimeText,
+  markCurrentPoint,
+  startSegmentCapture,
+  finishSegmentCapture,
+  cancelSegmentCapture,
+  deleteMarkerFromPanel,
+  onMarkerPointerDown,
+  handleClipMarkerSelect,
+  captureCurrentFrameDataUrl,
+  releaseMarkerPointerCapture,
+  removeMarkerDragListeners,
+} = clipMarkersState
 const volumeIconName = computed(() => (isMuted.value || volume.value === 0) ? 'volumeOff' : volume.value < 50 ? 'volumeLow' : 'volumeHigh')
 const volumeText = computed(() => isMuted.value ? 'Muted' : `${Math.round(volume.value)}%`)
 const volumeFillPercent = computed(() => (isMuted.value ? 0 : Math.min(100, (volume.value / MAX_VOLUME) * 100)))
@@ -1660,16 +1231,25 @@ const handleVideoClick = () => {
   if (!shouldTogglePlayOnVideoClick(lastPointerType.value)) return
   togglePlay()
 }
-const handleClipMarkerSelect = (marker: { id: number; startTime: number }) => {
-  if (Date.now() < suppressMarkerClickUntil) return
-  seek(marker.startTime)
-  emit('clipmarkerselect', marker.startTime)
-}
-
 const onPointerEnter = (event: PointerEvent) => {
   if (!shouldHandlePointerVisibility(event.pointerType)) return
   showControls()
 }
+
+const onPointerMove = (event: PointerEvent) => {
+  if (!shouldHandlePointerVisibility(event.pointerType)) return
+  showControls()
+  if (isFullscreen.value && containerRef.value) {
+    const rect = containerRef.value.getBoundingClientRect()
+    const y = event.clientY - rect.top
+    if (y < 60) {
+      showChapterOverlay.value = true
+    } else if (y > 200) {
+      showChapterOverlay.value = false
+    }
+  }
+}
+
 const onPointerLeave = (event: PointerEvent) => {
   if (!shouldHandlePointerVisibility(event.pointerType)) return
   if (!isScrubbing.value) hideControls()
@@ -1706,6 +1286,18 @@ const releaseProgressPointerCapture = () => {
   } catch {
     // Ignore browsers that reject release when the capture is already gone.
   }
+}
+
+const addProgressScrubListeners = () => {
+  window.addEventListener('pointermove', onWindowProgressPointerMove)
+  window.addEventListener('pointerup', onWindowProgressPointerUp)
+  window.addEventListener('pointercancel', onWindowProgressPointerUp)
+}
+
+const removeProgressScrubListeners = () => {
+  window.removeEventListener('pointermove', onWindowProgressPointerMove)
+  window.removeEventListener('pointerup', onWindowProgressPointerUp)
+  window.removeEventListener('pointercancel', onWindowProgressPointerUp)
 }
 
 const stopProgressScrub = (pointerId?: number) => {
@@ -1906,54 +1498,14 @@ const handlePointerDown = (event: PointerEvent) => {
 
 // ===== Fullscreen features =====
 
-const sleepTimerLabel = computed(() => {
-  if (store.sleepTimerMinutes === null) return t('sleepTimerOff')
-  return t('sleepTimerMinutes', { minutes: store.sleepTimerMinutes })
-})
-
-const formatSleepRemaining = (): string => {
-  const total = store.sleepTimerRemaining
-  const mins = Math.floor(total / 60)
-  const secs = Math.floor(total % 60)
-  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-}
-
-const handleSleepTimerSelect = (mins: number | null) => {
-  store.setSleepTimerMinutes(mins)
-  if (mins !== null) {
-    store.setSleepTimerRemaining(mins * 60)
-    startSleepTimer()
-  } else {
-    stopSleepTimer()
-  }
+const sleepTimerSelect = (mins: number | null) => {
+  handleSleepTimerSelect(mins)
   settingsView.value = 'main'
   showSettingsMenu.value = false
 }
 
-const startSleepTimer = () => {
-  stopSleepTimer()
-  sleepTimerInterval = setInterval(() => {
-    if (store.sleepTimerRemaining > 0) {
-      store.setSleepTimerRemaining(store.sleepTimerRemaining - 1)
-    } else {
-      pause()
-      store.setSleepTimerMinutes(null)
-      store.setSleepTimerRemaining(0)
-      stopSleepTimer()
-      showCentralHud('sleep', t('sleepTimer'), 'pause')
-    }
-  }, 1000)
-}
-
-const stopSleepTimer = () => {
-  if (sleepTimerInterval) {
-    clearInterval(sleepTimerInterval)
-    sleepTimerInterval = null
-  }
-}
-
 const captureScreenshot = () => {
-  const dataUrl = captureCurrentFrameDataUrl()
+  const dataUrl = captureCurrentFrameDataUrl(videoRef)
   if (!dataUrl) {
     showCentralHud('error', t('errorMedia'), 'play')
     return

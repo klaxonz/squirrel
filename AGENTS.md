@@ -21,7 +21,7 @@ squirrel-backend/    Python/FastAPI 后端（核心项目）
 squirrel-sdk/        Python SDK，stdlib-only，Protocol-based 接口
 squirrel-site-runtimes/  站点插件（bilibili/youtube/pornhub/javdb/youporn）
 squirrel-desktop/    Electron 桌面端，ESM 模块
-squirrel-frontend/   Vue 3 前端（不再维护，不新增功能）
+squirrel-frontend/   Vue 3 前端（桌面端渲染进程）
 squirrel-cf-bypass/  Cloudflare 绕过 sidecar
 squirrel-music-api/  Node.js 音乐 API sidecar
 squirrel-extension/  Chrome 扩展 MV3
@@ -47,11 +47,11 @@ npm run dev                       # 开发模式（前端 dev server + Electron�
 node --test tests/<name>.test.mjs # 单测
 ```
 
-### 前端
+### 前端（Vue 3，桌面端渲染进程）
 ```bash
 npm install; npm run build:check  # 类型检查 + 构建
 ```
-⚠️ 前端不再维护，不新增功能，不要求测试。
+注意：前端是桌面端 Electron 的渲染进程，视频播放器等组件服务于桌面端。
 
 ## 代码约定
 
