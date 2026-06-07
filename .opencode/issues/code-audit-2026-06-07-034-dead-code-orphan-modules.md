@@ -1,6 +1,7 @@
 ---
 title: 死代码 — 后端 1700+ 行孤立模块 + 未使用依赖
-status: open
+status: fixed
+fixed_by: squirrel-backend/models/request_log.py:1, squirrel-backend/queues/queue_monitor.py:68, squirrel-backend/Pipfile:11, squirrel-desktop/package.json:36, squirrel-frontend/package.json:20
 severity: high
 category: dead-code
 location: squirrel-backend/utils/, models/, queues/, core/, Pipfile, package.json（跨项目）

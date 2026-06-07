@@ -65,5 +65,3 @@ class QueueBackpressureMonitor:
         return should_skip, pending_count
 
 
-# Global singleton
-queue_monitor = QueueBackpressureMonitor()
