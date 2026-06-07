@@ -1,19 +1,11 @@
 from __future__ import annotations
 
 import logging
-from urllib.parse import urlparse
 
-import httpx
-from crawl import (
-    BaseSiteProxy,
-    rewrite_playlist_for_proxy,
-    safe_cookie_header_value,
-)
 from crawl import (
     build_runtime_proxy_config as build_shared_runtime_proxy_config,
 )
-from fastapi import HTTPException
-from starlette.responses import StreamingResponse
+from crawl import rewrite_playlist_for_proxy
 
 logger = logging.getLogger(__name__)
 
@@ -58,73 +50,3 @@ def rewrite_proxy_playlist(url: str, content: str | bytes, referer: str | None =
         referer=referer,
         extensions=('ts', 'm4s', 'mp4', 'jpeg', 'jpg', 'm3u8'),
     )
-
-
-class YouPornProxy(BaseSiteProxy):
-    """YouPorn video proxy implementation."""
-
-    domain = SITE_DOMAIN
-    site_slug = SITE_SLUG
-    default_proxy_config = DEFAULT_PROXY_CONFIG
-
-    async def handle_stream(self, url: str, **kwargs) -> StreamingResponse:
-        try:
-            timeout_config, limits, follow_redirects, http2_enabled = self._build_client_params()
-            client_config = {
-                'timeout': timeout_config,
-                'limits': limits,
-                'follow_redirects': follow_redirects,
-                'http2': http2_enabled,
-            }
-
-            headers = dict(build_runtime_proxy_config(self.domain)['site_headers'])
-            headers.update({
-                'Cookie': safe_cookie_header_value(url),
-            })
-
-            async with httpx.AsyncClient(**client_config) as client:
-                parsed = urlparse(url)
-                path_lower = parsed.path.lower()
-
-                if path_lower.endswith('.m3u8') or 'playlist' in url.lower():
-                    response = await client.get(url, headers=headers)
-                    response.raise_for_status()
-                    content = response.content
-                    content_type = response.headers.get('content-type', '')
-
-                    if path_lower.endswith('.m3u8') or 'application/vnd.apple.mpegurl' in content_type.lower():
-                        return await self.handle_m3u8(url, content, referer=kwargs.get('referer'))
-
-                    return StreamingResponse(
-                        iter([content]),
-                        media_type=content_type or 'application/octet-stream',
-                        headers={
-                            'Access-Control-Allow-Origin': '*',
-                            'Cache-Control': 'public, max-age=3600',
-                        },
-                    )
-
-                resp = await client.get(url, headers=headers)
-                resp.raise_for_status()
-                return StreamingResponse(
-                    resp.aiter_bytes(),
-                    media_type=resp.headers.get('content-type', 'application/octet-stream'),
-                    headers={
-                        k: v for k, v in resp.headers.items()
-                        if k.lower() in {
-                            'content-type',
-                            'content-length',
-                            'content-range',
-                            'accept-ranges',
-                            'last-modified',
-                            'etag',
-                            'cache-control',
-                        }
-                    },
-                )
-        except httpx.HTTPError as exc:
-            logger.error('HTTP error occurred while proxying %s: %s', url, exc)
-            raise HTTPException(status_code=502, detail=f'Error fetching content: {exc}')
-        except Exception as exc:  # HTTP handler boundary — unexpected errors return 500
-            logger.error('Error occurred while proxying %s: %s', url, exc)
-            raise HTTPException(status_code=500, detail='Internal server error')

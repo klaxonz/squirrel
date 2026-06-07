@@ -12,6 +12,7 @@ from crawl import (
     NetworkError,
     NotFoundError,
     ParseError,
+    RateLimitError,
     YoutubeDLExtractorBase,
     apply_ytdlp_rate_limit,
     build_cookie_header,
@@ -79,6 +80,8 @@ class PornhubExtractor(YoutubeDLExtractorBase):
                 raise NotFoundError(f"视频不存在或已删除: {url}", context=context)
             elif any(kw in error_msg for kw in ['timeout', 'connection', 'network', 'closed file', 'i/o operation']):
                 raise NetworkError(f"网络连接失败: {url}", context=context)
+            elif any(kw in error_msg for kw in ['too many requests', 'rate limit', '429']):
+                raise RateLimitError(f"请求频率过高: {url}", context=context)
             else:
                 logger.error(f"Pornhub视频信息提取失败: {url}", exc_info=True)
                 raise ParseError(f"视频信息提取失败: {str(e)}", context=context)

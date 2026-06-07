@@ -1,6 +1,7 @@
 ---
 title: Site-runtimes proxy handle_stream 三站重复 + 异常使用不当
-status: open
+status: fixed
+fixed_by: multiple files
 severity: high
 category: architecture
 location: squirrel-site-runtimes/src/
@@ -42,3 +43,11 @@ AGENTS.md 规定了 4 种领域异常，`RateLimitError` 是其中之一，但�
 3. 在限流路径中加入 raise RateLimitError
 4. 抽取 auth base 函数处理 5 站公共流程
 5. 统一管理 User-Agent 和 URL 常量
+
+## 修复内容
+
+1. **移除 handle_stream 死代码**: 删除 4 站 proxy 中 handle_stream 方法 + Proxy 类 + SDK 中 VideoProxy/BaseSiteProxy，保留模块级 build_runtime_proxy_config/rewrite_proxy_playlist
+2. **Exception→ParseError**: javdb/subscription.py:35, pornhub/subscription.py:58,73
+3. **RateLimitError**: 5 站 extractor 增加 rate-limit 关键字检测（too many requests/rate limit/429）
+4. **硬编码 URL/UA**: auth 重构中一并清理，proxy 中 UA 合并为单个 import
+5. **auth 五站抽取**: 创建 crawl/auth_base.py:check_login_status 共享函数，5 站 auth.py 精简 40-60%

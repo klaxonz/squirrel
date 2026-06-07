@@ -3,17 +3,10 @@ from __future__ import annotations
 import logging
 from urllib.parse import parse_qs, urlparse, urlunparse
 
-import httpx
-from crawl import (
-    BaseSiteProxy,
-    rewrite_playlist_for_proxy,
-    safe_cookie_header_value,
-)
 from crawl import (
     build_runtime_proxy_config as build_shared_runtime_proxy_config,
 )
-from fastapi import HTTPException
-from starlette.responses import StreamingResponse
+from crawl import rewrite_playlist_for_proxy
 
 logger = logging.getLogger(__name__)
 
@@ -120,75 +113,3 @@ def rewrite_proxy_playlist(url: str, content: str | bytes, referer: str | None =
         referer=referer,
         extensions=('ts', 'm4s', 'mp4', 'm3u8', 'jpg', 'jpeg', 'vtt'),
     )
-
-
-class YouTubeProxy(BaseSiteProxy):
-    """YouTube video proxy implementation."""
-
-    domain = SITE_DOMAIN
-    site_slug = SITE_SLUG
-    default_proxy_config = DEFAULT_PROXY_CONFIG
-    playlist_extensions = ('ts', 'm4s', 'mp4', 'm3u8', 'jpg', 'jpeg', 'vtt')
-    _request = None
-
-    async def handle_stream(self, url: str, **kwargs) -> StreamingResponse:
-        try:
-            timeout_config, limits, follow_redirects, http2_enabled = self._build_client_params()
-
-            client_config = {
-                'timeout': timeout_config,
-                'limits': limits,
-                'follow_redirects': follow_redirects,
-                'http2': http2_enabled,
-            }
-
-            headers = dict(build_runtime_proxy_config(self.domain)['site_headers'])
-            if self._request:
-                range_header = self._request.headers.get('range')
-                if range_header:
-                    headers['Range'] = range_header
-            headers.update({
-                'Cookie': safe_cookie_header_value(url),
-            })
-
-            async with httpx.AsyncClient(**client_config) as client:
-                parsed = urlparse(url)
-                path_lower = parsed.path.lower()
-
-                response = await client.get(url, headers=headers)
-                response.raise_for_status()
-
-                content_type = response.headers.get('content-type', '')
-                if path_lower.endswith('.m3u8') or 'application/vnd.apple.mpegurl' in content_type.lower():
-                    return await self.handle_m3u8(url, response.content, referer=kwargs.get('referer'))
-
-                forward_headers = {
-                    k: v for k, v in response.headers.items()
-                    if k.lower() in {
-                        'content-type',
-                        'content-length',
-                        'content-range',
-                        'accept-ranges',
-                        'last-modified',
-                        'etag',
-                        'cache-control',
-                    }
-                }
-                forward_headers.setdefault('Access-Control-Allow-Origin', '*')
-
-                return StreamingResponse(
-                    response.aiter_bytes(),
-                    media_type=content_type or 'application/octet-stream',
-                    headers=forward_headers,
-                    status_code=response.status_code,
-                )
-
-        except httpx.HTTPStatusError as e:
-            logger.error('YouTube proxy HTTP error for %s: %s', url, e)
-            raise HTTPException(status_code=e.response.status_code, detail=f'Error fetching content: {str(e)}')
-        except httpx.HTTPError as e:
-            logger.error('YouTube proxy transport error for %s: %s', url, e)
-            raise HTTPException(status_code=502, detail=f'Error fetching content: {str(e)}')
-        except Exception:  # HTTP handler boundary — unexpected errors return 500
-            logger.exception('YouTube proxy unexpected error for %s', url)
-            raise HTTPException(status_code=500, detail='Internal server error')

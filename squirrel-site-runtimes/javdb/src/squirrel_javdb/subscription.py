@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from crawl import (
     HEAD_SAMPLE_LIMIT,
+    ParseError,
     SubscriptionMeta,
     SubscriptionSyncContext,
     SubscriptionSyncResult,
@@ -32,7 +33,7 @@ class JavdbSubscription:
         bs4 = BeautifulSoup(html, 'html.parser')
         username_el = bs4.select('.actor-section-name')
         if len(username_el) == 0:
-            raise Exception(f'Can not find channel name in {self.url}')
+            raise ParseError(f'Can not find channel name in {self.url}')
 
         name = username_el[0].text.strip()
         if ',' in name:

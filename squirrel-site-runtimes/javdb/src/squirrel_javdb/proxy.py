@@ -3,16 +3,10 @@ from __future__ import annotations
 import logging
 from urllib.parse import urlparse
 
-import httpx
-from crawl import (
-    BaseSiteProxy,
-    rewrite_playlist_for_proxy,
-)
 from crawl import (
     build_runtime_proxy_config as build_shared_runtime_proxy_config,
 )
-from fastapi import HTTPException
-from starlette.responses import StreamingResponse
+from crawl import rewrite_playlist_for_proxy
 
 logger = logging.getLogger(__name__)
 
@@ -78,95 +72,3 @@ def rewrite_proxy_playlist(url: str, content: str | bytes, referer: str | None =
         referer=referer,
         extensions=('ts', 'm4s', 'mp4', 'jpeg', 'jpg', 'm3u8'),
     )
-
-
-class JavdbProxy(BaseSiteProxy):
-    """JavDB video proxy implementation."""
-
-    domain = SITE_DOMAIN
-    site_slug = SITE_SLUG
-    default_proxy_config = DEFAULT_PROXY_CONFIG
-
-    def _build_upstream_headers(self, referer: str | None = None) -> dict[str, str]:
-        headers = dict(build_runtime_proxy_config(self.domain)['site_headers'])
-
-        request = getattr(self, '_request', None)
-        if request is not None:
-            range_header = request.headers.get('range')
-            if range_header:
-                headers['Range'] = range_header
-
-        headers.setdefault('Accept', '*/*')
-        headers.setdefault('Cache-Control', 'no-cache')
-        headers.setdefault('Pragma', 'no-cache')
-
-        effective_referer = referer or headers.get('Referer') or headers.get('referer')
-        if effective_referer:
-            headers['Referer'] = effective_referer
-            parsed = urlparse(effective_referer)
-            if parsed.scheme and parsed.netloc:
-                headers['Origin'] = f'{parsed.scheme}://{parsed.netloc}'
-
-        return headers
-
-    async def handle_stream(self, url: str, **kwargs) -> StreamingResponse:
-        try:
-            timeout_config, limits, follow_redirects, http2_enabled = self._build_client_params()
-
-            client_config = {
-                'timeout': timeout_config,
-                'limits': limits,
-                'follow_redirects': follow_redirects,
-                'http2': http2_enabled,
-            }
-
-            upstream_referer = kwargs.get('referer')
-            headers = self._build_upstream_headers(upstream_referer)
-
-            async with httpx.AsyncClient(**client_config) as client:
-                parsed = urlparse(url)
-                path_lower = parsed.path.lower()
-
-                if path_lower.endswith('.m3u8') or 'playlist' in url.lower():
-                    response = await client.get(url, headers=headers)
-                    response.raise_for_status()
-                    content = response.content
-                    content_type = response.headers.get('content-type', '')
-
-                    if path_lower.endswith('.m3u8') or 'application/vnd.apple.mpegurl' in content_type.lower():
-                        return await self.handle_m3u8(url, content, referer=upstream_referer)
-
-                    return StreamingResponse(
-                        iter([content]),
-                        media_type=content_type or 'application/octet-stream',
-                        headers={
-                            'Access-Control-Allow-Origin': '*',
-                            'Cache-Control': 'public, max-age=3600',
-                        },
-                    )
-
-                resp = await client.get(url, headers=headers)
-                resp.raise_for_status()
-                return StreamingResponse(
-                    resp.aiter_bytes(),
-                    media_type=resp.headers.get('content-type', 'application/octet-stream'),
-                    headers={
-                        k: v for k, v in resp.headers.items()
-                        if k.lower() in {
-                            'content-type',
-                            'content-length',
-                            'content-range',
-                            'accept-ranges',
-                            'last-modified',
-                            'etag',
-                            'cache-control',
-                        }
-                    },
-                )
-
-        except httpx.HTTPError as e:
-            logger.error(f'HTTP error occurred while proxying {url}: {str(e)}')
-            raise HTTPException(status_code=502, detail=f'Error fetching content: {str(e)}')
-        except Exception as e:  # HTTP handler boundary — unexpected errors return 500
-            logger.error(f'Error occurred while proxying {url}: {str(e)}')
-            raise HTTPException(status_code=500, detail=f'Internal server error: {str(e)}')

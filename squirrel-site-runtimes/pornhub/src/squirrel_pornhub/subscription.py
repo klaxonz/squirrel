@@ -6,6 +6,7 @@ from urllib.parse import urlparse, urlunparse
 from bs4 import BeautifulSoup
 from crawl import (
     HEAD_SAMPLE_LIMIT,
+    ParseError,
     SubscriptionMeta,
     SubscriptionSyncContext,
     SubscriptionSyncResult,
@@ -55,7 +56,7 @@ class PornhubSubscription:
             channel_id = None
             name_el = bs4.select('.nameSubscribe .name h1')
             if len(name_el) == 0:
-                raise Exception(f'Can not find channel name in {self.url}')
+                raise ParseError(f'Can not find channel name in {self.url}')
 
             name = name_el[0].text.strip()
             add_friend_btn = bs4.select('.addFriendButton button[data-friend-url]')
@@ -70,7 +71,7 @@ class PornhubSubscription:
                     else:
                         channel_id = subscribe_btn[0].get('data-id')
                         if channel_id is None:
-                            raise Exception(f'Can not find channel id in {self.url}')
+                            raise ParseError(f'Can not find channel id in {self.url}')
 
         url = re.search(r"^(.*?)(\?.*)?$", self.url).group(1)
         avatar = None

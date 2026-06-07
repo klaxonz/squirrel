@@ -26,6 +26,9 @@ def _detect_version() -> str:
 __version__: str = _detect_version()
 
 # Site runtime API
+# Auth base
+from .auth_base import check_login_status
+
 # Site configuration
 from .config import (
     get_http_headers,
@@ -105,10 +108,8 @@ from .playlist_rewrite import (
     rewrite_proxy_playlist_content,
 )
 from .proxy import (
-    BaseSiteProxy,
     ProxyConfigProvider,
     ProxyDomainConfig,
-    VideoProxy,
 )
 from .proxy_helpers import (
     build_proxy_config_values,
@@ -197,7 +198,6 @@ __all__ = [
     # Base classes
     'VideoExtractorBase',
     'YoutubeDLExtractorBase',
-    'BaseSiteProxy',
     # Utilities
     'SubscriptionMeta',
     'SubscriptionSyncContext',
@@ -242,6 +242,7 @@ __all__ = [
     'post',
     'configure_cloudflare_bypass_client',
     'apply_ytdlp_rate_limit',
+    'check_login_status',
     # Site configuration
     'set_site_config',
     'set_site_configs',
@@ -255,7 +256,6 @@ __all__ = [
     'SubtitlesProvider',
     'IdExtractor',
     'RegexIdExtractor',
-    'VideoProxy',
     'ProxyConfigProvider',
     'ProxyDomainConfig',
     # Exceptions

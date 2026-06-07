@@ -3,69 +3,43 @@ from __future__ import annotations
 import logging
 import re
 
-from crawl import (
-    LoginStatusResult,
-    filter_cookies_to_query_string,
-    get_login_config,
-    get_login_headers,
-    request_without_limit,
-)
+from crawl import LoginStatusResult, check_login_status
 
 logger = logging.getLogger(__name__)
 
-CHECK_URL = 'https://www.youporn.com/'
-DEFAULT_HEADERS = {
+_CHECK_URL = 'https://www.youporn.com/'
+_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
     'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
     'Accept-Language': 'en-US,en;q=0.9',
 }
-USERNAME_PATTERN = re.compile(r"liu_username\s*=\s*'([^']*)'", re.IGNORECASE)
-LOGGED_IN_PATTERN = re.compile(r'isLoggedInUser\s*=\s*true', re.IGNORECASE)
-LOGGED_OUT_PATTERN = re.compile(r'isLoggedInUser\s*=\s*false', re.IGNORECASE)
-PROFILE_LINK_PATTERN = re.compile(r'href="/users/([^"/?#]+)"', re.IGNORECASE)
+_USERNAME_PATTERN = re.compile(r"liu_username\s*=\s*'([^']*)'", re.IGNORECASE)
+_LOGGED_IN_PATTERN = re.compile(r'isLoggedInUser\s*=\s*true', re.IGNORECASE)
+_LOGGED_OUT_PATTERN = re.compile(r'isLoggedInUser\s*=\s*false', re.IGNORECASE)
+_PROFILE_LINK_PATTERN = re.compile(r'href="/users/([^"/?#]+)"', re.IGNORECASE)
 
 
 def check_youporn_login_status() -> LoginStatusResult:
+    return check_login_status(
+        site_name='youporn',
+        default_check_url=_CHECK_URL,
+        base_headers=_HEADERS,
+        parse_response=_parse_response,
+    )
+
+
+def _parse_response(resp) -> LoginStatusResult:
     site_name = 'youporn'
-    login_config = get_login_config(site_name)
-    check_url = login_config.get('check_url') or CHECK_URL
+    body = resp.text or ''
 
-    cookies = filter_cookies_to_query_string(check_url)
-    if not cookies:
+    if resp.status_code in (401, 403):
         return LoginStatusResult(
             site_name=site_name,
             logged_in=False,
-            message='cookies.txt 中未找到 YouPorn 条目',
+            message=f'被拒绝访问 (status={resp.status_code})',
         )
 
-    headers = get_login_headers(site_name, DEFAULT_HEADERS)
-    headers['Cookie'] = cookies
-
-    timeout = float(login_config.get('timeout', 20))
-    try:
-        response = request_without_limit(
-            'GET',
-            check_url,
-            headers=headers,
-            timeout=timeout,
-        )
-    except Exception as exc:  # HTTP/API boundary — network or transport errors
-        logger.warning('youporn login check failed: %s', exc, exc_info=True)
-        return LoginStatusResult(
-            site_name=site_name,
-            logged_in=False,
-            message=f'请求失败: {exc}',
-        )
-
-    body = response.text or ''
-    if response.status_code in (401, 403):
-        return LoginStatusResult(
-            site_name=site_name,
-            logged_in=False,
-            message=f'被拒绝访问 (status={response.status_code})',
-        )
-
-    final_url = response.url or check_url
+    final_url = str(resp.url or '')
     if '/login' in final_url:
         return LoginStatusResult(
             site_name=site_name,
@@ -75,7 +49,7 @@ def check_youporn_login_status() -> LoginStatusResult:
         )
 
     username = _extract_username(body)
-    if username and LOGGED_IN_PATTERN.search(body):
+    if username and _LOGGED_IN_PATTERN.search(body):
         return LoginStatusResult(
             site_name=site_name,
             logged_in=True,
@@ -83,7 +57,7 @@ def check_youporn_login_status() -> LoginStatusResult:
             message='已登录',
         )
 
-    if LOGGED_OUT_PATTERN.search(body):
+    if _LOGGED_OUT_PATTERN.search(body):
         return LoginStatusResult(
             site_name=site_name,
             logged_in=False,
@@ -99,13 +73,13 @@ def check_youporn_login_status() -> LoginStatusResult:
 
 
 def _extract_username(body: str) -> str | None:
-    match = USERNAME_PATTERN.search(body)
+    match = _USERNAME_PATTERN.search(body)
     if match:
         username = match.group(1).strip()
         if username:
             return username
 
-    profile_match = PROFILE_LINK_PATTERN.search(body)
+    profile_match = _PROFILE_LINK_PATTERN.search(body)
     if profile_match:
         username = profile_match.group(1).strip()
         if username:

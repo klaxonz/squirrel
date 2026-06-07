@@ -9,6 +9,7 @@ from crawl import (
     NetworkError,
     NotFoundError,
     ParseError,
+    RateLimitError,
     YoutubeDLExtractorBase,
     apply_ytdlp_rate_limit,
     build_cookie_header,
@@ -71,6 +72,8 @@ class YouPornExtractor(YoutubeDLExtractorBase):
                 raise NotFoundError(f'Video does not exist or has been removed: {url}', context=context) from exc
             if any(token in error_msg for token in ('timeout', 'connection', 'network', 'temporarily unavailable')):
                 raise NetworkError(f'Network request failed: {url}', context=context) from exc
+            if any(token in error_msg for token in ('too many requests', 'rate limit', '429')):
+                raise RateLimitError(f'Request rate limited: {url}', context=context) from exc
 
             logger.error('YouPorn extraction failed: %s', url, exc_info=True)
             raise ParseError(f'Failed to extract YouPorn video info: {exc}', context=context) from exc

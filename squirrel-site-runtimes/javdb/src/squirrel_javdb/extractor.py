@@ -8,8 +8,10 @@ from typing import Any
 from bs4 import BeautifulSoup
 from crawl import (
     AuthError,
+    NetworkError,
     NotFoundError,
     ParseError,
+    RateLimitError,
     VideoExtractorBase,
     VipError,
 )
@@ -93,7 +95,7 @@ class JavdbExtractor(VideoExtractorBase):
             self._process_javdb_info(video_info)
             return video_info
 
-        except (AuthError, VipError, NotFoundError, ParseError):
+        except (AuthError, VipError, NotFoundError, ParseError, NetworkError, RateLimitError):
             raise
         except Exception as e:  # SDK boundary — translate unexpected errors to domain types
             error_msg = str(e).lower()
@@ -105,6 +107,10 @@ class JavdbExtractor(VideoExtractorBase):
                 raise VipError(f"需要VIP权限: {url}", context=context)
             elif '不存在' in error_msg or '404' in error_msg:
                 raise NotFoundError(f"视频不存在: {url}", context=context)
+            elif any(kw in error_msg for kw in ['timeout', 'connection', '网络']):
+                raise NetworkError(f"网络连接失败: {url}", context=context)
+            elif any(kw in error_msg for kw in ['too many requests', 'rate limit', '429']):
+                raise RateLimitError(f"请求频率过高: {url}", context=context)
             else:
                 logger.error(f"JavDB视频信息提取失败: {url}", exc_info=True)
                 raise ParseError(f"视频信息提取失败: {str(e)}", context=context)
