@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 def enqueue_video_extraction(params: VideoExtractDto) -> bool:
-    """将视频提取任务加入队列
-    注意：在批量调用时，订阅存在性检查应在外层完成，避免重复查询
+    """Enqueue video extraction task
+    Note: subscription existence check should be done outside in batch calls to avoid duplicate queries
     """
     domain = extract_top_level_domain(params.url)
     if not SiteCatalog.is_site_enabled(domain=domain):

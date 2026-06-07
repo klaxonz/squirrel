@@ -311,7 +311,7 @@ def build_base_video_query(
         duration: str = "all",
         content_type: str = "all",
 ) -> Any:
-    """构建基础视频查询，以 Video 为主表。"""
+    """Build base video query with Video as the main table."""
     base_query = (
         select(Video, SubscriptionVideo.subscription_id.label("subscription_id"))
         .select_from(Video)
@@ -415,7 +415,7 @@ def build_video_count_source_query(
 
 
 def category_predicate(user_id: int, category: str | None) -> Any:
-    """返回分类筛选条件，复用在列表/计数/随机。"""
+    """Return category filter condition, reused in list/count/random."""
     published = Video.publish_date <= func.now()
 
     if category == "preview":
@@ -481,7 +481,7 @@ def resolve_sort_column(sort_by: str) -> Any:
 
 
 def time_range_predicate(time_range: str) -> list[Any]:
-    """返回 publish_date 时间范围过滤条件。"""
+    """Return publish_date time range filter condition."""
     if time_range == "all":
         return []
     now = func.now()
@@ -501,7 +501,7 @@ def time_range_predicate(time_range: str) -> list[Any]:
 
 
 def duration_predicate(duration: str) -> list[Any]:
-    """返回视频时长过滤条件（秒）。"""
+    """Return video duration filter condition (seconds)."""
     if duration == "all":
         return []
     if duration == "short":
@@ -514,7 +514,7 @@ def duration_predicate(duration: str) -> list[Any]:
 
 
 def content_type_predicate(content_type: str) -> list[Any]:
-    """返回订阅类型过滤条件（需要 JOIN Subscription）。"""
+    """Return subscription type filter condition (requires JOIN Subscription)."""
     if content_type == "all":
         return []
     return [Subscription.type == content_type]

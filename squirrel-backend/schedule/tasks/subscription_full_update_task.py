@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 @TaskRegistry.register(interval=60 * 2, unit="minutes")
 class SubscriptionFullUpdateTask(BaseTask):
-    """订阅全量更新定时任务
-    频率：每 60 分钟（1 小时）执行一次
-    职责：将所有活跃订阅发送到全量更新队列
+    """Subscription full update scheduled task
+    Frequency: every 60 minutes (1 hour)
+    Responsibility: Enqueue all active subscriptions for full update
     """
 
     @classmethod

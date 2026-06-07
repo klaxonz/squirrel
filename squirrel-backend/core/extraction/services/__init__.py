@@ -1,6 +1,6 @@
-"""提取链路服务层
+"""Extraction pipeline service layer
 
-这些服务负责具体的业务逻辑，被Pipeline Stages调用。
+These services handle specific business logic and are called by Pipeline Stages.
 """
 
 from .actor_processor import ActorProcessorService, actor_processor_service

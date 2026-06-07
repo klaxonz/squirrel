@@ -1,5 +1,5 @@
-"""视频提取服务模块
-统一管理视频提取相关逻辑
+"""Video extraction service module
+Unified management of video extraction logic
 """
 from .extractor import extract_video
 

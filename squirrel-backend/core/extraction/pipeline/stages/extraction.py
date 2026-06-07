@@ -1,4 +1,4 @@
-"""ExtractionStage - 从插件提取视频数据
+"""ExtractionStage - extracts video data from plugin
 """
 import logging
 
@@ -19,17 +19,17 @@ logger = logging.getLogger(__name__)
 
 
 class ExtractionStage(PipelineStage):
-    """提取阶段
+    """Extraction stage
 
-    职责：
-    - 根据URL获取对应的提取器
-    - 调用插件提取视频数据
-    - 将结果保存到context.plugin_video
+    Responsibilities:
+    - Get the appropriate extractor for the URL
+    - Invoke the plugin to extract video data
+    - Save the result to context.plugin_video
     """
 
     def __init__(self, extractor_factory):
         """Args:
-        extractor_factory: 提取器工厂（ExtractorFactory实例）
+        extractor_factory: Extractor factory (ExtractorFactory instance)
 
         """
         self.extractor_factory = extractor_factory
@@ -39,7 +39,7 @@ class ExtractionStage(PipelineStage):
         return "extraction"
 
     def execute(self, context: PipelineContext) -> PipelineContext:
-        """执行提取"""
+        """Execute extraction"""
         extractor = self._get_extractor(context.task.url)
 
         if extractor is None:
@@ -84,8 +84,8 @@ class ExtractionStage(PipelineStage):
         return context
 
     def on_error(self, context: PipelineContext, error: Exception) -> None:
-        """错误处理回调"""
-        # 调用父类的错误处理
+        """Error handling callback"""
+        # Call parent error handling
         super().on_error(context, error)
 
         reason_code = None
@@ -108,7 +108,7 @@ class ExtractionStage(PipelineStage):
             logger.warning("Failed to record blocked video: %s", record_error)
 
     def _get_extractor(self, url: str) -> Extractor | None:
-        """获取提取器"""
+        """Get extractor for URL"""
         try:
             return self.extractor_factory.create_extractor(url)
         except (ValueError, TypeError, AttributeError) as e:

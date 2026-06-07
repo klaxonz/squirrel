@@ -1,5 +1,5 @@
-"""站点连通性测试路由
-提供站点可访问性检测、响应时间测量等功能
+"""Site connectivity test routes
+Provides site accessibility detection, response time measurement, etc.
 """
 import asyncio
 import inspect
@@ -105,15 +105,15 @@ async def test_site_connectivity(
     timeout: int = 10,
     follow_redirects: bool = True,
 ) -> ConnectivityTestResponse:
-    """测试单个站点的连通性
+    """Test connectivity of a single site
 
     Args:
-        url: 要测试的URL
-        timeout: 超时时间（秒）
-        follow_redirects: 是否跟随重定向
+        url: The URL to test
+        timeout: Timeout in seconds
+        follow_redirects: Whether to follow redirects
 
     Returns:
-        ConnectivityTestResponse: 测试结果
+        ConnectivityTestResponse: Test result
 
     """
     start_time = time.time()
@@ -208,13 +208,13 @@ async def test_site_connectivity(
 
 @router.post("/test", response_model=ConnectivityTestResponse, status_code=status.HTTP_200_OK)
 async def test_connectivity(request: ConnectivityTestRequest) -> ConnectivityTestResponse:
-    """测试单个站点的连通性
+    """Test connectivity of a single site
 
     Args:
-        request: 连通性测试请求
+        request: Connectivity test request
 
     Returns:
-        ConnectivityTestResponse: 测试结果
+        ConnectivityTestResponse: Test result
 
     """
     logger.info("Testing connectivity for: %s", request.url)
@@ -230,13 +230,13 @@ async def test_connectivity(request: ConnectivityTestRequest) -> ConnectivityTes
 
 @router.post("/test/batch", response_model=BatchConnectivityTestResponse, status_code=status.HTTP_200_OK)
 async def test_batch_connectivity(request: BatchConnectivityTestRequest) -> BatchConnectivityTestResponse:
-    """批量测试多个站点的连通性
+    """Test connectivity of multiple sites in batch
 
     Args:
-        request: 批量连通性测试请求
+        request: Batch connectivity test request
 
     Returns:
-        BatchConnectivityTestResponse: 批量测试结果
+        BatchConnectivityTestResponse: Batch test result
 
     """
     logger.info("Testing batch connectivity for %s URLs", len(request.urls))
@@ -296,13 +296,13 @@ async def test_batch_connectivity(request: BatchConnectivityTestRequest) -> Batc
 
 @router.get("/test/quick", status_code=status.HTTP_200_OK)
 async def quick_test(url: str) -> dict[str, Any]:
-    """快速测试站点连通性（简化版本）
+    """Quick test site connectivity (simplified version)
 
     Args:
-        url: 要测试的URL
+        url: The URL to test
 
     Returns:
-        简化的测试结果
+        Simplified test result
 
     """
     logger.info("Quick testing: %s", url)

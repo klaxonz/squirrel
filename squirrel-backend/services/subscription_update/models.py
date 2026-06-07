@@ -1,28 +1,28 @@
-"""订阅更新领域模型
+"""Subscription update domain models
 """
 from dataclasses import dataclass
 from enum import Enum
 
 
 class UpdateTrigger(Enum):
-    """更新触发方式"""
+    """Update trigger type"""
 
-    SCHEDULED = "scheduled"  # 定时自动
-    MANUAL = "manual"        # 手动刷新
-    API = "api"              # API触发
+    SCHEDULED = "scheduled"  # Scheduled automatic
+    MANUAL = "manual"        # Manual refresh
+    API = "api"              # API triggered
 
 
 class UpdateMode(Enum):
-    """更新模式"""
+    """Update mode"""
 
-    INCREMENTAL = "incremental"  # 增量更新
-    FULL = "full"                # 全量更新
-    SMART = "smart"              # 智能判断
+    INCREMENTAL = "incremental"  # Incremental update
+    FULL = "full"                # Full update
+    SMART = "smart"              # Smart detection
 
 
 @dataclass
 class SubscriptionUpdateRequest:
-    """订阅更新请求"""
+    """Subscription update request"""
 
     subscription_id: int
     url: str
@@ -42,7 +42,7 @@ class SubscriptionUpdateRequest:
 
 @dataclass
 class SubscriptionUpdateResult:
-    """订阅更新结果"""
+    """Subscription update result"""
 
     subscription_id: int
     success: bool
@@ -65,7 +65,7 @@ class SubscriptionUpdateResult:
 
 @dataclass
 class SubscriptionScheduleResult:
-    """订阅调度结果"""
+    """Subscription schedule result"""
 
     subscription_id: int
     sync_state_id: int | None
@@ -76,7 +76,7 @@ class SubscriptionScheduleResult:
 
 @dataclass
 class SubscriptionDirectRunResult:
-    """订阅直接执行结果"""
+    """Subscription direct run result"""
 
     subscription_id: int
     sync_state_id: int | None

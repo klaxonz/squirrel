@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 class QueueBackpressureMonitor:
-    """队列反压监控器"""
+    """Queue backpressure monitor"""
 
     def count_pending_videos_for_subscription(
         self,
@@ -14,15 +14,15 @@ class QueueBackpressureMonitor:
         url: str,
         check_limit: int = 1000,
     ) -> int:
-        """统计某个订阅在视频提取队列中待处理的视频数量
+        """Count the number of pending videos for a subscription in the video extraction queue
 
         Args:
-            subscription_id: 订阅ID
-            url: 订阅URL（用于确定队列）
-            check_limit: 最多检查队列中最近的多少条消息（避免全量扫描）
+            subscription_id: Subscription ID
+            url: Subscription URL (used to determine the queue)
+            check_limit: Maximum number of recent messages to check in the queue (avoids full scan)
 
         Returns:
-            待处理的视频数量
+            Number of pending videos
 
         """
         try:
@@ -38,22 +38,22 @@ class QueueBackpressureMonitor:
         threshold_ratio: float = 0.5,
         incremental_size: int = 30,
     ) -> tuple[bool, int | None]:
-        """判断是否应该跳过本次订阅更新
+        """Determine whether to skip this subscription update
 
         Args:
-            subscription_id: 订阅ID
-            url: 订阅URL
-            threshold_ratio: 阈值比例（默认0.5，即超过一半）
-            incremental_size: 增量更新的大小（默认30）
+            subscription_id: Subscription ID
+            url: Subscription URL
+            threshold_ratio: Threshold ratio (default 0.5, i.e. more than half)
+            incremental_size: Incremental update size (default 30)
 
         Returns:
-            (是否跳过, 队列中的数量)
+            (whether to skip, count in queue)
 
         """
         pending_count = self.count_pending_videos_for_subscription(
             subscription_id,
             url,
-            check_limit=incremental_size * 2,  # 检查2倍的数量，确保准确
+            check_limit=incremental_size * 2,  # Check 2x the count for accuracy
         )
 
         threshold = int(incremental_size * threshold_ratio)
@@ -65,5 +65,5 @@ class QueueBackpressureMonitor:
         return should_skip, pending_count
 
 
-# 全局单例
+# Global singleton
 queue_monitor = QueueBackpressureMonitor()

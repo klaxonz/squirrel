@@ -13,14 +13,14 @@ SITE_SLUG = "bilibili"
 
 class BilibiliUserSubscriptionImporter:
     """
-    从 Bilibili 导入用户的关注列表
-    需要登录 cookies 才能获取
+    Import a user's following list from Bilibili.
+    Requires login cookies to access.
     """
 
     domain = "bilibili.com"
 
     def _get_current_user_mid(self, cookies: str) -> str:
-        """获取当前登录用户的 mid"""
+        """Get the mid of the currently logged-in user."""
         nav = fetch_nav(cookies=cookies, throttled=False)
         mid = nav.get("mid")
         if not mid:
@@ -29,10 +29,10 @@ class BilibiliUserSubscriptionImporter:
 
     def get_user_subscriptions(self) -> list[SubscriptionImportItem]:
         """
-        获取用户在 Bilibili 的关注列表
+        Get the user's Bilibili following list.
 
         Returns:
-            订阅列表
+            List of subscription import items.
         """
         cookies = build_cookies(f"https://www.{self.domain}")
         mid = self._get_current_user_mid(cookies)

@@ -28,10 +28,10 @@ router = APIRouter(prefix="/api/sites", tags=["sites"])
 
 @router.get("")
 def get_supported_sites():
-    """获取插件支持的所有站点信息
+    """Get all sites supported by plugins
 
     Returns:
-        每个站点的详细信息，包括名称和对应的域名列表
+        Detailed info per site, including name and corresponding domain list
 
     """
     catalog = get_merged_site_catalog()
@@ -87,29 +87,29 @@ def get_site_icon(site_name: str):
 
 @router.get("/{site_name}/test-connectivity")
 async def test_site_connectivity_endpoint(site_name: str, timeout: int = Query(10, ge=1, le=60)):
-    """测试指定站点的连通性
+    """Test connectivity of a specified site
 
     Args:
-        site_name: 站点名称（如: youtube, bilibili等）
-        timeout: 超时时间（秒）
+        site_name: Site name (e.g. youtube, bilibili)
+        timeout: Timeout in seconds
 
     Returns:
-        连通性测试结果
+        Connectivity test result
 
     """
     catalog = get_merged_site_catalog()
     site_info = build_site_info(site_name, catalog)
 
     if not site_info:
-        return param_error(f"不支持的站点: {site_name}")
+        return param_error(f"Unsupported site: {site_name}")
 
     site_domains = site_info.get("domains") or []
     test_url = site_info.get("test_url")
 
     if not site_domains and not test_url:
-        return error(f"站点 {site_name} 没有关联的域名")
+        return error(f"Site {site_name} has no associated domains")
     if not test_url:
-        return error(f"站点 {site_name} 未配置可用的测试URL")
+        return error(f"Site {site_name} has no configured test URL")
 
     result = await test_site_connectivity(
         url=test_url,
@@ -136,7 +136,7 @@ def get_site_login_status(site_name: str):
     catalog = get_merged_site_catalog()
     site_info = build_site_info(site_name, catalog)
     if not site_info:
-        return param_error(f"不支持的站点: {site_name}")
+        return param_error(f"Unsupported site: {site_name}")
 
     status = test_site_login_status(site_name)
 
@@ -160,17 +160,17 @@ def get_site_login_status(site_name: str):
 
 @router.post("/test-connectivity/batch")
 async def test_batch_sites_connectivity(
-    site_names: list[str] = Query(..., description="站点名称列表"),
+    site_names: list[str] = Query(..., description="List of site names"),
     timeout: int = Query(10, ge=1, le=60),
 ):
-    """批量测试多个站点的连通性
+    """Test connectivity of multiple sites in batch
 
     Args:
-        site_names: 站点名称列表（最多20个）
-        timeout: 超时时间（秒）
+        site_names: List of site names (max 20)
+        timeout: Timeout in seconds
 
     Returns:
-        批量测试结果
+        Batch test result
 
     """
     if len(site_names) > 20:
@@ -264,13 +264,13 @@ async def test_batch_sites_connectivity(
 
 @router.get("/test-connectivity/all")
 async def test_all_sites_connectivity(timeout: int = Query(10, ge=1, le=60)):
-    """测试所有插件支持站点的连通性
+    """Test connectivity of all plugin-supported sites
 
     Args:
-        timeout: 超时时间（秒）
+        timeout: Timeout in seconds
 
     Returns:
-        所有站点的测试结果
+        All sites test results
 
     """
     catalog = get_merged_site_catalog()
@@ -403,7 +403,7 @@ def setup_youtube_oauth():
     except Exception as exc:
         # API boundary -- convert to HTTP error response
         logger.exception("YouTube OAuth setup failed: %s", exc)
-        return error(f"OAuth 启动失败: {exc}")
+        return error(f"OAuth setup failed: {exc}")
 
 
 @router.get("/youtube/oauth/status")
@@ -429,7 +429,7 @@ def get_youtube_oauth_status():
     except Exception as exc:
         # API boundary -- convert to HTTP error response
         logger.exception("YouTube OAuth status check failed: %s", exc)
-        return error(f"OAuth 状态查询失败: {exc}")
+        return error(f"OAuth status query failed: {exc}")
 
 
 @router.delete("/youtube/oauth")
@@ -440,8 +440,8 @@ def revoke_youtube_oauth():
         from services.youtube_oauth_service import revoke_oauth_via_daemon
 
         ok = revoke_oauth_via_daemon(timeout_seconds=30.0)
-        return success({"revoked": ok}, msg="已撤销 YouTube 授权" if ok else "撤销失败")
+        return success({"revoked": ok}, msg="YouTube authorization revoked" if ok else "Revocation failed")
     except Exception as exc:
         # API boundary -- convert to HTTP error response
         logger.exception("YouTube OAuth revoke failed: %s", exc)
-        return error(f"撤销授权失败: {exc}")
+        return error(f"Authorization revocation failed: {exc}")

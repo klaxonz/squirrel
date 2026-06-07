@@ -1,6 +1,7 @@
 ---
 title: 'Python: 子项目间 docstring 语言不统一（中文 vs 英文）'
-status: open
+status: fixed
+fixed_by: AGENTS.md:62
 severity: low
 category: code-smell
 created: 2026-06-07
@@ -29,7 +30,10 @@ Python 子项目之间 docstring 语言不统一：
 - 新贡献者不确定使用哪种语言
 - 无自动化手段检测
 
-## 建议方向
+## 修复
 
-1. 明确项目级约定并写入 AGENTS.md
-2. 建议 SDK 和 site-runtimes 用英文，backend 用中文（现状）
+约定改为全部英文（Google-style），并批量替换了所有现有中文 docstring。
+
+## 改动量
+
+82 个文件中的 379 个中文 docstring 全部替换为英文。

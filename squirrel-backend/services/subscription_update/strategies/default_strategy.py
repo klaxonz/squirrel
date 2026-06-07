@@ -1,4 +1,4 @@
-"""默认更新策略（适用于所有站点）
+"""Default update strategy (applicable to all sites)
 """
 import logging
 from datetime import datetime, timedelta
@@ -63,7 +63,7 @@ def should_schedule_total_video_backfill(
 
 
 class DefaultUpdateStrategy(UpdateStrategy):
-    """默认更新策略（适用于所有站点）"""
+    """Default update strategy (applicable to all sites)"""
 
     def __init__(self, runtime_gateway: SiteRuntimeGateway | None = None) -> None:
         self._runtime_gateway = runtime_gateway
@@ -80,14 +80,14 @@ class DefaultUpdateStrategy(UpdateStrategy):
         return result
 
     def should_update(self, request: SubscriptionUpdateRequest) -> tuple[bool, str | None]:
-        """检查是否需要更新"""
+        """Check whether an update is needed"""
         sub = subscription_service.get_subscription_detail(request.subscription_id)
         if not sub or sub.is_deleted:
             return False, "subscription_not_found"
         return True, None
 
     def fetch_videos(self, request: SubscriptionUpdateRequest) -> SubscriptionSyncResult:
-        """获取视频列表"""
+        """Fetch video list"""
         parsed_url = urlparse(request.url)
         domain = parsed_url.netloc.lower().split(":")[0]
         site_name, _ = SiteCatalog.find_site_by_domain(domain)
@@ -122,7 +122,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
         return result
 
     def enqueue_extraction(self, fetch_result: SubscriptionSyncResult, request: SubscriptionUpdateRequest) -> int:
-        """将视频加入提取队列"""
+        """Enqueue videos for extraction"""
         enqueued = 0
         existing_count = 0
         failed_count = 0
@@ -257,7 +257,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
 
     @staticmethod
     def _update_total_videos(subscription_id: int, total: int) -> None:
-        """更新订阅总视频数"""
+        """Update subscription total video count"""
         with get_session() as session:
             session.execute(
                 update(SubscriptionModel)

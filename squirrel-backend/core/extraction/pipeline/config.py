@@ -1,4 +1,4 @@
-"""Pipeline配置模块
+"""Pipeline configuration module
 """
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class StageConfig:
-    """Stage配置"""
+    """Stage configuration"""
 
     stage_class: type["PipelineStage"]
     enabled: bool = True
@@ -19,7 +19,7 @@ class StageConfig:
 
 @dataclass
 class PipelineConfig:
-    """Pipeline配置"""
+    """Pipeline configuration"""
 
     stages: list[StageConfig] = field(default_factory=list)
     critical_stages: list[str] = field(default_factory=lambda: [

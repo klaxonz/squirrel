@@ -1,5 +1,5 @@
-"""订阅更新编排器
-统一入口，负责协调整个更新流程
+"""Subscription update orchestrator
+Unified entry point responsible for coordinating the entire update flow
 """
 from __future__ import annotations
 
@@ -26,26 +26,26 @@ logger = logging.getLogger(__name__)
 
 
 class SubscriptionOrchestrator:
-    """订阅更新编排器
+    """Subscription update orchestrator
 
-    职责：
-    1. 接收更新请求
-    2. 选择合适的更新策略
-    3. 执行更新流程
-    4. 返回更新结果
+    Responsibilities:
+    1. Receive update requests
+    2. Select appropriate update strategy
+    3. Execute update flow
+    4. Return update results
     """
 
     def __init__(self):
         self.default_strategy = DefaultUpdateStrategy()
 
     def update(self, request: SubscriptionUpdateRequest) -> SubscriptionUpdateResult:
-        """执行订阅更新
+        """Execute subscription update
 
         Args:
-            request: 更新请求
+            request: Update request
 
         Returns:
-            更新结果
+            Update result
 
         """
         try:
@@ -142,7 +142,7 @@ class SubscriptionOrchestrator:
             return row is not None
 
     def _resolve_site(self, url: str) -> str:
-        """解析站点名称"""
+        """Resolve site name"""
         domain = url_helper.extract_top_level_domain(url)
 
         site_key, _ = SiteCatalog.find_site_by_domain(domain)
@@ -152,7 +152,7 @@ class SubscriptionOrchestrator:
         return "default"
 
     def _select_strategy(self, site_name: str) -> UpdateStrategy:
-        """选择更新策略"""
+        """Select update strategy"""
         strategy = StrategyRegistry.get_strategy(site_name)
         if strategy:
             logger.debug("Using %s strategy", site_name)

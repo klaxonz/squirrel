@@ -22,7 +22,7 @@ from utils.jwt_helper import get_current_user
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import extract_top_level_domain
 
-router = APIRouter(prefix="/api/subscription", tags=["订阅接口"])
+router = APIRouter(prefix="/api/subscription", tags=["Subscription API"])
 logger = logging.getLogger(__name__)
 SYNC_HISTORY_ALLOWED_STATUS = {"created", "queued", "running", "success", "failed", "deferred", "timeout", "recent", "feed_recent"}
 
@@ -81,7 +81,7 @@ def get_subscription_status(
 
 @router.get("/detail/{subscription_id}")
 def get_subscription_detail(subscription_id: int, current_user: User = Depends(get_current_user)):
-    """获取订阅（频道）详情，附带当前用户的 is_nsfw 状态和统计字段"""
+    """Get subscription (channel) details with current user's is_nsfw status and stats"""
     sub = subscription_service.get_subscription_detail(subscription_id)
     if not sub:
         return response.not_found("订阅不存在")
@@ -96,13 +96,13 @@ def get_subscription_detail(subscription_id: int, current_user: User = Depends(g
 
 @router.get("/list")
 def list_subscriptions(
-        query: str = Query(None, description="搜索关键字"),
-        type: str = Query(None, description="内容类型"),
-        nsfw: str = Query("all", description="NSFW 过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
-        special: str = Query("all", description="特别关注过滤: all|yes|no", pattern=r"^(all|yes|no)$"),
-        site: str = Query(None, description="站点过滤：例如 youtube、bilibili 等（支持别名）"),
-        page: int = Query(1, ge=1, description="页码"),
-        page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="每页数量"),
+        query: str = Query(None, description="Search keyword"),
+        type: str = Query(None, description="Content type"),
+        nsfw: str = Query("all", description="NSFW filter: all|yes|no", pattern=r"^(all|yes|no)$"),
+        special: str = Query("all", description="Special follow filter: all|yes|no", pattern=r"^(all|yes|no)$"),
+        site: str = Query(None, description="Site filter: e.g. youtube, bilibili (supports aliases)"),
+        page: int = Query(1, ge=1, description="Page number"),
+        page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Page size"),
         current_user: User = Depends(get_current_user),
 ):
     domains: list[str] | None = None
@@ -158,11 +158,11 @@ async def get_sync_center_stream(
 def refresh_subscription(
     subscription_id: int,
     request: Request,
-    mode: str = Query("incremental", description="同步模式: incremental|full", pattern=r"^(incremental|full)$"),
+    mode: str = Query("incremental", description="Sync mode: incremental|full", pattern=r"^(incremental|full)$"),
     current_user: User = Depends(get_current_user),
 ):
-    """手动刷新订阅
-    职责：验证权限后调用调度器，具体更新逻辑由调度器和编排器处理
+    """Manually refresh subscription
+    Responsibility: validate permissions then call scheduler; actual update logic handled by scheduler and orchestrator
     """
     subscription, status = subscription_service.verify_subscription_access(current_user.id, subscription_id)
     if status == "not_found":
@@ -204,7 +204,7 @@ def refresh_subscription(
 def refresh_subscription_direct(
     subscription_id: int,
     request: Request,
-    mode: str = Query("incremental", description="同步模式: incremental|full", pattern=r"^(incremental|full)$"),
+    mode: str = Query("incremental", description="Sync mode: incremental|full", pattern=r"^(incremental|full)$"),
     current_user: User = Depends(get_current_user),
 ):
     subscription, status = subscription_service.verify_subscription_access(current_user.id, subscription_id)
@@ -251,15 +251,15 @@ def refresh_subscription_direct(
 
 @router.get("/sync-center/runs")
 def get_sync_center_runs(
-        status: str = Query(None, description="运行状态筛选"),
-        site: str = Query(None, description="站点筛选"),
-        subscription_id: int = Query(None, alias="subscriptionId", description="频道筛选"),
-        mode: str = Query(None, description="同步模式筛选"),
-        trigger: str = Query(None, description="触发方式筛选"),
-        date_from: str = Query(None, alias="dateFrom", description="开始时间"),
-        date_to: str = Query(None, alias="dateTo", description="结束时间"),
-        page: int = Query(1, ge=1, description="页码"),
-        page_size: int = Query(20, ge=1, le=100, alias="pageSize", description="每页数量"),
+        status: str = Query(None, description="Run status filter"),
+        site: str = Query(None, description="Site filter"),
+        subscription_id: int = Query(None, alias="subscriptionId", description="Channel filter"),
+        mode: str = Query(None, description="Sync mode filter"),
+        trigger: str = Query(None, description="Trigger type filter"),
+        date_from: str = Query(None, alias="dateFrom", description="Start date"),
+        date_to: str = Query(None, alias="dateTo", description="End date"),
+        page: int = Query(1, ge=1, description="Page number"),
+        page_size: int = Query(20, ge=1, le=100, alias="pageSize", description="Page size"),
         current_user: User = Depends(get_current_user),
 ):
     normalized_status = str(status or "").strip().lower() or None
@@ -321,10 +321,10 @@ def toggle_special_follow(
 
 @router.get("/import/sites")
 def get_supported_sites(current_user: User = Depends(get_current_user)):
-    """获取支持导入的站点列表
+    """Get list of sites supported for import
 
     Returns:
-        支持的站点列表
+        List of supported sites
 
     """
     supported_sites = subscription_service.get_runtime_supported_sites("import_subscriptions")
@@ -338,17 +338,17 @@ def get_supported_sites(current_user: User = Depends(get_current_user)):
 @router.get("/import/{site}/preview")
 def preview_subscriptions(
     site: str,
-    cursor: str | None = Query(None, description="分页游标 JSON"),
-    limit: int = Query(50, ge=1, le=200, description="每次预览加载数量"),
+    cursor: str | None = Query(None, description="Pagination cursor JSON"),
+    limit: int = Query(50, ge=1, le=200, description="Preview page size"),
     current_user: User = Depends(get_current_user),
 ):
-    """预览用户在指定站点的订阅列表（不实际导入）
+    """Preview user's subscriptions at a given site (without actually importing)
 
     Args:
-        site: 站点名称
+        site: Site name
 
     Returns:
-        预览结果
+        Preview result
 
     """
     try:
@@ -398,13 +398,13 @@ def import_subscriptions(
     req: ImportSubscriptionsRequest | None = None,
     current_user: User = Depends(get_current_user),
 ):
-    """从指定站点导入用户的所有订阅
+    """Import all user subscriptions from a specified site
 
     Args:
-        site: 站点名称（动态支持所有已注册的站点）
+        site: Site name (dynamically supports all registered sites)
 
     Returns:
-        导入结果统计
+        Import result statistics
 
     """
     try:

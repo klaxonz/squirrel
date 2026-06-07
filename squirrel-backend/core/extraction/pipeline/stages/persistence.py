@@ -1,4 +1,4 @@
-"""PersistenceStage - 持久化视频数据到数据库
+"""PersistenceStage - persists video data to database
 """
 import logging
 
@@ -10,19 +10,19 @@ logger = logging.getLogger(__name__)
 
 
 class PersistenceStage(PipelineStage):
-    """持久化阶段
+    """Persistence stage
 
-    职责：
-    - 保存视频到数据库
-    - 创建订阅-视频关联
-    - 处理actors信息
-    - 保存到context.video_model
+    Responsibilities:
+    - Save video to database
+    - Create subscription-video association
+    - Process actor information
+    - Save to context.video_model
     """
 
     def __init__(self, video_service, actor_service):
         """Args:
-        video_service: 视频持久化服务
-        actor_service: 演员处理服务
+        video_service: Video persistence service
+        actor_service: Actor processing service
 
         """
         self.video_service = video_service
@@ -33,15 +33,15 @@ class PersistenceStage(PipelineStage):
         return "persistence"
 
     def execute(self, context: PipelineContext) -> PipelineContext:
-        """执行持久化"""
-        # 检查前置条件
+        """Execute persistence"""
+        # Check preconditions
         if context.video_dto is None:
             raise DatabaseError(
                 "No video DTO found in context",
                 context={"task_id": context.task.task_id},
             )
 
-        # 检查是否跳过持久化
+        # Check if persistence should be skipped
         if context.should_skip_persistence:
             logger.info("Skipping persistence (flag set): url=%s", context.task.url)
             return context
@@ -49,7 +49,7 @@ class PersistenceStage(PipelineStage):
         dto = context.video_dto
         task = context.task
 
-        # 1. 保存视频
+        # 1. Save video
         logger.info("Persisting video: url=%s, title=%s", dto.url, dto.title)
 
         try:
@@ -78,7 +78,7 @@ class PersistenceStage(PipelineStage):
                 },
             ) from e
 
-        # 2. 处理actors
+        # 2. Process actors
         if dto.has_actors():
             try:
                 self.actor_service.process_actors(
@@ -87,13 +87,13 @@ class PersistenceStage(PipelineStage):
                 )
                 logger.info("Actors processed: video_id=%s, count=%s", video_model.id, len(dto.actors))
             except (ValueError, TypeError, AttributeError) as e:
-                # actors处理失败不应中断流程
+                # Actor processing failure should not interrupt the flow
                 logger.warning("Failed to process actors: video_id=%s, error=%s", video_model.id, e)
 
         return context
 
     def can_skip(self, context: PipelineContext) -> bool:
-        """如果已经有video_model或设置了跳过标志，可以跳过"""
+        """Skip if video_model already exists or skip flag is set"""
         return (
             context.video_model is not None or
             context.should_skip_persistence

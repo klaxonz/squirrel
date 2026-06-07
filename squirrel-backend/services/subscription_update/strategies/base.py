@@ -1,5 +1,5 @@
-"""订阅更新策略基类
-每个站点可以实现自己的更新策略
+"""Subscription update strategy base class
+Each site can implement its own update strategy
 """
 from abc import ABC, abstractmethod
 from typing import Any
@@ -42,34 +42,34 @@ def _append_request_event(
 
 
 class UpdateStrategy(ABC):
-    """更新策略接口"""
+    """Update strategy interface"""
 
     @property
     @abstractmethod
     def site_name(self) -> str:
-        """站点名称（如 'youtube', 'bilibili'）"""
+        """Site name (e.g. 'youtube', 'bilibili')"""
 
     @abstractmethod
     def should_update(self, request: SubscriptionUpdateRequest) -> tuple[bool, str | None]:
-        """判断是否需要更新
+        """Determine whether to update
 
         Returns:
-            (是否更新, 跳过原因)
+            (whether to update, skip reason)
 
         """
 
     @abstractmethod
     def fetch_videos(self, request: SubscriptionUpdateRequest) -> Any:
-        """获取视频列表
+        """Fetch video list
         """
 
     @abstractmethod
     def enqueue_extraction(self, fetch_result: Any, request: SubscriptionUpdateRequest) -> int:
-        """将视频加入提取队列
+        """Enqueue videos for extraction
         """
 
     def execute(self, request: SubscriptionUpdateRequest) -> SubscriptionUpdateResult:
-        """执行更新流程（模板方法）
+        """Execute update flow (template method)
         """
         # 获取站点信息用于指标标签
         from utils import url_helper

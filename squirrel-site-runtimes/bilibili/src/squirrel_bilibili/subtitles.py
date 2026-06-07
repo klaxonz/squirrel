@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class BilibiliSubtitlesProvider:
-    """Bilibili字幕提供者，实现SubtitlesProvider Protocol"""
+    """Bilibili subtitles provider implementing the SubtitlesProvider Protocol."""
 
     domain = "bilibili.com"
 

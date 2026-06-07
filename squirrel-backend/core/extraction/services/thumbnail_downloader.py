@@ -1,4 +1,4 @@
-"""缩略图下载服务 - 负责下载缩略图到本地
+"""Thumbnail download service - handles downloading thumbnails to local storage
 """
 import html as html_lib
 import json
@@ -58,12 +58,12 @@ _SITE_COOKIE_DEFAULTS: dict[str, dict[str, str]] = {
 
 
 class ThumbnailDownloaderService:
-    """缩略图下载服务
+    """Thumbnail download service
 
-    职责：
-    - 检查站点配置
-    - 下载缩略图到本地
-    - 管理缩略图存储目录
+    Responsibilities:
+    - Check site configuration
+    - Download thumbnails to local storage
+    - Manage thumbnail storage directories
     """
 
     def __init__(self):
@@ -493,16 +493,16 @@ class ThumbnailDownloaderService:
         site_name: str | None = None,
         source_url: str | None = None,
     ) -> str | None:
-        """下载缩略图到本地
+        """Download thumbnail to local storage
 
         Args:
-            video_id: 视频ID
-            thumbnail_url: 缩略图URL
-            site_name: 站点名称（可选，用于检查配置）
+            video_id: Video ID
+            thumbnail_url: Thumbnail URL
+            site_name: Site name (optional, for configuration check)
             source_url: Source page URL used to derive referer and cookies
 
         Returns:
-            本地文件路径，失败返回 None
+            Local file path, or None on failure
 
         """
         if not thumbnail_url:
@@ -584,22 +584,22 @@ class ThumbnailDownloaderService:
         site_name: str,
         source_url: str | None = None,
     ) -> str | None:
-        """下载缩略图（同步执行）
+        """Download thumbnail (synchronous execution)
 
         Args:
-            video_id: 视频ID
-            thumbnail_url: 缩略图URL
-            site_name: 站点名称
+            video_id: Video ID
+            thumbnail_url: Thumbnail URL
+            site_name: Site name
             source_url: Source page URL used to derive referer and cookies
 
         Returns:
-            本地文件路径，失败返回 None
+            Local file path, or None on failure
 
         """
         return self.download_thumbnail(video_id, thumbnail_url, site_name, source_url=source_url)
 
     def _should_download(self, site_name: str) -> bool:
-        """检查是否应该下载缩略图"""
+        """Check whether thumbnails should be downloaded for this site"""
         try:
             catalog = self._get_effective_catalog()
             site_info = catalog.get(site_name.lower(), {})
@@ -610,13 +610,13 @@ class ThumbnailDownloaderService:
             return False
 
     def _get_batch_dir(self, video_id: int) -> str:
-        """获取视频所属的 batch 目录"""
+        """Get the batch directory for a video id"""
         batch_num = (video_id - 1) // BATCH_SIZE + 1
         batch_name = f"batch_{batch_num:03d}"
         return os.path.join(str(settings.thumbnails_dir), batch_name)
 
     def _get_extension(self, url: str) -> str:
-        """从 URL 中提取文件扩展名"""
+        """Extract file extension from URL"""
         try:
             parsed = urlparse(url)
             path = parsed.path
@@ -628,12 +628,12 @@ class ThumbnailDownloaderService:
         return ".jpg"
 
     def thumbnail_exists(self, video_id: int) -> bool:
-        """检查缩略图是否已存在"""
+        """Check whether thumbnail already exists"""
         batch_dir = self._get_batch_dir(video_id)
         return video_id in self._get_batch_index(batch_dir)
 
     def _get_local_thumbnail_path(self, video_id: int, remote_url: str | None = None) -> str | None:
-        """获取本地封面的静态URL路径"""
+        """Get local thumbnail static URL path"""
         batch_dir = self._get_batch_dir(video_id)
         batch_name = os.path.basename(batch_dir)
 
@@ -651,7 +651,7 @@ class ThumbnailDownloaderService:
         return self._build_static_thumbnail_url(batch_name, filename)
 
     def _should_use_offline(self, site_name: str) -> bool:
-        """检查是否应该使用离线封面"""
+        """Check whether to use offline thumbnails for this site"""
         try:
             catalog = self._get_effective_catalog()
             site_info = catalog.get(site_name.lower(), {})
@@ -704,15 +704,15 @@ class ThumbnailDownloaderService:
         return results
 
     def get_thumbnail_url(self, video_id: int, remote_url: str | None, video_url: str | None = None) -> str | None:
-        """获取封面的完整URL
+        """Get the full thumbnail URL
 
         Args:
-            video_id: 视频ID
-            remote_url: 远程封面URL
-            video_url: 视频URL（用于获取站点名称）
+            video_id: Video ID
+            remote_url: Remote thumbnail URL
+            video_url: Video URL (used to derive site name)
 
         Returns:
-            本地静态路径或远程URL
+            Local static path or remote URL
 
         """
         return self.get_thumbnail_url_map([

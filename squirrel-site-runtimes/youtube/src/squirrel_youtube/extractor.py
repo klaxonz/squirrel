@@ -1,5 +1,5 @@
 """
-YouTube视频提取器
+YouTube video extractor.
 """
 import logging
 from datetime import datetime
@@ -23,7 +23,7 @@ YOUTUBE_COOKIE_PLAYER_CLIENTS = youtube_ytdlp_support.YOUTUBE_COOKIE_PLAYER_CLIE
 
 
 class YoutubeExtractor(YoutubeDLExtractorBase):
-    """YouTube视频提取器"""
+    """YouTube video extractor."""
 
     site_name = "youtube"
     supported_domains = ["youtube.com", "youtu.be"]
@@ -38,7 +38,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
         super().__init__(self.site_name, self.supported_domains)
 
     def _extract_with_ytdlp(self, url: str, queue_name: str | None = None) -> dict[str, Any] | None:
-        """使用yt-dlp获取YouTube视频信息"""
+        """Use yt-dlp to fetch YouTube video information."""
         try:
             ydl_opts = self._build_ytdlp_opts(url, queue_name)
             video_info = youtube_ytdlp_support.extract_info(
@@ -69,7 +69,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
                 raise ParseError(f"视频信息提取失败: {str(e)}", context=context)
 
     def _build_ytdlp_opts(self, url: str, queue_name: str | None = None) -> dict[str, Any]:
-        """构建yt-dlp选项"""
+        """Build yt-dlp options."""
         ydl_opts: dict[str, Any] = {
             "quiet": True,
             "skip_download": True,
@@ -93,7 +93,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
         return apply_ytdlp_rate_limit(self.site_name, ydl_opts)
 
     def _process_youtube_info(self, video_info: dict) -> None:
-        """处理YouTube特定信息"""
+        """Process YouTube-specific information."""
         try:
             publish_date = self._resolve_publish_date(video_info)
             if publish_date is not None:

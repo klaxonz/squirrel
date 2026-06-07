@@ -1,9 +1,9 @@
-"""视频提取结果处理器（重构版 - 使用Pipeline）
+"""Video extraction result handler (refactored - uses Pipeline)
 
-重构改进：
-1. 职责精简：只负责Pipeline的协调
-2. 使用Pipeline处理整个流程
-3. 代码从270行缩减到 < 100行
+Refactoring improvements:
+1. Simplified responsibilities: only handles Pipeline coordination
+2. Uses Pipeline for the entire workflow
+3. Code reduced from 270 lines to < 100 lines
 """
 import logging
 
@@ -17,25 +17,25 @@ logger = logging.getLogger(__name__)
 
 
 class VideoExtractionHandler(BaseResultHandler):
-    """视频提取结果处理器（重构版）
+    """Video extraction result handler (refactored)
 
-    职责：
-    - 创建Pipeline上下文
-    - 执行Pipeline
-    - 处理Pipeline结果
+    Responsibilities:
+    - Create Pipeline context
+    - Execute Pipeline
+    - Handle Pipeline results
 
-    注意：实际的业务逻辑都在Pipeline的各个Stage中。
+    Note: Actual business logic lives in the Pipeline Stages.
     """
 
     def __init__(self, pipeline=None):
-        """初始化Handler
+        """Initialize the handler
 
         Args:
-            pipeline: Pipeline实例（可选，用于测试注入）
+            pipeline: Pipeline instance (optional, for test injection)
 
         """
         if pipeline is None:
-            # 使用工厂创建默认Pipeline
+            # Create default Pipeline via factory
             extractor_factory = get_extractor_factory()
             pipeline = pipeline_factory.create_video_extraction_pipeline(
                 extractor_factory,
@@ -48,37 +48,37 @@ class VideoExtractionHandler(BaseResultHandler):
         task: ExtractionTask,
         result: ExtractionResult,
     ) -> None:
-        """处理失败结果
+        """Handle failed result
 
         Args:
-            task: 提取任务
-            result: 提取结果
+            task: Extraction task
+            result: Extraction result
 
         """
         logger.error("Video extraction failed: task_id=%s, url=%s, error=%s", task.task_id, task.url, result.error)
 
     def process(self, task: ExtractionTask) -> ExtractionResult:
-        """处理提取任务（新方法）
+        """Process extraction task (new method)
 
-        这是新的入口方法，直接使用Pipeline处理。
+        This is the new entry point, using Pipeline directly.
 
         Args:
-            task: 提取任务
+            task: Extraction task
 
         Returns:
             ExtractionResult
 
         """
         try:
-            # 1. 创建Pipeline上下文
+            # 1. Create Pipeline context
             context = self._create_context(task)
 
-            # 2. 执行Pipeline
+            # 2. Execute Pipeline
             logger.info("Processing extraction task: task_id=%s, url=%s", task.task_id, task.url)
 
             result = self.pipeline.execute(context)
 
-            # 3. 记录结果
+            # 3. Log result
             if result.success:
                 logger.info("Extraction completed successfully: task_id=%s, duration=%f'.2f's", task.task_id, context.get_duration())
             else:
@@ -95,10 +95,10 @@ class VideoExtractionHandler(BaseResultHandler):
             )
 
     def _create_context(self, task: ExtractionTask) -> PipelineContext:
-        """创建Pipeline上下文
+        """Create Pipeline context
 
         Args:
-            task: 提取任务
+            task: Extraction task
 
         Returns:
             PipelineContext
@@ -106,14 +106,14 @@ class VideoExtractionHandler(BaseResultHandler):
         """
         context = PipelineContext(task=task)
 
-        # 根据任务元数据设置控制标志
+        # Set control flags based on task metadata
         context.should_skip_post_process = bool(task.metadata.get("skip_post_process", False))
 
-        # 如果订阅不存在，跳过持久化
-        # （这个检查可以在PersistenceStage中进行）
+        # Skip persistence if subscription does not exist
+        # (This check can be performed in PersistenceStage)
 
         return context
 
 
-# 单例实例（使用默认Pipeline）
+# Singleton instance (uses default Pipeline)
 video_extraction_handler = VideoExtractionHandler()

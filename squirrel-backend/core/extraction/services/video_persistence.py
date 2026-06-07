@@ -1,4 +1,4 @@
-"""视频持久化服务 - 负责视频数据的数据库操作
+"""Video persistence service - handles video database operations
 """
 import logging
 from datetime import datetime
@@ -15,12 +15,12 @@ logger = logging.getLogger(__name__)
 
 
 class VideoPersistenceService:
-    """视频持久化服务
+    """Video persistence service
 
-    职责：
-    - 创建或更新视频记录
-    - 创建订阅-视频关联
-    - 更新订阅统计
+    Responsibilities:
+    - Create or update video records
+    - Create subscription-video associations
+    - Update subscription statistics
     """
 
     def create_or_update(
@@ -34,24 +34,24 @@ class VideoPersistenceService:
         subscription_id: int | None = None,
         subscription_sync_mode: str | None = None,
     ) -> tuple[VideoModel, bool]:
-        """创建或更新视频记录
+        """Create or update a video record
 
         Args:
-            url: 视频URL
-            title: 标题
-            thumbnail: 缩略图URL
-            duration: 时长（秒）
-            publish_date: 发布时间
-            description: 描述
-            subscription_id: 订阅ID
-            subscription_sync_mode: 订阅同步模式，full 或 incremental
+            url: Video URL
+            title: Video title
+            thumbnail: Thumbnail URL
+            duration: Duration in seconds
+            publish_date: Publish date
+            description: Video description
+            subscription_id: Subscription ID
+            subscription_sync_mode: Subscription sync mode, full or incremental
 
         Returns:
-            (video_model, is_new): 视频模型和是否新创建
+            (video_model, is_new): Video model and whether it was newly created
 
         """
         with get_session() as session:
-            # 查询是否已存在
+            # Query if already exists
             video = session.scalars(
                 select(VideoModel).where(VideoModel.url == url),
             ).first()
@@ -59,7 +59,7 @@ class VideoPersistenceService:
             is_new = video is None
 
             if is_new:
-                # 创建新视频
+                # Create new video
                 if publish_date is None:
                     logger.warning("Missing publish_date when creating video: url=%s", url)
 
@@ -115,7 +115,7 @@ class VideoPersistenceService:
                 else:
                     logger.debug("Video already exists: id=%s, url=%s", video.id, url)
 
-            # 创建订阅-视频关联（如果提供了subscription_id）
+            # Create subscription-video link (if subscription_id provided)
             if subscription_id:
                 self._create_subscription_link(
                     session,
@@ -136,7 +136,7 @@ class VideoPersistenceService:
         *,
         subscription_sync_mode: str | None,
     ) -> None:
-        """创建订阅-视频关联"""
+        """Create subscription-video association"""
         try:
             refresh_feed = subscription_sync_mode == "incremental"
             _, created_new_link = subscription_video_service.create_subscription_video(
@@ -150,8 +150,8 @@ class VideoPersistenceService:
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error("Failed to create subscription-video link: subscription_id=%s, video_id=%s, error=%s", subscription_id, video_id, e)
-            # 不抛出异常，允许继续
+            # Do not raise, allow continuation
 
 
-# 单例实例
+# Singleton instance
 video_persistence_service = VideoPersistenceService()

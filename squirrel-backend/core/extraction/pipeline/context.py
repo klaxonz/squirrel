@@ -1,4 +1,4 @@
-"""Pipeline上下文 - 在各个Stage之间传递数据
+"""Pipeline context - passes data between Stages
 """
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -11,46 +11,46 @@ from ..runtime_payloads import RuntimeVideoData
 
 @dataclass
 class PipelineContext:
-    """Pipeline执行上下文
+    """Pipeline execution context
 
-    在Pipeline的各个Stage之间传递数据和状态。
-    每个Stage可以读取/修改context中的数据。
+    Passes data and state between Pipeline Stages.
+    Each Stage can read/write data in the context.
     """
 
-    # ========== 输入 ==========
+    # ========== Input ==========
     task: ExtractionTask
 
-    # ========== 中间数据（各Stage填充） ==========
+    # ========== Intermediate data (filled by Stages) ==========
     plugin_video: RuntimeVideoData | None = None        # ExtractionStage fills this payload
-    video_dto: VideoDTO | None = None              # ValidationStage填充
-    video_model: Any | None = None                 # PersistenceStage填充（VideoModel）
+    video_dto: VideoDTO | None = None              # Filled by ValidationStage
+    video_model: Any | None = None                 # Filled by PersistenceStage (VideoModel)
 
-    # ========== 元数据 ==========
+    # ========== Metadata ==========
     start_time: datetime = field(default_factory=datetime.now)
     current_stage: str = "init"
     errors: list[str] = field(default_factory=list)
 
-    # ========== 控制标志 ==========
-    should_skip_persistence: bool = False      # 是否跳过持久化
-    should_skip_post_process: bool = False     # 是否跳过后处理
+    # ========== Control flags ==========
+    should_skip_persistence: bool = False      # Whether to skip persistence
+    should_skip_post_process: bool = False     # Whether to skip post-processing
 
-    # ========== 额外数据 ==========
-    extra: dict[str, Any] = field(default_factory=dict)  # 存储额外数据
+    # ========== Extra data ==========
+    extra: dict[str, Any] = field(default_factory=dict)  # Store additional data
 
     def add_error(self, stage: str, error: str):
-        """添加错误信息"""
+        """Add error message"""
         self.errors.append(f"[{stage}] {error}")
 
     def has_errors(self) -> bool:
-        """是否有错误"""
+        """Whether there are any errors"""
         return len(self.errors) > 0
 
     def get_duration(self) -> float:
-        """获取执行时长（秒）"""
+        """Get execution duration in seconds"""
         return (datetime.now() - self.start_time).total_seconds()
 
     def to_dict(self) -> dict[str, Any]:
-        """转换为字典（用于日志）"""
+        """Convert to dictionary (for logging)"""
         return {
             "task_id": self.task.task_id,
             "url": self.task.url,

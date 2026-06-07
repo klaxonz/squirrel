@@ -17,18 +17,18 @@ logger = logging.getLogger(__name__)
 
 class YoutubeUserSubscriptionImporter:
     """
-    从 YouTube 导入用户的订阅列表
-    需要登录 cookies 才能获取
+    Import a user's subscription list from YouTube.
+    Requires login cookies to access.
     """
 
     domain = "youtube.com"
 
     def get_user_subscriptions(self) -> list[SubscriptionImportItem]:
         """
-        获取用户在 YouTube 的订阅列表
-        
+        Get the user's YouTube subscription list.
+
         Returns:
-            订阅列表
+            List of subscription import items.
         """
         try:
             base_url = f"https://www.{self.domain}"
@@ -97,7 +97,7 @@ class YoutubeUserSubscriptionImporter:
             raise
 
     def _extract_yt_initial_data(self, html_content: str) -> dict | None:
-        """从 HTML 中提取 ytInitialData"""
+        """Extract ytInitialData from HTML."""
         try:
             # 寻找 ytInitialData 的定义
             pattern = r"var ytInitialData\s*=\s*({.+?});"
@@ -113,7 +113,7 @@ class YoutubeUserSubscriptionImporter:
         return None
 
     def _parse_subscriptions_from_yt_data(self, yt_data: dict) -> list[SubscriptionImportItem]:
-        """从 ytInitialData 中解析订阅信息"""
+        """Parse subscription information from ytInitialData."""
         subscriptions = []
 
         try:
@@ -206,7 +206,7 @@ class YoutubeUserSubscriptionImporter:
         return subscriptions
 
     def _find_channel_renderers(self, data: dict) -> list[dict]:
-        """递归查找所有包含 channelRenderer 的项目"""
+        """Recursively find all items containing channelRenderer."""
         renderers = []
 
         if isinstance(data, dict):

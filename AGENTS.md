@@ -60,6 +60,7 @@ npm install; npm run build:check  # 类型检查 + 构建
 - 导入：标准库 → 第三方 → 本地，分组空行
 - DTO 用 dataclass，日志用 `logging.getLogger(__name__)`
 - 插件异常映射：`NetworkError` / `AuthError` / `ParseError` / `RateLimitError` 等
+- Docstring 全部用英文（Google-style）
 
 ### 桌面端（Electron）
 - ESM 模块（`"type": "module"`）

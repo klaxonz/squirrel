@@ -3,13 +3,13 @@ import time
 from core.database import get_session
 from models.user import UserConfig
 
-# 简单的内存缓存（60秒过期）
+# Simple in-memory cache (60-second expiry)
 _config_cache = {}
-_CACHE_TTL = 60  # 60秒
+_CACHE_TTL = 60  # 60 seconds
 
 
 def get_config(user_id: int, use_cache: bool = True) -> dict:
-    """获取用户配置，默认启用 60 秒缓存"""
+    """Get user config, with 60-second cache enabled by default"""
     # 检查缓存
     if use_cache and user_id in _config_cache:
         cached_config, cached_time = _config_cache[user_id]
@@ -39,13 +39,13 @@ def update_config(
 
     # 添加类型验证
     if "showNsfw" in sanitized_settings and not isinstance(sanitized_settings["showNsfw"], bool):
-        raise ValueError("showNsfw必须是布尔值")
+        raise ValueError("showNsfw must be a boolean")
     if "autoplay" in sanitized_settings and not isinstance(sanitized_settings["autoplay"], bool):
-        raise ValueError("autoplay必须是布尔值")
+        raise ValueError("autoplay must be a boolean")
     if "autoplayNext" in sanitized_settings and not isinstance(sanitized_settings["autoplayNext"], bool):
-        raise ValueError("autoplayNext必须是布尔值")
+        raise ValueError("autoplayNext must be a boolean")
     if "loop" in sanitized_settings and not isinstance(sanitized_settings["loop"], bool):
-        raise ValueError("loop必须是布尔值")
+        raise ValueError("loop must be a boolean")
 
     with get_session() as session:
         config = session.query(UserConfig).filter(UserConfig.user_id == user_id).first()

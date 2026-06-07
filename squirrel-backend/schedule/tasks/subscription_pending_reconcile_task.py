@@ -8,9 +8,9 @@ logger = logging.getLogger(__name__)
 
 @TaskRegistry.register(interval=10, unit="minutes")
 class SubscriptionPendingReconcileTask(BaseTask):
-    """对账订阅待处理视频计数
-    频率：每 10 分钟执行一次
-    职责：扫描视频提取队列并回写 subscription_sync_state.pending_video_count
+    """Reconcile subscription pending video counts
+    Frequency: every 10 minutes
+    Responsibility: Scan the video extraction queue and write back subscription_sync_state.pending_video_count
     """
 
     @classmethod

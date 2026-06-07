@@ -1,5 +1,5 @@
 """
-JavDB视频提取器
+JavDB video extractor.
 """
 import logging
 from datetime import datetime
@@ -76,7 +76,7 @@ def _fetch_video_info(url: str) -> dict[str, Any]:
 
 
 class JavdbExtractor(VideoExtractorBase):
-    """JavDB视频提取器"""
+    """JavDB video extractor."""
 
     site_name = "javdb"
     supported_domains = ["javdb.com"]
@@ -89,7 +89,7 @@ class JavdbExtractor(VideoExtractorBase):
         super().__init__(self.site_name, self.supported_domains)
 
     def _get_video_info(self, url: str, queue_name: str | None = None) -> dict[str, Any] | None:
-        """获取JavDB视频信息"""
+        """Get JavDB video information."""
         try:
             video_info = _fetch_video_info(url)
             self._process_javdb_info(video_info)
@@ -116,7 +116,7 @@ class JavdbExtractor(VideoExtractorBase):
                 raise ParseError(f"视频信息提取失败: {str(e)}", context=context)
 
     def _process_javdb_info(self, video_info: dict) -> None:
-        """处理JavDB特定信息"""
+        """Process JavDB-specific information."""
         try:
             if "timestamp" in video_info:
                 if isinstance(video_info["timestamp"], (int, float)):

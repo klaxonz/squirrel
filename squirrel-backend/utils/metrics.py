@@ -1,31 +1,31 @@
-"""轻量级指标收集器
+"""Lightweight metrics collector
 
-基于 Redis 实现的可观测性指标系统，无需额外中间件。
+Redis-based observability metrics system, no additional middleware required.
 
-核心功能：
-- Counter: 计数器（累加）
-- Gauge: 瞬时值（最新值）
-- Histogram: 分布统计（P50/P95/P99）
-- Timer: 计时器上下文管理器
+Core features:
+- Counter: cumulative counter
+- Gauge: instantaneous value
+- Histogram: distribution statistics (P50/P95/P99)
+- Timer: timer context manager
 
-存储策略：
-- 实时数据存储在 Redis（1小时 TTL）
-- 定期快照写入 PostgreSQL（长期存储）
-- 支持按标签（tags）聚合和查询
+Storage strategy:
+- Real-time data stored in Redis (1-hour TTL)
+- Periodic snapshots written to PostgreSQL (long-term storage)
+- Supports tag-based aggregation and querying
 
-示例：
+Example:
     from utils.metrics import metrics
 
-    # 计数器
+    # Counter
     metrics.counter("crawl.tasks.total", tags={"site": "youtube", "status": "success"})
 
-    # 瞬时值
+    # Gauge
     metrics.gauge("queue.depth", 42, tags={"queue": "video_extract"})
 
-    # 分布统计
+    # Histogram
     metrics.histogram("crawl.duration", 2.5, tags={"site": "youtube"})
 
-    # 计时器
+    # Timer
     with metrics.timer("video.extract", tags={"site": "youtube"}):
         extract_video()
 """
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class MetricSnapshot:
-    """指标快照数据类"""
+    """Metric snapshot data class"""
 
     metric_name: str
     metric_type: str  # counter, gauge, histogram
@@ -51,7 +51,7 @@ class MetricSnapshot:
     timestamp: datetime
 
     def to_dict(self) -> dict[str, Any]:
-        """转换为字典（用于 JSON 序列化）"""
+        """Convert to dict (for JSON serialization)"""
         return {
             "metric_name": self.metric_name,
             "metric_type": self.metric_type,
@@ -62,37 +62,37 @@ class MetricSnapshot:
 
 
 class MetricsCollector:
-    """轻量级指标收集器
+    """Lightweight metrics collector
 
-    特性：
-    - 基于 Redis 实现，无需额外中间件
-    - 支持标签（tags）多维度聚合
-    - 自动时间窗口聚合（1分钟粒度）
-    - 低开销，适合高频调用
+    Features:
+    - Redis-based, no additional middleware required
+    - Multi-dimensional tag aggregation
+    - Automatic time window aggregation (1-minute granularity)
+    - Low overhead, suitable for high-frequency use
     """
 
     def __init__(self, redis_client):
-        """初始化指标收集器
+        """Initialize the metrics collector
 
         Args:
-            redis_client: Redis 客户端实例
+            redis_client: Redis client instance
 
         """
         self.redis = redis_client
-        self.ttl = 3600  # 1小时 TTL
-        self.enabled = True  # 可通过配置动态开关
+        self.ttl = 3600  # 1-hour TTL
+        self.enabled = True  # Can be toggled via config
 
     def counter(self, name: str, value: int = 1, tags: dict[str, str] | None = None) -> None:
-        """计数器：累加型指标
+        """Counter: cumulative metric
 
-        用于：请求次数、任务数、错误数等
+        Used for: request count, task count, error count, etc.
 
         Args:
-            name: 指标名称，如 "crawl.tasks.total"
-            value: 增量值，默认 1
-            tags: 标签字典，如 {"site": "youtube", "status": "success"}
+            name: Metric name, e.g. "crawl.tasks.total"
+            value: Increment value, default 1
+            tags: Tag dict, e.g. {"site": "youtube", "status": "success"}
 
-        示例：
+        Example:
             metrics.counter("crawl.tasks.total", tags={"site": "youtube", "status": "success"})
 
         """
@@ -104,26 +104,26 @@ class MetricsCollector:
             self.redis.incrby(key, value)
             self.redis.expire(key, self.ttl)
 
-            # 同时更新总计（无时间窗口）
+            # Also update the total (no time window)
             total_key = self._build_key(name, tags, metric_type="counter", window="total")
             self.redis.incrby(total_key, value)
-            self.redis.expire(total_key, self.ttl * 24)  # 24小时
+            self.redis.expire(total_key, self.ttl * 24)  # 24 hours
 
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
             logger.error("Failed to record counter metric %s: %s", name, e)
 
     def gauge(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
-        """瞬时值：记录当前状态
+        """Gauge: records current state
 
-        用于：队列深度、活跃连接数、CPU使用率等
+        Used for: queue depth, active connections, CPU usage, etc.
 
         Args:
-            name: 指标名称，如 "queue.depth"
-            value: 当前值
-            tags: 标签字典
+            name: Metric name, e.g. "queue.depth"
+            value: Current value
+            tags: Tag dict
 
-        示例：
+        Example:
             metrics.gauge("queue.depth", 42, tags={"queue": "video_extract"})
 
         """
@@ -138,18 +138,18 @@ class MetricsCollector:
             logger.error("Failed to record gauge metric %s: %s", name, e)
 
     def histogram(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
-        """分布统计：记录数值分布，支持百分位数查询
+        """Histogram: records value distribution with percentile support
 
-        用于：请求延迟、处理时长、数据大小等
+        Used for: request latency, processing time, data size, etc.
 
-        实现：使用 Sorted Set 存储，score 为时间戳，支持自动过期
+        Implementation: Uses Sorted Set with timestamp as score, supports auto-expiry
 
         Args:
-            name: 指标名称，如 "crawl.duration"
-            value: 数值
-            tags: 标签字典
+            name: Metric name, e.g. "crawl.duration"
+            value: Value
+            tags: Tag dict
 
-        示例：
+        Example:
             metrics.histogram("crawl.duration", 2.5, tags={"site": "youtube"})
 
         """
@@ -160,12 +160,12 @@ class MetricsCollector:
             key = self._build_key(name, tags, metric_type="histogram", window="1m")
             timestamp = time.time()
 
-            # 使用 Sorted Set: member 格式为 "timestamp:value"，score 为 timestamp
+            # Use Sorted Set: member format is "timestamp:value", score is timestamp
             member = f"{timestamp}:{value}"
             self.redis.zadd(key, {member: timestamp})
             self.redis.expire(key, self.ttl)
 
-            # 清理旧数据（超过1分钟的）
+            # Clean up old data (older than 1 minute)
             cutoff = timestamp - 60
             self.redis.zremrangebyscore(key, 0, cutoff)
 
@@ -174,14 +174,14 @@ class MetricsCollector:
             logger.error("Failed to record histogram metric %s: %s", name, e)
 
     def record_error(self, site: str, url: str, error_type: str, error_msg: str, max_records: int = 100) -> None:
-        """记录错误详情到 Redis List，用于问题排查
+        """Record error details to Redis List for troubleshooting
 
         Args:
-            site: 站点名称
-            url: 出错的 URL
-            error_type: 错误类型
-            error_msg: 错误消息（可包含堆栈）
-            max_records: 最多保留的记录数
+            site: Site name
+            url: URL that caused the error
+            error_type: Error type
+            error_msg: Error message (may include stack trace)
+            max_records: Maximum number of records to keep
 
         """
         if not self.enabled:
@@ -198,21 +198,21 @@ class MetricsCollector:
                     "site": site,
                     "url": url,
                     "type": error_type,
-                    "msg": error_msg[:2000],  # 保留更多内容以包含堆栈
+                    "msg": error_msg[:2000],  # Keep more content to include stack trace
                 }
             )
 
-            # LPUSH + LTRIM 保持最新的 N 条记录
+            # LPUSH + LTRIM to keep the latest N records
             self.redis.lpush(key, record)
             self.redis.ltrim(key, 0, max_records - 1)
-            self.redis.expire(key, 86400)  # 24小时过期
+            self.redis.expire(key, 86400)  # 24-hour expiry
 
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
             logger.error("Failed to record error detail: %s", e)
 
     def get_recent_errors(self, limit: int = 50) -> list:
-        """获取最近的错误记录"""
+        """Get recent error records"""
         try:
             import json
 
@@ -226,15 +226,15 @@ class MetricsCollector:
 
     @contextmanager
     def timer(self, name: str, tags: dict[str, str] | None = None):
-        """计时器上下文管理器：自动记录代码块执行时间
+        """Timer context manager: automatically records code block execution time
 
-        用于：函数执行时长、操作耗时等
+        Used for: function execution duration, operation latency, etc.
 
         Args:
-            name: 指标名称
-            tags: 标签字典
+            name: Metric name
+            tags: Tag dict
 
-        示例：
+        Example:
             with metrics.timer("video.extract", tags={"site": "youtube"}):
                 extract_video()
 
@@ -250,10 +250,10 @@ class MetricsCollector:
         finally:
             duration = time.time() - start_time
 
-            # 记录耗时分布
+            # Record duration distribution
             self.histogram(f"{name}.duration", duration, tags=tags)
 
-            # 记录状态计数
+            # Record status count
             status_tags = {**(tags or {}), "status": "error" if exception_occurred else "success"}
             self.counter(f"{name}.total", tags=status_tags)
 
@@ -264,50 +264,50 @@ class MetricsCollector:
         metric_type: str,
         window: str = "",
     ) -> str:
-        """构建 Redis key
+        """Build a Redis key
 
-        格式：metrics:{metric_type}:{name}:{tag1=val1,tag2=val2}:{window}:{minute}
+        Format: metrics:{metric_type}:{name}:{tag1=val1,tag2=val2}:{window}:{minute}
 
         Args:
-            name: 指标名称
-            tags: 标签字典
-            metric_type: 指标类型
-            window: 时间窗口（如 "1m", "total"）
+            name: Metric name
+            tags: Tag dict
+            metric_type: Metric type
+            window: Time window (e.g. "1m", "total")
 
         Returns:
-            Redis key 字符串
+            Redis key string
 
         """
         parts = ["metrics", metric_type, name]
 
-        # 添加标签（排序保证一致性）
+        # Add tags (sorted for consistency)
         if tags:
             tag_str = ",".join(f"{k}={v}" for k, v in sorted(tags.items()))
             parts.append(tag_str)
         else:
             parts.append("_")
 
-        # 添加时间窗口
+        # Add time window
         if window:
             if window == "total":
                 parts.append("total")
             else:
-                # 按分钟分桶
+                # Bucket by minute
                 minute = datetime.now().strftime("%Y%m%d%H%M")
                 parts.append(f"{window}:{minute}")
 
         return ":".join(parts)
 
     def get_counter(self, name: str, tags: dict[str, str] | None = None, window: str = "1m") -> int:
-        """查询计数器值
+        """Query counter value
 
         Args:
-            name: 指标名称
-            tags: 标签字典
-            window: 时间窗口（"1m" 或 "total"）
+            name: Metric name
+            tags: Tag dict
+            window: Time window ("1m" or "total")
 
         Returns:
-            计数值
+            Counter value
 
         """
         try:
@@ -320,14 +320,14 @@ class MetricsCollector:
             return 0
 
     def get_gauge(self, name: str, tags: dict[str, str] | None = None) -> float | None:
-        """查询瞬时值
+        """Query gauge value
 
         Args:
-            name: 指标名称
-            tags: 标签字典
+            name: Metric name
+            tags: Tag dict
 
         Returns:
-            当前值，如果不存在返回 None
+            Current value, or None if not present
 
         """
         try:
@@ -344,20 +344,20 @@ class MetricsCollector:
         name: str,
         tags: dict[str, str] | None = None,
     ) -> dict[str, float]:
-        """查询分布统计（P50, P95, P99, avg, min, max, count）
+        """Query histogram statistics (P50, P95, P99, avg, min, max, count)
 
         Args:
-            name: 指标名称
-            tags: 标签字典
+            name: Metric name
+            tags: Tag dict
 
         Returns:
-            统计字典，包含百分位数和基本统计量
+            Statistics dict containing percentiles and basic statistics
 
         """
         try:
             key = self._build_key(name, tags, metric_type="histogram", window="1m")
 
-            # 获取所有数据点
+            # Get all data points
             members = self.redis.zrange(key, 0, -1)
             if not members:
                 return {
@@ -370,7 +370,7 @@ class MetricsCollector:
                     "p99": 0,
                 }
 
-            # 解析数值（member 格式为 "timestamp:value"）
+            # Parse values (member format is "timestamp:value")
             values = []
             for member in members:
                 if isinstance(member, bytes):
@@ -403,14 +403,14 @@ class MetricsCollector:
             return {"count": 0, "min": 0, "max": 0, "avg": 0, "p50": 0, "p95": 0, "p99": 0}
 
     def _percentile(self, sorted_values: list[float], percentile: float) -> float:
-        """计算百分位数
+        """Calculate percentile
 
         Args:
-            sorted_values: 已排序的数值列表
-            percentile: 百分位数（0-1）
+            sorted_values: Sorted list of values
+            percentile: Percentile (0-1)
 
         Returns:
-            百分位数值
+            Percentile value
 
         """
         if not sorted_values:
@@ -428,13 +428,13 @@ class MetricsCollector:
         return d0 + d1
 
     def get_metrics_keys_by_pattern(self, pattern: str) -> list[str]:
-        """根据模式查询指标 key
+        """Query metric keys by pattern
 
         Args:
-            pattern: Redis key 模式，如 "metrics:counter:crawl.tasks.total:*"
+            pattern: Redis key pattern, e.g. "metrics:counter:crawl.tasks.total:*"
 
         Returns:
-            匹配的 key 列表
+            List of matching keys
 
         """
         try:
@@ -445,20 +445,20 @@ class MetricsCollector:
             return []
 
     def collect_snapshots(self, metric_names: list[str] | None = None) -> list[MetricSnapshot]:
-        """收集指标快照（用于持久化到数据库）
+        """Collect metric snapshots (for persistence to database)
 
         Args:
-            metric_names: 要收集的指标名称列表，None 表示收集所有
+            metric_names: List of metric names to collect, None means collect all
 
         Returns:
-            指标快照列表
+            List of metric snapshots
 
         """
         snapshots = []
         now = datetime.now()
 
         try:
-            # 扫描所有指标 key
+            # Scan all metric keys
             if metric_names:
                 patterns = [f"metrics:*:{name}:*" for name in metric_names]
             else:
@@ -469,7 +469,7 @@ class MetricsCollector:
 
                 for key in keys:
                     try:
-                        # 解析 key: metrics:{type}:{name}:{tags}:{window}:{time}
+                        # Parse key: metrics:{type}:{name}:{tags}:{window}:{time}
                         parts = key.split(":")
                         if len(parts) < 4:
                             continue
@@ -478,7 +478,7 @@ class MetricsCollector:
                         metric_name = parts[2]
                         tags_str = parts[3]
 
-                        # 解析标签
+                        # Parse tags
                         labels = {}
                         if tags_str != "_":
                             for tag in tags_str.split(","):
@@ -486,7 +486,7 @@ class MetricsCollector:
                                     k, v = tag.split("=", 1)
                                     labels[k] = v
 
-                        # 获取值
+                        # Get value
                         value = None
                         if metric_type == "counter" or metric_type == "gauge":
                             value = float(self.redis.get(key) or 0)
@@ -515,25 +515,25 @@ class MetricsCollector:
             return []
 
     def enable(self) -> None:
-        """启用指标收集"""
+        """Enable metrics collection"""
         self.enabled = True
         logger.info("Metrics collection enabled")
 
     def disable(self) -> None:
-        """禁用指标收集（用于调试或降低开销）"""
+        """Disable metrics collection (for debugging or reducing overhead)"""
         self.enabled = False
         logger.info("Metrics collection disabled")
 
 
-# 全局实例（延迟初始化）
+# Global instance (lazy initialization)
 _metrics_instance: MetricsCollector | None = None
 
 
 def get_metrics_collector() -> MetricsCollector:
-    """获取全局指标收集器实例
+    """Get the global metrics collector instance
 
     Returns:
-        MetricsCollector 实例
+        MetricsCollector instance
 
     """
     global _metrics_instance
@@ -547,5 +547,5 @@ def get_metrics_collector() -> MetricsCollector:
     return _metrics_instance
 
 
-# 便捷访问
+# Convenience access
 metrics = get_metrics_collector()

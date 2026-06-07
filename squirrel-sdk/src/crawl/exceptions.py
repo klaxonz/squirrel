@@ -1,13 +1,13 @@
-"""SDK 统一异常体系
+"""Unified SDK exception system.
 
-提供插件层统一的异常类，支持错误分类、重试判断和上下文传递。
+Provides plugin-layer exception classes with error categorization, retry decision support, and context passing.
 """
 from enum import Enum
 from typing import Any
 
 
 class ErrorCategory(str, Enum):
-    """错误分类，用于决定是否重试和错误展示"""
+    """Error category for determining retry behavior and error display."""
     NETWORK = "network"
     RATE_LIMIT = "rate_limit"
     AUTH = "auth"
@@ -18,7 +18,7 @@ class ErrorCategory(str, Enum):
 
 
 class PluginError(Exception):
-    """插件错误基类"""
+    """Base class for plugin errors."""
 
     def __init__(
         self,
@@ -46,14 +46,14 @@ class PluginError(Exception):
 
 
 class NetworkError(PluginError):
-    """网络错误（连接超时、DNS失败等），可重试"""
+    """Network error (connection timeout, DNS failure, etc.), retryable."""
 
     def __init__(self, message: str, context: dict[str, Any] | None = None):
         super().__init__(message, ErrorCategory.NETWORK, retryable=True, context=context)
 
 
 class RateLimitError(PluginError):
-    """限流错误，可重试（延迟后）"""
+    """Rate limit error, retryable (after a delay)."""
 
     def __init__(
         self,
@@ -66,28 +66,28 @@ class RateLimitError(PluginError):
 
 
 class AuthError(PluginError):
-    """认证错误（需要登录），不可重试"""
+    """Authentication error (login required), non-retryable."""
 
     def __init__(self, message: str, context: dict[str, Any] | None = None):
         super().__init__(message, ErrorCategory.AUTH, retryable=False, context=context)
 
 
 class VipError(PluginError):
-    """VIP权限错误（需要VIP），不可重试"""
+    """VIP permission error (VIP subscription required), non-retryable."""
 
     def __init__(self, message: str, context: dict[str, Any] | None = None):
         super().__init__(message, ErrorCategory.VIP, retryable=False, context=context)
 
 
 class NotFoundError(PluginError):
-    """资源不存在（视频已删除、404等），不可重试"""
+    """Resource not found (video deleted, 404, etc.), non-retryable."""
 
     def __init__(self, message: str, context: dict[str, Any] | None = None):
         super().__init__(message, ErrorCategory.NOT_FOUND, retryable=False, context=context)
 
 
 class ParseError(PluginError):
-    """解析错误（页面结构变化、数据格式错误等），不可重试"""
+    """Parse error (page structure changed, data format error, etc.), non-retryable."""
 
     def __init__(self, message: str, context: dict[str, Any] | None = None):
         super().__init__(message, ErrorCategory.PARSE, retryable=False, context=context)

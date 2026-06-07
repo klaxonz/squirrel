@@ -1,7 +1,7 @@
-"""视频提取器
-负责处理视频提取的核心业务逻辑
+"""Video extractor
+Handles the core business logic of video extraction
 
-使用新的Pipeline架构进行视频提取。
+Uses the new Pipeline architecture for video extraction.
 """
 import logging
 import re
@@ -23,9 +23,9 @@ task_manager = TaskManager()
 
 
 def _extract_error_type(error_msg: str) -> str:
-    """从错误消息中提取有意义的错误类型
+    """Extract meaningful error type from error message
 
-    错误消息格式可能是：
+    Error message format may be:
     - "StageExecutionError: Critical stage 'extraction' failed: 140"
     - "Unsupported URL: https://..."
     - "Task processing exception: xxx, error: ..."
@@ -58,18 +58,18 @@ def _extract_error_type(error_msg: str) -> str:
 
 
 def extract_video(params: VideoExtractDto) -> ExtractionResult:
-    """提取视频
+    """Extract video
 
     Args:
-        params: 视频提取参数
+        params: Video extraction parameters
 
     Returns:
-        ExtractionResult: 提取结果
+        ExtractionResult: Extraction result
 
-    注意：
-        - VIDEO_EXTRACTION_START 事件在入队时由调用方发出
-        - VIDEO_EXTRACTION_COMPLETE/ERROR 事件由 VideoExtractionHandler 发出
-        - 这里只记录日志，不发出进度事件，避免重复
+    Note:
+        - VIDEO_EXTRACTION_START event is emitted by the caller when enqueuing
+        - VIDEO_EXTRACTION_COMPLETE/ERROR events are emitted by VideoExtractionHandler
+        - Only log here, do not emit progress events to avoid duplication
 
     """
     domain = url_helper.extract_top_level_domain(params.url)

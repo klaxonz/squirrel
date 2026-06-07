@@ -1,4 +1,4 @@
-"""Pipeline中间件机制
+"""Pipeline middleware mechanism
 """
 import logging
 import time
@@ -13,22 +13,22 @@ logger = logging.getLogger(__name__)
 
 
 class PipelineMiddleware(ABC):
-    """Pipeline中间件基类"""
+    """Pipeline middleware base class"""
 
     @abstractmethod
     def before_stage(self, context: "PipelineContext", stage: "PipelineStage") -> None:
-        """Stage执行前调用"""
+        """Called before stage execution"""
 
     @abstractmethod
     def after_stage(self, context: "PipelineContext", stage: "PipelineStage") -> None:
-        """Stage执行后调用"""
+        """Called after stage execution"""
 
     def on_error(self, context: "PipelineContext", stage: "PipelineStage", error: Exception) -> None:
-        """Stage执行出错时调用"""
+        """Called when stage execution fails"""
 
 
 class LoggingMiddleware(PipelineMiddleware):
-    """日志中间件"""
+    """Logging middleware"""
 
     def before_stage(self, context: "PipelineContext", stage: "PipelineStage") -> None:
         logger.debug("[middleware] Starting stage: %s", stage.stage_name)
@@ -41,7 +41,7 @@ class LoggingMiddleware(PipelineMiddleware):
 
 
 class TimingMiddleware(PipelineMiddleware):
-    """计时中间件"""
+    """Timing middleware"""
 
     def __init__(self):
         self._start_times: dict = {}
@@ -60,7 +60,7 @@ class TimingMiddleware(PipelineMiddleware):
 
 
 class MiddlewareChain:
-    """中间件链"""
+    """Middleware chain"""
 
     def __init__(self, middlewares: list[PipelineMiddleware] = None):
         self._middlewares = middlewares or []

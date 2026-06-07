@@ -1,15 +1,15 @@
-"""数据提取核心模块
+"""Core extraction module
 
-重构后的数据爬取框架，提供了统一的接口和可扩展的架构。
+Refactored data scraping framework providing a unified interface and extensible architecture.
 
-主要组件：
-- interfaces: 核心接口定义
-- base: 基础实现类
-- factory: 提取器工厂
-- task_manager: 任务管理器
-- cache: 缓存管理器
-- extractors: 各网站提取器实现
-- handlers: 结果处理器
+Main components:
+- interfaces: Core interface definitions
+- base: Base implementation classes
+- factory: Extractor factory
+- task_manager: Task manager
+- cache: Cache manager
+- extractors: Site-specific extractor implementations
+- handlers: Result handlers
 """
 
 
@@ -42,17 +42,17 @@ __all__ = [
     "ResultHandler",
     "RuntimeVideoData",
     "RuntimeActorData",
-    # 基础类
+    # Base classes
     "BaseExtractor", "BaseTaskProcessor", "BaseResultHandler",
 
-    # 工厂和注册
+    # Factory and registration
     "ExtractorFactory",
     "get_extractor_factory",
     "reset_factory",
 
-    # 任务管理
+    # Task management
     "TaskManager",
 
-    # 处理器
+    # Handlers
     "VideoExtractionHandler",
 ]

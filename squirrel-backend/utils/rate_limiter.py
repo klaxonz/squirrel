@@ -21,9 +21,9 @@ class RateLimit:
 class RateLimiter:
     """Rate limiter to prevent too frequent requests
 
-    目标：
-    - 线程安全：对每个二级域名使用独立锁，避免竞争条件
-    - 分桶：未知域名不再共用全局 '*' 桶，而是各自以二级域名为桶键
+    Goals:
+    - Thread-safe: uses independent locks per second-level domain to avoid race conditions
+    - Bucketing: unknown domains no longer share a global '*' bucket; each uses its own second-level domain as bucket key
     """
 
     # Site-specific defaults are driven by site configs; keep the map empty here

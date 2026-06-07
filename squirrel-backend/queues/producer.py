@@ -12,11 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class RedisStreamProducer:
-    """基于 Redis Streams 的生产者
+    """Producer based on Redis Streams
 
-    使用 XADD 追加消息，消息字段遵循 `MqMessage` 约定。
-    支持简单的重试与退避。
-    支持链路追踪：自动从当前上下文获取 trace_id 并传递到消息中。
+    Appends messages using XADD, fields follow the `MqMessage` convention.
+    Supports simple retry and backoff.
+    Supports trace tracking: automatically extracts trace_id from current context and passes it to the message.
     """
 
     def __init__(self):
@@ -41,18 +41,18 @@ class RedisStreamProducer:
 
         for attempt in range(max_retries + 1):
             try:
-                # 使用近似裁剪，避免无界增长
+                # Use approximate trimming to prevent unbounded growth
                 msg_id = redis_client.xadd(stream, payload, maxlen=approximate_maxlen, approximate=True)
 
-                # 记录消息发送成功
+                # Record successful message send
                 metrics.counter("queue.messages.total", tags={**tags, "action": "publish", "status": "success"})
 
-                # 更新队列深度
+                # Update queue depth
                 try:
                     depth = redis_client.xlen(stream)
                     metrics.gauge("queue.depth", depth, tags=tags)
                 except (ConnectionError, OSError, ValueError, TypeError):
-                    pass  # 队列深度查询失败不影响主流程
+                    pass  # Queue depth query failure does not affect the main flow
 
                 return msg_id  # type: ignore[return-value]
             except (ConnectionError, OSError, ValueError, TypeError) as e:

@@ -1,16 +1,16 @@
-"""提取链路统一异常体系
+"""Unified exception hierarchy for the extraction pipeline
 """
 from datetime import datetime
 from typing import Any
 
 
 class ExtractionError(Exception):
-    """提取错误基类
+    """Base extraction error
 
-    提供：
-    - 错误分类（可重试/不可重试）
-    - 上下文信息
-    - 时间戳
+    Provides:
+    - Error classification (retryable / non-retryable)
+    - Context information
+    - Timestamp
     """
 
     def __init__(
@@ -37,14 +37,14 @@ class ExtractionError(Exception):
         )
 
 
-# ========== 数据转换相关异常 ==========
+# ========== Data transformation errors ==========
 
 class DataTransformError(ExtractionError):
-    """数据转换错误
+    """Data transformation error
 
-    场景：
-    - 插件Video对象转换为VideoDTO失败
-    - 数据格式不符合预期
+    Scenarios:
+    - Plugin Video object to VideoDTO conversion failure
+    - Data format does not meet expectations
     """
 
     def __init__(self, message: str, **kwargs):
@@ -52,27 +52,27 @@ class DataTransformError(ExtractionError):
 
 
 class ValidationError(ExtractionError):
-    """数据验证错误
+    """Data validation error
 
-    场景：
-    - URL格式错误
-    - 必填字段缺失
-    - 数据类型不匹配
+    Scenarios:
+    - Invalid URL format
+    - Missing required fields
+    - Data type mismatch
     """
 
     def __init__(self, message: str, **kwargs):
         super().__init__(message, retryable=False, **kwargs)
 
 
-# ========== 网络相关异常（可重试） ==========
+# ========== Network errors (retryable) ==========
 
 class NetworkError(ExtractionError):
-    """网络错误
+    """Network error
 
-    场景：
-    - 连接超时
-    - DNS解析失败
-    - 服务器无响应
+    Scenarios:
+    - Connection timeout
+    - DNS resolution failure
+    - Server unresponsive
     """
 
     def __init__(self, message: str, **kwargs):
@@ -80,11 +80,11 @@ class NetworkError(ExtractionError):
 
 
 class RateLimitError(ExtractionError):
-    """限流错误
+    """Rate limit error
 
-    场景：
-    - 请求过于频繁
-    - 触发站点限流
+    Scenarios:
+    - Too many requests
+    - Site rate limiting triggered
     """
 
     def __init__(self, message: str, retry_after: int = 60, **kwargs):
@@ -92,15 +92,15 @@ class RateLimitError(ExtractionError):
         self.retry_after = retry_after
 
 
-# ========== 业务逻辑异常（不可重试） ==========
+# ========== Business logic errors (non-retryable) ==========
 
 class ResourceNotFoundError(ExtractionError):
-    """资源不存在
+    """Resource not found
 
-    场景：
-    - 视频已删除
-    - 频道不存在
-    - 页面404
+    Scenarios:
+    - Video has been deleted
+    - Channel does not exist
+    - Page 404
     """
 
     def __init__(self, message: str, **kwargs):
@@ -108,11 +108,11 @@ class ResourceNotFoundError(ExtractionError):
 
 
 class PermissionError(ExtractionError):
-    """权限错误
+    """Permission error
 
-    场景：
-    - 需要登录
-    - 地区限制
+    Scenarios:
+    - Login required
+    - Region restriction
     """
 
     def __init__(self, message: str, **kwargs):
@@ -120,26 +120,26 @@ class PermissionError(ExtractionError):
 
 
 class VipError(ExtractionError):
-    """VIP权限错误
+    """VIP permission error
 
-    场景：
-    - 需要VIP会员
-    - 需要付费订阅
+    Scenarios:
+    - VIP membership required
+    - Paid subscription required
     """
 
     def __init__(self, message: str, **kwargs):
         super().__init__(message, retryable=False, **kwargs)
 
 
-# ========== 系统错误（可重试） ==========
+# ========== System errors (retryable) ==========
 
 class DatabaseError(ExtractionError):
-    """数据库错误
+    """Database error
 
-    场景：
-    - 连接失败
-    - 查询超时
-    - 事务失败
+    Scenarios:
+    - Connection failure
+    - Query timeout
+    - Transaction failure
     """
 
     def __init__(self, message: str, **kwargs):
@@ -147,11 +147,11 @@ class DatabaseError(ExtractionError):
 
 
 class CircuitBreakerOpenError(ExtractionError):
-    """熔断器打开错误
+    """Circuit breaker open error
 
-    场景：
-    - 服务不可用
-    - 失败率过高
+    Scenarios:
+    - Service unavailable
+    - Failure rate too high
     """
 
     def __init__(self, service_name: str, **kwargs):
@@ -160,15 +160,15 @@ class CircuitBreakerOpenError(ExtractionError):
         self.service_name = service_name
 
 
-# ========== Pipeline相关异常 ==========
+# ========== Pipeline errors ==========
 
 class PipelineError(ExtractionError):
-    """Pipeline执行错误
+    """Pipeline execution error
 
-    场景：
-    - Stage执行失败
-    - 上下文数据缺失
-    - 流程中断
+    Scenarios:
+    - Stage execution failure
+    - Missing context data
+    - Pipeline interruption
     """
 
     def __init__(self, message: str, stage_name: str | None = None, **kwargs):
@@ -177,8 +177,8 @@ class PipelineError(ExtractionError):
 
 
 class StageExecutionError(PipelineError):
-    """Stage执行错误
+    """Stage execution error
 
-    更具体的Pipeline Stage错误
+    More specific Pipeline Stage error
     """
 

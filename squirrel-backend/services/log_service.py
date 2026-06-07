@@ -6,7 +6,7 @@ from common.log import LOG_DIR
 
 
 def get_log_files() -> list[dict[str, any]]:
-    """获取所有日志文件列表"""
+    """Get all log file list"""
     if not os.path.exists(LOG_DIR):
         return []
 
@@ -32,17 +32,17 @@ def read_log_lines(
     start_line: int = 0,
     limit: int = 500,
 ) -> tuple[list[dict[str, any]], int, bool]:
-    """读取日志文件内容
+    """Read log file contents
 
     Args:
-        filename: 日志文件名
-        keyword: 搜索关键词
-        level: 日志级别过滤 (INFO, WARNING, ERROR, DEBUG)
-        start_line: 起始行号
-        limit: 返回的最大行数
+        filename: Log file name
+        keyword: Search keyword
+        level: Log level filter (INFO, WARNING, ERROR, DEBUG)
+        start_line: Starting line number
+        limit: Max number of lines to return
 
     Returns:
-        (日志行列表, 总行数, 是否还有更多)
+        (log lines list, total count, whether there are more)
 
     """
     filepath = os.path.join(LOG_DIR, filename)
@@ -130,7 +130,7 @@ def read_log_lines(
 
 
 def _should_include_log(log_entry: dict, keyword: str | None, level: str | None) -> bool:
-    """判断日志条目是否应该包含在结果中"""
+    """Determine whether a log entry should be included in results"""
     # 级别过滤
     if level and log_entry["level"] != level:
         return False

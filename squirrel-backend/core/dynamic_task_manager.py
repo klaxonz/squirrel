@@ -12,16 +12,16 @@ logger = logging.getLogger(__name__)
 
 
 class TaskFactory:
-    """任务工厂类，负责动态创建任务实例"""
+    """Task factory class responsible for dynamically creating task instances"""
 
     def __init__(self):
         self._task_classes: dict[str, type[BaseTask]] = {}
         self._lock = Lock()
 
     def discover_builtin_tasks(self) -> None:
-        """发现并注册内置任务"""
+        """Discover and register built-in tasks"""
         try:
-            # 发现所有继承BaseTask的类
+            # Discover all classes that inherit BaseTask
             task_classes = module_discovery.import_classes_from_package(
                 "schedule.tasks", base_class=BaseTask,
             )
@@ -35,7 +35,7 @@ class TaskFactory:
             logger.error("Failed to discover builtin tasks: %s", e)
 
     def register_task_class(self, task_class: type[BaseTask], task_name: str = None) -> None:
-        """注册任务类"""
+        """Register a task class"""
         if task_name is None:
             task_name = f"{task_class.__module__}.{task_class.__name__}"
 
@@ -44,25 +44,25 @@ class TaskFactory:
             logger.info("Registered task class: %s", task_name)
 
     def get_task_class(self, task_class_name: str) -> type[BaseTask] | None:
-        """获取任务类"""
+        """Get a task class"""
         with self._lock:
             return self._task_classes.get(task_class_name)
 
     def create_task_instance(self, task_config: ScheduledTask) -> BaseTask | None:
-        """根据配置创建任务实例"""
+        """Create a task instance from configuration"""
         task_class = self.get_task_class(task_config.task_class)
         if not task_class:
             logger.error("Task class not found: %s", task_config.task_class)
             return None
 
         try:
-            # 创建任务实例并设置配置
+            # Create task instance and set configuration
             task_instance = task_class()
             task_instance.interval = task_config.interval
             task_instance.unit = task_config.unit
             task_instance.start_immediately = task_config.start_immediately
 
-            # 如果有任务参数，可以在这里设置
+            # Set task parameters if available
             if task_config.task_params:
                 for key, value in task_config.task_params.items():
                     if hasattr(task_instance, key):
@@ -74,7 +74,7 @@ class TaskFactory:
             return None
 
     def get_available_task_classes(self) -> dict[str, dict[str, Any]]:
-        """获取所有可用的任务类信息"""
+        """Get information about all available task classes"""
         result = {}
         with self._lock:
             for task_name, task_class in self._task_classes.items():
@@ -91,7 +91,7 @@ class TaskFactory:
 
 
 class DynamicTaskManager:
-    """动态任务管理器"""
+    """Dynamic task manager"""
 
     def __init__(self):
         self.task_factory = TaskFactory()
@@ -100,19 +100,19 @@ class DynamicTaskManager:
         self._lock = Lock()
 
     def initialize(self, scheduler_instance):
-        """初始化任务管理器"""
+        """Initialize the task manager"""
         self._scheduler = scheduler_instance
         self.task_factory.discover_builtin_tasks()
         logger.info("DynamicTaskManager initialized")
 
     def load_and_register_tasks(self) -> None:
-        """从数据库加载并注册所有活跃任务"""
+        """Load and register all active tasks from the database"""
         if not self._scheduler:
             logger.error("Scheduler not initialized")
             return
 
         with get_session() as session:
-            # 获取所有活跃任务
+            # Get all active tasks
             active_tasks = session.query(ScheduledTask).filter(
                 ScheduledTask.is_active,
             ).all()
@@ -124,13 +124,13 @@ class DynamicTaskManager:
                     self._register_task_to_scheduler(task_config)
                 except (ValueError, TypeError, AttributeError, KeyError) as e:
                     logger.error("Failed to register task %s: %s", task_config.name, e)
-                    # 更新任务状态为错误
+                    # Update task status to error
                     task_config.status = TaskStatus.ERROR.value
                     task_config.last_error = str(e)
                     session.commit()
 
     def _register_task_to_scheduler(self, task_config: ScheduledTask) -> None:
-        """将任务注册到调度器"""
+        """Register a task with the scheduler"""
         if not self._scheduler:
             raise ValueError("Scheduler not initialized")
 
@@ -172,7 +172,7 @@ class DynamicTaskManager:
         execution_log_id: int | None = None,
         executed_by: str = "system",
     ) -> None:
-        """执行任务并记录日志"""
+        """Execute a task and log the execution"""
         start_time = datetime.now()
         task_snapshot: ScheduledTask | None = None
 
@@ -270,7 +270,7 @@ class DynamicTaskManager:
             logger.error("Task %s execution failed: %s", task_name, error_msg)
 
     def _update_next_run_time(self, task_id: int, next_run_at: datetime) -> None:
-        """更新任务的下次执行时间"""
+        """Update the next run time for a task"""
         try:
             with get_session() as session:
                 task_config = session.query(ScheduledTask).filter(ScheduledTask.id == task_id).first()
@@ -281,7 +281,7 @@ class DynamicTaskManager:
             logger.error("Failed to update next run time for task %s: %s", task_id, e)
 
     def add_task(self, task_config: ScheduledTask) -> bool:
-        """添加新任务"""
+        """Add a new task"""
         try:
             if task_config.is_active:
                 self._register_task_to_scheduler(task_config)
@@ -291,11 +291,11 @@ class DynamicTaskManager:
             return False
 
     def remove_task(self, task_id: int) -> bool:
-        """移除任务"""
+        """Remove a task"""
         try:
             with self._lock:
                 if task_id in self._active_tasks:
-                    # 从调度器中移除任务
+                    # Remove the task from the scheduler
                     job = self._active_tasks[task_id]
                     if hasattr(self._scheduler, "remove_job"):
                         self._scheduler.remove_job(job)
@@ -306,12 +306,12 @@ class DynamicTaskManager:
             return False
 
     def update_task(self, task_config: ScheduledTask) -> bool:
-        """更新任务配置"""
+        """Update a task configuration"""
         try:
-            # 先移除旧任务
+            # Remove the old task first
             self.remove_task(task_config.id)
 
-            # 如果任务激活且启用，则重新注册
+            # Re-register if the task is active and enabled
             if task_config.is_active:
                 self._register_task_to_scheduler(task_config)
             return True
@@ -320,14 +320,14 @@ class DynamicTaskManager:
             return False
 
     def execute_task_now(self, task_id: int, execution_log_id: int | None = None, executed_by: str = "system") -> bool:
-        """立即执行任务"""
+        """Execute a task immediately"""
         try:
             with get_session() as session:
                 task_config = session.query(ScheduledTask).filter(ScheduledTask.id == task_id).first()
                 if not task_config:
                     return False
 
-                # 在新线程中执行任务
+                # Execute the task in a new thread
                 from threading import Thread
                 thread = Thread(
                     target=self._execute_task_with_logging,
@@ -346,5 +346,5 @@ class DynamicTaskManager:
             return False
 
 
-# 全局任务管理器实例
+# Global task manager instance
 dynamic_task_manager = DynamicTaskManager()

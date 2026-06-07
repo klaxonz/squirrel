@@ -36,8 +36,8 @@ def _detect_javdb_error_page(body: str) -> str | None:
 
 class JavdbUserSubscriptionImporter:
     """
-    从 JavDB 导入用户的订阅列表
-    需要登录 cookies 才能获取
+    Import a user's subscription list from JavDB.
+    Requires login cookies to access.
     """
 
     domain = "javdb.com"

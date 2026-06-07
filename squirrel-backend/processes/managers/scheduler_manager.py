@@ -24,7 +24,7 @@ _task_fingerprints: dict[int, tuple] = {}
 
 
 def _update_scheduler_status(is_running: bool, job_count: int = 0, error_message: str = None) -> None:
-    """更新调度器状态到数据库"""
+    """Update scheduler status in the database"""
     try:
         with get_session() as session:
             status = session.query(SchedulerStatus).filter(
@@ -119,7 +119,7 @@ def _consume_manual_triggers() -> None:
 
 
 def _heartbeat_worker() -> None:
-    """心跳线程，定期更新调度器状态"""
+    """Heartbeat thread that periodically updates scheduler status"""
     global _heartbeat_running, _scheduler
     import time
 
@@ -209,7 +209,7 @@ def scheduler_stop() -> None:
 
 
 def scheduler_status() -> dict:
-    """从数据库读取调度器状态（支持跨进程）"""
+    """Read scheduler status from the database (cross-process)"""
     try:
         with get_session() as session:
             status = session.query(SchedulerStatus).filter(

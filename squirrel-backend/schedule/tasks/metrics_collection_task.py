@@ -1,6 +1,7 @@
-"""指标收集定时任务
+"""Metrics collection scheduled task
 
-定期从 Redis 收集指标快照并持久化到数据库，同时清理过期数据。
+Periodically collects metric snapshots from Redis, persists them to the database,
+and cleans up expired data.
 """
 import logging
 
@@ -12,13 +13,13 @@ logger = logging.getLogger(__name__)
 
 @TaskRegistry.register(interval=5, unit="minutes")
 class MetricsCollectionTask(BaseTask):
-    """指标收集定时任务
+    """Metrics collection scheduled task
 
-    频率：每 5 分钟执行一次
-    职责：
-    1. 从 Redis 收集指标快照
-    2. 持久化到 PostgreSQL
-    3. 为长期分析提供数据基础
+    Frequency: every 5 minutes
+    Responsibilities:
+    1. Collect metric snapshots from Redis
+    2. Persist to PostgreSQL
+    3. Provide data foundation for long-term analysis
     """
 
     @classmethod
@@ -39,10 +40,10 @@ class MetricsCollectionTask(BaseTask):
 
 @TaskRegistry.register(interval=1, unit="days")
 class MetricsCleanupTask(BaseTask):
-    """指标清理定时任务
+    """Metrics cleanup scheduled task
 
-    频率：每天执行一次
-    职责：清理超过保留期限的历史指标数据
+    Frequency: once per day
+    Responsibility: Clean up historical metric data beyond the retention period
     """
 
     @classmethod

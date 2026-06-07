@@ -1,4 +1,4 @@
-"""Pipeline工厂 - 创建配置好的Pipeline实例
+"""Pipeline factory - creates configured Pipeline instances
 """
 import logging
 
@@ -21,9 +21,9 @@ logger = logging.getLogger(__name__)
 
 
 class PipelineFactory:
-    """Pipeline工厂
+    """Pipeline factory
 
-    负责创建配置好的Pipeline实例。
+    Responsible for creating configured Pipeline instances.
     """
 
     def __init__(self, config: PipelineConfig | None = None):
@@ -70,13 +70,13 @@ class PipelineFactory:
 
     @staticmethod
     def create_video_extraction_pipeline(extractor_factory) -> ExtractionPipeline:
-        """创建视频提取Pipeline（向后兼容的静态方法）
+        """Create a video extraction Pipeline (backward-compatible static method)
 
         Args:
-            extractor_factory: 提取器工厂实例
+            extractor_factory: Extractor factory instance
 
         Returns:
-            配置好的ExtractionPipeline
+            Configured ExtractionPipeline
 
         """
         factory = PipelineFactory()

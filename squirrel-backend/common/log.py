@@ -28,7 +28,7 @@ class SafeStreamHandler(logging.StreamHandler):
 
 
 class TraceIdFilter(logging.Filter):
-    """为日志记录添加 trace_id 字段"""
+    """Add trace_id field to log records"""
 
     def __init__(self):
         super().__init__()
@@ -36,14 +36,14 @@ class TraceIdFilter(logging.Filter):
         self._format_trace_id = None
 
     def _ensure_imports(self):
-        """延迟导入，避免循环依赖"""
+        """Lazy import to avoid circular dependency"""
         if self._get_trace_id is None:
             try:
                 from utils.trace import format_trace_id, get_trace_id
                 self._get_trace_id = get_trace_id
                 self._format_trace_id = format_trace_id
             except ImportError:
-                # 如果导入失败，使用默认值
+                # Use default value if import fails
                 self._get_trace_id = lambda: None
                 self._format_trace_id = lambda x: "-"
 
@@ -53,7 +53,7 @@ class TraceIdFilter(logging.Filter):
             trace_id = self._get_trace_id()
             record.trace_id = self._format_trace_id(trace_id)
         except (ValueError, TypeError):
-            # 如果获取失败，使用默认值
+            # Use default value if acquisition fails
             record.trace_id = "-"
         return True
 

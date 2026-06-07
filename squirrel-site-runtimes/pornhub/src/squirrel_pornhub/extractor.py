@@ -1,5 +1,5 @@
 """
-Pornhub视频提取器
+Pornhub video extractor.
 """
 import logging
 from datetime import datetime
@@ -36,7 +36,7 @@ AGE_GATE_COOKIES = {
 
 
 class PornhubExtractor(YoutubeDLExtractorBase):
-    """Pornhub视频提取器"""
+    """Pornhub video extractor."""
 
     site_name = "pornhub"
     supported_domains = ["pornhub.com"]
@@ -50,7 +50,7 @@ class PornhubExtractor(YoutubeDLExtractorBase):
         super().__init__(self.site_name, self.supported_domains)
 
     def _extract_with_ytdlp(self, url: str, queue_name: str | None = None) -> dict[str, Any] | None:
-        """使用yt-dlp获取Pornhub视频信息"""
+        """Use yt-dlp to fetch Pornhub video information."""
         try:
             ydl_opts = self._build_ytdlp_opts(url, queue_name)
 
@@ -87,7 +87,7 @@ class PornhubExtractor(YoutubeDLExtractorBase):
                 raise ParseError(f"视频信息提取失败: {str(e)}", context=context)
 
     def _build_ytdlp_opts(self, url: str, queue_name: str | None = None) -> dict[str, Any]:
-        """构建yt-dlp选项"""
+        """Build yt-dlp options."""
         cookie_file = resolve_cookie_file_path(url)
         headers = self._build_ytdlp_headers(url, cookie_file)
         ydl_opts: dict[str, Any] = {
@@ -110,7 +110,7 @@ class PornhubExtractor(YoutubeDLExtractorBase):
         return apply_ytdlp_rate_limit(self.site_name, ydl_opts)
 
     def _process_pornhub_info(self, video_info: dict, source_url: str | None = None) -> None:
-        """处理Pornhub特定信息"""
+        """Process Pornhub-specific information."""
         try:
             if "timestamp" in video_info:
                 video_info["publish_date"] = datetime.fromtimestamp(video_info["timestamp"])

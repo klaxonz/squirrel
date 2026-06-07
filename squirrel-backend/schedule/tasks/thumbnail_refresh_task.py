@@ -36,13 +36,13 @@ _SUPPORTED_SITE_PATTERNS = {
 _PAGE_FETCH_MAX_ATTEMPTS = 3
 _PAGE_FETCH_RETRYABLE_STATUS_CODES = {403, 408, 425, 429, 500, 502, 503, 504}
 
-# 全局 HTTP 客户端，复用连接
+# Global HTTP client, reuse connections
 _shared_http_client: httpx.Client | None = None
 _client_lock_time = 0.0
-_CLIENT_TTL = 300.0  # 5分钟
+_CLIENT_TTL = 300.0  # 5 minutes
 
 def _get_shared_http_client() -> httpx.Client:
-    """获取共享的 HTTP 客户端"""
+    """Get the shared HTTP client"""
     global _shared_http_client, _client_lock_time
 
     now = time.time()
@@ -66,18 +66,18 @@ def _get_shared_http_client() -> httpx.Client:
 
 @TaskRegistry.register(interval=60 * 24, unit="minutes", start_immediately=True)
 class ThumbnailRefreshTask(BaseTask):
-    """定时补全支持离线封面的站点封面缓存。"""
+    """Periodically backfill thumbnail cache for sites supporting offline thumbnails."""
 
     @classmethod
     def _batch_check_thumbnails(cls, video_ids: list[int]) -> set[int]:
-        """批量检查多个视频的缩略图是否存在
-        返回已存在缩略图的 video_id 集合
+        """Batch check whether thumbnails exist for multiple videos
+        Returns the set of video_ids that already have thumbnails
         """
         from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
 
         existing_ids = set()
 
-        # 按 batch 分组，避免重复扫描同一目录
+        # Group by batch to avoid re-scanning the same directory
         batch_groups: dict[str, list[int]] = {}
         for video_id in video_ids:
             batch_dir = thumbnail_downloader_service._get_batch_dir(video_id)
@@ -85,7 +85,7 @@ class ThumbnailRefreshTask(BaseTask):
                 batch_groups[batch_dir] = []
             batch_groups[batch_dir].append(video_id)
 
-        # 对每个 batch 一次性获取索引，然后检查所有 video_id
+        # Fetch index once per batch, then check all video_ids
         for batch_dir, ids_in_batch in batch_groups.items():
             batch_index = thumbnail_downloader_service._get_batch_index(batch_dir)
             for video_id in ids_in_batch:

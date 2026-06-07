@@ -1,6 +1,6 @@
-"""指标服务
+"""Metrics service
 
-负责指标数据的持久化、查询和聚合分析。
+Responsible for metrics data persistence, querying and aggregation analysis.
 """
 import logging
 from datetime import datetime, timedelta
@@ -16,25 +16,25 @@ logger = logging.getLogger(__name__)
 
 
 class MetricsService:
-    """指标服务
+    """Metrics service
 
-    功能：
-    - 定期从 Redis 收集指标快照并持久化到数据库
-    - 提供指标查询和聚合 API
-    - 管理历史数据（自动清理过期数据）
+    Features:
+    - Periodically collect metric snapshots from Redis and persist to database
+    - Provide metric query and aggregation API
+    - Manage historical data (auto-clean expired data)
     """
 
     def __init__(self):
-        self.retention_days = 30  # 保留30天数据
+        self.retention_days = 30  # 30-day data retention
 
     def persist_snapshots(self, snapshots: list[MetricSnapshot]) -> int:
-        """持久化指标快照到数据库
+        """Persist metric snapshots to database
 
         Args:
-            snapshots: 指标快照列表
+            snapshots: List of metric snapshots
 
         Returns:
-            成功写入的记录数
+            Number of successfully written records
 
         """
         if not snapshots:
@@ -68,13 +68,13 @@ class MetricsService:
             db.close()
 
     def collect_and_persist(self, metric_names: list[str] | None = None) -> int:
-        """从 Redis 收集指标快照并持久化
+        """Collect metric snapshots from Redis and persist
 
         Args:
-            metric_names: 要收集的指标名称列表，None 表示收集所有
+            metric_names: List of metric names to collect, None means collect all
 
         Returns:
-            成功写入的记录数
+            Number of successfully written records
 
         """
         try:
@@ -92,17 +92,17 @@ class MetricsService:
         end_time: datetime | None = None,
         interval_minutes: int = 5,
     ) -> list[dict[str, Any]]:
-        """查询指标时间序列数据
+        """Query metric time-series data
 
         Args:
-            metric_name: 指标名称
-            labels: 标签过滤条件
-            start_time: 开始时间（默认1小时前）
-            end_time: 结束时间（默认当前时间）
-            interval_minutes: 聚合间隔（分钟）
+            metric_name: Metric name
+            labels: Label filter conditions
+            start_time: Start time (default 1 hour ago)
+            end_time: End time (default current time)
+            interval_minutes: Aggregation interval in minutes
 
         Returns:
-            时间序列数据列表，格式：[{"timestamp": "2025-12-07T20:00:00", "value": 123}, ...]
+            Time-series data list, format: [{"timestamp": "2025-12-07T20:00:00", "value": 123}, ...]
 
         """
         db = next(get_db())
@@ -164,16 +164,16 @@ class MetricsService:
         start_time: datetime | None = None,
         end_time: datetime | None = None,
     ) -> dict[str, float]:
-        """查询指标聚合统计
+        """Query metric aggregation statistics
 
         Args:
-            metric_name: 指标名称
-            labels: 标签过滤条件
-            start_time: 开始时间
-            end_time: 结束时间
+            metric_name: Metric name
+            labels: Label filter conditions
+            start_time: Start time
+            end_time: End time
 
         Returns:
-            聚合统计，包含 count, min, max, avg, sum
+            Aggregation statistics including count, min, max, avg, sum
 
         """
         db = next(get_db())
@@ -237,15 +237,15 @@ class MetricsService:
         start_time: datetime | None = None,
         end_time: datetime | None = None,
     ) -> list[dict[str, Any]]:
-        """按标签分组查询指标（如：各站点的爬取统计）
+        """Query metrics grouped by label (e.g. crawl stats per site)
 
         Args:
-            label_key: 标签键名，如 "site"
-            start_time: 开始时间
-            end_time: 结束时间
+            label_key: Label key name, e.g. "site"
+            start_time: Start time
+            end_time: End time
 
         Returns:
-            按标签分组的统计列表
+            Statistics list grouped by label
 
         """
         db = next(get_db())
@@ -304,13 +304,13 @@ class MetricsService:
             db.close()
 
     def cleanup_old_metrics(self, days: int | None = None) -> int:
-        """清理过期的指标数据
+        """Clean up expired metric data
 
         Args:
-            days: 保留天数，默认使用 retention_days
+            days: Retention days, defaults to retention_days
 
         Returns:
-            删除的记录数
+            Number of deleted records
 
         """
         db = next(get_db())

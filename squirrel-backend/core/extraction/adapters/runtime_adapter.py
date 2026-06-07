@@ -1,9 +1,9 @@
-"""插件数据适配器 - 将插件Video对象转换为VideoDTO
+"""Plugin data adapter - converts plugin Video objects to VideoDTO
 
-核心改进：
-1. 主动获取所有需要的数据（包括懒加载的actors）
-2. 捕获所有异常并标准化
-3. 返回纯数据对象（VideoDTO）
+Core improvements:
+1. Actively fetches all required data (including lazy-loaded actors)
+2. Catches all exceptions and standardizes them
+3. Returns pure data objects (VideoDTO)
 """
 import logging
 from datetime import datetime
@@ -18,58 +18,58 @@ logger = logging.getLogger(__name__)
 
 
 class RuntimeDataAdapter:
-    """插件数据适配器
+    """Plugin data adapter
 
-    职责：
-    - 将插件的Video对象转换为VideoDTO
-    - 主动触发懒加载属性（如actors）
-    - 统一数据格式
-    - 错误处理和日志
+    Responsibilities:
+    - Converts plugin Video objects to VideoDTO
+    - Actively triggers lazy-loaded properties (e.g. actors)
+    - Unifies data format
+    - Error handling and logging
     """
 
     def __init__(self):
         self.logger = logger
 
     def adapt(self, video: RuntimeVideoData, site_name: str) -> VideoDTO:
-        """将插件的Video对象转换为VideoDTO
+        """Convert plugin Video object to VideoDTO
 
         Args:
-            video: 插件返回的Video对象
-            site_name: 站点名称
+            video: Video object returned by the plugin
+            site_name: Site name
 
         Returns:
-            VideoDTO对象
+            VideoDTO object
 
         Raises:
-            DataTransformError: 转换失败
+            DataTransformError: Conversion failed
 
         """
         try:
-            # 1. 提取基础字段
+            # 1. Extract base fields
             base_data = self._extract_base_fields(video, site_name)
 
-            # 2. 处理发布时间
+            # 2. Handle publish date
             publish_date = self._extract_publish_date(video)
             if publish_date:
                 base_data["publish_date"] = publish_date
 
-            # 3. 主动获取actors（关键！）
+            # 3. Actively fetch actors (critical!)
             actors = self._extract_actors(video)
             if actors:
                 base_data["actors"] = actors
 
-            # 4. 保留原始数据
+            # 4. Preserve raw data
             base_data["raw_data"] = self._extract_raw_data(video)
 
-            # 5. 创建DTO（自动验证）
+            # 5. Create DTO (with automatic validation)
             video_dto = VideoDTO(**base_data)
 
-            self.logger.debug("Video adapted successfully: %s", video.url, extra={'url': video.url, 'site': site_name, 'actors_count': len(actors)})
+            self.logger.debug('Video adapted successfully: %s', video.url, extra={'url': video.url, 'site': site_name, 'actors_count': len(actors)})
 
             return video_dto
 
         except Exception as e:  # data transform boundary — wrap any error as DataTransformError
-            self.logger.error("Failed to adapt Video to VideoDTO: %s", getattr(video, 'url', 'unknown'), exc_info=True, extra={'url': getattr(video, 'url', None), 'site': site_name, 'error': str(e), 'error_type': type(e).__name__})
+            self.logger.error('Failed to adapt Video to VideoDTO: %s', getattr(video, 'url', 'unknown'), exc_info=True, extra={'url': getattr(video, 'url', None), 'site': site_name, 'error': str(e), 'error_type': type(e).__name__})
 
             raise DataTransformError(
                 f"Failed to transform video data: {e}",
@@ -81,31 +81,31 @@ class RuntimeDataAdapter:
             ) from e
 
     def _extract_base_fields(self, video: RuntimeVideoData, site_name: str) -> dict[str, Any]:
-        """提取基础字段
+        """Extract base fields
 
         Args:
-            video: VideoMeta对象
-            site_name: 站点名称
+            video: VideoMeta object
+            site_name: Site name
 
         Returns:
-            基础字段字典
+            Dictionary of base fields
 
         """
-        # VideoMeta 的基础字段
+        # VideoMeta base fields
         base_data = {
             "url": video.url,
             "title": video.title or "",
             "site_name": site_name,
         }
 
-        # 可选字段
+        # Optional fields
         if video.thumbnail is not None:
             base_data["thumbnail"] = video.thumbnail
 
         if video.duration is not None:
             base_data["duration"] = video.duration
 
-        # 从 extra_data 中提取额外字段（如 description, tags）
+        # Extract additional fields from extra_data (e.g. description, tags)
         if video.extra_data:
             if "description" in video.extra_data:
                 base_data["description"] = video.extra_data["description"]
@@ -115,37 +115,37 @@ class RuntimeDataAdapter:
         return base_data
 
     def _extract_publish_date(self, video: RuntimeVideoData) -> datetime | None:
-        """提取发布时间（兼容多种格式）
+        """Extract publish date (supports multiple formats)
 
         Args:
-            video: VideoMeta对象
+            video: VideoMeta object
 
         Returns:
-            datetime对象或None
+            datetime object or None
 
         """
-        # VideoMeta 的 publish_date 字段
+        # VideoMeta publish_date field
         if video.publish_date is not None:
             return parse_publish_date(video.publish_date)
 
         return None
 
     def _extract_actors(self, video: RuntimeVideoData) -> list[ActorDTO]:
-        """提取actors信息
+        """Extract actor information
 
-        VideoMeta 中 actors 可能在 extra_data 中
+        Actors in VideoMeta may be stored in extra_data
 
         Args:
-            video: VideoMeta对象
+            video: VideoMeta object
 
         Returns:
-            ActorDTO列表
+            List of ActorDTO
 
         """
         actors = []
 
         try:
-            # 从 extra_data 中获取 actors
+            # Get actors from extra_data
             if video.extra_data and "actors" in video.extra_data:
                 raw_actors = video.extra_data["actors"]
 
@@ -168,25 +168,25 @@ class RuntimeDataAdapter:
                             self.logger.warning("Failed to convert actor: %s", e, extra={'video_url': video.url, 'actor': str(actor)})
 
         except (ValueError, TypeError, KeyError, AttributeError) as e:
-            # actors获取失败不应该导致整个提取失败
+            # Actor extraction failure should not abort the entire extraction
             self.logger.warning("Failed to extract actors: %s, error: %s", video.url, e, extra={'url': video.url, 'error': str(e)})
 
         return actors
 
     def _convert_actor(self, actor: RuntimeActorData) -> ActorDTO | None:
-        """转换单个Actor对象为ActorDTO
+        """Convert a single Actor object to ActorDTO
 
         Args:
-            actor: Actor对象
+            actor: Actor object
 
         Returns:
-            ActorDTO或None
+            ActorDTO or None
 
         """
         if not isinstance(actor, RuntimeActorData):
             return None
 
-        # 确保有url和name
+        # Ensure url and name are present
         if not hasattr(actor, "url") or not actor.url:
             return None
 
@@ -200,20 +200,20 @@ class RuntimeDataAdapter:
         )
 
     def _extract_raw_data(self, video: RuntimeVideoData) -> dict[str, Any]:
-        """提取原始数据（用于调试和审计）
+        """Extract raw data (for debugging and auditing)
 
         Args:
-            video: VideoMeta对象
+            video: VideoMeta object
 
         Returns:
-            原始数据字典
+            Raw data dictionary
 
         """
         raw = {}
 
-        # 保存 extra_data（如果存在）
+        # Save extra_data if present
         if video.extra_data:
-            # 只保存可序列化的数据
+            # Only save serializable data
             raw["extra_data"] = {
                 k: v for k, v in video.extra_data.items()
                 if isinstance(v, (str, int, float, bool, type(None), list, dict))

@@ -1,6 +1,6 @@
-"""订阅更新领域模块
+"""Subscription update domain module
 
-统一管理订阅更新相关的所有逻辑，提供清晰的 API 接口
+Unified management of all subscription update logic, providing a clean API interface
 """
 from .models import UpdateMode, UpdateTrigger
 from .scheduler import scheduler

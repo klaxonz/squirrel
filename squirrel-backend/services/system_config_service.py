@@ -29,7 +29,7 @@ def _from_bool(val: bool) -> str:
 
 
 def get_value(key: str, default: str | None = None) -> str | None:
-    """读取指定 key 的值，若不存在返回 default
+    """Read value for the given key, return default if not found
     """
     with get_session() as session:
         row = session.scalars(select(SystemConfig).where(SystemConfig.key == key)).first()
@@ -39,7 +39,7 @@ def get_value(key: str, default: str | None = None) -> str | None:
 
 
 def set_value(key: str, value: str) -> None:
-    """设置/更新指定 key 的值
+    """Set/update value for the given key
     """
     with get_session() as session:
         row = session.scalars(select(SystemConfig).where(SystemConfig.key == key)).first()
@@ -53,9 +53,9 @@ def set_value(key: str, value: str) -> None:
 
 
 def get_bool(key: str, default: bool) -> bool:
-    """读取布尔配置，使用 'true'/'false' 等字符串解析
+    """Read boolean config, parsing strings like 'true'/'false'
 
-    优先级：数据库配置 > 默认值
+    Priority: database config > default value
     """
     # 从数据库读取
     db_value = get_value(key, None)
@@ -68,13 +68,13 @@ def get_bool(key: str, default: bool) -> bool:
 
 
 def set_bool(key: str, value: bool) -> None:
-    """写入布尔配置，统一存储为 'true'/'false'
+    """Write boolean config, uniformly stored as 'true'/'false'
     """
     set_value(key, _from_bool(value))
 
 
 def get_many(keys: list[str], defaults: dict[str, Any]) -> dict[str, str]:
-    """批量读取，返回 key->value 字典；不存在的 key 使用 defaults 中的默认字符串或空串
+    """Batch read, returns key->value dict; missing keys use defaults or empty string
     """
     with get_session() as session:
         if not keys:
@@ -93,7 +93,7 @@ def get_many(keys: list[str], defaults: dict[str, Any]) -> dict[str, str]:
 
 
 def get_all_configs() -> dict[str, str]:
-    """获取所有系统配置
+    """Get all system configurations
     """
     with get_session() as session:
         rows = session.scalars(select(SystemConfig)).all()

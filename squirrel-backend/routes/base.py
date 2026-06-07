@@ -47,7 +47,7 @@ def create_app() -> FastAPI:
     app = FastAPI(exception_handlers=None)
 
     async def authentication_error_handler(request: Request, exc: AuthenticationError):
-        """处理认证错误"""
+        """Handle authentication errors"""
         logger.error("AuthenticationError: %s", exc.detail, exc_info=True)
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -55,7 +55,7 @@ def create_app() -> FastAPI:
         )
 
     async def http_exception_handler(request: Request, exc: StarletteHTTPException | FastAPIHTTPException):
-        """处理 HTTP 异常"""
+        """Handle HTTP exceptions"""
         logger.error("HTTPException: %s", exc.detail, exc_info=True)
         code = exc.status_code if exc.status_code in {
             ErrorCode.PARAM_ERROR, ErrorCode.UNAUTHORIZED,
@@ -68,7 +68,7 @@ def create_app() -> FastAPI:
         )
 
     async def default_exception_handler(request: Request, exc: Exception):
-        """处理未捕获的异常"""
+        """Handle uncaught exceptions"""
         logger.error("DefaultException: %s", exc, exc_info=True)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -167,7 +167,7 @@ def _register_spa_route(app: FastAPI) -> None:
 
     @app.get("/{full_path:path}", name="spa")
     async def serve_spa(full_path: str):
-        """服务于前端 SPA 的路由处理器"""
+        """Serve the frontend SPA route handler"""
         file_static_dir = str(settings.static_dir)
 
         static_file = Path(file_static_dir) / full_path

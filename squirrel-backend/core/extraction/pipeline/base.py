@@ -1,4 +1,4 @@
-"""Pipeline基类定义
+"""Pipeline base class definitions
 """
 import logging
 from abc import ABC, abstractmethod
@@ -15,49 +15,49 @@ logger = logging.getLogger(__name__)
 
 
 class PipelineStage(ABC):
-    """Pipeline阶段基类
+    """Pipeline stage base class
 
-    每个Stage负责Pipeline中的一个特定步骤。
+    Each Stage handles a specific step in the Pipeline.
     """
 
     @property
     @abstractmethod
     def stage_name(self) -> str:
-        """阶段名称（用于日志和错误追踪）"""
+        """Stage name (for logging and error tracing)"""
 
     @abstractmethod
     def execute(self, context: PipelineContext) -> PipelineContext:
-        """执行阶段逻辑
+        """Execute stage logic
 
         Args:
-            context: Pipeline上下文
+            context: Pipeline context
 
         Returns:
-            更新后的上下文
+            Updated context
 
         Raises:
-            StageExecutionError: 阶段执行失败
+            StageExecutionError: Stage execution failed
 
         """
 
     def can_skip(self, context: PipelineContext) -> bool:
-        """判断是否可以跳过该阶段
+        """Check whether this stage can be skipped
 
         Args:
-            context: Pipeline上下文
+            context: Pipeline context
 
         Returns:
-            True表示跳过，False表示执行
+            True to skip, False to execute
 
         """
         return False
 
     def on_error(self, context: PipelineContext, error: Exception) -> None:
-        """错误处理回调
+        """Error handling callback
 
         Args:
-            context: Pipeline上下文
-            error: 捕获的异常
+            context: Pipeline context
+            error: Caught exception
 
         """
         error_msg = f"Stage '{self.stage_name}' failed: {error!s}"
@@ -77,17 +77,17 @@ class PipelineStage(ABC):
 
 
 class ExtractionPipeline:
-    """提取Pipeline
+    """Extraction pipeline
 
-    按顺序执行多个Stage，完成整个提取流程。
+    Executes multiple Stages in sequence to complete the full extraction flow.
     """
 
     def __init__(self, stages: list[PipelineStage], middleware: Optional["MiddlewareChain"] = None):
-        """初始化Pipeline
+        """Initialize the pipeline
 
         Args:
-            stages: Stage列表（按执行顺序）
-            middleware: 中间件链（可选）
+            stages: List of Stages (in execution order)
+            middleware: Middleware chain (optional)
 
         """
         self.stages = stages
@@ -95,10 +95,10 @@ class ExtractionPipeline:
         self.logger = logger
 
     def execute(self, context: PipelineContext) -> ExtractionResult:
-        """执行Pipeline
+        """Execute the pipeline
 
         Args:
-            context: Pipeline上下文
+            context: Pipeline context
 
         Returns:
             ExtractionResult
@@ -107,16 +107,16 @@ class ExtractionPipeline:
         try:
             self.logger.info("Pipeline started: task_id=%s, url=%s", context.task.task_id, context.task.url)
 
-            # 依次执行各个Stage
+            # Execute Stages in sequence
             for stage in self.stages:
                 context.current_stage = stage.stage_name
 
-                # 检查是否跳过
+                # Check if this stage can be skipped
                 if stage.can_skip(context):
                     self.logger.debug("Skipping stage '%s': task_id=%s", stage.stage_name, context.task.task_id)
                     continue
 
-                # 执行Stage
+                # Execute Stage
                 try:
                     self.logger.debug("Executing stage '%s': task_id=%s", stage.stage_name, context.task.task_id)
 
@@ -131,12 +131,12 @@ class ExtractionPipeline:
                     self.logger.debug("Stage '%s' completed: task_id=%s", stage.stage_name, context.task.task_id)
 
                 except (ValueError, TypeError, AttributeError, KeyError) as e:
-                    # Stage执行失败
+                    # Stage execution failed
                     stage.on_error(context, e)
                     if self._middleware:
                         self._middleware.on_error(context, stage, e)
 
-                    # 判断是否应该继续执行
+                    # Determine whether to continue
                     if not self._should_continue_after_error(stage, e):
                         raise StageExecutionError(
                             f"Critical stage '{stage.stage_name}' failed",
@@ -148,7 +148,7 @@ class ExtractionPipeline:
                             },
                         ) from e
 
-            # 所有Stage执行完成
+            # All Stages completed
             duration = context.get_duration()
 
             self.logger.info("Pipeline completed successfully: task_id=%s, duration=%f'.2f's", context.task.task_id, duration)
@@ -164,7 +164,7 @@ class ExtractionPipeline:
 
             self.logger.error("Pipeline failed: task_id=%s, duration=%f'.2f's, error=%s", context.task.task_id, duration, e, exc_info=True)
 
-            # 记录详细错误信息（包含堆栈）到 metrics
+            # Record detailed error info (with stack trace) to metrics
             try:
                 from utils.metrics import metrics
                 from utils.url_helper import extract_top_level_domain
@@ -189,32 +189,32 @@ class ExtractionPipeline:
         stage: PipelineStage,
         error: Exception,
     ) -> bool:
-        """判断Stage失败后是否应该继续执行
+        """Determine whether to continue after a stage failure
 
         Args:
-            stage: 失败的Stage
-            error: 捕获的异常
+            stage: The failed Stage
+            error: Caught exception
 
         Returns:
-            True表示继续，False表示中断
+            True to continue, False to abort
 
         """
-        # 定义关键Stage（失败必须中断）
+        # Define critical stages (failure must abort)
         critical_stages = {
-            "extraction",      # 提取失败，无法继续
-            "validation",      # 验证失败，数据不完整
-            "persistence",     # 持久化失败，无法保存
+            "extraction",      # Extraction failed, cannot continue
+            "validation",      # Validation failed, data is incomplete
+            "persistence",     # Persistence failed, cannot save
         }
 
-        # 关键Stage失败，必须中断
+        # Critical stage failure must abort
         if stage.stage_name in critical_stages:
             return False
 
-        # 非关键Stage失败，可以继续（如enrichment、post_process）
+        # Non-critical stage failure can continue (e.g. enrichment, post_process)
         return True
 
     def get_stage_names(self) -> list[str]:
-        """获取所有Stage名称"""
+        """Get all stage names"""
         return [stage.stage_name for stage in self.stages]
 
     def __repr__(self):

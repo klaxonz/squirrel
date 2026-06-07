@@ -1,4 +1,4 @@
-"""ValidationStage - 验证并转换数据为DTO
+"""ValidationStage - validates and converts data to DTO
 """
 import logging
 
@@ -11,17 +11,17 @@ logger = logging.getLogger(__name__)
 
 
 class ValidationStage(PipelineStage):
-    """验证阶段
+    """Validation stage
 
-    职责：
-    - 将插件Video对象转换为VideoDTO
-    - 验证数据完整性和格式
-    - 保存到context.video_dto
+    Responsibilities:
+    - Convert plugin Video object to VideoDTO
+    - Validate data integrity and format
+    - Save to context.video_dto
     """
 
     def __init__(self, adapter: RuntimeDataAdapter):
         """Args:
-        adapter: 插件数据适配器
+        adapter: Plugin data adapter
 
         """
         self.adapter = adapter
@@ -31,15 +31,15 @@ class ValidationStage(PipelineStage):
         return "validation"
 
     def execute(self, context: PipelineContext) -> PipelineContext:
-        """执行验证和转换"""
-        # 检查前置条件
+        """Execute validation and conversion"""
+        # Check preconditions
         if context.plugin_video is None:
             raise ExtValidationError(
                 "No plugin video data found in context",
                 context={"task_id": context.task.task_id},
             )
 
-        # 转换为DTO（会自动验证）
+        # Convert to DTO (automatically validates)
         logger.info("Validating video data: url=%s", context.task.url)
 
         video_dto = self.adapter.adapt(
@@ -47,7 +47,7 @@ class ValidationStage(PipelineStage):
             context.task.site_name,
         )
 
-        # 保存到上下文
+        # Save to context
         context.video_dto = video_dto
 
         logger.info("Validation completed: url=%s, title=%s, actors=%s", context.task.url, video_dto.title, len(video_dto.actors))
@@ -55,5 +55,5 @@ class ValidationStage(PipelineStage):
         return context
 
     def can_skip(self, context: PipelineContext) -> bool:
-        """如果已经有video_dto，可以跳过"""
+        """Skip if video_dto already exists"""
         return context.video_dto is not None

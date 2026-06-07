@@ -40,17 +40,17 @@ class Scheduler:
         """Add a scheduled job.
 
         Args:
-            func: 要执行的函数
-            interval: 间隔数值
-            unit: 时间单位，支持 'seconds', 'minutes', 'hours', 'days'
-            start_immediately: 是否立即执行第一次
-            job_name: 任务名称（可选）
+            func: Function to execute
+            interval: Interval value
+            unit: Time unit, supports 'seconds', 'minutes', 'hours', 'days'
+            start_immediately: Whether to execute immediately on first run
+            job_name: Job name (optional)
 
         """
         if unit not in ["seconds", "minutes", "hours", "days"]:
             raise ValueError("unit must be 'seconds', 'minutes', 'hours', or 'days'")
 
-        # 转换为秒
+        # Convert to seconds
         multipliers = {
             "seconds": 1,
             "minutes": 60,

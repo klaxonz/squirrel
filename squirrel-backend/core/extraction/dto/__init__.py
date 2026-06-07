@@ -1,6 +1,6 @@
 """Data Transfer Objects for extraction pipeline.
 
-提供纯数据对象，用于在各个组件之间传递数据。
+Provides pure data objects for transferring data between components.
 """
 
 from .actor_dto import ActorDTO

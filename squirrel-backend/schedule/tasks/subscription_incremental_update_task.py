@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 @TaskRegistry.register(interval=5, unit="minutes")
 class SubscriptionIncrementalUpdateTask(BaseTask):
-    """订阅增量更新定时任务
-    频率：每 5 分钟执行一次
-    职责：将所有活跃订阅发送到增量更新队列
+    """Subscription incremental update scheduled task
+    Frequency: every 5 minutes
+    Responsibility: Enqueue all active subscriptions for incremental update
     """
 
     @classmethod

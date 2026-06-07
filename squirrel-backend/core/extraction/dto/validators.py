@@ -1,20 +1,20 @@
-"""数据验证工具函数
+"""Data validation utility functions
 """
 from datetime import datetime
 from typing import Any
 
 
 def validate_url(url: str) -> str:
-    """验证URL格式
+    """Validate URL format
 
     Args:
-        url: URL字符串
+        url: URL string
 
     Returns:
-        清理后的URL
+        Cleaned URL
 
     Raises:
-        ValueError: URL格式无效
+        ValueError: Invalid URL format
 
     """
     if not url or not isinstance(url, str):
@@ -32,17 +32,17 @@ def validate_url(url: str) -> str:
 
 
 def validate_not_empty(value: str, field_name: str = "Field") -> str:
-    """验证字符串非空
+    """Validate string is not empty
 
     Args:
-        value: 待验证的值
-        field_name: 字段名称（用于错误消息）
+        value: Value to validate
+        field_name: Field name (for error message)
 
     Returns:
-        清理后的字符串
+        Cleaned string
 
     Raises:
-        ValueError: 值为空
+        ValueError: Value is empty
 
     """
     if not value or not isinstance(value, str):
@@ -57,27 +57,27 @@ def validate_not_empty(value: str, field_name: str = "Field") -> str:
 
 
 def parse_publish_date(value: Any) -> datetime | None:
-    """解析发布时间（支持多种格式）
+    """Parse publish date (supports multiple formats)
 
-    支持的格式：
-    - datetime对象
-    - Unix timestamp（int/float）
-    - 字符串: YYYYMMDD, YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD
+    Supported formats:
+    - datetime object
+    - Unix timestamp (int/float)
+    - String: YYYYMMDD, YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD
 
     Args:
-        value: 待解析的值
+        value: Value to parse
 
     Returns:
-        datetime对象或None
+        datetime object or None
 
     Raises:
-        ValueError: 无法解析的格式
+        ValueError: Unparseable format
 
     """
     if value is None:
         return None
 
-    # 已经是datetime对象
+    # Already a datetime object
     if isinstance(value, datetime):
         return value
 
@@ -88,7 +88,7 @@ def parse_publish_date(value: Any) -> datetime | None:
         except (ValueError, OSError) as e:
             raise ValueError(f"Invalid timestamp: {value}") from e
 
-    # 字符串格式
+    # String format
     if isinstance(value, str):
         value = value.strip()
 
@@ -104,7 +104,7 @@ def parse_publish_date(value: Any) -> datetime | None:
         except ValueError:
             pass
 
-        # 尝试多种日期格式
+        # Try multiple date formats
         date_formats = [
             "%Y%m%d",           # 20231207
             "%Y-%m-%d",         # 2023-12-07
@@ -120,7 +120,7 @@ def parse_publish_date(value: Any) -> datetime | None:
             except ValueError:
                 continue
 
-        # 所有格式都失败
+        # All formats failed
         raise ValueError(
             f"Cannot parse publish_date: {value}. "
             f"Supported formats: YYYYMMDD, YYYY-MM-DD, YYYY/MM/DD, etc.",
@@ -130,16 +130,16 @@ def parse_publish_date(value: Any) -> datetime | None:
 
 
 def validate_duration(duration: int | None) -> int | None:
-    """验证视频时长
+    """Validate video duration
 
     Args:
-        duration: 时长（秒）
+        duration: Duration in seconds
 
     Returns:
-        验证后的时长
+        Validated duration
 
     Raises:
-        ValueError: 时长无效
+        ValueError: Invalid duration
 
     """
     if duration is None:

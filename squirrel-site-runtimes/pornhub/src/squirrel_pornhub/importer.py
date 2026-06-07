@@ -16,18 +16,18 @@ SITE_SLUG = "pornhub"
 
 class PornhubUserSubscriptionImporter:
     """
-    从 Pornhub 导入用户的订阅列表
-    需要登录 cookies 才能获取
+    Import a user's subscription list from Pornhub.
+    Requires login cookies to access.
     """
 
     domain = "pornhub.com"
 
     def get_user_subscriptions(self) -> list[SubscriptionImportItem]:
         """
-        获取用户在 Pornhub 的订阅列表
-        
+        Get the user's Pornhub subscription list.
+
         Returns:
-            订阅列表
+            List of subscription import items.
         """
         try:
             base_url = f"https://www.{self.domain}"

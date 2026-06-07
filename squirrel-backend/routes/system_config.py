@@ -10,7 +10,7 @@ _logger = logging.getLogger(__name__)
 
 
 def to_bool(val: str | None) -> bool | None:
-    """将字符串值转换为布尔值
+    """Convert string value to boolean
     """
     if val is None:
         return None
@@ -23,9 +23,9 @@ def to_bool(val: str | None) -> bool | None:
 
 
 def _convert_config_types(config_dict: dict) -> dict:
-    """将配置字典中的特定键转换为正确的数据类型
+    """Convert specific keys in config dict to correct data types
     """
-    # 定义需要转换为布尔值的配置项
+    # Boolean config keys
     boolean_configs = {SYS_ENABLE_SCHEDULER, SYS_ENABLE_WORKER, SYS_BLUR_NSFW_THUMBNAILS}
 
     result = {}
@@ -39,7 +39,7 @@ def _convert_config_types(config_dict: dict) -> dict:
 
 @router.get("")
 def get_system_config():
-    """返回数据库中已有的所有系统配置，并将特定配置项转换为正确的数据类型。
+    """Return all system config from database, converting specific keys to proper types.
     """
     config_dict = system_config_service.get_all_configs()
     return _convert_config_types(config_dict)
@@ -47,8 +47,8 @@ def get_system_config():
 
 @router.post("")
 async def update_system_config(payload: dict = Body(...)):
-    """通用更新接口：仅支持 JSON Body，逐项写入 system_config（纯字符串存储）。
-    返回：数据库中当前所有配置（纯 KV 字符串）
+    """Generic update endpoint: accepts JSON Body, writes each key to system_config (plain string storage).
+    Returns: all current config from database (plain KV strings)
     """
     for k, v in payload.items():
         system_config_service.set_value(k, str(v))

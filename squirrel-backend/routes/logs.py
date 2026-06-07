@@ -8,12 +8,12 @@ from services import log_service
 from utils.jwt_helper import get_current_user
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/logs", tags=["日志管理"])
+router = APIRouter(prefix="/api/logs", tags=["Log Management"])
 
 
 @router.get("/files")
 def get_log_files(current_user: User = Depends(get_current_user)):
-    """获取所有日志文件列表"""
+    """Get all log file list"""
     try:
         files = log_service.get_log_files()
         return response.success(files)
@@ -25,16 +25,16 @@ def get_log_files(current_user: User = Depends(get_current_user)):
 
 @router.get("/query")
 def query_logs(
-    filename: str = Query("app.log", description="日志文件名"),
-    keyword: str | None = Query(None, description="搜索关键词"),
-    level: str | None = Query(None, description="日志级别 (INFO, WARNING, ERROR, DEBUG)"),
-    page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(500, ge=1, le=2000, alias="pageSize", description="每页数量"),
+    filename: str = Query("app.log", description="Log file name"),
+    keyword: str | None = Query(None, description="Search keyword"),
+    level: str | None = Query(None, description="Log level (INFO, WARNING, ERROR, DEBUG)"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(500, ge=1, le=2000, alias="pageSize", description="Page size"),
     current_user: User = Depends(get_current_user),
 ):
-    """查询日志内容
+    """Query log contents
 
-    支持按关键词和日志级别过滤
+    Supports filtering by keyword and log level
     """
     try:
         start_line = (page - 1) * page_size

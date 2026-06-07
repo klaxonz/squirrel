@@ -26,7 +26,7 @@ def create_subscription_video(
     *,
     refresh_feed: bool = True,
 ) -> tuple[SubscriptionVideo | None, bool]:
-    """幂等创建订阅-视频关联。返回 (obj, created)。"""
+    """Idempotently create subscription-video association. Returns (obj, created)."""
     with get_session() as session:
         stmt = (
             pg_insert(SubscriptionVideo)

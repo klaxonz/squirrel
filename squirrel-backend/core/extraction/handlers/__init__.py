@@ -1,1 +1,1 @@
-# 结果处理器模块
+# Result handler module

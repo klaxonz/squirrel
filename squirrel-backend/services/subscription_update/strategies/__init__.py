@@ -1,4 +1,4 @@
-"""订阅更新策略模块
+"""Subscription update strategy module
 """
 from .registry import StrategyRegistry, update_strategy
 

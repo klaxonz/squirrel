@@ -1,11 +1,11 @@
-"""链路追踪工具模块
+"""Trace tracking utility module
 
-提供统一的 trace_id 管理，支持跨线程、协程和消息队列的链路追踪。
+Provides unified trace_id management, supporting cross-thread, coroutine, and message queue trace tracking.
 
-核心功能：
-- 生成唯一的 trace_id
-- 在 context 中存储和获取 trace_id
-- 提供装饰器和 context manager 来设置 trace_id
+Core features:
+- Generate unique trace_id
+- Store and retrieve trace_id in context
+- Provide decorator and context manager for setting trace_id
 """
 
 import uuid
@@ -14,35 +14,35 @@ from contextvars import ContextVar, Token
 from functools import wraps
 from typing import Any
 
-# 使用 ContextVar 存储 trace_id，支持异步和线程隔离
+# Use ContextVar to store trace_id, supports async and thread isolation
 _trace_id_var: ContextVar[str | None] = ContextVar("trace_id", default=None)
 
 
 def generate_trace_id() -> str:
-    """生成唯一的 trace_id
+    """Generate a unique trace_id
 
     Returns:
-        32 字符的十六进制字符串（UUID 的十六进制表示）
+        32-character hex string (UUID hex representation)
 
     """
     return uuid.uuid4().hex
 
 
 def get_trace_id() -> str | None:
-    """获取当前上下文的 trace_id
+    """Get the current context trace_id
 
     Returns:
-        当前的 trace_id，如果未设置则返回 None
+        Current trace_id, or None if not set
 
     """
     return _trace_id_var.get()
 
 
 def set_trace_id(trace_id: str | None) -> None:
-    """设置当前上下文的 trace_id
+    """Set the current context trace_id
 
     Args:
-        trace_id: 要设置的 trace_id，可以为 None
+        trace_id: trace_id to set, can be None
 
     """
     _trace_id_var.set(trace_id)
@@ -61,14 +61,14 @@ def reset_trace_id(token: Token) -> None:
 class TraceContext:
     """Trace Context Manager
 
-    用于在代码块中设置 trace_id，退出时自动恢复原来的值
+    Sets trace_id within a code block and automatically restores the original value on exit
 
     Examples:
-        # 使用新生成的 trace_id
+        # Use a newly generated trace_id
         with TraceContext():
             logger.info("This log will have a trace_id")
 
-        # 使用指定的 trace_id
+        # Use a specified trace_id
         with TraceContext("custom-trace-id"):
             logger.info("This log will have custom-trace-id")
 
@@ -76,7 +76,7 @@ class TraceContext:
 
     def __init__(self, trace_id: str | None = None):
         """Args:
-        trace_id: 指定的 trace_id，如果为 None 则自动生成
+        trace_id: Specified trace_id, auto-generated if None
 
         """
         self.trace_id = trace_id or generate_trace_id()
@@ -92,10 +92,10 @@ class TraceContext:
 
 
 def with_trace(trace_id: str | None = None):
-    """装饰器：为函数调用添加 trace_id
+    """Decorator: adds trace_id to a function call
 
     Args:
-        trace_id: 指定的 trace_id，如果为 None 则自动生成
+        trace_id: Specified trace_id, auto-generated if None
 
     Examples:
         @with_trace()
@@ -118,7 +118,7 @@ def with_trace(trace_id: str | None = None):
             with TraceContext(trace_id):
                 return await func(*args, **kwargs)
 
-        # 根据函数类型返回对应的 wrapper
+        # Return the appropriate wrapper based on function type
         import inspect
         if inspect.iscoroutinefunction(func):
             return async_wrapper
@@ -128,13 +128,13 @@ def with_trace(trace_id: str | None = None):
 
 
 def format_trace_id(trace_id: str | None) -> str:
-    """格式化 trace_id 用于日志输出
+    """Format trace_id for log output
 
     Args:
-        trace_id: 原始 trace_id
+        trace_id: Raw trace_id
 
     Returns:
-        格式化后的 trace_id，如果为 None 则返回 "-"
+        Formatted trace_id, returns "-" if None
 
     """
     return trace_id or "-"

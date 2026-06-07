@@ -8,15 +8,15 @@ from models.mixins.serializer import SerializerMixin
 
 
 class SchedulerStatus(Base, SerializerMixin):
-    """调度器状态模型（用于跨进程状态共享）"""
+    """Scheduler status model (for cross-process state sharing)"""
 
     __tablename__ = "scheduler_status"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    process_name: Mapped[str] = mapped_column(VARCHAR(50), nullable=False, unique=True, comment="进程名称")
-    is_running: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, comment="是否运行中")
-    job_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, comment="任务数量")
-    last_heartbeat: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now, comment="最后心跳时间")
-    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, comment="启动时间")
-    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, comment="停止时间")
-    error_message: Mapped[str | None] = mapped_column(TEXT, nullable=True, comment="错误信息")
+    process_name: Mapped[str] = mapped_column(VARCHAR(50), nullable=False, unique=True, comment="Process name")
+    is_running: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, comment="Whether running")
+    job_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, comment="Job count")
+    last_heartbeat: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now, comment="Last heartbeat time")
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, comment="Start time")
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, comment="Stop time")
+    error_message: Mapped[str | None] = mapped_column(TEXT, nullable=True, comment="Error message")

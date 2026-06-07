@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class ScheduledTaskService:
-    """定时任务服务"""
+    """Scheduled task service"""
 
     @staticmethod
     def get_task_list(
@@ -23,7 +23,7 @@ class ScheduledTaskService:
         status: str | None = None,
         task_type: str | None = None,
     ) -> dict[str, Any]:
-        """获取任务列表"""
+        """Get task list"""
         ensure_system_tasks()
 
         with get_session() as session:
@@ -74,7 +74,7 @@ class ScheduledTaskService:
         is_active: bool = True,
         created_by: str | None = None,
     ) -> ScheduledTask | None:
-        """创建新任务"""
+        """Create a new task"""
         try:
             discover_task_classes()
             # 验证任务类是否存在
@@ -122,7 +122,7 @@ class ScheduledTaskService:
         is_active: bool | None = None,
         updated_by: str | None = None,
     ) -> bool:
-        """更新任务配置"""
+        """Update task configuration"""
         try:
             with get_session() as session:
                 task_config = session.query(ScheduledTask).filter(ScheduledTask.id == task_id).first()
@@ -162,7 +162,7 @@ class ScheduledTaskService:
 
     @staticmethod
     def delete_task(task_id: int) -> bool:
-        """删除任务"""
+        """Delete a task"""
         try:
             with get_session() as session:
                 task_config = session.query(ScheduledTask).filter(ScheduledTask.id == task_id).first()
@@ -186,7 +186,7 @@ class ScheduledTaskService:
 
     @staticmethod
     def enable_task(task_id: int, updated_by: str | None = None) -> bool:
-        """启用任务"""
+        """Enable a task"""
         return ScheduledTaskService.update_task(
             task_id=task_id,
             is_active=True,
@@ -195,7 +195,7 @@ class ScheduledTaskService:
 
     @staticmethod
     def disable_task(task_id: int, updated_by: str | None = None) -> bool:
-        """禁用任务"""
+        """Disable a task"""
         return ScheduledTaskService.update_task(
             task_id=task_id,
             is_active=False,
@@ -204,7 +204,7 @@ class ScheduledTaskService:
 
     @staticmethod
     def execute_task_now(task_id: int, executed_by: str | None = None) -> bool:
-        """立即执行任务"""
+        """Execute a task immediately"""
         try:
             # 记录执行请求
             with get_session() as session:
@@ -231,13 +231,13 @@ class ScheduledTaskService:
 
     @staticmethod
     def get_available_task_classes() -> dict[str, Any]:
-        """获取可用的任务类"""
+        """Get available task classes"""
         discover_task_classes()
         return dynamic_task_manager.task_factory.get_available_task_classes()
 
     @staticmethod
     def get_task_statistics() -> dict[str, Any]:
-        """获取任务统计信息"""
+        """Get task statistics"""
         ensure_system_tasks()
 
         with get_session() as session:

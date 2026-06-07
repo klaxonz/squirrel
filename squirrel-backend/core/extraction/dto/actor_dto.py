@@ -1,37 +1,37 @@
-"""ActorDTO - 演员/UP主数据传输对象
+"""ActorDTO - Actor/Creator data transfer object
 """
 
 from pydantic import BaseModel, Field, validator
 
 
 class ActorDTO(BaseModel):
-    """演员/UP主数据对象
+    """Actor/Creator data object
 
-    特点：
-    - 不可变对象（frozen=True）
-    - 自动验证
-    - 可序列化
+    Features:
+    - Immutable (frozen=True)
+    - Automatic validation
+    - Serializable
     """
 
-    url: str = Field(..., description="演员主页URL")
-    name: str = Field(..., description="演员名称")
-    avatar: str | None = Field(None, description="头像URL")
+    url: str = Field(..., description="Actor homepage URL")
+    name: str = Field(..., description="Actor name")
+    avatar: str | None = Field(None, description="Avatar URL")
 
     class Config:
-        frozen = True  # 不可变对象
+        frozen = True  # Immutable object
         json_encoders = {
-            # 如果需要自定义序列化
+            # Custom serializers if needed
         }
 
     @validator("url")
     def validate_url(cls, v):
-        """验证URL格式"""
+        """Validate URL format"""
         if not v or not v.strip():
             raise ValueError("URL cannot be empty")
 
         v = v.strip()
 
-        # 基本URL格式验证
+        # Basic URL format validation
         if not v.startswith(("http://", "https://")):
             raise ValueError("URL must start with http:// or https://")
 
@@ -39,14 +39,14 @@ class ActorDTO(BaseModel):
 
     @validator("name")
     def validate_name(cls, v):
-        """验证名称非空"""
+        """Validate name is not empty"""
         if not v or not v.strip():
             raise ValueError("Name cannot be empty")
         return v.strip()
 
     @validator("avatar")
     def validate_avatar(cls, v):
-        """验证头像URL（可选）"""
+        """Validate avatar URL (optional)"""
         if v is None or v == "":
             return None
 
@@ -58,12 +58,12 @@ class ActorDTO(BaseModel):
         return v
 
     def to_dict(self):
-        """转换为字典"""
+        """Convert to dictionary"""
         return self.dict(exclude_none=True)
 
     @classmethod
     def from_dict(cls, data: dict):
-        """从字典创建"""
+        """Create from dictionary"""
         return cls(**data)
 
     def __repr__(self):

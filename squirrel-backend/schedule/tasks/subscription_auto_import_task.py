@@ -8,9 +8,9 @@ logger = logging.getLogger(__name__)
 
 @TaskRegistry.register(interval=3, unit="hours", start_immediately=False)
 class SubscriptionAutoImportTask(BaseTask):
-    """自动导入未导入频道定时任务
-    频率：每 3 小时执行一次
-    职责：为所有用户自动导入各站点尚未导入的频道
+    """Auto-import unimported channels scheduled task
+    Frequency: every 3 hours
+    Responsibility: Auto-import channels not yet imported for all users across sites
     """
 
     @classmethod

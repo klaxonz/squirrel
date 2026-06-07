@@ -35,12 +35,12 @@ def _log_lifecycle_step(phase: str, step: int, total: int, message: str) -> None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """FastAPI 应用生命周期管理
+    """FastAPI application lifecycle management
 
-    启动时按顺序执行：
-    1. 启动插件 runtime manager
+    Executes in order on startup:
+    1. Start the plugin runtime manager
 
-    关闭时优雅停止所有服务
+    Gracefully stops all services on shutdown
     """
     _log_lifecycle_event("Startup", "begin")
     reset_startup_dependency_issues()
@@ -140,15 +140,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 def create_application() -> FastAPI:
-    """创建 FastAPI 应用实例并绑定生命周期管理
+    """Create a FastAPI application instance with lifecycle management
 
     Returns:
-        配置好的 FastAPI 应用实例
+        Configured FastAPI application instance
 
     """
     from routes.base import create_app
 
-    # 创建应用实例并注入生命周期管理
+    # Create application instance and inject lifecycle management
     app = create_app()
     app.router.lifespan_context = lifespan
 
@@ -156,15 +156,15 @@ def create_application() -> FastAPI:
 
 
 def main() -> None:
-    """应用程序主入口函数
+    """Application main entry point
 
-    执行流程：
-    1. 升级数据库
-    2. 初始化日志系统
-    3. 创建 FastAPI 应用（包含生命周期管理）
-    4. 启动服务器
+    Execution flow:
+    1. Upgrade database
+    2. Initialize logging system
+    3. Create FastAPI application (with lifecycle management)
+    4. Start server
     """
-    # 预初始化步骤
+    # Pre-initialization steps
     upgrade_database()
     init_logging()
 

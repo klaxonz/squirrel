@@ -1,5 +1,5 @@
-"""订阅任务消费者
-职责：接收订阅消息，调度到服务层处理
+"""Subscription task consumer
+Responsibility: Receive subscription messages and dispatch to the service layer
 """
 import json
 import logging
@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 @queue_listener(constants.QUEUE_SUBSCRIBE, group="subscription", consumer_name="subscribe")
 def process_subscribe_message(message: dict[str, Any]):
-    """处理订阅消息
-    职责：解析消息并调度到服务层
+    """Process subscription message
+    Responsibility: Parse the message and dispatch to the service layer
     """
     try:
         message_obj = Message.from_dict(message)

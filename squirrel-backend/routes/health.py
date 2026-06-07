@@ -1,5 +1,5 @@
-"""健康检查路由
-用于 Docker 容器健康检查和服务监控
+"""Health check routes
+Used for Docker container health checks and service monitoring
 """
 import logging
 from typing import Any
@@ -18,15 +18,15 @@ router = APIRouter(prefix="/health", tags=["Health"])
 
 @router.get("", status_code=status.HTTP_200_OK)
 async def health_check() -> dict[str, Any]:
-    """健康检查端点
+    """Health check endpoint
 
-    检查项：
-    1. API 服务状态
-    2. 数据库连接
-    3. Redis 连接
+    Checks:
+    1. API service status
+    2. Database connection
+    3. Redis connection
 
     Returns:
-        健康状态信息
+        Health status information
 
     """
     health_status = {
@@ -72,12 +72,12 @@ async def health_check() -> dict[str, Any]:
 
 @router.get("/ready", status_code=status.HTTP_200_OK)
 async def readiness_check() -> dict[str, str]:
-    """就绪检查端点
+    """Readiness check endpoint
 
-    用于 Kubernetes 等编排系统的就绪探针
+    Used as readiness probe for Kubernetes and similar orchestration systems
 
     Returns:
-        就绪状态
+        Readiness status
 
     """
     # 检查关键服务是否就绪
@@ -98,13 +98,13 @@ async def readiness_check() -> dict[str, str]:
 
 @router.get("/live", status_code=status.HTTP_200_OK)
 async def liveness_check() -> dict[str, str]:
-    """存活检查端点
+    """Liveness check endpoint
 
-    用于 Kubernetes 等编排系统的存活探针
-    仅检查 API 服务本身是否响应
+    Used as liveness probe for Kubernetes and similar orchestration systems
+    Only checks if the API service itself is responding
 
     Returns:
-        存活状态
+        Liveness status
 
     """
     return {"status": "alive"}

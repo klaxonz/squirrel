@@ -7,12 +7,12 @@ from typing import Any
 
 @dataclass
 class MqMessage:
-    """统一的消息封装
+    """Unified message wrapper
 
-    存储于 Redis Streams 的字段为:
-    - key: "body" -> JSON 字符串
-    - key: "trace_id" -> trace_id 字符串（用于链路追踪）
-    - 可扩展：headers_xxx
+    Fields stored in Redis Streams:
+    - key: "body" -> JSON string
+    - key: "trace_id" -> trace_id string (for trace tracking)
+    - Extensible: headers_xxx
     """
 
     body: dict[str, Any]
