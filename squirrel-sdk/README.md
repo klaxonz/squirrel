@@ -104,8 +104,8 @@ manifest and expose `create_site_runtime()`.
 ## Requirements
 
 - Python 3.10+
-- standard library only for core runtime models
-- `requests` only when using the HTTP helper modules
+- `requests>=2.31` — HTTP helper modules
+- `beautifulsoup4>=4.12` — subscription import helpers
 
 ## License
 

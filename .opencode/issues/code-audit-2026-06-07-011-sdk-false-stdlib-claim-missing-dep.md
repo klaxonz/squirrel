@@ -1,6 +1,7 @@
 ---
 title: 'SDK: "stdlib-only" 承诺不实 + beautifulsoup4 未声明依赖'
-status: open
+status: fixed
+fixed_by: squirrel-sdk/pyproject.toml:17-20, squirrel-sdk/Pipfile:7-8, squirrel-sdk/README.md:104-108
 severity: high
 category: architecture
 location: squirrel-sdk/README.md:107, src/crawl/core.py:3-5, src/crawl/importer.py:8, pyproject.toml:17-19

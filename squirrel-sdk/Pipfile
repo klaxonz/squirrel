@@ -4,8 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+beautifulsoup4 = ">=4.12"
+requests = ">=2.31.0"
 
 [dev-packages]
+pytest = "*"
 ruff = "*"
 
 [requires]
