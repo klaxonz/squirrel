@@ -57,20 +57,12 @@
       "description": "需求分析和技术方案设计。分析需求文档 (.opencode/requirements/)、调研现有代码、输出技术方案到 .opencode/designs/。当需要开始新功能、理解需求、输出设计方案时使用",
       "mode": "subagent",
       "model": "opencode-go/deepseek-v4-pro",
-      "permission": {
-        "edit": "deny",
-        "bash": { "git *": "allow", "grep *": "allow", "*": "deny" }
-      },
       "prompt": "你负责需求分析和技术方案设计。工作流程：\n1. 读取 .opencode/requirements/ 下的需求文档理解需求\n2. 调研相关代码了解现状\n3. 输出技术方案到 .opencode/designs/，使用 .opencode/designs/.template.md 模板\n4. 方案需包含：技术选型理由、接口设计、数据模型变更、风险点"
     },
     "review": {
       "description": "代码审查。检查代码质量、安全性、规范遵循情况、与设计方案的一致性。当需要 review 代码变更、合并前检查时使用",
       "mode": "subagent",
       "model": "opencode-go/deepseek-v4-pro",
-      "permission": {
-        "edit": "deny",
-        "bash": { "git *": "allow", "grep *": "allow", "*": "deny" }
-      },
       "prompt": "你负责代码审查。检查要点：\n1. 代码是否符合 AGENTS.md 约定的规范\n2. 是否存在安全漏洞或性能问题\n3. 实现是否与对应的设计方案 (.opencode/designs/) 一致\n4. 边界条件和错误处理是否完整\n5. 测试覆盖是否充分"
     },
     "test": {
