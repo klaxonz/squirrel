@@ -87,78 +87,19 @@
           </div>
         </div>
 
-        <!-- Feeds Category Folding Tree -->
-        <div class="flex-1 space-y-1 overflow-y-auto p-3 custom-scrollbar">
-          <!-- All Feeds Item -->
-          <div
-            class="flex h-8 w-full items-center rounded-lg px-2.5 transition-all"
-            :class="!selectedFeedId ? 'bg-transparent text-primary font-semibold' : 'text-muted-foreground'"
-          >
-            <button
-              @click="selectedFeedId = null; loadEntries(true)"
-              class="flex flex-1 items-center gap-3 text-left text-xs overflow-hidden h-full"
-            >
-              <AppIcon name="inbox" class="h-3.5 w-3.5 shrink-0" />
-              <span class="truncate">全部订阅</span>
-              <span class="text-xs opacity-60 ml-auto">{{ filteredFeeds.length }}</span>
-            </button>
-            <button
-              v-if="selectedAccount"
-              @click="showSubscribeModal = true"
-              class="shrink-0 ml-1 rounded-md p-1 text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-all"
-              title="添加订阅源"
-            >
-              <AppIcon name="plus" class="h-3.5 w-3.5" />
-            </button>
-          </div>
-          
-          <div class="h-px bg-border/20 my-2"></div>
-          
-          <!-- Collapsible Folders -->
-          <div v-for="folder in feedFolders" :key="folder.name" class="space-y-1">
-            <!-- Folder Header -->
-            <button 
-              @click="toggleFolder(folder.name)" 
-              class="flex w-full items-center justify-between px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <div class="flex items-center gap-1.5 min-w-0">
-                <AppIcon 
-                  name="chevronRight" 
-                  class="h-3 w-3 transition-transform text-muted-foreground/70 shrink-0" 
-                  :class="{ 'rotate-90': collapsedFolders[folder.name] }" 
-                />
-                <span class="truncate">{{ folder.name }}</span>
-              </div>
-              <span class="text-[10px] bg-accent/60 px-1.5 py-0.5 rounded-full text-muted-foreground/80 shrink-0">{{ folder.feeds.length }}</span>
-            </button>
-            
-            <!-- Folder Feeds List -->
-            <div v-if="collapsedFolders[folder.name]" class="pl-3 space-y-0.5">
-              <button
-                v-for="feed in folder.feeds"
-                :key="feed.id"
-                @click="selectFeed(feed.id)"
-                @contextmenu.prevent.stop="showFeedContextMenu(feed, $event)"
-                class="group relative flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-xs transition-all overflow-hidden"
-                :class="selectedFeedId === feed.id ? 'bg-transparent text-primary font-semibold' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
-              >
-                <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
-                <span class="flex-1 truncate">{{ feed.title }}</span>
-                <button
-                  @click.stop="handleUnsubscribeFeed(feed)"
-                  class="shrink-0 rounded p-0.5 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
-                  title="取消订阅"
-                >
-                  <AppIcon name="close" class="h-3 w-3" />
-                </button>
-              </button>
-            </div>
-          </div>
-
-          <div v-if="!feedFolders.length" class="py-10 text-center text-xs text-muted-foreground">
-            暂无匹配订阅源
-          </div>
-        </div>
+        <FeedFolderTree
+          :folders="feedFolders"
+          :expanded-folders="collapsedFolders"
+          :selected-feed-id="selectedFeedId"
+          :total-feeds="filteredFeeds.length"
+          :has-account="!!selectedAccount"
+          @select-all="selectedFeedId = null; loadEntries(true)"
+          @add-feed="showSubscribeModal = true"
+          @toggle-folder="toggleFolder"
+          @select-feed="selectFeed"
+          @feed-context-menu="showFeedContextMenu"
+          @unsubscribe-feed="handleUnsubscribeFeed"
+        />
       </aside>
 
       <!-- 2. Middle Column: Article List Flow -->
@@ -1198,6 +1139,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import SiteIcon from '@/components/common/SiteIcon.vue'
 import ReaderSettingsPanel from '@/components/rss/ReaderSettingsPanel.vue'
 import AccountDropdown from '@/components/rss/AccountDropdown.vue'
+import FeedFolderTree from '@/components/rss/FeedFolderTree.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
