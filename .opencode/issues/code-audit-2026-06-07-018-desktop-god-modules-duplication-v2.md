@@ -1,6 +1,6 @@
 ---
 title: Desktop 上帝模块 + 代码重复 v2 — youtubei_core(940行) + 3处YouTube解析重复
-status: open
+status: fixed
 severity: high
 category: architecture
 location: squirrel-desktop/src/playback/providers/youtube/youtubei_core.mjs, src/search/providers/youtube.mjs, src/search/providers/remote-channel.mjs
