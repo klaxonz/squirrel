@@ -2,7 +2,9 @@
 
 ## 开发流程（feature-flow skill）
 
-完整实现链路使用 `feature-flow` skill 自动化，从需求到代码合入全流程：
+**硬规则：任何涉及代码或配置变更的任务，必须先 load `feature-flow` skill，再按以下流程执行。不依赖触发词判断，不跳过步骤。**
+
+完整实现链路使用 `feature-flow` skill 自动化，从需求到代码合入全链路：
 
 0. **需求获取** → 用 template 创建 `.opencode/requirements/<name>.md`，用户确认
 1. **需求理解** → 确认范围、子项目、红线
