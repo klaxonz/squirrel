@@ -1,4 +1,5 @@
 import os
+from secrets import token_urlsafe
 from functools import lru_cache
 from pathlib import Path
 
@@ -38,7 +39,7 @@ class Settings(BaseSettings):
     COOKIECLOUD_PASSWORD: str = ''
     KUGOU_MUSIC_API_BASE_URL: str = ''
     KUGOU_MUSIC_COOKIE: str = ''
-    JWT_SECRET_KEY: str = 'change-me-in-env'
+    JWT_SECRET_KEY: str = token_urlsafe(32)
     CORS_ALLOW_ORIGINS: str = 'http://localhost:5173,http://127.0.0.1:5173'
     SQUIRREL_YOUTUBE_POT_PROVIDER_MODE: str = 'auto'
     SQUIRREL_YOUTUBE_POT_PROVIDER_BASE_URL: str = ''

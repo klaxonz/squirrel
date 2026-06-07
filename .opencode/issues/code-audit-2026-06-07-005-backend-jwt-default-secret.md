@@ -1,6 +1,7 @@
 ---
 title: 'Backend: JWT_SECRET_KEY 硬编码默认值 "change-me-in-env"'
-status: open
+status: fixed
+fixed_by: squirrel-backend/core/config.py:42
 severity: high
 category: security
 location: squirrel-backend/core/config.py:41
