@@ -11,7 +11,7 @@ scope: 全量扫描 — backend / sdk / desktop / frontend / site-runtimes / cf-
 | High | 13 | 6 | 19 |
 | Medium | 4 | 4 | 8 |
 | Low | — | 1 | 1 |
-| **Total** | **23** | **11** | **34** |
+| **Total** | **23** | **16** | **39** |
 
 ## 本轮新增问题
 
@@ -27,6 +27,11 @@ scope: 全量扫描 — backend / sdk / desktop / frontend / site-runtimes / cf-
 | 036 | medium | test-quality | 后端过度 Mock（1190 处 patch） | backend |
 | 037 | low | naming | `result`/`data`/`info` 泛滥 + 风格不一致 | 全量 |
 | 038 | medium | error-handling | trace_id 未覆盖调度/队列/SDK/Frontend | 全量 |
+| 039 | high | architecture | Backend 分层倒置：core→services、utils→services、routes→routes | backend |
+| 040 | medium | architecture | Backend services/ 57 个顶层文件 + 缺少 src/ 布局 | backend |
+| 041 | medium | architecture | Frontend axios→composables 反向依赖 + 3 处 remote-channel 重复 | frontend |
+| 042 | medium | architecture | Desktop IPC 单体 321 行 + main.mjs 耦合 YouTube | desktop |
+| 043 | low | dead-code | 多处废弃子包 + 空目录 + 搁置抽象 | backend/frontend |
 
 ## 优先级最高的 5 个问题
 
@@ -35,8 +40,8 @@ scope: 全量扫描 — backend / sdk / desktop / frontend / site-runtimes / cf-
 | 1 | **high** | error-handling | Desktop 全部错误静默吞噬无日志 | #029 |
 | 2 | **high** | concurrency | 无锁 HTTP 客户端多线程竞争导致崩溃 | #032 |
 | 3 | **high** | error-handling | Frontend 50+ 静默 catch 操作无声失败 | #030 |
-| 4 | **high** | performance | N+1 查询 + 无界内存 OOM 风险 | #031 |
-| 5 | **high** | dead-code | 1700 行孤立模块 + 幽灵依赖误导开发 | #034 |
+| 4 | **high** | architecture | Backend 分层倒置：core→services 依赖向后 | #039 |
+| 5 | **high** | performance | N+1 查询 + 无界内存 OOM 风险 | #031 |
 
 ## 改进建议
 
@@ -59,3 +64,11 @@ scope: 全量扫描 — backend / sdk / desktop / frontend / site-runtimes / cf-
 ### 5. 孤立模块 + 幽灵依赖（#034）
 **修复思路：** 逐模块确认去留（确认后删除或标废弃），清理 Pipfile/package.json 未使用依赖
 **参考：** `.opencode/issues/code-audit-2026-06-07-034-dead-code-orphan-modules.md`
+
+### 6. Backend 分层倒置：core→services（#039）
+**修复思路：** `core/extraction/services/` 依赖注入反转，或 extraction 提升为顶层包；jwt_helper 改为接口注入
+**参考：** `.opencode/issues/code-audit-2026-06-07-039-architecture-layered-inversion-core-services.md`
+
+### 7. Backend services/ 57 个文件无命名空间（#040）
+**修复思路：** 按领域分组（subscription/, video/），迁移至 src/ 布局，清理 __init__.py
+**参考：** `.opencode/issues/code-audit-2026-06-07-040-architecture-services-overcrowded-and-no-src-layout.md`
