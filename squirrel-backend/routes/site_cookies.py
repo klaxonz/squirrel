@@ -7,7 +7,7 @@ from common.response import success, error, param_error
 from core.cookie_config import get_site_cookies_dir, get_site_cookies_file_path, write_cookie_text_file
 from services.cookiecloud_service import CookieCloudSyncError, sync_cookiecloud_to_site_files
 from services.site_login_status_service import test_site_login_status
-from routes.sites import build_site_info, get_merged_site_catalog, merge_site_names, normalize_cookie_domain
+from services.site_catalog_service import build_site_info, get_merged_site_catalog, merge_site_names, normalize_cookie_domain
 
 router = APIRouter(prefix='/api/site-cookies', tags=['site-cookies'])
 logger = logging.getLogger(__name__)

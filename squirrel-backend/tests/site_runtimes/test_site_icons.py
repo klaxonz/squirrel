@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import services.site_runtime_service as plugin_service
 from site_runtimes.runtime_models import SiteRuntimeManifest, SiteRuntimeSite
-from routes.sites import build_site_info
+from services.site_catalog_service import build_site_info
 
 
 def test_build_site_info_includes_icon_url():

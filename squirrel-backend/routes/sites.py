@@ -12,151 +12,17 @@ from services.site_login_status_service import (
 )
 from common.response import success, error, param_error
 from routes.connectivity import test_site_connectivity
-from core.site_config_manager import get_effective_site_catalog
-from services.site_catalog_service import save_site_overrides
-from utils.site_icons import build_site_icon_url, resolve_site_icon_path
+from services.site_catalog_service import (
+    build_site_info,
+    get_merged_site_catalog,
+    merge_site_names,
+    save_site_overrides,
+)
+from utils.site_icons import resolve_site_icon_path
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix='/api/sites', tags=['sites'])
-
-
-def normalize_cookie_domain(domain: str) -> str:
-    if not domain:
-        return ""
-    d = str(domain).strip()
-    if d.startswith("#HttpOnly_"):
-        d = d[len("#HttpOnly_") :]
-    return d.lstrip(".").lower()
-
-def select_primary_domain(domains: list) -> str:
-    """
-    选择最合适的主域名
-    优先级：1. www.开头的域名  2. 最短的域名  3. 第一个域名
-
-    Args:
-        domains: 域名列表
-
-    Returns:
-        选中的主域名
-    """
-    if not domains:
-        return None
-
-    # 优先选择 www. 开头的域名
-    www_domains = [d for d in domains if d.startswith('www.')]
-    if www_domains:
-        return www_domains[0]
-
-    # 如果没有 www. 开头的，选择最短的域名（通常是主域名）
-    return min(domains, key=len)
-
-
-def merge_site_names(catalog: dict) -> list[str]:
-    """
-    合并提取器注册表与站点配置中的站点名称，避免遗漏被禁用的站点
-    """
-    names: list[str] = []
-    seen = set()
-
-    for slug in catalog.keys():
-        key = slug.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        names.append(slug)
-
-    return names
-
-
-def merge_site_catalogs(*catalogs: dict | None) -> dict:
-    merged: dict = {}
-
-    for catalog in catalogs:
-        for raw_slug, raw_info in (catalog or {}).items():
-            slug = str(raw_slug or '').strip().lower()
-            if not slug:
-                continue
-
-            incoming = dict(raw_info or {})
-            existing = merged.get(slug, {})
-            merged_entry = dict(existing)
-
-            if 'label' in incoming or 'label' not in merged_entry:
-                merged_entry['label'] = incoming.get('label') or merged_entry.get('label') or raw_slug
-
-            merged_entry['enabled'] = bool(incoming.get('enabled', merged_entry.get('enabled', True)))
-
-            for key in ('test_url', 'icon_url'):
-                value = incoming.get(key)
-                if value:
-                    merged_entry[key] = value
-
-            for key in ('domains', 'aliases', 'features'):
-                seen = set()
-                values = []
-                for item in list(merged_entry.get(key) or []) + list(incoming.get(key) or []):
-                    normalized = str(item or '').strip().lower()
-                    if not normalized or normalized in seen:
-                        continue
-                    seen.add(normalized)
-                    values.append(normalized)
-                merged_entry[key] = values
-
-            for key, value in incoming.items():
-                if key in {'label', 'enabled', 'test_url', 'icon_url', 'domains', 'aliases', 'features'}:
-                    continue
-                if value is not None:
-                    merged_entry[key] = value
-
-            merged[slug] = merged_entry
-
-    return merged
-
-
-def get_merged_site_catalog() -> dict:
-    return get_effective_site_catalog()
-
-
-def build_site_info(site_name: str, catalog: dict) -> dict | None:
-    """
-    基于注册表与站点配置汇总站点信息，优先使用配置文件中的域名/测试URL
-    """
-    if not site_name:
-        return None
-
-    slug = site_name.lower()
-    catalog_entry = catalog.get(slug, {})
-    site_domains = catalog_entry.get("domains") or []
-
-    # 去重但保持顺序
-    seen = set()
-    deduped_domains = []
-    for d in site_domains:
-        if d in seen:
-            continue
-        seen.add(d)
-        deduped_domains.append(d)
-
-    primary_domain = select_primary_domain(deduped_domains)
-    test_url = (
-        catalog_entry.get("test_url")
-        or (f"https://{primary_domain}" if primary_domain else None)
-    )
-    icon_url = catalog_entry.get('icon_url')
-    if not icon_url and resolve_site_icon_path(site_name):
-        icon_url = build_site_icon_url(site_name)
-
-    return {
-        "name": site_name,
-        "site_name": site_name,
-        "label": catalog_entry.get('label', site_name),
-        "domains": deduped_domains,
-        "primary_domain": primary_domain,
-        "test_url": test_url,
-        "config_enabled": catalog_entry.get("enabled", True),
-        "icon_url": icon_url,
-    }
 
 
 @router.get("")
@@ -189,7 +55,7 @@ def get_supported_sites():
 
 @router.get("/catalog")
 def get_sites_catalog():
-    return success(get_effective_site_catalog())
+    return success(get_merged_site_catalog())
 
 
 @router.put("/catalog")

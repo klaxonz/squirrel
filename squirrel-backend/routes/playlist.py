@@ -1,14 +1,8 @@
 import logging
 from fastapi import Query, APIRouter, Depends, Body
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from common import response
-from core.database import get_session
 from models.user import User
-from models.playlist import Playlist
-from models.playlist_item import PlaylistItem
-from models.video import Video
 from schemas.playlist import (
     PlaylistCreate,
     PlaylistUpdate,
@@ -47,31 +41,10 @@ def get_playlist_items(
         playlist_id: int,
         current_user: User = Depends(get_current_user)
 ):
-    items = playlist_service.get_playlist_items(current_user.id, playlist_id)
+    items = playlist_service.get_playlist_items_with_videos(current_user.id, playlist_id)
     if items is None:
         return response.not_found("播放列表不存在")
-
-    with get_session() as session:
-        video_ids = [item['video_id'] for item in items]
-        if not video_ids:
-            return response.success([])
-
-        videos = session.scalars(
-            select(Video).where(Video.id.in_(video_ids))
-        ).all()
-        video_map = {v.id: v for v in videos}
-
-        enriched_items = []
-        for item in items:
-            video = video_map.get(item['video_id'])
-            if video:
-                item_data = item.copy()
-                item_data['video'] = video.to_dict()
-                enriched_items.append(item_data)
-            else:
-                enriched_items.append(item)
-
-    return response.success(enriched_items)
+    return response.success(items)
 
 
 @router.post("")
@@ -178,49 +151,9 @@ def play_next_video(
         video_id: int = Query(..., description="当前播放的视频ID"),
         current_user: User = Depends(get_current_user)
 ):
-    with get_session() as session:
-        playlist = session.scalar(
-            select(Playlist).where(
-                Playlist.id == playlist_id,
-                Playlist.user_id == current_user.id,
-            )
-        )
-        if not playlist:
-            return response.not_found("播放列表不存在")
-
-        current_item = session.scalar(
-            select(PlaylistItem).where(
-                PlaylistItem.playlist_id == playlist_id,
-                PlaylistItem.video_id == video_id,
-            )
-        )
-        if not current_item:
-            return response.not_found("视频不在播放列表中")
-
-        next_item = session.scalar(
-            select(PlaylistItem).where(
-                PlaylistItem.playlist_id == playlist_id,
-                PlaylistItem.position > current_item.position,
-            ).order_by(PlaylistItem.position.asc())
-        )
-
-        if not next_item:
-            next_item = session.scalar(
-                select(PlaylistItem).where(
-                    PlaylistItem.playlist_id == playlist_id,
-                    PlaylistItem.position < current_item.position,
-                ).order_by(PlaylistItem.position.asc())
-            )
-
-        if not next_item:
-            return response.success({"has_next": False, "video_id": None})
-
-        video = session.get(Video, next_item.video_id)
-        if not video:
-            return response.success({"has_next": False, "video_id": None})
-
-        return response.success({
-            "has_next": True,
-            "video_id": next_item.video_id,
-            "video": video.to_dict(),
-        })
+    result = playlist_service.play_next_video(current_user.id, playlist_id, video_id)
+    if result is None:
+        return response.not_found("播放列表不存在")
+    if 'error' in result:
+        return response.not_found(result['error'])
+    return response.success(result)

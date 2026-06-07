@@ -1,6 +1,7 @@
 ---
 title: 'Backend: 分层违规 — routes 层混入业务逻辑和直连数据库'
-status: open
+status: fixed
+fixed_by: services/site_catalog_service.py, services/playlist_service.py, routes/music.py
 severity: high
 category: architecture
 location: squirrel-backend/routes/sites.py:24-159, routes/playlist.py:54-74,181-226

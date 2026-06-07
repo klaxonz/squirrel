@@ -313,6 +313,81 @@ def reorder_playlist_item(user_id: int, data: PlaylistItemReorder) -> dict | Non
         return _serialize_item(item)
 
 
+def get_playlist_items_with_videos(user_id: int, playlist_id: int) -> list[dict] | None:
+    items = get_playlist_items(user_id, playlist_id)
+    if items is None:
+        return None
+
+    video_ids = [item['video_id'] for item in items]
+    if not video_ids:
+        return items
+
+    with get_session() as session:
+        videos = session.scalars(
+            select(Video).where(Video.id.in_(video_ids))
+        ).all()
+        video_map = {v.id: v for v in videos}
+
+    enriched = []
+    for item in items:
+        video = video_map.get(item['video_id'])
+        if video:
+            item = item.copy()
+            item['video'] = video.to_dict()
+        enriched.append(item)
+
+    return enriched
+
+
+def play_next_video(user_id: int, playlist_id: int, video_id: int) -> dict | None:
+    with get_session() as session:
+        playlist = session.scalar(
+            select(Playlist).where(
+                Playlist.id == playlist_id,
+                Playlist.user_id == user_id,
+            )
+        )
+        if not playlist:
+            return None
+
+        current_item = session.scalar(
+            select(PlaylistItem).where(
+                PlaylistItem.playlist_id == playlist_id,
+                PlaylistItem.video_id == video_id,
+            )
+        )
+        if not current_item:
+            return {'error': '视频不在播放列表中'}
+
+        next_item = session.scalar(
+            select(PlaylistItem).where(
+                PlaylistItem.playlist_id == playlist_id,
+                PlaylistItem.position > current_item.position,
+            ).order_by(PlaylistItem.position.asc())
+        )
+
+        if not next_item:
+            next_item = session.scalar(
+                select(PlaylistItem).where(
+                    PlaylistItem.playlist_id == playlist_id,
+                    PlaylistItem.position < current_item.position,
+                ).order_by(PlaylistItem.position.asc())
+            )
+
+        if not next_item:
+            return {"has_next": False, "video_id": None}
+
+        video = session.get(Video, next_item.video_id)
+        if not video:
+            return {"has_next": False, "video_id": None}
+
+        return {
+            "has_next": True,
+            "video_id": next_item.video_id,
+            "video": video.to_dict(),
+        }
+
+
 def get_default_playlist(user_id: int) -> dict | None:
     with get_session() as session:
         playlist = session.scalar(
