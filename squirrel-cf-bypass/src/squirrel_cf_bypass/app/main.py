@@ -15,7 +15,7 @@ class _MissingSolver:
 
 
 def create_app(solver=None) -> FastAPI:
-    app = FastAPI(title='squirrel-cf-bypass')
+    app = FastAPI(title="squirrel-cf-bypass")
     app.state.bypass_service = CloudflareBypassService(
         solver=solver or BrowserSolver(),
         cache=ClearanceCache(ttl_seconds=900),

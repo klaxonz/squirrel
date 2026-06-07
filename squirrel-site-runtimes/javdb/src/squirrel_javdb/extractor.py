@@ -24,53 +24,53 @@ logger = logging.getLogger(__name__)
 def _fetch_video_info(url: str) -> dict[str, Any]:
     response = fetch_javdb_html(url)
     html = response.text
-    soup = BeautifulSoup(html, 'html.parser')
+    soup = BeautifulSoup(html, "html.parser")
     video_info: dict[str, Any] = {}
 
-    vip_keywords = ['永久VIP', 'Join VIP']
-    login_keywords = ['欢迎登入', '歡迎登入', 'requires login to view']
+    vip_keywords = ["永久VIP", "Join VIP"]
+    login_keywords = ["欢迎登入", "歡迎登入", "requires login to view"]
     if any(keyword in html for keyword in vip_keywords):
-        raise VipError('需要永久VIP权限', context={'url': url, 'reason': 'vip_required'})
+        raise VipError("需要永久VIP权限", context={"url": url, "reason": "vip_required"})
     if any(keyword in html for keyword in login_keywords):
-        raise AuthError('需要登录访问', context={'url': url, 'reason': 'login_required'})
+        raise AuthError("需要登录访问", context={"url": url, "reason": "login_required"})
 
-    title_nodes = soup.select('.title strong')
+    title_nodes = soup.select(".title strong")
     if not title_nodes:
-        raise ParseError('无法解析视频标题，页面结构可能已变化', context={'url': url, 'reason': 'title_not_found'})
+        raise ParseError("无法解析视频标题，页面结构可能已变化", context={"url": url, "reason": "title_not_found"})
     title_parts = [node.get_text(strip=True) for node in title_nodes if node.get_text(strip=True)]
-    video_info['title'] = ' '.join(title_parts) if title_parts else None
+    video_info["title"] = " ".join(title_parts) if title_parts else None
 
-    thumb_node = soup.select_one('.video-cover')
-    if thumb_node and thumb_node.has_attr('src'):
-        raw_src = thumb_node['src']
-        if str(raw_src).startswith('http'):
-            video_info['thumbnail'] = raw_src
+    thumb_node = soup.select_one(".video-cover")
+    if thumb_node and thumb_node.has_attr("src"):
+        raw_src = thumb_node["src"]
+        if str(raw_src).startswith("http"):
+            video_info["thumbnail"] = raw_src
         else:
             from urllib.parse import urljoin
 
-            video_info['thumbnail'] = urljoin(url, raw_src)
+            video_info["thumbnail"] = urljoin(url, raw_src)
     else:
-        video_info['thumbnail'] = None
+        video_info["thumbnail"] = None
 
     try:
-        duration_node = soup.select_one('.movie-panel-info .panel-block:nth-of-type(3) span')
+        duration_node = soup.select_one(".movie-panel-info .panel-block:nth-of-type(3) span")
         if duration_node:
-            duration_text = duration_node.get_text(strip=True).split(' ')[0]
-            video_info['duration'] = int(duration_text) * 60
+            duration_text = duration_node.get_text(strip=True).split(" ")[0]
+            video_info["duration"] = int(duration_text) * 60
         else:
-            video_info['duration'] = None
+            video_info["duration"] = None
     except (ValueError, TypeError, AttributeError):
-        video_info['duration'] = None
+        video_info["duration"] = None
 
     try:
-        date_node = soup.select_one('.movie-panel-info .panel-block:nth-of-type(2) span')
+        date_node = soup.select_one(".movie-panel-info .panel-block:nth-of-type(2) span")
         if date_node:
-            timestamp = int(datetime.strptime(date_node.get_text(strip=True), '%Y-%m-%d').timestamp())
-            video_info['timestamp'] = timestamp
+            timestamp = int(datetime.strptime(date_node.get_text(strip=True), "%Y-%m-%d").timestamp())
+            video_info["timestamp"] = timestamp
         else:
-            video_info['timestamp'] = None
+            video_info["timestamp"] = None
     except (ValueError, TypeError, AttributeError):
-        video_info['timestamp'] = None
+        video_info["timestamp"] = None
 
     return video_info
 
@@ -78,11 +78,11 @@ def _fetch_video_info(url: str) -> dict[str, Any]:
 class JavdbExtractor(VideoExtractorBase):
     """JavDB视频提取器"""
 
-    site_name = 'javdb'
-    supported_domains = ['javdb.com']
+    site_name = "javdb"
+    supported_domains = ["javdb.com"]
     url_patterns = [
-        'javdb.com/v/',
-        'javdb.com/video/'
+        "javdb.com/v/",
+        "javdb.com/video/"
     ]
 
     def __init__(self):
@@ -101,15 +101,15 @@ class JavdbExtractor(VideoExtractorBase):
             error_msg = str(e).lower()
             context = {"url": url, "original_error": str(e)}
 
-            if 'login' in error_msg or '登入' in error_msg or '登录' in error_msg:
+            if "login" in error_msg or "登入" in error_msg or "登录" in error_msg:
                 raise AuthError(f"需要登录访问: {url}", context=context)
-            elif 'vip' in error_msg or '永久vip' in error_msg:
+            elif "vip" in error_msg or "永久vip" in error_msg:
                 raise VipError(f"需要VIP权限: {url}", context=context)
-            elif '不存在' in error_msg or '404' in error_msg:
+            elif "不存在" in error_msg or "404" in error_msg:
                 raise NotFoundError(f"视频不存在: {url}", context=context)
-            elif any(kw in error_msg for kw in ['timeout', 'connection', '网络']):
+            elif any(kw in error_msg for kw in ["timeout", "connection", "网络"]):
                 raise NetworkError(f"网络连接失败: {url}", context=context)
-            elif any(kw in error_msg for kw in ['too many requests', 'rate limit', '429']):
+            elif any(kw in error_msg for kw in ["too many requests", "rate limit", "429"]):
                 raise RateLimitError(f"请求频率过高: {url}", context=context)
             else:
                 logger.error(f"JavDB视频信息提取失败: {url}", exc_info=True)
@@ -118,8 +118,8 @@ class JavdbExtractor(VideoExtractorBase):
     def _process_javdb_info(self, video_info: dict) -> None:
         """处理JavDB特定信息"""
         try:
-            if 'timestamp' in video_info:
-                if isinstance(video_info['timestamp'], (int, float)):
-                    video_info['publish_date'] = datetime.fromtimestamp(video_info['timestamp'])
+            if "timestamp" in video_info:
+                if isinstance(video_info["timestamp"], (int, float)):
+                    video_info["publish_date"] = datetime.fromtimestamp(video_info["timestamp"])
         except (ValueError, TypeError) as e:
             logger.warning(f"处理JavDB特定信息失败: {e}")

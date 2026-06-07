@@ -40,7 +40,7 @@ def get_cached_site_catalog() -> dict[str, dict]:
 
 
 def format_datetime(value: datetime | None) -> str:
-    return value.strftime('%Y-%m-%d %H:%M:%S') if value else ''
+    return value.strftime("%Y-%m-%d %H:%M:%S") if value else ""
 
 
 def parse_datetime(value: str | None) -> datetime | None:
@@ -53,6 +53,6 @@ def parse_datetime(value: str | None) -> datetime | None:
         return datetime.fromisoformat(normalized)
     except ValueError:
         try:
-            return datetime.strptime(normalized, '%Y-%m-%d %H:%M:%S')
+            return datetime.strptime(normalized, "%Y-%m-%d %H:%M:%S")
         except ValueError:
             return None

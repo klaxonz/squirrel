@@ -1,6 +1,7 @@
 ---
 title: 'Python: site-runtimes 子项目间引号风格不统一'
-status: open
+status: fixed
+fixed_by: squirrel-sdk/pyproject.toml, squirrel-cf-bypass/pyproject.toml, squirrel-site-runtimes/*/pyproject.toml
 severity: low
 category: code-smell
 created: 2026-06-07

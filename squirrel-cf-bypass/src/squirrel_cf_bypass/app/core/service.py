@@ -21,17 +21,17 @@ class CloudflareBypassService:
 
     def health_payload(self) -> dict:
         return {
-            'status': 'ok',
-            'version': '0.1.0',
-            'solver_ready': bool(getattr(self._solver, 'ready', False)),
-            'cache_entries': self._cache.size(),
-            'session_entries': self._session_pool.size(),
+            "status": "ok",
+            "version": "0.1.0",
+            "solver_ready": bool(getattr(self._solver, "ready", False)),
+            "cache_entries": self._cache.size(),
+            "session_entries": self._session_pool.size(),
         }
 
     async def clear_runtime_state(self) -> None:
         self._cache.clear()
         await self._session_pool.clear()
-        clear_solver_state = getattr(self._solver, 'clear_runtime_state', None)
+        clear_solver_state = getattr(self._solver, "clear_runtime_state", None)
         if callable(clear_solver_state):
             await clear_solver_state()
 
@@ -42,11 +42,11 @@ class CloudflareBypassService:
         custom_headers: dict[str, str] | None = None,
         bypass_cache: bool = False,
     ):
-        hostname = str(urlparse(url).hostname or '').strip().lower()
+        hostname = str(urlparse(url).hostname or "").strip().lower()
         cached_record = None if bypass_cache else self._cache.get(hostname, proxy)
         if cached_record is not None:
             if cached_record.http_usable:
-                logger.info('Cloudflare clearance cache hit for %s; trying cached HTTP fetch', hostname)
+                logger.info("Cloudflare clearance cache hit for %s; trying cached HTTP fetch", hostname)
                 cached_result = await self._fetch_html_with_cached_clearance(
                     url,
                     hostname,
@@ -57,11 +57,11 @@ class CloudflareBypassService:
                 if cached_result is not None:
                     return cached_result
                 cached_record.http_usable = False
-                logger.info('Cached HTTP fetch hit Cloudflare challenge for %s; using browser cache', hostname)
+                logger.info("Cached HTTP fetch hit Cloudflare challenge for %s; using browser cache", hostname)
             else:
-                logger.info('Cloudflare clearance cache hit for %s; using browser cache', hostname)
+                logger.info("Cloudflare clearance cache hit for %s; using browser cache", hostname)
         elif bypass_cache:
-            logger.info('Cloudflare clearance cache bypass requested for %s', hostname)
+            logger.info("Cloudflare clearance cache bypass requested for %s", hostname)
         else:
             seeded_result = await self._fetch_html_with_provided_clearance(
                 url,
@@ -71,7 +71,7 @@ class CloudflareBypassService:
             )
             if seeded_result is not None:
                 return seeded_result
-            logger.info('Cloudflare clearance cache miss for %s; using browser', hostname)
+            logger.info("Cloudflare clearance cache miss for %s; using browser", hostname)
 
         result = await self._solver.fetch_html(
             url,
@@ -81,7 +81,7 @@ class CloudflareBypassService:
         )
         if result is None:
             return None
-        result.source = result.source or 'solver'
+        result.source = result.source or "solver"
         record = ClearanceRecord(
             cookies=result.cookies,
             user_agent=result.user_agent,
@@ -92,7 +92,7 @@ class CloudflareBypassService:
             http_usable=cached_record.http_usable if cached_record is not None else True,
         )
         self._cache.set(hostname, proxy, record)
-        logger.info('Cloudflare clearance cached for %s', hostname)
+        logger.info("Cloudflare clearance cached for %s", hostname)
         return result
 
     @staticmethod
@@ -100,11 +100,11 @@ class CloudflareBypassService:
         html_lower = html.lower()
         return (
             status_code in {403, 503}
-            or '<title>just a moment' in html_lower
-            or 'please complete the captcha' in html_lower
-            or '/cdn-cgi/challenge-platform/' in html_lower
-            or 'cf-turnstile-response' in html_lower
-            or 'challenges.cloudflare.com/turnstile/v0' in html_lower
+            or "<title>just a moment" in html_lower
+            or "please complete the captcha" in html_lower
+            or "/cdn-cgi/challenge-platform/" in html_lower
+            or "cf-turnstile-response" in html_lower
+            or "challenges.cloudflare.com/turnstile/v0" in html_lower
         )
 
     def _get_or_create_session(self, hostname: str, proxy: str | None):
@@ -112,8 +112,8 @@ class CloudflareBypassService:
         if session is not None:
             return session
 
-        proxies = {'http': proxy, 'https': proxy} if proxy else None
-        session = AsyncSession(impersonate='firefox', proxies=proxies, timeout=30)
+        proxies = {"http": proxy, "https": proxy} if proxy else None
+        session = AsyncSession(impersonate="firefox", proxies=proxies, timeout=30)
         self._session_pool.store(hostname, proxy, session)
         return session
 
@@ -127,10 +127,10 @@ class CloudflareBypassService:
     ) -> HtmlResult | None:
         session = self._get_or_create_session(hostname, proxy)
         upstream_headers = self._strip_control_headers(custom_headers or {})
-        upstream_headers['user-agent'] = cached_record.user_agent
-        cookie_header = self._merge_cookie_header(upstream_headers.get('cookie', ''), cached_record.cookies)
+        upstream_headers["user-agent"] = cached_record.user_agent
+        cookie_header = self._merge_cookie_header(upstream_headers.get("cookie", ""), cached_record.cookies)
         if cookie_header:
-            upstream_headers['cookie'] = cookie_header
+            upstream_headers["cookie"] = cookie_header
 
         response = await session.get(
             url,
@@ -149,7 +149,7 @@ class CloudflareBypassService:
             user_agent=cached_record.user_agent,
             browser_config=cached_record.browser_config,
             browser_os=cached_record.browser_os,
-            source='cache',
+            source="cache",
         )
 
     async def _fetch_html_with_provided_clearance(
@@ -163,13 +163,13 @@ class CloudflareBypassService:
             return None
 
         upstream_headers = self._strip_control_headers(custom_headers)
-        cookie_header = ''
-        user_agent = ''
+        cookie_header = ""
+        user_agent = ""
         for key, value in upstream_headers.items():
             key_lower = key.lower()
-            if key_lower == 'cookie':
+            if key_lower == "cookie":
                 cookie_header = value
-            elif key_lower == 'user-agent':
+            elif key_lower == "user-agent":
                 user_agent = value
 
         if not cookie_header or not user_agent:
@@ -186,7 +186,7 @@ class CloudflareBypassService:
             return None
 
         cookies = self._parse_cookie_header(cookie_header)
-        response_cookies = getattr(response, 'cookies', None)
+        response_cookies = getattr(response, "cookies", None)
         if response_cookies:
             cookies.update(dict(response_cookies.items()))
 
@@ -197,7 +197,7 @@ class CloudflareBypassService:
             expires_at=time.time() + self._ttl_seconds,
         )
         self._cache.set(hostname, proxy, record)
-        logger.info('Cloudflare clearance seeded from provided cookies for %s', hostname)
+        logger.info("Cloudflare clearance seeded from provided cookies for %s", hostname)
 
         return HtmlResult(
             html=html,
@@ -205,7 +205,7 @@ class CloudflareBypassService:
             status_code=response.status_code,
             cookies=cookies,
             user_agent=user_agent,
-            source='provided-cookie',
+            source="provided-cookie",
         )
 
     @staticmethod
@@ -215,12 +215,12 @@ class CloudflareBypassService:
         bypass_cache = False
         for key, value in headers.items():
             key_lower = key.lower()
-            if key_lower == 'x-hostname':
+            if key_lower == "x-hostname":
                 hostname = value
-            elif key_lower == 'x-proxy':
+            elif key_lower == "x-proxy":
                 proxy = value
-            elif key_lower == 'x-bypass-cache':
-                bypass_cache = value.lower() in {'1', 'true', 'yes', 'on'}
+            elif key_lower == "x-bypass-cache":
+                bypass_cache = value.lower() in {"1", "true", "yes", "on"}
         return hostname, proxy, bypass_cache
 
     @staticmethod
@@ -228,18 +228,18 @@ class CloudflareBypassService:
         return {
             key: value
             for key, value in headers.items()
-            if key.lower() not in {'x-hostname', 'x-proxy', 'x-bypass-cache', 'host'}
+            if key.lower() not in {"x-hostname", "x-proxy", "x-bypass-cache", "host"}
         }
 
     @staticmethod
     def _merge_cookie_header(existing_cookie: str, cf_cookies: dict[str, str]) -> str:
         pairs: dict[str, str] = {}
-        for item in existing_cookie.split(';'):
-            if '=' in item:
-                name, value = item.split('=', 1)
+        for item in existing_cookie.split(";"):
+            if "=" in item:
+                name, value = item.split("=", 1)
                 pairs[name.strip()] = value.strip()
         pairs.update(cf_cookies)
-        return '; '.join(f'{name}={value}' for name, value in pairs.items())
+        return "; ".join(f"{name}={value}" for name, value in pairs.items())
 
     @staticmethod
     def _parse_cookie_header(cookie_header: str) -> dict[str, str]:
@@ -257,11 +257,11 @@ class CloudflareBypassService:
     ) -> MirrorResult:
         hostname, proxy, bypass_cache = self._extract_control_headers(headers)
         if not hostname:
-            raise ValueError('x-hostname header is required')
+            raise ValueError("x-hostname header is required")
 
         cached_record = None if bypass_cache else self._cache.get(hostname, proxy)
         if cached_record is None:
-            seed_url = f'https://{hostname}/'
+            seed_url = f"https://{hostname}/"
             html_result = await self.fetch_html(
                 seed_url,
                 proxy=proxy,
@@ -269,22 +269,22 @@ class CloudflareBypassService:
                 bypass_cache=bypass_cache,
             )
             if html_result is None:
-                raise RuntimeError(f'Failed to seed clearance for {hostname}')
+                raise RuntimeError(f"Failed to seed clearance for {hostname}")
             cached_record = self._cache.get(hostname, proxy)
             if cached_record is None:
-                raise RuntimeError(f'No cached clearance available for {hostname}')
+                raise RuntimeError(f"No cached clearance available for {hostname}")
 
         session = self._get_or_create_session(hostname, proxy)
 
-        target_url = urljoin(f'https://{hostname}', path)
+        target_url = urljoin(f"https://{hostname}", path)
         if query_string:
-            target_url = f'{target_url}?{query_string}'
+            target_url = f"{target_url}?{query_string}"
 
         upstream_headers = self._strip_control_headers(headers)
-        upstream_headers['user-agent'] = cached_record.user_agent
-        cookie_header = self._merge_cookie_header(upstream_headers.get('cookie', ''), cached_record.cookies)
+        upstream_headers["user-agent"] = cached_record.user_agent
+        cookie_header = self._merge_cookie_header(upstream_headers.get("cookie", ""), cached_record.cookies)
         if cookie_header:
-            upstream_headers['cookie'] = cookie_header
+            upstream_headers["cookie"] = cookie_header
 
         response = await session.request(
             method=method,

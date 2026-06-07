@@ -53,11 +53,11 @@ class MetricSnapshot:
     def to_dict(self) -> dict[str, Any]:
         """转换为字典（用于 JSON 序列化）"""
         return {
-            'metric_name': self.metric_name,
-            'metric_type': self.metric_type,
-            'labels': self.labels,
-            'value': self.value,
-            'timestamp': self.timestamp.isoformat(),
+            "metric_name": self.metric_name,
+            "metric_type": self.metric_type,
+            "labels": self.labels,
+            "value": self.value,
+            "timestamp": self.timestamp.isoformat(),
         }
 
 
@@ -100,18 +100,18 @@ class MetricsCollector:
             return
 
         try:
-            key = self._build_key(name, tags, metric_type='counter', window='1m')
+            key = self._build_key(name, tags, metric_type="counter", window="1m")
             self.redis.incrby(key, value)
             self.redis.expire(key, self.ttl)
 
             # 同时更新总计（无时间窗口）
-            total_key = self._build_key(name, tags, metric_type='counter', window='total')
+            total_key = self._build_key(name, tags, metric_type="counter", window="total")
             self.redis.incrby(total_key, value)
             self.redis.expire(total_key, self.ttl * 24)  # 24小时
 
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f'Failed to record counter metric {name}: {e}')
+            logger.error(f"Failed to record counter metric {name}: {e}")
 
     def gauge(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
         """瞬时值：记录当前状态
@@ -131,11 +131,11 @@ class MetricsCollector:
             return
 
         try:
-            key = self._build_key(name, tags, metric_type='gauge')
+            key = self._build_key(name, tags, metric_type="gauge")
             self.redis.set(key, value, ex=self.ttl)
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f'Failed to record gauge metric {name}: {e}')
+            logger.error(f"Failed to record gauge metric {name}: {e}")
 
     def histogram(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
         """分布统计：记录数值分布，支持百分位数查询
@@ -157,11 +157,11 @@ class MetricsCollector:
             return
 
         try:
-            key = self._build_key(name, tags, metric_type='histogram', window='1m')
+            key = self._build_key(name, tags, metric_type="histogram", window="1m")
             timestamp = time.time()
 
             # 使用 Sorted Set: member 格式为 "timestamp:value"，score 为 timestamp
-            member = f'{timestamp}:{value}'
+            member = f"{timestamp}:{value}"
             self.redis.zadd(key, {member: timestamp})
             self.redis.expire(key, self.ttl)
 
@@ -171,7 +171,7 @@ class MetricsCollector:
 
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f'Failed to record histogram metric {name}: {e}')
+            logger.error(f"Failed to record histogram metric {name}: {e}")
 
     def record_error(self, site: str, url: str, error_type: str, error_msg: str, max_records: int = 100) -> None:
         """记录错误详情到 Redis List，用于问题排查
@@ -191,14 +191,14 @@ class MetricsCollector:
             import json
             from datetime import datetime
 
-            key = 'metrics:errors:recent'
+            key = "metrics:errors:recent"
             record = json.dumps(
                 {
-                    'time': datetime.now().isoformat(),
-                    'site': site,
-                    'url': url,
-                    'type': error_type,
-                    'msg': error_msg[:2000],  # 保留更多内容以包含堆栈
+                    "time": datetime.now().isoformat(),
+                    "site": site,
+                    "url": url,
+                    "type": error_type,
+                    "msg": error_msg[:2000],  # 保留更多内容以包含堆栈
                 }
             )
 
@@ -209,19 +209,19 @@ class MetricsCollector:
 
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f'Failed to record error detail: {e}')
+            logger.error(f"Failed to record error detail: {e}")
 
     def get_recent_errors(self, limit: int = 50) -> list:
         """获取最近的错误记录"""
         try:
             import json
 
-            key = 'metrics:errors:recent'
+            key = "metrics:errors:recent"
             records = self.redis.lrange(key, 0, limit - 1)
             return [json.loads(r) for r in records]
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f'Failed to get recent errors: {e}')
+            logger.error(f"Failed to get recent errors: {e}")
             return []
 
     @contextmanager
@@ -251,18 +251,18 @@ class MetricsCollector:
             duration = time.time() - start_time
 
             # 记录耗时分布
-            self.histogram(f'{name}.duration', duration, tags=tags)
+            self.histogram(f"{name}.duration", duration, tags=tags)
 
             # 记录状态计数
-            status_tags = {**(tags or {}), 'status': 'error' if exception_occurred else 'success'}
-            self.counter(f'{name}.total', tags=status_tags)
+            status_tags = {**(tags or {}), "status": "error" if exception_occurred else "success"}
+            self.counter(f"{name}.total", tags=status_tags)
 
     def _build_key(
         self,
         name: str,
         tags: dict[str, str] | None,
         metric_type: str,
-        window: str = '',
+        window: str = "",
     ) -> str:
         """构建 Redis key
 
@@ -278,27 +278,27 @@ class MetricsCollector:
             Redis key 字符串
 
         """
-        parts = ['metrics', metric_type, name]
+        parts = ["metrics", metric_type, name]
 
         # 添加标签（排序保证一致性）
         if tags:
-            tag_str = ','.join(f'{k}={v}' for k, v in sorted(tags.items()))
+            tag_str = ",".join(f"{k}={v}" for k, v in sorted(tags.items()))
             parts.append(tag_str)
         else:
-            parts.append('_')
+            parts.append("_")
 
         # 添加时间窗口
         if window:
-            if window == 'total':
-                parts.append('total')
+            if window == "total":
+                parts.append("total")
             else:
                 # 按分钟分桶
-                minute = datetime.now().strftime('%Y%m%d%H%M')
-                parts.append(f'{window}:{minute}')
+                minute = datetime.now().strftime("%Y%m%d%H%M")
+                parts.append(f"{window}:{minute}")
 
-        return ':'.join(parts)
+        return ":".join(parts)
 
-    def get_counter(self, name: str, tags: dict[str, str] | None = None, window: str = '1m') -> int:
+    def get_counter(self, name: str, tags: dict[str, str] | None = None, window: str = "1m") -> int:
         """查询计数器值
 
         Args:
@@ -311,12 +311,12 @@ class MetricsCollector:
 
         """
         try:
-            key = self._build_key(name, tags, metric_type='counter', window=window)
+            key = self._build_key(name, tags, metric_type="counter", window=window)
             value = self.redis.get(key)
             return int(value) if value else 0
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f'Failed to get counter metric {name}: {e}')
+            logger.error(f"Failed to get counter metric {name}: {e}")
             return 0
 
     def get_gauge(self, name: str, tags: dict[str, str] | None = None) -> float | None:
@@ -331,12 +331,12 @@ class MetricsCollector:
 
         """
         try:
-            key = self._build_key(name, tags, metric_type='gauge')
+            key = self._build_key(name, tags, metric_type="gauge")
             value = self.redis.get(key)
             return float(value) if value else None
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f'Failed to get gauge metric {name}: {e}')
+            logger.error(f"Failed to get gauge metric {name}: {e}")
             return None
 
     def get_histogram_stats(
@@ -355,52 +355,52 @@ class MetricsCollector:
 
         """
         try:
-            key = self._build_key(name, tags, metric_type='histogram', window='1m')
+            key = self._build_key(name, tags, metric_type="histogram", window="1m")
 
             # 获取所有数据点
             members = self.redis.zrange(key, 0, -1)
             if not members:
                 return {
-                    'count': 0,
-                    'min': 0,
-                    'max': 0,
-                    'avg': 0,
-                    'p50': 0,
-                    'p95': 0,
-                    'p99': 0,
+                    "count": 0,
+                    "min": 0,
+                    "max": 0,
+                    "avg": 0,
+                    "p50": 0,
+                    "p95": 0,
+                    "p99": 0,
                 }
 
             # 解析数值（member 格式为 "timestamp:value"）
             values = []
             for member in members:
                 if isinstance(member, bytes):
-                    member = member.decode('utf-8')
+                    member = member.decode("utf-8")
                 try:
-                    _, value_str = member.split(':', 1)
+                    _, value_str = member.split(":", 1)
                     values.append(float(value_str))
                 except (ValueError, IndexError):
                     continue
 
             if not values:
-                return {'count': 0, 'min': 0, 'max': 0, 'avg': 0, 'p50': 0, 'p95': 0, 'p99': 0}
+                return {"count": 0, "min": 0, "max": 0, "avg": 0, "p50": 0, "p95": 0, "p99": 0}
 
             values.sort()
             count = len(values)
 
             return {
-                'count': count,
-                'min': values[0],
-                'max': values[-1],
-                'avg': sum(values) / count,
-                'p50': self._percentile(values, 0.50),
-                'p95': self._percentile(values, 0.95),
-                'p99': self._percentile(values, 0.99),
+                "count": count,
+                "min": values[0],
+                "max": values[-1],
+                "avg": sum(values) / count,
+                "p50": self._percentile(values, 0.50),
+                "p95": self._percentile(values, 0.95),
+                "p99": self._percentile(values, 0.99),
             }
 
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f'Failed to get histogram stats for {name}: {e}')
-            return {'count': 0, 'min': 0, 'max': 0, 'avg': 0, 'p50': 0, 'p95': 0, 'p99': 0}
+            logger.error(f"Failed to get histogram stats for {name}: {e}")
+            return {"count": 0, "min": 0, "max": 0, "avg": 0, "p50": 0, "p95": 0, "p99": 0}
 
     def _percentile(self, sorted_values: list[float], percentile: float) -> float:
         """计算百分位数
@@ -438,10 +438,10 @@ class MetricsCollector:
 
         """
         try:
-            return [k.decode('utf-8') if isinstance(k, bytes) else k for k in self.redis.keys(pattern)]
+            return [k.decode("utf-8") if isinstance(k, bytes) else k for k in self.redis.keys(pattern)]
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f'Failed to get metrics keys by pattern {pattern}: {e}')
+            logger.error(f"Failed to get metrics keys by pattern {pattern}: {e}")
             return []
 
     def collect_snapshots(self, metric_names: list[str] | None = None) -> list[MetricSnapshot]:
@@ -460,9 +460,9 @@ class MetricsCollector:
         try:
             # 扫描所有指标 key
             if metric_names:
-                patterns = [f'metrics:*:{name}:*' for name in metric_names]
+                patterns = [f"metrics:*:{name}:*" for name in metric_names]
             else:
-                patterns = ['metrics:*']
+                patterns = ["metrics:*"]
 
             for pattern in patterns:
                 keys = self.get_metrics_keys_by_pattern(pattern)
@@ -470,7 +470,7 @@ class MetricsCollector:
                 for key in keys:
                     try:
                         # 解析 key: metrics:{type}:{name}:{tags}:{window}:{time}
-                        parts = key.split(':')
+                        parts = key.split(":")
                         if len(parts) < 4:
                             continue
 
@@ -480,19 +480,19 @@ class MetricsCollector:
 
                         # 解析标签
                         labels = {}
-                        if tags_str != '_':
-                            for tag in tags_str.split(','):
-                                if '=' in tag:
-                                    k, v = tag.split('=', 1)
+                        if tags_str != "_":
+                            for tag in tags_str.split(","):
+                                if "=" in tag:
+                                    k, v = tag.split("=", 1)
                                     labels[k] = v
 
                         # 获取值
                         value = None
-                        if metric_type == 'counter' or metric_type == 'gauge':
+                        if metric_type == "counter" or metric_type == "gauge":
                             value = float(self.redis.get(key) or 0)
-                        elif metric_type == 'histogram':
+                        elif metric_type == "histogram":
                             stats = self.get_histogram_stats(metric_name, labels)
-                            value = stats.get('avg', 0)
+                            value = stats.get("avg", 0)
 
                         if value is not None:
                             snapshot = MetricSnapshot(
@@ -505,24 +505,24 @@ class MetricsCollector:
                             snapshots.append(snapshot)
 
                     except (ValueError, IndexError, TypeError, AttributeError) as e:
-                        logger.debug(f'Failed to parse metric key {key}: {e}')
+                        logger.debug(f"Failed to parse metric key {key}: {e}")
                         continue
 
             return snapshots
 
         except (ConnectionError, OSError, TypeError, ValueError) as e:
-            logger.error(f'Failed to collect metric snapshots: {e}')
+            logger.error(f"Failed to collect metric snapshots: {e}")
             return []
 
     def enable(self) -> None:
         """启用指标收集"""
         self.enabled = True
-        logger.info('Metrics collection enabled')
+        logger.info("Metrics collection enabled")
 
     def disable(self) -> None:
         """禁用指标收集（用于调试或降低开销）"""
         self.enabled = False
-        logger.info('Metrics collection disabled')
+        logger.info("Metrics collection disabled")
 
 
 # 全局实例（延迟初始化）
@@ -542,7 +542,7 @@ def get_metrics_collector() -> MetricsCollector:
         from core.cache import redis_client
 
         _metrics_instance = MetricsCollector(redis_client)
-        logger.info('Metrics collector initialized')
+        logger.info("Metrics collector initialized")
 
     return _metrics_instance
 

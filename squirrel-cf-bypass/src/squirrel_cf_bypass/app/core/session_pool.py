@@ -33,7 +33,7 @@ class SessionPool:
         items = list(self._items.values())
         self._items.clear()
         for record in items:
-            close_fn = getattr(record.session, 'close', None)
+            close_fn = getattr(record.session, "close", None)
             if callable(close_fn):
                 result = close_fn()
                 if asyncio.iscoroutine(result):

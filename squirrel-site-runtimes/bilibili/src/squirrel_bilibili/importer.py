@@ -17,12 +17,12 @@ class BilibiliUserSubscriptionImporter:
     需要登录 cookies 才能获取
     """
 
-    domain = 'bilibili.com'
+    domain = "bilibili.com"
 
     def _get_current_user_mid(self, cookies: str) -> str:
         """获取当前登录用户的 mid"""
         nav = fetch_nav(cookies=cookies, throttled=False)
-        mid = nav.get('mid')
+        mid = nav.get("mid")
         if not mid:
             raise ValueError("User not logged in or cookies expired")
         return str(mid)
@@ -34,9 +34,9 @@ class BilibiliUserSubscriptionImporter:
         Returns:
             订阅列表
         """
-        cookies = build_cookies(f'https://www.{self.domain}')
+        cookies = build_cookies(f"https://www.{self.domain}")
         mid = self._get_current_user_mid(cookies)
-        logger.info('Getting subscriptions for bilibili user: %s', mid)
+        logger.info("Getting subscriptions for bilibili user: %s", mid)
 
         page = 1
         page_size = 50
@@ -50,23 +50,23 @@ class BilibiliUserSubscriptionImporter:
                 ps=page_size,
                 throttled=False,
             )
-            followings = data.get('list') or []
+            followings = data.get("list") or []
             if not followings:
                 break
 
             for following in followings:
-                following_mid = following.get('mid')
+                following_mid = following.get("mid")
                 if following_mid:
-                    space_url = f'https://space.bilibili.com/{following_mid}'
-                    face = following.get('face')
-                    name = following.get('uname')
+                    space_url = f"https://space.bilibili.com/{following_mid}"
+                    face = following.get("face")
+                    name = following.get("uname")
                     items.append(SubscriptionImportItem(url=space_url, name=name, avatar=face))
 
-            total = data.get('total', 0)
+            total = data.get("total", 0)
             if not total or len(items) >= total or len(followings) < page_size:
                 break
 
             page += 1
 
-        logger.info('Found %s bilibili subscriptions', len(items))
+        logger.info("Found %s bilibili subscriptions", len(items))
         return items

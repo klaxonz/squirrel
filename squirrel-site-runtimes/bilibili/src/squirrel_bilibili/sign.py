@@ -18,23 +18,23 @@ _WBI_KEY_CACHE: tuple[str, str] | None = None
 _WBI_KEY_CACHE_TS: float | None = None
 _WBI_KEY_CACHE_TTL_SECONDS = 3600
 
-SITE_SLUG = 'bilibili'
+SITE_SLUG = "bilibili"
 
 
 def get_mixin_key(orig: str) -> str:
-    return reduce(lambda s, i: s + orig[i], mixinKeyEncTab, '')[:32]
+    return reduce(lambda s, i: s + orig[i], mixinKeyEncTab, "")[:32]
 
 
 def enc_wbi(params: dict[str, str], img_key: str, sub_key: str) -> dict[str, str]:
     mixin_key = get_mixin_key(img_key + sub_key)
     curr_time = round(time.time())
     params = dict(params)
-    params['wts'] = str(curr_time)
+    params["wts"] = str(curr_time)
     params = dict(sorted(params.items()))
-    params = {k: ''.join(ch for ch in str(v) if ch not in "!'()*") for k, v in params.items()}
+    params = {k: "".join(ch for ch in str(v) if ch not in "!'()*") for k, v in params.items()}
     query = urllib.parse.urlencode(params)
     wbi_sign = md5((query + mixin_key).encode()).hexdigest()
-    params['w_rid'] = wbi_sign
+    params["w_rid"] = wbi_sign
     return params
 
 
@@ -45,21 +45,21 @@ def get_wbi_keys() -> tuple[str, str]:
             return _WBI_KEY_CACHE
 
     headers = get_http_headers(SITE_SLUG, {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-        'Referer': 'https://www.bilibili.com/'
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
+        "Referer": "https://www.bilibili.com/"
     })
     resp = request(
-        'GET',
-        'https://api.bilibili.com/x/web-interface/nav',
+        "GET",
+        "https://api.bilibili.com/x/web-interface/nav",
         headers=headers,
         timeout=15,
     )
     resp.raise_for_status()
     json_content = resp.json()
-    img_url: str = json_content['data']['wbi_img']['img_url']
-    sub_url: str = json_content['data']['wbi_img']['sub_url']
-    img_key = img_url.rsplit('/', 1)[1].split('.')[0]
-    sub_key = sub_url.rsplit('/', 1)[1].split('.')[0]
+    img_url: str = json_content["data"]["wbi_img"]["img_url"]
+    sub_url: str = json_content["data"]["wbi_img"]["sub_url"]
+    img_key = img_url.rsplit("/", 1)[1].split(".")[0]
+    sub_key = sub_url.rsplit("/", 1)[1].split(".")[0]
     _WBI_KEY_CACHE = (img_key, sub_key)
     _WBI_KEY_CACHE_TS = time.time()
     return img_key, sub_key

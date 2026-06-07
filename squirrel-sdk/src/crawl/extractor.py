@@ -57,11 +57,11 @@ class VideoExtractorBase(ABC):
                 )
 
             video_meta = VideoMeta(
-                title=video_info.get('title', ''),
+                title=video_info.get("title", ""),
                 url=task.url,
-                thumbnail=video_info.get('thumbnail'),
-                duration=video_info.get('duration'),
-                publish_date=video_info.get('publish_date') or video_info.get('upload_date'),
+                thumbnail=video_info.get("thumbnail"),
+                duration=video_info.get("duration"),
+                publish_date=video_info.get("publish_date") or video_info.get("upload_date"),
                 extra_data=video_info,
             )
 
@@ -97,7 +97,7 @@ class VideoExtractorBase(ABC):
 
     def _is_playlist(self, video_info: dict[str, Any]) -> bool:
         """Check if the video info represents a playlist."""
-        return video_info.get('_type') == 'playlist'
+        return video_info.get("_type") == "playlist"
 
 
 class YoutubeDLExtractorBase(VideoExtractorBase):

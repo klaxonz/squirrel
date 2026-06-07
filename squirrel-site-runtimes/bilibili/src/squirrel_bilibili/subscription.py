@@ -44,26 +44,26 @@ class BilibiliSubscription:
 
     def _get_space_info(self) -> SubscriptionMeta:
         if not self.target.mid:
-            raise ValueError('Missing user id')
+            raise ValueError("Missing user id")
         info = fetch_user_card(self.target.mid, cookies=self.cookies, throttled=True)
-        card = info.get('card') or info
-        mid = card.get('mid') or self.target.mid
-        channel_name = card.get('name') or card.get('uname')
-        avatar_url = card.get('face')
+        card = info.get("card") or info
+        mid = card.get("mid") or self.target.mid
+        channel_name = card.get("name") or card.get("uname")
+        avatar_url = card.get("face")
         return SubscriptionMeta(str(mid), channel_name, avatar_url, self.url)
 
     def _get_favlist_info(self) -> SubscriptionMeta:
         if not self.target.media_id:
-            raise ValueError('Missing favorite list id')
+            raise ValueError("Missing favorite list id")
         info = fetch_fav_folder_info(self.target.media_id, cookies=self.cookies, throttled=True)
-        data = info.get('info') or info
-        title = data.get('title') or data.get('name') or 'Favorite List'
-        cover = data.get('cover') or data.get('cover_url')
+        data = info.get("info") or info
+        title = data.get("title") or data.get("name") or "Favorite List"
+        cover = data.get("cover") or data.get("cover_url")
         return SubscriptionMeta(f"fav_{self.target.media_id}", title, cover, self.url)
 
     def _get_channel_info(self) -> SubscriptionMeta:
         if not self.target.series_id:
-            raise ValueError('Missing channel series id')
+            raise ValueError("Missing channel series id")
         series_type = self.target.series_type or ChannelSeriesType.SERIES
         meta = fetch_series_meta(
             mid=self.target.mid,
@@ -72,10 +72,10 @@ class BilibiliSubscription:
             cookies=self.cookies,
             throttled=True,
         )
-        data = meta.get('meta') or meta.get('data') or meta
-        prefix = 'season' if series_type == ChannelSeriesType.SEASON else 'series'
-        title = data.get('title') or data.get('name') or 'Channel Series'
-        cover = data.get('cover') or data.get('square_cover')
+        data = meta.get("meta") or meta.get("data") or meta
+        prefix = "season" if series_type == ChannelSeriesType.SEASON else "series"
+        title = data.get("title") or data.get("name") or "Channel Series"
+        cover = data.get("cover") or data.get("square_cover")
         return SubscriptionMeta(f"{prefix}_{self.target.series_id}", title, cover, self.url)
 
     def sync_videos(self, context: SubscriptionSyncContext) -> SubscriptionSyncResult:
@@ -109,17 +109,17 @@ class BilibiliSubscription:
         anchor_found: bool | None,
         total_available: int | None,
     ) -> dict:
-        if context.mode == 'full':
-            return {'total_available': total_available}
+        if context.mode == "full":
+            return {"total_available": total_available}
         return {
-            'head_sample_urls': list(head_sample_urls),
-            'anchor_found': anchor_found,
-            'total_available': total_available,
+            "head_sample_urls": list(head_sample_urls),
+            "anchor_found": anchor_found,
+            "total_available": total_available,
         }
 
     @staticmethod
     def _resolve_page(context: SubscriptionSyncContext) -> int:
-        page = (context.cursor_payload or {}).get('page', 1)
+        page = (context.cursor_payload or {}).get("page", 1)
         try:
             return max(1, int(page))
         except (TypeError, ValueError):
@@ -130,7 +130,7 @@ class BilibiliSubscription:
         context: SubscriptionSyncContext,
     ) -> tuple[list[str], str | None, str, dict | None, bool, dict]:
         if not self.target.mid:
-            raise ValueError('Missing user id')
+            raise ValueError("Missing user id")
         video_list: list[str] = []
         latest_video_url: str | None = None
         head_sample_urls: list[str] = []
@@ -139,14 +139,14 @@ class BilibiliSubscription:
         page_size = 50
 
         data = fetch_user_videos(self.target.mid, cookies=self.cookies, pn=page, ps=page_size, throttled=True)
-        page_info = data.get('page') or {}
-        total_available = page_info.get('count')
-        vlist = (data.get('list') or {}).get('vlist') or data.get('vlist') or []
+        page_info = data.get("page") or {}
+        total_available = page_info.get("count")
+        vlist = (data.get("list") or {}).get("vlist") or data.get("vlist") or []
         if not isinstance(vlist, list) or not vlist:
             return (
                 video_list,
                 latest_video_url,
-                'source_exhausted',
+                "source_exhausted",
                 None,
                 False,
                 self._build_result_kwargs(
@@ -158,11 +158,11 @@ class BilibiliSubscription:
             )
 
         for v in vlist:
-            if v.get('is_union_video') == 1:
+            if v.get("is_union_video") == 1:
                 continue
-            bvid = v.get('bvid')
+            bvid = v.get("bvid")
             if bvid:
-                video_url = f'https://www.bilibili.com/video/{bvid}'
+                video_url = f"https://www.bilibili.com/video/{bvid}"
                 self._append_head_sample(head_sample_urls, video_url)
                 latest_video_url, stop_reason = append_subscription_video_url(
                     video_url,
@@ -181,34 +181,34 @@ class BilibiliSubscription:
                         self._build_result_kwargs(
                             context,
                             head_sample_urls=head_sample_urls,
-                            anchor_found=True if stop_reason == 'cursor_hit' else None,
+                            anchor_found=True if stop_reason == "cursor_hit" else None,
                             total_available=total_available,
                         ),
                     )
 
-        if context.mode == 'full':
+        if context.mode == "full":
             total = total_available or 0
             has_more = bool(total and page * page_size < total) or len(vlist) >= page_size
             if has_more:
                 return (
                     video_list,
                     latest_video_url,
-                    'batch_exhausted',
-                    {'page': page + 1},
+                    "batch_exhausted",
+                    {"page": page + 1},
                     True,
-                    {'total_available': total_available},
+                    {"total_available": total_available},
                 )
 
         return (
             video_list,
             latest_video_url,
-            'source_exhausted',
+            "source_exhausted",
             None,
             False,
             self._build_result_kwargs(
                 context,
                 head_sample_urls=head_sample_urls,
-                anchor_found=False if context.mode != 'full' and context.last_seen_video_url else None,
+                anchor_found=False if context.mode != "full" and context.last_seen_video_url else None,
                 total_available=total_available,
             ),
         )
@@ -218,7 +218,7 @@ class BilibiliSubscription:
         context: SubscriptionSyncContext,
     ) -> tuple[list[str], str | None, str, dict | None, bool, dict]:
         if not self.target.media_id:
-            raise ValueError('Missing favorite list id')
+            raise ValueError("Missing favorite list id")
 
         video_list: list[str] = []
         latest_video_url: str | None = None
@@ -227,15 +227,15 @@ class BilibiliSubscription:
         page = self._resolve_page(context)
         data = fetch_fav_resource_list(self.target.media_id, cookies=self.cookies, pn=page, ps=20, throttled=True)
         total_available = (
-            (data.get('info') or {}).get('media_count')
-            or ((data.get('data') or {}).get('info') or {}).get('media_count')
+            (data.get("info") or {}).get("media_count")
+            or ((data.get("data") or {}).get("info") or {}).get("media_count")
         )
-        medias = data.get('medias') or data.get('data', {}).get('medias') or []
+        medias = data.get("medias") or data.get("data", {}).get("medias") or []
         if not medias:
             return (
                 video_list,
                 latest_video_url,
-                'source_exhausted',
+                "source_exhausted",
                 None,
                 False,
                 self._build_result_kwargs(
@@ -247,9 +247,9 @@ class BilibiliSubscription:
             )
 
         for media in medias:
-            bvid = media.get('bvid')
+            bvid = media.get("bvid")
             if bvid:
-                video_url = f'https://www.bilibili.com/video/{bvid}'
+                video_url = f"https://www.bilibili.com/video/{bvid}"
                 self._append_head_sample(head_sample_urls, video_url)
                 latest_video_url, stop_reason = append_subscription_video_url(
                     video_url,
@@ -268,33 +268,33 @@ class BilibiliSubscription:
                         self._build_result_kwargs(
                             context,
                             head_sample_urls=head_sample_urls,
-                            anchor_found=True if stop_reason == 'cursor_hit' else None,
+                            anchor_found=True if stop_reason == "cursor_hit" else None,
                             total_available=total_available,
                         ),
                     )
 
-        has_more = data.get('has_more', False)
-        if context.mode == 'full' and has_more:
+        has_more = data.get("has_more", False)
+        if context.mode == "full" and has_more:
             return (
                 video_list,
                 latest_video_url,
-                'batch_exhausted',
-                {'page': page + 1},
+                "batch_exhausted",
+                {"page": page + 1},
                 True,
-                {'total_available': total_available},
+                {"total_available": total_available},
             )
 
-        logger.info('Extracted %s videos from favorite list', len(video_list))
+        logger.info("Extracted %s videos from favorite list", len(video_list))
         return (
             video_list,
             latest_video_url,
-            'source_exhausted',
+            "source_exhausted",
             None,
             False,
             self._build_result_kwargs(
                 context,
                 head_sample_urls=head_sample_urls,
-                anchor_found=False if context.mode != 'full' and context.last_seen_video_url else None,
+                anchor_found=False if context.mode != "full" and context.last_seen_video_url else None,
                 total_available=total_available,
             ),
         )
@@ -304,9 +304,9 @@ class BilibiliSubscription:
         context: SubscriptionSyncContext,
     ) -> tuple[list[str], str | None, str, dict | None, bool, dict]:
         if not self.target.series_id:
-            raise ValueError('Missing channel series id')
+            raise ValueError("Missing channel series id")
         if not self.target.mid:
-            raise ValueError('Missing user id for channel series')
+            raise ValueError("Missing user id for channel series")
         series_type = self.target.series_type or ChannelSeriesType.SERIES
 
         video_list: list[str] = []
@@ -326,18 +326,18 @@ class BilibiliSubscription:
             throttled=True,
         )
         total_available = (
-            (data.get('page') or {}).get('total')
-            or (data.get('meta') or {}).get('total')
-            or (data.get('data') or {}).get('total')
+            (data.get("page") or {}).get("total")
+            or (data.get("meta") or {}).get("total")
+            or (data.get("data") or {}).get("total")
         )
-        archives = data.get('archives') or (data.get('data') or {}).get('archives') or []
+        archives = data.get("archives") or (data.get("data") or {}).get("archives") or []
         if not archives and series_type == ChannelSeriesType.SEASON:
-            archives = data.get('archives') or data.get('items') or (data.get('data') or {}).get('archives') or []
+            archives = data.get("archives") or data.get("items") or (data.get("data") or {}).get("archives") or []
         if not archives:
             return (
                 video_list,
                 latest_video_url,
-                'source_exhausted',
+                "source_exhausted",
                 None,
                 False,
                 self._build_result_kwargs(
@@ -349,9 +349,9 @@ class BilibiliSubscription:
             )
 
         for archive in archives:
-            bvid = archive.get('bvid') or (archive.get('archive') or {}).get('bvid')
+            bvid = archive.get("bvid") or (archive.get("archive") or {}).get("bvid")
             if bvid:
-                video_url = f'https://www.bilibili.com/video/{bvid}'
+                video_url = f"https://www.bilibili.com/video/{bvid}"
                 self._append_head_sample(head_sample_urls, video_url)
                 latest_video_url, stop_reason = append_subscription_video_url(
                     video_url,
@@ -370,32 +370,32 @@ class BilibiliSubscription:
                         self._build_result_kwargs(
                             context,
                             head_sample_urls=head_sample_urls,
-                            anchor_found=True if stop_reason == 'cursor_hit' else None,
+                            anchor_found=True if stop_reason == "cursor_hit" else None,
                             total_available=total_available,
                         ),
                     )
 
-        if context.mode == 'full' and len(archives) >= page_size:
+        if context.mode == "full" and len(archives) >= page_size:
             return (
                 video_list,
                 latest_video_url,
-                'batch_exhausted',
-                {'page': page + 1},
+                "batch_exhausted",
+                {"page": page + 1},
                 True,
-                {'total_available': total_available},
+                {"total_available": total_available},
             )
 
-        logger.info('Extracted %s videos from channel series', len(video_list))
+        logger.info("Extracted %s videos from channel series", len(video_list))
         return (
             video_list,
             latest_video_url,
-            'source_exhausted',
+            "source_exhausted",
             None,
             False,
             self._build_result_kwargs(
                 context,
                 head_sample_urls=head_sample_urls,
-                anchor_found=False if context.mode != 'full' and context.last_seen_video_url else None,
+                anchor_found=False if context.mode != "full" and context.last_seen_video_url else None,
                 total_available=total_available,
             ),
         )

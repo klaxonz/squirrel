@@ -9,14 +9,14 @@ from typing import Any
 class RuntimeErrorCode(str, Enum):
     """Stable error codes exchanged between host and site runtimes."""
 
-    TIMEOUT = 'PLUGIN_TIMEOUT'
-    CRASHED = 'PLUGIN_CRASHED'
-    BAD_RESPONSE = 'PLUGIN_BAD_RESPONSE'
-    ROUTE_NOT_FOUND = 'PLUGIN_ROUTE_NOT_FOUND'
-    AUTH_REQUIRED = 'PLUGIN_AUTH_REQUIRED'
-    NETWORK_ERROR = 'PLUGIN_NETWORK_ERROR'
-    PARSE_ERROR = 'PLUGIN_PARSE_ERROR'
-    SUBTITLES_NOT_AVAILABLE = 'SUBTITLES_NOT_AVAILABLE'
+    TIMEOUT = "PLUGIN_TIMEOUT"
+    CRASHED = "PLUGIN_CRASHED"
+    BAD_RESPONSE = "PLUGIN_BAD_RESPONSE"
+    ROUTE_NOT_FOUND = "PLUGIN_ROUTE_NOT_FOUND"
+    AUTH_REQUIRED = "PLUGIN_AUTH_REQUIRED"
+    NETWORK_ERROR = "PLUGIN_NETWORK_ERROR"
+    PARSE_ERROR = "PLUGIN_PARSE_ERROR"
+    SUBTITLES_NOT_AVAILABLE = "SUBTITLES_NOT_AVAILABLE"
 
 
 @dataclass
@@ -30,21 +30,21 @@ class SiteRuntimeError:
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
-        data['code'] = self.code.value
+        data["code"] = self.code.value
         return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SiteRuntimeError:
-        raw_code = str(data.get('code', RuntimeErrorCode.CRASHED.value))
+        raw_code = str(data.get("code", RuntimeErrorCode.CRASHED.value))
         try:
             code = RuntimeErrorCode(raw_code)
         except ValueError:
             code = RuntimeErrorCode.CRASHED
         return cls(
             code=code,
-            message=str(data.get('message', 'Site runtime error')),
-            retryable=bool(data.get('retryable', False)),
-            details=dict(data.get('details') or {}),
+            message=str(data.get("message", "Site runtime error")),
+            retryable=bool(data.get("retryable", False)),
+            details=dict(data.get("details") or {}),
         )
 
     @classmethod

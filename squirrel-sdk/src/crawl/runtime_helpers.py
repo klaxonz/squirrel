@@ -29,7 +29,7 @@ def load_local_attr(module_name: str, attr_name: str):
     Replaces the identical ``_load_local_attr`` helper duplicated across every
     site runtime plugin.
     """
-    return getattr(import_module(f'{__package__}.{module_name}'), attr_name)
+    return getattr(import_module(f"{__package__}.{module_name}"), attr_name)
 
 
 def create_site_runtime(
@@ -46,28 +46,28 @@ def create_site_runtime(
     extractor_factory: ObjectFactory | None = None,
     extractor_site_name: str | None = None,
     subtitles_provider_factory: ObjectFactory | None = None,
-    default_subtitle_lang: str = 'en',
-    default_subtitle_format: str = 'srt',
+    default_subtitle_lang: str = "en",
+    default_subtitle_format: str = "srt",
     proxy_config_builder: Callable[[Any], dict[str, Any]] | None = None,
     playlist_rewriter: Callable[[str, str | bytes, str | None], dict[str, Any]] | None = None,
 ):
     resolved_handlers = dict(capability_handlers or {})
 
     if check_login is not None:
-        resolved_handlers.setdefault('check_login_status', build_login_status_handler(check_login))
+        resolved_handlers.setdefault("check_login_status", build_login_status_handler(check_login))
     if importer_factory is not None:
-        resolved_handlers.setdefault('import_subscriptions', build_import_subscriptions_handler(importer_factory))
+        resolved_handlers.setdefault("import_subscriptions", build_import_subscriptions_handler(importer_factory))
     if subscription_factory is not None:
-        resolved_handlers.setdefault('resolve_subscription', build_resolve_subscription_handler(subscription_factory))
-        resolved_handlers.setdefault('sync_subscription', build_sync_subscription_handler(subscription_factory))
+        resolved_handlers.setdefault("resolve_subscription", build_resolve_subscription_handler(subscription_factory))
+        resolved_handlers.setdefault("sync_subscription", build_sync_subscription_handler(subscription_factory))
     if extractor_factory is not None and extractor_site_name:
         resolved_handlers.setdefault(
-            'extract_video',
+            "extract_video",
             build_extract_video_handler(extractor_site_name, extractor_factory),
         )
     if subtitles_provider_factory is not None:
         resolved_handlers.setdefault(
-            'fetch_subtitles',
+            "fetch_subtitles",
             build_subtitles_handler(
                 subtitles_provider_factory,
                 default_lang=default_subtitle_lang,
@@ -75,10 +75,10 @@ def create_site_runtime(
             ),
         )
     if proxy_config_builder is not None:
-        resolved_handlers.setdefault('resolve_proxy_config', build_proxy_config_handler(proxy_config_builder))
+        resolved_handlers.setdefault("resolve_proxy_config", build_proxy_config_handler(proxy_config_builder))
     if playlist_rewriter is not None:
         resolved_handlers.setdefault(
-            'rewrite_proxy_playlist',
+            "rewrite_proxy_playlist",
             build_rewrite_proxy_playlist_handler(playlist_rewriter),
         )
 

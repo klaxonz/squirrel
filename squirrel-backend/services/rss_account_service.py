@@ -40,8 +40,8 @@ def _set_sync_progress(account_id: int, **values: Any) -> None:
     with _SYNC_PROGRESS_LOCK:
         current = dict(_SYNC_PROGRESS.get(account_id) or {})
         current.update(values)
-        current['account_id'] = account_id
-        current['updated_at'] = datetime.now().isoformat()
+        current["account_id"] = account_id
+        current["updated_at"] = datetime.now().isoformat()
         _SYNC_PROGRESS[account_id] = current
 
 
@@ -55,60 +55,60 @@ def get_sync_progress(user_id: int, account_id: int) -> dict[str, Any] | None:
         progress = dict(_SYNC_PROGRESS.get(account_id) or {})
     if not progress:
         progress = {
-            'account_id': account_id,
-            'running': False,
-            'phase': 'idle',
-            'message': 'RSS sync is idle',
+            "account_id": account_id,
+            "running": False,
+            "phase": "idle",
+            "message": "RSS sync is idle",
         }
     return progress
 
 
 def serialize_account(account: RssAccount) -> dict[str, Any]:
     return {
-        'id': account.id,
-        'provider': account.provider,
-        'name': account.name,
-        'base_url': account.base_url,
-        'username': account.username,
-        'enabled': account.enabled,
-        'sync_entry_limit': account.sync_entry_limit,
-        'last_sync_at': account.last_sync_at.isoformat() if account.last_sync_at else None,
-        'last_error': account.last_error,
-        'created_at': account.created_at.isoformat() if account.created_at else None,
-        'updated_at': account.updated_at.isoformat() if account.updated_at else None,
+        "id": account.id,
+        "provider": account.provider,
+        "name": account.name,
+        "base_url": account.base_url,
+        "username": account.username,
+        "enabled": account.enabled,
+        "sync_entry_limit": account.sync_entry_limit,
+        "last_sync_at": account.last_sync_at.isoformat() if account.last_sync_at else None,
+        "last_error": account.last_error,
+        "created_at": account.created_at.isoformat() if account.created_at else None,
+        "updated_at": account.updated_at.isoformat() if account.updated_at else None,
     }
 
 
 def serialize_feed(feed: RssFeed) -> dict[str, Any]:
     return {
-        'id': feed.id,
-        'account_id': feed.account_id,
-        'external_feed_id': feed.external_feed_id,
-        'title': feed.title,
-        'feed_url': feed.feed_url,
-        'site_url': feed.site_url,
-        'icon_url': feed.icon_url,
-        'category': feed.category,
-        'enabled': feed.enabled,
-        'open_method': feed.open_method,
-        'last_entry_sync_at': feed.last_entry_sync_at.isoformat() if feed.last_entry_sync_at else None,
+        "id": feed.id,
+        "account_id": feed.account_id,
+        "external_feed_id": feed.external_feed_id,
+        "title": feed.title,
+        "feed_url": feed.feed_url,
+        "site_url": feed.site_url,
+        "icon_url": feed.icon_url,
+        "category": feed.category,
+        "enabled": feed.enabled,
+        "open_method": feed.open_method,
+        "last_entry_sync_at": feed.last_entry_sync_at.isoformat() if feed.last_entry_sync_at else None,
     }
 
 
 def serialize_entry(entry: RssEntry) -> dict[str, Any]:
     return {
-        'id': entry.id,
-        'account_id': entry.account_id,
-        'feed_id': entry.feed_id,
-        'external_entry_id': entry.external_entry_id,
-        'canonical_url': entry.canonical_url,
-        'title': entry.title,
-        'summary': entry.summary,
-        'thumbnail': entry.thumbnail,
-        'author': entry.author,
-        'published_at': entry.published_at.isoformat() if entry.published_at else None,
-        'is_read': entry.is_read,
-        'is_starred': entry.is_starred,
+        "id": entry.id,
+        "account_id": entry.account_id,
+        "feed_id": entry.feed_id,
+        "external_entry_id": entry.external_entry_id,
+        "canonical_url": entry.canonical_url,
+        "title": entry.title,
+        "summary": entry.summary,
+        "thumbnail": entry.thumbnail,
+        "author": entry.author,
+        "published_at": entry.published_at.isoformat() if entry.published_at else None,
+        "is_read": entry.is_read,
+        "is_starred": entry.is_starred,
     }
 
 
@@ -157,12 +157,12 @@ def create_account(
     provider = normalize_provider(provider)
     base_url = normalize_base_url(base_url)
     sync_entry_limit = normalize_sync_entry_limit(provider, sync_entry_limit)
-    name = str(name or '').strip()
-    credential = str(credential or '').strip()
+    name = str(name or "").strip()
+    credential = str(credential or "").strip()
     if not name:
-        raise RssServiceError('Account name is required')
+        raise RssServiceError("Account name is required")
     if not credential:
-        raise RssServiceError('Credential is required')
+        raise RssServiceError("Credential is required")
 
     with get_session() as session:
         account = RssAccount(
@@ -170,7 +170,7 @@ def create_account(
             provider=provider,
             name=name,
             base_url=base_url,
-            username=str(username or '').strip() or None,
+            username=str(username or "").strip() or None,
             credential_encrypted=encrypt_credential(credential),
             enabled=bool(enabled),
             sync_entry_limit=sync_entry_limit,
@@ -207,14 +207,14 @@ def update_account(
         elif provider is not None:
             account.sync_entry_limit = normalize_sync_entry_limit(account.provider, account.sync_entry_limit)
         if name is not None:
-            normalized_name = str(name or '').strip()
+            normalized_name = str(name or "").strip()
             if not normalized_name:
-                raise RssServiceError('Account name is required')
+                raise RssServiceError("Account name is required")
             account.name = normalized_name
         if base_url is not None:
             account.base_url = normalize_base_url(base_url)
         if username is not None:
-            account.username = str(username or '').strip() or None
+            account.username = str(username or "").strip() or None
         if credential is not None and str(credential).strip():
             account.credential_encrypted = encrypt_credential(str(credential).strip())
         if enabled is not None:
@@ -247,13 +247,13 @@ def test_account_config(
     config = RssAccountConfig(
         provider=normalize_provider(provider),
         base_url=normalize_base_url(base_url),
-        username=str(username or '').strip() or None,
-        credential=str(credential or '').strip(),
+        username=str(username or "").strip() or None,
+        credential=str(credential or "").strip(),
     )
     if not config.credential:
-        raise RssServiceError('Credential is required')
+        raise RssServiceError("Credential is required")
     feed_count = create_client(config).test_connection()
-    return {'ok': True, 'feed_count': feed_count}
+    return {"ok": True, "feed_count": feed_count}
 
 
 def test_account(user_id: int, account_id: int) -> dict[str, Any] | None:
@@ -263,7 +263,7 @@ def test_account(user_id: int, account_id: int) -> dict[str, Any] | None:
             return None
         config = _config_from_account(account)
     feed_count = create_client(config).test_connection()
-    return {'ok': True, 'feed_count': feed_count}
+    return {"ok": True, "feed_count": feed_count}
 
 
 def list_feeds(user_id: int, account_id: int | None = None) -> list[dict[str, Any]]:
@@ -276,11 +276,11 @@ def list_feeds(user_id: int, account_id: int | None = None) -> list[dict[str, An
 
 
 def update_feed(user_id: int, feed_id: int, **kwargs: Any) -> dict[str, Any]:
-    allowed_fields = {'category', 'open_method'}
+    allowed_fields = {"category", "open_method"}
     updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
 
     if not updates:
-        raise RssServiceError('No valid fields to update')
+        raise RssServiceError("No valid fields to update")
 
     with get_session() as session:
         feed = session.scalars(
@@ -290,7 +290,7 @@ def update_feed(user_id: int, feed_id: int, **kwargs: Any) -> dict[str, Any]:
             )
         ).first()
         if not feed:
-            raise RssServiceError('RSS 订阅源不存在')
+            raise RssServiceError("RSS 订阅源不存在")
 
         for key, value in updates.items():
             setattr(feed, key, value)
@@ -331,10 +331,10 @@ def list_entries(
             .limit(page_size)
         ).all()
         return {
-            'total': total,
-            'page': page,
-            'pageSize': page_size,
-            'data': [serialize_entry(entry) for entry in entries],
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+            "data": [serialize_entry(entry) for entry in entries],
         }
 
 
@@ -372,10 +372,10 @@ def update_entry(
             def _bg_update_remote(config_data, ext_eid, read_val, star_val):
                 try:
                     client = create_client(config_data)
-                    if hasattr(client, 'update_entry'):
+                    if hasattr(client, "update_entry"):
                         client.update_entry(ext_eid, is_read=read_val, is_starred=star_val)
                 except (OSError, ValueError, TypeError) as e:
-                    logger.warning('Failed to sync RSS status to remote in background: %s', e)
+                    logger.warning("Failed to sync RSS status to remote in background: %s", e)
 
             config_data = _config_from_account(account)
             Thread(
@@ -396,7 +396,7 @@ def update_entries_read_status(
     is_read: bool,
 ) -> dict[str, Any]:
     if not entry_ids:
-        return {'updated': 0}
+        return {"updated": 0}
 
     unique_entry_ids = list(dict.fromkeys(entry_ids))
     remote_targets: list[tuple[RssAccountConfig, str]] = []
@@ -411,7 +411,7 @@ def update_entries_read_status(
         changed_entries = [entry for entry in entries if entry.is_read != is_read]
 
         if not changed_entries:
-            return {'updated': 0}
+            return {"updated": 0}
 
         for entry in changed_entries:
             entry.is_read = is_read
@@ -440,11 +440,11 @@ def update_entries_read_status(
                 try:
                     create_client(config).update_entry(external_entry_id, is_read=is_read)
                 except (OSError, ValueError, TypeError) as e:
-                    logger.warning('Failed to sync RSS read status to remote in background: %s', e)
+                    logger.warning("Failed to sync RSS read status to remote in background: %s", e)
 
         Thread(target=_bg_update_remote, daemon=True).start()
 
-    return {'updated': len(changed_entries)}
+    return {"updated": len(changed_entries)}
 
 
 def mark_feed_as_read(user_id: int, feed_id: int) -> dict[str, Any]:
@@ -457,7 +457,7 @@ def mark_feed_as_read(user_id: int, feed_id: int) -> dict[str, Any]:
         entry_ids = list(session.scalars(statement).all())
 
     if not entry_ids:
-        return {'updated': 0}
+        return {"updated": 0}
 
     return update_entries_read_status(user_id, entry_ids, is_read=True)
 
@@ -501,6 +501,6 @@ def list_recently_viewed(user_id: int, limit: int = 30) -> list[dict[str, Any]]:
         for entry_id in entry_ids:
             entry = entry_map.get(entry_id)
             if entry:
-                entry['viewed_at'] = view_map[entry_id].isoformat()
+                entry["viewed_at"] = view_map[entry_id].isoformat()
                 result.append(entry)
         return result

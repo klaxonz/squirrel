@@ -4,7 +4,7 @@ from crawl import RegexIdExtractor
 
 
 class JavdbIdExtractor(RegexIdExtractor):
-    domain = 'javdb.com'
-    pattern = r'/v/([^/?#]+)/?$'
+    domain = "javdb.com"
+    pattern = r"/v/([^/?#]+)/?$"
 
 

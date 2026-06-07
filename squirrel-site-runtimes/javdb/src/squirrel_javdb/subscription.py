@@ -30,34 +30,34 @@ class JavdbSubscription:
     def get_subscribe_info(self) -> SubscriptionMeta:
         response = fetch_javdb_html(self.url)
         html = response.text
-        bs4 = BeautifulSoup(html, 'html.parser')
-        username_el = bs4.select('.actor-section-name')
+        bs4 = BeautifulSoup(html, "html.parser")
+        username_el = bs4.select(".actor-section-name")
         if len(username_el) == 0:
-            raise ParseError(f'Can not find channel name in {self.url}')
+            raise ParseError(f"Can not find channel name in {self.url}")
 
         name = username_el[0].text.strip()
-        if ',' in name:
-            name = name.split(',')[0]
+        if "," in name:
+            name = name.split(",")[0]
 
         avatar = self._extract_avatar(bs4)
-        channel_id = self.url.split('/')[-1]
+        channel_id = self.url.split("/")[-1]
 
         return SubscriptionMeta(channel_id, name, avatar, self.url)
 
     def _extract_avatar(self, bs4: BeautifulSoup) -> str | None:
-        avatar_els = bs4.select('.avatar')
+        avatar_els = bs4.select(".avatar")
         if not avatar_els:
             return None
 
         avatar_el = avatar_els[0]
-        style = avatar_el.get('style', '')
-        avatar_match = re.search(r'url\((.*?)\)', style)
+        style = avatar_el.get("style", "")
+        avatar_match = re.search(r"url\((.*?)\)", style)
         if avatar_match:
             return avatar_match.group(1)
 
-        image_els = avatar_el.select('img')
+        image_els = avatar_el.select("img")
         if image_els:
-            return image_els[0].get('src')
+            return image_els[0].get("src")
 
         return None
 
@@ -65,7 +65,7 @@ class JavdbSubscription:
         page = resolve_page(context)
         count_offset = resolve_count_offset(context)
         previous_page_urls = resolve_previous_page_urls(context)
-        response = fetch_javdb_html(build_page_url(self.url, page, {'sort_type': '0'}))
+        response = fetch_javdb_html(build_page_url(self.url, page, {"sort_type": "0"}))
         html = response.text
 
         parsed_url = urlparse(self.url)
@@ -77,7 +77,7 @@ class JavdbSubscription:
         latest_video_url: str | None = None
         limit = resolve_subscription_limit(context)
 
-        bs4 = BeautifulSoup(html, 'html.parser')
+        bs4 = BeautifulSoup(html, "html.parser")
         stop_reason, latest_video_url = self._extract_video_urls(
             bs4,
             base_url,
@@ -96,22 +96,22 @@ class JavdbSubscription:
                 latest_video_url=latest_video_url,
                 context=context,
                 stop_reason=stop_reason,
-                head_sample_urls=head_sample_urls if context.mode != 'full' else None,
-                anchor_found=True if stop_reason == 'cursor_hit' and context.mode != 'full' else None,
+                head_sample_urls=head_sample_urls if context.mode != "full" else None,
+                anchor_found=True if stop_reason == "cursor_hit" and context.mode != "full" else None,
             )
 
-        if context.mode == 'full':
+        if context.mode == "full":
             next_page = self._resolve_next_page(bs4)
             if next_page is not None:
                 return build_subscription_sync_result(
                     video_urls=video_list,
                     latest_video_url=latest_video_url,
                     context=context,
-                    stop_reason='batch_exhausted',
+                    stop_reason="batch_exhausted",
                     cursor_payload={
-                        'page': next_page,
-                        'count_offset': count_offset + page_unique_count,
-                        'previous_page_urls': page_video_urls,
+                        "page": next_page,
+                        "count_offset": count_offset + page_unique_count,
+                        "previous_page_urls": page_video_urls,
                     },
                     has_more=True,
                 )
@@ -120,10 +120,10 @@ class JavdbSubscription:
             video_urls=video_list,
             latest_video_url=latest_video_url,
             context=context,
-            stop_reason='source_exhausted',
-            total_available=count_offset + page_unique_count if context.mode == 'full' else None,
-            head_sample_urls=head_sample_urls if context.mode != 'full' else None,
-            anchor_found=False if context.mode != 'full' and context.last_seen_video_url else None,
+            stop_reason="source_exhausted",
+            total_available=count_offset + page_unique_count if context.mode == "full" else None,
+            head_sample_urls=head_sample_urls if context.mode != "full" else None,
+            anchor_found=False if context.mode != "full" and context.last_seen_video_url else None,
         )
 
     def _resolve_next_page(self, bs4: BeautifulSoup) -> int | None:
@@ -149,7 +149,7 @@ class JavdbSubscription:
         head_sample_urls: list[str],
         page_video_urls: list[str],
     ) -> tuple[str | None, str | None]:
-        video_els = bs4.select('.movie-list .item a.box')
+        video_els = bs4.select(".movie-list .item a.box")
         for el in video_els:
             video_url = f'{base_url}{el["href"]}'
             if video_url not in page_video_urls:

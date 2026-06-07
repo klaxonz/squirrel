@@ -25,13 +25,13 @@ YOUTUBE_COOKIE_PLAYER_CLIENTS = youtube_ytdlp_support.YOUTUBE_COOKIE_PLAYER_CLIE
 class YoutubeExtractor(YoutubeDLExtractorBase):
     """YouTube视频提取器"""
 
-    site_name = 'youtube'
-    supported_domains = ['youtube.com', 'youtu.be']
+    site_name = "youtube"
+    supported_domains = ["youtube.com", "youtu.be"]
     url_patterns = [
-        'youtube.com/watch',
-        'youtube.com/shorts',
-        'youtu.be/',
-        'm.youtube.com'
+        "youtube.com/watch",
+        "youtube.com/shorts",
+        "youtu.be/",
+        "m.youtube.com"
     ]
 
     def __init__(self):
@@ -56,13 +56,13 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
             error_msg = str(e).lower()
             context = {"url": url, "original_error": str(e)}
 
-            if 'sign in' in error_msg or 'private video' in error_msg or 'members-only' in error_msg:
+            if "sign in" in error_msg or "private video" in error_msg or "members-only" in error_msg:
                 raise AuthError(f"需要登录或为私有视频: {url}", context=context)
-            elif 'video unavailable' in error_msg or 'removed' in error_msg or 'deleted' in error_msg:
+            elif "video unavailable" in error_msg or "removed" in error_msg or "deleted" in error_msg:
                 raise NotFoundError(f"视频不存在或已删除: {url}", context=context)
-            elif any(kw in error_msg for kw in ['timeout', 'timed out', 'connection', 'network', 'closed file', 'i/o operation']):
+            elif any(kw in error_msg for kw in ["timeout", "timed out", "connection", "network", "closed file", "i/o operation"]):
                 raise NetworkError(f"网络连接失败: {url}", context=context)
-            elif any(kw in error_msg for kw in ['too many requests', 'rate limit', '429']):
+            elif any(kw in error_msg for kw in ["too many requests", "rate limit", "429"]):
                 raise RateLimitError(f"请求频率过高: {url}", context=context)
             else:
                 logger.error(f"YouTube视频信息提取失败: {url}", exc_info=True)
@@ -71,19 +71,19 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
     def _build_ytdlp_opts(self, url: str, queue_name: str | None = None) -> dict[str, Any]:
         """构建yt-dlp选项"""
         ydl_opts: dict[str, Any] = {
-            'quiet': True,
-            'skip_download': True,
-            'socket_timeout': 30,
-            'retries': 5,
-            'extractor_retries': 3,
-            'fragment_retries': 5,
-            'file_access_retries': 3,
-            'ignoreerrors': False,
-            'noprogress': True,
-            'noplaylist': True,
-            'extractor_args': {
-                'youtube': {
-                    'player_client': [YOUTUBE_PLAYER_CLIENT],
+            "quiet": True,
+            "skip_download": True,
+            "socket_timeout": 30,
+            "retries": 5,
+            "extractor_retries": 3,
+            "fragment_retries": 5,
+            "file_access_retries": 3,
+            "ignoreerrors": False,
+            "noprogress": True,
+            "noplaylist": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": [YOUTUBE_PLAYER_CLIENT],
                 }
             },
         }
@@ -97,22 +97,22 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
         try:
             publish_date = self._resolve_publish_date(video_info)
             if publish_date is not None:
-                video_info['publish_date'] = publish_date
+                video_info["publish_date"] = publish_date
         except (ValueError, TypeError) as e:
             logger.warning(f"处理YouTube特定信息失败: {e}")
 
     def _resolve_publish_date(self, video_info: dict[str, Any]) -> datetime | None:
         """Resolve the most accurate publish date from yt-dlp metadata."""
-        for timestamp_key in ('release_timestamp', 'timestamp'):
+        for timestamp_key in ("release_timestamp", "timestamp"):
             timestamp = video_info.get(timestamp_key)
             if timestamp:
                 return datetime.fromtimestamp(timestamp)
 
-        for date_key in ('release_date', 'upload_date'):
+        for date_key in ("release_date", "upload_date"):
             date_text = video_info.get(date_key)
             if isinstance(date_text, str) and date_text:
                 try:
-                    return datetime.strptime(date_text, '%Y%m%d')
+                    return datetime.strptime(date_text, "%Y%m%d")
                 except ValueError:
                     continue
 

@@ -11,15 +11,15 @@ def get_random_video(
         user_id: int,
         category: str | None = None,
         subscription_id: int | None = None,
-        nsfw: str = 'all',
+        nsfw: str = "all",
         domains: list[str] | None = None,
         query: str | None = None,
-        time_range: str = 'all',
-        duration: str = 'all',
-        content_type: str = 'all',
+        time_range: str = "all",
+        duration: str = "all",
+        content_type: str = "all",
 ) -> Video | None:
     user_config = user_config_service.get_config(user_id)
-    show_nsfw = user_config.get('showNsfw', False)
+    show_nsfw = user_config.get("showNsfw", False)
 
     base = build_base_video_query(
         user_id, show_nsfw, subscription_id, query, nsfw, domains,
@@ -29,11 +29,11 @@ def get_random_video(
 
     with get_session() as session:
         bind = session.get_bind()
-        dialect_name = getattr(getattr(bind, 'dialect', None), 'name', '') or ''
+        dialect_name = getattr(getattr(bind, "dialect", None), "name", "") or ""
 
-        if dialect_name in ('postgresql', 'sqlite'):
+        if dialect_name in ("postgresql", "sqlite"):
             order_random = func.random()
-        elif dialect_name in ('mysql', 'mariadb'):
+        elif dialect_name in ("mysql", "mariadb"):
             order_random = func.rand()
         else:
             order_random = func.random()

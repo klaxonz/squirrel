@@ -16,10 +16,10 @@ from services.subscription_sync_run_service import SyncEventType
 from utils.site_catalog import SiteCatalog
 from utils.site_icons import build_site_icon_url, resolve_site_icon_path
 
-TERMINAL_RUN_STATUSES = {'success', 'failed', 'deferred', 'timeout'}
-FEED_RECENT_PHASES = {'extracting', 'finalizing', 'completed'}
-FEED_HANDOFF_EVENT_TYPES = {'phase_changed', 'continued'}
-FEED_HANDOFF_PHASES = {'extracting', 'finalizing'}
+TERMINAL_RUN_STATUSES = {"success", "failed", "deferred", "timeout"}
+FEED_RECENT_PHASES = {"extracting", "finalizing", "completed"}
+FEED_HANDOFF_EVENT_TYPES = {"phase_changed", "continued"}
+FEED_HANDOFF_PHASES = {"extracting", "finalizing"}
 
 
 def _parse_datetime(value: str | None) -> datetime | None:
@@ -32,17 +32,17 @@ def _parse_datetime(value: str | None) -> datetime | None:
         return datetime.fromisoformat(normalized)
     except ValueError:
         try:
-            return datetime.strptime(normalized, '%Y-%m-%d %H:%M:%S')
+            return datetime.strptime(normalized, "%Y-%m-%d %H:%M:%S")
         except ValueError:
             return None
 
 
 def _serialize_datetime(value: datetime | None) -> str:
-    return value.strftime('%Y-%m-%d %H:%M:%S') if value else ''
+    return value.strftime("%Y-%m-%d %H:%M:%S") if value else ""
 
 
 def _resolve_site_icon_url(site: str | None) -> str | None:
-    normalized_site = str(site or '').strip().lower()
+    normalized_site = str(site or "").strip().lower()
     if not normalized_site:
         return None
 
@@ -57,13 +57,13 @@ def _resolve_site_icon_url(site: str | None) -> str | None:
             site_slug = None
             catalog_entry = None
             for slug, info in catalog.items():
-                aliases = [str(alias or '').strip().lower() for alias in info.get('aliases', []) if alias]
+                aliases = [str(alias or "").strip().lower() for alias in info.get("aliases", []) if alias]
                 if normalized_site in aliases:
                     site_slug = slug
                     catalog_entry = info
                     break
 
-    icon_url = str((catalog_entry or {}).get('icon_url') or '').strip() or None
+    icon_url = str((catalog_entry or {}).get("icon_url") or "").strip() or None
     if icon_url:
         return icon_url
 
@@ -127,7 +127,7 @@ def _load_feed_completed_at_map(session: Session, run_ids: list[str]) -> dict[st
         .where(
             SubscriptionSyncEvent.stream_id.in_(unresolved_run_ids),
             SubscriptionSyncEvent.event_type == SyncEventType.COMPLETED,
-            SubscriptionSyncEvent.event_phase == 'completed',
+            SubscriptionSyncEvent.event_phase == "completed",
         )
         .group_by(SubscriptionSyncEvent.stream_id)
     ).all()
@@ -189,15 +189,15 @@ def list_runs(
     base_query = _base_run_query(user_id)
     filters = []
 
-    normalized_status = str(status or '').strip().lower() or None
-    if normalized_status == 'recent':
+    normalized_status = str(status or "").strip().lower() or None
+    if normalized_status == "recent":
         filters.append(SubscriptionSyncRunProjection.status.in_(TERMINAL_RUN_STATUSES))
-    elif normalized_status == 'feed_recent':
+    elif normalized_status == "feed_recent":
         filters.append(
             or_(
                 SubscriptionSyncRunProjection.status.in_(TERMINAL_RUN_STATUSES),
                 and_(
-                    SubscriptionSyncRunProjection.status == 'running',
+                    SubscriptionSyncRunProjection.status == "running",
                     SubscriptionSyncRunProjection.current_phase.in_(FEED_RECENT_PHASES),
                 ),
             )
@@ -224,7 +224,7 @@ def list_runs(
     if filters:
         base_query = base_query.where(and_(*filters))
 
-    if normalized_status == 'feed_recent':
+    if normalized_status == "feed_recent":
         base_query = base_query.join(
             SubscriptionSyncSubscriptionProjection,
             SubscriptionSyncSubscriptionProjection.subscription_id == SubscriptionSyncRunProjection.subscription_id,
@@ -233,7 +233,7 @@ def list_runs(
         )
 
     with get_session() as session:
-        if normalized_status == 'feed_recent':
+        if normalized_status == "feed_recent":
             all_rows = session.execute(base_query).all()
             feed_completed_at_map = _load_feed_completed_at_map(
                 session,
@@ -270,42 +270,42 @@ def list_runs(
             pending_video_count=run.pending_video_count,
         )
         data.append({
-            'run_id': run.run_id,
-            'subscription_id': subscription.id,
-            'subscription_name': subscription.name,
-            'subscription_avatar': subscription.avatar,
-            'site': run.site,
-            'site_icon_url': _resolve_site_icon_url(run.site),
-            'sync_mode': run.sync_mode,
-            'trigger': run.trigger,
-            'status': run.status,
-            'current_phase': run.current_phase,
-            'request_id': run.request_id,
-            'trace_id': run.trace_id,
-            'queued_at': _serialize_datetime(run.queued_at),
-            'started_at': _serialize_datetime(run.started_at),
-            'finished_at': _serialize_datetime(run.finished_at),
-            'duration_ms': run.duration_ms,
-            'failure_count': run.failure_count,
-            'error_type': run.error_type,
-            'error_message': run.error_message,
-            'videos_found': run.videos_found,
-            'videos_enqueued': run.videos_enqueued,
-            'videos_extracted': run.videos_extracted,
-            'videos_skipped': run.videos_skipped,
-            'pending_video_count': run.pending_video_count,
-            'feed_completed': progress_snapshot['feed_completed'],
-            'progress_percent': progress_snapshot['progress_percent'],
-            'progress_label': progress_snapshot['progress_label'],
-            'feed_completed_at': _serialize_datetime(feed_completed_at_map.get(run.run_id)),
-            'last_event_at': _serialize_datetime(run.last_event_at),
+            "run_id": run.run_id,
+            "subscription_id": subscription.id,
+            "subscription_name": subscription.name,
+            "subscription_avatar": subscription.avatar,
+            "site": run.site,
+            "site_icon_url": _resolve_site_icon_url(run.site),
+            "sync_mode": run.sync_mode,
+            "trigger": run.trigger,
+            "status": run.status,
+            "current_phase": run.current_phase,
+            "request_id": run.request_id,
+            "trace_id": run.trace_id,
+            "queued_at": _serialize_datetime(run.queued_at),
+            "started_at": _serialize_datetime(run.started_at),
+            "finished_at": _serialize_datetime(run.finished_at),
+            "duration_ms": run.duration_ms,
+            "failure_count": run.failure_count,
+            "error_type": run.error_type,
+            "error_message": run.error_message,
+            "videos_found": run.videos_found,
+            "videos_enqueued": run.videos_enqueued,
+            "videos_extracted": run.videos_extracted,
+            "videos_skipped": run.videos_skipped,
+            "pending_video_count": run.pending_video_count,
+            "feed_completed": progress_snapshot["feed_completed"],
+            "progress_percent": progress_snapshot["progress_percent"],
+            "progress_label": progress_snapshot["progress_label"],
+            "feed_completed_at": _serialize_datetime(feed_completed_at_map.get(run.run_id)),
+            "last_event_at": _serialize_datetime(run.last_event_at),
         })
 
     return {
-        'total': len(all_rows) if normalized_status == 'feed_recent' else total,
-        'page': page,
-        'pageSize': page_size,
-        'data': data,
+        "total": len(all_rows) if normalized_status == "feed_recent" else total,
+        "page": page,
+        "pageSize": page_size,
+        "data": data,
     }
 
 
@@ -317,7 +317,7 @@ def get_run_detail(run_id: str, user_id: int) -> dict | None:
         if not row:
             return None
         run, subscription = row
-        source_video_count = _payload_metric_value(session, run.run_id, 'source_video_count')
+        source_video_count = _payload_metric_value(session, run.run_id, "source_video_count")
         progress_snapshot = build_progress_snapshot(
             status=run.status,
             current_phase=run.current_phase,
@@ -327,37 +327,37 @@ def get_run_detail(run_id: str, user_id: int) -> dict | None:
             pending_video_count=run.pending_video_count,
         )
         return {
-            'run_id': run.run_id,
-            'subscription_id': subscription.id,
-            'subscription_name': subscription.name,
-            'subscription_avatar': subscription.avatar,
-            'site': run.site,
-            'site_icon_url': _resolve_site_icon_url(run.site),
-            'sync_mode': run.sync_mode,
-            'trigger': run.trigger,
-            'status': run.status,
-            'current_phase': run.current_phase,
-            'request_id': run.request_id,
-            'trace_id': run.trace_id,
-            'queued_at': _serialize_datetime(run.queued_at),
-            'started_at': _serialize_datetime(run.started_at),
-            'finished_at': _serialize_datetime(run.finished_at),
-            'duration_ms': run.duration_ms,
-            'failure_count': run.failure_count,
-            'error_type': run.error_type,
-            'error_message': run.error_message,
-            'videos_found': run.videos_found,
-            'videos_enqueued': run.videos_enqueued,
-            'videos_extracted': run.videos_extracted,
-            'videos_skipped': run.videos_skipped,
-            'source_video_count': source_video_count,
-            'pending_video_count': run.pending_video_count,
-            'feed_completed': progress_snapshot['feed_completed'],
-            'progress_percent': progress_snapshot['progress_percent'],
-            'progress_label': progress_snapshot['progress_label'],
-            'last_event_at': _serialize_datetime(run.last_event_at),
-            'created_at': _serialize_datetime(run.created_at),
-            'updated_at': _serialize_datetime(run.updated_at),
+            "run_id": run.run_id,
+            "subscription_id": subscription.id,
+            "subscription_name": subscription.name,
+            "subscription_avatar": subscription.avatar,
+            "site": run.site,
+            "site_icon_url": _resolve_site_icon_url(run.site),
+            "sync_mode": run.sync_mode,
+            "trigger": run.trigger,
+            "status": run.status,
+            "current_phase": run.current_phase,
+            "request_id": run.request_id,
+            "trace_id": run.trace_id,
+            "queued_at": _serialize_datetime(run.queued_at),
+            "started_at": _serialize_datetime(run.started_at),
+            "finished_at": _serialize_datetime(run.finished_at),
+            "duration_ms": run.duration_ms,
+            "failure_count": run.failure_count,
+            "error_type": run.error_type,
+            "error_message": run.error_message,
+            "videos_found": run.videos_found,
+            "videos_enqueued": run.videos_enqueued,
+            "videos_extracted": run.videos_extracted,
+            "videos_skipped": run.videos_skipped,
+            "source_video_count": source_video_count,
+            "pending_video_count": run.pending_video_count,
+            "feed_completed": progress_snapshot["feed_completed"],
+            "progress_percent": progress_snapshot["progress_percent"],
+            "progress_label": progress_snapshot["progress_label"],
+            "last_event_at": _serialize_datetime(run.last_event_at),
+            "created_at": _serialize_datetime(run.created_at),
+            "updated_at": _serialize_datetime(run.updated_at),
         }
 
 
@@ -366,8 +366,8 @@ def get_run_detail_snapshot(run_id: str, user_id: int) -> dict | None:
     if not run:
         return None
     return {
-        'run': run,
-        'events': list_run_events(run_id, user_id),
+        "run": run,
+        "events": list_run_events(run_id, user_id),
     }
 
 
@@ -384,22 +384,22 @@ def list_run_events(run_id: str, user_id: int) -> list[dict]:
     data = []
     for event in events:
         data.append({
-            'id': event.id,
-            'stream_id': event.stream_id,
-            'subscription_id': event.subscription_id,
-            'sync_state_id': event.sync_state_id,
-            'site': event.site,
-            'sync_mode': event.sync_mode,
-            'trigger': event.trigger,
-            'request_id': event.request_id,
-            'trace_id': event.trace_id,
-            'event_type': event.event_type,
-            'event_phase': event.event_phase,
-            'event_status': event.event_status,
-            'seq_no': event.seq_no,
-            'message': event.message,
-            'payload': event.payload or {},
-            'occurred_at': _serialize_datetime(event.occurred_at),
-            'projected_at': _serialize_datetime(event.projected_at),
+            "id": event.id,
+            "stream_id": event.stream_id,
+            "subscription_id": event.subscription_id,
+            "sync_state_id": event.sync_state_id,
+            "site": event.site,
+            "sync_mode": event.sync_mode,
+            "trigger": event.trigger,
+            "request_id": event.request_id,
+            "trace_id": event.trace_id,
+            "event_type": event.event_type,
+            "event_phase": event.event_phase,
+            "event_status": event.event_status,
+            "seq_no": event.seq_no,
+            "message": event.message,
+            "payload": event.payload or {},
+            "occurred_at": _serialize_datetime(event.occurred_at),
+            "projected_at": _serialize_datetime(event.projected_at),
         })
     return data

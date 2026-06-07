@@ -9,15 +9,15 @@ from .sign import sign_params
 
 
 class ResourceType(str, Enum):
-    VIDEO = 'video'
-    USER = 'user'
-    FAVORITE_LIST = 'favorite_list'
-    CHANNEL_SERIES = 'channel_series'
+    VIDEO = "video"
+    USER = "user"
+    FAVORITE_LIST = "favorite_list"
+    CHANNEL_SERIES = "channel_series"
 
 
 class ChannelSeriesType(str, Enum):
-    SERIES = 'series'
-    SEASON = 'season'
+    SERIES = "series"
+    SEASON = "season"
 
 
 class ParsedSubscriptionTarget:
@@ -44,33 +44,33 @@ class ParsedSubscriptionTarget:
 
 def parse_subscription_target(url: str) -> ParsedSubscriptionTarget:
     parsed = urlparse(url)
-    host = (parsed.hostname or '').lower()
+    host = (parsed.hostname or "").lower()
     query = parse_qs(parsed.query)
-    path = parsed.path or ''
+    path = parsed.path or ""
 
-    if any(x in path for x in ('/favlist', '/fav/')) or 'fid' in query or 'media_id' in query or '/detail/ml' in path:
-        media_id = (query.get('fid') or query.get('media_id') or [None])[0]
-        if not media_id and '/detail/ml' in path:
-            match = re.search(r'/detail/ml(\d+)', path, re.IGNORECASE)
+    if any(x in path for x in ("/favlist", "/fav/")) or "fid" in query or "media_id" in query or "/detail/ml" in path:
+        media_id = (query.get("fid") or query.get("media_id") or [None])[0]
+        if not media_id and "/detail/ml" in path:
+            match = re.search(r"/detail/ml(\d+)", path, re.IGNORECASE)
             media_id = match.group(1) if match else None
         if not media_id:
-            raise ValueError('Missing favorite list id')
+            raise ValueError("Missing favorite list id")
         return ParsedSubscriptionTarget(resource_type=ResourceType.FAVORITE_LIST, media_id=int(media_id))
 
-    if 'business' in query and ('series_id' in query or 'season_id' in query):
-        business = (query.get('business') or [''])[0]
+    if "business" in query and ("series_id" in query or "season_id" in query):
+        business = (query.get("business") or [""])[0]
         mid = None
-        if '/medialist/play/' in path:
-            seg = [s for s in path.split('/') if s]
+        if "/medialist/play/" in path:
+            seg = [s for s in path.split("/") if s]
             if seg:
                 try:
                     mid = int(seg[-1])
                 except (ValueError, TypeError, IndexError):
                     mid = None
-        series_type = ChannelSeriesType.SEASON if business == 'space_season' else ChannelSeriesType.SERIES
-        id_value = (query.get('season_id') or query.get('series_id') or [None])[0]
+        series_type = ChannelSeriesType.SEASON if business == "space_season" else ChannelSeriesType.SERIES
+        id_value = (query.get("season_id") or query.get("series_id") or [None])[0]
         if not id_value:
-            raise ValueError('Missing channel series id')
+            raise ValueError("Missing channel series id")
         return ParsedSubscriptionTarget(
             resource_type=ResourceType.CHANNEL_SERIES,
             mid=mid,
@@ -78,18 +78,18 @@ def parse_subscription_target(url: str) -> ParsedSubscriptionTarget:
             series_type=series_type,
         )
 
-    if '/channel/seriesdetail' in path or '/channel/collectiondetail' in path:
-        seg = [s for s in path.split('/') if s]
+    if "/channel/seriesdetail" in path or "/channel/collectiondetail" in path:
+        seg = [s for s in path.split("/") if s]
         mid = None
-        if host.endswith('space.bilibili.com') and seg:
+        if host.endswith("space.bilibili.com") and seg:
             try:
                 mid = int(seg[0])
             except (ValueError, TypeError, IndexError):
                 mid = None
-        sid = (query.get('sid') or query.get('series_id') or query.get('season_id') or [None])[0]
+        sid = (query.get("sid") or query.get("series_id") or query.get("season_id") or [None])[0]
         if not sid:
-            raise ValueError('Missing channel series id')
-        series_type = ChannelSeriesType.SEASON if '/collectiondetail' in path or 'season' in path else ChannelSeriesType.SERIES
+            raise ValueError("Missing channel series id")
+        series_type = ChannelSeriesType.SEASON if "/collectiondetail" in path or "season" in path else ChannelSeriesType.SERIES
         return ParsedSubscriptionTarget(
             resource_type=ResourceType.CHANNEL_SERIES,
             mid=mid,
@@ -97,23 +97,23 @@ def parse_subscription_target(url: str) -> ParsedSubscriptionTarget:
             series_type=series_type,
         )
 
-    if host.endswith('space.bilibili.com'):
-        seg = [s for s in path.split('/') if s]
+    if host.endswith("space.bilibili.com"):
+        seg = [s for s in path.split("/") if s]
         if not seg:
-            raise ValueError('Missing user id')
+            raise ValueError("Missing user id")
         return ParsedSubscriptionTarget(resource_type=ResourceType.USER, mid=int(seg[0]))
 
-    mid = (query.get('mid') or query.get('vmid') or [None])[0]
+    mid = (query.get("mid") or query.get("vmid") or [None])[0]
     if mid:
         return ParsedSubscriptionTarget(resource_type=ResourceType.USER, mid=int(mid))
 
-    raise ValueError('Unsupported bilibili subscription url')
+    raise ValueError("Unsupported bilibili subscription url")
 
 
 def fetch_user_card(mid: int, *, cookies: str, throttled: bool = True) -> dict:
     return _get_json(
-        'https://api.bilibili.com/x/web-interface/card',
-        params={'mid': str(mid)},
+        "https://api.bilibili.com/x/web-interface/card",
+        params={"mid": str(mid)},
         cookies=cookies,
         throttled=throttled,
     )
@@ -129,14 +129,14 @@ def fetch_user_videos(
 ) -> dict:
     params = sign_params(
         {
-            'mid': str(mid),
-            'pn': str(pn),
-            'ps': str(ps),
-            'order': 'pubdate',
+            "mid": str(mid),
+            "pn": str(pn),
+            "ps": str(ps),
+            "order": "pubdate",
         }
     )
     return _get_json(
-        'https://api.bilibili.com/x/space/wbi/arc/search',
+        "https://api.bilibili.com/x/space/wbi/arc/search",
         params=params,
         cookies=cookies,
         throttled=throttled,
@@ -146,7 +146,7 @@ def fetch_user_videos(
 
 def fetch_nav(*, cookies: str, throttled: bool = False) -> dict:
     return _get_json(
-        'https://api.bilibili.com/x/web-interface/nav',
+        "https://api.bilibili.com/x/web-interface/nav",
         params=None,
         cookies=cookies,
         throttled=throttled,
@@ -163,8 +163,8 @@ def fetch_followings(
     throttled: bool = False,
 ) -> dict:
     return _get_json(
-        'https://api.bilibili.com/x/relation/followings',
-        params={'vmid': str(mid), 'pn': str(pn), 'ps': str(ps), 'order': 'desc', 'order_type': 'attention'},
+        "https://api.bilibili.com/x/relation/followings",
+        params={"vmid": str(mid), "pn": str(pn), "ps": str(ps), "order": "desc", "order_type": "attention"},
         cookies=cookies,
         throttled=throttled,
         timeout=20,
@@ -173,8 +173,8 @@ def fetch_followings(
 
 def fetch_fav_folder_info(media_id: int, *, cookies: str, throttled: bool = True) -> dict:
     return _get_json(
-        'https://api.bilibili.com/x/v3/fav/folder/info',
-        params={'media_id': str(media_id)},
+        "https://api.bilibili.com/x/v3/fav/folder/info",
+        params={"media_id": str(media_id)},
         cookies=cookies,
         throttled=throttled,
     )
@@ -189,13 +189,13 @@ def fetch_fav_resource_list(
     throttled: bool = True,
 ) -> dict:
     return _get_json(
-        'https://api.bilibili.com/x/v3/fav/resource/list',
+        "https://api.bilibili.com/x/v3/fav/resource/list",
         params={
-            'media_id': str(media_id),
-            'pn': str(pn),
-            'ps': str(ps),
-            'order': 'mtime',
-            'type': '2',
+            "media_id": str(media_id),
+            "pn": str(pn),
+            "ps": str(ps),
+            "order": "mtime",
+            "type": "2",
         },
         cookies=cookies,
         throttled=throttled,
@@ -215,8 +215,8 @@ def fetch_series_meta(
         if not mid:
             return {}
         return _get_json(
-            'https://api.bilibili.com/x/series/series',
-            params={'mid': str(mid), 'series_id': str(series_id)},
+            "https://api.bilibili.com/x/series/series",
+            params={"mid": str(mid), "series_id": str(series_id)},
             cookies=cookies,
             throttled=throttled,
             timeout=20,
@@ -225,17 +225,17 @@ def fetch_series_meta(
     if not mid:
         return {}
     data = _get_json(
-        'https://api.bilibili.com/x/polymer/web-space/seasons_series_list',
-        params={'mid': str(mid), 'page_num': '1', 'page_size': '50'},
+        "https://api.bilibili.com/x/polymer/web-space/seasons_series_list",
+        params={"mid": str(mid), "page_num": "1", "page_size": "50"},
         cookies=cookies,
         throttled=throttled,
         timeout=20,
     )
-    items = data.get('items_list') or data.get('items_lists') or data.get('items') or []
+    items = data.get("items_list") or data.get("items_lists") or data.get("items") or []
     if isinstance(items, list):
         for item in items:
             try:
-                if int(item.get('season_id') or item.get('id') or 0) == series_id:
+                if int(item.get("season_id") or item.get("id") or 0) == series_id:
                     return item
             except (ValueError, TypeError):
                 continue
@@ -253,18 +253,18 @@ def fetch_series_videos(
     throttled: bool = True,
 ) -> dict:
     if not mid:
-        raise ValueError('Missing mid for channel series url')
+        raise ValueError("Missing mid for channel series url")
 
     if series_type == ChannelSeriesType.SERIES:
         return _get_json(
-            'https://api.bilibili.com/x/series/archives',
+            "https://api.bilibili.com/x/series/archives",
             params={
-                'mid': str(mid),
-                'series_id': str(series_id),
-                'only_normal': 'true',
-                'sort': 'desc',
-                'pn': str(pn),
-                'ps': str(ps),
+                "mid": str(mid),
+                "series_id": str(series_id),
+                "only_normal": "true",
+                "sort": "desc",
+                "pn": str(pn),
+                "ps": str(ps),
             },
             cookies=cookies,
             throttled=throttled,
@@ -272,12 +272,12 @@ def fetch_series_videos(
         )
 
     return _get_json(
-        'https://api.bilibili.com/x/polymer/web-space/seasons_archives_list',
+        "https://api.bilibili.com/x/polymer/web-space/seasons_archives_list",
         params={
-            'mid': str(mid),
-            'season_id': str(series_id),
-            'page_num': str(pn),
-            'page_size': str(ps),
+            "mid": str(mid),
+            "season_id": str(series_id),
+            "page_num": str(pn),
+            "page_size": str(ps),
         },
         cookies=cookies,
         throttled=throttled,

@@ -41,4 +41,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 [tool.ruff.lint.per-file-ignores]
 "src/crawl/__init__.py" = ["E402"]
 
+[tool.ruff.format]
+quote-style = "single"
+
 

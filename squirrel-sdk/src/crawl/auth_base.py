@@ -35,7 +35,7 @@ def check_login_status(
     pass a get_cookies callable returning header dict or None.
     """
     login_config = get_login_config(site_name)
-    check_url = login_config.get('check_url') or default_check_url
+    check_url = login_config.get("check_url") or default_check_url
 
     if get_cookies:
         cookie_header = get_cookies(check_url)
@@ -43,36 +43,36 @@ def check_login_status(
             return LoginStatusResult(
                 site_name=site_name,
                 logged_in=False,
-                message=f'cookies.txt 中未找到 {site_name.title()} 条目',
+                message=f"cookies.txt 中未找到 {site_name.title()} 条目",
             )
         headers = get_login_headers(site_name, base_headers)
-        headers['Cookie'] = cookie_header
+        headers["Cookie"] = cookie_header
     else:
         cookies = filter_cookies_to_query_string(check_url)
         if not cookies:
             return LoginStatusResult(
                 site_name=site_name,
                 logged_in=False,
-                message=f'cookies.txt 中未找到 {site_name.title()} 条目',
+                message=f"cookies.txt 中未找到 {site_name.title()} 条目",
             )
         headers = get_login_headers(site_name, base_headers)
-        headers['Cookie'] = cookies
+        headers["Cookie"] = cookies
 
-    timeout = float(login_config.get('timeout', default_timeout))
+    timeout = float(login_config.get("timeout", default_timeout))
 
     fetcher = fetch_page or _default_fetch_page
     try:
         resp = fetcher(check_url, headers, timeout)
     except Exception as exc:
-        logger.warning('%s login check failed: %s', site_name, exc, exc_info=True)
+        logger.warning("%s login check failed: %s", site_name, exc, exc_info=True)
         return LoginStatusResult(
             site_name=site_name,
             logged_in=False,
-            message=f'请求失败: {exc}',
+            message=f"请求失败: {exc}",
         )
 
     return parse_response(resp)
 
 
 def _default_fetch_page(url: str, headers: dict[str, str], timeout: float) -> httpx.Response:
-    return request_without_limit('GET', url, headers=headers, timeout=timeout)
+    return request_without_limit("GET", url, headers=headers, timeout=timeout)

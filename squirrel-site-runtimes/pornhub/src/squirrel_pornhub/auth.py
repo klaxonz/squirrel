@@ -8,15 +8,15 @@ from crawl import LoginStatusResult, check_login_status, request_without_limit
 
 logger = logging.getLogger(__name__)
 
-_CHECK_URL = 'https://www.pornhub.com/'
+_CHECK_URL = "https://www.pornhub.com/"
 _HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-    'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-    'Accept-Language': 'en-US,en;q=0.9',
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
 }
 _LOGGED_IN_PATTERN = re.compile(r'"loggedIn(?:Context)?":\s*true', re.IGNORECASE)
 _LOGGED_OUT_PATTERN = re.compile(r'"loggedIn(?:Context)?":\s*false', re.IGNORECASE)
-_AGE_GATE_PATTERN = re.compile(r'agecheck|ageverification|ageDisclaimer', re.IGNORECASE)
+_AGE_GATE_PATTERN = re.compile(r"agecheck|ageverification|ageDisclaimer", re.IGNORECASE)
 _USERNAME_PATTERN = re.compile(r'"username"\s*:\s*"([^"]+)"', re.IGNORECASE)
 _DATA_USERNAME_PATTERN = re.compile(r'data-username="([^"]+)"')
 _PROFILE_LINK_PATTERN = re.compile(r'<a[^>]+class="username"[^>]+href="/users/([^"/?#]+)"', re.IGNORECASE)
@@ -29,21 +29,21 @@ _PROFILE_STATUS_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _CHALLENGE_PAGE_PATTERNS = (
-    re.compile(r'function\s+leastFactor\s*\(', re.IGNORECASE),
+    re.compile(r"function\s+leastFactor\s*\(", re.IGNORECASE),
     re.compile(r"typeof\s+phantom\s*!==\s*'undefined'", re.IGNORECASE),
-    re.compile(r'module\.exports', re.IGNORECASE),
-    re.compile(r'htjschal', re.IGNORECASE),
+    re.compile(r"module\.exports", re.IGNORECASE),
+    re.compile(r"htjschal", re.IGNORECASE),
 )
 _ERROR_PAGE_PATTERNS = (
-    re.compile(r'down\s+for\s+maintenance\s*403', re.IGNORECASE),
-    re.compile(r'access\s+denied', re.IGNORECASE),
-    re.compile(r'cf-error-details', re.IGNORECASE),
+    re.compile(r"down\s+for\s+maintenance\s*403", re.IGNORECASE),
+    re.compile(r"access\s+denied", re.IGNORECASE),
+    re.compile(r"cf-error-details", re.IGNORECASE),
 )
 
 
 def check_pornhub_login_status() -> LoginStatusResult:
     return check_login_status(
-        site_name='pornhub',
+        site_name="pornhub",
         default_check_url=_CHECK_URL,
         base_headers=_HEADERS,
         parse_response=_parse_response,
@@ -52,45 +52,45 @@ def check_pornhub_login_status() -> LoginStatusResult:
 
 
 def _fetch_with_age_bypass(url: str, headers: dict[str, str], timeout: float) -> httpx.Response:
-    resp = request_without_limit('GET', url, headers=headers, timeout=timeout)
-    body = resp.text or ''
-    if _is_age_gate(str(resp.url or ''), body):
+    resp = request_without_limit("GET", url, headers=headers, timeout=timeout)
+    body = resp.text or ""
+    if _is_age_gate(str(resp.url or ""), body):
         extra_headers = dict(headers)
-        cookie = headers.get('Cookie', '')
-        age_cookies = 'age_verified=1; accessAgeDisclaimerPH=1'
-        extra_headers['Cookie'] = f'{cookie}; {age_cookies}' if cookie else age_cookies
-        resp = request_without_limit('GET', url, headers=extra_headers, timeout=timeout)
+        cookie = headers.get("Cookie", "")
+        age_cookies = "age_verified=1; accessAgeDisclaimerPH=1"
+        extra_headers["Cookie"] = f"{cookie}; {age_cookies}" if cookie else age_cookies
+        resp = request_without_limit("GET", url, headers=extra_headers, timeout=timeout)
     return resp
 
 
 def _parse_response(resp) -> LoginStatusResult:
-    site_name = 'pornhub'
-    body = resp.text or ''
+    site_name = "pornhub"
+    body = resp.text or ""
 
     if resp.status_code == 401:
         return LoginStatusResult(
             site_name=site_name,
             logged_in=False,
-            message=f'被拒绝访问 (status={resp.status_code})',
+            message=f"被拒绝访问 (status={resp.status_code})",
         )
 
     if resp.status_code in (403, 429, 500, 502, 503, 504):
-        return _transient_login_failure(site_name, f'被拒绝访问 (status={resp.status_code})')
+        return _transient_login_failure(site_name, f"被拒绝访问 (status={resp.status_code})")
 
-    final_url = str(resp.url or '')
-    if any(token in final_url for token in ('/login', '/users/login')):
+    final_url = str(resp.url or "")
+    if any(token in final_url for token in ("/login", "/users/login")):
         return LoginStatusResult(
             site_name=site_name,
             logged_in=False,
-            message='被重定向到登录页',
-            extra={'redirect_url': final_url},
+            message="被重定向到登录页",
+            extra={"redirect_url": final_url},
         )
 
     if _looks_like_challenge_page(body):
-        return _transient_login_failure(site_name, '返回内容显示为站点验证页')
+        return _transient_login_failure(site_name, "返回内容显示为站点验证页")
 
     if _looks_like_error_page(body):
-        return _transient_login_failure(site_name, '返回内容显示为站点错误页')
+        return _transient_login_failure(site_name, "返回内容显示为站点错误页")
 
     profile_match = _PROFILE_BLOCK_PATTERN.search(body)
     profile_username = profile_match.group(1).strip() if profile_match else _extract_username(body)
@@ -99,7 +99,7 @@ def _parse_response(resp) -> LoginStatusResult:
             site_name=site_name,
             logged_in=True,
             username=profile_username,
-            message='已登录',
+            message="已登录",
         )
 
     username = _extract_username(body)
@@ -108,12 +108,12 @@ def _parse_response(resp) -> LoginStatusResult:
             site_name=site_name,
             logged_in=True,
             username=username,
-            message='已登录',
+            message="已登录",
         )
 
-    message = '未检测到登录标记'
+    message = "未检测到登录标记"
     if _LOGGED_OUT_PATTERN.search(body):
-        message = '未登录'
+        message = "未登录"
 
     return LoginStatusResult(
         site_name=site_name,
@@ -135,7 +135,7 @@ def _extract_username(body: str) -> str | None:
 
 
 def _looks_like_challenge_page(body: str) -> bool:
-    normalized_body = str(body or '').lower()
+    normalized_body = str(body or "").lower()
     if not normalized_body:
         return False
     return all(pattern.search(normalized_body) for pattern in _CHALLENGE_PAGE_PATTERNS[:3]) or bool(
@@ -144,7 +144,7 @@ def _looks_like_challenge_page(body: str) -> bool:
 
 
 def _looks_like_error_page(body: str) -> bool:
-    normalized_body = str(body or '').lower()
+    normalized_body = str(body or "").lower()
     if not normalized_body:
         return False
     return any(pattern.search(normalized_body) for pattern in _ERROR_PAGE_PATTERNS)
@@ -154,6 +154,6 @@ def _transient_login_failure(site_name: str, reason: str) -> LoginStatusResult:
     return LoginStatusResult(
         site_name=site_name,
         logged_in=False,
-        message=f'检测失败: {reason}',
-        extra={'transient_failure': True},
+        message=f"检测失败: {reason}",
+        extra={"transient_failure": True},
     )

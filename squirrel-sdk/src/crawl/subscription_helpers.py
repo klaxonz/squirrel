@@ -14,7 +14,7 @@ def resolve_subscription_limit(
     *,
     default_incremental_limit: int = 30,
 ) -> int | None:
-    if context.mode == 'full':
+    if context.mode == "full":
         return None
     return context.limit or default_incremental_limit
 
@@ -30,8 +30,8 @@ def append_subscription_video_url(
 ) -> tuple[str | None, str | None]:
     updated_latest_video_url = latest_video_url or video_url
 
-    if context.mode != 'full' and video_url == context.last_seen_video_url:
-        return updated_latest_video_url, 'cursor_hit'
+    if context.mode != "full" and video_url == context.last_seen_video_url:
+        return updated_latest_video_url, "cursor_hit"
 
     if seen_urls is not None:
         if video_url in seen_urls:
@@ -42,7 +42,7 @@ def append_subscription_video_url(
 
     video_urls.append(video_url)
     if limit is not None and len(video_urls) >= limit:
-        return updated_latest_video_url, 'limit_reached'
+        return updated_latest_video_url, "limit_reached"
 
     return updated_latest_video_url, None
 
@@ -70,7 +70,7 @@ def build_subscription_sync_result(
         cursor_payload=(
             cursor_payload
             if cursor_payload is not None
-            else ({'latest_video_url': latest_video_url} if latest_video_url else context.cursor_payload)
+            else ({"latest_video_url": latest_video_url} if latest_video_url else context.cursor_payload)
         ),
         has_more=has_more,
         stop_reason=stop_reason,
@@ -91,7 +91,7 @@ def build_subscription_sync_result(
 
 
 def resolve_page(context: SubscriptionSyncContext) -> int:
-    page = (context.cursor_payload or {}).get('page', 1)
+    page = (context.cursor_payload or {}).get("page", 1)
     try:
         return max(1, int(page))
     except (TypeError, ValueError):
@@ -103,14 +103,14 @@ def build_page_url(base_url: str, page: int, extra_params: dict[str, str] | None
         return base_url
     parsed = urlparse(base_url)
     query = dict(parse_qsl(parsed.query, keep_blank_values=True))
-    query['page'] = str(page)
+    query["page"] = str(page)
     if extra_params:
         query.update(extra_params)
     return urlunparse(parsed._replace(query=urlencode(query)))
 
 
 def resolve_count_offset(context: SubscriptionSyncContext) -> int:
-    raw_value = context.cursor_payload.get('count_offset', 0)
+    raw_value = context.cursor_payload.get("count_offset", 0)
     try:
         return max(0, int(raw_value))
     except (TypeError, ValueError):
@@ -118,7 +118,7 @@ def resolve_count_offset(context: SubscriptionSyncContext) -> int:
 
 
 def resolve_previous_page_urls(context: SubscriptionSyncContext) -> list[str]:
-    previous_page_urls = context.cursor_payload.get('previous_page_urls')
+    previous_page_urls = context.cursor_payload.get("previous_page_urls")
     if not isinstance(previous_page_urls, list):
         return []
     return [url for url in previous_page_urls if isinstance(url, str) and url]

@@ -34,3 +34,6 @@ target-version = 'py311'
 select = ['E', 'F', 'W', 'I', 'UP']
 ignore = ['E501']
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+quote-style = "single"

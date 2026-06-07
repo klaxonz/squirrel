@@ -119,8 +119,8 @@ def batch_update_histories(user_id: int, reports: list[HistoryCreate]) -> None:
 
 def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> dict:
     user_config = user_config_service.get_config(user_id)
-    show_nsfw = user_config.get('showNsfw', False)
-    effective_nsfw = resolve_effective_nsfw_filter(filters.get('nsfw', 'all'), show_nsfw)
+    show_nsfw = user_config.get("showNsfw", False)
+    effective_nsfw = resolve_effective_nsfw_filter(filters.get("nsfw", "all"), show_nsfw)
 
     with get_session() as session:
         conditions = [
@@ -130,26 +130,26 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
             ),
         ]
 
-        if filters.get('query'):
+        if filters.get("query"):
             search_clauses = build_video_search_clauses(
                 user_id=user_id,
-                query=filters['query'],
+                query=filters["query"],
                 video_id_column=VideoHistory.video_id,
             )
             if search_clauses:
                 conditions.extend(search_clauses)
 
-        if filters.get('video_id'):
-            conditions.append(VideoHistory.video_id == filters['video_id'])
-        if filters.get('min_duration'):
-            conditions.append(VideoHistory.duration >= filters['min_duration'])
-        if filters.get('start_date'):
-            conditions.append(VideoHistory.end_time >= filters['start_date'])
-        if filters.get('end_date'):
-            conditions.append(VideoHistory.end_time <= filters['end_date'])
-        if effective_nsfw == 'blocked':
+        if filters.get("video_id"):
+            conditions.append(VideoHistory.video_id == filters["video_id"])
+        if filters.get("min_duration"):
+            conditions.append(VideoHistory.duration >= filters["min_duration"])
+        if filters.get("start_date"):
+            conditions.append(VideoHistory.end_time >= filters["start_date"])
+        if filters.get("end_date"):
+            conditions.append(VideoHistory.end_time <= filters["end_date"])
+        if effective_nsfw == "blocked":
             conditions.append(false())
-        elif effective_nsfw != 'all':
+        elif effective_nsfw != "all":
             nsfw_history_exists = exists(
                 select(1)
                 .select_from(SubscriptionVideo)
@@ -163,12 +163,12 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
                     UserSubscription.is_nsfw,
                 ),
             )
-            if effective_nsfw == 'yes':
+            if effective_nsfw == "yes":
                 conditions.append(nsfw_history_exists)
-            elif effective_nsfw == 'no':
+            elif effective_nsfw == "no":
                 conditions.append(~nsfw_history_exists)
-        if filters.get('site'):
-            resolved_domains = SiteCatalog.resolve_domains(filters['site'])
+        if filters.get("site"):
+            resolved_domains = SiteCatalog.resolve_domains(filters["site"])
             normalized_domains = [
                 domain
                 for domain in {url_helper.normalize_domain(raw_domain) for raw_domain in resolved_domains if raw_domain}
@@ -176,10 +176,10 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
             ]
             if not normalized_domains:
                 return {
-                    'items': [],
-                    'total': 0,
-                    'page': page,
-                    'page_size': page_size,
+                    "items": [],
+                    "total": 0,
+                    "page": page,
+                    "page_size": page_size,
                 }
             conditions.append(
                 exists(
@@ -196,14 +196,14 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
 
         ranked_histories = (
             select(
-                VideoHistory.id.label('id'),
-                VideoHistory.end_time.label('end_time'),
+                VideoHistory.id.label("id"),
+                VideoHistory.end_time.label("end_time"),
                 func.row_number()
                 .over(
                     partition_by=VideoHistory.video_id,
                     order_by=(VideoHistory.end_time.desc(), VideoHistory.id.desc()),
                 )
-                .label('row_num'),
+                .label("row_num"),
             )
             .where(*conditions)
             .subquery()
@@ -232,10 +232,10 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
 
         if not histories:
             return {
-                'items': [],
-                'total': total,
-                'page': page,
-                'page_size': page_size,
+                "items": [],
+                "total": total,
+                "page": page,
+                "page_size": page_size,
             }
 
         video_ids = [h.video_id for h in histories]
@@ -275,50 +275,50 @@ def list_histories(user_id: int, filters: dict, page: int, page_size: int) -> di
             subs_for_video = _merge_profiles(
                 [
                     {
-                        'id': s.id,
-                        'name': s.name,
-                        'url': s.url,
-                        'type': s.type,
-                        'avatar': s.avatar,
-                        'is_nsfw': user_sub_nsfw_map.get(s.id, False),
+                        "id": s.id,
+                        "name": s.name,
+                        "url": s.url,
+                        "type": s.type,
+                        "avatar": s.avatar,
+                        "is_nsfw": user_sub_nsfw_map.get(s.id, False),
                     }
                     for s in (video_subs.get(v.id) or [])
                     if s is not None
                 ],
-                _video_extra_profiles(v, 'subscriptions'),
+                _video_extra_profiles(v, "subscriptions"),
             )
 
             video_site = get_site_from_url(v.url)
             if not video_site and subs_for_video:
                 for sub_info in subs_for_video:
-                    sub_url = sub_info.get('url')
+                    sub_url = sub_info.get("url")
                     if sub_url:
                         video_site = get_site_from_url(sub_url)
                         if video_site:
                             break
 
             item = {
-                'id': v.id,
-                'history_id': h.id,
-                'title': v.title,
-                'url': v.url,
-                'thumbnail': thumbnail_downloader_service.get_thumbnail_url(v.id, v.thumbnail, v.url),
-                'duration': v.duration,
-                'last_position': h.last_position or 0,
-                'played_at': h.end_time.strftime('%Y-%m-%d %H:%M:%S') if h.end_time else None,
-                'uploaded_at': v.publish_date.strftime('%Y-%m-%d %H:%M:%S') if v.publish_date else None,
-                'created_at': v.created_at.strftime('%Y-%m-%d %H:%M:%S') if v.created_at else None,
-                'subscriptions': subs_for_video,
-                'actors': _video_extra_profiles(v, 'actors'),
-                'site': video_site,
+                "id": v.id,
+                "history_id": h.id,
+                "title": v.title,
+                "url": v.url,
+                "thumbnail": thumbnail_downloader_service.get_thumbnail_url(v.id, v.thumbnail, v.url),
+                "duration": v.duration,
+                "last_position": h.last_position or 0,
+                "played_at": h.end_time.strftime("%Y-%m-%d %H:%M:%S") if h.end_time else None,
+                "uploaded_at": v.publish_date.strftime("%Y-%m-%d %H:%M:%S") if v.publish_date else None,
+                "created_at": v.created_at.strftime("%Y-%m-%d %H:%M:%S") if v.created_at else None,
+                "subscriptions": subs_for_video,
+                "actors": _video_extra_profiles(v, "actors"),
+                "site": video_site,
             }
             items.append(item)
 
         return {
-            'items': items,
-            'total': total,
-            'page': page,
-            'page_size': page_size,
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
         }
 
 

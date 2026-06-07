@@ -25,8 +25,8 @@ def _extract_domain(url: str) -> str | None:
         return None
     parsed = urlparse(url)
     netloc = parsed.netloc if parsed.netloc else url
-    host = netloc.split(':', 1)[0]
-    domain = host.replace('www.', '')
+    host = netloc.split(":", 1)[0]
+    domain = host.replace("www.", "")
     return domain or None
 
 
@@ -199,18 +199,18 @@ def _resolve_maybe_async_result(result):
 
     def _runner() -> None:
         try:
-            outcome['value'] = asyncio.run(result)
+            outcome["value"] = asyncio.run(result)
         except BaseException as exc:  # pragma: no cover - defensive bridge
-            outcome['error'] = exc
+            outcome["error"] = exc
 
     thread = threading.Thread(target=_runner, daemon=True)
     thread.start()
     thread.join()
 
-    error = outcome.get('error')
+    error = outcome.get("error")
     if error is not None:
         raise error  # type: ignore[misc]
-    return outcome.get('value')
+    return outcome.get("value")
 
 
 def request(method: str, url: str, **kwargs):
@@ -227,7 +227,7 @@ def request(method: str, url: str, **kwargs):
     Returns:
         ``requests.Response``.
     """
-    use_cloudflare_bypass = kwargs.pop('bypass_mode', None)
+    use_cloudflare_bypass = kwargs.pop("bypass_mode", None)
 
     if use_cloudflare_bypass:
         parsed = urlparse(url)
@@ -235,7 +235,7 @@ def request(method: str, url: str, **kwargs):
 
         _default_rate_limiter.wait(domain)
 
-        headers = kwargs.get('headers')
+        headers = kwargs.get("headers")
 
         if use_cloudflare_bypass == "html":
             return _resolve_maybe_async_result(_cloudflare_bypass_client.html(url=url, headers=headers))  # type: ignore
@@ -262,10 +262,10 @@ def request_without_limit(method: str, url: str, **kwargs):
     Returns:
         ``requests.Response``.
     """
-    bypass_mode = kwargs.pop('bypass_mode', None)
+    bypass_mode = kwargs.pop("bypass_mode", None)
 
     if bypass_mode:
-        headers = kwargs.get('headers')
+        headers = kwargs.get("headers")
 
         if bypass_mode == "html":
             return _resolve_maybe_async_result(_cloudflare_bypass_client.html(url=url, headers=headers))  # type: ignore
@@ -306,7 +306,7 @@ def get(url: str, **kwargs):
     Returns:
         ``requests.Response``.
     """
-    return request('GET', url, **kwargs)
+    return request("GET", url, **kwargs)
 
 
 def post(url: str, **kwargs):
@@ -322,7 +322,7 @@ def post(url: str, **kwargs):
     Returns:
         ``requests.Response``.
     """
-    return request('POST', url, **kwargs)
+    return request("POST", url, **kwargs)
 
 
 _cloudflare_bypass_client: object | None = None
@@ -332,7 +332,7 @@ def configure_cloudflare_bypass_client(client: object) -> None:
     """Configure a Cloudflare bypass client (injected by the backend)."""
     global _cloudflare_bypass_client
     _cloudflare_bypass_client = client
-    logger.info('Cloudflare bypass client configured')
+    logger.info("Cloudflare bypass client configured")
 
 
 def _reset_http_module_state() -> None:

@@ -50,19 +50,19 @@ class _GeneratedSiteRuntime:
     def health(self) -> SiteRuntimeHealthStatus:
         if self._health_check is not None:
             return self._health_check()
-        return SiteRuntimeHealthStatus(healthy=True, status='running')
+        return SiteRuntimeHealthStatus(healthy=True, status="running")
 
     def invoke(self, capability: str, payload: dict[str, Any] | None = None) -> SiteRuntimeInvokeResponse:
         request_payload = dict(payload or {})
-        request_id = str(request_payload.get('request_id', ''))
+        request_id = str(request_payload.get("request_id", ""))
         handler = self._capability_handlers.get(capability)
         if handler is None:
             return SiteRuntimeInvokeResponse(
                 request_id=request_id,
                 ok=False,
                 error=SiteRuntimeError.bad_response(
-                    f'Unsupported capability: {capability}',
-                    details={'capability': capability},
+                    f"Unsupported capability: {capability}",
+                    details={"capability": capability},
                 ),
             )
 
@@ -84,7 +84,7 @@ class _GeneratedSiteRuntime:
             # handler boundary: wrap unexpected capability handler errors as crashes
             error = SiteRuntimeError.crashed(
                 str(exc),
-                details={'exception_type': exc.__class__.__name__},
+                details={"exception_type": exc.__class__.__name__},
             )
 
         return SiteRuntimeInvokeResponse(

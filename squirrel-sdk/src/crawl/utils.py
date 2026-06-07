@@ -15,10 +15,10 @@ logger = logging.getLogger(__name__)
 def _extract_top_level_domain_from_url(target_url: str) -> str:
     netloc = urlparse(target_url).netloc
     # strip port
-    host = netloc.split(':', 1)[0]
-    parts = [p for p in host.split('.') if p]
+    host = netloc.split(":", 1)[0]
+    parts = [p for p in host.split(".") if p]
     if len(parts) >= 2:
-        return '.'.join(parts[-2:])
+        return ".".join(parts[-2:])
     return host
 
 
@@ -57,12 +57,12 @@ def _reset_utils_module_state() -> None:
 def _extract_cookie_domain(target_url: str) -> str:
     if _cookie_domain_resolver is not None:
         try:
-            resolved = str(_cookie_domain_resolver(target_url) or '').strip().lower()
+            resolved = str(_cookie_domain_resolver(target_url) or "").strip().lower()
         except (TypeError, ValueError):
-            resolved = ''
+            resolved = ""
         if resolved:
             return resolved
-    return str(_extract_top_level_domain_from_url(target_url) or '').strip().lower()
+    return str(_extract_top_level_domain_from_url(target_url) or "").strip().lower()
 
 
 def _resolve_cookie_file(target_url: str, cookies_file: str | None) -> Path | None:
@@ -149,25 +149,25 @@ PAGE_FETCH_MAX_ATTEMPTS = 3
 PAGE_FETCH_RETRYABLE_STATUS_CODES = {403, 408, 425, 429, 500, 502, 503, 504}
 
 
-def looks_like_expiring_preview_thumbnail(url: str, prefix: str = '/plain/') -> bool:
-    normalized = str(url or '').strip().lower()
+def looks_like_expiring_preview_thumbnail(url: str, prefix: str = "/plain/") -> bool:
+    normalized = str(url or "").strip().lower()
     return bool(normalized) and prefix in normalized and (
-        'validto=' in normalized or 'hdnea=' in normalized
+        "validto=" in normalized or "hdnea=" in normalized
     )
 
 
 def _thumbnail_expiry_score(url: str) -> float:
-    normalized = str(url or '').strip().lower()
+    normalized = str(url or "").strip().lower()
     if not normalized:
         return -1
-    if not any(token in normalized for token in ('validto=', 'hdnea=', 'hmac=', 'hash=')):
-        return float('inf')
+    if not any(token in normalized for token in ("validto=", "hdnea=", "hmac=", "hash=")):
+        return float("inf")
 
-    validto_match = re.search(r'[?&]validto=(\d+)', normalized)
+    validto_match = re.search(r"[?&]validto=(\d+)", normalized)
     if validto_match:
         return float(validto_match.group(1))
 
-    hdnea_exp_match = re.search(r'(?:^|[~&])exp=(\d+)', normalized)
+    hdnea_exp_match = re.search(r"(?:^|[~&])exp=(\d+)", normalized)
     if hdnea_exp_match:
         return float(hdnea_exp_match.group(1))
 
@@ -177,7 +177,7 @@ def _thumbnail_expiry_score(url: str) -> float:
 def pick_best_thumbnail_url(thumbnail_urls: list[str]) -> str | None:
     unique_urls = []
     for thumbnail_url in thumbnail_urls:
-        normalized = html_lib.unescape(str(thumbnail_url or '').strip())
+        normalized = html_lib.unescape(str(thumbnail_url or "").strip())
         if normalized and normalized not in unique_urls:
             unique_urls.append(normalized)
 
@@ -196,11 +196,11 @@ def normalize_thumbnail(
 
     ``fetch_fn(url)`` is called to obtain a replacement thumbnail URL from the video page.
     """
-    thumbnail_url = str(video_info.get('thumbnail') or '').strip()
+    thumbnail_url = str(video_info.get("thumbnail") or "").strip()
     if not looks_like_expiring_preview_thumbnail(thumbnail_url):
         return
 
-    page_url = source_url or str(video_info.get('webpage_url') or '').strip()
+    page_url = source_url or str(video_info.get("webpage_url") or "").strip()
     if not page_url:
         return
 
@@ -208,9 +208,9 @@ def normalize_thumbnail(
     if not fresh_thumbnail_url:
         return
 
-    video_info['thumbnail'] = fresh_thumbnail_url
-    if isinstance(video_info.get('thumbnails'), list) and video_info['thumbnails']:
-        video_info['thumbnails'][0]['url'] = fresh_thumbnail_url
+    video_info["thumbnail"] = fresh_thumbnail_url
+    if isinstance(video_info.get("thumbnails"), list) and video_info["thumbnails"]:
+        video_info["thumbnails"][0]["url"] = fresh_thumbnail_url
 
 
 def build_cookie_header(url: str, age_gate_cookies: dict[str, str]) -> str:
@@ -218,17 +218,17 @@ def build_cookie_header(url: str, age_gate_cookies: dict[str, str]) -> str:
     cookies: dict[str, str] = {}
     raw_cookie_header = filter_cookies_to_query_string(url)
 
-    for segment in raw_cookie_header.split(';'):
+    for segment in raw_cookie_header.split(";"):
         item = segment.strip()
-        if not item or '=' not in item:
+        if not item or "=" not in item:
             continue
-        name, value = item.split('=', 1)
+        name, value = item.split("=", 1)
         cookies[name.strip()] = value.strip()
 
     for name, value in age_gate_cookies.items():
         cookies.setdefault(name, value)
 
-    return '; '.join(f'{name}={value}' for name, value in cookies.items())
+    return "; ".join(f"{name}={value}" for name, value in cookies.items())
 
 
 def fetch_page_thumbnail_url(
@@ -243,7 +243,7 @@ def fetch_page_thumbnail_url(
     """
     import httpx
 
-    page_url = str(url or '').strip()
+    page_url = str(url or "").strip()
     if not page_url:
         return None
 
@@ -258,7 +258,7 @@ def fetch_page_thumbnail_url(
                 timeout=30.0,
             )
         except Exception as exc:
-            logger.warning('Failed to fetch page thumbnail metadata: %s', exc)
+            logger.warning("Failed to fetch page thumbnail metadata: %s", exc)
             return None
 
         if response.status_code == 200:
