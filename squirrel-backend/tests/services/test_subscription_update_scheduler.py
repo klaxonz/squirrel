@@ -1,13 +1,9 @@
-import sys
 from datetime import datetime, timedelta
 from importlib import import_module
-from pathlib import Path
 from types import SimpleNamespace
 
-from sqlalchemy import create_engine
+import pytest
 from sqlalchemy.orm import Session
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
 from models.crawl_dispatch_scope import CrawlDispatchScope
@@ -17,60 +13,62 @@ from models.links import UserSubscription
 from models.outbox_event import OutboxEvent
 from models.subscription import Subscription
 from models.subscription_sync_state import SubscriptionSyncState
-from services.crawl_tasks import service as crawl_task_service
 from services.subscription_update.models import SubscriptionUpdateResult, UpdateMode, UpdateTrigger
 from services.subscription_update.scheduler import SubscriptionScheduler
 
-scheduler_module = import_module("services.subscription_update.scheduler")
 
-
-class _ManagedSession:
-    def __init__(self, engine):
-        self._session = Session(engine, expire_on_commit=False)
-
-    def __enter__(self):
-        return self._session
-
-    def __exit__(self, exc_type, exc, tb):
-        if exc_type:
-            self._session.rollback()
-        else:
-            self._session.commit()
-        self._session.close()
-        return False
-
-
-def _setup_task_store(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+@pytest.fixture
+def engine(engine):
     Base.metadata.create_all(
         engine,
-        tables=[CrawlJob.__table__, CrawlTask.__table__, CrawlDispatchScope.__table__, OutboxEvent.__table__],
+        tables=[
+            CrawlJob.__table__,
+            CrawlTask.__table__,
+            CrawlDispatchScope.__table__,
+            OutboxEvent.__table__,
+            Subscription.__table__,
+            UserSubscription.__table__,
+            SubscriptionSyncState.__table__,
+        ],
     )
-    monkeypatch.setattr(crawl_task_service, "get_session", lambda: _ManagedSession(engine))
-    monkeypatch.setattr(scheduler_module.outbox_event_service, "get_session", lambda: _ManagedSession(engine))
     return engine
 
 
-def _setup_subscription_store(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(
-        engine,
-        tables=[Subscription.__table__, UserSubscription.__table__, SubscriptionSyncState.__table__, OutboxEvent.__table__],
-    )
-    monkeypatch.setattr(scheduler_module, "get_session", lambda: _ManagedSession(engine))
-    monkeypatch.setattr(scheduler_module.subscription_sync_state_service, "get_session", lambda: _ManagedSession(engine))
-    monkeypatch.setattr(scheduler_module.outbox_event_service, "get_session", lambda: _ManagedSession(engine))
-    return engine
+@pytest.fixture
+def sched(session_factory):
+    return SubscriptionScheduler(session_factory=session_factory)
 
 
-def test_schedule_one_publishes_full_sync_outbox_event_when_v2_enabled(monkeypatch):
-    engine = _setup_task_store(monkeypatch)
+def _patch_postgres(monkeypatch, session_factory):
+    from core import database
+    monkeypatch.setattr(database, "register_after_commit", lambda session, callback: None)
+    monkeypatch.setattr(database, "get_session", session_factory)
+
+    from services.subscription_sync_run_service import _default as run_svc_default
+    run_svc_default.next_seq_no = lambda stream_id, *, session=None: 1
+
+    from services.subscription_sync_projection_service import _default as proj_default
+    proj_default._advisory_lock = staticmethod(lambda session, key: None)
+    proj_default.apply_event = lambda event, session=None: event
+
+
+def _patch_sss(monkeypatch, session_factory):
+    """Patch subscription_sync_state_service module-level functions."""
+    from core import database
+    monkeypatch.setattr(database, "get_session", session_factory)
+
+
+
+def test_schedule_one_publishes_full_sync_outbox_event_when_v2_enabled(engine, session_factory, sched, monkeypatch):
+    _patch_postgres(monkeypatch, session_factory)
     appended_events = []
 
-    monkeypatch.setattr(scheduler_module.SiteCatalog, "is_site_enabled", lambda domain=None, site=None: True)
+    _scheduler_mod = import_module("services.subscription_update.scheduler")
+    _scheduler_mod.subscription_sync_state_service._resolve_site = lambda url: "bilibili.com"
+    monkeypatch.setattr(_scheduler_mod.SiteCatalog, "is_site_enabled", lambda domain=None, site=None: True)
     monkeypatch.setattr(SubscriptionScheduler, "_has_active_subscribers", staticmethod(lambda subscription_id: True))
     monkeypatch.setattr(
-        scheduler_module.subscription_sync_state_service,
+        _scheduler_mod.subscription_sync_state_service,
         "prepare_sync_state_for_enqueue",
         lambda subscription_id, url, mode, scheduled: (
             SimpleNamespace(id=11, pending_video_count=0, sync_mode=mode),
@@ -78,12 +76,12 @@ def test_schedule_one_publishes_full_sync_outbox_event_when_v2_enabled(monkeypat
         ),
     )
     monkeypatch.setattr(
-        scheduler_module.subscription_sync_state_service,
+        _scheduler_mod.subscription_sync_state_service,
         "build_queue_token",
         lambda: "queue-token-1",
     )
     monkeypatch.setattr(
-        scheduler_module.subscription_sync_state_service,
+        _scheduler_mod.subscription_sync_state_service,
         "queue_sync_state",
         lambda sync_state_id, queue_token: SimpleNamespace(
             id=11,
@@ -94,12 +92,21 @@ def test_schedule_one_publishes_full_sync_outbox_event_when_v2_enabled(monkeypat
         ),
     )
     monkeypatch.setattr(
-        scheduler_module,
+        _scheduler_mod,
         "append_event",
         lambda event: appended_events.append(event),
     )
 
-    result = SubscriptionScheduler().schedule_one(
+    from services.crawl_tasks.service import CrawlTaskService
+    injected_cts = CrawlTaskService(session_factory=session_factory)
+    for func_name in [
+        "create_job_with_task", "create_job", "create_task", "recover_expired_tasks",
+        "claim_next_task", "start_task", "complete_task", "cancel_task",
+        "replay_dead_task", "retry_task", "renew_task_lease", "clear_task_dedupe_key",
+    ]:
+        monkeypatch.setattr(_scheduler_mod.crawl_task_service, func_name, getattr(injected_cts, func_name))
+
+    result = sched.schedule_one(
         subscription_id=7,
         url="https://space.bilibili.com/42",
         trigger=UpdateTrigger.MANUAL,
@@ -137,23 +144,25 @@ def test_schedule_one_publishes_full_sync_outbox_event_when_v2_enabled(monkeypat
     assert appended_events == []
 
 
-def test_schedule_one_publishes_incremental_sync_outbox_event_for_incremental_mode(monkeypatch):
-    engine = _setup_task_store(monkeypatch)
+def test_schedule_one_publishes_incremental_sync_outbox_event_for_incremental_mode(engine, session_factory, sched, monkeypatch):
+    _patch_postgres(monkeypatch, session_factory)
     appended_events = []
 
-    monkeypatch.setattr(scheduler_module.SiteCatalog, "is_site_enabled", lambda domain=None, site=None: True)
+    _scheduler_mod = import_module("services.subscription_update.scheduler")
+    _scheduler_mod.subscription_sync_state_service._resolve_site = lambda url: "bilibili.com"
+    monkeypatch.setattr(_scheduler_mod.SiteCatalog, "is_site_enabled", lambda domain=None, site=None: True)
     monkeypatch.setattr(SubscriptionScheduler, "_has_active_subscribers", staticmethod(lambda subscription_id: True))
     monkeypatch.setattr(
-        scheduler_module.subscription_sync_state_service,
+        _scheduler_mod.subscription_sync_state_service,
         "prepare_sync_state_for_enqueue",
         lambda subscription_id, url, mode, scheduled: (
             SimpleNamespace(id=12, pending_video_count=0, sync_mode=mode),
             "ready",
         ),
     )
-    monkeypatch.setattr(scheduler_module.subscription_sync_state_service, "build_queue_token", lambda: "queue-token-2")
+    monkeypatch.setattr(_scheduler_mod.subscription_sync_state_service, "build_queue_token", lambda: "queue-token-2")
     monkeypatch.setattr(
-        scheduler_module.subscription_sync_state_service,
+        _scheduler_mod.subscription_sync_state_service,
         "queue_sync_state",
         lambda sync_state_id, queue_token: SimpleNamespace(
             id=12,
@@ -163,9 +172,18 @@ def test_schedule_one_publishes_incremental_sync_outbox_event_for_incremental_mo
             pending_video_count=0,
         ),
     )
-    monkeypatch.setattr(scheduler_module, "append_event", lambda event: appended_events.append(event))
+    monkeypatch.setattr(_scheduler_mod, "append_event", lambda event: appended_events.append(event))
 
-    result = SubscriptionScheduler().schedule_one(
+    from services.crawl_tasks.service import CrawlTaskService
+    injected_cts = CrawlTaskService(session_factory=session_factory)
+    for func_name in [
+        "create_job_with_task", "create_job", "create_task", "recover_expired_tasks",
+        "claim_next_task", "start_task", "complete_task", "cancel_task",
+        "replay_dead_task", "retry_task", "renew_task_lease", "clear_task_dedupe_key",
+    ]:
+        monkeypatch.setattr(_scheduler_mod.crawl_task_service, func_name, getattr(injected_cts, func_name))
+
+    result = sched.schedule_one(
         subscription_id=8,
         url="https://space.bilibili.com/43",
         trigger=UpdateTrigger.SCHEDULED,
@@ -193,23 +211,26 @@ def test_schedule_one_publishes_incremental_sync_outbox_event_for_incremental_mo
     assert appended_events == []
 
 
-def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(monkeypatch):
+def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(engine, session_factory, sched, monkeypatch):
+    _patch_postgres(monkeypatch, session_factory)
     appended_events = []
     payloads = []
 
-    monkeypatch.setattr(scheduler_module.SiteCatalog, "is_site_enabled", lambda domain=None, site=None: True)
+    _scheduler_mod = import_module("services.subscription_update.scheduler")
+    _scheduler_mod.subscription_sync_state_service._resolve_site = lambda url: "bilibili.com"
+    monkeypatch.setattr(_scheduler_mod.SiteCatalog, "is_site_enabled", lambda domain=None, site=None: True)
     monkeypatch.setattr(SubscriptionScheduler, "_has_active_subscribers", staticmethod(lambda subscription_id: True))
     monkeypatch.setattr(
-        scheduler_module.subscription_sync_state_service,
+        _scheduler_mod.subscription_sync_state_service,
         "prepare_sync_state_for_enqueue",
         lambda subscription_id, url, mode, scheduled: (
             SimpleNamespace(id=21, pending_video_count=0, sync_mode=mode),
             "ready",
         ),
     )
-    monkeypatch.setattr(scheduler_module.subscription_sync_state_service, "build_queue_token", lambda: "queue-token-3")
+    monkeypatch.setattr(_scheduler_mod.subscription_sync_state_service, "build_queue_token", lambda: "queue-token-3")
     monkeypatch.setattr(
-        scheduler_module.subscription_sync_state_service,
+        _scheduler_mod.subscription_sync_state_service,
         "queue_sync_state",
         lambda sync_state_id, queue_token: SimpleNamespace(
             id=21,
@@ -219,7 +240,7 @@ def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(mo
             pending_video_count=0,
         ),
     )
-    monkeypatch.setattr(scheduler_module, "append_event", lambda event: appended_events.append(event))
+    monkeypatch.setattr(_scheduler_mod, "append_event", lambda event: appended_events.append(event))
     monkeypatch.setattr(
         "services.crawl_executors.subscription_sync_executor.execute_subscription_sync_payload",
         lambda payload: payloads.append(payload) or SubscriptionUpdateResult(
@@ -230,7 +251,7 @@ def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(mo
         ),
     )
 
-    result = SubscriptionScheduler().run_one_inline(
+    result = sched.run_one_inline(
         subscription_id=9,
         url="https://space.bilibili.com/44",
         trigger=UpdateTrigger.MANUAL,
@@ -261,8 +282,8 @@ def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(mo
     assert [event.event_type for event in appended_events] == ["queued"]
 
 
-def test_enqueue_all_active_includes_active_subscriptions_without_sync_state(monkeypatch):
-    engine = _setup_subscription_store(monkeypatch)
+def test_enqueue_all_active_includes_active_subscriptions_without_sync_state(engine, session_factory, sched, monkeypatch):
+    _patch_postgres(monkeypatch, session_factory)
 
     with Session(engine, expire_on_commit=False) as session:
         session.add_all(
@@ -290,13 +311,14 @@ def test_enqueue_all_active_includes_active_subscriptions_without_sync_state(mon
     }
     scheduled_calls = []
 
+    _scheduler_mod = import_module("services.subscription_update.scheduler")
     monkeypatch.setattr(
-        scheduler_module.subscription_sync_state_service,
+        _scheduler_mod.subscription_sync_state_service,
         "get_sync_state",
         lambda subscription_id, mode: sync_states.get(subscription_id),
     )
     monkeypatch.setattr(
-        SubscriptionScheduler,
+        sched.__class__,
         "schedule_one",
         lambda self, subscription_id, url, trigger, mode: (
             scheduled_calls.append((subscription_id, url, trigger, mode)) or
@@ -304,7 +326,7 @@ def test_enqueue_all_active_includes_active_subscriptions_without_sync_state(mon
         ),
     )
 
-    success, failed = SubscriptionScheduler().enqueue_all_active(
+    success, failed = sched.enqueue_all_active(
         trigger=UpdateTrigger.SCHEDULED,
         mode=UpdateMode.INCREMENTAL,
     )
@@ -317,8 +339,8 @@ def test_enqueue_all_active_includes_active_subscriptions_without_sync_state(mon
     ]
 
 
-def test_enqueue_all_active_counts_failed_results(monkeypatch):
-    engine = _setup_subscription_store(monkeypatch)
+def test_enqueue_all_active_counts_failed_results(engine, session_factory, sched, monkeypatch):
+    _patch_postgres(monkeypatch, session_factory)
 
     with Session(engine, expire_on_commit=False) as session:
         session.add_all(
@@ -335,20 +357,21 @@ def test_enqueue_all_active_counts_failed_results(monkeypatch):
         )
         session.commit()
 
+    _scheduler_mod = import_module("services.subscription_update.scheduler")
     monkeypatch.setattr(
-        scheduler_module.subscription_sync_state_service,
+        _scheduler_mod.subscription_sync_state_service,
         "get_sync_state",
         lambda subscription_id, mode: None,
     )
     monkeypatch.setattr(
-        SubscriptionScheduler,
+        sched.__class__,
         "schedule_one",
         lambda self, subscription_id, url, trigger, mode: SimpleNamespace(
             status="queued" if subscription_id == 1 else "failed",
         ),
     )
 
-    success, failed = SubscriptionScheduler().enqueue_all_active(
+    success, failed = sched.enqueue_all_active(
         trigger=UpdateTrigger.SCHEDULED,
         mode=UpdateMode.INCREMENTAL,
     )
@@ -356,9 +379,20 @@ def test_enqueue_all_active_counts_failed_results(monkeypatch):
     assert (success, failed) == (1, 1)
 
 
-def test_enqueue_due_states_publishes_outbox_events_from_sync_state_store(monkeypatch):
-    engine = _setup_subscription_store(monkeypatch)
+def test_enqueue_due_states_publishes_outbox_events_from_sync_state_store(engine, session_factory, sched, monkeypatch):
+    _patch_postgres(monkeypatch, session_factory)
     now = datetime(2026, 4, 4, 12, 0, 0)
+
+    from services.crawl_tasks.service import CrawlTaskService
+    injected_cts = CrawlTaskService(session_factory=session_factory)
+
+    _scheduler_mod = import_module("services.subscription_update.scheduler")
+    for func_name in [
+        "create_job_with_task", "create_job", "create_task", "recover_expired_tasks",
+        "claim_next_task", "start_task", "complete_task", "cancel_task",
+        "replay_dead_task", "retry_task", "renew_task_lease", "clear_task_dedupe_key",
+    ]:
+        monkeypatch.setattr(_scheduler_mod.crawl_task_service, func_name, getattr(injected_cts, func_name))
 
     with Session(engine, expire_on_commit=False) as session:
         session.add_all(
@@ -395,7 +429,7 @@ def test_enqueue_due_states_publishes_outbox_events_from_sync_state_store(monkey
         )
         session.commit()
 
-    success, failed = SubscriptionScheduler().enqueue_due_states(
+    success, failed = sched.enqueue_due_states(
         trigger=UpdateTrigger.SCHEDULED,
         mode=UpdateMode.INCREMENTAL,
         now=now,

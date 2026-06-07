@@ -1,6 +1,7 @@
 ---
 title: 测试 — 后端过度 Mock（1190 处 patch/monkeypatch）
-status: open
+status: fixed
+fixed_by: services/music/__init__.py (first DI service), services/video_history_service.py (session_factory DI), services/system_config_service.py (session_factory DI), services/*.py (60+ services converted to class-based DI)
 severity: medium
 category: test-quality
 location: squirrel-backend/tests/（全量 89 个测试文件）

@@ -1,14 +1,9 @@
-import sys
-from contextlib import contextmanager
 from datetime import datetime, timedelta
 from importlib import import_module
-from pathlib import Path
 from types import SimpleNamespace
 
-from sqlalchemy import create_engine
+import pytest
 from sqlalchemy.orm import Session
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
 from models.crawl_dispatch_scope import CrawlDispatchScope
@@ -16,28 +11,12 @@ from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
 from models.outbox_event import OutboxEvent
 from models.subscription_sync_state import SubscriptionSyncState
-from services import outbox_event_service, subscription_sync_state_service
-from services.crawl_tasks import service as crawl_task_service
+from services.outbox_event_service import OutboxEventService
 from services.subscription_update.scheduler import SubscriptionScheduler
 
-scheduler_module = import_module("services.subscription_update.scheduler")
 
-
-@contextmanager
-def _managed_session(engine):
-    session = Session(engine, expire_on_commit=False)
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
-
-def _setup_test_env(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+@pytest.fixture
+def engine(engine):
     Base.metadata.create_all(
         engine,
         tables=[
@@ -48,18 +27,16 @@ def _setup_test_env(monkeypatch):
             SubscriptionSyncState.__table__,
         ],
     )
-    monkeypatch.setattr(outbox_event_service, "get_session", lambda: _managed_session(engine))
-    monkeypatch.setattr(crawl_task_service, "get_session", lambda: _managed_session(engine))
-    monkeypatch.setattr(subscription_sync_state_service, "get_session", lambda: _managed_session(engine))
-    from core import database
-    monkeypatch.setattr(database, "get_session", lambda: _managed_session(engine))
     return engine
 
 
-def test_publish_event_persists_pending_outbox_row(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+@pytest.fixture
+def svc(session_factory):
+    return OutboxEventService(session_factory=session_factory)
 
-    event = outbox_event_service.publish_event(
+
+def test_publish_event_persists_pending_outbox_row(engine, svc):
+    event = svc.publish_event(
         event_type="incremental_sync_due",
         event_key="incremental_sync_due:11:2026-04-04T10:00",
         aggregate_type="subscription_sync_state",
@@ -79,17 +56,26 @@ def test_publish_event_persists_pending_outbox_row(monkeypatch):
     assert stored.payload["sync_state_id"] == 11
 
 
-def test_consume_due_event_creates_subscription_sync_task(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_consume_due_event_creates_subscription_sync_task(engine, session_factory, svc, monkeypatch):
     now = datetime(2026, 4, 4, 12, 0, 0)
-    monkeypatch.setattr(scheduler_module.SiteCatalog, "is_site_enabled", lambda domain=None, site=None: True)
+
+    from core import database
+    monkeypatch.setattr(database, "get_session", session_factory)
+
+    _scheduler_mod = import_module("services.subscription_update.scheduler")
+    monkeypatch.setattr(_scheduler_mod.SiteCatalog, "is_site_enabled", lambda domain=None, site=None: True)
     monkeypatch.setattr(SubscriptionScheduler, "_has_active_subscribers", staticmethod(lambda subscription_id: True))
-    monkeypatch.setattr(
-        scheduler_module,
-        "create_run",
-        lambda **kwargs: SimpleNamespace(run_id="run-1", created_at=now),
-    )
-    monkeypatch.setattr(scheduler_module, "append_event", lambda *args, **kwargs: None)
+    monkeypatch.setattr(_scheduler_mod, "create_run", lambda **kwargs: SimpleNamespace(run_id="run-1", created_at=now))
+    monkeypatch.setattr(_scheduler_mod, "append_event", lambda *args, **kwargs: None)
+
+    from services.crawl_tasks.service import CrawlTaskService
+    injected_cts = CrawlTaskService(session_factory=session_factory)
+    for func_name in [
+        "create_job_with_task", "create_job", "create_task", "recover_expired_tasks",
+        "claim_next_task", "start_task", "complete_task", "cancel_task",
+        "replay_dead_task", "retry_task", "renew_task_lease", "clear_task_dedupe_key",
+    ]:
+        monkeypatch.setattr(_scheduler_mod.crawl_task_service, func_name, getattr(injected_cts, func_name))
 
     with Session(engine, expire_on_commit=False) as session:
         state = SubscriptionSyncState(
@@ -103,7 +89,7 @@ def test_consume_due_event_creates_subscription_sync_task(monkeypatch):
         session.add(state)
         session.commit()
 
-    outbox_event_service.publish_event(
+    svc.publish_event(
         event_type="incremental_sync_due",
         event_key="incremental_sync_due:11:2026-04-04T12:00",
         aggregate_type="subscription_sync_state",
@@ -118,7 +104,7 @@ def test_consume_due_event_creates_subscription_sync_task(monkeypatch):
         available_at=now - timedelta(seconds=1),
     )
 
-    summary = outbox_event_service.consume_available_events(limit=10, now=now)
+    summary = svc.consume_available_events(limit=10, now=now)
 
     assert summary == {"processed": 1, "failed": 0}
 
@@ -132,12 +118,11 @@ def test_consume_due_event_creates_subscription_sync_task(monkeypatch):
     assert events[0].status == "done"
 
 
-def test_full_backfill_request_is_deferred_when_full_budget_is_exhausted(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_full_backfill_request_is_deferred_when_full_budget_is_exhausted(engine, svc, monkeypatch):
     now = datetime(2026, 4, 4, 12, 0, 0)
-    monkeypatch.setattr(outbox_event_service.settings, "FULL_SYNC_MAX_INFLIGHT", 1, raising=False)
-    monkeypatch.setattr(outbox_event_service.settings, "FULL_SYNC_SITE_MAX_INFLIGHT", 1, raising=False)
-    monkeypatch.setattr(outbox_event_service.settings, "FULL_BACKFILL_RETRY_SECONDS", 300, raising=False)
+    monkeypatch.setattr(svc.settings, "FULL_SYNC_MAX_INFLIGHT", 1, raising=False)
+    monkeypatch.setattr(svc.settings, "FULL_SYNC_SITE_MAX_INFLIGHT", 1, raising=False)
+    monkeypatch.setattr(svc.settings, "FULL_BACKFILL_RETRY_SECONDS", 300, raising=False)
 
     with Session(engine, expire_on_commit=False) as session:
         session.add(
@@ -152,7 +137,7 @@ def test_full_backfill_request_is_deferred_when_full_budget_is_exhausted(monkeyp
         )
         session.commit()
 
-    outbox_event_service.publish_event(
+    svc.publish_event(
         event_type="full_backfill_requested",
         event_key="full_backfill_requested:7:gap:20260404",
         aggregate_type="subscription",
@@ -166,7 +151,7 @@ def test_full_backfill_request_is_deferred_when_full_budget_is_exhausted(monkeyp
         available_at=now - timedelta(seconds=1),
     )
 
-    summary = outbox_event_service.consume_available_events(limit=10, now=now)
+    summary = svc.consume_available_events(limit=10, now=now)
 
     assert summary == {"processed": 0, "failed": 0}
 

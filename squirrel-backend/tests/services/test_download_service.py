@@ -1,53 +1,61 @@
-import sys
 from contextlib import contextmanager
-from pathlib import Path
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
 from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
+from models.video_extraction_projection import VideoExtractionProjection
 from schemas.video.dto.video_dto import VideoExtractDto
-from services import download_service
-from services.crawl_tasks import service as crawl_task_service
+from services.crawl_tasks.service import CrawlTaskService
+from services.download_service import DownloadService
 
 
-@contextmanager
-def _managed_session(engine):
-    session = Session(engine, expire_on_commit=False)
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
-
-def _setup_task_store(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+@pytest.fixture
+def engine():
+    _engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(
-        engine,
+        _engine,
         tables=[
             CrawlJob.__table__,
             CrawlTask.__table__,
             CrawlDispatchScope.__table__,
+            VideoExtractionProjection.__table__,
         ],
     )
-    monkeypatch.setattr(crawl_task_service, "get_session", lambda: _managed_session(engine))
-    return engine
+    return _engine
 
 
-def test_enqueue_video_extraction_writes_crawl_task_when_v2_enabled(monkeypatch):
-    engine = _setup_task_store(monkeypatch)
+@pytest.fixture
+def session_factory(engine):
+    @contextmanager
+    def _factory():
+        session = Session(engine, expire_on_commit=False)
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+    return _factory
 
-    monkeypatch.setattr(download_service.video_service, "get_video_by_url", lambda url: None)
 
+@pytest.fixture
+def svc(session_factory):
+    task_svc = CrawlTaskService(session_factory=session_factory)
+    task_svc._refresh_video_extraction_projection = staticmethod(lambda session, task: None)
+    return DownloadService(
+        get_video_by_url=lambda url: None,
+        crawl_task_service=task_svc,
+    )
+
+
+def test_enqueue_video_extraction_writes_crawl_task_when_v2_enabled(engine, svc):
     params = VideoExtractDto(
         url="https://www.youtube.com/watch?v=demo",
         subscribed=True,
@@ -60,7 +68,7 @@ def test_enqueue_video_extraction_writes_crawl_task_when_v2_enabled(monkeypatch)
         is_extract_all=False,
     )
 
-    queued = download_service.enqueue_video_extraction(params)
+    queued = svc.enqueue_video_extraction(params)
 
     assert queued is True
 
@@ -77,11 +85,7 @@ def test_enqueue_video_extraction_writes_crawl_task_when_v2_enabled(monkeypatch)
     assert tasks[0].payload["run_id"] == "run-1"
 
 
-def test_enqueue_video_extraction_uses_task_dedupe_when_v2_enabled(monkeypatch):
-    engine = _setup_task_store(monkeypatch)
-
-    monkeypatch.setattr(download_service.video_service, "get_video_by_url", lambda url: None)
-
+def test_enqueue_video_extraction_uses_task_dedupe_when_v2_enabled(engine, svc):
     params = VideoExtractDto(
         url="https://www.youtube.com/watch?v=demo",
         subscribed=True,
@@ -94,8 +98,8 @@ def test_enqueue_video_extraction_uses_task_dedupe_when_v2_enabled(monkeypatch):
         is_extract_all=False,
     )
 
-    first = download_service.enqueue_video_extraction(params)
-    second = download_service.enqueue_video_extraction(params)
+    first = svc.enqueue_video_extraction(params)
+    second = svc.enqueue_video_extraction(params)
 
     assert first is True
     assert second is False
@@ -109,11 +113,7 @@ def test_enqueue_video_extraction_uses_task_dedupe_when_v2_enabled(monkeypatch):
     assert tasks[0].dedupe_key == "dedupe:video_extract:https://www.youtube.com/watch?v=demo"
 
 
-def test_enqueue_video_extraction_deduplicates_same_url_across_full_and_incremental(monkeypatch):
-    engine = _setup_task_store(monkeypatch)
-
-    monkeypatch.setattr(download_service.video_service, "get_video_by_url", lambda url: None)
-
+def test_enqueue_video_extraction_deduplicates_same_url_across_full_and_incremental(engine, svc):
     full_params = VideoExtractDto(
         url="https://www.youtube.com/watch?v=demo",
         subscribed=True,
@@ -137,8 +137,8 @@ def test_enqueue_video_extraction_deduplicates_same_url_across_full_and_incremen
         is_extract_all=False,
     )
 
-    first = download_service.enqueue_video_extraction(full_params)
-    second = download_service.enqueue_video_extraction(incr_params)
+    first = svc.enqueue_video_extraction(full_params)
+    second = svc.enqueue_video_extraction(incr_params)
 
     assert first is True
     assert second is False

@@ -1,37 +1,18 @@
-import sys
-from contextlib import contextmanager
 from datetime import datetime, timedelta
-from pathlib import Path
 
-from sqlalchemy import create_engine
+import pytest
 from sqlalchemy.orm import Session
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
 from models.subscription_sync_state import SubscriptionSyncState
 from queues.queue_monitor import QueueBackpressureMonitor
-from services import subscription_sync_state_service
-from services.crawl_tasks import service as crawl_task_service
+from services.crawl_tasks.service import CrawlTaskService
 
 
-@contextmanager
-def _managed_session(engine):
-    session = Session(engine, expire_on_commit=False)
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
-
-def _setup_test_env(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+@pytest.fixture
+def engine(engine):
     Base.metadata.create_all(
         engine,
         tables=[
@@ -40,31 +21,33 @@ def _setup_test_env(monkeypatch):
             SubscriptionSyncState.__table__,
         ],
     )
-    monkeypatch.setattr(crawl_task_service, "get_session", lambda: _managed_session(engine))
-    monkeypatch.setattr(subscription_sync_state_service, "get_session", lambda: _managed_session(engine))
-    from core import database
-    monkeypatch.setattr(database, "get_session", lambda: _managed_session(engine))
     return engine
 
 
-def _seed_job(session, *, site: str = "youtube.com") -> int:
-    job = CrawlJob(
-        job_type="subscription_sync",
-        source_type="scheduled",
-        site=site,
-        subscription_id=1,
-        payload={},
-    )
-    session.add(job)
-    session.flush()
-    return job.id
+@pytest.fixture
+def svc(session_factory):
+    return CrawlTaskService(session_factory=session_factory)
 
 
-def test_queue_monitor_counts_pending_videos_from_task_store(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-
+def _seed_job(engine, *, site: str = "youtube.com") -> int:
     with Session(engine, expire_on_commit=False) as session:
-        job_id = _seed_job(session)
+        job = CrawlJob(
+            job_type="subscription_sync",
+            source_type="scheduled",
+            site=site,
+            subscription_id=1,
+            payload={},
+        )
+        session.add(job)
+        session.flush()
+        job_id = job.id
+        session.commit()
+        return job_id
+
+
+def test_queue_monitor_counts_pending_videos_from_task_store(engine, session_factory, svc):
+    with Session(engine, expire_on_commit=False) as session:
+        job_id = _seed_job(engine)
         session.add_all([
             CrawlTask(
                 job_id=job_id,
@@ -101,11 +84,12 @@ def test_queue_monitor_counts_pending_videos_from_task_store(monkeypatch):
     assert count == 2
 
 
-def test_reconcile_pending_video_counts_uses_task_store(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_reconcile_pending_video_counts_uses_task_store(engine, session_factory, svc, sss_session):
+    from services.subscription_sync_state_service import SyncStateService
+    sss_svc = SyncStateService(session_factory=session_factory)
 
     with Session(engine, expire_on_commit=False) as session:
-        job_id = _seed_job(session)
+        job_id = _seed_job(engine)
         session.add(
             SubscriptionSyncState(
                 id=10,
@@ -138,7 +122,7 @@ def test_reconcile_pending_video_counts_uses_task_store(monkeypatch):
         ])
         session.commit()
 
-    result = subscription_sync_state_service.reconcile_pending_video_counts()
+    result = sss_svc.reconcile_pending_video_counts()
 
     assert result == {"states": 1, "videos": 2}
     with Session(engine, expire_on_commit=False) as session:
@@ -146,11 +130,9 @@ def test_reconcile_pending_video_counts_uses_task_store(monkeypatch):
     assert state.pending_video_count == 2
 
 
-def test_recover_stale_queued_sync_states_uses_task_store(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-
+def test_recover_stale_queued_sync_states_uses_task_store(engine, session_factory, svc, sss_session):
     with Session(engine, expire_on_commit=False) as session:
-        job_id = _seed_job(session)
+        job_id = _seed_job(engine)
         session.add(
             SubscriptionSyncState(
                 id=10,
@@ -175,7 +157,9 @@ def test_recover_stale_queued_sync_states_uses_task_store(monkeypatch):
         )
         session.commit()
 
-    result = subscription_sync_state_service.recover_stale_queued_sync_states()
+    from services.subscription_sync_state_service import SyncStateService
+    sss_svc = SyncStateService(session_factory=session_factory)
+    result = sss_svc.recover_stale_queued_sync_states()
 
     assert result["recovered"] == 0
     with Session(engine, expire_on_commit=False) as session:
@@ -183,84 +167,102 @@ def test_recover_stale_queued_sync_states_uses_task_store(monkeypatch):
     assert state.sync_status == "queued"
 
 
-def test_reconcile_terminal_drained_sync_states_auto_completes_running_extract_phase(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_reconcile_terminal_drained_sync_states_auto_completes_running_extract_phase(engine, session_factory, svc, sss_session):
+    from services.subscription_sync_state_service import SyncStateService
+    sss_svc = SyncStateService(session_factory=session_factory)
     captured_events = []
-    monkeypatch.setattr(subscription_sync_state_service, "append_event", lambda event, session=None: captured_events.append(event))
 
-    with Session(engine, expire_on_commit=False) as session:
-        session.add(
-            SubscriptionSyncState(
-                id=10,
-                subscription_id=1,
-                site="youtube.com",
-                sync_mode="incremental",
-                sync_status="running",
-                cursor_payload={},
-                last_seen_video_url="https://example.com/video/1",
-                next_sync_at=datetime(2026, 4, 1, 12, 0, 0),
-                last_sync_at=datetime(2026, 4, 1, 11, 50, 0),
-                pending_video_count=3,
-                locked_at=None,
-            ),
-        )
-        session.commit()
+    import _pytest.monkeypatch as _mp
 
-    result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
+    from services import subscription_sync_state_service as sss_mod
+    mp = _mp.MonkeyPatch()
+    try:
+        mp.setattr(sss_mod, "append_event", lambda event, session=None: captured_events.append(event))
 
-    assert result == {"running_states": 1, "completed": 1, "failed": 0}
+        with Session(engine, expire_on_commit=False) as session:
+            session.add(
+                SubscriptionSyncState(
+                    id=10,
+                    subscription_id=1,
+                    site="youtube.com",
+                    sync_mode="incremental",
+                    sync_status="running",
+                    cursor_payload={},
+                    last_seen_video_url="https://example.com/video/1",
+                    next_sync_at=datetime(2026, 4, 1, 12, 0, 0),
+                    last_sync_at=datetime(2026, 4, 1, 11, 50, 0),
+                    pending_video_count=3,
+                    locked_at=None,
+                ),
+            )
+            session.commit()
 
-    with Session(engine, expire_on_commit=False) as session:
-        state = session.get(SubscriptionSyncState, 10)
+        result = sss_svc.reconcile_terminal_drained_sync_states()
 
-    assert state.sync_status == "success"
-    assert state.pending_video_count == 0
-    assert state.last_success_at is not None
-    assert [event.event_type for event in captured_events] == ["run_created", "completed"]
+        assert result == {"running_states": 1, "completed": 1, "failed": 0}
+
+        with Session(engine, expire_on_commit=False) as session:
+            state = session.get(SubscriptionSyncState, 10)
+
+        assert state.sync_status == "success"
+        assert state.pending_video_count == 0
+        assert state.last_success_at is not None
+        assert [event.event_type for event in captured_events] == ["run_created", "completed"]
+    finally:
+        mp.undo()
 
 
-def test_reconcile_terminal_drained_sync_states_auto_fails_when_extract_tasks_are_dead(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_reconcile_terminal_drained_sync_states_auto_fails_when_extract_tasks_are_dead(engine, session_factory, svc, sss_session):
+    from services.subscription_sync_state_service import SyncStateService
+    sss_svc = SyncStateService(session_factory=session_factory)
     captured_events = []
-    monkeypatch.setattr(subscription_sync_state_service, "append_event", lambda event, session=None: captured_events.append(event))
 
-    with Session(engine, expire_on_commit=False) as session:
-        job_id = _seed_job(session)
-        session.add(
-            SubscriptionSyncState(
-                id=10,
-                subscription_id=1,
-                site="youtube.com",
-                sync_mode="incremental",
-                sync_status="running",
-                cursor_payload={},
-                next_sync_at=datetime(2026, 4, 1, 12, 0, 0),
-                last_sync_at=datetime(2026, 4, 1, 11, 50, 0),
-                pending_video_count=2,
-                locked_at=None,
-            ),
-        )
-        session.add(
-            CrawlTask(
-                job_id=job_id,
-                task_type="video_extract",
-                site="youtube.com",
-                subscription_id=1,
-                status="dead",
-                last_error="extract_failed",
-                payload={"sync_state_id": 10},
-            ),
-        )
-        session.commit()
+    import _pytest.monkeypatch as _mp
 
-    result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
+    from services import subscription_sync_state_service as sss_mod
+    mp = _mp.MonkeyPatch()
+    try:
+        mp.setattr(sss_mod, "append_event", lambda event, session=None: captured_events.append(event))
 
-    assert result == {"running_states": 1, "completed": 0, "failed": 1}
+        with Session(engine, expire_on_commit=False) as session:
+            job_id = _seed_job(engine)
+            session.add(
+                SubscriptionSyncState(
+                    id=10,
+                    subscription_id=1,
+                    site="youtube.com",
+                    sync_mode="incremental",
+                    sync_status="running",
+                    cursor_payload={},
+                    next_sync_at=datetime(2026, 4, 1, 12, 0, 0),
+                    last_sync_at=datetime(2026, 4, 1, 11, 50, 0),
+                    pending_video_count=2,
+                    locked_at=None,
+                ),
+            )
+            session.add(
+                CrawlTask(
+                    job_id=job_id,
+                    task_type="video_extract",
+                    site="youtube.com",
+                    subscription_id=1,
+                    status="dead",
+                    last_error="extract_failed",
+                    payload={"sync_state_id": 10},
+                ),
+            )
+            session.commit()
 
-    with Session(engine, expire_on_commit=False) as session:
-        state = session.get(SubscriptionSyncState, 10)
+        result = sss_svc.reconcile_terminal_drained_sync_states()
 
-    assert state.sync_status == "failed"
-    assert state.pending_video_count == 0
-    assert state.last_error == "extract_failed"
-    assert [event.event_type for event in captured_events] == ["run_created", "failed"]
+        assert result == {"running_states": 1, "completed": 0, "failed": 1}
+
+        with Session(engine, expire_on_commit=False) as session:
+            state = session.get(SubscriptionSyncState, 10)
+
+        assert state.sync_status == "failed"
+        assert state.pending_video_count == 0
+        assert state.last_error == "extract_failed"
+        assert [event.event_type for event in captured_events] == ["run_created", "failed"]
+    finally:
+        mp.undo()

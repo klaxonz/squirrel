@@ -5,17 +5,22 @@ from fastapi import APIRouter, Depends, Query
 from common import response
 from models.user import User
 from schemas.music import MusicPlayHistoryReport, MusicPlaylistCollect, MusicPlaylistCreate, MusicPlaylistTrackAdd
-from services import music as music_service
+from services.music import MusicService, MusicServiceError
 from utils.jwt_helper import get_current_user
 
 router = APIRouter(prefix="/api/music", tags=["音乐接口"])
+
+
+async def get_music_service():
+    return MusicService()
+
 
 def _handle_music_error(func):
     @wraps(func)
     async def wrapper(*args, **kwargs):
         try:
             return await func(*args, **kwargs)
-        except music_service.MusicServiceError as exc:
+        except MusicServiceError as exc:
             return response.server_error(str(exc))
     return wrapper
 
@@ -26,6 +31,7 @@ async def search_music(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(20, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     normalized_query = query.strip()
     if not normalized_query:
@@ -40,6 +46,7 @@ async def search_music_artists(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(10, ge=1, le=30, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     normalized_query = query.strip()
     if not normalized_query:
@@ -54,6 +61,7 @@ async def search_music_albums(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(12, ge=1, le=30, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     normalized_query = query.strip()
     if not normalized_query:
@@ -65,6 +73,7 @@ async def search_music_albums(
 @router.get("/search/default")
 async def get_music_default_search(
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_default_search_keyword(current_user.id))
 
@@ -72,6 +81,7 @@ async def get_music_default_search(
 @router.get("/search/hot")
 async def list_music_hot_searches(
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.list_hot_searches(current_user.id))
 
@@ -80,6 +90,7 @@ async def list_music_hot_searches(
 async def suggest_music_search(
     query: str = Query(..., min_length=1, max_length=100, description="搜索关键词"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     normalized_query = query.strip()
     if not normalized_query:
@@ -91,6 +102,7 @@ async def suggest_music_search(
 @router.get("/auth/status")
 async def get_music_auth_status(
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_auth_status(current_user.id))
 
@@ -106,6 +118,7 @@ async def get_music_recommendations(
     is_overplay: bool = Query(False, description="是否播放完成"),
     remain_songcnt: int = Query(0, ge=0, description="剩余未播歌曲数"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(
         await music_service.get_personal_fm_tracks(
@@ -127,6 +140,7 @@ async def get_music_recommend_card(
     card_id: int = Query(1, ge=1, le=6, description="推荐卡片 ID"),
     page_size: int = Query(10, ge=1, le=30, description="返回歌曲数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_recommend_card_tracks(current_user.id, card_id, page_size))
 
@@ -135,6 +149,7 @@ async def get_music_recommend_card(
 async def get_music_daily_recommend(
     page_size: int = Query(10, ge=1, le=30, description="返回歌曲数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_daily_recommend_tracks(current_user.id, page_size))
 
@@ -147,6 +162,7 @@ async def fm_garbage(
     mode: str = Query("normal", description="发现模式: normal/small/peak"),
     song_pool_id: str | None = Query(None, description="AI 池: 0-Alpha, 1-Beta, 2-Gamma"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(
         await music_service.get_personal_fm_tracks(
@@ -165,6 +181,7 @@ async def fm_garbage(
 @router.get("/ranks")
 async def list_music_ranks(
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.list_ranks(current_user.id))
 
@@ -176,6 +193,7 @@ async def get_music_rank_tracks(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(20, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_rank_tracks(current_user.id, rank_id, rank_cid, page, page_size))
 
@@ -186,6 +204,7 @@ async def list_music_playlists(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(20, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.list_playlists(current_user.id, category_id, page, page_size))
 
@@ -193,6 +212,7 @@ async def list_music_playlists(
 @router.get("/playlist/tags")
 async def list_music_playlist_tags(
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.list_playlist_tags(current_user.id))
 
@@ -201,6 +221,7 @@ async def list_music_playlist_tags(
 async def get_music_similar_playlists(
     playlist_id: str = Query(..., min_length=1, description="歌单 ID"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_similar_playlists(current_user.id, playlist_id))
 
@@ -211,6 +232,7 @@ async def get_music_playlist_tracks(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(20, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_playlist_tracks(current_user.id, playlist_id, page, page_size))
 
@@ -220,6 +242,7 @@ async def list_music_user_playlists(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(30, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.list_user_playlists(current_user.id, page, page_size))
 
@@ -230,6 +253,7 @@ async def get_music_user_playlist_tracks(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(30, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_user_playlist_tracks(current_user.id, list_id, page, page_size))
 
@@ -238,6 +262,7 @@ async def get_music_user_playlist_tracks(
 async def get_music_artist_detail(
     artist_id: str = Query(..., min_length=1, description="歌手 ID"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_artist_detail(current_user.id, artist_id))
 
@@ -248,6 +273,7 @@ async def get_music_artist_tracks(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(30, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_artist_tracks(current_user.id, artist_id, page, page_size))
 
@@ -258,6 +284,7 @@ async def get_music_artist_albums(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(20, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_artist_albums(current_user.id, artist_id, page, page_size))
 
@@ -266,6 +293,7 @@ async def get_music_artist_albums(
 async def get_music_album_detail(
     album_id: str = Query(..., min_length=1, description="专辑 ID"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_album_detail(current_user.id, album_id))
 
@@ -276,6 +304,7 @@ async def get_music_album_tracks(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(30, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_album_tracks(current_user.id, album_id, page, page_size))
 
@@ -286,6 +315,7 @@ async def list_music_new_songs(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(30, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.list_new_songs(current_user.id, type, page, page_size))
 
@@ -294,6 +324,7 @@ async def list_music_new_songs(
 async def create_music_user_playlist(
     data: MusicPlaylistCreate,
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.create_user_playlist(current_user.id, data.name, data.is_private))
 
@@ -302,6 +333,7 @@ async def create_music_user_playlist(
 async def collect_music_playlist(
     data: MusicPlaylistCollect,
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.collect_playlist(current_user.id, data.playlist_id))
 
@@ -310,6 +342,7 @@ async def collect_music_playlist(
 async def delete_music_user_playlist(
     list_id: str = Query(..., min_length=1, description="用户歌单 listid"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.delete_user_playlist(current_user.id, list_id))
 
@@ -318,6 +351,7 @@ async def delete_music_user_playlist(
 async def add_music_user_playlist_track(
     data: MusicPlaylistTrackAdd,
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.add_track_to_user_playlist(current_user.id, data.list_id, data.track))
 
@@ -327,6 +361,7 @@ async def remove_music_user_playlist_tracks(
     list_id: str = Query(..., min_length=1, description="用户歌单 listid"),
     file_ids: str = Query(..., min_length=1, description="歌曲 fileid，多个用逗号分隔"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.remove_tracks_from_user_playlist(current_user.id, list_id, file_ids))
 
@@ -335,6 +370,7 @@ async def remove_music_user_playlist_tracks(
 async def get_music_user_history(
     bp: str | None = Query(None, description="上一页返回的 bp"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_user_history(current_user.id, bp))
 
@@ -343,6 +379,7 @@ async def get_music_user_history(
 async def get_music_user_listen_rank(
     history_type: int = Query(0, alias="type", ge=0, le=1, description="0 最近一周，1 全部累计"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_user_listen_rank(current_user.id, history_type))
 
@@ -351,6 +388,7 @@ async def get_music_user_listen_rank(
 async def get_music_latest_listen_songs(
     page_size: int = Query(30, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_latest_listen_songs(current_user.id, page_size))
 
@@ -358,6 +396,7 @@ async def get_music_latest_listen_songs(
 @router.post("/auth/qr")
 async def create_music_qr_login(
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.create_qr_login())
 
@@ -365,6 +404,7 @@ async def create_music_qr_login(
 @router.get("/user/profile")
 async def get_music_user_profile(
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_user_profile(current_user.id))
 
@@ -372,6 +412,7 @@ async def get_music_user_profile(
 @router.post("/user/logout")
 async def logout_music_user(
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.logout(current_user.id))
 
@@ -380,6 +421,7 @@ async def logout_music_user(
 async def check_music_qr_login(
     key: str = Query(..., min_length=1, description="二维码 key"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.check_qr_login(current_user.id, key))
 
@@ -387,6 +429,7 @@ async def check_music_qr_login(
 @router.post("/auth/logout")
 async def logout_music(
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     await music_service.clear_auth(current_user.id)
     return response.success({"ok": True})
@@ -396,6 +439,7 @@ async def logout_music(
 async def upload_music_play_history(
     data: MusicPlayHistoryReport,
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(
         await music_service.upload_play_history(current_user.id, data.album_audio_id, data.played_at, data.play_count),
@@ -406,6 +450,7 @@ async def upload_music_play_history(
 async def get_music_favorite_count(
     mixsongids: str = Query(..., min_length=1, description="音乐 mixsongid，多个用逗号分隔"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_favorite_counts(current_user.id, mixsongids))
 
@@ -416,6 +461,7 @@ async def get_music_play_url(
     album_audio_id: str | None = Query(None, description="专辑音频 ID"),
     quality: str = Query("128", description="音质"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_track_play_url(current_user.id, hash, album_audio_id, quality))
 
@@ -424,6 +470,7 @@ async def get_music_play_url(
 async def get_music_track_climax(
     hash: str = Query(..., min_length=1, description="音乐 hash，多个用逗号分隔"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_track_climax(current_user.id, hash))
 
@@ -436,6 +483,7 @@ async def get_music_related_tracks(
     sort: str = Query("all", pattern="^(all|hot|new)$", description="排序"),
     type: str | None = Query(None, description="分类"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(
         await music_service.get_related_tracks(current_user.id, album_audio_id, page, page_size, sort, type),
@@ -446,6 +494,7 @@ async def get_music_related_tracks(
 async def get_music_track_mv(
     album_audio_id: str = Query(..., min_length=1, description="专辑音频 ID"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_track_mv(current_user.id, album_audio_id))
 
@@ -458,6 +507,7 @@ async def get_music_lyric(
     album_audio_id: str | None = Query(None, description="专辑音频 ID"),
     duration: int = Query(0, ge=0, description="歌曲时长"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(
         await music_service.get_track_lyric(current_user.id, title, artist, hash, album_audio_id, duration),
@@ -472,6 +522,7 @@ async def get_music_song_comments(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(20, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_song_comments(current_user.id, mixsong_id, page, page_size))
 
@@ -483,6 +534,7 @@ async def get_music_song_comments_classify(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(20, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(
         await music_service.get_song_comments_classify(current_user.id, mixsong_id, type_id, page, page_size),
@@ -493,6 +545,7 @@ async def get_music_song_comments_classify(
 async def get_music_song_comments_hotword(
     mixsong_id: str = Query(..., alias="mixsongid", min_length=1, description="歌曲 mixsongid"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_song_comments_hotword(current_user.id, mixsong_id))
 
@@ -504,6 +557,7 @@ async def get_music_floor_comments(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(20, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_floor_comments(current_user.id, special_id, mixsong_id, page, page_size))
 
@@ -514,6 +568,7 @@ async def get_music_playlist_comments(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(20, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_playlist_comments(current_user.id, playlist_id, page, page_size))
 
@@ -524,6 +579,7 @@ async def get_music_album_comments(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(20, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_album_comments(current_user.id, album_id, page, page_size))
 
@@ -532,6 +588,7 @@ async def get_music_album_comments(
 async def get_music_comment_counts(
     hash: str = Query(..., min_length=1, description="歌曲 hash"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_comment_counts(current_user.id, hash))
 
@@ -542,6 +599,7 @@ async def get_music_comment_counts(
 async def follow_music_artist(
     artist_id: str = Query(..., min_length=1, description="歌手 ID"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.follow_artist(current_user.id, artist_id))
 
@@ -550,6 +608,7 @@ async def follow_music_artist(
 async def unfollow_music_artist(
     artist_id: str = Query(..., min_length=1, description="歌手 ID"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.unfollow_artist(current_user.id, artist_id))
 
@@ -557,6 +616,7 @@ async def unfollow_music_artist(
 @router.get("/artist/follow/newsongs")
 async def get_music_followed_artist_new_songs(
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_followed_artists_new_songs(current_user.id))
 
@@ -564,6 +624,7 @@ async def get_music_followed_artist_new_songs(
 @router.get("/user/followed-artists")
 async def get_music_user_followed_artists(
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_user_followed_artists(current_user.id))
 
@@ -574,6 +635,7 @@ async def get_music_user_followed_artists(
 async def get_music_video_detail(
     video_id: str = Query(..., min_length=1, description="视频 ID"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_video_detail(current_user.id, video_id))
 
@@ -582,6 +644,7 @@ async def get_music_video_detail(
 async def get_music_video_url(
     video_id: str = Query(..., min_length=1, description="视频 ID"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_video_url(current_user.id, video_id))
 
@@ -590,6 +653,7 @@ async def get_music_video_url(
 async def get_music_video_privilege(
     video_id: str = Query(..., min_length=1, description="视频 ID"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_video_privilege(current_user.id, video_id))
 
@@ -601,6 +665,7 @@ async def list_music_new_albums(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(20, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.list_new_albums(current_user.id, page, page_size))
 
@@ -609,6 +674,7 @@ async def list_music_new_albums(
 async def get_music_ai_recommend(
     page_size: int = Query(20, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_ai_recommend_tracks(current_user.id, page_size))
 
@@ -617,6 +683,7 @@ async def get_music_ai_recommend(
 async def get_music_brush_feed(
     page_size: int = Query(20, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_brush_feed(current_user.id, page_size))
 
@@ -624,6 +691,7 @@ async def get_music_brush_feed(
 @router.get("/recommend/everyday")
 async def get_music_everyday_recommend(
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_everyday_recommend(current_user.id))
 
@@ -631,6 +699,7 @@ async def get_music_everyday_recommend(
 @router.get("/recommend/style")
 async def get_music_style_recommend(
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_style_recommend(current_user.id))
 
@@ -641,6 +710,7 @@ async def get_music_artist_videos(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(20, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_artist_videos(current_user.id, artist_id, page, page_size))
 
@@ -649,6 +719,7 @@ async def get_music_artist_videos(
 async def get_music_artist_honour(
     artist_id: str = Query(..., min_length=1, description="歌手 ID"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_artist_honour(current_user.id, artist_id))
 
@@ -658,6 +729,7 @@ async def list_music_artist_directory(
     page: int = Query(1, ge=1, le=50, description="页码"),
     page_size: int = Query(30, ge=1, le=50, description="每页数量"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.list_artist_directory(current_user.id, page, page_size))
 
@@ -666,6 +738,7 @@ async def list_music_artist_directory(
 async def get_music_rank_detail(
     rank_id: str = Query(..., min_length=1, description="排行榜 ID"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_rank_detail(current_user.id, rank_id))
 
@@ -673,6 +746,7 @@ async def get_music_rank_detail(
 @router.get("/banner")
 async def get_music_banner(
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_banner_list(current_user.id))
 
@@ -681,6 +755,7 @@ async def get_music_banner(
 async def search_music_complex(
     query: str = Query(..., min_length=1, max_length=100, description="搜索关键词"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     normalized_query = query.strip()
     if not normalized_query:
@@ -691,6 +766,7 @@ async def search_music_complex(
 @router.get("/user/vip")
 async def get_music_user_vip(
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_user_vip_detail(current_user.id))
 
@@ -699,6 +775,7 @@ async def get_music_user_vip(
 async def send_music_captcha(
     phone: str = Query(..., min_length=11, max_length=11, description="phone number"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.send_captcha(phone))
 
@@ -708,5 +785,6 @@ async def login_music_cellphone(
     phone: str = Query(..., min_length=11, max_length=11, description="phone number"),
     captcha: str = Query(..., min_length=4, max_length=6, description="captcha code"),
     current_user: User = Depends(get_current_user),
+    music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.login_cellphone(current_user.id, phone, captcha))

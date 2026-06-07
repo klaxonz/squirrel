@@ -1,45 +1,54 @@
-import sys
 from contextlib import contextmanager
 from datetime import datetime
-from pathlib import Path
+from types import SimpleNamespace
 
+import pytest
 from pydantic import ValidationError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
 from models.video import Video
 from models.video_clip_marker import VideoClipMarker
 from schemas.video_clip_marker import ClipMarkerCreate, ClipMarkerUpdate
-from services import video_clip_marker_service
+from services.video_clip_marker_service import VideoClipMarkerService
 
 
-@contextmanager
-def _managed_session(engine):
-    session = Session(engine, expire_on_commit=False)
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
-
-def _setup_test_env(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+@pytest.fixture
+def engine():
+    _engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(
-        engine,
+        _engine,
         tables=[
             Video.__table__,
             VideoClipMarker.__table__,
         ],
     )
-    monkeypatch.setattr(video_clip_marker_service, "get_session", lambda: _managed_session(engine))
-    return engine
+    return _engine
+
+
+@pytest.fixture
+def session_factory(engine):
+    @contextmanager
+    def _factory():
+        session = Session(engine, expire_on_commit=False)
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+    return _factory
+
+
+@pytest.fixture
+def svc(session_factory, tmp_path):
+    return VideoClipMarkerService(
+        session_factory=session_factory,
+        config_settings=SimpleNamespace(clip_marker_previews_dir=tmp_path),
+    )
 
 
 def _seed_video(engine, *, video_id=1, duration=120):
@@ -61,11 +70,10 @@ def _seed_video(engine, *, video_id=1, duration=120):
         session.commit()
 
 
-def test_create_update_list_and_delete_clip_marker(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_create_update_list_and_delete_clip_marker(engine, svc):
     _seed_video(engine)
 
-    created = video_clip_marker_service.create_marker(
+    created = svc.create_marker(
         user_id=7,
         data=ClipMarkerCreate(
             video_id=1,
@@ -84,11 +92,11 @@ def test_create_update_list_and_delete_clip_marker(monkeypatch):
     assert created["duration_seconds"] == 15.75
     assert created["preview_image_url"] is None
 
-    listed = video_clip_marker_service.list_markers(user_id=7, video_id=1)
+    listed = svc.list_markers(user_id=7, video_id=1)
     assert len(listed) == 1
     assert listed[0]["id"] == created["id"]
 
-    updated = video_clip_marker_service.update_marker(
+    updated = svc.update_marker(
         user_id=7,
         marker_id=created["id"],
         data=ClipMarkerUpdate(
@@ -105,16 +113,15 @@ def test_create_update_list_and_delete_clip_marker(monkeypatch):
     assert updated["duration_seconds"] == 10
     assert updated["preview_image_url"] is None
 
-    deleted_count = video_clip_marker_service.delete_marker(user_id=7, marker_id=created["id"])
+    deleted_count = svc.delete_marker(user_id=7, marker_id=created["id"])
     assert deleted_count == 1
-    assert video_clip_marker_service.list_markers(user_id=7, video_id=1) == []
+    assert svc.list_markers(user_id=7, video_id=1) == []
 
 
-def test_create_clip_marker_uses_default_duration_and_clamps_to_video_end(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_create_clip_marker_uses_default_duration_and_clamps_to_video_end(engine, svc):
     _seed_video(engine, duration=40)
 
-    created = video_clip_marker_service.create_marker(
+    created = svc.create_marker(
         user_id=9,
         data=ClipMarkerCreate(
             video_id=1,
@@ -128,8 +135,7 @@ def test_create_clip_marker_uses_default_duration_and_clamps_to_video_end(monkey
     assert created["duration_seconds"] == 5
 
 
-def test_create_clip_marker_rejects_inverted_range(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_create_clip_marker_rejects_inverted_range(engine, svc):
     _seed_video(engine)
 
     try:
@@ -144,12 +150,27 @@ def test_create_clip_marker_rejects_inverted_range(monkeypatch):
         raise AssertionError("expected ValidationError for inverted clip range")
 
 
-def test_save_preview_persists_jpeg_and_returns_cache_busted_url(monkeypatch, tmp_path):
-    engine = _setup_test_env(monkeypatch)
+def test_save_preview_persists_jpeg_and_returns_cache_busted_url(engine, tmp_path):
     _seed_video(engine)
-    monkeypatch.setattr(video_clip_marker_service, "_clip_marker_previews_dir", lambda: tmp_path)
 
-    created = video_clip_marker_service.create_marker(
+    @contextmanager
+    def _sf():
+        session = Session(engine, expire_on_commit=False)
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    svc = VideoClipMarkerService(
+        session_factory=_sf,
+        config_settings=SimpleNamespace(clip_marker_previews_dir=tmp_path),
+    )
+
+    created = svc.create_marker(
         user_id=7,
         data=ClipMarkerCreate(
             video_id=1,
@@ -158,7 +179,7 @@ def test_save_preview_persists_jpeg_and_returns_cache_busted_url(monkeypatch, tm
         ),
     )
 
-    updated = video_clip_marker_service.save_preview(
+    updated = svc.save_preview(
         user_id=7,
         marker_id=created["id"],
         image_data_url="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAXAQEBAQEAAAAAAAAAAAAAAAABAAID/9oADAMBAAIQAxAAAAFqgP/EABQQAQAAAAAAAAAAAAAAAAAAACD/2gAIAQEAAQUCX//EABQRAQAAAAAAAAAAAAAAAAAAACD/2gAIAQMBAT8BX//EABQRAQAAAAAAAAAAAAAAAAAAACD/2gAIAQIBAT8BX//Z",

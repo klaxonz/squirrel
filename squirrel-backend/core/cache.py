@@ -46,6 +46,11 @@ redis_client = create_redis_client(connection_pool=_redis_pool)
 logger.info("Redis client initialized")
 
 
+def set_redis_client(client: redis.Redis) -> None:
+    global redis_client
+    redis_client = client
+
+
 def get_distributed_lock(
     lock_key: str,
     timeout: int = 180,

@@ -1,12 +1,8 @@
-import sys
-from pathlib import Path
 from types import SimpleNamespace
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
 from models.crawl_task import CrawlTask
-from services.crawl_executors.subscription_sync_executor import execute_subscription_sync_task
-from services.crawl_executors.video_extract_executor import execute_video_extract_task
+from services.crawl_executors.subscription_sync_executor import CrawlExecutorService as SubscriptionSyncExecutor
+from services.crawl_executors.video_extract_executor import CrawlExecutorService as VideoExtractExecutor
 from services.subscription_update.models import SubscriptionUpdateResult, UpdateMode, UpdateTrigger
 
 
@@ -35,7 +31,7 @@ def test_execute_video_extract_task_builds_dto_from_task_payload(monkeypatch):
         },
     )
 
-    result = execute_video_extract_task(task)
+    result = VideoExtractExecutor.execute_video_extract_task(task)
 
     assert result.success is True
     assert len(calls) == 1
@@ -62,7 +58,7 @@ def test_execute_video_extract_task_raises_when_extraction_result_is_failed(monk
     )
 
     try:
-        execute_video_extract_task(task)
+        VideoExtractExecutor.execute_video_extract_task(task)
     except ValueError as exc:
         assert str(exc) == "extract_failed"
     else:
@@ -115,7 +111,7 @@ def test_execute_subscription_sync_task_builds_request_from_payload(monkeypatch)
         },
     )
 
-    result = execute_subscription_sync_task(task)
+    result = SubscriptionSyncExecutor.execute_subscription_sync_task(task)
 
     assert result.success is True
     assert claims == [
@@ -166,6 +162,6 @@ def test_execute_subscription_sync_task_uses_subscription_url_fallback(monkeypat
         },
     )
 
-    result = execute_subscription_sync_task(task)
+    result = SubscriptionSyncExecutor.execute_subscription_sync_task(task)
 
     assert result.success is True

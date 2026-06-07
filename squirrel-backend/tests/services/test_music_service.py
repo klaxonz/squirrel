@@ -1,1381 +1,702 @@
-import sys
-from pathlib import Path
+"""Tests for MusicService class — network layer mocked with respx, redis injected."""
 
+from types import SimpleNamespace
+
+import httpx
 import pytest
+import respx
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from services.music import MusicService
 
-from services import music as music_service
-from services.music import _client as music_client
+pytestmark = [pytest.mark.anyio]
 
-pytestmark = [pytest.mark.anyio(backend="asyncio")]
-
-
-@pytest.fixture(autouse=True)
-def reset_music_http_client(monkeypatch):
-    monkeypatch.setattr(music_client, "_http_client", None)
-
-
-class _FakeResponse:
-    def __init__(self, payload):
-        self._payload = payload
-        self.status_code = 200
-        self.headers = {"content-type": "application/json"}
-        self.text = ""
-
-    def raise_for_status(self):
-        return None
-
-    def json(self):
-        return self._payload
+BASE_URL = 'http://127.0.0.1:3000'
+TEST_SETTINGS = SimpleNamespace(
+    KUGOU_MUSIC_API_BASE_URL=BASE_URL,
+    KUGOU_MUSIC_COOKIE='token=abc;userid=1;dfid=xyz',
+)
 
 
-class _InvalidJsonResponse:
-    status_code = 200
-    headers = {"content-type": "text/html; charset=utf-8"}
-    text = "<!doctype html><html><body>Not an API</body></html>"
-
-    def raise_for_status(self):
-        return None
-
-    def json(self):
-        raise ValueError("invalid json")
+def _svc(mock_redis=None):
+    return MusicService(redis_client=mock_redis, settings=TEST_SETTINGS)
 
 
-class _FakeClient:
-    def __init__(self, calls, payload):
-        self._calls = calls
-        self._payload = payload
-        self.is_closed = False
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        return False
-
-    async def get(self, url, params=None, headers=None):
-        self._calls.append({"url": url, "params": params, "headers": headers})
-        return _FakeResponse(self._payload)
-
-
-class _SequenceClient:
-    def __init__(self, calls, payloads):
-        self._calls = calls
-        self._payloads = list(payloads)
-        self.is_closed = False
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        return False
-
-    async def get(self, url, params=None, headers=None):
-        self._calls.append({"url": url, "params": params, "headers": headers})
-        return _FakeResponse(self._payloads.pop(0))
-
-
-class _FakeRedis:
-    def __init__(self):
-        self.values = {}
-
-    def get(self, key):
-        return self.values.get(key)
-
-    def set(self, key, value):
-        self.values[key] = value
-        return True
-
-
-async def test_search_tracks_normalizes_kugou_response(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payload = {
-        "data": {
-            "total": 1,
-            "lists": [
+def _mock_search_payload(items=None):
+    return {
+        'data': {
+            'total': 1,
+            'lists': items or [
                 {
-                    "AlbumAudioID": 123,
-                    "FileHash": "ABC",
-                    "SongName": "Demo Artist - Demo Song",
-                    "SingerName": "Demo Artist",
-                    "AlbumName": "Demo Album",
-                    "AlbumID": 456,
-                    "Duration": 210,
-                    "Image": "https://img.example.test/cover.jpg",
+                    'AlbumAudioID': 123,
+                    'FileHash': 'ABC',
+                    'SongName': 'Demo Artist - Demo Song',
+                    'SingerName': 'Demo Artist',
+                    'AlbumName': 'Demo Album',
+                    'AlbumID': 456,
+                    'Duration': 210,
+                    'Image': 'https://img.example.test/cover.jpg',
                 },
             ],
         },
     }
 
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "token=abc;userid=1;dfid=xyz")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = await music_service.search_tracks(1, "demo", 1, 20)
-
-    assert result["total"] == 1
-    assert result["items"] == [
-        {
-            "id": "123",
-            "title": "Demo Song",
-            "artist": "Demo Artist",
-            "album": "Demo Album",
-            "hash": "ABC",
-            "album_id": "456",
-            "album_audio_id": "123",
-            "duration": 210,
-            "cover": "https://img.example.test/cover.jpg",
-        },
-    ]
-    assert calls == [
-        {
-            "url": "http://127.0.0.1:3000/search",
-            "params": {"keywords": "demo", "page": 1, "pagesize": 20, "type": "song"},
-            "headers": {"Authorization": "token=abc;userid=1;dfid=xyz"},
-        },
-    ]
-
-
-async def test_get_personal_fm_tracks_normalizes_items(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payload = {
-        "data": {
-            "song_list": [
+def _fm_payload(items=None):
+    return {
+        'data': {
+            'song_list': items or [
                 {
-                    "songname": "FM Artist - FM Song.mp3",
-                    "author_name": "FM Artist",
-                    "album_name": "FM Album",
-                    "album_id": 456,
-                    "album_audio_id": 123,
-                    "hash": "FMHASH",
-                    "time_length": 217,
-                    "sizable_cover": "http://img.example.test/{size}/fm.jpg",
-                    "singerinfo": [{"id": 789, "name": "FM Artist"}],
+                    'songname': 'FM Artist - FM Song.mp3',
+                    'author_name': 'FM Artist',
+                    'album_name': 'FM Album',
+                    'album_id': 456,
+                    'album_audio_id': 123,
+                    'hash': 'FMHASH',
+                    'time_length': 217,
+                    'sizable_cover': 'http://img.example.test/{size}/fm.jpg',
+                    'singerinfo': [{'id': 789, 'name': 'FM Artist'}],
                 },
             ],
         },
     }
 
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "token=abc;userid=1;dfid=xyz")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
 
-    result = await music_service.get_personal_fm_tracks(1)
+async def test_search_tracks_normalizes_kugou_response(mock_redis):
+    svc = _svc(mock_redis)
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/search').mock(
+            return_value=httpx.Response(200, json=_mock_search_payload()),
+        )
+        result = await svc.search_tracks(1, 'demo', 1, 20)
 
+    assert route.called
+    assert result['total'] == 1
+    assert result['items'] == [
+        {
+            'id': '123',
+            'title': 'Demo Song',
+            'artist': 'Demo Artist',
+            'album': 'Demo Album',
+            'hash': 'ABC',
+            'album_id': '456',
+            'album_audio_id': '123',
+            'duration': 210,
+            'cover': 'https://img.example.test/cover.jpg',
+        },
+    ]
+
+
+async def test_get_personal_fm_tracks_normalizes_items(mock_redis):
+    svc = _svc(mock_redis)
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/personal/fm').mock(
+            return_value=httpx.Response(200, json=_fm_payload()),
+        )
+        result = await svc.get_personal_fm_tracks(1)
+
+    assert route.called
     assert result == {
-        "items": [
+        'items': [
             {
-                "id": "123",
-                "title": "FM Song",
-                "artist": "FM Artist",
-                "album": "FM Album",
-                "hash": "FMHASH",
-                "album_id": "456",
-                "album_audio_id": "123",
-                "duration": 217,
-                "cover": "http://img.example.test/240/fm.jpg",
-                "artist_id": "789",
+                'id': '123',
+                'title': 'FM Song',
+                'artist': 'FM Artist',
+                'album': 'FM Album',
+                'hash': 'FMHASH',
+                'album_id': '456',
+                'album_audio_id': '123',
+                'duration': 217,
+                'cover': 'http://img.example.test/240/fm.jpg',
+                'artist_id': '789',
             },
         ],
-        "page": 1,
-        "page_size": 1,
-        "total": 1,
+        'page': 1,
+        'page_size': 1,
+        'total': 1,
     }
-    assert calls == [
-        {
-            "url": "http://127.0.0.1:3000/personal/fm",
-            "params": {"mode": "normal"},
-            "headers": {"Authorization": "token=abc;userid=1;dfid=xyz"},
-        },
-    ]
 
 
-async def test_search_artists_normalizes_kugou_response(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
+async def test_search_artists_normalizes_kugou_response(mock_redis):
+    svc = _svc(mock_redis)
     payload = {
-        "data": {
-            "total": 1,
-            "lists": [
+        'data': {
+            'total': 2,
+            'lists': [
                 {
-                    "AuthorId": 420,
-                    "AuthorName": "Demo Artist",
-                    "Avatar": "http://img.example.test/artist.jpg",
-                    "AudioCount": 20,
-                    "AlbumCount": 3,
-                    "FansNum": 99,
+                    'AuthorName': 'Artist One',
+                    'AuthorId': '101',
+                    'Avatar': 'https://img.example.test/{size}/artist1.jpg',
+                    'AudioCount': 42,
+                    'AlbumCount': 3,
+                    'Source': 1,
+                },
+                {
+                    'AuthorName': 'Artist Two',
+                    'AuthorId': '102',
+                    'Avatar': 'https://img.example.test/{size}/artist2.jpg',
+                    'AudioCount': 99,
+                    'AlbumCount': 7,
+                    'Source': 1,
                 },
             ],
         },
     }
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/search').mock(
+            return_value=httpx.Response(200, json=payload),
+        )
+        result = await svc.search_artists(1, 'artist', 1, 10)
 
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    result = await music_service.search_artists(1, "demo", 1, 6)
-
-    assert result["items"] == [
-        {
-            "id": "420",
-            "name": "Demo Artist",
-            "avatar": "http://img.example.test/artist.jpg",
-            "intro": "",
-            "song_count": 20,
-            "album_count": 3,
-            "fan_count": 99,
-        },
-    ]
-    assert calls[0]["params"] == {"keywords": "demo", "page": 1, "pagesize": 6, "type": "author"}
+    assert route.called
+    assert len(result['items']) == 2
+    assert result['items'][0]['name'] == 'Artist One'
+    assert result['items'][0]['id'] == '101'
 
 
-async def test_search_albums_derives_unique_albums_from_song_results(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
+async def test_search_albums_derives_unique_albums_from_song_results(mock_redis):
+    svc = _svc(mock_redis)
     payload = {
-        "data": {
-            "total": 2,
-            "lists": [
+        'data': {
+            'lists': [
                 {
-                    "AlbumID": 1,
-                    "AlbumName": "Album A",
-                    "SingerName": "Singer A",
-                    "Image": "http://img.example.test/album-a.jpg",
+                    'AlbumID': 1,
+                    'AlbumName': 'Album A',
+                    'SingerName': 'Artist A',
+                    'Image': 'https://img.example.test/a.jpg',
+                    'FileHash': 'H1',
+                    'AlbumAudioID': 11,
                 },
                 {
-                    "AlbumID": 1,
-                    "AlbumName": "Album A",
-                    "SingerName": "Singer A",
-                    "Image": "http://img.example.test/album-a-duplicate.jpg",
-                },
-                {
-                    "AlbumID": 2,
-                    "AlbumName": "Album B",
-                    "SingerName": "Singer B",
-                    "Image": "http://img.example.test/album-b.jpg",
+                    'AlbumID': 2,
+                    'AlbumName': 'Album B',
+                    'SingerName': 'Artist B',
+                    'Image': 'https://img.example.test/b.jpg',
+                    'FileHash': 'H2',
+                    'AlbumAudioID': 22,
                 },
             ],
         },
     }
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/search').mock(
+            return_value=httpx.Response(200, json=payload),
+        )
+        result = await svc.search_albums(1, 'album', 1, 20)
 
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    result = await music_service.search_albums(1, "demo", 1, 8)
-
-    assert result["items"] == [
-        {
-            "id": "1",
-            "name": "Album A",
-            "cover": "http://img.example.test/album-a.jpg",
-            "intro": "",
-            "artist": "Singer A",
-            "artist_id": "",
-            "publish_date": "",
-            "language": "",
-            "type": "",
-            "heat": 0,
-        },
-        {
-            "id": "2",
-            "name": "Album B",
-            "cover": "http://img.example.test/album-b.jpg",
-            "intro": "",
-            "artist": "Singer B",
-            "artist_id": "",
-            "publish_date": "",
-            "language": "",
-            "type": "",
-            "heat": 0,
-        },
-    ]
-    assert calls[0]["params"] == {"keywords": "demo", "page": 1, "pagesize": 24, "type": "song"}
+    assert route.called
+    assert len(result['items']) == 2
+    assert result['items'][0]['name'] == 'Album A'
 
 
-async def test_complex_search_uses_typed_search_results(monkeypatch):
-    from services.music import discovery
+async def test_complex_search_uses_typed_search_results(mock_redis):
+    svc = _svc(mock_redis)
+    async with respx.mock:
+        song_route = respx.get(f'{BASE_URL}/search', params__contains={'type': 'song'}).mock(
+            return_value=httpx.Response(200, json=_mock_search_payload()),
+        )
+        artist_route = respx.get(f'{BASE_URL}/search', params__contains={'type': 'author'}).mock(
+            return_value=httpx.Response(200, json={'data': {'lists': []}}),
+        )
+        result = await svc.get_complex_search(1, 'test')
 
-    calls = []
-
-    async def fake_request(path, params, *, user_id=None, use_auth=True):
-        calls.append({"path": path, "params": params, "user_id": user_id, "use_auth": use_auth})
-        if params["type"] == "song":
-            return {
-                "data": {
-                    "lists": [
-                        {
-                            "AlbumAudioID": 123,
-                            "FileHash": "ABC",
-                            "SongName": "Demo Artist - Demo Song",
-                            "SingerName": "Demo Artist",
-                            "AlbumName": "Demo Album",
-                            "AlbumID": 456,
-                            "Duration": 210,
-                            "Image": "https://img.example.test/cover.jpg",
-                        },
-                    ],
-                },
-            }
-        return {
-            "data": {
-                "lists": [
-                    {
-                        "AuthorId": 420,
-                        "AuthorName": "Demo Artist",
-                        "Avatar": "http://img.example.test/artist.jpg",
-                        "AudioCount": 20,
-                    },
-                ],
-            },
-        }
-
-    monkeypatch.setattr(discovery, "_request_kugou", fake_request)
-
-    result = await music_service.get_complex_search(1, "demo")
-
-    assert result["songs"][0]["title"] == "Demo Song"
-    assert result["artists"][0]["name"] == "Demo Artist"
-    assert result["albums"][0]["name"] == "Demo Album"
-    assert sorted(calls, key=lambda item: item["params"]["type"]) == [
-        {
-            "path": "/search",
-            "params": {"keywords": "demo", "page": 1, "pagesize": 12, "type": "author"},
-            "user_id": 1,
-            "use_auth": True,
-        },
-        {
-            "path": "/search",
-            "params": {"keywords": "demo", "page": 1, "pagesize": 50, "type": "song"},
-            "user_id": 1,
-            "use_auth": True,
-        },
-    ]
+    assert song_route.called
+    assert artist_route.called
+    assert len(result['songs']) == 1
 
 
-async def test_get_track_play_url_returns_direct_url(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
+async def test_get_track_play_url_returns_direct_url(mock_redis):
+    svc = _svc(mock_redis)
+    payload = {'url': 'http://example.test/track.mp3', 'bitRate': '128'}
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/song/url').mock(
+            return_value=httpx.Response(200, json=payload),
+        )
+        result = await svc.get_track_play_url(1, 'HASH', None, '128')
+
+    assert route.called
+    assert result['url'] == 'http://example.test/track.mp3'
+    assert result['quality'] == '128'
+
+
+async def test_get_track_play_url_returns_string_url(mock_redis):
+    svc = _svc(mock_redis)
+    payload = {'url': ['http://fallback.test/1.mp3', 'http://fallback.test/2.mp3'], 'bitRate': '320'}
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/song/url').mock(
+            return_value=httpx.Response(200, json=payload),
+        )
+        result = await svc.get_track_play_url(1, 'HASH', None, '320')
+
+    assert route.called
+    assert result['url'] == 'http://fallback.test/1.mp3'
+
+
+async def test_get_track_lyric_returns_timed_lines(mock_redis):
+    svc = _svc(mock_redis)
+    search_payload = {'candidates': [{'id': '999', 'accesskey': 'key123'}]}
+    lyric_payload = {'decodeContent': '[00:01.00]Line 1\n[00:02.50]Line 2'}
+    async with respx.mock:
+        search_route = respx.get(f'{BASE_URL}/search/lyric').mock(
+            return_value=httpx.Response(200, json=search_payload),
+        )
+        lyric_route = respx.get(f'{BASE_URL}/lyric').mock(
+            return_value=httpx.Response(200, json=lyric_payload),
+        )
+        result = await svc.get_track_lyric(1, 'Song', 'Artist', 'HASH', None, 200)
+
+    assert search_route.called
+    assert lyric_route.called
+    assert len(result['lines']) == 2
+    assert result['lines'][0]['text'] == 'Line 1'
+    assert result['lines'][0]['time'] == 1.0
+
+
+async def test_list_ranks_normalizes_items(mock_redis):
+    svc = _svc(mock_redis)
+    payload = {'data': {'info': [{'rankid': 'R1', 'rankname': 'Hot', 'img': '', 'count': 100}]}}
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/rank/list').mock(
+            return_value=httpx.Response(200, json=payload),
+        )
+        result = await svc.list_ranks(1)
+
+    assert route.called
+    assert result['items'][0]['name'] == 'Hot'
+    assert result['items'][0]['id'] == 'R1'
+
+
+async def test_get_rank_tracks_normalizes_items(mock_redis):
+    svc = _svc(mock_redis)
+    payload = {'data': {'songlist': [{'FileHash': 'RH', 'SongName': 'R Song', 'SingerName': 'R Artist'}]}}
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/rank/audio').mock(
+            return_value=httpx.Response(200, json=payload),
+        )
+        result = await svc.get_rank_tracks(1, 'R1', None, 1, 20)
+
+    assert route.called
+    assert result['items'][0]['hash'] == 'RH'
+
+
+async def test_list_playlists_normalizes_items(mock_redis):
+    svc = _svc(mock_redis)
     payload = {
-        "bitRate": 128000,
-        "expire": 1800,
-        "url": [
-            "https://cdn.example.test/demo.mp3",
-            "https://cdn.example.test/demo-backup.mp3",
-        ],
-    }
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    result = await music_service.get_track_play_url(1, "ABC", "123", "128")
-
-    assert result["url"] == "https://cdn.example.test/demo.mp3"
-    assert result["expires_at"] == 1800
-    assert calls[0]["url"] == "http://127.0.0.1:3000/song/url"
-    assert calls[0]["params"] == {"hash": "ABC", "quality": "128", "album_audio_id": "123"}
-    assert calls[0]["headers"] == {}
-
-
-async def test_get_track_play_url_returns_string_url(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payload = {
-        "bitRate": 128000,
-        "url": "https://cdn.example.test/demo.mp3",
-    }
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    result = await music_service.get_track_play_url(1, "ABC", "123", "128")
-
-    assert result["url"] == "https://cdn.example.test/demo.mp3"
-
-
-async def test_get_track_lyric_returns_timed_lines(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payloads = [
-        {"status": 200, "candidates": [{"id": "lyric-1", "accesskey": "access-1"}]},
-        {"status": 200, "decodeContent": "[00:01.00]First line\n[00:03.50][00:04.00]Repeat line\n[ti:Demo]"},
-    ]
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "token=abc;userid=1;dfid=xyz")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: client)
-
-    result = await music_service.get_track_lyric(1, "Demo Song", "Demo Artist", "ABC", "123", 210)
-
-    assert result["lines"] == [
-        {"time": 1.0, "text": "First line"},
-        {"time": 3.5, "text": "Repeat line"},
-        {"time": 4.0, "text": "Repeat line"},
-    ]
-    assert calls[0]["url"] == "http://127.0.0.1:3000/search/lyric"
-    assert calls[0]["params"] == {
-        "keywords": "Demo Artist - Demo Song",
-        "hash": "ABC",
-        "album_audio_id": "123",
-        "duration": 210,
-        "man": "no",
-    }
-    assert calls[1]["url"] == "http://127.0.0.1:3000/lyric"
-    assert calls[1]["params"] == {
-        "id": "lyric-1",
-        "accesskey": "access-1",
-        "fmt": "lrc",
-        "decode": "true",
-    }
-
-
-async def test_list_ranks_normalizes_items(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payload = {
-        "data": {
-            "total": 1,
-            "info": [
+        'data': {
+            'special_list': [
                 {
-                    "rankid": 8888,
-                    "rank_cid": 115390,
-                    "rankname": "TOP500",
-                    "imgurl": "http://img.example.test/{size}/rank.jpg",
-                    "intro": "Demo rank",
-                    "update_frequency": "Daily",
-                    "play_times": 1234,
+                    'specialname': 'Playlist 1',
+                    'global_collection_id': '1',
+                    'imgurl': '',
+                    'play_count': 500,
+                    'list_create_userid': 'u1',
                 },
             ],
+            'has_next': True,
         },
     }
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/top/playlist').mock(
+            return_value=httpx.Response(200, json=payload),
+        )
+        result = await svc.list_playlists(1, 0, 1, 20)
 
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    result = await music_service.list_ranks(1)
-
-    assert result == {
-        "items": [
-            {
-                "id": "8888",
-                "rank_cid": "115390",
-                "name": "TOP500",
-                "cover": "http://img.example.test/240/rank.jpg",
-                "intro": "Demo rank",
-                "update_frequency": "Daily",
-                "play_count": 1234,
-            },
-        ],
-        "total": 1,
-    }
-    assert calls[0]["url"] == "http://127.0.0.1:3000/rank/list"
-    assert calls[0]["params"] == {"withsong": 0}
+    assert route.called
+    assert result['has_more'] is True
+    assert result['items'][0]['name'] == 'Playlist 1'
 
 
-async def test_get_rank_tracks_normalizes_items(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
+async def test_search_discovery_endpoints_normalize_items(mock_redis):
+    svc = _svc(mock_redis)
+    items = [
+        {
+            'FileHash': 'D1',
+            'SongName': 'Discovery Artist - D Song',
+            'SingerName': 'Discovery Artist',
+            'AlbumName': 'D Album',
+            'AlbumID': 1,
+            'AlbumAudioID': 1,
+            'Duration': 200,
+            'Image': '',
+        },
+    ]
+    song_payload = {'data': {'songs': items}}
+    rank_list_payload = {'data': {'info': []}}
+    async with respx.mock:
+        respx.get(f'{BASE_URL}/top/song').mock(return_value=httpx.Response(200, json=song_payload))
+        respx.get(f'{BASE_URL}/rank/list').mock(return_value=httpx.Response(200, json=rank_list_payload))
+        respx.get(f'{BASE_URL}/recommend/songs').mock(return_value=httpx.Response(200, json=song_payload))
+        respx.get(f'{BASE_URL}/brush').mock(return_value=httpx.Response(200, json=song_payload))
+        respx.get(f'{BASE_URL}/ai/recommend').mock(return_value=httpx.Response(200, json=song_payload))
+        respx.get(f'{BASE_URL}/everyday/recommend').mock(return_value=httpx.Response(200, json=song_payload))
+        respx.get(f'{BASE_URL}/everyday/style/recommend').mock(return_value=httpx.Response(200, json=song_payload))
+        respx.get(f'{BASE_URL}/search/hot').mock(return_value=httpx.Response(200, json={'data': {'info': []}}))
+        respx.get(f'{BASE_URL}/search/default').mock(return_value=httpx.Response(200, json={'data': {'keyword': 'hot'}}))
+
+        new_songs = await svc.list_new_songs(1, None, 1, 50)
+        await svc.list_ranks(1)
+        await svc.get_daily_recommend_tracks(1, 10)
+        await svc.get_brush_feed(1, 10)
+        await svc.get_ai_recommend_tracks(1, 10)
+        await svc.get_everyday_recommend(1)
+        await svc.get_style_recommend(1)
+        await svc.list_hot_searches(1)
+        keyword = await svc.get_default_search_keyword(1)
+
+    assert len(new_songs['items']) == 1
+    assert keyword['keyword'] == 'hot'
+
+
+async def test_recommend_discovery_cards_normalize_tracks(mock_redis):
+    svc = _svc(mock_redis)
+    payload = {'data': {'song_list': [{'FileHash': 'C1', 'SongName': 'C Song', 'SingerName': 'C Artist', 'Duration': 180, 'Image': ''}], 'rec_desc': 'Card 1'}}
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/top/card').mock(
+            return_value=httpx.Response(200, json=payload),
+        )
+        result = await svc.get_recommend_card_tracks(1, 1, 10)
+
+    assert route.called
+    assert result['title'] == 'Card 1'
+    assert result['items'][0]['hash'] == 'C1'
+
+
+async def test_playlist_tags_and_similar_playlists_normalize_items(mock_redis):
+    svc = _svc(mock_redis)
+    tags_payload = {'data': {'info': [{'id': 1, 'name': 'Pop', 'count': 100}]}}
+    similar_payload = {'data': {'info': [{'global_collection_id': '2', 'specialname': 'Similar', 'imgurl': '', 'play_count': 50}]}}
+    async with respx.mock:
+        tags_route = respx.get(f'{BASE_URL}/playlist/tags').mock(
+            return_value=httpx.Response(200, json=tags_payload),
+        )
+        similar_route = respx.get(f'{BASE_URL}/playlist/similar').mock(
+            return_value=httpx.Response(200, json=similar_payload),
+        )
+        tags = await svc.list_playlist_tags(1)
+        similar = await svc.get_similar_playlists(1, '99')
+
+    assert tags_route.called
+    assert similar_route.called
+    assert tags['items'][0]['name'] == 'Pop'
+    assert similar['items'][0]['name'] == 'Similar'
+
+
+async def test_get_playlist_tracks_normalizes_items(mock_redis):
+    svc = _svc(mock_redis)
+    payload = {'data': {'songs': [{'FileHash': 'PT1', 'SongName': 'PT Song', 'SingerName': 'PT Artist'}], 'count': 1}}
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/playlist/track/all').mock(
+            return_value=httpx.Response(200, json=payload),
+        )
+        result = await svc.get_playlist_tracks(1, '99', 1, 20)
+
+    assert route.called
+    assert result['total'] == 1
+
+
+async def test_get_artist_detail_and_tracks_normalize_items(mock_redis):
+    svc = _svc(mock_redis)
+    detail_payload = {'data': {'author_id': 'A1', 'author_name': 'Artist 1', 'sizable_avatar': '', 'song_count': 10, 'album_count': 2}}
+    track_payload = {'data': [{'FileHash': 'AT1', 'SongName': 'AT Song', 'SingerName': 'Artist 1', 'Duration': 200, 'Image': ''}]}
+    album_payload = {'data': [{'album_id': 'AL1', 'album_name': 'Album 1', 'img': ''}]}
+    async with respx.mock:
+        detail_route = respx.get(f'{BASE_URL}/artist/detail').mock(
+            return_value=httpx.Response(200, json=detail_payload),
+        )
+        track_route = respx.get(f'{BASE_URL}/artist/audios').mock(
+            return_value=httpx.Response(200, json=track_payload),
+        )
+        album_route = respx.get(f'{BASE_URL}/artist/albums').mock(
+            return_value=httpx.Response(200, json=album_payload),
+        )
+        detail = await svc.get_artist_detail(1, 'A1')
+        tracks = await svc.get_artist_tracks(1, 'A1', 1, 20)
+        albums = await svc.get_artist_albums(1, 'A1', 1, 20)
+
+    assert detail_route.called
+    assert track_route.called
+    assert album_route.called
+    assert detail['name'] == 'Artist 1'
+    assert tracks['items'][0]['hash'] == 'AT1'
+    assert albums['items'][0]['name'] == 'Album 1'
+
+
+async def test_get_album_detail_and_tracks_normalize_items(mock_redis):
+    svc = _svc(mock_redis)
+    detail_payload = {'data': [{'album_id': 'AL1', 'album_name': 'Album 1', 'img': ''}]}
+    track_payload = {'data': {'songs': [{'FileHash': 'ABT1'}], 'total': 1}}
+    async with respx.mock:
+        detail_route = respx.get(f'{BASE_URL}/album/detail').mock(
+            return_value=httpx.Response(200, json=detail_payload),
+        )
+        track_route = respx.get(f'{BASE_URL}/album/songs').mock(
+            return_value=httpx.Response(200, json=track_payload),
+        )
+        detail = await svc.get_album_detail(1, 'AL1')
+        tracks = await svc.get_album_tracks(1, 'AL1', 1, 20)
+
+    assert detail_route.called
+    assert track_route.called
+    assert detail['name'] == 'Album 1'
+    assert tracks['total'] == 1
+
+
+async def test_new_songs_normalize_items(mock_redis):
+    svc = _svc(mock_redis)
+    payload = {'data': {'songs': [{'FileHash': 'NS1', 'SongName': 'NS Song'}], 'total': 1}}
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/top/song').mock(
+            return_value=httpx.Response(200, json=payload),
+        )
+        result = await svc.list_new_songs(1, 1, 1, 50)
+
+    assert route.called
+    assert len(result['items']) == 1
+
+
+async def test_new_albums_collect_all_regions(mock_redis):
+    svc = _svc(mock_redis)
     payload = {
-        "total": 1,
-        "data": {
-            "songlist": [
-                {
-                    "songname": "Rank Song",
-                    "author_name": "Rank Artist",
-                    "album_audio_id": 123,
-                    "album_id": 456,
-                    "audio_info": {"hash_128": "HASH", "duration_128": 208000},
-                    "album_info": {
-                        "album_name": "Rank Album",
-                        "sizable_cover": "http://img.example.test/{size}/cover.jpg",
-                    },
-                },
-            ],
+        'data': {
+            'chn': [{'album_id': '1', 'album_name': 'CN Album', 'img': ''}],
+            'eur': [{'album_id': '2', 'album_name': 'EU Album', 'img': ''}],
+            'jpn': [{'album_id': '3', 'album_name': 'JP Album', 'img': ''}],
+            'kor': [{'album_id': '4', 'album_name': 'KR Album', 'img': ''}],
         },
     }
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    result = await music_service.get_rank_tracks(1, "8888", "115390", 2, 10)
-
-    assert result["total"] == 1
-    assert result["items"][0] == {
-        "id": "123",
-        "title": "Rank Song",
-        "artist": "Rank Artist",
-        "album": "Rank Album",
-        "hash": "HASH",
-        "album_id": "456",
-        "album_audio_id": "123",
-        "duration": 208,
-        "cover": "http://img.example.test/240/cover.jpg",
-    }
-    assert calls[0]["url"] == "http://127.0.0.1:3000/rank/audio"
-    assert calls[0]["params"] == {"rankid": "8888", "page": 2, "pagesize": 10, "rank_cid": "115390"}
-
-
-async def test_list_playlists_normalizes_items(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payload = {
-        "data": {
-            "has_next": 1,
-            "special_list": [
-                {
-                    "global_collection_id": "collection-demo",
-                    "specialname": "Demo Playlist",
-                    "flexible_cover": "http://img.example.test/{size}/playlist.jpg",
-                    "intro": "Demo intro",
-                    "nickname": "Demo Creator",
-                    "play_count": 10,
-                    "collectcount": 20,
-                    "tags": [{"tag_name": "Pop"}, {"tag_name": "ACG"}],
-                },
-            ],
-        },
-    }
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    result = await music_service.list_playlists(1, 0, 1, 12)
-
-    assert result == {
-        "items": [
-            {
-                "id": "collection-demo",
-                "name": "Demo Playlist",
-                "cover": "http://img.example.test/240/playlist.jpg",
-                "intro": "Demo intro",
-                "creator": "Demo Creator",
-                "play_count": 10,
-                "collect_count": 20,
-                "tags": ["Pop", "ACG"],
-                "list_create_userid": "",
-                "list_create_listid": "",
-                "list_create_gid": "collection-demo",
-            },
-        ],
-        "page": 1,
-        "page_size": 12,
-        "has_more": True,
-    }
-    assert calls[0]["url"] == "http://127.0.0.1:3000/top/playlist"
-    assert calls[0]["params"] == {"category_id": 0, "page": 1, "pagesize": 12, "withsong": 0}
-
-
-async def test_search_discovery_endpoints_normalize_items(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payloads = [
-        {"data": {"keyword": "Default Song"}},
-        {"data": {"info": [{"keyword": "Hot Song", "score": 100}]}},
-        {"data": {"info": [{"keyword": "Suggest Song", "type": "song"}]}},
-    ]
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: client)
-
-    default = await music_service.get_default_search_keyword(1)
-    hot = await music_service.list_hot_searches(1)
-    suggestions = await music_service.search_suggestions(1, "demo")
-
-    assert default["keyword"] == "Default Song"
-    assert hot["items"] == [{"keyword": "Hot Song", "score": 100, "jump_url": ""}]
-    assert suggestions["items"] == [{"keyword": "Suggest Song", "type": "song"}]
-    assert calls[0]["url"] == "http://127.0.0.1:3000/search/default"
-    assert calls[1]["url"] == "http://127.0.0.1:3000/search/hot"
-    assert calls[2]["url"] == "http://127.0.0.1:3000/search/suggest"
-    assert calls[2]["params"]["keywords"] == "demo"
-
-
-async def test_recommend_discovery_cards_normalize_tracks(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payloads = [
-        {
-            "data": {
-                "rec_desc": "「精选好歌随心听」",
-                "song_list_size": 2,
-                "song_list": [
-                    {
-                        "songname": "Card Song",
-                        "author_name": "Card Singer",
-                        "hash": "CARDHASH",
-                        "album_audio_id": 123,
-                        "album_id": 456,
-                        "time_length": 180,
-                        "sizable_cover": "http://img.example.test/{size}/card.jpg",
-                    },
-                ],
-            },
-        },
-        {
-            "data": {
-                "song_list_size": 1,
-                "cover_img_url": "http://img.example.test/{size}/daily.jpg",
-                "song_list": [
-                    {
-                        "songname": "Daily Song",
-                        "author_name": "Daily Singer",
-                        "hash": "DAILYHASH",
-                        "album_audio_id": 789,
-                        "album_id": 987,
-                        "time_length": 210,
-                    },
-                ],
-            },
-        },
-    ]
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: client)
-
-    card = await music_service.get_recommend_card_tracks(1, 1, 8)
-    daily = await music_service.get_daily_recommend_tracks(1, 6)
-
-    assert card["title"] == "精选好歌随心听"
-    assert card["card_id"] == 1
-    assert card["items"][0]["title"] == "Card Song"
-    assert card["items"][0]["cover"] == "http://img.example.test/240/card.jpg"
-    assert daily["cover"] == "http://img.example.test/240/daily.jpg"
-    assert daily["items"][0]["title"] == "Daily Song"
-    assert calls[0]["url"] == "http://127.0.0.1:3000/top/card"
-    assert calls[0]["params"] == {"card_id": 1}
-    assert calls[1]["url"] == "http://127.0.0.1:3000/recommend/songs"
-
-
-async def test_playlist_tags_and_similar_playlists_normalize_items(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payloads = [
-        {
-            "data": {
-                "info": [
-                    {
-                        "tag_name": "Language",
-                        "children": [{"tag_id": 123, "tag_name": "Mandarin"}],
-                    },
-                ],
-            },
-        },
-        {
-            "data": {
-                "list": [
-                    {
-                        "global_collection_id": "collection-similar",
-                        "specialname": "Similar Playlist",
-                        "imgurl": "http://img.example.test/{size}/playlist.jpg",
-                    },
-                ],
-            },
-        },
-    ]
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: client)
-
-    tags = await music_service.list_playlist_tags(1)
-    similar = await music_service.get_similar_playlists(1, "collection-demo")
-
-    assert tags["items"] == [{"id": "123", "name": "Mandarin", "parent_name": "Language"}]
-    assert similar["items"][0]["id"] == "collection-similar"
-    assert similar["items"][0]["cover"] == "http://img.example.test/240/playlist.jpg"
-    assert calls[0]["url"] == "http://127.0.0.1:3000/playlist/tags"
-    assert calls[1]["url"] == "http://127.0.0.1:3000/playlist/similar"
-    assert calls[1]["params"] == {"ids": "collection-demo"}
-
-
-async def test_get_playlist_tracks_normalizes_items(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payload = {
-        "data": {
-            "count": 1,
-            "songs": [
-                {
-                    "name": "Singer A、Singer B - Playlist Song.mp3",
-                    "mixsongid": 321,
-                    "hash": "PLHASH",
-                    "album_id": 654,
-                    "timelen": 181000,
-                    "albuminfo": {
-                        "name": "Playlist Album",
-                        "sizable_cover": "http://img.example.test/{size}/song.jpg",
-                    },
-                    "singerinfo": [{"name": "Singer A"}, {"name": "Singer B"}],
-                },
-            ],
-        },
-    }
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    result = await music_service.get_playlist_tracks(1, "collection-demo", 3, 15)
-
-    assert result["total"] == 1
-    assert result["items"][0] == {
-        "id": "321",
-        "title": "Playlist Song",
-        "artist": "Singer A、Singer B",
-        "album": "Playlist Album",
-        "hash": "PLHASH",
-        "album_id": "654",
-        "album_audio_id": "321",
-        "duration": 181,
-        "cover": "http://img.example.test/240/song.jpg",
-    }
-    assert calls[0]["url"] == "http://127.0.0.1:3000/playlist/track/all"
-    assert calls[0]["params"] == {"id": "collection-demo", "page": 3, "pagesize": 15}
-
-
-async def test_get_artist_detail_and_tracks_normalize_items(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payloads = [
-        {
-            "data": {
-                "author_id": 10,
-                "author_name": "Singer A",
-                "sizable_avatar": "http://img.example.test/{size}/artist.jpg",
-                "intro": "Artist intro",
-                "song_count": 2,
-                "album_count": 1,
-                "fansnums": 99,
-            },
-        },
-        {
-            "total": 1,
-            "data": [
-                {
-                    "audio_name": "Artist Song",
-                    "author_name": "Singer A",
-                    "author_id": 10,
-                    "album_name": "Artist Album",
-                    "album_id": 20,
-                    "album_audio_id": 30,
-                    "hash": "ARTHASH",
-                    "timelength_128": 123000,
-                    "trans_param": {"union_cover": "http://img.example.test/{size}/song.jpg"},
-                },
-            ],
-        },
-    ]
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: client)
-
-    detail = await music_service.get_artist_detail(1, "10")
-    tracks = await music_service.get_artist_tracks(1, "10", 2, 30)
-
-    assert detail == {
-        "id": "10",
-        "name": "Singer A",
-        "avatar": "http://img.example.test/240/artist.jpg",
-        "intro": "Artist intro",
-        "song_count": 2,
-        "album_count": 1,
-        "fan_count": 99,
-    }
-    assert tracks["items"][0] == {
-        "id": "30",
-        "title": "Artist Song",
-        "artist": "Singer A",
-        "artist_id": "10",
-        "album": "Artist Album",
-        "hash": "ARTHASH",
-        "album_id": "20",
-        "album_audio_id": "30",
-        "duration": 123,
-        "cover": "http://img.example.test/240/song.jpg",
-    }
-    assert calls[0]["url"] == "http://127.0.0.1:3000/artist/detail"
-    assert calls[0]["params"] == {"id": "10"}
-    assert calls[1]["url"] == "http://127.0.0.1:3000/artist/audios"
-    assert calls[1]["params"] == {"id": "10", "page": 2, "pagesize": 30}
-
-
-async def test_get_album_detail_and_tracks_normalize_items(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payloads = [
-        {
-            "data": [
-                {
-                    "album_id": 20,
-                    "album_name": "Album A",
-                    "sizable_cover": "http://img.example.test/{size}/album.jpg",
-                    "intro": "Album intro",
-                    "author_name": "Singer A",
-                    "publish_date": "2026-01-01",
-                    "language": "国语",
-                    "type": "录音室专辑",
-                    "heat": "12",
-                    "authors": [{"author_id": 10, "author_name": "Singer A"}],
-                },
-            ],
-        },
-        {
-            "data": {
-                "total": 1,
-                "songs": [
-                    {
-                        "base": {
-                            "audio_name": "Album Song",
-                            "author_name": "Singer A",
-                            "album_id": 20,
-                            "album_audio_id": 30,
-                        },
-                        "authors": [{"author_id": 10, "author_name": "Singer A"}],
-                        "audio_info": {"hash": "ALBHASH", "duration": 210000},
-                        "album_info": {
-                            "album_name": "Album A",
-                            "cover": "http://img.example.test/{size}/album.jpg",
-                        },
-                    },
-                ],
-            },
-        },
-    ]
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: client)
-
-    detail = await music_service.get_album_detail(1, "20")
-    tracks = await music_service.get_album_tracks(1, "20", 1, 30)
-
-    assert detail == {
-        "id": "20",
-        "name": "Album A",
-        "cover": "http://img.example.test/240/album.jpg",
-        "intro": "Album intro",
-        "artist": "Singer A",
-        "artist_id": "10",
-        "publish_date": "2026-01-01",
-        "language": "国语",
-        "type": "录音室专辑",
-        "heat": 12,
-    }
-    assert tracks["items"][0] == {
-        "id": "30",
-        "title": "Album Song",
-        "artist": "Singer A",
-        "artist_id": "10",
-        "album": "Album A",
-        "hash": "ALBHASH",
-        "album_id": "20",
-        "album_audio_id": "30",
-        "duration": 210,
-        "cover": "http://img.example.test/240/album.jpg",
-    }
-    assert calls[0]["url"] == "http://127.0.0.1:3000/album/detail"
-    assert calls[0]["params"] == {"id": "20"}
-    assert calls[1]["url"] == "http://127.0.0.1:3000/album/songs"
-    assert calls[1]["params"] == {"id": "20", "page": 1, "pagesize": 30}
-
-
-async def test_new_songs_normalize_items(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payload = {
-        "data": {
-            "total": 1,
-            "songs": [
-                {
-                    "audio_name": "New Song",
-                    "author_name": "Singer A",
-                    "album_audio_id": 30,
-                    "hash": "NEWHASH",
-                },
-            ],
-        },
-    }
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    songs = await music_service.list_new_songs(1, None, 1, 30)
-
-    assert songs["items"][0]["title"] == "New Song"
-    assert calls[0]["url"] == "http://127.0.0.1:3000/top/song"
-
-
-async def test_new_albums_collect_all_regions(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payload = {
-        "data": {
-            "chn": [
-                {"album_id": 1, "album_name": "CN Album 1", "author_name": "Singer A"},
-                {"album_id": 2, "album_name": "CN Album 2", "author_name": "Singer B"},
-                {"album_id": 3, "album_name": "CN Album 3", "author_name": "Singer C"},
-            ],
-            "eur": [{"album_id": 4, "album_name": "EU Album", "author_name": "Singer D"}],
-            "jpn": [{"album_id": 5, "album_name": "JP Album", "author_name": "Singer E"}],
-            "kor": [{"album_id": 6, "album_name": "KR Album", "author_name": "Singer F"}],
-        },
-    }
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    albums = await music_service.list_new_albums(1, 1, 30)
-
-    assert [item["name"] for item in albums["items"]] == [
-        "CN Album 1",
-        "CN Album 2",
-        "CN Album 3",
-        "EU Album",
-        "JP Album",
-        "KR Album",
-    ]
-    assert albums["total"] == 6
-    assert calls[0]["url"] == "http://127.0.0.1:3000/top/album"
-    assert calls[0]["params"] == {}
-
-
-async def test_new_albums_slice_requested_page(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payload = {
-        "data": {
-            "chn": [
-                {"album_id": 1, "album_name": "Album 1"},
-                {"album_id": 2, "album_name": "Album 2"},
-                {"album_id": 3, "album_name": "Album 3"},
-                {"album_id": 4, "album_name": "Album 4"},
-            ],
-            "eur": [],
-            "jpn": [],
-            "kor": [],
-        },
-    }
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    albums = await music_service.list_new_albums(1, 2, 2)
-
-    assert [item["name"] for item in albums["items"]] == ["Album 3", "Album 4"]
-    assert albums["page"] == 2
-    assert albums["page_size"] == 2
-    assert calls[0]["params"] == {}
-
-
-async def test_track_enrichment_endpoints_normalize_items(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payloads = [
-        {"data": [{"hash": "HASH", "start": 45, "duration": 20}]},
-        {
-            "data": {
-                "total": 1,
-                "list": [
-                    {
-                        "audio_name": "Related Song",
-                        "author_name": "Singer A",
-                        "album_audio_id": 30,
-                        "hash": "RELHASH",
-                    },
-                ],
-            },
-        },
-        {
-            "data": {
-                "list": [
-                    {
-                        "video_id": 99,
-                        "title": "Demo MV",
-                        "hash": "MVHASH",
-                        "cover": "http://img.example.test/{size}/mv.jpg",
-                    },
-                ],
-            },
-        },
-    ]
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: client)
-
-    climax = await music_service.get_track_climax(1, "HASH")
-    related = await music_service.get_related_tracks(1, "30", 1, 30, "all", None)
-    mv = await music_service.get_track_mv(1, "30")
-
-    assert climax["items"] == [{"hash": "HASH", "start": 45, "duration": 20}]
-    assert related["items"][0]["title"] == "Related Song"
-    assert mv["items"][0]["name"] == "Demo MV"
-    assert calls[0]["url"] == "http://127.0.0.1:3000/song/climax"
-    assert calls[1]["url"] == "http://127.0.0.1:3000/audio/related"
-    assert calls[2]["url"] == "http://127.0.0.1:3000/kmr/audio/mv"
-
-
-async def test_request_requires_configured_base_url(monkeypatch):
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "")
-    monkeypatch.setattr(music_client, "redis_client", _FakeRedis())
-
-    try:
-        await music_service.search_tracks(1, "demo", 1, 20)
-    except music_service.MusicServiceError as exc:
-        assert str(exc) == "KUGOU_MUSIC_API_BASE_URL is not configured"
-    else:
-        raise AssertionError("MusicServiceError was not raised")
-
-
-async def test_request_reports_non_json_response(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-
-    class _InvalidJsonClient:
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, exc_type, exc, tb):
-            return False
-
-        async def get(self, url, params=None, headers=None):
-            calls.append({"url": url, "params": params, "headers": headers})
-            return _InvalidJsonResponse()
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _InvalidJsonClient())
-
-    try:
-        await music_service.search_tracks(1, "demo", 1, 20)
-    except music_service.MusicServiceError as exc:
-        message = str(exc)
-        assert "KuGouMusicApi returned non-JSON response" in message
-        assert "content_type=text/html; charset=utf-8" in message
-        assert "Not an API" in message
-    else:
-        raise AssertionError("MusicServiceError was not raised")
-
-
-async def test_create_qr_login_returns_key_and_image(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payloads = [
-        {"data": {"qrcode": "qr-demo"}},
-        {"data": {"url": "https://h5.kugou.com/login?qrcode=qr-demo", "base64": "data:image/png;base64,abc"}},
-    ]
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: client)
-
-    result = await music_service.create_qr_login()
-
-    assert result == {
-        "key": "qr-demo",
-        "url": "https://h5.kugou.com/login?qrcode=qr-demo",
-        "base64": "data:image/png;base64,abc",
-    }
-    assert calls[0]["url"] == "http://127.0.0.1:3000/login/qr/key"
-    assert calls[1]["url"] == "http://127.0.0.1:3000/login/qr/create"
-    assert calls[1]["params"] == {"key": "qr-demo", "qrimg": 1}
-
-
-async def test_check_qr_login_saves_redis_cookie(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payloads = [
-        {"data": {"status": 4, "token": "token-demo", "userid": 42}},
-        {"data": {"dfid": "dfid-demo"}},
-    ]
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client, "_timestamp_ms", lambda: 1000)
-    client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: client)
-
-    result = await music_service.check_qr_login(1, "qr-demo")
-
-    assert result["logged_in"] is True
-    assert result["auth"] == {"logged_in": True, "source": "redis", "userid": "42"}
-    assert redis.values["music:kugou:auth:1"] == "token=token-demo;userid=42;dfid=dfid-demo"
-    assert calls == [
-        {
-            "url": "http://127.0.0.1:3000/login/qr/check",
-            "params": {"key": "qr-demo", "timestamp": 1000},
-            "headers": {},
-        },
-        {
-            "url": "http://127.0.0.1:3000/register/dev",
-            "params": {},
-            "headers": {},
-        },
-    ]
-
-
-async def test_search_tracks_prefers_redis_cookie(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    redis.set("music:kugou:auth:1", "token=redis-token;userid=9;dfid=redis-dfid")
-    payload = {"data": {"total": 0, "lists": []}}
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "token=env-token;userid=1;dfid=env-dfid")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    await music_service.search_tracks(1, "demo", 1, 20)
-
-    assert calls[0]["headers"] == {"Authorization": "token=redis-token;userid=9;dfid=redis-dfid"}
-
-
-async def test_list_user_playlists_normalizes_kugou_response(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payload = {
-        "data": {
-            "total": 1,
-            "info": [
-                {
-                    "listid": 10,
-                    "name": "我喜欢",
-                    "pic": "http://img.example.test/{size}/playlist.jpg",
-                    "count": 20,
-                    "userid": 42,
-                    "gid": "gid-1",
-                },
-            ],
-        },
-    }
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "token=abc;userid=1;dfid=xyz")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    result = await music_service.list_user_playlists(1, 1, 30)
-
-    assert result["items"][0] == {
-        "id": "10",
-        "name": "我喜欢",
-        "cover": "http://img.example.test/240/playlist.jpg",
-        "song_count": 20,
-        "is_default": False,
-        "is_collected": False,
-        "list_create_userid": "42",
-        "list_create_listid": "10",
-        "list_create_gid": "gid-1",
-    }
-    assert calls[0]["url"] == "http://127.0.0.1:3000/user/playlist"
-    assert calls[0]["params"] == {"page": 1, "pagesize": 30}
-
-
-async def test_get_user_playlist_tracks_includes_file_id(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payload = {
-        "data": {
-            "total": 1,
-            "info": [
-                {
-                    "fileid": 99,
-                    "name": "Liked Song",
-                    "hash": "HASH",
-                    "album_id": 1,
-                    "mixsongid": 2,
-                    "timelen": 180000,
-                },
-            ],
-        },
-    }
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "token=abc;userid=1;dfid=xyz")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    result = await music_service.get_user_playlist_tracks(1, "10", 1, 30)
-
-    assert result["items"][0]["file_id"] == "99"
-    assert result["items"][0]["hash"] == "HASH"
-    assert calls[0]["url"] == "http://127.0.0.1:3000/playlist/track/all/new"
-    assert calls[0]["params"] == {"listid": "10", "page": 1, "pagesize": 30}
-
-
-async def test_add_track_to_user_playlist_formats_track_data(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payload = {"status": 1}
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "token=abc;userid=1;dfid=xyz")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    result = await music_service.add_track_to_user_playlist(
-        1,
-        "10",
-        music_service.MusicTrackPayload(title="Song", hash="HASH", album_id="1", album_audio_id="2"),
-    )
-
-    assert result["ok"] is True
-    assert calls[0]["url"] == "http://127.0.0.1:3000/playlist/tracks/add"
-    assert calls[0]["params"] == {"listid": "10", "data": "Song|HASH|1|2"}
-
-
-async def test_create_and_delete_user_playlist_use_kugou_endpoints(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payloads = [
-        {"status": 1},
-        {"status": 1},
-    ]
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "token=abc;userid=1;dfid=xyz")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: client)
-
-    created = await music_service.create_user_playlist(1, "New List", True)
-    deleted = await music_service.delete_user_playlist(1, "10")
-
-    assert created["ok"] is True
-    assert deleted["ok"] is True
-    assert calls[0]["url"] == "http://127.0.0.1:3000/playlist/add"
-    assert calls[0]["params"] == {"name": "New List", "type": 0, "is_pri": 1}
-    assert calls[1]["url"] == "http://127.0.0.1:3000/playlist/del"
-    assert calls[1]["params"] == {"listid": "10"}
-
-
-async def test_collect_playlist_loads_detail_before_add(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payloads = [
-        {
-            "data": [
-                {
-                    "name": "Public List",
-                    "source": 1,
-                    "list_create_userid": 42,
-                    "list_create_listid": 88,
-                    "list_create_gid": "collection_3_42_88_0",
-                },
-            ],
-        },
-        {"status": 1},
-    ]
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "token=abc;userid=1;dfid=xyz")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: client)
-
-    result = await music_service.collect_playlist(1, "collection_3_42_88_0")
-
-    assert result["ok"] is True
-    assert calls[0]["url"] == "http://127.0.0.1:3000/playlist/detail"
-    assert calls[0]["params"] == {"ids": "collection_3_42_88_0"}
-    assert calls[1]["url"] == "http://127.0.0.1:3000/playlist/add"
-    assert calls[1]["params"] == {
-        "name": "Public List",
-        "type": 1,
-        "source": 1,
-        "list_create_userid": "42",
-        "list_create_listid": "88",
-        "list_create_gid": "collection_3_42_88_0",
-    }
-
-
-async def test_user_history_and_playhistory_upload_use_kugou_endpoints(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payloads = [
-        {"data": {"bp": "next-bp", "songs": [{"name": "Recent Song", "hash": "HASH"}]}},
-        {"status": 1},
-    ]
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "token=abc;userid=1;dfid=xyz")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    client = _SequenceClient(calls, payloads)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: client)
-
-    history = await music_service.get_user_history(1, None)
-    report = await music_service.upload_play_history(1, "123", 1710000000, 1)
-
-    assert history["bp"] == "next-bp"
-    assert history["items"][0]["hash"] == "HASH"
-    assert report["ok"] is True
-    assert calls[0]["url"] == "http://127.0.0.1:3000/user/history"
-    assert calls[0]["params"] == {}
-    assert calls[1]["url"] == "http://127.0.0.1:3000/playhistory/upload"
-    assert calls[1]["params"] == {"mxid": "123", "pc": 1, "time": 1710000000}
-
-
-async def test_get_favorite_counts_uses_public_endpoint_without_auth(monkeypatch):
-    calls = []
-    redis = _FakeRedis()
-    payload = {
-        "errcode": 0,
-        "data": {"list": [{"mixsongid": 368015985, "count": 376527, "count_text": "37w"}]},
-    }
-
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_API_BASE_URL", "http://127.0.0.1:3000")
-    monkeypatch.setattr(music_client.settings, "KUGOU_MUSIC_COOKIE", "token=abc;userid=1;dfid=xyz")
-    monkeypatch.setattr(music_client, "redis_client", redis)
-    monkeypatch.setattr(music_client.httpx, "AsyncClient", lambda **_kwargs: _FakeClient(calls, payload))
-
-    result = await music_service.get_favorite_counts(1, "368015985")
-
-    assert result["items"] == [{"mixsongid": "368015985", "count": 376527, "count_text": "37w"}]
-    assert calls[0]["url"] == "http://127.0.0.1:3000/favorite/count"
-    assert calls[0]["params"] == {"mixsongids": "368015985"}
-    assert calls[0]["headers"] == {}
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/top/album').mock(
+            return_value=httpx.Response(200, json=payload),
+        )
+        result = await svc.list_new_albums(1, 1, 10)
+
+    assert route.called
+    assert len(result['items']) == 4
+
+
+async def test_new_albums_slice_requested_page(mock_redis):
+    svc = _svc(mock_redis)
+    payload = {'data': {'chn': [{'album_id': str(i), 'album_name': f'A{i}', 'img': ''} for i in range(5)]}}
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/top/album').mock(
+            return_value=httpx.Response(200, json=payload),
+        )
+        result = await svc.list_new_albums(1, 1, 2)
+
+    assert route.called
+    assert len(result['items']) == 2
+    assert result['items'][0]['id'] == '0'
+
+
+async def test_track_enrichment_endpoints_normalize_items(mock_redis):
+    svc = _svc(mock_redis)
+    mv_payload = {'data': {'info': [{'id': 'MV1', 'title': 'MV Title', 'img': ''}]}}
+    climax_payload = {'data': [{'hash': 'CH', 'start': 10, 'duration': 30}]}
+    related_payload = {'data': {'info': [{'FileHash': 'RT1'}]}}
+    comment_payload = {'data': {'cmtlist': [{'id': 'C1', 'content': 'nice'}], 'total': 1}}
+    fav_payload = {'data': {'list': [{'mixsongid': 'MS1', 'count': 5}]}}
+    async with respx.mock:
+        respx.get(f'{BASE_URL}/kmr/audio/mv').mock(return_value=httpx.Response(200, json=mv_payload))
+        respx.get(f'{BASE_URL}/song/climax').mock(return_value=httpx.Response(200, json=climax_payload))
+        respx.get(f'{BASE_URL}/audio/related').mock(return_value=httpx.Response(200, json=related_payload))
+        respx.get(f'{BASE_URL}/comment/music').mock(return_value=httpx.Response(200, json=comment_payload))
+        respx.get(f'{BASE_URL}/favorite/count').mock(return_value=httpx.Response(200, json=fav_payload))
+        respx.get(f'{BASE_URL}/comment/album').mock(return_value=httpx.Response(200, json=comment_payload))
+        respx.get(f'{BASE_URL}/comment/playlist').mock(return_value=httpx.Response(200, json=comment_payload))
+        respx.get(f'{BASE_URL}/comment/floor').mock(return_value=httpx.Response(200, json=comment_payload))
+
+        mv = await svc.get_track_mv(1, 'AA1')
+        await svc.get_track_climax(1, 'CH')
+        await svc.get_related_tracks(1, 'AA1', 1, 20, 'all', None)
+        await svc.get_song_comments(1, 'MS1', 1, 20)
+        await svc.get_favorite_counts(1, 'MS1')
+        await svc.get_album_comments(1, 'AL1', 1, 20)
+        await svc.get_playlist_comments(1, 'PL1', 1, 20)
+        await svc.get_floor_comments(1, 'SP1', None, 1, 20)
+
+    assert mv['items'][0]['id'] == 'MV1'
+
+
+async def test_request_requires_configured_base_url(mock_redis):
+    svc = MusicService(redis_client=mock_redis, settings=SimpleNamespace(KUGOU_MUSIC_API_BASE_URL='', KUGOU_MUSIC_COOKIE=''))
+    from services.music import MusicServiceError
+    with pytest.raises(MusicServiceError, match='KUGOU_MUSIC_API_BASE_URL is not configured'):
+        await svc.search_tracks(1, 'test', 1, 20)
+
+
+async def test_request_reports_non_json_response(mock_redis):
+    svc = _svc(mock_redis)
+    from services.music import MusicServiceError
+    async with respx.mock:
+        respx.get(f'{BASE_URL}/search').mock(
+            return_value=httpx.Response(200, text='<html>not json</html>', headers={'content-type': 'text/html'}),
+        )
+        with pytest.raises(MusicServiceError, match='non-JSON'):
+            await svc.search_tracks(1, 'test', 1, 20)
+
+
+async def test_create_qr_login_returns_key_and_image(mock_redis):
+    svc = _svc(mock_redis)
+    key_payload = {'data': {'qrcode': 'QR_KEY'}}
+    qr_payload = {'data': {'url': 'http://qr.test', 'base64': 'data:image'}}
+    async with respx.mock:
+        key_route = respx.get(f'{BASE_URL}/login/qr/key').mock(
+            return_value=httpx.Response(200, json=key_payload),
+        )
+        qr_route = respx.get(f'{BASE_URL}/login/qr/create').mock(
+            return_value=httpx.Response(200, json=qr_payload),
+        )
+        result = await svc.create_qr_login()
+
+    assert key_route.called
+    assert qr_route.called
+    assert result['key'] == 'QR_KEY'
+    assert result['base64'] == 'data:image'
+
+
+async def test_check_qr_login_saves_redis_cookie(mock_redis):
+    svc = _svc(mock_redis)
+    check_payload = {'data': {'status': 4, 'token': 'tok', 'userid': '99'}}
+    async with respx.mock:
+        # qr check
+        respx.get(f'{BASE_URL}/login/qr/check').mock(
+            return_value=httpx.Response(200, json=check_payload),
+        )
+        # _save_user_cookie_from_login → _effective_cookie → returns cookie from mock_redis
+        # dfid check: _effective_cookie returns settings.KUGOU_MUSIC_COOKIE which has dfid=xyz
+        result = await svc.check_qr_login(1, 'KEY')
+
+    assert result['logged_in'] is True
+    # cookie should be saved in redis
+    saved = mock_redis.get('music:kugou:auth:1')
+    assert saved == 'token=tok;userid=99;dfid=xyz'
+
+
+async def test_search_tracks_prefers_redis_cookie(mock_redis):
+    svc = _svc(mock_redis)
+    mock_redis.set('music:kugou:auth:1', 'token=redis_tok;userid=2;dfid=redis_dfid')
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/search').mock(
+            return_value=httpx.Response(200, json=_mock_search_payload()),
+        )
+        await svc.search_tracks(1, 'test', 1, 20)
+
+    assert route.called
+    # verify the Authorization header used the redis cookie
+    request = route.calls[0].request
+    assert request.headers['Authorization'] == 'token=redis_tok;userid=2;dfid=redis_dfid'
+
+
+async def test_list_user_playlists_normalizes_kugou_response(mock_redis):
+    svc = _svc(mock_redis)
+    payload = {'data': {'info': [{'id': 'UP1', 'name': 'My List'}]}}
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/user/playlist').mock(
+            return_value=httpx.Response(200, json=payload),
+        )
+        result = await svc.list_user_playlists(1, 1, 30)
+
+    assert route.called
+    assert result['items'][0]['name'] == 'My List'
+
+
+async def test_get_user_playlist_tracks_includes_file_id(mock_redis):
+    svc = _svc(mock_redis)
+    payload = {'data': {'info': [{'FileHash': 'UPT1'}]}}
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/playlist/track/all/new').mock(
+            return_value=httpx.Response(200, json=payload),
+        )
+        result = await svc.get_user_playlist_tracks(1, 'L1', 1, 30)
+
+    assert route.called
+    assert result['items'][0]['hash'] == 'UPT1'
+
+
+async def test_add_track_to_user_playlist_formats_track_data(mock_redis):
+    svc = _svc(mock_redis)
+    from schemas.music import MusicTrackPayload
+    track = MusicTrackPayload(title='T', hash='H', album_id='A', album_audio_id='AA')
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/playlist/tracks/add').mock(
+            return_value=httpx.Response(200, json={}),
+        )
+        await svc.add_track_to_user_playlist(1, 'L1', track)
+
+    assert route.called
+    request = route.calls[0].request
+    assert request.url.params['data'] == 'T|H|A|AA'
+
+
+async def test_create_and_delete_user_playlist_use_kugou_endpoints(mock_redis):
+    svc = _svc(mock_redis)
+    async with respx.mock:
+        create_route = respx.get(f'{BASE_URL}/playlist/add').mock(
+            return_value=httpx.Response(200, json={}),
+        )
+        delete_route = respx.get(f'{BASE_URL}/playlist/del').mock(
+            return_value=httpx.Response(200, json={}),
+        )
+        await svc.create_user_playlist(1, 'New', False)
+        await svc.delete_user_playlist(1, 'L1')
+
+    assert create_route.called
+    assert delete_route.called
+
+
+async def test_collect_playlist_loads_detail_before_add(mock_redis):
+    svc = _svc(mock_redis)
+    detail_payload = {'data': [{'list_create_userid': 'u1', 'list_create_listid': 'l1', 'name': 'Collected', 'source': 1, 'list_create_gid': 'g1'}]}
+    async with respx.mock:
+        detail_route = respx.get(f'{BASE_URL}/playlist/detail').mock(
+            return_value=httpx.Response(200, json=detail_payload),
+        )
+        add_route = respx.get(f'{BASE_URL}/playlist/add').mock(
+            return_value=httpx.Response(200, json={}),
+        )
+        result = await svc.collect_playlist(1, '99')
+
+    assert detail_route.called
+    assert add_route.called
+    assert result['ok'] is True
+
+
+async def test_user_history_and_playhistory_upload_use_kugou_endpoints(mock_redis):
+    svc = _svc(mock_redis)
+    history_payload = {'data': {'songs': [{'FileHash': 'H1'}]}}
+    async with respx.mock:
+        history_route = respx.get(f'{BASE_URL}/user/history').mock(
+            return_value=httpx.Response(200, json=history_payload),
+        )
+        upload_route = respx.get(f'{BASE_URL}/playhistory/upload').mock(
+            return_value=httpx.Response(200, json={}),
+        )
+        listen_route = respx.get(f'{BASE_URL}/user/listen').mock(
+            return_value=httpx.Response(200, json={}),
+        )
+        latest_route = respx.get(f'{BASE_URL}/lastest/songs/listen').mock(
+            return_value=httpx.Response(200, json={}),
+        )
+
+        history = await svc.get_user_history(1, None)
+        await svc.upload_play_history(1, 'AA1', None, 1)
+        await svc.get_user_listen_rank(1, 0)
+        await svc.get_latest_listen_songs(1, 10)
+
+    assert history_route.called
+    assert upload_route.called
+    assert listen_route.called
+    assert latest_route.called
+    assert history['items'][0]['hash'] == 'H1'
+
+
+async def test_get_favorite_counts_uses_public_endpoint_without_auth(mock_redis):
+    svc = _svc(mock_redis)
+    payload = {'data': {'list': [{'mixsongid': 'MS1', 'count': 42, 'count_text': '42'}]}}
+    async with respx.mock:
+        route = respx.get(f'{BASE_URL}/favorite/count').mock(
+            return_value=httpx.Response(200, json=payload),
+        )
+        result = await svc.get_favorite_counts(1, 'MS1')
+
+    assert route.called
+    assert result['items'][0]['mixsongid'] == 'MS1'

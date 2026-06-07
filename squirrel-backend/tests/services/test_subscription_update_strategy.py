@@ -1,12 +1,5 @@
-import sys
 from datetime import datetime, timedelta
-from pathlib import Path
 from types import SimpleNamespace
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "squirrel-sdk" / "src"))
-
-from crawl import SiteRuntimeInvokeResponse
 
 from services.subscription_update.models import (
     SubscriptionUpdateRequest,
@@ -132,7 +125,7 @@ def test_fetch_videos_uses_plugin_gateway_sync_subscription(monkeypatch):
                 "domain": domain,
                 "timeout_ms": timeout_ms,
             })
-            return SiteRuntimeInvokeResponse(
+            return SimpleNamespace(
                 request_id="sync-1",
                 ok=True,
                 data={
@@ -193,6 +186,9 @@ def test_enqueue_extraction_skips_blocked_video_urls(monkeypatch):
         "services.subscription_update.strategies.default_strategy.video_service.get_videos_by_urls",
         lambda urls: {},
     )
+    import services.subscription_update.strategies.default_strategy as _ds_mod
+    from utils.url_helper import extract_top_level_domain
+    _ds_mod.subscription_sync_state_service._resolve_site = lambda url: extract_top_level_domain(url) or "unknown"
     monkeypatch.setattr(
         "services.subscription_update.strategies.default_strategy.get_session",
         lambda: _DummySessionContext(),
@@ -258,6 +254,9 @@ def test_enqueue_extraction_reserves_pending_count_before_dispatching_video_task
         "services.subscription_update.strategies.default_strategy.video_service.get_videos_by_urls",
         lambda urls: {},
     )
+    import services.subscription_update.strategies.default_strategy as _ds_mod
+    from utils.url_helper import extract_top_level_domain
+    _ds_mod.subscription_sync_state_service._resolve_site = lambda url: extract_top_level_domain(url) or "unknown"
     monkeypatch.setattr(
         "services.subscription_update.strategies.default_strategy.get_session",
         lambda: _DummySessionContext(),
@@ -317,6 +316,9 @@ def test_enqueue_extraction_extracts_inline_without_creating_video_task(monkeypa
         "services.subscription_update.strategies.default_strategy.video_service.get_videos_by_urls",
         lambda urls: {},
     )
+    import services.subscription_update.strategies.default_strategy as _ds_mod
+    from utils.url_helper import extract_top_level_domain
+    _ds_mod.subscription_sync_state_service._resolve_site = lambda url: extract_top_level_domain(url) or "unknown"
     monkeypatch.setattr(
         "services.subscription_update.strategies.default_strategy.get_session",
         lambda: _DummySessionContext(),

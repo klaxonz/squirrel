@@ -1,7 +1,9 @@
 """Video extraction service module
 Unified management of video extraction logic
 """
-from .extractor import extract_video
+from .extractor import _default
 
-__all__ = ["extract_video"]
+extract_video = _default.extract_video
+VideoExtractionService = _default.__class__
 
+__all__ = ["extract_video", "VideoExtractionService"]

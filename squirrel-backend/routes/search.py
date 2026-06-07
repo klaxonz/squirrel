@@ -2,10 +2,14 @@ from fastapi import APIRouter, Depends, Query
 
 from common import response
 from models.user import User
-from services import search_suggestion_service
+from services.search_suggestion_service import SearchSuggestionService
 from utils.jwt_helper import get_current_user
 
 router = APIRouter(prefix="/api/search", tags=["搜索建议接口"])
+
+
+def get_search_suggestion_service() -> SearchSuggestionService:
+    return SearchSuggestionService()
 
 
 @router.get("/suggestions")
@@ -14,8 +18,9 @@ def get_search_suggestions(
     scope: str = Query("home", description="搜索场景：home/subscribed/history"),
     limit: int = Query(8, ge=1, le=20, description="返回数量上限"),
     current_user: User = Depends(get_current_user),
+    svc: SearchSuggestionService = Depends(get_search_suggestion_service),
 ):
-    items = search_suggestion_service.list_search_suggestions(
+    items = svc.list_search_suggestions(
         current_user.id,
         query=query,
         scope=scope,

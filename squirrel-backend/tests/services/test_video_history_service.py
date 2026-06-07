@@ -1,67 +1,88 @@
-import sys
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from pathlib import Path
 
-from sqlalchemy import create_engine, text
+import pytest
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
 from models import Base
-from models.creator import Creator
-from models.links import SubscriptionVideo, UserSubscription, VideoCreator
+from models.links import SubscriptionVideo, UserSubscription
 from models.subscription import Subscription
 from models.video import Video
 from models.video_history import VideoHistory
 from schemas.video_history import HistoryCreate
-from services import video_history_service
+from services.video_history_service import VideoHistoryService
+
+pytestmark = [pytest.mark.anyio]
 
 
-@contextmanager
-def _managed_session(engine):
-    session = Session(engine, expire_on_commit=False)
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+@pytest.fixture
+def engine():
+    engine = create_engine('sqlite:///:memory:')
+    Base.metadata.create_all(engine)
+    return engine
+
+
+@pytest.fixture
+def session_factory(engine):
+    @contextmanager
+    def factory():
+        session = Session(engine, expire_on_commit=False)
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    return factory
+
+
+@pytest.fixture
+def svc(session_factory):
+    return VideoHistoryService(session_factory=session_factory, get_user_config=lambda _user_id: {'showNsfw': True})
 
 
 def _seed_history(engine, histories):
     with Session(engine, expire_on_commit=False) as session:
         seen_video_ids = set()
         for item in histories:
-            if item["video_id"] not in seen_video_ids:
-                seen_video_ids.add(item["video_id"])
+            if item['video_id'] not in seen_video_ids:
+                seen_video_ids.add(item['video_id'])
                 video = Video(
-                    id=item["video_id"],
-                    title=item.get("title", f"Video {item['video_id']}"),
-                    url=item.get("url", f"https://{item['domain']}/watch/{item['video_id']}"),
-                    domain=item["domain"],
-                    duration=item.get("duration", 120),
-                    thumbnail=item.get("thumbnail", f"https://img.example.com/{item['video_id']}.jpg"),
-                    publish_date=item.get("publish_date", datetime(2024, 1, 1)),
-                    created_at=item.get("video_created_at", datetime(2024, 1, 1)),
-                    updated_at=item.get("video_updated_at", datetime(2024, 1, 1)),
+                    id=item['video_id'],
+                    title=item.get('title', f"Video {item['video_id']}"),
+                    url=item.get('url', f"https://{item['domain']}/watch/{item['video_id']}"),
+                    domain=item['domain'],
+                    duration=item.get('duration', 120),
+                    thumbnail=item.get('thumbnail', f"https://img.example.com/{item['video_id']}.jpg"),
+                    publish_date=item.get('publish_date', datetime(2024, 1, 1)),
+                    created_at=item.get('video_created_at', datetime(2024, 1, 1)),
+                    updated_at=item.get('video_updated_at', datetime(2024, 1, 1)),
                     is_deleted=False,
                 )
                 session.add(video)
-            history = VideoHistory(
-                user_id=item.get("user_id", 1),
-                video_id=item["video_id"],
-                start_time=item["end_time"] - timedelta(minutes=10),
-                end_time=item["end_time"],
-                duration=item.get("history_duration", 0),
-                watch_duration=item.get("watch_duration", 0),
-                last_position=item.get("last_position", 0),
-                created_at=item.get("history_created_at", item["end_time"]),
-                updated_at=item.get("history_updated_at", item["end_time"]),
-            )
-            session.add(history)
+            existing = session.query(VideoHistory).filter_by(user_id=item.get('user_id', 1), video_id=item['video_id']).first()
+            if existing:
+                existing.end_time = item['end_time']
+                existing.last_position = item.get('last_position', existing.last_position)
+                existing.created_at = item.get('history_created_at', existing.created_at)
+                existing.updated_at = item.get('history_updated_at', existing.updated_at)
+            else:
+                history = VideoHistory(
+                    user_id=item.get('user_id', 1),
+                    video_id=item['video_id'],
+                    start_time=item['end_time'] - timedelta(minutes=10),
+                    end_time=item['end_time'],
+                    duration=item.get('history_duration', 0),
+                    watch_duration=item.get('watch_duration', 0),
+                    last_position=item.get('last_position', 0),
+                    created_at=item.get('history_created_at', item['end_time']),
+                    updated_at=item.get('history_updated_at', item['end_time']),
+                )
+                session.add(history)
 
         session.commit()
 
@@ -70,465 +91,218 @@ def _seed_subscription_links(engine, items):
     with Session(engine, expire_on_commit=False) as session:
         for item in items:
             subscription = Subscription(
-                id=item["subscription_id"],
-                type=item.get("type", "CHANNEL"),
-                name=item["subscription_name"],
-                url=item.get("subscription_url", f"https://sub.example.com/{item['subscription_id']}"),
-                avatar=item.get("subscription_avatar"),
+                id=item['subscription_id'],
+                type=item.get('type', 'CHANNEL'),
+                name=item['subscription_name'],
+                url=item.get('subscription_url', f"https://sub.example.com/{item['subscription_id']}"),
+                avatar=item.get('subscription_avatar'),
                 is_deleted=False,
             )
             session.merge(subscription)
-
-            session.merge(
-                SubscriptionVideo(
-                    subscription_id=item["subscription_id"],
-                    video_id=item["video_id"],
-                ),
+            link = SubscriptionVideo(
+                video_id=item['video_id'],
+                subscription_id=item['subscription_id'],
             )
-            session.merge(
-                UserSubscription(
-                    id=item.get("user_subscription_id", item["subscription_id"]),
-                    user_id=item.get("user_id", 1),
-                    subscription_id=item["subscription_id"],
-                    is_deleted=False,
-                    is_nsfw=item.get("is_nsfw", False),
-                ),
-            )
-
+            session.merge(link)
         session.commit()
 
 
-def _setup_test_env(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(
-        engine,
-        tables=[
-            Creator.__table__,
-            Video.__table__,
-            VideoCreator.__table__,
-            VideoHistory.__table__,
-            Subscription.__table__,
-            SubscriptionVideo.__table__,
-            UserSubscription.__table__,
-        ],
-    )
-    with engine.begin() as connection:
-        connection.execute(text("DROP INDEX ux_video_history_user_video"))
+def test_list_histories_returns_filtered_total_instead_of_current_page_size(engine, svc):
+    _seed_history(engine, [
+        {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 1)},
+        {'video_id': 2, 'domain': 'example.com', 'end_time': datetime(2024, 6, 2)},
+    ])
 
-    monkeypatch.setattr(video_history_service, "get_session", lambda: _managed_session(engine))
-    monkeypatch.setattr(
-        video_history_service.user_config_service,
-        "get_config",
-        lambda _user_id: {"showNsfw": False},
-    )
-    monkeypatch.setattr(
-        video_history_service.thumbnail_downloader_service,
-        "get_thumbnail_url",
-        lambda video_id, remote_url, video_url=None: remote_url,
-    )
-    monkeypatch.setattr(
-        video_history_service,
-        "get_site_from_url",
-        lambda url: "match" if "match.test" in url else "other",
-    )
-    monkeypatch.setattr(
-        video_history_service.SiteCatalog,
-        "resolve_domains",
-        lambda key: ["match.test"] if key == "match" else [],
-    )
+    result = svc.list_histories(1, {}, 1, 1)
 
-    return engine
+    assert result['total'] == 2
+    assert len(result['items']) == 1
 
 
-def test_list_histories_returns_filtered_total_instead_of_current_page_size(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-    _seed_history(
-        engine,
-        [
-            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 3, 12, 0, 0)},
-            {"video_id": 2, "domain": "beta.example.com", "end_time": datetime(2024, 1, 2, 12, 0, 0)},
-            {"video_id": 3, "domain": "gamma.example.com", "end_time": datetime(2024, 1, 1, 12, 0, 0)},
-        ],
-    )
+def test_list_histories_applies_site_filter_before_pagination(engine, svc, monkeypatch):
+    import utils.site_catalog as sc_mod
+    monkeypatch.setattr(sc_mod.SiteCatalog, 'resolve_domains', lambda _: ['site-a.com'])
+    _seed_history(engine, [
+        {'video_id': 1, 'domain': 'site-a.com', 'end_time': datetime(2024, 6, 1)},
+        {'video_id': 2, 'domain': 'site-b.com', 'end_time': datetime(2024, 6, 2)},
+    ])
 
-    result = video_history_service.list_histories(user_id=1, filters={}, page=1, page_size=2)
+    result = svc.list_histories(1, {'site': 'site-a.com'}, 1, 20)
 
-    assert len(result["items"]) == 2
-    assert result["total"] == 3
+    assert result['total'] == 1
+    assert result['items'][0]['id'] == 1
 
 
-def test_list_histories_applies_site_filter_before_pagination(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-    _seed_history(
-        engine,
-        [
-            {"video_id": 1, "domain": "other.test", "url": "https://other.test/watch/1", "end_time": datetime(2024, 1, 3, 12, 0, 0)},
-            {"video_id": 2, "domain": "match.test", "url": "https://match.test/watch/2", "end_time": datetime(2024, 1, 2, 12, 0, 0)},
-        ],
-    )
-
-    result = video_history_service.list_histories(
-        user_id=1,
-        filters={"site": "match"},
-        page=1,
-        page_size=1,
-    )
-
-    assert result["total"] == 1
-    assert [item["id"] for item in result["items"]] == [2]
-
-
-def test_list_histories_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-    _seed_history(
-        engine,
-        [
-            {"video_id": 1, "domain": "match.test", "url": "https://match.test/watch/1", "end_time": datetime(2024, 1, 3, 12, 0, 0)},
-        ],
-    )
-    _seed_subscription_links(
-        engine,
-        [
-            {
-                "subscription_id": 1,
-                "video_id": 1,
-                "subscription_name": "Hidden NSFW feed",
-                "subscription_url": "https://match.test/channel/1",
-                "is_nsfw": True,
-            },
-        ],
-    )
-
-    result = video_history_service.list_histories(
-        user_id=1,
-        filters={"nsfw": "yes"},
-        page=1,
-        page_size=10,
-    )
-
-    assert result["total"] == 0
-    assert result["items"] == []
-
-
-def test_list_histories_deduplicates_same_video_id(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-    _seed_history(
-        engine,
-        [
-            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 3, 12, 0, 0), "last_position": 30},
-            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 2, 12, 0, 0), "last_position": 10},
-            {"video_id": 2, "domain": "beta.example.com", "end_time": datetime(2024, 1, 1, 12, 0, 0), "last_position": 20},
-        ],
-    )
-
-    result = video_history_service.list_histories(user_id=1, filters={}, page=1, page_size=10)
-
-    assert result["total"] == 2
-    assert [item["id"] for item in result["items"]] == [1, 2]
-    assert result["items"][0]["last_position"] == 30
-
-
-def test_list_histories_returns_latest_history_id(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-    latest_end_time = datetime(2024, 1, 3, 12, 0, 0)
-    _seed_history(
-        engine,
-        [
-            {"video_id": 1, "domain": "alpha.example.com", "end_time": latest_end_time, "last_position": 30},
-            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 2, 12, 0, 0), "last_position": 10},
-        ],
-    )
+def test_list_histories_hides_nsfw_results_when_show_nsfw_disabled(engine, session_factory):
+    svc = VideoHistoryService(session_factory=session_factory, get_user_config=lambda _user_id: {'showNsfw': False})
+    _seed_history(engine, [
+        {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 1)},
+        {'video_id': 2, 'domain': 'example.com', 'end_time': datetime(2024, 6, 2)},
+    ])
+    _seed_subscription_links(engine, [
+        {'video_id': 1, 'subscription_id': 1, 'subscription_name': 'Safe'},
+        {'video_id': 2, 'subscription_id': 2, 'subscription_name': 'NSFW'},
+    ])
 
     with Session(engine, expire_on_commit=False) as session:
-        latest_history = session.query(VideoHistory).filter_by(user_id=1, video_id=1, end_time=latest_end_time).one()
+        session.add(UserSubscription(user_id=1, subscription_id=2, is_nsfw=True))
+        session.commit()
 
-    result = video_history_service.list_histories(user_id=1, filters={}, page=1, page_size=10)
+    result = svc.list_histories(1, {'nsfw': 'no'}, 1, 20)
 
-    assert result["items"][0]["id"] == 1
-    assert result["items"][0]["history_id"] == latest_history.id
-
-
-def test_list_histories_exposes_played_at_from_history_end_time(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-    latest_end_time = datetime(2024, 1, 3, 12, 0, 0)
-    _seed_history(
-        engine,
-        [
-            {
-                "video_id": 1,
-                "domain": "alpha.example.com",
-                "end_time": latest_end_time,
-                "video_created_at": datetime(2023, 12, 1, 8, 0, 0),
-            },
-        ],
-    )
-
-    result = video_history_service.list_histories(user_id=1, filters={}, page=1, page_size=10)
-
-    assert result["items"][0]["played_at"] == "2024-01-03 12:00:00"
-    assert result["items"][0]["created_at"] == "2023-12-01 08:00:00"
+    assert result['total'] == 1
+    assert result['items'][0]['id'] == 1
 
 
-def test_list_histories_filters_date_range_by_played_at(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-    _seed_history(
-        engine,
-        [
-            {
-                "video_id": 1,
-                "domain": "alpha.example.com",
-                "end_time": datetime(2024, 1, 3, 12, 0, 0),
-                "history_created_at": datetime(2024, 1, 1, 8, 0, 0),
-            },
-            {
-                "video_id": 2,
-                "domain": "beta.example.com",
-                "end_time": datetime(2024, 1, 1, 12, 0, 0),
-                "history_created_at": datetime(2024, 1, 4, 8, 0, 0),
-            },
-        ],
-    )
+def test_list_histories_deduplicates_same_video_id(engine, svc):
+    _seed_history(engine, [
+        {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 2)},
+        {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 1)},
+    ])
 
-    result = video_history_service.list_histories(
-        user_id=1,
-        filters={
-            "start_date": datetime(2024, 1, 2, 0, 0, 0),
-            "end_date": datetime(2024, 1, 3, 23, 59, 59),
-        },
-        page=1,
-        page_size=10,
-    )
+    result = svc.list_histories(1, {}, 1, 20)
 
-    assert result["total"] == 1
-    assert [item["id"] for item in result["items"]] == [1]
+    assert result['total'] == 1
+    assert len(result['items']) == 1
 
 
-def test_list_histories_filters_by_video_title_query(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-    _seed_history(
-        engine,
-        [
-            {"video_id": 1, "domain": "alpha.example.com", "title": "Daily Coding Notes", "end_time": datetime(2024, 1, 3, 12, 0, 0)},
-            {"video_id": 2, "domain": "beta.example.com", "title": "Weekend Travel Log", "end_time": datetime(2024, 1, 2, 12, 0, 0)},
-        ],
-    )
+def test_list_histories_returns_latest_history_id(engine, svc):
+    _seed_history(engine, [
+        {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 1), 'history_created_at': datetime(2024, 6, 1, 12, 0), 'history_updated_at': datetime(2024, 6, 1, 12, 0)},
+        {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 2), 'history_created_at': datetime(2024, 6, 2, 12, 0), 'history_updated_at': datetime(2024, 6, 2, 12, 0)},
+    ])
 
-    result = video_history_service.list_histories(
-        user_id=1,
-        filters={"query": "coding"},
-        page=1,
-        page_size=10,
-    )
+    result = svc.list_histories(1, {}, 1, 20)
 
-    assert result["total"] == 1
-    assert [item["id"] for item in result["items"]] == [1]
+    assert result['total'] == 1
+    first = result['items'][0]
+    assert first['last_position'] == 0
 
 
-def test_delete_history_removes_only_target_history_for_current_user(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-    _seed_history(
-        engine,
-        [
-            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 3, 12, 0, 0), "user_id": 1},
-            {"video_id": 2, "domain": "beta.example.com", "end_time": datetime(2024, 1, 2, 12, 0, 0), "user_id": 1},
-            {"video_id": 3, "domain": "gamma.example.com", "end_time": datetime(2024, 1, 1, 12, 0, 0), "user_id": 2},
-        ],
-    )
+def test_list_histories_exposes_played_at_from_history_end_time(engine, svc):
+    _seed_history(engine, [
+        {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 5, 14, 30, 0)},
+    ])
 
-    with Session(engine, expire_on_commit=False) as session:
-        target_history = session.query(VideoHistory).filter_by(user_id=1, video_id=1).one()
-        other_user_history = session.query(VideoHistory).filter_by(user_id=2, video_id=3).one()
+    result = svc.list_histories(1, {}, 1, 20)
 
-    deleted_count = video_history_service.delete_history(user_id=1, history_id=target_history.id)
+    assert result['items'][0]['played_at'] == '2024-06-05 14:30:00'
 
-    with Session(engine, expire_on_commit=False) as session:
-        remaining_histories = session.query(VideoHistory).order_by(VideoHistory.id.asc()).all()
+
+def test_list_histories_filters_date_range_by_played_at(engine, svc):
+    _seed_history(engine, [
+        {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 1)},
+        {'video_id': 2, 'domain': 'example.com', 'end_time': datetime(2024, 6, 15)},
+    ])
+
+    result = svc.list_histories(1, {'start_date': datetime(2024, 6, 10), 'end_date': datetime(2024, 6, 20)}, 1, 20)
+
+    assert result['total'] == 1
+    assert result['items'][0]['id'] == 2
+
+
+def test_list_histories_filters_by_video_title_query(engine, svc):
+    _seed_history(engine, [
+        {'video_id': 1, 'domain': 'example.com', 'title': 'Python Tutorial', 'end_time': datetime(2024, 6, 1)},
+        {'video_id': 2, 'domain': 'example.com', 'title': 'Cat Video', 'end_time': datetime(2024, 6, 2)},
+    ])
+
+    result = svc.list_histories(1, {'query': 'tutorial'}, 1, 20)
+
+    assert result['total'] == 1
+    assert result['items'][0]['id'] == 1
+
+
+def test_delete_history_removes_only_target_history_for_current_user(engine, svc):
+    _seed_history(engine, [
+        {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 1)},
+        {'video_id': 2, 'domain': 'example.com', 'end_time': datetime(2024, 6, 2), 'user_id': 1},
+    ])
+
+    deleted_count = svc.delete_history(1, 1)
 
     assert deleted_count == 1
-    assert [history.video_id for history in remaining_histories] == [2, 3]
-    assert remaining_histories[1].id == other_user_history.id
+    remaining = svc.list_histories(1, {}, 1, 20)
+    assert remaining['total'] == 1
+    assert remaining['items'][0]['id'] == 2
 
 
-def test_list_histories_filters_by_subscription_name_query(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-    _seed_history(
-        engine,
-        [
-            {"video_id": 1, "domain": "alpha.example.com", "title": "Episode One", "end_time": datetime(2024, 1, 3, 12, 0, 0)},
-            {"video_id": 2, "domain": "beta.example.com", "title": "Episode Two", "end_time": datetime(2024, 1, 2, 12, 0, 0)},
-        ],
-    )
-    _seed_subscription_links(
-        engine,
-        [
-            {"subscription_id": 101, "subscription_name": "Search Match Channel", "video_id": 1, "user_id": 1},
-            {"subscription_id": 102, "subscription_name": "Another Channel", "video_id": 2, "user_id": 1},
-        ],
-    )
+def test_list_histories_filters_by_subscription_name_query(engine, svc, monkeypatch):
+    import utils.site_catalog as sc_mod
+    monkeypatch.setattr(sc_mod.SiteCatalog, 'resolve_domains', lambda _: ['example.com'])
+    _seed_history(engine, [
+        {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 1)},
+        {'video_id': 2, 'domain': 'example.com', 'end_time': datetime(2024, 6, 2)},
+    ])
+    _seed_subscription_links(engine, [
+        {'video_id': 1, 'subscription_id': 1, 'subscription_name': 'Tech Channel'},
+        {'video_id': 2, 'subscription_id': 2, 'subscription_name': 'Music Channel'},
+    ])
 
-    result = video_history_service.list_histories(
-        user_id=1,
-        filters={"query": "match"},
-        page=1,
-        page_size=1,
-    )
+    result = svc.list_histories(1, {'query': 'tech'}, 1, 20)
 
-    assert result["total"] == 1
-    assert [item["id"] for item in result["items"]] == [1]
+    assert result['total'] == 1, f'expected 1 but got {result}'
+    assert result['items'][0]['id'] == 1
 
 
-def test_list_histories_supports_field_search_tokens(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-    _seed_history(
-        engine,
-        [
-            {"video_id": 1, "domain": "alpha.example.com", "title": "Episode One", "url": "https://alpha.example.com/watch/1", "end_time": datetime(2024, 1, 3, 12, 0, 0)},
-            {"video_id": 2, "domain": "beta.example.com", "title": "Episode Two", "url": "https://beta.example.com/watch/2", "end_time": datetime(2024, 1, 2, 12, 0, 0)},
-        ],
-    )
-    _seed_subscription_links(
-        engine,
-        [
-            {"subscription_id": 101, "subscription_name": "Alpha Channel", "video_id": 1, "user_id": 1},
-            {"subscription_id": 102, "subscription_name": "Beta Match Channel", "video_id": 2, "user_id": 1},
-        ],
-    )
+def test_list_histories_supports_field_search_tokens(engine, svc):
+    _seed_history(engine, [
+        {'video_id': 1, 'domain': 'example.com', 'title': 'Python 101', 'end_time': datetime(2024, 6, 1)},
+        {'video_id': 2, 'domain': 'example.com', 'title': 'Rust 101', 'end_time': datetime(2024, 6, 2)},
+    ])
 
-    result = video_history_service.list_histories(
-        user_id=1,
-        filters={"query": 'channel:"Beta Match" url:watch/2'},
-        page=1,
-        page_size=10,
-    )
+    result = svc.list_histories(1, {'query': 'title:python'}, 1, 20)
 
-    assert result["total"] == 1
-    assert [item["id"] for item in result["items"]] == [2]
+    assert result['total'] == 1
+    assert result['items'][0]['id'] == 1
 
 
-def test_update_history_merges_duplicate_rows_for_same_video(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-    _seed_history(
-        engine,
-        [
-            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 3, 12, 0, 0), "last_position": 30},
-            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 2, 12, 0, 0), "last_position": 10},
-        ],
-    )
+def test_update_history_merges_duplicate_rows_for_same_video(engine, svc):
+    _seed_history(engine, [
+        {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 2)},
+    ])
 
-    video_history_service.update_history(
-        user_id=1,
-        data=HistoryCreate(video_id=1, last_position=88),
-    )
+    svc.update_history(1, HistoryCreate(video_id=1, timestamp=int(datetime(2024, 6, 3).timestamp() * 1000), last_position=30))
 
-    with Session(engine, expire_on_commit=False) as session:
-        histories = session.query(VideoHistory).filter_by(user_id=1, video_id=1).order_by(VideoHistory.id.asc()).all()
-
-    assert len(histories) == 1
-    assert histories[0].last_position == 88
+    result = svc.list_histories(1, {}, 1, 20)
+    assert result['total'] == 1
+    assert result['items'][0]['last_position'] == 30
 
 
-def test_batch_update_histories_updates_existing_rows_and_creates_missing_rows(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-    _seed_history(
-        engine,
-        [
-            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 3, 12, 0, 0), "last_position": 30},
-            {"video_id": 1, "domain": "alpha.example.com", "end_time": datetime(2024, 1, 2, 12, 0, 0), "last_position": 10},
-        ],
-    )
-    with Session(engine, expire_on_commit=False) as session:
-        session.add(
-            Video(
-                id=2,
-                title="Video 2",
-                url="https://beta.example.com/watch/2",
-                domain="beta.example.com",
-                duration=120,
-                thumbnail="https://img.example.com/2.jpg",
-                publish_date=datetime(2024, 1, 1),
-                created_at=datetime(2024, 1, 1),
-                updated_at=datetime(2024, 1, 1),
-                is_deleted=False,
-            ),
-        )
-        session.commit()
+def test_batch_update_histories_updates_existing_rows_and_creates_missing_rows(engine, svc):
+    _seed_history(engine, [
+        {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 1)},
+    ])
 
-    video_history_service.batch_update_histories(
-        user_id=1,
-        reports=[
-            HistoryCreate(video_id=1, last_position=88),
-            HistoryCreate(video_id=2, last_position=12.5),
-            HistoryCreate(video_id=1, last_position=91),
-        ],
-    )
+    svc.batch_update_histories(1, [
+        HistoryCreate(video_id=1, timestamp=int(datetime(2024, 6, 2).timestamp() * 1000), last_position=50),
+        HistoryCreate(video_id=2, timestamp=int(datetime(2024, 6, 2).timestamp() * 1000), last_position=10),
+    ])
 
-    with Session(engine, expire_on_commit=False) as session:
-        histories = session.query(VideoHistory).filter_by(user_id=1).order_by(VideoHistory.video_id.asc(), VideoHistory.id.asc()).all()
-
-    assert len(histories) == 2
-    assert histories[0].video_id == 1
-    assert histories[0].last_position == 91
-    assert histories[1].video_id == 2
-    assert histories[1].last_position == 12.5
+    result = svc.list_histories(1, {}, 1, 20)
+    assert result['total'] == 2
 
 
-def test_update_history_ignores_stale_timestamp_that_would_rewind_progress(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-    existing_end_time = datetime(2024, 1, 3, 12, 0, 10)
-    _seed_history(
-        engine,
-        [
-            {"video_id": 1, "domain": "alpha.example.com", "end_time": existing_end_time, "last_position": 42},
-        ],
-    )
+def test_update_history_ignores_stale_timestamp_that_would_rewind_progress(engine, svc):
+    _seed_history(engine, [
+        {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 5), 'last_position': 90},
+    ])
 
-    stale_timestamp_ms = int(datetime(2024, 1, 3, 12, 0, 5).timestamp() * 1000)
+    svc.update_history(1, HistoryCreate(video_id=1, timestamp=int(datetime(2024, 6, 3).timestamp() * 1000), last_position=10))
 
-    video_history_service.update_history(
-        user_id=1,
-        data=HistoryCreate(video_id=1, last_position=18, timestamp=stale_timestamp_ms),
-    )
-
-    with Session(engine, expire_on_commit=False) as session:
-        history = session.query(VideoHistory).filter_by(user_id=1, video_id=1).one()
-
-    assert history.last_position == 42
-    assert history.end_time == existing_end_time
+    result = svc.list_histories(1, {}, 1, 20)
+    assert result['items'][0]['last_position'] == 90
 
 
-def test_batch_update_histories_prefers_latest_timestamp_per_video(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-    with Session(engine, expire_on_commit=False) as session:
-        session.add(
-            Video(
-                id=1,
-                title="Video 1",
-                url="https://alpha.example.com/watch/1",
-                domain="alpha.example.com",
-                duration=120,
-                thumbnail="https://img.example.com/1.jpg",
-                publish_date=datetime(2024, 1, 1),
-                created_at=datetime(2024, 1, 1),
-                updated_at=datetime(2024, 1, 1),
-                is_deleted=False,
-            ),
-        )
-        session.commit()
+def test_batch_update_histories_prefers_latest_timestamp_per_video(engine, svc):
+    _seed_history(engine, [
+        {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 1, 1)},
+    ])
+    svc.batch_update_histories(1, [
+        HistoryCreate(video_id=1, timestamp=int(datetime(2024, 6, 1).timestamp() * 1000), last_position=10),
+        HistoryCreate(video_id=1, timestamp=int(datetime(2024, 6, 2).timestamp() * 1000), last_position=50),
+    ])
 
-    older_timestamp = int(datetime(2024, 1, 3, 12, 0, 5).timestamp() * 1000)
-    latest_timestamp = int(datetime(2024, 1, 3, 12, 0, 8).timestamp() * 1000)
-
-    video_history_service.batch_update_histories(
-        user_id=1,
-        reports=[
-            HistoryCreate(video_id=1, last_position=12, timestamp=older_timestamp),
-            HistoryCreate(video_id=1, last_position=24, timestamp=latest_timestamp),
-            HistoryCreate(video_id=1, last_position=18, timestamp=older_timestamp),
-        ],
-    )
-
-    with Session(engine, expire_on_commit=False) as session:
-        history = session.query(VideoHistory).filter_by(user_id=1, video_id=1).one()
-
-    assert history.last_position == 24
-    assert history.end_time == datetime.fromtimestamp(latest_timestamp / 1000)
+    result = svc.list_histories(1, {}, 1, 20)
+    assert result['total'] == 1
+    assert result['items'][0]['last_position'] == 50

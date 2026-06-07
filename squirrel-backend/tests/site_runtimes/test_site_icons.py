@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import services.site_runtime_service as plugin_service
-from services.site_catalog_service import build_site_info
+from services.site_catalog_service import SiteCatalogService
+from services.site_runtime_service import SiteRuntimeService
 from site_runtimes.runtime_models import SiteRuntimeManifest, SiteRuntimeSite
 
 
@@ -22,7 +22,7 @@ def test_build_site_info_includes_icon_url():
         },
     }
 
-    info = build_site_info("youtube", catalog)
+    info = SiteCatalogService.build_site_info('youtube', catalog)
 
     assert info == {
         "name": "youtube",
@@ -58,7 +58,7 @@ def test_normalize_runtime_item_includes_site_icon_url_from_catalog():
     )
     snapshot = SimpleNamespace(runtimes=[])
 
-    normalized = plugin_service._normalize_runtime_item(
+    normalized = SiteRuntimeService._normalize_runtime_item(
         record,
         snapshot,
         {"youtube": {"icon_url": "/api/sites/youtube/icon"}},

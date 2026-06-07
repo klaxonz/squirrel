@@ -1,17 +1,21 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from common import response
 from common.constants import SYS_ENABLE_SCHEDULER
 from processes.managers.scheduler_manager import scheduler_status
-from services import system_config_service
 from services.scheduled_task_service import ScheduledTaskService
+from services.system_config_service import SystemConfigService
 
-router = APIRouter(prefix="/api/scheduler", tags=["Scheduled Task Management"])
+router = APIRouter(prefix='/api/scheduler', tags=['Scheduled Task Management'])
 _logger = logging.getLogger(__name__)
+
+
+def get_system_config_service():
+    return SystemConfigService()
 
 
 # Pydantic models for API
@@ -158,15 +162,17 @@ def get_available_task_classes():
     return response.success(ScheduledTaskService.get_available_task_classes())
 
 
-@router.post("/enable")
-def enable_scheduler():
-    """Enable the scheduler"""
-    system_config_service.set_value(SYS_ENABLE_SCHEDULER, "true")
-    return response.success(msg="调度器已启用")
+@router.post('/enable')
+def enable_scheduler(
+    svc: SystemConfigService = Depends(get_system_config_service),
+):
+    svc.set_value(SYS_ENABLE_SCHEDULER, 'true')
+    return response.success(msg='scheduler enabled')
 
 
-@router.post("/disable")
-def disable_scheduler():
-    """Disable the scheduler"""
-    system_config_service.set_value(SYS_ENABLE_SCHEDULER, "false")
-    return response.success(msg="调度器已禁用")
+@router.post('/disable')
+def disable_scheduler(
+    svc: SystemConfigService = Depends(get_system_config_service),
+):
+    svc.set_value(SYS_ENABLE_SCHEDULER, 'false')
+    return response.success(msg='scheduler disabled')

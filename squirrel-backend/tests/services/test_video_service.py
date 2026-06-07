@@ -1,12 +1,10 @@
-import sys
 from contextlib import contextmanager
 from datetime import datetime
-from pathlib import Path
+from types import SimpleNamespace
 
+import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
 from models.creator import Creator
@@ -17,7 +15,8 @@ from models.video import Video
 from models.video_clip_marker import VideoClipMarker
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
-from services import video_service
+from services.video_crud_service import VideoCrudService
+from services.video_list_service import VideoListService
 
 
 @contextmanager
@@ -58,10 +57,11 @@ def _mirror_user_video_feed_into_subscription_video(session, flush_context, inst
         session.add(SubscriptionVideo(subscription_id=pair[0], video_id=pair[1]))
 
 
-def _setup_test_env(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+@pytest.fixture
+def engine():
+    _engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(
-        engine,
+        _engine,
         tables=[
             Video.__table__,
             Subscription.__table__,
@@ -75,29 +75,39 @@ def _setup_test_env(monkeypatch):
             UserVideoFeed.__table__,
         ],
     )
-    monkeypatch.setattr(video_service, "get_session", lambda: _managed_session(engine))
-    monkeypatch.setattr(
-        video_service.user_config_service,
-        "get_config",
-        lambda user_id: {"showNsfw": False},
+    return _engine
+
+
+@pytest.fixture
+def session_factory(engine):
+    @contextmanager
+    def _factory():
+        with _managed_session(engine) as session:
+            yield session
+    return _factory
+
+
+@pytest.fixture
+def fake_thumbnail_downloader():
+    return SimpleNamespace(
+        get_thumbnail_url=lambda video_id, remote_url, video_url=None: remote_url,
+        get_thumbnail_url_map=lambda items: {video_id: remote_url for video_id, remote_url, _video_url in items},
     )
-    monkeypatch.setattr(
-        video_service.thumbnail_downloader_service,
-        "get_thumbnail_url",
-        lambda video_id, remote_url, video_url=None: remote_url,
+
+
+@pytest.fixture
+def svc(session_factory, fake_thumbnail_downloader):
+    crud = VideoCrudService(session_factory=session_factory)
+    listing = VideoListService(
+        session_factory=session_factory,
+        get_user_config=lambda _: {"showNsfw": False},
+        thumbnail_downloader=fake_thumbnail_downloader,
     )
-    monkeypatch.setattr(
-        video_service.thumbnail_downloader_service,
-        "get_thumbnail_url_map",
-        lambda items: {video_id: remote_url for video_id, remote_url, _video_url in items},
-        raising=False,
+    return SimpleNamespace(
+        save_remote_video=crud.save_remote_video,
+        get_video=listing.get_video,
+        list_videos=listing.list_videos,
     )
-    monkeypatch.setattr(
-        video_service.SiteCatalog,
-        "find_site_by_domain",
-        lambda domain: ("bilibili", {"metadata": {}}),
-    )
-    return engine
 
 
 def _seed_video(engine, *, video_id=1, url="https://www.bilibili.com/video/BV1xx411c7mD"):
@@ -119,10 +129,8 @@ def _seed_video(engine, *, video_id=1, url="https://www.bilibili.com/video/BV1xx
         session.commit()
 
 
-def test_save_remote_video_creates_local_video(monkeypatch):
-    _setup_test_env(monkeypatch)
-
-    video = video_service.save_remote_video({
+def test_save_remote_video_creates_local_video(svc):
+    video = svc.save_remote_video({
         "site": "youtube",
         "url": "https://www.youtube.com/watch?v=remote-demo",
         "title": "Remote Demo",
@@ -146,10 +154,8 @@ def test_save_remote_video_creates_local_video(monkeypatch):
     assert video.extra_data["subscriptions"][0]["name"] == "Remote Channel"
 
 
-def test_get_video_returns_remote_profiles_from_saved_video_metadata(monkeypatch):
-    _setup_test_env(monkeypatch)
-
-    saved_video = video_service.save_remote_video({
+def test_get_video_returns_remote_profiles_from_saved_video_metadata(svc):
+    saved_video = svc.save_remote_video({
         "site": "youtube",
         "url": "https://www.youtube.com/watch?v=remote-profile",
         "title": "Remote Profile Demo",
@@ -172,7 +178,7 @@ def test_get_video_returns_remote_profiles_from_saved_video_metadata(monkeypatch
         }],
     })
 
-    video = video_service.get_video(user_id=7, video_id=saved_video.id)
+    video = svc.get_video(user_id=7, video_id=saved_video.id)
 
     assert video["subscriptions"] == [{
         "id": "UCremote",
@@ -192,11 +198,10 @@ def test_get_video_returns_remote_profiles_from_saved_video_metadata(monkeypatch
     }]
 
 
-def test_save_remote_video_reuses_existing_url(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_save_remote_video_reuses_existing_url(engine, svc):
     _seed_video(engine, video_id=42, url="https://www.youtube.com/watch?v=existing")
 
-    video = video_service.save_remote_video({
+    video = svc.save_remote_video({
         "site": "youtube",
         "url": "https://www.youtube.com/watch?v=existing",
         "title": "New Remote Title",
@@ -206,8 +211,7 @@ def test_save_remote_video_reuses_existing_url(monkeypatch):
     assert video.title == "Test video"
 
 
-def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_list_videos_reads_current_page_from_user_video_feed(engine, svc):
     statements = []
 
     @event.listens_for(engine, "before_cursor_execute")
@@ -315,7 +319,7 @@ def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
         ])
         session.commit()
 
-    videos, total = video_service.list_videos(
+    videos, total = svc.list_videos(
         user_id=7,
         query=None,
         subscription_id=None,
@@ -340,9 +344,7 @@ def test_list_videos_reads_current_page_from_user_video_feed(monkeypatch):
     assert all("GROUP BY" not in statement for statement in feed_page_statements)
 
 
-def test_list_videos_returns_remote_thumbnail_urls_directly(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-
+def test_list_videos_returns_remote_thumbnail_urls_directly(engine, svc):
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
             Subscription(
@@ -393,7 +395,7 @@ def test_list_videos_returns_remote_thumbnail_urls_directly(monkeypatch):
         ])
         session.commit()
 
-    videos, total = video_service.list_videos(
+    videos, total = svc.list_videos(
         user_id=7,
         query=None,
         subscription_id=None,
@@ -410,9 +412,7 @@ def test_list_videos_returns_remote_thumbnail_urls_directly(monkeypatch):
     assert videos[0]["thumbnail"] == "https://img.example.com/111.jpg"
 
 
-def test_list_videos_filters_special_followed_subscriptions(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-
+def test_list_videos_filters_special_followed_subscriptions(engine, svc):
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
             Subscription(
@@ -509,7 +509,7 @@ def test_list_videos_filters_special_followed_subscriptions(monkeypatch):
         ])
         session.commit()
 
-    videos, total = video_service.list_videos(
+    videos, total = svc.list_videos(
         user_id=7,
         query=None,
         subscription_id=None,
@@ -528,8 +528,7 @@ def test_list_videos_filters_special_followed_subscriptions(monkeypatch):
     assert videos[0]["subscriptions"][0]["is_special_followed"] is True
 
 
-def test_list_videos_filters_domains_from_user_video_feed(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_list_videos_filters_domains_from_user_video_feed(engine, svc):
     statements = []
 
     @event.listens_for(engine, "before_cursor_execute")
@@ -609,7 +608,7 @@ def test_list_videos_filters_domains_from_user_video_feed(monkeypatch):
         ])
         session.commit()
 
-    videos, total = video_service.list_videos(
+    videos, total = svc.list_videos(
         user_id=7,
         query=None,
         subscription_id=None,
@@ -634,9 +633,7 @@ def test_list_videos_filters_domains_from_user_video_feed(monkeypatch):
     assert any("user_video_feed.domain IN" in statement for statement in page_statements)
 
 
-def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-
+def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(engine, svc):
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
             Subscription(
@@ -750,7 +747,7 @@ def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkey
         ])
         session.commit()
 
-    videos, total = video_service.list_videos(
+    videos, total = svc.list_videos(
         user_id=7,
         query=None,
         subscription_id=None,
@@ -767,9 +764,7 @@ def test_list_videos_preserves_unique_pagination_when_feed_has_duplicates(monkey
     assert [video["id"] for video in videos] == [102]
 
 
-def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_rows(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-
+def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_rows(engine, svc):
     duplicate_subscription_count = 205
     statements = []
 
@@ -911,7 +906,7 @@ def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_row
         ])
         session.commit()
 
-    videos, total = video_service.list_videos(
+    videos, total = svc.list_videos(
         user_id=7,
         query=None,
         subscription_id=None,
@@ -937,9 +932,7 @@ def test_list_videos_paginates_liked_results_without_scanning_duplicate_feed_row
     assert liked_page_scans == []
 
 
-def test_list_videos_search_matches_subscription_name(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-
+def test_list_videos_search_matches_subscription_name(engine, svc):
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
             Subscription(
@@ -1019,7 +1012,7 @@ def test_list_videos_search_matches_subscription_name(monkeypatch):
         ])
         session.commit()
 
-    videos, total = video_service.list_videos(
+    videos, total = svc.list_videos(
         user_id=7,
         query='channel:"Beta Search Match"',
         subscription_id=None,
@@ -1036,9 +1029,7 @@ def test_list_videos_search_matches_subscription_name(monkeypatch):
     assert [video["id"] for video in videos] == [502]
 
 
-def test_list_videos_default_search_matches_title_only(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-
+def test_list_videos_default_search_matches_title_only(engine, svc):
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
             Subscription(
@@ -1118,7 +1109,7 @@ def test_list_videos_default_search_matches_title_only(monkeypatch):
         ])
         session.commit()
 
-    videos, total = video_service.list_videos(
+    videos, total = svc.list_videos(
         user_id=7,
         query="gamma",
         subscription_id=None,
@@ -1135,9 +1126,7 @@ def test_list_videos_default_search_matches_title_only(monkeypatch):
     assert [video["id"] for video in videos] == [511]
 
 
-def test_list_videos_search_no_longer_matches_creator_name(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-
+def test_list_videos_search_no_longer_matches_creator_name(engine, svc):
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
             Subscription(
@@ -1198,7 +1187,7 @@ def test_list_videos_search_no_longer_matches_creator_name(monkeypatch):
         ])
         session.commit()
 
-    videos, total = video_service.list_videos(
+    videos, total = svc.list_videos(
         user_id=7,
         query='creator:"Unique Creator Keyword"',
         subscription_id=None,
@@ -1215,9 +1204,7 @@ def test_list_videos_search_no_longer_matches_creator_name(monkeypatch):
     assert videos == []
 
 
-def test_list_videos_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-
+def test_list_videos_hides_nsfw_results_when_show_nsfw_disabled(engine, svc):
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
             Subscription(
@@ -1268,7 +1255,7 @@ def test_list_videos_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
         ])
         session.commit()
 
-    videos, total = video_service.list_videos(
+    videos, total = svc.list_videos(
         user_id=7,
         query=None,
         subscription_id=None,
@@ -1285,9 +1272,7 @@ def test_list_videos_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
     assert videos == []
 
 
-def test_list_videos_ignores_deleted_user_subscription_feed_rows(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-
+def test_list_videos_ignores_deleted_user_subscription_feed_rows(engine, svc):
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
             Subscription(
@@ -1338,7 +1323,7 @@ def test_list_videos_ignores_deleted_user_subscription_feed_rows(monkeypatch):
         ])
         session.commit()
 
-    videos, total = video_service.list_videos(
+    videos, total = svc.list_videos(
         user_id=7,
         query=None,
         subscription_id=None,
@@ -1354,9 +1339,7 @@ def test_list_videos_ignores_deleted_user_subscription_feed_rows(monkeypatch):
     assert videos == []
 
 
-def test_list_videos_subscription_metadata_ignores_deleted_feed_links(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-
+def test_list_videos_subscription_metadata_ignores_deleted_feed_links(engine, svc):
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
             Subscription(
@@ -1424,7 +1407,7 @@ def test_list_videos_subscription_metadata_ignores_deleted_feed_links(monkeypatc
         ])
         session.commit()
 
-    videos, total = video_service.list_videos(
+    videos, total = svc.list_videos(
         user_id=7,
         query=None,
         subscription_id=None,
@@ -1442,9 +1425,7 @@ def test_list_videos_subscription_metadata_ignores_deleted_feed_links(monkeypatc
     assert [subscription["id"] for subscription in videos[0]["subscriptions"]] == [1]
 
 
-def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
-
+def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale(engine, svc):
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
             Subscription(
@@ -1510,7 +1491,7 @@ def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale
         ])
         session.commit()
 
-    video = video_service.get_video(user_id=7, video_id=701)
+    video = svc.get_video(user_id=7, video_id=701)
 
     assert video is not None
     assert video["subscriptions"][0]["total_extract"] == 2
@@ -1521,7 +1502,7 @@ def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale
     assert video["clip_markers"][0]["preview_image_url"].startswith("/static/clip-markers/user_7/video_701/marker_1.jpg")
 
 
-def test_get_video_gracefully_skips_clip_markers_when_table_is_missing(monkeypatch):
+def test_get_video_gracefully_skips_clip_markers_when_table_is_missing(fake_thumbnail_downloader):
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(
         engine,
@@ -1537,11 +1518,16 @@ def test_get_video_gracefully_skips_clip_markers_when_table_is_missing(monkeypat
             UserVideoFeed.__table__,
         ],
     )
-    monkeypatch.setattr(video_service, "get_session", lambda: _managed_session(engine))
-    monkeypatch.setattr(
-        video_service.thumbnail_downloader_service,
-        "get_thumbnail_url",
-        lambda video_id, remote_url, video_url=None: remote_url,
+
+    @contextmanager
+    def _sf():
+        with _managed_session(engine) as session:
+            yield session
+
+    svc = VideoListService(
+        session_factory=_sf,
+        get_user_config=lambda _: {"showNsfw": False},
+        thumbnail_downloader=fake_thumbnail_downloader,
     )
 
     with Session(engine, expire_on_commit=False) as session:
@@ -1582,7 +1568,7 @@ def test_get_video_gracefully_skips_clip_markers_when_table_is_missing(monkeypat
         ])
         session.commit()
 
-    video = video_service.get_video(user_id=7, video_id=901)
+    video = svc.get_video(user_id=7, video_id=901)
 
     assert video is not None
     assert video["id"] == 901

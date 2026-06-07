@@ -3,18 +3,23 @@ from fastapi import APIRouter, Depends, Query
 from common import response
 from models.user import User
 from schemas.video_clip_marker import ClipMarkerCreate, ClipMarkerPreviewUpload, ClipMarkerUpdate
-from services import video_clip_marker_service
+from services.video_clip_marker_service import VideoClipMarkerService
 from utils.jwt_helper import get_current_user
 
 router = APIRouter(prefix="/api/video-clip-markers", tags=["视频片段标记"])
+
+
+def get_clip_marker_service() -> VideoClipMarkerService:
+    return VideoClipMarkerService()
 
 
 @router.get("")
 def list_video_clip_markers(
         video_id: int = Query(..., description="视频ID"),
         user: User = Depends(get_current_user),
+        svc: VideoClipMarkerService = Depends(get_clip_marker_service),
 ):
-    markers = video_clip_marker_service.list_markers(user.id, video_id)
+    markers = svc.list_markers(user.id, video_id)
     return response.success(markers)
 
 
@@ -22,9 +27,10 @@ def list_video_clip_markers(
 def create_video_clip_marker(
         data: ClipMarkerCreate,
         user: User = Depends(get_current_user),
+        svc: VideoClipMarkerService = Depends(get_clip_marker_service),
 ):
     try:
-        marker = video_clip_marker_service.create_marker(user.id, data)
+        marker = svc.create_marker(user.id, data)
     except ValueError as exc:
         return response.param_error(str(exc))
     return response.success(marker)
@@ -35,9 +41,10 @@ def update_video_clip_marker(
         marker_id: int,
         data: ClipMarkerUpdate,
         user: User = Depends(get_current_user),
+        svc: VideoClipMarkerService = Depends(get_clip_marker_service),
 ):
     try:
-        marker = video_clip_marker_service.update_marker(user.id, marker_id, data)
+        marker = svc.update_marker(user.id, marker_id, data)
     except ValueError as exc:
         return response.param_error(str(exc))
 
@@ -51,9 +58,10 @@ def upload_video_clip_marker_preview(
         marker_id: int,
         data: ClipMarkerPreviewUpload,
         user: User = Depends(get_current_user),
+        svc: VideoClipMarkerService = Depends(get_clip_marker_service),
 ):
     try:
-        marker = video_clip_marker_service.save_preview(user.id, marker_id, data.image_data_url)
+        marker = svc.save_preview(user.id, marker_id, data.image_data_url)
     except ValueError as exc:
         return response.param_error(str(exc))
 
@@ -66,8 +74,9 @@ def upload_video_clip_marker_preview(
 def delete_video_clip_marker(
         marker_id: int,
         user: User = Depends(get_current_user),
+        svc: VideoClipMarkerService = Depends(get_clip_marker_service),
 ):
-    deleted_count = video_clip_marker_service.delete_marker(user.id, marker_id)
+    deleted_count = svc.delete_marker(user.id, marker_id)
     if deleted_count == 0:
         return response.not_found("片段标记不存在")
     return response.success()

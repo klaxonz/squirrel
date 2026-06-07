@@ -1,12 +1,7 @@
-import sys
-from contextlib import contextmanager
 from datetime import datetime
-from pathlib import Path
 
-from sqlalchemy import create_engine
+import pytest
 from sqlalchemy.orm import Session
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
 from models.crawl_job import CrawlJob
@@ -16,25 +11,13 @@ from models.subscription import Subscription
 from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
-from services import subscription_sync_center_service, subscription_sync_history_service
+from services.subscription_sync_center_service import SubscriptionSyncCenterService
+from services.subscription_sync_history_service import SubscriptionSyncHistoryService
 from utils.site_catalog import SiteCatalog
 
 
-@contextmanager
-def _managed_session(engine):
-    session = Session(engine, expire_on_commit=False)
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
-
-def _setup_test_env(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+@pytest.fixture
+def engine(engine):
     Base.metadata.create_all(
         engine,
         tables=[
@@ -47,10 +30,25 @@ def _setup_test_env(monkeypatch):
             SubscriptionSyncSubscriptionProjection.__table__,
         ],
     )
+    return engine
 
-    monkeypatch.setattr(subscription_sync_history_service, "get_session", lambda: _managed_session(engine))
-    monkeypatch.setattr(subscription_sync_center_service, "get_session", lambda: _managed_session(engine))
-    monkeypatch.setattr(subscription_sync_center_service, "_refresh_runtime_sync_health", lambda force=False: None)
+
+@pytest.fixture
+def svc(session_factory):
+    return SubscriptionSyncCenterService(session_factory=session_factory)
+
+
+@pytest.fixture
+def history_svc(session_factory):
+    return SubscriptionSyncHistoryService(session_factory=session_factory)
+
+
+def _setup_test_env(engine, monkeypatch):
+    monkeypatch.setattr(
+        SubscriptionSyncCenterService,
+        "_refresh_runtime_sync_health",
+        lambda self, force=False: None,
+    )
     monkeypatch.setattr(
         SiteCatalog,
         "resolve_domains",
@@ -152,20 +150,22 @@ def _seed_sync_projection(engine):
         session.commit()
 
 
-def test_list_runs_accepts_site_slug_when_projection_stores_domain(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_list_runs_accepts_site_slug_when_projection_stores_domain(engine, session_factory, monkeypatch):
+    engine = _setup_test_env(engine, monkeypatch)
     _seed_sync_projection(engine)
+    history_svc = SubscriptionSyncHistoryService(session_factory=session_factory)
 
-    result = subscription_sync_history_service.list_runs(user_id=1, site="youtube", page=1, page_size=20)
+    result = history_svc.list_runs(user_id=1, site="youtube", page=1, page_size=20)
 
     assert result["total"] == 1
     assert [item["site"] for item in result["data"]] == ["youtube.com"]
     assert [item["site_icon_url"] for item in result["data"]] == ["/api/sites/youtube/icon"]
 
 
-def test_list_runs_recent_excludes_running_and_queued_statuses(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_list_runs_recent_excludes_running_and_queued_statuses(engine, session_factory, monkeypatch):
+    engine = _setup_test_env(engine, monkeypatch)
     _seed_sync_projection(engine)
+    history_svc = SubscriptionSyncHistoryService(session_factory=session_factory)
 
     with Session(engine, expire_on_commit=False) as session:
         session.add_all([
@@ -228,15 +228,16 @@ def test_list_runs_recent_excludes_running_and_queued_statuses(monkeypatch):
         ])
         session.commit()
 
-    result = subscription_sync_history_service.list_runs(user_id=1, status="recent", page=1, page_size=20)
+    result = history_svc.list_runs(user_id=1, status="recent", page=1, page_size=20)
 
     assert result["total"] == 1
     assert [item["run_id"] for item in result["data"]] == ["run-1"]
 
 
-def test_list_runs_feed_recent_includes_handoff_and_terminal_runs(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_list_runs_feed_recent_includes_handoff_and_terminal_runs(engine, session_factory, monkeypatch):
+    engine = _setup_test_env(engine, monkeypatch)
     _seed_sync_projection(engine)
+    history_svc = SubscriptionSyncHistoryService(session_factory=session_factory)
 
     with Session(engine, expire_on_commit=False) as session:
         session.add(
@@ -367,7 +368,7 @@ def test_list_runs_feed_recent_includes_handoff_and_terminal_runs(monkeypatch):
         ])
         session.commit()
 
-    result = subscription_sync_history_service.list_runs(user_id=1, status="feed_recent", page=1, page_size=20)
+    result = history_svc.list_runs(user_id=1, status="feed_recent", page=1, page_size=20)
 
     assert result["total"] == 2
     assert [item["run_id"] for item in result["data"]] == ["run-4", "run-1"]
@@ -376,9 +377,10 @@ def test_list_runs_feed_recent_includes_handoff_and_terminal_runs(monkeypatch):
     assert result["data"][0]["current_phase"] == "extracting"
 
 
-def test_list_runs_feed_recent_sorts_by_feed_completion_time_not_last_event(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_list_runs_feed_recent_sorts_by_feed_completion_time_not_last_event(engine, session_factory, monkeypatch):
+    engine = _setup_test_env(engine, monkeypatch)
     _seed_sync_projection(engine)
+    history_svc = SubscriptionSyncHistoryService(session_factory=session_factory)
 
     with Session(engine, expire_on_commit=False) as session:
         session.add(
@@ -541,16 +543,17 @@ def test_list_runs_feed_recent_sorts_by_feed_completion_time_not_last_event(monk
         ])
         session.commit()
 
-    result = subscription_sync_history_service.list_runs(user_id=1, status="feed_recent", page=1, page_size=20)
+    result = history_svc.list_runs(user_id=1, status="feed_recent", page=1, page_size=20)
 
     assert [item["run_id"] for item in result["data"]] == ["run-4", "run-1"]
     assert result["data"][0]["feed_completed_at"] == "2024-01-01 01:05:00"
     assert result["data"][1]["feed_completed_at"] == "2024-01-01 01:02:00"
 
 
-def test_list_runs_feed_recent_only_returns_latest_run_per_subscription(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_list_runs_feed_recent_only_returns_latest_run_per_subscription(engine, session_factory, monkeypatch):
+    engine = _setup_test_env(engine, monkeypatch)
     _seed_sync_projection(engine)
+    history_svc = SubscriptionSyncHistoryService(session_factory=session_factory)
 
     with Session(engine, expire_on_commit=False) as session:
         subscription_projection = session.get(SubscriptionSyncSubscriptionProjection, 1)
@@ -630,15 +633,16 @@ def test_list_runs_feed_recent_only_returns_latest_run_per_subscription(monkeypa
         ])
         session.commit()
 
-    result = subscription_sync_history_service.list_runs(user_id=1, status="feed_recent", page=1, page_size=20)
+    result = history_svc.list_runs(user_id=1, status="feed_recent", page=1, page_size=20)
 
     assert result["total"] == 1
     assert [item["run_id"] for item in result["data"]] == ["run-4"]
 
 
-def test_list_sync_center_queued_items_follow_real_task_queue_order(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_list_sync_center_queued_items_follow_real_task_queue_order(engine, session_factory, monkeypatch):
+    engine = _setup_test_env(engine, monkeypatch)
     _seed_sync_projection(engine)
+    svc = SubscriptionSyncCenterService(session_factory=session_factory)
 
     with Session(engine, expire_on_commit=False) as session:
         subscription_projection = session.get(SubscriptionSyncSubscriptionProjection, 1)
@@ -778,3 +782,7 @@ def test_list_sync_center_queued_items_follow_real_task_queue_order(monkeypatch)
         ])
         session.commit()
 
+    result = svc.list_queued_items(user_id=1, page=1, page_size=20)
+
+    assert result["total"] == 2
+    assert [item["subscription_id"] for item in result["data"]] == [2, 1]

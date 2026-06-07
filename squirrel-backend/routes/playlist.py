@@ -10,7 +10,7 @@ from schemas.playlist import (
     PlaylistItemReorder,
     PlaylistUpdate,
 )
-from services import playlist_service
+from services.playlist_service import PlaylistService
 from utils.jwt_helper import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -18,11 +18,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/playlist", tags=["播放列表接口"])
 
 
+def get_playlist_service() -> PlaylistService:
+    return PlaylistService()
+
+
 @router.get("")
 def list_playlists(
         current_user: User = Depends(get_current_user),
+        svc: PlaylistService = Depends(get_playlist_service),
 ):
-    playlists = playlist_service.list_playlists(current_user.id)
+    playlists = svc.list_playlists(current_user.id)
     return response.success(playlists)
 
 
@@ -30,8 +35,9 @@ def list_playlists(
 def get_playlist_detail(
         playlist_id: int,
         current_user: User = Depends(get_current_user),
+        svc: PlaylistService = Depends(get_playlist_service),
 ):
-    detail = playlist_service.get_playlist_detail(current_user.id, playlist_id)
+    detail = svc.get_playlist_detail(current_user.id, playlist_id)
     if not detail:
         return response.not_found("播放列表不存在")
     return response.success(detail)
@@ -41,8 +47,9 @@ def get_playlist_detail(
 def get_playlist_items(
         playlist_id: int,
         current_user: User = Depends(get_current_user),
+        svc: PlaylistService = Depends(get_playlist_service),
 ):
-    items = playlist_service.get_playlist_items_with_videos(current_user.id, playlist_id)
+    items = svc.get_playlist_items_with_videos(current_user.id, playlist_id)
     if items is None:
         return response.not_found("播放列表不存在")
     return response.success(items)
@@ -52,9 +59,10 @@ def get_playlist_items(
 def create_playlist(
         data: PlaylistCreate,
         current_user: User = Depends(get_current_user),
+        svc: PlaylistService = Depends(get_playlist_service),
 ):
     try:
-        playlist = playlist_service.create_playlist(current_user.id, data)
+        playlist = svc.create_playlist(current_user.id, data)
         return response.success(playlist)
     except ValueError as e:
         return response.param_error(str(e))
@@ -65,9 +73,10 @@ def update_playlist(
         playlist_id: int,
         data: PlaylistUpdate,
         current_user: User = Depends(get_current_user),
+        svc: PlaylistService = Depends(get_playlist_service),
 ):
     try:
-        playlist = playlist_service.update_playlist(current_user.id, playlist_id, data)
+        playlist = svc.update_playlist(current_user.id, playlist_id, data)
         if not playlist:
             return response.not_found("播放列表不存在")
         return response.success(playlist)
@@ -79,9 +88,10 @@ def update_playlist(
 def delete_playlist(
         playlist_id: int,
         current_user: User = Depends(get_current_user),
+        svc: PlaylistService = Depends(get_playlist_service),
 ):
     try:
-        ok = playlist_service.delete_playlist(current_user.id, playlist_id)
+        ok = svc.delete_playlist(current_user.id, playlist_id)
         if not ok:
             return response.not_found("播放列表不存在")
         return response.success({"deleted": True})
@@ -93,9 +103,10 @@ def delete_playlist(
 def add_video_to_playlist(
         data: PlaylistItemAdd,
         current_user: User = Depends(get_current_user),
+        svc: PlaylistService = Depends(get_playlist_service),
 ):
     try:
-        item = playlist_service.add_video_to_playlist(
+        item = svc.add_video_to_playlist(
             current_user.id,
             data.video_id,
             data.playlist_id,
@@ -115,8 +126,9 @@ def remove_video_from_playlist(
         playlist_id: int,
         video_id: int,
         current_user: User = Depends(get_current_user),
+        svc: PlaylistService = Depends(get_playlist_service),
 ):
-    ok = playlist_service.remove_video_from_playlist(current_user.id, playlist_id, video_id)
+    ok = svc.remove_video_from_playlist(current_user.id, playlist_id, video_id)
     if not ok:
         return response.not_found("播放列表项不存在")
     return response.success({"removed": True})
@@ -126,9 +138,10 @@ def remove_video_from_playlist(
 def reorder_playlist_item(
         data: PlaylistItemReorder,
         current_user: User = Depends(get_current_user),
+        svc: PlaylistService = Depends(get_playlist_service),
 ):
     try:
-        item = playlist_service.reorder_playlist_item(current_user.id, data)
+        item = svc.reorder_playlist_item(current_user.id, data)
         if not item:
             return response.not_found("播放列表项不存在")
         return response.success(item)
@@ -139,8 +152,9 @@ def reorder_playlist_item(
 @router.get("/default")
 def get_default_playlist(
         current_user: User = Depends(get_current_user),
+        svc: PlaylistService = Depends(get_playlist_service),
 ):
-    playlist = playlist_service.get_default_playlist(current_user.id)
+    playlist = svc.get_default_playlist(current_user.id)
     if not playlist:
         return response.not_found("默认播放列表不存在")
     return response.success(playlist)
@@ -151,8 +165,9 @@ def play_next_video(
         playlist_id: int,
         video_id: int = Query(..., description="当前播放的视频ID"),
         current_user: User = Depends(get_current_user),
+        svc: PlaylistService = Depends(get_playlist_service),
 ):
-    result = playlist_service.play_next_video(current_user.id, playlist_id, video_id)
+    result = svc.play_next_video(current_user.id, playlist_id, video_id)
     if result is None:
         return response.not_found("播放列表不存在")
     if "error" in result:

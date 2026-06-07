@@ -1,4 +1,5 @@
 from .service import (
+    _default,
     cancel_task,
     claim_next_task,
     clear_task_dedupe_key,
@@ -15,6 +16,8 @@ from .service import (
     retry_task,
     start_task,
 )
+
+CrawlTaskService = _default.__class__
 
 __all__ = [
     "cancel_task",

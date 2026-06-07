@@ -1,12 +1,7 @@
-import sys
-from contextlib import contextmanager
 from datetime import datetime, timedelta
-from pathlib import Path
 
-from sqlalchemy import create_engine
+import pytest
 from sqlalchemy.orm import Session
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
 from models.crawl_job import CrawlJob
@@ -19,35 +14,17 @@ from models.subscription_sync_run_projection import SubscriptionSyncRunProjectio
 from models.subscription_sync_state import SubscriptionSyncState
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
 from schemas.subscription.dto.sync_center_dto import SyncCenterItemDto
-from services import (
-    subscription_sync_center_service,
-    subscription_sync_history_service,
-    subscription_sync_state_service,
-)
+from services.subscription_sync_center_service import SubscriptionSyncCenterService
+from services.subscription_sync_state_service import SyncStateService
 from utils.site_catalog import SiteCatalog
 
 
-def _reset_feed_site_catalog_cache(monkeypatch):
-    monkeypatch.setattr(subscription_sync_center_service, "_site_catalog_cache", None, raising=False)
-    monkeypatch.setattr(subscription_sync_center_service, "_site_catalog_cache_expires_at_monotonic", None, raising=False)
-    monkeypatch.setattr(subscription_sync_center_service, "_site_icon_url_cache", {}, raising=False)
+@pytest.fixture
+def engine(engine):
+    return engine
 
 
-@contextmanager
-def _managed_session(engine):
-    session = Session(engine, expire_on_commit=False)
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
-
-def _setup_projection_env(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+def _setup_projection_env(engine):
     Base.metadata.create_all(
         engine,
         tables=[
@@ -58,24 +35,15 @@ def _setup_projection_env(monkeypatch):
             SubscriptionSyncSubscriptionProjection.__table__,
         ],
     )
-    monkeypatch.setattr(subscription_sync_center_service, "get_session", lambda: _managed_session(engine))
-    monkeypatch.setattr(subscription_sync_history_service, "get_session", lambda: _managed_session(engine))
     return engine
 
 
-def _setup_state_env(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+def _setup_state_env(engine):
     Base.metadata.create_all(engine, tables=[SubscriptionSyncState.__table__, OutboxEvent.__table__])
-    monkeypatch.setattr(subscription_sync_state_service, "get_session", lambda: _managed_session(engine))
-    from core import database
-    monkeypatch.setattr(database, "get_session", lambda: _managed_session(engine))
-    from services import outbox_event_service
-    monkeypatch.setattr(outbox_event_service, "get_session", lambda: _managed_session(engine))
     return engine
 
 
-def _setup_projection_reconcile_env(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+def _setup_projection_reconcile_env(engine):
     Base.metadata.create_all(
         engine,
         tables=[
@@ -86,9 +54,6 @@ def _setup_projection_reconcile_env(monkeypatch):
             SubscriptionSyncSubscriptionProjection.__table__,
         ],
     )
-    monkeypatch.setattr(subscription_sync_state_service, "get_session", lambda: _managed_session(engine))
-    from core import database
-    monkeypatch.setattr(database, "get_session", lambda: _managed_session(engine))
     return engine
 
 
@@ -349,13 +314,15 @@ def _seed_projection_data(engine):
         session.commit()
 
 
-def test_sync_center_feed_dashboard_snapshot_uses_one_consistent_result_shape(monkeypatch):
-    engine = _setup_projection_env(monkeypatch)
+def test_sync_center_feed_dashboard_snapshot_uses_one_consistent_result_shape(engine, session_factory, monkeypatch):
+    engine = _setup_projection_env(engine)
     _seed_projection_data(engine)
-    monkeypatch.setattr(subscription_sync_center_service, "_refresh_runtime_sync_health", lambda force=False: None)
+    svc = SubscriptionSyncCenterService(session_factory=session_factory)
+
+    monkeypatch.setattr(svc, "_refresh_runtime_sync_health", lambda force=False: None)
     _mock_site_catalog(monkeypatch)
 
-    snapshot = subscription_sync_center_service.get_feed_dashboard_snapshot(
+    snapshot = svc.get_feed_dashboard_snapshot(
         user_id=1,
         site=None,
         query=None,
@@ -374,13 +341,11 @@ def test_sync_center_feed_dashboard_snapshot_uses_one_consistent_result_shape(mo
     ]
     assert [run["run_id"] for run in snapshot["recentRuns"]] == ["run-running"]
 
-    # 首次调用，所有 recentRuns 都是新增的
     assert "recentlyCompletedRuns" in snapshot
     assert len(snapshot["recentlyCompletedRuns"]) > 0
     first_call_run_ids = {run["run_id"] for run in snapshot["recentlyCompletedRuns"]}
 
-    # 第二次调用，run_id 已缓存，recentlyCompletedRuns 应为空
-    snapshot2 = subscription_sync_center_service.get_feed_dashboard_snapshot(
+    snapshot2 = svc.get_feed_dashboard_snapshot(
         user_id=1,
         site=None,
         query=None,
@@ -391,11 +356,13 @@ def test_sync_center_feed_dashboard_snapshot_uses_one_consistent_result_shape(mo
     assert len(second_call_new_ids) == 0 or not first_call_run_ids.issubset(second_call_new_ids)
 
 
-def test_sync_center_feed_dashboard_snapshot_does_not_trim_running_or_queued_items(monkeypatch):
-    engine = _setup_projection_env(monkeypatch)
+def test_sync_center_feed_dashboard_snapshot_does_not_trim_running_or_queued_items(engine, session_factory, monkeypatch):
+    engine = _setup_projection_env(engine)
     _seed_projection_data(engine)
-    monkeypatch.setattr(subscription_sync_center_service, "_refresh_runtime_sync_health", lambda force=False: None)
-    monkeypatch.setattr(subscription_sync_center_service, "SYNC_CENTER_PREVIEW_LIMIT", 1)
+    svc = SubscriptionSyncCenterService(session_factory=session_factory)
+
+    monkeypatch.setattr(svc, "_refresh_runtime_sync_health", lambda force=False: None)
+    monkeypatch.setattr(svc, "SYNC_CENTER_PREVIEW_LIMIT", 1)
     _mock_site_catalog(monkeypatch)
 
     with Session(engine, expire_on_commit=False) as session:
@@ -408,7 +375,7 @@ def test_sync_center_feed_dashboard_snapshot_does_not_trim_running_or_queued_ite
         subscription_projection.pending_video_count = 0
         session.commit()
 
-    snapshot = subscription_sync_center_service.get_feed_dashboard_snapshot(
+    snapshot = svc.get_feed_dashboard_snapshot(
         user_id=1,
         site=None,
         query=None,
@@ -420,11 +387,15 @@ def test_sync_center_feed_dashboard_snapshot_does_not_trim_running_or_queued_ite
     assert [item.subscription_name for item in snapshot["queuedPreview"]] == ["Queued First", "Queued Second"]
 
 
-def test_sync_center_feed_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(monkeypatch):
-    engine = _setup_projection_env(monkeypatch)
+def test_sync_center_feed_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(engine, session_factory, monkeypatch):
+    engine = _setup_projection_env(engine)
     _seed_projection_data(engine)
-    monkeypatch.setattr(subscription_sync_center_service, "_refresh_runtime_sync_health", lambda force=False: None)
-    _reset_feed_site_catalog_cache(monkeypatch)
+    svc = SubscriptionSyncCenterService(session_factory=session_factory)
+
+    monkeypatch.setattr(svc, "_refresh_runtime_sync_health", lambda force=False: None)
+    monkeypatch.setattr(svc, "_site_catalog_cache", None, raising=False)
+    monkeypatch.setattr(svc, "_site_catalog_cache_expires_at_monotonic", None, raising=False)
+    monkeypatch.setattr(svc, "_site_icon_url_cache", {}, raising=False)
 
     calls = []
 
@@ -441,9 +412,9 @@ def test_sync_center_feed_dashboard_snapshot_reuses_site_catalog_for_icon_resolu
             },
         }
 
-    monkeypatch.setattr(subscription_sync_center_service, "get_effective_site_catalog", _fake_get_effective_site_catalog)
+    monkeypatch.setattr(svc, "get_effective_site_catalog", _fake_get_effective_site_catalog)
 
-    snapshot = subscription_sync_center_service.get_feed_dashboard_snapshot(
+    snapshot = svc.get_feed_dashboard_snapshot(
         user_id=1,
         site=None,
         query=None,
@@ -479,7 +450,8 @@ def test_sort_items_accepts_mixed_queued_rank_sources():
         ),
     ]
 
-    result = subscription_sync_center_service._sort_items(
+    svc = SubscriptionSyncCenterService()
+    result = svc._sort_items(
         items,
         "queued",
         queued_candidate_rank_map={1: 1},
@@ -488,149 +460,163 @@ def test_sort_items_accepts_mixed_queued_rank_sources():
 
     assert [item.subscription_id for item in result] == [1, 3, 2]
 
-def test_reconcile_retry_wait_run_projections_emits_queued_event_for_stale_feed_run(monkeypatch):
-    engine = _setup_projection_reconcile_env(monkeypatch)
+
+def test_reconcile_retry_wait_run_projections_emits_queued_event_for_stale_feed_run(engine, session_factory, monkeypatch, sss_session):
+    engine = _setup_projection_reconcile_env(engine)
+    sss_svc = SyncStateService(session_factory=session_factory)
     captured_events = []
-    monkeypatch.setattr(subscription_sync_state_service, "append_event", lambda event, session=None: captured_events.append(event))
 
-    now = datetime(2026, 4, 2, 22, 24, 19)
-    with Session(engine, expire_on_commit=False) as session:
-        session.add(
-            CrawlJob(
-                id=1,
-                job_type="subscription_sync",
-                source_type="scheduled",
-                site="bilibili.com",
-                subscription_id=112,
-                status="running",
-                payload={},
-                created_at=now - timedelta(minutes=1),
-                updated_at=now - timedelta(minutes=1),
-            ),
-        )
-        session.add(
-            SubscriptionSyncState(
-                id=1334,
-                subscription_id=112,
-                site="bilibili.com",
-                sync_mode="full",
-                sync_status="queued",
-                cursor_payload={"page": 5},
-                last_seen_video_url="https://www.bilibili.com/video/demo",
-                last_sync_at=now - timedelta(minutes=1),
-                last_success_at=now - timedelta(hours=1),
-                next_sync_at=now + timedelta(minutes=1),
-                queued_at=now,
-                locked_at=None,
-                queue_token="queue-token-1",
-                pending_video_count=0,
-                failure_count=1,
-                version=10,
-                last_error="lease_expired",
-                created_at=now - timedelta(days=1),
-                updated_at=now,
-                idle_sync_count=0,
-            ),
-        )
-        session.add(
-            SubscriptionSyncRunProjection(
-                run_id="run-stale-1",
-                subscription_id=112,
-                sync_state_id=1334,
-                site="bilibili.com",
-                sync_mode="full",
-                trigger="scheduled",
-                request_id="req-stale-1",
-                trace_id="trace-stale-1",
-                status="running",
-                current_phase="fetching_feed",
-                queued_at=now - timedelta(minutes=2),
-                started_at=now - timedelta(minutes=1),
-                finished_at=None,
-                duration_ms=0,
-                failure_count=0,
-                error_type=None,
-                error_message=None,
-                videos_found=50,
-                videos_enqueued=0,
-                videos_extracted=0,
-                videos_skipped=25,
-                pending_video_count=0,
-                last_event_seq_no=12,
-                last_event_at=now - timedelta(seconds=59),
-                created_at=now - timedelta(minutes=2),
-                updated_at=now - timedelta(seconds=59),
-            ),
-        )
-        session.add(
-            SubscriptionSyncSubscriptionProjection(
-                subscription_id=112,
-                latest_run_id="run-stale-1",
-                current_status="running",
-                current_phase="fetching_feed",
-                last_sync_at=now - timedelta(hours=1),
-                last_success_at=now - timedelta(hours=1),
-                next_sync_at=now - timedelta(minutes=1),
-                last_error_message=None,
-                pending_video_count=0,
-                failure_streak=0,
-                last_event_seq_no=12,
-                updated_at=now - timedelta(seconds=59),
-            ),
-        )
-        session.add(
-            CrawlTask(
-                id=6877,
-                job_id=1,
-                task_type="subscription_sync_full",
-                site="bilibili.com",
-                subscription_id=112,
-                status="retry_wait",
-                worker_id=None,
-                attempt=1,
-                max_attempts=3,
-                next_run_at=now + timedelta(seconds=30),
-                lease_until=None,
-                last_error="lease_expired",
-                last_error_type="lease_expired",
-                trace_id="trace-stale-1",
-                payload={
-                    "subscription_id": 112,
-                    "sync_state_id": 1334,
-                    "mode": "full",
-                    "queue_token": "queue-token-1",
-                    "trigger": "scheduled",
-                    "run_id": "run-stale-1",
-                    "request_id": "req-stale-1",
-                    "trace_id": "trace-stale-1",
-                },
-                created_at=now - timedelta(minutes=2),
-                updated_at=now,
-                started_at=now - timedelta(minutes=1),
-                finished_at=None,
-            ),
-        )
-        session.commit()
+    import _pytest.monkeypatch as _mp
 
-    result = subscription_sync_state_service.reconcile_retry_wait_run_projections()
+    from services import subscription_sync_state_service as sss_mod
+    mp = _mp.MonkeyPatch()
+    try:
+        mp.setattr(sss_mod, "append_event", lambda event, session=None: captured_events.append(event))
 
-    assert result == {"candidates": 1, "repaired": 1}
-    assert len(captured_events) == 1
-    assert captured_events[0].stream_id == "run-stale-1"
-    assert captured_events[0].event_type == "queued"
-    assert captured_events[0].event_phase == "queued"
-    assert captured_events[0].event_status == "queued"
-    assert captured_events[0].request_id == "req-stale-1"
-    assert captured_events[0].trace_id == "trace-stale-1"
-    assert captured_events[0].trigger == "scheduled"
-    assert captured_events[0].message == "lease_expired"
-    assert captured_events[0].payload["queue_token"] == "queue-token-1"
+        now = datetime(2026, 4, 2, 22, 24, 19)
+        with Session(engine, expire_on_commit=False) as session:
+            session.add(
+                CrawlJob(
+                    id=1,
+                    job_type="subscription_sync",
+                    source_type="scheduled",
+                    site="bilibili.com",
+                    subscription_id=112,
+                    status="running",
+                    payload={},
+                    created_at=now - timedelta(minutes=1),
+                    updated_at=now - timedelta(minutes=1),
+                ),
+            )
+            session.add(
+                SubscriptionSyncState(
+                    id=1334,
+                    subscription_id=112,
+                    site="bilibili.com",
+                    sync_mode="full",
+                    sync_status="queued",
+                    cursor_payload={"page": 5},
+                    last_seen_video_url="https://www.bilibili.com/video/demo",
+                    last_sync_at=now - timedelta(minutes=1),
+                    last_success_at=now - timedelta(hours=1),
+                    next_sync_at=now + timedelta(minutes=1),
+                    queued_at=now,
+                    locked_at=None,
+                    queue_token="queue-token-1",
+                    pending_video_count=0,
+                    failure_count=1,
+                    version=10,
+                    last_error="lease_expired",
+                    created_at=now - timedelta(days=1),
+                    updated_at=now,
+                    idle_sync_count=0,
+                ),
+            )
+            session.add(
+                SubscriptionSyncRunProjection(
+                    run_id="run-stale-1",
+                    subscription_id=112,
+                    sync_state_id=1334,
+                    site="bilibili.com",
+                    sync_mode="full",
+                    trigger="scheduled",
+                    request_id="req-stale-1",
+                    trace_id="trace-stale-1",
+                    status="running",
+                    current_phase="fetching_feed",
+                    queued_at=now - timedelta(minutes=2),
+                    started_at=now - timedelta(minutes=1),
+                    finished_at=None,
+                    duration_ms=0,
+                    failure_count=0,
+                    error_type=None,
+                    error_message=None,
+                    videos_found=50,
+                    videos_enqueued=0,
+                    videos_extracted=0,
+                    videos_skipped=25,
+                    pending_video_count=0,
+                    last_event_seq_no=12,
+                    last_event_at=now - timedelta(seconds=59),
+                    created_at=now - timedelta(minutes=2),
+                    updated_at=now - timedelta(seconds=59),
+                ),
+            )
+            session.add(
+                SubscriptionSyncSubscriptionProjection(
+                    subscription_id=112,
+                    latest_run_id="run-stale-1",
+                    current_status="running",
+                    current_phase="fetching_feed",
+                    last_sync_at=now - timedelta(hours=1),
+                    last_success_at=now - timedelta(hours=1),
+                    next_sync_at=now - timedelta(minutes=1),
+                    last_error_message=None,
+                    pending_video_count=0,
+                    failure_streak=0,
+                    last_event_seq_no=12,
+                    updated_at=now - timedelta(seconds=59),
+                ),
+            )
+            session.add(
+                CrawlTask(
+                    id=6877,
+                    job_id=1,
+                    task_type="subscription_sync_full",
+                    site="bilibili.com",
+                    subscription_id=112,
+                    status="retry_wait",
+                    worker_id=None,
+                    attempt=1,
+                    max_attempts=3,
+                    next_run_at=now + timedelta(seconds=30),
+                    lease_until=None,
+                    last_error="lease_expired",
+                    last_error_type="lease_expired",
+                    trace_id="trace-stale-1",
+                    payload={
+                        "subscription_id": 112,
+                        "sync_state_id": 1334,
+                        "mode": "full",
+                        "queue_token": "queue-token-1",
+                        "trigger": "scheduled",
+                        "run_id": "run-stale-1",
+                        "request_id": "req-stale-1",
+                        "trace_id": "trace-stale-1",
+                    },
+                    created_at=now - timedelta(minutes=2),
+                    updated_at=now,
+                    started_at=now - timedelta(minutes=1),
+                    finished_at=None,
+                ),
+            )
+            session.commit()
+
+        result = sss_svc.reconcile_retry_wait_run_projections()
+
+        assert result == {"candidates": 1, "repaired": 1}
+        assert len(captured_events) == 1
+        assert captured_events[0].stream_id == "run-stale-1"
+        assert captured_events[0].event_type == "queued"
+        assert captured_events[0].event_phase == "queued"
+        assert captured_events[0].event_status == "queued"
+        assert captured_events[0].request_id == "req-stale-1"
+        assert captured_events[0].trace_id == "trace-stale-1"
+        assert captured_events[0].trigger == "scheduled"
+        assert captured_events[0].message == "lease_expired"
+        assert captured_events[0].payload["queue_token"] == "queue-token-1"
+    finally:
+        mp.undo()
 
 
-def test_mark_sync_success_stays_running_until_pending_videos_are_drained(monkeypatch):
-    engine = _setup_state_env(monkeypatch)
+def test_mark_sync_success_stays_running_until_pending_videos_are_drained(engine, session_factory, monkeypatch, sss_session):
+    engine = _setup_state_env(engine)
+    sss_svc = SyncStateService(session_factory=session_factory)
     captured_events = []
-    monkeypatch.setattr(subscription_sync_state_service, "append_event", lambda event, session=None: captured_events.append(event))
+
+    from services import subscription_sync_state_service as sss_mod
+    mp = monkeypatch
+    mp.setattr(sss_mod, "append_event", lambda event, session=None: captured_events.append(event))
 
     now = datetime(2026, 4, 2, 12, 0, 0)
     with Session(engine, expire_on_commit=False) as session:
@@ -660,7 +646,7 @@ def test_mark_sync_success_stays_running_until_pending_videos_are_drained(monkey
         )
         session.commit()
 
-    subscription_sync_state_service.mark_sync_success(
+    sss_svc.mark_sync_success(
         11,
         cursor_payload={"cursor": "done"},
         latest_video_url="https://example.com/video/1",
@@ -683,7 +669,7 @@ def test_mark_sync_success_stays_running_until_pending_videos_are_drained(monkey
     assert [event.event_type for event in captured_events] == ["phase_changed"]
     assert captured_events[-1].event_phase == "extracting"
 
-    subscription_sync_state_service.decrement_pending_video_count(
+    sss_svc.decrement_pending_video_count(
         11,
         count=3,
         run_id="run-1",
@@ -701,12 +687,16 @@ def test_mark_sync_success_stays_running_until_pending_videos_are_drained(monkey
     assert [event.event_type for event in captured_events] == ["phase_changed", "completed"]
 
 
-def test_reconcile_terminal_drained_sync_states_completes_original_latest_run(monkeypatch):
-    engine = _setup_projection_reconcile_env(monkeypatch)
+def test_reconcile_terminal_drained_sync_states_completes_original_latest_run(engine, session_factory, monkeypatch, sss_session):
+    engine = _setup_projection_reconcile_env(engine)
+    sss_svc = SyncStateService(session_factory=session_factory)
     captured_events = []
-    monkeypatch.setattr(subscription_sync_state_service, "append_event", lambda event, session=None: captured_events.append(event))
-    monkeypatch.setattr(
-        subscription_sync_state_service.crawl_task_service,
+
+    from services import subscription_sync_state_service as sss_mod
+    mp = monkeypatch
+    mp.setattr(sss_mod, "append_event", lambda event, session=None: captured_events.append(event))
+    mp.setattr(
+        sss_svc.crawl_task_service,
         "summarize_video_task_states_by_sync_state",
         dict,
     )
@@ -770,7 +760,7 @@ def test_reconcile_terminal_drained_sync_states_completes_original_latest_run(mo
         )
         session.commit()
 
-    result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
+    result = sss_svc.reconcile_terminal_drained_sync_states()
 
     assert result == {"running_states": 1, "completed": 1, "failed": 0}
     assert [(event.stream_id, event.event_type, event.event_phase, event.event_status) for event in captured_events] == [
@@ -778,8 +768,9 @@ def test_reconcile_terminal_drained_sync_states_completes_original_latest_run(mo
     ]
 
 
-def test_record_gap_observation_emits_full_backfill_request_when_score_crosses_threshold(monkeypatch):
-    engine = _setup_state_env(monkeypatch)
+def test_record_gap_observation_emits_full_backfill_request_when_score_crosses_threshold(engine, session_factory, monkeypatch, sss_session):
+    engine = _setup_state_env(engine)
+    sss_svc = SyncStateService(session_factory=session_factory)
 
     now = datetime(2026, 4, 4, 12, 0, 0)
     with Session(engine, expire_on_commit=False) as session:
@@ -796,7 +787,7 @@ def test_record_gap_observation_emits_full_backfill_request_when_score_crosses_t
         )
         session.commit()
 
-    summary = subscription_sync_state_service.record_gap_observation(
+    summary = sss_svc.record_gap_observation(
         sync_state_id=21,
         head_sample_urls=["https://example.com/video/new-1", "https://example.com/video/new-2"],
         anchor_found=False,
@@ -818,4 +809,3 @@ def test_record_gap_observation_emits_full_backfill_request_when_score_crosses_t
     assert len(events) == 1
     assert events[0].event_type == "full_backfill_requested"
     assert events[0].payload["subscription_id"] == 7
-

@@ -78,67 +78,77 @@ SUBSCRIPTION_TYPE_ALIASES = {
 }
 
 
-def _normalize_term(value: str) -> str:
-    return " ".join(str(value or "").strip().lower().split())
+class SearchQueryParser:
+    @staticmethod
+    def _normalize_term(value: str) -> str:
+        return " ".join(str(value or "").strip().lower().split())
 
+    @staticmethod
+    def parse_search_query(query: str | None) -> ParsedSearchQuery:
+        parsed = ParsedSearchQuery()
+        raw_query = str(query or "").strip()
+        if not raw_query:
+            return parsed
 
-def parse_search_query(query: str | None) -> ParsedSearchQuery:
-    parsed = ParsedSearchQuery()
-    raw_query = str(query or "").strip()
-    if not raw_query:
-        return parsed
+        try:
+            tokens = shlex.split(raw_query)
+        except ValueError:
+            tokens = raw_query.split()
 
-    try:
-        tokens = shlex.split(raw_query)
-    except ValueError:
-        tokens = raw_query.split()
-
-    for raw_token in tokens:
-        token = str(raw_token or "").strip()
-        if not token:
-            continue
-
-        matched = FIELD_TOKEN_PATTERN.match(token)
-        normalized_value = None
-        if matched:
-            key = _normalize_term(matched.group("key"))
-            normalized_value = _normalize_term(matched.group("value"))
-            target_field = FIELD_ALIASES.get(key)
-            if target_field and normalized_value:
-                getattr(parsed, target_field).append(normalized_value)
+        for raw_token in tokens:
+            token = str(raw_token or "").strip()
+            if not token:
                 continue
 
-        normalized_token = normalized_value or _normalize_term(token)
-        if normalized_token:
-            parsed.text_terms.append(normalized_token)
+            matched = FIELD_TOKEN_PATTERN.match(token)
+            normalized_value = None
+            if matched:
+                key = SearchQueryParser._normalize_term(matched.group("key"))
+                normalized_value = SearchQueryParser._normalize_term(matched.group("value"))
+                target_field = FIELD_ALIASES.get(key)
+                if target_field and normalized_value:
+                    getattr(parsed, target_field).append(normalized_value)
+                    continue
 
-    return parsed
+            normalized_token = normalized_value or SearchQueryParser._normalize_term(token)
+            if normalized_token:
+                parsed.text_terms.append(normalized_token)
+
+        return parsed
+
+    @staticmethod
+    def contains_term(values: Iterable[str | None], term: str) -> bool:
+        normalized_term = SearchQueryParser._normalize_term(term)
+        if not normalized_term:
+            return True
+        return any(normalized_term in SearchQueryParser._normalize_term(value) for value in values if value is not None)
+
+    @staticmethod
+    def contains_all_terms(values: Iterable[str | None], terms: Iterable[str]) -> bool:
+        return all(SearchQueryParser.contains_term(values, term) for term in terms)
+
+    @staticmethod
+    def extract_search_domain(url: str | None) -> str:
+        raw_url = str(url or "").strip()
+        if not raw_url:
+            return ""
+        parsed = urlparse(raw_url if "://" in raw_url else f"https://{raw_url}")
+        host = (parsed.netloc or parsed.path or "").strip().lower()
+        if host.startswith("www."):
+            host = host[4:]
+        return host.split(":")[0]
+
+    @staticmethod
+    def normalize_subscription_type_term(value: str | None) -> str | None:
+        normalized_value = SearchQueryParser._normalize_term(value or "")
+        if not normalized_value:
+            return None
+        return SUBSCRIPTION_TYPE_ALIASES.get(normalized_value, normalized_value.upper())
 
 
-def contains_term(values: Iterable[str | None], term: str) -> bool:
-    normalized_term = _normalize_term(term)
-    if not normalized_term:
-        return True
-    return any(normalized_term in _normalize_term(value) for value in values if value is not None)
-
-
-def contains_all_terms(values: Iterable[str | None], terms: Iterable[str]) -> bool:
-    return all(contains_term(values, term) for term in terms)
-
-
-def extract_search_domain(url: str | None) -> str:
-    raw_url = str(url or "").strip()
-    if not raw_url:
-        return ""
-    parsed = urlparse(raw_url if "://" in raw_url else f"https://{raw_url}")
-    host = (parsed.netloc or parsed.path or "").strip().lower()
-    if host.startswith("www."):
-        host = host[4:]
-    return host.split(":")[0]
-
-
-def normalize_subscription_type_term(value: str | None) -> str | None:
-    normalized_value = _normalize_term(value or "")
-    if not normalized_value:
-        return None
-    return SUBSCRIPTION_TYPE_ALIASES.get(normalized_value, normalized_value.upper())
+_default = SearchQueryParser()
+parse_search_query = _default.parse_search_query
+contains_term = _default.contains_term
+contains_all_terms = _default.contains_all_terms
+extract_search_domain = _default.extract_search_domain
+normalize_subscription_type_term = _default.normalize_subscription_type_term

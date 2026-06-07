@@ -1,54 +1,37 @@
-import sys
-from contextlib import contextmanager
 from datetime import datetime, timedelta
-from pathlib import Path
 
-from sqlalchemy import create_engine
+import pytest
 from sqlalchemy.orm import Session
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
 from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
+from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_state import SubscriptionSyncState
 from models.video_extraction_projection import VideoExtractionProjection
-from services import subscription_sync_state_service, video_extraction_projection_service
-from services.crawl_tasks import service as crawl_task_service
+from services.crawl_tasks.service import CrawlTaskService
 
 
-@contextmanager
-def _managed_session(engine):
-    session = Session(engine, expire_on_commit=False)
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
-
-def _setup_test_env(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+@pytest.fixture
+def engine(engine):
     Base.metadata.create_all(
         engine,
         tables=[
             CrawlJob.__table__,
             CrawlTask.__table__,
             CrawlDispatchScope.__table__,
+            SubscriptionSyncEvent.__table__,
             SubscriptionSyncState.__table__,
             VideoExtractionProjection.__table__,
         ],
     )
-    monkeypatch.setattr(crawl_task_service, "get_session", lambda: _managed_session(engine))
-    monkeypatch.setattr(subscription_sync_state_service, "get_session", lambda: _managed_session(engine))
-    from core import database
-    monkeypatch.setattr(database, "get_session", lambda: _managed_session(engine))
-    monkeypatch.setattr(video_extraction_projection_service, "get_session", lambda: _managed_session(engine))
     return engine
+
+
+@pytest.fixture
+def svc(session_factory):
+    return CrawlTaskService(session_factory=session_factory)
 
 
 def _create_job(engine) -> int:
@@ -65,17 +48,28 @@ def _create_job(engine) -> int:
         return job.id
 
 
-def test_create_job_and_task_persists_defaults(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def _patch_postgres(monkeypatch, session_factory):
+    from core import database
+    monkeypatch.setattr(database, "register_after_commit", lambda session, callback: None)
+    monkeypatch.setattr(database, "get_session", session_factory)
 
-    job = crawl_task_service.create_job(
+    from services.subscription_sync_run_service import _default as run_svc_default
+    run_svc_default.next_seq_no = lambda stream_id, *, session=None: 1
+
+    from services.subscription_sync_projection_service import _default as proj_default
+    proj_default._advisory_lock = staticmethod(lambda session, key: None)
+    proj_default.apply_event = lambda event, session=None: event
+
+
+def test_create_job_and_task_persists_defaults(engine, svc):
+    job = svc.create_job(
         job_type="subscription_sync",
         source_type="manual",
         site="youtube",
         subscription_id=1,
         payload={"mode": "incremental"},
     )
-    task = crawl_task_service.create_task(
+    task = svc.create_task(
         job_id=job.id,
         task_type="video_extract",
         site="youtube",
@@ -98,8 +92,7 @@ def test_create_job_and_task_persists_defaults(monkeypatch):
     ]
 
 
-def test_claim_next_task_sets_lease(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_claim_next_task_sets_lease(engine, svc):
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -116,7 +109,7 @@ def test_claim_next_task_sets_lease(monkeypatch):
         )
         session.commit()
 
-    claimed = crawl_task_service.claim_next_task(worker_id="worker-1", now=now, lease_seconds=90)
+    claimed = svc.claim_next_task(worker_id="worker-1", now=now, lease_seconds=90)
 
     assert claimed is not None
     assert claimed.status == "leased"
@@ -124,8 +117,7 @@ def test_claim_next_task_sets_lease(monkeypatch):
     assert claimed.lease_until == now + timedelta(seconds=90)
 
 
-def test_renew_task_lease_extends_current_lease(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_renew_task_lease_extends_current_lease(engine, svc):
     job_id = _create_job(engine)
     base_time = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -144,7 +136,7 @@ def test_renew_task_lease_extends_current_lease(monkeypatch):
         session.commit()
         task_id = task.id
 
-    renewed = crawl_task_service.renew_task_lease(
+    renewed = svc.renew_task_lease(
         task_id=task_id,
         worker_id="worker-1",
         now=base_time,
@@ -155,8 +147,7 @@ def test_renew_task_lease_extends_current_lease(monkeypatch):
     assert renewed.lease_until == base_time + timedelta(seconds=120)
 
 
-def test_recover_expired_tasks_moves_retriable_task_to_retry_wait(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_recover_expired_tasks_moves_retriable_task_to_retry_wait(engine, svc):
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -177,7 +168,7 @@ def test_recover_expired_tasks_moves_retriable_task_to_retry_wait(monkeypatch):
         session.commit()
         task_id = task.id
 
-    recovered = crawl_task_service.recover_expired_tasks(now=now, retry_delay_seconds=45)
+    recovered = svc.recover_expired_tasks(now=now, retry_delay_seconds=45)
 
     assert recovered == 1
 
@@ -191,12 +182,24 @@ def test_recover_expired_tasks_moves_retriable_task_to_retry_wait(monkeypatch):
     assert stored_task.next_run_at == now + timedelta(seconds=45)
 
 
-def test_recover_expired_subscription_sync_task_requeues_matching_sync_state(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_recover_expired_subscription_sync_task_requeues_matching_sync_state(engine, session_factory, svc, monkeypatch):
+    from core import database
+    monkeypatch.setattr(database, "register_after_commit", lambda session, callback: None)
+    monkeypatch.setattr(database, "get_session", session_factory)
+
+    from services.subscription_sync_run_service import _default as run_svc_default
+    run_svc_default.next_seq_no = lambda stream_id, *, session=None: 1
+
+    from services.subscription_sync_projection_service import _default as proj_default
+    proj_default._advisory_lock = staticmethod(lambda session, key: None)
+    proj_default.apply_event = lambda event, session=None: event
+
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
     captured_events = []
-    monkeypatch.setattr(subscription_sync_state_service, "append_event", lambda event, session=None: captured_events.append(event))
+
+    from services import subscription_sync_state_service as sss_mod
+    monkeypatch.setattr(sss_mod, "append_event", lambda event, session=None: captured_events.append(event))
 
     with Session(engine, expire_on_commit=False) as session:
         session.add(
@@ -237,7 +240,7 @@ def test_recover_expired_subscription_sync_task_requeues_matching_sync_state(mon
         session.commit()
         task_id = task.id
 
-    recovered = crawl_task_service.recover_expired_tasks(now=now, retry_delay_seconds=45)
+    recovered = svc.recover_expired_tasks(now=now, retry_delay_seconds=45)
 
     assert recovered == 1
 
@@ -263,8 +266,7 @@ def test_recover_expired_subscription_sync_task_requeues_matching_sync_state(mon
     assert captured_events[0].payload["pending_video_count"] == 0
 
 
-def test_recover_expired_tasks_moves_exhausted_task_to_dead(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_recover_expired_tasks_moves_exhausted_task_to_dead(engine, svc):
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -285,7 +287,7 @@ def test_recover_expired_tasks_moves_exhausted_task_to_dead(monkeypatch):
         session.commit()
         task_id = task.id
 
-    recovered = crawl_task_service.recover_expired_tasks(now=now, retry_delay_seconds=45)
+    recovered = svc.recover_expired_tasks(now=now, retry_delay_seconds=45)
 
     assert recovered == 1
 
@@ -297,12 +299,14 @@ def test_recover_expired_tasks_moves_exhausted_task_to_dead(monkeypatch):
     assert stored_task.finished_at == now
 
 
-def test_recover_expired_subscription_sync_task_marks_sync_state_failed_when_dead(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_recover_expired_subscription_sync_task_marks_sync_state_failed_when_dead(engine, session_factory, svc, monkeypatch):
+    _patch_postgres(monkeypatch, session_factory)
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
     captured_events = []
-    monkeypatch.setattr(subscription_sync_state_service, "append_event", lambda event, session=None: captured_events.append(event))
+
+    from services import subscription_sync_state_service as sss_mod
+    monkeypatch.setattr(sss_mod, "append_event", lambda event, session=None: captured_events.append(event))
 
     with Session(engine, expire_on_commit=False) as session:
         session.add(
@@ -344,7 +348,7 @@ def test_recover_expired_subscription_sync_task_marks_sync_state_failed_when_dea
         session.commit()
         task_id = task.id
 
-    recovered = crawl_task_service.recover_expired_tasks(now=now, retry_delay_seconds=45)
+    recovered = svc.recover_expired_tasks(now=now, retry_delay_seconds=45)
 
     assert recovered == 1
 
@@ -370,8 +374,7 @@ def test_recover_expired_subscription_sync_task_marks_sync_state_failed_when_dea
     assert captured_events[0].payload["pending_video_count"] == 0
 
 
-def test_complete_task_marks_job_succeeded_when_all_tasks_finish(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_complete_task_marks_job_succeeded_when_all_tasks_finish(engine, svc):
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -390,8 +393,8 @@ def test_complete_task_marks_job_succeeded_when_all_tasks_finish(monkeypatch):
         session.commit()
         task_id = task.id
 
-    crawl_task_service.start_task(task_id=task_id, worker_id="worker-1", now=now)
-    crawl_task_service.complete_task(task_id=task_id, worker_id="worker-1", now=now + timedelta(seconds=5))
+    svc.start_task(task_id=task_id, worker_id="worker-1", now=now)
+    svc.complete_task(task_id=task_id, worker_id="worker-1", now=now + timedelta(seconds=5))
 
     with Session(engine, expire_on_commit=False) as session:
         stored_job = session.get(CrawlJob, job_id)
@@ -403,8 +406,7 @@ def test_complete_task_marks_job_succeeded_when_all_tasks_finish(monkeypatch):
     assert stored_job.finished_at == now + timedelta(seconds=5)
 
 
-def test_complete_task_clears_stale_error_fields_after_retry_success(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_complete_task_clears_stale_error_fields_after_retry_success(engine, svc):
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -427,7 +429,7 @@ def test_complete_task_clears_stale_error_fields_after_retry_success(monkeypatch
         session.commit()
         task_id = task.id
 
-    crawl_task_service.complete_task(task_id=task_id, worker_id="worker-1", now=now)
+    svc.complete_task(task_id=task_id, worker_id="worker-1", now=now)
 
     with Session(engine, expire_on_commit=False) as session:
         stored_task = session.get(CrawlTask, task_id)
@@ -437,8 +439,7 @@ def test_complete_task_clears_stale_error_fields_after_retry_success(monkeypatch
     assert stored_task.last_error_type is None
 
 
-def test_recover_expired_dead_task_marks_job_failed(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_recover_expired_dead_task_marks_job_failed(engine, svc):
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -459,7 +460,7 @@ def test_recover_expired_dead_task_marks_job_failed(monkeypatch):
         session.add(task)
         session.commit()
 
-    crawl_task_service.recover_expired_tasks(now=now, retry_delay_seconds=45)
+    svc.recover_expired_tasks(now=now, retry_delay_seconds=45)
 
     with Session(engine, expire_on_commit=False) as session:
         stored_job = session.get(CrawlJob, job_id)
@@ -468,8 +469,7 @@ def test_recover_expired_dead_task_marks_job_failed(monkeypatch):
     assert stored_job.finished_at == now
 
 
-def test_cancel_task_marks_job_cancelled_when_all_tasks_cancelled(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_cancel_task_marks_job_cancelled_when_all_tasks_cancelled(engine, svc):
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -487,7 +487,7 @@ def test_cancel_task_marks_job_cancelled_when_all_tasks_cancelled(monkeypatch):
         session.commit()
         task_id = task.id
 
-    crawl_task_service.cancel_task(task_id=task_id, now=now, reason="manual_cancel")
+    svc.cancel_task(task_id=task_id, now=now, reason="manual_cancel")
 
     with Session(engine, expire_on_commit=False) as session:
         stored_job = session.get(CrawlJob, job_id)
@@ -499,8 +499,7 @@ def test_cancel_task_marks_job_cancelled_when_all_tasks_cancelled(monkeypatch):
     assert stored_job.finished_at == now
 
 
-def test_replay_dead_task_resets_task_and_job_to_pending(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_replay_dead_task_resets_task_and_job_to_pending(engine, svc):
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -526,7 +525,7 @@ def test_replay_dead_task_resets_task_and_job_to_pending(monkeypatch):
         session.commit()
         task_id = task.id
 
-    crawl_task_service.replay_dead_task(task_id=task_id, now=now)
+    svc.replay_dead_task(task_id=task_id, now=now)
 
     with Session(engine, expire_on_commit=False) as session:
         stored_job = session.get(CrawlJob, job_id)
@@ -541,8 +540,7 @@ def test_replay_dead_task_resets_task_and_job_to_pending(monkeypatch):
     assert stored_job.finished_at is None
 
 
-def test_complete_and_dead_mix_marks_job_partial_failed(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_complete_and_dead_mix_marks_job_partial_failed(engine, svc):
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -573,7 +571,7 @@ def test_complete_and_dead_mix_marks_job_partial_failed(monkeypatch):
         session.add_all([succeeded_task, dead_task])
         session.commit()
 
-    crawl_task_service.recover_expired_tasks(now=now, retry_delay_seconds=45)
+    svc.recover_expired_tasks(now=now, retry_delay_seconds=45)
 
     with Session(engine, expire_on_commit=False) as session:
         stored_job = session.get(CrawlJob, job_id)
@@ -581,11 +579,13 @@ def test_complete_and_dead_mix_marks_job_partial_failed(monkeypatch):
     assert stored_job.status == "partial_failed"
 
 
-def test_video_extract_task_lifecycle_updates_projection(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_video_extract_task_lifecycle_updates_projection(engine, session_factory, svc, monkeypatch):
+    from core import database
+    monkeypatch.setattr(database, "get_session", session_factory)
+
     now = datetime(2026, 4, 1, 12, 0, 0)
 
-    job, task = crawl_task_service.create_job_with_task(
+    job, task = svc.create_job_with_task(
         job_type="video_extract",
         source_type="scheduled",
         site="youtube.com",
@@ -604,9 +604,9 @@ def test_video_extract_task_lifecycle_updates_projection(monkeypatch):
         assert projection.queued_task_count == 1
         assert projection.pending_video_count == 1
 
-    claimed = crawl_task_service.claim_next_task(worker_id="worker-1", now=now, lease_seconds=60)
+    claimed = svc.claim_next_task(worker_id="worker-1", now=now, lease_seconds=60)
     assert claimed is not None
-    crawl_task_service.start_task(task_id=task.id, worker_id="worker-1", now=now + timedelta(seconds=1))
+    svc.start_task(task_id=task.id, worker_id="worker-1", now=now + timedelta(seconds=1))
 
     with Session(engine, expire_on_commit=False) as session:
         projection = session.query(VideoExtractionProjection).one()
@@ -614,7 +614,7 @@ def test_video_extract_task_lifecycle_updates_projection(monkeypatch):
         assert projection.running_task_count == 1
         assert projection.pending_video_count == 1
 
-    crawl_task_service.complete_task(task_id=task.id, worker_id="worker-1", now=now + timedelta(seconds=5))
+    svc.complete_task(task_id=task.id, worker_id="worker-1", now=now + timedelta(seconds=5))
 
     with Session(engine, expire_on_commit=False) as session:
         projection = session.query(VideoExtractionProjection).one()

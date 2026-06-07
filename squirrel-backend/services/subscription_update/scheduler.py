@@ -39,6 +39,9 @@ class _DueSyncTarget:
 class SubscriptionScheduler:
     """Subscription update scheduler."""
 
+    def __init__(self, session_factory=None):
+        self.session_factory = session_factory or get_session
+
     @staticmethod
     def _resolve_trace_id(trace_id: str | None) -> str:
         return trace_id or get_trace_id() or generate_trace_id()
@@ -586,7 +589,7 @@ class SubscriptionScheduler:
         success_count = 0
         error_count = 0
 
-        with get_session() as session:
+        with self.session_factory() as session:
             rows = session.execute(
                 select(UserSubscription.subscription_id)
                 .where(
@@ -752,11 +755,10 @@ class SubscriptionScheduler:
         )
         return "success"
 
-    @staticmethod
-    def _list_due_active_subscriptions(mode: UpdateMode) -> list[tuple[int, str]]:
+    def _list_due_active_subscriptions(self, mode: UpdateMode) -> list[tuple[int, str]]:
         now = datetime.now()
 
-        with get_session() as session:
+        with self.session_factory() as session:
             rows = session.execute(
                 select(Subscription.id, Subscription.url)
                 .where(
@@ -782,7 +784,7 @@ class SubscriptionScheduler:
 
         from models.subscription_sync_state import SubscriptionSyncState
 
-        with get_session() as session:
+        with self.session_factory() as session:
             state_rows = session.execute(
                 select(SubscriptionSyncState)
                 .where(
@@ -833,9 +835,8 @@ class SubscriptionScheduler:
             return UpdateMode.FULL
         return UpdateMode.INCREMENTAL
 
-    @staticmethod
-    def _has_active_subscribers(subscription_id: int) -> bool:
-        with get_session() as session:
+    def _has_active_subscribers(self, subscription_id: int) -> bool:
+        with self.session_factory() as session:
             row = session.execute(
                 select(UserSubscription.id).where(
                     UserSubscription.subscription_id == subscription_id,
@@ -851,14 +852,12 @@ class SubscriptionScheduler:
         subscription = subscription_service.get_subscription_by_id(subscription_id)
         return subscription.url if subscription and subscription.url else ""
 
-    @staticmethod
-    def _batch_get_subscription_urls(subscription_ids: list[int]) -> list[tuple[int, str]]:
+    def _batch_get_subscription_urls(self, subscription_ids: list[int]) -> list[tuple[int, str]]:
         from sqlalchemy import select
 
-        from core.database import get_session
         from models.subscription import Subscription
 
-        with get_session() as session:
+        with self.session_factory() as session:
             rows = session.execute(
                 select(Subscription.id, Subscription.url)
                 .where(Subscription.id.in_(subscription_ids)),

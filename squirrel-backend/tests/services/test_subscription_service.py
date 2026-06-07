@@ -1,16 +1,9 @@
-import sys
 import threading
-from contextlib import contextmanager
 from datetime import datetime
-from pathlib import Path
 from types import SimpleNamespace
 
-from sqlalchemy import create_engine
+import pytest
 from sqlalchemy.orm import Session
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
-from crawl import SiteRuntimeInvokeResponse
 
 from models import Base
 from models.links import SubscriptionVideo, UserSubscription
@@ -21,29 +14,18 @@ from models.user_video_feed import UserVideoFeed
 from models.video import Video
 from models.video_history import VideoHistory
 from schemas.subscription.dto.subscription_dto import SubscriptionDto
-from services import (
-    subscription_import_service,
-    subscription_service,
-    subscription_sync_state_service,
-    user_video_feed_service,
-)
+from services.subscription_crud_service import SubscriptionCrudService
+from services.subscription_import_service import SubscriptionImportService
+from services.subscription_list_service import SubscriptionListService
+from services.subscription_manage_service import SubscriptionManageService
 
 
-@contextmanager
-def _managed_session(engine):
-    session = Session(engine, expire_on_commit=False)
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+def _get_user_config(_user_id):
+    return {"showNsfw": True}
 
 
-def _setup_test_env(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+@pytest.fixture
+def engine(engine):
     Base.metadata.create_all(
         engine,
         tables=[
@@ -57,13 +39,27 @@ def _setup_test_env(monkeypatch):
             VideoHistory.__table__,
         ],
     )
-
-    monkeypatch.setattr(subscription_service, "get_session", lambda: _managed_session(engine))
-    monkeypatch.setattr(subscription_sync_state_service, "get_session", lambda: _managed_session(engine))
-    from core import database
-    monkeypatch.setattr(database, "get_session", lambda: _managed_session(engine))
-    monkeypatch.setattr(user_video_feed_service, "get_session", lambda: _managed_session(engine))
     return engine
+
+
+@pytest.fixture
+def crud(session_factory):
+    return SubscriptionCrudService(session_factory=session_factory)
+
+
+@pytest.fixture
+def manage(session_factory):
+    return SubscriptionManageService(session_factory=session_factory)
+
+
+@pytest.fixture
+def import_svc(session_factory):
+    return SubscriptionImportService(session_factory=session_factory)
+
+
+@pytest.fixture
+def list_svc(session_factory):
+    return SubscriptionListService(session_factory=session_factory, get_user_config=_get_user_config)
 
 
 def _seed_subscription(engine, *, subscription_id: int = 1, user_ids: list[int] | None = None):
@@ -126,11 +122,10 @@ def _seed_subscription(engine, *, subscription_id: int = 1, user_ids: list[int] 
         session.commit()
 
 
-def test_unsubscribe_by_id_deactivates_subscription_when_last_user_leaves(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_unsubscribe_by_id_deactivates_subscription_when_last_user_leaves(engine, manage):
     _seed_subscription(engine, user_ids=[1])
 
-    result = subscription_service.unsubscribe_by_id(user_id=1, subscription_id=1)
+    result = manage.unsubscribe_by_id(user_id=1, subscription_id=1)
 
     assert result is True
 
@@ -149,8 +144,7 @@ def test_unsubscribe_by_id_deactivates_subscription_when_last_user_leaves(monkey
     assert sync_state.last_error == "manual_unsubscribe"
 
 
-def test_unsubscribe_by_id_removes_user_feed_rows(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_unsubscribe_by_id_removes_user_feed_rows(engine, manage):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -169,7 +163,7 @@ def test_unsubscribe_by_id_removes_user_feed_rows(monkeypatch):
         )
         session.commit()
 
-    result = subscription_service.unsubscribe_by_id(user_id=1, subscription_id=1)
+    result = manage.unsubscribe_by_id(user_id=1, subscription_id=1)
 
     assert result is True
 
@@ -179,11 +173,10 @@ def test_unsubscribe_by_id_removes_user_feed_rows(monkeypatch):
     assert remaining_rows == []
 
 
-def test_unsubscribe_by_id_deactivates_subscription_even_when_other_users_remain(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_unsubscribe_by_id_deactivates_subscription_even_when_other_users_remain(engine, manage):
     _seed_subscription(engine, user_ids=[1, 2])
 
-    result = subscription_service.unsubscribe_by_id(user_id=1, subscription_id=1)
+    result = manage.unsubscribe_by_id(user_id=1, subscription_id=1)
 
     assert result is True
 
@@ -200,11 +193,10 @@ def test_unsubscribe_by_id_deactivates_subscription_even_when_other_users_remain
     assert sync_state.pending_video_count == 0
 
 
-def test_check_subscription_status_returns_true_when_server_has_active_subscription(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_check_subscription_status_returns_true_when_server_has_active_subscription(engine, crud):
     _seed_subscription(engine, user_ids=[2])
 
-    result = subscription_service.check_subscription_status(
+    result = crud.check_subscription_status(
         user_id=1,
         url="https://www.youtube.com/channel/1",
     )
@@ -215,8 +207,7 @@ def test_check_subscription_status_returns_true_when_server_has_active_subscript
     }
 
 
-def test_check_subscription_status_returns_false_when_subscription_is_deleted(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_check_subscription_status_returns_false_when_subscription_is_deleted(engine, crud):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -224,7 +215,7 @@ def test_check_subscription_status_returns_false_when_subscription_is_deleted(mo
         subscription.is_deleted = True
         session.commit()
 
-    result = subscription_service.check_subscription_status(
+    result = crud.check_subscription_status(
         user_id=1,
         url="https://www.youtube.com/channel/1",
     )
@@ -235,8 +226,7 @@ def test_check_subscription_status_returns_false_when_subscription_is_deleted(mo
     }
 
 
-def test_preview_user_subscriptions_reads_items_from_plugin_gateway(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_preview_user_subscriptions_reads_items_from_plugin_gateway(engine, import_svc, monkeypatch):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -255,7 +245,7 @@ def test_preview_user_subscriptions_reads_items_from_plugin_gateway(monkeypatch)
                 "domain": domain,
                 "timeout_ms": timeout_ms,
             })
-            return SiteRuntimeInvokeResponse(
+            return SimpleNamespace(
                 request_id="preview-1",
                 ok=True,
                 data={
@@ -268,12 +258,11 @@ def test_preview_user_subscriptions_reads_items_from_plugin_gateway(monkeypatch)
             )
 
     monkeypatch.setattr(
-        subscription_import_service,
-        "get_runtime_gateway",
+        "services.subscription_import_service.get_runtime_gateway",
         lambda: _FakeGateway(),
     )
 
-    result = subscription_service.preview_user_subscriptions(site_name="bilibili", user_id=1)
+    result = import_svc.preview_user_subscriptions(site_name="bilibili", user_id=1)
 
     assert calls == [{
         "capability": "import_subscriptions",
@@ -291,8 +280,7 @@ def test_preview_user_subscriptions_reads_items_from_plugin_gateway(monkeypatch)
     assert result["subscriptions"][1]["is_imported"] is False
 
 
-def test_preview_user_subscriptions_forwards_cursor_and_limit(monkeypatch):
-    _setup_test_env(monkeypatch)
+def test_preview_user_subscriptions_forwards_cursor_and_limit(engine, import_svc, monkeypatch):
     calls = []
 
     class _FakeGateway:
@@ -304,7 +292,7 @@ def test_preview_user_subscriptions_forwards_cursor_and_limit(monkeypatch):
                 "domain": domain,
                 "timeout_ms": timeout_ms,
             })
-            return SiteRuntimeInvokeResponse(
+            return SimpleNamespace(
                 request_id="preview-2",
                 ok=True,
                 data={
@@ -320,13 +308,12 @@ def test_preview_user_subscriptions_forwards_cursor_and_limit(monkeypatch):
             )
 
     monkeypatch.setattr(
-        subscription_import_service,
-        "get_runtime_gateway",
+        "services.subscription_import_service.get_runtime_gateway",
         lambda: _FakeGateway(),
     )
-    monkeypatch.setattr(subscription_service, "get_active_user_subscription_url_map", lambda _user_id: {})
+    monkeypatch.setattr(import_svc.crud_service, "get_active_user_subscription_url_map", lambda _user_id: {})
 
-    result = subscription_service.preview_user_subscriptions(
+    result = import_svc.preview_user_subscriptions(
         site_name="javdb",
         user_id=1,
         cursor_payload={"page": 2},
@@ -351,8 +338,7 @@ def test_preview_user_subscriptions_forwards_cursor_and_limit(monkeypatch):
     assert result["subscriptions"][0]["url"] == "https://javdb.com/actors/2"
 
 
-def test_import_user_subscriptions_uses_selected_urls_without_refetching_gateway(monkeypatch):
-    _setup_test_env(monkeypatch)
+def test_import_user_subscriptions_uses_selected_urls_without_refetching_gateway(engine, import_svc, monkeypatch):
     gateway_calls = []
     enqueued_batches = []
 
@@ -365,7 +351,7 @@ def test_import_user_subscriptions_uses_selected_urls_without_refetching_gateway
                 "domain": domain,
                 "timeout_ms": timeout_ms,
             })
-            return SiteRuntimeInvokeResponse(request_id="unexpected", ok=True, data={"items": [], "total": 0})
+            return SimpleNamespace(request_id="unexpected", ok=True, data={"items": [], "total": 0})
 
     class _ImmediateThread:
         def __init__(self, target=None, args=(), daemon=None):
@@ -378,19 +364,18 @@ def test_import_user_subscriptions_uses_selected_urls_without_refetching_gateway
                 self._target(*self._args)
 
     monkeypatch.setattr(
-        subscription_import_service,
-        "get_runtime_gateway",
+        "services.subscription_import_service.get_runtime_gateway",
         lambda: _FakeGateway(),
     )
-    monkeypatch.setattr(subscription_service, "get_active_user_subscription_url_map", lambda _user_id: {})
+    monkeypatch.setattr(import_svc.crud_service, "get_active_user_subscription_url_map", lambda _user_id: {})
     monkeypatch.setattr(
-        subscription_service,
+        import_svc,
         "_enqueue_subscriptions_async",
         lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
     )
     monkeypatch.setattr(threading, "Thread", _ImmediateThread)
 
-    result = subscription_service.import_user_subscriptions(
+    result = import_svc.import_user_subscriptions(
         site_name="javdb",
         user_id=1,
         selected_urls=[
@@ -416,9 +401,7 @@ def test_import_user_subscriptions_uses_selected_urls_without_refetching_gateway
     ]
 
 
-def test_handle_subscribe_request_reads_subscription_meta_from_plugin_gateway(monkeypatch):
-    _setup_test_env(monkeypatch)
-
+def test_handle_subscribe_request_reads_subscription_meta_from_plugin_gateway(engine, import_svc, monkeypatch):
     calls = []
 
     class _FakeGateway:
@@ -430,7 +413,7 @@ def test_handle_subscribe_request_reads_subscription_meta_from_plugin_gateway(mo
                 "domain": domain,
                 "timeout_ms": timeout_ms,
             })
-            return SiteRuntimeInvokeResponse(
+            return SimpleNamespace(
                 request_id="subscribe-1",
                 ok=True,
                 data={
@@ -442,12 +425,11 @@ def test_handle_subscribe_request_reads_subscription_meta_from_plugin_gateway(mo
             )
 
     monkeypatch.setattr(
-        subscription_import_service,
-        "get_runtime_gateway",
+        "services.subscription_import_service.get_runtime_gateway",
         lambda: _FakeGateway(),
     )
 
-    result = subscription_service.handle_subscribe_request(
+    result = import_svc.handle_subscribe_request(
         url="https://www.youtube.com/channel/UC123",
         user_id=1,
     )
@@ -466,7 +448,7 @@ def test_handle_subscribe_request_reads_subscription_meta_from_plugin_gateway(mo
     assert result.url == "https://www.youtube.com/channel/UC123"
 
 
-def test_get_runtime_supported_sites_reads_enabled_routes_from_plugin_manager(monkeypatch):
+def test_get_runtime_supported_sites_reads_enabled_routes_from_plugin_manager(import_svc, monkeypatch):
     registrations = [
         SimpleNamespace(capability="import_subscriptions", site_name="youtube"),
         SimpleNamespace(capability="import_subscriptions", site_name="bilibili"),
@@ -475,16 +457,14 @@ def test_get_runtime_supported_sites_reads_enabled_routes_from_plugin_manager(mo
     ]
 
     monkeypatch.setattr(
-        subscription_import_service,
-        "get_runtime_snapshot",
+        "services.subscription_import_service.get_runtime_snapshot",
         lambda: SimpleNamespace(registrations=registrations),
     )
 
-    assert subscription_service.get_runtime_supported_sites("import_subscriptions") == ["bilibili", "youtube"]
+    assert import_svc.get_runtime_supported_sites("import_subscriptions") == ["bilibili", "youtube"]
 
 
-def test_import_user_subscriptions_filters_selected_urls_before_enqueue(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_import_user_subscriptions_filters_selected_urls_before_enqueue(engine, import_svc, monkeypatch):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -505,13 +485,13 @@ def test_import_user_subscriptions_filters_selected_urls_before_enqueue(monkeypa
                 self._target(*self._args)
 
     monkeypatch.setattr(
-        subscription_service,
+        import_svc,
         "_enqueue_subscriptions_async",
         lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
     )
     monkeypatch.setattr(threading, "Thread", _ImmediateThread)
 
-    result = subscription_service.import_user_subscriptions(
+    result = import_svc.import_user_subscriptions(
         site_name="bilibili",
         user_id=1,
         selected_urls=[
@@ -533,8 +513,7 @@ def test_import_user_subscriptions_filters_selected_urls_before_enqueue(monkeypa
     assert [item.url for item in queued_subscriptions] == ["https://space.bilibili.com/2"]
 
 
-def test_import_user_subscriptions_drains_all_gateway_batches_when_no_selection(monkeypatch):
-    _setup_test_env(monkeypatch)
+def test_import_user_subscriptions_drains_all_gateway_batches_when_no_selection(engine, import_svc, monkeypatch):
     calls = []
     enqueued_batches = []
 
@@ -548,7 +527,7 @@ def test_import_user_subscriptions_drains_all_gateway_batches_when_no_selection(
                 "timeout_ms": timeout_ms,
             })
             if len(calls) == 1:
-                return SiteRuntimeInvokeResponse(
+                return SimpleNamespace(
                     request_id="import-batch-1",
                     ok=True,
                     data={
@@ -561,7 +540,7 @@ def test_import_user_subscriptions_drains_all_gateway_batches_when_no_selection(
                         "stop_reason": "batch_exhausted",
                     },
                 )
-            return SiteRuntimeInvokeResponse(
+            return SimpleNamespace(
                 request_id="import-batch-2",
                 ok=True,
                 data={
@@ -585,19 +564,18 @@ def test_import_user_subscriptions_drains_all_gateway_batches_when_no_selection(
                 self._target(*self._args)
 
     monkeypatch.setattr(
-        subscription_import_service,
-        "get_runtime_gateway",
+        "services.subscription_import_service.get_runtime_gateway",
         lambda: _FakeGateway(),
     )
-    monkeypatch.setattr(subscription_service, "get_active_user_subscription_url_map", lambda _user_id: {})
+    monkeypatch.setattr(import_svc.crud_service, "get_active_user_subscription_url_map", lambda _user_id: {})
     monkeypatch.setattr(
-        subscription_service,
+        import_svc,
         "_enqueue_subscriptions_async",
         lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
     )
     monkeypatch.setattr(threading, "Thread", _ImmediateThread)
 
-    result = subscription_service.import_user_subscriptions(
+    result = import_svc.import_user_subscriptions(
         site_name="javdb",
         user_id=1,
     )
@@ -631,26 +609,25 @@ def test_import_user_subscriptions_drains_all_gateway_batches_when_no_selection(
     ]
 
 
-def test_import_user_subscriptions_can_enqueue_synchronously(monkeypatch):
-    _setup_test_env(monkeypatch)
+def test_import_user_subscriptions_can_enqueue_synchronously(engine, import_svc, monkeypatch):
     enqueued_batches = []
 
-    monkeypatch.setattr(subscription_service, "get_active_user_subscription_url_map", lambda _user_id: {})
+    monkeypatch.setattr(import_svc.crud_service, "get_active_user_subscription_url_map", lambda _user_id: {})
     monkeypatch.setattr(
-        subscription_service,
+        import_svc,
         "_load_runtime_import_items",
         lambda _site_name: [
-            subscription_service.SubscriptionImportItem(url="https://example.com/channel/1", name="Channel 1"),
-            subscription_service.SubscriptionImportItem(url="https://example.com/channel/2", name="Channel 2"),
+            SimpleNamespace(url="https://example.com/channel/1", name="Channel 1"),
+            SimpleNamespace(url="https://example.com/channel/2", name="Channel 2"),
         ],
     )
     monkeypatch.setattr(
-        subscription_service,
+        import_svc,
         "_enqueue_subscriptions_async",
         lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
     )
 
-    result = subscription_service.import_user_subscriptions(
+    result = import_svc.import_user_subscriptions(
         site_name="example",
         user_id=1,
         use_background_thread=False,
@@ -672,8 +649,7 @@ def test_import_user_subscriptions_can_enqueue_synchronously(monkeypatch):
     ]
 
 
-def test_import_user_subscriptions_skips_manually_unsubscribed_urls_for_auto_import(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_import_user_subscriptions_skips_manually_unsubscribed_urls_for_auto_import(engine, manage, import_svc, monkeypatch):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -681,25 +657,25 @@ def test_import_user_subscriptions_skips_manually_unsubscribed_urls_for_auto_imp
         subscription.url = "https://example.com/channel/1"
         session.commit()
 
-    assert subscription_service.unsubscribe_by_id(user_id=1, subscription_id=1) is True
+    assert manage.unsubscribe_by_id(user_id=1, subscription_id=1) is True
 
     enqueued_batches = []
 
     monkeypatch.setattr(
-        subscription_service,
+        import_svc,
         "_load_runtime_import_items",
         lambda _site_name: [
-            subscription_service.SubscriptionImportItem(url="https://example.com/channel/1", name="Channel 1"),
-            subscription_service.SubscriptionImportItem(url="https://example.com/channel/2", name="Channel 2"),
+            SimpleNamespace(url="https://example.com/channel/1", name="Channel 1"),
+            SimpleNamespace(url="https://example.com/channel/2", name="Channel 2"),
         ],
     )
     monkeypatch.setattr(
-        subscription_service,
+        import_svc,
         "_enqueue_subscriptions_async",
         lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
     )
 
-    result = subscription_service.import_user_subscriptions(
+    result = import_svc.import_user_subscriptions(
         site_name="example",
         user_id=1,
         use_background_thread=False,
@@ -716,8 +692,7 @@ def test_import_user_subscriptions_skips_manually_unsubscribed_urls_for_auto_imp
     assert [item.url for item in enqueued_batches[0][0]] == ["https://example.com/channel/2"]
 
 
-def test_import_user_subscriptions_allows_manual_reimport_of_unsubscribed_urls(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_import_user_subscriptions_allows_manual_reimport_of_unsubscribed_urls(engine, manage, import_svc, monkeypatch):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -725,24 +700,24 @@ def test_import_user_subscriptions_allows_manual_reimport_of_unsubscribed_urls(m
         subscription.url = "https://example.com/channel/1"
         session.commit()
 
-    assert subscription_service.unsubscribe_by_id(user_id=1, subscription_id=1) is True
+    assert manage.unsubscribe_by_id(user_id=1, subscription_id=1) is True
 
     enqueued_batches = []
 
     monkeypatch.setattr(
-        subscription_service,
+        import_svc,
         "_load_runtime_import_items",
         lambda _site_name: [
-            subscription_service.SubscriptionImportItem(url="https://example.com/channel/1", name="Channel 1"),
+            SimpleNamespace(url="https://example.com/channel/1", name="Channel 1"),
         ],
     )
     monkeypatch.setattr(
-        subscription_service,
+        import_svc,
         "_enqueue_subscriptions_async",
         lambda subscriptions, user_id, site_name: enqueued_batches.append((subscriptions, user_id, site_name)),
     )
 
-    result = subscription_service.import_user_subscriptions(
+    result = import_svc.import_user_subscriptions(
         site_name="example",
         user_id=1,
         use_background_thread=False,
@@ -758,19 +733,16 @@ def test_import_user_subscriptions_allows_manual_reimport_of_unsubscribed_urls(m
     assert [item.url for item in enqueued_batches[0][0]] == ["https://example.com/channel/1"]
 
 
-def test_auto_import_missing_subscriptions_imports_each_enabled_site_for_each_user(monkeypatch):
-    _setup_test_env(monkeypatch)
-    calls = []
-
-    monkeypatch.setattr(subscription_service, "list_user_ids", lambda: [1, 2])
-    monkeypatch.setattr(subscription_service, "get_runtime_supported_sites", lambda capability: ["youtube", "bilibili", "disabled"])
+def test_auto_import_missing_subscriptions_imports_each_enabled_site_for_each_user(import_svc, manage, monkeypatch):
+    monkeypatch.setattr(manage, "list_user_ids", lambda: [1, 2])
+    monkeypatch.setattr(import_svc, "get_runtime_supported_sites", lambda capability: ["youtube", "bilibili", "disabled"])
     monkeypatch.setattr(
-        subscription_service.SiteCatalog,
-        "is_site_enabled",
+        "services.subscription_import_service.SiteCatalog.is_site_enabled",
         staticmethod(lambda site=None, domain=None: site != "disabled"),
     )
+    calls = []
     monkeypatch.setattr(
-        subscription_service,
+        import_svc,
         "import_user_subscriptions",
         lambda site_name, user_id, selected_urls=None, *, use_background_thread=True, respect_manual_unsubscribe=False: (
             calls.append((site_name, user_id, use_background_thread, respect_manual_unsubscribe))
@@ -781,7 +753,7 @@ def test_auto_import_missing_subscriptions_imports_each_enabled_site_for_each_us
         ),
     )
 
-    result = subscription_service.auto_import_missing_subscriptions()
+    result = import_svc.auto_import_missing_subscriptions()
 
     assert calls == [
         ("youtube", 1, False, True),
@@ -798,8 +770,7 @@ def test_auto_import_missing_subscriptions_imports_each_enabled_site_for_each_us
     }
 
 
-def test_list_subscriptions_search_supports_domain_and_type_tokens(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_list_subscriptions_search_supports_domain_and_type_tokens(engine, list_svc, monkeypatch):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -831,9 +802,7 @@ def test_list_subscriptions_search_supports_domain_and_type_tokens(monkeypatch):
         )
         session.commit()
 
-    monkeypatch.setattr(subscription_service.user_config_service, "get_config", lambda _user_id: {"showNsfw": False})
-
-    subscriptions, total = subscription_service.list_subscriptions(
+    subscriptions, total = list_svc.list_subscriptions(
         user_id=1,
         query="site:bilibili type:playlist",
         type=None,
@@ -846,8 +815,7 @@ def test_list_subscriptions_search_supports_domain_and_type_tokens(monkeypatch):
     assert [item["id"] for item in subscriptions] == [2]
 
 
-def test_list_subscriptions_hides_nsfw_results_when_show_nsfw_disabled(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_list_subscriptions_hides_nsfw_results_when_show_nsfw_disabled(engine, list_svc):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -855,9 +823,7 @@ def test_list_subscriptions_hides_nsfw_results_when_show_nsfw_disabled(monkeypat
         user_subscription.is_nsfw = True
         session.commit()
 
-    monkeypatch.setattr(subscription_service.user_config_service, "get_config", lambda _user_id: {"showNsfw": False})
-
-    subscriptions, total = subscription_service.list_subscriptions(
+    subscriptions, total = list_svc.list_subscriptions(
         user_id=1,
         query=None,
         type=None,
@@ -870,8 +836,7 @@ def test_list_subscriptions_hides_nsfw_results_when_show_nsfw_disabled(monkeypat
     assert subscriptions == []
 
 
-def test_list_subscriptions_prefers_actual_extract_count_when_total_videos_is_stale(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_list_subscriptions_prefers_actual_extract_count_when_total_videos_is_stale(engine, list_svc):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -907,9 +872,7 @@ def test_list_subscriptions_prefers_actual_extract_count_when_total_videos_is_st
         ])
         session.commit()
 
-    monkeypatch.setattr(subscription_service.user_config_service, "get_config", lambda _user_id: {"showNsfw": False})
-
-    subscriptions, total = subscription_service.list_subscriptions(
+    subscriptions, total = list_svc.list_subscriptions(
         user_id=1,
         query=None,
         type=None,
@@ -923,8 +886,7 @@ def test_list_subscriptions_prefers_actual_extract_count_when_total_videos_is_st
     assert subscriptions[0]["total_videos"] == 2
 
 
-def test_list_subscriptions_only_counts_extracts_for_current_page(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_list_subscriptions_only_counts_extracts_for_current_page(engine, list_svc):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -956,35 +918,37 @@ def test_list_subscriptions_only_counts_extracts_for_current_page(monkeypatch):
         )
         session.commit()
 
-    monkeypatch.setattr(subscription_service.user_config_service, "get_config", lambda _user_id: {"showNsfw": False})
     captured_ids = []
 
     def fake_load_subscription_extract_counts(_session, subscription_ids):
         captured_ids.append(list(subscription_ids))
         return dict.fromkeys(subscription_ids, 0)
 
-    monkeypatch.setattr(
-        subscription_service,
-        "_load_subscription_extract_counts",
-        fake_load_subscription_extract_counts,
-    )
+    import _pytest.monkeypatch as _mp
+    mp = _mp.MonkeyPatch()
+    try:
+        mp.setattr(
+            "services.subscription_list_service._load_subscription_extract_counts",
+            fake_load_subscription_extract_counts,
+        )
 
-    subscriptions, total = subscription_service.list_subscriptions(
-        user_id=1,
-        query=None,
-        type=None,
-        nsfw="all",
-        page=1,
-        page_size=1,
-    )
+        subscriptions, total = list_svc.list_subscriptions(
+            user_id=1,
+            query=None,
+            type=None,
+            nsfw="all",
+            page=1,
+            page_size=1,
+        )
 
-    assert total == 2
-    assert [item["id"] for item in subscriptions] == [2]
-    assert captured_ids == [[2]]
+        assert total == 2
+        assert [item["id"] for item in subscriptions] == [2]
+        assert captured_ids == [[2]]
+    finally:
+        mp.undo()
 
 
-def test_list_subscriptions_uses_lightweight_serializer_without_dto_validation(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_list_subscriptions_uses_lightweight_serializer_without_dto_validation(engine, list_svc):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -1005,27 +969,29 @@ def test_list_subscriptions_uses_lightweight_serializer_without_dto_validation(m
         ])
         session.commit()
 
-    monkeypatch.setattr(subscription_service.user_config_service, "get_config", lambda _user_id: {"showNsfw": False})
-
     def _unexpected_validate(_cls, _data):
         raise AssertionError("list_subscriptions should not call SubscriptionDto.model_validate")
 
-    monkeypatch.setattr(SubscriptionDto, "model_validate", classmethod(_unexpected_validate))
+    import _pytest.monkeypatch as _mp
+    mp = _mp.MonkeyPatch()
+    try:
+        mp.setattr(SubscriptionDto, "model_validate", classmethod(_unexpected_validate))
 
-    subscriptions, total = subscription_service.list_subscriptions(
-        user_id=1,
-        query=None,
-        type=None,
-        nsfw="all",
-        page=1,
-        page_size=10,
-    )
+        subscriptions, total = list_svc.list_subscriptions(
+            user_id=1,
+            query=None,
+            type=None,
+            nsfw="all",
+            page=1,
+            page_size=10,
+        )
 
-    assert total == 1
+        assert total == 1
+    finally:
+        mp.undo()
 
 
-def test_list_subscriptions_recent_videos_include_source_url(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_list_subscriptions_recent_videos_include_source_url(engine, list_svc):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -1046,9 +1012,7 @@ def test_list_subscriptions_recent_videos_include_source_url(monkeypatch):
         session.add(SubscriptionVideo(subscription_id=1, video_id=401))
         session.commit()
 
-    monkeypatch.setattr(subscription_service.user_config_service, "get_config", lambda _user_id: {"showNsfw": False})
-
-    subscriptions, total = subscription_service.list_subscriptions(
+    subscriptions, total = list_svc.list_subscriptions(
         user_id=1,
         query=None,
         type=None,
@@ -1074,9 +1038,9 @@ def test_list_subscriptions_recent_videos_include_source_url(monkeypatch):
         "updated_at": "2024-01-01 00:00:00",
         "is_nsfw": False,
         "is_special_followed": False,
-            "total_extract": 1,
-            "unread_count": 1,
-            "sync_status": "queued",
+        "total_extract": 1,
+        "unread_count": 1,
+        "sync_status": "queued",
         "last_sync_at": "",
         "last_success_at": "",
         "next_sync_at": "2024-01-01 01:00:00",
@@ -1094,8 +1058,7 @@ def test_list_subscriptions_recent_videos_include_source_url(monkeypatch):
     }]
 
 
-def test_get_subscription_detail_prefers_actual_extract_count_when_total_videos_is_stale(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_get_subscription_detail_prefers_actual_extract_count_when_total_videos_is_stale(engine, list_svc):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -1131,14 +1094,13 @@ def test_get_subscription_detail_prefers_actual_extract_count_when_total_videos_
         ])
         session.commit()
 
-    detail = subscription_service.get_subscription_detail(1)
+    detail = list_svc.get_subscription_detail(1)
 
     assert detail.total_extract == 2
     assert detail.total_videos == 2
 
 
-def test_list_subscriptions_orders_special_followed_first_and_filters(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_list_subscriptions_orders_special_followed_first_and_filters(engine, list_svc):
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -1172,9 +1134,7 @@ def test_list_subscriptions_orders_special_followed_first_and_filters(monkeypatc
         )
         session.commit()
 
-    monkeypatch.setattr(subscription_service.user_config_service, "get_config", lambda _user_id: {"showNsfw": False})
-
-    subscriptions, total = subscription_service.list_subscriptions(
+    subscriptions, total = list_svc.list_subscriptions(
         user_id=1,
         query=None,
         type=None,
@@ -1187,7 +1147,7 @@ def test_list_subscriptions_orders_special_followed_first_and_filters(monkeypatc
     assert [item["id"] for item in subscriptions] == [1, 2]
     assert subscriptions[0]["is_special_followed"] is True
 
-    special_subscriptions, special_total = subscription_service.list_subscriptions(
+    special_subscriptions, special_total = list_svc.list_subscriptions(
         user_id=1,
         query=None,
         type=None,
@@ -1201,11 +1161,10 @@ def test_list_subscriptions_orders_special_followed_first_and_filters(monkeypatc
     assert [item["id"] for item in special_subscriptions] == [1]
 
 
-def test_toggle_special_follow_status_updates_user_subscription(monkeypatch):
-    engine = _setup_test_env(monkeypatch)
+def test_toggle_special_follow_status_updates_user_subscription(engine, manage):
     _seed_subscription(engine, user_ids=[1])
 
-    assert subscription_service.toggle_special_follow_status(
+    assert manage.toggle_special_follow_status(
         user_id=1,
         subscription_id=1,
         is_special_followed=True,

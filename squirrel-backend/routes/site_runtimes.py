@@ -1,26 +1,25 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from common.response import error, success
-from services.site_runtime_service import (
-    list_site_runtimes as get_site_runtime_list,
-)
-from services.site_runtime_service import (
-    set_enabled_by_name,
-)
+from services.site_runtime_service import SiteRuntimeService
 from site_runtimes.manager import reload_site_runtimes
 from utils.redis_client import publish_site_runtime_reload_signal
 
 router = APIRouter(prefix="/api/site-runtimes", tags=["site-runtimes"])
 
 
+def get_site_runtime_service() -> SiteRuntimeService:
+    return SiteRuntimeService()
+
+
 @router.get("/")
-def list_site_runtimes():
-    return success(get_site_runtime_list())
+def list_site_runtimes(svc: SiteRuntimeService = Depends(get_site_runtime_service)):
+    return success(svc.list_site_runtimes())
 
 
 @router.post("/{name}/enable")
-def enable_site_runtime(name: str):
-    ok = set_enabled_by_name(name, True)
+def enable_site_runtime(name: str, svc: SiteRuntimeService = Depends(get_site_runtime_service)):
+    ok = svc.set_enabled_by_name(name, True)
     if ok:
         publish_site_runtime_reload_signal()
         return success(msg="enabled")
@@ -28,8 +27,8 @@ def enable_site_runtime(name: str):
 
 
 @router.post("/{name}/disable")
-def disable_site_runtime(name: str):
-    ok = set_enabled_by_name(name, False)
+def disable_site_runtime(name: str, svc: SiteRuntimeService = Depends(get_site_runtime_service)):
+    ok = svc.set_enabled_by_name(name, False)
     if ok:
         publish_site_runtime_reload_signal()
         return success(msg="disabled")

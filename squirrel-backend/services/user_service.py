@@ -1,146 +1,159 @@
+from collections.abc import Callable, Generator
 from datetime import datetime
 
 import bcrypt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.database import get_session
+from core.database import get_session as _default_get_session
 from models.user import Account, AccountType, User
 
-
-def hash_password(password: str) -> str:
-    password_bytes = password.encode("utf-8")
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password_bytes, salt).decode("utf-8")
+SessionFactory = Callable[[], Generator[Session, None, None]]
 
 
-def verify_password(password: str, hashed_password: str) -> bool:
-    password_bytes = password.encode("utf-8")
-    hashed_bytes = hashed_password.encode("utf-8")
-    return bcrypt.checkpw(password_bytes, hashed_bytes)
+class UserService:
+    def __init__(self, session_factory: SessionFactory | None = None):
+        self._session_factory = session_factory or _default_get_session
 
+    @staticmethod
+    def hash_password(password: str) -> str:
+        password_bytes = password.encode("utf-8")
+        salt = bcrypt.gensalt()
+        return bcrypt.hashpw(password_bytes, salt).decode("utf-8")
 
-def create_user(nickname: str, email: str, password: str) -> tuple[User, Account]:
-    with get_session() as session:
-        existing_account = session.scalars(
+    @staticmethod
+    def verify_password(password: str, hashed_password: str) -> bool:
+        password_bytes = password.encode("utf-8")
+        hashed_bytes = hashed_password.encode("utf-8")
+        return bcrypt.checkpw(password_bytes, hashed_bytes)
+
+    def create_user(self, nickname: str, email: str, password: str) -> tuple[User, Account]:
+        with self._session_factory() as session:
+            existing_account = session.scalars(
+                select(Account).where(
+                    Account.account_type == AccountType.EMAIL,
+                    Account.identifier == email,
+                ),
+            ).first()
+
+            if existing_account:
+                raise ValueError("邮箱已被注册")
+
+            user = User(nickname=nickname)
+            session.add(user)
+            session.flush()
+
+            account = Account(
+                user_id=user.id,
+                account_type=AccountType.EMAIL,
+                identifier=email,
+                credential=self.hash_password(password),
+                is_verified=False,
+                last_login_at=datetime.now(),
+            )
+            session.add(account)
+            session.commit()
+
+        return user, account
+
+    @staticmethod
+    def _get_email_account_by_user_id(session: Session, user_id: int) -> Account | None:
+        return session.scalars(
             select(Account).where(
+                Account.user_id == user_id,
                 Account.account_type == AccountType.EMAIL,
-                Account.identifier == email,
             ),
         ).first()
 
-        if existing_account:
-            raise ValueError("邮箱已被注册")
+    def get_email_account_by_user_id(self, user_id: int) -> Account | None:
+        with self._session_factory() as session:
+            return self._get_email_account_by_user_id(session, user_id)
 
-        user = User(nickname=nickname)
-        session.add(user)
-        session.flush()
+    def authenticate(self, email: str, password: str) -> tuple[User, Account] | None:
+        with self._session_factory() as session:
+            account = session.scalars(
+                select(Account).where(
+                    Account.account_type == AccountType.EMAIL,
+                    Account.identifier == email,
+                ),
+            ).first()
 
-        account = Account(
-            user_id=user.id,
-            account_type=AccountType.EMAIL,
-            identifier=email,
-            credential=hash_password(password),
-            is_verified=False,
-            last_login_at=datetime.now(),
-        )
-        session.add(account)
-        session.commit()
+            if not account or not self.verify_password(password, account.credential):
+                return None
 
-    return user, account
+            user = session.get(User, account.user_id)
+            if not user:
+                return None
 
+            account.last_login_at = datetime.now()
+            session.commit()
 
-def _get_email_account_by_user_id(session: Session, user_id: int) -> Account | None:
-    return session.scalars(
-        select(Account).where(
-            Account.user_id == user_id,
-            Account.account_type == AccountType.EMAIL,
-        ),
-    ).first()
+        return user, account
 
+    def get_user_by_id(self, user_id: int) -> User | None:
+        with self._session_factory() as session:
+            return session.get(User, user_id)
 
-def get_email_account_by_user_id(user_id: int) -> Account | None:
-    with get_session() as session:
-        return _get_email_account_by_user_id(session, user_id)
+    def update_password(self, user_id: int, current_password: str, new_password: str) -> tuple[User, Account]:
+        with self._session_factory() as session:
+            user = session.get(User, user_id)
+            if not user:
+                raise ValueError("用户不存在")
 
+            account = self._get_email_account_by_user_id(session, user_id)
+            if not account:
+                raise ValueError("邮箱账号不存在")
 
-def authenticate(email: str, password: str) -> tuple[User, Account] | None:
-    with get_session() as session:
-        account = session.scalars(
-            select(Account).where(
-                Account.account_type == AccountType.EMAIL,
-                Account.identifier == email,
-            ),
-        ).first()
+            if not self.verify_password(current_password, account.credential):
+                raise ValueError("当前密码错误")
 
-        if not account or not verify_password(password, account.credential):
-            return None
+            if self.verify_password(new_password, account.credential):
+                raise ValueError("新密码不能与当前密码相同")
 
-        user = session.get(User, account.user_id)
-        if not user:
-            return None
+            account.credential = self.hash_password(new_password)
+            account.last_login_at = datetime.now()
+            user.token_version = int(user.token_version or 0) + 1
+            session.commit()
+            session.refresh(user)
+            session.refresh(account)
 
-        account.last_login_at = datetime.now()
-        session.commit()
+        return user, account
 
-    return user, account
+    def rotate_token_version(self, user_id: int) -> User:
+        with self._session_factory() as session:
+            user = session.get(User, user_id)
+            if not user:
+                raise ValueError("用户不存在")
 
+            user.token_version = int(user.token_version or 0) + 1
+            session.commit()
+            session.refresh(user)
 
-def get_user_by_id(user_id: int) -> User | None:
-    with get_session() as session:
-        return session.get(User, user_id)
+        return user
 
+    def update_user(self, user_id: int, nickname: str = None, avatar: str = None) -> User | None:
+        with self._session_factory() as session:
+            user = session.get(User, user_id)
+            if not user:
+                return None
 
-def update_password(user_id: int, current_password: str, new_password: str) -> tuple[User, Account]:
-    with get_session() as session:
-        user = session.get(User, user_id)
-        if not user:
-            raise ValueError("用户不存在")
+            if nickname:
+                user.nickname = nickname
+            if avatar:
+                user.avatar = avatar
 
-        account = _get_email_account_by_user_id(session, user_id)
-        if not account:
-            raise ValueError("邮箱账号不存在")
+            session.commit()
 
-        if not verify_password(current_password, account.credential):
-            raise ValueError("当前密码错误")
-
-        if verify_password(new_password, account.credential):
-            raise ValueError("新密码不能与当前密码相同")
-
-        account.credential = hash_password(new_password)
-        account.last_login_at = datetime.now()
-        user.token_version = int(user.token_version or 0) + 1
-        session.commit()
-        session.refresh(user)
-        session.refresh(account)
-
-    return user, account
+        return user
 
 
-def rotate_token_version(user_id: int) -> User:
-    with get_session() as session:
-        user = session.get(User, user_id)
-        if not user:
-            raise ValueError("用户不存在")
-
-        user.token_version = int(user.token_version or 0) + 1
-        session.commit()
-        session.refresh(user)
-
-    return user
-
-
-def update_user(user_id: int, nickname: str = None, avatar: str = None) -> User | None:
-    with get_session() as session:
-        user = get_user_by_id(user_id)
-        if not user:
-            return None
-        session.merge(user)
-        if nickname:
-            user.nickname = nickname
-        if avatar:
-            user.avatar = avatar
-
-        session.commit()
-
-    return user
+_default = UserService()
+hash_password = _default.hash_password
+verify_password = _default.verify_password
+create_user = _default.create_user
+get_email_account_by_user_id = _default.get_email_account_by_user_id
+authenticate = _default.authenticate
+get_user_by_id = _default.get_user_by_id
+update_password = _default.update_password
+rotate_token_version = _default.rotate_token_version
+update_user = _default.update_user

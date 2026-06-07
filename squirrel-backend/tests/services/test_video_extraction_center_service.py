@@ -1,12 +1,9 @@
-import sys
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from pathlib import Path
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models import Base
 from models.crawl_job import CrawlJob
@@ -14,32 +11,15 @@ from models.crawl_task import CrawlTask
 from models.links import UserSubscription
 from models.subscription import Subscription
 from models.video_extraction_projection import VideoExtractionProjection
-from services import video_extraction_center_service, video_extraction_projection_service
+from services.video_extraction_center_service import VideoExtractionCenterService
+from services.video_extraction_projection_service import VideoExtractionProjectionService
 
 
-def _reset_extraction_site_catalog_cache(monkeypatch):
-    monkeypatch.setattr(video_extraction_center_service, "_site_catalog_cache", None)
-    monkeypatch.setattr(video_extraction_center_service, "_site_catalog_cache_expires_at_monotonic", None)
-    monkeypatch.setattr(video_extraction_center_service, "_site_icon_url_cache", {})
-
-
-@contextmanager
-def _managed_session(engine):
-    session = Session(engine, expire_on_commit=False)
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
-
-def _setup_env(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+@pytest.fixture
+def engine():
+    _engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(
-        engine,
+        _engine,
         tables=[
             Subscription.__table__,
             UserSubscription.__table__,
@@ -48,11 +28,43 @@ def _setup_env(monkeypatch):
             VideoExtractionProjection.__table__,
         ],
     )
-    monkeypatch.setattr(video_extraction_center_service, "get_session", lambda: _managed_session(engine))
-    monkeypatch.setattr(video_extraction_projection_service, "get_session", lambda: _managed_session(engine))
-    monkeypatch.setattr(video_extraction_projection_service, "_last_reconcile_monotonic", None, raising=False)
-    monkeypatch.setattr(video_extraction_projection_service, "_group_key_layout_checked", False, raising=False)
-    return engine
+    return _engine
+
+
+@pytest.fixture
+def session_factory(engine):
+    @contextmanager
+    def _factory():
+        session = Session(engine, expire_on_commit=False)
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+    return _factory
+
+
+@pytest.fixture
+def svc(session_factory):
+    proj_svc = VideoExtractionProjectionService(session_factory=session_factory)
+    return VideoExtractionCenterService(
+        session_factory=session_factory,
+        ensure_projection_seeded=proj_svc.ensure_projection_seeded,
+        format_datetime=lambda dt: dt.strftime("%Y-%m-%d %H:%M:%S") if dt else "",
+        get_cached_site_catalog=lambda: {
+            "youtube": {
+                "domains": ["youtube.com", "youtu.be"],
+                "icon_url": "/api/sites/youtube/icon",
+            },
+            "bilibili": {
+                "domains": ["bilibili.com", "b23.tv"],
+                "icon_url": "/api/sites/bilibili/icon",
+            },
+        },
+    )
 
 
 def _seed_tasks(engine):
@@ -241,12 +253,11 @@ def _seed_tasks(engine):
         session.commit()
 
 
-def test_extraction_center_lists_running_queued_and_recent_batches(monkeypatch):
-    engine = _setup_env(monkeypatch)
+def test_extraction_center_lists_running_queued_and_recent_batches(engine, svc):
     _seed_tasks(engine)
 
-    overview = video_extraction_center_service.get_extraction_center_overview(user_id=1)
-    running_result = video_extraction_center_service.list_extraction_center_items(
+    overview = svc.get_extraction_center_overview(user_id=1)
+    running_result = svc.list_extraction_center_items(
         user_id=1,
         status="running",
         site=None,
@@ -254,7 +265,7 @@ def test_extraction_center_lists_running_queued_and_recent_batches(monkeypatch):
         page=1,
         page_size=20,
     )
-    queued_result = video_extraction_center_service.list_extraction_center_items(
+    queued_result = svc.list_extraction_center_items(
         user_id=1,
         status="queued",
         site=None,
@@ -262,7 +273,7 @@ def test_extraction_center_lists_running_queued_and_recent_batches(monkeypatch):
         page=1,
         page_size=20,
     )
-    recent_result = video_extraction_center_service.list_extraction_center_items(
+    recent_result = svc.list_extraction_center_items(
         user_id=1,
         status="recent",
         site=None,
@@ -307,8 +318,7 @@ def test_extraction_center_lists_running_queued_and_recent_batches(monkeypatch):
     assert recent_result.data[1].sync_mode == "incremental"
 
 
-def test_extraction_dashboard_snapshot_does_not_trim_running_or_queued_items(monkeypatch):
-    engine = _setup_env(monkeypatch)
+def test_extraction_dashboard_snapshot_does_not_trim_running_or_queued_items(engine, svc):
     _seed_tasks(engine)
     now = datetime(2026, 4, 2, 16, 10, 0)
 
@@ -411,35 +421,42 @@ def test_extraction_dashboard_snapshot_does_not_trim_running_or_queued_items(mon
         ])
         session.commit()
 
-    snapshot = video_extraction_center_service.get_extraction_dashboard_snapshot(user_id=1, preview_limit=1)
+    snapshot = svc.get_extraction_dashboard_snapshot(user_id=1, preview_limit=1)
 
     assert sorted(item.subscription_name for item in snapshot["runningPreview"]) == ["Extract Running", "Extract Running 2"]
     assert sorted(item.subscription_name for item in snapshot["queuedPreview"]) == ["Extract Queued", "Extract Queued 2"]
 
 
-def test_extraction_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(monkeypatch):
-    engine = _setup_env(monkeypatch)
+def test_extraction_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(engine, session_factory):
     _seed_tasks(engine)
-    _reset_extraction_site_catalog_cache(monkeypatch)
-
     calls = []
+    _cached_catalog = None
 
-    def _fake_get_effective_site_catalog():
-        calls.append(1)
-        return {
-            "youtube": {
-                "domains": ["youtube.com", "youtu.be"],
-                "icon_url": "/api/sites/youtube/icon",
-            },
-            "bilibili": {
-                "domains": ["bilibili.com", "b23.tv"],
-                "icon_url": "/api/sites/bilibili/icon",
-            },
-        }
+    def tracking_catalog():
+            nonlocal _cached_catalog
+            if _cached_catalog is None:
+                calls.append(1)
+                _cached_catalog = {
+                    "youtube": {
+                        "domains": ["youtube.com", "youtu.be"],
+                        "icon_url": "/api/sites/youtube/icon",
+                    },
+                    "bilibili": {
+                        "domains": ["bilibili.com", "b23.tv"],
+                        "icon_url": "/api/sites/bilibili/icon",
+                    },
+                }
+            return _cached_catalog
 
-    monkeypatch.setattr(video_extraction_center_service, "get_effective_site_catalog", _fake_get_effective_site_catalog)
+    proj_svc = VideoExtractionProjectionService(session_factory=session_factory)
+    center_svc = VideoExtractionCenterService(
+        session_factory=session_factory,
+        ensure_projection_seeded=proj_svc.ensure_projection_seeded,
+        format_datetime=lambda dt: dt.strftime("%Y-%m-%d %H:%M:%S") if dt else "",
+        get_cached_site_catalog=tracking_catalog,
+    )
 
-    snapshot = video_extraction_center_service.get_extraction_dashboard_snapshot(user_id=1)
+    snapshot = center_svc.get_extraction_dashboard_snapshot(user_id=1)
 
     assert snapshot["runningPreview"][0].site_icon_url == "/api/sites/youtube/icon"
     assert snapshot["queuedPreview"][0].site_icon_url == "/api/sites/bilibili/icon"
@@ -447,21 +464,20 @@ def test_extraction_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(m
     assert len(calls) == 1
 
 
-def test_extraction_site_icon_resolution_degrades_when_site_catalog_load_fails(monkeypatch):
-    _reset_extraction_site_catalog_cache(monkeypatch)
-    monkeypatch.setattr(
-        video_extraction_center_service,
-        "get_effective_site_catalog",
-        lambda: (_ for _ in ()).throw(PermissionError("installations.json is locked")),
+def test_extraction_site_icon_resolution_propagates_catalog_failure():
+    def _fail():
+        raise PermissionError("installations.json is locked")
+
+    svc = VideoExtractionCenterService(
+        get_cached_site_catalog=_fail,
     )
 
-    icon_url = video_extraction_center_service._resolve_site_icon_url("youtube.com")
+    import pytest
+    with pytest.raises(PermissionError, match="installations.json is locked"):
+        svc._resolve_site_icon_url("youtube.com")
 
-    assert icon_url is None
 
-
-def test_extraction_center_groups_tasks_by_job_when_sync_state_id_missing(monkeypatch):
-    engine = _setup_env(monkeypatch)
+def test_extraction_center_groups_tasks_by_job_when_sync_state_id_missing(engine, svc):
     now = datetime(2026, 4, 2, 18, 0, 0)
 
     with Session(engine, expire_on_commit=False) as session:
@@ -530,7 +546,7 @@ def test_extraction_center_groups_tasks_by_job_when_sync_state_id_missing(monkey
         ])
         session.commit()
 
-    running_result = video_extraction_center_service.list_extraction_center_items(
+    running_result = svc.list_extraction_center_items(
         user_id=1,
         status="running",
         site=None,
@@ -547,8 +563,7 @@ def test_extraction_center_groups_tasks_by_job_when_sync_state_id_missing(monkey
     assert running_result.data[0].running_task_count == 1
 
 
-def test_extraction_center_separates_reused_sync_state_by_run_id(monkeypatch):
-    engine = _setup_env(monkeypatch)
+def test_extraction_center_separates_reused_sync_state_by_run_id(engine, svc):
     now = datetime(2026, 4, 2, 19, 0, 0)
 
     with Session(engine, expire_on_commit=False) as session:
@@ -660,7 +675,7 @@ def test_extraction_center_separates_reused_sync_state_by_run_id(monkeypatch):
         ])
         session.commit()
 
-    recent_result = video_extraction_center_service.list_extraction_center_items(
+    recent_result = svc.list_extraction_center_items(
         user_id=1,
         status="recent",
         site=None,
@@ -677,8 +692,7 @@ def test_extraction_center_separates_reused_sync_state_by_run_id(monkeypatch):
     assert [item.failed_task_count for item in recent_result.data] == [0, 2]
 
 
-def test_extraction_center_reconciles_stale_active_projection(monkeypatch):
-    engine = _setup_env(monkeypatch)
+def test_extraction_center_reconciles_stale_active_projection(engine, svc):
     now = datetime(2026, 4, 2, 20, 0, 0)
 
     with Session(engine, expire_on_commit=False) as session:
@@ -772,8 +786,8 @@ def test_extraction_center_reconciles_stale_active_projection(monkeypatch):
         )
         session.commit()
 
-    overview = video_extraction_center_service.get_extraction_center_overview(user_id=1)
-    running_result = video_extraction_center_service.list_extraction_center_items(
+    overview = svc.get_extraction_center_overview(user_id=1)
+    running_result = svc.list_extraction_center_items(
         user_id=1,
         status="running",
         site=None,
@@ -781,7 +795,7 @@ def test_extraction_center_reconciles_stale_active_projection(monkeypatch):
         page=1,
         page_size=20,
     )
-    recent_result = video_extraction_center_service.list_extraction_center_items(
+    recent_result = svc.list_extraction_center_items(
         user_id=1,
         status="recent",
         site=None,
@@ -796,4 +810,3 @@ def test_extraction_center_reconciles_stale_active_projection(monkeypatch):
     assert recent_result.total == 1
     assert recent_result.data[0].sync_status == "success"
     assert recent_result.data[0].completed_task_count == 2
-

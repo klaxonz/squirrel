@@ -31,4 +31,8 @@ concurrent-log-handler = "==0.9.29"
 
 [dev-packages]
 pytest = "==9.0.2"
+pytest-asyncio = ">=1.4.0"
+respx = ">=0.23.0"
+factory-boy = ">=3.3.0"
+pytest-env = ">=1.6.0"
 ruff = "==0.15.16"

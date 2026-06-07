@@ -7,52 +7,59 @@ from core.site_config_manager import get_effective_site_catalog
 
 logger = logging.getLogger(__name__)
 
-SITE_CATALOG_CACHE_TTL_SECONDS = 30
-_site_catalog_cache_lock = Lock()
-_site_catalog_cache: dict[str, dict] | None = None
-_site_catalog_cache_expires_at_monotonic: float | None = None
 
+class SiteCatalogCache:
+    SITE_CATALOG_CACHE_TTL_SECONDS = 30
 
-def get_cached_site_catalog() -> dict[str, dict]:
-    global _site_catalog_cache, _site_catalog_cache_expires_at_monotonic
+    def __init__(self):
+        self._lock = Lock()
+        self._cache: dict[str, dict] | None = None
+        self._cache_expires_at: float | None = None
 
-    now_tick = monotonic()
-    if (
-        _site_catalog_cache is not None
-        and _site_catalog_cache_expires_at_monotonic is not None
-        and now_tick < _site_catalog_cache_expires_at_monotonic
-    ):
-        return _site_catalog_cache
-
-    with _site_catalog_cache_lock:
+    def get_cached_site_catalog(self) -> dict[str, dict]:
         now_tick = monotonic()
         if (
-            _site_catalog_cache is not None
-            and _site_catalog_cache_expires_at_monotonic is not None
-            and now_tick < _site_catalog_cache_expires_at_monotonic
+            self._cache is not None
+            and self._cache_expires_at is not None
+            and now_tick < self._cache_expires_at
         ):
-            return _site_catalog_cache
+            return self._cache
 
-        catalog = get_effective_site_catalog() or {}
-        _site_catalog_cache = catalog
-        _site_catalog_cache_expires_at_monotonic = now_tick + SITE_CATALOG_CACHE_TTL_SECONDS
-        return _site_catalog_cache
+        with self._lock:
+            now_tick = monotonic()
+            if (
+                self._cache is not None
+                and self._cache_expires_at is not None
+                and now_tick < self._cache_expires_at
+            ):
+                return self._cache
 
+            catalog = get_effective_site_catalog() or {}
+            self._cache = catalog
+            self._cache_expires_at = now_tick + self.SITE_CATALOG_CACHE_TTL_SECONDS
+            return self._cache
 
-def format_datetime(value: datetime | None) -> str:
-    return value.strftime("%Y-%m-%d %H:%M:%S") if value else ""
+    @staticmethod
+    def format_datetime(value: datetime | None) -> str:
+        return value.strftime("%Y-%m-%d %H:%M:%S") if value else ""
 
-
-def parse_datetime(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    normalized = str(value).strip()
-    if not normalized:
-        return None
-    try:
-        return datetime.fromisoformat(normalized)
-    except ValueError:
-        try:
-            return datetime.strptime(normalized, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
+    @staticmethod
+    def parse_datetime(value: str | None) -> datetime | None:
+        if not value:
             return None
+        normalized = str(value).strip()
+        if not normalized:
+            return None
+        try:
+            return datetime.fromisoformat(normalized)
+        except ValueError:
+            try:
+                return datetime.strptime(normalized, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                return None
+
+
+_default = SiteCatalogCache()
+get_cached_site_catalog = _default.get_cached_site_catalog
+format_datetime = _default.format_datetime
+parse_datetime = _default.parse_datetime

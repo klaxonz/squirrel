@@ -5,7 +5,8 @@ from pydantic import BaseModel, EmailStr, Field, SecretStr, model_validator
 
 from common import response
 from models.user import User
-from services import user_config_service, user_service
+from services.user_config_service import UserConfigService
+from services.user_service import UserService
 from utils.jwt_helper import (
     AUTH_COOKIE_NAME,
     REMEMBER_ME_CLAIM,
@@ -107,12 +108,23 @@ def _should_remember_current_session(http_request: Request) -> bool:
     return should_persist_auth_cookie(http_request.cookies.get(AUTH_COOKIE_NAME))
 
 
+def get_config_service() -> UserConfigService:
+    return UserConfigService()
+
+
+def get_user_service() -> UserService:
+    return UserService()
+
+
 @router.post("/register")
-async def register(request: UserRegisterRequest):
+async def register(
+    request: UserRegisterRequest,
+    user_svc: UserService = Depends(get_user_service),
+):
     """Register a new user
     """
     try:
-        user, _ = user_service.create_user(
+        user, _ = user_svc.create_user(
             nickname=request.nickname,
             email=str(request.email),
             password=request.password,
@@ -126,10 +138,15 @@ async def register(request: UserRegisterRequest):
 
 
 @router.post("/login")
-async def login(request: UserLoginRequest, http_request: Request, http_response: Response):
+async def login(
+    request: UserLoginRequest,
+    http_request: Request,
+    http_response: Response,
+    user_svc: UserService = Depends(get_user_service),
+):
     """User login
     """
-    result = user_service.authenticate(str(request.email), request.password)
+    result = user_svc.authenticate(str(request.email), request.password)
     if not result:
         return response.error("邮箱或密码错误")
 
@@ -162,11 +179,12 @@ async def get_current_user_info(current_user=Depends(get_current_user)):
 async def update_user(
         request: UserUpdateRequest,
         current_user=Depends(get_current_user),
+        user_svc: UserService = Depends(get_user_service),
 ):
     """Update current user info
     """
     try:
-        updated_user = user_service.update_user(current_user.id, **request.model_dump())
+        updated_user = user_svc.update_user(current_user.id, **request.model_dump())
         return response.success(
             data=_serialize_user(updated_user),
             msg="更新成功",
@@ -181,9 +199,10 @@ async def update_password(
     http_request: Request,
     http_response: Response,
     current_user: User = Depends(get_current_user),
+    user_svc: UserService = Depends(get_user_service),
 ):
     try:
-        updated_user, _ = user_service.update_password(
+        updated_user, _ = user_svc.update_password(
             current_user.id,
             request.current_password.get_secret_value(),
             request.new_password.get_secret_value(),
@@ -207,9 +226,10 @@ async def revoke_sessions(
     http_request: Request,
     http_response: Response,
     current_user: User = Depends(get_current_user),
+    user_svc: UserService = Depends(get_user_service),
 ):
     try:
-        updated_user = user_service.rotate_token_version(current_user.id)
+        updated_user = user_svc.rotate_token_version(current_user.id)
         _issue_auth_cookie(
             http_response,
             http_request,
@@ -225,10 +245,13 @@ async def revoke_sessions(
 
 
 @router.get("/{user_id}")
-async def get_user(user_id: int):
+async def get_user(
+    user_id: int,
+    user_svc: UserService = Depends(get_user_service),
+):
     """Get user by ID
     """
-    user = user_service.get_user_by_id(user_id)
+    user = user_svc.get_user_by_id(user_id)
     if not user:
         return response.not_found(f"用户 {user_id} 不存在")
     return response.success(
@@ -239,8 +262,9 @@ async def get_user(user_id: int):
 @router.get("/me/config")
 async def get_user_config(
     current_user: User = Depends(get_current_user),
+    cfg_svc: UserConfigService = Depends(get_config_service),
 ):
-    settings = user_config_service.get_config(current_user.id)
+    settings = cfg_svc.get_config(current_user.id)
     return response.success(data=settings)
 
 
@@ -248,8 +272,9 @@ async def get_user_config(
 async def update_user_config(
     config_data: UserConfigUpdate,
     current_user: User = Depends(get_current_user),
+    cfg_svc: UserConfigService = Depends(get_config_service),
 ):
-    updated = user_config_service.update_config(
+    updated = cfg_svc.update_config(
         user_id=current_user.id,
         new_settings=config_data.settings,
         merge=config_data.merge,

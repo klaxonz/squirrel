@@ -8,57 +8,63 @@ from schemas.video_history import (
     HistoryBatchUpdate,
     HistoryCreate,
 )
-from services import video_history_service
+from services.video_history_service import VideoHistoryService
 from utils.jwt_helper import get_current_user
 
 router = APIRouter(
-    prefix="/api/video-history",
-    tags=["视频历史记录"],
+    prefix='/api/video-history',
+    tags=['视频历史记录'],
 )
 
 
-@router.post("/update")
+def get_video_history_service():
+    return VideoHistoryService()
+
+
+@router.post('/update')
 def update_history(
         data: HistoryCreate,
         user: User = Depends(get_current_user),
+        svc: VideoHistoryService = Depends(get_video_history_service),
 ):
-    video_history_service.update_history(user.id, data)
+    svc.update_history(user.id, data)
     return response.success()
 
 
-@router.post("/batch-update")
+@router.post('/batch-update')
 def batch_update_history(
         data: HistoryBatchUpdate,
         user: User = Depends(get_current_user),
+        svc: VideoHistoryService = Depends(get_video_history_service),
 ):
-    video_history_service.batch_update_histories(user.id, data.reports)
+    svc.batch_update_histories(user.id, data.reports)
     return response.success()
 
 
-@router.get("/list")
+@router.get('/list')
 def get_history_list(
         video_id: int = Query(None),
         min_duration: int = Query(None),
         start_date: datetime = Query(None),
         end_date: datetime = Query(None),
-        query: str = Query(None, description="搜索关键词"),
-        nsfw: str = Query(None, description="NSFW筛选: all/yes/no"),
-        site: str = Query(None, description="站点筛选"),
+        query: str = Query(None, description='搜索关键词'),
+        nsfw: str = Query(None, description='NSFW筛选: all/yes/no'),
+        site: str = Query(None, description='站点筛选'),
         page: int = Query(1, ge=1),
         page_size: int = Query(20, ge=1, le=200),
         user: User = Depends(get_current_user),
-
+        svc: VideoHistoryService = Depends(get_video_history_service),
 ):
     filters = {
-        "video_id": video_id,
-        "min_duration": min_duration,
-        "start_date": start_date,
-        "end_date": end_date,
-        "query": query,
-        "nsfw": nsfw,
-        "site": site,
+        'video_id': video_id,
+        'min_duration': min_duration,
+        'start_date': start_date,
+        'end_date': end_date,
+        'query': query,
+        'nsfw': nsfw,
+        'site': site,
     }
-    video_histories = video_history_service.list_histories(
+    video_histories = svc.list_histories(
         user_id=user.id,
         filters={k: v for k, v in filters.items() if v is not None},
         page=page,
@@ -67,24 +73,26 @@ def get_history_list(
     return response.success(video_histories)
 
 
-@router.post("/clear")
+@router.post('/clear')
 def clear_history(
         video_ids: list[int] = Body(None),
         user: dict = Depends(get_current_user),
+        svc: VideoHistoryService = Depends(get_video_history_service),
 ):
-    video_history_service.clear_histories(
-        user_id=user["id"],
+    svc.clear_histories(
+        user_id=user['id'],
         video_ids=video_ids,
     )
     return response.success()
 
 
-@router.delete("/{history_id}")
+@router.delete('/{history_id}')
 def delete_history(
         history_id: int,
         user: User = Depends(get_current_user),
+        svc: VideoHistoryService = Depends(get_video_history_service),
 ):
-    deleted_count = video_history_service.delete_history(user.id, history_id)
+    deleted_count = svc.delete_history(user.id, history_id)
     if deleted_count == 0:
-        return response.not_found("历史记录不存在")
+        return response.not_found('历史记录不存在')
     return response.success()

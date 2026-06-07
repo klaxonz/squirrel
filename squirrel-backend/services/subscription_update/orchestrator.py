@@ -35,8 +35,9 @@ class SubscriptionOrchestrator:
     4. Return update results
     """
 
-    def __init__(self):
+    def __init__(self, session_factory=None):
         self.default_strategy = DefaultUpdateStrategy()
+        self.session_factory = session_factory or get_session
 
     def update(self, request: SubscriptionUpdateRequest) -> SubscriptionUpdateResult:
         """Execute subscription update
@@ -129,9 +130,8 @@ class SubscriptionOrchestrator:
                     error_message=str(e),
             )
 
-    @staticmethod
-    def _has_active_subscribers(subscription_id: int) -> bool:
-        with get_session() as session:
+    def _has_active_subscribers(self, subscription_id: int) -> bool:
+        with self.session_factory() as session:
             row = session.execute(
                 select(UserSubscription.id).where(
                     UserSubscription.subscription_id == subscription_id,

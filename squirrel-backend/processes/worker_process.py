@@ -4,19 +4,20 @@ import time
 from common.constants import SYS_ENABLE_WORKER
 from processes.managers.worker_manager import worker_start, worker_stop
 from processes.service_runtime import bootstrap_runtime, create_shutdown_event
-from services import system_config_service
+from services.system_config_service import SystemConfigService
 
 logger = logging.getLogger(__name__)
 
 
 def main():
-    shutdown_event = create_shutdown_event("worker")
+    config_svc = SystemConfigService()
+    shutdown_event = create_shutdown_event('worker')
 
-    with bootstrap_runtime("worker"):
+    with bootstrap_runtime('worker'):
         is_running = False
 
         while not shutdown_event.is_set():
-            enabled = system_config_service.get_bool(SYS_ENABLE_WORKER, default=True)
+            enabled = config_svc.get_bool(SYS_ENABLE_WORKER, default=True)
 
             if enabled and not is_running:
                 logger.info("[worker] Starting worker threads...")

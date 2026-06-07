@@ -34,10 +34,6 @@ SOURCE_ORDERS = {
     "history": ("history", "video", "subscription", "creator"),
 }
 
-_suggestion_pool_cache_lock = Lock()
-_suggestion_pool_cache: dict[tuple[int, str, str], tuple[float, list[dict[str, str]]]] = {}
-_suggestion_result_cache: dict[tuple[int, str, str, str, int], tuple[float, list[dict[str, str]]]] = {}
-
 
 def _normalize_query(value: str | None) -> str:
     return " ".join(str(value or "").strip().split())
@@ -73,12 +69,6 @@ def _match_rank(column: Any, query: str) -> Any:
         (lowered_column.like(f"{query}%"), 1),
         else_=2,
     )
-
-
-def _resolve_effective_visibility(user_id: int) -> str:
-    user_config = user_config_service.get_config(user_id)
-    show_nsfw = user_config.get("showNsfw", False)
-    return resolve_effective_nsfw_filter("all", show_nsfw)
 
 
 def _apply_nsfw_visibility(conditions: list[Any], effective_nsfw: str) -> list[Any]:
@@ -297,49 +287,6 @@ def _build_history_pool(session: Session, *, user_id: int, effective_nsfw: str, 
         }
         for row in rows
     )
-
-
-def _build_suggestion_pool(user_id: int, scope: str, effective_nsfw: str) -> list[dict[str, str]]:
-    with get_session() as session:
-        base_limit = 160 if scope == "home" else 120
-        pool_parts = {
-            "video": _build_video_pool(session, user_id=user_id, effective_nsfw=effective_nsfw, limit=base_limit),
-            "subscription": _build_subscription_pool(session, user_id=user_id, effective_nsfw=effective_nsfw, limit=80),
-            "creator": _build_creator_pool(session, user_id=user_id, effective_nsfw=effective_nsfw, limit=80),
-            "history": _build_history_pool(session, user_id=user_id, effective_nsfw=effective_nsfw, limit=80),
-        }
-
-    ordered_items: list[dict[str, str]] = []
-    for source in SOURCE_ORDERS.get(scope, SOURCE_ORDERS["home"]):
-        ordered_items.extend(pool_parts.get(source, []))
-
-    return _dedupe_pool_items(ordered_items)
-
-
-def _get_cached_suggestion_pool(user_id: int, scope: str, effective_nsfw: str) -> list[dict[str, str]]:
-    cache_key = (int(user_id), str(scope), str(effective_nsfw))
-    now = monotonic()
-    cached = _suggestion_pool_cache.get(cache_key)
-    if cached and now < cached[0]:
-        return cached[1]
-
-    with _suggestion_pool_cache_lock:
-        cached = _suggestion_pool_cache.get(cache_key)
-        if cached and now < cached[0]:
-            return cached[1]
-
-        pool = _build_suggestion_pool(user_id, scope, effective_nsfw)
-        _suggestion_pool_cache[cache_key] = (now + SUGGESTION_POOL_TTL_SECONDS, pool)
-        return pool
-
-
-def _score_candidate(value: str, query: str) -> int:
-    lowered_value = value.lower()
-    if lowered_value == query:
-        return 0
-    if lowered_value.startswith(query):
-        return 1
-    return 2
 
 
 def _list_video_suggestions(session: Session, *, user_id: int, query: str, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
@@ -571,30 +518,89 @@ def _list_history_suggestions(session: Session, *, user_id: int, query: str, eff
     return _serialize_rows(normalized_rows, "history")[:limit]
 
 
-def list_search_suggestions(user_id: int, query: str | None, scope: str | None = None, limit: int = DEFAULT_LIMIT) -> list[dict[str, str]]:
-    normalized_limit = max(1, min(int(limit or DEFAULT_LIMIT), MAX_LIMIT))
-    normalized_query = _extract_suggestion_term(query)
-    normalized_scope = str(scope or "home").strip().lower() or "home"
+def _score_candidate(value: str, query: str) -> int:
+    lowered_value = value.lower()
+    if lowered_value == query:
+        return 0
+    if lowered_value.startswith(query):
+        return 1
+    return 2
 
-    if not normalized_query:
-        return []
 
-    effective_nsfw = _resolve_effective_visibility(user_id)
-    result_cache_key = (int(user_id), normalized_scope, effective_nsfw, normalized_query, normalized_limit)
-    now = monotonic()
-    cached_result = _suggestion_result_cache.get(result_cache_key)
-    if cached_result and now < cached_result[0]:
-        return cached_result[1]
+class SearchSuggestionService:
+    def __init__(self, session_factory=get_session, get_user_config=user_config_service.get_config):
+        self._session_factory = session_factory
+        self._get_user_config = get_user_config
+        self._suggestion_pool_cache_lock = Lock()
+        self._suggestion_pool_cache: dict[tuple[int, str, str], tuple[float, list[dict[str, str]]]] = {}
+        self._suggestion_result_cache: dict[tuple[int, str, str, str, int], tuple[float, list[dict[str, str]]]] = {}
 
-    pool = _get_cached_suggestion_pool(user_id, normalized_scope, effective_nsfw)
-    ranked_items: list[tuple[int, int, dict[str, str]]] = []
-    for index, item in enumerate(pool):
-        value = str(item.get("value") or "")
-        if normalized_query not in value.lower():
-            continue
-        ranked_items.append((_score_candidate(value, normalized_query), index, item))
+    def _resolve_effective_visibility(self, user_id: int) -> str:
+        user_config = self._get_user_config(user_id)
+        show_nsfw = user_config.get("showNsfw", False)
+        return resolve_effective_nsfw_filter("all", show_nsfw)
 
-    ranked_items.sort(key=lambda item: (item[0], item[1]))
-    result = [item[2] for item in ranked_items[:normalized_limit]]
-    _suggestion_result_cache[result_cache_key] = (now + SUGGESTION_RESULT_TTL_SECONDS, result)
-    return result
+    def _build_suggestion_pool(self, user_id: int, scope: str, effective_nsfw: str) -> list[dict[str, str]]:
+        with self._session_factory() as session:
+            base_limit = 160 if scope == "home" else 120
+            pool_parts = {
+                "video": _build_video_pool(session, user_id=user_id, effective_nsfw=effective_nsfw, limit=base_limit),
+                "subscription": _build_subscription_pool(session, user_id=user_id, effective_nsfw=effective_nsfw, limit=80),
+                "creator": _build_creator_pool(session, user_id=user_id, effective_nsfw=effective_nsfw, limit=80),
+                "history": _build_history_pool(session, user_id=user_id, effective_nsfw=effective_nsfw, limit=80),
+            }
+
+        ordered_items: list[dict[str, str]] = []
+        for source in SOURCE_ORDERS.get(scope, SOURCE_ORDERS["home"]):
+            ordered_items.extend(pool_parts.get(source, []))
+
+        return _dedupe_pool_items(ordered_items)
+
+    def _get_cached_suggestion_pool(self, user_id: int, scope: str, effective_nsfw: str) -> list[dict[str, str]]:
+        cache_key = (int(user_id), str(scope), str(effective_nsfw))
+        now = monotonic()
+        cached = self._suggestion_pool_cache.get(cache_key)
+        if cached and now < cached[0]:
+            return cached[1]
+
+        with self._suggestion_pool_cache_lock:
+            cached = self._suggestion_pool_cache.get(cache_key)
+            if cached and now < cached[0]:
+                return cached[1]
+
+            pool = self._build_suggestion_pool(user_id, scope, effective_nsfw)
+            self._suggestion_pool_cache[cache_key] = (now + SUGGESTION_POOL_TTL_SECONDS, pool)
+            return pool
+
+    def list_search_suggestions(self, user_id: int, query: str | None, scope: str | None = None, limit: int = DEFAULT_LIMIT) -> list[dict[str, str]]:
+        normalized_limit = max(1, min(int(limit or DEFAULT_LIMIT), MAX_LIMIT))
+        normalized_query = _extract_suggestion_term(query)
+        normalized_scope = str(scope or "home").strip().lower() or "home"
+
+        if not normalized_query:
+            return []
+
+        effective_nsfw = self._resolve_effective_visibility(user_id)
+        result_cache_key = (int(user_id), normalized_scope, effective_nsfw, normalized_query, normalized_limit)
+        now = monotonic()
+        cached_result = self._suggestion_result_cache.get(result_cache_key)
+        if cached_result and now < cached_result[0]:
+            return cached_result[1]
+
+        pool = self._get_cached_suggestion_pool(user_id, normalized_scope, effective_nsfw)
+        ranked_items: list[tuple[int, int, dict[str, str]]] = []
+        for index, item in enumerate(pool):
+            value = str(item.get("value") or "")
+            if normalized_query not in value.lower():
+                continue
+            ranked_items.append((_score_candidate(value, normalized_query), index, item))
+
+        ranked_items.sort(key=lambda item: (item[0], item[1]))
+        result = [item[2] for item in ranked_items[:normalized_limit]]
+        self._suggestion_result_cache[result_cache_key] = (now + SUGGESTION_RESULT_TTL_SECONDS, result)
+        return result
+
+
+_default = SearchSuggestionService()
+
+list_search_suggestions = _default.list_search_suggestions

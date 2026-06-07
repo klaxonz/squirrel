@@ -13,7 +13,7 @@ from schemas.video.request.video import (
     VideoCategory,
     YesNoAll,
 )
-from services import video_service
+from services.video_service import VideoService
 from utils.jwt_helper import get_current_user
 from utils.site_catalog import SiteCatalog
 
@@ -22,14 +22,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/video", tags=["频道视频接口"])
 
 
+def get_video_service() -> VideoService:
+    return VideoService()
+
+
 @router.post("/remote-save")
 def save_remote_video(
         data: RemoteVideoSaveRequest,
         current_user: User = Depends(get_current_user),
+        svc: VideoService = Depends(get_video_service),
 ):
     try:
-        video = video_service.save_remote_video(data.model_dump())
-        return response.success(video_service.get_video(current_user.id, video.id))
+        video = svc.save_remote_video(data.model_dump())
+        return response.success(svc.get_video(current_user.id, video.id))
     except ValueError as exc:
         return response.param_error(str(exc))
     except Exception:
@@ -42,8 +47,9 @@ def save_remote_video(
 def get_video(
         video_id: int = Query(None, description="视频ID"),
         current_user: User = Depends(get_current_user),
+        svc: VideoService = Depends(get_video_service),
 ):
-    video = video_service.get_video(current_user.id, video_id)
+    video = svc.get_video(current_user.id, video_id)
     return response.success(video)
 
 
@@ -63,6 +69,7 @@ def get_videos(
         duration: DurationFilter = Query(DurationFilter.ALL, description="时长: all|short|medium|long"),
         content_type: ContentType = Query(ContentType.ALL, description="内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR"),
         current_user: User = Depends(get_current_user),
+        svc: VideoService = Depends(get_video_service),
 ):
 
     domains_list: list[str] | None = None
@@ -73,7 +80,7 @@ def get_videos(
     if hasattr(current_user, "_cached_config"):
         logger.info("[Performance] Route: Using cached user config")
 
-    videos, total_counts = video_service.list_videos(
+    videos, total_counts = svc.list_videos(
         current_user.id, query, subscription_id, category.value, sort_by.value, nsfw.value, domains_list, page, page_size,
         with_total=with_total, time_range=time_range.value, duration=duration.value, content_type=content_type.value, special=special.value,
     )
@@ -99,13 +106,14 @@ def get_random_video(
         duration: DurationFilter = Query(DurationFilter.ALL, description="时长: all|short|medium|long"),
         content_type: ContentType = Query(ContentType.ALL, description="内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR"),
         current_user: User = Depends(get_current_user),
+        svc: VideoService = Depends(get_video_service),
 ):
     domains_list: list[str] | None = None
     if site:
         resolved = SiteCatalog.resolve_domains(site)
         domains_list = resolved or None
 
-    video = video_service.get_random_video(
+    video = svc.get_random_video(
         current_user.id,
         category=category.value,
         subscription_id=subscription_id,
@@ -120,7 +128,7 @@ def get_random_video(
         return response.not_found("未找到符合条件的视频")
 
     # 返回完整视频详情，便于前端直接播放
-    detail = video_service.get_video(current_user.id, video.id)
+    detail = svc.get_video(current_user.id, video.id)
     return response.success(detail)
 
 

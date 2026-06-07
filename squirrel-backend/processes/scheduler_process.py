@@ -4,19 +4,20 @@ import time
 from common.constants import SYS_ENABLE_SCHEDULER
 from processes.managers.scheduler_manager import scheduler_start, scheduler_stop
 from processes.service_runtime import bootstrap_runtime, create_shutdown_event
-from services import system_config_service
+from services.system_config_service import SystemConfigService
 
 logger = logging.getLogger(__name__)
 
 
 def main():
-    shutdown_event = create_shutdown_event("scheduler")
+    config_svc = SystemConfigService()
+    shutdown_event = create_shutdown_event('scheduler')
 
-    with bootstrap_runtime("scheduler"):
+    with bootstrap_runtime('scheduler'):
         is_running = False
 
         while not shutdown_event.is_set():
-            enabled = system_config_service.get_bool(SYS_ENABLE_SCHEDULER, default=True)
+            enabled = config_svc.get_bool(SYS_ENABLE_SCHEDULER, default=True)
 
             if enabled and not is_running:
                 logger.info("[scheduler] Starting scheduler...")
