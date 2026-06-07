@@ -1,6 +1,7 @@
 ---
 title: 'JS/TS: 子项目间引号和分号风格不统一'
-status: open
+status: fixed
+fixed_by: squirrel-extension/config.js, squirrel-extension/utils.js, squirrel-extension/popup.js, squirrel-extension/options.js, squirrel-extension/background.js
 severity: low
 category: code-smell
 created: 2026-06-07

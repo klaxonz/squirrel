@@ -33,14 +33,14 @@ export const CONFIG = {
       }
     }
   },
-  
+
   DEFAULT_BACKEND_HOST: 'http://localhost:8000',
-  
+
   STATUS_DISPLAY_DURATION: 3000,
-  
-  MAX_HISTORY_LENGTH: 5,  // 最多保存5条历史记录
+
+  MAX_HISTORY_LENGTH: 5,
   STORAGE_KEYS: {
     BACKEND_HOST: 'backendHost',
     BACKEND_HISTORY: 'backendHistory'
   }
-}; 
+}

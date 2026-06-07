@@ -1,46 +1,46 @@
-import { CONFIG } from './config.js';
-import { UIHelper, ChromeAPI } from './utils.js';
+import { CONFIG } from './config.js'
+import { UIHelper, ChromeAPI } from './utils.js'
 
 class OptionsManager {
   constructor() {
-    this.backendHostInput = document.getElementById('backendHost');
-    this.historyList = document.getElementById('historyList');
-    this.resetButton = document.getElementById('resetButton');
-    this.clearHistoryButton = document.getElementById('clearHistoryButton');
-    this.loginButton = document.getElementById('loginButton');
-    this.logoutButton = document.getElementById('logoutButton');
-    this.emailInput = document.getElementById('email');
-    this.passwordInput = document.getElementById('password');
-    this.loginForm = document.getElementById('loginForm');
-    this.settingsContent = document.getElementById('settingsContent');
+    this.backendHostInput = document.getElementById('backendHost')
+    this.historyList = document.getElementById('historyList')
+    this.resetButton = document.getElementById('resetButton')
+    this.clearHistoryButton = document.getElementById('clearHistoryButton')
+    this.loginButton = document.getElementById('loginButton')
+    this.logoutButton = document.getElementById('logoutButton')
+    this.emailInput = document.getElementById('email')
+    this.passwordInput = document.getElementById('password')
+    this.loginForm = document.getElementById('loginForm')
+    this.settingsContent = document.getElementById('settingsContent')
   }
 
   async initialize() {
-    await this.loadSettings();
-    this.setupEventListeners();
-    await this.checkLoginStatus();
+    await this.loadSettings()
+    this.setupEventListeners()
+    await this.checkLoginStatus()
   }
 
   setupEventListeners() {
-    this.resetButton.addEventListener('click', () => this.handleReset());
-    this.clearHistoryButton.addEventListener('click', () => this.handleClearHistory());
-    this.loginButton.addEventListener('click', () => this.handleLogin());
-    this.logoutButton.addEventListener('click', () => this.handleLogout());
+    this.resetButton.addEventListener('click', () => this.handleReset())
+    this.clearHistoryButton.addEventListener('click', () => this.handleClearHistory())
+    this.loginButton.addEventListener('click', () => this.handleLogin())
+    this.logoutButton.addEventListener('click', () => this.handleLogout())
   }
 
   async loadSettings() {
     const data = await ChromeAPI.getStorageData([
       CONFIG.STORAGE_KEYS.BACKEND_HOST,
       CONFIG.STORAGE_KEYS.BACKEND_HISTORY
-    ]);
-    
-    const currentHost = data[CONFIG.STORAGE_KEYS.BACKEND_HOST] || CONFIG.DEFAULT_BACKEND_HOST;
-    this.backendHostInput.value = currentHost;
-    
+    ])
+
+    const currentHost = data[CONFIG.STORAGE_KEYS.BACKEND_HOST] || CONFIG.DEFAULT_BACKEND_HOST
+    this.backendHostInput.value = currentHost
+
     this.updateHistoryList(
-      data[CONFIG.STORAGE_KEYS.BACKEND_HISTORY] || [], 
+      data[CONFIG.STORAGE_KEYS.BACKEND_HISTORY] || [],
       currentHost
-    );
+    )
   }
 
   updateHistoryList(history, currentHost) {
@@ -56,68 +56,65 @@ class OptionsManager {
           </button>
         </div>
       </div>
-    `).join('');
+    `).join('')
 
-    // 添加事件监听器
     this.historyList.querySelectorAll('.history-item').forEach(item => {
-      // 点击整个项目使用该地址
       item.addEventListener('click', (e) => {
-        const actionButton = e.target.closest('.history-action');
+        const actionButton = e.target.closest('.history-action')
         if (!actionButton) {
-          this.useHistoryItem(item.dataset.url);
+          this.useHistoryItem(item.dataset.url)
         }
-      });
+      })
 
-      // 处理操作按钮点击
       item.querySelectorAll('.history-action').forEach(button => {
         button.addEventListener('click', (e) => {
-          e.stopPropagation(); // 阻止冒泡，避免触发项目的点击事件
-          const action = button.dataset.action;
-          const url = item.dataset.url;
-          
+          e.stopPropagation()
+          const action = button.dataset.action
+          const url = item.dataset.url
+
           if (action === 'use') {
-            this.useHistoryItem(url);
+            this.useHistoryItem(url)
           } else if (action === 'remove') {
-            this.removeHistoryItem(url);
+            this.removeHistoryItem(url)
           }
-        });
-      });
-    });
+        })
+      })
+    })
   }
 
   async useHistoryItem(url) {
-    this.backendHostInput.value = url;
-    await this.handleReset();
+    this.backendHostInput.value = url
+    await this.handleReset()
   }
 
   async removeHistoryItem(urlToRemove) {
-    const data = await ChromeAPI.getStorageData([CONFIG.STORAGE_KEYS.BACKEND_HISTORY]);
-    let history = data[CONFIG.STORAGE_KEYS.BACKEND_HISTORY] || [];
-    
-    history = history.filter(url => url !== urlToRemove);
-    
+    const data = await ChromeAPI.getStorageData([CONFIG.STORAGE_KEYS.BACKEND_HISTORY])
+    let history = data[CONFIG.STORAGE_KEYS.BACKEND_HISTORY] || []
+
+    history = history.filter(url => url !== urlToRemove)
+
     await ChromeAPI.setStorageData({
       [CONFIG.STORAGE_KEYS.BACKEND_HISTORY]: history
-    });
-    
-    this.updateHistoryList(history, this.backendHostInput.value);
-    UIHelper.showStatus('已删除历史记录');
+    })
+
+    this.updateHistoryList(history, this.backendHostInput.value)
+    UIHelper.showStatus('已删除历史记录')
   }
 
   async handleReset() {
-    const newBackendHost = this.backendHostInput.value.trim();
-    if (!newBackendHost) return;
+    const newBackendHost = this.backendHostInput.value.trim()
+    if (!newBackendHost) return
 
     try {
-      await ChromeAPI.sendMessage('logout');
+      await ChromeAPI.sendMessage('logout')
       await ChromeAPI.setStorageData({
         [CONFIG.STORAGE_KEYS.BACKEND_HOST]: newBackendHost
-      });
-      
-      await this.checkLoginStatus();
-      this.resetButton.style.display = 'none';
+      })
+
+      await this.checkLoginStatus()
+      this.resetButton.style.display = 'none'
     } catch (error) {
-      UIHelper.showStatus('Reset failed: ' + error.message, true);
+      UIHelper.showStatus('Reset failed: ' + error.message, true)
     }
   }
 
@@ -125,76 +122,75 @@ class OptionsManager {
     try {
       await ChromeAPI.setStorageData({
         [CONFIG.STORAGE_KEYS.BACKEND_HISTORY]: []
-      });
-      this.updateHistoryList([], this.backendHostInput.value);
-      UIHelper.showStatus('历史记录已清除');
+      })
+      this.updateHistoryList([], this.backendHostInput.value)
+      UIHelper.showStatus('历史记录已清除')
     } catch (error) {
-      UIHelper.showStatus('清除失败: ' + error.message, true);
+      UIHelper.showStatus('清除失败: ' + error.message, true)
     }
   }
 
   async checkLoginStatus() {
-    const data = await ChromeAPI.getStorageData(['token']);
-    const isLoggedIn = !!data.token;
-    
-    this.loginForm.style.display = isLoggedIn ? 'none' : 'block';
-    this.settingsContent.style.display = isLoggedIn ? 'block' : 'none';
-    this.resetButton.style.display = isLoggedIn ? 'block' : 'none';
+    const data = await ChromeAPI.getStorageData(['token'])
+    const isLoggedIn = !!data.token
 
+    this.loginForm.style.display = isLoggedIn ? 'none' : 'block'
+    this.settingsContent.style.display = isLoggedIn ? 'block' : 'none'
+    this.resetButton.style.display = isLoggedIn ? 'block' : 'none'
   }
 
   async handleLogin() {
-    const email = this.emailInput.value.trim();
-    const password = this.passwordInput.value;
+    const email = this.emailInput.value.trim()
+    const password = this.passwordInput.value
 
     if (!email || !password) {
-      UIHelper.showStatus('请输入邮箱和密码', true);
-      return;
+      UIHelper.showStatus('请输入邮箱和密码', true)
+      return
     }
 
-    const newBackendHost = this.backendHostInput.value.trim();
-    if (!newBackendHost) return;
+    const newBackendHost = this.backendHostInput.value.trim()
+    if (!newBackendHost) return
 
     try {
       await ChromeAPI.setStorageData({
         [CONFIG.STORAGE_KEYS.BACKEND_HOST]: newBackendHost
-      });
+      })
 
-      const response = await ChromeAPI.sendMessage('login', { 
-        email, 
-        password 
-      });
+      const response = await ChromeAPI.sendMessage('login', {
+        email,
+        password
+      })
 
       if (response.success) {
-        UIHelper.showStatus('登录成功');
-        await this.checkLoginStatus();
-        this.emailInput.value = '';
-        this.passwordInput.value = '';
-        await this.loadSettings(); // Reload settings after login
+        UIHelper.showStatus('登录成功')
+        await this.checkLoginStatus()
+        this.emailInput.value = ''
+        this.passwordInput.value = ''
+        await this.loadSettings()
       } else {
-        throw new Error(response.error);
+        throw new Error(response.error)
       }
     } catch (error) {
-      UIHelper.showStatus('登录失败: ' + error.message, true);
+      UIHelper.showStatus('登录失败: ' + error.message, true)
     }
   }
 
   async handleLogout() {
     try {
-      const response = await ChromeAPI.sendMessage('logout');
+      const response = await ChromeAPI.sendMessage('logout')
       if (response.success) {
-        UIHelper.showStatus('已退出登录');
-        await this.checkLoginStatus();
+        UIHelper.showStatus('已退出登录')
+        await this.checkLoginStatus()
       } else {
-        throw new Error(response.error);
+        throw new Error(response.error)
       }
     } catch (error) {
-      UIHelper.showStatus('退出失败: ' + error.message, true);
+      UIHelper.showStatus('退出失败: ' + error.message, true)
     }
   }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const options = new OptionsManager();
-  options.initialize();
-}); 
+  const options = new OptionsManager()
+  options.initialize()
+})
