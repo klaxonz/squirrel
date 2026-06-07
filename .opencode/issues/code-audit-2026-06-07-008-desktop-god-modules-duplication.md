@@ -1,5 +1,6 @@
 ---
 title: 'Desktop: 多个上帝模块 + 大量重复代码'
+status: open
 severity: high
 category: code-smell
 location: squirrel-desktop/src/playback/providers/youtube/youtubei_core.mjs, src/search/providers/remote-channel.mjs, src/site-login.mjs

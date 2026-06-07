@@ -1,5 +1,6 @@
 ---
 title: 'Frontend: 类型安全侵蚀与分层违规'
+status: open
 severity: high
 category: architecture
 location: squirrel-frontend/src/ (全局)

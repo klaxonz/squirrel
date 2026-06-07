@@ -82,7 +82,7 @@ class VideoExtractorBase(ABC):
                 extra={"url": task.url}
             )
             return ExtractionResult.failure(
-                PluginError(f"Unexpected error: {e}", category=ErrorCategory.INTERNAL),
+                PluginError(f"Unexpected error: {e}", category=ErrorCategory.UNKNOWN),
                 context={"url": task.url, "error_type": type(e).__name__}
             )
 

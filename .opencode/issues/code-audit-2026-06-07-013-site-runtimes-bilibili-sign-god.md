@@ -1,5 +1,6 @@
 ---
 title: 'Site-runtimes: bilibili sign.py 上帝模块 (536行)'
+status: open
 severity: high
 category: code-smell
 location: squirrel-site-runtimes/bilibili/src/squirrel_bilibili/sign.py

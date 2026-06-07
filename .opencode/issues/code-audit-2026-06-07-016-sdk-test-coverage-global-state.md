@@ -1,5 +1,6 @@
 ---
 title: 'SDK: 测试覆盖严重不足 + 模块级可变全局状态'
+status: open
 severity: medium
 category: architecture
 location: squirrel-sdk/tests/test_http.py, src/crawl/http.py:160-161, src/crawl/utils.py:22-23, src/crawl/config.py:10

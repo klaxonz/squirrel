@@ -1,5 +1,6 @@
 ---
 title: 'Frontend: RSS 阅读器未过滤外部 HTML 导致 XSS 漏洞'
+status: open
 severity: critical
 category: security
 location: squirrel-frontend/src/views/RssSources.vue:1113

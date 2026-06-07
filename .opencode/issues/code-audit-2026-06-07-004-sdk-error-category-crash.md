@@ -1,5 +1,7 @@
 ---
 title: 'SDK: ErrorCategory.INTERNAL 不存在导致运行时崩溃'
+status: fixed
+fixed_by: squirrel-sdk/src/crawl/extractor.py:85
 severity: critical
 category: code-smell
 location: squirrel-sdk/src/crawl/extractor.py:85

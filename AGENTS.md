@@ -80,7 +80,10 @@ npm install; npm run build:check  # 类型检查 + 构建
 |------|------|---------|
 | `/req <name>` | 创建需求文档 | `.opencode/requirements/<name>.md` |
 | `/design <name>` | 创建技术方案 | `.opencode/designs/<name>.md` |
-| `/bug <title>` | 报告缺陷 | `.opencode/issues/<title>.md` |
+| `/bug <title>` | 报告缺陷（status=open） | `.opencode/issues/<title>.md` |
+| `/issues` | 列出所有 open 的 issue | — |
+| `/issue close <name>` | 关闭 issue（status→fixed） | `.opencode/issues/<name>.md` |
+| `/issue reopen <name>` | 重新打开 issue（status→open） | `.opencode/issues/<name>.md` |
 
 ## 项目记忆
 <!-- 使用 /remember 添加记忆，/recall 搜索记忆 -->

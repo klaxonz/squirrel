@@ -1,5 +1,6 @@
 ---
 title: 'Extension: 多个安全问题 — 超范围权限、凭证存储不当、无传输安全'
+status: open
 severity: high
 category: security
 location: squirrel-extension/manifest.json:15,32-34, background.js:36-41, options.js:163-166

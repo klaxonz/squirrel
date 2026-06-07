@@ -1,5 +1,6 @@
 ---
 title: 'Desktop: 主窗口禁用 webSecurity 导致安全防护全关'
+status: open
 severity: critical
 category: security
 location: squirrel-desktop/src/window.mjs:265

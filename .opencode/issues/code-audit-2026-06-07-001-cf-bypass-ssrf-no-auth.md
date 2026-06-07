@@ -1,5 +1,6 @@
 ---
 title: 'cf-bypass: mirror route 未授权开放代理 / SSRF 向量'
+status: open
 severity: critical
 category: security
 location: squirrel-cf-bypass/src/squirrel_cf_bypass/app/api/routes.py:51-52, service.py:253-278

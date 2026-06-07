@@ -1,5 +1,6 @@
 ---
 title: 'Site-runtimes: 跨站点代码严重重复（proxy、pagination、thumbnail、cookie）'
+status: open
 severity: high
 category: code-smell
 location: squirrel-site-runtimes/*/src/*/proxy.py, subscription.py, extractor.py, runtime.py
