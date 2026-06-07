@@ -138,6 +138,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Logger } from '@/utils/logger'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { useServerConfig } from '@/composables/useServerConfig'
 
@@ -197,7 +198,8 @@ const handleTest = async () => {
     const result = await testServerConnection(form.value.serverUrl)
     testResult.value = result.ok
     connectionMessage.value = result.ok ? '后端服务响应正常' : '无法连接至该地址'
-  } catch {
+  } catch (err) {
+    Logger.warn('[ServerConfig] Connection test failed', err)
     testResult.value = false
     connectionMessage.value = '测试失败，请检查网络'
   } finally {
@@ -216,7 +218,8 @@ const handleConnect = async () => {
       return
     }
     await router.replace('/login')
-  } catch {
+  } catch (err) {
+    Logger.warn('[ServerConfig] Connection failed', err)
     errorMessage.value = '连接失败，请重试'
   } finally {
     connecting.value = false

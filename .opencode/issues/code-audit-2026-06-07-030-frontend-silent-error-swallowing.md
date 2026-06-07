@@ -1,6 +1,7 @@
 ---
 title: Frontend 普遍静默吞异常 — 30+ catch {} 不处理不日志
-status: open
+status: fixed
+fixed_by: 跨 22 文件 ~50 处 catch 块添加 Logger 日志
 severity: high
 category: error-handling
 location: squirrel-frontend/src/（跨多文件）

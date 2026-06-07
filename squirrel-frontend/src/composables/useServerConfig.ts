@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { Logger } from '@/utils/logger'
 
 const CONFIG_KEY = 'squirrel_server_url'
 const CONFIG_VERSION_KEY = 'squirrel_server_url_version'
@@ -107,7 +108,8 @@ const readFromDesktopBridge = async (): Promise<string> => {
 
   try {
     return normalizeServerUrl(await bridge.getServerUrl())
-  } catch {
+  } catch (err) {
+    Logger.warn('[useServerConfig] Failed to read from desktop bridge', err)
     return ''
   }
 }
@@ -168,7 +170,8 @@ export const setServerUrl = async (url: string): Promise<boolean> => {
         }
         syncServerUrlState(persistedUrl)
         return true
-      } catch {
+      } catch (err) {
+        Logger.warn('[useServerConfig] Failed to set server URL via bridge', err)
         return false
       }
     }
@@ -184,8 +187,8 @@ export const clearServerConfig = async (): Promise<void> => {
     if (bridge?.isDesktop === true && typeof bridge.clearServerUrl === 'function') {
       try {
         await bridge.clearServerUrl()
-      } catch {
-        // Ignore bridge cleanup failures and still clear local state.
+      } catch (err) {
+        Logger.warn('[useServerConfig] Failed to clear server URL via bridge', err)
       }
     }
   }

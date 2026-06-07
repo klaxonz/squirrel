@@ -265,6 +265,7 @@ import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import { LocalStorageAdapter } from '@/components/video-player/core'
 import useVideoHistory from "../composables/useVideoHistory"
 import { formatDate, formatDuration } from '../utils/dateFormat'
+import { Logger } from '@/utils/logger'
 import useVideoInteraction from '../composables/useVideoInteraction'
 import usePlaylist from '../composables/usePlaylist'
 import { getSubscriptionStatus, saveRemoteVideo, subscribe, unsubscribe } from '@/api'
@@ -410,7 +411,8 @@ const handleShare = async () => {
   try {
     await navigator.clipboard.writeText(url)
     showToast('链接已复制到剪贴板')
-  } catch {
+  } catch (err) {
+    Logger.warn('[VideoPlay] Failed to copy share link', err)
     showToast('复制失败，请手动复制链接', true)
   }
 }
@@ -521,8 +523,8 @@ watch(shouldResolveJavdbMetadata, async (shouldResolve) => {
     if (mergedVideo) {
       video.value = mergedVideo
     }
-  } catch {
-    // Metadata enrichment must not block playback.
+  } catch (err) {
+    Logger.warn('[VideoPlay] Metadata enrichment failed', err)
   }
 }, { immediate: true })
 
@@ -649,7 +651,8 @@ const resolveRemoteChannelSite = (url: string) => {
   let parsedUrl: URL
   try {
     parsedUrl = new URL(url)
-  } catch {
+  } catch (err) {
+    Logger.debug('[VideoPlay] Failed to parse channel URL', err)
     return ''
   }
 

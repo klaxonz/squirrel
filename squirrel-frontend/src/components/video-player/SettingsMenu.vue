@@ -227,7 +227,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import PlayerIcon from './PlayerIcon.vue'
 
 interface QualityOption {
@@ -256,7 +256,7 @@ interface FontSizeOption {
   label: string
 }
 
-defineProps<{
+const props = defineProps<{
   visible: boolean
   view: string
   autoplayNext: boolean
@@ -329,6 +329,10 @@ const emit = defineEmits<{
   selectSleepTimer: [mins: number | null]
   updateOpacity: [value: number]
 }>()
+
+const positionValue = computed(() => {
+  return props.subtitlePosition === 'top' ? props.positionTopLabel : props.positionBottomLabel
+})
 
 const opacityRailRef = ref<HTMLElement | null>(null)
 

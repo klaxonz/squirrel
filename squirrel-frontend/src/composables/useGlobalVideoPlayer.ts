@@ -1,6 +1,7 @@
 import { nextTick } from 'vue'
 import { usePlayerStore } from '@/stores/player'
 import type { PlayerSessionState } from '@/types/playerSession'
+import { Logger } from '@/utils/logger'
 
 export function useGlobalVideoPlayer() {
   const playerStore = usePlayerStore()
@@ -44,7 +45,9 @@ export function useGlobalVideoPlayer() {
         if (playerContainer && typeof (playerContainer as HTMLElement).focus === 'function') {
           (playerContainer as HTMLElement).focus({ preventScroll: true })
         }
-      } catch {}
+      } catch (err) {
+        Logger.warn('[useGlobalVideoPlayer] Focus player failed', err)
+      }
     }, 100)
   }
 
@@ -54,7 +57,8 @@ export function useGlobalVideoPlayer() {
     try {
       playerStore.playerRef?.seek?.(nextTime)
       return true
-    } catch {
+    } catch (err) {
+      Logger.warn('[useGlobalVideoPlayer] Seek failed', err)
       return false
     }
   }
@@ -63,7 +67,8 @@ export function useGlobalVideoPlayer() {
     try {
       await playerStore.playerRef?.play?.()
       return true
-    } catch {
+    } catch (err) {
+      Logger.warn('[useGlobalVideoPlayer] Play failed', err)
       return false
     }
   }

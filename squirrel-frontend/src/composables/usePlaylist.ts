@@ -241,7 +241,8 @@ const createPlaylistStore = () => {
       const { data, error: err } = (await getDefaultPlaylist()) as ApiResult<Playlist>
       if (err) return null
       return data || null
-    } catch {
+    } catch (err) {
+      Logger.error('[usePlaylist] getDefault error', err)
       return null
     }
   }

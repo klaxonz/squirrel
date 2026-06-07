@@ -77,7 +77,9 @@ export class ShakaDashPlugin implements PlayerPlugin {
 
     await player.attach(this.context.videoElement)
     if (requestSeq !== this.loadRequestSeq || this.player !== player) {
-      await player.destroy().catch(() => {})
+      await player.destroy().catch((e) => {
+        this.context?.logger.warn('[ShakaDashPlugin] Failed to destroy player on attach race', e)
+      })
       return
     }
 
@@ -110,7 +112,9 @@ export class ShakaDashPlugin implements PlayerPlugin {
     try {
       await player.load(src)
       if (requestSeq !== this.loadRequestSeq || this.player !== player) {
-        await player.destroy().catch(() => {})
+        await player.destroy().catch((e) => {
+          this.context?.logger.warn('[ShakaDashPlugin] Failed to destroy player on load race', e)
+        })
         return
       }
       this.updateActiveCodecFamily()
@@ -399,7 +403,9 @@ export class ShakaDashPlugin implements PlayerPlugin {
     const player = this.player
     this.player = null
     if (player) {
-      await player.destroy().catch(() => {})
+      await player.destroy().catch((e) => {
+        this.context?.logger.warn('[ShakaDashPlugin] Failed to destroy player', e)
+      })
     }
     this.activeCodecFamily = null
   }

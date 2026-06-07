@@ -193,6 +193,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Logger } from '@/utils/logger'
 import AppIcon from '@/components/common/AppIcon.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { Button } from '@/components/ui/button'
@@ -227,7 +228,8 @@ const createdAt = computed(() => {
       month: 'long',
       day: 'numeric',
     })
-  } catch {
+  } catch (err) {
+    Logger.warn('[Profile] Failed to format date', err)
     return String(date).slice(0, 10)
   }
 })

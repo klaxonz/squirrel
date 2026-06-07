@@ -3,6 +3,7 @@ import { useRouter, useRoute } from 'vue-router'
 import type { RouteLocationRaw } from 'vue-router'
 import { findNavigationItemByKey } from '@/constants/sidebar'
 import type { AppNavKey } from '@/constants/sidebar'
+import { Logger } from '@/utils/logger'
 
 interface RouteSnapshot {
   fullPath: string
@@ -57,7 +58,8 @@ export function useNavigationHistory() {
     const pathBefore = route.fullPath
     try {
       await router.back()
-    } catch {
+    } catch (err) {
+      Logger.warn('[useNavigationHistory] goBack failed', err)
       isInternalNavigation = false
       return
     }
@@ -75,7 +77,8 @@ export function useNavigationHistory() {
     const pathBefore = route.fullPath
     try {
       await router.forward()
-    } catch {
+    } catch (err) {
+      Logger.warn('[useNavigationHistory] goForward failed', err)
       forwardDepth.value = 0
       isInternalNavigation = false
       return

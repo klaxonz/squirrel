@@ -2,6 +2,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
 import { useUIStore } from '@/stores/ui'
+import { Logger } from '@/utils/logger'
 
 const getStringMeta = (meta: Record<string, unknown>, key: string) => {
   const value = meta[key]
@@ -56,7 +57,9 @@ export function useGlobalSearch() {
       try {
         await router.push({ name: redirectName })
         await nextTick()
-      } catch (_) {}
+      } catch (err) {
+        Logger.warn('[useGlobalSearch] Search redirect failed', err)
+      }
     }
 
     uiStore.triggerSearch(searchQuery.value)

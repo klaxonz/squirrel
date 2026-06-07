@@ -421,6 +421,7 @@ const onUserSettingChange = async () => {
     await saveUserSettings()
     showSaveToast('设置已更新')
   } catch (err) {
+    Logger.warn('[Settings] Failed to save user settings', err)
     showSaveToast('更新失败', true)
   } finally {
     userSaving.value = false
@@ -447,7 +448,8 @@ const handleTestServer = async () => {
     const result = await testServerConnection(serverForm.value.url)
     serverTestResult.value = result.ok
     serverTestMessage.value = result.message
-  } catch {
+  } catch (err) {
+    Logger.warn('[Settings] Server test failed', err)
     serverTestResult.value = false
     serverTestMessage.value = '无法连接'
   } finally {
@@ -466,7 +468,8 @@ const handleSaveServer = async () => {
     }
     showSaveToast('服务器已更新')
     serverForm.value.url = currentServerUrl.value || ''
-  } catch {
+  } catch (err) {
+    Logger.warn('[Settings] Failed to save server', err)
     showSaveToast('保存失败', true)
   } finally {
     serverSaving.value = false

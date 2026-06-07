@@ -394,7 +394,7 @@ export class HlsPlugin implements PlayerPlugin {
             this.options.onBandwidthSample(loaded, durationSec)
           }
         } catch (e) {
-          // Ignore
+          this.context?.logger.warn('[HlsPlugin] Failed to sample bandwidth', e)
         }
       }
     })
@@ -643,7 +643,9 @@ export class HlsPlugin implements PlayerPlugin {
 
     if (shouldResumePlayback && video) {
       video.addEventListener('canplay', () => {
-        void video.play().catch(() => {})
+        void video.play().catch((e) => {
+          this.context?.logger.warn('[HlsPlugin] Auto-play failed after external quality switch', e)
+        })
       }, { once: true })
     }
 

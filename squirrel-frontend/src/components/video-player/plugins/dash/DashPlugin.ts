@@ -306,7 +306,7 @@ export class DashPlugin implements PlayerPlugin {
             this.options.onBandwidthSample(loaded, durationSec)
           }
         } catch {
-          // Ignore
+          this.context?.logger.warn('[DashPlugin] Failed to sample bandwidth', arguments)
         }
       }
     })
@@ -543,8 +543,8 @@ export class DashPlugin implements PlayerPlugin {
       this.player.updateSettings({
         streaming: { abr: { autoSwitchBitrate: { video: false } } }
       })
-    } catch {
-      // Ignore
+    } catch (e) {
+      this.context?.logger.warn('[DashPlugin] Failed to disable auto quality', e)
     }
 
     // 设置指定质量
@@ -570,7 +570,9 @@ export class DashPlugin implements PlayerPlugin {
         if (Number.isFinite(numericQuality)) {
           targetIndex = numericQuality
         }
-      } catch {}
+      } catch (e) {
+        this.context?.logger.warn('[DashPlugin] Failed to parse quality index', e)
+      }
     }
 
     if (typeof quality === 'number' && quality >= 0) {
@@ -624,8 +626,8 @@ export class DashPlugin implements PlayerPlugin {
         const quality = this.findQualityForPlaybackSelection(trackIndex, index, qualities)
         return quality?.label || `level_${index}`
       }
-    } catch {
-      // Ignore
+    } catch (e) {
+      this.context?.logger.warn('[DashPlugin] Failed to get current quality label', e)
     }
 
     return null
@@ -638,8 +640,8 @@ export class DashPlugin implements PlayerPlugin {
     if (this.player) {
       try {
         this.player.reset()
-      } catch {
-        // Ignore reset errors
+      } catch (e) {
+        this.context?.logger.warn('[DashPlugin] Failed to reset player', e)
       }
       this.player = null
     }
@@ -777,8 +779,8 @@ export class DashPlugin implements PlayerPlugin {
         const trackIndex = this.getCurrentPlaybackTrackIndex(player)
         return this.findQualityForPlaybackSelection(trackIndex, qualityIndex, availableQualities)
       }
-    } catch {
-      // Ignore
+    } catch (e) {
+      this.context?.logger.warn('[DashPlugin] Failed to get current quality', e)
     }
 
     if (this.lastKnownPlaybackQualityId === null) return null

@@ -168,14 +168,18 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
     try {
       video.pause()
-    } catch {}
+    } catch (e) {
+      logger.warn('[PlayerEngine] Failed to pause video during release', e)
+    }
 
     video.removeAttribute('src')
     video.removeAttribute('poster')
 
     try {
       video.load()
-    } catch {}
+    } catch (e) {
+      logger.warn('[PlayerEngine] Failed to load video during release', e)
+    }
   }
 
   const resetProgressState = (): void => {
@@ -274,6 +278,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     try {
       return new URL(src, window.location.href).href
     } catch {
+      logger.debug('[PlayerEngine] Failed to resolve media URL', src)
       return src
     }
   }
@@ -348,7 +353,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
         if (autoPlayOnReady) {
           autoPlayOnReady = false
-          void play().catch(() => {})
+          void play().catch((e) => {
+            logger.warn('[PlayerEngine] Auto-play failed after canplay', e)
+          })
         }
       }
 
@@ -411,7 +418,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
           if (!recovered) errorRecovery.reportFatalError(error)
           pluginHandlingError = false
         })
-        .catch(() => {
+        .catch((e) => {
+          logger.warn('[PlayerEngine] Plugin recovery chain failed', e)
           errorRecovery.reportFatalError(error)
           pluginHandlingError = false
         })
@@ -603,7 +611,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
       if (autoPlayOnReady) {
         autoPlayOnReady = false
-        void play().catch(() => {})
+        void play().catch((e) => {
+          logger.warn('[PlayerEngine] Auto-play failed after canplay', e)
+        })
       }
     }
     const onError = (e: Event) => {
@@ -631,7 +641,10 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
         .then((recovered) => {
           if (!recovered) errorRecovery.reportFatalError(err)
         })
-        .catch(() => errorRecovery.reportFatalError(err))
+        .catch((e) => {
+          logger.warn('[PlayerEngine] Error recovery chain failed', e)
+          errorRecovery.reportFatalError(err)
+        })
     }
     const onEnterPiP = () => {
       events.emit('enterpictureinpicture', undefined)
@@ -690,7 +703,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
     try {
       config = await adapter.loadConfig()
-    } catch {
+    } catch (e) {
+      logger.warn('[PlayerEngine] Failed to load user config', e)
       config = {}
     }
 

@@ -1,5 +1,6 @@
 import type { Ref } from 'vue'
 import type { VideoId } from '@/types/videoPlayback'
+import { Logger } from '@/utils/logger'
 
 type PlaybackReportVideo = {
   id?: VideoId
@@ -74,7 +75,9 @@ export default function usePlaybackReporting(videoRef: Ref<PlaybackReportVideo |
         if (report.sessionId !== reportSessionId) continue
 
         lastCommittedTime = Math.max(lastCommittedTime, report.currentTime)
-      } catch (_) {}
+      } catch (err) {
+        Logger.warn('[usePlaybackReporting] Failed to send report', err)
+      }
     }
   }
 

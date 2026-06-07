@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { getVideoDetail } from '@/api'
 import type { VideoId, VideoPageVideo, VideoSubtitle } from '@/types/videoPlayback'
+import { Logger } from '@/utils/logger'
 
 type SubtitleCandidate = {
   id: string
@@ -65,8 +66,8 @@ const buildDesktopYouTubeSubtitleTracks = async (
         content,
         default: index === 0,
       })
-    } catch {
-      // Skip unavailable desktop subtitle tracks.
+    } catch (err) {
+      Logger.warn('[useVideoDetail] Failed to resolve YouTube subtitle track', err)
     }
   }
   return tracks
@@ -105,8 +106,8 @@ const buildDesktopBilibiliSubtitleTracks = async (
         content,
         default: index === 0,
       })
-    } catch {
-      // Skip unavailable desktop subtitle tracks.
+    } catch (err) {
+      Logger.warn('[useVideoDetail] Failed to resolve Bilibili subtitle track', err)
     }
   }
   return tracks

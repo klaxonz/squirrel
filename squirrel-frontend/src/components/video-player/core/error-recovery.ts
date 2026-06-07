@@ -81,7 +81,10 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
         .then((recovered) => {
           if (!recovered) reportFatalError(err)
         })
-        .catch(() => reportFatalError(err))
+        .catch((e) => {
+          deps.logger.warn('[ErrorRecovery] Recovery chain failed', e)
+          reportFatalError(err)
+        })
     }, Math.max(deps.getRetryDelay() * 2, 5000) + suppressionDelay)
   }
 
@@ -96,7 +99,9 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
       errorMessage: error.message,
       progressKey: deps.getProgressKey() ?? undefined,
       timestamp: Date.now(),
-    }).catch(() => {})
+    }).catch((e) => {
+      deps.logger.warn('[ErrorRecovery] Report error failed', e)
+    })
     deps.adapter.trackEvent?.('error', { code: error.code, message: error.message, fatal: error.fatal })
   }
 
@@ -265,7 +270,9 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
           await videoElement.play()
           deps.logger.debug('[ErrorRecovery] Recovered stall via play()')
           return true
-        } catch {}
+        } catch (e) {
+          deps.logger.warn('[ErrorRecovery] Stall play() failed', e)
+        }
       }
       return false
     }
