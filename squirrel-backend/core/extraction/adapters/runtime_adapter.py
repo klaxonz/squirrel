@@ -64,28 +64,12 @@ class RuntimeDataAdapter:
             # 5. 创建DTO（自动验证）
             video_dto = VideoDTO(**base_data)
 
-            self.logger.debug(
-                f"Video adapted successfully: {video.url}",
-                extra={
-                    "url": video.url,
-                    "site": site_name,
-                    "actors_count": len(actors),
-                },
-            )
+            self.logger.debug("Video adapted successfully: %s", video.url, extra={'url': video.url, 'site': site_name, 'actors_count': len(actors)})
 
             return video_dto
 
         except Exception as e:  # data transform boundary — wrap any error as DataTransformError
-            self.logger.error(
-                f"Failed to adapt Video to VideoDTO: {getattr(video, 'url', 'unknown')}",
-                exc_info=True,
-                extra={
-                    "url": getattr(video, "url", None),
-                    "site": site_name,
-                    "error": str(e),
-                    "error_type": type(e).__name__,
-                },
-            )
+            self.logger.error("Failed to adapt Video to VideoDTO: %s", getattr(video, 'url', 'unknown'), exc_info=True, extra={'url': getattr(video, 'url', None), 'site': site_name, 'error': str(e), 'error_type': type(e).__name__})
 
             raise DataTransformError(
                 f"Failed to transform video data: {e}",
@@ -181,23 +165,11 @@ class RuntimeDataAdapter:
                             if actor_dto:
                                 actors.append(actor_dto)
                         except (ValueError, TypeError, AttributeError, KeyError) as e:
-                            self.logger.warning(
-                                f"Failed to convert actor: {e}",
-                                extra={
-                                    "video_url": video.url,
-                                    "actor": str(actor),
-                                },
-                            )
+                            self.logger.warning("Failed to convert actor: %s", e, extra={'video_url': video.url, 'actor': str(actor)})
 
         except (ValueError, TypeError, KeyError, AttributeError) as e:
             # actors获取失败不应该导致整个提取失败
-            self.logger.warning(
-                f"Failed to extract actors: {video.url}, error: {e}",
-                extra={
-                    "url": video.url,
-                    "error": str(e),
-                },
-            )
+            self.logger.warning("Failed to extract actors: %s, error: %s", video.url, e, extra={'url': video.url, 'error': str(e)})
 
         return actors
 

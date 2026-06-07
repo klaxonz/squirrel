@@ -48,10 +48,7 @@ class ExtractionStage(PipelineStage):
                 context={"url": context.task.url},
             )
 
-        logger.info(
-            f"Extracting video: url={context.task.url}, "
-            f"site={context.task.site_name}",
-        )
+        logger.info("Extracting video: url=%s, site=%s", context.task.url, context.task.site_name)
 
         result = extractor.extract(context.task)
 
@@ -82,10 +79,7 @@ class ExtractionStage(PipelineStage):
 
         context.plugin_video = result.data
 
-        logger.info(
-            f"Extraction completed: url={context.task.url}, "
-            f"title={getattr(result.data, 'title', 'N/A')}",
-        )
+        logger.info("Extraction completed: url=%s, title=%s", context.task.url, getattr(result.data, 'title', 'N/A'))
 
         return context
 
@@ -111,12 +105,12 @@ class ExtractionStage(PipelineStage):
                 error_type=type(error).__name__,
             )
         except (ConnectionError, OSError, ValueError, TypeError) as record_error:
-            logger.warning(f"Failed to record blocked video: {record_error}")
+            logger.warning("Failed to record blocked video: %s", record_error)
 
     def _get_extractor(self, url: str) -> Extractor | None:
         """获取提取器"""
         try:
             return self.extractor_factory.create_extractor(url)
         except (ValueError, TypeError, AttributeError) as e:
-            logger.error(f"Failed to create extractor: {e}")
+            logger.error("Failed to create extractor: %s", e)
             return None

@@ -21,9 +21,9 @@ class SubscriptionIncrementalUpdateTask(BaseTask):
                 trigger=UpdateTrigger.SCHEDULED,
                 mode=UpdateMode.INCREMENTAL,
             )
-            logger.info(f"Incremental due events emitted: success={success}, failed={failed}")
+            logger.info("Incremental due events emitted: success=%s, failed=%s", success, failed)
         except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
-            logger.error(f"SubscriptionIncrementalUpdateTask.run error: {e}", exc_info=True)
+            logger.error("SubscriptionIncrementalUpdateTask.run error: %s", e, exc_info=True)
 
     @classmethod
     def shutdown(cls):

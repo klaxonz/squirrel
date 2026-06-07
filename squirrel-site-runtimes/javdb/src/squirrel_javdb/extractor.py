@@ -112,7 +112,7 @@ class JavdbExtractor(VideoExtractorBase):
             elif any(kw in error_msg for kw in ["too many requests", "rate limit", "429"]):
                 raise RateLimitError(f"请求频率过高: {url}", context=context)
             else:
-                logger.error(f"JavDB视频信息提取失败: {url}", exc_info=True)
+                logger.error("JavDB视频信息提取失败: %s", url, exc_info=True)
                 raise ParseError(f"视频信息提取失败: {str(e)}", context=context)
 
     def _process_javdb_info(self, video_info: dict) -> None:
@@ -122,4 +122,4 @@ class JavdbExtractor(VideoExtractorBase):
                 if isinstance(video_info["timestamp"], (int, float)):
                     video_info["publish_date"] = datetime.fromtimestamp(video_info["timestamp"])
         except (ValueError, TypeError) as e:
-            logger.warning(f"处理JavDB特定信息失败: {e}")
+            logger.warning("处理JavDB特定信息失败: %s", e)

@@ -19,7 +19,7 @@ def get_log_files(current_user: User = Depends(get_current_user)):
         return response.success(files)
     except Exception as e:
         # API boundary -- convert to HTTP error response
-        logger.exception(f"Failed to get log files: {e}")
+        logger.exception("Failed to get log files: %s", e)
         return response.server_error("获取日志文件列表失败")
 
 
@@ -57,5 +57,5 @@ def query_logs(
 
     except Exception as e:
         # API boundary -- convert to HTTP error response
-        logger.exception(f"Failed to query logs: {e}")
+        logger.exception("Failed to query logs: %s", e)
         return response.server_error("查询日志失败")

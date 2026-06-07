@@ -83,7 +83,7 @@ class PornhubExtractor(YoutubeDLExtractorBase):
             elif any(kw in error_msg for kw in ["too many requests", "rate limit", "429"]):
                 raise RateLimitError(f"请求频率过高: {url}", context=context)
             else:
-                logger.error(f"Pornhub视频信息提取失败: {url}", exc_info=True)
+                logger.error("Pornhub视频信息提取失败: %s", url, exc_info=True)
                 raise ParseError(f"视频信息提取失败: {str(e)}", context=context)
 
     def _build_ytdlp_opts(self, url: str, queue_name: str | None = None) -> dict[str, Any]:
@@ -116,7 +116,7 @@ class PornhubExtractor(YoutubeDLExtractorBase):
                 video_info["publish_date"] = datetime.fromtimestamp(video_info["timestamp"])
             normalize_thumbnail(video_info, source_url, self._fetch_page_thumbnail_url)
         except (ValueError, TypeError) as e:
-            logger.warning(f"处理Pornhub特定信息失败: {e}")
+            logger.warning("处理Pornhub特定信息失败: %s", e)
 
     def _fetch_page_thumbnail_url(self, url: str) -> str | None:
         cookie_file = resolve_cookie_file_path(url)

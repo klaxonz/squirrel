@@ -372,7 +372,7 @@ def preview_subscriptions(
                 raise ValueError("无效的预览游标: 必须为 JSON object")
             cursor_payload = parsed_cursor
 
-        logger.info(f"User {current_user.id} previewing subscriptions from {normalized_site}")
+        logger.info("User %s previewing subscriptions from %s", current_user.id, normalized_site)
 
         result = subscription_service.preview_user_subscriptions(
             normalized_site,
@@ -384,11 +384,11 @@ def preview_subscriptions(
         return response.success(result)
 
     except ValueError as e:
-        logger.error(f"Invalid request for site {site}: {e}")
+        logger.error("Invalid request for site %s: %s", site, e)
         return response.param_error(str(e))
     except Exception as e:
         # API boundary -- convert to HTTP error response
-        logger.exception(f"Failed to preview subscriptions from {site}: {e}")
+        logger.exception("Failed to preview subscriptions from %s: %s", site, e)
         return response.server_error(f"预览失败: {e!s}")
 
 
@@ -418,7 +418,7 @@ def import_subscriptions(
         if normalized_site not in enabled_sites:
             return response.param_error(f"站点已禁用，无法导入订阅: {site}")
 
-        logger.info(f"User {current_user.id} importing subscriptions from {normalized_site}")
+        logger.info("User %s importing subscriptions from %s", current_user.id, normalized_site)
 
         selected_urls = req.subscription_urls if req else None
         result = subscription_service.import_user_subscriptions(normalized_site, current_user.id, selected_urls=selected_urls)
@@ -432,9 +432,9 @@ def import_subscriptions(
         })
 
     except ValueError as e:
-        logger.error(f"Invalid request for site {site}: {e}")
+        logger.error("Invalid request for site %s: %s", site, e)
         return response.param_error(str(e))
     except Exception as e:
         # API boundary -- convert to HTTP error response
-        logger.exception(f"Failed to import subscriptions from {site}: {e}")
+        logger.exception("Failed to import subscriptions from %s: %s", site, e)
         return response.server_error(f"导入失败: {e!s}")

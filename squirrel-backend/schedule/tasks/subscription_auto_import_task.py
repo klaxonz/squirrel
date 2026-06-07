@@ -26,7 +26,7 @@ class SubscriptionAutoImportTask(BaseTask):
                 result.get("failed"),
             )
         except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
-            logger.error(f"SubscriptionAutoImportTask.run error: {e}", exc_info=True)
+            logger.error("SubscriptionAutoImportTask.run error: %s", e, exc_info=True)
 
     @classmethod
     def shutdown(cls):

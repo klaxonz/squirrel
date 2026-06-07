@@ -19,11 +19,11 @@ class Scheduler:
         from utils.trace import TraceContext
 
         with TraceContext():
-            logger.info(f"Scheduled job started: {job_name}")
+            logger.info("Scheduled job started: %s", job_name)
             try:
                 func()
             except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
-                logger.exception(f"Scheduled job failed: {job_name}, error: {e}")
+                logger.exception("Scheduled job failed: %s, error: %s", job_name, e)
 
     def _run_jobs(self):
         """Loop through jobs and run any that are due."""

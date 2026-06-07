@@ -78,10 +78,7 @@ def extract_video(params: VideoExtractDto) -> ExtractionResult:
 
     try:
         if not SiteCatalog.is_site_enabled(domain=domain):
-            logger.info(
-                f"Skip video extraction because site is disabled: "
-                f"domain={domain}, url={params.url}",
-            )
+            logger.info("Skip video extraction because site is disabled: domain=%s, url=%s", domain, params.url)
             metrics.counter("crawl.tasks.total", tags={**tags, "status": "skipped"})
             return ExtractionResult(
                 success=False,
@@ -91,16 +88,13 @@ def extract_video(params: VideoExtractDto) -> ExtractionResult:
         task = _create_task(params)
 
         with metrics.timer("crawl.extract", tags=tags):
-            logger.debug(f"Starting video extraction: {task.url}")
+            logger.debug("Starting video extraction: %s", task.url)
             result = handler.process(task)
 
         if result.success:
             extraction_succeeded = True
             video_title = result.data.title if result.data else "N/A"
-            logger.info(
-                f"Video extracted: platform={domain}, url={params.url}, "
-                f"title={video_title}",
-            )
+            logger.info("Video extracted: platform=%s, url=%s, title=%s", domain, params.url, video_title)
             metrics.counter("crawl.tasks.total", tags={**tags, "status": "success"})
             metrics.counter("videos.discovered", tags={**tags, "subscribed": str(params.subscribed).lower()})
             if params.run_id:
@@ -119,10 +113,7 @@ def extract_video(params: VideoExtractDto) -> ExtractionResult:
                     ),
                 )
         else:
-            logger.error(
-                f"Video extraction failed: platform={domain}, url={params.url}, "
-                f"error={result.error}",
-            )
+            logger.error("Video extraction failed: platform=%s, url=%s, error=%s", domain, params.url, result.error)
             error_type = _extract_error_type(result.error)
             metrics.counter("crawl.tasks.total", tags={**tags, "status": "error"})
             metrics.counter("crawl.errors.total", tags={**tags, "error_type": error_type})

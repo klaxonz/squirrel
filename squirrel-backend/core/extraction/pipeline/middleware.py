@@ -31,13 +31,13 @@ class LoggingMiddleware(PipelineMiddleware):
     """日志中间件"""
 
     def before_stage(self, context: "PipelineContext", stage: "PipelineStage") -> None:
-        logger.debug(f"[middleware] Starting stage: {stage.stage_name}")
+        logger.debug("[middleware] Starting stage: %s", stage.stage_name)
 
     def after_stage(self, context: "PipelineContext", stage: "PipelineStage") -> None:
-        logger.debug(f"[middleware] Completed stage: {stage.stage_name}")
+        logger.debug("[middleware] Completed stage: %s", stage.stage_name)
 
     def on_error(self, context: "PipelineContext", stage: "PipelineStage", error: Exception) -> None:
-        logger.error(f"[middleware] Stage {stage.stage_name} failed: {error}")
+        logger.error("[middleware] Stage %s failed: %s", stage.stage_name, error)
 
 
 class TimingMiddleware(PipelineMiddleware):
@@ -53,7 +53,7 @@ class TimingMiddleware(PipelineMiddleware):
         start = self._start_times.pop(stage.stage_name, None)
         if start:
             duration = time.time() - start
-            logger.info(f"[timing] Stage {stage.stage_name} took {duration:.3f}s")
+            logger.info("[timing] Stage %s took %f'.3f's", stage.stage_name, duration)
 
     def on_error(self, context: "PipelineContext", stage: "PipelineStage", error: Exception) -> None:
         self._start_times.pop(stage.stage_name, None)
@@ -74,18 +74,18 @@ class MiddlewareChain:
             try:
                 mw.before_stage(context, stage)
             except Exception as e:  # middleware must not propagate
-                logger.warning(f"[middleware] before_stage error: {e}")
+                logger.warning("[middleware] before_stage error: %s", e)
 
     def after_stage(self, context: "PipelineContext", stage: "PipelineStage") -> None:
         for mw in reversed(self._middlewares):
             try:
                 mw.after_stage(context, stage)
             except Exception as e:  # middleware must not propagate
-                logger.warning(f"[middleware] after_stage error: {e}")
+                logger.warning("[middleware] after_stage error: %s", e)
 
     def on_error(self, context: "PipelineContext", stage: "PipelineStage", error: Exception) -> None:
         for mw in reversed(self._middlewares):
             try:
                 mw.on_error(context, stage, error)
             except Exception as e:  # middleware must not propagate
-                logger.warning(f"[middleware] on_error error: {e}")
+                logger.warning("[middleware] on_error error: %s", e)

@@ -17,7 +17,7 @@ class StrategyRegistry:
     def register(cls, strategy: UpdateStrategy) -> None:
         """注册策略"""
         cls._strategies[strategy.site_name] = strategy
-        logger.info(f"Registered update strategy: {strategy.site_name}")
+        logger.info("Registered update strategy: %s", strategy.site_name)
 
     @classmethod
     def get_strategy(cls, site_name: str) -> UpdateStrategy | None:

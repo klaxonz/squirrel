@@ -81,20 +81,17 @@ class MessageDuplicateChecker:
 
                     # 使用自定义匹配函数判断
                     if self.match_fn(message, existing_message):
-                        logger.debug(
-                            f"Duplicate message found in {self.queue_name}: "
-                            f"msg_id={msg_id.decode() if isinstance(msg_id, bytes) else msg_id}",
-                        )
+                        logger.debug("Duplicate message found in %s: msg_id=%s", self.queue_name, msg_id.decode() if isinstance(msg_id, bytes) else msg_id)
                         return True
 
                 except (ValueError, TypeError, KeyError) as e:
-                    logger.warning(f"Failed to parse message in queue: {e}")
+                    logger.warning("Failed to parse message in queue: %s", e)
                     continue
 
             return False
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error(f"Failed to check duplicate in {self.queue_name}: {e}")
+            logger.error("Failed to check duplicate in %s: %s", self.queue_name, e)
             # 检查失败时返回 False，不阻止消息发送
             return False
 

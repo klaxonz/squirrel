@@ -398,14 +398,14 @@ class SubscriptionScheduler:
             run_context = self._emit_deferred_event(
                 subscription_id, None, domain, resolved_mode, trigger, trace_id, run_id, "site_disabled",
             )
-            logger.info(f"Skip scheduling subscription {subscription_id} because site is disabled: {domain}")
+            logger.info("Skip scheduling subscription %s because site is disabled: %s", subscription_id, domain)
             return SubscriptionScheduleResult(subscription_id, None, "site_disabled", run_id=run_context.run_id)
 
         if not self._has_active_subscribers(subscription_id):
             run_context = self._emit_deferred_event(
                 subscription_id, None, domain, resolved_mode, trigger, trace_id, run_id, "no_subscribers",
             )
-            logger.info(f"Skip scheduling subscription {subscription_id} because no active subscribers")
+            logger.info("Skip scheduling subscription %s because no active subscribers", subscription_id)
             return SubscriptionScheduleResult(subscription_id, None, "no_subscribers", run_id=run_context.run_id)
 
         sync_state, state_status = subscription_sync_state_service.prepare_sync_state_for_enqueue(

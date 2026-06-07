@@ -79,6 +79,6 @@ def ensure_system_tasks(task_classes: Iterable[type] | None = None) -> None:
                 created_count += 1
 
             if created_count:
-                logger.info(f"Bootstrap created {created_count} system scheduled tasks")
+                logger.info("Bootstrap created %s system scheduled tasks", created_count)
     except Exception as e:  # startup boundary — log and continue
-        logger.error(f"Failed to ensure system tasks: {e}", exc_info=True)
+        logger.error("Failed to ensure system tasks: %s", e, exc_info=True)

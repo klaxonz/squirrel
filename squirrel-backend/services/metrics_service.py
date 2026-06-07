@@ -57,12 +57,12 @@ class MetricsService:
             db.bulk_save_objects(records)
             db.commit()
 
-            logger.info(f"Persisted {len(records)} metric snapshots to database")
+            logger.info("Persisted %s metric snapshots to database", len(records))
             return len(records)
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
             db.rollback()
-            logger.error(f"Failed to persist metric snapshots: {e}")
+            logger.error("Failed to persist metric snapshots: %s", e)
             return 0
         finally:
             db.close()
@@ -81,7 +81,7 @@ class MetricsService:
             snapshots = metrics.collect_snapshots(metric_names)
             return self.persist_snapshots(snapshots)
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error(f"Failed to collect and persist metrics: {e}")
+            logger.error("Failed to collect and persist metrics: %s", e)
             return 0
 
     def get_metric_timeseries(
@@ -152,7 +152,7 @@ class MetricsService:
             ]
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error(f"Failed to query metric timeseries for {metric_name}: {e}")
+            logger.error("Failed to query metric timeseries for %s: %s", metric_name, e)
             return []
         finally:
             db.close()
@@ -226,7 +226,7 @@ class MetricsService:
             }
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error(f"Failed to query metric aggregation for {metric_name}: {e}")
+            logger.error("Failed to query metric aggregation for %s: %s", metric_name, e)
             return {"count": 0, "min": 0, "max": 0, "avg": 0, "sum": 0}
         finally:
             db.close()
@@ -298,7 +298,7 @@ class MetricsService:
             return list(groups.values())
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error(f"Failed to query metrics by labels: {e}")
+            logger.error("Failed to query metrics by labels: %s", e)
             return []
         finally:
             db.close()
@@ -324,12 +324,12 @@ class MetricsService:
 
             db.commit()
 
-            logger.info(f"Cleaned up {deleted_count} old metric records (older than {retention_days} days)")
+            logger.info("Cleaned up %s old metric records (older than %s days)", deleted_count, retention_days)
             return deleted_count
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
             db.rollback()
-            logger.error(f"Failed to cleanup old metrics: {e}")
+            logger.error("Failed to cleanup old metrics: %s", e)
             return 0
         finally:
             db.close()

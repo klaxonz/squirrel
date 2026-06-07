@@ -49,5 +49,5 @@ class BilibiliExtractor(VideoExtractorBase):
             elif "too many requests" in error_msg or "rate limit" in error_msg or "429" in error_msg:
                 raise RateLimitError(f"请求频率过高: {url}", context=context)
             else:
-                logger.error(f"Bilibili视频信息提取失败: {url}", exc_info=True)
+                logger.error("Bilibili视频信息提取失败: %s", url, exc_info=True)
                 raise ParseError(f"视频信息提取失败: {str(e)}", context=context)

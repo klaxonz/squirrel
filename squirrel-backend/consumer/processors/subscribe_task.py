@@ -27,23 +27,23 @@ def process_subscribe_message(message: dict[str, Any]):
         user_id = body_data.get("user_id")
 
         if not url or not user_id:
-            logger.error(f"Invalid message: missing url or user_id, message={body_data}")
+            logger.error("Invalid message: missing url or user_id, message=%s", body_data)
             return
 
         domain = extract_top_level_domain(url)
         if not SiteCatalog.is_site_enabled(domain=domain):
-            logger.info(f"Skip subscribe request because site is disabled: url={url}, user_id={user_id}")
+            logger.info("Skip subscribe request because site is disabled: url=%s, user_id=%s", url, user_id)
             return
 
-        logger.info(f"Processing subscribe request: url={url}, user_id={user_id}")
+        logger.info("Processing subscribe request: url=%s, user_id=%s", url, user_id)
 
         subscription = subscription_service.handle_subscribe_request(url, user_id)
 
-        logger.info(f"Subscribe completed: {subscription.name} (id={subscription.id})")
+        logger.info("Subscribe completed: %s (id=%s)", subscription.name, subscription.id)
 
     except KeyError as e:
-        logger.error(f"Invalid message format: {e}", exc_info=True)
+        logger.error("Invalid message format: %s", e, exc_info=True)
     except Exception as e:  # consumer boundary -- prevent single message from crashing consumer
-        logger.error(f"Failed to process subscribe message: {e}", exc_info=True)
+        logger.error("Failed to process subscribe message: %s", e, exc_info=True)
         raise
 

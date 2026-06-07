@@ -77,7 +77,7 @@ class VideoPersistenceService:
                 session.commit()
                 session.refresh(video)
 
-                logger.info(f"Created new video: id={video.id}, url={url}")
+                logger.info("Created new video: id=%s, url=%s", video.id, url)
             else:
                 updated = False
 
@@ -111,9 +111,9 @@ class VideoPersistenceService:
                     session.commit()
                     session.refresh(video)
                     user_video_feed_service.refresh_video_feed_metadata(video.id)
-                    logger.info(f"Updated video: id={video.id}, url={url}")
+                    logger.info("Updated video: id=%s, url=%s", video.id, url)
                 else:
-                    logger.debug(f"Video already exists: id={video.id}, url={url}")
+                    logger.debug("Video already exists: id=%s, url=%s", video.id, url)
 
             # 创建订阅-视频关联（如果提供了subscription_id）
             if subscription_id:
@@ -146,17 +146,10 @@ class VideoPersistenceService:
             )
 
             if created_new_link:
-                logger.debug(
-                    f"Created subscription-video link: "
-                    f"subscription_id={subscription_id}, video_id={video_id}, "
-                    f"is_new_video={is_new_video}, sync_mode={subscription_sync_mode}",
-                )
+                logger.debug("Created subscription-video link: subscription_id=%s, video_id=%s, is_new_video=%s, sync_mode=%s", subscription_id, video_id, is_new_video, subscription_sync_mode)
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error(
-                f"Failed to create subscription-video link: "
-                f"subscription_id={subscription_id}, video_id={video_id}, error={e}",
-            )
+            logger.error("Failed to create subscription-video link: subscription_id=%s, video_id=%s, error=%s", subscription_id, video_id, e)
             # 不抛出异常，允许继续
 
 

@@ -111,7 +111,7 @@ class MetricsCollector:
 
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f"Failed to record counter metric {name}: {e}")
+            logger.error("Failed to record counter metric %s: %s", name, e)
 
     def gauge(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
         """瞬时值：记录当前状态
@@ -135,7 +135,7 @@ class MetricsCollector:
             self.redis.set(key, value, ex=self.ttl)
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f"Failed to record gauge metric {name}: {e}")
+            logger.error("Failed to record gauge metric %s: %s", name, e)
 
     def histogram(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
         """分布统计：记录数值分布，支持百分位数查询
@@ -171,7 +171,7 @@ class MetricsCollector:
 
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f"Failed to record histogram metric {name}: {e}")
+            logger.error("Failed to record histogram metric %s: %s", name, e)
 
     def record_error(self, site: str, url: str, error_type: str, error_msg: str, max_records: int = 100) -> None:
         """记录错误详情到 Redis List，用于问题排查
@@ -209,7 +209,7 @@ class MetricsCollector:
 
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f"Failed to record error detail: {e}")
+            logger.error("Failed to record error detail: %s", e)
 
     def get_recent_errors(self, limit: int = 50) -> list:
         """获取最近的错误记录"""
@@ -221,7 +221,7 @@ class MetricsCollector:
             return [json.loads(r) for r in records]
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f"Failed to get recent errors: {e}")
+            logger.error("Failed to get recent errors: %s", e)
             return []
 
     @contextmanager
@@ -316,7 +316,7 @@ class MetricsCollector:
             return int(value) if value else 0
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f"Failed to get counter metric {name}: {e}")
+            logger.error("Failed to get counter metric %s: %s", name, e)
             return 0
 
     def get_gauge(self, name: str, tags: dict[str, str] | None = None) -> float | None:
@@ -336,7 +336,7 @@ class MetricsCollector:
             return float(value) if value else None
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f"Failed to get gauge metric {name}: {e}")
+            logger.error("Failed to get gauge metric %s: %s", name, e)
             return None
 
     def get_histogram_stats(
@@ -399,7 +399,7 @@ class MetricsCollector:
 
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f"Failed to get histogram stats for {name}: {e}")
+            logger.error("Failed to get histogram stats for %s: %s", name, e)
             return {"count": 0, "min": 0, "max": 0, "avg": 0, "p50": 0, "p95": 0, "p99": 0}
 
     def _percentile(self, sorted_values: list[float], percentile: float) -> float:
@@ -441,7 +441,7 @@ class MetricsCollector:
             return [k.decode("utf-8") if isinstance(k, bytes) else k for k in self.redis.keys(pattern)]
         except Exception as e:
             # infrastructure boundary -- metrics must never crash the caller
-            logger.error(f"Failed to get metrics keys by pattern {pattern}: {e}")
+            logger.error("Failed to get metrics keys by pattern %s: %s", pattern, e)
             return []
 
     def collect_snapshots(self, metric_names: list[str] | None = None) -> list[MetricSnapshot]:
@@ -505,13 +505,13 @@ class MetricsCollector:
                             snapshots.append(snapshot)
 
                     except (ValueError, IndexError, TypeError, AttributeError) as e:
-                        logger.debug(f"Failed to parse metric key {key}: {e}")
+                        logger.debug("Failed to parse metric key %s: %s", key, e)
                         continue
 
             return snapshots
 
         except (ConnectionError, OSError, TypeError, ValueError) as e:
-            logger.error(f"Failed to collect metric snapshots: {e}")
+            logger.error("Failed to collect metric snapshots: %s", e)
             return []
 
     def enable(self) -> None:

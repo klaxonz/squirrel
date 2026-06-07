@@ -442,7 +442,7 @@ class ThumbnailDownloaderService:
                 record.indexed_at = now
                 record.updated_at = now
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.warning(f"Failed to update thumbnail local index: video_id={video_id}, error={e}")
+            logger.warning("Failed to update thumbnail local index: video_id=%s, error=%s", video_id, e)
 
     def _get_local_thumbnail_path_map(
         self,
@@ -466,7 +466,7 @@ class ThumbnailDownloaderService:
                     ),
                 ).all()
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.warning(f"Failed to read thumbnail local index: error={e}")
+            logger.warning("Failed to read thumbnail local index: error=%s", e)
             return {}
 
         results: dict[int, str] = {}
@@ -509,7 +509,7 @@ class ThumbnailDownloaderService:
             return None
 
         if site_name and not self._should_download(site_name):
-            logger.debug(f"Thumbnail download disabled for site: {site_name}")
+            logger.debug("Thumbnail download disabled for site: %s", site_name)
             return None
 
         try:
@@ -521,7 +521,7 @@ class ThumbnailDownloaderService:
             batch_name = os.path.basename(batch_dir)
 
             if os.path.exists(file_path):
-                logger.debug(f"Thumbnail already exists: {file_path}")
+                logger.debug("Thumbnail already exists: %s", file_path)
                 self._upsert_local_thumbnail_index(video_id, batch_name, os.path.basename(file_path), exists=True)
                 return file_path
 
@@ -548,7 +548,7 @@ class ThumbnailDownloaderService:
                     file_path = os.path.join(batch_dir, f"{video_id}{ext}")
 
                     if os.path.exists(file_path):
-                        logger.debug(f"Thumbnail already exists: {file_path}")
+                        logger.debug("Thumbnail already exists: %s", file_path)
                         self._upsert_local_thumbnail_index(video_id, batch_name, os.path.basename(file_path), exists=True)
                         return file_path
 
@@ -557,18 +557,12 @@ class ThumbnailDownloaderService:
                         return None
 
             if resp.status_code != 200:
-                logger.warning(
-                    f"Failed to download thumbnail: video_id={video_id}, "
-                    f"status={resp.status_code}, url={thumbnail_url[:80]}",
-                )
+                logger.warning("Failed to download thumbnail: video_id=%s, status=%s, url=%s", video_id, resp.status_code, thumbnail_url[:80])
                 return None
 
             content_type = resp.headers.get("content-type", "")
             if content_type and not content_type.startswith("image/"):
-                logger.warning(
-                    f"Invalid content type for thumbnail: video_id={video_id}, "
-                    f"content_type={content_type}",
-                )
+                logger.warning("Invalid content type for thumbnail: video_id=%s, content_type=%s", video_id, content_type)
                 return None
 
             with open(file_path, "wb") as f:
@@ -576,14 +570,11 @@ class ThumbnailDownloaderService:
 
             self._upsert_batch_index_entry(batch_dir, video_id, os.path.basename(file_path))
             self._upsert_local_thumbnail_index(video_id, batch_name, os.path.basename(file_path), exists=True)
-            logger.info(f"Thumbnail downloaded: video_id={video_id}, path={file_path}")
+            logger.info("Thumbnail downloaded: video_id=%s, path=%s", video_id, file_path)
             return file_path
 
         except (OSError, ValueError, TypeError) as e:
-            logger.warning(
-                f"Failed to download thumbnail: video_id={video_id}, "
-                f"url={thumbnail_url[:80]}, error={e}",
-            )
+            logger.warning("Failed to download thumbnail: video_id=%s, url=%s, error=%s", video_id, thumbnail_url[:80], e)
             return None
 
     def enqueue_download(
@@ -615,7 +606,7 @@ class ThumbnailDownloaderService:
             metadata = site_info.get("metadata", {})
             return metadata.get(SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD, False)
         except (ValueError, TypeError, AttributeError, KeyError) as e:
-            logger.warning(f"Failed to check thumbnail config: {e}")
+            logger.warning("Failed to check thumbnail config: %s", e)
             return False
 
     def _get_batch_dir(self, video_id: int) -> str:
@@ -667,7 +658,7 @@ class ThumbnailDownloaderService:
             metadata = site_info.get("metadata", {})
             return metadata.get(SITE_META_OFFLINE_THUMBNAILS_DISPLAY, False)
         except (ValueError, TypeError, AttributeError, KeyError) as e:
-            logger.warning(f"Failed to check thumbnail display config: {e}")
+            logger.warning("Failed to check thumbnail display config: %s", e)
             return False
 
     def get_thumbnail_url_map(

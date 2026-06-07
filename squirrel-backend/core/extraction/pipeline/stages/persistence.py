@@ -43,18 +43,14 @@ class PersistenceStage(PipelineStage):
 
         # 检查是否跳过持久化
         if context.should_skip_persistence:
-            logger.info(
-                f"Skipping persistence (flag set): url={context.task.url}",
-            )
+            logger.info("Skipping persistence (flag set): url=%s", context.task.url)
             return context
 
         dto = context.video_dto
         task = context.task
 
         # 1. 保存视频
-        logger.info(
-            f"Persisting video: url={dto.url}, title={dto.title}",
-        )
+        logger.info("Persisting video: url=%s, title=%s", dto.url, dto.title)
 
         try:
             video_model, is_new = self.video_service.create_or_update(
@@ -71,10 +67,7 @@ class PersistenceStage(PipelineStage):
             context.video_model = video_model
             context.extra["is_new_video"] = is_new
 
-            logger.info(
-                f"Video persisted: id={video_model.id}, "
-                f"is_new={is_new}, url={dto.url}",
-            )
+            logger.info("Video persisted: id=%s, is_new=%s, url=%s", video_model.id, is_new, dto.url)
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
             raise DatabaseError(
@@ -92,16 +85,10 @@ class PersistenceStage(PipelineStage):
                     video_model.id,
                     dto.actors,
                 )
-                logger.info(
-                    f"Actors processed: video_id={video_model.id}, "
-                    f"count={len(dto.actors)}",
-                )
+                logger.info("Actors processed: video_id=%s, count=%s", video_model.id, len(dto.actors))
             except (ValueError, TypeError, AttributeError) as e:
                 # actors处理失败不应中断流程
-                logger.warning(
-                    f"Failed to process actors: video_id={video_model.id}, "
-                    f"error={e}",
-                )
+                logger.warning("Failed to process actors: video_id=%s, error=%s", video_model.id, e)
 
         return context
 

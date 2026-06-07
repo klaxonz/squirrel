@@ -172,7 +172,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
                             enqueued += 1
                         else:
                             failed_count += 1
-                            logger.warning(f"Failed to extract video {video_url}: {result.error}")
+                            logger.warning("Failed to extract video %s: %s", video_url, result.error)
                     elif download_service.enqueue_video_extraction(params):
                         enqueued += 1
                     else:
@@ -187,7 +187,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
                             allow_completion=False,
                         )
                     failed_count += 1
-                    logger.warning(f"Failed to enqueue video {video_url}: {e}")
+                    logger.warning("Failed to enqueue video %s: %s", video_url, e)
 
         if request.run_id:
             append_event(

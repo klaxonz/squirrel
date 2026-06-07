@@ -1,6 +1,7 @@
 ---
 title: 'Python: 多处 logging 使用 f-string 而非 %s 延迟格式化'
-status: open
+status: fixed
+fixed_by: .opencode/fix_logging_fstrings.py (script), squirrel-backend/pyproject.toml:17
 severity: low
 category: code-smell
 created: 2026-06-07

@@ -21,9 +21,9 @@ class SubscriptionFullUpdateTask(BaseTask):
                 trigger=UpdateTrigger.SCHEDULED,
                 mode=UpdateMode.FULL,
             )
-            logger.info(f"Full due events emitted: success={success}, failed={failed}")
+            logger.info("Full due events emitted: success=%s, failed=%s", success, failed)
         except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
-            logger.error(f"SubscriptionFullUpdateTask.run error: {e}", exc_info=True)
+            logger.error("SubscriptionFullUpdateTask.run error: %s", e, exc_info=True)
 
     @classmethod
     def shutdown(cls):

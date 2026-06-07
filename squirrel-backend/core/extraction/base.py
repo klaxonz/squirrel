@@ -29,7 +29,7 @@ class BaseExtractor:
                     return True
             return False
         except (ValueError, TypeError) as e:
-            logger.warning(f"Failed to parse URL: {url}, error: {e}")
+            logger.warning("Failed to parse URL: %s, error: %s", url, e)
             return False
 
     def validate_url(self, url: str) -> bool:
@@ -90,17 +90,17 @@ class BaseTaskProcessor:
             raise ValueError("Extractor not configured.")
 
         try:
-            logger.info(f"Start execute extract task, task_id: {task.task_id}, url: {task.url}")
+            logger.info("Start execute extract task, task_id: %s, url: %s", task.task_id, task.url)
 
             result = extractor.extract(task)
 
             if result.success:
                 self.result_handler.handle_success(task, result)
                 title = result.data.title if result.data else "unknown"
-                logger.info(f"Task processed successfully: {task.task_id}, title: {title}")
+                logger.info("Task processed successfully: %s, title: %s", task.task_id, title)
             else:
                 self.result_handler.handle_failure(task, result)
-                logger.error(f"Task processing failed: {task.task_id}, error: {result.error}")
+                logger.error("Task processing failed: %s, error: %s", task.task_id, result.error)
 
             return result
 
@@ -122,8 +122,8 @@ class BaseResultHandler:
 
     def handle_success(self, task: ExtractionTask, result: ExtractionResult) -> None:
         """Handle successful extraction results."""
-        logger.info(f"Task succeeded: {task.task_id}")
+        logger.info("Task succeeded: %s", task.task_id)
 
     def handle_failure(self, task: ExtractionTask, result: ExtractionResult) -> None:
         """Handle failed extraction results."""
-        logger.error(f"Task failed: {task.task_id}, error: {result.error}")
+        logger.error("Task failed: %s, error: %s", task.task_id, result.error)

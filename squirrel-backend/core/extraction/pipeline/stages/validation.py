@@ -40,9 +40,7 @@ class ValidationStage(PipelineStage):
             )
 
         # 转换为DTO（会自动验证）
-        logger.info(
-            f"Validating video data: url={context.task.url}",
-        )
+        logger.info("Validating video data: url=%s", context.task.url)
 
         video_dto = self.adapter.adapt(
             context.plugin_video,
@@ -52,10 +50,7 @@ class ValidationStage(PipelineStage):
         # 保存到上下文
         context.video_dto = video_dto
 
-        logger.info(
-            f"Validation completed: url={context.task.url}, "
-            f"title={video_dto.title}, actors={len(video_dto.actors)}",
-        )
+        logger.info("Validation completed: url=%s, title=%s, actors=%s", context.task.url, video_dto.title, len(video_dto.actors))
 
         return context
 

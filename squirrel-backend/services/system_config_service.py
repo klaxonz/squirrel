@@ -61,9 +61,9 @@ def get_bool(key: str, default: bool) -> bool:
     db_value = get_value(key, None)
     result = _to_bool(db_value, default)
     if db_value is not None:
-        logger.debug(f"[system_config] get_bool({key}) from database={db_value} -> {result}")
+        logger.debug("[system_config] get_bool(%s) from database=%s -> %s", key, db_value, result)
     else:
-        logger.debug(f"[system_config] get_bool({key}) using default -> {result}")
+        logger.debug("[system_config] get_bool(%s) using default -> %s", key, result)
     return result
 
 

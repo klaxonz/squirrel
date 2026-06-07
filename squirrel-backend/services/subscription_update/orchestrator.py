@@ -109,7 +109,7 @@ class SubscriptionOrchestrator:
             return result
 
         except Exception as e:  # orchestrator boundary — always return SubscriptionUpdateResult
-            logger.error(f"Orchestrator error for subscription {request.subscription_id}: {e}", exc_info=True)
+            logger.error("Orchestrator error for subscription %s: %s", request.subscription_id, e, exc_info=True)
             if request.sync_state_id:
                 subscription_sync_state_service.mark_sync_failed(
                     request.sync_state_id,
@@ -155,10 +155,10 @@ class SubscriptionOrchestrator:
         """选择更新策略"""
         strategy = StrategyRegistry.get_strategy(site_name)
         if strategy:
-            logger.debug(f"Using {site_name} strategy")
+            logger.debug("Using %s strategy", site_name)
             return strategy
 
-        logger.debug(f"No specific strategy for {site_name}, using default")
+        logger.debug("No specific strategy for %s, using default", site_name)
         return self.default_strategy
 
 

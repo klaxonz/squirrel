@@ -54,7 +54,7 @@ async def health_check() -> dict[str, Any]:
             conn.execute(text("SELECT 1"))
             health_status["checks"]["database"] = "ok"
     except (OSError, ConnectionError, ValueError, TypeError) as e:
-        logger.warning(f"Database health check failed: {e}")
+        logger.warning("Database health check failed: %s", e)
         health_status["checks"]["database"] = "error"
         health_status["status"] = "degraded"
 
@@ -63,7 +63,7 @@ async def health_check() -> dict[str, Any]:
         redis_client.ping()
         health_status["checks"]["redis"] = "ok"
     except (OSError, ConnectionError, ValueError, TypeError) as e:
-        logger.warning(f"Redis health check failed: {e}")
+        logger.warning("Redis health check failed: %s", e)
         health_status["checks"]["redis"] = "error"
         health_status["status"] = "degraded"
 
@@ -92,7 +92,7 @@ async def readiness_check() -> dict[str, str]:
         return {"status": "ready"}
     except Exception as e:
         # API boundary -- convert to HTTP error response
-        logger.error(f"Readiness check failed: {e}")
+        logger.error("Readiness check failed: %s", e)
         return {"status": "not ready", "error": str(e)}
 
 

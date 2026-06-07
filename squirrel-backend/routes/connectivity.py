@@ -133,12 +133,12 @@ async def test_site_connectivity(
                 ip_address = socket.gethostbyname(hostname)
                 result.dns_resolved = True
                 result.ip_address = ip_address
-                logger.info(f"DNS resolved for {hostname}: {ip_address}")
+                logger.info("DNS resolved for %s: %s", hostname, ip_address)
             except socket.gaierror as e:
                 result.dns_resolved = False
                 result.status = "error"
                 result.error_message = f"DNS解析失败: {e!s}"
-                logger.warning(f"DNS resolution failed for {hostname}: {e}")
+                logger.warning("DNS resolution failed for %s: %s", hostname, e)
                 return result
 
         # 发起HTTP请求
@@ -166,42 +166,42 @@ async def test_site_connectivity(
                 if 200 <= response.status_code < 400:
                     result.status = "success"
                     result.accessible = True
-                    logger.info(f"Site {url} is accessible, status: {response.status_code}, time: {response_time:.2f}ms")
+                    logger.info("Site %s is accessible, status: %s, time: %f'.2f'ms", url, response.status_code, response_time)
                 elif response.status_code in RESTRICTED_STATUS_CODES:
                     result.status = "restricted"
                     result.accessible = True
                     result.error_message = f"站点响应限制HTTP状态码: {response.status_code}"
-                    logger.info(f"Site {url} responded with restricted status {response.status_code} but is reachable")
+                    logger.info("Site %s responded with restricted status %s but is reachable", url, response.status_code)
                 else:
                     result.status = "failed"
                     result.accessible = False
                     result.error_message = f"HTTP状态码: {response.status_code}"
-                    logger.warning(f"Site {url} returned status {response.status_code}")
+                    logger.warning("Site %s returned status %s", url, response.status_code)
 
             except httpx.TimeoutException as e:
                 result.status = "timeout"
                 result.accessible = False
                 result.error_message = f"请求超时（{timeout}秒）"
-                logger.warning(f"Timeout testing {url}: {e}")
+                logger.warning("Timeout testing %s: %s", url, e)
 
             except httpx.ConnectError as e:
                 result.status = "error"
                 result.accessible = False
                 result.error_message = f"连接失败: {e!s}"
-                logger.warning(f"Connection error testing {url}: {e}")
+                logger.warning("Connection error testing %s: %s", url, e)
 
             except httpx.HTTPError as e:
                 result.status = "error"
                 result.accessible = False
                 result.error_message = f"HTTP错误: {e!s}"
-                logger.warning(f"HTTP error testing {url}: {e}")
+                logger.warning("HTTP error testing %s: %s", url, e)
 
     except Exception as e:
         # task boundary -- prevent single failure from crashing request
         result.status = "error"
         result.accessible = False
         result.error_message = f"未知错误: {e!s}"
-        logger.error(f"Unexpected error testing {url}: {e}", exc_info=True)
+        logger.error("Unexpected error testing %s: %s", url, e, exc_info=True)
 
     return result
 
@@ -217,7 +217,7 @@ async def test_connectivity(request: ConnectivityTestRequest) -> ConnectivityTes
         ConnectivityTestResponse: 测试结果
 
     """
-    logger.info(f"Testing connectivity for: {request.url}")
+    logger.info("Testing connectivity for: %s", request.url)
 
     result = await test_site_connectivity(
         url=request.url,
@@ -239,7 +239,7 @@ async def test_batch_connectivity(request: BatchConnectivityTestRequest) -> Batc
         BatchConnectivityTestResponse: 批量测试结果
 
     """
-    logger.info(f"Testing batch connectivity for {len(request.urls)} URLs")
+    logger.info("Testing batch connectivity for %s URLs", len(request.urls))
 
     # 并发测试所有URL
     tasks = [
@@ -286,7 +286,7 @@ async def test_batch_connectivity(request: BatchConnectivityTestRequest) -> Batc
         "avg_response_time": avg_response_time,
     }
 
-    logger.info(f"Batch test completed: {accessible_count}/{total} sites accessible")
+    logger.info("Batch test completed: %s/%s sites accessible", accessible_count, total)
 
     return BatchConnectivityTestResponse(
         results=processed_results,
@@ -305,7 +305,7 @@ async def quick_test(url: str) -> dict[str, Any]:
         简化的测试结果
 
     """
-    logger.info(f"Quick testing: {url}")
+    logger.info("Quick testing: %s", url)
 
     # 确保URL格式正确
     if not url.startswith(("http://", "https://")):

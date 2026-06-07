@@ -173,7 +173,7 @@ def preview_user_subscriptions(
         )
         subscriptions = import_batch.items
 
-        logger.info(f"Found {len(subscriptions)} subscriptions from {site_name} for preview")
+        logger.info("Found %s subscriptions from %s for preview", len(subscriptions), site_name)
 
         imported_url_map = get_active_user_subscription_url_map(user_id)
         imported_count = 0
@@ -201,7 +201,7 @@ def preview_user_subscriptions(
         }
 
     except Exception as e:  # API boundary — re-raise after logging
-        logger.error(f"Failed to preview subscriptions from {site_name}: {e}", exc_info=True)
+        logger.error("Failed to preview subscriptions from %s: %s", site_name, e, exc_info=True)
         raise
 
 
@@ -229,14 +229,14 @@ def _enqueue_subscriptions_async(subscriptions: list[SubscriptionImportItem], us
                     enqueued += 1
 
                 except (ConnectionError, OSError, ValueError, TypeError) as e:
-                    logger.warning(f"Failed to enqueue subscription {url}: {e}")
+                    logger.warning("Failed to enqueue subscription %s: %s", url, e)
 
             session.commit()
 
-        logger.info(f"Enqueued {enqueued}/{len(subscriptions)} subscription tasks from {site_name}")
+        logger.info("Enqueued %s/%s subscription tasks from %s", enqueued, len(subscriptions), site_name)
 
     except (ConnectionError, OSError, ValueError, TypeError) as e:
-        logger.error(f"Failed to enqueue subscriptions from {site_name}: {e}", exc_info=True)
+        logger.error("Failed to enqueue subscriptions from %s: %s", site_name, e, exc_info=True)
 
 
 def import_user_subscriptions(
@@ -258,7 +258,7 @@ def import_user_subscriptions(
         else:
             subscriptions = _load_runtime_import_items(site_name)
             found_total = len(subscriptions)
-            logger.info(f"Found {found_total} subscriptions from {site_name}")
+            logger.info("Found %s subscriptions from %s", found_total, site_name)
         selected_total = len(subscriptions)
 
         imported_url_map = get_active_user_subscription_url_map(user_id)
@@ -281,10 +281,10 @@ def import_user_subscriptions(
                     daemon=True,
                 )
                 thread.start()
-                logger.info(f"Started background thread to enqueue {len(to_import)} subscriptions")
+                logger.info("Started background thread to enqueue %s subscriptions", len(to_import))
             else:
                 _enqueue_subscriptions_async(to_import, user_id, site_name)
-                logger.info(f"Synchronously enqueued {len(to_import)} subscriptions")
+                logger.info("Synchronously enqueued %s subscriptions", len(to_import))
         else:
             logger.info("No new subscriptions to import")
 
@@ -296,7 +296,7 @@ def import_user_subscriptions(
         }
 
     except Exception as e:  # API boundary — re-raise after logging
-        logger.error(f"Failed to import subscriptions from {site_name}: {e}", exc_info=True)
+        logger.error("Failed to import subscriptions from %s: %s", site_name, e, exc_info=True)
         raise
 
 

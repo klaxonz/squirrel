@@ -18,13 +18,13 @@ def enqueue_video_extraction(params: VideoExtractDto) -> bool:
     """
     domain = extract_top_level_domain(params.url)
     if not SiteCatalog.is_site_enabled(domain=domain):
-        logger.info(f"Skip enqueue video extraction for disabled site: domain={domain}, url={params.url}")
+        logger.info("Skip enqueue video extraction for disabled site: domain=%s, url=%s", domain, params.url)
         return False
 
     if params.only_extract:
         video = video_service.get_video_by_url(params.url)
         if video:
-            logger.debug(f"Video already extracted, skipping: {params.url}")
+            logger.debug("Video already extracted, skipping: %s", params.url)
             metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "already_extracted"})
             return False
 
@@ -72,7 +72,7 @@ def _send_to_extract_task(content: dict, params: VideoExtractDto, priority: str)
         )
         return True
     except IntegrityError:
-        logger.debug(f"Video extraction task already exists in task store, skipping: {params.url}")
+        logger.debug("Video extraction task already exists in task store, skipping: %s", params.url)
         metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "already_in_queue"})
         return False
 

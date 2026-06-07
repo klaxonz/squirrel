@@ -102,11 +102,11 @@ class ScheduledTaskService:
                 session.commit()
                 session.refresh(task_config)
 
-                logger.info(f"Created scheduled task: {name} (ID: {task_config.id})")
+                logger.info("Created scheduled task: %s (ID: %s)", name, task_config.id)
                 return task_config
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error(f"Failed to create task {name}: {e}")
+            logger.error("Failed to create task %s: %s", name, e)
             return None
 
     @staticmethod
@@ -153,11 +153,11 @@ class ScheduledTaskService:
 
                 session.commit()
 
-                logger.info(f"Updated scheduled task: {task_config.name} (ID: {task_id})")
+                logger.info("Updated scheduled task: %s (ID: %s)", task_config.name, task_id)
                 return True
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error(f"Failed to update task {task_id}: {e}")
+            logger.error("Failed to update task %s: %s", task_id, e)
             return False
 
     @staticmethod
@@ -170,18 +170,18 @@ class ScheduledTaskService:
                     return False
 
                 if task_config.task_type == TaskType.SYSTEM.value:
-                    logger.warning(f"Refuse to delete system task: {task_config.name} (ID: {task_id})")
+                    logger.warning("Refuse to delete system task: %s (ID: %s)", task_config.name, task_id)
                     return False
 
                 # 删除任务记录
                 session.delete(task_config)
                 session.commit()
 
-                logger.info(f"Deleted scheduled task: {task_config.name} (ID: {task_id})")
+                logger.info("Deleted scheduled task: %s (ID: %s)", task_config.name, task_id)
                 return True
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error(f"Failed to delete task {task_id}: {e}")
+            logger.error("Failed to delete task %s: %s", task_id, e)
             return False
 
     @staticmethod
@@ -226,7 +226,7 @@ class ScheduledTaskService:
             return True
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error(f"Failed to execute task {task_id} now: {e}")
+            logger.error("Failed to execute task %s now: %s", task_id, e)
             return False
 
     @staticmethod

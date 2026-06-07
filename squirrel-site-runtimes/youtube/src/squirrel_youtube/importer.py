@@ -72,7 +72,7 @@ class YoutubeUserSubscriptionImporter:
                     channel_url = f"https://www.youtube.com/channel/{channel_id}"
                     subscriptions.append(SubscriptionImportItem(url=channel_url))
 
-            logger.info(f"Found {len(subscriptions)} YouTube subscriptions")
+            logger.info("Found %s YouTube subscriptions", len(subscriptions))
 
             # 如果没有找到任何频道，尝试使用 BeautifulSoup 解析
             if len(subscriptions) == 0:
@@ -89,11 +89,11 @@ class YoutubeUserSubscriptionImporter:
                             if not any(sub.url == channel_url for sub in subscriptions):
                                 subscriptions.append(SubscriptionImportItem(url=channel_url))
 
-            logger.info(f"Final: Found {len(subscriptions)} YouTube subscriptions")
+            logger.info("Final: Found %s YouTube subscriptions", len(subscriptions))
             return subscriptions
 
         except Exception as e:  # SDK boundary — top-level import operation
-            logger.error(f"Failed to import YouTube subscriptions: {e}", exc_info=True)
+            logger.error("Failed to import YouTube subscriptions: %s", e, exc_info=True)
             raise
 
     def _extract_yt_initial_data(self, html_content: str) -> dict | None:
@@ -106,9 +106,9 @@ class YoutubeUserSubscriptionImporter:
                 json_str = match.group(1)
                 return json.loads(json_str)
         except json.JSONDecodeError as e:
-            logger.warning(f"Failed to parse ytInitialData: {e}")
+            logger.warning("Failed to parse ytInitialData: %s", e)
         except (TypeError, AttributeError) as e:
-            logger.warning(f"Error extracting ytInitialData: {e}")
+            logger.warning("Error extracting ytInitialData: %s", e)
 
         return None
 
@@ -148,7 +148,7 @@ class YoutubeUserSubscriptionImporter:
             if not channel_renderers:
                 channel_renderers = self._find_channel_renderers(yt_data)
 
-            logger.info(f"Found {len(channel_renderers)} potential channel renderers")
+            logger.info("Found %s potential channel renderers", len(channel_renderers))
 
             # 解析频道信息
             for channel_item in channel_renderers:
@@ -201,7 +201,7 @@ class YoutubeUserSubscriptionImporter:
             subscriptions = unique_subscriptions
 
         except (ValueError, TypeError, KeyError, AttributeError, IndexError) as e:
-            logger.warning(f"Error parsing subscriptions from ytInitialData: {e}", exc_info=True)
+            logger.warning("Error parsing subscriptions from ytInitialData: %s", e, exc_info=True)
 
         return subscriptions
 

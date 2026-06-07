@@ -128,5 +128,5 @@ class PornhubUserSubscriptionImporter:
             return channel_items
 
         except Exception as e:  # SDK boundary — top-level import operation
-            logger.error(f"Failed to import Pornhub subscriptions: {e}", exc_info=True)
+            logger.error("Failed to import Pornhub subscriptions: %s", e, exc_info=True)
             raise

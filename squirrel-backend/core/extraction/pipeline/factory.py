@@ -65,7 +65,7 @@ class PipelineFactory:
             if stage:
                 stages.append(stage)
         pipeline = ExtractionPipeline(stages)
-        logger.debug(f"Created pipeline with stages: {pipeline.get_stage_names()}")
+        logger.debug("Created pipeline with stages: %s", pipeline.get_stage_names())
         return pipeline
 
     @staticmethod

@@ -48,7 +48,7 @@ def create_app() -> FastAPI:
 
     async def authentication_error_handler(request: Request, exc: AuthenticationError):
         """处理认证错误"""
-        logger.error(f"AuthenticationError: {exc.detail}", exc_info=True)
+        logger.error("AuthenticationError: %s", exc.detail, exc_info=True)
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content={"code": ErrorCode.UNAUTHORIZED, "msg": exc.detail},
@@ -56,7 +56,7 @@ def create_app() -> FastAPI:
 
     async def http_exception_handler(request: Request, exc: StarletteHTTPException | FastAPIHTTPException):
         """处理 HTTP 异常"""
-        logger.error(f"HTTPException: {exc.detail}", exc_info=True)
+        logger.error("HTTPException: %s", exc.detail, exc_info=True)
         code = exc.status_code if exc.status_code in {
             ErrorCode.PARAM_ERROR, ErrorCode.UNAUTHORIZED,
             ErrorCode.FORBIDDEN, ErrorCode.NOT_FOUND,
@@ -69,7 +69,7 @@ def create_app() -> FastAPI:
 
     async def default_exception_handler(request: Request, exc: Exception):
         """处理未捕获的异常"""
-        logger.error(f"DefaultException: {exc!s}", exc_info=True)
+        logger.error("DefaultException: %s", exc, exc_info=True)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"code": ErrorCode.SERVER_ERROR, "msg": "服务器内部错误"},
@@ -143,14 +143,14 @@ def _mount_thumbnails(app: FastAPI) -> None:
     thumbnails_dir = str(settings.thumbnails_dir)
     if os.path.exists(thumbnails_dir):
         app.mount("/static/thumbnails", StaticFiles(directory=thumbnails_dir), name="thumbnails")
-        logger.info(f"Thumbnails mounted: {thumbnails_dir}")
+        logger.info("Thumbnails mounted: %s", thumbnails_dir)
 
 
 def _mount_clip_marker_previews(app: FastAPI) -> None:
     clip_marker_previews_dir = str(settings.clip_marker_previews_dir)
     if os.path.exists(clip_marker_previews_dir):
         app.mount("/static/clip-markers", StaticFiles(directory=clip_marker_previews_dir), name="clip-marker-previews")
-        logger.info(f"Clip marker previews mounted: {clip_marker_previews_dir}")
+        logger.info("Clip marker previews mounted: %s", clip_marker_previews_dir)
 
 
 def _mount_static_files(app: FastAPI) -> None:
@@ -158,9 +158,9 @@ def _mount_static_files(app: FastAPI) -> None:
 
     if os.path.exists(static_dir):
         app.mount("/static", StaticFiles(directory=static_dir), name="static")
-        logger.info(f"Static files mounted: {static_dir}")
+        logger.info("Static files mounted: %s", static_dir)
     else:
-        logger.warning(f"Static directory not found: {static_dir}, skipping static files mounting")
+        logger.warning("Static directory not found: %s, skipping static files mounting", static_dir)
 
 
 def _register_spa_route(app: FastAPI) -> None:

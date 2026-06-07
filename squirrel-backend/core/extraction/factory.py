@@ -83,13 +83,13 @@ class ExtractorFactory:
         runtime_gateway = self._runtime_gateway or get_runtime_gateway()
         route = runtime_gateway.resolve_route("extract_video", site_name=site_name)
         if route is None:
-            logger.info(f"No extract_video capability found for site: {site_name}")
+            logger.info("No extract_video capability found for site: %s", site_name)
             return None
 
         site_info = get_effective_site_catalog().get(site_name) or {}
         domains = list(site_info.get("domains") or [])
         if not domains:
-            logger.warning(f"No site domains configured for extractor site: {site_name}")
+            logger.warning("No site domains configured for extractor site: %s", site_name)
             return None
 
         return GatewayExtractorAdapter(
@@ -102,16 +102,16 @@ class ExtractorFactory:
         try:
             domain = urlparse(url).netloc.lower().split(":")[0]
         except (ValueError, TypeError) as exc:
-            logger.error(f"Failed to parse extractor URL: {url}, error: {exc}")
+            logger.error("Failed to parse extractor URL: %s, error: %s", url, exc)
             return None
 
         if not SiteCatalog.is_site_enabled(domain=domain):
-            logger.info(f"Site disabled, skip extractor creation: {domain}")
+            logger.info("Site disabled, skip extractor creation: %s", domain)
             return None
 
         site_name, _ = SiteCatalog.find_site_by_domain(domain)
         if not site_name:
-            logger.warning(f"No supported extractor site found for domain: {domain}")
+            logger.warning("No supported extractor site found for domain: %s", domain)
             return None
 
         cached = self._instances.get(site_name)
@@ -125,7 +125,7 @@ class ExtractorFactory:
 
     def get_extractor_by_site(self, site_name: str) -> GatewayExtractorAdapter | None:
         if not SiteCatalog.is_site_enabled(site=site_name):
-            logger.info(f"Site disabled, skip extractor lookup: {site_name}")
+            logger.info("Site disabled, skip extractor lookup: %s", site_name)
             return None
 
         cached = self._instances.get(site_name)
@@ -141,7 +141,7 @@ class ExtractorFactory:
         self._instances.clear()
 
     def register(self, site_name: str, extractor_class, domains: list[str]) -> None:
-        logger.info(f"Ignoring legacy extractor registration for site: {site_name}, domains: {domains}")
+        logger.info("Ignoring legacy extractor registration for site: %s, domains: %s", site_name, domains)
 
     def get_test_url(self, site_name: str) -> str | None:
         site_info = get_effective_site_catalog().get(site_name) or {}

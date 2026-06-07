@@ -105,9 +105,7 @@ class ExtractionPipeline:
 
         """
         try:
-            self.logger.info(
-                f"Pipeline started: task_id={context.task.task_id}, url={context.task.url}",
-            )
+            self.logger.info("Pipeline started: task_id=%s, url=%s", context.task.task_id, context.task.url)
 
             # 依次执行各个Stage
             for stage in self.stages:
@@ -115,16 +113,12 @@ class ExtractionPipeline:
 
                 # 检查是否跳过
                 if stage.can_skip(context):
-                    self.logger.debug(
-                        f"Skipping stage '{stage.stage_name}': task_id={context.task.task_id}",
-                    )
+                    self.logger.debug("Skipping stage '%s': task_id=%s", stage.stage_name, context.task.task_id)
                     continue
 
                 # 执行Stage
                 try:
-                    self.logger.debug(
-                        f"Executing stage '{stage.stage_name}': task_id={context.task.task_id}",
-                    )
+                    self.logger.debug("Executing stage '%s': task_id=%s", stage.stage_name, context.task.task_id)
 
                     if self._middleware:
                         self._middleware.before_stage(context, stage)
@@ -134,9 +128,7 @@ class ExtractionPipeline:
                     if self._middleware:
                         self._middleware.after_stage(context, stage)
 
-                    self.logger.debug(
-                        f"Stage '{stage.stage_name}' completed: task_id={context.task.task_id}",
-                    )
+                    self.logger.debug("Stage '%s' completed: task_id=%s", stage.stage_name, context.task.task_id)
 
                 except (ValueError, TypeError, AttributeError, KeyError) as e:
                     # Stage执行失败
@@ -159,10 +151,7 @@ class ExtractionPipeline:
             # 所有Stage执行完成
             duration = context.get_duration()
 
-            self.logger.info(
-                f"Pipeline completed successfully: task_id={context.task.task_id}, "
-                f"duration={duration:.2f}s",
-            )
+            self.logger.info("Pipeline completed successfully: task_id=%s, duration=%f'.2f's", context.task.task_id, duration)
 
             return ExtractionResult(
                 success=True,
@@ -173,11 +162,7 @@ class ExtractionPipeline:
             import traceback
             duration = context.get_duration()
 
-            self.logger.error(
-                f"Pipeline failed: task_id={context.task.task_id}, "
-                f"duration={duration:.2f}s, error={e!s}",
-                exc_info=True,
-            )
+            self.logger.error("Pipeline failed: task_id=%s, duration=%f'.2f's, error=%s", context.task.task_id, duration, e, exc_info=True)
 
             # 记录详细错误信息（包含堆栈）到 metrics
             try:

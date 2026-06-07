@@ -26,11 +26,11 @@ class MetricsCollectionTask(BaseTask):
         try:
             count = metrics_service.collect_and_persist()
             if count > 0:
-                logger.info(f"Metrics collection completed: {count} snapshots persisted")
+                logger.info("Metrics collection completed: %s snapshots persisted", count)
             else:
                 logger.debug("Metrics collection completed: no data to persist")
         except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
-            logger.error(f"MetricsCollectionTask.run error: {e}", exc_info=True)
+            logger.error("MetricsCollectionTask.run error: %s", e, exc_info=True)
 
     @classmethod
     def shutdown(cls):
@@ -50,11 +50,11 @@ class MetricsCleanupTask(BaseTask):
         try:
             deleted = metrics_service.cleanup_old_metrics(days=30)
             if deleted > 0:
-                logger.info(f"Metrics cleanup completed: {deleted} old records deleted")
+                logger.info("Metrics cleanup completed: %s old records deleted", deleted)
             else:
                 logger.debug("Metrics cleanup completed: no old data to delete")
         except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
-            logger.error(f"MetricsCleanupTask.run error: {e}", exc_info=True)
+            logger.error("MetricsCleanupTask.run error: %s", e, exc_info=True)
 
     @classmethod
     def shutdown(cls):

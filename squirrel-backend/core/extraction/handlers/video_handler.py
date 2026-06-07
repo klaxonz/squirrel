@@ -55,10 +55,7 @@ class VideoExtractionHandler(BaseResultHandler):
             result: 提取结果
 
         """
-        logger.error(
-            f"Video extraction failed: task_id={task.task_id}, "
-            f"url={task.url}, error={result.error}",
-        )
+        logger.error("Video extraction failed: task_id=%s, url=%s, error=%s", task.task_id, task.url, result.error)
 
     def process(self, task: ExtractionTask) -> ExtractionResult:
         """处理提取任务（新方法）
@@ -77,33 +74,20 @@ class VideoExtractionHandler(BaseResultHandler):
             context = self._create_context(task)
 
             # 2. 执行Pipeline
-            logger.info(
-                f"Processing extraction task: task_id={task.task_id}, "
-                f"url={task.url}",
-            )
+            logger.info("Processing extraction task: task_id=%s, url=%s", task.task_id, task.url)
 
             result = self.pipeline.execute(context)
 
             # 3. 记录结果
             if result.success:
-                logger.info(
-                    f"Extraction completed successfully: task_id={task.task_id}, "
-                    f"duration={context.get_duration():.2f}s",
-                )
+                logger.info("Extraction completed successfully: task_id=%s, duration=%f'.2f's", task.task_id, context.get_duration())
             else:
-                logger.error(
-                    f"Extraction failed: task_id={task.task_id}, "
-                    f"error={result.error}",
-                )
+                logger.error("Extraction failed: task_id=%s, error=%s", task.task_id, result.error)
 
             return result
 
         except Exception as e:  # handler boundary — catch all to return ExtractionResult
-            logger.error(
-                f"Unexpected error in VideoExtractionHandler: "
-                f"task_id={task.task_id}, error={e}",
-                exc_info=True,
-            )
+            logger.error("Unexpected error in VideoExtractionHandler: task_id=%s, error=%s", task.task_id, e, exc_info=True)
 
             return ExtractionResult(
                 success=False,

@@ -28,7 +28,7 @@ class QueueBackpressureMonitor:
         try:
             return crawl_task_service.count_pending_video_tasks_for_subscription(subscription_id)
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error(f"Failed to count pending videos for subscription {subscription_id}: {e}")
+            logger.error("Failed to count pending videos for subscription %s: %s", subscription_id, e)
             return 0
 
     def should_skip_subscription_update(
@@ -60,11 +60,7 @@ class QueueBackpressureMonitor:
         should_skip = pending_count >= threshold
 
         if should_skip:
-            logger.info(
-                f"Skipping subscription {subscription_id} update: "
-                f"pending={pending_count}, threshold={threshold} "
-                f"(ratio={threshold_ratio}, size={incremental_size})",
-            )
+            logger.info("Skipping subscription %s update: pending=%s, threshold=%s (ratio=%s, size=%s)", subscription_id, pending_count, threshold, threshold_ratio, incremental_size)
 
         return should_skip, pending_count
 

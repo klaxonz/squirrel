@@ -17,7 +17,7 @@ class CloudflareHeartbeatTask(BaseTask):
             asyncio.run(client.health())
             logger.info("CloudflareHeartbeatTask health check passed")
         except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
-            logger.error(f"CloudflareHeartbeatTask error: {e}", exc_info=True)
+            logger.error("CloudflareHeartbeatTask error: %s", e, exc_info=True)
 
     @classmethod
     def shutdown(cls):

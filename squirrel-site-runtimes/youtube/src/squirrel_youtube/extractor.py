@@ -65,7 +65,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
             elif any(kw in error_msg for kw in ["too many requests", "rate limit", "429"]):
                 raise RateLimitError(f"请求频率过高: {url}", context=context)
             else:
-                logger.error(f"YouTube视频信息提取失败: {url}", exc_info=True)
+                logger.error("YouTube视频信息提取失败: %s", url, exc_info=True)
                 raise ParseError(f"视频信息提取失败: {str(e)}", context=context)
 
     def _build_ytdlp_opts(self, url: str, queue_name: str | None = None) -> dict[str, Any]:
@@ -99,7 +99,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
             if publish_date is not None:
                 video_info["publish_date"] = publish_date
         except (ValueError, TypeError) as e:
-            logger.warning(f"处理YouTube特定信息失败: {e}")
+            logger.warning("处理YouTube特定信息失败: %s", e)
 
     def _resolve_publish_date(self, video_info: dict[str, Any]) -> datetime | None:
         """Resolve the most accurate publish date from yt-dlp metadata."""

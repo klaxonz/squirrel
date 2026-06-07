@@ -165,7 +165,7 @@ def get_site_from_url(url: str) -> str | None:
 
         return _resolve_site_from_domain(domain)
     except (ValueError, AttributeError, TypeError) as e:
-        logger.error(f"get_site_from_url exception occurred: url={url}, error={e!s}", exc_info=True)
+        logger.error("get_site_from_url exception occurred: url=%s, error=%s", url, e, exc_info=True)
         return None
 
 

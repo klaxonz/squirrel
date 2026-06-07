@@ -50,7 +50,7 @@ def _update_scheduler_status(is_running: bool, job_count: int = 0, error_message
 
             session.commit()
     except (ValueError, TypeError, AttributeError, KeyError) as e:
-        logger.error(f"Failed to update scheduler status: {e}")
+        logger.error("Failed to update scheduler status: %s", e)
 
 def _get_task_fingerprint(task) -> tuple:
     return (
@@ -134,7 +134,7 @@ def _heartbeat_worker() -> None:
                 _sync_scheduled_tasks()
                 _consume_manual_triggers()
         except Exception as e:  # process boundary -- must not crash supervisor
-            logger.error(f"Heartbeat error: {e}", exc_info=True)
+            logger.error("Heartbeat error: %s", e, exc_info=True)
 
         time.sleep(5)
 
@@ -175,7 +175,7 @@ def scheduler_start() -> None:
         )
         _outbox_listener_thread.start()
 
-        logger.info(f"[scheduler] started with {job_count} jobs")
+        logger.info("[scheduler] started with %s jobs", job_count)
 
 
 def scheduler_stop() -> None:
@@ -235,7 +235,7 @@ def scheduler_status() -> dict:
                 "heartbeat_age": heartbeat_age,
             }
     except (ValueError, TypeError, AttributeError, KeyError) as e:
-        logger.error(f"Failed to get scheduler status: {e}")
+        logger.error("Failed to get scheduler status: %s", e)
         return {
             "running": False,
             "job_count": 0,

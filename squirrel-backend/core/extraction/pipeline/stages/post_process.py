@@ -31,19 +31,14 @@ class PostProcessStage(PipelineStage):
         """执行后处理"""
         # 检查是否跳过
         if context.should_skip_post_process:
-            logger.info(
-                f"Skipping post-process (flag set): url={context.task.url}",
-            )
+            logger.info("Skipping post-process (flag set): url=%s", context.task.url)
             return context
 
         video_model = context.video_model
         video_dto = context.video_dto
         # 检查前置条件
         if video_model is None or video_dto is None:
-            logger.warning(
-                f"Missing video_model or video_dto, skipping post-process: "
-                f"url={context.task.url}",
-            )
+            logger.warning("Missing video_model or video_dto, skipping post-process: url=%s", context.task.url)
             return context
 
         # 1. 异步下载缩略图
@@ -55,15 +50,10 @@ class PostProcessStage(PipelineStage):
                     video_dto.site_name,
                     source_url=context.task.url,
                 )
-                logger.info(
-                    f"Thumbnail download enqueued: video_id={video_model.id}",
-                )
+                logger.info("Thumbnail download enqueued: video_id=%s", video_model.id)
             except (ValueError, TypeError, AttributeError) as e:
                 # 缩略图下载失败不应中断流程
-                logger.warning(
-                    f"Failed to enqueue thumbnail download: "
-                    f"video_id={video_model.id}, error={e}",
-                )
+                logger.warning("Failed to enqueue thumbnail download: video_id=%s, error=%s", video_model.id, e)
 
         return context
 
