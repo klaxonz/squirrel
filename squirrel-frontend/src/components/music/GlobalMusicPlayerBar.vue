@@ -317,7 +317,7 @@
                   </div>
                 </div>
                 <div v-if="commentsHasMore" class="immersive-comments-more">
-                  <button class="music-chip" :disabled="commentsLoading" @click="loadMoreComments">
+                  <button class="music-chip" :disabled="commentsLoading" @click="handleLoadMoreComments">
                     加载更多评论
                   </button>
                 </div>
@@ -335,8 +335,8 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { useMusicPlayerStore } from '@/stores/musicPlayer'
+import { useMusicComments } from '@/composables/useMusicComments'
 import { Logger } from '@/utils/logger'
-import { getMusicSongComments, getMusicCommentCounts, type MusicComment } from '@/api/music'
 
 const store = useMusicPlayerStore()
 const router = useRouter()
@@ -345,69 +345,44 @@ const audioEl = ref<HTMLAudioElement | null>(null)
 
 // --- Immersive player comments ---
 const immersiveTab = ref<'lyrics' | 'comments'>('lyrics')
-const comments = ref<MusicComment[]>([])
-const commentsLoading = ref(false)
-const commentsError = ref('')
-const commentsPage = ref(1)
-const commentsTotal = ref(0)
-const commentCount = ref(0)
-const commentsHasMore = computed(() => comments.value.length < commentsTotal.value)
+const {
+  comments,
+  loading: commentsLoading,
+  error: commentsError,
+  page: commentsPage,
+  total: commentsTotal,
+  count: commentCount,
+  hasMore: commentsHasMore,
+  load: loadComments,
+  loadMore: loadMoreComments,
+  loadCount: loadCommentCount,
+  switchToComments: switchToCommentTab,
+  resetForNewTrack: resetComments,
+} = useMusicComments()
 
-let lastCommentTrackId = ''
-
-async function loadComments(trackAlbumAudioId: string, reset = true) {
-  if (reset) {
-    comments.value = []
-    commentsPage.value = 1
-    commentsTotal.value = 0
+function handleLoadMoreComments() {
+  const track = store.currentTrack
+  if (track?.album_audio_id) {
+    loadMoreComments(track.album_audio_id)
   }
-  commentsLoading.value = true
-  commentsError.value = ''
-  const { data, error: err } = await getMusicSongComments({
-    mixsongid: trackAlbumAudioId,
-    page: commentsPage.value,
-    page_size: 20,
-  })
-  commentsLoading.value = false
-  if (err) {
-    commentsError.value = err.message || '加载评论失败'
-    Logger.error('Failed to load song comments', err)
-    return
-  }
-  const items = data?.items || []
-  comments.value = reset ? items : [...comments.value, ...items]
-  commentsTotal.value = data?.total || comments.value.length
 }
 
 function switchToComments() {
   immersiveTab.value = 'comments'
   const track = store.currentTrack
-  if (!track?.album_audio_id || track.album_audio_id === lastCommentTrackId) return
-  lastCommentTrackId = track.album_audio_id
-  void loadComments(track.album_audio_id, true)
-}
-
-async function loadMoreComments() {
-  if (commentsLoading.value || !commentsHasMore.value) return
-  commentsPage.value++
-  const track = store.currentTrack
   if (!track?.album_audio_id) return
-  await loadComments(track.album_audio_id, false)
+  switchToCommentTab(track.album_audio_id)
 }
 
-watch(() => store.currentTrack?.album_audio_id, async (newId) => {
-  if (newId && newId !== lastCommentTrackId) {
-    comments.value = []
-    lastCommentTrackId = ''
+watch(() => store.currentTrack?.album_audio_id, (newId) => {
+  if (newId) {
+    resetComments()
     if (immersiveTab.value === 'comments') {
-      lastCommentTrackId = newId
-      void loadComments(newId, true)
+      switchToCommentTab(newId)
     }
     const track = store.currentTrack
     if (track?.hash) {
-      commentCount.value = 0
-      const { data } = await getMusicCommentCounts(track.hash)
-      if (data) commentCount.value = data.count
+      loadCommentCount(track.hash)
     }
   }
 })
@@ -417,8 +392,7 @@ watch(commentCount, () => {})
 void (async () => {
   const track = store.currentTrack
   if (track?.hash) {
-    const { data } = await getMusicCommentCounts(track.hash)
-    if (data) commentCount.value = data.count
+    loadCommentCount(track.hash)
   }
 })()
 

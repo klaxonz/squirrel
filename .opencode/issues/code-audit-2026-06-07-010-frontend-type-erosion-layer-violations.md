@@ -1,6 +1,11 @@
 ---
 title: 'Frontend: 类型安全侵蚀与分层违规'
-status: open
+status: fixed
+fixed_by: |
+  - src/views/Settings.vue:140,142,172,213
+  - src/stores/user.ts:6,13,36,48,60
+  - src/components/music/GlobalMusicPlayerBar.vue:339
+  - src/components/video-player/VideoPlayer.vue:614,767,837,843,846,852-855,1112,1115,1146,1546
 severity: high
 category: architecture
 location: squirrel-frontend/src/ (全局)

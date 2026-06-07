@@ -137,9 +137,9 @@
                       <div class="settings-row-desc">{{ item.desc }}</div>
                     </div>
                     <Switch
-                      :checked="!!(settings as any)[item.key]"
+                      :checked="!!settings[item.key]"
                       :disabled="userSaving"
-                      @update:checked="(value: boolean) => { (settings as any)[item.key] = !!value; onUserSettingChange() }"
+                      @update:checked="(value: boolean) => { settings[item.key] = !!value; onUserSettingChange() }"
                     />
                   </div>
                 </div>
@@ -169,7 +169,7 @@
                     <div v-for="field in passwordFields" :key="field.key" class="space-y-2">
                       <label class="text-xs font-medium text-muted-foreground">{{ field.label }}</label>
                       <Input
-                        v-model="(securityForm as any)[field.key]"
+                        v-model="securityForm[field.key]"
                         :type="field.type"
                         :placeholder="field.placeholder"
                         :disabled="passwordSubmitting"
@@ -210,7 +210,7 @@
                       <div class="settings-row-desc">{{ item.desc }}</div>
                     </div>
                     <Switch
-                      :checked="Boolean((systemConfig as any)?.[item.key])"
+                      :checked="Boolean(systemConfig?.[item.key])"
                       :disabled="systemLoading || systemSaving"
                       @update:checked="(value: boolean) => onSystemToggle(item.key, !!value)"
                     />
@@ -355,7 +355,14 @@ const passwordSubmitting = ref(false)
 const sessionSubmitting = ref(false)
 const securityError = ref('')
 const securitySuccess = ref('')
-const securityForm = ref({
+interface SecurityForm {
+  currentPassword: string
+  newPassword: string
+  confirmPassword: string
+  [key: string]: string
+}
+
+const securityForm = ref<SecurityForm>({
   currentPassword: '',
   newPassword: '',
   confirmPassword: '',

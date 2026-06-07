@@ -574,7 +574,7 @@ import {
   shouldAutoHideControls,
   shouldTogglePlayOnVideoClick
 } from './runtime/mobileControls'
-import type { MediaSource, SubtitleTrack } from './core'
+import type { Chapter, MediaSource, QualityLevel, SubtitleTrack } from './core'
 import { getCodecFamily } from './core/codec'
 import type { ThemeName } from './themes'
 import type { VideoClipMarker } from '@/types/videoClipMarker'
@@ -611,7 +611,7 @@ interface Props {
   externalLoading?: boolean
   hasPrev?: boolean
   hasNext?: boolean
-  playlistEntries?: Array<{ title: string; source: any }>
+  playlistEntries?: Array<{ title: string; source: MediaSource | null }>
   playlistIndex?: number
 }
 
@@ -764,7 +764,7 @@ const handleRetry = () => {
   emit('retry')
 }
 const showLoadingOverlay = computed(() => (store.loading || props.externalLoading) && !errorState.value.show)
-const isAudioOnly = computed(() => !!(props.source as any)?.audioOnly)
+const isAudioOnly = computed(() => !!props.source?.audioOnly)
 const loadingStageText = computed(() => {
   if (store.loadingStage === 'fetching') return t('loading')
   if (store.loadingStage === 'buffering') return t('buffering')
@@ -834,25 +834,25 @@ const subtitleBgOptions = [
   { value: 'rgba(80,0,0,0.8)', label: 'Red' },
   { value: 'transparent', label: 'None' },
 ]
-const subtitleStyleLabel = (key: string, value: string, options: any[]) => {
+const subtitleStyleLabel = (key: string, value: string, options: Array<{ value: string; label: string }>) => {
   const opt = options.find((o) => o.value === value)
   return opt ? opt.label : value
 }
 const progress = computed(() => duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0)
 
-const sourceChapters = computed(() => (props.source as any)?.chapters || [])
+const sourceChapters = computed(() => props.source?.chapters || [])
 const normalizedChapters = computed(() => {
   if (!duration.value || duration.value <= 0) return []
-  return sourceChapters.value.map((chapter: any) => ({
+  return sourceChapters.value.map((chapter: Chapter) => ({
     ...chapter,
     startPercent: Math.min((chapter.startTime / duration.value) * 100, 100),
   }))
 })
 
-const thumbnailSpriteUrl = computed(() => (props.source as any)?.thumbnailSpriteUrl || null)
-const thumbnailSpriteColumns = computed(() => (props.source as any)?.thumbnailSpriteColumns || 10)
-const thumbnailSpriteRows = computed(() => (props.source as any)?.thumbnailSpriteRows || 10)
-const thumbnailSpriteInterval = computed(() => (props.source as any)?.thumbnailSpriteInterval || 10)
+const thumbnailSpriteUrl = computed(() => props.source?.thumbnailSpriteUrl || null)
+const thumbnailSpriteColumns = computed(() => props.source?.thumbnailSpriteColumns || 10)
+const thumbnailSpriteRows = computed(() => props.source?.thumbnailSpriteRows || 10)
+const thumbnailSpriteInterval = computed(() => props.source?.thumbnailSpriteInterval || 10)
 const thumbnailSpriteStyle = computed(() => {
   if (!thumbnailSpriteUrl.value || !duration.value) return {}
   const totalFrames = thumbnailSpriteColumns.value * thumbnailSpriteRows.value
@@ -1109,10 +1109,10 @@ const toggleQualityMenu = () => {
   showQualityMenu.value = nextVisible
 }
 const handleSpeedSelect = (rate: number) => { setPlaybackRate(rate); closeMenus() }
-const handleQualitySelect = (q: any) => { setQuality(q.id); closeMenus() }
+const handleQualitySelect = (q: QualityLevel) => { setQuality(q.id); closeMenus() }
 const handleSubtitleSelect = (track: SubtitleTrack) => { setSubtitle(track); closeMenus() }
 const handleSubtitleDisable = () => { setSubtitle(null); closeMenus() }
-const handleSubtitleStyleChange = (key: string, value: any) => { setSubtitleStyle({ [key]: value }) }
+const handleSubtitleStyleChange = (key: string, value: unknown) => { setSubtitleStyle({ [key]: value }) }
 const handleSubtitleOffsetChange = (delta: number) => {
   const next = subtitleOffset.value + delta
   setSubtitleOffset(Math.max(-10, Math.min(10, Math.round(next * 10) / 10)))
@@ -1143,7 +1143,7 @@ const onOpacityPointerDown = (e: PointerEvent) => {
   window.addEventListener('pointermove', onMove)
   window.addEventListener('pointerup', onUp)
 }
-const isPresetActive = (preset: any) => {
+const isPresetActive = (preset: { style: Record<string, unknown> }) => {
   const s = preset.style
   const current = subtitleStyle.value
   return (
@@ -1543,7 +1543,7 @@ const handleLoopABToggle = () => {
   }
 }
 
-const isCurrentChapter = (chapter: any): boolean => {
+const isCurrentChapter = (chapter: Chapter): boolean => {
   return chapter.startTime <= currentTime.value && (chapter.endTime || (duration.value)) > currentTime.value
 }
 
