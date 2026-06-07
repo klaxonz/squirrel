@@ -1,6 +1,7 @@
 ---
 title: SDK 全局可变状态 + backend 双引号违规
-status: open
+status: fixed
+fixed_by: squirrel-sdk/src/crawl/http.py:335, squirrel-sdk/src/crawl/utils.py:50, squirrel-backend/utils/runtime_http.py:48, squirrel-backend/pyproject.toml:13
 severity: medium
 category: code-smell
 location: squirrel-sdk/src/crawl/http.py, utils.py; squirrel-backend 多个服务文件

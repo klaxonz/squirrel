@@ -214,19 +214,18 @@ def _resolve_maybe_async_result(result):
 
 
 def request(method: str, url: str, **kwargs):
-    """
-    发送HTTP请求（支持rate limiting和cloudflare bypass）
+    """Send an HTTP request with rate limiting and optional Cloudflare bypass.
 
     Args:
-        method: HTTP方法
-        url: 目标URL
-        **kwargs: 其他请求参数，包括可选的 bypass_mode 参数
+        method: HTTP method.
+        url: Target URL.
+        **kwargs: Additional request parameters, including optional ``bypass_mode``.
 
     Kwargs:
-        bypass_mode: Cloudflare bypass 方式，可选值为 'html'、'mirror' 或 None
+        bypass_mode: Cloudflare bypass mode — ``'html'``, ``'mirror'``, or ``None``.
 
     Returns:
-        requests.Response对象
+        ``requests.Response``.
     """
     use_cloudflare_bypass = kwargs.pop('bypass_mode', None)
 
@@ -250,19 +249,18 @@ def request(method: str, url: str, **kwargs):
 
 
 def request_without_limit(method: str, url: str, **kwargs):
-    """
-    发送HTTP请求（不限流，支持cloudflare bypass）
+    """Send an HTTP request without rate limiting (supports Cloudflare bypass).
 
     Args:
-        method: HTTP方法
-        url: 目标URL
-        **kwargs: 其他请求参数，包括可选的 bypass_mode 参数
+        method: HTTP method.
+        url: Target URL.
+        **kwargs: Additional request parameters, including optional ``bypass_mode``.
 
     Kwargs:
-        bypass_mode: Cloudflare bypass 方式，可选值为 'html'、'mirror' 或 None
+        bypass_mode: Cloudflare bypass mode — ``'html'``, ``'mirror'``, or ``None``.
 
     Returns:
-        requests.Response对象
+        ``requests.Response``.
     """
     bypass_mode = kwargs.pop('bypass_mode', None)
 
@@ -296,35 +294,33 @@ def request_without_limit(method: str, url: str, **kwargs):
 
 
 def get(url: str, **kwargs):
-    """
-    发送GET请求（支持rate limiting和cloudflare bypass）
+    """Send a GET request with rate limiting and optional Cloudflare bypass.
 
     Args:
-        url: 目标URL
-        **kwargs: 其他请求参数，包括可选的 bypass_mode 参数
+        url: Target URL.
+        **kwargs: Additional request parameters, including optional ``bypass_mode``.
 
     Kwargs:
-        bypass_mode: Cloudflare bypass 方式，可选值为 'html'、'mirror' 或 None
+        bypass_mode: Cloudflare bypass mode — ``'html'``, ``'mirror'``, or ``None``.
 
     Returns:
-        requests.Response对象
+        ``requests.Response``.
     """
     return request('GET', url, **kwargs)
 
 
 def post(url: str, **kwargs):
-    """
-    发送POST请求（支持rate limiting和cloudflare bypass）
+    """Send a POST request with rate limiting and optional Cloudflare bypass.
 
     Args:
-        url: 目标URL
-        **kwargs: 其他请求参数，包括可选的 bypass_mode 参数
+        url: Target URL.
+        **kwargs: Additional request parameters, including optional ``bypass_mode``.
 
     Kwargs:
-        bypass_mode: Cloudflare bypass 方式，可选值为 'html'、'mirror' 或 None
+        bypass_mode: Cloudflare bypass mode — ``'html'``, ``'mirror'``, or ``None``.
 
     Returns:
-        requests.Response对象
+        ``requests.Response``.
     """
     return request('POST', url, **kwargs)
 
@@ -333,8 +329,16 @@ _cloudflare_bypass_client: object | None = None
 
 
 def configure_cloudflare_bypass_client(client: object) -> None:
-    """配置 Cloudflare bypass 客户端（由后端注入）"""
+    """Configure a Cloudflare bypass client (injected by the backend)."""
     global _cloudflare_bypass_client
     _cloudflare_bypass_client = client
-    logger.info("Cloudflare bypass client configured")
+    logger.info('Cloudflare bypass client configured')
+
+
+def _reset_http_module_state() -> None:
+    """Reset all module-level state to defaults (test isolation)."""
+    global _default_rate_limiter, _shared_session, _cloudflare_bypass_client
+    _default_rate_limiter = RateLimiter()
+    _shared_session = None
+    _cloudflare_bypass_client = None
 

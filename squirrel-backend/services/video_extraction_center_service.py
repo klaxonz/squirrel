@@ -29,23 +29,23 @@ def _summarize_error(message: str | None) -> str | None:
         return None
 
     lowered = normalized.lower()
-    if "extract" in lowered:
-        return "提取失败"
-    if "timeout" in lowered:
-        return "处理超时"
-    if "network" in lowered or "connection" in lowered:
-        return "网络异常"
+    if 'extract' in lowered:
+        return '提取失败'
+    if 'timeout' in lowered:
+        return '处理超时'
+    if 'network' in lowered or 'connection' in lowered:
+        return '网络异常'
 
     first_line = normalized.splitlines()[0].strip()
     if len(first_line) <= 80:
         return first_line
-    return first_line[:77] + "..."
+    return first_line[:77] + '...'
 
 
 def _resolve_site_icon_url(site: str | None) -> str | None:
     from services.site_catalog_cache import get_cached_site_catalog
 
-    normalized_site = str(site or "").strip().lower()
+    normalized_site = str(site or '').strip().lower()
     if not normalized_site:
         return None
 
@@ -63,8 +63,8 @@ def _resolve_site_icon_url(site: str | None) -> str | None:
         catalog_entry = None
 
         for slug, info in catalog.items():
-            domains = [str(domain or "").strip().lower() for domain in info.get("domains", []) if domain]
-            if any(normalized_site == domain or normalized_site.endswith(f".{domain}") for domain in domains):
+            domains = [str(domain or '').strip().lower() for domain in info.get('domains', []) if domain]
+            if any(normalized_site == domain or normalized_site.endswith(f'.{domain}') for domain in domains):
                 site_slug = slug
                 catalog_entry = info
                 break
@@ -73,13 +73,13 @@ def _resolve_site_icon_url(site: str | None) -> str | None:
             site_slug = None
             catalog_entry = None
             for slug, info in catalog.items():
-                aliases = [str(alias or "").strip().lower() for alias in info.get("aliases", []) if alias]
+                aliases = [str(alias or '').strip().lower() for alias in info.get('aliases', []) if alias]
                 if normalized_site in aliases:
                     site_slug = slug
                     catalog_entry = info
                     break
 
-    icon_url = str((catalog_entry or {}).get("icon_url") or "").strip() or None
+    icon_url = str((catalog_entry or {}).get('icon_url') or '').strip() or None
     if icon_url:
         _site_icon_url_cache[normalized_site] = icon_url
         return icon_url
@@ -95,40 +95,40 @@ def _resolve_site_icon_url(site: str | None) -> str | None:
 
 
 def _build_run_id(group_kind: str, group_value: str) -> str:
-    return f"extract:{group_kind}:{group_value}"
+    return f'extract:{group_kind}:{group_value}'
 
 
 def _derive_projection_group_key(task: CrawlTask) -> tuple[str, str]:
     payload = task.payload or {}
-    run_id = payload.get("run_id")
-    if run_id not in (None, ""):
-        return "run", str(run_id)
+    run_id = payload.get('run_id')
+    if run_id not in (None, ''):
+        return 'run', str(run_id)
 
-    sync_state_id = payload.get("sync_state_id")
-    if sync_state_id not in (None, ""):
-        return "state", str(sync_state_id)
+    sync_state_id = payload.get('sync_state_id')
+    if sync_state_id not in (None, ''):
+        return 'state', str(sync_state_id)
 
-    return "job", str(task.job_id)
+    return 'job', str(task.job_id)
 
 
 def _resolve_task_sync_mode(task: CrawlTask) -> str:
     payload = task.payload or {}
-    normalized_mode = str(payload.get("mode") or payload.get("sync_mode") or "").strip().lower()
-    if normalized_mode in {"full", "incremental"}:
+    normalized_mode = str(payload.get('mode') or payload.get('sync_mode') or '').strip().lower()
+    if normalized_mode in {'full', 'incremental'}:
         return normalized_mode
 
-    is_extract_all = payload.get("is_extract_all")
+    is_extract_all = payload.get('is_extract_all')
     if is_extract_all is True:
-        return "full"
+        return 'full'
 
     if (
         is_extract_all is False
-        or payload.get("run_id") not in (None, "")
-        or payload.get("sync_state_id") not in (None, "")
+        or payload.get('run_id') not in (None, '')
+        or payload.get('sync_state_id') not in (None, '')
     ):
-        return "incremental"
+        return 'incremental'
 
-    return "extract"
+    return 'extract'
 
 
 def _resolve_projection_sync_mode(
@@ -141,14 +141,18 @@ def _resolve_projection_sync_mode(
     if cached_mode:
         return cached_mode
 
-    tasks = session.execute(
-        select(CrawlTask)
-        .where(
-            CrawlTask.task_type == "video_extract",
-            CrawlTask.subscription_id == projection.subscription_id,
+    tasks = (
+        session.execute(
+            select(CrawlTask)
+            .where(
+                CrawlTask.task_type == 'video_extract',
+                CrawlTask.subscription_id == projection.subscription_id,
+            )
+            .order_by(CrawlTask.created_at.asc(), CrawlTask.id.asc()),
         )
-        .order_by(CrawlTask.created_at.asc(), CrawlTask.id.asc()),
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     for task in tasks:
         if _derive_projection_group_key(task) == (projection.group_kind, str(projection.group_value)):
@@ -156,15 +160,15 @@ def _resolve_projection_sync_mode(
             cache[cache_key] = resolved_mode
             return resolved_mode
 
-    cache[cache_key] = "extract"
-    return "extract"
+    cache[cache_key] = 'extract'
+    return 'extract'
 
 
 def _base_projection_query(
     user_id: int,
     *,
     site_candidates: set[str] | None = None,
-    normalized_query: str = "",
+    normalized_query: str = '',
 ) -> Any:
     query = (
         select(VideoExtractionProjection, Subscription)
@@ -179,29 +183,33 @@ def _base_projection_query(
     if site_candidates:
         query = query.where(VideoExtractionProjection.site.in_(site_candidates))
     if normalized_query:
-        query = query.where(Subscription.name.ilike(f"%{normalized_query}%"))
+        query = query.where(Subscription.name.ilike(f'%{normalized_query}%'))
     return query
 
 
 def _apply_status_filter(query: Any, status: str | None) -> Any:
-    normalized_status = (status or "").strip().lower() or None
-    if normalized_status == "running":
-        return query.where(VideoExtractionProjection.display_status == "running")
-    if normalized_status == "queued":
-        return query.where(VideoExtractionProjection.display_status == "queued")
-    if normalized_status == "failed":
-        return query.where(VideoExtractionProjection.sync_status == "failed")
-    if normalized_status == "recent":
-        return query.where(VideoExtractionProjection.display_status.notin_(["running", "queued"]))
+    normalized_status = (status or '').strip().lower() or None
+    if normalized_status == 'running':
+        return query.where(VideoExtractionProjection.display_status == 'running')
+    if normalized_status == 'queued':
+        return query.where(VideoExtractionProjection.display_status == 'queued')
+    if normalized_status == 'failed':
+        return query.where(VideoExtractionProjection.sync_status == 'failed')
+    if normalized_status == 'recent':
+        return query.where(VideoExtractionProjection.display_status.notin_(['running', 'queued']))
     return query
 
 
 def _apply_ordering(query: Any, status: str | None) -> Any:
-    normalized_status = (status or "").strip().lower() or None
-    if normalized_status == "running":
-        return query.order_by(VideoExtractionProjection.locked_at.asc(), VideoExtractionProjection.subscription_id.asc())
-    if normalized_status == "queued":
-        return query.order_by(VideoExtractionProjection.queued_at.asc(), VideoExtractionProjection.subscription_id.asc())
+    normalized_status = (status or '').strip().lower() or None
+    if normalized_status == 'running':
+        return query.order_by(
+            VideoExtractionProjection.locked_at.asc(), VideoExtractionProjection.subscription_id.asc()
+        )
+    if normalized_status == 'queued':
+        return query.order_by(
+            VideoExtractionProjection.queued_at.asc(), VideoExtractionProjection.subscription_id.asc()
+        )
     recent_dt = func.coalesce(VideoExtractionProjection.updated_at, VideoExtractionProjection.last_success_at)
     return query.order_by(recent_dt.desc(), VideoExtractionProjection.subscription_id.desc())
 
@@ -230,9 +238,9 @@ def _build_item(
         failure_count=int(projection.failed_task_count or 0),
         last_error=projection.last_error,
         last_error_summary=_summarize_error(projection.last_error),
-        last_sync_at="",
-        last_success_at=_format_datetime(projection.last_success_at if projection.sync_status == "success" else None),
-        next_sync_at="",
+        last_sync_at='',
+        last_success_at=_format_datetime(projection.last_success_at if projection.sync_status == 'success' else None),
+        next_sync_at='',
         queued_at=_format_datetime(projection.queued_at),
         locked_at=_format_datetime(projection.locked_at),
         updated_at=_format_datetime(projection.updated_at),
@@ -243,8 +251,10 @@ def _build_item(
         videos_enqueued=int(projection.queued_task_count or 0),
         videos_extracted=int(projection.completed_task_count or 0),
         videos_skipped=0,
-        progress_percent=int((processed_count / projection.batch_task_count) * 100) if projection.batch_task_count else 0,
-        progress_label=f"{processed_count} / {projection.batch_task_count}" if projection.batch_task_count else "",
+        progress_percent=int((processed_count / projection.batch_task_count) * 100)
+        if projection.batch_task_count
+        else 0,
+        progress_label=f'{processed_count} / {projection.batch_task_count}' if projection.batch_task_count else '',
         is_deferred=False,
         defer_reason=None,
         batch_task_count=int(projection.batch_task_count or 0),
@@ -266,19 +276,19 @@ def get_extraction_center_overview(user_id: int) -> SyncCenterOverviewDto:
         query = (
             select(
                 func.coalesce(
-                    func.sum(case((VideoExtractionProjection.display_status == "running", 1), else_=0)),
+                    func.sum(case((VideoExtractionProjection.display_status == 'running', 1), else_=0)),
                     0,
-                ).label("running_count"),
+                ).label('running_count'),
                 func.coalesce(
-                    func.sum(case((VideoExtractionProjection.display_status == "queued", 1), else_=0)),
+                    func.sum(case((VideoExtractionProjection.display_status == 'queued', 1), else_=0)),
                     0,
-                ).label("queued_count"),
+                ).label('queued_count'),
                 func.coalesce(
-                    func.sum(case((VideoExtractionProjection.sync_status == "failed", 1), else_=0)),
+                    func.sum(case((VideoExtractionProjection.sync_status == 'failed', 1), else_=0)),
                     0,
-                ).label("failed_count"),
-                func.coalesce(func.sum(VideoExtractionProjection.pending_video_count), 0).label("pending_videos"),
-                func.coalesce(func.sum(VideoExtractionProjection.queued_task_count), 0).label("queue_depth"),
+                ).label('failed_count'),
+                func.coalesce(func.sum(VideoExtractionProjection.pending_video_count), 0).label('pending_videos'),
+                func.coalesce(func.sum(VideoExtractionProjection.queued_task_count), 0).label('queue_depth'),
             )
             .select_from(VideoExtractionProjection)
             .join(Subscription, Subscription.id == VideoExtractionProjection.subscription_id)
@@ -308,19 +318,17 @@ def get_extraction_dashboard_snapshot(user_id: int, *, preview_limit: int = EXTR
     running_count = int(overview.running_count or 0)
     queued_count = int(overview.queued_count or 0)
     running_preview = (
-        list_extraction_center_items(user_id, "running", None, None, 1, running_count).data
-        if running_count > 0 else []
+        list_extraction_center_items(user_id, 'running', None, None, 1, running_count).data if running_count > 0 else []
     )
     queued_preview = (
-        list_extraction_center_items(user_id, "queued", None, None, 1, queued_count).data
-        if queued_count > 0 else []
+        list_extraction_center_items(user_id, 'queued', None, None, 1, queued_count).data if queued_count > 0 else []
     )
-    recent_preview = list_extraction_center_items(user_id, "recent", None, None, 1, preview_limit).data
+    recent_preview = list_extraction_center_items(user_id, 'recent', None, None, 1, preview_limit).data
     return {
-        "overview": overview,
-        "runningPreview": running_preview,
-        "queuedPreview": queued_preview,
-        "recentPreview": recent_preview,
+        'overview': overview,
+        'runningPreview': running_preview,
+        'queuedPreview': queued_preview,
+        'recentPreview': recent_preview,
     }
 
 
@@ -334,10 +342,10 @@ def list_extraction_center_items(
 ) -> SyncCenterListDto:
     _ensure_projection_ready()
 
-    normalized_status = (status or "").strip().lower() or None
-    normalized_site = (site or "").strip().lower() or None
+    normalized_status = (status or '').strip().lower() or None
+    normalized_site = (site or '').strip().lower() or None
     site_candidates = set(SiteCatalog.expand_site_filter_values(normalized_site)) if normalized_site else set()
-    normalized_query = (query or "").strip().lower()
+    normalized_query = (query or '').strip().lower()
     start = max(0, (page - 1) * page_size)
 
     filtered_query = _apply_status_filter(
@@ -363,7 +371,7 @@ def list_extraction_center_items(
         sync_mode_cache: dict[tuple[int, str, str], str] = {}
         items = [_build_item(session, projection, subscription, sync_mode_cache) for projection, subscription in rows]
 
-    if normalized_status == "queued":
+    if normalized_status == 'queued':
         for index, item in enumerate(items, start=start + 1):
             item.queue_position = index
 

@@ -32,23 +32,23 @@ def _elapsed_ms(start_time: float) -> float:
 
 
 def list_videos(
-        user_id: int,
-        query: str,
-        subscription_id: int,
-        category: str,
-        sort_by: str,
-        nsfw: str,
-        domains: list[str] | None,
-        page: int,
-        page_size: int,
-        with_total: bool = False,
-        time_range: str = "all",
-        duration: str = "all",
-        content_type: str = "all",
-        special: str = "all",
+    user_id: int,
+    query: str,
+    subscription_id: int,
+    category: str,
+    sort_by: str,
+    nsfw: str,
+    domains: list[str] | None,
+    page: int,
+    page_size: int,
+    with_total: bool = False,
+    time_range: str = 'all',
+    duration: str = 'all',
+    content_type: str = 'all',
+    special: str = 'all',
 ) -> tuple[list[dict], int | None]:
     user_config = user_config_service.get_config(user_id)
-    show_nsfw = user_config.get("showNsfw", False)
+    show_nsfw = user_config.get('showNsfw', False)
     offset = max((page - 1) * page_size, 0)
     started_at = perf_counter()
 
@@ -56,10 +56,10 @@ def list_videos(
         build_query_started_at = perf_counter()
         use_feed_row_pagination = (
             not query
-            and duration == "all"
-            and time_range == "all"
-            and content_type == "all"
-            and category in (None, "all", "preview")
+            and duration == 'all'
+            and time_range == 'all'
+            and content_type == 'all'
+            and category in (None, 'all', 'preview')
         )
         if use_feed_row_pagination:
             base_ids_query = _build_feed_rows_query(
@@ -96,9 +96,7 @@ def list_videos(
             video_ids = [
                 row.video_id
                 for row in session.execute(
-                    base_ids_query
-                    .limit(page_size)
-                    .offset(offset),
+                    base_ids_query.limit(page_size).offset(offset),
                 ).all()
             ]
         video_ids_ms = _elapsed_ms(video_ids_started_at)
@@ -108,21 +106,27 @@ def list_videos(
             total_count_started_at = perf_counter()
             count_source = base_ids_query.order_by(None).subquery()
             if use_feed_row_pagination:
-                total_count = session.execute(
-                    select(func.count(func.distinct(count_source.c.video_id))).select_from(count_source),
-                ).scalar() or 0
+                total_count = (
+                    session.execute(
+                        select(func.count(func.distinct(count_source.c.video_id))).select_from(count_source),
+                    ).scalar()
+                    or 0
+                )
             else:
-                total_count = session.execute(
-                    select(func.count()).select_from(count_source),
-                ).scalar() or 0
+                total_count = (
+                    session.execute(
+                        select(func.count()).select_from(count_source),
+                    ).scalar()
+                    or 0
+                )
             total_count_ms = _elapsed_ms(total_count_started_at)
         else:
             total_count_ms = 0.0
 
         if not video_ids:
             logger.info(
-                "[Performance] list_videos user_id=%s category=%s page=%s page_size=%s query=%s nsfw=%s domains=%s "
-                "video_count=0 build_query_ms=%.3f video_ids_ms=%.3f total_count_ms=%.3f total_ms=%.3f",
+                '[Performance] list_videos user_id=%s category=%s page=%s page_size=%s query=%s nsfw=%s domains=%s '
+                'video_count=0 build_query_ms=%.3f video_ids_ms=%.3f total_count_ms=%.3f total_ms=%.3f',
                 user_id,
                 category,
                 page,
@@ -144,9 +148,7 @@ def list_videos(
         )
 
         videos = session.scalars(
-            select(Video)
-            .where(Video.id.in_(video_ids))
-            .order_by(order_case),
+            select(Video).where(Video.id.in_(video_ids)).order_by(order_case),
         ).all()
         video_map = {video.id: video for video in videos}
         videos_ms = _elapsed_ms(videos_started_at)
@@ -196,15 +198,17 @@ def list_videos(
             if key in seen_subscription_keys:
                 continue
             seen_subscription_keys.add(key)
-            subscriptions_map.setdefault(row.video_id, []).append({
-                "id": row.id,
-                "name": row.name,
-                "url": row.url,
-                "type": row.type,
-                "avatar": row.avatar,
-                "is_nsfw": row.is_nsfw,
-                "is_special_followed": row.is_special_followed,
-            })
+            subscriptions_map.setdefault(row.video_id, []).append(
+                {
+                    'id': row.id,
+                    'name': row.name,
+                    'url': row.url,
+                    'type': row.type,
+                    'avatar': row.avatar,
+                    'is_nsfw': row.is_nsfw,
+                    'is_special_followed': row.is_special_followed,
+                }
+            )
         subscriptions_ms = _elapsed_ms(subscriptions_started_at)
 
         creators_started_at = perf_counter()
@@ -223,12 +227,14 @@ def list_videos(
         creators_ms = _elapsed_ms(creators_started_at)
 
         thumbnails_started_at = perf_counter()
-        thumbnail_map = thumbnail_downloader_service.get_thumbnail_url_map([
-            (video.id, video.thumbnail, video.url)
-            for video_id in video_ids
-            for video in [video_map.get(video_id)]
-            if video is not None
-        ])
+        thumbnail_map = thumbnail_downloader_service.get_thumbnail_url_map(
+            [
+                (video.id, video.thumbnail, video.url)
+                for video_id in video_ids
+                for video in [video_map.get(video_id)]
+                if video is not None
+            ]
+        )
         thumbnails_ms = _elapsed_ms(thumbnails_started_at)
 
         assemble_started_at = perf_counter()
@@ -238,21 +244,21 @@ def list_videos(
             if not video:
                 continue
             video_data = {
-                "id": video.id,
-                "title": video.title,
-                "url": video.url,
-                "thumbnail": thumbnail_map.get(video.id),
-                "duration": video.duration,
-                "last_position": history_map.get(video.id, 0),
-                "uploaded_at": video.publish_date.strftime("%Y-%m-%d %H:%M:%S") if video.publish_date else None,
-                "created_at": video.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                "subscriptions": _merge_profiles(
+                'id': video.id,
+                'title': video.title,
+                'url': video.url,
+                'thumbnail': thumbnail_map.get(video.id),
+                'duration': video.duration,
+                'last_position': history_map.get(video.id, 0),
+                'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
+                'created_at': video.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'subscriptions': _merge_profiles(
                     subscriptions_map.get(video.id, []),
-                    _video_extra_profiles(video, "subscriptions"),
+                    _video_extra_profiles(video, 'subscriptions'),
                 ),
-                "actors": _merge_profiles(
+                'actors': _merge_profiles(
                     actors_map.get(video.id, []),
-                    _video_extra_profiles(video, "actors"),
+                    _video_extra_profiles(video, 'actors'),
                 ),
             }
             video_list.append(video_data)
@@ -260,9 +266,9 @@ def list_videos(
         total_ms = _elapsed_ms(started_at)
 
         logger.info(
-            "[Performance] list_videos user_id=%s category=%s page=%s page_size=%s query=%s nsfw=%s domains=%s "
-            "video_count=%s build_query_ms=%.3f video_ids_ms=%.3f total_count_ms=%.3f videos_ms=%.3f "
-            "history_ms=%.3f subscriptions_ms=%.3f creators_ms=%.3f thumbnails_ms=%.3f assemble_ms=%.3f total_ms=%.3f",
+            '[Performance] list_videos user_id=%s category=%s page=%s page_size=%s query=%s nsfw=%s domains=%s '
+            'video_count=%s build_query_ms=%.3f video_ids_ms=%.3f total_count_ms=%.3f videos_ms=%.3f '
+            'history_ms=%.3f subscriptions_ms=%.3f creators_ms=%.3f thumbnails_ms=%.3f assemble_ms=%.3f total_ms=%.3f',
             user_id,
             category,
             page,
@@ -327,7 +333,7 @@ def get_video(user_id: int, video_id: int) -> dict[str, Any] | None:
         counts_map = {}
         if subscription_ids:
             rows = session.execute(
-                select(SubscriptionVideo.subscription_id, func.count(SubscriptionVideo.video_id).label("video_count"))
+                select(SubscriptionVideo.subscription_id, func.count(SubscriptionVideo.video_id).label('video_count'))
                 .where(SubscriptionVideo.subscription_id.in_(list(subscription_ids)))
                 .group_by(SubscriptionVideo.subscription_id),
             ).all()
@@ -343,9 +349,9 @@ def get_video(user_id: int, video_id: int) -> dict[str, Any] | None:
                 continue
             user_subscription = user_subscriptions[0]
             s_dict = subscription.to_dict()
-            s_dict["total_extract"] = counts_map.get(subscription.id, 0)
-            s_dict["total_videos"] = max(int(s_dict.get("total_videos") or 0), s_dict["total_extract"])
-            s_dict["is_nsfw"] = user_subscription.is_nsfw
+            s_dict['total_extract'] = counts_map.get(subscription.id, 0)
+            s_dict['total_videos'] = max(int(s_dict.get('total_videos') or 0), s_dict['total_extract'])
+            s_dict['is_nsfw'] = user_subscription.is_nsfw
             subscriptions_data.append(s_dict)
 
         def _history_sort_key(history: VideoHistory) -> Any:
@@ -366,22 +372,22 @@ def get_video(user_id: int, video_id: int) -> dict[str, Any] | None:
                 .order_by(VideoClipMarker.start_time.asc(), VideoClipMarker.created_at.asc(), VideoClipMarker.id.asc()),
             ).all()
         except OperationalError:
-            logger.warning("[video_service] video_clip_marker table is unavailable; falling back to empty clip markers")
+            logger.warning('[video_service] video_clip_marker table is unavailable; falling back to empty clip markers')
             clip_markers = []
 
         video_data = {
             **video.to_dict(),
-            "thumbnail": thumbnail_downloader_service.get_thumbnail_url(video.id, video.thumbnail, video.url),
-            "interaction_type": video_interaction.interaction_type if video_interaction else None,
-            "last_position": video_history.last_position if video_history else 0,
-            "domain": url_helper.extract_top_level_domain(video.url),
-            "subscriptions": _merge_profiles(subscriptions_data, _video_extra_profiles(video, "subscriptions")),
-            "actors": _merge_profiles(
+            'thumbnail': thumbnail_downloader_service.get_thumbnail_url(video.id, video.thumbnail, video.url),
+            'interaction_type': video_interaction.interaction_type if video_interaction else None,
+            'last_position': video_history.last_position if video_history else 0,
+            'domain': url_helper.extract_top_level_domain(video.url),
+            'subscriptions': _merge_profiles(subscriptions_data, _video_extra_profiles(video, 'subscriptions')),
+            'actors': _merge_profiles(
                 [creator.to_dict() for creator in video.creators],
-                _video_extra_profiles(video, "actors"),
+                _video_extra_profiles(video, 'actors'),
             ),
-            "creators": [creator.to_dict() for creator in video.creators],
-            "clip_markers": [serialize_marker(marker) for marker in clip_markers],
+            'creators': [creator.to_dict() for creator in video.creators],
+            'clip_markers': [serialize_marker(marker) for marker in clip_markers],
         }
 
         return video_data
@@ -397,22 +403,22 @@ def _video_extra_profiles(video: Video, key: str) -> list[dict]:
     for profile in profiles:
         if not isinstance(profile, dict):
             continue
-        name = str(profile.get("name") or "").strip()
-        url = str(profile.get("url") or "").strip()
+        name = str(profile.get('name') or '').strip()
+        url = str(profile.get('url') or '').strip()
         if not name and not url:
             continue
         item = {
-            "id": profile.get("id"),
-            "name": name,
-            "url": url,
-            "type": profile.get("type"),
-            "avatar": profile.get("avatar"),
-            "is_nsfw": profile.get("is_nsfw"),
+            'id': profile.get('id'),
+            'name': name,
+            'url': url,
+            'type': profile.get('type'),
+            'avatar': profile.get('avatar'),
+            'is_nsfw': profile.get('is_nsfw'),
         }
-        if profile.get("description") is not None:
-            item["description"] = profile.get("description")
-        if profile.get("site") is not None:
-            item["site"] = profile.get("site")
+        if profile.get('description') is not None:
+            item['description'] = profile.get('description')
+        if profile.get('site') is not None:
+            item['site'] = profile.get('site')
         normalized.append(item)
 
     return normalized
@@ -423,9 +429,9 @@ def _merge_profiles(primary: list[dict], extra: list[dict]) -> list[dict]:
     seen = set()
     for profile in [*primary, *extra]:
         key = (
-            str(profile.get("id") or "").strip(),
-            str(profile.get("url") or "").strip(),
-            str(profile.get("name") or "").strip(),
+            str(profile.get('id') or '').strip(),
+            str(profile.get('url') or '').strip(),
+            str(profile.get('name') or '').strip(),
         )
         if key in seen:
             continue

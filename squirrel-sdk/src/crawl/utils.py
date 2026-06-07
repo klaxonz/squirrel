@@ -47,6 +47,13 @@ def configure_cookie_domain_resolver(resolver: CookieDomainResolver) -> None:
     _cookie_domain_resolver = resolver
 
 
+def _reset_utils_module_state() -> None:
+    """Reset all module-level resolver state to defaults (test isolation)."""
+    global _cookie_file_resolver, _cookie_domain_resolver
+    _cookie_file_resolver = None
+    _cookie_domain_resolver = None
+
+
 def _extract_cookie_domain(target_url: str) -> str:
     if _cookie_domain_resolver is not None:
         try:

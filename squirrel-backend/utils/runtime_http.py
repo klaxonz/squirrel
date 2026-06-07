@@ -45,6 +45,5 @@ def reset_runtime_http_state() -> None:
     from crawl import http as crawl_http
     from crawl import utils as crawl_utils
 
-    crawl_http._cloudflare_bypass_client = None
-    crawl_utils._cookie_file_resolver = None
-    crawl_utils._cookie_domain_resolver = None
+    crawl_http._reset_http_module_state()
+    crawl_utils._reset_utils_module_state()
