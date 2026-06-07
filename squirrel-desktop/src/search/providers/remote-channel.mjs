@@ -11,13 +11,26 @@ import {
   stripHtml,
   uniqueByUrl,
 } from './shared.mjs'
+import {
+  collectVideoRenderers,
+  collectLockupViewModels,
+  findWatchVideoId,
+  findContinuationToken,
+  extractApiKey,
+  extractContext,
+  buildCursor,
+  buildContinuationContext,
+  extractLockupDuration,
+  extractLockupPublishedText,
+  pickLockupThumbnail,
+  YOUTUBE_ORIGIN,
+} from './youtube-shared.mjs'
 
 import { signBilibiliWbiParams } from '../../shared/bilibili-sign.mjs'
 import { desktopChromeUserAgent } from '../../constants.mjs'
 
 const BILIBILI_ORIGIN = 'https://www.bilibili.com'
 const BILIBILI_SPACE_ORIGIN = 'https://space.bilibili.com'
-const YOUTUBE_ORIGIN = 'https://www.youtube.com'
 const JAVDB_ORIGIN = 'https://javdb.com'
 const PORNHUB_ORIGIN = 'https://www.pornhub.com'
 const YOUPORN_ORIGIN = 'https://www.youporn.com'
@@ -93,54 +106,6 @@ const normalizeChannelUrl = (value) => {
   return url
 }
 
-const collectYouTubeVideoRenderers = (node, output) => {
-  if (!node || typeof node !== 'object') return
-  if (node.videoRenderer) {
-    output.push(node.videoRenderer)
-    return
-  }
-  if (Array.isArray(node)) {
-    node.forEach((item) => collectYouTubeVideoRenderers(item, output))
-    return
-  }
-  Object.values(node).forEach((value) => collectYouTubeVideoRenderers(value, output))
-}
-
-const collectYouTubeLockupViewModels = (node, output) => {
-  if (!node || typeof node !== 'object') return
-  if (node.lockupViewModel) {
-    output.push(node.lockupViewModel)
-    return
-  }
-  if (Array.isArray(node)) {
-    node.forEach((item) => collectYouTubeLockupViewModels(item, output))
-    return
-  }
-  Object.values(node).forEach((value) => collectYouTubeLockupViewModels(value, output))
-}
-
-const findYouTubeContinuationToken = (node) => {
-  if (!node || typeof node !== 'object') return ''
-  const token = node?.continuationCommand?.token
-    || node?.nextContinuationData?.continuation
-    || node?.reloadContinuationData?.continuation
-  if (token) return String(token)
-
-  if (Array.isArray(node)) {
-    for (const item of node) {
-      const nestedToken = findYouTubeContinuationToken(item)
-      if (nestedToken) return nestedToken
-    }
-    return ''
-  }
-
-  for (const value of Object.values(node)) {
-    const nestedToken = findYouTubeContinuationToken(value)
-    if (nestedToken) return nestedToken
-  }
-  return ''
-}
-
 const buildYouTubeVideosUrl = (channelUrl) => {
   const url = new URL(channelUrl)
   if (!url.pathname.endsWith('/videos')) {
@@ -164,7 +129,6 @@ const extractYouTubeProfile = (initialData, channelUrl, providedProfile = {}) =>
     || metadata?.avatar?.thumbnails
   )
   const name = metadata?.title || pickText(header?.title) || providedProfile.name || ''
-
   return {
     id: metadata?.externalId || providedProfile.id || null,
     type: 'CHANNEL',
@@ -197,56 +161,18 @@ const mapYouTubeVideo = (renderer, profile) => {
   }
 }
 
-const findYouTubeWatchVideoId = (node) => {
-  if (!node || typeof node !== 'object') return ''
-  const videoId = node?.watchEndpoint?.videoId
-  if (videoId) return String(videoId)
-
-  if (Array.isArray(node)) {
-    for (const item of node) {
-      const nestedVideoId = findYouTubeWatchVideoId(item)
-      if (nestedVideoId) return nestedVideoId
-    }
-    return ''
-  }
-
-  for (const value of Object.values(node)) {
-    const nestedVideoId = findYouTubeWatchVideoId(value)
-    if (nestedVideoId) return nestedVideoId
-  }
-  return ''
-}
-
-const extractYouTubeLockupDuration = (lockup) => {
-  const badges = lockup?.contentImage?.thumbnailViewModel?.overlays
-    ?.flatMap((overlay) => overlay?.thumbnailBottomOverlayViewModel?.badges || [])
-    || []
-  for (const badge of badges) {
-    const duration = parseDuration(badge?.thumbnailBadgeViewModel?.text)
-    if (duration) return duration
-  }
-  return null
-}
-
-const extractYouTubeLockupPublishedText = (lockup) => {
-  const rows = lockup?.metadata?.lockupMetadataViewModel?.metadata?.contentMetadataViewModel?.metadataRows || []
-  const parts = rows.flatMap((row) => row?.metadataParts || [])
-  const texts = parts.map((part) => part?.text?.content || '').filter(Boolean)
-  return texts[texts.length - 1] || ''
-}
-
 const mapYouTubeLockup = (lockup, profile) => {
-  const videoId = findYouTubeWatchVideoId(lockup)
+  const videoId = findWatchVideoId(lockup)
   return {
     source: 'remote',
     site: 'youtube',
     id: videoId,
     title: lockup?.metadata?.lockupMetadataViewModel?.title?.content || '',
     url: videoId ? `${YOUTUBE_ORIGIN}/watch?v=${encodeURIComponent(videoId)}` : '',
-    thumbnail: pickThumbnail(lockup?.contentImage?.thumbnailViewModel?.image?.sources),
-    duration: extractYouTubeLockupDuration(lockup),
+    thumbnail: pickLockupThumbnail(lockup),
+    duration: extractLockupDuration(lockup),
     publish_date: null,
-    published_text: extractYouTubeLockupPublishedText(lockup),
+    published_text: extractLockupPublishedText(lockup),
     uploader: profile.name,
     uploader_url: profile.url,
     uploader_avatar: profile.avatar,
@@ -258,64 +184,21 @@ const mapYouTubeLockup = (lockup, profile) => {
 const mapYouTubeItems = (payload, profile) => {
   const renderers = []
   const lockups = []
-  collectYouTubeVideoRenderers(payload, renderers)
-  collectYouTubeLockupViewModels(payload, lockups)
+  collectVideoRenderers(payload, renderers)
+  collectLockupViewModels(payload, lockups)
   return uniqueByUrl([
     ...renderers.map((renderer) => mapYouTubeVideo(renderer, profile)),
     ...lockups.map((lockup) => mapYouTubeLockup(lockup, profile)),
   ]).filter((item) => item.id && item.title && item.url)
 }
 
-const extractYouTubeApiKey = (html) => {
-  return String(html.match(/"INNERTUBE_API_KEY"\s*:\s*"([^"]+)"/)?.[1] || '').trim()
-}
-
-const extractYouTubeContext = (html) => {
-  const jsonText = findBalancedJson(html, 'INNERTUBE_CONTEXT')
-  if (!jsonText) throw new Error('YouTube context payload not found')
-  return JSON.parse(jsonText)
-}
-
-const buildYouTubeCursor = (continuation, apiKey, context) => {
-  if (!continuation) return null
-  const client = context?.client || {}
-  return {
-    continuation,
-    api_key: apiKey,
-    client: {
-      clientName: client.clientName || 'WEB',
-      clientVersion: client.clientVersion || '',
-      hl: client.hl || 'en',
-      gl: client.gl || 'US',
-      userAgent: client.userAgent || DESKTOP_USER_AGENT,
-      visitorData: client.visitorData || '',
-    },
-  }
-}
-
-const buildYouTubeContinuationContext = (cursor) => {
-  const client = cursor?.client || cursor?.context?.client || {}
-  return {
-    client: {
-      clientName: client.clientName || 'WEB',
-      clientVersion: client.clientVersion || '',
-      hl: client.hl || 'en',
-      gl: client.gl || 'US',
-      userAgent: client.userAgent || DESKTOP_USER_AGENT,
-      visitorData: client.visitorData || '',
-    },
-  }
-}
-
 const fetchYouTubeContinuation = async ({ cursor, fetchImpl, buildCookieHeader }) => {
   const continuation = String(cursor?.continuation || '').trim()
   const apiKey = String(cursor?.api_key || '').trim()
-  if (!continuation || !apiKey) {
-    throw new Error('YouTube continuation cursor is missing')
-  }
+  if (!continuation || !apiKey) throw new Error('YouTube continuation cursor is missing')
 
   const cookie = await buildCookieHeader(YOUTUBE_ORIGIN)
-  const context = buildYouTubeContinuationContext(cursor)
+  const context = buildContinuationContext(cursor)
   const response = await fetchImpl(`${YOUTUBE_ORIGIN}/youtubei/v1/browse?key=${encodeURIComponent(apiKey)}`, {
     method: 'POST',
     headers: {
@@ -331,10 +214,7 @@ const fetchYouTubeContinuation = async ({ cursor, fetchImpl, buildCookieHeader }
       'X-YouTube-Client-Version': String(context?.client?.clientVersion || ''),
       ...(cookie ? { Cookie: cookie } : {}),
     },
-    body: JSON.stringify({
-      context,
-      continuation,
-    }),
+    body: JSON.stringify({ context, continuation }),
   })
   if (!response.ok) throw new Error(`YouTube channel continuation failed: ${response.status}`)
   return response.json()
@@ -352,7 +232,7 @@ const getYouTubeChannel = async ({ url, limit, page, cursor, fetchImpl, buildCoo
       site: 'youtube',
       is_nsfw: false,
     }
-    const continuation = findYouTubeContinuationToken(payload)
+    const continuation = findContinuationToken(payload)
     const items = mapYouTubeItems(payload, channelProfile)
 
     return {
@@ -378,10 +258,10 @@ const getYouTubeChannel = async ({ url, limit, page, cursor, fetchImpl, buildCoo
   if (!jsonText) throw new Error('YouTube channel payload not found')
 
   const initialData = JSON.parse(jsonText)
-  const apiKey = extractYouTubeApiKey(html)
-  const context = extractYouTubeContext(html)
+  const apiKey = extractApiKey(html)
+  const context = extractContext(html)
   const channelProfile = extractYouTubeProfile(initialData, channelUrl, profile)
-  const continuation = findYouTubeContinuationToken(initialData)
+  const continuation = findContinuationToken(initialData)
   const items = mapYouTubeItems(initialData, channelProfile)
 
   return {
@@ -389,7 +269,7 @@ const getYouTubeChannel = async ({ url, limit, page, cursor, fetchImpl, buildCoo
     items: items.slice(0, resultLimit),
     page: 1,
     has_more: !!continuation,
-    next_cursor: buildYouTubeCursor(continuation, apiKey, context),
+    next_cursor: buildCursor(continuation, apiKey, context),
   }
 }
 
