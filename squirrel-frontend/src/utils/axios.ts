@@ -3,6 +3,15 @@ import type { AxiosError } from 'axios'
 import { getServerUrl } from '@/composables/useServerConfig'
 import { logoutAndRedirect } from './auth'
 
+const generateTraceId = () => {
+  const hex = '0123456789abcdef'
+  let id = ''
+  for (let i = 0; i < 32; i++) {
+    id += hex[Math.floor(Math.random() * 16)]
+  }
+  return id
+}
+
 const instance = axios.create({
   timeout: 60000,
   withCredentials: true,
@@ -16,6 +25,7 @@ instance.interceptors.request.use((config) => {
   if (base && !config.url?.startsWith('http')) {
     config.baseURL = base
   }
+  config.headers.set('X-Trace-Id', generateTraceId())
   return config
 })
 

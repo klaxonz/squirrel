@@ -70,6 +70,14 @@ class SiteRuntimeProcessLauncher:
         }
         process_env["PYTHONUNBUFFERED"] = "1"
         process_env["SQUIRREL_SITE_RUNTIME_ID"] = record.runtime_id
+
+        try:
+            from utils.trace import get_trace_id
+            trace_id = get_trace_id()
+            if trace_id:
+                process_env["SQUIRREL_TRACE_ID"] = trace_id
+        except ImportError:
+            pass
         process_env["SQUIRREL_SITE_RUNTIME_VERSION"] = record.version
         process_env["SQUIRREL_SITE_RUNTIME_SOURCE"] = str(record.metadata.get("source") or "workspace")
         process_env["SQUIRREL_SITE_RUNTIME_GRANTED_PERMISSIONS"] = ",".join(record.granted_permissions)

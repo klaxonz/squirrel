@@ -180,6 +180,7 @@ class SiteRuntimeInvokeRequest:
     site_name: str | None = None
     timeout_ms: int | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    trace_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -193,6 +194,7 @@ class SiteRuntimeInvokeRequest:
             site_name=data.get("site_name"),
             timeout_ms=data.get("timeout_ms"),
             metadata=dict(data.get("metadata") or {}),
+            trace_id=data.get("trace_id"),
         )
 
 

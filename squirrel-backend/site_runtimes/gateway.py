@@ -11,6 +11,8 @@ from crawl import (
     SiteRuntimeInvokeResponse,
 )
 
+from utils.trace import get_trace_id
+
 from .models import SiteCapabilityRegistration, SiteRuntimeTarget
 from .runtime_models import SiteRuntimeManifest
 
@@ -152,6 +154,7 @@ class SiteRuntimeGateway:
             site_name=site_name or route.site_name,
             timeout_ms=effective_timeout_ms,
             metadata={"domain": domain},
+            trace_id=get_trace_id(),
         )
         if self._invocation_client is None:
             return SiteRuntimeInvokeResponse(

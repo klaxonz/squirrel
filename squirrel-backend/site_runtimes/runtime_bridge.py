@@ -4,6 +4,7 @@ import argparse
 import importlib
 import json
 import logging
+import os
 import sys
 import threading
 import time
@@ -62,6 +63,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--network-policy")
     parser.add_argument("--max-runtime-seconds", type=float)
     parser.add_argument("--import-path", action="append", default=[])
+    parser.add_argument("--trace-id")
     return parser.parse_args()
 
 
@@ -176,6 +178,9 @@ class _BridgeHandler(BaseHTTPRequestHandler):
         if self.path == "/invoke":
             payload = self._read_json()
             request = SiteRuntimeInvokeRequest.from_dict(payload.get("request") or {})
+            if request.trace_id:
+                from utils.trace import set_trace_id
+                set_trace_id(request.trace_id)
             started_at = time.monotonic()
             self._log_invoke_event("Site runtime invoke started", request, level=logging.INFO)
             response = self.server.runtime.invoke(request.capability, request.payload)
@@ -235,6 +240,11 @@ def main() -> int:
         force=True,
     )
     args = _parse_args()
+
+    trace_id = args.trace_id or os.environ.get("SQUIRREL_TRACE_ID")
+    if trace_id:
+        from utils.trace import set_trace_id
+        set_trace_id(trace_id)
 
     for import_path in args.import_path:
         if import_path and import_path not in sys.path:

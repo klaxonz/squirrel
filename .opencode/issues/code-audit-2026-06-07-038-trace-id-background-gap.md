@@ -1,6 +1,7 @@
 ---
 title: 可观测性 — trace_id 未覆盖后台任务/队列/SDK
-status: open
+status: fixed
+fixed_by: squirrel-backend/core/dynamic_task_manager.py:220, squirrel-sdk/src/crawl/runtime_models.py:183, squirrel-frontend/src/utils/axios.ts:19, squirrel-backend/site_runtimes/runtime_bridge.py:245, squirrel-backend/site_runtimes/process_launcher.py:78
 severity: medium
 category: error-handling
 location: squirrel-backend/schedule/, queues/, squirrel-sdk/src/, squirrel-frontend/src/utils/request.ts

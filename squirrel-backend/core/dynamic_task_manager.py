@@ -7,6 +7,7 @@ from core.database import get_session
 from models.scheduled_task import ScheduledTask, TaskExecutionLog, TaskStatus
 from schedule.task import BaseTask
 from utils import module_discovery
+from utils.trace import TraceContext
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +214,8 @@ class DynamicTaskManager:
             if not task_instance:
                 raise ValueError("Cannot create task instance")
 
-            task_result = task_instance.run()
+            with TraceContext():
+                task_result = task_instance.run()
 
             end_time = datetime.now()
             duration = int((end_time - start_time).total_seconds() * 1000)

@@ -327,6 +327,7 @@ class SiteRuntimeSupervisor:
             site_name=request.site_name,
             timeout_ms=request.timeout_ms,
             metadata=dict(request.metadata),
+            trace_id=request.trace_id,
         )
         started_at = time.monotonic()
         record = self._records.get(self._key(target.runtime_id, target.version))
