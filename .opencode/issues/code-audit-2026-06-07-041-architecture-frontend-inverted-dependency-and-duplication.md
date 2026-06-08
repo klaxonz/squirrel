@@ -1,6 +1,7 @@
 ---
 title: 架构 — Frontend axios→composables 反向依赖 + 3处 remote-channel 重复
-status: open
+status: fixed
+fixed_by: utils/axios.ts:3, composables/useRemoteChannel.ts:50, composables/useDesktopBridge.ts:14
 severity: medium
 category: architecture
 location: squirrel-frontend/src/（跨文件）

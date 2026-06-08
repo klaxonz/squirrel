@@ -3,6 +3,7 @@ import { onClickOutside } from '@vueuse/core'
 import { unsubscribeRssFeed } from '@/api'
 import { formatDate } from '../utils/dateFormat'
 import type { ApiResult, RssEntry, RssFeed, RecentEntry } from './rssTypes'
+import { getDesktopBridge } from '@/composables/useDesktopBridge'
 
 export function useRssReader(options: {
   selectedAccountId: Ref<number | null>
@@ -28,7 +29,7 @@ export function useRssReader(options: {
   const iframeLoading = ref(false)
   const iframeLoadKey = ref(0)
   const iframeProgress = ref(0)
-  const isElectron = computed(() => window.desktopApp?.isDesktop === true)
+  const isElectron = computed(() => getDesktopBridge()?.isDesktop === true)
   const iframeRef = ref<HTMLIFrameElement | null>(null)
 
   // Image Lightbox

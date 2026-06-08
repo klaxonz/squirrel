@@ -1,6 +1,6 @@
 import axios from 'axios'
 import type { AxiosError } from 'axios'
-import { getServerUrl } from '@/composables/useServerConfig'
+import { getServerUrl } from './serverConfig'
 import { logoutAndRedirect } from './auth'
 
 const generateTraceId = () => {

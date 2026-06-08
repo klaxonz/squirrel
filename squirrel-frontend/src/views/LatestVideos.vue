@@ -225,7 +225,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUIStore } from '@/stores/ui'
 import { useRouteTabSync } from '../composables/useRouteTabSync'
@@ -246,6 +246,7 @@ import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import { formatDate, formatDuration } from '@/utils/dateFormat'
 import { useSites } from '@/composables/useSites'
+import { useRemoteChannel, type RemoteVideoItem } from '@/composables/useRemoteChannel'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 defineOptions({ name: 'LatestVideos' })
@@ -259,24 +260,6 @@ type RemoteProfile = {
   description?: string | null
   site?: string | null
   is_nsfw?: boolean | null
-}
-
-type RemoteSearchItem = {
-  source: 'remote'
-  site: string
-  id?: string | number | null
-  title: string
-  url: string
-  thumbnail?: string | null
-  duration?: number | null
-  publish_date?: string | null
-  published_text?: string | null
-  uploader?: string | null
-  uploader_url?: string | null
-  uploader_avatar?: string | null
-  subscriptions?: RemoteProfile[]
-  actors?: RemoteProfile[]
-  description?: string | null
 }
 
 const REMOTE_PLAYABLE_SITE_PATTERNS: Record<string, RegExp> = {
@@ -301,13 +284,19 @@ const videoChildRef = ref<any>(null)
 const remoteSearchRef = ref<any>(null)
 const channelDataMode = ref<'local' | 'remote'>('local')
 const channelDetail = ref<any>(null)
-const remoteItems = ref<RemoteSearchItem[]>([])
-const remoteLoading = ref(false)
-const remoteAllLoaded = ref(false)
-const remotePage = ref(1)
-const remoteNextCursor = shallowRef<unknown>(null)
-const remoteError = ref('')
-let remoteRequestToken = 0
+
+const remoteChannel = useRemoteChannel()
+const {
+  items: remoteItems,
+  loading: remoteLoading,
+  allLoaded: remoteAllLoaded,
+  error: remoteError,
+} = remoteChannel
+const loadMoreRemote = () => {
+  const channel = channelDetail.value
+  if (!channel?.site || !channel?.url) return
+  return remoteChannel.loadMore({ site: channel.site, url: channel.url, profile: channel })
+}
 let loadedRemoteChannelKey = ''
 const searchMode = computed({
   get: () => uiStore.homeSearchMode,
@@ -441,84 +430,17 @@ const handleChannelModeChange = async (mode: 'local' | 'remote') => {
   }
 }
 
-const appendUniqueRemoteItems = (nextItems: RemoteSearchItem[]) => {
-  const seen = new Set(remoteItems.value.map((item) => item.url))
-  const uniqueItems = nextItems.filter((item) => {
-    if (!item.url || seen.has(item.url)) return false
-    seen.add(item.url)
-    return true
-  })
-  remoteItems.value = remoteItems.value.concat(uniqueItems)
-}
-
 const fetchRemoteChannel = async (isReset = false) => {
   const channel = channelDetail.value
   if (!channel?.site || !channel?.url) return
 
-  if (!window.desktopApp?.isDesktop || typeof window.desktopApp?.getRemoteChannel !== 'function') {
-    remoteError.value = '当前桌面端不支持远端频道'
-    return
-  }
-  if (!isReset && (remoteLoading.value || remoteAllLoaded.value)) return
-
   if (isReset) {
-    remoteItems.value = []
-    remotePage.value = 1
-    remoteNextCursor.value = null
-    remoteAllLoaded.value = false
-    remoteError.value = ''
     loadedRemoteChannelKey = remoteChannelKey.value
   }
 
-  const requestToken = ++remoteRequestToken
-  const requestPage = isReset ? 1 : remotePage.value + 1
-  remoteLoading.value = true
   isRefreshing.value = true
-  let timer: ReturnType<typeof setTimeout> | undefined
-
-  try {
-    const result = await Promise.race([
-      window.desktopApp.getRemoteChannel({
-        site: channel.site,
-        url: channel.url,
-        limit: 30,
-        page: requestPage,
-        cursor: requestPage > 1 && remoteNextCursor.value ? { ...(remoteNextCursor.value as Record<string, unknown>) } : undefined,
-        profile: {
-          id: channel.id != null ? String(channel.id) : null,
-          type: 'CHANNEL',
-          name: channel.name || '',
-          url: channel.url,
-          avatar: channel.avatar || '',
-          is_nsfw: channel.is_nsfw === true,
-        },
-      }),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error('远端频道加载超时')), 60000)
-      }),
-    ])
-    if (requestToken !== remoteRequestToken) return
-
-    const nextItems = Array.isArray(result.items) ? result.items : []
-    if (requestPage === 1) remoteItems.value = nextItems
-    else appendUniqueRemoteItems(nextItems)
-    remotePage.value = requestPage
-    remoteNextCursor.value = result.next_cursor || null
-    remoteAllLoaded.value = result.has_more === false
-  } catch (error: any) {
-    if (requestToken !== remoteRequestToken) return
-    remoteError.value = error?.message || '远端频道加载失败'
-  } finally {
-    clearTimeout(timer)
-    if (requestToken === remoteRequestToken) {
-      remoteLoading.value = false
-      isRefreshing.value = false
-    }
-  }
-}
-
-const loadMoreRemote = async () => {
-  await fetchRemoteChannel(false)
+  await remoteChannel.fetchRemote({ site: channel.site, url: channel.url, profile: channel }, isReset)
+  isRefreshing.value = false
 }
 
 const hashRemoteUrl = (url: string) => {
@@ -530,7 +452,7 @@ const hashRemoteUrl = (url: string) => {
   return Math.abs(hash).toString(36)
 }
 
-const buildRemoteVideoSeed = (item: RemoteSearchItem) => {
+const buildRemoteVideoSeed = (item: RemoteVideoItem) => {
   const channel = channelDetail.value
   const url = String(item.url || '').trim()
   return {
@@ -556,12 +478,12 @@ const buildRemoteVideoSeed = (item: RemoteSearchItem) => {
   }
 }
 
-const canPlayRemoteResult = (item: RemoteSearchItem) => {
+const canPlayRemoteResult = (item: RemoteVideoItem) => {
   const pattern = REMOTE_PLAYABLE_SITE_PATTERNS[item.site]
   return !!pattern && pattern.test(String(item.url || ''))
 }
 
-const openRemoteResult = async (item: RemoteSearchItem) => {
+const openRemoteResult = async (item: RemoteVideoItem) => {
   if (!item.url || !canPlayRemoteResult(item)) return
 
   const videoSeed = buildRemoteVideoSeed(item)
@@ -578,11 +500,6 @@ watch(() => uiStore.searchTrigger, () => {
 watch(subscriptionId, (value) => {
   channelDataMode.value = 'local'
   channelDetail.value = null
-  remoteItems.value = []
-  remotePage.value = 1
-  remoteNextCursor.value = null
-  remoteAllLoaded.value = false
-  remoteError.value = ''
   loadedRemoteChannelKey = ''
   if (value && searchMode.value === 'remote') {
     searchMode.value = 'local'
@@ -590,11 +507,6 @@ watch(subscriptionId, (value) => {
 })
 
 watch(remoteChannelKey, () => {
-  remoteItems.value = []
-  remotePage.value = 1
-  remoteNextCursor.value = null
-  remoteAllLoaded.value = false
-  remoteError.value = ''
   loadedRemoteChannelKey = ''
   if (subscriptionId.value && channelDataMode.value === 'remote') fetchRemoteChannel(true)
 })

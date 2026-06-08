@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { getVideoDetail } from '@/api'
 import type { VideoId, VideoPageVideo, VideoSubtitle } from '@/types/videoPlayback'
 import { Logger } from '@/utils/logger'
+import { useDesktopBridge } from '@/composables/useDesktopBridge'
 
 type SubtitleCandidate = {
   id: string
@@ -35,27 +36,20 @@ const getSubtitleCandidates = (url: string | undefined): SubtitleCandidate[] => 
 
 const isYouTubeUrl = (url: string | undefined) => /(?:youtube\.com|youtu\.be)/i.test(url || '')
 
-const getDesktopBridge = () => {
-  if (typeof window === 'undefined') return null
-  return window.desktopApp || null
-}
+const desktopBridge = useDesktopBridge()
 
 const buildDesktopYouTubeSubtitleTracks = async (
   videoUrl: string,
   candidates: SubtitleCandidate[],
 ): Promise<VideoSubtitle[]> => {
-  const bridge = getDesktopBridge()
-  if (bridge?.isDesktop !== true || typeof bridge.resolveYouTubeSubtitles !== 'function') {
-    return []
-  }
+  if (!desktopBridge.isDesktop()) return []
 
   const tracks: VideoSubtitle[] = []
   for (const [index, candidate] of candidates.entries()) {
     try {
-      const payload = await bridge.resolveYouTubeSubtitles(videoUrl, {
-        lang: candidate.lang,
-        format: 'vtt',
-      })
+      const promise = desktopBridge.resolveYouTubeSubtitles(videoUrl, { lang: candidate.lang, format: 'vtt' })
+      if (!promise) continue
+      const payload = await promise
       const content = String(payload?.content || '').trim()
       if (!content) continue
 
@@ -74,28 +68,25 @@ const buildDesktopYouTubeSubtitleTracks = async (
 }
 
 const canResolveDesktopYouTubeSubtitles = () => {
-  const bridge = getDesktopBridge()
-  return bridge?.isDesktop === true && typeof bridge.resolveYouTubeSubtitles === 'function'
+  return desktopBridge.isDesktop() && !!desktopBridge.getDesktopBridge()?.resolveYouTubeSubtitles
 }
 
 const canResolveDesktopBilibiliSubtitles = () => {
-  const bridge = getDesktopBridge()
-  return bridge?.isDesktop === true && typeof bridge.resolveBilibiliSubtitles === 'function'
+  return desktopBridge.isDesktop() && !!desktopBridge.getDesktopBridge()?.resolveBilibiliSubtitles
 }
 
 const buildDesktopBilibiliSubtitleTracks = async (
   videoUrl: string,
   candidates: SubtitleCandidate[],
 ): Promise<VideoSubtitle[]> => {
-  const desktopBridge = getDesktopBridge()
-  if (!desktopBridge?.resolveBilibiliSubtitles) return []
+  if (!desktopBridge.isDesktop()) return []
 
   const tracks: VideoSubtitle[] = []
   for (const [index, candidate] of candidates.entries()) {
     try {
-      const payload = await desktopBridge.resolveBilibiliSubtitles(videoUrl, {
-        lang: candidate.lang,
-      })
+      const promise = desktopBridge.resolveBilibiliSubtitles(videoUrl, { lang: candidate.lang })
+      if (!promise) continue
+      const payload = await promise
       const content = String(payload?.content || '').trim()
       if (!content) continue
 

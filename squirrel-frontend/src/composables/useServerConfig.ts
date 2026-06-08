@@ -1,5 +1,9 @@
 import { ref } from 'vue'
 import { Logger } from '@/utils/logger'
+import { updateServerUrlCache } from '@/utils/serverConfig'
+import { useDesktopBridge } from '@/composables/useDesktopBridge'
+
+const desktopBridge = useDesktopBridge()
 
 const CONFIG_KEY = 'squirrel_server_url'
 const CONFIG_VERSION_KEY = 'squirrel_server_url_version'
@@ -93,6 +97,7 @@ const syncServerUrlState = (url: string) => {
   hasServerConfig.value = !!url
   initPromise = Promise.resolve(url)
   writeToStorage(url)
+  updateServerUrlCache(url)
   if (url) {
     rememberRecentServerUrl(url)
   }
@@ -101,13 +106,11 @@ const syncServerUrlState = (url: string) => {
 const readFromDesktopBridge = async (): Promise<string> => {
   if (typeof window === 'undefined') return ''
 
-  const bridge = window.desktopApp
-  if (bridge?.isDesktop !== true || typeof bridge.getServerUrl !== 'function') {
-    return ''
-  }
+  const promise = desktopBridge.getServerUrl()
+  if (!promise) return ''
 
   try {
-    return normalizeServerUrl(await bridge.getServerUrl())
+    return normalizeServerUrl(await promise)
   } catch (err) {
     Logger.warn('[useServerConfig] Failed to read from desktop bridge', err)
     return ''
@@ -116,16 +119,12 @@ const readFromDesktopBridge = async (): Promise<string> => {
 
 const bindDesktopServerUrlListener = () => {
   if (typeof window === 'undefined' || hasBoundDesktopListener) return
+  if (!desktopBridge.isDesktop()) return
 
-  const bridge = window.desktopApp
-  if (bridge?.isDesktop !== true || typeof bridge.onServerUrlChange !== 'function') {
-    return
-  }
-
-  bridge.onServerUrlChange((value) => {
+  const unlisten = desktopBridge.onServerUrlChange((value) => {
     syncServerUrlState(normalizeServerUrl(value))
   })
-  hasBoundDesktopListener = true
+  if (unlisten) hasBoundDesktopListener = true
 }
 
 export const initServerConfig = async (): Promise<string> => {
@@ -160,20 +159,18 @@ export const setServerUrl = async (url: string): Promise<boolean> => {
   const normalizedUrl = normalizeServerUrl(url)
   if (!normalizedUrl) return false
 
-  if (typeof window !== 'undefined') {
-    const bridge = window.desktopApp
-    if (bridge?.isDesktop === true && typeof bridge.setServerUrl === 'function') {
-      try {
-        const persistedUrl = normalizeServerUrl(await bridge.setServerUrl(normalizedUrl))
-        if (!persistedUrl) {
-          return false
-        }
+  if (desktopBridge.isDesktop()) {
+    try {
+      const promise = desktopBridge.setServerUrl(normalizedUrl)
+      if (promise) {
+        const persistedUrl = normalizeServerUrl(await promise)
+        if (!persistedUrl) return false
         syncServerUrlState(persistedUrl)
         return true
-      } catch (err) {
-        Logger.warn('[useServerConfig] Failed to set server URL via bridge', err)
-        return false
       }
+    } catch (err) {
+      Logger.warn('[useServerConfig] Failed to set server URL via bridge', err)
+      return false
     }
   }
 
@@ -182,14 +179,11 @@ export const setServerUrl = async (url: string): Promise<boolean> => {
 }
 
 export const clearServerConfig = async (): Promise<void> => {
-  if (typeof window !== 'undefined') {
-    const bridge = window.desktopApp
-    if (bridge?.isDesktop === true && typeof bridge.clearServerUrl === 'function') {
-      try {
-        await bridge.clearServerUrl()
-      } catch (err) {
-        Logger.warn('[useServerConfig] Failed to clear server URL via bridge', err)
-      }
+  if (desktopBridge.isDesktop()) {
+    try {
+      await desktopBridge.clearServerUrl()
+    } catch (err) {
+      Logger.warn('[useServerConfig] Failed to clear server URL via bridge', err)
     }
   }
 
