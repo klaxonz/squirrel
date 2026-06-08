@@ -1,7 +1,11 @@
+import os
 import sys
 from pathlib import Path
 
 import pytest
+
+# Default to dev environment for tests (loads .env.dev with JWT_SECRET_KEY, test DB, etc.)
+os.environ.setdefault('ENV', 'dev')
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 

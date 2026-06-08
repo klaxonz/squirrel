@@ -1,9 +1,9 @@
 import os
 from functools import lru_cache
 from pathlib import Path
-from secrets import token_urlsafe
 
 from dotenv import load_dotenv
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 # Backend project root directory (module-level for convenience)
@@ -39,7 +39,18 @@ class Settings(BaseSettings):
     COOKIECLOUD_PASSWORD: str = ""
     KUGOU_MUSIC_API_BASE_URL: str = ""
     KUGOU_MUSIC_COOKIE: str = ""
-    JWT_SECRET_KEY: str = token_urlsafe(32)
+    JWT_SECRET_KEY: str = ""
+
+    @field_validator("JWT_SECRET_KEY", mode="after")
+    @classmethod
+    def validate_jwt_secret_key(cls, v: str) -> str:
+        if not v:
+            raise ValueError(
+                "JWT_SECRET_KEY must be set via environment variable or .env file. "
+                "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+            )
+        return v
+
     CORS_ALLOW_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
     SQUIRREL_YOUTUBE_POT_PROVIDER_MODE: str = "auto"
     SQUIRREL_YOUTUBE_POT_PROVIDER_BASE_URL: str = ""
