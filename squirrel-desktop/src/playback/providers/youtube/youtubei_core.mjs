@@ -14,7 +14,42 @@ const CAPTIONS_ANONYMOUS_CLIENTS = ['ANDROID', 'WEB'];
 const CAPTIONS_AUTHENTICATED_CLIENTS = ['WEB', 'TV', 'MWEB'];
 const YOUTUBE_WEB_ORIGIN = 'https://www.youtube.com';
 const YOUTUBE_TV_ACTIVATION_URL = 'https://www.youtube.com/activate';
-const SESSION_CACHE = new Map();
+class LRUMap {
+  #max;
+  #map;
+
+  constructor(max) {
+    this.#max = max;
+    this.#map = new Map();
+  }
+
+  get(key) {
+    if (!this.#map.has(key)) return undefined;
+    const value = this.#map.get(key);
+    this.#map.delete(key);
+    this.#map.set(key, value);
+    return value;
+  }
+
+  set(key, value) {
+    if (this.#map.has(key)) this.#map.delete(key);
+    this.#map.set(key, value);
+    if (this.#map.size > this.#max) {
+      const first = this.#map.keys().next().value;
+      this.#map.delete(first);
+    }
+  }
+
+  delete(key) {
+    this.#map.delete(key);
+  }
+
+  clear() {
+    this.#map.clear();
+  }
+}
+
+const SESSION_CACHE = new LRUMap(3);
 
 // ── OAuth state helpers ─────────────────────────────────────────────────────
 

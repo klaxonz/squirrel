@@ -1,6 +1,7 @@
 ---
 title: YouTubei SESSION_CACHE 无界增长永不过期
-status: open
+status: fixed
+fixed_by: youtubei_core.mjs:17 — 将无界 Map 替换为 LRU Cache（max=3）
 severity: medium
 category: performance
 location: squirrel-desktop/src/playback/providers/youtube/youtubei_core.mjs:17
