@@ -1,6 +1,7 @@
 ---
 title: 架构 — 多处废弃子包 + 空目录 + 搁置抽象
-status: open
+status: fixed
+fixed_by: squirrel-backend/core/ (目录结构), squirrel-backend/consumer/__init__.py, squirrel-backend/sql/__init__.py
 severity: low
 category: dead-code
 location: squirrel-backend/core/（跨文件）
