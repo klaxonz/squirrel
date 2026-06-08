@@ -13,10 +13,10 @@ from schemas.subscription.request.subscription import (
     ToggleStatusRequest,
     UnsubscribeRequest,
 )
+from services.auth_service import get_current_user
 from services.subscription_service import SubscriptionService
 from services.subscription_sync_history_service import SubscriptionSyncHistoryService
 from services.sync_center_stream_service import SyncCenterStreamService
-from utils.jwt_helper import get_current_user
 from utils.site_catalog import SiteCatalog
 from utils.url_helper import extract_top_level_domain
 

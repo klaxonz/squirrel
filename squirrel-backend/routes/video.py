@@ -13,8 +13,8 @@ from schemas.video.request.video import (
     VideoCategory,
     YesNoAll,
 )
+from services.auth_service import get_current_user
 from services.video_service import VideoService
-from utils.jwt_helper import get_current_user
 from utils.site_catalog import SiteCatalog
 
 logger = logging.getLogger(__name__)

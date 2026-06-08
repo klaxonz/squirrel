@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, Query
 
 from common import response
 from models.user import User
+from services.auth_service import get_current_user
 from services.search_suggestion_service import SearchSuggestionService
-from utils.jwt_helper import get_current_user
 
 router = APIRouter(prefix="/api/search", tags=["搜索建议接口"])
 

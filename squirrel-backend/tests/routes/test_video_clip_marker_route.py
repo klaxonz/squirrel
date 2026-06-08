@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from routes.video_clip_marker import router
-from utils.jwt_helper import get_current_user
+from services.auth_service import get_current_user
 
 
 def test_create_clip_marker_forwards_payload_to_service(monkeypatch):

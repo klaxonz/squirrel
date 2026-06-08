@@ -8,7 +8,6 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, selectinload, with_loader_criteria
 
 from core.database import get_session as _default_get_session
-from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service as _default_thumbnail_downloader
 from models.creator import Creator
 from models.links import SubscriptionVideo, UserSubscription, VideoCreator
 from models.subscription import Subscription
@@ -17,6 +16,7 @@ from models.video_clip_marker import VideoClipMarker
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
 from services import user_config_service
+from services.extraction.thumbnail_downloader import thumbnail_downloader_service as _default_thumbnail_downloader
 from services.video_clip_marker_service import serialize_marker as _default_serialize_marker
 from services.video_list_query_service import (
     _build_feed_rows_query as _default_build_feed_rows_query,

@@ -10,10 +10,10 @@ import httpx
 from sqlalchemy import func, select
 
 from core.database import get_session
-from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
 from core.site_config_manager import get_effective_site_catalog
 from models.video import Video
 from schedule.task import BaseTask, TaskRegistry
+from services.extraction.thumbnail_downloader import thumbnail_downloader_service
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,7 @@ class ThumbnailRefreshTask(BaseTask):
         """Batch check whether thumbnails exist for multiple videos
         Returns the set of video_ids that already have thumbnails
         """
-        from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
+        from services.extraction.thumbnail_downloader import thumbnail_downloader_service
 
         existing_ids = set()
 

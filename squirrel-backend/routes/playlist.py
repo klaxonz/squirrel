@@ -10,8 +10,8 @@ from schemas.playlist import (
     PlaylistItemReorder,
     PlaylistUpdate,
 )
+from services.auth_service import get_current_user
 from services.playlist_service import PlaylistService
-from utils.jwt_helper import get_current_user
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 
 from common.response import error, param_error, success
-from routes.connectivity import test_site_connectivity
+from services.connectivity_service import test_site_connectivity
 from services.site_catalog_service import SiteCatalogService
 from services.site_login_status_service import SiteLoginStatusService
 from utils.site_icons import resolve_site_icon_path

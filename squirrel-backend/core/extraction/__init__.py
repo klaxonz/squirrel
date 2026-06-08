@@ -28,9 +28,20 @@ from .factory import (
     get_extractor_factory,
     reset_factory,
 )
-from .handlers.video_handler import VideoExtractionHandler
 from .runtime_payloads import RuntimeActorData, RuntimeVideoData
 from .task_manager import TaskManager
+
+
+# Lazy imports to avoid circular dependency with services.extraction
+def _video_extraction_handler():
+    from .handlers.video_handler import VideoExtractionHandler
+    return VideoExtractionHandler
+
+
+def __getattr__(name):
+    if name == "VideoExtractionHandler":
+        return _video_extraction_handler()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     "TaskStatus",

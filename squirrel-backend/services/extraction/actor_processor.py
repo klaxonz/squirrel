@@ -2,9 +2,8 @@
 """
 import logging
 
+from core.extraction.dto import ActorDTO
 from services import creator_service, video_creator_service
-
-from ..dto import ActorDTO
 
 logger = logging.getLogger(__name__)
 

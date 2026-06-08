@@ -8,8 +8,8 @@ from schemas.video_history import (
     HistoryBatchUpdate,
     HistoryCreate,
 )
+from services.auth_service import get_current_user
 from services.video_history_service import VideoHistoryService
-from utils.jwt_helper import get_current_user
 
 router = APIRouter(
     prefix='/api/video-history',

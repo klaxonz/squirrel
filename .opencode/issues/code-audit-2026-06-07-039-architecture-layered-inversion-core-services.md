@@ -1,6 +1,11 @@
 ---
 title: 架构 — 后端分层倒置：core→services、utils→services、routes→routes
-status: open
+status: fixed
+fixed_by:
+  - services/extraction/ (moved from core/extraction/services/)
+  - services/auth_service.py (extracted from utils/jwt_helper.py)
+  - services/connectivity_service.py (extracted from routes/connectivity.py)
+  - queues/queue_monitor.py (constructor injection)
 severity: high
 category: architecture
 location: squirrel-backend/（跨包依赖）

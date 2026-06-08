@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from core.extraction.services.video_persistence import VideoPersistenceService
+from services.extraction.video_persistence import VideoPersistenceService
 
 
 def test_create_subscription_link_refreshes_feed_for_incremental_sync(monkeypatch):
@@ -14,7 +14,7 @@ def test_create_subscription_link_refreshes_feed_for_incremental_sync(monkeypatc
         return object(), True
 
     monkeypatch.setattr(
-        "core.extraction.services.video_persistence.subscription_video_service.create_subscription_video",
+        "services.extraction.video_persistence.subscription_video_service.create_subscription_video",
         fake_create_subscription_video,
     )
 
@@ -37,7 +37,7 @@ def test_create_subscription_link_skips_feed_refresh_for_full_sync(monkeypatch):
         return object(), True
 
     monkeypatch.setattr(
-        "core.extraction.services.video_persistence.subscription_video_service.create_subscription_video",
+        "services.extraction.video_persistence.subscription_video_service.create_subscription_video",
         fake_create_subscription_video,
     )
 

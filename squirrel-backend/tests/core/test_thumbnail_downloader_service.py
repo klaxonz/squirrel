@@ -6,8 +6,8 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from core.extraction.services import thumbnail_downloader
-from core.extraction.services.thumbnail_downloader import ThumbnailDownloaderService
+from services.extraction import thumbnail_downloader
+from services.extraction.thumbnail_downloader import ThumbnailDownloaderService
 
 
 def test_bulk_thumbnail_lookup_uses_direct_local_file_check(monkeypatch):

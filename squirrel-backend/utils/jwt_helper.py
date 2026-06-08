@@ -1,12 +1,10 @@
 import logging
 from datetime import datetime, timedelta
 
-from fastapi import Cookie, HTTPException, Request, Response, status
+from fastapi import HTTPException, Request, Response, status
 from jose import JWTError, jwt
 
 from core.config import settings
-from models.user import User
-from services import user_service
 
 logger = logging.getLogger(__name__)
 
@@ -87,42 +85,7 @@ def clear_auth_cookie(response: Response, request: Request | None = None) -> Non
     )
 
 
-async def get_current_user(token: str | None = Cookie(default=None, alias=AUTH_COOKIE_NAME)) -> User | None:
-    """Validate token and return current user with config preloaded
-    """
-    _, user = validate_auth_token(token)
 
-    from services import user_config_service
-
-    user._cached_config = user_config_service.get_config(user.id)
-    return user
-
-
-def validate_auth_token(token: str | None) -> tuple[dict, User]:
-    credentials_exception = _credentials_exception()
-
-    if not token:
-        raise credentials_exception
-
-    try:
-        payload = jwt.decode(token, _get_secret_key(), algorithms=[ALGORITHM])
-        subject = payload.get("sub")
-        if subject is None:
-            raise credentials_exception
-
-        user_id = int(subject)
-        user = user_service.get_user_by_id(user_id)
-        if user is None:
-            raise credentials_exception
-
-        token_version = int(payload.get(TOKEN_VERSION_CLAIM, 0))
-        current_version = int(getattr(user, "token_version", 0) or 0)
-        if token_version != current_version:
-            raise credentials_exception
-
-        return payload, user
-    except (JWTError, TypeError, ValueError):
-        raise credentials_exception
 
 
 def should_persist_auth_cookie(token: str | None) -> bool:

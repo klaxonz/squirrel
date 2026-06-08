@@ -5,6 +5,7 @@ from pydantic import BaseModel, EmailStr, Field, SecretStr, model_validator
 
 from common import response
 from models.user import User
+from services.auth_service import get_current_user
 from services.user_config_service import UserConfigService
 from services.user_service import UserService
 from utils.jwt_helper import (
@@ -13,7 +14,6 @@ from utils.jwt_helper import (
     TOKEN_VERSION_CLAIM,
     clear_auth_cookie,
     create_access_token,
-    get_current_user,
     set_auth_cookie,
     should_persist_auth_cookie,
 )

@@ -6,13 +6,13 @@ from sqlalchemy import and_, delete, exists, false, func, select
 from sqlalchemy.orm import Session
 
 from core.database import get_session as _default_get_session
-from core.extraction.services.thumbnail_downloader import thumbnail_downloader_service
 from models.links import SubscriptionVideo, UserSubscription
 from models.subscription import Subscription
 from models.video import Video
 from models.video_history import VideoHistory
 from schemas.video_history import HistoryCreate
 from services import user_config_service
+from services.extraction.thumbnail_downloader import thumbnail_downloader_service
 from services.nsfw_policy import resolve_effective_nsfw_filter
 from services.video_list_service import _merge_profiles, _video_extra_profiles
 from services.video_query import build_video_search_clauses

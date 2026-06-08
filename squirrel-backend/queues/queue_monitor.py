@@ -1,12 +1,20 @@
 import logging
-
-from services.crawl_tasks import service as crawl_task_service
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class QueueBackpressureMonitor:
     """Queue backpressure monitor"""
+
+    def __init__(self, crawl_task_service: Any = None):
+        self._crawl_task_service = crawl_task_service
+
+    def _get_crawl_task_service(self):
+        if self._crawl_task_service is None:
+            from services.crawl_tasks import service as crawl_task_service
+            self._crawl_task_service = crawl_task_service
+        return self._crawl_task_service
 
     def count_pending_videos_for_subscription(
         self,
@@ -26,7 +34,7 @@ class QueueBackpressureMonitor:
 
         """
         try:
-            return crawl_task_service.count_pending_video_tasks_for_subscription(subscription_id)
+            return self._get_crawl_task_service().count_pending_video_tasks_for_subscription(subscription_id)
         except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error("Failed to count pending videos for subscription %s: %s", subscription_id, e)
             return 0

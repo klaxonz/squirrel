@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends
 from common import response
 from models.user import User
 from schemas.video_interaction import VideoInteractionDelete, VideoInteractionUpdate
+from services.auth_service import get_current_user
 from services.video_interaction_service import VideoInteractionService
-from utils.jwt_helper import get_current_user
 
 router = APIRouter(
     prefix="/api/video-interaction",

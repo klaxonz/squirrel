@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from routes.subscription import router
-from utils.jwt_helper import get_current_user
+from services.auth_service import get_current_user
 
 
 def _build_client(monkeypatch):

@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, Query
 from common import response
 from models.user import User
 from schemas.music import MusicPlayHistoryReport, MusicPlaylistCollect, MusicPlaylistCreate, MusicPlaylistTrackAdd
+from services.auth_service import get_current_user
 from services.music import MusicService, MusicServiceError
-from utils.jwt_helper import get_current_user
 
 router = APIRouter(prefix="/api/music", tags=["音乐接口"])
 

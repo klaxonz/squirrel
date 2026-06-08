@@ -9,8 +9,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from routes.subscription import router
 from services import subscription_update
+from services.auth_service import get_current_user
 from services.subscription_update.models import SubscriptionUpdateResult
-from utils.jwt_helper import get_current_user
 
 
 def _build_client(monkeypatch):

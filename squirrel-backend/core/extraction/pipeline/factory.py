@@ -2,12 +2,13 @@
 """
 import logging
 
-from ..adapters import RuntimeDataAdapter
-from ..services import (
+from services.extraction import (
     actor_processor_service,
     thumbnail_downloader_service,
     video_persistence_service,
 )
+
+from ..adapters import RuntimeDataAdapter
 from .base import ExtractionPipeline, PipelineStage
 from .config import PipelineConfig, StageConfig
 from .stages import (

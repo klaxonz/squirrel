@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends, Query
 from common import response
 from models.user import User
 from schemas.video_clip_marker import ClipMarkerCreate, ClipMarkerPreviewUpload, ClipMarkerUpdate
+from services.auth_service import get_current_user
 from services.video_clip_marker_service import VideoClipMarkerService
-from utils.jwt_helper import get_current_user
 
 router = APIRouter(prefix="/api/video-clip-markers", tags=["视频片段标记"])
 

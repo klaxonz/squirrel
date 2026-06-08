@@ -7,8 +7,8 @@ from pydantic import BaseModel, SecretStr
 
 from common import response
 from models.user import User
+from services.auth_service import get_current_user
 from services.rss_service import RssService, RssServiceError
-from utils.jwt_helper import get_current_user
 
 logger = logging.getLogger(__name__)
 
