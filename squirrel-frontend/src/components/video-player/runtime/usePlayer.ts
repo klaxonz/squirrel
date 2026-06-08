@@ -158,7 +158,7 @@ const loadSubtitleStyleFromStorage = (): Record<string, any> => {
 const saveSubtitleStyleToStorage = (style: Record<string, any>): void => {
   try {
     localStorage.setItem(SUBTITLE_STYLE_KEY, JSON.stringify(style))
-  } catch {}
+  } catch (err) { console.warn('[SPPlayer] Failed to save subtitle style', err) }
 }
 
 export function usePlayer(options: PlayerOptions = {}): PlayerReturn {

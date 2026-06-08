@@ -1,6 +1,7 @@
 ---
 title: usePlayer.ts 空 catch {} 静默丢弃 localStorage 错误
-status: open
+status: fixed
+fixed_by: usePlayer.ts:161
 severity: low
 category: error-handling
 location: squirrel-frontend/src/components/video-player/runtime/usePlayer.ts:161

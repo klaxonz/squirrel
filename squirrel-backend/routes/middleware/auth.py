@@ -9,13 +9,16 @@ from utils.jwt_helper import AUTH_COOKIE_NAME, clear_auth_cookie
 
 logger = logging.getLogger(__name__)
 
-PUBLIC_PATH_PREFIXES = [
+PUBLIC_EXACT_PATHS = {
     "/api/users/login",
     "/api/users/register",
     "/docs",
     "/redoc",
     "/openapi.json",
     "/api/video/thumbnail",
+}
+
+PUBLIC_PATH_PREFIXES = [
     "/health",
     "/health/ready",
     "/health/live",
@@ -23,7 +26,9 @@ PUBLIC_PATH_PREFIXES = [
 
 
 def is_public_api_path(path: str) -> bool:
-    if any(path.startswith(public_path) for public_path in PUBLIC_PATH_PREFIXES):
+    if path in PUBLIC_EXACT_PATHS:
+        return True
+    if any(path == prefix or path.startswith(prefix + "/") for prefix in PUBLIC_PATH_PREFIXES):
         return True
     if path.startswith("/api/sites/") and path.endswith("/icon"):
         return True

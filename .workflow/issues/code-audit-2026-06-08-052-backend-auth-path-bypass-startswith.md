@@ -1,6 +1,7 @@
 ---
 title: Auth 中间件路径匹配使用 startswith 可被绕过
-status: open
+status: fixed
+fixed_by: 将 is_public_api_path 的 startswith 匹配改为精确匹配 + 带分隔符前缀匹配
 severity: medium
 category: security
 location: squirrel-backend/routes/middleware/auth.py:25-30
