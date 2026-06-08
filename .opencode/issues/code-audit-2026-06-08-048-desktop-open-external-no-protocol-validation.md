@@ -1,6 +1,7 @@
 ---
 title: shell.openExternal 未校验 URL 协议可被用于打开本地文件
-status: open
+status: fixed
+fixed_by: squirrel-desktop/src/ipc-window.mjs:19
 severity: medium
 category: security
 location: squirrel-desktop/src/ipc-window.mjs:12

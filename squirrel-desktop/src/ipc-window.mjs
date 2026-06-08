@@ -9,6 +9,17 @@ export const installWindowHandlers = () => {
       return false
     }
 
+    let parsed
+    try {
+      parsed = new URL(normalizedUrl)
+    } catch {
+      return false
+    }
+
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return false
+    }
+
     await shell.openExternal(normalizedUrl)
     return true
   })
