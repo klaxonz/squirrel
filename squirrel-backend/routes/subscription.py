@@ -13,8 +13,8 @@ from schemas.subscription.request.subscription import (
     ToggleStatusRequest,
     UnsubscribeRequest,
 )
+from services import subscription_service
 from services.auth_service import get_current_user
-from services.subscription_service import SubscriptionService
 from services.subscription_sync_history_service import SubscriptionSyncHistoryService
 from services.sync_center_stream_service import SyncCenterStreamService
 from utils.site_catalog import SiteCatalog
@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 SYNC_HISTORY_ALLOWED_STATUS = {"created", "queued", "running", "success", "failed", "deferred", "timeout", "recent", "feed_recent"}
 
 
-def get_subscription_service() -> SubscriptionService:
-    return SubscriptionService()
+def get_subscription_service():
+    return subscription_service
 
 
 def get_sync_history_service() -> SubscriptionSyncHistoryService:
@@ -66,7 +66,7 @@ def _get_enabled_import_sites(supported_sites: list[str]) -> list[str]:
 def subscribe_content(
         req: SubscribeRequest,
         current_user: User = Depends(get_current_user),
-        svc: SubscriptionService = Depends(get_subscription_service),
+        svc = Depends(get_subscription_service),
 ):
     domain = extract_top_level_domain(req.url)
     if not SiteCatalog.is_site_enabled(domain=domain):
@@ -83,7 +83,7 @@ def subscribe_content(
 def unsubscribe_content(
         req: UnsubscribeRequest,
         current_user: User = Depends(get_current_user),
-        svc: SubscriptionService = Depends(get_subscription_service),
+        svc = Depends(get_subscription_service),
 ):
     svc.unsubscribe_by_id(current_user.id, req.subscription_id)
     return response.success()
@@ -93,7 +93,7 @@ def unsubscribe_content(
 def get_subscription_status(
         url: str = Query(None),
         current_user: User = Depends(get_current_user),
-        svc: SubscriptionService = Depends(get_subscription_service),
+        svc = Depends(get_subscription_service),
 ):
     return response.success(svc.check_subscription_status(current_user.id, url))
 
@@ -102,7 +102,7 @@ def get_subscription_status(
 def get_subscription_detail(
         subscription_id: int,
         current_user: User = Depends(get_current_user),
-        svc: SubscriptionService = Depends(get_subscription_service),
+        svc = Depends(get_subscription_service),
 ):
     """Get subscription (channel) details with current user's is_nsfw status and stats"""
     sub = svc.get_subscription_detail(subscription_id)
@@ -127,7 +127,7 @@ def list_subscriptions(
         page: int = Query(1, ge=1, description="Page number"),
         page_size: int = Query(10, ge=1, le=100, alias="pageSize", description="Page size"),
         current_user: User = Depends(get_current_user),
-        svc: SubscriptionService = Depends(get_subscription_service),
+        svc = Depends(get_subscription_service),
 ):
     domains: list[str] | None = None
     if site:
@@ -148,7 +148,7 @@ def list_subscriptions(
 @router.get("/options")
 def get_subscription_options(
         current_user: User = Depends(get_current_user),
-        svc: SubscriptionService = Depends(get_subscription_service),
+        svc = Depends(get_subscription_service),
 ):
     return response.success({
         "data": svc.list_subscription_options(current_user.id),
@@ -188,8 +188,8 @@ def refresh_subscription(
     request: Request,
     mode: str = Query("incremental", description="Sync mode: incremental|full", pattern=r"^(incremental|full)$"),
     current_user: User = Depends(get_current_user),
-    svc: SubscriptionService = Depends(get_subscription_service),
-):
+    svc = Depends(get_subscription_service),
+    ):
     """Manually refresh subscription
     Responsibility: validate permissions then call scheduler; actual update logic handled by scheduler and orchestrator
     """
@@ -235,8 +235,8 @@ def refresh_subscription_direct(
     request: Request,
     mode: str = Query("incremental", description="Sync mode: incremental|full", pattern=r"^(incremental|full)$"),
     current_user: User = Depends(get_current_user),
-    svc: SubscriptionService = Depends(get_subscription_service),
-):
+    svc = Depends(get_subscription_service),
+    ):
     subscription, status = svc.verify_subscription_access(current_user.id, subscription_id)
     if status == "not_found":
         return response.not_found("订阅不存在")
@@ -336,7 +336,7 @@ def get_sync_center_run_events(
 def toggle_nsfw(
         req: ToggleStatusRequest,
         current_user: User = Depends(get_current_user),
-        svc: SubscriptionService = Depends(get_subscription_service),
+        svc = Depends(get_subscription_service),
 ):
     success = svc.toggle_nsfw_status(
         current_user.id,
@@ -350,7 +350,7 @@ def toggle_nsfw(
 def toggle_special_follow(
         req: ToggleStatusRequest,
         current_user: User = Depends(get_current_user),
-        svc: SubscriptionService = Depends(get_subscription_service),
+        svc = Depends(get_subscription_service),
 ):
     success = svc.toggle_special_follow_status(
         current_user.id,
@@ -363,7 +363,7 @@ def toggle_special_follow(
 @router.get("/import/sites")
 def get_supported_sites(
         current_user: User = Depends(get_current_user),
-        svc: SubscriptionService = Depends(get_subscription_service),
+        svc = Depends(get_subscription_service),
 ):
     """Get list of sites supported for import
 
@@ -385,8 +385,8 @@ def preview_subscriptions(
     cursor: str | None = Query(None, description="Pagination cursor JSON"),
     limit: int = Query(50, ge=1, le=200, description="Preview page size"),
     current_user: User = Depends(get_current_user),
-    svc: SubscriptionService = Depends(get_subscription_service),
-):
+    svc = Depends(get_subscription_service),
+    ):
     """Preview user's subscriptions at a given site (without actually importing)
 
     Args:
@@ -442,8 +442,8 @@ def import_subscriptions(
     site: str,
     req: ImportSubscriptionsRequest | None = None,
     current_user: User = Depends(get_current_user),
-    svc: SubscriptionService = Depends(get_subscription_service),
-):
+    svc = Depends(get_subscription_service),
+    ):
     """Import all user subscriptions from a specified site
 
     Args:

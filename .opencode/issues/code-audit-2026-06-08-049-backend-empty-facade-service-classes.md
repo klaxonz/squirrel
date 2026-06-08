@@ -1,6 +1,7 @@
 ---
 title: VideoService/SubscriptionService 空壳门面类仅做 *args,**kwargs 透传
-status: open
+status: fixed
+fixed_by: services/video_service.py:28, services/subscription_service.py:68, routes/video.py:25, routes/subscription.py:28
 severity: medium
 category: architecture
 location: squirrel-backend/services/video_service.py:28, services/subscription_service.py

@@ -13,8 +13,8 @@ from schemas.video.request.video import (
     VideoCategory,
     YesNoAll,
 )
+from services import video_service
 from services.auth_service import get_current_user
-from services.video_service import VideoService
 from utils.site_catalog import SiteCatalog
 
 logger = logging.getLogger(__name__)
@@ -22,15 +22,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/video", tags=["频道视频接口"])
 
 
-def get_video_service() -> VideoService:
-    return VideoService()
+def get_video_service():
+    return video_service
 
 
 @router.post("/remote-save")
 def save_remote_video(
         data: RemoteVideoSaveRequest,
         current_user: User = Depends(get_current_user),
-        svc: VideoService = Depends(get_video_service),
+        svc = Depends(get_video_service),
 ):
     try:
         video = svc.save_remote_video(data.model_dump())
@@ -47,7 +47,7 @@ def save_remote_video(
 def get_video(
         video_id: int = Query(None, description="视频ID"),
         current_user: User = Depends(get_current_user),
-        svc: VideoService = Depends(get_video_service),
+        svc = Depends(get_video_service),
 ):
     video = svc.get_video(current_user.id, video_id)
     return response.success(video)
@@ -69,7 +69,7 @@ def get_videos(
         duration: DurationFilter = Query(DurationFilter.ALL, description="时长: all|short|medium|long"),
         content_type: ContentType = Query(ContentType.ALL, description="内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR"),
         current_user: User = Depends(get_current_user),
-        svc: VideoService = Depends(get_video_service),
+        svc = Depends(get_video_service),
 ):
 
     domains_list: list[str] | None = None
@@ -106,7 +106,7 @@ def get_random_video(
         duration: DurationFilter = Query(DurationFilter.ALL, description="时长: all|short|medium|long"),
         content_type: ContentType = Query(ContentType.ALL, description="内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR"),
         current_user: User = Depends(get_current_user),
-        svc: VideoService = Depends(get_video_service),
+        svc = Depends(get_video_service),
 ):
     domains_list: list[str] | None = None
     if site:

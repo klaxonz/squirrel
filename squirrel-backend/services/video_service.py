@@ -24,36 +24,3 @@ __all__ = [
     "save_remote_video",
 ]
 
-
-class VideoService:
-    @staticmethod
-    def get_video(*args, **kwargs):
-        return get_video(*args, **kwargs)
-
-    @staticmethod
-    def list_videos(*args, **kwargs):
-        return list_videos(*args, **kwargs)
-
-    @staticmethod
-    def create_video(*args, **kwargs):
-        return create_video(*args, **kwargs)
-
-    @staticmethod
-    def get_video_by_id(*args, **kwargs):
-        return get_video_by_id(*args, **kwargs)
-
-    @staticmethod
-    def get_video_by_url(*args, **kwargs):
-        return get_video_by_url(*args, **kwargs)
-
-    @staticmethod
-    def get_videos_by_urls(*args, **kwargs):
-        return get_videos_by_urls(*args, **kwargs)
-
-    @staticmethod
-    def save_remote_video(*args, **kwargs):
-        return save_remote_video(*args, **kwargs)
-
-    @staticmethod
-    def get_random_video(*args, **kwargs):
-        return get_random_video(*args, **kwargs)
