@@ -1,6 +1,7 @@
 ---
 title: JWT_SECRET_KEY 随机默认值导致重启后所有会话失效
-status: open
+status: fixed
+fixed_by: squirrel-backend/core/config.py:44
 severity: critical
 category: security
 location: squirrel-backend/core/config.py:42
