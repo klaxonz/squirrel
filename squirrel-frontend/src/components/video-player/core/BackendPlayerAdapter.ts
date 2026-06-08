@@ -3,7 +3,6 @@ import { updateVideoHistory } from '@/api/videoHistory'
 import { playerLogger } from './logger'
 
 export class BackendPlayerAdapter extends LocalStorageAdapter implements IPlayerAdapter {
-  private syncTimer: ReturnType<typeof setInterval> | null = null
   private pendingProgress: (PlaybackProgress & { retryCount?: number })[] = []
   private storeKey: string
 

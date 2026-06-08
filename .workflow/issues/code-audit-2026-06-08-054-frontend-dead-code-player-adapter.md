@@ -1,6 +1,8 @@
 ---
 title: BackendPlayerAdapter 未使用的 syncTimer 字段和空 catch-rethrow
-status: open
+status: fixed
+fixed_by: code-fix workflow
+resolved_at: 2026-06-09
 severity: low
 category: dead-code
 location: squirrel-frontend/src/components/video-player/core/BackendPlayerAdapter.ts:6,242-244
