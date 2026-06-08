@@ -150,7 +150,7 @@ const stripRelaxedResponseHeaders = (responseHeaders) => {
 }
 
 export const installDesktopMediaHeaders = () => {
-  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+  const removeBeforeSend = session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
     const rule = matchMediaHeaderRule(details.url)
     if (!rule) {
       callback({ requestHeaders: details.requestHeaders })
@@ -180,7 +180,7 @@ export const installDesktopMediaHeaders = () => {
     })
   })
 
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+  const removeHeadersReceived = session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     // Strip X-Frame-Options and CSP headers for subFrame requests (iframes) to allow previewing inside the app
     if (details.resourceType === 'subFrame') {
       const responseHeaders = { ...details.responseHeaders }
@@ -207,4 +207,9 @@ export const installDesktopMediaHeaders = () => {
       responseHeaders: stripRelaxedResponseHeaders(details.responseHeaders),
     })
   })
+
+  return () => {
+    removeBeforeSend()
+    removeHeadersReceived()
+  }
 }

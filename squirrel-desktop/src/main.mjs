@@ -59,7 +59,8 @@ if (!hasSingleInstanceLock) {
 
   app.whenReady().then(() => {
     installDesktopBridgeHandlers()
-    installDesktopMediaHeaders()
+    const cleanupMediaHeaders = installDesktopMediaHeaders()
+    app.on('will-quit', cleanupMediaHeaders)
     createMainWindow()
     prewarmDesktopPlaybackProviders()
 

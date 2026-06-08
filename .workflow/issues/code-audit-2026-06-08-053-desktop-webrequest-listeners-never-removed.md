@@ -1,6 +1,7 @@
 ---
 title: installDesktopMediaHeaders 注册的 webRequest 监听器从未移除
-status: open
+status: fixed
+fixed_by: installDesktopMediaHeaders returns cleanup fn, called on will-quit
 severity: low
 category: resource-leak
 location: squirrel-desktop/src/media-headers.mjs:152-209
