@@ -1,6 +1,7 @@
 ---
 title: 中间件注册顺序导致 AccessLog 中无 trace_id
-status: open
+status: not_a_bug
+resolution: false_positive — current middleware ordering is correct; Starlette LIFO ensures AccessLogMiddleware's finally block runs before RequestContextMiddleware's finally, so trace_id is always available.
 severity: medium
 category: architecture
 location: squirrel-backend/routes/base.py:78-98
