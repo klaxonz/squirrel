@@ -235,6 +235,7 @@ class BrowserSolver:
                 if await page.locator(selector).count():
                     return CaptchaType.CLOUDFLARE_TURNSTILE
             except Exception:
+                logger.warning("Failed to check Turnstile selector %s", selector, exc_info=True)
                 continue
 
         if detected_type is not None:
@@ -244,6 +245,7 @@ class BrowserSolver:
             if await page.locator('script[src*="/cdn-cgi/challenge-platform/"]').count():
                 return CaptchaType.CLOUDFLARE_INTERSTITIAL
         except Exception:
+            logger.warning("Failed to check Interstitial marker script", exc_info=True)
             return None
 
         return None
@@ -271,6 +273,7 @@ class BrowserSolver:
         try:
             result = await page.evaluate(script)
         except Exception:
+            logger.warning("Failed to evaluate Turnstile container detection script", exc_info=True)
             return None
         return result if isinstance(result, dict) else None
 
@@ -292,6 +295,7 @@ class BrowserSolver:
                 await asyncio.sleep(0.15)
                 await page.mouse.up()
             except Exception:
+                logger.warning("Failed to perform manual Turnstile click at (%.1f, %.1f)", x, y, exc_info=True)
                 continue
 
             await asyncio.sleep(2)
@@ -438,6 +442,7 @@ class BrowserSolver:
                         title = await page.title()
                         html = await page.content()
                     except Exception:
+                        logger.warning("Failed to read page content after bypass wait for %s", url, exc_info=True)
                         await camoufox.__aexit__(None, None, None)
                         return None
                 if self._is_challenge_page(title, html):

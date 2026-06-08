@@ -1,9 +1,10 @@
 ---
 title: CF-bypass browser_solver.py 8 处静默吞异常
-status: open
+status: fixed
 severity: high
 category: error-handling
 location: squirrel-cf-bypass/src/squirrel_cf_bypass/app/core/browser_solver.py:237,246,273,294,360,397,430,440
+fixed_by: squirrel-cf-bypass/src/squirrel_cf_bypass/app/core/browser_solver.py:237,247,274,295,361,398,431,441
 ---
 
 ## 问题描述
