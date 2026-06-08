@@ -6,9 +6,9 @@
 
 完整实现链路使用 `feature-flow` skill 自动化，从需求到代码合入全链路：
 
-0. **需求获取** → 用 template 创建 `.opencode/requirements/<name>.md`，用户确认
+0. **需求获取** → 用 template 创建 `.workflow/requirements/<name>.md`，用户确认
 1. **需求理解** → 确认范围、子项目、红线
-2. **设计方案** → 调研代码，输出方案到 `.opencode/designs/<name>.md`，用户确认后开干
+2. **设计方案** → 调研代码，输出方案到 `.workflow/designs/<name>.md`，用户确认后开干
 3. **编码实现** → 按设计方案实现，涉及范围内可做最佳实践重构
 4. **审查** → 对照设计方案逐条覆盖
 5. **测试** → lint + 类型检查 + 相关测试
@@ -85,11 +85,11 @@ npm install; npm run build:check  # 类型检查 + 构建
 ## 文档工作流
 | 命令 | 用途 | 存储位置 |
 |------|------|---------|
-| `/req <name>` | 创建需求文档 | `.opencode/requirements/<name>.md` |
-| `/design <name>` | 创建技术方案 | `.opencode/designs/<name>.md`（有对应需求时，name 必须与需求一致） |
-| `/bug <title>` | 报告缺陷（status=open） | 有关联需求/设计：`.opencode/issues/<name>-<NNN>-<title>.md`；独立缺陷：`.opencode/issues/bug-{YYYY-MM-DD}-{NNN}-<title>.md`（NNN 取目前最大序号 +1） |
+| `/req <name>` | 创建需求文档 | `.workflow/requirements/<name>.md` |
+| `/design <name>` | 创建技术方案 | `.workflow/designs/<name>.md`（有对应需求时，name 必须与需求一致） |
+| `/bug <title>` | 报告缺陷（status=open） | 有关联需求/设计：`.workflow/issues/<name>-<NNN>-<title>.md`；独立缺陷：`.workflow/issues/bug-{YYYY-MM-DD}-{NNN}-<title>.md`（NNN 取目前最大序号 +1） |
 | `/issues` | 列出所有 open 的 issue | — |
-| `/issue close <name>` | 关闭 issue（status→fixed） | `.opencode/issues/<name>.md`（传入文件名去除 `.md` 后缀的部分） |
+| `/issue close <name>` | 关闭 issue（status→fixed） | `.workflow/issues/<name>.md`（传入文件名去除 `.md` 后缀的部分） |
 | `/issue reopen <name>` | 重新打开 issue（status→open） | 同上 |
 
 **命名关联规则：** 同一特性的需求、设计、Issue 使用相同 `<name>`，详见 feature-flow skill 的「文档命名约定」。
