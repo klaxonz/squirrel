@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+
 import {
   DEFAULT_USER_AGENT,
   extractJsonArrayFromObjectLiteral,
@@ -44,6 +46,15 @@ const extractYpUploaderUrl = (htmlText, targetUrl) => {
 
 const buildCookieHeader = (cookie) => {
   return mergeCookieHeaders(AGE_GATE_COOKIE_HEADER, cookie)
+}
+
+const cacheScopeForCookie = (cookie) => {
+  const normalizedCookie = String(cookie || '').trim()
+  if (!normalizedCookie) {
+    return 'anonymous'
+  }
+
+  return `cookie:${createHash('sha1').update(normalizedCookie).digest('hex').slice(0, 16)}`
 }
 
 const buildRequestContext = (targetUrl) => {
@@ -274,7 +285,7 @@ export async function resolveYouPornPlayback(targetUrl, { cookie = '', forceRefr
     throw new Error('Invalid YouPorn URL')
   }
 
-  const cacheKey = `${normalizedUrl}|cookie=${cookie ? '1' : '0'}`
+  const cacheKey = `${normalizedUrl}|${cacheScopeForCookie(cookie)}`
   if (!forceRefresh) {
     const cached = await getCachedPayload(cacheKey)
     if (cached) {

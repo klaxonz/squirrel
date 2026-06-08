@@ -1,6 +1,7 @@
 ---
 title: YouPorn 播放缓存键使用二进制标志而非 SHA1 哈希
-status: open
+status: fixed
+fixed_by: squirrel-desktop/src/playback/providers/youporn/index.mjs:288
 severity: high
 category: code-smell
 location: squirrel-desktop/src/playback/providers/youporn/index.mjs:277
