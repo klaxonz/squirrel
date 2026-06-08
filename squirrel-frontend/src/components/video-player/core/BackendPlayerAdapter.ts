@@ -4,7 +4,7 @@ import { playerLogger } from './logger'
 
 export class BackendPlayerAdapter extends LocalStorageAdapter implements IPlayerAdapter {
   private syncTimer: ReturnType<typeof setInterval> | null = null
-  private pendingProgress: PlaybackProgress[] = []
+  private pendingProgress: (PlaybackProgress & { retryCount?: number })[] = []
   private storeKey: string
 
   constructor(storeKey = 'sp-player-config') {
@@ -18,7 +18,7 @@ export class BackendPlayerAdapter extends LocalStorageAdapter implements IPlayer
     const numericId = Number(progress.progressKey)
     if (!Number.isSafeInteger(numericId) || numericId <= 0) return
 
-    this.pendingProgress.push(progress)
+    this.pendingProgress.push({ ...progress, retryCount: 0 })
     if (this.pendingProgress.length > 20) {
       this.pendingProgress = this.pendingProgress.slice(-20)
     }
@@ -61,8 +61,15 @@ export class BackendPlayerAdapter extends LocalStorageAdapter implements IPlayer
           timestamp: progress.timestamp,
         })
       } catch {
-        // Re-queue on failure
-        this.pendingProgress.push(progress)
+        const retryCount = (progress.retryCount ?? 0) + 1
+        if (retryCount >= 3) {
+          playerLogger.warn('[BackendPlayerAdapter] Discarding progress after 3 retries', {
+            videoId: numericId,
+            position: Math.round(progress.currentTime),
+          })
+          continue
+        }
+        this.pendingProgress.push({ ...progress, retryCount })
       }
     }
   }

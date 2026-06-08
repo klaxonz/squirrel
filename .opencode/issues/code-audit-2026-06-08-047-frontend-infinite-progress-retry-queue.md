@@ -1,6 +1,7 @@
 ---
 title: BackendPlayerAdapter 后端不可用时进度重试队列无限增长
-status: open
+status: fixed
+fixed_by: squirrel-frontend/src/components/video-player/core/BackendPlayerAdapter.ts:63-72
 severity: medium
 category: error-handling
 location: squirrel-frontend/src/components/video-player/core/BackendPlayerAdapter.ts:63-66
