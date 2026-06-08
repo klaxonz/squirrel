@@ -7,6 +7,7 @@ const corePath = new URL('../src/playback/providers/youtube/youtubei_core.mjs', 
 const mainPath = new URL('../src/main.mjs', import.meta.url)
 const siteLoginPath = new URL('../src/site-login.mjs', import.meta.url)
 const ipcHandlersPath = new URL('../src/ipc-handlers.mjs', import.meta.url)
+const ipcPlaybackPath = new URL('../src/ipc-playback.mjs', import.meta.url)
 const pluginCorePath = new URL('../../squirrel-site-runtimes/youtube/src/squirrel_youtube/node/youtubei_core.mjs', import.meta.url)
 const frontendDetailPath = new URL('../../squirrel-frontend/src/composables/useVideoDetail.ts', import.meta.url)
 
@@ -98,7 +99,7 @@ test('youtube captions treat tv oauth as an authenticated session', async () => 
 
 test('desktop youtube subtitles are resolved through the electron bridge', async () => {
   const providerSource = await readFile(providerPath, 'utf8')
-  const ipcSource = await readFile(ipcHandlersPath, 'utf8')
+  const ipcSource = await readFile(ipcPlaybackPath, 'utf8')
   const frontendSource = await readFile(frontendDetailPath, 'utf8')
 
   assert.match(providerSource, /export async function resolveYouTubeSubtitles/)

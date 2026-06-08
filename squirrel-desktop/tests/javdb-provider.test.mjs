@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { resolveJavdbMetadata, resolveJavdbPlayback, __testing } from '../src/playback/providers/javdb/index.mjs'
+import { resolveJavdbMetadata, resolveJavdbPlayback, formatStreamUrl } from '../src/playback/providers/javdb/index.mjs'
 
 const streamParts = 'm3u8|one|two|three|four|five|com|example|cdn|videos|https|video|master|playlist|source'
 
@@ -113,7 +113,7 @@ test('desktop javdb provider resolves metadata from javdb detail separately', as
 
 test('desktop javdb provider extracts packed missav stream metadata', () => {
   assert.equal(
-    __testing.formatStreamUrl(streamParts),
+    formatStreamUrl(streamParts),
     'https://videos.cdn.example.com/five-four-three-two-one/master/video.m3u8',
   )
 })

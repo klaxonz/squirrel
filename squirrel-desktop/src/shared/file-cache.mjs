@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { homedir, tmpdir } from 'node:os'
+import { homedir } from 'node:os'
 import { CACHE_TTL_MS } from '../constants.mjs'
 
 const CACHE_DIR = join(homedir(), '.squirrel', 'playback-cache')

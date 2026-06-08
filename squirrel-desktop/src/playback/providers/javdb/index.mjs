@@ -142,7 +142,7 @@ const extractMissavSearchLinks = (htmlText, baseUrl) => {
   return links
 }
 
-const formatStreamUrl = (parts) => {
+export const formatStreamUrl = (parts) => {
   const urlPath = String(parts || '').split('m3u8|')[1]?.split('|playlist|source')[0] || ''
   const urlWords = urlPath.split('|')
   const videoIndex = urlWords.indexOf('video')
@@ -300,11 +300,4 @@ export async function resolveJavdbMetadata(targetUrl, { loadDocumentHtml } = {})
   return extractJavdbMetadata(javdbHtml, normalizedUrl)
 }
 
-export const __testing = {
-  extractVideoNo,
-  extractJavdbTitle,
-  extractJavdbMetadata,
-  extractPartsFromHtml,
-  extractMissavSearchLinks,
-  formatStreamUrl,
-}
+

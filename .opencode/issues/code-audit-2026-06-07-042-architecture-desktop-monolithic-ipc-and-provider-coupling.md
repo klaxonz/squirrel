@@ -1,6 +1,7 @@
 ---
 title: 架构 — Desktop IPC 单体 321 行处理 5 个领域 + main.mjs 耦合 YouTube
-status: open
+status: fixed
+fixed_by: src/ipc-handlers.mjs:1, src/main.mjs:2, src/playback/providers/javdb/index.mjs:145, src/playback/file-cache.mjs → src/shared/file-cache.mjs
 severity: medium
 category: architecture
 location: squirrel-desktop/src/（跨文件）

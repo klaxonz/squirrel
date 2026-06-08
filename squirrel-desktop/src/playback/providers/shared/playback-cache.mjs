@@ -1,4 +1,4 @@
-import { loadFileCache, saveFileCache } from '../../file-cache.mjs'
+import { loadFileCache, saveFileCache } from '../../../shared/file-cache.mjs'
 import { CACHE_TTL_MS } from '../../../constants.mjs'
 
 const caches = new Map()

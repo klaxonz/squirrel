@@ -1,5 +1,5 @@
 import { app, BrowserWindow } from 'electron'
-import { prewarmYouTubePlayback } from './playback/providers/youtube/index.mjs'
+import { prewarmPlaybackProviders } from './playback/providers/index.mjs'
 import { installDesktopBridgeHandlers } from './ipc-handlers.mjs'
 import { installDesktopMediaHeaders } from './media-headers.mjs'
 import { createMainWindow, setRendererOrigin } from './window.mjs'
@@ -29,9 +29,7 @@ setRendererOrigin(rendererUrl, rendererOrigin)
 
 const prewarmDesktopPlaybackProviders = () => {
   setTimeout(() => {
-    void prewarmYouTubePlayback().catch((error) => {
-      console.debug('[squirrel-desktop] YouTube playback prewarm skipped', error?.message || error)
-    })
+    prewarmPlaybackProviders()
   }, 1000)
 }
 
