@@ -19,56 +19,56 @@ const clearUserState = () => {
 }
 
 export function useUser() {
-  const register = async (data: Record<string, unknown>) => {
+  const register = async (payload: Record<string, unknown>) => {
     loading.value = true
     error.value = null
 
-    const result = (await registerUser(data)) as ApiResult<User>
+    const response = (await registerUser(payload)) as ApiResult<User>
 
     loading.value = false
-    error.value = result.error
-    return result
+    error.value = response.error
+    return response
   }
 
-  const login = async (data: Record<string, unknown>) => {
+  const login = async (credentials: Record<string, unknown>) => {
     loading.value = true
     error.value = null
 
-    const result = (await loginUser(data)) as ApiResult<User>
+    const response = (await loginUser(credentials)) as ApiResult<User>
 
-    if (!result.error) {
-      currentUser.value = result.data || null
-      isAuthenticated.value = !!result.data
+    if (!response.error) {
+      currentUser.value = response.data || null
+      isAuthenticated.value = !!response.data
       hasResolvedAuth.value = true
     }
 
     loading.value = false
-    error.value = result.error
-    return result
+    error.value = response.error
+    return response
   }
 
   const logout = async () => {
     loading.value = true
     error.value = null
 
-    const result = (await logoutUser()) as ApiResult<null>
+    const response = (await logoutUser()) as ApiResult<null>
     clearUserState()
 
     loading.value = false
-    error.value = result.error
-    return result
+    error.value = response.error
+    return response
   }
 
   const getCurrentUser = async () => {
     loading.value = true
     error.value = null
 
-    const result = (await getUserMe()) as ApiResult<User>
+    const response = (await getUserMe()) as ApiResult<User>
 
-    if ((result.error as { status?: number } | null)?.status === 401) {
+    if ((response.error as { status?: number } | null)?.status === 401) {
       clearUserState()
-    } else if (!result.error) {
-      currentUser.value = result.data || null
+    } else if (!response.error) {
+      currentUser.value = response.data || null
       isAuthenticated.value = true
       hasResolvedAuth.value = true
     } else {
@@ -78,23 +78,23 @@ export function useUser() {
     }
 
     loading.value = false
-    error.value = result.error
-    return result
+    error.value = response.error
+    return response
   }
 
-  const updateProfile = async (data: Record<string, unknown>) => {
+  const updateProfile = async (profile: Record<string, unknown>) => {
     loading.value = true
     error.value = null
 
-    const result = (await updateUserMe(data)) as ApiResult<User>
+    const response = (await updateUserMe(profile)) as ApiResult<User>
 
-    if (!result.error) {
-      currentUser.value = result.data || null
+    if (!response.error) {
+      currentUser.value = response.data || null
     }
 
     loading.value = false
-    error.value = result.error
-    return result
+    error.value = response.error
+    return response
   }
 
   return {

@@ -105,10 +105,10 @@ async def import_cookies_for_all_sites(
     domain_to_sites: dict[str, list[str]] = {}
     site_to_domains: dict[str, list[str]] = {}
     for site_name in site_names:
-        info = catalog_svc.build_site_info(site_name, catalog)
-        if not info:
+        site_info = catalog_svc.build_site_info(site_name, catalog)
+        if not site_info:
             continue
-        domains = [d.strip().lstrip('.').lower() for d in (info.get('domains') or []) if d]
+        domains = [d.strip().lstrip('.').lower() for d in (site_info.get('domains') or []) if d]
         if not domains:
             continue
         site_to_domains[site_name] = domains
@@ -153,7 +153,7 @@ async def import_cookies_for_all_sites(
         result_summary[site_name] = {'cookies': len(body)}
 
     total_lines = len(lines)
-    matched_lines = sum(info['cookies'] for info in result_summary.values())
+    matched_lines = sum(entry['cookies'] for entry in result_summary.values())
 
     return success(
         {

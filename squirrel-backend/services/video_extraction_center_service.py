@@ -69,11 +69,11 @@ class VideoExtractionCenterService:
     @staticmethod
     def _build_site_domain_index(catalog: dict[str, dict]) -> dict[str, str]:
         index: dict[str, str] = {}
-        for slug, info in catalog.items():
-            for domain in info.get('domains', []):
+        for slug, site_info in catalog.items():
+            for domain in site_info.get('domains', []):
                 if domain:
                     index[str(domain).strip().lower()] = slug
-            for alias in info.get('aliases', []):
+            for alias in site_info.get('aliases', []):
                 if alias:
                     index[str(alias).strip().lower()] = slug
         return index

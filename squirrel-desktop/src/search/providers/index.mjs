@@ -106,22 +106,22 @@ const waitForAllSiteResults = async (searchTasks, waitMs, readyGraceMs, minReady
     const activeDeadline = readyDeadline ? Math.min(deadline, readyDeadline) : deadline
     if (Date.now() >= activeDeadline) break
     const timeoutMs = activeDeadline - Date.now()
-    const result = await Promise.race([
+    const raceResult = await Promise.race([
       ...Array.from(pending).map((task) => task.promise),
       new Promise((resolve) => {
         setTimeout(() => resolve(null), timeoutMs)
       }),
     ])
-    if (!result) break
+    if (!raceResult) break
 
-    pending.delete(result.task)
-    if (result.status === 'fulfilled') {
-      completed.push(result.value)
+    pending.delete(raceResult.task)
+    if (raceResult.status === 'fulfilled') {
+      completed.push(raceResult.value)
       if (!readyDeadline && countCompletedItems(completed) >= minReadyItems) {
         readyDeadline = Date.now() + readyGraceMs
       }
     } else {
-      errors.push(String(result.reason?.message || result.reason || 'Remote search failed'))
+      errors.push(String(raceResult.reason?.message || raceResult.reason || 'Remote search failed'))
     }
   }
 
@@ -210,12 +210,12 @@ export const searchRemoteVideos = async ({
   const errors = [...settled.errors]
   const completedBySite = new Map(settled.completed.map((result) => [result.site, result]))
   for (const siteName of siteNames) {
-    const result = completedBySite.get(siteName)
-    if (!result) continue
+    const completed = completedBySite.get(siteName)
+    if (!completed) continue
     siteResults.push({
-      site: result.site,
-      items: Array.isArray(result.items) ? result.items : [],
-      has_more: result.has_more,
+      site: completed.site,
+      items: Array.isArray(completed.items) ? completed.items : [],
+      has_more: completed.has_more,
     })
   }
 

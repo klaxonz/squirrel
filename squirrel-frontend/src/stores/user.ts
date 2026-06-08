@@ -34,35 +34,35 @@ export const useUserStore = defineStore('user', () => {
 
   const fetchCurrentUser = async () => {
     loading.value = true
-    const result = await getUserMe()
-    if (result.error?.status === 401) {
+    const response = await getUserMe()
+    if (response.error?.status === 401) {
       clearState()
-    } else if (!result.error) {
-      currentUser.value = (result.data as User | null) || null
-      isAuthenticated.value = !!result.data
+    } else if (!response.error) {
+      currentUser.value = (response.data as User | null) || null
+      isAuthenticated.value = !!response.data
     }
     hasResolvedAuth.value = true
     loading.value = false
-    return result
+    return response
   }
 
-  const login = async (data: Record<string, unknown>) => {
+  const login = async (credentials: Record<string, unknown>) => {
     loading.value = true
-    const result = await loginUser(data)
-    if (!result.error) {
-      currentUser.value = (result.data as User | null) || null
+    const response = await loginUser(credentials)
+    if (!response.error) {
+      currentUser.value = (response.data as User | null) || null
       isAuthenticated.value = true
       hasResolvedAuth.value = true
     }
     loading.value = false
-    return result
+    return response
   }
 
-  const register = async (data: Record<string, unknown>) => {
+  const register = async (payload: Record<string, unknown>) => {
     loading.value = true
-    const result = await registerUser(data)
+    const response = await registerUser(payload)
     loading.value = false
-    return result
+    return response
   }
 
   const logout = async () => {
@@ -70,14 +70,14 @@ export const useUserStore = defineStore('user', () => {
     clearState()
   }
 
-  const updateProfile = async (data: Record<string, unknown>) => {
+  const updateProfile = async (profile: Record<string, unknown>) => {
     loading.value = true
-    const result = await updateUserMe(data)
-    if (!result.error) {
-      currentUser.value = (result.data as User | null) || null
+    const response = await updateUserMe(profile)
+    if (!response.error) {
+      currentUser.value = (response.data as User | null) || null
     }
     loading.value = false
-    return result
+    return response
   }
 
   return {

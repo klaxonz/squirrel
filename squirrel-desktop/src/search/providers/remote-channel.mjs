@@ -296,7 +296,7 @@ const readBilibiliSpacePageValue = async ({ mid, page, loadDocumentHtml, script,
 }
 
 const fetchBilibiliSpacePageJson = async ({ mid, page, baseParams, imgKey, subKey, loadDocumentHtml }) => {
-  const result = await readBilibiliSpacePageValue({
+  const pageValue = await readBilibiliSpacePageValue({
     mid,
     page,
     loadDocumentHtml,
@@ -354,12 +354,12 @@ const fetchBilibiliSpacePageJson = async ({ mid, page, baseParams, imgKey, subKe
     },
   })
 
-  const status = Number(result?.status)
+  const status = Number(pageValue?.status)
   if (!Number.isFinite(status) || status < 200 || status >= 300) {
     throw new Error(`Bilibili request failed: ${status || 'unknown'}`)
   }
 
-  const payload = JSON.parse(String(result?.text || '{}'))
+  const payload = JSON.parse(String(pageValue?.text || '{}'))
   if (payload?.code !== undefined && payload.code !== 0) {
     throw new Error(`${payload?.message || payload?.msg || payload.code} (code=${payload.code})`)
   }
@@ -705,7 +705,7 @@ export const getRemoteChannel = async ({
   const provider = CHANNEL_PROVIDERS[normalizedSite]
   if (!provider) throw new Error(`Remote channel site is not supported: ${normalizedSite}`)
 
-  const result = await provider({
+  const providerResult = await provider({
     url: channelUrl,
     limit,
     page,
@@ -718,10 +718,10 @@ export const getRemoteChannel = async ({
 
   return {
     site: normalizedSite,
-    profile: result.profile,
-    items: result.items,
-    page: result.page,
-    has_more: result.has_more,
-    next_cursor: result.next_cursor || null,
+    profile: providerResult.profile,
+    items: providerResult.items,
+    page: providerResult.page,
+    has_more: providerResult.has_more,
+    next_cursor: providerResult.next_cursor || null,
   }
 }

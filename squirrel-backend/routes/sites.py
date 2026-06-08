@@ -36,11 +36,11 @@ def get_supported_sites(
 
     sites_info = []
     for site_name in site_names:
-        info = catalog_svc.build_site_info(site_name, catalog)
-        if not info:
+        site_cfg = catalog_svc.build_site_info(site_name, catalog)
+        if not site_cfg:
             continue
-        info['supports_login_status'] = site_name.lower() in login_supported_sites_lower
-        sites_info.append(info)
+        site_cfg['supports_login_status'] = site_name.lower() in login_supported_sites_lower
+        sites_info.append(site_cfg)
 
     return success({
         'sites': sites_info,
@@ -103,7 +103,7 @@ async def test_site_connectivity_endpoint(
     if not test_url:
         return error(f'Site {site_name} has no configured test URL')
 
-    result = await test_site_connectivity(
+    connectivity_result = await test_site_connectivity(
         url=test_url,
         timeout=timeout,
         follow_redirects=True,
@@ -112,14 +112,14 @@ async def test_site_connectivity_endpoint(
     return success({
         'site_name': site_name,
         'domains': site_domains,
-        'test_url': result.url,
-        'accessible': result.accessible,
-        'status': result.status,
-        'status_code': result.status_code,
-        'response_time': result.response_time,
-        'dns_resolved': result.dns_resolved,
-        'ip_address': result.ip_address,
-        'error_message': result.error_message,
+        'test_url': connectivity_result.url,
+        'accessible': connectivity_result.accessible,
+        'status': connectivity_result.status,
+        'status_code': connectivity_result.status_code,
+        'response_time': connectivity_result.response_time,
+        'dns_resolved': connectivity_result.dns_resolved,
+        'ip_address': connectivity_result.ip_address,
+        'error_message': connectivity_result.error_message,
     })
 
 
@@ -268,8 +268,8 @@ async def test_all_sites_connectivity(
     async def run_test(site_name, test_url, site_domains):
         async with semaphore:
             try:
-                result = await test_site_connectivity(url=test_url, timeout=timeout, follow_redirects=True)
-                return site_name, test_url, site_domains, result, None
+                connectivity_result = await test_site_connectivity(url=test_url, timeout=timeout, follow_redirects=True)
+                return site_name, test_url, site_domains, connectivity_result, None
             except Exception as exc:
                 return site_name, test_url, site_domains, None, exc
 

@@ -117,7 +117,7 @@ async def test_site_connectivity(
 
     """
     start_time = time.time()
-    result = ConnectivityTestResponse(
+    test_result = ConnectivityTestResponse(
         url=url,
         status="unknown",
         accessible=False,
@@ -131,15 +131,15 @@ async def test_site_connectivity(
         if hostname:
             try:
                 ip_address = socket.gethostbyname(hostname)
-                result.dns_resolved = True
-                result.ip_address = ip_address
+                test_result.dns_resolved = True
+                test_result.ip_address = ip_address
                 logger.info("DNS resolved for %s: %s", hostname, ip_address)
             except socket.gaierror as e:
-                result.dns_resolved = False
-                result.status = "error"
-                result.error_message = f"DNS解析失败: {e!s}"
+                test_result.dns_resolved = False
+                test_result.status = "error"
+                test_result.error_message = f"DNS解析失败: {e!s}"
                 logger.warning("DNS resolution failed for %s: %s", hostname, e)
-                return result
+                return test_result
 
         # 发起HTTP请求
         async with httpx.AsyncClient(
@@ -151,12 +151,12 @@ async def test_site_connectivity(
                 response = await fetch_with_fallback(client, url)
                 response_time = (time.time() - start_time) * 1000  # 转换为毫秒
 
-                result.status_code = response.status_code
-                result.response_time = round(response_time, 2)
-                result.final_url = str(response.url)
+                test_result.status_code = response.status_code
+                test_result.response_time = round(response_time, 2)
+                test_result.final_url = str(response.url)
 
                 # 提取部分响应头
-                result.headers = {
+                test_result.headers = {
                     "content-type": response.headers.get("content-type", ""),
                     "server": response.headers.get("server", ""),
                     "content-length": response.headers.get("content-length", ""),
@@ -164,46 +164,46 @@ async def test_site_connectivity(
 
                 # 判断是否可访问（2xx 和 3xx 状态码都认为是成功）
                 if 200 <= response.status_code < 400:
-                    result.status = "success"
-                    result.accessible = True
+                    test_result.status = "success"
+                    test_result.accessible = True
                     logger.info("Site %s is accessible, status: %s, time: %f'.2f'ms", url, response.status_code, response_time)
                 elif response.status_code in RESTRICTED_STATUS_CODES:
-                    result.status = "restricted"
-                    result.accessible = True
-                    result.error_message = f"站点响应限制HTTP状态码: {response.status_code}"
+                    test_result.status = "restricted"
+                    test_result.accessible = True
+                    test_result.error_message = f"站点响应限制HTTP状态码: {response.status_code}"
                     logger.info("Site %s responded with restricted status %s but is reachable", url, response.status_code)
                 else:
-                    result.status = "failed"
-                    result.accessible = False
-                    result.error_message = f"HTTP状态码: {response.status_code}"
+                    test_result.status = "failed"
+                    test_result.accessible = False
+                    test_result.error_message = f"HTTP状态码: {response.status_code}"
                     logger.warning("Site %s returned status %s", url, response.status_code)
 
             except httpx.TimeoutException as e:
-                result.status = "timeout"
-                result.accessible = False
-                result.error_message = f"请求超时（{timeout}秒）"
+                test_result.status = "timeout"
+                test_result.accessible = False
+                test_result.error_message = f"请求超时（{timeout}秒）"
                 logger.warning("Timeout testing %s: %s", url, e)
 
             except httpx.ConnectError as e:
-                result.status = "error"
-                result.accessible = False
-                result.error_message = f"连接失败: {e!s}"
+                test_result.status = "error"
+                test_result.accessible = False
+                test_result.error_message = f"连接失败: {e!s}"
                 logger.warning("Connection error testing %s: %s", url, e)
 
             except httpx.HTTPError as e:
-                result.status = "error"
-                result.accessible = False
-                result.error_message = f"HTTP错误: {e!s}"
+                test_result.status = "error"
+                test_result.accessible = False
+                test_result.error_message = f"HTTP错误: {e!s}"
                 logger.warning("HTTP error testing %s: %s", url, e)
 
     except Exception as e:
         # task boundary -- prevent single failure from crashing request
-        result.status = "error"
-        result.accessible = False
-        result.error_message = f"未知错误: {e!s}"
+        test_result.status = "error"
+        test_result.accessible = False
+        test_result.error_message = f"未知错误: {e!s}"
         logger.error("Unexpected error testing %s: %s", url, e, exc_info=True)
 
-    return result
+    return test_result
 
 
 @router.post("/test", response_model=ConnectivityTestResponse, status_code=status.HTTP_200_OK)
@@ -219,13 +219,13 @@ async def test_connectivity(request: ConnectivityTestRequest) -> ConnectivityTes
     """
     logger.info("Testing connectivity for: %s", request.url)
 
-    result = await test_site_connectivity(
+    test_result = await test_site_connectivity(
         url=request.url,
         timeout=request.timeout,
         follow_redirects=request.follow_redirects,
     )
 
-    return result
+    return test_result
 
 
 @router.post("/test/batch", response_model=BatchConnectivityTestResponse, status_code=status.HTTP_200_OK)
@@ -311,12 +311,12 @@ async def quick_test(url: str) -> dict[str, Any]:
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
 
-    result = await test_site_connectivity(url, timeout=5, follow_redirects=True)
+    test_result = await test_site_connectivity(url, timeout=5, follow_redirects=True)
 
     return {
-        "url": result.url,
-        "accessible": result.accessible,
-        "status": result.status,
-        "response_time": result.response_time,
-        "error": result.error_message,
+        "url": test_result.url,
+        "accessible": test_result.accessible,
+        "status": test_result.status,
+        "response_time": test_result.response_time,
+        "error": test_result.error_message,
     }

@@ -35,8 +35,8 @@ class BaseExtractor:
     def validate_url(self, url: str) -> bool:
         """Validate URL format."""
         try:
-            result = urlparse(url)
-            return all([result.scheme, result.netloc])
+            parsed_url = urlparse(url)
+            return all([parsed_url.scheme, parsed_url.netloc])
         except (ValueError, TypeError):
             return False
 
@@ -92,29 +92,29 @@ class BaseTaskProcessor:
         try:
             logger.info("Start execute extract task, task_id: %s, url: %s", task.task_id, task.url)
 
-            result = extractor.extract(task)
+            extraction_result = extractor.extract(task)
 
-            if result.success:
-                self.result_handler.handle_success(task, result)
-                title = result.data.title if result.data else "unknown"
+            if extraction_result.success:
+                self.result_handler.handle_success(task, extraction_result)
+                title = extraction_result.data.title if extraction_result.data else "unknown"
                 logger.info("Task processed successfully: %s, title: %s", task.task_id, title)
             else:
-                self.result_handler.handle_failure(task, result)
-                logger.error("Task processing failed: %s, error: %s", task.task_id, result.error)
+                self.result_handler.handle_failure(task, extraction_result)
+                logger.error("Task processing failed: %s, error: %s", task.task_id, extraction_result.error)
 
-            return result
+            return extraction_result
 
         except (ValueError, TypeError, AttributeError) as e:
             error_msg = f"Task processing exception: {task.task_id}, error: {e!s}"
             logger.error(error_msg, exc_info=True)
 
-            result = ExtractionResult(
+            extraction_result = ExtractionResult(
                 success=False,
                 error=error_msg,
             )
 
-            self.result_handler.handle_failure(task, result)
-            return result
+            self.result_handler.handle_failure(task, extraction_result)
+            return extraction_result
 
 
 class BaseResultHandler:

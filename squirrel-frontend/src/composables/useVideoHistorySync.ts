@@ -48,9 +48,9 @@ export function useVideoHistorySync() {
     return Array.from(localHistory.values())
   }
 
-  const updateLocalHistory = (video_id: VideoId, data: ReportData) => {
+  const updateLocalHistory = (video_id: VideoId, report: ReportData) => {
     localHistory.set(video_id, {
-      ...data,
+      ...report,
       lastUpdated: Date.now(),
     })
   }

@@ -52,21 +52,21 @@ class BaseRepository(Generic[T]):
 
     def delete(self, id: int) -> bool:
         with self._get_session() as session:
-            result = session.execute(
+            query_result = session.execute(
                 sa_delete(self.model).where(self.model.id == id),
             )
             session.commit()
-            return result.rowcount > 0
+            return query_result.rowcount > 0
 
     def delete_by_ids(self, ids: list[int]) -> int:
         if not ids:
             return 0
         with self._get_session() as session:
-            result = session.execute(
+            query_result = session.execute(
                 sa_delete(self.model).where(self.model.id.in_(ids)),
             )
             session.commit()
-            return result.rowcount
+            return query_result.rowcount
 
     def exists(self, id: int) -> bool:
         with self._get_session() as session:

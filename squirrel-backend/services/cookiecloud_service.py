@@ -166,12 +166,12 @@ class CookieCloudService:
         catalog = get_effective_site_catalog()
 
         site_domains: dict[str, list[str]] = {}
-        for slug, info in catalog.items():
+        for slug, site_info in catalog.items():
             if site_slug and slug.lower() != site_slug.strip().lower():
                 continue
             domains = [
                 (d or "").strip().lstrip(".").lower()
-                for d in (info or {}).get("domains", [])
+                for d in (site_info or {}).get("domains", [])
                 if d
             ]
             if domains:

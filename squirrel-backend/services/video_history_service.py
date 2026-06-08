@@ -350,14 +350,14 @@ class VideoHistoryService:
 
     def delete_history(self, user_id: int, history_id: int) -> int:
         with self._session_factory() as session:
-            result = session.execute(
+            query_result = session.execute(
                 delete(VideoHistory).where(
                     VideoHistory.id == history_id,
                     VideoHistory.user_id == user_id,
                 ),
             )
             session.commit()
-            return result.rowcount
+            return query_result.rowcount
 
     def clear_histories(self, user_id: int, video_ids: list[int] | None = None):
         with self._session_factory() as session:
@@ -366,8 +366,8 @@ class VideoHistoryService:
             if video_ids:
                 conditions.append(VideoHistory.video_id.in_(video_ids))
 
-            result = session.execute(
+            query_result = session.execute(
                 delete(VideoHistory).where(*conditions),
             )
             session.commit()
-            return result.rowcount
+            return query_result.rowcount

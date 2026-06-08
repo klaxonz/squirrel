@@ -286,13 +286,13 @@ const summarizeUnplayablePayload = (playData) => {
   ].filter(Boolean).join('; ')
 }
 
-const mapPlaybackPayload = ({ playData, context, info }) => {
+const mapPlaybackPayload = ({ playData, context, info: videoInfo }) => {
   const dashData = playData?.dash
   const localDashManifest = dashData ? buildLocalDashManifest(dashData) : null
   const qualities = buildQualities(dashData)
-  const title = String(info?.data?.title || info?.title || '').trim() || null
-  const thumbnail = String(info?.data?.pic || info?.pic || '').trim() || null
-  const owner = info?.owner || info?.data?.owner || {}
+  const title = String(videoInfo?.data?.title || videoInfo?.title || '').trim() || null
+  const thumbnail = String(videoInfo?.data?.pic || videoInfo?.pic || '').trim() || null
+  const owner = videoInfo?.owner || videoInfo?.data?.owner || {}
   const uploaderName = String(owner?.name || '').trim() || null
   const uploaderAvatar = String(owner?.face || '').trim() || null
   const uploaderId = String(owner?.mid || '').trim() || null
@@ -352,12 +352,12 @@ export async function resolveBilibiliSubtitles(targetUrl, { cookie = '', lang = 
   }
 
   const infoParams = bvid ? { bvid } : { aid: String(aid) }
-  const info = await fetchBrowserJson('https://api.bilibili.com/x/web-interface/view', {
+  const videoInfo = await fetchBrowserJson('https://api.bilibili.com/x/web-interface/view', {
     cookie,
     params: infoParams,
   })
 
-  const subtitleList = Array.isArray(info?.subtitle?.list) ? info.subtitle.list : []
+  const subtitleList = Array.isArray(videoInfo?.subtitle?.list) ? videoInfo.subtitle.list : []
   if (!subtitleList.length) {
     throw new Error('No subtitles available')
   }

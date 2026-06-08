@@ -158,13 +158,13 @@ async function normalizeStreamingData(info, player, poToken) {
   };
 }
 
-async function buildLocalDashManifest(info) {
-  if (!info || typeof info.toDash !== 'function') {
+async function buildLocalDashManifest(manifestInfo) {
+  if (!manifestInfo || typeof manifestInfo.toDash !== 'function') {
     return null;
   }
 
   try {
-    return await info.toDash({
+    return await manifestInfo.toDash({
       manifest_options: {
         include_thumbnails: false,
       },
@@ -247,8 +247,8 @@ async function resolveBestPlayableUrl(indexes, rawFormats, formats, player) {
   return null;
 }
 
-async function collectFormats(info, player, resolutionMode = 'playback') {
-  const streamingData = info.streaming_data || {};
+async function collectFormats(streamInfo, player, resolutionMode = 'playback') {
+  const streamingData = streamInfo.streaming_data || {};
   const rawFormats = [
     ...(streamingData.formats || []),
     ...(streamingData.adaptive_formats || []),
@@ -444,8 +444,8 @@ async function resolveCaptionPayload(payload) {
 
   for (const client of clients) {
     try {
-      const info = await runtime.yt.getBasicInfo(videoId, { client });
-      const captions = info.captions;
+      const captionsData = await runtime.yt.getBasicInfo(videoId, { client });
+      const captions = captionsData.captions;
       if (!captions?.caption_tracks?.length) {
         attempts.push({
           client,
@@ -868,23 +868,23 @@ export async function resolveYoutubeiPayload(payload) {
       }
 
       const infoStart = performance.now();
-      const info = await runtime.yt.getBasicInfo(videoId, requestOptions);
+      const videoInfo = await runtime.yt.getBasicInfo(videoId, requestOptions);
       const infoMs = Number((performance.now() - infoStart).toFixed(1));
       const formatsStart = performance.now();
-      const formats = await collectFormats(info, runtime.yt.session.player, resolutionMode);
+      const formats = await collectFormats(videoInfo, runtime.yt.session.player, resolutionMode);
       const formatsMs = Number((performance.now() - formatsStart).toFixed(1));
       const streamingDataStart = performance.now();
       const normalizedStreamingData = await normalizeStreamingData(
-        info,
+        videoInfo,
         runtime.yt.session.player,
         contentPoToken,
       );
       const streamingDataMs = Number((performance.now() - streamingDataStart).toFixed(1));
       const localDashStart = performance.now();
-      const localDashManifest = await buildLocalDashManifest(info);
+      const localDashManifest = await buildLocalDashManifest(videoInfo);
       const localDashMs = Number((performance.now() - localDashStart).toFixed(1));
-      const playabilityStatus = info.playability_status?.status || null;
-      const basicInfo = info.basic_info || {};
+      const playabilityStatus = videoInfo.playability_status?.status || null;
+      const basicInfo = videoInfo.basic_info || {};
       attempts.push({
         client,
         playability_status: playabilityStatus,

@@ -207,7 +207,7 @@ def refresh_subscription(
 
     trace_id = getattr(request.state, "trace_id", None)
 
-    result = scheduler.schedule_one(
+    schedule_result = scheduler.schedule_one(
         subscription_id=subscription.id,
         url=subscription.url,
         trigger=UpdateTrigger.MANUAL,
@@ -216,16 +216,16 @@ def refresh_subscription(
         trace_id=trace_id,
     )
 
-    if result.status == "failed":
+    if schedule_result.status == "failed":
         return response.server_error("刷新请求失败")
 
     return response.success({
         "mode": mode,
-        "status": result.status,
-        "inProgress": result.status == "in_progress",
+        "status": schedule_result.status,
+        "inProgress": schedule_result.status == "in_progress",
         "subscriptionId": subscription_id,
-        "requestId": result.request_id,
-        "queuedAt": datetime.utcnow().isoformat() if result.status == "queued" else None,
+        "requestId": schedule_result.request_id,
+        "queuedAt": datetime.utcnow().isoformat() if schedule_result.status == "queued" else None,
     })
 
 
@@ -251,7 +251,7 @@ def refresh_subscription_direct(
 
     trace_id = getattr(request.state, "trace_id", None)
 
-    result = scheduler.run_one_inline(
+    run_result = scheduler.run_one_inline(
         subscription_id=subscription.id,
         url=subscription.url,
         trigger=UpdateTrigger.MANUAL,
@@ -260,18 +260,18 @@ def refresh_subscription_direct(
         trace_id=trace_id,
     )
 
-    update_result = result.result
-    if result.status == "failed":
+    update_result = run_result.result
+    if run_result.status == "failed":
         return response.server_error("刷新请求失败")
 
     return response.success({
         "mode": mode,
-        "status": result.status,
-        "inProgress": result.status in {"in_progress", "queued"},
+        "status": run_result.status,
+        "inProgress": run_result.status in {"in_progress", "queued"},
         "subscriptionId": subscription_id,
-        "requestId": result.request_id,
-        "runId": result.run_id,
-        "syncStateId": result.sync_state_id,
+        "requestId": run_result.request_id,
+        "runId": run_result.run_id,
+        "syncStateId": run_result.sync_state_id,
         "videosFound": update_result.videos_found if update_result else 0,
         "videosExtracted": update_result.videos_enqueued if update_result else 0,
         "skippedReason": update_result.skipped_reason if update_result else None,
@@ -297,7 +297,7 @@ def get_sync_center_runs(
     if normalized_status and normalized_status not in SYNC_HISTORY_ALLOWED_STATUS:
         return response.param_error(f"不支持的运行状态筛选: {status}")
 
-    result = sync_history_svc.list_runs(
+    history_result = sync_history_svc.list_runs(
         current_user.id,
         status=normalized_status,
         site=site,
@@ -309,17 +309,17 @@ def get_sync_center_runs(
         page=page,
         page_size=page_size,
     )
-    return response.success(result)
+    return response.success(history_result)
 @router.get("/sync-center/runs/{run_id}")
 def get_sync_center_run_detail(
         run_id: str,
         current_user: User = Depends(get_current_user),
         sync_history_svc: SubscriptionSyncHistoryService = Depends(get_sync_history_service),
 ):
-    result = sync_history_svc.get_run_detail(run_id, current_user.id)
-    if not result:
+    detail_result = sync_history_svc.get_run_detail(run_id, current_user.id)
+    if not detail_result:
         return response.not_found("运行实例不存在")
-    return response.success(result)
+    return response.success(detail_result)
 
 
 @router.get("/sync-center/runs/{run_id}/events")
@@ -419,14 +419,14 @@ def preview_subscriptions(
 
         logger.info("User %s previewing subscriptions from %s", current_user.id, normalized_site)
 
-        result = svc.preview_user_subscriptions(
+        preview_result = svc.preview_user_subscriptions(
             normalized_site,
             current_user.id,
             cursor_payload=cursor_payload,
             limit=limit,
         )
 
-        return response.success(result)
+        return response.success(preview_result)
 
     except ValueError as e:
         logger.error("Invalid request for site %s: %s", site, e)
@@ -467,14 +467,14 @@ def import_subscriptions(
         logger.info("User %s importing subscriptions from %s", current_user.id, normalized_site)
 
         selected_urls = req.subscription_urls if req else None
-        result = svc.import_user_subscriptions(normalized_site, current_user.id, selected_urls=selected_urls)
+        import_result = svc.import_user_subscriptions(normalized_site, current_user.id, selected_urls=selected_urls)
 
         return response.success({
             "site": normalized_site,
-            "total": result["total"],
-            "found": result["found"],
-            "selected": result["selected"],
-            "skipped": result["skipped"],
+            "total": import_result["total"],
+            "found": import_result["found"],
+            "selected": import_result["selected"],
+            "skipped": import_result["skipped"],
         })
 
     except ValueError as e:

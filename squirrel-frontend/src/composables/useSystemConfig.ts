@@ -11,11 +11,11 @@ export function useSystemConfig() {
   const loadSystemConfig = async () => {
     loading.value = true
     try {
-      const result = (await getSystemConfig()) as ApiResult<SystemConfig>
-      if (!result.error) {
-        config.value = result.data || null
+      const response = (await getSystemConfig()) as ApiResult<SystemConfig>
+      if (!response.error) {
+        config.value = response.data || null
       }
-      return result
+      return response
     } finally {
       loading.value = false
     }
@@ -24,11 +24,11 @@ export function useSystemConfig() {
   const updateSystemConfig = async (payload: Record<string, unknown> = {}) => {
     loading.value = true
     try {
-      const result = (await saveSystemConfig(payload)) as ApiResult<SystemConfig>
-      if (!result.error) {
-        config.value = result.data || null
+      const response = (await saveSystemConfig(payload)) as ApiResult<SystemConfig>
+      if (!response.error) {
+        config.value = response.data || null
       }
-      return result
+      return response
     } finally {
       loading.value = false
     }

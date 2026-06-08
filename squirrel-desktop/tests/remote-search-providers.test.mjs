@@ -131,7 +131,7 @@ test('desktop youtube remote search extracts video renderers', async () => {
     },
   }
 
-  const result = await searchYouTubeVideos({
+  const searchResult = await searchYouTubeVideos({
     query: 'demo',
     limit: 5,
     buildCookieHeader,
@@ -141,7 +141,7 @@ test('desktop youtube remote search extracts video renderers', async () => {
     `),
   })
 
-  const items = result.items
+  const items = searchResult.items
   assert.equal(items.length, 1)
   assert.equal(items[0].site, 'youtube')
   assert.equal(items[0].url, 'https://www.youtube.com/watch?v=abc123')
@@ -156,7 +156,7 @@ test('desktop youtube remote search extracts video renderers', async () => {
     avatar: 'https://yt3.ggpht.com/demo-avatar=s88-c-k-c0x00ffffff-no-rj',
     is_nsfw: false,
   }])
-  assert.equal(result.has_more, false)
+  assert.equal(searchResult.has_more, false)
 })
 
 test('desktop youtube remote search extracts lockup view models', async () => {
@@ -240,7 +240,7 @@ test('desktop youtube remote search extracts lockup view models', async () => {
     },
   }
 
-  const result = await searchYouTubeVideos({
+  const searchResult = await searchYouTubeVideos({
     query: 'demo',
     limit: 5,
     buildCookieHeader,
@@ -250,12 +250,12 @@ test('desktop youtube remote search extracts lockup view models', async () => {
     `),
   })
 
-  assert.equal(result.items.length, 1)
-  assert.equal(result.items[0].title, 'Lockup YouTube Video')
-  assert.equal(result.items[0].url, 'https://www.youtube.com/watch?v=lock123')
-  assert.equal(result.items[0].duration, 341)
-  assert.equal(result.items[0].published_text, '3 days ago')
-  assert.equal(result.items[0].uploader_url, 'https://www.youtube.com/channel/UCdemo')
+  assert.equal(searchResult.items.length, 1)
+  assert.equal(searchResult.items[0].title, 'Lockup YouTube Video')
+  assert.equal(searchResult.items[0].url, 'https://www.youtube.com/watch?v=lock123')
+  assert.equal(searchResult.items[0].duration, 341)
+  assert.equal(searchResult.items[0].published_text, '3 days ago')
+  assert.equal(searchResult.items[0].uploader_url, 'https://www.youtube.com/channel/UCdemo')
 })
 
 test('desktop youtube remote search loads continuation pages', async () => {
@@ -322,7 +322,7 @@ test('desktop youtube remote search loads continuation pages', async () => {
     ],
   }
 
-  const result = await searchYouTubeVideos({
+  const searchResult = await searchYouTubeVideos({
     query: 'demo',
     limit: 1,
     page: 2,
@@ -340,10 +340,10 @@ test('desktop youtube remote search loads continuation pages', async () => {
   assert.equal(requests[1].url, 'https://www.youtube.com/youtubei/v1/search?key=test-key')
   assert.equal(requests[1].options.method, 'POST')
   assert.equal(JSON.parse(requests[1].options.body).continuation, 'CONTINUATION_1')
-  assert.equal(result.items.length, 1)
-  assert.equal(result.items[0].url, 'https://www.youtube.com/watch?v=def456')
-  assert.equal(result.items[0].duration, 154)
-  assert.equal(result.has_more, true)
+  assert.equal(searchResult.items.length, 1)
+  assert.equal(searchResult.items[0].url, 'https://www.youtube.com/watch?v=def456')
+  assert.equal(searchResult.items[0].duration, 154)
+  assert.equal(searchResult.has_more, true)
 })
 
 test('desktop pornhub remote search parses video list items', async () => {
@@ -552,7 +552,7 @@ test('desktop javdb remote search reports upstream block pages', async () => {
 })
 
 test('desktop remote search response carries pagination metadata', async () => {
-  const result = await searchRemoteVideos({
+  const searchResult = await searchRemoteVideos({
     query: 'demo',
     site: 'bilibili',
     limit: 1,
@@ -572,14 +572,14 @@ test('desktop remote search response carries pagination metadata', async () => {
     }),
   })
 
-  assert.equal(result.page, 3)
-  assert.equal(result.has_more, true)
-  assert.equal(result.items.length, 1)
+  assert.equal(searchResult.page, 3)
+  assert.equal(searchResult.has_more, true)
+  assert.equal(searchResult.items.length, 1)
 })
 
 test('desktop all-site remote search interleaves lightweight site results before limiting', async () => {
   const javdbDocumentOptions = []
-  const result = await searchRemoteVideos({
+  const searchResult = await searchRemoteVideos({
     query: 'demo',
     site: 'all',
     limit: 3,
@@ -620,14 +620,14 @@ test('desktop all-site remote search interleaves lightweight site results before
     },
   })
 
-  assert.equal(result.items.length, 3)
-  assert.deepEqual(result.items.map((item) => item.site), ['bilibili', 'pornhub', 'bilibili'])
+  assert.equal(searchResult.items.length, 3)
+  assert.deepEqual(searchResult.items.map((item) => item.site), ['bilibili', 'pornhub', 'bilibili'])
   assert.equal(javdbDocumentOptions.length, 0)
-  assert.deepEqual(result.sites, ['bilibili', 'youtube', 'pornhub', 'youporn'])
+  assert.deepEqual(searchResult.sites, ['bilibili', 'youtube', 'pornhub', 'youporn'])
 })
 
 test('desktop remote search does not wait forever for a stalled site', async () => {
-  const result = await searchRemoteVideos({
+  const searchResult = await searchRemoteVideos({
     query: 'demo',
     site: 'all',
     limit: 3,
@@ -650,14 +650,14 @@ test('desktop remote search does not wait forever for a stalled site', async () 
     },
   })
 
-  assert.deepEqual(result.items.map((item) => item.site), ['bilibili'])
-  assert.equal(result.has_more, false)
-  assert.equal(result.partial, false)
+  assert.deepEqual(searchResult.items.map((item) => item.site), ['bilibili'])
+  assert.equal(searchResult.has_more, false)
+  assert.equal(searchResult.partial, false)
 })
 
 test('desktop all-site remote search returns initial ready sites without waiting for slow sites', async () => {
   const startedAt = Date.now()
-  const result = await searchRemoteVideos({
+  const searchResult = await searchRemoteVideos({
     query: 'demo',
     site: 'all',
     limit: 3,
@@ -682,10 +682,10 @@ test('desktop all-site remote search returns initial ready sites without waiting
   })
 
   assert.ok(Date.now() - startedAt < 5000)
-  assert.deepEqual(result.items.map((item) => item.site), ['bilibili'])
-  assert.equal(result.has_more, false)
-  assert.equal(result.partial, true)
-  assert.deepEqual(result.pending_sites, ['youtube', 'pornhub', 'youporn'])
+  assert.deepEqual(searchResult.items.map((item) => item.site), ['bilibili'])
+  assert.equal(searchResult.has_more, false)
+  assert.equal(searchResult.partial, true)
+  assert.deepEqual(searchResult.pending_sites, ['youtube', 'pornhub', 'youporn'])
 })
 
 test('desktop all-site remote search keeps later pages on lightweight sites', async () => {
@@ -709,7 +709,7 @@ test('desktop all-site remote search keeps later pages on lightweight sites', as
 
 test('desktop all-site remote search returns later ready pages without waiting for slow sites', async () => {
   const startedAt = Date.now()
-  const result = await searchRemoteVideos({
+  const searchResult = await searchRemoteVideos({
     query: 'demo',
     site: 'all',
     limit: 3,
@@ -734,14 +734,14 @@ test('desktop all-site remote search returns later ready pages without waiting f
   })
 
   assert.ok(Date.now() - startedAt < 5000)
-  assert.deepEqual(result.items.map((item) => item.site), ['bilibili'])
-  assert.equal(result.partial, true)
-  assert.deepEqual(result.pending_sites, ['youtube', 'pornhub', 'youporn'])
+  assert.deepEqual(searchResult.items.map((item) => item.site), ['bilibili'])
+  assert.equal(searchResult.partial, true)
+  assert.deepEqual(searchResult.pending_sites, ['youtube', 'pornhub', 'youporn'])
 })
 
 test('desktop javdb site search requests automatic challenge solving window time', async () => {
   const documentOptions = []
-  const result = await searchRemoteVideos({
+  const searchResult = await searchRemoteVideos({
     query: 'demo',
     site: 'javdb',
     limit: 5,
@@ -754,15 +754,15 @@ test('desktop javdb site search requests automatic challenge solving window time
     },
   })
 
-  assert.equal(result.items.length, 1)
-  assert.equal(result.items[0].site, 'javdb')
+  assert.equal(searchResult.items.length, 1)
+  assert.equal(searchResult.items[0].site, 'javdb')
   assert.equal(documentOptions[0].timeoutMs, 30000)
   assert.equal(documentOptions[0].challengeTimeoutMs, 60000)
 })
 
 test('desktop javdb remote channel parses actor videos', async () => {
   const documentRequests = []
-  const result = await getRemoteChannel({
+  const channelResult = await getRemoteChannel({
     site: 'javdb',
     url: 'https://javdb.com/actors/demo-actor',
     limit: 5,
@@ -788,19 +788,19 @@ test('desktop javdb remote channel parses actor videos', async () => {
     },
   })
 
-  assert.equal(result.site, 'javdb')
-  assert.equal(result.profile.id, 'demo-actor')
-  assert.equal(result.profile.type, 'ACTOR')
-  assert.equal(result.profile.name, 'Demo Actor')
-  assert.equal(result.profile.avatar, 'https://javdb.com/actor.jpg')
-  assert.equal(result.items.length, 1)
-  assert.equal(result.items[0].site, 'javdb')
-  assert.equal(result.items[0].title, 'DEMO-002 Actor Video')
-  assert.equal(result.items[0].url, 'https://javdb.com/v/channel-demo')
-  assert.equal(result.items[0].thumbnail, 'https://javdb.com/cover.jpg')
-  assert.equal(result.items[0].publish_date, '2026-02-03')
-  assert.deepEqual(result.items[0].actors, [result.profile])
-  assert.equal(result.has_more, true)
+  assert.equal(channelResult.site, 'javdb')
+  assert.equal(channelResult.profile.id, 'demo-actor')
+  assert.equal(channelResult.profile.type, 'ACTOR')
+  assert.equal(channelResult.profile.name, 'Demo Actor')
+  assert.equal(channelResult.profile.avatar, 'https://javdb.com/actor.jpg')
+  assert.equal(channelResult.items.length, 1)
+  assert.equal(channelResult.items[0].site, 'javdb')
+  assert.equal(channelResult.items[0].title, 'DEMO-002 Actor Video')
+  assert.equal(channelResult.items[0].url, 'https://javdb.com/v/channel-demo')
+  assert.equal(channelResult.items[0].thumbnail, 'https://javdb.com/cover.jpg')
+  assert.equal(channelResult.items[0].publish_date, '2026-02-03')
+  assert.deepEqual(channelResult.items[0].actors, [channelResult.profile])
+  assert.equal(channelResult.has_more, true)
   assert.equal(documentRequests[0].url, 'https://javdb.com/actors/demo-actor?page=2&sort_type=0')
   assert.equal(documentRequests[0].options.timeoutMs, 30000)
   assert.equal(documentRequests[0].options.challengeTimeoutMs, 60000)
@@ -809,7 +809,7 @@ test('desktop javdb remote channel parses actor videos', async () => {
 test('desktop bilibili remote channel returns profile and videos', async () => {
   const requestedUrls = []
   const documentUrls = []
-  const result = await getRemoteChannel({
+  const channelResult = await getRemoteChannel({
     site: 'bilibili',
     url: 'https://space.bilibili.com/12345',
     limit: 5,
@@ -882,14 +882,14 @@ test('desktop bilibili remote channel returns profile and videos', async () => {
     },
   })
 
-  assert.equal(result.site, 'bilibili')
-  assert.equal(result.profile.name, 'Demo Uploader')
-  assert.equal(result.profile.avatar, 'https://i0.hdslb.com/avatar.jpg')
-  assert.equal(result.profile.description, 'Demo channel')
-  assert.equal(result.items.length, 1)
-  assert.equal(result.items[0].url, 'https://www.bilibili.com/video/BVchannel')
-  assert.equal(result.items[0].duration, 123)
-  assert.equal(result.has_more, true)
+  assert.equal(channelResult.site, 'bilibili')
+  assert.equal(channelResult.profile.name, 'Demo Uploader')
+  assert.equal(channelResult.profile.avatar, 'https://i0.hdslb.com/avatar.jpg')
+  assert.equal(channelResult.profile.description, 'Demo channel')
+  assert.equal(channelResult.items.length, 1)
+  assert.equal(channelResult.items[0].url, 'https://www.bilibili.com/video/BVchannel')
+  assert.equal(channelResult.items[0].duration, 123)
+  assert.equal(channelResult.has_more, true)
   assert.equal(documentUrls.length, 1)
   const videoRequestUrl = new URL(requestedUrls.find((url) => url.includes('/x/space/wbi/arc/search')))
   assert.equal(videoRequestUrl.searchParams.get('pn'), '2')
@@ -948,7 +948,7 @@ test('desktop youtube remote channel parses channel page videos', async () => {
   }
 
   let requestedUrl = ''
-  const result = await getRemoteChannel({
+  const channelResult = await getRemoteChannel({
     site: 'youtube',
     url: 'https://www.youtube.com/@demo',
     limit: 5,
@@ -963,15 +963,15 @@ test('desktop youtube remote channel parses channel page videos', async () => {
   })
 
   assert.equal(requestedUrl, 'https://www.youtube.com/@demo/videos')
-  assert.equal(result.profile.id, 'UCdemo')
-  assert.equal(result.profile.name, 'Demo Channel')
-  assert.equal(result.profile.description, 'Demo description')
-  assert.equal(result.items.length, 1)
-  assert.equal(result.items[0].url, 'https://www.youtube.com/watch?v=abc123')
-  assert.equal(result.items[0].duration, 184)
-  assert.deepEqual(result.items[0].subscriptions, [result.profile])
-  assert.equal(result.has_more, true)
-  assert.equal(result.next_cursor.continuation, 'CONTINUATION_1')
+  assert.equal(channelResult.profile.id, 'UCdemo')
+  assert.equal(channelResult.profile.name, 'Demo Channel')
+  assert.equal(channelResult.profile.description, 'Demo description')
+  assert.equal(channelResult.items.length, 1)
+  assert.equal(channelResult.items[0].url, 'https://www.youtube.com/watch?v=abc123')
+  assert.equal(channelResult.items[0].duration, 184)
+  assert.deepEqual(channelResult.items[0].subscriptions, [channelResult.profile])
+  assert.equal(channelResult.has_more, true)
+  assert.equal(channelResult.next_cursor.continuation, 'CONTINUATION_1')
 })
 
 test('desktop youtube remote channel parses lockup view model videos', async () => {
@@ -1040,7 +1040,7 @@ test('desktop youtube remote channel parses lockup view model videos', async () 
     },
   }
 
-  const result = await getRemoteChannel({
+  const channelResult = await getRemoteChannel({
     site: 'youtube',
     url: 'https://www.youtube.com/@modern',
     limit: 5,
@@ -1051,12 +1051,12 @@ test('desktop youtube remote channel parses lockup view model videos', async () 
     `),
   })
 
-  assert.equal(result.profile.id, 'UCmodern')
-  assert.equal(result.items.length, 1)
-  assert.equal(result.items[0].title, 'Modern Channel Video')
-  assert.equal(result.items[0].url, 'https://www.youtube.com/watch?v=lock123')
-  assert.equal(result.items[0].duration, 77)
-  assert.equal(result.items[0].published_text, '8 days ago')
+  assert.equal(channelResult.profile.id, 'UCmodern')
+  assert.equal(channelResult.items.length, 1)
+  assert.equal(channelResult.items[0].title, 'Modern Channel Video')
+  assert.equal(channelResult.items[0].url, 'https://www.youtube.com/watch?v=lock123')
+  assert.equal(channelResult.items[0].duration, 77)
+  assert.equal(channelResult.items[0].published_text, '8 days ago')
 })
 
 test('desktop youtube remote channel uses profile channel id for page requests', async () => {
@@ -1100,7 +1100,7 @@ test('desktop youtube remote channel uses profile channel id for page requests',
 
 test('desktop youtube remote channel loads continuation videos', async () => {
   const requests = []
-  const result = await getRemoteChannel({
+  const channelResult = await getRemoteChannel({
     site: 'youtube',
     url: 'https://www.youtube.com/@demo',
     limit: 5,
@@ -1154,15 +1154,15 @@ test('desktop youtube remote channel loads continuation videos', async () => {
   assert.equal(requests[0].url, 'https://www.youtube.com/youtubei/v1/browse?key=test-key')
   assert.equal(requests[0].options.method, 'POST')
   assert.equal(JSON.parse(requests[0].options.body).continuation, 'CONTINUATION_1')
-  assert.equal(result.items.length, 1)
-  assert.equal(result.items[0].url, 'https://www.youtube.com/watch?v=def456')
-  assert.equal(result.items[0].duration, 245)
-  assert.equal(result.has_more, true)
-  assert.equal(result.next_cursor.continuation, 'CONTINUATION_2')
+  assert.equal(channelResult.items.length, 1)
+  assert.equal(channelResult.items[0].url, 'https://www.youtube.com/watch?v=def456')
+  assert.equal(channelResult.items[0].duration, 245)
+  assert.equal(channelResult.has_more, true)
+  assert.equal(channelResult.next_cursor.continuation, 'CONTINUATION_2')
 })
 
 test('desktop pornhub remote channel uses the video link title', async () => {
-  const result = await getRemoteChannel({
+  const channelResult = await getRemoteChannel({
     site: 'pornhub',
     url: 'https://www.pornhub.com/users/demo-channel',
     limit: 5,
@@ -1179,13 +1179,13 @@ test('desktop pornhub remote channel uses the video link title', async () => {
     `),
   })
 
-  assert.equal(result.items[0].title, 'Demo Channel Video')
-  assert.equal(result.items[0].url, 'https://www.pornhub.com/view_video.php?viewkey=ph-channel')
-  assert.equal(result.items[0].duration, 83)
+  assert.equal(channelResult.items[0].title, 'Demo Channel Video')
+  assert.equal(channelResult.items[0].url, 'https://www.pornhub.com/view_video.php?viewkey=ph-channel')
+  assert.equal(channelResult.items[0].duration, 83)
 })
 
 test('desktop youporn remote channel parses profile avatar', async () => {
-  const result = await getRemoteChannel({
+  const channelResult = await getRemoteChannel({
     site: 'youporn',
     url: 'https://www.youporn.com/channel/demo-channel/',
     limit: 5,
@@ -1208,8 +1208,8 @@ test('desktop youporn remote channel parses profile avatar', async () => {
   })
 
   assert.equal(
-    result.profile.avatar,
+    channelResult.profile.avatar,
     'https://fi1-ph.ypncdn.com/pics/sites/000/056/162/avatar1595606809/200x200.jpg'
   )
-  assert.equal(result.items[0].uploader_avatar, result.profile.avatar)
+  assert.equal(channelResult.items[0].uploader_avatar, channelResult.profile.avatar)
 })

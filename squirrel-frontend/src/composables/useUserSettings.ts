@@ -61,13 +61,13 @@ export function useUserSettings() {
     loadingState.value = true
     errorState.value = null
 
-    const result = (await updateUserMeConfig({
+    const response = (await updateUserMeConfig({
       settings: settingsState.value,
       merge: false,
     })) as ApiResult<UserSettings>
 
-    if (result.error) {
-      errorState.value = result.error
+    if (response.error) {
+      errorState.value = response.error
 
       const rollbackResult = (await getUserMeConfig()) as ApiResult<UserSettings>
       if (!rollbackResult.error && rollbackResult.data) {
@@ -78,15 +78,15 @@ export function useUserSettings() {
       }
 
       loadingState.value = false
-      return result
+      return response
     }
 
-    if (result.data) {
-      settingsState.value = result.data
+    if (response.data) {
+      settingsState.value = response.data
     }
 
     loadingState.value = false
-    return result
+    return response
   }
 
   return {

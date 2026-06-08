@@ -117,12 +117,12 @@ export async function resolveBilibiliApiPayload(targetUrl, { cookie = '', fetchI
   }
 
   const infoParams = bvid ? { bvid } : { aid: String(aid) }
-  const info = await fetchBrowserJson('https://api.bilibili.com/x/web-interface/view', {
+  const videoInfo = await fetchBrowserJson('https://api.bilibili.com/x/web-interface/view', {
     cookie,
     params: infoParams,
     fetchImpl,
   })
-  const pages = Array.isArray(info?.pages) ? info.pages : []
+  const pages = Array.isArray(videoInfo?.pages) ? videoInfo.pages : []
   const pageInfo = pages[Math.min(pageIndex, Math.max(pages.length - 1, 0))] || null
   const cid = Number.parseInt(String(pageInfo?.cid || ''), 10)
 
@@ -161,12 +161,12 @@ export async function resolveBilibiliApiPayload(targetUrl, { cookie = '', fetchI
   })
 
   return {
-    info,
+    info: videoInfo,
     context: {
       url: targetUrl,
       pageIndex,
-      bvid: info?.bvid || bvid || null,
-      aid: info?.aid || aid || null,
+      bvid: videoInfo?.bvid || bvid || null,
+      aid: videoInfo?.aid || aid || null,
       cid,
     },
     playData,

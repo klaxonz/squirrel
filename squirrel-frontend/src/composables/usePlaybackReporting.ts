@@ -70,8 +70,8 @@ export default function usePlaybackReporting(videoRef: Ref<PlaybackReportVideo |
       queuedReport = null
 
       try {
-        const result = await sendReport(report.videoId, report.currentTime, report.options)
-        if (result === false) continue
+        const response = await sendReport(report.videoId, report.currentTime, report.options)
+        if (response === false) continue
         if (report.sessionId !== reportSessionId) continue
 
         lastCommittedTime = Math.max(lastCommittedTime, report.currentTime)

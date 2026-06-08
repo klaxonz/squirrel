@@ -512,13 +512,13 @@ class RssAccountService:
             ).all()
             entry_map = {e.id: self.serialize_entry(e) for e in entries}
             view_map = {v.entry_id: v.viewed_at for v in views}
-            result = []
+            items = []
             for entry_id in entry_ids:
                 entry = entry_map.get(entry_id)
                 if entry:
                     entry["viewed_at"] = view_map[entry_id].isoformat()
-                    result.append(entry)
-            return result
+                    items.append(entry)
+            return items
 
 
 _default = RssAccountService()

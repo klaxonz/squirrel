@@ -115,12 +115,12 @@ export function useRssAccounts(options?: {
   }
 
   const loadAccounts = async () => {
-    const result = await getRssAccounts() as ApiResult<{ data: RssAccount[] }>
-    if (result.error) {
-      options?.onStatus?.((result.error as { message?: string })?.message || '加载 RSS 账号失败', true)
+    const response = await getRssAccounts() as ApiResult<{ data: RssAccount[] }>
+    if (response.error) {
+      options?.onStatus?.((response.error as { message?: string })?.message || '加载 RSS 账号失败', true)
       return
     }
-    accounts.value = result.data?.data || []
+    accounts.value = response.data?.data || []
     if (!selectedAccountId.value && accounts.value.length) {
       selectedAccountId.value = accounts.value[0].id
     }
@@ -139,13 +139,13 @@ export function useRssAccounts(options?: {
     if (accountForm.value.credential.trim()) {
       payload.credential = accountForm.value.credential
     }
-    const result = accountForm.value.id
+    const accountId = accountForm.value.id
       ? await updateRssAccount(accountForm.value.id, payload)
       : await createRssAccount(payload as any)
     saving.value = false
-    if (result.error) {
+    if (accountId.error) {
       formError.value = true
-      formMessage.value = (result.error as { message?: string })?.message || '保存失败'
+      formMessage.value = (accountId.error as { message?: string })?.message || '保存失败'
       return
     }
     formError.value = false
@@ -158,7 +158,7 @@ export function useRssAccounts(options?: {
   const testForm = async () => {
     testing.value = true
     formMessage.value = ''
-    const result = await testRssAccountConfig({
+    const response = await testRssAccountConfig({
       provider: accountForm.value.provider,
       name: accountForm.value.name || accountForm.value.provider,
       base_url: accountForm.value.base_url,
@@ -166,15 +166,15 @@ export function useRssAccounts(options?: {
       credential: accountForm.value.credential,
     })
     testing.value = false
-    formError.value = !!result.error
-    formMessage.value = result.error ? (result.error as { message?: string })?.message || '连接失败' : `连接成功，发现 ${(result.data as any)?.feed_count ?? 0} 个 Feed`
+    formError.value = !!response.error
+    formMessage.value = response.error ? (response.error as { message?: string })?.message || '连接失败' : `连接成功，发现 ${(response.data as any)?.feed_count ?? 0} 个 Feed`
   }
 
   const handleDeleteAccount = async () => {
     if (!accountToDelete.value) return
-    const result = await deleteRssAccount(accountToDelete.value.id)
-    if (result.error) {
-      options?.onStatus?.((result.error as { message?: string })?.message || '删除账号失败', true)
+    const response = await deleteRssAccount(accountToDelete.value.id)
+    if (response.error) {
+      options?.onStatus?.((response.error as { message?: string })?.message || '删除账号失败', true)
       showDeleteConfirmModal.value = false
       return
     }

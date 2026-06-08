@@ -363,9 +363,9 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (!userStore.hasResolvedAuth) {
-    const result = await userStore.fetchCurrentUser()
-    if (result.error?.status && result.error.status !== 401) {
-      Logger.error('Failed to get user info', result.error)
+    const user = await userStore.fetchCurrentUser()
+    if (user.error?.status && user.error.status !== 401) {
+      Logger.error('Failed to get user info', user.error)
     }
   }
 

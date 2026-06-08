@@ -73,11 +73,11 @@ class DefaultUpdateStrategy(UpdateStrategy):
         return "default"
 
     def execute(self, request: SubscriptionUpdateRequest) -> SubscriptionUpdateResult:
-        result = super().execute(request)
-        if result.success:
-            self._record_gap_observation(request, result)
-            self._schedule_total_video_backfill(request, result)
-        return result
+        execute_result = super().execute(request)
+        if execute_result.success:
+            self._record_gap_observation(request, execute_result)
+            self._schedule_total_video_backfill(request, execute_result)
+        return execute_result
 
     def should_update(self, request: SubscriptionUpdateRequest) -> tuple[bool, str | None]:
         """Check whether an update is needed"""
@@ -114,12 +114,12 @@ class DefaultUpdateStrategy(UpdateStrategy):
         if not isinstance(response.data, dict):
             raise ValueError(f"Subscription sync payload must be an object for domain: {domain}")
 
-        result = SubscriptionSyncResult.from_dict(response.data)
+        sync_result = SubscriptionSyncResult.from_dict(response.data)
 
-        if sync_mode == UpdateMode.FULL and result.total_available is not None:
-            self._update_total_videos(request.subscription_id, result.total_available)
+        if sync_mode == UpdateMode.FULL and sync_result.total_available is not None:
+            self._update_total_videos(request.subscription_id, sync_result.total_available)
 
-        return result
+        return sync_result
 
     def enqueue_extraction(self, fetch_result: SubscriptionSyncResult, request: SubscriptionUpdateRequest) -> int:
         """Enqueue videos for extraction"""
@@ -167,12 +167,12 @@ class DefaultUpdateStrategy(UpdateStrategy):
                     subscription_sync_state_service.increment_pending_video_count(request.sync_state_id, 1)
                     reserved_pending = True
                     if request.inline_video_extraction:
-                        result = extract_video(params)
-                        if result.success:
+                        extracted = extract_video(params)
+                        if extracted.success:
                             enqueued += 1
                         else:
                             failed_count += 1
-                            logger.warning("Failed to extract video %s: %s", video_url, result.error)
+                            logger.warning("Failed to extract video %s: %s", video_url, extracted.error)
                     elif download_service.enqueue_video_extraction(params):
                         enqueued += 1
                     else:
@@ -289,7 +289,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
 
         from services.subscription_update import scheduler
 
-        result = scheduler.schedule_one(
+        scheduled = scheduler.schedule_one(
             subscription_id=request.subscription_id,
             url=request.url,
             trigger=UpdateTrigger.SCHEDULED,
@@ -299,7 +299,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
         logger.info(
             "Scheduled full sync to backfill total videos: subscription_id=%s, status=%s",
             request.subscription_id,
-            result.status,
+            scheduled.status,
         )
 
     @staticmethod

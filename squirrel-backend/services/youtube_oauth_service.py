@@ -69,29 +69,29 @@ class YouTubeOauthService:
     def setup_oauth_via_daemon(self, timeout_seconds: float = 10.0) -> YouTubeOAuthState:
         from squirrel_youtube.youtubei_resolver import resolve_oauth_setup_via_daemon
 
-        result = resolve_oauth_setup_via_daemon(
+        oauth_result = resolve_oauth_setup_via_daemon(
             oauth_state_file=self.get_oauth_credentials_for_daemon(),
             timeout_seconds=timeout_seconds,
         )
-        return self._parse_daemon_oauth_response(result)
+        return self._parse_daemon_oauth_response(oauth_result)
 
     def poll_oauth_status_via_daemon(self, timeout_seconds: float = 10.0) -> YouTubeOAuthState:
         from squirrel_youtube.youtubei_resolver import resolve_oauth_status_via_daemon
 
-        result = resolve_oauth_status_via_daemon(
+        oauth_result = resolve_oauth_status_via_daemon(
             oauth_state_file=self.get_oauth_credentials_for_daemon(),
             timeout_seconds=timeout_seconds,
         )
-        return self._parse_daemon_oauth_response(result)
+        return self._parse_daemon_oauth_response(oauth_result)
 
     def revoke_oauth_via_daemon(self, timeout_seconds: float = 30.0) -> bool:
         from squirrel_youtube.youtubei_resolver import resolve_oauth_revoke_via_daemon
 
-        result = resolve_oauth_revoke_via_daemon(
+        oauth_result = resolve_oauth_revoke_via_daemon(
             oauth_state_file=self.get_oauth_credentials_for_daemon(),
             timeout_seconds=timeout_seconds,
         )
-        return result.get("status") == "done"
+        return oauth_result.get("status") == "done"
 
     def _parse_daemon_oauth_response(self, result: dict[str, Any]) -> YouTubeOAuthState:
         status = str(result.get("status") or "not_configured")

@@ -262,14 +262,14 @@ class SubscriptionScheduler:
             scheduled=False,
         )
         if not sync_state:
-            result = SubscriptionUpdateResult(
+            update_result = SubscriptionUpdateResult(
                 subscription_id=subscription_id,
                 success=False,
                 videos_found=0,
                 videos_enqueued=0,
                 error_message="sync_state_prepare_failed",
             )
-            return SubscriptionDirectRunResult(subscription_id, None, "failed", result=result)
+            return SubscriptionDirectRunResult(subscription_id, None, "failed", result=update_result)
         if state_status in {"in_progress", "queued"}:
             return SubscriptionDirectRunResult(subscription_id, sync_state.id, state_status)
 
@@ -303,7 +303,7 @@ class SubscriptionScheduler:
         queue_token = subscription_sync_state_service.build_queue_token()
         queued_state = subscription_sync_state_service.queue_sync_state(sync_state.id, queue_token)
         if not queued_state or queued_state.queue_token != queue_token or queued_state.sync_status != "queued":
-            result = SubscriptionUpdateResult(
+            error_result = SubscriptionUpdateResult(
                 subscription_id=subscription_id,
                 success=False,
                 videos_found=0,
@@ -316,7 +316,7 @@ class SubscriptionScheduler:
                 status="failed",
                 request_id=request_id,
                 run_id=run_context.run_id,
-                result=result,
+                result=error_result,
             )
 
         append_event(SyncEventInput(
@@ -342,7 +342,7 @@ class SubscriptionScheduler:
         from services.crawl_executors.subscription_sync_executor import execute_subscription_sync_payload
 
         try:
-            result = execute_subscription_sync_payload({
+            sync_result = execute_subscription_sync_payload({
                 "subscription_id": subscription_id,
                 "url": url,
                 "sync_state_id": queued_state.id,
@@ -366,21 +366,22 @@ class SubscriptionScheduler:
                 error_type=type(exc).__name__,
                 trigger=trigger.value,
             )
-            result = SubscriptionUpdateResult(
+            error_result = SubscriptionUpdateResult(
                 subscription_id=subscription_id,
                 success=False,
                 videos_found=0,
                 videos_enqueued=0,
                 error_message=str(exc),
             )
+            sync_result = error_result
 
         return SubscriptionDirectRunResult(
             subscription_id=subscription_id,
             sync_state_id=queued_state.id,
-            status="success" if result.success else "failed",
+            status="success" if sync_result.success else "failed",
             request_id=request_id,
             run_id=run_context.run_id,
-            result=result,
+            result=sync_result,
         )
 
     def _schedule_one_direct(
@@ -607,10 +608,10 @@ class SubscriptionScheduler:
 
         for subscription_id in ids:
             url = url_map.get(subscription_id, '')
-            result = self.schedule_one(subscription_id, url, trigger)
-            if result.status == "queued":
+            scheduled = self.schedule_one(subscription_id, url, trigger)
+            if scheduled.status == "queued":
                 success_count += 1
-            elif result.status == "failed":
+            elif scheduled.status == "failed":
                 error_count += 1
 
         return success_count, error_count
@@ -711,15 +712,15 @@ class SubscriptionScheduler:
         trigger: UpdateTrigger,
         mode: UpdateMode,
     ) -> str:
-        result = self.schedule_one(
+        scheduled = self.schedule_one(
             subscription_id=target.subscription_id,
             url=target.url,
             trigger=trigger,
             mode=mode,
         )
-        if result.status == "queued":
+        if scheduled.status == "queued":
             return "success"
-        if result.status == "failed":
+        if scheduled.status == "failed":
             return "failed"
         return "skipped"
 

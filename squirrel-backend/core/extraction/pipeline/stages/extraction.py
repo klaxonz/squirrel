@@ -50,36 +50,36 @@ class ExtractionStage(PipelineStage):
 
         logger.info("Extracting video: url=%s, site=%s", context.task.url, context.task.site_name)
 
-        result = extractor.extract(context.task)
+        extraction_result = extractor.extract(context.task)
 
-        if not result.success:
+        if not extraction_result.success:
             error_context = {
                 "url": context.task.url,
                 "site": context.task.site_name,
-                "error_category": result.error_category,
-                "retryable": result.retryable,
-                **(result.error_context or {}),
+                "error_category": extraction_result.error_category,
+                "retryable": extraction_result.retryable,
+                **(extraction_result.error_context or {}),
             }
 
-            error_msg = result.error or "Extraction failed"
+            error_msg = extraction_result.error or "Extraction failed"
 
-            if result.error_category == "network":
+            if extraction_result.error_category == "network":
                 raise NetworkError(error_msg, context=error_context)
-            if result.error_category == "auth":
+            if extraction_result.error_category == "auth":
                 raise PermissionError(error_msg, context=error_context)
-            if result.error_category == "vip":
+            if extraction_result.error_category == "vip":
                 raise VipError(error_msg, context=error_context)
-            if result.error_category == "not_found":
+            if extraction_result.error_category == "not_found":
                 raise ResourceNotFoundError(error_msg, context=error_context)
             raise ExtractionError(
                 error_msg,
-                retryable=result.retryable,
+                retryable=extraction_result.retryable,
                 context=error_context,
             )
 
-        context.plugin_video = result.data
+        context.plugin_video = extraction_result.data
 
-        logger.info("Extraction completed: url=%s, title=%s", context.task.url, getattr(result.data, 'title', 'N/A'))
+        logger.info("Extraction completed: url=%s, title=%s", context.task.url, getattr(extraction_result.data, 'title', 'N/A'))
 
         return context
 

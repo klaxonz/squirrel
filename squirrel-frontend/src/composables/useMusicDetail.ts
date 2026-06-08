@@ -215,41 +215,41 @@ export function useMusicDetail() {
     let data: { items: MusicTrack[]; total: number } | null = null
 
     if (selectedRank.value) {
-      const result = await getMusicRankTracks({
+      const response = await getMusicRankTracks({
         rank_id: selectedRank.value.id,
         rank_cid: selectedRank.value.rank_cid || undefined,
         page: currentPage.value,
         page_size: 30,
       })
-      data = result.data
+      data = response.data
     } else if (selectedPlaylist.value) {
-      const result = await getMusicPlaylistTracks({
+      const response = await getMusicPlaylistTracks({
         playlist_id: selectedPlaylist.value.id,
         page: currentPage.value,
         page_size: 30,
       })
-      data = result.data
+      data = response.data
     } else if (selectedUserPlaylist.value) {
-      const result = await getMusicUserPlaylistTracks({
+      const response = await getMusicUserPlaylistTracks({
         list_id: selectedUserPlaylist.value.id,
         page: currentPage.value,
         page_size: 30,
       })
-      data = result.data
+      data = response.data
     } else if (selectedArtist.value) {
-      const result = await getMusicArtistTracks({
+      const response = await getMusicArtistTracks({
         artist_id: selectedArtist.value.id,
         page: currentPage.value,
         page_size: 30,
       })
-      data = result.data
+      data = response.data
     } else if (selectedAlbum.value) {
-      const result = await getMusicAlbumTracks({
+      const response = await getMusicAlbumTracks({
         album_id: selectedAlbum.value.id,
         page: currentPage.value,
         page_size: 30,
       })
-      data = result.data
+      data = response.data
     }
 
     tracksLoadingMore.value = false

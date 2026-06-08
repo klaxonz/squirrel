@@ -1,6 +1,7 @@
 ---
 title: 命名 — `result`/`data`/`info` 泛滥 + 缩写/风格不一致
-status: open
+status: fixed
+fixed_by: 50 files across squirrel-backend/, squirrel-frontend/, squirrel-desktop/, squirrel-sdk/
 severity: low
 category: naming
 location: 全项目跨子项目（~200+ 处）

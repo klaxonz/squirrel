@@ -75,10 +75,10 @@ class TaskFactory:
 
     def get_available_task_classes(self) -> dict[str, dict[str, Any]]:
         """Get information about all available task classes"""
-        result = {}
+        context = {}
         with self._lock:
             for task_name, task_class in self._task_classes.items():
-                result[task_name] = {
+                context[task_name] = {
                     "name": task_name,
                     "description": (getattr(task_class, "__doc__", "") or "").strip() or "No description",
                     "module": task_class.__module__,
@@ -87,7 +87,7 @@ class TaskFactory:
                     "default_unit": getattr(task_class, "unit", "seconds"),
                     "default_start_immediately": getattr(task_class, "start_immediately", True),
                 }
-        return result
+        return context
 
 
 class DynamicTaskManager:
@@ -213,7 +213,7 @@ class DynamicTaskManager:
             if not task_instance:
                 raise ValueError("Cannot create task instance")
 
-            result = task_instance.run()
+            task_result = task_instance.run()
 
             end_time = datetime.now()
             duration = int((end_time - start_time).total_seconds() * 1000)
@@ -235,7 +235,7 @@ class DynamicTaskManager:
                         persisted_log.finished_at = end_time
                         persisted_log.duration = duration
                         persisted_log.status = "success"
-                        persisted_log.result_data = result or {}
+                        persisted_log.result_data = task_result or {}
                         persisted_log.error_message = None
 
             task_name = task_snapshot.name if task_snapshot else str(task_id)

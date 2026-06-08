@@ -212,9 +212,9 @@ export function useRssReader(options: {
       return
     }
     if (!options.selectedAccountId.value) return
-    const result = await unsubscribeRssFeed(feed.id, options.selectedAccountId.value)
-    if (result.error) {
-      options?.onStatus?.(result.error.message || '取消订阅失败', true)
+    const response = await unsubscribeRssFeed(feed.id, options.selectedAccountId.value)
+    if (response.error) {
+      options?.onStatus?.(response.error.message || '取消订阅失败', true)
       return
     }
     readingEntry.value = null

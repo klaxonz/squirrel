@@ -97,9 +97,9 @@ class SiteCatalog:
                 with open(config_path, encoding="utf-8") as f:
                     data = json.load(f)
                 catalog: dict[str, dict] = {}
-                for slug, info in (data or {}).items():
+                for slug, site_info in (data or {}).items():
                     normalized_slug = slug.strip().lower()
-                    catalog[normalized_slug] = cls._normalize_override_entry(normalized_slug, info)
+                    catalog[normalized_slug] = cls._normalize_override_entry(normalized_slug, site_info)
                 return catalog
             except (OSError, ValueError):
                 return None
@@ -225,12 +225,12 @@ class SiteCatalog:
         if k in catalog and catalog[k].get("enabled", True):
             return catalog[k].get("domains", [])
         # alias
-        for slug, info in catalog.items():
-            if not info.get("enabled", True):
+        for slug, site_info in catalog.items():
+            if not site_info.get("enabled", True):
                 continue
-            aliases = [a.lower() for a in info.get("aliases", [])]
+            aliases = [a.lower() for a in site_info.get("aliases", [])]
             if k in aliases:
-                return info.get("domains", [])
+                return site_info.get("domains", [])
         # substring match
         all_domains = cls.get_all_domains()
         matched = [d for d in all_domains if k in d.lower()]
@@ -272,11 +272,11 @@ class SiteCatalog:
             for domain in catalog[normalized_key].get("domains", []):
                 add(domain)
 
-        for slug, info in catalog.items():
-            aliases = [str(alias or "").strip().lower() for alias in info.get("aliases", []) if alias]
+        for slug, site_info in catalog.items():
+            aliases = [str(alias or "").strip().lower() for alias in site_info.get("aliases", []) if alias]
             if normalized_key == slug or normalized_key in aliases:
                 add(slug)
-                for domain in info.get("domains", []):
+                for domain in site_info.get("domains", []):
                     add(domain)
 
         site_slug, info = cls.find_site_by_domain(normalized_key)
@@ -294,14 +294,14 @@ class SiteCatalog:
             return None, None
         domain_lower = str(domain).split(":")[0].strip().lower()
         catalog = cls._get_effective_catalog() or {}
-        for slug, info in catalog.items():
-            domains = info.get("domains") or []
+        for slug, site_info in catalog.items():
+            domains = site_info.get("domains") or []
             for d in domains:
                 d_lower = str(d).strip().lower()
                 if not d_lower:
                     continue
                 if domain_lower == d_lower or domain_lower.endswith(f".{d_lower}"):
-                    return slug, info
+                    return slug, site_info
         return None, None
 
     @classmethod
@@ -326,8 +326,8 @@ class SiteCatalog:
         catalog = cls._get_effective_catalog() or {}
         return {
             str(slug).strip().lower()
-            for slug, info in catalog.items()
-            if str(slug).strip() and info.get("enabled", True)
+            for slug, site_info in catalog.items()
+            if str(slug).strip() and site_info.get("enabled", True)
         }
 
 

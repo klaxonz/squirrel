@@ -52,43 +52,43 @@ export const updateSpecialFollowStatus = async (subscriptionId: string | number,
 }
 
 export const triggerRefresh = async (subscriptionId: string | number, mode: string = 'incremental') => {
-  const result = await post(`/api/subscription/${subscriptionId}/refresh`, null, {
+  const response = await post(`/api/subscription/${subscriptionId}/refresh`, null, {
     params: { mode },
   })
-  if (!result.error) return result
+  if (!response.error) return response
 
-  if (result.error.status === 429) {
+  if (response.error.status === 429) {
     return {
       data: null,
-      error: new ApiError('操作过于频繁，请稍后再试', result.error.type, result.error.status, result.error.data),
+      error: new ApiError('操作过于频繁，请稍后再试', response.error.type, response.error.status, response.error.data),
     }
   }
 
-  if (result.error.status === 403) {
+  if (response.error.status === 403) {
     return {
       data: null,
-      error: new ApiError('没有权限执行此操作', result.error.type, result.error.status, result.error.data),
+      error: new ApiError('没有权限执行此操作', response.error.type, response.error.status, response.error.data),
     }
   }
 
-  return result
+  return response
 }
 
 export const triggerDirectRefresh = async (subscriptionId: string | number, mode: string = 'incremental') => {
-  const result = await post(`/api/subscription/${subscriptionId}/refresh/direct`, null, {
+  const response = await post(`/api/subscription/${subscriptionId}/refresh/direct`, null, {
     params: { mode },
     timeout: 0,
   })
-  if (!result.error) return result
+  if (!response.error) return response
 
-  if (result.error.status === 403) {
+  if (response.error.status === 403) {
     return {
       data: null,
-      error: new ApiError('没有权限执行此操作', result.error.type, result.error.status, result.error.data),
+      error: new ApiError('没有权限执行此操作', response.error.type, response.error.status, response.error.data),
     }
   }
 
-  return result
+  return response
 }
 
 export const getSupportedImportSites = async () => {

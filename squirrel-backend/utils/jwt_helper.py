@@ -29,10 +29,10 @@ def _credentials_exception() -> HTTPException:
     )
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
+def create_access_token(payload: dict, expires_delta: timedelta | None = None):
     """Create JWT access token
     """
-    to_encode = data.copy()
+    to_encode = payload.copy()
     if expires_delta:
         expire = datetime.now() + expires_delta
     else:

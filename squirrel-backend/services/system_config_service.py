@@ -55,12 +55,12 @@ class SystemConfigService:
 
     def get_bool(self, key: str, default: bool) -> bool:
         db_value = self.get_value(key, None)
-        result = self._to_bool(db_value, default)
+        bool_val = self._to_bool(db_value, default)
         if db_value is not None:
-            logger.debug('[system_config] get_bool(%s) from database=%s -> %s', key, db_value, result)
+            logger.debug('[system_config] get_bool(%s) from database=%s -> %s', key, db_value, bool_val)
         else:
-            logger.debug('[system_config] get_bool(%s) using default -> %s', key, result)
-        return result
+            logger.debug('[system_config] get_bool(%s) using default -> %s', key, bool_val)
+        return bool_val
 
     def set_bool(self, key: str, value: bool) -> None:
         self.set_value(key, self._from_bool(value))
@@ -70,16 +70,16 @@ class SystemConfigService:
             if not keys:
                 return {}
             rows = session.scalars(select(SystemConfig).where(SystemConfig.key.in_(keys))).all()
-            result: dict[str, str] = {}
+            config: dict[str, str] = {}
             found_keys = set()
             for r in rows:
-                result[r.key] = r.value
+                config[r.key] = r.value
                 found_keys.add(r.key)
             for k in keys:
                 if k not in found_keys:
                     dv = defaults.get(k)
-                    result[k] = '' if dv is None else str(dv)
-            return result
+                    config[k] = '' if dv is None else str(dv)
+            return config
 
     def get_all_configs(self) -> dict[str, str]:
         with self._session_factory() as session:

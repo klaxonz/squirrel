@@ -78,9 +78,9 @@ export function useRssEntries(options: {
   }
 
   const loadRecentlyViewed = async () => {
-    const result = await getRssRecentlyViewed() as ApiResult<{ data: RecentEntry[] }>
-    if (!result.error) {
-      recentlyViewed.value = result.data?.data || []
+    const response = await getRssRecentlyViewed() as ApiResult<{ data: RecentEntry[] }>
+    if (!response.error) {
+      recentlyViewed.value = response.data?.data || []
     }
   }
 
@@ -104,14 +104,14 @@ export function useRssEntries(options: {
       params.isStarred = true
     }
 
-    const result = await getRssEntries(params) as ApiResult<{ data: RssEntry[], total: number }>
-    if (result.error) {
-      options?.onStatus?.((result.error as { message?: string })?.message || '加载条目失败', true)
+    const response = await getRssEntries(params) as ApiResult<{ data: RssEntry[], total: number }>
+    if (response.error) {
+      options?.onStatus?.((response.error as { message?: string })?.message || '加载条目失败', true)
       return
     }
 
-    const fetched = result.data?.data || []
-    totalEntries.value = (result.data as any)?.total || 0
+    const fetched = response.data?.data || []
+    totalEntries.value = (response.data as any)?.total || 0
 
     if (isReset) {
       entries.value = fetched
@@ -133,14 +133,14 @@ export function useRssEntries(options: {
       params.isStarred = true
     }
 
-    const result = await getRssEntries(params) as ApiResult<{ data: RssEntry[], total: number }>
+    const response = await getRssEntries(params) as ApiResult<{ data: RssEntry[], total: number }>
     loadingMoreEntries.value = false
-    if (result.error) {
-      options?.onStatus?.((result.error as { message?: string })?.message || '加载条目失败', true)
+    if (response.error) {
+      options?.onStatus?.((response.error as { message?: string })?.message || '加载条目失败', true)
       return
     }
-    const fetched = result.data?.data || []
-    totalEntries.value = (result.data as any)?.total || 0
+    const fetched = response.data?.data || []
+    totalEntries.value = (response.data as any)?.total || 0
     entries.value.push(...fetched)
   }
 
@@ -206,13 +206,13 @@ export function useRssEntries(options: {
     if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
       options.readingEntry.value.is_read = newStatus
     }
-    const result = await updateRssEntry(entry.id, { isRead: newStatus })
-    if (result.error) {
+    const response = await updateRssEntry(entry.id, { isRead: newStatus })
+    if (response.error) {
       entry.is_read = !newStatus
       if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
         options.readingEntry.value.is_read = !newStatus
       }
-      options?.onStatus?.((result.error as { message?: string })?.message || '更新已读状态失败', true)
+      options?.onStatus?.((response.error as { message?: string })?.message || '更新已读状态失败', true)
       return
     }
     if (reloadFilteredList && shouldReloadAfterEntryUpdate(entry)) {
@@ -243,21 +243,21 @@ export function useRssEntries(options: {
         options.readingEntry.value.is_read = isRead
       }
     })
-    const result = await updateRssEntries({
+    const response = await updateRssEntries({
       entryIds: targets.map((entry) => entry.id),
       isRead,
     }) as ApiResult<{ updated: number }>
-    if (result.error) {
+    if (response.error) {
       previous.forEach(({ entry, isRead: previousIsRead }) => {
         entry.is_read = previousIsRead
         if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
           options.readingEntry.value.is_read = previousIsRead
         }
       })
-      options?.onStatus?.((result.error as { message?: string })?.message || '批量更新已读状态失败', true)
+      options?.onStatus?.((response.error as { message?: string })?.message || '批量更新已读状态失败', true)
       return
     }
-    options?.onStatus?.(`已更新 ${result.data?.updated ?? targets.length} 篇文章`)
+    options?.onStatus?.(`已更新 ${response.data?.updated ?? targets.length} 篇文章`)
     if (targets.some(shouldReloadAfterEntryUpdate)) {
       await loadEntries(true)
     }
@@ -269,13 +269,13 @@ export function useRssEntries(options: {
     if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
       options.readingEntry.value.is_starred = newStatus
     }
-    const result = await updateRssEntry(entry.id, { isStarred: newStatus })
-    if (result.error) {
+    const response = await updateRssEntry(entry.id, { isStarred: newStatus })
+    if (response.error) {
       entry.is_starred = !newStatus
       if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
         options.readingEntry.value.is_starred = !newStatus
       }
-      options?.onStatus?.((result.error as { message?: string })?.message || '更新星标状态失败', true)
+      options?.onStatus?.((response.error as { message?: string })?.message || '更新星标状态失败', true)
       return
     }
     options?.onStatus?.(newStatus ? '已收藏' : '已取消收藏')

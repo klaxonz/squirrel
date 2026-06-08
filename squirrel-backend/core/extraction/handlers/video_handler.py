@@ -76,15 +76,15 @@ class VideoExtractionHandler(BaseResultHandler):
             # 2. Execute Pipeline
             logger.info("Processing extraction task: task_id=%s, url=%s", task.task_id, task.url)
 
-            result = self.pipeline.execute(context)
+            pipeline_result = self.pipeline.execute(context)
 
             # 3. Log result
-            if result.success:
+            if pipeline_result.success:
                 logger.info("Extraction completed successfully: task_id=%s, duration=%f'.2f's", task.task_id, context.get_duration())
             else:
-                logger.error("Extraction failed: task_id=%s, error=%s", task.task_id, result.error)
+                logger.error("Extraction failed: task_id=%s, error=%s", task.task_id, pipeline_result.error)
 
-            return result
+            return pipeline_result
 
         except Exception as e:  # handler boundary — catch all to return ExtractionResult
             logger.error("Unexpected error in VideoExtractionHandler: task_id=%s, error=%s", task.task_id, e, exc_info=True)

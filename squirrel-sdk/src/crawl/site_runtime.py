@@ -67,10 +67,10 @@ class _GeneratedSiteRuntime:
             )
 
         try:
-            result = handler(request_payload)
-            if isinstance(result, SiteRuntimeInvokeResponse):
-                return result
-            return SiteRuntimeInvokeResponse(request_id=request_id, ok=True, data=result)
+            response = handler(request_payload)
+            if isinstance(response, SiteRuntimeInvokeResponse):
+                return response
+            return SiteRuntimeInvokeResponse(request_id=request_id, ok=True, data=response)
         except AuthError as exc:
             error = SiteRuntimeError.auth_required(exc.message, details=exc.context)
         except (NetworkError, RateLimitError) as exc:

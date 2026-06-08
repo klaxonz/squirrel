@@ -209,7 +209,7 @@ class TaskProcessor(Protocol):
 class ResultHandler(Protocol):
     """Protocol for processing results – store to DB, enqueue messages, etc."""
 
-    def handle_success(self, task: ExtractionTask, result: ExtractionResult) -> None:
+    def handle_success(self, task: ExtractionTask, extraction_result: ExtractionResult) -> None:
         """Handle a successful extraction result."""
         ...
 

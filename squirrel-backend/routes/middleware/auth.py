@@ -51,7 +51,7 @@ class TokenExpiredError(AuthenticationError):
         super().__init__(detail="登录已过期，请重新登录")
 
 
-class AuthMiddleware(BaseHTTPMiddleware):
+class AuthenticationMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, public_paths: list[str] = None):
         super().__init__(app)
         self.public_paths = public_paths or list(PUBLIC_PATH_PREFIXES)

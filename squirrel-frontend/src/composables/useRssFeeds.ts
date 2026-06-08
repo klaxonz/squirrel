@@ -81,14 +81,14 @@ export function useRssFeeds(options: {
   })
 
   const loadFeeds = async () => {
-    const result = await getRssFeeds(
+    const response = await getRssFeeds(
       options.selectedAccountId.value ? { accountId: options.selectedAccountId.value } : {}
     ) as ApiResult<{ data: RssFeed[] }>
-    if (result.error) {
-      options?.onStatus?.((result.error as { message?: string })?.message || '加载 Feed 失败', true)
+    if (response.error) {
+      options?.onStatus?.((response.error as { message?: string })?.message || '加载 Feed 失败', true)
       return
     }
-    feeds.value = result.data?.data || []
+    feeds.value = response.data?.data || []
   }
 
   const confirmCustomCategory = () => {
@@ -115,7 +115,7 @@ export function useRssFeeds(options: {
     subscribeMessage.value = ''
     subscribeError.value = false
 
-    const result = await subscribeRssFeed({
+    const response = await subscribeRssFeed({
       accountId: options.selectedAccountId.value,
       feedUrl: subscribeForm.value.feedUrl.trim(),
       category: subscribeForm.value.category.trim() || undefined,
@@ -123,9 +123,9 @@ export function useRssFeeds(options: {
 
     subscribingFeed.value = false
 
-    if (result.error) {
+    if (response.error) {
       subscribeError.value = true
-      subscribeMessage.value = (result.error as { message?: string })?.message || '订阅失败'
+      subscribeMessage.value = (response.error as { message?: string })?.message || '订阅失败'
       return
     }
 
@@ -168,9 +168,9 @@ export function useRssFeeds(options: {
 
   const handleUnsubscribeFeed = async (feed: RssFeed) => {
     if (!options.selectedAccountId.value) return
-    const result = await unsubscribeRssFeed(feed.id, options.selectedAccountId.value)
-    if (result.error) {
-      options?.onStatus?.((result.error as { message?: string })?.message || '取消订阅失败', true)
+    const response = await unsubscribeRssFeed(feed.id, options.selectedAccountId.value)
+    if (response.error) {
+      options?.onStatus?.((response.error as { message?: string })?.message || '取消订阅失败', true)
       return
     }
     if (selectedFeedId.value === feed.id) {
@@ -207,9 +207,9 @@ export function useRssFeeds(options: {
   }
 
   const setFeedOpenMethod = async (feed: RssFeed, method: string | null) => {
-    const result = await updateRssFeed(feed.id, { open_method: method }) as ApiResult
-    if (result.error) {
-      options?.onStatus?.((result.error as { message?: string })?.message || '更新失败', true)
+    const response = await updateRssFeed(feed.id, { open_method: method }) as ApiResult
+    if (response.error) {
+      options?.onStatus?.((response.error as { message?: string })?.message || '更新失败', true)
       return
     }
     feed.open_method = method
@@ -225,21 +225,21 @@ export function useRssFeeds(options: {
 
   const syncFeedFromContextMenu = async (feed: RssFeed) => {
     closeFeedContextMenu()
-    const result = await syncRssFeed(feed.id) as ApiResult
-    if (result.error) {
-      options?.onStatus?.((result.error as { message?: string })?.message || '同步失败', true)
+    const response = await syncRssFeed(feed.id) as ApiResult
+    if (response.error) {
+      options?.onStatus?.((response.error as { message?: string })?.message || '同步失败', true)
       return
     }
-    const count = result.data?.entries ?? 0
+    const count = response.data?.entries ?? 0
     options?.onStatus?.(`已同步「${feed.title}」，更新 ${count} 篇文章`)
     await options?.onRefreshEntries?.(true)
   }
 
   const markFeedAllAsRead = async (feed: RssFeed) => {
     closeFeedContextMenu()
-    const result = await markRssFeedAsRead(feed.id) as ApiResult
-    if (result.error) {
-      options?.onStatus?.((result.error as { message?: string })?.message || '标记已读失败', true)
+    const response = await markRssFeedAsRead(feed.id) as ApiResult
+    if (response.error) {
+      options?.onStatus?.((response.error as { message?: string })?.message || '标记已读失败', true)
       return
     }
     options?.onStatus?.(`已将「${feed.title}」全部文章标记为已读`)

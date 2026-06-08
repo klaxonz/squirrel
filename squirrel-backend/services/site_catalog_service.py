@@ -209,20 +209,20 @@ class SiteCatalogService:
             return {}
         if not isinstance(raw, dict):
             raise ValueError('proxy must be a dict')
-        result: dict[str, Any] = {}
+        normalized: dict[str, Any] = {}
         for field in ('connect_timeout', 'read_timeout', 'write_timeout', 'pool_timeout', 'keepalive_expiry'):
             value = raw.get(field)
             if value not in (None, ''):
-                result[field] = float(value)
+                normalized[field] = float(value)
         for field in ('max_retries', 'chunk_size', 'max_connections', 'max_keepalive_connections'):
             value = raw.get(field)
             if value not in (None, ''):
-                result[field] = int(value)
+                normalized[field] = int(value)
         if 'enable_http2' in raw:
-            result['enable_http2'] = SiteCatalogService._parse_bool(raw['enable_http2'])
+            normalized['enable_http2'] = SiteCatalogService._parse_bool(raw['enable_http2'])
         if 'follow_redirects' in raw:
-            result['follow_redirects'] = SiteCatalogService._parse_bool(raw['follow_redirects'])
-        return result
+            normalized['follow_redirects'] = SiteCatalogService._parse_bool(raw['follow_redirects'])
+        return normalized
 
     @staticmethod
     def _normalize_rate_limit(raw: Any) -> dict[str, Any]:
@@ -230,16 +230,16 @@ class SiteCatalogService:
             return {}
         if not isinstance(raw, dict):
             raise ValueError('rate_limit must be a dict')
-        result: dict[str, Any] = {}
+        normalized: dict[str, Any] = {}
         if 'enabled' in raw:
-            result['enabled'] = SiteCatalogService._parse_bool(raw['enabled'])
+            normalized['enabled'] = SiteCatalogService._parse_bool(raw['enabled'])
         min_interval = raw.get('min_interval')
         max_interval = raw.get('max_interval')
         if min_interval not in (None, ''):
-            result['min_interval'] = float(min_interval)
+            normalized['min_interval'] = float(min_interval)
         if max_interval not in (None, ''):
-            result['max_interval'] = float(max_interval)
-        return result
+            normalized['max_interval'] = float(max_interval)
+        return normalized
 
     @staticmethod
     def _normalize_login(raw: Any) -> dict[str, Any]:
@@ -247,19 +247,19 @@ class SiteCatalogService:
             return {}
         if not isinstance(raw, dict):
             raise ValueError('login must be a dict')
-        result: dict[str, Any] = {}
+        normalized: dict[str, Any] = {}
         check_url = str(raw.get('check_url') or '').strip()
         if check_url:
-            result['check_url'] = check_url
+            normalized['check_url'] = check_url
         headers = SiteCatalogService._normalize_headers(raw.get('headers'), 'login.headers')
         if headers:
-            result['headers'] = headers
+            normalized['headers'] = headers
         timeout = raw.get('timeout')
         if timeout not in (None, ''):
-            result['timeout'] = float(timeout)
+            normalized['timeout'] = float(timeout)
         if raw.get('extra_cookies'):
-            result['extra_cookies'] = str(raw.get('extra_cookies')).strip()
-        return result
+            normalized['extra_cookies'] = str(raw.get('extra_cookies')).strip()
+        return normalized
 
     @staticmethod
     def _normalize_metadata(raw: Any) -> dict[str, Any]:
@@ -267,19 +267,19 @@ class SiteCatalogService:
             return {}
         if not isinstance(raw, dict):
             raise ValueError('metadata must be a dict')
-        result: dict[str, Any] = {}
+        normalized: dict[str, Any] = {}
         for key in ('nsfw', 'requires_login', 'requires_cookies'):
             if key in raw:
-                result[key] = SiteCatalogService._parse_bool(raw[key])
+                normalized[key] = SiteCatalogService._parse_bool(raw[key])
         if SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD in raw:
-            result[SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD] = SiteCatalogService._parse_bool(
+            normalized[SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD] = SiteCatalogService._parse_bool(
                 raw[SITE_META_OFFLINE_THUMBNAILS_DOWNLOAD],
             )
         if SITE_META_OFFLINE_THUMBNAILS_DISPLAY in raw:
-            result[SITE_META_OFFLINE_THUMBNAILS_DISPLAY] = SiteCatalogService._parse_bool(
+            normalized[SITE_META_OFFLINE_THUMBNAILS_DISPLAY] = SiteCatalogService._parse_bool(
                 raw[SITE_META_OFFLINE_THUMBNAILS_DISPLAY],
             )
-        return result
+        return normalized
 
     @staticmethod
     def _normalize_cookie(raw: Any) -> dict[str, Any]:
@@ -287,14 +287,14 @@ class SiteCatalogService:
             return {}
         if not isinstance(raw, dict):
             raise ValueError('cookie must be a dict')
-        result: dict[str, Any] = {}
+        normalized: dict[str, Any] = {}
         alias_domains = SiteCatalogService._normalize_list(raw.get('alias_domains'), 'cookie.alias_domains')
         if alias_domains:
-            result['alias_domains'] = alias_domains
+            normalized['alias_domains'] = alias_domains
         match_domain = str(raw.get('match_domain') or '').strip().lower().lstrip('.')
         if match_domain:
-            result['match_domain'] = match_domain
-        return result
+            normalized['match_domain'] = match_domain
+        return normalized
 
     @staticmethod
     def _normalize_override_entry(slug: str, raw: Any) -> dict[str, Any]:

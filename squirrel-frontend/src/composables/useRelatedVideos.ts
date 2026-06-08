@@ -10,7 +10,7 @@ export default function useRelatedVideos(sourceVideo: Ref<VideoPageVideo | null>
   const loadingRelated = ref(false)
   const requestSeq = ref(0)
 
-  const extractItems = (data: VideoListResponse | null | undefined) => (Array.isArray(data?.data) ? data!.data! : [])
+  const extractItems = (videos: VideoListResponse | null | undefined) => (Array.isArray(videos?.data) ? videos!.data! : [])
 
   const getRelatedVideos = async (video: VideoPageVideo, { pageSize = 20 }: { pageSize?: number } = {}) => {
     if (!video) return { data: [] as VideoPageVideo[], error: null as unknown | null }

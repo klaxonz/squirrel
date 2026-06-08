@@ -66,11 +66,11 @@ class VideoExtractionService:
 
             with metrics.timer("crawl.extract", tags=tags):
                 logger.debug("Starting video extraction: %s", task.url)
-                result = self.handler.process(task)
+                extraction_result = self.handler.process(task)
 
-            if result.success:
+            if extraction_result.success:
                 extraction_succeeded = True
-                video_title = result.data.title if result.data else "N/A"
+                video_title = extraction_result.data.title if extraction_result.data else "N/A"
                 logger.info("Video extracted: platform=%s, url=%s, title=%s", domain, params.url, video_title)
                 metrics.counter("crawl.tasks.total", tags={**tags, "status": "success"})
                 metrics.counter("videos.discovered", tags={**tags, "subscribed": str(params.subscribed).lower()})
@@ -90,12 +90,12 @@ class VideoExtractionService:
                         ),
                     )
             else:
-                logger.error("Video extraction failed: platform=%s, url=%s, error=%s", domain, params.url, result.error)
-                error_type = self._extract_error_type(result.error)
+                logger.error("Video extraction failed: platform=%s, url=%s, error=%s", domain, params.url, extraction_result.error)
+                error_type = self._extract_error_type(extraction_result.error)
                 metrics.counter("crawl.tasks.total", tags={**tags, "status": "error"})
                 metrics.counter("crawl.errors.total", tags={**tags, "error_type": error_type})
 
-            return result
+            return extraction_result
         finally:
             download_service.clear_video_extraction_dedupe(params)
             subscription_sync_state_service.decrement_pending_video_count(

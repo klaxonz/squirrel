@@ -81,14 +81,14 @@ export const pickThumbnail = (thumbnails) => {
 
 export const uniqueByUrl = (items) => {
   const seen = new Set()
-  const result = []
+  const items_ = []
   for (const item of items) {
     const key = String(item?.url || '').trim()
     if (!key || seen.has(key)) continue
     seen.add(key)
-    result.push(item)
+    items_.push(item)
   }
-  return result
+  return items_
 }
 
 export const extractAttribute = (source, name) => {

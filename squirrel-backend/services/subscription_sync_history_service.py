@@ -64,11 +64,11 @@ class SubscriptionSyncHistoryService:
             if not site_slug:
                 site_slug = None
                 catalog_entry = None
-                for slug, info in catalog.items():
-                    aliases = [str(alias or '').strip().lower() for alias in info.get('aliases', []) if alias]
+                for slug, site_info in catalog.items():
+                    aliases = [str(alias or '').strip().lower() for alias in site_info.get('aliases', []) if alias]
                     if normalized_site in aliases:
                         site_slug = slug
-                        catalog_entry = info
+                        catalog_entry = site_info
                         break
 
         icon_url = str((catalog_entry or {}).get('icon_url') or '').strip() or None

@@ -102,10 +102,10 @@ export function useSiteCatalog() {
     siteCatalogLoading.value = true
     siteCatalogError.value = null
     try {
-      const result = (await saveSites({ sites: updatedOverrides })) as ApiResult<SitesResponse>
-      if (result.error) throw result.error
+      const response = (await saveSites({ sites: updatedOverrides })) as ApiResult<SitesResponse>
+      if (response.error) throw response.error
 
-      siteCatalog.value = result.data || {}
+      siteCatalog.value = response.data || {}
       resetCache()
     } catch (e: unknown) {
       siteCatalogError.value = e

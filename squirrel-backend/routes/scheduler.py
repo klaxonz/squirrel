@@ -98,7 +98,7 @@ def create_task(request: TaskCreateRequest):
 @router.put("/tasks/{task_id}")
 def update_task(task_id: int, request: TaskUpdateRequest):
     """Update task configuration"""
-    result = ScheduledTaskService.update_task(
+    task_result = ScheduledTaskService.update_task(
         task_id=task_id,
         name=request.name,
         description=request.description,
@@ -110,7 +110,7 @@ def update_task(task_id: int, request: TaskUpdateRequest):
         is_active=request.is_active,
     )
 
-    if not result:
+    if not task_result:
         return response.not_found("任务不存在或更新失败")
 
     return response.success(msg="任务更新成功")
@@ -119,8 +119,8 @@ def update_task(task_id: int, request: TaskUpdateRequest):
 @router.delete("/tasks/{task_id}")
 def delete_task(task_id: int):
     """Delete a task"""
-    result = ScheduledTaskService.delete_task(task_id)
-    if not result:
+    task_result = ScheduledTaskService.delete_task(task_id)
+    if not task_result:
         return response.not_found("任务不存在或删除失败")
 
     return response.success(msg="任务删除成功")
@@ -129,8 +129,8 @@ def delete_task(task_id: int):
 @router.post("/tasks/{task_id}/enable")
 def enable_task(task_id: int):
     """Enable a task"""
-    result = ScheduledTaskService.enable_task(task_id)
-    if not result:
+    task_result = ScheduledTaskService.enable_task(task_id)
+    if not task_result:
         return response.not_found("任务不存在或启用失败")
 
     return response.success(msg="任务已启用")
@@ -139,8 +139,8 @@ def enable_task(task_id: int):
 @router.post("/tasks/{task_id}/disable")
 def disable_task(task_id: int):
     """Disable a task"""
-    result = ScheduledTaskService.disable_task(task_id)
-    if not result:
+    task_result = ScheduledTaskService.disable_task(task_id)
+    if not task_result:
         return response.not_found("任务不存在或禁用失败")
 
     return response.success(msg="任务已禁用")
@@ -149,8 +149,8 @@ def disable_task(task_id: int):
 @router.post("/tasks/{task_id}/execute")
 def execute_task_now(task_id: int):
     """Execute a task immediately"""
-    result = ScheduledTaskService.execute_task_now(task_id)
-    if not result:
+    task_result = ScheduledTaskService.execute_task_now(task_id)
+    if not task_result:
         return response.not_found("任务不存在或执行失败")
 
     return response.success(msg="任务执行请求已提交")
