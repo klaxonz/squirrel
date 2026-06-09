@@ -1,10 +1,14 @@
+import logging
 import os
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger(__name__)
 
 # Backend project root directory (module-level for convenience)
 base_dir = Path(__file__).parent.parent
@@ -50,6 +54,30 @@ class Settings(BaseSettings):
                 "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
             )
         return v
+
+    @field_validator("POSTGRES_PASSWORD", mode="after")
+    @classmethod
+    def validate_postgres_password(cls, v: str) -> str:
+        env = os.getenv("ENV", "prod").lower()
+        if env != "dev" and v == "postgres":
+            raise ValueError(
+                "POSTGRES_PASSWORD must be changed from the default 'postgres' "
+                "in non-dev environments. Set it via environment variable or .env file."
+            )
+        return v
+
+    def model_post_init(self, __context: Any) -> None:
+        if not self.COOKIECLOUD_PASSWORD:
+            logger.warning(
+                "COOKIECLOUD_PASSWORD is not configured — CookieCloud sync "
+                "will be unavailable. Set COOKIECLOUD_URL, COOKIECLOUD_UUID, "
+                "and COOKIECLOUD_PASSWORD in .env"
+            )
+        if not self.KUGOU_MUSIC_API_BASE_URL:
+            logger.warning(
+                "KUGOU_MUSIC_API_BASE_URL is not configured — Kugou music "
+                "search/playback will be unavailable. Set it in .env"
+            )
 
     CORS_ALLOW_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
     SQUIRREL_YOUTUBE_POT_PROVIDER_MODE: str = "auto"

@@ -1,6 +1,7 @@
 ---
 title: Backend 默认数据库密码 — POSTGRES_PASSWORD 默认 postgres
-status: open
+status: fixed
+fixed_by: code-fix workflow
 severity: medium
 category: security
 location: squirrel-backend/core/config.py:30-31
