@@ -1,18 +1,33 @@
 # Squirrel — 智能编码助手指引
 
-## 开发流程（feature-flow skill）
+## 开发流程
 
-**硬规则：任何涉及代码或配置变更的任务，必须先 load `feature-flow` skill，再按以下流程执行。不依赖触发词判断，不跳过步骤。**
+**硬规则：任何涉及代码、配置或仓库规则变更的任务，必须先判断任务类型并 load 对应 skill。不要只按触发词判断。**
 
-完整实现链路使用 `feature-flow` skill 自动化，从需求到代码合入全链路：
+### 新功能 / 行为变更（feature-flow skill）
 
-0. **需求获取** → 用 template 创建 `.workflow/requirements/<name>.md`，用户确认
+新增能力、调整既有行为、跨模块改造，使用 `feature-flow` skill，从需求到代码合入全链路：
+
+0. **需求获取** → 用 template 创建 `.workflow/requirements/req-<name>.md`，用户确认
 1. **需求理解** → 确认范围、子项目、红线
-2. **设计方案** → 调研代码，输出方案到 `.workflow/designs/<name>.md`，用户确认后开干
+2. **设计方案** → 调研代码，输出方案到 `.workflow/designs/des-feature-<name>.md`，用户确认后开干
 3. **编码实现** → 按设计方案实现，涉及范围内可做最佳实践重构
 4. **审查** → 对照设计方案逐条覆盖
 5. **测试** → lint + 类型检查 + 相关测试
 6. **收尾** → 更新文档状态，报告改动，问 commit
+
+### 缺陷 / 启动失败 / 测试失败（code-fix skill）
+
+报错日志、traceback、启动失败、运行时异常、测试失败、回归问题，使用 `code-fix` skill：
+
+1. 先创建或定位 `.workflow/issues/issue-<NNN>-<title>.md`
+2. 调研根因，输出 `.workflow/designs/des-fix-<issue-id>-<title>.md`
+3. 对局部低风险修复可直接实施；涉及跨模块、公共接口、数据迁移、权限/安全逻辑或行为兼容性变化时，先让用户确认方案
+4. 验证后关闭 issue，并在设计文档记录验证结果
+
+### 纯文档 / 指引调整
+
+只修改 README、AGENTS、workflow 文档或说明文字时，不强制创建需求/设计文档；但仍必须先检查 `git status`，只改相关文件，并在最终回复说明未运行代码测试或说明验证方式。
 
 ## 项目结构
 
@@ -34,7 +49,7 @@ squirrel-extension/  Chrome 扩展 MV3
 pipenv install                    # 安装依赖
 pipenv run pytest                 # 跑全部测试
 pipenv run pytest path/to/test.py # 单文件
-pipenv run pytest::TestClass::test_method # 单用例
+pipenv run pytest path/to/test.py::TestClass::test_method # 单用例
 pipenv run ruff check             # lint（行长 120，E+F 规则）
 ```
 - SDK 额外：`python -m compileall src; python -m build`
@@ -85,9 +100,9 @@ npm install; npm run build:check  # 类型检查 + 构建
 ## 文档工作流
 | 命令 | 用途 | 存储位置 |
 |------|------|---------|
-| `/req <name>` | 创建需求文档 | `.workflow/requirements/<name>.md` |
-| `/design <name>` | 创建技术方案 | `.workflow/designs/<name>.md`（有对应需求时，name 必须与需求一致） |
-| `/bug <title>` | 报告缺陷（status=open） | 有关联需求/设计：`.workflow/issues/<name>-<NNN>-<title>.md`；独立缺陷：`.workflow/issues/bug-{YYYY-MM-DD}-{NNN}-<title>.md`（NNN 取目前最大序号 +1） |
+| `/req <name>` | 创建需求文档 | `.workflow/requirements/req-<name>.md` |
+| `/design <name>` | 创建技术方案 | `.workflow/designs/des-feature-<name>.md`（有对应需求时，name 必须与需求一致） |
+| `/bug <title>` | 报告缺陷（status=open） | `.workflow/issues/issue-<NNN>-<title>.md`（NNN 取目前最大序号 +1） |
 | `/issues` | 列出所有 open 的 issue | — |
 | `/issue close <name>` | 关闭 issue（status→fixed） | `.workflow/issues/<name>.md`（传入文件名去除 `.md` 后缀的部分） |
 | `/issue reopen <name>` | 重新打开 issue（status→open） | 同上 |
@@ -96,4 +111,3 @@ npm install; npm run build:check  # 类型检查 + 构建
 
 ## 项目记忆
 <!-- 使用 /remember 添加记忆，/recall 搜索记忆 -->
-
