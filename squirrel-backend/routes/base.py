@@ -19,7 +19,7 @@ from routes.logs import router as logs_router
 from routes.middleware.access_log import AccessLogMiddleware
 from routes.middleware.auth import (
     AuthenticationError,
-    AuthMiddleware,
+    AuthenticationMiddleware,
     TokenExpiredError,
     TokenMissingError,
 )
@@ -76,7 +76,7 @@ def create_app() -> FastAPI:
         )
 
     # 配置认证中间件
-    app.add_middleware(AuthMiddleware)
+    app.add_middleware(AuthenticationMiddleware)
 
     # 配置异常处理中间件
     app.add_middleware(

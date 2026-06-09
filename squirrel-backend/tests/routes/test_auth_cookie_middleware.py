@@ -7,13 +7,13 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes.middleware.auth import AuthMiddleware
+from routes.middleware.auth import AuthenticationMiddleware
 from utils.jwt_helper import AUTH_COOKIE_NAME
 
 
 def _build_app(monkeypatch):
     app = FastAPI()
-    app.add_middleware(AuthMiddleware)
+    app.add_middleware(AuthenticationMiddleware)
 
     @app.get("/api/private")
     async def private_api():
