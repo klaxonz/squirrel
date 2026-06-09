@@ -29,7 +29,12 @@ def get_site_cookies_dir() -> Path:
 
 def get_site_cookies_file_path(site_slug: str) -> Path:
     safe_slug = (site_slug or "").strip().lower() or "default"
-    return get_site_cookies_dir() / f"{safe_slug}.txt"
+    cookies_dir = get_site_cookies_dir().resolve()
+    candidate = cookies_dir / f"{safe_slug}.txt"
+    resolved = candidate.resolve()
+    if not resolved.is_relative_to(cookies_dir):
+        return cookies_dir / "default.txt"
+    return resolved
 
 
 def _get_cookie_file_thread_lock(lock_path: Path) -> threading.Lock:

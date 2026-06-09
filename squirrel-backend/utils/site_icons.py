@@ -28,7 +28,11 @@ def resolve_site_icon_path(site_name: str | None) -> Path | None:
     if not slug:
         return None
 
-    assets_dir = Path(__file__).resolve().parents[2] / "squirrel-site-runtimes" / slug / "assets"
+    base_runtimes = Path(__file__).resolve().parents[2] / "squirrel-site-runtimes"
+    assets_dir = (base_runtimes / slug / "assets").resolve()
+    if not assets_dir.is_relative_to(base_runtimes.resolve()):
+        return None
+
     if not assets_dir.exists():
         return None
 

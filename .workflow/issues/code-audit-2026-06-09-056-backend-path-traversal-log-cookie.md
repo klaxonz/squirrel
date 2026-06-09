@@ -1,6 +1,7 @@
 ---
 title: Backend Path Traversal — Log/Cookie/Icon 文件读取可被绕过
-status: open
+status: fixed
+fixed_by: 056
 severity: critical
 category: security
 location: squirrel-backend/services/log_service.py:51; squirrel-backend/core/cookie_config.py:30-32; squirrel-backend/utils/site_icons.py:26-39

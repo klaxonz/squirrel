@@ -1,6 +1,7 @@
 import os
 import re
 from datetime import datetime
+from pathlib import Path
 
 from common.log import LOG_DIR
 
@@ -48,7 +49,11 @@ class LogService:
             (log lines list, total count, whether there are more)
 
         """
-        filepath = os.path.join(LOG_DIR, filename)
+        log_dir = Path(LOG_DIR).resolve()
+        resolved = (log_dir / filename).resolve()
+        if not resolved.is_relative_to(log_dir):
+            return [], 0, False
+        filepath = str(resolved)
 
         if not os.path.exists(filepath):
             return [], 0, False
