@@ -12,6 +12,7 @@ from models.video import Video
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
 from services.nsfw_policy import resolve_effective_nsfw_filter as _default_resolve_effective_nsfw_filter
+from services.search_query import escape_ilike as _escape_ilike
 from services.search_query import normalize_subscription_type_term as _default_normalize_subscription_type_term
 from services.search_query import parse_search_query as _default_parse_search_query
 from utils import url_helper
@@ -30,7 +31,7 @@ class VideoQueryService:
 
     @staticmethod
     def _contains(column: Any, term: str) -> ColumnElement[bool]:
-        return column.ilike(f"%{term}%")
+        return column.ilike(f"%{_escape_ilike(term)}%")
 
     @staticmethod
     def _video_match_clause(*, video_id_column: Any, term: str) -> Any:

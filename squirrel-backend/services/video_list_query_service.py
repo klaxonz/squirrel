@@ -11,6 +11,7 @@ from models.video import Video
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
 from services.nsfw_policy import resolve_effective_nsfw_filter as _default_resolve_effective_nsfw_filter
+from services.search_query import escape_ilike as _eil
 from services.video_query import duration_predicate as _default_duration_predicate
 
 
@@ -39,7 +40,7 @@ class VideoListQueryService:
 
     @staticmethod
     def _contains(column: Any, term: str) -> ColumnElement[bool]:
-        return column.ilike(f"%{term}%")
+        return column.ilike(f"%{_eil(term)}%")
 
     @staticmethod
     def _normalize_domains(domains: list[str] | None) -> list[str]:

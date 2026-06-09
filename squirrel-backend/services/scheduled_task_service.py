@@ -8,6 +8,7 @@ from core.database import get_session
 from core.dynamic_task_manager import dynamic_task_manager
 from models.scheduled_task import ScheduledTask, TaskExecutionLog, TaskStatus, TaskType
 from services.scheduled_task_bootstrap import discover_task_classes, ensure_system_tasks
+from services.search_query import escape_ilike
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +36,8 @@ class ScheduledTaskService:
             if search:
                 db_tasks = db_tasks.filter(
                     or_(
-                        ScheduledTask.name.ilike(f"%{search}%"),
-                        ScheduledTask.description.ilike(f"%{search}%"),
+                        ScheduledTask.name.ilike(f"%{escape_ilike(search)}%"),
+                        ScheduledTask.description.ilike(f"%{escape_ilike(search)}%"),
                     ),
                 )
 

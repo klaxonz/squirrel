@@ -78,6 +78,10 @@ SUBSCRIPTION_TYPE_ALIASES = {
 }
 
 
+def escape_ilike(term: str) -> str:
+    return term.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+
+
 class SearchQueryParser:
     @staticmethod
     def _normalize_term(value: str) -> str:

@@ -11,6 +11,7 @@ from models.links import UserSubscription
 from models.subscription import Subscription
 from models.video_extraction_projection import VideoExtractionProjection
 from schemas.subscription.dto.sync_center_dto import SyncCenterItemDto, SyncCenterListDto, SyncCenterOverviewDto
+from services.search_query import escape_ilike
 from services.site_catalog_cache import format_datetime as _default_format_datetime
 from services.site_catalog_cache import get_cached_site_catalog as _default_get_cached_site_catalog
 from utils.site_catalog import SiteCatalog
@@ -217,7 +218,7 @@ class VideoExtractionCenterService:
         if site_candidates:
             query = query.where(VideoExtractionProjection.site.in_(site_candidates))
         if normalized_query:
-            query = query.where(Subscription.name.ilike(f"%{normalized_query}%"))
+            query = query.where(Subscription.name.ilike(f"%{escape_ilike(normalized_query)}%"))
         return query
 
     @staticmethod

@@ -15,7 +15,7 @@ from models.video_history import VideoHistory
 from schemas.subscription.dto.subscription_dto import SubscriptionDto
 from services import user_config_service
 from services.nsfw_policy import resolve_effective_nsfw_filter
-from services.search_query import normalize_subscription_type_term, parse_search_query
+from services.search_query import escape_ilike, normalize_subscription_type_term, parse_search_query
 from sql.subscription_sql import get_subscription_sql
 from utils.site_catalog import SiteCatalog
 from utils.sql_parser import parse_dynamic_sql
@@ -31,7 +31,7 @@ class SubscriptionListService:
 
     @staticmethod
     def _contains(column: Any, term: str) -> ColumnElement[bool]:
-        return column.ilike(f'%{term}%')
+        return column.ilike(f'%{escape_ilike(term)}%')
 
     @staticmethod
     def _build_subscription_search_clauses(query: str | None) -> list[Any]:

@@ -12,6 +12,7 @@ from models.subscription import Subscription
 from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
+from services.search_query import escape_ilike
 from services.subscription_sync_progress import ACTIVE_EXTRACTION_PHASES
 from services.subscription_sync_run_service import SyncEventType
 
@@ -105,7 +106,7 @@ class SyncCenterQueriesService:
         if site_candidates:
             clauses.append(SubscriptionSyncRunProjection.site.in_(site_candidates))
         if normalized_query:
-            clauses.append(Subscription.name.ilike(f'%{normalized_query}%'))
+            clauses.append(Subscription.name.ilike(f'%{escape_ilike(normalized_query)}%'))
 
         return clauses
 

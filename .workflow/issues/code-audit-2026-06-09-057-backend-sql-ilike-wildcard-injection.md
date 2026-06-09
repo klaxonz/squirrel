@@ -1,6 +1,7 @@
 ---
 title: Backend SQL ILIKE 通配符注入 — 7 处未转义用户输入
-status: open
+status: fixed
+fixed_by: squirrel-backend
 severity: medium
 category: security
 location: squirrel-backend/services/video_query.py:33; squirrel-backend/services/video_list_query_service.py:42; squirrel-backend/services/subscription_list_service.py:34; squirrel-backend/services/subscription_sync_center_service.py:585; squirrel-backend/services/video_extraction_center_service.py:220; squirrel-backend/services/subscription_sync_center_queries.py:108; squirrel-backend/services/scheduled_task_service.py:38-39

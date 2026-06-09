@@ -18,6 +18,7 @@ from schemas.subscription.dto.sync_center_dto import (
 )
 from services.crawl_tasks.models import CrawlTaskStatus
 from services.crawl_tasks.task_types import subscription_sync_task_types
+from services.search_query import escape_ilike
 from services.site_catalog_cache import format_datetime as _format_datetime
 from services.site_catalog_cache import parse_datetime as _parse_datetime
 from services.subscription_sync_center_queries import (
@@ -582,7 +583,7 @@ class SubscriptionSyncCenterService:
             if site_candidates:
                 recent_query = recent_query.where(SubscriptionSyncRunProjection.site.in_(site_candidates))
             if normalized_query:
-                recent_query = recent_query.where(Subscription.name.ilike(f'%{normalized_query}%'))
+                recent_query = recent_query.where(Subscription.name.ilike(f'%{escape_ilike(normalized_query)}%'))
             if parsed_from:
                 recent_query = recent_query.where(SubscriptionSyncRunProjection.last_event_at >= parsed_from)
             if parsed_to:
