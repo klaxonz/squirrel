@@ -12,7 +12,11 @@ router = APIRouter(prefix="/api/music", tags=["音乐接口"])
 
 
 async def get_music_service():
-    return MusicService()
+    service = MusicService()
+    try:
+        yield service
+    finally:
+        await service.aclose()
 
 
 def _handle_music_error(func):

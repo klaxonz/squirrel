@@ -1,6 +1,7 @@
 ---
 title: Backend httpx AsyncClient 资源泄漏 — MusicClient 和 ThumbnailDownloader 未关闭
-status: open
+status: fixed
+fixed_by: 058-code-fix
 severity: medium
 category: architecture
 location: squirrel-backend/services/music/_client.py:28-29; squirrel-backend/services/extraction/thumbnail_downloader.py:76-82; squirrel-backend/services/metrics_service.py:43-68

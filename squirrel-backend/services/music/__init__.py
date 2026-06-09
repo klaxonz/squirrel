@@ -41,6 +41,9 @@ class MusicService:
             settings=settings or _global_settings,
         )
 
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
     # --- Search ---
 
     async def search_tracks(self, user_id: int, query: str, page: int, page_size: int) -> dict[str, Any]:

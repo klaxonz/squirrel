@@ -8,7 +8,7 @@ from typing import Any
 
 from sqlalchemy import and_, func
 
-from core.database import get_db
+from core.database import get_session
 from models.metric import MetricSnapshot as MetricSnapshotModel
 from utils.metrics import MetricSnapshot, metrics
 
@@ -40,32 +40,28 @@ class MetricsService:
         if not snapshots:
             return 0
 
-        db = next(get_db())
         try:
-            records = []
-            for snapshot in snapshots:
-                record = MetricSnapshotModel(
-                    metric_name=snapshot.metric_name,
-                    metric_type=snapshot.metric_type,
-                    labels=snapshot.labels,
-                    value=snapshot.value,
-                    timestamp=snapshot.timestamp,
-                    created_at=datetime.now(),
-                )
-                records.append(record)
+            with get_session() as db:
+                records = []
+                for snapshot in snapshots:
+                    record = MetricSnapshotModel(
+                        metric_name=snapshot.metric_name,
+                        metric_type=snapshot.metric_type,
+                        labels=snapshot.labels,
+                        value=snapshot.value,
+                        timestamp=snapshot.timestamp,
+                        created_at=datetime.now(),
+                    )
+                    records.append(record)
 
-            db.bulk_save_objects(records)
-            db.commit()
+                db.bulk_save_objects(records)
 
-            logger.info("Persisted %s metric snapshots to database", len(records))
-            return len(records)
+                logger.info("Persisted %s metric snapshots to database", len(records))
+                return len(records)
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            db.rollback()
             logger.error("Failed to persist metric snapshots: %s", e)
             return 0
-        finally:
-            db.close()
 
     def collect_and_persist(self, metric_names: list[str] | None = None) -> int:
         """Collect metric snapshots from Redis and persist
@@ -105,57 +101,55 @@ class MetricsService:
             Time-series data list, format: [{"timestamp": "2025-12-07T20:00:00", "value": 123}, ...]
 
         """
-        db = next(get_db())
         try:
-            # 默认时间范围：最近1小时
-            if not end_time:
-                end_time = datetime.now()
-            if not start_time:
-                start_time = end_time - timedelta(hours=1)
+            with get_session() as db:
+                # 默认时间范围：最近1小时
+                if not end_time:
+                    end_time = datetime.now()
+                if not start_time:
+                    start_time = end_time - timedelta(hours=1)
 
-            # 构建查询
-            query = db.query(
-                func.date_trunc("minute", MetricSnapshotModel.timestamp).label("time_bucket"),
-                func.avg(MetricSnapshotModel.value).label("avg_value"),
-                func.min(MetricSnapshotModel.value).label("min_value"),
-                func.max(MetricSnapshotModel.value).label("max_value"),
-                func.count(MetricSnapshotModel.id).label("count"),
-            ).filter(
-                and_(
-                    MetricSnapshotModel.metric_name == metric_name,
-                    MetricSnapshotModel.timestamp >= start_time,
-                    MetricSnapshotModel.timestamp <= end_time,
-                ),
-            )
+                # 构建查询
+                query = db.query(
+                    func.date_trunc("minute", MetricSnapshotModel.timestamp).label("time_bucket"),
+                    func.avg(MetricSnapshotModel.value).label("avg_value"),
+                    func.min(MetricSnapshotModel.value).label("min_value"),
+                    func.max(MetricSnapshotModel.value).label("max_value"),
+                    func.count(MetricSnapshotModel.id).label("count"),
+                ).filter(
+                    and_(
+                        MetricSnapshotModel.metric_name == metric_name,
+                        MetricSnapshotModel.timestamp >= start_time,
+                        MetricSnapshotModel.timestamp <= end_time,
+                    ),
+                )
 
-            # 添加标签过滤
-            if labels:
-                for key, value in labels.items():
-                    query = query.filter(
-                        MetricSnapshotModel.labels[key].astext == value,
-                    )
+                # 添加标签过滤
+                if labels:
+                    for key, value in labels.items():
+                        query = query.filter(
+                            MetricSnapshotModel.labels[key].astext == value,
+                        )
 
-            # 按时间分组
-            query = query.group_by("time_bucket").order_by("time_bucket")
+                # 按时间分组
+                query = query.group_by("time_bucket").order_by("time_bucket")
 
-            results = query.all()
+                results = query.all()
 
-            return [
-                {
-                    "timestamp": row.time_bucket.isoformat(),
-                    "value": float(row.avg_value),
-                    "min": float(row.min_value),
-                    "max": float(row.max_value),
-                    "count": row.count,
-                }
-                for row in results
-            ]
+                return [
+                    {
+                        "timestamp": row.time_bucket.isoformat(),
+                        "value": float(row.avg_value),
+                        "min": float(row.min_value),
+                        "max": float(row.max_value),
+                        "count": row.count,
+                    }
+                    for row in results
+                ]
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error("Failed to query metric timeseries for %s: %s", metric_name, e)
             return []
-        finally:
-            db.close()
 
     def get_metric_aggregation(
         self,
@@ -176,60 +170,58 @@ class MetricsService:
             Aggregation statistics including count, min, max, avg, sum
 
         """
-        db = next(get_db())
         try:
-            # 默认时间范围：最近1小时
-            if not end_time:
-                end_time = datetime.now()
-            if not start_time:
-                start_time = end_time - timedelta(hours=1)
+            with get_session() as db:
+                # 默认时间范围：最近1小时
+                if not end_time:
+                    end_time = datetime.now()
+                if not start_time:
+                    start_time = end_time - timedelta(hours=1)
 
-            # 构建查询
-            query = db.query(
-                func.count(MetricSnapshotModel.id).label("count"),
-                func.min(MetricSnapshotModel.value).label("min_value"),
-                func.max(MetricSnapshotModel.value).label("max_value"),
-                func.avg(MetricSnapshotModel.value).label("avg_value"),
-                func.sum(MetricSnapshotModel.value).label("sum_value"),
-            ).filter(
-                and_(
-                    MetricSnapshotModel.metric_name == metric_name,
-                    MetricSnapshotModel.timestamp >= start_time,
-                    MetricSnapshotModel.timestamp <= end_time,
-                ),
-            )
+                # 构建查询
+                query = db.query(
+                    func.count(MetricSnapshotModel.id).label("count"),
+                    func.min(MetricSnapshotModel.value).label("min_value"),
+                    func.max(MetricSnapshotModel.value).label("max_value"),
+                    func.avg(MetricSnapshotModel.value).label("avg_value"),
+                    func.sum(MetricSnapshotModel.value).label("sum_value"),
+                ).filter(
+                    and_(
+                        MetricSnapshotModel.metric_name == metric_name,
+                        MetricSnapshotModel.timestamp >= start_time,
+                        MetricSnapshotModel.timestamp <= end_time,
+                    ),
+                )
 
-            # 添加标签过滤
-            if labels:
-                for key, value in labels.items():
-                    query = query.filter(
-                        MetricSnapshotModel.labels[key].astext == value,
-                    )
+                # 添加标签过滤
+                if labels:
+                    for key, value in labels.items():
+                        query = query.filter(
+                            MetricSnapshotModel.labels[key].astext == value,
+                        )
 
-            result = query.first()
+                result = query.first()
 
-            if not result or result.count == 0:
+                if not result or result.count == 0:
+                    return {
+                        "count": 0,
+                        "min": 0,
+                        "max": 0,
+                        "avg": 0,
+                        "sum": 0,
+                    }
+
                 return {
-                    "count": 0,
-                    "min": 0,
-                    "max": 0,
-                    "avg": 0,
-                    "sum": 0,
+                    "count": result.count,
+                    "min": float(result.min_value) if result.min_value else 0,
+                    "max": float(result.max_value) if result.max_value else 0,
+                    "avg": float(result.avg_value) if result.avg_value else 0,
+                    "sum": float(result.sum_value) if result.sum_value else 0,
                 }
-
-            return {
-                "count": result.count,
-                "min": float(result.min_value) if result.min_value else 0,
-                "max": float(result.max_value) if result.max_value else 0,
-                "avg": float(result.avg_value) if result.avg_value else 0,
-                "sum": float(result.sum_value) if result.sum_value else 0,
-            }
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error("Failed to query metric aggregation for %s: %s", metric_name, e)
             return {"count": 0, "min": 0, "max": 0, "avg": 0, "sum": 0}
-        finally:
-            db.close()
 
     def get_metrics_by_labels(
         self,
@@ -248,60 +240,58 @@ class MetricsService:
             Statistics list grouped by label
 
         """
-        db = next(get_db())
         try:
-            # 默认时间范围：最近1小时
-            if not end_time:
-                end_time = datetime.now()
-            if not start_time:
-                start_time = end_time - timedelta(hours=1)
+            with get_session() as db:
+                # 默认时间范围：最近1小时
+                if not end_time:
+                    end_time = datetime.now()
+                if not start_time:
+                    start_time = end_time - timedelta(hours=1)
 
-            # 查询所有记录
-            results = db.query(MetricSnapshotModel).filter(
-                and_(
-                    MetricSnapshotModel.timestamp >= start_time,
-                    MetricSnapshotModel.timestamp <= end_time,
-                    MetricSnapshotModel.labels.isnot(None),
-                ),
-            ).all()
+                # 查询所有记录
+                results = db.query(MetricSnapshotModel).filter(
+                    and_(
+                        MetricSnapshotModel.timestamp >= start_time,
+                        MetricSnapshotModel.timestamp <= end_time,
+                        MetricSnapshotModel.labels.isnot(None),
+                    ),
+                ).all()
 
-            # 手动分组聚合（因为 JSON 字段分组在 SQLAlchemy 中较复杂）
-            groups = {}
-            for record in results:
-                label_value = record.labels.get(label_key) if record.labels else None
-                if not label_value:
-                    continue
+                # 手动分组聚合（因为 JSON 字段分组在 SQLAlchemy 中较复杂）
+                groups = {}
+                for record in results:
+                    label_value = record.labels.get(label_key) if record.labels else None
+                    if not label_value:
+                        continue
 
-                key = f"{record.metric_name}:{label_value}"
-                if key not in groups:
-                    groups[key] = {
-                        "metric_name": record.metric_name,
-                        "label_key": label_key,
-                        "label_value": label_value,
-                        "count": 0,
-                        "sum": 0,
-                        "avg": 0,
-                        "min": float("inf"),
-                        "max": float("-inf"),
-                    }
+                    key = f"{record.metric_name}:{label_value}"
+                    if key not in groups:
+                        groups[key] = {
+                            "metric_name": record.metric_name,
+                            "label_key": label_key,
+                            "label_value": label_value,
+                            "count": 0,
+                            "sum": 0,
+                            "avg": 0,
+                            "min": float("inf"),
+                            "max": float("-inf"),
+                        }
 
-                groups[key]["count"] += 1
-                groups[key]["sum"] += float(record.value)
-                groups[key]["min"] = min(groups[key]["min"], float(record.value))
-                groups[key]["max"] = max(groups[key]["max"], float(record.value))
+                    groups[key]["count"] += 1
+                    groups[key]["sum"] += float(record.value)
+                    groups[key]["min"] = min(groups[key]["min"], float(record.value))
+                    groups[key]["max"] = max(groups[key]["max"], float(record.value))
 
-            # 计算平均值
-            for group in groups.values():
-                if group["count"] > 0:
-                    group["avg"] = group["sum"] / group["count"]
+                # 计算平均值
+                for group in groups.values():
+                    if group["count"] > 0:
+                        group["avg"] = group["sum"] / group["count"]
 
-            return list(groups.values())
+                return list(groups.values())
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
             logger.error("Failed to query metrics by labels: %s", e)
             return []
-        finally:
-            db.close()
 
     def cleanup_old_metrics(self, days: int | None = None) -> int:
         """Clean up expired metric data
@@ -313,26 +303,21 @@ class MetricsService:
             Number of deleted records
 
         """
-        db = next(get_db())
         try:
-            retention_days = days or self.retention_days
-            cutoff_date = datetime.now() - timedelta(days=retention_days)
+            with get_session() as db:
+                retention_days = days or self.retention_days
+                cutoff_date = datetime.now() - timedelta(days=retention_days)
 
-            deleted_count = db.query(MetricSnapshotModel).filter(
-                MetricSnapshotModel.timestamp < cutoff_date,
-            ).delete()
+                deleted_count = db.query(MetricSnapshotModel).filter(
+                    MetricSnapshotModel.timestamp < cutoff_date,
+                ).delete()
 
-            db.commit()
-
-            logger.info("Cleaned up %s old metric records (older than %s days)", deleted_count, retention_days)
-            return deleted_count
+                logger.info("Cleaned up %s old metric records (older than %s days)", deleted_count, retention_days)
+                return deleted_count
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            db.rollback()
             logger.error("Failed to cleanup old metrics: %s", e)
             return 0
-        finally:
-            db.close()
 
 
 # 全局实例

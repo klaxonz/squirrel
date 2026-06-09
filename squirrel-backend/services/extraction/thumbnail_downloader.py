@@ -81,7 +81,7 @@ class ThumbnailDownloaderService:
             )
         return self._http_client
 
-    def _reset_http_client(self) -> None:
+    def close(self) -> None:
         if self._http_client is None:
             return
         try:
@@ -89,6 +89,9 @@ class ThumbnailDownloaderService:
         except (OSError, ValueError, TypeError):
             pass
         self._http_client = None
+
+    def _reset_http_client(self) -> None:
+        self.close()
 
     def _request_thumbnail(
         self,

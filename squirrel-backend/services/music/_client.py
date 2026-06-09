@@ -28,6 +28,10 @@ class MusicClient:
         if self.http_client is None:
             self.http_client = httpx.AsyncClient(timeout=10.0, follow_redirects=True)
 
+    async def aclose(self) -> None:
+        if self.http_client is not None:
+            await self.http_client.aclose()
+
     @staticmethod
     def _timestamp_ms() -> int:
         return int(time.time() * 1000)
