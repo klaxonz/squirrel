@@ -29,6 +29,9 @@ export const loadFileCache = async (cacheKey, ttlMs = CACHE_TTL_MS) => {
     }
     return entry.value
   } catch (err) {
+    if (err?.code === 'ENOENT') {
+      return null
+    }
     console.debug('[squirrel-desktop] file-cache load error', err)
     return null
   }

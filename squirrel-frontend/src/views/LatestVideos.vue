@@ -27,11 +27,11 @@
             <!-- Full-Width Background Image Layers -->
             <div class="absolute inset-0 z-0 bg-black">
               <!-- Blurred Background for cinematic full-bleed effect -->
-              <VideoThumbnail :src="video?.thumbnail" :alt="video?.title" fit="cover" position="center" blur no-fade img-class="opacity-40 scale-125 transition-transform duration-[10000ms] ease-out" />
+              <VideoThumbnail :src="video?.thumbnail" :alt="video?.title" fit="cover" position="center" blur no-fade img-class="opacity-40 scale-125 transition-transform [transition-duration:10000ms] ease-out" />
 
               <!-- Uncropped Foreground Image aligned to the right -->
               <div class="absolute inset-0 flex justify-end md:pr-12">
-                <VideoThumbnail :src="video?.thumbnail" :alt="video?.title" fit="contain" position="center" no-fade :img-class="`md:w-3/4 md:object-right opacity-95 transition-transform duration-[10000ms] ease-out ${index === activeSpotlightIndex ? 'scale-[1.03]' : 'scale-100'}`" />
+                <VideoThumbnail :src="video?.thumbnail" :alt="video?.title" fit="contain" position="center" no-fade :img-class="`md:w-3/4 md:object-right opacity-95 transition-transform [transition-duration:10000ms] ease-out ${index === activeSpotlightIndex ? 'scale-[1.03]' : 'scale-100'}`" />
               </div>
 
               <!-- Heavy gradient on left for text readability (placed over the image) -->

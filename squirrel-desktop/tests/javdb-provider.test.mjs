@@ -32,6 +32,38 @@ test('desktop javdb provider resolves missav hls stream from javdb detail page',
   assert.equal(payload.metadata.video, undefined)
 })
 
+test('desktop javdb provider treats cold disk cache as a normal miss', async () => {
+  const targetUrl = `https://javdb.com/v/cold-cache-${Date.now()}`
+  const debug = console.debug
+  const messages = []
+  console.debug = (...args) => messages.push(args)
+
+  try {
+    const requestedUrls = []
+    const payload = await resolveJavdbPlayback(targetUrl, {
+      loadDocumentHtml: async (url) => {
+        requestedUrls.push(url)
+        if (url === targetUrl) {
+          return '<div class="title"><strong>ABP-123</strong><strong>Demo Title</strong></div>'
+        }
+        if (url === 'https://missav.ai/abp-123') {
+          return `<script>'${streamParts}'</script>`
+        }
+        throw new Error(`Unexpected document URL: ${url}`)
+      },
+    })
+
+    assert.deepEqual(requestedUrls, [
+      targetUrl,
+      'https://missav.ai/abp-123',
+    ])
+    assert.equal(payload.video_url, 'https://videos.cdn.example.com/five-four-three-two-one/master/video.m3u8')
+    assert.deepEqual(messages, [])
+  } finally {
+    console.debug = debug
+  }
+})
+
 test('desktop javdb provider uses supplied title before loading javdb detail', async () => {
   const requestedUrls = []
   const payload = await resolveJavdbPlayback('https://javdb.com/v/title-demo', {
