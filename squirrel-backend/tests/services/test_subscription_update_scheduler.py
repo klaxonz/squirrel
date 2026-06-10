@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from importlib import import_module
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -13,6 +14,7 @@ from models.links import UserSubscription
 from models.outbox_event import OutboxEvent
 from models.subscription import Subscription
 from models.subscription_sync_state import SubscriptionSyncState
+from services.outbox_event_service import OutboxEventService
 from services.subscription_update.models import SubscriptionUpdateResult, UpdateMode, UpdateTrigger
 from services.subscription_update.scheduler import SubscriptionScheduler
 
@@ -46,8 +48,11 @@ def _patch_postgres(session_factory):
     from services.subscription_sync_projection_service import _default as proj_default
     from services.subscription_sync_run_service import _default as run_svc_default
 
+    scheduler_mod = import_module('services.subscription_update.scheduler')
+
     with patch.object(database, 'register_after_commit', lambda session, callback: None), \
          patch.object(database, 'get_session', session_factory), \
+         patch.object(scheduler_mod, 'outbox_event_service', OutboxEventService(session_factory=session_factory)), \
          patch.object(run_svc_default, 'next_seq_no', lambda stream_id, *, session=None: 1), \
          patch.object(proj_default, '_advisory_lock', staticmethod(lambda session, key: None)), \
          patch.object(proj_default, 'apply_event', lambda event, session=None: event):
@@ -277,19 +282,30 @@ def test_enqueue_all_active_includes_active_subscriptions_without_sync_state(eng
                 UserSubscription(user_id=100, subscription_id=3, is_deleted=False, is_nsfw=False),
             ],
         )
+        now = datetime.now()
+        session.add_all(
+            [
+                SubscriptionSyncState(
+                    subscription_id=2,
+                    site="bilibili.com",
+                    sync_mode="incremental",
+                    sync_status="success",
+                    next_sync_at=now - timedelta(minutes=1),
+                ),
+                SubscriptionSyncState(
+                    subscription_id=3,
+                    site="bilibili.com",
+                    sync_mode="incremental",
+                    sync_status="success",
+                    next_sync_at=now + timedelta(minutes=10),
+                ),
+            ],
+        )
         session.commit()
 
-    now = datetime.now()
-    sync_states = {
-        2: SimpleNamespace(sync_status="success", next_sync_at=now - timedelta(minutes=1)),
-        3: SimpleNamespace(sync_status="success", next_sync_at=now + timedelta(minutes=10)),
-    }
     scheduled_calls = []
 
-    from services import subscription_sync_state_service as ssss
-
-    with patch.object(ssss, 'get_sync_state', lambda subscription_id, mode: sync_states.get(subscription_id)), \
-         patch.object(SubscriptionScheduler, 'schedule_one', lambda self, subscription_id, url, trigger, mode: (
+    with patch.object(SubscriptionScheduler, 'schedule_one', lambda self, subscription_id, url, trigger, mode: (
              scheduled_calls.append((subscription_id, url, trigger, mode)) or
              SimpleNamespace(status="queued")
          )):

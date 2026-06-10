@@ -86,7 +86,7 @@ def list_due_sync_states(
     now: datetime | None = None,
 ) -> list[tuple[SubscriptionSyncState, str]]:
     now = now or datetime.now()
-    from ._recovery import _recover_stale_running_states_in_session
+    from ._stale import _recover_stale_running_states_in_session
     with get_session() as session:
         _recover_stale_running_states_in_session(session, now)
         rows = session.execute(
