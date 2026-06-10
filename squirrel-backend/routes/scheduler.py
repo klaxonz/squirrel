@@ -18,6 +18,10 @@ def get_system_config_service():
     return SystemConfigService()
 
 
+def get_scheduled_task_service():
+    return ScheduledTaskService()
+
+
 # Pydantic models for API
 class TaskCreateRequest(BaseModel):
     name: str = Field(..., description="Task name", min_length=1, max_length=100)
@@ -62,9 +66,10 @@ def get_scheduled_tasks(
     search: str | None = Query(None, description="Search keyword"),
     status: str | None = Query(None, description="Task status"),
     task_type: str | None = Query(None, description="Task type"),
+    svc: ScheduledTaskService = Depends(get_scheduled_task_service),
 ):
     """Get scheduled task list"""
-    return response.success(ScheduledTaskService.get_task_list(
+    return response.success(svc.get_task_list(
         page=page,
         page_size=page_size,
         search=search,
