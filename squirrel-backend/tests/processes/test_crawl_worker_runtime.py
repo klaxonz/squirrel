@@ -50,9 +50,15 @@ def test_run_once_executes_video_extract_task(monkeypatch):
     ]
 
 
-def test_run_once_retries_legacy_subscription_sync_task_type(monkeypatch):
+def test_run_once_executes_legacy_subscription_sync_task_type(monkeypatch):
     calls = []
-    task = CrawlTask(id=2, job_id=1, task_type="subscription_sync", site="bilibili.com", payload={})
+    task = CrawlTask(
+        id=2,
+        job_id=1,
+        task_type="subscription_sync",
+        site="bilibili.com",
+        payload={"subscription_id": 10, "url": "https://space.bilibili.com/42"},
+    )
     runtime = CrawlWorkerRuntime(
         dispatcher=SimpleNamespace(claim_next=lambda **kwargs: task),
         worker_id="worker-1",
@@ -69,10 +75,12 @@ def test_run_once_retries_legacy_subscription_sync_task_type(monkeypatch):
         lambda task_id, worker_id, now=None: calls.append(("start", task_id, worker_id)),
     )
     monkeypatch.setattr(
-        "processes.managers.crawl_worker_runtime.crawl_task_service.retry_task",
-        lambda task_id, worker_id, error_message, error_type, now=None, delay_seconds=30: calls.append(
-            ("retry", task_id, worker_id, error_type, error_message),
-        ),
+        "processes.managers.crawl_worker_runtime.execute_subscription_sync_task",
+        lambda current_task: calls.append(("sync", current_task.id, current_task.task_type)),
+    )
+    monkeypatch.setattr(
+        "processes.managers.crawl_worker_runtime.crawl_task_service.complete_task",
+        lambda task_id, worker_id, now=None: calls.append(("complete", task_id, worker_id)),
     )
 
     ran = runtime.run_once()
@@ -80,7 +88,8 @@ def test_run_once_retries_legacy_subscription_sync_task_type(monkeypatch):
     assert ran is True
     assert calls == [
         ("start", 2, "worker-1"),
-        ("retry", 2, "worker-1", "ValueError", "Unsupported crawl task type: subscription_sync"),
+        ("sync", 2, "subscription_sync"),
+        ("complete", 2, "worker-1"),
     ]
 
 

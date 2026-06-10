@@ -1,6 +1,7 @@
 """Convenience helpers for composing runtime V2 plugin packages."""
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable
 from importlib import import_module
 from typing import Any
@@ -29,7 +30,14 @@ def load_local_attr(module_name: str, attr_name: str):
     Replaces the identical ``_load_local_attr`` helper duplicated across every
     site runtime plugin.
     """
-    return getattr(import_module(f"{__package__}.{module_name}"), attr_name)
+    caller_frame = inspect.currentframe().f_back
+    caller_package = caller_frame.f_globals.get('__package__')
+    if not caller_package:
+        caller_name = str(caller_frame.f_globals.get('__name__') or '')
+        caller_package = caller_name.rpartition('.')[0]
+    if not caller_package:
+        raise RuntimeError('load_local_attr must be called from a package module')
+    return getattr(import_module(f'{caller_package}.{module_name}'), attr_name)
 
 
 def create_site_runtime(

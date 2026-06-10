@@ -375,6 +375,37 @@ class SharedSdkHelperTests(unittest.TestCase):
             {'referer': 'https://ref'},
         )
 
+    def test_load_local_attr_loads_sibling_module_from_calling_runtime_package(self):
+        with TemporaryDirectory() as temp_dir:
+            package_dir = Path(temp_dir) / 'demo_runtime'
+            package_dir.mkdir()
+            (package_dir / '__init__.py').write_text('', encoding='utf-8')
+            (package_dir / 'subscription.py').write_text(
+                'class DemoSubscription:\n'
+                '    site = "demo"\n',
+                encoding='utf-8',
+            )
+            (package_dir / 'runtime.py').write_text(
+                'from crawl.runtime_helpers import load_local_attr\n\n'
+                'def load_subscription_cls():\n'
+                '    return load_local_attr("subscription", "DemoSubscription")\n',
+                encoding='utf-8',
+            )
+
+            sys.path.insert(0, temp_dir)
+            try:
+                with _stub_sdk_crawl_package():
+                    runtime_module = importlib.import_module('demo_runtime.runtime')
+                    subscription_cls = runtime_module.load_subscription_cls()
+            finally:
+                sys.path.remove(temp_dir)
+                for module_name in list(sys.modules):
+                    if module_name == 'demo_runtime' or module_name.startswith('demo_runtime.'):
+                        sys.modules.pop(module_name, None)
+
+        self.assertEqual(subscription_cls.site, 'demo')
+        self.assertEqual(subscription_cls.__module__, 'demo_runtime.subscription')
+
     def test_runtime_helper_passes_full_proxy_config_payload_to_payload_builder(self):
         with _stub_sdk_crawl_package():
             module = importlib.import_module('crawl.runtime_helpers')
