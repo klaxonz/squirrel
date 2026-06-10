@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { resolveJavdbMetadata, resolveJavdbPlayback, formatStreamUrl } from '../src/playback/providers/javdb/index.mjs'
+import {
+  resolveJavdbMetadata,
+  resolveJavdbPlayback,
+  formatStreamUrl,
+  prewarmJavdbCloudflare,
+} from '../src/playback/providers/javdb/index.mjs'
 
 const streamParts = 'm3u8|one|two|three|four|five|com|example|cdn|videos|https|video|master|playlist|source'
 
@@ -148,4 +153,52 @@ test('desktop javdb provider extracts packed missav stream metadata', () => {
     formatStreamUrl(streamParts),
     'https://videos.cdn.example.com/five-four-three-two-one/master/video.m3u8',
   )
+})
+
+test('desktop javdb cloudflare prewarm warms javdb and missav documents', async () => {
+  const calls = []
+
+  await prewarmJavdbCloudflare(async (url, options) => {
+    calls.push({ url, options })
+    return '<html>ready</html>'
+  })
+
+  assert.deepEqual(calls, [
+    {
+      url: 'https://javdb.com',
+      options: {
+        timeoutMs: 30000,
+        challengeTimeoutMs: 90000,
+      },
+    },
+    {
+      url: 'https://missav.ai',
+      options: {
+        timeoutMs: 30000,
+        challengeTimeoutMs: 90000,
+      },
+    },
+  ])
+})
+
+test('desktop javdb cloudflare prewarm logs host failures without throwing', async () => {
+  const debug = console.debug
+  const messages = []
+  console.debug = (...args) => messages.push(args)
+
+  try {
+    await prewarmJavdbCloudflare(async (url) => {
+      if (url === 'https://javdb.com') {
+        throw new Error('challenge timeout')
+      }
+      return '<html>ready</html>'
+    })
+  } finally {
+    console.debug = debug
+  }
+
+  assert.equal(messages.length, 1)
+  assert.equal(messages[0][0], '[squirrel-desktop] JavDB Cloudflare prewarm skipped')
+  assert.equal(messages[0][1], 'https://javdb.com')
+  assert.equal(messages[0][2], 'challenge timeout')
 })

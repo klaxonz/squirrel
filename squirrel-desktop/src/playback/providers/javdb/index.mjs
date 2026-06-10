@@ -1,6 +1,7 @@
 import { getCachedPayload, normalizeTargetUrl, setCachedPayload } from '../shared/adult-page.mjs'
 
 const MISSAV_ORIGIN = 'https://missav.ai'
+const JAVDB_ORIGIN = 'https://javdb.com'
 
 const stripHtml = (value) => String(value || '').replace(/<[^>]*>/g, '').trim()
 
@@ -300,4 +301,20 @@ export async function resolveJavdbMetadata(targetUrl, { loadDocumentHtml } = {})
   return extractJavdbMetadata(javdbHtml, normalizedUrl)
 }
 
+export async function prewarmJavdbCloudflare(loadDocumentHtml) {
+  if (typeof loadDocumentHtml !== 'function') {
+    throw new Error('JavDB Cloudflare prewarm requires browser document loading')
+  }
+
+  await Promise.all([JAVDB_ORIGIN, MISSAV_ORIGIN].map(async (targetUrl) => {
+    try {
+      await loadDocumentHtml(targetUrl, {
+        timeoutMs: 30000,
+        challengeTimeoutMs: 90000,
+      })
+    } catch (error) {
+      console.debug('[squirrel-desktop] JavDB Cloudflare prewarm skipped', targetUrl, error?.message || error)
+    }
+  }))
+}
 

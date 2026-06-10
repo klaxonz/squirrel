@@ -1,7 +1,10 @@
 import { prewarmYouTubePlayback } from './youtube/index.mjs'
+import { loadDocumentHtmlWithBrowserWindow } from '../../document-loader.mjs'
+import { prewarmJavdbCloudflare } from './javdb/index.mjs'
 
 const PROVIDERS = [
   { name: 'youtube', prewarm: prewarmYouTubePlayback },
+  { name: 'javdb', prewarm: () => prewarmJavdbCloudflare(loadDocumentHtmlWithBrowserWindow) },
 ]
 
 export const prewarmPlaybackProviders = () => {
