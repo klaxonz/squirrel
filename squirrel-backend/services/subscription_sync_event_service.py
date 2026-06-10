@@ -10,7 +10,13 @@ from core.database import get_session, register_after_commit
 from models.subscription_sync_event import SubscriptionSyncEvent
 from services.subscription_sync_projection_service import _default as _default_projection_service
 from services.subscription_sync_run_service import _default as _default_run_service
-from services.sync_center_stream_service import _default as _default_stream_service
+from services.sync_center_stream_service import (
+    SYNC_CENTER_FEED_CHANNEL,
+    SYNC_CENTER_RUN_CHANNEL,
+)
+from services.sync_center_stream_service import (
+    _default as _default_stream_service,
+)
 
 
 @dataclass
@@ -90,13 +96,13 @@ class SubscriptionSyncEventService:
             register_after_commit(
                 session,
                 lambda: self.stream_service.publish_sync_center_invalidation(
-                    self.stream_service.SYNC_CENTER_FEED_CHANNEL,
+                    SYNC_CENTER_FEED_CHANNEL,
                 ),
             )
             register_after_commit(
                 session,
                 lambda: self.stream_service.publish_sync_center_invalidation(
-                    self.stream_service.SYNC_CENTER_RUN_CHANNEL,
+                    SYNC_CENTER_RUN_CHANNEL,
                     {'run_id': event.stream_id},
                 ),
             )
@@ -133,7 +139,7 @@ class SubscriptionSyncEventService:
                 register_after_commit(
                     session,
                     lambda: self.stream_service.publish_sync_center_invalidation(
-                        self.stream_service.SYNC_CENTER_FEED_CHANNEL,
+                        SYNC_CENTER_FEED_CHANNEL,
                     ),
                 )
                 published_run_ids = []
@@ -144,7 +150,7 @@ class SubscriptionSyncEventService:
                     register_after_commit(
                         session,
                         lambda run_id=event.stream_id: self.stream_service.publish_sync_center_invalidation(
-                            self.stream_service.SYNC_CENTER_RUN_CHANNEL,
+                            SYNC_CENTER_RUN_CHANNEL,
                             {'run_id': run_id},
                         ),
                     )

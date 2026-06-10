@@ -68,8 +68,7 @@ def test_schedule_one_publishes_full_sync_outbox_event_when_v2_enabled(engine, s
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
 
-    with patch.object(ssss, '_resolve_site', return_value='bilibili.com', create=True), \
-         patch('utils.site_catalog.SiteCatalog.is_site_enabled', return_value=True), \
+    with patch('utils.site_catalog.SiteCatalog.is_site_enabled', return_value=True), \
          patch.object(SubscriptionScheduler, '_has_active_subscribers', return_value=True), \
          patch.object(ssss, 'prepare_sync_state_for_enqueue', return_value=(
              SimpleNamespace(id=11, pending_video_count=0, sync_mode=UpdateMode.FULL),
@@ -144,8 +143,7 @@ def test_schedule_one_publishes_incremental_sync_outbox_event_for_incremental_mo
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
 
-    with patch.object(ssss, '_resolve_site', return_value='bilibili.com', create=True), \
-         patch('utils.site_catalog.SiteCatalog.is_site_enabled', return_value=True), \
+    with patch('utils.site_catalog.SiteCatalog.is_site_enabled', return_value=True), \
          patch.object(SubscriptionScheduler, '_has_active_subscribers', return_value=True), \
          patch.object(ssss, 'prepare_sync_state_for_enqueue', return_value=(
              SimpleNamespace(id=12, pending_video_count=0, sync_mode=UpdateMode.INCREMENTAL),
@@ -207,8 +205,7 @@ def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(en
 
     from services import subscription_sync_state_service as ssss
 
-    with patch.object(ssss, '_resolve_site', return_value='bilibili.com', create=True), \
-         patch('utils.site_catalog.SiteCatalog.is_site_enabled', return_value=True), \
+    with patch('utils.site_catalog.SiteCatalog.is_site_enabled', return_value=True), \
          patch.object(SubscriptionScheduler, '_has_active_subscribers', return_value=True), \
          patch.object(ssss, 'prepare_sync_state_for_enqueue', return_value=(
              SimpleNamespace(id=21, pending_video_count=0, sync_mode=UpdateMode.INCREMENTAL),

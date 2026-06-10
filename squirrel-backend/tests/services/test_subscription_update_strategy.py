@@ -2,6 +2,7 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from core.config import settings
 from services.subscription_update import scheduler as _scheduler_instance
 from services.subscription_update.models import (
     SubscriptionUpdateRequest,
@@ -160,7 +161,7 @@ def test_fetch_videos_uses_plugin_gateway_sync_subscription():
             "mode": "incremental",
             "cursor_payload": {"cursor": "1"},
             "last_seen_video_url": "https://www.bilibili.com/video/OLD",
-            "limit": 30,
+            "limit": settings.CHANNEL_UPDATE_DEFAULT_SIZE,
         },
         "site_name": "bilibili",
         "domain": "space.bilibili.com",
@@ -182,10 +183,7 @@ def test_enqueue_extraction_skips_blocked_video_urls():
         def __exit__(self, exc_type, exc, tb):
             return False
 
-    from utils.url_helper import extract_top_level_domain
-
     with patch("services.subscription_update.strategies.default_strategy.video_service.get_videos_by_urls", return_value={}), \
-         patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service._resolve_site", side_effect=lambda url: extract_top_level_domain(url) or "unknown", create=True), \
          patch("services.subscription_update.strategies.default_strategy.get_session", return_value=_DummySessionContext()), \
          patch("services.subscription_update.strategies.default_strategy.is_blocked_video", side_effect=lambda url, session: url.endswith("blocked")), \
          patch("services.subscription_update.strategies.default_strategy.download_service.enqueue_video_extraction", side_effect=lambda params: enqueue_calls.append(params.url) or True), \
@@ -231,10 +229,7 @@ def test_enqueue_extraction_reserves_pending_count_before_dispatching_video_task
         _decrement_pending(params.sync_state_id)
         return True
 
-    from utils.url_helper import extract_top_level_domain
-
     with patch("services.subscription_update.strategies.default_strategy.video_service.get_videos_by_urls", return_value={}), \
-         patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service._resolve_site", side_effect=lambda url: extract_top_level_domain(url) or "unknown", create=True), \
          patch("services.subscription_update.strategies.default_strategy.get_session", return_value=_DummySessionContext()), \
          patch("services.subscription_update.strategies.default_strategy.is_blocked_video", return_value=False), \
          patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service.increment_pending_video_count", side_effect=_increment_pending), \
@@ -271,10 +266,7 @@ def test_enqueue_extraction_extracts_inline_without_creating_video_task():
         def __exit__(self, exc_type, exc, tb):
             return False
 
-    from utils.url_helper import extract_top_level_domain
-
     with patch("services.subscription_update.strategies.default_strategy.video_service.get_videos_by_urls", return_value={}), \
-         patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service._resolve_site", side_effect=lambda url: extract_top_level_domain(url) or "unknown", create=True), \
          patch("services.subscription_update.strategies.default_strategy.get_session", return_value=_DummySessionContext()), \
          patch("services.subscription_update.strategies.default_strategy.is_blocked_video", return_value=False), \
          patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service.increment_pending_video_count"), \
@@ -319,7 +311,6 @@ def test_execute_full_sync_with_more_batches_continues_without_marking_success()
          patch("services.subscription_update.strategies.base.subscription_sync_state_service.mark_sync_success", side_effect=lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs))), \
          patch("services.subscription_update.strategies.base.subscription_sync_state_service.continue_full_sync_batch", side_effect=lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs))), \
          patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued", run_id=kwargs.get("run_id"))), \
-         patch("services.subscription_update.strategies.base.subscription_sync_state_service._resolve_site", create=True, return_value="bilibili.com"), \
          patch("services.subscription_update.strategies.base.metrics.counter"), \
          patch("services.subscription_update.strategies.base.append_event"), \
          patch("core.database.get_session"):
@@ -390,7 +381,6 @@ def test_execute_final_full_sync_batch_marks_success():
          patch("services.subscription_update.strategies.base.subscription_sync_state_service.mark_sync_success", side_effect=lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs))), \
          patch("services.subscription_update.strategies.base.subscription_sync_state_service.continue_full_sync_batch", side_effect=lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs))), \
          patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued", run_id=kwargs.get("run_id"))), \
-         patch("services.subscription_update.strategies.base.subscription_sync_state_service._resolve_site", create=True, return_value="bilibili.com"), \
          patch("services.subscription_update.strategies.base.metrics.counter"), \
          patch("services.subscription_update.strategies.base.append_event"), \
          patch("core.database.get_session"):
@@ -450,7 +440,6 @@ def test_execute_incremental_schedules_full_backfill_when_observed_total_grows()
              last_success_at=datetime(2026, 4, 8, 10, 0, 0),
          )), \
          patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued")), \
-         patch("services.subscription_update.strategies.base.subscription_sync_state_service._resolve_site", create=True, return_value="bilibili.com"), \
          patch("services.subscription_update.strategies.base.metrics.counter"), \
          patch("services.subscription_update.strategies.base.append_event"), \
          patch("core.database.get_session"):
@@ -498,7 +487,6 @@ def test_execute_incremental_does_not_schedule_full_backfill_when_full_already_r
              last_success_at=datetime(2026, 4, 8, 10, 0, 0),
          )), \
          patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued")), \
-         patch("services.subscription_update.strategies.base.subscription_sync_state_service._resolve_site", create=True, return_value="bilibili.com"), \
          patch("services.subscription_update.strategies.base.metrics.counter"), \
          patch("services.subscription_update.strategies.base.append_event"), \
          patch("core.database.get_session"):

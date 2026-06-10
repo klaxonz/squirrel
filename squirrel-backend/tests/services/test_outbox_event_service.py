@@ -60,7 +60,6 @@ def test_consume_due_event_creates_subscription_sync_task(engine, session_factor
     now = datetime(2026, 4, 4, 12, 0, 0)
 
     from core import database
-    from services import subscription_sync_state_service as ssss
     from services.crawl_tasks import service as crawl_task_service_mod
     from services.crawl_tasks.service import CrawlTaskService
 
@@ -68,42 +67,41 @@ def test_consume_due_event_creates_subscription_sync_task(engine, session_factor
 
     with patch.object(database, 'register_after_commit', lambda session, callback: None):
         with patch.object(database, 'get_session', session_factory):
-            with patch.object(ssss, '_resolve_site', return_value='bilibili.com', create=True):
-                with patch('utils.site_catalog.SiteCatalog.is_site_enabled', return_value=True):
-                    with patch.object(SubscriptionScheduler, '_has_active_subscribers', return_value=True):
-                        with patch('services.subscription_update.scheduler.create_run', return_value=SimpleNamespace(run_id="run-1", created_at=now)):
-                            with patch('services.subscription_update.scheduler.append_event', return_value=None):
-                                with patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task):
-                                    with patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job):
-                                        with patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task):
-                                            with Session(engine, expire_on_commit=False) as session:
-                                                state = SubscriptionSyncState(
-                                                    id=11,
-                                                    subscription_id=1,
-                                                    site="bilibili.com",
-                                                    sync_mode="incremental",
-                                                    sync_status="idle",
-                                                    next_sync_at=now - timedelta(minutes=1),
-                                                )
-                                                session.add(state)
-                                                session.commit()
-
-                                            svc.publish_event(
-                                                event_type="incremental_sync_due",
-                                                event_key="incremental_sync_due:11:2026-04-04T12:00",
-                                                aggregate_type="subscription_sync_state",
-                                                aggregate_id="11",
-                                                payload={
-                                                    "subscription_id": 1,
-                                                    "sync_state_id": 11,
-                                                    "url": "https://space.bilibili.com/1",
-                                                    "mode": "incremental",
-                                                    "trigger": "scheduled",
-                                                },
-                                                available_at=now - timedelta(seconds=1),
+            with patch('utils.site_catalog.SiteCatalog.is_site_enabled', return_value=True):
+                with patch.object(SubscriptionScheduler, '_has_active_subscribers', return_value=True):
+                    with patch('services.subscription_update.scheduler.create_run', return_value=SimpleNamespace(run_id="run-1", created_at=now)):
+                        with patch('services.subscription_update.scheduler.append_event', return_value=None):
+                            with patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task):
+                                with patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job):
+                                    with patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task):
+                                        with Session(engine, expire_on_commit=False) as session:
+                                            state = SubscriptionSyncState(
+                                                id=11,
+                                                subscription_id=1,
+                                                site="bilibili.com",
+                                                sync_mode="incremental",
+                                                sync_status="idle",
+                                                next_sync_at=now - timedelta(minutes=1),
                                             )
+                                            session.add(state)
+                                            session.commit()
 
-                                            summary = svc.consume_available_events(limit=10, now=now)
+                                        svc.publish_event(
+                                            event_type="incremental_sync_due",
+                                            event_key="incremental_sync_due:11:2026-04-04T12:00",
+                                            aggregate_type="subscription_sync_state",
+                                            aggregate_id="11",
+                                            payload={
+                                                "subscription_id": 1,
+                                                "sync_state_id": 11,
+                                                "url": "https://space.bilibili.com/1",
+                                                "mode": "incremental",
+                                                "trigger": "scheduled",
+                                            },
+                                            available_at=now - timedelta(seconds=1),
+                                        )
+
+                                        summary = svc.consume_available_events(limit=10, now=now)
 
     assert summary == {"processed": 1, "failed": 0}
 

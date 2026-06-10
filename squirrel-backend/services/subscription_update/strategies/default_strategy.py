@@ -21,6 +21,7 @@ from site_runtimes.gateway import SiteRuntimeGateway
 from site_runtimes.ports import get_runtime_gateway
 from utils.metrics import metrics
 from utils.site_catalog import SiteCatalog
+from utils.url_helper import resolve_site
 
 from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateMode, UpdateTrigger
 from .base import UpdateStrategy
@@ -133,7 +134,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
         existing_videos = video_service.get_videos_by_urls(video_urls)
 
         # 获取站点信息用于指标
-        domain = subscription_sync_state_service._resolve_site(request.url) or "unknown"
+        domain = resolve_site(request.url) or "unknown"
 
         # Batch check blocked videos to avoid repeated unsupported extractions.
         blocked_video_urls = set()

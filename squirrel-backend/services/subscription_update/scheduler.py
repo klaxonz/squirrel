@@ -16,6 +16,7 @@ from services.subscription_sync_event_service import SyncEventInput, append_even
 from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunContext, SyncRunStatus, create_run
 from utils.site_catalog import SiteCatalog
 from utils.trace import generate_trace_id, get_trace_id
+from utils.url_helper import resolve_site
 
 from .models import (
     SubscriptionDirectRunResult,
@@ -149,7 +150,7 @@ class SubscriptionScheduler:
     ) -> SubscriptionScheduleResult:
         trace_id = self._resolve_trace_id(trace_id)
         resolved_mode = self._resolve_mode(mode)
-        domain = subscription_sync_state_service._resolve_site(url)
+        domain = resolve_site(url)
 
         run_context, emit_run_created = self._build_run_context(
             subscription_id=subscription_id,
@@ -217,7 +218,7 @@ class SubscriptionScheduler:
     ) -> SubscriptionDirectRunResult:
         trace_id = self._resolve_trace_id(trace_id)
         resolved_mode = self._resolve_mode(mode)
-        domain = subscription_sync_state_service._resolve_site(url)
+        domain = resolve_site(url)
 
         if not domain or not SiteCatalog.is_site_enabled(domain=domain):
             run_context = self._emit_deferred_event(
@@ -397,7 +398,7 @@ class SubscriptionScheduler:
     ) -> SubscriptionScheduleResult:
         trace_id = self._resolve_trace_id(trace_id)
         resolved_mode = self._resolve_mode(mode)
-        domain = subscription_sync_state_service._resolve_site(url)
+        domain = resolve_site(url)
         if not domain or not SiteCatalog.is_site_enabled(domain=domain):
             run_context = self._emit_deferred_event(
                 subscription_id, None, domain, resolved_mode, trigger, trace_id, run_id, "site_disabled",

@@ -8,6 +8,7 @@ from services import subscription_sync_state_service
 from services.subscription_sync_event_service import SyncEventInput, append_event
 from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus
 from utils.metrics import metrics
+from utils.url_helper import resolve_site
 
 from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateMode
 
@@ -27,7 +28,7 @@ def _append_request_event(
             stream_id=request.run_id,
             subscription_id=request.subscription_id,
             sync_state_id=request.sync_state_id,
-            site=subscription_sync_state_service._resolve_site(request.url),
+            site=resolve_site(request.url),
             sync_mode=request.mode.value,
             trigger=request.trigger.value,
             request_id=request.request_id,
