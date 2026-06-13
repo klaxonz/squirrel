@@ -117,41 +117,15 @@ class OutboxEventService:
             session.flush()
 
     def _handle_event(self, event: OutboxEvent) -> None:
-        if event.event_type == "incremental_sync_due":
-            self._handle_sync_due(event, mode="incremental")
-            return
-        if event.event_type == "full_sync_due":
-            self._handle_sync_due(event, mode="full")
-            return
         if event.event_type == "full_backfill_requested":
             self._handle_full_backfill_requested(event)
             return
         logger.info("Skip unsupported outbox event type=%s id=%s", event.event_type, event.id)
 
-    def _handle_sync_due(self, event: OutboxEvent, *, mode: str) -> None:
-        from services.subscription_update.models import UpdateMode, UpdateTrigger
-        from services.subscription_update.scheduler import SubscriptionScheduler
-
-        payload = event.payload or {}
-        subscription_id = int(payload["subscription_id"])
-        scheduler = SubscriptionScheduler()
-        trigger = UpdateTrigger.MANUAL if str(payload.get("trigger")).lower() == UpdateTrigger.MANUAL.value else UpdateTrigger.SCHEDULED
-        resolved_mode = UpdateMode.FULL if mode == UpdateMode.FULL.value else UpdateMode.INCREMENTAL
-        scheduler._schedule_one_direct(
-            subscription_id=subscription_id,
-            url=str(payload.get("url") or scheduler._get_subscription_url(subscription_id)),
-            trigger=trigger,
-            mode=resolved_mode,
-            user_id=payload.get("user_id"),
-            force=bool(payload.get("force", False)),
-            trace_id=payload.get("trace_id"),
-            run_id=payload.get("run_id"),
-        )
-
     def _handle_full_backfill_requested(self, event: OutboxEvent) -> None:
-        from services import subscription_sync_state_service
+        from services import subscription_service, subscription_sync_state_service
+        from services.subscription_update.commands import SubscriptionSyncCommandService
         from services.subscription_update.models import UpdateMode
-        from services.subscription_update.scheduler import SubscriptionScheduler
 
         payload = event.payload or {}
         subscription_id = int(payload["subscription_id"])
@@ -170,21 +144,25 @@ class OutboxEventService:
         if site and snapshot["site_inflight"] >= max(1, int(settings.FULL_SYNC_SITE_MAX_INFLIGHT)):
             raise RetryLaterError(int(settings.FULL_BACKFILL_RETRY_SECONDS))
 
-        self.publish_event(
-            event_type="full_sync_due",
-            event_key=f"full_sync_due:{subscription_id}:{payload.get('reason', 'gap')}:{datetime.now().strftime('%Y%m%d%H')}",
-            aggregate_type="subscription",
-            aggregate_id=str(subscription_id),
-            payload={
-                "subscription_id": subscription_id,
-                "mode": UpdateMode.FULL.value,
-                "trigger": payload.get("trigger", "scheduled"),
-                "trace_id": payload.get("trace_id"),
-                "url": payload.get("url") or SubscriptionScheduler()._get_subscription_url(subscription_id),
-                "site": site,
-            },
-            priority="low",
+        command_service = SubscriptionSyncCommandService(session_factory=self._session_factory)
+        subscription = subscription_service.get_subscription_by_id(subscription_id)
+        command_service.request_sync(
+            subscription_id=subscription_id,
+            url=payload.get("url") or (subscription.url if subscription and subscription.url else ""),
+            trigger=self._parse_trigger(payload.get("trigger")),
+            mode=UpdateMode.FULL,
+            trace_id=payload.get("trace_id"),
         )
+
+    @staticmethod
+    def _parse_trigger(raw: str | None):
+        from services.subscription_update.models import UpdateTrigger
+
+        if str(raw).lower() == UpdateTrigger.MANUAL.value:
+            return UpdateTrigger.MANUAL
+        if str(raw).lower() == UpdateTrigger.API.value:
+            return UpdateTrigger.API
+        return UpdateTrigger.SCHEDULED
 
     def _count_full_sync_pressure(self, *, site: str) -> dict[str, int]:
         with self._session_factory() as session:
@@ -205,7 +183,7 @@ class OutboxEventService:
                 ).scalar_one() or 0)
             event_rows = session.execute(
                 select(OutboxEvent).where(
-                    OutboxEvent.event_type == "full_sync_due",
+                    OutboxEvent.event_type == "full_backfill_requested",
                     OutboxEvent.status.in_(["pending", "processing"]),
                 ),
             ).scalars().all()

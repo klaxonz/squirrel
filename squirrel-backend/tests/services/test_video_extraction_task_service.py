@@ -11,7 +11,7 @@ from models.crawl_task import CrawlTask
 from models.video_extraction_projection import VideoExtractionProjection
 from schemas.video.dto.video_dto import VideoExtractDto
 from services.crawl_tasks.service import CrawlTaskService
-from services.download_service import DownloadService
+from services.video_extraction.task_service import VideoExtractionTaskService
 
 
 @pytest.fixture
@@ -49,13 +49,13 @@ def session_factory(engine):
 def svc(session_factory):
     task_svc = CrawlTaskService(session_factory=session_factory)
     task_svc._refresh_video_extraction_projection = staticmethod(lambda session, task: None)
-    return DownloadService(
+    return VideoExtractionTaskService(
         get_video_by_url=lambda url: None,
-        crawl_task_service=task_svc,
+        crawl_tasks=task_svc,
     )
 
 
-def test_enqueue_video_extraction_writes_crawl_task_when_v2_enabled(engine, svc):
+def test_enqueue_writes_crawl_task_when_site_enabled(engine, svc):
     params = VideoExtractDto(
         url="https://www.youtube.com/watch?v=demo",
         subscribed=True,
@@ -68,7 +68,7 @@ def test_enqueue_video_extraction_writes_crawl_task_when_v2_enabled(engine, svc)
         is_extract_all=False,
     )
 
-    queued = svc.enqueue_video_extraction(params)
+    queued = svc.enqueue(params)
 
     assert queued is True
 
@@ -85,7 +85,7 @@ def test_enqueue_video_extraction_writes_crawl_task_when_v2_enabled(engine, svc)
     assert tasks[0].payload["run_id"] == "run-1"
 
 
-def test_enqueue_video_extraction_uses_task_dedupe_when_v2_enabled(engine, svc):
+def test_enqueue_uses_task_dedupe_for_scheduled_extraction(engine, svc):
     params = VideoExtractDto(
         url="https://www.youtube.com/watch?v=demo",
         subscribed=True,
@@ -98,8 +98,8 @@ def test_enqueue_video_extraction_uses_task_dedupe_when_v2_enabled(engine, svc):
         is_extract_all=False,
     )
 
-    first = svc.enqueue_video_extraction(params)
-    second = svc.enqueue_video_extraction(params)
+    first = svc.enqueue(params)
+    second = svc.enqueue(params)
 
     assert first is True
     assert second is False
@@ -113,7 +113,7 @@ def test_enqueue_video_extraction_uses_task_dedupe_when_v2_enabled(engine, svc):
     assert tasks[0].dedupe_key == "dedupe:video_extract:https://www.youtube.com/watch?v=demo"
 
 
-def test_enqueue_video_extraction_deduplicates_same_url_across_full_and_incremental(engine, svc):
+def test_enqueue_deduplicates_same_url_across_full_and_incremental(engine, svc):
     full_params = VideoExtractDto(
         url="https://www.youtube.com/watch?v=demo",
         subscribed=True,
@@ -137,8 +137,8 @@ def test_enqueue_video_extraction_deduplicates_same_url_across_full_and_incremen
         is_extract_all=False,
     )
 
-    first = svc.enqueue_video_extraction(full_params)
-    second = svc.enqueue_video_extraction(incr_params)
+    first = svc.enqueue(full_params)
+    second = svc.enqueue(incr_params)
 
     assert first is True
     assert second is False

@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from importlib import import_module
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -14,7 +13,7 @@ from models.links import UserSubscription
 from models.outbox_event import OutboxEvent
 from models.subscription import Subscription
 from models.subscription_sync_state import SubscriptionSyncState
-from services.outbox_event_service import OutboxEventService
+from services.subscription_update.commands import SubscriptionSyncCommandService
 from services.subscription_update.models import SubscriptionUpdateResult, UpdateMode, UpdateTrigger
 from services.subscription_update.scheduler import SubscriptionScheduler
 
@@ -48,18 +47,15 @@ def _patch_postgres(session_factory):
     from services.subscription_sync_projection_service import _default as proj_default
     from services.subscription_sync_run_service import _default as run_svc_default
 
-    scheduler_mod = import_module('services.subscription_update.scheduler')
-
     with patch.object(database, 'register_after_commit', lambda session, callback: None), \
          patch.object(database, 'get_session', session_factory), \
-         patch.object(scheduler_mod, 'outbox_event_service', OutboxEventService(session_factory=session_factory)), \
          patch.object(run_svc_default, 'next_seq_no', lambda stream_id, *, session=None: 1), \
          patch.object(proj_default, '_advisory_lock', staticmethod(lambda session, key: None)), \
          patch.object(proj_default, 'apply_event', lambda event, session=None: event):
         yield
 
 
-def test_schedule_one_publishes_full_sync_outbox_event_when_v2_enabled(engine, session_factory, sched):
+def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sched):
     appended_events = []
 
     from services import subscription_sync_state_service as ssss
@@ -69,7 +65,7 @@ def test_schedule_one_publishes_full_sync_outbox_event_when_v2_enabled(engine, s
     injected_cts = CrawlTaskService(session_factory=session_factory)
 
     with patch('utils.site_catalog.SiteCatalog.is_site_enabled', return_value=True), \
-         patch.object(SubscriptionScheduler, '_has_active_subscribers', return_value=True), \
+         patch.object(SubscriptionSyncCommandService, '_has_active_subscribers', return_value=True), \
          patch.object(ssss, 'prepare_sync_state_for_enqueue', return_value=(
              SimpleNamespace(id=11, pending_video_count=0, sync_mode=UpdateMode.FULL),
              "ready",
@@ -82,7 +78,7 @@ def test_schedule_one_publishes_full_sync_outbox_event_when_v2_enabled(engine, s
              queued_at="2026-04-01 12:00:00",
              pending_video_count=0,
          )), \
-         patch('services.subscription_update.scheduler.append_event', lambda event: appended_events.append(event)), \
+         patch('services.subscription_update.commands.append_event', lambda event: appended_events.append(event)), \
          patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task), \
          patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job), \
          patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task), \
@@ -115,26 +111,22 @@ def test_schedule_one_publishes_full_sync_outbox_event_when_v2_enabled(engine, s
         tasks = session.query(CrawlTask).all()
         events = session.query(OutboxEvent).all()
 
-    assert jobs == []
-    assert tasks == []
-    assert len(events) == 1
-    assert events[0].event_type == "full_sync_due"
-    assert events[0].payload == {
-        "subscription_id": 7,
-        "mode": "full",
-        "trigger": "manual",
-        "url": "https://space.bilibili.com/42",
-        "site": "bilibili.com",
-        "user_id": 9,
-        "force": True,
-        "trace_id": "trace-1",
-        "run_id": "run-1",
-    }
-    assert result.request_id == str(events[0].id)
-    assert appended_events == []
+    assert len(jobs) == 1
+    assert jobs[0].job_type == "subscription_sync"
+    assert jobs[0].site == "bilibili.com"
+    assert len(tasks) == 1
+    assert tasks[0].task_type == "subscription_sync_full"
+    assert tasks[0].payload["subscription_id"] == 7
+    assert tasks[0].payload["mode"] == "full"
+    assert tasks[0].payload["trigger"] == "manual"
+    assert tasks[0].payload["run_id"] == "run-1"
+    assert tasks[0].payload["request_id"] == str(tasks[0].id)
+    assert events == []
+    assert result.request_id == str(tasks[0].id)
+    assert [event.event_type for event in appended_events] == ["queued"]
 
 
-def test_schedule_one_publishes_incremental_sync_outbox_event_for_incremental_mode(engine, session_factory, sched):
+def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factory, sched):
     appended_events = []
 
     from services import subscription_sync_state_service as ssss
@@ -144,7 +136,7 @@ def test_schedule_one_publishes_incremental_sync_outbox_event_for_incremental_mo
     injected_cts = CrawlTaskService(session_factory=session_factory)
 
     with patch('utils.site_catalog.SiteCatalog.is_site_enabled', return_value=True), \
-         patch.object(SubscriptionScheduler, '_has_active_subscribers', return_value=True), \
+         patch.object(SubscriptionSyncCommandService, '_has_active_subscribers', return_value=True), \
          patch.object(ssss, 'prepare_sync_state_for_enqueue', return_value=(
              SimpleNamespace(id=12, pending_video_count=0, sync_mode=UpdateMode.INCREMENTAL),
              "ready",
@@ -157,7 +149,7 @@ def test_schedule_one_publishes_incremental_sync_outbox_event_for_incremental_mo
              queued_at="2026-04-01 12:00:00",
              pending_video_count=0,
          )), \
-         patch('services.subscription_update.scheduler.append_event', lambda event: appended_events.append(event)), \
+         patch('services.subscription_update.commands.append_event', lambda event: appended_events.append(event)), \
          patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task), \
          patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job), \
          patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task), \
@@ -187,16 +179,16 @@ def test_schedule_one_publishes_incremental_sync_outbox_event_for_incremental_mo
         tasks = session.query(CrawlTask).all()
         events = session.query(OutboxEvent).all()
 
-    assert jobs == []
-    assert tasks == []
-    assert len(events) == 1
-    assert events[0].event_type == "incremental_sync_due"
-    assert events[0].payload["subscription_id"] == 8
-    assert events[0].payload["mode"] == "incremental"
-    assert events[0].payload["trigger"] == "scheduled"
-    assert events[0].payload["run_id"] == "run-2"
-    assert result.request_id == str(events[0].id)
-    assert appended_events == []
+    assert len(jobs) == 1
+    assert len(tasks) == 1
+    assert tasks[0].task_type == "subscription_sync_incremental"
+    assert tasks[0].payload["subscription_id"] == 8
+    assert tasks[0].payload["mode"] == "incremental"
+    assert tasks[0].payload["trigger"] == "scheduled"
+    assert tasks[0].payload["run_id"] == "run-2"
+    assert events == []
+    assert result.request_id == str(tasks[0].id)
+    assert [event.event_type for event in appended_events] == ["queued"]
 
 
 def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(engine, session_factory, sched):
@@ -206,7 +198,7 @@ def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(en
     from services import subscription_sync_state_service as ssss
 
     with patch('utils.site_catalog.SiteCatalog.is_site_enabled', return_value=True), \
-         patch.object(SubscriptionScheduler, '_has_active_subscribers', return_value=True), \
+         patch.object(SubscriptionSyncCommandService, '_has_active_subscribers', return_value=True), \
          patch.object(ssss, 'prepare_sync_state_for_enqueue', return_value=(
              SimpleNamespace(id=21, pending_video_count=0, sync_mode=UpdateMode.INCREMENTAL),
              "ready",
@@ -219,7 +211,7 @@ def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(en
              queued_at="2026-04-01 12:00:00",
              pending_video_count=0,
          )), \
-         patch('services.subscription_update.scheduler.append_event', lambda event: appended_events.append(event)), \
+         patch('services.subscription_update.commands.append_event', lambda event: appended_events.append(event)), \
          patch(
              'services.crawl_executors.subscription_sync_executor.execute_subscription_sync_payload',
              lambda payload: payloads.append(payload) or SubscriptionUpdateResult(
@@ -351,15 +343,17 @@ def test_enqueue_all_active_counts_failed_results(engine, session_factory, sched
     assert (success, failed) == (1, 1)
 
 
-def test_enqueue_due_states_publishes_outbox_events_from_sync_state_store(engine, session_factory, sched):
+def test_enqueue_due_states_creates_crawl_tasks_from_sync_state_store(engine, session_factory, sched):
     now = datetime(2026, 4, 4, 12, 0, 0)
+    appended_events = []
 
     from services.crawl_tasks import service as crawl_task_service_mod
     from services.crawl_tasks.service import CrawlTaskService
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
 
-    with patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task), \
+    with patch('services.subscription_update.commands.append_event', lambda event: appended_events.append(event)), \
+         patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task), \
          patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job), \
          patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task), \
          patch.object(crawl_task_service_mod, 'recover_expired_tasks', injected_cts.recover_expired_tasks), \
@@ -417,6 +411,9 @@ def test_enqueue_due_states_publishes_outbox_events_from_sync_state_store(engine
 
     with Session(engine, expire_on_commit=False) as session:
         events = session.query(OutboxEvent).order_by(OutboxEvent.id.asc()).all()
+        tasks = session.query(CrawlTask).order_by(CrawlTask.id.asc()).all()
 
-    assert [event.event_type for event in events] == ["incremental_sync_due", "incremental_sync_due"]
-    assert [event.payload["sync_state_id"] for event in events] == [12, 11]
+    assert events == []
+    assert [task.task_type for task in tasks] == ["subscription_sync_incremental", "subscription_sync_incremental"]
+    assert [task.payload["sync_state_id"] for task in tasks] == [12, 11]
+    assert [event.event_type for event in appended_events] == ["run_created", "queued", "run_created", "queued"]

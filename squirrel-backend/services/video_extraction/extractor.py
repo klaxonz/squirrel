@@ -10,9 +10,7 @@ from core.extraction.contracts import ExtractionResult, ExtractionTask, TaskPrio
 from core.extraction.handlers.video_handler import VideoExtractionHandler
 from core.extraction.task_manager import TaskManager
 from schemas.video.dto.video_dto import VideoExtractDto
-from services import download_service, subscription_sync_state_service
-from services.subscription_sync_event_service import SyncEventInput, append_event
-from services.subscription_sync_run_service import SyncEventType, SyncRunStatus
+from services.video_extraction import progress_service
 from utils import url_helper
 from utils.metrics import metrics
 from utils.site_catalog import SiteCatalog
@@ -74,21 +72,6 @@ class VideoExtractionService:
                 logger.info("Video extracted: platform=%s, url=%s, title=%s", domain, params.url, video_title)
                 metrics.counter("crawl.tasks.total", tags={**tags, "status": "success"})
                 metrics.counter("videos.discovered", tags={**tags, "subscribed": str(params.subscribed).lower()})
-                if params.run_id:
-                    append_event(
-                        SyncEventInput(
-                            stream_id=params.run_id,
-                            subscription_id=params.subscription_id,
-                            sync_state_id=params.sync_state_id,
-                            site=domain,
-                            sync_mode="full" if params.is_extract_all else "incremental",
-                            trigger=params.trigger or ("manual" if params.is_manual else "scheduled"),
-                            event_type=SyncEventType.VIDEO_EXTRACTED,
-                            event_phase="extracting",
-                            event_status=SyncRunStatus.RUNNING,
-                            payload={"videos_extracted_delta": 1, "video_url": params.url},
-                        ),
-                    )
             else:
                 logger.error("Video extraction failed: platform=%s, url=%s, error=%s", domain, params.url, extraction_result.error)
                 error_type = self._extract_error_type(extraction_result.error)
@@ -97,13 +80,7 @@ class VideoExtractionService:
 
             return extraction_result
         finally:
-            download_service.clear_video_extraction_dedupe(params)
-            subscription_sync_state_service.decrement_pending_video_count(
-                params.sync_state_id,
-                run_id=params.run_id,
-                trigger=params.trigger or ("manual" if params.is_manual else "scheduled"),
-                allow_completion=extraction_succeeded,
-            )
+            progress_service.record_finished(params, succeeded=extraction_succeeded, site=domain)
 
     def _create_task(self, params: VideoExtractDto) -> ExtractionTask:
         priority = TaskPriority.HIGH if params.is_manual else TaskPriority.NORMAL
