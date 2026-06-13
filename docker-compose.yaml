@@ -109,7 +109,7 @@ services:
     image: klaxonz/squirrel:latest
     container_name: squirrel-worker
     restart: always
-    command: ["python", "-m", "processes.worker_process"]
+    command: ["python", "-m", "messaging.process"]
     env_file:
       - .env
     environment:
@@ -141,7 +141,7 @@ services:
     image: klaxonz/squirrel:latest
     container_name: squirrel-scheduler
     restart: always
-    command: ["python", "-m", "processes.scheduler_process"]
+    command: ["python", "-m", "scheduling.process"]
     env_file:
       - .env
     environment:

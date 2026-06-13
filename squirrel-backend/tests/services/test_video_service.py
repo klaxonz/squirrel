@@ -15,8 +15,8 @@ from models.video import Video
 from models.video_clip_marker import VideoClipMarker
 from models.video_history import VideoHistory
 from models.video_interaction import VideoInteraction
-from services.video_crud_service import VideoCrudService
-from services.video_list_service import VideoListService
+from services.video.crud import VideoCrudService
+from services.video.listing.service import VideoListService
 
 
 @contextmanager
@@ -1502,7 +1502,7 @@ def test_get_video_prefers_actual_extract_count_when_subscription_total_is_stale
     assert video["clip_markers"][0]["preview_image_url"].startswith("/static/clip-markers/user_7/video_701/marker_1.jpg")
 
 
-def test_get_video_gracefully_skips_clip_markers_when_table_is_missing(fake_thumbnail_downloader):
+def test_get_video_returns_empty_clip_markers_when_video_has_no_markers(fake_thumbnail_downloader):
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(
         engine,
@@ -1515,6 +1515,7 @@ def test_get_video_gracefully_skips_clip_markers_when_table_is_missing(fake_thum
             UserSubscription.__table__,
             VideoHistory.__table__,
             VideoInteraction.__table__,
+            VideoClipMarker.__table__,
             UserVideoFeed.__table__,
         ],
     )
@@ -1534,8 +1535,8 @@ def test_get_video_gracefully_skips_clip_markers_when_table_is_missing(fake_thum
         session.add_all([
             Subscription(
                 id=1,
-                name="Fallback Channel",
-                url="https://www.youtube.com/@fallback",
+                name="Marker Channel",
+                url="https://www.youtube.com/@marker",
                 type="CHANNEL",
                 avatar="https://img.example.com/channel.jpg",
                 total_videos=1,
@@ -1554,7 +1555,7 @@ def test_get_video_gracefully_skips_clip_markers_when_table_is_missing(fake_thum
             ),
             Video(
                 id=901,
-                title="No marker table",
+                title="No markers",
                 url="https://www.youtube.com/watch?v=901",
                 domain="youtube.com",
                 duration=180,

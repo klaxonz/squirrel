@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 VERSIONS_DIR = Path(__file__).resolve().parents[1] / "alembic" / "versions"
@@ -11,5 +12,5 @@ def test_playlist_tables_are_covered_by_alembic_migrations():
     ]
     combined_source = "\n".join(migration_sources)
 
-    assert "op.create_table(\n        'playlist'" in combined_source
-    assert "op.create_table(\n        'playlist_item'" in combined_source
+    assert re.search(r'op\.create_table\(\s*[\'"]playlist[\'"]', combined_source)
+    assert re.search(r'op\.create_table\(\s*[\'"]playlist_item[\'"]', combined_source)

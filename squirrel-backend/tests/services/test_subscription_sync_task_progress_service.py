@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from models.crawl_task import CrawlTask
-from services.subscription_update.task_progress_service import SubscriptionSyncTaskProgressService
+from services.subscription.update.task_progress_service import SubscriptionSyncTaskProgressService
 
 
 class _FakeSyncStateService:

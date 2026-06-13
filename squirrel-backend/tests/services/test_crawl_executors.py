@@ -2,9 +2,9 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from models.crawl_task import CrawlTask
-from services.crawl_executors.subscription_sync_executor import CrawlExecutorService as SubscriptionSyncExecutor
-from services.crawl_executors.video_extract_executor import CrawlExecutorService as VideoExtractExecutor
-from services.subscription_update.models import SubscriptionUpdateResult, UpdateMode, UpdateTrigger
+from services.crawl.executors.subscription_sync_executor import CrawlExecutorService as SubscriptionSyncExecutor
+from services.crawl.executors.video_extract_executor import CrawlExecutorService as VideoExtractExecutor
+from services.subscription.update.models import SubscriptionUpdateResult, UpdateMode, UpdateTrigger
 
 
 def _make_video_extract_svc(extract_video_func=None):

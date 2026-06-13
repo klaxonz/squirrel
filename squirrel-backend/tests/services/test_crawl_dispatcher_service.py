@@ -7,9 +7,9 @@ from models import Base
 from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
-from services.crawl_dispatcher.policy import CrawlDispatcherPolicy
-from services.crawl_dispatcher.service import CrawlDispatcherService
-from services.crawl_tasks.service import CrawlTaskService
+from services.crawl.dispatcher.policy import CrawlDispatcherPolicy
+from services.crawl.dispatcher.service import CrawlDispatcherService
+from services.crawl.tasks.dispatch_scope import ensure_dispatch_scope
 
 
 @pytest.fixture
@@ -600,7 +600,7 @@ def test_dispatcher_rolls_back_failed_candidate_attempts_before_trying_next_cand
         def _try_claim_candidate(self, session, *, task_id, worker_id, now, lease_seconds):
             self._attempt_count += 1
             if self._attempt_count == 1:
-                CrawlTaskService._ensure_dispatch_scope(
+                ensure_dispatch_scope(
                     session,
                     scope_type='site',
                     scope_key='youtube',

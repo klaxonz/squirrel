@@ -6,22 +6,23 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes.video_history import router
-from services.auth_service import get_current_user
+from routes.video_history import get_video_history_service, router
+from services.user.auth import get_current_user
 
 
-def test_batch_update_history_forwards_reports_to_service(monkeypatch):
+def test_batch_update_history_forwards_reports_to_service():
     captured = {}
 
-    def fake_batch_update_histories(user_id, reports):
-        captured["user_id"] = user_id
-        captured["reports"] = reports
-
-    monkeypatch.setattr("routes.video_history.video_history_service.batch_update_histories", fake_batch_update_histories)
+    class FakeVideoHistoryService:
+        @staticmethod
+        def batch_update_histories(user_id, reports):
+            captured["user_id"] = user_id
+            captured["reports"] = reports
 
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: type("User", (), {"id": 7})()
+    app.dependency_overrides[get_video_history_service] = lambda: FakeVideoHistoryService()
     client = TestClient(app)
 
     response = client.post(

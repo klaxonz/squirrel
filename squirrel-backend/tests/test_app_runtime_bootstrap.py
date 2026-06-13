@@ -67,9 +67,9 @@ from crawl import SiteRuntimeInvokeResponse
 from crawl import utils as crawl_utils
 
 import main as app_main
-from processes import service_runtime
 from routes import health
-from site_runtimes import runtime_bridge
+from runtime import bootstrap as service_runtime
+from site_runtimes import bridge_runtime_state, bridge_server
 from utils import runtime_http
 
 
@@ -85,14 +85,13 @@ def test_lifespan_configures_backend_runtime_http_state(monkeypatch):
     monkeypatch.setattr(app_main, "resolve_cookie_file_for_url", resolver)
     monkeypatch.setattr(app_main, "resolve_cookie_match_domain_for_url", domain_resolver)
     monkeypatch.setattr("utils.cloudflare_bypass.get_default_client", lambda: client)
-    monkeypatch.setitem(
-        sys.modules,
-        "services.video_extraction_projection_service",
-        SimpleNamespace(ensure_projection_seeded=lambda: projection_calls.append("seeded") or 0),
+    monkeypatch.setattr(
+        "services.video.extraction_projection.service.ensure_projection_seeded",
+        lambda: projection_calls.append("seeded") or 0,
     )
     monkeypatch.setitem(
         sys.modules,
-        "services.scheduled_task_bootstrap",
+        "scheduling.bootstrap",
         SimpleNamespace(ensure_system_tasks=lambda: None),
     )
 
@@ -119,14 +118,13 @@ def test_lifespan_logs_ordered_startup_and_shutdown_sequence(monkeypatch, caplog
     monkeypatch.setattr(app_main, "resolve_cookie_file_for_url", resolver)
     monkeypatch.setattr(app_main, "resolve_cookie_match_domain_for_url", domain_resolver)
     monkeypatch.setattr("utils.cloudflare_bypass.get_default_client", lambda: client)
-    monkeypatch.setitem(
-        sys.modules,
-        "services.video_extraction_projection_service",
-        SimpleNamespace(ensure_projection_seeded=lambda: 0),
+    monkeypatch.setattr(
+        "services.video.extraction_projection.service.ensure_projection_seeded",
+        lambda: 0,
     )
     monkeypatch.setitem(
         sys.modules,
-        "services.scheduled_task_bootstrap",
+        "scheduling.bootstrap",
         SimpleNamespace(ensure_system_tasks=lambda: None),
     )
 
@@ -168,19 +166,18 @@ def test_lifespan_sets_youtube_oauth_env_before_bootstrap(monkeypatch):
     monkeypatch.setattr("utils.cloudflare_bypass.get_default_client", lambda: object())
     monkeypatch.setattr(app_main, "resolve_cookie_file_for_url", lambda url: url)
     monkeypatch.setattr(app_main, "resolve_cookie_match_domain_for_url", lambda _url: "youtube.com")
-    monkeypatch.setitem(
-        sys.modules,
-        "services.video_extraction_projection_service",
-        SimpleNamespace(ensure_projection_seeded=lambda: 0),
+    monkeypatch.setattr(
+        "services.video.extraction_projection.service.ensure_projection_seeded",
+        lambda: 0,
     )
     monkeypatch.setitem(
         sys.modules,
-        "services.scheduled_task_bootstrap",
+        "scheduling.bootstrap",
         SimpleNamespace(ensure_system_tasks=lambda: None),
     )
     monkeypatch.setitem(
         sys.modules,
-        "services.youtube_oauth_service",
+        "services.site_catalog.youtube_oauth",
         SimpleNamespace(get_oauth_credentials_for_daemon=lambda: "D:/tmp/youtube_oauth.json"),
     )
 
@@ -228,14 +225,13 @@ def test_lifespan_records_optional_scheduled_task_degradation(monkeypatch):
     monkeypatch.setattr("utils.cloudflare_bypass.get_default_client", lambda: object())
     monkeypatch.setattr(app_main, "resolve_cookie_file_for_url", lambda url: url)
     monkeypatch.setattr(app_main, "resolve_cookie_match_domain_for_url", lambda _url: "youtube.com")
-    monkeypatch.setitem(
-        sys.modules,
-        "services.video_extraction_projection_service",
-        SimpleNamespace(ensure_projection_seeded=lambda: 0),
+    monkeypatch.setattr(
+        "services.video.extraction_projection.service.ensure_projection_seeded",
+        lambda: 0,
     )
     monkeypatch.setitem(
         sys.modules,
-        "services.scheduled_task_bootstrap",
+        "scheduling.bootstrap",
         SimpleNamespace(ensure_system_tasks=_raise_scheduled_task_error),
     )
 
@@ -300,7 +296,7 @@ def test_bootstrap_runtime_configures_backend_runtime_http_state(monkeypatch):
     monkeypatch.setattr(service_runtime, "stop_reload_listener", lambda component: None)
     monkeypatch.setitem(
         sys.modules,
-        "services.subscription_sync_state_service",
+        "services.subscription.sync.state.service",
         SimpleNamespace(
             recover_stale_queued_sync_states=lambda: {"recovered": 0},
             recover_stale_running_sync_states=lambda: {"recovered": 0},
@@ -308,10 +304,9 @@ def test_bootstrap_runtime_configures_backend_runtime_http_state(monkeypatch):
             reconcile_retry_wait_run_projections=lambda: {"repaired": 0},
         ),
     )
-    monkeypatch.setitem(
-        sys.modules,
-        "services.video_extraction_projection_service",
-        SimpleNamespace(ensure_projection_seeded=lambda: projection_calls.append("seeded") or 0),
+    monkeypatch.setattr(
+        "services.video.extraction_projection.service.ensure_projection_seeded",
+        lambda: projection_calls.append("seeded") or 0,
     )
     monkeypatch.setattr(service_runtime, "resolve_cookie_file_for_url", resolver)
     monkeypatch.setattr(service_runtime, "resolve_cookie_match_domain_for_url", domain_resolver)
@@ -341,7 +336,7 @@ def test_bootstrap_runtime_sets_youtube_oauth_env_before_bootstrap(monkeypatch):
     monkeypatch.setattr(service_runtime, "resolve_cookie_match_domain_for_url", lambda _url: "youtube.com")
     monkeypatch.setitem(
         sys.modules,
-        "services.subscription_sync_state_service",
+        "services.subscription.sync.state.service",
         SimpleNamespace(
             recover_stale_queued_sync_states=lambda: {"recovered": 0},
             recover_stale_running_sync_states=lambda: {"recovered": 0},
@@ -349,14 +344,13 @@ def test_bootstrap_runtime_sets_youtube_oauth_env_before_bootstrap(monkeypatch):
             reconcile_retry_wait_run_projections=lambda: {"repaired": 0},
         ),
     )
-    monkeypatch.setitem(
-        sys.modules,
-        "services.video_extraction_projection_service",
-        SimpleNamespace(ensure_projection_seeded=lambda: projection_calls.append("seeded") or 0),
+    monkeypatch.setattr(
+        "services.video.extraction_projection.service.ensure_projection_seeded",
+        lambda: projection_calls.append("seeded") or 0,
     )
     monkeypatch.setitem(
         sys.modules,
-        "services.youtube_oauth_service",
+        "services.site_catalog.youtube_oauth",
         SimpleNamespace(get_oauth_credentials_for_daemon=lambda: "D:/tmp/youtube_oauth.json"),
     )
 
@@ -379,11 +373,11 @@ def test_runtime_bridge_configures_backend_runtime_http_state(monkeypatch):
     domain_resolver = lambda url: "youtube.com"
 
     monkeypatch.setattr("utils.cloudflare_bypass.get_default_client", lambda: client)
-    monkeypatch.setattr("utils.cookie.resolve_cookie_file_for_url", resolver)
-    monkeypatch.setattr("utils.cookie.resolve_cookie_match_domain_for_url", domain_resolver)
+    monkeypatch.setattr("services.site_catalog.cookies.resolve_cookie_file_for_url", resolver)
+    monkeypatch.setattr("services.site_catalog.cookies.resolve_cookie_match_domain_for_url", domain_resolver)
 
     runtime_http.reset_runtime_http_state()
-    runtime_bridge._configure_backend_runtime_state()
+    bridge_runtime_state.configure_backend_runtime_state()
 
     assert runtime_http.get_cloudflare_bypass_client() is client
     assert crawl_utils._cookie_file_resolver is resolver
@@ -398,11 +392,11 @@ def test_runtime_bridge_keeps_cookie_resolver_when_cloudflare_bypass_is_unavaila
         raise ValueError("missing cloudflare bypass service")
 
     monkeypatch.setattr("utils.cloudflare_bypass.get_default_client", _raise_missing_bypass)
-    monkeypatch.setattr("utils.cookie.resolve_cookie_file_for_url", resolver)
-    monkeypatch.setattr("utils.cookie.resolve_cookie_match_domain_for_url", domain_resolver)
+    monkeypatch.setattr("services.site_catalog.cookies.resolve_cookie_file_for_url", resolver)
+    monkeypatch.setattr("services.site_catalog.cookies.resolve_cookie_match_domain_for_url", domain_resolver)
 
     runtime_http.reset_runtime_http_state()
-    runtime_bridge._configure_backend_runtime_state()
+    bridge_runtime_state.configure_backend_runtime_state()
 
     assert runtime_http.get_cloudflare_bypass_client() is None
     assert crawl_utils._cookie_file_resolver is resolver
@@ -416,8 +410,8 @@ def test_runtime_bridge_syncs_site_rate_limits_into_site_runtime(monkeypatch):
         "utils.cloudflare_bypass.get_default_client",
         lambda: object(),
     )
-    monkeypatch.setattr("utils.cookie.resolve_cookie_file_for_url", lambda url: url)
-    monkeypatch.setattr("utils.cookie.resolve_cookie_match_domain_for_url", lambda url: "javdb.com")
+    monkeypatch.setattr("services.site_catalog.cookies.resolve_cookie_file_for_url", lambda url: url)
+    monkeypatch.setattr("services.site_catalog.cookies.resolve_cookie_match_domain_for_url", lambda url: "javdb.com")
     monkeypatch.setattr(
         "core.site_config_manager.apply_crawl_rate_limit_overrides",
         lambda catalog=None: calls.append("sdk-rate-limit"),
@@ -425,7 +419,7 @@ def test_runtime_bridge_syncs_site_rate_limits_into_site_runtime(monkeypatch):
     )
 
     runtime_http.reset_runtime_http_state()
-    runtime_bridge._configure_backend_runtime_state()
+    bridge_runtime_state.configure_backend_runtime_state()
 
     assert calls == ["sdk-rate-limit"]
 
@@ -443,7 +437,7 @@ def test_runtime_bridge_logs_client_disconnect_without_traceback(monkeypatch, ca
             }
             return SiteRuntimeInvokeResponse(request_id="req-1", ok=True, data={"success": True})
 
-    handler = object.__new__(runtime_bridge._BridgeHandler)
+    handler = object.__new__(bridge_server.BridgeHandler)
     handler.path = "/invoke"
     handler.client_address = ("127.0.0.1", 12345)
     handler.server = SimpleNamespace(runtime=_Runtime())
@@ -472,7 +466,7 @@ def test_runtime_bridge_logs_client_disconnect_without_traceback(monkeypatch, ca
 
     monkeypatch.setattr(handler, "_write_json", _raise_client_disconnect)
 
-    with caplog.at_level(logging.WARNING, logger="site_runtimes.runtime_bridge"):
+    with caplog.at_level(logging.WARNING, logger="site_runtimes.bridge_server"):
         handler.do_POST()
 
     assert "Site runtime invoke response dropped because client disconnected" in caplog.text

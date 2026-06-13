@@ -8,9 +8,9 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from routes.subscription import router
-from services import subscription_update
-from services.auth_service import get_current_user
-from services.subscription_update.models import SubscriptionUpdateResult
+from services.subscription.update.models import SubscriptionUpdateResult
+from services.subscription.update.scheduler import scheduler as subscription_update_scheduler
+from services.user.auth import get_current_user
 
 
 def _build_client(monkeypatch):
@@ -18,7 +18,7 @@ def _build_client(monkeypatch):
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=7)
     monkeypatch.setattr(
-        "routes.subscription.SiteCatalog.is_site_enabled",
+        "routes.subscription.basic.SiteCatalog.is_site_enabled",
         classmethod(lambda cls, site=None, domain=None: True),
     )
     return TestClient(app)
@@ -31,16 +31,9 @@ def test_subscribe_route_creates_subscription_synchronously(monkeypatch):
         calls.append((url, user_id))
         return SimpleNamespace(id=42)
 
-    def _enqueue_message(_url, _user_id):
-        raise AssertionError("manual subscribe should not enqueue a message")
-
     monkeypatch.setattr(
-        "routes.subscription.subscription_service.handle_subscribe_request",
+        "routes.subscription.basic.subscription_import_service.handle_subscribe_request",
         _handle_subscribe_request,
-    )
-    monkeypatch.setattr(
-        "routes.subscription.subscription_service.create_subscribe_message",
-        _enqueue_message,
     )
     client = _build_client(monkeypatch)
 
@@ -62,7 +55,7 @@ def test_refresh_direct_runs_subscription_without_scheduler_queue(monkeypatch):
     calls = []
 
     monkeypatch.setattr(
-        "routes.subscription.subscription_service.verify_subscription_access",
+        "routes.subscription.refresh.subscription_crud_service.verify_subscription_access",
         lambda user_id, subscription_id: (
             SimpleNamespace(id=subscription_id, url="https://space.bilibili.com/32781024"),
             "ok",
@@ -85,9 +78,9 @@ def test_refresh_direct_runs_subscription_without_scheduler_queue(monkeypatch):
             ),
         )
 
-    monkeypatch.setattr(subscription_update.scheduler, "run_one_inline", _run_one_inline)
+    monkeypatch.setattr(subscription_update_scheduler, "run_one_inline", _run_one_inline)
     monkeypatch.setattr(
-        subscription_update.scheduler,
+        subscription_update_scheduler,
         "schedule_one",
         lambda **kwargs: (_ for _ in ()).throw(AssertionError("direct refresh should not schedule a task")),
     )
@@ -114,7 +107,7 @@ def test_toggle_special_follow_route_updates_current_user_subscription(monkeypat
         return True
 
     monkeypatch.setattr(
-        "routes.subscription.subscription_service.toggle_special_follow_status",
+        "routes.subscription.basic.subscription_manage_service.toggle_special_follow_status",
         _toggle,
     )
     client = _build_client(monkeypatch)

@@ -4,7 +4,7 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from common import response
-from services.auth_service import validate_auth_token
+from services.user.auth import validate_auth_token
 from utils.jwt_helper import AUTH_COOKIE_NAME, clear_auth_cookie
 
 logger = logging.getLogger(__name__)

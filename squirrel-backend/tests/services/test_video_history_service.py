@@ -12,7 +12,7 @@ from models.subscription import Subscription
 from models.video import Video
 from models.video_history import VideoHistory
 from schemas.video_history import HistoryCreate
-from services.video_history_service import VideoHistoryService
+from services.video.history.service import VideoHistoryService
 
 pytestmark = [pytest.mark.anyio]
 
@@ -108,6 +108,26 @@ def _seed_subscription_links(engine, items):
         session.commit()
 
 
+def _seed_videos(engine, items):
+    with Session(engine, expire_on_commit=False) as session:
+        for item in items:
+            session.add(
+                Video(
+                    id=item['video_id'],
+                    title=item.get('title', f"Video {item['video_id']}"),
+                    url=item.get('url', f"https://{item['domain']}/watch/{item['video_id']}"),
+                    domain=item['domain'],
+                    duration=item.get('duration', 120),
+                    thumbnail=item.get('thumbnail', f"https://img.example.com/{item['video_id']}.jpg"),
+                    publish_date=item.get('publish_date', datetime(2024, 1, 1)),
+                    created_at=item.get('video_created_at', datetime(2024, 1, 1)),
+                    updated_at=item.get('video_updated_at', datetime(2024, 1, 1)),
+                    is_deleted=False,
+                ),
+            )
+        session.commit()
+
+
 def test_list_histories_returns_filtered_total_instead_of_current_page_size(engine, svc):
     _seed_history(engine, [
         {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 1)},
@@ -121,7 +141,7 @@ def test_list_histories_returns_filtered_total_instead_of_current_page_size(engi
 
 
 def test_list_histories_applies_site_filter_before_pagination(engine, svc):
-    with patch('utils.site_catalog.SiteCatalog.resolve_domains', return_value=['site-a.com']):
+    with patch('services.site_catalog.catalog.SiteCatalog.resolve_domains', return_value=['site-a.com']):
         _seed_history(engine, [
             {'video_id': 1, 'domain': 'site-a.com', 'end_time': datetime(2024, 6, 1)},
             {'video_id': 2, 'domain': 'site-b.com', 'end_time': datetime(2024, 6, 2)},
@@ -228,7 +248,7 @@ def test_delete_history_removes_only_target_history_for_current_user(engine, svc
 
 
 def test_list_histories_filters_by_subscription_name_query(engine, svc):
-    with patch('utils.site_catalog.SiteCatalog.resolve_domains', return_value=['example.com']):
+    with patch('services.site_catalog.catalog.SiteCatalog.resolve_domains', return_value=['example.com']):
         _seed_history(engine, [
             {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 1)},
             {'video_id': 2, 'domain': 'example.com', 'end_time': datetime(2024, 6, 2)},
@@ -237,6 +257,12 @@ def test_list_histories_filters_by_subscription_name_query(engine, svc):
             {'video_id': 1, 'subscription_id': 1, 'subscription_name': 'Tech Channel'},
             {'video_id': 2, 'subscription_id': 2, 'subscription_name': 'Music Channel'},
         ])
+        with Session(engine, expire_on_commit=False) as session:
+            session.add_all([
+                UserSubscription(user_id=1, subscription_id=1, is_deleted=False, is_nsfw=False),
+                UserSubscription(user_id=1, subscription_id=2, is_deleted=False, is_nsfw=False),
+            ])
+            session.commit()
 
         result = svc.list_histories(1, {'query': 'tech'}, 1, 20)
 
@@ -276,6 +302,9 @@ def test_batch_update_histories_updates_existing_rows_and_creates_missing_rows(e
     svc.batch_update_histories(1, [
         HistoryCreate(video_id=1, timestamp=int(datetime(2024, 6, 2).timestamp() * 1000), last_position=50),
         HistoryCreate(video_id=2, timestamp=int(datetime(2024, 6, 2).timestamp() * 1000), last_position=10),
+    ])
+    _seed_videos(engine, [
+        {'video_id': 2, 'domain': 'example.com'},
     ])
 
     result = svc.list_histories(1, {}, 1, 20)

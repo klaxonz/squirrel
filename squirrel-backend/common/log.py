@@ -3,11 +3,9 @@ import logging.handlers
 import os
 import sys
 
-try:
-    from concurrent_log_handler import ConcurrentRotatingFileHandler  # noqa: F401
-    USE_CONCURRENT_HANDLER = True
-except ImportError:
-    USE_CONCURRENT_HANDLER = False
+from concurrent_log_handler import ConcurrentRotatingFileHandler  # noqa: F401
+
+from utils.trace import format_trace_id, get_trace_id
 
 current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG_DIR = os.path.join(current_dir, "..", "logs")
@@ -30,30 +28,11 @@ class SafeStreamHandler(logging.StreamHandler):
 class TraceIdFilter(logging.Filter):
     """Add trace_id field to log records"""
 
-    def __init__(self):
-        super().__init__()
-        self._get_trace_id = None
-        self._format_trace_id = None
-
-    def _ensure_imports(self):
-        """Lazy import to avoid circular dependency"""
-        if self._get_trace_id is None:
-            try:
-                from utils.trace import format_trace_id, get_trace_id
-                self._get_trace_id = get_trace_id
-                self._format_trace_id = format_trace_id
-            except ImportError:
-                # Use default value if import fails
-                self._get_trace_id = lambda: None
-                self._format_trace_id = lambda x: "-"
-
     def filter(self, record):
-        self._ensure_imports()
         try:
-            trace_id = self._get_trace_id()
-            record.trace_id = self._format_trace_id(trace_id)
+            trace_id = get_trace_id()
+            record.trace_id = format_trace_id(trace_id)
         except (ValueError, TypeError):
-            # Use default value if acquisition fails
             record.trace_id = "-"
         return True
 
@@ -80,7 +59,7 @@ LOGGING_CONFIG = {
             "filters": ["trace_id"],
         },
         "file": {
-            "class": "concurrent_log_handler.ConcurrentRotatingFileHandler" if USE_CONCURRENT_HANDLER else "logging.handlers.RotatingFileHandler",
+            "class": "concurrent_log_handler.ConcurrentRotatingFileHandler",
             "filename": os.path.join(LOG_DIR, "app.log"),
             "formatter": "default",
             "level": "INFO",
@@ -90,7 +69,7 @@ LOGGING_CONFIG = {
             "backupCount": 10,
         },
         "error_file": {
-            "class": "concurrent_log_handler.ConcurrentRotatingFileHandler" if USE_CONCURRENT_HANDLER else "logging.handlers.RotatingFileHandler",
+            "class": "concurrent_log_handler.ConcurrentRotatingFileHandler",
             "filename": os.path.join(LOG_DIR, "error.log"),
             "formatter": "default",
             "level": "ERROR",

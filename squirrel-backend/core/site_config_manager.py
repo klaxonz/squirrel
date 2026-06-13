@@ -5,20 +5,12 @@ from __future__ import annotations
 from copy import copy
 from typing import Any
 
+from crawl import configure_rate_limit as configure_crawl_rate_limit
+from crawl import configure_rate_limit_enabled as configure_crawl_rate_limit_enabled
+
+from services.site_catalog.catalog import SiteCatalog
 from utils.rate_limiter import rate_limiter as backend_rate_limiter
 from utils.runtime_site_config import set_site_configs
-from utils.site_catalog import SiteCatalog
-
-try:
-    from crawl import (
-        configure_rate_limit as configure_crawl_rate_limit,
-    )
-    from crawl import (
-        configure_rate_limit_enabled as configure_crawl_rate_limit_enabled,
-    )
-except ImportError:  # pragma: no cover - backend can still run without SDK wiring
-    configure_crawl_rate_limit = None
-    configure_crawl_rate_limit_enabled = None
 
 
 def _deep_merge(base: dict, overrides: dict) -> dict:
@@ -92,14 +84,12 @@ def apply_crawl_rate_limit_overrides(catalog: dict[str, dict] | None = None) -> 
 
     for domain, rate_limit_enabled, min_value, max_value in _iter_rate_limit_entries(effective_catalog):
         try:
-            if callable(configure_crawl_rate_limit_enabled):
-                configure_crawl_rate_limit_enabled(domain, rate_limit_enabled)
+            configure_crawl_rate_limit_enabled(domain, rate_limit_enabled)
             if not rate_limit_enabled:
                 continue
             if min_value is None or max_value is None:
                 continue
-            if callable(configure_crawl_rate_limit):
-                configure_crawl_rate_limit(domain, min_value, max_value)
+            configure_crawl_rate_limit(domain, min_value, max_value)
         except (TypeError, ValueError, AttributeError):
             continue
 

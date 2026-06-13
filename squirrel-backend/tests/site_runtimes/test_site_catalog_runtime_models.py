@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from services.site_catalog.catalog import SiteCatalog
 from site_runtimes.runtime_models import SiteRuntimeCapability, SiteRuntimeManifest, SiteRuntimeSite
-from utils.site_catalog import SiteCatalog
 
 
 def test_site_catalog_builds_from_backend_runtime_manifest_models(monkeypatch):
@@ -108,8 +108,8 @@ def test_site_catalog_builds_icon_url_from_plugin_assets_when_metadata_does_not_
         ],
     )
 
-    monkeypatch.setattr("utils.site_catalog.resolve_site_icon_path", lambda site_name: Path(f"/tmp/{site_name}.png"))
-    monkeypatch.setattr("utils.site_catalog.build_site_icon_url", lambda site_name: f"/api/sites/{site_name}/icon")
+    monkeypatch.setattr("services.site_catalog.catalog.resolve_site_icon_path", lambda site_name: Path(f"/tmp/{site_name}.png"))
+    monkeypatch.setattr("services.site_catalog.catalog.build_site_icon_url", lambda site_name: f"/api/sites/{site_name}/icon")
 
     catalog = SiteCatalog.build_runtime_site_catalog(
         snapshot=SimpleNamespace(

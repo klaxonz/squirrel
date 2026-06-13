@@ -7,18 +7,12 @@ from sqlalchemy.orm import Session
 
 from models import Base
 from models.rss import RssAccount, RssEntry, RssFeed
-from services.rss_account_service import RssAccountService
-from services.rss_client_service import (
-    G_READER_QUICK_ENTRIES_PER_FEED,
-    GReaderClient,
-    MinifluxClient,
-    RemoteEntry,
-    RemoteFeed,
-    RssAccountConfig,
-    _greader_entry_to_remote,
-)
-from services.rss_credential_service import decrypt_credential
-from services.rss_sync_service import RssSyncService
+from services.rss.account.service import RssAccountService
+from services.rss.client._base import RemoteEntry, RemoteFeed, RssAccountConfig
+from services.rss.client._greader import G_READER_QUICK_ENTRIES_PER_FEED, GReaderClient, _greader_entry_to_remote
+from services.rss.client._miniflux import MinifluxClient
+from services.rss.credential import decrypt_credential
+from services.rss.sync.service import RssSyncService
 
 
 @pytest.fixture
@@ -28,8 +22,7 @@ def account_svc(session_factory):
 
 @pytest.fixture
 def sync_svc(session_factory, account_svc):
-    with patch('services.rss_sync_service._set_sync_progress', account_svc._set_sync_progress):
-        yield RssSyncService(session_factory=session_factory)
+    return RssSyncService(session_factory=session_factory, account_service=account_svc)
 
 
 def _create_tables(engine):
@@ -101,7 +94,7 @@ def test_sync_account_upserts_feeds_and_entries(engine, session_factory, account
                 ),
             ]
 
-    with patch('services.rss_sync_service.create_client', lambda config: _FakeClient()):
+    with patch('services.rss.sync.service.create_client', lambda config: _FakeClient()):
         result = sync_svc.sync_account(1, account['id'], entry_limit=20)
     entries = account_svc.list_entries(1)
 
@@ -469,7 +462,7 @@ def test_sync_greader_uses_reading_list_entries(engine, session_factory, account
             return []
 
     client = _FakeGReaderClient()
-    with patch('services.rss_sync_service.create_client', lambda config: client):
+    with patch('services.rss.sync.service.create_client', lambda config: client):
         result = sync_svc.sync_account(1, account['id'])
     entries = account_svc.list_entries(1)
 
@@ -568,7 +561,7 @@ def test_sync_greader_imports_missing_unread_entries(engine, session_factory, ac
             raise AssertionError('incremental sync should not run full state reconciliation')
 
     client = _FakeGReaderClient()
-    with patch('services.rss_sync_service.create_client', lambda config: client):
+    with patch('services.rss.sync.service.create_client', lambda config: client):
         sync_svc.sync_account(1, account['id'])
 
     unread = account_svc.list_entries(1, account_id=account['id'], is_read=False)
@@ -641,7 +634,7 @@ def test_sync_progress_reports_completed_state(engine, session_factory, account_
         def fetch_items_contents(self, entry_ids):
             return []
 
-    with patch('services.rss_sync_service.create_client', lambda config: _FakeGReaderClient()):
+    with patch('services.rss.sync.service.create_client', lambda config: _FakeGReaderClient()):
         sync_svc.sync_account(1, account['id'])
     progress = account_svc.get_sync_progress(1, account['id'])
 
@@ -737,7 +730,7 @@ def test_greader_incremental_sync_stops_when_page_has_no_changes(
             return []
 
     client = _FakeGReaderClient()
-    with patch('services.rss_sync_service.create_client', lambda config: client):
+    with patch('services.rss.sync.service.create_client', lambda config: client):
         result = sync_svc.sync_account(1, account['id'])
     progress = account_svc.get_sync_progress(1, account['id'])
 
@@ -867,7 +860,7 @@ def test_greader_full_sync_reconciles_read_and_starred_state(
             return []
 
     client = _FakeGReaderClient()
-    with patch('services.rss_sync_service.create_client', lambda config: client):
+    with patch('services.rss.sync.service.create_client', lambda config: client):
         sync_svc.sync_account(1, account['id'], force_full_sync=True)
 
     with Session(engine) as session:

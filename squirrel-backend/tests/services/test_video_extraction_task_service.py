@@ -10,8 +10,8 @@ from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
 from models.video_extraction_projection import VideoExtractionProjection
 from schemas.video.dto.video_dto import VideoExtractDto
-from services.crawl_tasks.service import CrawlTaskService
-from services.video_extraction.task_service import VideoExtractionTaskService
+from services.crawl.tasks.service import CrawlTaskService
+from services.video.extraction.task_service import VideoExtractionTaskService
 
 
 @pytest.fixture

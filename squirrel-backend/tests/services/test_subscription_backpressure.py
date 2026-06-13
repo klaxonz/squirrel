@@ -4,13 +4,13 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from messaging.framework.monitor import QueueBackpressureMonitor
 from models import Base
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
 from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_state import SubscriptionSyncState
-from queues.queue_monitor import QueueBackpressureMonitor
-from services.crawl_tasks.service import CrawlTaskService
+from services.crawl.tasks.service import CrawlTaskService
 
 
 @pytest.fixture
@@ -99,8 +99,8 @@ def test_queue_monitor_counts_pending_videos_from_task_store(engine, session_fac
 
 
 def test_reconcile_pending_video_counts_uses_task_store(engine, session_factory, svc, sss_session):
-    from services.subscription_sync_state_service import SyncStateService
-    sss_svc = SyncStateService(session_factory=session_factory)
+    import services.subscription.sync.state.service as subscription_sync_state_service
+    sss_svc = subscription_sync_state_service
 
     with Session(engine, expire_on_commit=False) as session:
         job_id = _seed_job(engine)
@@ -171,8 +171,8 @@ def test_recover_stale_queued_sync_states_uses_task_store(engine, session_factor
         )
         session.commit()
 
-    from services.subscription_sync_state_service import SyncStateService
-    sss_svc = SyncStateService(session_factory=session_factory)
+    import services.subscription.sync.state.service as subscription_sync_state_service
+    sss_svc = subscription_sync_state_service
     result = sss_svc.recover_stale_queued_sync_states()
 
     assert result["recovered"] == 0
@@ -182,8 +182,8 @@ def test_recover_stale_queued_sync_states_uses_task_store(engine, session_factor
 
 
 def test_reconcile_terminal_drained_sync_states_auto_completes_running_extract_phase(engine, session_factory, svc, sss_session):
-    from services.subscription_sync_state_service import SyncStateService
-    sss_svc = SyncStateService(session_factory=session_factory)
+    import services.subscription.sync.state.service as subscription_sync_state_service
+    sss_svc = subscription_sync_state_service
 
     with Session(engine, expire_on_commit=False) as session:
         session.add(
@@ -219,8 +219,8 @@ def test_reconcile_terminal_drained_sync_states_auto_completes_running_extract_p
 
 
 def test_reconcile_terminal_drained_sync_states_auto_fails_when_extract_tasks_are_dead(engine, session_factory, svc, sss_session):
-    from services.subscription_sync_state_service import SyncStateService
-    sss_svc = SyncStateService(session_factory=session_factory)
+    import services.subscription.sync.state.service as subscription_sync_state_service
+    sss_svc = subscription_sync_state_service
 
     with Session(engine, expire_on_commit=False) as session:
         job_id = _seed_job(engine)

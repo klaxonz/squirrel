@@ -1,5 +1,5 @@
 
-from services.youtube_oauth_service import YouTubeOauthService, YouTubeOAuthState
+from services.site_catalog.youtube_oauth import YouTubeOauthService, YouTubeOAuthState
 
 
 def test_get_oauth_state_delegates_to_daemon_status():

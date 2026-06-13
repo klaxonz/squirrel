@@ -10,7 +10,7 @@ from models.subscription import ContentType, Subscription
 from models.user_video_feed import UserVideoFeed
 from models.video import Video
 from models.video_history import VideoHistory
-from services.search_suggestion_service import SearchSuggestionService
+from services.search.suggestion_service import SearchSuggestionService
 
 
 @pytest.fixture
@@ -220,3 +220,47 @@ def test_home_scope_uses_user_feed_video_suggestions(engine, svc):
     assert items
     assert items[0]['type'] == 'video'
     assert items[0]['value'] == '黑神话悟空 终极预告'
+
+
+def test_invalidate_users_for_subscription_clears_user_caches(engine, svc):
+    Base.metadata.create_all(
+        engine,
+        tables=[
+            Subscription.__table__,
+            UserSubscription.__table__,
+        ],
+    )
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            Subscription(
+                id=3,
+                type=ContentType.CHANNEL,
+                name='缓存频道',
+                url='https://example.com/channel',
+                is_deleted=False,
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+        )
+        session.add(
+            UserSubscription(
+                id=3,
+                user_id=7,
+                subscription_id=3,
+                is_deleted=False,
+                is_nsfw=False,
+                created_at=datetime(2024, 1, 1),
+                updated_at=datetime(2024, 1, 1),
+            ),
+        )
+        session.commit()
+
+    svc._suggestion_pool_cache[(7, 'home', 'no')] = (999999.0, [{'type': 'video', 'value': 'old'}])
+    svc._suggestion_result_cache[(7, 'home', 'no', 'old', 8)] = (999999.0, [{'type': 'video', 'value': 'old'}])
+    svc._suggestion_pool_cache[(8, 'home', 'no')] = (999999.0, [{'type': 'video', 'value': 'keep'}])
+
+    svc.invalidate_users_for_subscription(3)
+
+    assert (7, 'home', 'no') not in svc._suggestion_pool_cache
+    assert (7, 'home', 'no', 'old', 8) not in svc._suggestion_result_cache
+    assert (8, 'home', 'no') in svc._suggestion_pool_cache

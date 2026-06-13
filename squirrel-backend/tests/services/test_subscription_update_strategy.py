@@ -1,16 +1,17 @@
-﻿from datetime import datetime, timedelta
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from core.config import settings
-from services.subscription_update import scheduler as _scheduler_instance
-from services.subscription_update.models import (
+from services.subscription.update.models import (
     SubscriptionUpdateRequest,
     SubscriptionUpdateResult,
     UpdateMode,
     UpdateTrigger,
 )
-from services.subscription_update.strategies.default_strategy import (
+from services.subscription.update.orchestrator import SubscriptionOrchestrator
+from services.subscription.update.scheduler import scheduler as _scheduler_instance
+from services.subscription.update.strategies.default_strategy import (
     DefaultUpdateStrategy,
     should_schedule_total_video_backfill,
 )
@@ -93,7 +94,7 @@ def test_should_schedule_total_video_backfill_when_full_is_stale_even_without_ob
 
 def test_inline_video_extraction_does_not_schedule_total_video_backfill():
     with patch(
-        "services.subscription_update.strategies.default_strategy.subscription_service.get_subscription_by_id",
+        "services.subscription.update.orchestrator.get_subscription_by_id",
         side_effect=lambda subscription_id: (_ for _ in ()).throw(AssertionError("inline extraction should not schedule backfill")),
     ):
         request = SubscriptionUpdateRequest(
@@ -112,7 +113,7 @@ def test_inline_video_extraction_does_not_schedule_total_video_backfill():
             total_available=10,
         )
 
-        DefaultUpdateStrategy._schedule_total_video_backfill(request, result)
+        SubscriptionOrchestrator._schedule_total_video_backfill(request, result)
 
 
 def test_fetch_videos_uses_plugin_gateway_sync_subscription():
@@ -140,7 +141,7 @@ def test_fetch_videos_uses_plugin_gateway_sync_subscription():
             )
 
     with patch(
-        "services.subscription_update.strategies.default_strategy.SiteCatalog.find_site_by_domain",
+        "services.subscription.update.strategies.default_strategy.SiteCatalog.find_site_by_domain",
         return_value=("bilibili", {"domains": ["bilibili.com"]}),
     ):
         request = SubscriptionUpdateRequest(
@@ -183,7 +184,7 @@ def test_enqueue_extraction_delegates_to_video_extraction_coordinator():
     fetch_result = SimpleNamespace(video_urls=["https://www.youtube.com/watch?v=demo"])
 
     with patch(
-        "services.subscription_update.strategies.default_strategy.enqueue_discovered_videos",
+        "services.subscription.update.strategies.default_strategy.enqueue_discovered_videos",
         return_value=1,
     ) as enqueue_discovered_videos:
         enqueued = DefaultUpdateStrategy().enqueue_extraction(fetch_result, request)
@@ -197,7 +198,8 @@ def test_execute_full_sync_with_more_batches_continues_without_marking_success()
     success_calls = []
     schedule_calls = []
 
-    with patch.object(DefaultUpdateStrategy, "_schedule_total_video_backfill"), \
+    with patch.object(SubscriptionOrchestrator, "_has_active_subscribers", return_value=True), \
+         patch.object(SubscriptionOrchestrator, "_schedule_total_video_backfill"), \
          patch.object(DefaultUpdateStrategy, "should_update", return_value=(True, None)), \
          patch.object(DefaultUpdateStrategy, "fetch_videos", return_value=SimpleNamespace(
              video_urls=["https://example.com/a", "https://example.com/b"],
@@ -208,11 +210,12 @@ def test_execute_full_sync_with_more_batches_continues_without_marking_success()
              has_more=True,
          )), \
          patch.object(DefaultUpdateStrategy, "enqueue_extraction", return_value=2), \
-         patch("services.subscription_update.strategies.base.subscription_sync_state_service.mark_sync_success", side_effect=lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs))), \
-         patch("services.subscription_update.strategies.base.subscription_sync_state_service.continue_full_sync_batch", side_effect=lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs))), \
+         patch("services.subscription.update.orchestrator.SiteCatalog.is_site_enabled", return_value=True), \
+         patch("services.subscription.update.orchestrator.subscription_sync_state_service.mark_sync_success", side_effect=lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs))), \
+         patch("services.subscription.update.orchestrator.subscription_sync_state_service.continue_full_sync_batch", side_effect=lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs))), \
          patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued", run_id=kwargs.get("run_id"))), \
-         patch("services.subscription_update.strategies.base.metrics.counter"), \
-         patch("services.subscription_update.strategies.base.append_event"), \
+         patch("services.subscription.update.strategies.base.metrics.counter"), \
+         patch("services.subscription.update.strategies.base.append_event"), \
          patch("core.database.get_session"):
 
         request = SubscriptionUpdateRequest(
@@ -227,7 +230,7 @@ def test_execute_full_sync_with_more_batches_continues_without_marking_success()
             trace_id="trace-1",
         )
 
-        result = DefaultUpdateStrategy().execute(request)
+        result = SubscriptionOrchestrator().update(request)
 
     assert result.success is True
     assert result.cursor_payload == {"page": 2}
@@ -267,7 +270,8 @@ def test_execute_final_full_sync_batch_marks_success():
     continuation_calls = []
     schedule_calls = []
 
-    with patch.object(DefaultUpdateStrategy, "_schedule_total_video_backfill"), \
+    with patch.object(SubscriptionOrchestrator, "_has_active_subscribers", return_value=True), \
+         patch.object(SubscriptionOrchestrator, "_schedule_total_video_backfill"), \
          patch.object(DefaultUpdateStrategy, "should_update", return_value=(True, None)), \
          patch.object(DefaultUpdateStrategy, "fetch_videos", return_value=SimpleNamespace(
              video_urls=["https://example.com/c"],
@@ -278,11 +282,12 @@ def test_execute_final_full_sync_batch_marks_success():
              has_more=False,
          )), \
          patch.object(DefaultUpdateStrategy, "enqueue_extraction", return_value=1), \
-         patch("services.subscription_update.strategies.base.subscription_sync_state_service.mark_sync_success", side_effect=lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs))), \
-         patch("services.subscription_update.strategies.base.subscription_sync_state_service.continue_full_sync_batch", side_effect=lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs))), \
+         patch("services.subscription.update.orchestrator.SiteCatalog.is_site_enabled", return_value=True), \
+         patch("services.subscription.update.orchestrator.subscription_sync_state_service.mark_sync_success", side_effect=lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs))), \
+         patch("services.subscription.update.orchestrator.subscription_sync_state_service.continue_full_sync_batch", side_effect=lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs))), \
          patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued", run_id=kwargs.get("run_id"))), \
-         patch("services.subscription_update.strategies.base.metrics.counter"), \
-         patch("services.subscription_update.strategies.base.append_event"), \
+         patch("services.subscription.update.strategies.base.metrics.counter"), \
+         patch("services.subscription.update.strategies.base.append_event"), \
          patch("core.database.get_session"):
 
         request = SubscriptionUpdateRequest(
@@ -297,7 +302,7 @@ def test_execute_final_full_sync_batch_marks_success():
             trace_id="trace-1",
         )
 
-        result = DefaultUpdateStrategy().execute(request)
+        result = SubscriptionOrchestrator().update(request)
 
     assert result.success is True
     assert continuation_calls == []
@@ -323,7 +328,8 @@ def test_execute_final_full_sync_batch_marks_success():
 def test_execute_incremental_schedules_full_backfill_when_observed_total_grows():
     schedule_calls = []
 
-    with patch.object(DefaultUpdateStrategy, "should_update", return_value=(True, None)), \
+    with patch.object(SubscriptionOrchestrator, "_has_active_subscribers", return_value=True), \
+         patch.object(DefaultUpdateStrategy, "should_update", return_value=(True, None)), \
          patch.object(DefaultUpdateStrategy, "fetch_videos", return_value=SimpleNamespace(
              video_urls=["https://example.com/new"],
              latest_video_url="https://example.com/new",
@@ -333,15 +339,16 @@ def test_execute_incremental_schedules_full_backfill_when_observed_total_grows()
              has_more=False,
          )), \
          patch.object(DefaultUpdateStrategy, "enqueue_extraction", return_value=1), \
-         patch.object(DefaultUpdateStrategy, "_record_gap_observation"), \
-         patch("services.subscription_update.strategies.default_strategy.subscription_service.get_subscription_by_id", return_value=SimpleNamespace(total_videos=10)), \
-         patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service.get_sync_state", return_value=SimpleNamespace(
+         patch.object(SubscriptionOrchestrator, "_record_gap_observation"), \
+         patch("services.subscription.update.orchestrator.SiteCatalog.is_site_enabled", return_value=True), \
+         patch("services.subscription.update.orchestrator.get_subscription_by_id", return_value=SimpleNamespace(total_videos=10)), \
+         patch("services.subscription.update.orchestrator.subscription_sync_state_service.get_sync_state", return_value=SimpleNamespace(
              sync_status="success",
              last_success_at=datetime(2026, 4, 8, 10, 0, 0),
          )), \
          patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued")), \
-         patch("services.subscription_update.strategies.base.metrics.counter"), \
-         patch("services.subscription_update.strategies.base.append_event"), \
+         patch("services.subscription.update.strategies.base.metrics.counter"), \
+         patch("services.subscription.update.strategies.base.append_event"), \
          patch("core.database.get_session"):
 
         request = SubscriptionUpdateRequest(
@@ -352,7 +359,7 @@ def test_execute_incremental_schedules_full_backfill_when_observed_total_grows()
             trace_id="trace-1",
         )
 
-        result = DefaultUpdateStrategy().execute(request)
+        result = SubscriptionOrchestrator().update(request)
 
     assert result.success is True
     assert schedule_calls == [
@@ -369,7 +376,7 @@ def test_execute_incremental_schedules_full_backfill_when_observed_total_grows()
 def test_execute_incremental_does_not_schedule_full_backfill_when_full_already_running():
     schedule_calls = []
 
-    with patch.object(DefaultUpdateStrategy, "_schedule_total_video_backfill"), \
+    with patch.object(SubscriptionOrchestrator, "_has_active_subscribers", return_value=True), \
          patch.object(DefaultUpdateStrategy, "should_update", return_value=(True, None)), \
          patch.object(DefaultUpdateStrategy, "fetch_videos", return_value=SimpleNamespace(
              video_urls=["https://example.com/new"],
@@ -380,15 +387,16 @@ def test_execute_incremental_does_not_schedule_full_backfill_when_full_already_r
              has_more=False,
          )), \
          patch.object(DefaultUpdateStrategy, "enqueue_extraction", return_value=1), \
-         patch.object(DefaultUpdateStrategy, "_record_gap_observation"), \
-         patch("services.subscription_update.strategies.default_strategy.subscription_service.get_subscription_by_id", return_value=SimpleNamespace(total_videos=10)), \
-         patch("services.subscription_update.strategies.default_strategy.subscription_sync_state_service.get_sync_state", return_value=SimpleNamespace(
+         patch.object(SubscriptionOrchestrator, "_record_gap_observation"), \
+         patch("services.subscription.update.orchestrator.SiteCatalog.is_site_enabled", return_value=True), \
+         patch("services.subscription.update.orchestrator.get_subscription_by_id", return_value=SimpleNamespace(total_videos=10)), \
+         patch("services.subscription.update.orchestrator.subscription_sync_state_service.get_sync_state", return_value=SimpleNamespace(
              sync_status="running",
              last_success_at=datetime(2026, 4, 8, 10, 0, 0),
          )), \
          patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued")), \
-         patch("services.subscription_update.strategies.base.metrics.counter"), \
-         patch("services.subscription_update.strategies.base.append_event"), \
+         patch("services.subscription.update.strategies.base.metrics.counter"), \
+         patch("services.subscription.update.strategies.base.append_event"), \
          patch("core.database.get_session"):
 
         request = SubscriptionUpdateRequest(
@@ -399,7 +407,7 @@ def test_execute_incremental_does_not_schedule_full_backfill_when_full_already_r
             trace_id="trace-1",
         )
 
-        result = DefaultUpdateStrategy().execute(request)
+        result = SubscriptionOrchestrator().update(request)
 
     assert result.success is True
     assert schedule_calls == []

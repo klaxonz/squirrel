@@ -15,8 +15,8 @@ from core.startup_dependencies import (
     record_optional_startup_issue,
     reset_startup_dependency_issues,
 )
+from services.site_catalog.cookies import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
 from site_runtimes.manager import bootstrap_site_runtimes, shutdown_site_runtimes
-from utils.cookie import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
 from utils.runtime_http import set_cloudflare_bypass_client, set_cookie_domain_resolver, set_cookie_file_resolver
 
 logger = logging.getLogger(__name__)
@@ -84,7 +84,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     _log_lifecycle_step("Startup", 3, STARTUP_TOTAL_STEPS, "Bootstrapping site runtime manager")
     try:
-        from services.youtube_oauth_service import get_oauth_credentials_for_daemon
+        from services.site_catalog.youtube_oauth import get_oauth_credentials_for_daemon
         oauth_file = get_oauth_credentials_for_daemon()
         if oauth_file:
             os.environ["YOUTUBE_OAUTH_STATE_FILE"] = oauth_file
@@ -96,7 +96,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     _log_lifecycle_step("Startup", 4, STARTUP_TOTAL_STEPS, "Seeding video extraction projection")
     try:
-        from services import video_extraction_projection_service
+        import services.video.extraction_projection.service as video_extraction_projection_service
         rebuilt_count = video_extraction_projection_service.ensure_projection_seeded()
         _log_lifecycle_step(
             "Startup",
@@ -110,7 +110,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     _log_lifecycle_step("Startup", 5, STARTUP_TOTAL_STEPS, "Bootstrapping scheduled tasks")
     try:
-        from services.scheduled_task_bootstrap import ensure_system_tasks
+        from scheduling.bootstrap import ensure_system_tasks
         ensure_system_tasks()
         clear_optional_startup_issue("scheduled_task_bootstrap")
         _log_lifecycle_step("Startup", 5, STARTUP_TOTAL_STEPS, "Scheduled tasks ready")

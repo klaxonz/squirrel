@@ -12,10 +12,10 @@ from models.user import User
 from models.user_video_feed import UserVideoFeed
 from models.video import Video
 from models.video_history import VideoHistory
-from services.subscription_crud_service import SubscriptionCrudService
-from services.subscription_import_service import SubscriptionImportService
-from services.subscription_list_service import SubscriptionListService
-from services.subscription_manage_service import SubscriptionManageService
+from services.subscription.crud import SubscriptionCrudService
+from services.subscription.import_service import SubscriptionImportService
+from services.subscription.listing.service import SubscriptionListService
+from services.subscription.manage import SubscriptionManageService
 
 
 def _get_user_config(_user_id):
@@ -23,25 +23,25 @@ def _get_user_config(_user_id):
 
 
 @pytest.fixture(autouse=True)
-def _redirect_module_defaults(session_factory):
-    """Redirect module-level service defaults to use test session_factory."""
+def _redirect_module_services(session_factory):
+    """Redirect module-level service instances to use test session_factory."""
     from core import database
     database.get_session = session_factory
 
-    from services.crawl_tasks import service as crawl_task_service_mod
-    crawl_task_service_mod._default.session_factory = session_factory
+    from services.crawl.tasks import service as crawl_task_service_mod
+    crawl_task_service_mod.crawl_task_service.session_factory = session_factory
 
-    from services import user_video_feed_service as uvfs
-    uvfs._default._session_factory = session_factory
+    import services.user.feed as uvfs
+    uvfs.user_video_feed_service._session_factory = session_factory
 
-    from services import video_extraction_projection_service as veps
-    veps._default.session_factory = session_factory
+    from services.video.extraction_projection.service import video_extraction_projection_service
+    video_extraction_projection_service.session_factory = session_factory
 
-    from services.subscription_crud_service import _default as crud_default
-    crud_default.session_factory = session_factory
+    from services.subscription.crud import subscription_crud_service
+    subscription_crud_service.session_factory = session_factory
 
-    from services.subscription_manage_service import _default as manage_default
-    manage_default.session_factory = session_factory
+    from services.subscription.manage import subscription_manage_service
+    subscription_manage_service.session_factory = session_factory
 
 
 @pytest.fixture
@@ -735,6 +735,8 @@ def test_list_subscriptions_prefers_actual_extract_count_when_total_videos_is_st
 
 
 def test_list_subscriptions_only_counts_extracts_for_current_page(engine, session_factory):
+    from services.subscription.listing import service as subscription_list_service_mod
+
     _seed_subscription(engine, user_ids=[1])
 
     with Session(engine, expire_on_commit=False) as session:
@@ -773,16 +775,20 @@ def test_list_subscriptions_only_counts_extracts_for_current_page(engine, sessio
         captured_ids.append(list(subscription_ids))
         return dict.fromkeys(subscription_ids, 0)
 
-    svc._load_subscription_extract_counts = fake_load_subscription_extract_counts
+    original_load_subscription_extract_counts = subscription_list_service_mod.load_subscription_extract_counts
+    subscription_list_service_mod.load_subscription_extract_counts = fake_load_subscription_extract_counts
 
-    subscriptions, total = svc.list_subscriptions(
-        user_id=1,
-        query=None,
-        type=None,
-        nsfw="all",
-        page=1,
-        page_size=1,
-    )
+    try:
+        subscriptions, total = svc.list_subscriptions(
+            user_id=1,
+            query=None,
+            type=None,
+            nsfw="all",
+            page=1,
+            page_size=1,
+        )
+    finally:
+        subscription_list_service_mod.load_subscription_extract_counts = original_load_subscription_extract_counts
 
     assert total == 2
     assert [item["id"] for item in subscriptions] == [2]

@@ -1,8 +1,7 @@
 import json
-from types import SimpleNamespace
 from unittest.mock import patch
 
-from services.cookiecloud_service import CookieCloudService
+from services.site_catalog.cookiecloud import CookieCloudService
 
 
 def test_sync_cookiecloud_to_site_files_uses_safe_cookie_file_writer(tmp_path):
@@ -22,14 +21,14 @@ def test_sync_cookiecloud_to_site_files_uses_safe_cookie_file_writer(tmp_path):
                 },
             ],
         }),
-        patch('services.cookiecloud_service.get_effective_site_catalog', return_value={
+        patch('services.site_catalog.cookiecloud.get_effective_site_catalog', return_value={
             'youtube': {
                 'domains': ['youtube.com'],
             },
         }),
-        patch('services.cookiecloud_service.get_site_cookies_dir', return_value=tmp_path),
-        patch('services.cookiecloud_service.get_site_cookies_file_path', lambda slug: tmp_path / f'{slug}.txt'),
-        patch('services.cookiecloud_service.write_cookie_text_file', lambda path, content: writes.append((path, content))),
+        patch('services.site_catalog.cookiecloud.get_site_cookies_dir', return_value=tmp_path),
+        patch('services.site_catalog.cookiecloud.get_site_cookies_file_path', lambda slug: tmp_path / f'{slug}.txt'),
+        patch('services.site_catalog.cookiecloud.write_cookie_text_file', lambda path, content: writes.append((path, content))),
     ):
         result = CookieCloudService.sync_cookiecloud_to_site_files()
 
@@ -80,11 +79,9 @@ def test_fetch_cookiecloud_cookie_data_handles_response_text_decode_failure():
 
     with (
         patch.object(CookieCloudService, '_get_cookiecloud_config', return_value=('https://cookiecloud.example.com', 'uuid-1', 'password-1')),
-        patch('services.cookiecloud_service.requests.get', return_value=FakeResponse()),
-        patch.dict('sys.modules', {
-            'PyCookieCloud': SimpleNamespace(PyCookieCloud=FakeClient),
-            'PyCookieCloud.PyCryptoJS': SimpleNamespace(decrypt=lambda encrypted, key: json.dumps(fake_cookie_payload).encode('utf-8')),
-        }),
+        patch('services.site_catalog.cookiecloud.requests.get', return_value=FakeResponse()),
+        patch('services.site_catalog.cookiecloud.PyCookieCloud', FakeClient),
+        patch('services.site_catalog.cookiecloud.decrypt', lambda encrypted, key: json.dumps(fake_cookie_payload).encode('utf-8')),
     ):
         result = CookieCloudService.fetch_cookiecloud_cookie_data()
 

@@ -4,13 +4,14 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
+import services.subscription.sync.projection.store as projection_store
 from models import Base
 from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
 from models.subscription_sync_trend_projection import SubscriptionSyncTrendProjection
-from services.subscription_sync_projection_service import SubscriptionSyncProjectionService
-from services.subscription_sync_run_service import SyncEventType, SyncPhase, SyncRunStatus
+from services.subscription.sync.projection.service import SubscriptionSyncProjectionService
+from services.subscription.sync.run_service import SyncEventType, SyncPhase, SyncRunStatus
 
 
 def _build_event(
@@ -44,11 +45,11 @@ def _build_event(
 
 @pytest.fixture(autouse=True)
 def _patch_advisory_lock():
-    """Make PostgreSQL-specific _advisory_lock a no-op for SQLite tests."""
-    original = SubscriptionSyncProjectionService._advisory_lock
-    SubscriptionSyncProjectionService._advisory_lock = staticmethod(lambda session, key: None)
+    """Make PostgreSQL-specific advisory_lock a no-op for SQLite tests."""
+    original = projection_store.advisory_lock
+    projection_store.advisory_lock = lambda session, key: None
     yield
-    SubscriptionSyncProjectionService._advisory_lock = original
+    projection_store.advisory_lock = original
 
 
 @pytest.fixture

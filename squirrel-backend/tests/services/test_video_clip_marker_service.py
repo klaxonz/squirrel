@@ -11,7 +11,7 @@ from models import Base
 from models.video import Video
 from models.video_clip_marker import VideoClipMarker
 from schemas.video_clip_marker import ClipMarkerCreate, ClipMarkerUpdate
-from services.video_clip_marker_service import VideoClipMarkerService
+from services.video.engagement.clip_marker import VideoClipMarkerService
 
 
 @pytest.fixture

@@ -1,0 +1,1 @@
+"""Video list service collaborators."""

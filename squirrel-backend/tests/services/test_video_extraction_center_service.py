@@ -11,8 +11,9 @@ from models.crawl_task import CrawlTask
 from models.links import UserSubscription
 from models.subscription import Subscription
 from models.video_extraction_projection import VideoExtractionProjection
-from services.video_extraction_center_service import VideoExtractionCenterService
-from services.video_extraction_projection_service import VideoExtractionProjectionService
+from services.sync_dashboard.site_icons import SiteIconResolver
+from services.video.extraction_center.service import VideoExtractionCenterService
+from services.video.extraction_projection.service import VideoExtractionProjectionService
 
 
 @pytest.fixture
@@ -54,7 +55,7 @@ def svc(session_factory):
         session_factory=session_factory,
         ensure_projection_seeded=proj_svc.ensure_projection_seeded,
         format_datetime=lambda dt: dt.strftime("%Y-%m-%d %H:%M:%S") if dt else "",
-        get_cached_site_catalog=lambda: {
+        site_icon_resolver=SiteIconResolver(lambda: {
             "youtube": {
                 "domains": ["youtube.com", "youtu.be"],
                 "icon_url": "/api/sites/youtube/icon",
@@ -63,7 +64,7 @@ def svc(session_factory):
                 "domains": ["bilibili.com", "b23.tv"],
                 "icon_url": "/api/sites/bilibili/icon",
             },
-        },
+        }),
     )
 
 
@@ -453,7 +454,7 @@ def test_extraction_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(e
         session_factory=session_factory,
         ensure_projection_seeded=proj_svc.ensure_projection_seeded,
         format_datetime=lambda dt: dt.strftime("%Y-%m-%d %H:%M:%S") if dt else "",
-        get_cached_site_catalog=tracking_catalog,
+        site_icon_resolver=SiteIconResolver(tracking_catalog),
     )
 
     snapshot = center_svc.get_extraction_dashboard_snapshot(user_id=1)
@@ -468,13 +469,10 @@ def test_extraction_site_icon_resolution_propagates_catalog_failure():
     def _fail():
         raise PermissionError("installations.json is locked")
 
-    svc = VideoExtractionCenterService(
-        get_cached_site_catalog=_fail,
-    )
+    resolver = SiteIconResolver(_fail)
 
-    import pytest
     with pytest.raises(PermissionError, match="installations.json is locked"):
-        svc._resolve_site_icon_url("youtube.com")
+        resolver.resolve("youtube.com")
 
 
 def test_extraction_center_groups_tasks_by_job_when_sync_state_id_missing(engine, svc):

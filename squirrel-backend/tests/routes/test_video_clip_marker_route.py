@@ -6,29 +6,30 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes.video_clip_marker import router
-from services.auth_service import get_current_user
+from routes.video_clip_marker import get_clip_marker_service, router
+from services.user.auth import get_current_user
 
 
-def test_create_clip_marker_forwards_payload_to_service(monkeypatch):
+def test_create_clip_marker_forwards_payload_to_service():
     captured = {}
 
-    def fake_create_marker(user_id, data):
-        captured["user_id"] = user_id
-        captured["data"] = data
-        return {
-            "id": 11,
-            "video_id": data.video_id,
-            "title": data.title,
-            "start_time": data.start_time,
-            "end_time": data.end_time,
-        }
-
-    monkeypatch.setattr("routes.video_clip_marker.video_clip_marker_service.create_marker", fake_create_marker)
+    class FakeClipMarkerService:
+        @staticmethod
+        def create_marker(user_id, data):
+            captured["user_id"] = user_id
+            captured["data"] = data
+            return {
+                "id": 11,
+                "video_id": data.video_id,
+                "title": data.title,
+                "start_time": data.start_time,
+                "end_time": data.end_time,
+            }
 
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: type("User", (), {"id": 7})()
+    app.dependency_overrides[get_clip_marker_service] = lambda: FakeClipMarkerService()
     client = TestClient(app)
 
     response = client.post(
@@ -50,12 +51,16 @@ def test_create_clip_marker_forwards_payload_to_service(monkeypatch):
     assert captured["data"].end_time == 21
 
 
-def test_update_clip_marker_returns_not_found_when_service_misses(monkeypatch):
-    monkeypatch.setattr("routes.video_clip_marker.video_clip_marker_service.update_marker", lambda user_id, marker_id, data: None)
+def test_update_clip_marker_returns_not_found_when_service_misses():
+    class FakeClipMarkerService:
+        @staticmethod
+        def update_marker(user_id, marker_id, data):
+            return None
 
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: type("User", (), {"id": 9})()
+    app.dependency_overrides[get_clip_marker_service] = lambda: FakeClipMarkerService()
     client = TestClient(app)
 
     response = client.put(
@@ -72,23 +77,24 @@ def test_update_clip_marker_returns_not_found_when_service_misses(monkeypatch):
     assert response.json()["msg"] == "片段标记不存在"
 
 
-def test_upload_clip_marker_preview_forwards_payload_to_service(monkeypatch):
+def test_upload_clip_marker_preview_forwards_payload_to_service():
     captured = {}
 
-    def fake_save_preview(user_id, marker_id, image_data_url):
-        captured["user_id"] = user_id
-        captured["marker_id"] = marker_id
-        captured["image_data_url"] = image_data_url
-        return {
-            "id": marker_id,
-            "preview_image_url": "/static/clip-markers/user_7/video_5/marker_11.jpg?v=1",
-        }
-
-    monkeypatch.setattr("routes.video_clip_marker.video_clip_marker_service.save_preview", fake_save_preview)
+    class FakeClipMarkerService:
+        @staticmethod
+        def save_preview(user_id, marker_id, image_data_url):
+            captured["user_id"] = user_id
+            captured["marker_id"] = marker_id
+            captured["image_data_url"] = image_data_url
+            return {
+                "id": marker_id,
+                "preview_image_url": "/static/clip-markers/user_7/video_5/marker_11.jpg?v=1",
+            }
 
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: type("User", (), {"id": 7})()
+    app.dependency_overrides[get_clip_marker_service] = lambda: FakeClipMarkerService()
     client = TestClient(app)
 
     response = client.post(

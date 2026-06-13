@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.orm import Session
 
+import services.subscription.sync.state.service as subscription_sync_state_service
 from models import Base
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
@@ -14,9 +15,12 @@ from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from models.subscription_sync_state import SubscriptionSyncState
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
-from schemas.subscription.dto.sync_center_dto import SyncCenterItemDto
-from services.subscription_sync_center_service import SubscriptionSyncCenterService
-from services.subscription_sync_state_service import SyncStateService
+from schemas.subscription.dto.sync_dashboard_dto import SyncDashboardItemDto
+from services.subscription.sync.dashboard_service import SubscriptionSyncDashboardService
+from services.subscription.sync.progress import subscription_sync_progress
+from services.sync_dashboard.items import SyncDashboardItemFactory
+from services.sync_dashboard.presentation import sort_items
+from services.sync_dashboard.site_icons import SiteIconResolver
 
 
 @pytest.fixture
@@ -27,14 +31,15 @@ def engine(engine):
 @pytest.fixture
 def sss_session_patch(session_factory):
     """Replacement for sss_session fixture using patch instead of monkeypatch."""
+    import services.subscription.sync.projection.store as projection_store
     from core import database
-    from services.subscription_sync_projection_service import _default as proj_default
-    from services.subscription_sync_run_service import _default as run_svc_default
+    from services.subscription.sync.projection.service import subscription_sync_projection_service
+    from services.subscription.sync.run_service import subscription_sync_run_service
 
     with patch.object(database, 'get_session', session_factory), \
-         patch.object(run_svc_default, 'next_seq_no', lambda stream_id, *, session=None: 1), \
-         patch.object(proj_default, '_advisory_lock', staticmethod(lambda session, key: None)), \
-         patch.object(proj_default, 'apply_event', lambda event, session=None: event):
+         patch.object(subscription_sync_run_service, 'next_seq_no', lambda stream_id, *, session=None: 1), \
+         patch.object(projection_store, 'advisory_lock', lambda session, key: None), \
+         patch.object(subscription_sync_projection_service, 'apply_event', lambda event, session=None: event):
         yield
 
 
@@ -42,6 +47,7 @@ def _setup_projection_env(engine):
     Base.metadata.create_all(
         engine,
         tables=[
+            CrawlTask.__table__,
             Subscription.__table__,
             UserSubscription.__table__,
             SubscriptionSyncEvent.__table__,
@@ -317,22 +323,28 @@ def _seed_projection_data(engine):
         session.commit()
 
 
-def test_sync_center_feed_dashboard_snapshot_uses_one_consistent_result_shape(engine, session_factory):
+def test_sync_dashboard_feed_dashboard_snapshot_uses_one_consistent_result_shape(engine, session_factory):
     engine = _setup_projection_env(engine)
     _seed_projection_data(engine)
-    svc = SubscriptionSyncCenterService(session_factory=session_factory)
-
-    with patch("services.site_catalog_cache.get_cached_site_catalog", return_value={
+    catalog = {
         "youtube.com": {"icon_url": "/api/sites/youtube/icon"},
         "bilibili.com": {"icon_url": "/api/sites/bilibili/icon"},
-    }):
-        snapshot = svc.get_feed_dashboard_snapshot(
-            user_id=1,
-            site=None,
-            query=None,
-            date_from="2026-04-02T00:00:00",
-            date_to="2026-04-03T00:00:00",
-        )
+    }
+    svc = SubscriptionSyncDashboardService(
+        session_factory=session_factory,
+        item_factory=SyncDashboardItemFactory(
+            progress_service=subscription_sync_progress,
+            site_icon_resolver=SiteIconResolver(lambda: catalog),
+        ),
+    )
+
+    snapshot = svc.get_feed_dashboard_snapshot(
+        user_id=1,
+        site=None,
+        query=None,
+        date_from="2026-04-02T00:00:00",
+        date_to="2026-04-03T00:00:00",
+    )
 
     assert snapshot["overview"].running_count == 1
     assert snapshot["overview"].awaiting_extract_count == 1
@@ -360,16 +372,12 @@ def test_sync_center_feed_dashboard_snapshot_uses_one_consistent_result_shape(en
     assert len(second_call_new_ids) == 0 or not first_call_run_ids.issubset(second_call_new_ids)
 
 
-def test_sync_center_feed_dashboard_snapshot_does_not_trim_running_or_queued_items(engine, session_factory):
+def test_sync_dashboard_feed_dashboard_snapshot_does_not_trim_running_or_queued_items(engine, session_factory):
     engine = _setup_projection_env(engine)
     _seed_projection_data(engine)
-    svc = SubscriptionSyncCenterService(session_factory=session_factory)
+    svc = SubscriptionSyncDashboardService(session_factory=session_factory)
 
-    with patch("services.subscription_sync_center_service.SYNC_CENTER_PREVIEW_LIMIT", 1), \
-         patch("services.site_catalog_cache.get_cached_site_catalog", return_value={
-             "youtube.com": {"icon_url": "/api/sites/youtube/icon"},
-             "bilibili.com": {"icon_url": "/api/sites/bilibili/icon"},
-         }):
+    with patch("services.subscription.sync.dashboard_service.SYNC_DASHBOARD_PREVIEW_LIMIT", 1):
         with Session(engine, expire_on_commit=False) as session:
             run_projection = session.get(SubscriptionSyncRunProjection, "run-running")
             run_projection.current_phase = "fetching_feed"
@@ -392,10 +400,9 @@ def test_sync_center_feed_dashboard_snapshot_does_not_trim_running_or_queued_ite
     assert [item.subscription_name for item in snapshot["queuedPreview"]] == ["Queued First", "Queued Second"]
 
 
-def test_sync_center_feed_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(engine, session_factory):
+def test_sync_dashboard_feed_dashboard_snapshot_reuses_site_catalog_for_icon_resolution(engine, session_factory):
     engine = _setup_projection_env(engine)
     _seed_projection_data(engine)
-    svc = SubscriptionSyncCenterService(session_factory=session_factory)
 
     calls = []
 
@@ -410,16 +417,21 @@ def test_sync_center_feed_dashboard_snapshot_reuses_site_catalog_for_icon_resolu
             },
         }
 
-    with patch.object(svc, '_site_icon_url_cache', {}), \
-         patch("services.site_catalog_cache.get_cached_site_catalog", _fake_get_cached_site_catalog):
+    svc = SubscriptionSyncDashboardService(
+        session_factory=session_factory,
+        item_factory=SyncDashboardItemFactory(
+            progress_service=subscription_sync_progress,
+            site_icon_resolver=SiteIconResolver(_fake_get_cached_site_catalog),
+        ),
+    )
 
-        snapshot = svc.get_feed_dashboard_snapshot(
-            user_id=1,
-            site=None,
-            query=None,
-            date_from="2026-04-02T00:00:00",
-            date_to="2026-04-03T00:00:00",
-        )
+    snapshot = svc.get_feed_dashboard_snapshot(
+        user_id=1,
+        site=None,
+        query=None,
+        date_from="2026-04-02T00:00:00",
+        date_to="2026-04-03T00:00:00",
+    )
 
     assert snapshot["runningPreview"][0].site_icon_url == "/api/sites/youtube/icon"
     assert snapshot["queuedPreview"][0].site_icon_url == "/api/sites/bilibili/icon"
@@ -429,19 +441,19 @@ def test_sync_center_feed_dashboard_snapshot_reuses_site_catalog_for_icon_resolu
 
 def test_sort_items_accepts_mixed_queued_rank_sources():
     items = [
-        SyncCenterItemDto(
+        SyncDashboardItemDto(
             subscription_id=1,
             subscription_name="Candidate Ranked",
             display_status="queued",
             queued_at="2026-04-02 10:00:00",
         ),
-        SyncCenterItemDto(
+        SyncDashboardItemDto(
             subscription_id=2,
             subscription_name="Projection Fallback",
             display_status="queued",
             queued_at="2026-04-02 09:30:00",
         ),
-        SyncCenterItemDto(
+        SyncDashboardItemDto(
             subscription_id=3,
             subscription_name="Backlog Ranked",
             display_status="queued",
@@ -449,8 +461,7 @@ def test_sort_items_accepts_mixed_queued_rank_sources():
         ),
     ]
 
-    svc = SubscriptionSyncCenterService()
-    result = svc._sort_items(
+    result = sort_items(
         items,
         "queued",
         queued_candidate_rank_map={1: 1},
@@ -462,11 +473,11 @@ def test_sort_items_accepts_mixed_queued_rank_sources():
 
 def test_reconcile_retry_wait_run_projections_emits_queued_event_for_stale_feed_run(engine, session_factory, sss_session_patch):
     engine = _setup_projection_reconcile_env(engine)
-    sss_svc = SyncStateService(session_factory=session_factory)
+    sss_svc = subscription_sync_state_service
     captured_events = []
 
     with patch(
-        "services.subscription_sync_state_service._events.append_event",
+        "services.subscription.sync.state._events.append_event",
         lambda event_input, session=None, project=True: captured_events.append(event_input) or event_input,
     ):
 
@@ -606,11 +617,11 @@ def test_reconcile_retry_wait_run_projections_emits_queued_event_for_stale_feed_
 
 def test_mark_sync_success_stays_running_until_pending_videos_are_drained(engine, session_factory, sss_session_patch):
     engine = _setup_state_env(engine)
-    sss_svc = SyncStateService(session_factory=session_factory)
+    sss_svc = subscription_sync_state_service
     captured_events = []
 
     with patch(
-        "services.subscription_sync_state_service._events.append_event",
+        "services.subscription.sync.state._events.append_event",
         lambda event_input, session=None, project=True: captured_events.append(event_input) or event_input,
     ):
 
@@ -685,15 +696,15 @@ def test_mark_sync_success_stays_running_until_pending_videos_are_drained(engine
 
 def test_reconcile_terminal_drained_sync_states_completes_original_latest_run(engine, session_factory, sss_session_patch):
     engine = _setup_projection_reconcile_env(engine)
-    sss_svc = SyncStateService(session_factory=session_factory)
+    sss_svc = subscription_sync_state_service
     captured_events = []
 
     with patch(
-        "services.subscription_sync_state_service._events.append_event",
+        "services.subscription.sync.state._events.append_event",
         lambda event_input, session=None, project=True: captured_events.append(event_input) or event_input,
     ), \
          patch(
-             "services.subscription_sync_state_service._recovery.crawl_task_service.summarize_video_task_states_by_sync_state",
+             "services.subscription.sync.state._recovery.crawl_task_service.summarize_video_task_states_by_sync_state",
              dict,
          ):
 
@@ -766,7 +777,7 @@ def test_reconcile_terminal_drained_sync_states_completes_original_latest_run(en
 
 def test_record_gap_observation_emits_full_backfill_request_when_score_crosses_threshold(engine, session_factory, sss_session_patch):
     engine = _setup_state_env(engine)
-    sss_svc = SyncStateService(session_factory=session_factory)
+    sss_svc = subscription_sync_state_service
 
     now = datetime(2026, 4, 4, 12, 0, 0)
     with Session(engine, expire_on_commit=False) as session:

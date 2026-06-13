@@ -10,7 +10,7 @@ from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
 from models.outbox_event import OutboxEvent
 from models.subscription_sync_state import SubscriptionSyncState
-from services.outbox_event_service import OutboxEventService
+from services.outbox.event_service import OutboxEventService
 
 
 @pytest.fixture
@@ -90,13 +90,13 @@ def test_full_backfill_request_dispatches_full_sync_command(engine, session_fact
 
     from core import database
     from core.config import settings
-    from services.subscription_update.commands import SubscriptionSyncCommandService
-    from services.subscription_update.models import UpdateMode, UpdateTrigger
+    from services.subscription.update.commands import SubscriptionSyncCommandService
+    from services.subscription.update.models import UpdateMode, UpdateTrigger
 
     with patch.object(database, 'get_session', session_factory), \
          patch.object(settings, 'FULL_SYNC_MAX_INFLIGHT', 10), \
          patch.object(settings, 'FULL_SYNC_SITE_MAX_INFLIGHT', 10), \
-         patch("services.subscription_service.get_subscription_by_id", return_value=None), \
+         patch("services.outbox.event_service.get_subscription_by_id", return_value=None), \
          patch.object(
              SubscriptionSyncCommandService,
              "request_sync",

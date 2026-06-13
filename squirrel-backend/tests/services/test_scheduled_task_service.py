@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from models import Base
 from models.scheduled_task import ScheduledTask, TaskExecutionLog, TaskStatus, TaskType
-from services.scheduled_task_service import ScheduledTaskService
+from scheduling.service import ScheduledTaskService
 
 
 @pytest.fixture

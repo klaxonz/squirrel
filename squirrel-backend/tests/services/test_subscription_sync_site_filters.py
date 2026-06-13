@@ -11,8 +11,8 @@ from models.subscription import Subscription
 from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
-from services.subscription_sync_history_service import SubscriptionSyncHistoryService
-from utils.site_catalog import SiteCatalog
+from services.site_catalog.catalog import SiteCatalog
+from services.subscription.sync.history_service import SubscriptionSyncHistoryService
 
 
 @pytest.fixture(autouse=True)

@@ -41,27 +41,20 @@ def sss_session(session_factory):
     from core import database
     database.get_session = session_factory
 
-    from services.crawl_tasks import service as crawl_task_service_mod
-    crawl_task_service_mod._default.session_factory = session_factory
+    from services.crawl.tasks import service as crawl_task_service_mod
+    crawl_task_service_mod.crawl_task_service.session_factory = session_factory
 
-    from services.subscription_sync_run_service import _default as run_svc_default
+    from services.subscription.sync.run_service import subscription_sync_run_service
     _seq_counters: dict[str, int] = {}
     def _next_seq_no(stream_id, *, session=None):
         _seq_counters[stream_id] = _seq_counters.get(stream_id, 0) + 1
         return _seq_counters[stream_id]
-    run_svc_default.next_seq_no = _next_seq_no
+    subscription_sync_run_service.next_seq_no = _next_seq_no
 
-    from services.subscription_sync_projection_service import _default as proj_default
-    proj_default._advisory_lock = staticmethod(lambda session, key: None)
-    proj_default.apply_event = lambda event, session=None: event
+    import services.subscription.sync.projection.store as projection_store
+    from services.subscription.sync.projection.service import subscription_sync_projection_service
+    projection_store.advisory_lock = lambda session, key: None
+    subscription_sync_projection_service.apply_event = lambda event, session=None: event
 
-    # Make stream_service constants available on the default instance
-    from services.sync_center_stream_service import (
-        SYNC_CENTER_FEED_CHANNEL,
-        SYNC_CENTER_RUN_CHANNEL,
-    )
-    from services.sync_center_stream_service import _default as stream_default
-    stream_default.SYNC_CENTER_FEED_CHANNEL = SYNC_CENTER_FEED_CHANNEL
-    stream_default.SYNC_CENTER_RUN_CHANNEL = SYNC_CENTER_RUN_CHANNEL
-    stream_default.publish_sync_center_invalidation = staticmethod(lambda channel, payload=None: None)
-
+    from services.sync_dashboard.stream_service import sync_dashboard_stream_service
+    sync_dashboard_stream_service.publish_sync_dashboard_invalidation = staticmethod(lambda channel, payload=None: None)

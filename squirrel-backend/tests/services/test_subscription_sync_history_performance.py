@@ -1,4 +1,5 @@
 from datetime import datetime
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy.orm import Session
@@ -8,7 +9,7 @@ from models.links import UserSubscription
 from models.subscription import Subscription
 from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
-from services.subscription_sync_history_service import SubscriptionSyncHistoryService
+from services.subscription.sync.history_service import SubscriptionSyncHistoryService
 
 
 @pytest.fixture
@@ -106,17 +107,24 @@ def _seed_runs_and_subscription(engine):
         session.commit()
 
 
-def test_list_runs_uses_count_helper_instead_of_loading_all_rows(engine, session_factory):
+def test_list_runs_uses_count_helper_instead_of_loading_all_rows(engine, session_factory, monkeypatch):
     _seed_runs_and_subscription(engine)
 
-    svc = SubscriptionSyncHistoryService(session_factory=session_factory)
+    svc = SubscriptionSyncHistoryService(
+        session_factory=session_factory,
+        site_icon_resolver=SimpleNamespace(resolve=lambda site: None),
+    )
 
     count_queries = []
 
-    # Override static methods on the instance to track calls
-    svc._count_query_rows = lambda current_session, query: count_queries.append((current_session, query)) or 1
-    svc._resolve_site_icon_url = lambda site: None
+    def fake_count_query_rows(current_session, query):
+        count_queries.append((current_session, query))
+        return 1
 
+    monkeypatch.setattr(
+        "services.subscription.sync.history_service.count_query_rows",
+        fake_count_query_rows,
+    )
     result = svc.list_runs(user_id=1, page=1, page_size=20)
 
     assert result["total"] == 1
@@ -124,13 +132,15 @@ def test_list_runs_uses_count_helper_instead_of_loading_all_rows(engine, session
     assert len(count_queries) == 1
 
 
-def test_list_run_events_checks_access_without_calling_get_run_detail(engine, session_factory):
+def test_list_run_events_checks_access_without_calling_get_run_detail(engine, session_factory, monkeypatch):
     _seed_runs_and_subscription(engine)
 
     svc = SubscriptionSyncHistoryService(session_factory=session_factory)
 
-    # Override _run_exists_for_user to confirm it's used for access control
-    svc._run_exists_for_user = lambda current_session, run_id, user_id: True
+    monkeypatch.setattr(
+        "services.subscription.sync.history_service.run_exists_for_user",
+        lambda current_session, run_id, user_id: True,
+    )
 
     result = svc.list_run_events("run-1", 1)
 

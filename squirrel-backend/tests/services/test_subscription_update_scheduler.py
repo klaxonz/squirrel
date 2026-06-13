@@ -13,9 +13,9 @@ from models.links import UserSubscription
 from models.outbox_event import OutboxEvent
 from models.subscription import Subscription
 from models.subscription_sync_state import SubscriptionSyncState
-from services.subscription_update.commands import SubscriptionSyncCommandService
-from services.subscription_update.models import SubscriptionUpdateResult, UpdateMode, UpdateTrigger
-from services.subscription_update.scheduler import SubscriptionScheduler
+from services.subscription.update.commands import SubscriptionSyncCommandService
+from services.subscription.update.models import SubscriptionUpdateResult, UpdateMode, UpdateTrigger
+from services.subscription.update.scheduler import SubscriptionScheduler
 
 
 @pytest.fixture
@@ -43,28 +43,29 @@ def sched(session_factory):
 @pytest.fixture(autouse=True)
 def _patch_postgres(session_factory):
     """Patch postgres-specific calls to work with SQLite."""
+    import services.subscription.sync.projection.store as projection_store
     from core import database
-    from services.subscription_sync_projection_service import _default as proj_default
-    from services.subscription_sync_run_service import _default as run_svc_default
+    from services.subscription.sync.projection.service import subscription_sync_projection_service
+    from services.subscription.sync.run_service import subscription_sync_run_service
 
     with patch.object(database, 'register_after_commit', lambda session, callback: None), \
          patch.object(database, 'get_session', session_factory), \
-         patch.object(run_svc_default, 'next_seq_no', lambda stream_id, *, session=None: 1), \
-         patch.object(proj_default, '_advisory_lock', staticmethod(lambda session, key: None)), \
-         patch.object(proj_default, 'apply_event', lambda event, session=None: event):
+         patch.object(subscription_sync_run_service, 'next_seq_no', lambda stream_id, *, session=None: 1), \
+         patch.object(projection_store, 'advisory_lock', lambda session, key: None), \
+         patch.object(subscription_sync_projection_service, 'apply_event', lambda event, session=None: event):
         yield
 
 
 def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sched):
     appended_events = []
 
-    from services import subscription_sync_state_service as ssss
-    from services.crawl_tasks import service as crawl_task_service_mod
-    from services.crawl_tasks.service import CrawlTaskService
+    import services.subscription.sync.state.service as ssss
+    from services.crawl.tasks import service as crawl_task_service_mod
+    from services.crawl.tasks.service import CrawlTaskService
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
 
-    with patch('utils.site_catalog.SiteCatalog.is_site_enabled', return_value=True), \
+    with patch('services.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True), \
          patch.object(SubscriptionSyncCommandService, '_has_active_subscribers', return_value=True), \
          patch.object(ssss, 'prepare_sync_state_for_enqueue', return_value=(
              SimpleNamespace(id=11, pending_video_count=0, sync_mode=UpdateMode.FULL),
@@ -78,7 +79,7 @@ def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sche
              queued_at="2026-04-01 12:00:00",
              pending_video_count=0,
          )), \
-         patch('services.subscription_update.commands.append_event', lambda event: appended_events.append(event)), \
+         patch('services.subscription.update.command_events.append_event', lambda event: appended_events.append(event)), \
          patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task), \
          patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job), \
          patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task), \
@@ -129,13 +130,13 @@ def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sche
 def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factory, sched):
     appended_events = []
 
-    from services import subscription_sync_state_service as ssss
-    from services.crawl_tasks import service as crawl_task_service_mod
-    from services.crawl_tasks.service import CrawlTaskService
+    import services.subscription.sync.state.service as ssss
+    from services.crawl.tasks import service as crawl_task_service_mod
+    from services.crawl.tasks.service import CrawlTaskService
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
 
-    with patch('utils.site_catalog.SiteCatalog.is_site_enabled', return_value=True), \
+    with patch('services.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True), \
          patch.object(SubscriptionSyncCommandService, '_has_active_subscribers', return_value=True), \
          patch.object(ssss, 'prepare_sync_state_for_enqueue', return_value=(
              SimpleNamespace(id=12, pending_video_count=0, sync_mode=UpdateMode.INCREMENTAL),
@@ -149,7 +150,7 @@ def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factor
              queued_at="2026-04-01 12:00:00",
              pending_video_count=0,
          )), \
-         patch('services.subscription_update.commands.append_event', lambda event: appended_events.append(event)), \
+         patch('services.subscription.update.command_events.append_event', lambda event: appended_events.append(event)), \
          patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task), \
          patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job), \
          patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task), \
@@ -195,9 +196,9 @@ def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(en
     appended_events = []
     payloads = []
 
-    from services import subscription_sync_state_service as ssss
+    import services.subscription.sync.state.service as ssss
 
-    with patch('utils.site_catalog.SiteCatalog.is_site_enabled', return_value=True), \
+    with patch('services.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True), \
          patch.object(SubscriptionSyncCommandService, '_has_active_subscribers', return_value=True), \
          patch.object(ssss, 'prepare_sync_state_for_enqueue', return_value=(
              SimpleNamespace(id=21, pending_video_count=0, sync_mode=UpdateMode.INCREMENTAL),
@@ -211,9 +212,9 @@ def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(en
              queued_at="2026-04-01 12:00:00",
              pending_video_count=0,
          )), \
-         patch('services.subscription_update.commands.append_event', lambda event: appended_events.append(event)), \
+         patch('services.subscription.update.command_events.append_event', lambda event: appended_events.append(event)), \
          patch(
-             'services.crawl_executors.subscription_sync_executor.execute_subscription_sync_payload',
+             'services.crawl.executors.subscription_sync_executor.execute_subscription_sync_payload',
              lambda payload: payloads.append(payload) or SubscriptionUpdateResult(
                  subscription_id=payload["subscription_id"],
                  success=True,
@@ -328,7 +329,7 @@ def test_enqueue_all_active_counts_failed_results(engine, session_factory, sched
         )
         session.commit()
 
-    from services import subscription_sync_state_service as ssss
+    import services.subscription.sync.state.service as ssss
 
     with patch.object(ssss, 'get_sync_state', lambda subscription_id, mode: None), \
          patch.object(SubscriptionScheduler, 'schedule_one', lambda self, subscription_id, url, trigger, mode: SimpleNamespace(
@@ -347,12 +348,12 @@ def test_enqueue_due_states_creates_crawl_tasks_from_sync_state_store(engine, se
     now = datetime(2026, 4, 4, 12, 0, 0)
     appended_events = []
 
-    from services.crawl_tasks import service as crawl_task_service_mod
-    from services.crawl_tasks.service import CrawlTaskService
+    from services.crawl.tasks import service as crawl_task_service_mod
+    from services.crawl.tasks.service import CrawlTaskService
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
 
-    with patch('services.subscription_update.commands.append_event', lambda event: appended_events.append(event)), \
+    with patch('services.subscription.update.command_events.append_event', lambda event: appended_events.append(event)), \
          patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task), \
          patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job), \
          patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task), \

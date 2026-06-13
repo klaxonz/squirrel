@@ -74,7 +74,7 @@ def test_supervisor_records_timeout_invoke_context_in_audit_and_response(monkeyp
     audit_events = []
     monotonic_values = iter([100.0, 220.125])
 
-    monkeypatch.setattr("site_runtimes.supervisor.time.monotonic", lambda: next(monotonic_values))
+    monkeypatch.setattr("site_runtimes.invocation.time.monotonic", lambda: next(monotonic_values))
     monkeypatch.setattr(
         supervisor._audit_writer,
         "append_event",

@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, Query
 
 from common import response
 from models.user import User
-from services.auth_service import get_current_user
-from services.log_service import LogService
+from services.system.logs import LogService
+from services.user.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/logs", tags=["Log Management"])

@@ -7,15 +7,15 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from routes.subscription import router
-from services.auth_service import get_current_user
+from services.user.auth import get_current_user
 
 
 def _build_client(monkeypatch):
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: type("User", (), {"id": 7})()
-    monkeypatch.setattr("routes.subscription.subscription_service.get_runtime_supported_sites", lambda _cap: ["javdb"])
-    monkeypatch.setattr("routes.subscription.SiteCatalog.is_site_enabled", classmethod(lambda cls, site=None, domain=None: True))
+    monkeypatch.setattr("routes.subscription.imports.subscription_import_service.get_runtime_supported_sites", lambda _cap: ["javdb"])
+    monkeypatch.setattr("routes.subscription.basic.SiteCatalog.is_site_enabled", classmethod(lambda cls, site=None, domain=None: True))
     return TestClient(app)
 
 
@@ -41,7 +41,7 @@ def test_preview_import_route_forwards_cursor_and_limit(monkeypatch):
             "stop_reason": "batch_exhausted",
         }
 
-    monkeypatch.setattr("routes.subscription.subscription_service.preview_user_subscriptions", _preview)
+    monkeypatch.setattr("routes.subscription.imports.subscription_import_service.preview_user_subscriptions", _preview)
     client = _build_client(monkeypatch)
 
     response = client.get(
@@ -64,7 +64,7 @@ def test_preview_import_route_forwards_cursor_and_limit(monkeypatch):
 
 def test_preview_import_route_rejects_invalid_cursor_json(monkeypatch):
     monkeypatch.setattr(
-        "routes.subscription.subscription_service.preview_user_subscriptions",
+        "routes.subscription.imports.subscription_import_service.preview_user_subscriptions",
         lambda *args, **kwargs: {"site": "javdb"},
     )
     client = _build_client(monkeypatch)
@@ -82,7 +82,7 @@ def test_preview_import_route_rejects_invalid_cursor_json(monkeypatch):
 
 def test_preview_import_route_rejects_non_object_cursor(monkeypatch):
     monkeypatch.setattr(
-        "routes.subscription.subscription_service.preview_user_subscriptions",
+        "routes.subscription.imports.subscription_import_service.preview_user_subscriptions",
         lambda *args, **kwargs: {"site": "javdb"},
     )
     client = _build_client(monkeypatch)
@@ -108,11 +108,11 @@ def test_get_import_sites_filters_disabled_sites_in_original_order(monkeypatch):
     client = _build_client(monkeypatch)
 
     monkeypatch.setattr(
-        "routes.subscription.subscription_service.get_runtime_supported_sites",
+        "routes.subscription.imports.subscription_import_service.get_runtime_supported_sites",
         lambda _cap: [" JAVDB ", "youtube", "javdb", "bilibili"],
     )
     monkeypatch.setattr(
-        "routes.subscription.SiteCatalog.get_enabled_site_names",
+        "routes.subscription.site_imports.SiteCatalog.get_enabled_site_names",
         classmethod(lambda cls: _get_enabled_site_names()),
     )
 

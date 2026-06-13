@@ -8,7 +8,7 @@ from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
 from models.subscription_sync_state import SubscriptionSyncState
-from services.crawl_tasks.service import CrawlTaskService
+from services.crawl.tasks.service import CrawlTaskService
 
 
 @pytest.fixture

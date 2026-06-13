@@ -4,7 +4,7 @@ Used to persist metric data from Redis for long-term querying and analysis.
 """
 from datetime import datetime
 
-from sqlalchemy import DECIMAL, VARCHAR, DateTime, Index, Integer
+from sqlalchemy import DECIMAL, JSON, VARCHAR, DateTime, Index, Integer
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -44,9 +44,8 @@ class MetricSnapshot(Base, SerializerMixin):
     # Metric type: counter, gauge, histogram
     metric_type: Mapped[str] = mapped_column(VARCHAR(32), nullable=False)
 
-    # Labels (JSONB format), e.g. {"site": "youtube", "status": "success"}
-    # Uses JSONB instead of JSON for GIN index support and better query performance
-    labels: Mapped[dict | None] = mapped_column(JSONB, default={})
+    # Labels, e.g. {"site": "youtube", "status": "success"}
+    labels: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), default={})
 
     # Metric value
     value: Mapped[float] = mapped_column(DECIMAL(20, 6), nullable=False)

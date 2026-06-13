@@ -1,0 +1,2 @@
+"""Thumbnail extraction infrastructure."""
+

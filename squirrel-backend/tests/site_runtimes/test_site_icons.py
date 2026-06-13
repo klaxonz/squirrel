@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from services.site_catalog_service import SiteCatalogService
-from services.site_runtime_service import SiteRuntimeService
+from services.site_catalog.runtime import SiteRuntimeService
+from services.site_catalog.service import SiteCatalogService
 from site_runtimes.runtime_models import SiteRuntimeManifest, SiteRuntimeSite
 
 

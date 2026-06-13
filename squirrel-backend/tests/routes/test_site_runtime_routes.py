@@ -8,8 +8,48 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes import site_cookies as site_cookie_routes
 from routes import sites as site_routes
+from routes.site_cookies import bulk_import as site_cookie_bulk_import
+from routes.site_cookies import single_upload as site_cookie_single_upload
+
+
+class FakeCatalogService:
+    def __init__(self, catalog, saved_catalog=None):
+        self._catalog = catalog
+        self._saved_catalog = saved_catalog or catalog
+
+    @staticmethod
+    def build_site_info(site_name, catalog):
+        entry = catalog.get(site_name.lower())
+        if not entry:
+            return None
+        return {"name": site_name.lower(), "site_name": site_name.lower(), **entry}
+
+    @staticmethod
+    def merge_site_names(catalog):
+        return sorted(catalog)
+
+    @staticmethod
+    def normalize_cookie_domain(domain):
+        return domain.strip().lstrip(".").lower()
+
+    def get_merged_site_catalog(self):
+        return self._catalog
+
+    def save_site_overrides(self, payload):
+        return self._saved_catalog
+
+
+class FakeLoginService:
+    def __init__(self, supported_sites=None, status=None):
+        self._supported_sites = supported_sites or set()
+        self._status = status or {}
+
+    def get_supported_sites(self):
+        return self._supported_sites
+
+    def test_site_login_status(self, site_name):
+        return self._status or {"supported": True, "logged_in": True, "site_name": site_name}
 
 
 def test_get_supported_sites_merges_runtime_sites_when_catalog_is_partial(monkeypatch):
@@ -29,10 +69,10 @@ def test_get_supported_sites_merges_runtime_sites_when_catalog_is_partial(monkey
         },
     }
 
-    monkeypatch.setattr(site_routes, "get_effective_site_catalog", lambda: effective_catalog)
-    monkeypatch.setattr(site_routes, "get_login_supported_sites", lambda: {"bilibili"})
-
-    response = site_routes.get_supported_sites()
+    response = site_routes.catalog.get_supported_sites(
+        catalog_svc=FakeCatalogService(effective_catalog),
+        login_svc=FakeLoginService({"bilibili"}),
+    )
 
     assert response["code"] == 0
 
@@ -58,11 +98,10 @@ def test_sites_api_returns_list_and_catalog_on_explicit_paths(monkeypatch):
         },
     }
 
-    monkeypatch.setattr(site_routes, "get_effective_site_catalog", lambda: effective_catalog)
-    monkeypatch.setattr(site_routes, "get_login_supported_sites", lambda: set())
-
     app = FastAPI()
     app.include_router(site_routes.router)
+    app.dependency_overrides[site_routes.dependencies.get_catalog_service] = lambda: FakeCatalogService(effective_catalog)
+    app.dependency_overrides[site_routes.dependencies.get_login_service] = lambda: FakeLoginService()
     client = TestClient(app)
 
     sites_response = client.get("/api/sites")
@@ -75,14 +114,11 @@ def test_sites_api_returns_list_and_catalog_on_explicit_paths(monkeypatch):
 
 
 def test_update_sites_catalog_accepts_override_payload(monkeypatch):
-    monkeypatch.setattr(
-        site_routes,
-        "save_site_overrides",
-        lambda payload: {"youtube": {"enabled": False, "domains": ["youtube.com"]}},
-    )
+    saved_catalog = {"youtube": {"enabled": False, "domains": ["youtube.com"]}}
 
     app = FastAPI()
     app.include_router(site_routes.router)
+    app.dependency_overrides[site_routes.dependencies.get_catalog_service] = lambda: FakeCatalogService({}, saved_catalog)
     client = TestClient(app)
 
     response = client.put("/api/sites/catalog", json={"sites": {"youtube": {"enabled": False}}})
@@ -103,13 +139,7 @@ def test_upload_site_cookies_accepts_runtime_only_site(monkeypatch, tmp_path):
     }
     cookies_path = tmp_path / "youporn.txt"
 
-    monkeypatch.setattr(site_cookie_routes, "get_merged_site_catalog", lambda: effective_catalog)
-    monkeypatch.setattr(site_cookie_routes, "get_site_cookies_file_path", lambda site_name: cookies_path)
-    monkeypatch.setattr(
-        site_cookie_routes,
-        "test_site_login_status",
-        lambda site_name: {"supported": True, "logged_in": True, "site_name": site_name},
-    )
+    monkeypatch.setattr(site_cookie_single_upload, "get_site_cookies_file_path", lambda site_name: cookies_path)
 
     class DummyUploadFile:
         filename = "cookies.txt"
@@ -120,7 +150,12 @@ def test_upload_site_cookies_accepts_runtime_only_site(monkeypatch, tmp_path):
                 b".youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n"
             )
 
-    response = asyncio.run(site_cookie_routes.upload_site_cookies("youporn", DummyUploadFile()))
+    response = asyncio.run(site_cookie_single_upload.upload_site_cookies(
+        "youporn",
+        DummyUploadFile(),
+        catalog_svc=FakeCatalogService(effective_catalog),
+        login_svc=FakeLoginService(),
+    ))
 
     assert response["code"] == 0
     assert response["data"]["site_name"] == "youporn"
@@ -139,20 +174,14 @@ def test_upload_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_path)
     cookies_path = tmp_path / "youporn.txt"
     writes = []
 
-    monkeypatch.setattr(site_cookie_routes, "get_merged_site_catalog", lambda: effective_catalog)
-    monkeypatch.setattr(site_cookie_routes, "get_site_cookies_file_path", lambda site_name: cookies_path)
-    monkeypatch.setattr(
-        site_cookie_routes,
-        "test_site_login_status",
-        lambda site_name: {"supported": True, "logged_in": True, "site_name": site_name},
-    )
+    monkeypatch.setattr(site_cookie_single_upload, "get_site_cookies_file_path", lambda site_name: cookies_path)
 
     def _record_write(path, content):
         writes.append((path, content))
         path.write_text(content, encoding="utf-8")
 
     monkeypatch.setattr(
-        site_cookie_routes,
+        site_cookie_single_upload,
         "write_cookie_text_file",
         _record_write,
         raising=False,
@@ -167,7 +196,12 @@ def test_upload_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_path)
                 b".youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n"
             )
 
-    response = asyncio.run(site_cookie_routes.upload_site_cookies("youporn", DummyUploadFile()))
+    response = asyncio.run(site_cookie_single_upload.upload_site_cookies(
+        "youporn",
+        DummyUploadFile(),
+        catalog_svc=FakeCatalogService(effective_catalog),
+        login_svc=FakeLoginService(),
+    ))
 
     assert response["code"] == 0
     assert writes == [
@@ -191,10 +225,9 @@ def test_import_all_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_p
     cookies_path = tmp_path / "youporn.txt"
     writes = []
 
-    monkeypatch.setattr(site_cookie_routes, "get_merged_site_catalog", lambda: effective_catalog)
-    monkeypatch.setattr(site_cookie_routes, "get_site_cookies_file_path", lambda site_name: cookies_path)
+    monkeypatch.setattr(site_cookie_bulk_import, "get_site_cookies_file_path", lambda site_name: cookies_path)
     monkeypatch.setattr(
-        site_cookie_routes,
+        site_cookie_bulk_import,
         "write_cookie_text_file",
         lambda path, content: writes.append((path, content)),
         raising=False,
@@ -209,7 +242,10 @@ def test_import_all_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_p
                 b".youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n"
             )
 
-    response = asyncio.run(site_cookie_routes.import_cookies_for_all_sites(DummyUploadFile()))
+    response = asyncio.run(site_cookie_bulk_import.import_cookies_for_all_sites(
+        DummyUploadFile(),
+        catalog_svc=FakeCatalogService(effective_catalog),
+    ))
 
     assert response["code"] == 0
     assert writes == [
@@ -222,24 +258,10 @@ def test_import_all_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_p
 
 
 def test_get_site_login_status_includes_youtube_oauth_state(monkeypatch):
-    monkeypatch.setattr(
-        site_routes,
-        "get_merged_site_catalog",
-        lambda: {"youtube": {"label": "YouTube", "domains": ["youtube.com"], "enabled": True}},
-    )
-    monkeypatch.setattr(
-        site_routes,
-        "build_site_info",
-        lambda site_name, catalog: {"site_name": site_name, **catalog[site_name]},
-    )
-    monkeypatch.setattr(
-        site_routes,
-        "test_site_login_status",
-        lambda site_name: {"supported": True, "logged_in": False, "site_name": site_name},
-    )
+    catalog = {"youtube": {"label": "YouTube", "domains": ["youtube.com"], "enabled": True}}
     monkeypatch.setitem(
         sys.modules,
-        "services.youtube_oauth_service",
+        "services.site_catalog.youtube_oauth",
         SimpleNamespace(
             get_oauth_state=lambda timeout_seconds=5.0: SimpleNamespace(
                 status="authenticated",
@@ -248,7 +270,11 @@ def test_get_site_login_status_includes_youtube_oauth_state(monkeypatch):
         ),
     )
 
-    response = site_routes.get_site_login_status("youtube")
+    response = site_routes.login.get_site_login_status(
+        "youtube",
+        catalog_svc=FakeCatalogService(catalog),
+        login_svc=FakeLoginService(status={"supported": True, "logged_in": False, "site_name": "youtube"}),
+    )
 
     assert response["code"] == 0
     assert response["data"]["oauth_status"] == "authenticated"
