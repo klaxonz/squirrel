@@ -22,11 +22,13 @@ from crawl import (
     resolve_cookie_file_path,
 )
 from yt_dlp import YoutubeDL
+from yt_dlp.networking.impersonate import ImpersonateTarget
 
 logger = logging.getLogger(__name__)
 SITE_DOMAIN = "pornhub.com"
 SITE_URL = f"https://www.{SITE_DOMAIN}"
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+IMPERSONATE_TARGET = ImpersonateTarget.from_str("chrome")
 AGE_GATE_COOKIES = {
     "age_verified": "1",
     "accessAgeDisclaimerPH": "1",
@@ -78,7 +80,9 @@ class PornhubExtractor(YoutubeDLExtractorBase):
                 raise AuthError(f"需要登录访问: {url}", context=context)
             elif "unavailable" in error_msg or "removed" in error_msg or "deleted" in error_msg:
                 raise NotFoundError(f"视频不存在或已删除: {url}", context=context)
-            elif any(kw in error_msg for kw in ["timeout", "connection", "network", "closed file", "i/o operation"]):
+            elif "http error 410" in error_msg or any(
+                kw in error_msg for kw in ["timeout", "connection", "network", "closed file", "i/o operation"]
+            ):
                 raise NetworkError(f"网络连接失败: {url}", context=context)
             elif any(kw in error_msg for kw in ["too many requests", "rate limit", "429"]):
                 raise RateLimitError(f"请求频率过高: {url}", context=context)
@@ -101,6 +105,7 @@ class PornhubExtractor(YoutubeDLExtractorBase):
             "ignoreerrors": False,
             "noprogress": True,
             "noplaylist": True,
+            "impersonate": IMPERSONATE_TARGET,
             "http_headers": headers,
         }
 
