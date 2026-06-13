@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 
 
 def upgrade_database() -> None:
-    current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Get the squirrel-backend root directory (3 levels up from this file)
+    current_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     alembic_ini_path = os.path.join(current_dir, "alembic.ini")
     alembic_script_path = os.path.join(current_dir, "alembic")
     logger.info("Upgrading database with alembic.ini: %s", alembic_ini_path)
