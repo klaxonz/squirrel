@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.orm import Session
 
-import subscription.services.core.sync.state.service as subscription_sync_state_service
+import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 from shared_kernel.domain.base import Base
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.crawl_job import CrawlJob

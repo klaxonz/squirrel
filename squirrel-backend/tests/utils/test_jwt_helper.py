@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from shared.auth import jwt_helper
+from infrastructure.auth import jwt_helper
 
 
 def test_should_persist_auth_cookie_defaults_legacy_tokens_to_persistent():

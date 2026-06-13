@@ -5,11 +5,11 @@ from sqlalchemy.orm import configure_mappers
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import video.models.creator
-import video.models.video
-import video.models.video_clip_marker
-import video.models.video_history
-import video.models.video_interaction  # noqa: F401
+import domains.video.domain.models.creator
+import domains.video.domain.models.video
+import domains.video.domain.models.video_clip_marker
+import domains.video.domain.models.video_history
+import domains.video.domain.models.video_interaction  # noqa: F401
 from domains.playlist.domain.models.playlist import Playlist
 from domains.playlist.domain.models.playlist_item import PlaylistItem
 

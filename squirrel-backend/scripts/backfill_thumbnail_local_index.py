@@ -17,8 +17,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from infrastructure.config.settings import settings
 from infrastructure.database.session import get_session
-from video.models.video_thumbnail_local_index import VideoThumbnailLocalIndex
-from video.services.extraction.thumbnail.storage import SUPPORTED_EXTENSIONS
+from domains.video.domain.models.video_thumbnail_local_index import VideoThumbnailLocalIndex
+from domains.video.application.services.extraction.thumbnail.storage import SUPPORTED_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 

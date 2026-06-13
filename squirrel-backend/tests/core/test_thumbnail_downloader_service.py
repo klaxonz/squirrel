@@ -6,7 +6,7 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import video.services.extraction.thumbnail_downloader as thumbnail_downloader
+import domains.video.application.services.extraction.thumbnail_downloader as thumbnail_downloader
 from domains.video.application.services.extraction.thumbnail import headers as thumbnail_headers
 from domains.video.application.services.extraction.thumbnail import html as thumbnail_html
 from domains.video.application.services.extraction.thumbnail import local_index as thumbnail_local_index

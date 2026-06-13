@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-import subscription.services.core.sync.projection.store as projection_store
+import domains.subscription.application.services.core.sync.projection.store as projection_store
 from shared_kernel.domain.base import Base
 from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
 from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
