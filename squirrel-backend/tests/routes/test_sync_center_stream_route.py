@@ -7,21 +7,22 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes.subscription import router
+from routes.subscription import get_stream_service, router
 from services.auth_service import get_current_user
 
 
-def test_sync_center_stream_emits_initial_snapshots(monkeypatch):
+def test_sync_center_stream_emits_initial_snapshots():
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=7)
 
-    async def _fake_stream(*, user_id, selected_run_id):
-        yield 'event: feed_snapshot\ndata: {"overview":{"running_count":1}}\n\n'
-        yield 'event: extract_snapshot\ndata: {"overview":{"running_count":2}}\n\n'
-        yield 'event: run_detail\ndata: {"run":{"run_id":"run-7"},"events":[]}\n\n'
+    class _FakeStreamService:
+        async def stream_sync_center_events(self, *, user_id, selected_run_id):
+            yield 'event: feed_snapshot\ndata: {"overview":{"running_count":1}}\n\n'
+            yield 'event: extract_snapshot\ndata: {"overview":{"running_count":2}}\n\n'
+            yield 'event: run_detail\ndata: {"run":{"run_id":"run-7"},"events":[]}\n\n'
 
-    monkeypatch.setattr("routes.subscription.sync_center_stream_service.stream_sync_center_events", _fake_stream)
+    app.dependency_overrides[get_stream_service] = lambda: _FakeStreamService()
 
     client = TestClient(app)
     with client.stream("GET", "/api/subscription/sync-center/stream", params={"selectedRunId": "run-7"}) as response:

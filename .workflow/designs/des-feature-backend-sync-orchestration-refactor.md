@@ -137,8 +137,8 @@ In progress.
 - `pipenv run ruff check` passed.
 - After moving task lifecycle side effects out of `CrawlTaskService`, `pipenv run pytest tests/services/test_subscription_update_scheduler.py tests/services/test_outbox_event_service.py tests/services/test_subscription_update_strategy.py tests/services/test_video_extraction_task_service.py tests/services/test_video_extraction_coordinator.py tests/services/test_video_extraction_progress_service.py tests/services/test_subscription_sync_task_progress_service.py tests/services/test_crawl_executors.py tests/processes/test_crawl_worker_runtime.py tests/services/test_crawl_task_service.py tests/services/test_video_extraction_center_service.py -q` passed: 68 passed.
 - `pipenv run ruff check` passed after the task lifecycle side-effect move.
-- Broader route/service regression command `pipenv run pytest tests/services/test_subscription_sync_end_to_end_runs.py tests/routes/test_subscription_sync_center_routes.py tests/routes/test_sync_center_stream_route.py tests/routes/test_video_route.py -q` currently fails in existing test scaffolding unrelated to the new command/task boundaries: stale `_refresh_runtime_sync_health` patch target, missing `subscription_sync_event` table in SQLite setup, stale `routes.subscription.sync_center_stream_service` monkeypatch target, and stale `SyncStateService.crawl_task_service` attribute assumption.
+- Broader route/service regression command `pipenv run pytest tests/services/test_subscription_sync_end_to_end_runs.py tests/routes/test_subscription_sync_center_routes.py tests/routes/test_sync_center_stream_route.py tests/routes/test_video_route.py -q` passed after refreshing stale test scaffolding and fixing the current `_serialize_feed_recent_run()` call: 12 passed.
 
 Remaining implementation work:
 
-- Revisit stale sync-center regression tests separately before marking this feature done.
+- Manual route/runtime verification has not been run in this turn.

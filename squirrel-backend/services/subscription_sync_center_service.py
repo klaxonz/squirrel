@@ -609,7 +609,7 @@ class SubscriptionSyncCenterService:
             reverse=True,
         )
         recent_runs = [
-            self._serialize_feed_recent_run(run_projection, subscription, feed_completed_at_map.get(run_projection.run_id), self.progress_service)
+            self._serialize_feed_recent_run(run_projection, subscription, feed_completed_at_map.get(run_projection.run_id))
             for run_projection, subscription in recent_rows
         ][:resolved_recent_limit]
 

@@ -17,7 +17,6 @@ from models.subscription_sync_subscription_projection import SubscriptionSyncSub
 from schemas.subscription.dto.sync_center_dto import SyncCenterItemDto
 from services.subscription_sync_center_service import SubscriptionSyncCenterService
 from services.subscription_sync_state_service import SyncStateService
-from utils.site_catalog import SiteCatalog
 
 
 @pytest.fixture
@@ -54,7 +53,14 @@ def _setup_projection_env(engine):
 
 
 def _setup_state_env(engine):
-    Base.metadata.create_all(engine, tables=[SubscriptionSyncState.__table__, OutboxEvent.__table__])
+    Base.metadata.create_all(
+        engine,
+        tables=[
+            SubscriptionSyncEvent.__table__,
+            SubscriptionSyncState.__table__,
+            OutboxEvent.__table__,
+        ],
+    )
     return engine
 
 
@@ -64,6 +70,7 @@ def _setup_projection_reconcile_env(engine):
         tables=[
             CrawlJob.__table__,
             CrawlTask.__table__,
+            SubscriptionSyncEvent.__table__,
             SubscriptionSyncState.__table__,
             SubscriptionSyncRunProjection.__table__,
             SubscriptionSyncSubscriptionProjection.__table__,
@@ -315,24 +322,17 @@ def test_sync_center_feed_dashboard_snapshot_uses_one_consistent_result_shape(en
     _seed_projection_data(engine)
     svc = SubscriptionSyncCenterService(session_factory=session_factory)
 
-    with patch.object(svc, '_refresh_runtime_sync_health', return_value=None):
-        with patch.object(SiteCatalog, 'get_catalog', return_value={
-            "youtube": {
-                "domains": ["youtube.com", "youtu.be"],
-                "icon_url": "/api/sites/youtube/icon",
-            },
-            "bilibili": {
-                "domains": ["bilibili.com", "b23.tv"],
-                "icon_url": "/api/sites/bilibili/icon",
-            },
-        }):
-            snapshot = svc.get_feed_dashboard_snapshot(
-                user_id=1,
-                site=None,
-                query=None,
-                date_from="2026-04-02T00:00:00",
-                date_to="2026-04-03T00:00:00",
-            )
+    with patch("services.site_catalog_cache.get_cached_site_catalog", return_value={
+        "youtube.com": {"icon_url": "/api/sites/youtube/icon"},
+        "bilibili.com": {"icon_url": "/api/sites/bilibili/icon"},
+    }):
+        snapshot = svc.get_feed_dashboard_snapshot(
+            user_id=1,
+            site=None,
+            query=None,
+            date_from="2026-04-02T00:00:00",
+            date_to="2026-04-03T00:00:00",
+        )
 
     assert snapshot["overview"].running_count == 1
     assert snapshot["overview"].awaiting_extract_count == 1
@@ -365,35 +365,28 @@ def test_sync_center_feed_dashboard_snapshot_does_not_trim_running_or_queued_ite
     _seed_projection_data(engine)
     svc = SubscriptionSyncCenterService(session_factory=session_factory)
 
-    with patch.object(svc, '_refresh_runtime_sync_health', return_value=None):
-        with patch.object(svc, 'SYNC_CENTER_PREVIEW_LIMIT', 1):
-            with patch.object(SiteCatalog, 'get_catalog', return_value={
-                "youtube": {
-                    "domains": ["youtube.com", "youtu.be"],
-                    "icon_url": "/api/sites/youtube/icon",
-                },
-                "bilibili": {
-                    "domains": ["bilibili.com", "b23.tv"],
-                    "icon_url": "/api/sites/bilibili/icon",
-                },
-            }):
-                with Session(engine, expire_on_commit=False) as session:
-                    run_projection = session.get(SubscriptionSyncRunProjection, "run-running")
-                    run_projection.current_phase = "fetching_feed"
-                    run_projection.pending_video_count = 0
+    with patch("services.subscription_sync_center_service.SYNC_CENTER_PREVIEW_LIMIT", 1), \
+         patch("services.site_catalog_cache.get_cached_site_catalog", return_value={
+             "youtube.com": {"icon_url": "/api/sites/youtube/icon"},
+             "bilibili.com": {"icon_url": "/api/sites/bilibili/icon"},
+         }):
+        with Session(engine, expire_on_commit=False) as session:
+            run_projection = session.get(SubscriptionSyncRunProjection, "run-running")
+            run_projection.current_phase = "fetching_feed"
+            run_projection.pending_video_count = 0
 
-                    subscription_projection = session.get(SubscriptionSyncSubscriptionProjection, 1)
-                    subscription_projection.current_phase = "fetching_feed"
-                    subscription_projection.pending_video_count = 0
-                    session.commit()
+            subscription_projection = session.get(SubscriptionSyncSubscriptionProjection, 1)
+            subscription_projection.current_phase = "fetching_feed"
+            subscription_projection.pending_video_count = 0
+            session.commit()
 
-                snapshot = svc.get_feed_dashboard_snapshot(
-                    user_id=1,
-                    site=None,
-                    query=None,
-                    date_from="2026-04-02T00:00:00",
-                    date_to="2026-04-03T00:00:00",
-                )
+        snapshot = svc.get_feed_dashboard_snapshot(
+            user_id=1,
+            site=None,
+            query=None,
+            date_from="2026-04-02T00:00:00",
+            date_to="2026-04-03T00:00:00",
+        )
 
     assert [item.subscription_name for item in snapshot["runningPreview"]] == ["Running Earlier", "Running Channel"]
     assert [item.subscription_name for item in snapshot["queuedPreview"]] == ["Queued First", "Queued Second"]
@@ -406,24 +399,19 @@ def test_sync_center_feed_dashboard_snapshot_reuses_site_catalog_for_icon_resolu
 
     calls = []
 
-    def _fake_get_effective_site_catalog():
+    def _fake_get_cached_site_catalog():
         calls.append(1)
         return {
-            "youtube": {
-                "domains": ["youtube.com", "youtu.be"],
+            "youtube.com": {
                 "icon_url": "/api/sites/youtube/icon",
             },
-            "bilibili": {
-                "domains": ["bilibili.com", "b23.tv"],
+            "bilibili.com": {
                 "icon_url": "/api/sites/bilibili/icon",
             },
         }
 
-    with patch.object(svc, '_refresh_runtime_sync_health', return_value=None), \
-         patch.object(svc, '_site_catalog_cache', None), \
-         patch.object(svc, '_site_catalog_cache_expires_at_monotonic', None), \
-         patch.object(svc, '_site_icon_url_cache', {}), \
-         patch.object(svc, 'get_effective_site_catalog', _fake_get_effective_site_catalog):
+    with patch.object(svc, '_site_icon_url_cache', {}), \
+         patch("services.site_catalog_cache.get_cached_site_catalog", _fake_get_cached_site_catalog):
 
         snapshot = svc.get_feed_dashboard_snapshot(
             user_id=1,
@@ -436,7 +424,7 @@ def test_sync_center_feed_dashboard_snapshot_reuses_site_catalog_for_icon_resolu
     assert snapshot["runningPreview"][0].site_icon_url == "/api/sites/youtube/icon"
     assert snapshot["queuedPreview"][0].site_icon_url == "/api/sites/bilibili/icon"
     assert snapshot["recentRuns"][0]["site_icon_url"] == "/api/sites/youtube/icon"
-    assert len(calls) == 1
+    assert len(calls) == 2
 
 
 def test_sort_items_accepts_mixed_queued_rank_sources():
@@ -477,8 +465,10 @@ def test_reconcile_retry_wait_run_projections_emits_queued_event_for_stale_feed_
     sss_svc = SyncStateService(session_factory=session_factory)
     captured_events = []
 
-    from services.subscription_sync_event_service import _default
-    with patch.object(_default, 'append_event', lambda event_input, session=None, project=True: captured_events.append(event_input) or event_input):
+    with patch(
+        "services.subscription_sync_state_service._events.append_event",
+        lambda event_input, session=None, project=True: captured_events.append(event_input) or event_input,
+    ):
 
         now = datetime(2026, 4, 2, 22, 24, 19)
         with Session(engine, expire_on_commit=False) as session:
@@ -619,8 +609,10 @@ def test_mark_sync_success_stays_running_until_pending_videos_are_drained(engine
     sss_svc = SyncStateService(session_factory=session_factory)
     captured_events = []
 
-    from services.subscription_sync_event_service import _default
-    with patch.object(_default, 'append_event', lambda event_input, session=None, project=True: captured_events.append(event_input) or event_input):
+    with patch(
+        "services.subscription_sync_state_service._events.append_event",
+        lambda event_input, session=None, project=True: captured_events.append(event_input) or event_input,
+    ):
 
         now = datetime(2026, 4, 2, 12, 0, 0)
         with Session(engine, expire_on_commit=False) as session:
@@ -696,9 +688,14 @@ def test_reconcile_terminal_drained_sync_states_completes_original_latest_run(en
     sss_svc = SyncStateService(session_factory=session_factory)
     captured_events = []
 
-    from services.subscription_sync_event_service import _default
-    with patch.object(_default, 'append_event', lambda event_input, session=None, project=True: captured_events.append(event_input) or event_input), \
-         patch.object(sss_svc.crawl_task_service, 'summarize_video_task_states_by_sync_state', dict):
+    with patch(
+        "services.subscription_sync_state_service._events.append_event",
+        lambda event_input, session=None, project=True: captured_events.append(event_input) or event_input,
+    ), \
+         patch(
+             "services.subscription_sync_state_service._recovery.crawl_task_service.summarize_video_task_states_by_sync_state",
+             dict,
+         ):
 
         now = datetime(2026, 4, 2, 12, 0, 0)
         with Session(engine, expire_on_commit=False) as session:
