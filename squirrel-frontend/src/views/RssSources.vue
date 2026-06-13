@@ -1,8 +1,8 @@
 <template>
-  <AppPageShell variant="compact">
-    <div class="flex h-full overflow-hidden bg-background text-foreground selection:bg-primary/10">
+  <AppPageShell variant="compact" fill>
+    <div class="flex h-full min-h-0 overflow-hidden bg-background text-foreground selection:bg-primary/10">
       <!-- 1. Left Sidebar: Accounts & Feeds -->
-      <aside class="hidden w-[320px] shrink-0 flex-col border-r border-border/20 bg-muted/20 dark:bg-muted/5 lg:flex">
+      <aside class="hidden min-h-0 w-[320px] shrink-0 flex-col border-r border-border/20 bg-muted/20 dark:bg-muted/5 lg:flex">
         <!-- Header -->
         <div class="flex h-20 shrink-0 items-center justify-between border-b border-border/20 px-5 bg-background/50 backdrop-blur-sm">
           <div class="min-w-0 flex flex-col justify-center">
@@ -103,7 +103,7 @@
       </aside>
 
       <!-- 2. Middle Column: Article List Flow -->
-      <section class="flex h-full w-full lg:w-[360px] xl:w-[400px] shrink-0 flex-col bg-background border-r border-border/10 relative z-10">
+      <section class="flex h-full min-h-0 w-full lg:w-[360px] xl:w-[400px] shrink-0 flex-col bg-background border-r border-border/10 relative z-10">
         <header class="relative flex shrink-0 flex-col border-b border-border/10 bg-background/70 p-4 backdrop-blur-2xl z-20">
           <div class="flex items-center justify-between w-full">
             <div class="min-w-0">
@@ -188,7 +188,7 @@
         </header>
 
         <!-- Main Body Scroll Container -->
-        <div ref="entriesContainer" class="flex-1 overflow-y-auto custom-scrollbar bg-background">
+        <div ref="entriesContainer" class="min-h-0 flex-1 overflow-y-auto overscroll-contain custom-scrollbar bg-background">
           <div class="w-full p-4 space-y-4">
 
             <div
@@ -283,9 +283,9 @@
       </section>
 
       <!-- 3. Right Column: Permanent Article Content Reader -->
-      <main class="hidden lg:flex flex-1 min-w-0 flex-col bg-background relative h-full overflow-hidden border-l border-border/10">
+      <main class="hidden lg:flex h-full min-h-0 flex-1 min-w-0 flex-col bg-background relative overflow-hidden border-l border-border/10">
         <!-- If an article is selected, render it -->
-        <div v-if="readingEntry" class="flex flex-col h-full overflow-hidden animate-fade-in bg-background relative">
+        <div v-if="readingEntry" class="flex h-full min-h-0 flex-col overflow-hidden animate-fade-in bg-background relative">
           <!-- Reader Header (Clean compact toolbar) -->
           <header class="shrink-0 border-b border-border/10 h-14 px-6 bg-background flex items-center justify-between relative z-20">
             <!-- Left Side: Source badge (clickable to view feed) -->
@@ -366,7 +366,7 @@
           <!-- Reader Body Scroll Container -->
           <div 
             ref="readerScrollContainer"
-            class="flex-1 overflow-y-auto custom-scrollbar px-5 md:px-16 lg:px-28 py-8 bg-background relative"
+            class="min-h-0 flex-1 overflow-y-auto overscroll-contain custom-scrollbar px-5 md:px-16 lg:px-28 py-8 bg-background relative"
           >
             <!-- Editorial Header -->
             <div class="max-w-[42rem] mx-auto mb-8">
@@ -450,7 +450,7 @@
             </header>
 
             <!-- Iframe Webview Body -->
-            <div class="flex-1 w-full h-full overflow-hidden bg-background relative flex flex-col">
+            <div class="flex min-h-0 flex-1 w-full overflow-hidden bg-background relative flex-col">
               <iframe 
                 :key="iframeLoadKey"
                 ref="iframeRef"
