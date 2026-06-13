@@ -88,7 +88,7 @@ def test_full_backfill_request_dispatches_full_sync_command(engine, session_fact
     now = datetime(2026, 4, 4, 12, 0, 0)
     request_calls = []
 
-    from core import database
+    from infrastructure.database import session as database
     from infrastructure.config.settings import settings
     from domains.subscription.application.services.core.update.commands import SubscriptionSyncCommandService
     from domains.subscription.application.services.core.update.models import UpdateMode, UpdateTrigger
@@ -133,7 +133,7 @@ def test_full_backfill_request_dispatches_full_sync_command(engine, session_fact
 def test_full_backfill_request_is_deferred_when_full_budget_is_exhausted(engine, session_factory, svc):
     now = datetime(2026, 4, 4, 12, 0, 0)
 
-    from core import database
+    from infrastructure.database import session as database
     from infrastructure.config.settings import settings
 
     with patch.object(settings, 'FULL_SYNC_MAX_INFLIGHT', 1), \

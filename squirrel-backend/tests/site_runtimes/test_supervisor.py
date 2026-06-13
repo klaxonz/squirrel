@@ -135,7 +135,7 @@ def test_process_launcher_builds_workspace_runtime_command(tmp_path):
 
     command = launcher.build_runtime_command(record, host="127.0.0.1", port=9001)
 
-    assert command[1:3] == ["-m", "site_runtimes.runtime_bridge"]
+    assert command[1:3] == ["-m", "infrastructure.site_runtimes.runtime_bridge"]
     assert "--import-path" in command
     assert str(runtime_root) in command
     assert "--data-dir" in command

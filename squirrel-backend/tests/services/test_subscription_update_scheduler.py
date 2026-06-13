@@ -44,7 +44,7 @@ def sched(session_factory):
 def _patch_postgres(session_factory):
     """Patch postgres-specific calls to work with SQLite."""
     import subscription.services.core.sync.projection.store as projection_store
-    from core import database
+    from infrastructure.database import session as database
     from domains.subscription.application.services.core.sync.projection.service import subscription_sync_projection_service
     from domains.subscription.application.services.core.sync.run_service import subscription_sync_run_service
 

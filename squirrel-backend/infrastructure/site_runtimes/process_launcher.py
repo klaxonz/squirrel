@@ -30,7 +30,7 @@ class SiteRuntimeProcessLauncher:
         command = [
             sys.executable,
             "-m",
-            "site_runtimes.runtime_bridge",
+            "infrastructure.site_runtimes.runtime_bridge",
             "--entrypoint",
             record.entrypoint,
             "--runtime-id",

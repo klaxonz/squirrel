@@ -32,7 +32,7 @@ class SiteRuntimeSupervisor:
         self._processes: dict[str, subprocess.Popen] = {}
         self._log_streams: dict[str, tuple[object, object]] = {}
         self._runtime_timers: dict[str, threading.Timer] = {}
-        self._backend_root = Path(__file__).resolve().parent.parent
+        self._backend_root = Path(__file__).resolve().parent.parent.parent
         self._audit_writer = SiteRuntimeAuditWriter(self._backend_root)
         self._transport_client = SiteRuntimeTransportClient()
         self._health_checker = SiteRuntimeHealthChecker(self._transport_client)

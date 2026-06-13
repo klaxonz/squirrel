@@ -25,7 +25,7 @@ def _get_user_config(_user_id):
 @pytest.fixture(autouse=True)
 def _redirect_module_services(session_factory):
     """Redirect module-level service instances to use test session_factory."""
-    from core import database
+    from infrastructure.database import session as database
     database.get_session = session_factory
 
     from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod

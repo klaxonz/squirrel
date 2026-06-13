@@ -32,7 +32,7 @@ def engine(engine):
 def sss_session_patch(session_factory):
     """Replacement for sss_session fixture using patch instead of monkeypatch."""
     import subscription.services.core.sync.projection.store as projection_store
-    from core import database
+    from infrastructure.database import session as database
     from domains.subscription.application.services.core.sync.projection.service import subscription_sync_projection_service
     from domains.subscription.application.services.core.sync.run_service import subscription_sync_run_service
 

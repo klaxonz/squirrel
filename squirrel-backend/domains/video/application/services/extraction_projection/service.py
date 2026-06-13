@@ -7,7 +7,7 @@ from time import monotonic
 from sqlalchemy.orm import Session
 
 import domains.video.application.services.extraction_projection.store as store
-from core import database
+from infrastructure.database.session import get_session as _default_get_session, register_after_commit as _default_register_after_commit
 from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.video.application.services.extraction_projection.groups import VIDEO_EXTRACT_TASK_TYPE, derive_group_key
 
@@ -26,7 +26,7 @@ class VideoExtractionProjectionService:
         publish_sync_dashboard_invalidation=_UNSET,
         sync_dashboard_extract_channel=_UNSET,
     ):
-        self._session_factory = session_factory or database.get_session
+        self._session_factory = session_factory or _default_get_session
         self._publish_sync_dashboard_invalidation = publish_sync_dashboard_invalidation
         self._sync_dashboard_extract_channel = sync_dashboard_extract_channel
         self._last_reconcile_monotonic: float | None = None
@@ -126,7 +126,7 @@ class VideoExtractionProjectionService:
         return refreshed
 
     def _register_extract_invalidation(self, session: Session, task: CrawlTask) -> None:
-        database.register_after_commit(
+        _default_register_after_commit(
             session,
             lambda: self._get_publish_sync_dashboard_invalidation()(
                 self._get_sync_dashboard_extract_channel(),
