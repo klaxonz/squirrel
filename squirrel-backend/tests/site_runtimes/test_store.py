@@ -5,9 +5,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from site_runtimes.models import SiteRuntimeRecord
-from site_runtimes.paths import build_site_runtime_paths
-from site_runtimes.store import SiteRuntimeStore
+from infrastructure.site_runtimes.models import SiteRuntimeRecord
+from infrastructure.site_runtimes.paths import build_site_runtime_paths
+from infrastructure.site_runtimes.store import SiteRuntimeStore
 
 
 def test_store_list_records_tolerates_empty_json_file(tmp_path):

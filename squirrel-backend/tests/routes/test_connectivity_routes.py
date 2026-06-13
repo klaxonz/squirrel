@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from services.site_catalog import connectivity as connectivity_service
+import shared.site_catalog.connectivity as connectivity_service
 
 
 class _FakeAsyncClient:

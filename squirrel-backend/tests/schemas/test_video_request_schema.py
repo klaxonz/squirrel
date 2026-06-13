@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from schemas.video.request.video import ContentType, DurationFilter, SortBy, TimeRange, VideoCategory, YesNoAll
+from domains.video.interfaces.dto.request.video import ContentType, DurationFilter, SortBy, TimeRange, VideoCategory, YesNoAll
 
 
 def test_video_filter_enums_are_str_enums():

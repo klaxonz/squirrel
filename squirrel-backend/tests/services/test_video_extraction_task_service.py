@@ -4,14 +4,14 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from models import Base
-from models.crawl_dispatch_scope import CrawlDispatchScope
-from models.crawl_job import CrawlJob
-from models.crawl_task import CrawlTask
-from models.video_extraction_projection import VideoExtractionProjection
-from schemas.video.dto.video_dto import VideoExtractDto
-from services.crawl.tasks.service import CrawlTaskService
-from services.video.extraction.task_service import VideoExtractionTaskService
+from shared_kernel.domain.base import Base
+from domains.subscription.domain.models.crawl_dispatch_scope import CrawlDispatchScope
+from domains.subscription.domain.models.crawl_job import CrawlJob
+from domains.subscription.domain.models.crawl_task import CrawlTask
+from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
+from domains.video.domain.models.video_extraction_projection import VideoExtractionProjection
+from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
+from domains.video.application.services.extraction.task_service import VideoExtractionTaskService
 
 
 @pytest.fixture

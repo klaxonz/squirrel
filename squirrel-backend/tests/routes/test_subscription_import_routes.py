@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes.subscription import router
-from services.user.auth import get_current_user
+from domains.subscription.interfaces.http.basic import router
+from domains.user.application.services.auth import get_current_user
 
 
 def _build_client(monkeypatch):

@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from site_runtimes.paths import SiteRuntimePaths, build_site_runtime_paths
+from infrastructure.site_runtimes.paths import SiteRuntimePaths, build_site_runtime_paths
 
 
 def test_build_site_runtime_paths_uses_data_directories(tmp_path):

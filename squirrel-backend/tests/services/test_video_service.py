@@ -6,17 +6,17 @@ import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 
-from models import Base
-from models.creator import Creator
-from models.links import SubscriptionVideo, UserSubscription, VideoCreator
-from models.subscription import Subscription
-from models.user_video_feed import UserVideoFeed
-from models.video import Video
-from models.video_clip_marker import VideoClipMarker
-from models.video_history import VideoHistory
-from models.video_interaction import VideoInteraction
-from services.video.crud import VideoCrudService
-from services.video.listing.service import VideoListService
+from shared_kernel.domain.base import Base
+from domains.video.domain.junctions.subscription_video import SubscriptionVideo, UserSubscription, VideoCreator
+from domains.subscription.domain.models.subscription import Subscription
+from domains.user.domain.models.user_video_feed import UserVideoFeed
+from domains.video.domain.models.creator import Creator
+from domains.video.domain.models.video import Video
+from domains.video.domain.models.video_clip_marker import VideoClipMarker
+from domains.video.domain.models.video_history import VideoHistory
+from domains.video.domain.models.video_interaction import VideoInteraction
+from domains.video.application.services.crud import VideoCrudService
+from domains.video.application.services.listing.service import VideoListService
 
 
 @contextmanager

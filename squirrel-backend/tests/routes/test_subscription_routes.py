@@ -7,10 +7,10 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes.subscription import router
-from services.subscription.update.models import SubscriptionUpdateResult
-from services.subscription.update.scheduler import scheduler as subscription_update_scheduler
-from services.user.auth import get_current_user
+from domains.subscription.interfaces.http.basic import router
+from domains.subscription.application.services.core.update.models import SubscriptionUpdateResult
+from domains.subscription.application.services.core.update.scheduler import scheduler as subscription_update_scheduler
+from domains.user.application.services.auth import get_current_user
 
 
 def _build_client(monkeypatch):

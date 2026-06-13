@@ -15,10 +15,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from core.config import settings
-from core.database import get_session
-from models.video_thumbnail_local_index import VideoThumbnailLocalIndex
-from services.video.extraction.thumbnail.storage import SUPPORTED_EXTENSIONS
+from infrastructure.config.settings import settings
+from infrastructure.database.session import get_session
+from video.models.video_thumbnail_local_index import VideoThumbnailLocalIndex
+from video.services.extraction.thumbnail.storage import SUPPORTED_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 

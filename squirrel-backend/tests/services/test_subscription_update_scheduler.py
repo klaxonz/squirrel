@@ -5,17 +5,17 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.orm import Session
 
-from models import Base
-from models.crawl_dispatch_scope import CrawlDispatchScope
-from models.crawl_job import CrawlJob
-from models.crawl_task import CrawlTask
-from models.links import UserSubscription
-from models.outbox_event import OutboxEvent
-from models.subscription import Subscription
-from models.subscription_sync_state import SubscriptionSyncState
-from services.subscription.update.commands import SubscriptionSyncCommandService
-from services.subscription.update.models import SubscriptionUpdateResult, UpdateMode, UpdateTrigger
-from services.subscription.update.scheduler import SubscriptionScheduler
+from shared_kernel.domain.base import Base
+from domains.subscription.domain.junctions.user_subscription import UserSubscription
+from domains.subscription.domain.models.crawl_dispatch_scope import CrawlDispatchScope
+from domains.subscription.domain.models.crawl_job import CrawlJob
+from domains.subscription.domain.models.crawl_task import CrawlTask
+from domains.subscription.domain.models.outbox_event import OutboxEvent
+from domains.subscription.domain.models.subscription import Subscription
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
+from domains.subscription.application.services.core.update.commands import SubscriptionSyncCommandService
+from domains.subscription.application.services.core.update.models import SubscriptionUpdateResult, UpdateMode, UpdateTrigger
+from domains.subscription.application.services.core.update.scheduler import SubscriptionScheduler
 
 
 @pytest.fixture
@@ -43,10 +43,10 @@ def sched(session_factory):
 @pytest.fixture(autouse=True)
 def _patch_postgres(session_factory):
     """Patch postgres-specific calls to work with SQLite."""
-    import services.subscription.sync.projection.store as projection_store
+    import subscription.services.core.sync.projection.store as projection_store
     from core import database
-    from services.subscription.sync.projection.service import subscription_sync_projection_service
-    from services.subscription.sync.run_service import subscription_sync_run_service
+    from domains.subscription.application.services.core.sync.projection.service import subscription_sync_projection_service
+    from domains.subscription.application.services.core.sync.run_service import subscription_sync_run_service
 
     with patch.object(database, 'register_after_commit', lambda session, callback: None), \
          patch.object(database, 'get_session', session_factory), \
@@ -59,9 +59,9 @@ def _patch_postgres(session_factory):
 def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sched):
     appended_events = []
 
-    import services.subscription.sync.state.service as ssss
-    from services.crawl.tasks import service as crawl_task_service_mod
-    from services.crawl.tasks.service import CrawlTaskService
+    import subscription.services.core.sync.state.service as ssss
+    from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod
+    from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
 
@@ -130,9 +130,9 @@ def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sche
 def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factory, sched):
     appended_events = []
 
-    import services.subscription.sync.state.service as ssss
-    from services.crawl.tasks import service as crawl_task_service_mod
-    from services.crawl.tasks.service import CrawlTaskService
+    import subscription.services.core.sync.state.service as ssss
+    from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod
+    from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
 
@@ -196,7 +196,7 @@ def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(en
     appended_events = []
     payloads = []
 
-    import services.subscription.sync.state.service as ssss
+    import subscription.services.core.sync.state.service as ssss
 
     with patch('services.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True), \
          patch.object(SubscriptionSyncCommandService, '_has_active_subscribers', return_value=True), \
@@ -329,7 +329,7 @@ def test_enqueue_all_active_counts_failed_results(engine, session_factory, sched
         )
         session.commit()
 
-    import services.subscription.sync.state.service as ssss
+    import subscription.services.core.sync.state.service as ssss
 
     with patch.object(ssss, 'get_sync_state', lambda subscription_id, mode: None), \
          patch.object(SubscriptionScheduler, 'schedule_one', lambda self, subscription_id, url, trigger, mode: SimpleNamespace(
@@ -348,8 +348,8 @@ def test_enqueue_due_states_creates_crawl_tasks_from_sync_state_store(engine, se
     now = datetime(2026, 4, 4, 12, 0, 0)
     appended_events = []
 
-    from services.crawl.tasks import service as crawl_task_service_mod
-    from services.crawl.tasks.service import CrawlTaskService
+    from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod
+    from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
 

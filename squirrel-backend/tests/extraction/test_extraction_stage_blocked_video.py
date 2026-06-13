@@ -3,10 +3,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from extraction.contracts import ExtractionTask
-from extraction.exceptions import ExtractionError, VipError
-from extraction.pipeline.context import PipelineContext
-from extraction.pipeline.stages.extraction import ExtractionStage
+from infrastructure.extraction.contracts import ExtractionTask
+from infrastructure.extraction.exceptions import ExtractionError, VipError
+from infrastructure.extraction.pipeline.context import PipelineContext
+from infrastructure.extraction.pipeline.stages.extraction import ExtractionStage
 
 
 def _build_context(url: str) -> PipelineContext:

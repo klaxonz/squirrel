@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from utils.cloudflare_bypass import CloudflareMirrorClient
+from infrastructure.site_catalog.cloudflare_bypass import CloudflareMirrorClient
 
 
 class _FakeAsyncHttpxClient:

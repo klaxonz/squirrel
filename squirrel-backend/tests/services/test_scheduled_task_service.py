@@ -3,9 +3,9 @@ from datetime import datetime, timedelta
 import pytest
 from sqlalchemy.orm import Session
 
-from models import Base
-from models.scheduled_task import ScheduledTask, TaskExecutionLog, TaskStatus, TaskType
-from scheduling.service import ScheduledTaskService
+from infrastructure.scheduling.models.scheduled_task import ScheduledTask, TaskExecutionLog, TaskStatus, TaskType
+from infrastructure.scheduling.service import ScheduledTaskService
+from shared_kernel.domain.base import Base
 
 
 @pytest.fixture

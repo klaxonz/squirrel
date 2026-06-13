@@ -5,8 +5,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from crawl import RuntimeErrorCode, SiteRuntimeInvokeResponse
 
-from site_runtimes.gateway import SiteRuntimeGateway
-from site_runtimes.runtime_models import SiteRuntimeCapability, SiteRuntimeManifest, SiteRuntimeSite
+from infrastructure.site_runtimes.gateway import SiteRuntimeGateway
+from infrastructure.site_runtimes.runtime_models import SiteRuntimeCapability, SiteRuntimeManifest, SiteRuntimeSite
 
 
 class _RecordingInvocationClient:

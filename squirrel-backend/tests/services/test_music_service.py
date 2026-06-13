@@ -6,7 +6,7 @@ import httpx
 import pytest
 import respx
 
-from services.music.service import MusicService
+from domains.music.application.services.service import MusicService
 
 pytestmark = [pytest.mark.anyio]
 
@@ -518,14 +518,14 @@ async def test_track_enrichment_endpoints_normalize_items(mock_redis):
 
 async def test_request_requires_configured_base_url(mock_redis):
     svc = MusicService(redis_client=mock_redis, settings=SimpleNamespace(KUGOU_MUSIC_API_BASE_URL='', KUGOU_MUSIC_COOKIE=''))
-    from services.music._client import MusicServiceError
+    from domains.music.application.services._client import MusicServiceError
     with pytest.raises(MusicServiceError, match='KUGOU_MUSIC_API_BASE_URL is not configured'):
         await svc.search_tracks(1, 'test', 1, 20)
 
 
 async def test_request_reports_non_json_response(mock_redis):
     svc = _svc(mock_redis)
-    from services.music._client import MusicServiceError
+    from domains.music.application.services._client import MusicServiceError
     async with respx.mock:
         respx.get(f'{BASE_URL}/search').mock(
             return_value=httpx.Response(200, text='<html>not json</html>', headers={'content-type': 'text/html'}),
@@ -614,7 +614,7 @@ async def test_get_user_playlist_tracks_includes_file_id(mock_redis):
 
 async def test_add_track_to_user_playlist_formats_track_data(mock_redis):
     svc = _svc(mock_redis)
-    from schemas.music import MusicTrackPayload
+    from domains.music.schemas.music import MusicTrackPayload
     track = MusicTrackPayload(title='T', hash='H', album_id='A', album_audio_id='AA')
     async with respx.mock:
         route = respx.get(f'{BASE_URL}/playlist/tracks/add').mock(

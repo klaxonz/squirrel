@@ -6,18 +6,22 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 
-from common.log import init_logging
-from core.config import settings
-from core.database_upgrade import upgrade_database
-from core.site_config_manager import apply_site_config_overrides
-from core.startup_dependencies import (
+from infrastructure.config.settings import settings
+from infrastructure.database.migrations import upgrade_database
+from infrastructure.config.site_config_manager import apply_site_config_overrides
+from infrastructure.config.startup_dependencies import (
     clear_optional_startup_issue,
     record_optional_startup_issue,
     reset_startup_dependency_issues,
 )
-from services.site_catalog.cookies import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
-from site_runtimes.manager import bootstrap_site_runtimes, shutdown_site_runtimes
-from utils.runtime_http import set_cloudflare_bypass_client, set_cookie_domain_resolver, set_cookie_file_resolver
+from shared_kernel.infrastructure.log import init_logging
+from infrastructure.site_catalog.cookies import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
+from infrastructure.site_catalog.runtime_http import (
+    set_cloudflare_bypass_client,
+    set_cookie_domain_resolver,
+    set_cookie_file_resolver,
+)
+from infrastructure.site_runtimes.manager import bootstrap_site_runtimes, shutdown_site_runtimes
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +61,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     runtime_http_enabled: list[str] = []
     runtime_http_degraded: list[str] = []
     try:
-        from utils.cloudflare_bypass import get_default_client
+        from infrastructure.site_catalog.cloudflare_bypass import get_default_client
         set_cloudflare_bypass_client(get_default_client())
         runtime_http_enabled.append("cloudflare_bypass")
         clear_optional_startup_issue("cloudflare_bypass")
@@ -84,7 +88,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     _log_lifecycle_step("Startup", 3, STARTUP_TOTAL_STEPS, "Bootstrapping site runtime manager")
     try:
-        from services.site_catalog.youtube_oauth import get_oauth_credentials_for_daemon
+        from infrastructure.site_catalog.youtube_oauth import get_oauth_credentials_for_daemon
         oauth_file = get_oauth_credentials_for_daemon()
         if oauth_file:
             os.environ["YOUTUBE_OAUTH_STATE_FILE"] = oauth_file
@@ -96,7 +100,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     _log_lifecycle_step("Startup", 4, STARTUP_TOTAL_STEPS, "Seeding video extraction projection")
     try:
-        import services.video.extraction_projection.service as video_extraction_projection_service
+        import domains.video.application.services.extraction_projection.service as video_extraction_projection_service
         rebuilt_count = video_extraction_projection_service.ensure_projection_seeded()
         _log_lifecycle_step(
             "Startup",
@@ -110,7 +114,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     _log_lifecycle_step("Startup", 5, STARTUP_TOTAL_STEPS, "Bootstrapping scheduled tasks")
     try:
-        from scheduling.bootstrap import ensure_system_tasks
+        from infrastructure.scheduling.bootstrap import ensure_system_tasks
         ensure_system_tasks()
         clear_optional_startup_issue("scheduled_task_bootstrap")
         _log_lifecycle_step("Startup", 5, STARTUP_TOTAL_STEPS, "Scheduled tasks ready")
@@ -146,7 +150,7 @@ def create_application() -> FastAPI:
         Configured FastAPI application instance
 
     """
-    from routes.base import create_app
+    from application.app import create_app
 
     # Create application instance and inject lifecycle management
     app = create_app()

@@ -1,8 +1,8 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from services.subscription.update.models import SubscriptionUpdateRequest, UpdateMode, UpdateTrigger
-from services.subscription.update.video_extraction_coordinator import VideoExtractionCoordinator
+from domains.subscription.application.services.core.update.models import SubscriptionUpdateRequest, UpdateMode, UpdateTrigger
+from domains.subscription.application.services.core.update.video_extraction_coordinator import VideoExtractionCoordinator
 
 
 class _DummySessionContext:

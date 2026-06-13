@@ -3,7 +3,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from utils import runtime_site_config
 
 
 def test_runtime_site_config_merges_headers_and_exposes_sections():

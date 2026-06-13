@@ -7,8 +7,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from crawl import SiteRuntimeInvokeResponse
 
 import extraction.factory as factory_module
-from extraction.contracts import ExtractionTask
-from extraction.factory import ExtractorFactory
+from infrastructure.extraction.contracts import ExtractionTask
+from infrastructure.extraction.factory import ExtractorFactory
 
 
 def test_gateway_extractor_adapter_extracts_via_plugin_gateway(monkeypatch):

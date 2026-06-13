@@ -7,11 +7,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from site_runtimes.manager import SiteRuntimeManager
-from site_runtimes.models import SiteRuntimeRecord, SiteRuntimeStatus
-from site_runtimes.paths import build_site_runtime_paths
-from site_runtimes.runtime_models import SiteRuntimeCapability, SiteRuntimeManifest, SiteRuntimeSite
-from site_runtimes.store import SiteRuntimeStore
+from infrastructure.site_runtimes.manager import SiteRuntimeManager
+from infrastructure.site_runtimes.models import SiteRuntimeRecord, SiteRuntimeStatus
+from infrastructure.site_runtimes.paths import build_site_runtime_paths
+from infrastructure.site_runtimes.runtime_models import SiteRuntimeCapability, SiteRuntimeManifest, SiteRuntimeSite
+from infrastructure.site_runtimes.store import SiteRuntimeStore
 
 
 def _create_enabled_record(repo_root: Path, runtime_id: str, domain: str) -> SiteRuntimeRecord:

@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes.video_clip_marker import get_clip_marker_service, router
-from services.user.auth import get_current_user
+from domains.user.application.services.auth import get_current_user
+from domains.video.interfaces.http.clip_marker import get_clip_marker_service, router
 
 
 def test_create_clip_marker_forwards_payload_to_service():

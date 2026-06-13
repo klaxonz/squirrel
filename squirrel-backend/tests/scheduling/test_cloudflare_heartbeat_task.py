@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from scheduling.tasks.cloudflare_heartbeat_task import CloudflareHeartbeatTask
+from workers.scheduling.tasks.cloudflare_heartbeat_task import CloudflareHeartbeatTask
 
 
 def test_heartbeat_checks_health_instead_of_clearing_cache(monkeypatch):

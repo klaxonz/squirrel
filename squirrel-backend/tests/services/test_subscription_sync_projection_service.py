@@ -4,14 +4,14 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-import services.subscription.sync.projection.store as projection_store
-from models import Base
-from models.subscription_sync_event import SubscriptionSyncEvent
-from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
-from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
-from models.subscription_sync_trend_projection import SubscriptionSyncTrendProjection
-from services.subscription.sync.projection.service import SubscriptionSyncProjectionService
-from services.subscription.sync.run_service import SyncEventType, SyncPhase, SyncRunStatus
+import subscription.services.core.sync.projection.store as projection_store
+from shared_kernel.domain.base import Base
+from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
+from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
+from domains.subscription.domain.models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
+from domains.subscription.domain.models.subscription_sync_trend_projection import SubscriptionSyncTrendProjection
+from domains.subscription.application.services.core.sync.projection.service import SubscriptionSyncProjectionService
+from domains.subscription.application.services.core.sync.run_service import SyncEventType, SyncPhase, SyncRunStatus
 
 
 def _build_event(

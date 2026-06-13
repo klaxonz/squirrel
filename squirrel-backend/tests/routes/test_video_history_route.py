@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes.video_history import get_video_history_service, router
-from services.user.auth import get_current_user
+from domains.user.application.services.auth import get_current_user
+from domains.video.interfaces.http.history import get_video_history_service, router
 
 
 def test_batch_update_history_forwards_reports_to_service():

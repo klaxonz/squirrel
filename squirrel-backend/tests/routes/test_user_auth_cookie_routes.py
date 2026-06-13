@@ -6,10 +6,11 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from domains.user.interfaces.http.auth.dependencies import get_user_service
+
 from routes import user as user_routes
-from routes.user.dependencies import get_user_service
-from services.user.auth import get_current_user
-from utils.jwt_helper import AUTH_COOKIE_NAME
+from infrastructure.auth.jwt import AUTH_COOKIE_NAME
+from domains.user.application.services.auth import get_current_user
 
 
 def _make_user(user_id=7, email="demo@example.com", token_version=0):

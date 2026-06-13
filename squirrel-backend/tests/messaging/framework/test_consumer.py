@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from messaging.framework.consumer import ConsumerOptions, RedisStreamConsumer
+from infrastructure.messaging.framework.consumer import ConsumerOptions, RedisStreamConsumer
 
 
 class FakeRedis:

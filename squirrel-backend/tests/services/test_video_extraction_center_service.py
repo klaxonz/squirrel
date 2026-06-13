@@ -5,15 +5,15 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from models import Base
-from models.crawl_job import CrawlJob
-from models.crawl_task import CrawlTask
-from models.links import UserSubscription
-from models.subscription import Subscription
-from models.video_extraction_projection import VideoExtractionProjection
-from services.sync_dashboard.site_icons import SiteIconResolver
-from services.video.extraction_center.service import VideoExtractionCenterService
-from services.video.extraction_projection.service import VideoExtractionProjectionService
+from shared_kernel.domain.base import Base
+from domains.subscription.domain.junctions.user_subscription import UserSubscription
+from domains.subscription.domain.models.crawl_job import CrawlJob
+from domains.subscription.domain.models.crawl_task import CrawlTask
+from domains.subscription.domain.models.subscription import Subscription
+from domains.subscription.application.services.sync.site_icons import SiteIconResolver
+from domains.video.domain.models.video_extraction_projection import VideoExtractionProjection
+from domains.video.application.services.extraction_center.service import VideoExtractionCenterService
+from domains.video.application.services.extraction_projection.service import VideoExtractionProjectionService
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 from crawl import SiteRuntimeInvokeResponse
 
-from services.site_catalog.login_status import SiteLoginStatusService
+from infrastructure.site_catalog.login_status import SiteLoginStatusService
 
 
 def test_get_supported_sites_reads_login_status_registrations():

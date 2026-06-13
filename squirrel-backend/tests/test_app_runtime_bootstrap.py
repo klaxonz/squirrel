@@ -70,7 +70,6 @@ import main as app_main
 from routes import health
 from runtime import bootstrap as service_runtime
 from site_runtimes import bridge_runtime_state, bridge_server
-from utils import runtime_http
 
 
 def test_lifespan_configures_backend_runtime_http_state(monkeypatch):
@@ -214,7 +213,7 @@ def test_lifespan_fails_when_site_config_overrides_fail(monkeypatch):
 
 
 def test_lifespan_records_optional_scheduled_task_degradation(monkeypatch):
-    from core.startup_dependencies import list_optional_startup_issues
+    from infrastructure.startup_dependencies import list_optional_startup_issues
 
     def _raise_scheduled_task_error():
         raise RuntimeError("scheduler table missing")
@@ -246,7 +245,7 @@ def test_lifespan_records_optional_scheduled_task_degradation(monkeypatch):
 
 
 def test_health_reports_optional_startup_degradation(monkeypatch):
-    from core.startup_dependencies import record_optional_startup_issue, reset_startup_dependency_issues
+    from infrastructure.startup_dependencies import record_optional_startup_issue, reset_startup_dependency_issues
 
     class _Connection:
         def __enter__(self):

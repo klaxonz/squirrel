@@ -7,9 +7,10 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes.subscription import router
-from routes.subscription.dependencies import get_stream_service
-from services.user.auth import get_current_user
+from domains.subscription.interfaces.http.basic.dependencies import get_stream_service
+
+from domains.subscription.interfaces.http.basic import router
+from domains.user.application.services.auth import get_current_user
 
 
 def test_sync_dashboard_stream_emits_initial_snapshots():

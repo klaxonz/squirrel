@@ -41,20 +41,20 @@ def sss_session(session_factory):
     from core import database
     database.get_session = session_factory
 
-    from services.crawl.tasks import service as crawl_task_service_mod
+    from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod
     crawl_task_service_mod.crawl_task_service.session_factory = session_factory
 
-    from services.subscription.sync.run_service import subscription_sync_run_service
+    from domains.subscription.application.services.core.sync.run_service import subscription_sync_run_service
     _seq_counters: dict[str, int] = {}
     def _next_seq_no(stream_id, *, session=None):
         _seq_counters[stream_id] = _seq_counters.get(stream_id, 0) + 1
         return _seq_counters[stream_id]
     subscription_sync_run_service.next_seq_no = _next_seq_no
 
-    import services.subscription.sync.projection.store as projection_store
-    from services.subscription.sync.projection.service import subscription_sync_projection_service
+    import subscription.services.core.sync.projection.store as projection_store
+    from domains.subscription.application.services.core.sync.projection.service import subscription_sync_projection_service
     projection_store.advisory_lock = lambda session, key: None
     subscription_sync_projection_service.apply_event = lambda event, session=None: event
 
-    from services.sync_dashboard.stream_service import sync_dashboard_stream_service
+    from domains.subscription.application.services.sync.stream_service import sync_dashboard_stream_service
     sync_dashboard_stream_service.publish_sync_dashboard_invalidation = staticmethod(lambda channel, payload=None: None)

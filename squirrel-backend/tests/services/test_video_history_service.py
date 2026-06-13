@@ -6,13 +6,13 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from models import Base
-from models.links import SubscriptionVideo, UserSubscription
-from models.subscription import Subscription
-from models.video import Video
-from models.video_history import VideoHistory
-from schemas.video_history import HistoryCreate
-from services.video.history.service import VideoHistoryService
+from shared_kernel.domain.base import Base
+from domains.video.domain.junctions.subscription_video import SubscriptionVideo, UserSubscription
+from domains.subscription.domain.models.subscription import Subscription
+from domains.video.domain.models.video import Video
+from domains.video.domain.models.video_history import VideoHistory
+from domains.video.interfaces.dto.video_history import HistoryCreate
+from domains.video.application.services.history.service import VideoHistoryService
 
 pytestmark = [pytest.mark.anyio]
 

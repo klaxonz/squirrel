@@ -6,14 +6,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from crawl import SiteRuntimeInvokeRequest
 from crawl.runtime_errors import RuntimeErrorCode
 
-from site_runtimes.models import (
+from infrastructure.site_runtimes.models import (
     SiteRuntimeHandle,
     SiteRuntimeHealthSnapshot,
     SiteRuntimeRecord,
     SiteRuntimeState,
     SiteRuntimeTarget,
 )
-from site_runtimes.supervisor import SiteRuntimeSupervisor
+from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
 
 
 def test_supervisor_returns_timeout_error_when_runtime_request_times_out(monkeypatch):

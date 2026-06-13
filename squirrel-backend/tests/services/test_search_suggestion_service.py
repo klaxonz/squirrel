@@ -3,14 +3,14 @@ from datetime import datetime
 import pytest
 from sqlalchemy.orm import Session
 
-from models import Base
-from models.creator import Creator
-from models.links import SubscriptionVideo, UserSubscription, VideoCreator
-from models.subscription import ContentType, Subscription
-from models.user_video_feed import UserVideoFeed
-from models.video import Video
-from models.video_history import VideoHistory
-from services.search.suggestion_service import SearchSuggestionService
+from shared_kernel.domain.base import Base
+from domains.video.domain.junctions.subscription_video import SubscriptionVideo, UserSubscription, VideoCreator
+from domains.subscription.domain.models.subscription import ContentType, Subscription
+from domains.user.domain.models.user_video_feed import UserVideoFeed
+from domains.user.application.services.search.suggestion_service import SearchSuggestionService
+from domains.video.domain.models.creator import Creator
+from domains.video.domain.models.video import Video
+from domains.video.domain.models.video_history import VideoHistory
 
 
 @pytest.fixture

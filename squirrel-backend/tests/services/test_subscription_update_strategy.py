@@ -2,16 +2,16 @@ from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from core.config import settings
-from services.subscription.update.models import (
+from infrastructure.config.settings import settings
+from domains.subscription.application.services.core.update.models import (
     SubscriptionUpdateRequest,
     SubscriptionUpdateResult,
     UpdateMode,
     UpdateTrigger,
 )
-from services.subscription.update.orchestrator import SubscriptionOrchestrator
-from services.subscription.update.scheduler import scheduler as _scheduler_instance
-from services.subscription.update.strategies.default_strategy import (
+from domains.subscription.application.services.core.update.orchestrator import SubscriptionOrchestrator
+from domains.subscription.application.services.core.update.scheduler import scheduler as _scheduler_instance
+from domains.subscription.application.services.core.update.strategies.default_strategy import (
     DefaultUpdateStrategy,
     should_schedule_total_video_backfill,
 )

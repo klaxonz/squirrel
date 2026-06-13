@@ -6,7 +6,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from services.site_catalog import cookie_files
+import shared.site_catalog.cookie_files as cookie_files
 
 
 def test_write_cookie_text_file_replaces_existing_content(tmp_path):

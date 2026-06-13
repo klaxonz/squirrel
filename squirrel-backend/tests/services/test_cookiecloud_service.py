@@ -1,7 +1,7 @@
 import json
 from unittest.mock import patch
 
-from services.site_catalog.cookiecloud import CookieCloudService
+from infrastructure.site_catalog.cookiecloud import CookieCloudService
 
 
 def test_sync_cookiecloud_to_site_files_uses_safe_cookie_file_writer(tmp_path):

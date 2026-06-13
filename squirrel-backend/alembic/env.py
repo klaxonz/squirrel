@@ -3,9 +3,9 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from core.config import settings
-from models import Base
-from utils import module_discovery
+from infrastructure.config.settings import settings
+from shared_kernel.domain.base import Base
+from shared_kernel.infrastructure import module_discovery
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -20,7 +20,9 @@ config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-module_discovery.import_classes_from_package(package="models", base_class=Base, recursive=True)
+module_discovery.import_classes_from_package(package="domains", base_class=Base, recursive=True)
+module_discovery.import_classes_from_package(package="infrastructure", base_class=Base, recursive=True)
+module_discovery.import_classes_from_package(package="shared_kernel", base_class=Base, recursive=True)
 target_metadata = Base.metadata
 
 

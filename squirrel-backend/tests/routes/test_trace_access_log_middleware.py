@@ -9,10 +9,10 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from common.log import TraceIdFilter
-from routes.middleware.access_log import AccessLogMiddleware
-from routes.middleware.trace import RequestContextMiddleware
-from utils.trace import get_trace_id
+from application.middleware.access_log import AccessLogMiddleware
+from application.middleware.trace import RequestContextMiddleware
+from shared_kernel.infrastructure.log import TraceIdFilter
+from shared_kernel.infrastructure.trace import get_trace_id
 
 
 def _build_app():

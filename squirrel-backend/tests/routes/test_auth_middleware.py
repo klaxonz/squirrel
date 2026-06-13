@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes.middleware.auth import is_public_api_path
+from application.middleware.auth import is_public_api_path
 
 
 def test_exact_paths_are_public():

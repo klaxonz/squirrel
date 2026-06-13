@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from services.video.extraction.video_persistence import VideoPersistenceService
+from domains.video.application.services.extraction.video_persistence import VideoPersistenceService
 
 
 def test_create_subscription_link_refreshes_feed_for_incremental_sync(monkeypatch):

@@ -3,8 +3,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from scheduling.base import TaskRegistry
-from scheduling.tasks.subscription_auto_import_task import SubscriptionAutoImportTask
+from infrastructure.scheduling.base import TaskRegistry
+from workers.scheduling.tasks.subscription_auto_import_task import SubscriptionAutoImportTask
 
 
 def test_subscription_auto_import_task_is_registered_for_scheduler():

@@ -6,15 +6,15 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import services.video.extraction.thumbnail_downloader as thumbnail_downloader
-from services.video.extraction.thumbnail import headers as thumbnail_headers
-from services.video.extraction.thumbnail import html as thumbnail_html
-from services.video.extraction.thumbnail import local_index as thumbnail_local_index
-from services.video.extraction.thumbnail.client import ThumbnailHttpClient
-from services.video.extraction.thumbnail.headers import ThumbnailSiteConfig
-from services.video.extraction.thumbnail.local_index import ThumbnailLocalIndexRepository
-from services.video.extraction.thumbnail.storage import ThumbnailStorage
-from services.video.extraction.thumbnail_downloader import ThumbnailDownloaderService
+import video.services.extraction.thumbnail_downloader as thumbnail_downloader
+from domains.video.application.services.extraction.thumbnail import headers as thumbnail_headers
+from domains.video.application.services.extraction.thumbnail import html as thumbnail_html
+from domains.video.application.services.extraction.thumbnail import local_index as thumbnail_local_index
+from domains.video.application.services.extraction.thumbnail.client import ThumbnailHttpClient
+from domains.video.application.services.extraction.thumbnail.headers import ThumbnailSiteConfig
+from domains.video.application.services.extraction.thumbnail.local_index import ThumbnailLocalIndexRepository
+from domains.video.application.services.extraction.thumbnail.storage import ThumbnailStorage
+from domains.video.application.services.extraction.thumbnail_downloader import ThumbnailDownloaderService
 
 
 def _thumbnail_service_with_fake_http(monkeypatch, tmp_path, fake_get):

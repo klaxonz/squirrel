@@ -6,10 +6,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from crawl import SiteRuntimeInvokeRequest
 
-from site_runtimes.audit import SiteRuntimeAuditWriter
-from site_runtimes.models import SiteRuntimeRecord, SiteRuntimeState, SiteRuntimeTarget
-from site_runtimes.process_launcher import SiteRuntimeProcessLauncher
-from site_runtimes.supervisor import SiteRuntimeSupervisor
+from infrastructure.site_runtimes.audit import SiteRuntimeAuditWriter
+from infrastructure.site_runtimes.models import SiteRuntimeRecord, SiteRuntimeState, SiteRuntimeTarget
+from infrastructure.site_runtimes.process_launcher import SiteRuntimeProcessLauncher
+from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
 
 
 def test_supervisor_runs_site_runtime_in_subprocess(tmp_path):

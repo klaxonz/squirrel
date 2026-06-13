@@ -2,10 +2,10 @@ from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from models.crawl_task import CrawlTask
-from services.subscription.sync.event_service import SubscriptionSyncEventService
-from services.sync_dashboard import stream_service as sync_dashboard_stream_service
-from services.sync_dashboard.stream_service import SyncDashboardStreamService
+from domains.subscription.domain.models.crawl_task import CrawlTask
+from domains.subscription.application.services.core.sync.event_service import SubscriptionSyncEventService
+from domains.subscription.application.services.sync import stream_service as sync_dashboard_stream_service
+from domains.subscription.application.services.sync.stream_service import SyncDashboardStreamService
 
 
 def test_encode_sse_event_uses_named_event_with_json_payload():
@@ -100,8 +100,8 @@ def test_append_event_uses_module_channels_with_default_shaped_stream_service():
 
 
 def test_refresh_projection_for_task_publishes_extract_invalidations():
-    import services.video.extraction_projection.store as projection_store
-    from services.video.extraction_projection.service import VideoExtractionProjectionService
+    import video.services.extraction_projection.store as projection_store
+    from domains.video.application.services.extraction_projection.service import VideoExtractionProjectionService
 
     published = []
     svc = VideoExtractionProjectionService(

@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from messaging.handlers import subscribe_task
+from infrastructure.messaging.handlers import subscribe_task
 
 
 def test_process_subscribe_message_propagates_handler_failure(monkeypatch):

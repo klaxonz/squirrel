@@ -4,13 +4,13 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.orm import Session
 
-from models import Base
-from models.crawl_dispatch_scope import CrawlDispatchScope
-from models.crawl_job import CrawlJob
-from models.crawl_task import CrawlTask
-from models.outbox_event import OutboxEvent
-from models.subscription_sync_state import SubscriptionSyncState
-from services.outbox.event_service import OutboxEventService
+from shared_kernel.domain.base import Base
+from domains.subscription.domain.models.crawl_dispatch_scope import CrawlDispatchScope
+from domains.subscription.domain.models.crawl_job import CrawlJob
+from domains.subscription.domain.models.crawl_task import CrawlTask
+from domains.subscription.domain.models.outbox_event import OutboxEvent
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
+from domains.subscription.application.services.outbox.event_service import OutboxEventService
 
 
 @pytest.fixture
@@ -89,9 +89,9 @@ def test_full_backfill_request_dispatches_full_sync_command(engine, session_fact
     request_calls = []
 
     from core import database
-    from core.config import settings
-    from services.subscription.update.commands import SubscriptionSyncCommandService
-    from services.subscription.update.models import UpdateMode, UpdateTrigger
+    from infrastructure.config.settings import settings
+    from domains.subscription.application.services.core.update.commands import SubscriptionSyncCommandService
+    from domains.subscription.application.services.core.update.models import UpdateMode, UpdateTrigger
 
     with patch.object(database, 'get_session', session_factory), \
          patch.object(settings, 'FULL_SYNC_MAX_INFLIGHT', 10), \
@@ -134,7 +134,7 @@ def test_full_backfill_request_is_deferred_when_full_budget_is_exhausted(engine,
     now = datetime(2026, 4, 4, 12, 0, 0)
 
     from core import database
-    from core.config import settings
+    from infrastructure.config.settings import settings
 
     with patch.object(settings, 'FULL_SYNC_MAX_INFLIGHT', 1), \
          patch.object(settings, 'FULL_SYNC_SITE_MAX_INFLIGHT', 1), \

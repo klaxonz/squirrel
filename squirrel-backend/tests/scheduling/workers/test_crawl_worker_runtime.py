@@ -8,10 +8,10 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from models.crawl_task import CrawlTask
-from scheduling.workers.leases import ActiveTaskLease
-from scheduling.workers.runtime import CrawlWorkerRuntime
-from services.crawl.tasks.errors import CrawlTaskOwnershipError
+from infrastructure.scheduling.workers.leases import ActiveTaskLease
+from infrastructure.scheduling.workers.runtime import CrawlWorkerRuntime
+from domains.subscription.domain.models.crawl_task import CrawlTask
+from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskOwnershipError
 
 
 def _noop_runtime(**kwargs):

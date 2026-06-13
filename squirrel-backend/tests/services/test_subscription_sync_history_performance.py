@@ -4,12 +4,12 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy.orm import Session
 
-from models import Base
-from models.links import UserSubscription
-from models.subscription import Subscription
-from models.subscription_sync_event import SubscriptionSyncEvent
-from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
-from services.subscription.sync.history_service import SubscriptionSyncHistoryService
+from shared_kernel.domain.base import Base
+from domains.subscription.domain.junctions.user_subscription import UserSubscription
+from domains.subscription.domain.models.subscription import Subscription
+from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
+from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
+from domains.subscription.application.services.core.sync.history_service import SubscriptionSyncHistoryService
 
 
 @pytest.fixture

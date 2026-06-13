@@ -5,10 +5,10 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from extraction.contracts import ExtractionTask
-from extraction.dto.video_dto import VideoDTO
-from extraction.pipeline.context import PipelineContext
-from extraction.pipeline.stages.post_process import PostProcessStage
+from infrastructure.extraction.contracts import ExtractionTask
+from infrastructure.extraction.dto.video_dto import VideoDTO
+from infrastructure.extraction.pipeline.context import PipelineContext
+from infrastructure.extraction.pipeline.stages.post_process import PostProcessStage
 
 
 class _RecordingThumbnailService:

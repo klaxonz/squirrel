@@ -3,16 +3,16 @@ from datetime import datetime
 import pytest
 from sqlalchemy.orm import Session
 
-from models import Base
-from models.crawl_job import CrawlJob
-from models.crawl_task import CrawlTask
-from models.links import UserSubscription
-from models.subscription import Subscription
-from models.subscription_sync_event import SubscriptionSyncEvent
-from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
-from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
-from services.site_catalog.catalog import SiteCatalog
-from services.subscription.sync.history_service import SubscriptionSyncHistoryService
+from shared_kernel.domain.base import Base
+from domains.subscription.domain.junctions.user_subscription import UserSubscription
+from infrastructure.site_catalog.catalog import SiteCatalog
+from domains.subscription.domain.models.crawl_job import CrawlJob
+from domains.subscription.domain.models.crawl_task import CrawlTask
+from domains.subscription.domain.models.subscription import Subscription
+from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
+from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
+from domains.subscription.domain.models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
+from domains.subscription.application.services.core.sync.history_service import SubscriptionSyncHistoryService
 
 
 @pytest.fixture(autouse=True)

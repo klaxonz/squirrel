@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from unittest.mock import patch
 
-from services.site_catalog.service import SiteCatalogService
+from infrastructure.site_catalog.service import SiteCatalogService
 
 
 def test_save_site_overrides_persists_override_only(tmp_path):

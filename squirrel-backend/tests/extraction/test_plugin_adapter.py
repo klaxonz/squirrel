@@ -5,9 +5,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "squirrel-sdk" / "src"))
 
-from extraction.adapters.runtime_adapter import RuntimeDataAdapter
-from extraction.dto.validators import parse_publish_date
-from extraction.runtime_payloads import RuntimeVideoData
+from infrastructure.extraction.adapters.runtime_adapter import RuntimeDataAdapter
+from infrastructure.extraction.dto.validators import parse_publish_date
+from infrastructure.extraction.runtime_payloads import RuntimeVideoData
 
 
 def test_parse_publish_date_accepts_iso_datetime_string():

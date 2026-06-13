@@ -4,18 +4,18 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy.orm import Session
 
-from models import Base
-from models.links import SubscriptionVideo, UserSubscription
-from models.subscription import Subscription
-from models.subscription_sync_state import SubscriptionSyncState
-from models.user import User
-from models.user_video_feed import UserVideoFeed
-from models.video import Video
-from models.video_history import VideoHistory
-from services.subscription.crud import SubscriptionCrudService
-from services.subscription.import_service import SubscriptionImportService
-from services.subscription.listing.service import SubscriptionListService
-from services.subscription.manage import SubscriptionManageService
+from shared_kernel.domain.base import Base
+from domains.video.domain.junctions.subscription_video import SubscriptionVideo, UserSubscription
+from domains.subscription.domain.models.subscription import Subscription
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
+from domains.subscription.application.services.core.crud import SubscriptionCrudService
+from domains.subscription.application.services.core.import_service import SubscriptionImportService
+from domains.subscription.application.services.core.listing.service import SubscriptionListService
+from domains.subscription.application.services.core.manage import SubscriptionManageService
+from domains.user.domain.models.user import User
+from domains.user.domain.models.user_video_feed import UserVideoFeed
+from domains.video.domain.models.video import Video
+from domains.video.domain.models.video_history import VideoHistory
 
 
 def _get_user_config(_user_id):
@@ -28,19 +28,19 @@ def _redirect_module_services(session_factory):
     from core import database
     database.get_session = session_factory
 
-    from services.crawl.tasks import service as crawl_task_service_mod
+    from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod
     crawl_task_service_mod.crawl_task_service.session_factory = session_factory
 
-    import services.user.feed as uvfs
+    import user.services.feed as uvfs
     uvfs.user_video_feed_service._session_factory = session_factory
 
-    from services.video.extraction_projection.service import video_extraction_projection_service
+    from domains.video.application.services.extraction_projection.service import video_extraction_projection_service
     video_extraction_projection_service.session_factory = session_factory
 
-    from services.subscription.crud import subscription_crud_service
+    from domains.subscription.application.services.core.crud import subscription_crud_service
     subscription_crud_service.session_factory = session_factory
 
-    from services.subscription.manage import subscription_manage_service
+    from domains.subscription.application.services.core.manage import subscription_manage_service
     subscription_manage_service.session_factory = session_factory
 
 
@@ -735,7 +735,7 @@ def test_list_subscriptions_prefers_actual_extract_count_when_total_videos_is_st
 
 
 def test_list_subscriptions_only_counts_extracts_for_current_page(engine, session_factory):
-    from services.subscription.listing import service as subscription_list_service_mod
+    from domains.subscription.application.services.core.listing import service as subscription_list_service_mod
 
     _seed_subscription(engine, user_ids=[1])
 

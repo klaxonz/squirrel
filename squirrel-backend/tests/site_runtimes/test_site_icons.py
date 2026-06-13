@@ -6,9 +6,9 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from services.site_catalog.runtime import SiteRuntimeService
-from services.site_catalog.service import SiteCatalogService
-from site_runtimes.runtime_models import SiteRuntimeManifest, SiteRuntimeSite
+from infrastructure.site_catalog.runtime import SiteRuntimeService
+from infrastructure.site_catalog.service import SiteCatalogService
+from infrastructure.site_runtimes.runtime_models import SiteRuntimeManifest, SiteRuntimeSite
 
 
 def test_build_site_info_includes_icon_url():

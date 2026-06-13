@@ -1,5 +1,5 @@
-from schemas.video.dto.video_dto import VideoExtractDto
-from services.video.extraction.progress_service import VideoExtractionProgressService
+from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
+from domains.video.application.services.extraction.progress_service import VideoExtractionProgressService
 
 
 def _params():

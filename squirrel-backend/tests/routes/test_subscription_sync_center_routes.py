@@ -5,7 +5,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes.subscription import router
+from domains.subscription.interfaces.http.basic import router
 
 
 @pytest.mark.parametrize(

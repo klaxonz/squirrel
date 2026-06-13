@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes.video import router
-from services.user.auth import get_current_user
+from domains.user.application.services.auth import get_current_user
+from domains.video.interfaces.http.listing import router
 
 
 def test_get_videos_defaults_missing_category_to_all(monkeypatch):

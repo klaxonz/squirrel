@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from services.site_catalog.catalog import SiteCatalog
-from site_runtimes.runtime_models import SiteRuntimeCapability, SiteRuntimeManifest, SiteRuntimeSite
+from infrastructure.site_catalog.catalog import SiteCatalog
+from infrastructure.site_runtimes.runtime_models import SiteRuntimeCapability, SiteRuntimeManifest, SiteRuntimeSite
 
 
 def test_site_catalog_builds_from_backend_runtime_manifest_models(monkeypatch):

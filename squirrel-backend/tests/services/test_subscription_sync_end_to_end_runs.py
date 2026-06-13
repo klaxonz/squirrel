@@ -4,23 +4,23 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.orm import Session
 
-import services.subscription.sync.state.service as subscription_sync_state_service
-from models import Base
-from models.crawl_job import CrawlJob
-from models.crawl_task import CrawlTask
-from models.links import UserSubscription
-from models.outbox_event import OutboxEvent
-from models.subscription import Subscription
-from models.subscription_sync_event import SubscriptionSyncEvent
-from models.subscription_sync_run_projection import SubscriptionSyncRunProjection
-from models.subscription_sync_state import SubscriptionSyncState
-from models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
-from schemas.subscription.dto.sync_dashboard_dto import SyncDashboardItemDto
-from services.subscription.sync.dashboard_service import SubscriptionSyncDashboardService
-from services.subscription.sync.progress import subscription_sync_progress
-from services.sync_dashboard.items import SyncDashboardItemFactory
-from services.sync_dashboard.presentation import sort_items
-from services.sync_dashboard.site_icons import SiteIconResolver
+import subscription.services.core.sync.state.service as subscription_sync_state_service
+from shared_kernel.domain.base import Base
+from domains.subscription.domain.junctions.user_subscription import UserSubscription
+from domains.subscription.domain.models.crawl_job import CrawlJob
+from domains.subscription.domain.models.crawl_task import CrawlTask
+from domains.subscription.domain.models.outbox_event import OutboxEvent
+from domains.subscription.domain.models.subscription import Subscription
+from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
+from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
+from domains.subscription.domain.models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
+from domains.subscription.schemas.dto.sync_dashboard_dto import SyncDashboardItemDto
+from domains.subscription.application.services.core.sync.dashboard_service import SubscriptionSyncDashboardService
+from domains.subscription.application.services.core.sync.progress import subscription_sync_progress
+from domains.subscription.application.services.sync.items import SyncDashboardItemFactory
+from domains.subscription.application.services.sync.presentation import sort_items
+from domains.subscription.application.services.sync.site_icons import SiteIconResolver
 
 
 @pytest.fixture
@@ -31,10 +31,10 @@ def engine(engine):
 @pytest.fixture
 def sss_session_patch(session_factory):
     """Replacement for sss_session fixture using patch instead of monkeypatch."""
-    import services.subscription.sync.projection.store as projection_store
+    import subscription.services.core.sync.projection.store as projection_store
     from core import database
-    from services.subscription.sync.projection.service import subscription_sync_projection_service
-    from services.subscription.sync.run_service import subscription_sync_run_service
+    from domains.subscription.application.services.core.sync.projection.service import subscription_sync_projection_service
+    from domains.subscription.application.services.core.sync.run_service import subscription_sync_run_service
 
     with patch.object(database, 'get_session', session_factory), \
          patch.object(subscription_sync_run_service, 'next_seq_no', lambda stream_id, *, session=None: 1), \

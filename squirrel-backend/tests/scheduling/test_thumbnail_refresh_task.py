@@ -4,9 +4,9 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from scheduling.base import TaskRegistry
-from scheduling.tasks import thumbnail_refresh_task
-from scheduling.tasks.thumbnail_refresh_task import ThumbnailRefreshTask
+from infrastructure.scheduling.base import TaskRegistry
+from infrastructure.scheduling.tasks import thumbnail_refresh_task
+from workers.scheduling.tasks.thumbnail_refresh_task import ThumbnailRefreshTask
 
 
 def test_thumbnail_refresh_task_is_registered_for_scheduler():
@@ -117,7 +117,7 @@ def test_thumbnail_refresh_task_falls_back_to_page_thumbnail_when_stored_url_fai
 
 
 def test_thumbnail_refresh_task_extracts_html_escaped_og_image():
-    from services.video.extraction.thumbnail.html import extract_thumbnail_url_from_html
+    from domains.video.application.services.extraction.thumbnail.html import extract_thumbnail_url_from_html
 
     html_doc = """
     <html>
@@ -142,8 +142,8 @@ def test_thumbnail_refresh_task_retries_page_fetch_for_retryable_status(monkeypa
     ]
     sleep_calls = []
 
-    from services.video.extraction.thumbnail import client as thumbnail_client
-    from services.video.extraction.thumbnail.client import ThumbnailHttpClient
+    from domains.video.application.services.extraction.thumbnail import client as thumbnail_client
+    from domains.video.application.services.extraction.thumbnail.client import ThumbnailHttpClient
 
     http_client = ThumbnailHttpClient()
     monkeypatch.setattr(http_client, "_get_http_client", lambda: SimpleNamespace(get=lambda url, headers=None: responses.pop(0)))

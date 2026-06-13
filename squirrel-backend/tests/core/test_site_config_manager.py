@@ -4,7 +4,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from core import site_config_manager
-from utils import runtime_site_config
 
 
 def test_apply_site_config_overrides_updates_backend_runtime_state(monkeypatch):
