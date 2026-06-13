@@ -3,7 +3,7 @@ import logging
 from sqlalchemy.exc import IntegrityError
 
 from schemas.video.dto.video_dto import VideoExtractDto
-from services import video_service
+from services import video_extraction_projection_service, video_service
 from services.crawl_tasks import service as crawl_task_service
 from utils.metrics import metrics
 from utils.site_catalog import SiteCatalog
@@ -17,9 +17,11 @@ class VideoExtractionTaskService:
         self,
         get_video_by_url=None,
         crawl_tasks=None,
+        projection_service=None,
     ):
         self._get_video_by_url = get_video_by_url or video_service.get_video_by_url
         self._crawl_tasks = crawl_tasks or crawl_task_service
+        self._projection_service = projection_service or video_extraction_projection_service
 
     def enqueue(self, params: VideoExtractDto) -> bool:
         domain = extract_top_level_domain(params.url)
@@ -62,7 +64,7 @@ class VideoExtractionTaskService:
         source_type = "manual" if params.is_manual else "scheduled"
 
         try:
-            self._crawl_tasks.create_job_with_task(
+            _, task = self._crawl_tasks.create_job_with_task(
                 job_type="video_extract",
                 source_type=source_type,
                 site=domain,
@@ -74,6 +76,7 @@ class VideoExtractionTaskService:
                 video_url=params.url,
                 trace_id=params.run_id,
             )
+            self._projection_service.refresh_projection_for_task(task)
             return True
         except IntegrityError:
             logger.debug("Video extraction task already exists in task store, skipping: %s", params.url)

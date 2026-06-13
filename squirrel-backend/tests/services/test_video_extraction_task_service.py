@@ -48,10 +48,10 @@ def session_factory(engine):
 @pytest.fixture
 def svc(session_factory):
     task_svc = CrawlTaskService(session_factory=session_factory)
-    task_svc._refresh_video_extraction_projection = staticmethod(lambda session, task: None)
     return VideoExtractionTaskService(
         get_video_by_url=lambda url: None,
         crawl_tasks=task_svc,
+        projection_service=type("ProjectionService", (), {"refresh_projection_for_task": lambda self, task: None})(),
     )
 
 

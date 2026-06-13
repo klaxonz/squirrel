@@ -13,10 +13,24 @@ from processes.managers.crawl_worker_runtime import CrawlWorkerRuntime, _ActiveT
 from services.crawl_tasks.errors import CrawlTaskOwnershipError
 
 
+def _noop_runtime(**kwargs):
+    kwargs.setdefault(
+        "video_projection_service",
+        SimpleNamespace(refresh_projection_for_task=lambda task: None),
+    )
+    kwargs.setdefault(
+        "subscription_task_progress",
+        SimpleNamespace(record_retry_transition=lambda *args, **kwargs: None),
+    )
+    return CrawlWorkerRuntime(
+        **kwargs,
+    )
+
+
 def test_run_once_executes_video_extract_task(monkeypatch):
     calls = []
     task = CrawlTask(id=1, job_id=1, task_type="video_extract", site="youtube.com", payload={})
-    runtime = CrawlWorkerRuntime(
+    runtime = _noop_runtime(
         dispatcher=SimpleNamespace(claim_next=lambda **kwargs: task),
         worker_id="worker-1",
         lease_seconds=60,
@@ -25,11 +39,11 @@ def test_run_once_executes_video_extract_task(monkeypatch):
 
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.recover_expired_tasks",
-        lambda now=None, retry_delay_seconds=30: 0,
+        lambda now=None, retry_delay_seconds=30: [],
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.start_task",
-        lambda task_id, worker_id, now=None: calls.append(("start", task_id, worker_id)),
+        lambda task_id, worker_id, now=None: calls.append(("start", task_id, worker_id)) or task,
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.execute_video_extract_task",
@@ -37,7 +51,7 @@ def test_run_once_executes_video_extract_task(monkeypatch):
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.complete_task",
-        lambda task_id, worker_id, now=None: calls.append(("complete", task_id, worker_id)),
+        lambda task_id, worker_id, now=None: calls.append(("complete", task_id, worker_id)) or task,
     )
 
     ran = runtime.run_once()
@@ -59,7 +73,7 @@ def test_run_once_executes_legacy_subscription_sync_task_type(monkeypatch):
         site="bilibili.com",
         payload={"subscription_id": 10, "url": "https://space.bilibili.com/42"},
     )
-    runtime = CrawlWorkerRuntime(
+    runtime = _noop_runtime(
         dispatcher=SimpleNamespace(claim_next=lambda **kwargs: task),
         worker_id="worker-1",
         lease_seconds=60,
@@ -68,11 +82,11 @@ def test_run_once_executes_legacy_subscription_sync_task_type(monkeypatch):
 
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.recover_expired_tasks",
-        lambda now=None, retry_delay_seconds=30: 0,
+        lambda now=None, retry_delay_seconds=30: [],
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.start_task",
-        lambda task_id, worker_id, now=None: calls.append(("start", task_id, worker_id)),
+        lambda task_id, worker_id, now=None: calls.append(("start", task_id, worker_id)) or task,
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.execute_subscription_sync_task",
@@ -80,7 +94,7 @@ def test_run_once_executes_legacy_subscription_sync_task_type(monkeypatch):
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.complete_task",
-        lambda task_id, worker_id, now=None: calls.append(("complete", task_id, worker_id)),
+        lambda task_id, worker_id, now=None: calls.append(("complete", task_id, worker_id)) or task,
     )
 
     ran = runtime.run_once()
@@ -96,7 +110,7 @@ def test_run_once_executes_legacy_subscription_sync_task_type(monkeypatch):
 def test_run_once_executes_full_subscription_sync_task(monkeypatch):
     calls = []
     task = CrawlTask(id=22, job_id=1, task_type="subscription_sync_full", site="bilibili.com", payload={})
-    runtime = CrawlWorkerRuntime(
+    runtime = _noop_runtime(
         dispatcher=SimpleNamespace(claim_next=lambda **kwargs: task),
         worker_id="worker-1",
         lease_seconds=60,
@@ -105,11 +119,11 @@ def test_run_once_executes_full_subscription_sync_task(monkeypatch):
 
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.recover_expired_tasks",
-        lambda now=None, retry_delay_seconds=30: 0,
+        lambda now=None, retry_delay_seconds=30: [],
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.start_task",
-        lambda task_id, worker_id, now=None: calls.append(("start", task_id, worker_id)),
+        lambda task_id, worker_id, now=None: calls.append(("start", task_id, worker_id)) or task,
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.execute_subscription_sync_task",
@@ -117,7 +131,7 @@ def test_run_once_executes_full_subscription_sync_task(monkeypatch):
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.complete_task",
-        lambda task_id, worker_id, now=None: calls.append(("complete", task_id, worker_id)),
+        lambda task_id, worker_id, now=None: calls.append(("complete", task_id, worker_id)) or task,
     )
 
     ran = runtime.run_once()
@@ -133,20 +147,28 @@ def test_run_once_executes_full_subscription_sync_task(monkeypatch):
 def test_run_once_retries_task_on_failure(monkeypatch):
     calls = []
     task = CrawlTask(id=3, job_id=1, task_type="video_extract", site="youtube.com", payload={})
-    runtime = CrawlWorkerRuntime(
+    progress_calls = []
+    projection_calls = []
+    runtime = _noop_runtime(
         dispatcher=SimpleNamespace(claim_next=lambda **kwargs: task),
         worker_id="worker-1",
         lease_seconds=60,
         retry_delay_seconds=45,
+        subscription_task_progress=SimpleNamespace(
+            record_retry_transition=lambda current_task, **kwargs: progress_calls.append((current_task.id, kwargs)),
+        ),
+        video_projection_service=SimpleNamespace(
+            refresh_projection_for_task=lambda current_task: projection_calls.append(current_task.id),
+        ),
     )
 
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.recover_expired_tasks",
-        lambda now=None, retry_delay_seconds=30: 0,
+        lambda now=None, retry_delay_seconds=30: [],
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.start_task",
-        lambda task_id, worker_id, now=None: calls.append(("start", task_id, worker_id)),
+        lambda task_id, worker_id, now=None: calls.append(("start", task_id, worker_id)) or task,
     )
 
     def _raise(_task):
@@ -157,7 +179,7 @@ def test_run_once_retries_task_on_failure(monkeypatch):
         "processes.managers.crawl_worker_runtime.crawl_task_service.retry_task",
         lambda task_id, worker_id, error_message, error_type, now=None, delay_seconds=30: calls.append(
             ("retry", task_id, worker_id, error_type, delay_seconds),
-        ),
+        ) or task,
     )
 
     ran = runtime.run_once()
@@ -167,20 +189,58 @@ def test_run_once_retries_task_on_failure(monkeypatch):
         ("start", 3, "worker-1"),
         ("retry", 3, "worker-1", "RuntimeError", 45),
     ]
+    assert progress_calls == [(3, {"now": progress_calls[0][1]["now"], "error_message": "boom"})]
+    assert projection_calls == [3, 3, 3]
 
 
 def test_run_once_returns_false_when_no_task_is_claimed(monkeypatch):
-    runtime = CrawlWorkerRuntime(
+    runtime = _noop_runtime(
         dispatcher=SimpleNamespace(claim_next=lambda **kwargs: None),
         worker_id="worker-1",
     )
 
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.recover_expired_tasks",
-        lambda now=None, retry_delay_seconds=30: 0,
+        lambda now=None, retry_delay_seconds=30: [],
     )
 
     assert runtime.run_once() is False
+
+
+def test_recover_expired_tasks_records_domain_progress_and_projection(monkeypatch):
+    progress_calls = []
+    projection_calls = []
+    recovered_task = CrawlTask(
+        id=41,
+        job_id=1,
+        task_type="subscription_sync_incremental",
+        site="youtube.com",
+        status="retry_wait",
+        last_error="lease_expired",
+        payload={"sync_state_id": 2},
+    )
+    runtime = _noop_runtime(
+        worker_id="worker-1",
+        retry_delay_seconds=45,
+        subscription_task_progress=SimpleNamespace(
+            record_retry_transition=lambda current_task, **kwargs: progress_calls.append((current_task.id, kwargs)),
+        ),
+        video_projection_service=SimpleNamespace(
+            refresh_projection_for_task=lambda current_task: projection_calls.append(current_task.id),
+        ),
+    )
+    now = datetime(2026, 4, 2, 13, 0, 0)
+
+    monkeypatch.setattr(
+        "processes.managers.crawl_worker_runtime.crawl_task_service.recover_expired_tasks",
+        lambda **kwargs: [recovered_task],
+    )
+
+    recovered_count = runtime._recover_expired_tasks(now=now)
+
+    assert recovered_count == 1
+    assert progress_calls == [(41, {"now": now, "error_message": "lease_expired"})]
+    assert projection_calls == [41]
 
 
 def test_run_loop_fills_multiple_slots_with_concurrent_tasks(monkeypatch):
@@ -192,7 +252,7 @@ def test_run_loop_fills_multiple_slots_with_concurrent_tasks(monkeypatch):
         CrawlTask(id=12, job_id=1, task_type="video_extract", site="bilibili.com", payload={}),
     ]
     dispatcher = SimpleNamespace(claim_next=lambda **kwargs: tasks.pop(0) if tasks else None)
-    runtime = CrawlWorkerRuntime(
+    runtime = _noop_runtime(
         dispatcher=dispatcher,
         worker_id="worker-1",
         lease_seconds=60,
@@ -203,15 +263,15 @@ def test_run_loop_fills_multiple_slots_with_concurrent_tasks(monkeypatch):
 
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.recover_expired_tasks",
-        lambda now=None, retry_delay_seconds=30: 0,
+        lambda now=None, retry_delay_seconds=30: [],
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.start_task",
-        lambda task_id, worker_id, now=None: started.append((task_id, worker_id)),
+        lambda task_id, worker_id, now=None: started.append((task_id, worker_id)) or next(task for task in [*tasks, CrawlTask(id=task_id, job_id=1, task_type="video_extract", site="youtube.com", payload={})] if task.id == task_id),
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.complete_task",
-        lambda task_id, worker_id, now=None: None,
+        lambda task_id, worker_id, now=None: CrawlTask(id=task_id, job_id=1, task_type="video_extract", site="youtube.com", payload={}),
     )
 
     def _execute(current_task):
@@ -240,7 +300,7 @@ def test_run_loop_renews_lease_for_running_tasks(monkeypatch):
     release_event = threading.Event()
     task = CrawlTask(id=21, job_id=1, task_type="video_extract", site="youtube.com", payload={})
     dispatcher = SimpleNamespace(claim_next=lambda **kwargs: task if not renew_calls else None)
-    runtime = CrawlWorkerRuntime(
+    runtime = _noop_runtime(
         dispatcher=dispatcher,
         worker_id="worker-1",
         lease_seconds=1,
@@ -251,11 +311,11 @@ def test_run_loop_renews_lease_for_running_tasks(monkeypatch):
 
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.recover_expired_tasks",
-        lambda now=None, retry_delay_seconds=30: 0,
+        lambda now=None, retry_delay_seconds=30: [],
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.start_task",
-        lambda task_id, worker_id, now=None: None,
+        lambda task_id, worker_id, now=None: task,
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.renew_task_lease",
@@ -263,7 +323,7 @@ def test_run_loop_renews_lease_for_running_tasks(monkeypatch):
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.complete_task",
-        lambda task_id, worker_id, now=None: None,
+        lambda task_id, worker_id, now=None: task,
     )
 
     def _execute(_task):
@@ -288,7 +348,7 @@ def test_run_loop_renews_lease_for_running_tasks(monkeypatch):
 
 
 def test_renew_active_leases_ignores_lost_task_ownership(monkeypatch):
-    runtime = CrawlWorkerRuntime(worker_id="worker-1", lease_seconds=1)
+    runtime = _noop_runtime(worker_id="worker-1", lease_seconds=1)
     future = Future()
     runtime._futures = {future}
 
@@ -307,12 +367,12 @@ def test_renew_active_leases_ignores_lost_task_ownership(monkeypatch):
 
 def test_run_task_does_not_retry_when_task_ownership_is_lost_on_complete(monkeypatch):
     task = CrawlTask(id=31, job_id=1, task_type="video_extract", site="youtube.com", payload={})
-    runtime = CrawlWorkerRuntime(worker_id="worker-1", retry_delay_seconds=45)
+    runtime = _noop_runtime(worker_id="worker-1", retry_delay_seconds=45)
     retry_calls = []
 
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.crawl_task_service.start_task",
-        lambda task_id, worker_id, now=None: None,
+        lambda task_id, worker_id, now=None: task,
     )
     monkeypatch.setattr(
         "processes.managers.crawl_worker_runtime.execute_video_extract_task",

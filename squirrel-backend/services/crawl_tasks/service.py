@@ -11,10 +11,9 @@ from core.database import get_session
 from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
-from services import video_extraction_projection_service
 from services.crawl_tasks.errors import CrawlTaskNotFoundError, CrawlTaskOwnershipError, CrawlTaskStateError
 from services.crawl_tasks.models import CrawlJobStatus, CrawlTaskStatus
-from services.crawl_tasks.task_types import is_subscription_sync_task_type, subscription_sync_task_types
+from services.crawl_tasks.task_types import subscription_sync_task_types
 
 ACTIVE_TASK_STATUSES = [
     CrawlTaskStatus.PENDING.value,
@@ -29,10 +28,8 @@ FAILED_TASK_STATUSES = [
 
 
 class CrawlTaskService:
-    def __init__(self, session_factory=None, sync_state_service=None, video_extraction_projection_svc=None):
+    def __init__(self, session_factory=None):
         self.session_factory = session_factory or get_session
-        self._sync_state_service = sync_state_service
-        self._video_extraction_projection_svc = video_extraction_projection_svc
 
     def create_job(
         self,
@@ -98,7 +95,6 @@ class CrawlTaskService:
             )
             session.add(task)
             session.flush()
-            self._refresh_video_extraction_projection(session, task)
             return task
 
     def create_job_with_task(
@@ -152,7 +148,6 @@ class CrawlTaskService:
             )
             session.add(task)
             session.flush()
-            self._refresh_video_extraction_projection(session, task)
             return job, task
 
     def claim_next_task(
@@ -202,7 +197,6 @@ class CrawlTaskService:
             task.status = CrawlTaskStatus.LEASED.value
             task.worker_id = worker_id
             task.lease_until = now + timedelta(seconds=lease_seconds)
-            self._refresh_video_extraction_projection(session, task)
             session.flush()
             return task
 
@@ -236,7 +230,6 @@ class CrawlTaskService:
             task.status = CrawlTaskStatus.RUNNING.value
             task.started_at = task.started_at or now
             self._refresh_job_status(session, job_id=task.job_id, now=now)
-            self._refresh_video_extraction_projection(session, task)
             session.flush()
             return task
 
@@ -258,7 +251,6 @@ class CrawlTaskService:
             task.last_error = None
             task.last_error_type = None
             self._refresh_job_status(session, job_id=task.job_id, now=now)
-            self._refresh_video_extraction_projection(session, task)
             session.flush()
             return task
 
@@ -284,7 +276,6 @@ class CrawlTaskService:
                 delay_seconds=delay_seconds,
             )
             self._refresh_job_status(session, job_id=task.job_id, now=now)
-            self._refresh_video_extraction_projection(session, task)
             session.flush()
             return task
 
@@ -315,7 +306,6 @@ class CrawlTaskService:
             task.last_error = reason
             task.last_error_type = CrawlTaskStatus.CANCELLED.value
             self._refresh_job_status(session, job_id=task.job_id, now=now)
-            self._refresh_video_extraction_projection(session, task)
             session.flush()
             return task
 
@@ -344,11 +334,10 @@ class CrawlTaskService:
             task.last_error = None
             task.last_error_type = None
             self._refresh_job_status(session, job_id=task.job_id, now=now)
-            self._refresh_video_extraction_projection(session, task)
             session.flush()
             return task
 
-    def recover_expired_tasks(self, *, now: datetime | None = None, retry_delay_seconds: int = 30) -> int:
+    def recover_expired_tasks(self, *, now: datetime | None = None, retry_delay_seconds: int = 30) -> list[CrawlTask]:
         now = now or datetime.now()
 
         with self.session_factory() as session:
@@ -377,13 +366,12 @@ class CrawlTaskService:
                     delay_seconds=retry_delay_seconds,
                 )
                 touched_job_ids.add(task.job_id)
-                self._refresh_video_extraction_projection(session, task)
 
             for job_id in touched_job_ids:
                 self._refresh_job_status(session, job_id=job_id, now=now)
 
             session.flush()
-            return len(tasks)
+            return tasks
 
     def count_pending_video_tasks_for_subscription(self, subscription_id: int) -> int:
         with self.session_factory() as session:
@@ -508,22 +496,10 @@ class CrawlTaskService:
         if task.attempt >= task.max_attempts:
             task.status = CrawlTaskStatus.DEAD.value
             task.finished_at = now
-            self._reconcile_subscription_sync_state_for_retry(
-                task,
-                now=now,
-                retryable=False,
-                error_message=error_message,
-            )
             return
 
         task.status = CrawlTaskStatus.RETRY_WAIT.value
         task.next_run_at = now + timedelta(seconds=delay_seconds)
-        self._reconcile_subscription_sync_state_for_retry(
-            task,
-            now=now,
-            retryable=True,
-            error_message=error_message,
-        )
 
     @staticmethod
     def _refresh_job_status(session: Session, *, job_id: int, now: datetime) -> None:
@@ -614,48 +590,6 @@ class CrawlTaskService:
         ).scalar_one()
         return scope
 
-    def _reconcile_subscription_sync_state_for_retry(
-        self,
-        task: CrawlTask,
-        *,
-        now: datetime,
-        retryable: bool,
-        error_message: str | None,
-    ) -> None:
-        if not is_subscription_sync_task_type(task.task_type):
-            return
-
-        payload = task.payload or {}
-        sync_state_id = payload.get("sync_state_id")
-        if sync_state_id in (None, ""):
-            return
-
-        try:
-            sync_state_id = int(sync_state_id)
-        except (TypeError, ValueError):
-            return
-
-        sync_svc = self._sync_state_service
-        if sync_svc is None:
-            from services import subscription_sync_state_service
-            sync_svc = subscription_sync_state_service
-
-        sync_svc.reconcile_task_retry_state(
-            sync_state_id,
-            payload.get("queue_token"),
-            now=now,
-            retryable=retryable,
-            error_message=error_message,
-            run_id=payload.get("run_id"),
-            request_id=payload.get("request_id"),
-            trace_id=payload.get("trace_id"),
-            trigger=payload.get("trigger"),
-        )
-
-    def _refresh_video_extraction_projection(self, session: Session, task: CrawlTask) -> None:
-        svc = self._video_extraction_projection_svc or video_extraction_projection_service
-        svc.refresh_projection_for_task(task, session=session)
-
 
 _default = CrawlTaskService()
 create_job = _default.create_job
@@ -675,4 +609,3 @@ count_pending_video_tasks_by_sync_state = _default.count_pending_video_tasks_by_
 summarize_video_task_states_by_sync_state = _default.summarize_video_task_states_by_sync_state
 list_active_subscription_sync_state_ids = _default.list_active_subscription_sync_state_ids
 _ensure_dispatch_scope = _default._ensure_dispatch_scope
-_refresh_video_extraction_projection = _default._refresh_video_extraction_projection

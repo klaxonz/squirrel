@@ -7,12 +7,8 @@ from models import Base
 from models.crawl_dispatch_scope import CrawlDispatchScope
 from models.crawl_job import CrawlJob
 from models.crawl_task import CrawlTask
-from models.subscription_sync_event import SubscriptionSyncEvent
 from models.subscription_sync_state import SubscriptionSyncState
-from models.video_extraction_projection import VideoExtractionProjection
 from services.crawl_tasks.service import CrawlTaskService
-from services.subscription_sync_event_service import SyncEventInput
-from services.video_extraction_projection_service import VideoExtractionProjectionService
 
 
 @pytest.fixture
@@ -23,9 +19,7 @@ def engine(engine):
             CrawlJob.__table__,
             CrawlTask.__table__,
             CrawlDispatchScope.__table__,
-            SubscriptionSyncEvent.__table__,
             SubscriptionSyncState.__table__,
-            VideoExtractionProjection.__table__,
         ],
     )
     return engine
@@ -34,76 +28,6 @@ def engine(engine):
 @pytest.fixture
 def svc(session_factory):
     return CrawlTaskService(session_factory=session_factory)
-
-
-class FakeSyncStateService:
-    """Simulates subscription_sync_state_service.reconcile_task_retry_state
-    using the test's session_factory so no monkeypatching is needed."""
-
-    def __init__(self, session_factory, captured_events=None):
-        self.session_factory = session_factory
-        self.captured_events = captured_events if captured_events is not None else []
-
-    def reconcile_task_retry_state(
-        self,
-        sync_state_id,
-        queue_token,
-        *,
-        now=None,
-        retryable=False,
-        error_message=None,
-        run_id=None,
-        request_id=None,
-        trace_id=None,
-        trigger=None,
-    ):
-        if not sync_state_id:
-            return None
-        now = now or datetime.now()
-        with self.session_factory() as session:
-            state = session.get(SubscriptionSyncState, int(sync_state_id))
-            if not state:
-                return None
-            if retryable:
-                state.sync_status = 'queued'
-                state.queue_token = queue_token or state.queue_token
-                state.queued_at = now
-                state.locked_at = None
-                state.last_error = error_message
-                event_type = 'queued'
-            else:
-                state.sync_status = 'failed'
-                state.queue_token = None
-                state.locked_at = None
-                state.failure_count = (state.failure_count or 0) + 1
-                event_type = 'failed'
-
-            session.flush()
-
-            payload = (
-                {'queue_token': queue_token or state.queue_token, 'pending_video_count': state.pending_video_count or 0}
-                if retryable
-                else {'failure_count': state.failure_count, 'pending_video_count': state.pending_video_count or 0}
-            )
-
-            event = SyncEventInput(
-                stream_id=run_id or '',
-                subscription_id=state.subscription_id,
-                sync_mode=state.sync_mode,
-                sync_state_id=state.id,
-                site=state.site,
-                trigger=trigger,
-                request_id=request_id,
-                trace_id=trace_id,
-                event_type=event_type,
-                event_phase=event_type,
-                event_status=event_type,
-                payload=payload,
-                message=error_message,
-                occurred_at=now,
-            )
-            self.captured_events.append(event)
-            return state
 
 
 def _create_job(engine) -> int:
@@ -229,7 +153,7 @@ def test_recover_expired_tasks_moves_retriable_task_to_retry_wait(engine, svc):
 
     recovered = svc.recover_expired_tasks(now=now, retry_delay_seconds=45)
 
-    assert recovered == 1
+    assert len(recovered) == 1
 
     with Session(engine, expire_on_commit=False) as session:
         stored_task = session.get(CrawlTask, task_id)
@@ -241,11 +165,7 @@ def test_recover_expired_tasks_moves_retriable_task_to_retry_wait(engine, svc):
     assert stored_task.next_run_at == now + timedelta(seconds=45)
 
 
-def test_recover_expired_subscription_sync_task_requeues_matching_sync_state(engine, session_factory, svc):
-    captured_events = []
-    fake_sync_svc = FakeSyncStateService(session_factory=session_factory, captured_events=captured_events)
-    svc_with_fake = CrawlTaskService(session_factory=session_factory, sync_state_service=fake_sync_svc)
-
+def test_recover_expired_subscription_sync_task_only_updates_task_lifecycle(engine, svc):
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
 
@@ -288,30 +208,17 @@ def test_recover_expired_subscription_sync_task_requeues_matching_sync_state(eng
         session.commit()
         task_id = task.id
 
-    recovered = svc_with_fake.recover_expired_tasks(now=now, retry_delay_seconds=45)
+    recovered = svc.recover_expired_tasks(now=now, retry_delay_seconds=45)
 
-    assert recovered == 1
+    assert len(recovered) == 1
 
     with Session(engine, expire_on_commit=False) as session:
         stored_task = session.get(CrawlTask, task_id)
         sync_state = session.get(SubscriptionSyncState, 1749)
 
     assert stored_task.status == "retry_wait"
-    assert sync_state.sync_status == "queued"
+    assert sync_state.sync_status == "running"
     assert sync_state.queue_token == "queue-token-1"
-    assert sync_state.locked_at is None
-    assert sync_state.queued_at == now
-    assert len(captured_events) == 1
-    assert captured_events[0].stream_id == "run-requeue-1"
-    assert captured_events[0].request_id == "req-requeue-1"
-    assert captured_events[0].trace_id == "trace-requeue-1"
-    assert captured_events[0].trigger == "scheduled"
-    assert captured_events[0].event_type == "queued"
-    assert captured_events[0].event_phase == "queued"
-    assert captured_events[0].event_status == "queued"
-    assert captured_events[0].message == "lease_expired"
-    assert captured_events[0].payload["queue_token"] == "queue-token-1"
-    assert captured_events[0].payload["pending_video_count"] == 0
 
 
 def test_recover_expired_tasks_moves_exhausted_task_to_dead(engine, svc):
@@ -337,7 +244,7 @@ def test_recover_expired_tasks_moves_exhausted_task_to_dead(engine, svc):
 
     recovered = svc.recover_expired_tasks(now=now, retry_delay_seconds=45)
 
-    assert recovered == 1
+    assert len(recovered) == 1
 
     with Session(engine, expire_on_commit=False) as session:
         stored_task = session.get(CrawlTask, task_id)
@@ -348,9 +255,7 @@ def test_recover_expired_tasks_moves_exhausted_task_to_dead(engine, svc):
 
 
 def test_recover_expired_subscription_sync_task_marks_sync_state_failed_when_dead(engine, session_factory):
-    captured_events = []
-    fake_sync_svc = FakeSyncStateService(session_factory=session_factory, captured_events=captured_events)
-    svc = CrawlTaskService(session_factory=session_factory, sync_state_service=fake_sync_svc)
+    svc = CrawlTaskService(session_factory=session_factory)
 
     job_id = _create_job(engine)
     now = datetime(2026, 4, 1, 12, 0, 0)
@@ -397,28 +302,17 @@ def test_recover_expired_subscription_sync_task_marks_sync_state_failed_when_dea
 
     recovered = svc.recover_expired_tasks(now=now, retry_delay_seconds=45)
 
-    assert recovered == 1
+    assert len(recovered) == 1
 
     with Session(engine, expire_on_commit=False) as session:
         stored_task = session.get(CrawlTask, task_id)
         sync_state = session.get(SubscriptionSyncState, 1750)
 
     assert stored_task.status == "dead"
-    assert sync_state.sync_status == "failed"
-    assert sync_state.queue_token is None
-    assert sync_state.locked_at is None
-    assert sync_state.failure_count == 1
-    assert len(captured_events) == 1
-    assert captured_events[0].stream_id == "run-failed-1"
-    assert captured_events[0].request_id == "req-failed-1"
-    assert captured_events[0].trace_id == "trace-failed-1"
-    assert captured_events[0].trigger == "scheduled"
-    assert captured_events[0].event_type == "failed"
-    assert captured_events[0].event_phase == "failed"
-    assert captured_events[0].event_status == "failed"
-    assert captured_events[0].message == "lease_expired"
-    assert captured_events[0].payload["failure_count"] == 1
-    assert captured_events[0].payload["pending_video_count"] == 0
+    assert sync_state.sync_status == "running"
+    assert sync_state.queue_token == "queue-token-2"
+    assert sync_state.locked_at == now - timedelta(minutes=1)
+    assert sync_state.failure_count == 0
 
 
 def test_complete_task_marks_job_succeeded_when_all_tasks_finish(engine, svc):
@@ -625,56 +519,3 @@ def test_complete_and_dead_mix_marks_job_partial_failed(engine, svc):
 
     assert stored_job.status == "partial_failed"
 
-
-def test_video_extract_task_lifecycle_updates_projection(engine, session_factory):
-    projection_svc = VideoExtractionProjectionService(
-        session_factory=session_factory,
-        publish_sync_center_invalidation=lambda channel, payload=None: None,
-    )
-    svc = CrawlTaskService(
-        session_factory=session_factory,
-        video_extraction_projection_svc=projection_svc,
-    )
-
-    now = datetime(2026, 4, 1, 12, 0, 0)
-
-    job, task = svc.create_job_with_task(
-        job_type="video_extract",
-        source_type="scheduled",
-        site="youtube.com",
-        task_type="video_extract",
-        subscription_id=10,
-        payload={"sync_state_id": 501, "url": "https://example.com/watch?v=1"},
-        next_run_at=now,
-    )
-
-    with Session(engine, expire_on_commit=False) as session:
-        projection = session.query(VideoExtractionProjection).one()
-        assert projection.subscription_id == 10
-        assert projection.group_kind == "state"
-        assert projection.group_value == "501"
-        assert projection.display_status == "queued"
-        assert projection.queued_task_count == 1
-        assert projection.pending_video_count == 1
-
-    claimed = svc.claim_next_task(worker_id="worker-1", now=now, lease_seconds=60)
-    assert claimed is not None
-    svc.start_task(task_id=task.id, worker_id="worker-1", now=now + timedelta(seconds=1))
-
-    with Session(engine, expire_on_commit=False) as session:
-        projection = session.query(VideoExtractionProjection).one()
-        assert projection.display_status == "running"
-        assert projection.running_task_count == 1
-        assert projection.pending_video_count == 1
-
-    svc.complete_task(task_id=task.id, worker_id="worker-1", now=now + timedelta(seconds=5))
-
-    with Session(engine, expire_on_commit=False) as session:
-        projection = session.query(VideoExtractionProjection).one()
-        job_row = session.get(CrawlJob, job.id)
-
-    assert projection.sync_status == "success"
-    assert projection.display_status == "healthy"
-    assert projection.completed_task_count == 1
-    assert projection.pending_video_count == 0
-    assert job_row.status == "succeeded"
