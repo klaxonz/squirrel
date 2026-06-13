@@ -7,9 +7,10 @@ from time import monotonic
 from sqlalchemy.orm import Session
 
 import domains.video.application.services.extraction_projection.store as store
-from infrastructure.database.session import get_session as _default_get_session, register_after_commit as _default_register_after_commit
 from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.video.application.services.extraction_projection.groups import VIDEO_EXTRACT_TASK_TYPE, derive_group_key
+from infrastructure.database.session import get_session as _default_get_session
+from infrastructure.database.session import register_after_commit as _default_register_after_commit
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
 
@@ -35,7 +36,9 @@ class VideoExtractionProjectionService:
     def _get_publish_sync_dashboard_invalidation(self):
         if self._publish_sync_dashboard_invalidation is _UNSET:
             from domains.subscription.application.services.sync import stream_service as sync_dashboard_stream_service
-            self._publish_sync_dashboard_invalidation = sync_dashboard_stream_service.publish_sync_dashboard_invalidation
+            self._publish_sync_dashboard_invalidation = (
+                sync_dashboard_stream_service.sync_dashboard_stream_service.publish_sync_dashboard_invalidation
+            )
         return self._publish_sync_dashboard_invalidation
 
     def _get_sync_dashboard_extract_channel(self):

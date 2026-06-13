@@ -20,11 +20,13 @@ class TaskFactory:
         """Discover and register built-in tasks."""
         try:
             task_classes = module_discovery.import_classes_from_package(
-                'scheduling.tasks', base_class=BaseTask,
+                'workers.scheduling.tasks', base_class=BaseTask, recursive=True,
             )
 
             with self._lock:
                 for task_class in task_classes:
+                    if task_class is BaseTask:
+                        continue
                     task_name = f'{task_class.__module__}.{task_class.__name__}'
                     self._task_classes[task_name] = task_class
                     logger.info('Discovered builtin task: %s', task_name)

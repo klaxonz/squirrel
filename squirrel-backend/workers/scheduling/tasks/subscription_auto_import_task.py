@@ -1,7 +1,6 @@
 import logging
 
-from services import subscription_service
-
+from domains.subscription.application.services.core.import_service import auto_import_missing_subscriptions
 from infrastructure.scheduling.base import BaseTask, TaskRegistry
 
 logger = logging.getLogger(__name__)
@@ -17,7 +16,7 @@ class SubscriptionAutoImportTask(BaseTask):
     @classmethod
     def run(cls):
         try:
-            result = subscription_service.auto_import_missing_subscriptions()
+            result = auto_import_missing_subscriptions()
             logger.info(
                 "Subscription auto import completed: users=%s sites=%s imported=%s skipped=%s failed=%s",
                 result.get("users"),

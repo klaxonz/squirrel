@@ -1,7 +1,6 @@
 import logging
 
-from services import outbox_event_service
-
+import domains.subscription.application.services.outbox.event_service as outbox_event_service
 from infrastructure.scheduling.base import BaseTask, TaskRegistry
 
 logger = logging.getLogger(__name__)

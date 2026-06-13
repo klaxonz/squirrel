@@ -5,7 +5,7 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from infrastructure.scheduling.base import TaskRegistry
-from infrastructure.scheduling.tasks import thumbnail_refresh_task
+from workers.scheduling.tasks import thumbnail_refresh_task
 from workers.scheduling.tasks.thumbnail_refresh_task import ThumbnailRefreshTask
 
 

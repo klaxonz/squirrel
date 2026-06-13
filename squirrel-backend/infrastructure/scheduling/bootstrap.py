@@ -27,29 +27,44 @@ class ScheduledTaskBootstrap:
             if not classes:
                 return
 
-            task_class_names = [f"{task_cls.__module__}.{task_cls.__name__}" for task_cls in classes]
             default_names = [task_cls.__name__[:100] for task_cls in classes]
             system_names = [f"system_{name}"[:100] for name in default_names]
+            candidate_names = default_names + system_names
 
             with self.session_factory() as session:
                 existing_system_tasks = session.query(ScheduledTask).filter(
                     ScheduledTask.task_type == TaskType.SYSTEM.value,
-                    ScheduledTask.task_class.in_(task_class_names),
                 ).all()
                 existing_by_class = {task.task_class: task for task in existing_system_tasks}
+                existing_by_name = {
+                    task.name: task
+                    for task in existing_system_tasks
+                    if task.name in candidate_names
+                }
 
                 existing_names = {
                     name
                     for (name,) in session.query(ScheduledTask.name)
-                    .filter(ScheduledTask.name.in_(default_names + system_names))
+                    .filter(ScheduledTask.name.in_(candidate_names))
                     .all()
                 }
 
                 created_count = 0
+                updated_count = 0
 
                 for task_cls in classes:
                     task_class = f"{task_cls.__module__}.{task_cls.__name__}"
-                    if task_class in existing_by_class:
+                    existing_task = (
+                        existing_by_class.get(task_class)
+                        or existing_by_name.get(task_cls.__name__[:100])
+                        or existing_by_name.get(f"system_{task_cls.__name__[:100]}"[:100])
+                    )
+                    if existing_task:
+                        if existing_task.task_class != task_class:
+                            existing_task.task_class = task_class
+                            existing_task.status = TaskStatus.ENABLED.value
+                            existing_task.last_error = None
+                            updated_count += 1
                         continue
 
                     name = task_cls.__name__
@@ -84,6 +99,8 @@ class ScheduledTaskBootstrap:
 
                 if created_count:
                     logger.info("Bootstrap created %s system scheduled tasks", created_count)
+                if updated_count:
+                    logger.info("Bootstrap updated %s system scheduled task classes", updated_count)
         except Exception as e:
             logger.error("Failed to ensure system tasks: %s", e, exc_info=True)
 

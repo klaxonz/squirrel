@@ -2,10 +2,10 @@ from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.subscription.application.services.core.sync.event_service import SubscriptionSyncEventService
 from domains.subscription.application.services.sync import stream_service as sync_dashboard_stream_service
 from domains.subscription.application.services.sync.stream_service import SyncDashboardStreamService
+from domains.subscription.domain.models.crawl_task import CrawlTask
 
 
 def test_encode_sse_event_uses_named_event_with_json_payload():
@@ -100,7 +100,7 @@ def test_append_event_uses_module_channels_with_default_shaped_stream_service():
 
 
 def test_refresh_projection_for_task_publishes_extract_invalidations():
-    import video.services.extraction_projection.store as projection_store
+    import domains.video.application.services.extraction_projection.store as projection_store
     from domains.video.application.services.extraction_projection.service import VideoExtractionProjectionService
 
     published = []
@@ -108,6 +108,32 @@ def test_refresh_projection_for_task_publishes_extract_invalidations():
         publish_sync_dashboard_invalidation=lambda channel, payload=None: published.append((channel, payload)),
         sync_dashboard_extract_channel=sync_dashboard_stream_service.SYNC_DASHBOARD_EXTRACT_CHANNEL,
     )
+
+    with patch.object(projection_store, 'refresh_projection_group'):
+        task = CrawlTask(
+            job_id=1,
+            task_type="video_extract",
+            site="youtube",
+            subscription_id=9,
+            payload={"run_id": "run-9"},
+        )
+        svc.refresh_projection_for_task(task, session=object())
+
+    assert (sync_dashboard_stream_service.SYNC_DASHBOARD_EXTRACT_CHANNEL, {"run_id": "run-9"}) in published
+
+
+def test_refresh_projection_for_task_uses_default_stream_service_invalidation(monkeypatch):
+    import domains.video.application.services.extraction_projection.store as projection_store
+    from domains.video.application.services.extraction_projection.service import VideoExtractionProjectionService
+
+    published = []
+    monkeypatch.setattr(
+        sync_dashboard_stream_service.sync_dashboard_stream_service,
+        'publish_sync_dashboard_invalidation',
+        lambda channel, payload=None: published.append((channel, payload)),
+    )
+
+    svc = VideoExtractionProjectionService()
 
     with patch.object(projection_store, 'refresh_projection_group'):
         task = CrawlTask(

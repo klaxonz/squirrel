@@ -5,8 +5,8 @@ and cleans up expired data.
 """
 import logging
 
-from infrastructure.scheduling.base import BaseTask, TaskRegistry
 from infrastructure.observability.metrics import metrics_service
+from infrastructure.scheduling.base import BaseTask, TaskRegistry
 
 logger = logging.getLogger(__name__)
 

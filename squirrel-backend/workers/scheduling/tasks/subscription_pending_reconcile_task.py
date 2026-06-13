@@ -1,7 +1,6 @@
 import logging
 
-from services import subscription_sync_state_service
-
+import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 from infrastructure.scheduling.base import BaseTask, TaskRegistry
 
 logger = logging.getLogger(__name__)

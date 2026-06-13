@@ -1,4 +1,4 @@
-from infrastructure.database.session import get_session
+from infrastructure.database import session as database
 
 
 def get_session():
