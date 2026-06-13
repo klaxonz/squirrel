@@ -141,7 +141,8 @@ export function useRssEntries(options: {
     }
     const fetched = response.data?.data || []
     totalEntries.value = (response.data as any)?.total || 0
-    entries.value.push(...fetched)
+    const existingIds = new Set(entries.value.map((entry) => String(entry.id)))
+    entries.value.push(...fetched.filter((entry) => !existingIds.has(String(entry.id))))
   }
 
   const recordRecentlyViewed = (entry: RssEntry) => {
@@ -258,8 +259,9 @@ export function useRssEntries(options: {
       return
     }
     options?.onStatus?.(`已更新 ${response.data?.updated ?? targets.length} 篇文章`)
-    if (targets.some(shouldReloadAfterEntryUpdate)) {
-      await loadEntries(true)
+    if (activeFilter.value === 'unread' && isRead) {
+      totalEntries.value = Math.max(0, totalEntries.value - targets.length)
+      page.value = 0
     }
   }
 
