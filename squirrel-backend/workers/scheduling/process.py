@@ -3,8 +3,8 @@ import time
 
 from application.lifespan import bootstrap_runtime, create_shutdown_event
 from infrastructure.scheduling.lifecycle import scheduler_start, scheduler_stop
-from shared.kernel.system.config import SystemConfigService
-from shared.kernel.system.constants import SYS_ENABLE_SCHEDULER
+from shared_kernel.system.config import SystemConfigService
+from shared_kernel.system.constants import SYS_ENABLE_SCHEDULER
 
 logger = logging.getLogger(__name__)
 

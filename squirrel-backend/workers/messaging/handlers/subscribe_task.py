@@ -7,7 +7,7 @@ from typing import Any
 
 from infrastructure.messaging.framework.decorators import queue_listener
 from infrastructure.messaging.models.message import Message
-from shared.kernel.system import constants
+from shared_kernel.system import constants
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
 from domains.subscription.application.services.core.import_service import handle_subscribe_request
