@@ -216,8 +216,10 @@ class VideoListService:
             if exhausted:
                 break
 
-        # 是否还有下一页：Meili 没到底（last_cursor 非 None）且本轮收集满了
-        has_more = last_cursor is not None and len(collected_video_ids) >= page_size
+        # 是否还有下一页：只看 Meili 是否还有更多（last_cursor 非 None）。
+        # 不依赖 collected 数量——collected 不足 page_size 只说明本页较小（category 命中率低），
+        # 不代表 Meili 没数据了。若 Meili 已到底（exhausted），last_cursor 为 None。
+        has_more = last_cursor is not None
         page_cursor = last_cursor if has_more else None
 
         # 只取 page_size 个，hydration
