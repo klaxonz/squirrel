@@ -134,6 +134,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         try:
             from infrastructure.search.meili import ensure_videos_index
             ensure_videos_index()
+            # 预热 MeiliVideoIndexer 单例（建立 client/index 对象），避免首个请求的初始化开销
+            from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
+            get_meili_video_indexer()
             _log_lifecycle_step("Startup", 6, STARTUP_TOTAL_STEPS, "Meilisearch index ready")
         except Exception:  # startup/shutdown boundary -- fail-fast on missing Meilisearch
             logger.exception("Startup [6/%s] Failed to ensure Meilisearch index", STARTUP_TOTAL_STEPS)
