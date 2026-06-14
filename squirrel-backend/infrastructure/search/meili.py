@@ -13,10 +13,12 @@ _client: meilisearch.Client | None = None
 
 # videos 索引字段配置：
 # - searchable：中文文本召回的字段（Meilisearch 内置中文分词）
-# - filterable：domain 用于精确匹配（与 legacy 的 site 过滤等价）
-# 权限/分类/排序/分页一律回 PG（user_video_feed join），不进 Meilisearch
+# - filterable：结构化过滤下沉到 Meili 的字段
+#   domain/subscription_names/creator_names 用于精确/数组 contains 匹配
+#   duration/publish_ts 用于数值范围过滤（时长档位、时间范围）
+# 权限/分类(阅读状态)/排序/分页一律回 PG（实时 join），不进 Meilisearch
 _VIDEOS_SEARCHABLE_ATTRIBUTES = ['title', 'description', 'subscription_names', 'creator_names']
-_VIDEOS_FILTERABLE_ATTRIBUTES = ['domain']
+_VIDEOS_FILTERABLE_ATTRIBUTES = ['domain', 'duration', 'publish_ts', 'subscription_names', 'creator_names']
 
 
 def get_meili_client() -> meilisearch.Client:
