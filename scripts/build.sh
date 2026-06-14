@@ -18,8 +18,8 @@ BASE_BUILD_TAG="$BASE_IMAGE_NAME:build"
 PLATFORM="linux/amd64,linux/arm64"
 
 # 获取版本号
-VERSION=$(grep "^__version__[[:space:]]*=" squirrel-backend/__init__.py | awk -F "'" '{print $2}')
-CF_BYPASS_VERSION=$(grep "^__version__[[:space:]]*=" squirrel-cf-bypass/src/squirrel_cf_bypass/__init__.py | awk -F "'" '{print $2}')
+VERSION=$(grep "^__version__[[:space:]]*=" squirrel-backend/__init__.py | awk -F "['\"]" '{print $2}')
+CF_BYPASS_VERSION=$(grep "^__version__[[:space:]]*=" squirrel-cf-bypass/src/squirrel_cf_bypass/__init__.py | awk -F "['\"]" '{print $2}')
 MUSIC_API_VERSION=$(grep '"version"' squirrel-music-api/package.json | head -1 | awk -F '"' '{print $4}')
 
 if [ -z "$VERSION" ]; then
