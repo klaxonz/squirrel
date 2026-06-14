@@ -210,3 +210,32 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # ========================================
+  # Meilisearch 服务（视频全文检索引擎）
+  # ========================================
+  # 内置中文分词，用于替代 video 表的 ilike '%term%' 全表扫描搜索。
+  # 中文分词需要 v1.6 及以上版本，如需升级修改下方 image tag 即可。
+  # 当前阶段仅部署服务，应用层接入在后续实施。
+  meilisearch:
+    image: getmeili/meilisearch:v1.12.0
+    container_name: squirrel-meilisearch
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+      - MEILI_HOST=0.0.0.0:7700
+      - MEILI_ENV=${MEILI_ENV:-development}
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-}
+      - MEILI_NO_ANALYTICS=true
+    ports:
+      - "${MEILISEARCH_PORT:-7700}:7700"
+    volumes:
+      - ./meilisearch/data:/meili_data
+    networks:
+      - squirrel-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:7700/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
