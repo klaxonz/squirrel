@@ -147,8 +147,11 @@ class VideoListQueryService:
             special=special,
         )
 
-        # 召回为空（搜索词无匹配，或仅结构化过滤但 Meili 未配置）→ 返回空结果集
-        if not recalled_ids:
+        # recalled_ids 语义：
+        #   None  = 无文本/结构化过滤（纯 category/nsfw 浏览），不限 video_id，靠 join+category 过滤
+        #   []    = 召回为空（搜索词无匹配），返回空结果集
+        #   [... ] = 召回集合，加 IN 过滤
+        if recalled_ids is not None and not recalled_ids:
             return (
                 select(
                     literal(0).label("video_id"),
@@ -172,9 +175,12 @@ class VideoListQueryService:
             .join(active_subscriptions, active_subscriptions.c.subscription_id == SubscriptionVideo.subscription_id)
             .where(
                 Video.is_deleted.is_(False),
-                Video.id.in_(recalled_ids),
             )
         )
+
+        # 有召回集合时限制 video_id 范围；None 表示无文本/结构化过滤，不限范围
+        if recalled_ids is not None:
+            query_stmt = query_stmt.where(Video.id.in_(recalled_ids))
 
         if content_type != "all":
             query_stmt = query_stmt.where(active_subscriptions.c.subscription_type == content_type)
