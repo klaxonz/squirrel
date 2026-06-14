@@ -1,14 +1,14 @@
 from typing import Any
 
-from sqlalchemy import and_, case, desc, func, select
+from sqlalchemy import case, desc, func, select
 from sqlalchemy.orm import Session
 
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from domains.video.domain.junctions.video_creator import VideoCreator
 from domains.subscription.domain.models.subscription import Subscription
-from domains.user.domain.models.user_video_feed import UserVideoFeed
 from domains.user.application.services.search.suggestions.formatting import dedupe_pool_items, serialize_video_meta
-from domains.user.application.services.search.suggestions.predicates import feed_visibility_predicates, subscription_visibility_predicates
+from domains.user.application.services.search.suggestions.predicates import subscription_visibility_predicates
+from domains.video.domain.junctions.subscription_video import SubscriptionVideo
+from domains.video.domain.junctions.video_creator import VideoCreator
 from domains.video.domain.models.creator import Creator
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_history import VideoHistory
@@ -34,19 +34,24 @@ def match_rank(column: Any, query: str) -> Any:
         (lowered_column.like(f'{query}%'), 1),
         else_=2,
     )
+
+
 def build_video_pool(session: Session, *, user_id: int, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
+    """已订阅视频 pool：实时 join（UserSubscription × SubscriptionVideo × Video）。"""
     rows = session.execute(
         select(
             Video.title.label('value'),
-            UserVideoFeed.domain.label('meta'),
+            Video.domain.label('meta'),
         )
-        .select_from(UserVideoFeed)
-        .join(Video, Video.id == UserVideoFeed.video_id)
+        .select_from(Video)
+        .join(SubscriptionVideo, SubscriptionVideo.video_id == Video.id)
+        .join(UserSubscription, UserSubscription.subscription_id == SubscriptionVideo.subscription_id)
+        .join(Subscription, Subscription.id == SubscriptionVideo.subscription_id)
         .where(
             Video.is_deleted.is_(False),
-            *feed_visibility_predicates(user_id, effective_nsfw),
+            *subscription_visibility_predicates(user_id, effective_nsfw),
         )
-        .order_by(desc(UserVideoFeed.publish_date), desc(UserVideoFeed.video_created_at), desc(Video.id))
+        .order_by(desc(Video.publish_date), desc(Video.created_at), desc(Video.id))
         .limit(limit),
     ).all()
 
@@ -86,15 +91,25 @@ def build_subscription_pool(session: Session, *, user_id: int, effective_nsfw: s
 
 
 def build_creator_pool(session: Session, *, user_id: int, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
+    """已订阅视频里的创作者 pool：先取最近 CREATOR_FEED_WINDOW 个已订阅视频，再 join creator。
+
+    recent_feed 子查询改用实时 join（不再查 user_video_feed 投影表）。
+    """
     recent_feed = (
         select(
-            UserVideoFeed.video_id,
-            UserVideoFeed.publish_date,
-            UserVideoFeed.video_created_at,
+            Video.id.label('video_id'),
+            Video.publish_date.label('publish_date'),
+            Video.created_at.label('video_created_at'),
         )
-        .select_from(UserVideoFeed)
-        .where(*feed_visibility_predicates(user_id, effective_nsfw))
-        .order_by(desc(UserVideoFeed.publish_date), desc(UserVideoFeed.video_created_at), desc(UserVideoFeed.video_id))
+        .select_from(Video)
+        .join(SubscriptionVideo, SubscriptionVideo.video_id == Video.id)
+        .join(UserSubscription, UserSubscription.subscription_id == SubscriptionVideo.subscription_id)
+        .join(Subscription, Subscription.id == SubscriptionVideo.subscription_id)
+        .where(
+            Video.is_deleted.is_(False),
+            *subscription_visibility_predicates(user_id, effective_nsfw),
+        )
+        .order_by(desc(Video.publish_date), desc(Video.created_at), desc(Video.id))
         .limit(CREATOR_FEED_WINDOW)
         .subquery('recent_feed')
     )
@@ -125,6 +140,7 @@ def build_creator_pool(session: Session, *, user_id: int, effective_nsfw: str, l
 
 
 def build_history_pool(session: Session, *, user_id: int, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
+    """观看历史 pool：nsfw 过滤改用实时 join（UserSubscription.is_nsfw）。"""
     if effective_nsfw == 'blocked':
         return []
 
@@ -142,17 +158,22 @@ def build_history_pool(session: Session, *, user_id: int, effective_nsfw: str, l
         .limit(limit * 2)
     )
 
-    rows = history_query
     if effective_nsfw in {'yes', 'no'}:
+        nsfw_value = effective_nsfw == 'yes'
         rows = session.execute(
-            history_query.join(UserVideoFeed, and_(
-                UserVideoFeed.user_id == user_id,
-                UserVideoFeed.video_id == VideoHistory.video_id,
-                UserVideoFeed.is_nsfw.is_(effective_nsfw == 'yes'),
-            )),
+            history_query.join(SubscriptionVideo, SubscriptionVideo.video_id == Video.id)
+            .join(
+                UserSubscription,
+                UserSubscription.subscription_id == SubscriptionVideo.subscription_id,
+            )
+            .where(
+                UserSubscription.user_id == user_id,
+                UserSubscription.is_deleted.is_(False),
+                UserSubscription.is_nsfw.is_(nsfw_value),
+            ),
         ).all()
     else:
-        rows = session.execute(rows).all()
+        rows = session.execute(history_query).all()
 
     return dedupe_pool_items(
         {
@@ -163,6 +184,3 @@ def build_history_pool(session: Session, *, user_id: int, effective_nsfw: str, l
         }
         for row in rows
     )
-
-
-

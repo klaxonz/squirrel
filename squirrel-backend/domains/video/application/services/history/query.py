@@ -4,12 +4,25 @@ from sqlalchemy import and_, exists, false, func, select
 from sqlalchemy.orm import Session
 
 import infrastructure.site_catalog.url as url_helper
-from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from infrastructure.site_catalog.catalog import SiteCatalog
+from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
+from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_history import VideoHistory
-from domains.video.application.services.search.query import build_video_search_clauses
+from infrastructure.config.settings import settings
+from infrastructure.site_catalog.catalog import SiteCatalog
+
+
+def _recall_video_ids_for_history(query: str | None) -> list[int]:
+    """有搜索词时用 Meili 召回 video_id；无搜索词返回空（history 走全量）。"""
+    if not query or not query.strip() or not settings.MEILISEARCH_URL:
+        return []
+    try:
+        return get_meili_video_indexer().recall(query)
+    except Exception:
+        # 召回失败：history 搜索降级为无搜索词（返回空集合会被 IN 过滤成空结果，
+        # 故这里返回空列表仅在 query 非空时意味着"搜不到"，符合失败语义）
+        return []
 
 
 def build_history_conditions(user_id: int, filters: dict, effective_nsfw: str) -> list[Any] | None:
@@ -20,14 +33,14 @@ def build_history_conditions(user_id: int, filters: dict, effective_nsfw: str) -
         ),
     ]
 
+    # 搜索词：Meili 召回 video_id 集合，加 IN 过滤（替代旧的 build_video_search_clauses EXISTS 子查询）
     if filters.get('query'):
-        search_clauses = build_video_search_clauses(
-            user_id=user_id,
-            query=filters['query'],
-            video_id_column=VideoHistory.video_id,
-        )
-        if search_clauses:
-            conditions.extend(search_clauses)
+        recalled = _recall_video_ids_for_history(filters['query'])
+        if not recalled:
+            # 召回空 = 无匹配，强制返回空结果
+            conditions.append(false())
+        else:
+            conditions.append(VideoHistory.video_id.in_(recalled))
 
     if filters.get('video_id'):
         conditions.append(VideoHistory.video_id == filters['video_id'])
@@ -40,6 +53,7 @@ def build_history_conditions(user_id: int, filters: dict, effective_nsfw: str) -
     if effective_nsfw == 'blocked':
         conditions.append(false())
     elif effective_nsfw != 'all':
+        # nsfw 过滤改用实时 join（UserSubscription.is_nsfw），不再依赖 user_video_feed
         nsfw_history_exists = exists(
             select(1)
             .select_from(SubscriptionVideo)
@@ -50,6 +64,7 @@ def build_history_conditions(user_id: int, filters: dict, effective_nsfw: str) -
             .where(
                 SubscriptionVideo.video_id == VideoHistory.video_id,
                 UserSubscription.user_id == user_id,
+                UserSubscription.is_deleted.is_(False),
                 UserSubscription.is_nsfw,
             ),
         )
@@ -58,6 +73,7 @@ def build_history_conditions(user_id: int, filters: dict, effective_nsfw: str) -
         elif effective_nsfw == 'no':
             conditions.append(~nsfw_history_exists)
     if filters.get('site'):
+        # 统一走 SiteCatalog.resolve_domains（修复预先存在的不一致：history 原先用原始 site 字符串）
         resolved_domains = SiteCatalog.resolve_domains(filters['site'])
         normalized_domains = [
             domain

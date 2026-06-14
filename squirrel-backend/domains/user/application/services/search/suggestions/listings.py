@@ -3,14 +3,13 @@ from typing import Any
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
-from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from domains.video.domain.junctions.video_creator import VideoCreator
 from domains.subscription.domain.models.subscription import Subscription
-from domains.user.domain.models.user_video_feed import UserVideoFeed
 from domains.user.application.services.search.suggestions.formatting import serialize_rows, serialize_video_meta
 from domains.user.application.services.search.suggestions.pools import match_rank
 from domains.user.application.services.search.suggestions.predicates import apply_nsfw_visibility
+from domains.video.domain.junctions.subscription_video import SubscriptionVideo
+from domains.video.domain.junctions.video_creator import VideoCreator
 from domains.video.domain.models.creator import Creator
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_history import VideoHistory
@@ -56,29 +55,31 @@ def list_video_suggestions(session: Session, *, user_id: int, query: str, effect
 
 
 def list_feed_video_suggestions(session: Session, *, user_id: int, query: str, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
+    """已订阅视频的前缀补全：实时 join（不再查 user_video_feed 投影表）。
+
+    与 list_video_suggestions 同构，只是 nsfw 走 UserSubscription.is_nsfw（feed 语义）。
+    """
     conditions: list[Any] = [
-        UserVideoFeed.user_id == user_id,
+        UserSubscription.user_id == user_id,
+        UserSubscription.is_deleted.is_(False),
+        Subscription.is_deleted.is_(False),
         Video.is_deleted.is_(False),
         func.lower(Video.title).like(f'%{query}%'),
     ]
-
-    if effective_nsfw == 'blocked':
-        return []
-    if effective_nsfw == 'yes':
-        conditions.append(UserVideoFeed.is_nsfw.is_(True))
-    elif effective_nsfw == 'no':
-        conditions.append(UserVideoFeed.is_nsfw.is_(False))
+    apply_nsfw_visibility(conditions, effective_nsfw)
 
     rows = session.execute(
         select(
             Video.title.label('value'),
-            UserVideoFeed.domain.label('meta'),
+            Video.domain.label('meta'),
             match_rank(Video.title, query).label('match_rank'),
         )
-        .select_from(UserVideoFeed)
-        .join(Video, Video.id == UserVideoFeed.video_id)
+        .select_from(Video)
+        .join(SubscriptionVideo, SubscriptionVideo.video_id == Video.id)
+        .join(UserSubscription, UserSubscription.subscription_id == SubscriptionVideo.subscription_id)
+        .join(Subscription, Subscription.id == SubscriptionVideo.subscription_id)
         .where(*conditions)
-        .order_by('match_rank', desc(UserVideoFeed.publish_date), desc(UserVideoFeed.video_created_at), desc(Video.id))
+        .order_by('match_rank', desc(Video.publish_date), desc(Video.created_at), desc(Video.id))
         .limit(limit * 3),
     ).all()
 
@@ -241,6 +242,3 @@ def list_history_suggestions(session: Session, *, user_id: int, query: str, effe
         for row in rows
     ]
     return serialize_rows(normalized_rows, 'history')[:limit]
-
-
-
