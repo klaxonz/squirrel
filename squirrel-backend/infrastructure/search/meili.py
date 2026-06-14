@@ -18,9 +18,11 @@ _client: meilisearch.Client | None = None
 #   duration/publish_ts 用于数值范围过滤（时长档位、时间范围）
 # 权限/分类(阅读状态)/排序/分页一律回 PG（实时 join），不进 Meilisearch
 _VIDEOS_SEARCHABLE_ATTRIBUTES = ['title', 'description', 'subscription_names', 'creator_names']
-_VIDEOS_FILTERABLE_ATTRIBUTES = ['domain', 'duration', 'publish_ts', 'subscription_names', 'creator_names']
-# 可排序字段：publish_ts 用于纯浏览场景的 placeholder search 召回排序（最新优先）
-_VIDEOS_SORTABLE_ATTRIBUTES = ['publish_ts']
+_VIDEOS_FILTERABLE_ATTRIBUTES = ['domain', 'duration', 'publish_ts', 'id', 'subscription_names', 'creator_names']
+# 可排序字段：
+#   publish_ts 用于纯浏览场景的 placeholder search 召回排序（最新优先）
+#   id 作为 keyset 复合游标的次级排序键（保证 publish_ts 相同时的全序确定）
+_VIDEOS_SORTABLE_ATTRIBUTES = ['publish_ts', 'id']
 
 
 def get_meili_client() -> meilisearch.Client:

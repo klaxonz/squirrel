@@ -124,10 +124,10 @@ class MeiliVideoIndexer:
             'creator_names': [name for name in creator_names if name],
             # duration: 秒，None/缺失统一存 0（避免范围过滤漏掉短/未知时长视频）
             'duration': int(video.duration or 0),
+            # publish_ts: unix 秒，无 publish_date 时存 0（排到 desc 排序最底部，且参与正常游标分页，
+            # 避免 null/缺失字段在 keyset 游标过滤里被排除导致这些视频永远看不到）
+            'publish_ts': int(video.publish_date.timestamp()) if video.publish_date is not None else 0,
         }
-        # publish_ts: unix 秒，无 publish_date 时省略该字段（Meili range 过滤会自动排除缺失字段）
-        if video.publish_date is not None:
-            doc['publish_ts'] = int(video.publish_date.timestamp())
         return doc
 
     def upsert(self, video_id: int) -> None:
