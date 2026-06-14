@@ -2,14 +2,16 @@
 
 设计要点：
 - after_commit 直写失败仅告警，不影响主流程（写入路径不阻塞）；定期全量重建兜底。
-- 召回只返回 video_id 集合，权限/分类(阅读状态)/排序/分页交给 PG 实时 join
+- 召回只返回 video_id 集合，权限/分类(阅读状态)过滤交给 PG 实时 join
   （UserSubscription × SubscriptionVideo × Video），不进 Meilisearch。
-- 文档把关联频道名/演员名合并进来，实现"跨表搜索"——这样搜索时只需查 Video 一张表，
-  不再需要 legacy 路径那套 EXISTS 相关子查询。
+- 文档把关联频道名/演员名合并进来，实现"跨表搜索"。
 - recall() 支持结构化过滤下沉：domain(数组 IN)、duration(数值范围)、time_range(转 publish_ts 范围)。
+- recall_page() 支持 keyset 游标分页：浏览场景按 publish_ts:desc, id:desc 全序召回一页，
+  PG 在该页上做权限/category 过滤；不足一页时由 service 层循环召回补足。
 """
 from __future__ import annotations
 
+import base64
 import logging
 from datetime import datetime, timedelta
 from typing import Any
@@ -83,6 +85,25 @@ def _build_recall_filter(
     if cutoff is not None:
         filters.append(f'publish_ts >= {cutoff}')
     return filters
+
+
+def encode_cursor(publish_ts: int, video_id: int) -> str:
+    """把 (publish_ts, id) 编码成对前端透明的 base64 字符串。"""
+    raw = f'{publish_ts}:{video_id}'.encode()
+    return base64.urlsafe_b64encode(raw).decode('ascii').rstrip('=')
+
+
+def decode_cursor(cursor: str) -> tuple[int, int] | None:
+    """解码游标，返回 (publish_ts, video_id)；格式非法返回 None。"""
+    try:
+        # base64 urlsafe 可能缺 padding，补齐
+        padded = cursor + '=' * (-len(cursor) % 4)
+        raw = base64.urlsafe_b64decode(padded.encode('ascii')).decode('utf-8')
+        ts_str, id_str = raw.split(':', 1)
+        return int(ts_str), int(id_str)
+    except (ValueError, IndexError, TypeError):
+        logger.warning('invalid cursor ignored: %s', cursor)
+        return None
 
 
 class MeiliVideoIndexer:
@@ -241,6 +262,64 @@ class MeiliVideoIndexer:
         if len(ids) >= limit:
             logger.warning('meili recall hit limit=%d (可能丢结果，请调高 limit)', limit)
         return ids
+
+    def recall_page(
+        self,
+        *,
+        domains: list[str] | None = None,
+        time_range: str = 'all',
+        duration: str = 'all',
+        cursor: str | None = None,
+        limit: int = 50,
+    ) -> tuple[list[int], str | None]:
+        """keyset 游标分页召回（浏览场景，无文本匹配）。
+
+        - sort: publish_ts:desc, id:desc（全序，保证游标稳定）
+        - cursor 非空：filter 追加复合游标条件 publish_ts<X OR (publish_ts=X AND id<Y)
+        - 返回 (video_ids, next_cursor)；next_cursor 为 None 表示无更多
+        - 失败抛出，由调用方降级
+
+        注意：limit 应略大于 page_size（如 page_size*2），给 PG 权限/category 过滤留缓冲，
+        由 service 层循环补足到 page_size。
+        """
+        filters = _build_recall_filter(domains=domains, time_range=time_range, duration=duration)
+        if cursor:
+            decoded = decode_cursor(cursor)
+            if decoded is not None:
+                cursor_ts, cursor_id = decoded
+                # 复合游标：严格小于 (cursor_ts, cursor_id) 的所有文档
+                filters.append(f'(publish_ts < {cursor_ts} OR (publish_ts = {cursor_ts} AND id < {cursor_id}))')
+
+        opt: dict[str, Any] = {
+            'limit': limit,
+            'sort': ['publish_ts:desc', 'id:desc'],
+        }
+        if filters:
+            opt['filter'] = filters
+
+        result = self._index.search('', opt)  # placeholder search = 浏览
+        hits = result.get('hits', []) if isinstance(result, dict) else getattr(result, 'hits', [])
+
+        ids: list[int] = []
+        last_ts: int | None = None
+        last_id: int | None = None
+        for hit in hits:
+            if not isinstance(hit, dict):
+                continue
+            raw_id = hit.get('id')
+            try:
+                vid = int(raw_id)
+            except (TypeError, ValueError):
+                continue
+            ids.append(vid)
+            last_ts = int(hit.get('publish_ts') or 0)
+            last_id = vid
+
+        # 有下一页的判定：本次召回满 limit，且拿到了最后一条的游标
+        next_cursor = None
+        if len(ids) >= limit and last_ts is not None and last_id is not None:
+            next_cursor = encode_cursor(last_ts, last_id)
+        return ids, next_cursor
 
 
 _indexer: MeiliVideoIndexer | None = None
