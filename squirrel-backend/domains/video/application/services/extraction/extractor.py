@@ -6,14 +6,14 @@ Uses the new Pipeline architecture for video extraction.
 import logging
 import re
 
-import infrastructure.site_catalog.url as url_helper
 import domains.video.application.services.extraction.progress_service as progress_service
+import infrastructure.site_catalog.url as url_helper
+from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
 from infrastructure.extraction.contracts import ExtractionResult, ExtractionTask, TaskPriority
 from infrastructure.extraction.handlers.video_handler import VideoExtractionHandler
 from infrastructure.extraction.task_manager import TaskManager
 from infrastructure.observability.collector.instance import metrics
 from infrastructure.site_catalog.catalog import SiteCatalog
-from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
 
 logger = logging.getLogger(__name__)
 

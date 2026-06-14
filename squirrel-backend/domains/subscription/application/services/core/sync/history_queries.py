@@ -6,13 +6,15 @@ from typing import Any
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
+from domains.subscription.application.services.core.sync.constants import FEED_RECENT_PHASES, TERMINAL_RUN_STATUSES
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from infrastructure.site_catalog.catalog import SiteCatalog
 from domains.subscription.domain.models.subscription import Subscription
 from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
 from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
-from domains.subscription.domain.models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
-from domains.subscription.application.services.core.sync.constants import FEED_RECENT_PHASES, TERMINAL_RUN_STATUSES
+from domains.subscription.domain.models.subscription_sync_subscription_projection import (
+    SubscriptionSyncSubscriptionProjection,
+)
+from infrastructure.site_catalog.catalog import SiteCatalog
 
 
 def base_run_query(user_id: int) -> Any:

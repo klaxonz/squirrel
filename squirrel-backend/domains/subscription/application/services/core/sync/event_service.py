@@ -6,14 +6,14 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from infrastructure.database.session import get_session, register_after_commit
-from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
 from domains.subscription.application.services.core.sync.projection.service import subscription_sync_projection_service
 from domains.subscription.application.services.core.sync.run_service import subscription_sync_run_service
 from domains.subscription.application.services.sync.channels import (
     SYNC_DASHBOARD_FEED_CHANNEL,
     SYNC_DASHBOARD_RUN_CHANNEL,
 )
+from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
+from infrastructure.database.session import get_session, register_after_commit
 
 
 @dataclass

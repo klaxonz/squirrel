@@ -6,9 +6,9 @@ from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from infrastructure.site_catalog.url import resolve_site
 from domains.subscription.domain.models.subscription import Subscription
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
+from infrastructure.site_catalog.url import resolve_site
 
 from ._intervals import SYNC_BATCH_SIZE
 from .session import get_session

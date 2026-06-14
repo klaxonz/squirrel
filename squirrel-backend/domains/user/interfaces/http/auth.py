@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Request, Response
 
+from domains.user.application.services.service import UserService
 from infrastructure.auth.jwt import clear_auth_cookie
 from shared_kernel.application import response
-from domains.user.application.services.service import UserService
 
 from .auth_cookie import issue_auth_cookie, serialize_user
 from .dependencies import get_user_service

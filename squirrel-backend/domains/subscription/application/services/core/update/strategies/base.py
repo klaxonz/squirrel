@@ -4,10 +4,10 @@ Each site can implement its own update strategy
 from abc import ABC, abstractmethod
 from typing import Any
 
-from infrastructure.observability.collector.instance import metrics
-from infrastructure.site_catalog.url import resolve_site
 from domains.subscription.application.services.core.sync.event_service import SyncEventInput, append_event
 from domains.subscription.application.services.core.sync.run_service import SyncEventType, SyncPhase, SyncRunStatus
+from infrastructure.observability.collector.instance import metrics
+from infrastructure.site_catalog.url import resolve_site
 
 from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult
 

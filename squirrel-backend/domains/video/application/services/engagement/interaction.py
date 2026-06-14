@@ -1,7 +1,7 @@
 from sqlalchemy import select
 
-from infrastructure.database.session import get_session
 from domains.video.domain.models.video_interaction import VideoInteraction
+from infrastructure.database.session import get_session
 
 
 class VideoInteractionService:

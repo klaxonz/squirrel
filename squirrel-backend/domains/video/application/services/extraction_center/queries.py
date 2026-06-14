@@ -4,10 +4,10 @@ from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from infrastructure.search.query import escape_ilike
-from infrastructure.site_catalog.catalog import SiteCatalog
 from domains.subscription.domain.models.subscription import Subscription
 from domains.video.domain.models.video_extraction_projection import VideoExtractionProjection
+from infrastructure.search.query import escape_ilike
+from infrastructure.site_catalog.catalog import SiteCatalog
 
 
 def base_projection_query(

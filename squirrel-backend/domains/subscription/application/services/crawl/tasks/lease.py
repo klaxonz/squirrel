@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 from sqlalchemy import case, or_, select
 from sqlalchemy.orm import Session
 
-from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.subscription.application.services.crawl.tasks.models import CrawlTaskStatus
+from domains.subscription.domain.models.crawl_task import CrawlTask
 
 
 def claim_next_task(

@@ -1,8 +1,8 @@
 import logging
 
-from infrastructure.scheduling.base import BaseTask, TaskRegistry
 from domains.subscription.application.services.core.update.models import UpdateMode, UpdateTrigger
 from domains.subscription.application.services.core.update.scheduler import scheduler
+from infrastructure.scheduling.base import BaseTask, TaskRegistry
 
 logger = logging.getLogger(__name__)
 

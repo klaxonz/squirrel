@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import Any
 
-from domains.subscription.interfaces.dto.dto.sync_dashboard_dto import SyncDashboardItemDto
 from domains.subscription.application.services.core.sync.constants import DUE_SOON_WINDOW
+from domains.subscription.interfaces.dto.dto.sync_dashboard_dto import SyncDashboardItemDto
 
 
 def summarize_error(message: str | None) -> str | None:

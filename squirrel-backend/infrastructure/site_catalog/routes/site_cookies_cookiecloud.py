@@ -2,8 +2,8 @@ import logging
 
 from fastapi import APIRouter, Query
 
-from shared_kernel.application.response import error, success
 from infrastructure.site_catalog.cookiecloud import CookieCloudSyncError, sync_cookiecloud_to_site_files
+from shared_kernel.application.response import error, success
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

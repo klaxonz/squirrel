@@ -4,8 +4,12 @@ import logging
 from datetime import datetime
 
 import domains.video.application.services.extraction_projection.service as video_extraction_projection_service
-from domains.subscription.application.services.core.update.task_progress_service import SubscriptionSyncTaskProgressService
-from domains.subscription.application.services.crawl.executors.subscription_sync_executor import execute_subscription_sync_task
+from domains.subscription.application.services.core.update.task_progress_service import (
+    SubscriptionSyncTaskProgressService,
+)
+from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
+    execute_subscription_sync_task,
+)
 from domains.subscription.application.services.crawl.executors.video_extract_executor import execute_video_extract_task
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
 from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskNotFoundError, CrawlTaskOwnershipError

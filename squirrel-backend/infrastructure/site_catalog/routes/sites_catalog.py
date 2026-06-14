@@ -4,10 +4,10 @@ import mimetypes
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import FileResponse
 
-from shared_kernel.application.response import error, param_error, success
 from infrastructure.site_catalog.icons import resolve_site_icon_path
 from infrastructure.site_catalog.login_status import SiteLoginStatusService
 from infrastructure.site_catalog.service import SiteCatalogService
+from shared_kernel.application.response import error, param_error, success
 
 from .sites_dependencies import get_catalog_service, get_login_service
 

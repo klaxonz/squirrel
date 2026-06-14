@@ -6,9 +6,9 @@ from datetime import datetime
 from sqlalchemy import select
 
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
-from infrastructure.database.session import get_session
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import Subscription
+from infrastructure.database.session import get_session
 
 from .commands import SubscriptionSyncCommandService
 from .models import (

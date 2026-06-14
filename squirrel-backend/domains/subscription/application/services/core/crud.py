@@ -2,9 +2,9 @@ from typing import Any
 
 from sqlalchemy import select
 
-from infrastructure.database.session import get_session
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import Subscription
+from infrastructure.database.session import get_session
 
 
 class SubscriptionCrudService:

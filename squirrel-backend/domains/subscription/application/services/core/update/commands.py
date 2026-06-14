@@ -5,18 +5,22 @@ import logging
 from sqlalchemy import select
 
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
-from infrastructure.database.session import get_session
-from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from infrastructure.site_catalog.url import resolve_site
 from domains.subscription.application.services.core.update.command_events import (
     SubscriptionSyncCommandEventPublisher,
     subscription_sync_command_event_publisher,
 )
-from domains.subscription.application.services.core.update.command_payloads import build_command, build_task_payload, resolve_priority
+from domains.subscription.application.services.core.update.command_payloads import (
+    build_command,
+    build_task_payload,
+    resolve_priority,
+)
 from domains.subscription.application.services.core.update.command_preflight import resolve_preflight_result
 from domains.subscription.application.services.core.update.queueing import SubscriptionSyncQueuePlanner
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
 from domains.subscription.application.services.crawl.tasks.task_types import resolve_subscription_sync_task_type
+from domains.subscription.domain.junctions.user_subscription import UserSubscription
+from infrastructure.database.session import get_session
+from infrastructure.site_catalog.url import resolve_site
 
 from .models import (
     SubscriptionDirectRunResult,
@@ -178,7 +182,9 @@ class SubscriptionSyncCommandService:
             direct=True,
         )
 
-        from domains.subscription.application.services.crawl.executors.subscription_sync_executor import execute_subscription_sync_payload
+        from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
+            execute_subscription_sync_payload,
+        )
 
         try:
             sync_result = execute_subscription_sync_payload({

@@ -11,8 +11,8 @@ from shared_kernel.domain.mixins import SerializerMixin
 
 if TYPE_CHECKING:
     from domains.playlist.domain.models.playlist_item import PlaylistItem
-    from domains.video.domain.junctions.subscription_video import SubscriptionVideo, VideoCreator
     from domains.subscription.domain.models.subscription import Subscription
+    from domains.video.domain.junctions.subscription_video import SubscriptionVideo, VideoCreator
     from domains.video.domain.models.creator import Creator
     from domains.video.domain.models.video_clip_marker import VideoClipMarker
     from domains.video.domain.models.video_history import VideoHistory
@@ -25,8 +25,8 @@ def _subscription_links_join():
 
 
 def _subscriptions_secondary_join():
-    from domains.video.domain.junctions.subscription_video import SubscriptionVideo
     from domains.subscription.domain.models.subscription import Subscription
+    from domains.video.domain.junctions.subscription_video import SubscriptionVideo
     return Subscription.id == foreign(SubscriptionVideo.subscription_id)
 
 

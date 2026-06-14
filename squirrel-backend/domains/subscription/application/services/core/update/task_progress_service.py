@@ -1,9 +1,9 @@
 from datetime import datetime
 
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
-from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.subscription.application.services.crawl.tasks.models import CrawlTaskStatus
 from domains.subscription.application.services.crawl.tasks.task_types import is_subscription_sync_task_type
+from domains.subscription.domain.models.crawl_task import CrawlTask
 
 
 class SubscriptionSyncTaskProgressService:

@@ -5,11 +5,11 @@ from datetime import datetime
 from sqlalchemy import case, select
 from sqlalchemy.orm import Session
 
+from domains.subscription.application.services.crawl.tasks.models import CrawlTaskStatus
+from domains.subscription.application.services.crawl.tasks.task_types import subscription_sync_task_types
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.subscription.interfaces.dto.dto.sync_dashboard_dto import SyncDashboardItemDto
-from domains.subscription.application.services.crawl.tasks.models import CrawlTaskStatus
-from domains.subscription.application.services.crawl.tasks.task_types import subscription_sync_task_types
 
 
 class SyncDashboardQueueRankService:

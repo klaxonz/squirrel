@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from shared_kernel.infrastructure.trace import generate_trace_id, get_trace_id
 from domains.subscription.application.services.core.update.models import SyncCommand, UpdateMode, UpdateTrigger
+from shared_kernel.infrastructure.trace import generate_trace_id, get_trace_id
 
 
 def build_command(**kwargs) -> SyncCommand:

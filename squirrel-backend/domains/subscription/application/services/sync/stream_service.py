@@ -5,7 +5,6 @@ from datetime import datetime
 from time import monotonic
 from typing import Any
 
-from infrastructure.cache.redis_client import create_redis_client
 from domains.subscription.application.services.core.sync.dashboard_service import subscription_sync_dashboard_service
 from domains.subscription.application.services.core.sync.history_service import subscription_sync_history_service
 from domains.subscription.application.services.sync.channels import (
@@ -16,6 +15,7 @@ from domains.subscription.application.services.sync.channels import (
     SYNC_DASHBOARD_RUN_CHANNEL,
 )
 from domains.video.application.services.extraction_center.service import video_extraction_center_service
+from infrastructure.cache.redis_client import create_redis_client
 
 logger = logging.getLogger(__name__)
 

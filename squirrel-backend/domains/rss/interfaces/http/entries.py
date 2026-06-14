@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from domains.rss.application.services.service import RssService
-from shared_kernel.application import response
-from domains.user.domain.models.user import User
 from domains.user.application.services.auth import get_current_user
+from domains.user.domain.models.user import User
+from shared_kernel.application import response
 
 from .dependencies import get_rss_service
 

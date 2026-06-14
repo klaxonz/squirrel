@@ -3,9 +3,9 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from domains.subscription.application.services.crawl.tasks.models import CrawlJobStatus, CrawlTaskStatus
 from domains.subscription.domain.models.crawl_job import CrawlJob
 from domains.subscription.domain.models.crawl_task import CrawlTask
-from domains.subscription.application.services.crawl.tasks.models import CrawlJobStatus, CrawlTaskStatus
 
 
 def refresh_job_status(session: Session, *, job_id: int, now: datetime) -> None:

@@ -6,14 +6,14 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session, selectinload, with_loader_criteria
 
 import infrastructure.site_catalog.url as url_helper
-from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import Subscription
+from domains.video.application.services.listing.profiles import merge_profiles, video_extra_profiles
+from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_clip_marker import VideoClipMarker
 from domains.video.domain.models.video_history import VideoHistory
 from domains.video.domain.models.video_interaction import VideoInteraction
-from domains.video.application.services.listing.profiles import merge_profiles, video_extra_profiles
 
 
 class VideoDetailLoader:

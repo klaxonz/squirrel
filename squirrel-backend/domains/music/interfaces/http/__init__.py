@@ -1,6 +1,16 @@
 from fastapi import APIRouter
 
-from domains.music.interfaces.http import artists, auth, catalog, comments, library, playback, recommendations, search, videos
+from domains.music.interfaces.http import (
+    artists,
+    auth,
+    catalog,
+    comments,
+    library,
+    playback,
+    recommendations,
+    search,
+    videos,
+)
 
 router = APIRouter(prefix='/api/music', tags=['Music API'])
 router.include_router(search.router)

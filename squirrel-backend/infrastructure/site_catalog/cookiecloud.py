@@ -11,7 +11,11 @@ from PyCookieCloud.PyCryptoJS import decrypt
 
 from infrastructure.config.settings import settings
 from infrastructure.config.site_config_manager import get_effective_site_catalog
-from infrastructure.site_catalog.cookie_files import get_site_cookies_dir, get_site_cookies_file_path, write_cookie_text_file
+from infrastructure.site_catalog.cookie_files import (
+    get_site_cookies_dir,
+    get_site_cookies_file_path,
+    write_cookie_text_file,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -2,10 +2,10 @@ import logging
 
 from fastapi import APIRouter, Depends, Query
 
-from shared_kernel.application import response
-from infrastructure.site_catalog.catalog import SiteCatalog
-from domains.user.domain.models.user import User
 from domains.user.application.services.auth import get_current_user
+from domains.user.domain.models.user import User
+from domains.video.application.services.listing.service import get_video as get_video_detail
+from domains.video.application.services.listing.service import list_videos
 from domains.video.interfaces.dto.request.video import (
     ContentType,
     DurationFilter,
@@ -14,8 +14,8 @@ from domains.video.interfaces.dto.request.video import (
     VideoCategory,
     YesNoAll,
 )
-from domains.video.application.services.listing.service import get_video as get_video_detail
-from domains.video.application.services.listing.service import list_videos
+from infrastructure.site_catalog.catalog import SiteCatalog
+from shared_kernel.application import response
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

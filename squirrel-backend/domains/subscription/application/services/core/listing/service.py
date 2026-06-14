@@ -4,13 +4,6 @@ from typing import Any
 from sqlalchemy import and_, false, func, literal, or_, select
 
 import domains.user.application.services.config as user_config_service
-from infrastructure.database.session import get_session
-from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from shared_kernel.infrastructure.sql_parser import parse_dynamic_sql
-from sql.subscription_sql import get_subscription_sql
-from domains.subscription.domain.models.subscription import Subscription
-from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode
-from domains.subscription.interfaces.dto.dto.subscription_dto import SubscriptionDto
 from domains.subscription.application.services.core.listing.enrichment import (
     load_recent_videos,
     load_subscription_extract_counts,
@@ -19,8 +12,17 @@ from domains.subscription.application.services.core.listing.enrichment import (
 from domains.subscription.application.services.core.listing.search import build_subscription_search_clauses, contains
 from domains.subscription.application.services.core.listing.serialization import serialize_subscription_list_item
 from domains.subscription.application.services.core.listing.site import resolve_site_slug
-from domains.subscription.application.services.core.listing.site import resolve_subscription_nsfw as resolve_subscription_nsfw_by_url
+from domains.subscription.application.services.core.listing.site import (
+    resolve_subscription_nsfw as resolve_subscription_nsfw_by_url,
+)
+from domains.subscription.domain.junctions.user_subscription import UserSubscription
+from domains.subscription.domain.models.subscription import Subscription
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode
+from domains.subscription.interfaces.dto.dto.subscription_dto import SubscriptionDto
 from domains.video.application.services.moderation.nsfw_policy import resolve_effective_nsfw_filter
+from infrastructure.database.session import get_session
+from shared_kernel.infrastructure.sql_parser import parse_dynamic_sql
+from sql.subscription_sql import get_subscription_sql
 
 logger = logging.getLogger(__name__)
 

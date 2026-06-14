@@ -2,10 +2,10 @@ import asyncio
 
 from fastapi import APIRouter, Depends, Query
 
-from shared_kernel.application.response import success
 from infrastructure.site_catalog.connectivity import test_site_connectivity
 from infrastructure.site_catalog.routes.sites_dependencies import get_catalog_service
 from infrastructure.site_catalog.service import SiteCatalogService
+from shared_kernel.application.response import success
 
 router = APIRouter()
 

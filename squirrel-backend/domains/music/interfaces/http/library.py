@@ -1,10 +1,15 @@
 from fastapi import APIRouter, Depends, Query
 
-from domains.music.interfaces.dto.music import MusicPlayHistoryReport, MusicPlaylistCollect, MusicPlaylistCreate, MusicPlaylistTrackAdd
 from domains.music.application.services.service import MusicService
-from shared_kernel.application import response
-from domains.user.domain.models.user import User
+from domains.music.interfaces.dto.music import (
+    MusicPlayHistoryReport,
+    MusicPlaylistCollect,
+    MusicPlaylistCreate,
+    MusicPlaylistTrackAdd,
+)
 from domains.user.application.services.auth import get_current_user
+from domains.user.domain.models.user import User
+from shared_kernel.application import response
 
 from .dependencies import get_music_service
 

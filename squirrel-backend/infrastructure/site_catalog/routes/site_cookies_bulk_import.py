@@ -1,9 +1,13 @@
 from fastapi import APIRouter, Depends, File, UploadFile
 
-from shared_kernel.application.response import param_error, success
-from infrastructure.site_catalog.cookie_files import get_site_cookies_dir, get_site_cookies_file_path, write_cookie_text_file
+from infrastructure.site_catalog.cookie_files import (
+    get_site_cookies_dir,
+    get_site_cookies_file_path,
+    write_cookie_text_file,
+)
 from infrastructure.site_catalog.routes.site_cookies_dependencies import get_catalog_service
 from infrastructure.site_catalog.service import SiteCatalogService
+from shared_kernel.application.response import param_error, success
 
 router = APIRouter()
 

@@ -6,8 +6,8 @@ from uuid import uuid4
 
 from sqlalchemy import func, select, text
 
-from infrastructure.database.session import get_session
 from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
+from infrastructure.database.session import get_session
 
 
 class SyncEventType:

@@ -2,7 +2,11 @@ import logging
 
 from fastapi import APIRouter, status
 
-from infrastructure.site_catalog.connectivity import ConnectivityTestRequest, ConnectivityTestResponse, test_site_connectivity
+from infrastructure.site_catalog.connectivity import (
+    ConnectivityTestRequest,
+    ConnectivityTestResponse,
+    test_site_connectivity,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

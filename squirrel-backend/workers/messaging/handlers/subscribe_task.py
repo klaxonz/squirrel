@@ -5,12 +5,12 @@ import json
 import logging
 from typing import Any
 
+from domains.subscription.application.services.core.import_service import handle_subscribe_request
 from infrastructure.messaging.framework.decorators import queue_listener
 from infrastructure.messaging.models.message import Message
-from shared_kernel.system import constants
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
-from domains.subscription.application.services.core.import_service import handle_subscribe_request
+from shared_kernel.system import constants
 
 logger = logging.getLogger(__name__)
 

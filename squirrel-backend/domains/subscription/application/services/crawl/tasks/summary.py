@@ -2,9 +2,9 @@ from datetime import datetime
 
 from sqlalchemy import func, select
 
-from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.subscription.application.services.crawl.tasks.models import CrawlTaskStatus
 from domains.subscription.application.services.crawl.tasks.task_types import subscription_sync_task_types
+from domains.subscription.domain.models.crawl_task import CrawlTask
 
 ACTIVE_TASK_STATUSES = [
     CrawlTaskStatus.PENDING.value,

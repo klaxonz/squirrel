@@ -3,14 +3,12 @@ from collections.abc import Callable, Generator
 
 from sqlalchemy.orm import Session
 
-from infrastructure.database.session import get_session as _default_get_session
-from infrastructure.site_catalog.cache import format_datetime as _default_format_datetime
+from domains.subscription.application.services.sync.site_icons import SiteIconResolver
 from domains.subscription.interfaces.dto.dto.sync_dashboard_dto import (
     SyncDashboardItemDto,
     SyncDashboardListDto,
     SyncDashboardOverviewDto,
 )
-from domains.subscription.application.services.sync.site_icons import SiteIconResolver
 from domains.video.application.services.extraction_center.queries import list_projection_rows, overview_query
 from domains.video.application.services.extraction_center.serialization import build_extraction_item
 from domains.video.application.services.extraction_center.sync_mode import (
@@ -18,6 +16,8 @@ from domains.video.application.services.extraction_center.sync_mode import (
     preload_sync_mode_cache,
     resolve_projection_sync_mode,
 )
+from infrastructure.database.session import get_session as _default_get_session
+from infrastructure.site_catalog.cache import format_datetime as _default_format_datetime
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
 

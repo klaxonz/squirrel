@@ -3,8 +3,8 @@ from collections.abc import Callable, Generator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from infrastructure.database.session import get_session as _default_get_session
 from domains.video.domain.models.creator import Creator
+from infrastructure.database.session import get_session as _default_get_session
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
 

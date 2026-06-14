@@ -5,10 +5,6 @@ from datetime import datetime
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.orm import Session
 
-from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from domains.subscription.domain.models.subscription import Subscription
-from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
-from domains.subscription.domain.models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
 from domains.subscription.application.services.core.sync.constants import DUE_SOON_WINDOW
 from domains.subscription.application.services.core.sync.dashboard_projection_queries import (
     projection_filter_clauses,
@@ -17,6 +13,12 @@ from domains.subscription.application.services.core.sync.dashboard_projection_qu
     projection_status_expr,
 )
 from domains.subscription.application.services.core.sync.progress import ACTIVE_EXTRACTION_PHASES
+from domains.subscription.domain.junctions.user_subscription import UserSubscription
+from domains.subscription.domain.models.subscription import Subscription
+from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
+from domains.subscription.domain.models.subscription_sync_subscription_projection import (
+    SubscriptionSyncSubscriptionProjection,
+)
 
 
 def load_overview_row(

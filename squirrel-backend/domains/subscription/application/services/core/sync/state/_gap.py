@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode
 from domains.subscription.application.services.core.sync.utils import calculate_head_overlap, fingerprint_head_sample
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode
 
 from .session import get_session
 

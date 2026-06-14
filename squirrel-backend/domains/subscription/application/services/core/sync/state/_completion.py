@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncStatus
 from domains.subscription.application.services.core.sync.run_service import SyncEventType, SyncPhase, SyncRunStatus
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncStatus
 
 from ._completion_events import (
     append_continued_event,

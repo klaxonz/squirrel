@@ -2,12 +2,12 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, Request
 
-from shared_kernel.application import response
-from domains.user.domain.models.user import User
-from infrastructure.site_catalog.catalog import SiteCatalog
 from domains.subscription.application.services.core.crud import subscription_crud_service
 from domains.user.application.services.auth import get_current_user
+from domains.user.domain.models.user import User
+from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
+from shared_kernel.application import response
 
 router = APIRouter()
 

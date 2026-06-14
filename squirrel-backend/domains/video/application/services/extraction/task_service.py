@@ -3,12 +3,12 @@ import logging
 from sqlalchemy.exc import IntegrityError
 
 import domains.video.application.services.extraction_projection as video_extraction_projection
+from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
+from domains.video.application.services.crud import get_video_by_url as default_get_video_by_url
+from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
 from infrastructure.observability.collector.instance import metrics
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
-from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
-from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
-from domains.video.application.services.crud import get_video_by_url as default_get_video_by_url
 
 logger = logging.getLogger(__name__)
 

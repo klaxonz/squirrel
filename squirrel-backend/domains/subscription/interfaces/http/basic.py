@@ -1,15 +1,19 @@
 from fastapi import APIRouter, Depends, Query
 
-from shared_kernel.application import response
-from domains.user.domain.models.user import User
-from domains.subscription.interfaces.dto.request.subscription import SubscribeRequest, ToggleStatusRequest, UnsubscribeRequest
-from infrastructure.site_catalog.catalog import SiteCatalog
 from domains.subscription.application.services.core.crud import subscription_crud_service
 from domains.subscription.application.services.core.import_service import subscription_import_service
 from domains.subscription.application.services.core.listing.service import subscription_list_service
 from domains.subscription.application.services.core.manage import subscription_manage_service
+from domains.subscription.interfaces.dto.request.subscription import (
+    SubscribeRequest,
+    ToggleStatusRequest,
+    UnsubscribeRequest,
+)
 from domains.user.application.services.auth import get_current_user
+from domains.user.domain.models.user import User
+from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
+from shared_kernel.application import response
 
 router = APIRouter()
 

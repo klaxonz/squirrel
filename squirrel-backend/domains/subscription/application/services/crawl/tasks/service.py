@@ -5,15 +5,15 @@ from datetime import datetime
 
 from sqlalchemy import select
 
-from infrastructure.database.session import get_session
-from domains.subscription.domain.models.crawl_job import CrawlJob
-from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.subscription.application.services.crawl.tasks import lease, lifecycle
 from domains.subscription.application.services.crawl.tasks import summary as task_summary
 from domains.subscription.application.services.crawl.tasks.dispatch_scope import ensure_dispatch_scope
 from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskNotFoundError
 from domains.subscription.application.services.crawl.tasks.job_status import refresh_job_status
 from domains.subscription.application.services.crawl.tasks.models import CrawlJobStatus
+from domains.subscription.domain.models.crawl_job import CrawlJob
+from domains.subscription.domain.models.crawl_task import CrawlTask
+from infrastructure.database.session import get_session
 
 
 class CrawlTaskService:

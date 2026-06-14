@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
-from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from domains.subscription.application.services.core.sync.projection.payload import payload_int, payload_text
 from domains.subscription.application.services.core.sync.projection.status import resolve_status
 from domains.subscription.application.services.core.sync.run_service import SyncEventType
+from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
+from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 
 
 def apply_run_projection(projection: SubscriptionSyncRunProjection, event: SubscriptionSyncEvent) -> None:

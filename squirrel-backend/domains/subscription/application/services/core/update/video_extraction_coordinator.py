@@ -2,16 +2,16 @@ import logging
 
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 import domains.video.application.services.extraction.task_service as video_extraction_task_service
-from infrastructure.database.session import get_session
-from infrastructure.observability.collector.instance import metrics
-from infrastructure.site_catalog.url import resolve_site
 from domains.subscription.application.services.core.runtime_models import SubscriptionSyncResult
 from domains.subscription.application.services.core.sync.event_service import SyncEventInput, append_event
 from domains.subscription.application.services.core.sync.run_service import SyncEventType, SyncRunStatus
-from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
 from domains.video.application.services.crud import get_videos_by_urls
 from domains.video.application.services.extraction.extractor import extract_video
 from domains.video.application.services.moderation.blocked import is_blocked_video
+from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
+from infrastructure.database.session import get_session
+from infrastructure.observability.collector.instance import metrics
+from infrastructure.site_catalog.url import resolve_site
 
 from .models import SubscriptionUpdateRequest, UpdateMode, UpdateTrigger
 

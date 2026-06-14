@@ -4,8 +4,8 @@ from collections.abc import Callable, Generator
 
 from sqlalchemy.orm import Session
 
-from infrastructure.database.session import get_session as _default_get_session
 from domains.user.domain.models.user import UserConfig
+from infrastructure.database.session import get_session as _default_get_session
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
 

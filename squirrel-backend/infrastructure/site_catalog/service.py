@@ -1,7 +1,11 @@
 import json
 from pathlib import Path
 
-from infrastructure.config.site_config_manager import apply_site_config_overrides, build_runtime_site_catalog, get_effective_site_catalog
+from infrastructure.config.site_config_manager import (
+    apply_site_config_overrides,
+    build_runtime_site_catalog,
+    get_effective_site_catalog,
+)
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.icons import build_site_icon_url, resolve_site_icon_path
 from infrastructure.site_catalog.overrides import compute_override_diff, deep_merge_dicts, normalize_override_entry

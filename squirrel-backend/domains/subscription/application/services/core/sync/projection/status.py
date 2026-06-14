@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
 from domains.subscription.application.services.core.sync.run_service import SyncEventType, SyncRunStatus
+from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
 
 
 def resolve_status(event: SubscriptionSyncEvent) -> str:

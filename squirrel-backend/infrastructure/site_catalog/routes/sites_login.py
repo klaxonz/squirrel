@@ -2,9 +2,9 @@ import logging
 
 from fastapi import APIRouter, Depends
 
-from shared_kernel.application.response import param_error, success
 from infrastructure.site_catalog.login_status import SiteLoginStatusService
 from infrastructure.site_catalog.service import SiteCatalogService
+from shared_kernel.application.response import param_error, success
 
 from .sites_dependencies import get_catalog_service, get_login_service
 

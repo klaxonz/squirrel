@@ -5,8 +5,8 @@ from typing import Any
 from sqlalchemy import or_
 from sqlalchemy.sql.elements import ColumnElement
 
-from infrastructure.search.query import escape_ilike, normalize_subscription_type_term, parse_search_query
 from domains.subscription.domain.models.subscription import Subscription
+from infrastructure.search.query import escape_ilike, normalize_subscription_type_term, parse_search_query
 
 
 def contains(column: Any, term: str) -> ColumnElement[bool]:

@@ -3,8 +3,8 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from domains.subscription.domain.models.crawl_task import CrawlTask
-from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
 from domains.video.application.services.extraction.extractor import extract_video
+from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
 
 
 class CrawlExecutorService:

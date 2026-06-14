@@ -4,15 +4,10 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from infrastructure.database.session import get_session
-from infrastructure.observability.collector.instance import metrics
-from infrastructure.site_catalog.cache import parse_datetime as _parse_datetime
-from infrastructure.site_catalog.catalog import SiteCatalog
-from domains.subscription.interfaces.dto.dto.sync_dashboard_dto import (
-    SyncDashboardItemDto,
-    SyncDashboardOverviewDto,
+from domains.subscription.application.services.core.sync.dashboard_feed_queries import (
+    load_feed_completed_at_map,
+    load_recent_run_rows,
 )
-from domains.subscription.application.services.core.sync.dashboard_feed_queries import load_feed_completed_at_map, load_recent_run_rows
 from domains.subscription.application.services.core.sync.dashboard_overview_queries import load_overview_row
 from domains.subscription.application.services.core.sync.dashboard_projection_queries import load_projection_rows
 from domains.subscription.application.services.core.sync.progress import subscription_sync_progress
@@ -20,6 +15,14 @@ from domains.subscription.application.services.sync.items import SyncDashboardIt
 from domains.subscription.application.services.sync.presentation import sort_items
 from domains.subscription.application.services.sync.queue_ranks import sync_dashboard_queue_rank_service
 from domains.subscription.application.services.sync.site_icons import SiteIconResolver
+from domains.subscription.interfaces.dto.dto.sync_dashboard_dto import (
+    SyncDashboardItemDto,
+    SyncDashboardOverviewDto,
+)
+from infrastructure.database.session import get_session
+from infrastructure.observability.collector.instance import metrics
+from infrastructure.site_catalog.cache import parse_datetime as _parse_datetime
+from infrastructure.site_catalog.catalog import SiteCatalog
 
 SYNC_DASHBOARD_PREVIEW_LIMIT = 40
 SYNC_DASHBOARD_RECENT_SCAN_MULTIPLIER = 4

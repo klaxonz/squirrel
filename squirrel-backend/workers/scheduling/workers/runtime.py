@@ -5,11 +5,13 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
+from domains.subscription.application.services.core.update.task_progress_service import (
+    SubscriptionSyncTaskProgressService,
+)
+from domains.subscription.application.services.crawl.dispatcher.service import CrawlDispatcherService
 from infrastructure.config.settings import settings
 from workers.scheduling.workers.leases import CrawlWorkerLeaseTracker
 from workers.scheduling.workers.tasks import CrawlWorkerTaskRunner
-from domains.subscription.application.services.core.update.task_progress_service import SubscriptionSyncTaskProgressService
-from domains.subscription.application.services.crawl.dispatcher.service import CrawlDispatcherService
 
 logger = logging.getLogger(__name__)
 

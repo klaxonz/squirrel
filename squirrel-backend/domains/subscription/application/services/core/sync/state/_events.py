@@ -6,11 +6,18 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from domains.subscription.application.services.core.sync.event_service import SyncEventInput, append_event
+from domains.subscription.application.services.core.sync.run_service import (
+    SyncEventType,
+    SyncPhase,
+    SyncRunStatus,
+    create_run,
+)
 from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
-from domains.subscription.domain.models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
-from domains.subscription.application.services.core.sync.event_service import SyncEventInput, append_event
-from domains.subscription.application.services.core.sync.run_service import SyncEventType, SyncPhase, SyncRunStatus, create_run
+from domains.subscription.domain.models.subscription_sync_subscription_projection import (
+    SubscriptionSyncSubscriptionProjection,
+)
 
 
 def _append_recovery_run_events(

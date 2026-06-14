@@ -4,8 +4,6 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from infrastructure.database.session import get_session
-from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
 from domains.subscription.application.services.core.sync.projection.run import apply_run_projection
 from domains.subscription.application.services.core.sync.projection.store import (
     get_or_create_run_projection,
@@ -13,6 +11,8 @@ from domains.subscription.application.services.core.sync.projection.store import
 )
 from domains.subscription.application.services.core.sync.projection.subscription import apply_subscription_projection
 from domains.subscription.application.services.core.sync.projection.trend import apply_trend_projection
+from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
+from infrastructure.database.session import get_session
 
 
 class SubscriptionSyncProjectionService:

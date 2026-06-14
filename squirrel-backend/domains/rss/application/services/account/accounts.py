@@ -5,8 +5,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from domains.rss.domain.models.rss import RssAccount
 from domains.rss.application.services.account.serialization import serialize_account
+from domains.rss.domain.models.rss import RssAccount
 
 UNSET = object()
 
@@ -55,7 +55,11 @@ def create_account(
     sync_entry_limit: int | None,
 ) -> dict[str, Any]:
     from domains.rss.application.services.client._base import RssServiceError
-    from domains.rss.application.services.client._factory import normalize_base_url, normalize_provider, normalize_sync_entry_limit
+    from domains.rss.application.services.client._factory import (
+        normalize_base_url,
+        normalize_provider,
+        normalize_sync_entry_limit,
+    )
     from domains.rss.application.services.credential import encrypt_credential
 
     provider = normalize_provider(provider)
@@ -98,7 +102,11 @@ def update_account(
     sync_entry_limit: Any,
 ) -> dict[str, Any]:
     from domains.rss.application.services.client._base import RssServiceError
-    from domains.rss.application.services.client._factory import normalize_base_url, normalize_provider, normalize_sync_entry_limit
+    from domains.rss.application.services.client._factory import (
+        normalize_base_url,
+        normalize_provider,
+        normalize_sync_entry_limit,
+    )
     from domains.rss.application.services.credential import encrypt_credential
 
     if provider is not None:

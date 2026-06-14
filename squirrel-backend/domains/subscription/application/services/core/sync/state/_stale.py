@@ -6,8 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncStatus
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncStatus
 
 from ._intervals import RUNNING_TIMEOUT
 

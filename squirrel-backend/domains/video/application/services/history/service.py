@@ -5,13 +5,13 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 import domains.user.application.services.config as user_config_service
-from infrastructure.database.session import get_session as _default_get_session
-from domains.video.domain.models.video_history import VideoHistory
-from domains.video.interfaces.dto.video_history import HistoryCreate
 from domains.video.application.services.history.query import list_history_page
 from domains.video.application.services.history.serialization import serialize_history_items
 from domains.video.application.services.history.updates import apply_history_updates
 from domains.video.application.services.moderation.nsfw_policy import resolve_effective_nsfw_filter
+from domains.video.domain.models.video_history import VideoHistory
+from domains.video.interfaces.dto.video_history import HistoryCreate
+from infrastructure.database.session import get_session as _default_get_session
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
 

@@ -3,10 +3,14 @@ from __future__ import annotations
 from collections.abc import Callable
 
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
-from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.subscription.application.services.core.crud import subscription_crud_service
-from domains.subscription.application.services.core.update.models import SubscriptionUpdateRequest, UpdateMode, UpdateTrigger
+from domains.subscription.application.services.core.update.models import (
+    SubscriptionUpdateRequest,
+    UpdateMode,
+    UpdateTrigger,
+)
 from domains.subscription.application.services.core.update.orchestrator import orchestrator
+from domains.subscription.domain.models.crawl_task import CrawlTask
 
 
 class CrawlExecutorService:

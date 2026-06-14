@@ -5,9 +5,9 @@ from typing import Any
 
 from sqlalchemy import func, select
 
-from domains.rss.domain.models.rss import RssEntry, RssEntryView, RssFeed
 from domains.rss.application.services.account.serialization import serialize_entry, serialize_feed
 from domains.rss.application.services.client._base import RssServiceError
+from domains.rss.domain.models.rss import RssEntry, RssEntryView, RssFeed
 
 
 class RssLibraryService:

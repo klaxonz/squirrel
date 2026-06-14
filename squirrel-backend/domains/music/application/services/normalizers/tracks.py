@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from domains.music.application.services.normalizers.common import artist_id, artist_names, format_image_url, milliseconds_to_seconds
+from domains.music.application.services.normalizers.common import (
+    artist_id,
+    artist_names,
+    format_image_url,
+    milliseconds_to_seconds,
+)
 
 
 def normalize_track(row: dict[str, Any]) -> dict[str, Any]:

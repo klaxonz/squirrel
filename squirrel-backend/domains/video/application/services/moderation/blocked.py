@@ -5,9 +5,9 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from domains.video.domain.models.blocked_video_record import BlockedVideoRecord
 from infrastructure.database.session import get_session as _default_get_session
 from infrastructure.site_catalog.url import extract_top_level_domain
-from domains.video.domain.models.blocked_video_record import BlockedVideoRecord
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
 

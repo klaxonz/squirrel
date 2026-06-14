@@ -4,13 +4,13 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.subscription.application.services.crawl.tasks.errors import (
     CrawlTaskNotFoundError,
     CrawlTaskOwnershipError,
     CrawlTaskStateError,
 )
 from domains.subscription.application.services.crawl.tasks.models import CrawlTaskStatus
+from domains.subscription.domain.models.crawl_task import CrawlTask
 
 
 def get_owned_task(session: Session, *, task_id: int, worker_id: str) -> CrawlTask:

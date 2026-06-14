@@ -5,8 +5,8 @@ from typing import Any
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.subscription.application.services.core.listing.serialization import serialize_datetime
+from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.models.video_history import VideoHistory
 
 

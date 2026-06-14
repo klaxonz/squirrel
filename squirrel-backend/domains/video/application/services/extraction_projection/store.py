@@ -6,7 +6,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from domains.subscription.domain.models.crawl_task import CrawlTask
-from domains.video.domain.models.video_extraction_projection import VideoExtractionProjection
 from domains.video.application.services.extraction_projection.groups import (
     ACTIVE_PROJECTION_STATUSES,
     QUEUED_TASK_STATUSES,
@@ -15,6 +14,7 @@ from domains.video.application.services.extraction_projection.groups import (
     derive_group_key,
 )
 from domains.video.application.services.extraction_projection.snapshot import compute_projection_snapshot
+from domains.video.domain.models.video_extraction_projection import VideoExtractionProjection
 
 
 def refresh_projection_group(

@@ -2,14 +2,14 @@ from datetime import datetime
 
 from fastapi import APIRouter, Body, Depends, Query
 
-from shared_kernel.application import response
-from domains.user.domain.models.user import User
 from domains.user.application.services.auth import get_current_user
+from domains.user.domain.models.user import User
+from domains.video.application.services.history.service import VideoHistoryService
 from domains.video.interfaces.dto.video_history import (
     HistoryBatchUpdate,
     HistoryCreate,
 )
-from domains.video.application.services.history.service import VideoHistoryService
+from shared_kernel.application import response
 
 router = APIRouter(
     prefix='/api/video-history',

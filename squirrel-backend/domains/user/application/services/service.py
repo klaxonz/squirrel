@@ -5,8 +5,8 @@ import bcrypt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from infrastructure.database.session import get_session as _default_get_session
 from domains.user.domain.models.user import Account, AccountType, User
+from infrastructure.database.session import get_session as _default_get_session
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
 

@@ -1,12 +1,12 @@
 import logging
 import os
 
-from infrastructure.site_catalog.url import get_site_from_url
 from domains.video.application.services.extraction.thumbnail.client import ThumbnailHttpClient
 from domains.video.application.services.extraction.thumbnail.headers import ThumbnailSiteConfig, build_request_headers
 from domains.video.application.services.extraction.thumbnail.html import looks_like_expiring_preview_thumbnail
 from domains.video.application.services.extraction.thumbnail.local_index import ThumbnailLocalIndexRepository
 from domains.video.application.services.extraction.thumbnail.storage import ThumbnailStorage
+from infrastructure.site_catalog.url import get_site_from_url
 
 logger = logging.getLogger(__name__)
 

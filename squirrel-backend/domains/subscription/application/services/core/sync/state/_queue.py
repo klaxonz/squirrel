@@ -4,8 +4,8 @@ from datetime import datetime
 
 from sqlalchemy import select, update
 
-from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
 from domains.subscription.application.services.core.sync.run_service import SyncEventType, SyncPhase, SyncRunStatus
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
 
 from ._crud import _get_or_create_sync_state_in_session
 from ._events import _append_state_event

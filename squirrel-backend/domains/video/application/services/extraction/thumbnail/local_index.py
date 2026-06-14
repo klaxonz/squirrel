@@ -4,10 +4,10 @@ from datetime import datetime
 
 from sqlalchemy import select
 
+from domains.video.application.services.extraction.thumbnail.storage import ThumbnailStorage
+from domains.video.domain.models.video_thumbnail_local_index import VideoThumbnailLocalIndex
 from infrastructure.config.settings import settings
 from infrastructure.database.session import get_session
-from domains.video.domain.models.video_thumbnail_local_index import VideoThumbnailLocalIndex
-from domains.video.application.services.extraction.thumbnail.storage import ThumbnailStorage
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,6 @@ from typing import Any
 
 from sqlalchemy import delete, select
 
-from domains.rss.domain.models.rss import RssEntry, RssFeed
 from domains.rss.application.services.account.service import RssAccountService
 from domains.rss.application.services.client._greader import (
     G_READER_CONTENT_BATCH_SIZE,
@@ -14,6 +13,7 @@ from domains.rss.application.services.client._greader import (
     GReaderClient,
 )
 from domains.rss.application.services.sync.entry_store import RssEntryStore, rss_entry_store
+from domains.rss.domain.models.rss import RssEntry, RssFeed
 
 
 class GReaderSync:

@@ -4,13 +4,15 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import select, update
 
-from domains.subscription.domain.models.crawl_task import CrawlTask
-from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
-from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncStatus
-from domains.subscription.domain.models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
 from domains.subscription.application.services.core.sync.run_service import SyncEventType, SyncPhase, SyncRunStatus
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
 from domains.subscription.application.services.crawl.tasks.task_types import subscription_sync_task_types
+from domains.subscription.domain.models.crawl_task import CrawlTask
+from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncStatus
+from domains.subscription.domain.models.subscription_sync_subscription_projection import (
+    SubscriptionSyncSubscriptionProjection,
+)
 
 from ._completion import _complete_sync_success_in_session
 from ._events import _append_recovery_run_events, _append_terminal_reconcile_run_events

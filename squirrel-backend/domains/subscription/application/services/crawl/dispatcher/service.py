@@ -6,11 +6,11 @@ from typing import Any
 from sqlalchemy import case, func, literal, or_, select
 from sqlalchemy.orm import Session
 
-from domains.subscription.domain.models.crawl_dispatch_scope import CrawlDispatchScope
-from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.subscription.application.services.crawl.dispatcher.policy import CrawlDispatcherPolicy
 from domains.subscription.application.services.crawl.tasks.dispatch_scope import ensure_dispatch_scope
 from domains.subscription.application.services.crawl.tasks.models import CrawlTaskStatus
+from domains.subscription.domain.models.crawl_dispatch_scope import CrawlDispatchScope
+from domains.subscription.domain.models.crawl_task import CrawlTask
 
 
 class CrawlDispatcherService:

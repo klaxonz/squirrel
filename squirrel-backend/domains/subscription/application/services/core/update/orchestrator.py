@@ -8,14 +8,14 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-import infrastructure.site_catalog.url as url_helper
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
-from infrastructure.database.session import get_session
+import infrastructure.site_catalog.url as url_helper
+from domains.subscription.application.services.core.crud import get_subscription_by_id
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
+from domains.subscription.domain.models.subscription_sync_state import SyncMode
+from infrastructure.database.session import get_session
 from infrastructure.observability.collector.instance import metrics
 from infrastructure.site_catalog.catalog import SiteCatalog
-from domains.subscription.domain.models.subscription_sync_state import SyncMode
-from domains.subscription.application.services.core.crud import get_subscription_by_id
 
 from .models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateMode, UpdateTrigger
 from .strategies.default_strategy import DefaultUpdateStrategy, should_schedule_total_video_backfill

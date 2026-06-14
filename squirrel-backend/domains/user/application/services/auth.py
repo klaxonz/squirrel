@@ -7,13 +7,13 @@ from jose import JWTError, jwt
 
 import domains.user.application.services.config as user_config_service
 import domains.user.application.services.service as user_service
+from domains.user.domain.models.user import User
 from infrastructure.auth.jwt import (
     ALGORITHM,
     AUTH_COOKIE_NAME,
     TOKEN_VERSION_CLAIM,
     _get_secret_key,
 )
-from domains.user.domain.models.user import User
 
 logger = logging.getLogger(__name__)
 

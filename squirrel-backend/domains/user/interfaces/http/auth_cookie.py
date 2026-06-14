@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from fastapi import Request, Response
 
+from domains.user.domain.models.user import User
 from infrastructure.auth.jwt import (
     AUTH_COOKIE_NAME,
     REMEMBER_ME_CLAIM,
@@ -10,7 +11,6 @@ from infrastructure.auth.jwt import (
     set_auth_cookie,
     should_persist_auth_cookie,
 )
-from domains.user.domain.models.user import User
 
 
 def serialize_user(user: User) -> dict:

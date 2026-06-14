@@ -2,14 +2,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from infrastructure.site_catalog.cache import format_datetime
-from domains.subscription.domain.models.subscription import Subscription
-from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
-from domains.subscription.domain.models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
-from domains.subscription.interfaces.dto.dto.sync_dashboard_dto import SyncDashboardItemDto
 from domains.subscription.application.services.core.sync.progress import SubscriptionSyncProgress
 from domains.subscription.application.services.sync.presentation import resolve_display_status, summarize_error
 from domains.subscription.application.services.sync.site_icons import SiteIconResolver
+from domains.subscription.domain.models.subscription import Subscription
+from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
+from domains.subscription.domain.models.subscription_sync_subscription_projection import (
+    SubscriptionSyncSubscriptionProjection,
+)
+from domains.subscription.interfaces.dto.dto.sync_dashboard_dto import SyncDashboardItemDto
+from infrastructure.site_catalog.cache import format_datetime
 
 
 class SyncDashboardItemFactory:

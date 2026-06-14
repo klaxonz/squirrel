@@ -5,11 +5,13 @@ from datetime import datetime
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from domains.subscription.application.services.core.sync.run_service import SyncRunStatus
 from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
 from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
-from domains.subscription.domain.models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
+from domains.subscription.domain.models.subscription_sync_subscription_projection import (
+    SubscriptionSyncSubscriptionProjection,
+)
 from domains.subscription.domain.models.subscription_sync_trend_projection import SubscriptionSyncTrendProjection
-from domains.subscription.application.services.core.sync.run_service import SyncRunStatus
 
 
 def advisory_lock(session: Session, key: str) -> None:

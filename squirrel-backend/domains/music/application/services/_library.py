@@ -1,10 +1,14 @@
 from typing import Any
 
-from domains.music.interfaces.dto.music import MusicTrackPayload
 from domains.music.application.services._client import MusicServiceError
 from domains.music.application.services.normalizers.common import first_list
-from domains.music.application.services.normalizers.playlists import normalize_playlist, normalize_playlist_tags, normalize_user_playlist
+from domains.music.application.services.normalizers.playlists import (
+    normalize_playlist,
+    normalize_playlist_tags,
+    normalize_user_playlist,
+)
 from domains.music.application.services.normalizers.tracks import normalize_track
+from domains.music.interfaces.dto.music import MusicTrackPayload
 
 
 class MusicLibraryMixin:

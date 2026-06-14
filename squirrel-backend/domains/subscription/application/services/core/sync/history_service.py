@@ -1,8 +1,6 @@
 from datetime import datetime
 from typing import Any
 
-from infrastructure.database.session import get_session
-from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from domains.subscription.application.services.core.sync.dashboard_feed_queries import load_feed_completed_at_map
 from domains.subscription.application.services.core.sync.history_queries import (
     build_run_list_query,
@@ -19,6 +17,8 @@ from domains.subscription.application.services.core.sync.history_serialization i
 )
 from domains.subscription.application.services.core.sync.progress import subscription_sync_progress
 from domains.subscription.application.services.sync.site_icons import SiteIconResolver
+from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
+from infrastructure.database.session import get_session
 
 
 class SubscriptionSyncHistoryService:

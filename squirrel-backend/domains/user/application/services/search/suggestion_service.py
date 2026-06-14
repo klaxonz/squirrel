@@ -4,7 +4,6 @@ from time import monotonic
 from sqlalchemy import select
 
 import domains.user.application.services.config as user_config_service
-from infrastructure.database.session import get_session
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.user.application.services.search.suggestions.formatting import dedupe_pool_items
 from domains.user.application.services.search.suggestions.pools import (
@@ -16,6 +15,7 @@ from domains.user.application.services.search.suggestions.pools import (
 )
 from domains.user.application.services.search.suggestions.text import extract_suggestion_term, score_candidate
 from domains.video.application.services.moderation.nsfw_policy import resolve_effective_nsfw_filter
+from infrastructure.database.session import get_session
 
 DEFAULT_LIMIT = 8
 MAX_LIMIT = 20

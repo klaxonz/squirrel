@@ -3,14 +3,14 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from infrastructure.site_catalog.url import get_site_from_url
 from domains.subscription.domain.models.subscription import Subscription
-from domains.video.domain.models.video import Video
-from domains.video.domain.models.video_history import VideoHistory
 from domains.video.application.services.extraction.thumbnail_downloader import thumbnail_downloader_service
 from domains.video.application.services.listing.profiles import merge_profiles, video_extra_profiles
+from domains.video.domain.junctions.subscription_video import SubscriptionVideo
+from domains.video.domain.models.video import Video
+from domains.video.domain.models.video_history import VideoHistory
+from infrastructure.site_catalog.url import get_site_from_url
 
 
 def serialize_history_items(session: Session, user_id: int, histories: list[VideoHistory]) -> list[dict[str, Any]]:

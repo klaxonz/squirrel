@@ -3,8 +3,8 @@ from collections.abc import Callable, Generator
 from sqlalchemy.orm import Session
 
 import domains.playlist.application.services.repository as repository
-from infrastructure.database.session import get_session as _default_get_session
 from domains.playlist.application.services.serialization import serialize_item, serialize_playlist
+from infrastructure.database.session import get_session as _default_get_session
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
 

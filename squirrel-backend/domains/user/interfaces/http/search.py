@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, Query
 
-from shared_kernel.application import response
-from domains.user.domain.models.user import User
 from domains.user.application.services.auth import get_current_user
-from domains.user.application.services.search.suggestion_service import SearchSuggestionService, search_suggestion_service
+from domains.user.application.services.search.suggestion_service import (
+    SearchSuggestionService,
+    search_suggestion_service,
+)
+from domains.user.domain.models.user import User
+from shared_kernel.application import response
 
 router = APIRouter(prefix="/api/search", tags=["搜索建议接口"])
 

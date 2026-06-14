@@ -4,11 +4,11 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from infrastructure.config.settings import settings
-from infrastructure.database.session import get_session
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_clip_marker import VideoClipMarker
 from domains.video.interfaces.dto.video_clip_marker import ClipMarkerCreate, ClipMarkerUpdate
+from infrastructure.config.settings import settings
+from infrastructure.database.session import get_session
 
 DEFAULT_CLIP_DURATION_SECONDS = 15.0
 

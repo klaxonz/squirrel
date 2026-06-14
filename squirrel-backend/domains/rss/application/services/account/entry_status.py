@@ -6,9 +6,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from domains.rss.domain.models.rss import RssAccount, RssEntry
 from domains.rss.application.services.account.remote_status import RssRemoteStatusSyncer
 from domains.rss.application.services.account.serialization import serialize_entry
+from domains.rss.domain.models.rss import RssAccount, RssEntry
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
 

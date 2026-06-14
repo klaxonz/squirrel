@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from infrastructure.site_catalog.catalog import SiteCatalog
 from domains.subscription.application.services.core.update.command_events import SubscriptionSyncCommandEventPublisher
 from domains.subscription.application.services.core.update.models import (
     SubscriptionDirectRunResult,
@@ -10,6 +9,7 @@ from domains.subscription.application.services.core.update.models import (
     SubscriptionUpdateResult,
     SyncCommand,
 )
+from infrastructure.site_catalog.catalog import SiteCatalog
 
 
 def resolve_preflight_result(

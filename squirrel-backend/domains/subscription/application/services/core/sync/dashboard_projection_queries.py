@@ -6,13 +6,15 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from infrastructure.search.query import escape_ilike
-from domains.subscription.domain.models.subscription import Subscription
-from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
-from domains.subscription.domain.models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
 from domains.subscription.application.services.core.sync.constants import DUE_SOON_WINDOW
 from domains.subscription.application.services.core.sync.progress import ACTIVE_EXTRACTION_PHASES
+from domains.subscription.domain.junctions.user_subscription import UserSubscription
+from domains.subscription.domain.models.subscription import Subscription
+from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
+from domains.subscription.domain.models.subscription_sync_subscription_projection import (
+    SubscriptionSyncSubscriptionProjection,
+)
+from infrastructure.search.query import escape_ilike
 
 
 def projection_status_expr() -> Any:

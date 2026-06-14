@@ -5,10 +5,10 @@ from math import ceil
 
 from sqlalchemy.orm import Session
 
-from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
 from domains.subscription.application.services.core.sync.projection.payload import payload_int
 from domains.subscription.application.services.core.sync.projection.store import get_or_create_trend_projection
 from domains.subscription.application.services.core.sync.run_service import SyncEventType
+from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
 
 TREND_DURATION_BUCKETS_MS = [100, 500, 1000, 2000, 5000, 10000, 30000, 60000, 120000, 300000, 600000]
 

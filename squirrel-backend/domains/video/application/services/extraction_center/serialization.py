@@ -1,8 +1,8 @@
 from collections.abc import Callable
 from datetime import datetime
 
-from domains.subscription.interfaces.dto.dto.sync_dashboard_dto import SyncDashboardItemDto
 from domains.subscription.application.services.sync.site_icons import SiteIconResolver
+from domains.subscription.interfaces.dto.dto.sync_dashboard_dto import SyncDashboardItemDto
 
 
 def summarize_error(message: str | None) -> str | None:

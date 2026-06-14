@@ -6,14 +6,14 @@ from time import perf_counter
 from sqlalchemy import and_, case, select
 from sqlalchemy.orm import Session
 
-from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from domains.video.domain.junctions.video_creator import VideoCreator
 from domains.subscription.domain.models.subscription import Subscription
+from domains.video.application.services.listing.profiles import merge_profiles, video_extra_profiles
+from domains.video.domain.junctions.subscription_video import SubscriptionVideo
+from domains.video.domain.junctions.video_creator import VideoCreator
 from domains.video.domain.models.creator import Creator
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_history import VideoHistory
-from domains.video.application.services.listing.profiles import merge_profiles, video_extra_profiles
 
 
 @dataclass(frozen=True)

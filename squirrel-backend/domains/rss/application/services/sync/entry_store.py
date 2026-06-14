@@ -6,8 +6,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from domains.rss.domain.models.rss import RssAccount, RssEntry, RssFeed
 from domains.rss.application.services.client._base import RemoteEntry, RemoteFeed
+from domains.rss.domain.models.rss import RssAccount, RssEntry, RssFeed
 
 
 class RssEntryStore:

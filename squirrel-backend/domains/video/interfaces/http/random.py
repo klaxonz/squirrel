@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, Query
 
-from shared_kernel.application import response
-from infrastructure.site_catalog.catalog import SiteCatalog
-from domains.user.domain.models.user import User
 from domains.user.application.services.auth import get_current_user
-from domains.video.interfaces.dto.request.video import ContentType, DurationFilter, TimeRange, VideoCategory, YesNoAll
+from domains.user.domain.models.user import User
 from domains.video.application.services.listing.service import get_video as get_video_detail
 from domains.video.application.services.random import get_random_video as get_random_video_record
+from domains.video.interfaces.dto.request.video import ContentType, DurationFilter, TimeRange, VideoCategory, YesNoAll
+from infrastructure.site_catalog.catalog import SiteCatalog
+from shared_kernel.application import response
 
 router = APIRouter()
 

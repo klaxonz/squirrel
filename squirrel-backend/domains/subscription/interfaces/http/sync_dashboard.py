@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 
-from shared_kernel.application import response
-from domains.user.domain.models.user import User
 from domains.subscription.application.services.core.sync.history_service import SubscriptionSyncHistoryService
 from domains.subscription.application.services.sync.stream_service import SyncDashboardStreamService
 from domains.user.application.services.auth import get_current_user
+from domains.user.domain.models.user import User
+from shared_kernel.application import response
 
 from .dependencies import get_stream_service, get_sync_history_service
 
