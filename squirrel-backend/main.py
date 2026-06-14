@@ -25,7 +25,7 @@ from shared_kernel.infrastructure.log import init_logging
 
 logger = logging.getLogger(__name__)
 
-STARTUP_TOTAL_STEPS = 6
+STARTUP_TOTAL_STEPS = 5
 SHUTDOWN_TOTAL_STEPS = 1
 
 
@@ -98,26 +98,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.exception("Startup [3/%s] Failed to bootstrap site runtime manager", STARTUP_TOTAL_STEPS)
         raise
 
-    _log_lifecycle_step("Startup", 4, STARTUP_TOTAL_STEPS, "Seeding video extraction projection")
-    try:
-        import domains.video.application.services.extraction_projection.service as video_extraction_projection_service
-        rebuilt_count = video_extraction_projection_service.ensure_projection_seeded()
-        _log_lifecycle_step(
-            "Startup",
-            4,
-            STARTUP_TOTAL_STEPS,
-            f"Video extraction projection ready (rebuilt={rebuilt_count})",
-        )
-    except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
-        logger.exception("Startup [4/%s] Failed to seed video extraction projection", STARTUP_TOTAL_STEPS)
-        raise
-
-    _log_lifecycle_step("Startup", 5, STARTUP_TOTAL_STEPS, "Bootstrapping scheduled tasks")
+    _log_lifecycle_step("Startup", 4, STARTUP_TOTAL_STEPS, "Bootstrapping scheduled tasks")
     try:
         from infrastructure.scheduling.bootstrap import ensure_system_tasks
         ensure_system_tasks()
         clear_optional_startup_issue("scheduled_task_bootstrap")
-        _log_lifecycle_step("Startup", 5, STARTUP_TOTAL_STEPS, "Scheduled tasks ready")
+        _log_lifecycle_step("Startup", 4, STARTUP_TOTAL_STEPS, "Scheduled tasks ready")
     except Exception as exc:  # startup/shutdown boundary -- prevent crash during lifecycle
         record_optional_startup_issue("scheduled_task_bootstrap", exc)
         logger.warning(
@@ -127,7 +113,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             exc_info=True,
         )
 
-    _log_lifecycle_step("Startup", 6, STARTUP_TOTAL_STEPS, "Ensuring Meilisearch index")
+    _log_lifecycle_step("Startup", 5, STARTUP_TOTAL_STEPS, "Ensuring Meilisearch index")
     if settings.MEILISEARCH_URL:
         # Meili 是搜索功能的强依赖；索引未就绪会导致 domain 过滤报错和召回异常，
         # 故失败直接终止启动。未配置 MEILISEARCH_URL 时跳过（搜索功能不可用，但浏览/详情正常）。
@@ -137,13 +123,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             # 预热 MeiliVideoIndexer 单例（建立 client/index 对象），避免首个请求的初始化开销
             from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
             get_meili_video_indexer()
-            _log_lifecycle_step("Startup", 6, STARTUP_TOTAL_STEPS, "Meilisearch index ready")
+            _log_lifecycle_step("Startup", 5, STARTUP_TOTAL_STEPS, "Meilisearch index ready")
         except Exception:  # startup/shutdown boundary -- fail-fast on missing Meilisearch
-            logger.exception("Startup [6/%s] Failed to ensure Meilisearch index", STARTUP_TOTAL_STEPS)
+            logger.exception("Startup [5/%s] Failed to ensure Meilisearch index", STARTUP_TOTAL_STEPS)
             raise
     else:
-        logger.warning("Startup [6/%s] MEILISEARCH_URL not configured -- search disabled", STARTUP_TOTAL_STEPS)
-        _log_lifecycle_step("Startup", 6, STARTUP_TOTAL_STEPS, "Meilisearch skipped (MEILISEARCH_URL not set)")
+        logger.warning("Startup [5/%s] MEILISEARCH_URL not configured -- search disabled", STARTUP_TOTAL_STEPS)
+        _log_lifecycle_step("Startup", 5, STARTUP_TOTAL_STEPS, "Meilisearch skipped (MEILISEARCH_URL not set)")
 
     _log_lifecycle_event("Startup", "complete")
 

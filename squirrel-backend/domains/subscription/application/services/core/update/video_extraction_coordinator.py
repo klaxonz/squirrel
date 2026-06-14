@@ -3,8 +3,6 @@ import logging
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 import domains.video.application.services.extraction.task_service as video_extraction_task_service
 from domains.subscription.application.services.core.runtime_models import SubscriptionSyncResult
-from domains.subscription.application.services.core.sync.event_service import SyncEventInput, append_event
-from domains.subscription.application.services.core.sync.run_service import SyncEventType, SyncRunStatus
 from domains.video.application.services.crud import get_videos_by_urls
 from domains.video.application.services.extraction.extractor import extract_video
 from domains.video.application.services.moderation.blocked import is_blocked_video
@@ -89,14 +87,6 @@ class VideoExtractionCoordinator:
                 failed_count += 1
                 logger.warning("Failed to enqueue video %s: %s", video_url, exc)
 
-        self._append_run_events(
-            request=request,
-            domain=domain,
-            total=total,
-            enqueued=enqueued,
-            skipped=existing_count + blocked_count,
-        )
-
         logger.debug(
             "Enqueue summary subscription_id=%s domain=%s trigger=%s mode=%s total=%s queued=%s existed=%s blocked=%s failed=%s",
             request.subscription_id,
@@ -110,68 +100,6 @@ class VideoExtractionCoordinator:
             failed_count,
         )
         return enqueued
-
-    @staticmethod
-    def _append_run_events(
-        *,
-        request: SubscriptionUpdateRequest,
-        domain: str,
-        total: int,
-        enqueued: int,
-        skipped: int,
-    ) -> None:
-        if not request.run_id:
-            return
-
-        append_event(
-            SyncEventInput(
-                stream_id=request.run_id,
-                subscription_id=request.subscription_id,
-                sync_state_id=request.sync_state_id,
-                site=domain,
-                sync_mode=request.mode.value,
-                trigger=request.trigger.value,
-                request_id=request.request_id,
-                trace_id=request.trace_id,
-                event_type=SyncEventType.VIDEO_FOUND,
-                event_phase="calculating_delta",
-                event_status=SyncRunStatus.RUNNING,
-                payload={"videos_found_delta": total, "videos_found": total},
-            ),
-        )
-        append_event(
-            SyncEventInput(
-                stream_id=request.run_id,
-                subscription_id=request.subscription_id,
-                sync_state_id=request.sync_state_id,
-                site=domain,
-                sync_mode=request.mode.value,
-                trigger=request.trigger.value,
-                request_id=request.request_id,
-                trace_id=request.trace_id,
-                event_type=SyncEventType.VIDEO_ENQUEUED,
-                event_phase="enqueueing",
-                event_status=SyncRunStatus.RUNNING,
-                payload={"videos_enqueued_delta": enqueued, "videos_enqueued": enqueued},
-            ),
-        )
-        if skipped > 0:
-            append_event(
-                SyncEventInput(
-                    stream_id=request.run_id,
-                    subscription_id=request.subscription_id,
-                    sync_state_id=request.sync_state_id,
-                    site=domain,
-                    sync_mode=request.mode.value,
-                    trigger=request.trigger.value,
-                    request_id=request.request_id,
-                    trace_id=request.trace_id,
-                    event_type=SyncEventType.VIDEO_SKIPPED,
-                    event_phase="enqueueing",
-                    event_status=SyncRunStatus.RUNNING,
-                    payload={"videos_skipped_delta": skipped, "videos_skipped": skipped},
-                ),
-            )
 
 
 video_extraction_coordinator = VideoExtractionCoordinator()

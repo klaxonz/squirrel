@@ -4,11 +4,9 @@ from datetime import datetime
 
 from sqlalchemy import select, update
 
-from domains.subscription.application.services.core.sync.run_service import SyncEventType, SyncPhase, SyncRunStatus
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
 
 from ._crud import _get_or_create_sync_state_in_session
-from ._events import _append_state_event
 from ._intervals import INCREMENTAL_PENDING_THRESHOLD, build_retry_delay, get_mode_interval
 from ._stale import _recover_stale_running_state
 from .session import get_session
@@ -122,28 +120,9 @@ def claim_sync_state(
         )
         if result.rowcount == 0:
             return None
-        state = session.execute(
+        return session.execute(
             select(SubscriptionSyncState).where(SubscriptionSyncState.id == sync_state_id),
         ).scalar_one_or_none()
-        if not state:
-            return None
-        _append_state_event(
-            session,
-            state=state,
-            run_id=run_id,
-            request_id=request_id,
-            trace_id=trace_id,
-            trigger=trigger,
-            event_type=SyncEventType.CLAIMED,
-            event_phase=SyncPhase.CLAIMED,
-            event_status=SyncRunStatus.RUNNING,
-            payload={
-                "pending_video_count": state.pending_video_count,
-                "queue_token": queue_token,
-            },
-            occurred_at=now,
-        )
-        return state
 
 
 def reconcile_task_retry_state(
@@ -182,25 +161,6 @@ def reconcile_task_retry_state(
             state.locked_at = None
             state.last_error = error_message
             state.version += 1
-            _append_state_event(
-                session,
-                state=state,
-                run_id=run_id,
-                request_id=request_id,
-                trace_id=trace_id,
-                trigger=trigger,
-                event_type=SyncEventType.QUEUED,
-                event_phase=SyncPhase.QUEUED,
-                event_status=SyncRunStatus.QUEUED,
-                payload={
-                    "queue_token": state.queue_token,
-                    "queued_at": state.queued_at,
-                    "pending_video_count": state.pending_video_count,
-                    "error_message": error_message,
-                },
-                message=error_message,
-                occurred_at=now,
-            )
             return state
 
         if state.sync_status not in {SyncStatus.QUEUED.value, SyncStatus.RUNNING.value}:
@@ -216,25 +176,6 @@ def reconcile_task_retry_state(
         state.idle_sync_count = 0
         state.next_sync_at = now + build_retry_delay(state.sync_mode, state.failure_count)
         state.version += 1
-        _append_state_event(
-            session,
-            state=state,
-            run_id=run_id,
-            request_id=request_id,
-            trace_id=trace_id,
-            trigger=trigger,
-            event_type=SyncEventType.FAILED,
-            event_phase=SyncPhase.FAILED,
-            event_status=SyncRunStatus.FAILED,
-            payload={
-                "error_message": state.last_error,
-                "failure_count": state.failure_count,
-                "pending_video_count": state.pending_video_count,
-                "next_sync_at": state.next_sync_at,
-            },
-            message=state.last_error,
-            occurred_at=now,
-        )
         return state
 
 

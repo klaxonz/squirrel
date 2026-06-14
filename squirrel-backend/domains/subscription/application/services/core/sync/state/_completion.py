@@ -4,17 +4,8 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from domains.subscription.application.services.core.sync.run_service import SyncEventType, SyncPhase, SyncRunStatus
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncStatus
 
-from ._completion_events import (
-    append_continued_event,
-    append_deferred_event,
-    append_failed_event,
-    append_feed_completed_event,
-    append_skipped_event,
-    append_success_event,
-)
 from ._completion_transitions import (
     complete_success_state,
     continue_full_batch_state,
@@ -43,24 +34,11 @@ def _complete_sync_success_in_session(
     trigger: str | None = None,
 ) -> SubscriptionSyncState:
     now = datetime.now()
-    started_at = complete_success_state(
+    complete_success_state(
         state,
         now=now,
         videos_found=videos_found,
         next_sync_at=next_sync_at,
-    )
-    append_success_event(
-        session,
-        state=state,
-        started_at=started_at,
-        now=now,
-        source_video_count=source_video_count,
-        videos_found=videos_found,
-        videos_enqueued=videos_enqueued,
-        run_id=run_id,
-        request_id=request_id,
-        trace_id=trace_id,
-        trigger=trigger,
     )
     return state
 
@@ -88,19 +66,6 @@ def continue_full_sync_batch(
             now=now,
             cursor_payload=cursor_payload,
             latest_video_url=latest_video_url,
-        )
-        append_continued_event(
-            session,
-            state=state,
-            now=now,
-            latest_video_url=latest_video_url,
-            source_video_count=source_video_count,
-            videos_found=videos_found,
-            videos_enqueued=videos_enqueued,
-            run_id=run_id,
-            request_id=request_id,
-            trace_id=trace_id,
-            trigger=trigger,
         )
         return state
 
@@ -132,18 +97,6 @@ def mark_sync_success(
                 cursor_payload=cursor_payload,
                 latest_video_url=latest_video_url,
             )
-            append_feed_completed_event(
-                session,
-                state=state,
-                now=now,
-                source_video_count=source_video_count,
-                videos_found=videos_found,
-                videos_enqueued=videos_enqueued,
-                run_id=run_id,
-                request_id=request_id,
-                trace_id=trace_id,
-                trigger=trigger,
-            )
             return state
 
         update_cursor(state, cursor_payload=cursor_payload, latest_video_url=latest_video_url)
@@ -171,9 +124,6 @@ def mark_sync_skipped(
     trace_id: str | None = None,
     trigger: str | None = None,
     reason: str | None = None,
-    event_type: str = SyncEventType.DEFERRED,
-    event_phase: str = SyncPhase.DEFERRED,
-    event_status: str = SyncRunStatus.DEFERRED,
 ) -> SubscriptionSyncState | None:
     now = datetime.now()
     with get_session() as session:
@@ -181,19 +131,6 @@ def mark_sync_skipped(
         if not state:
             return None
         mark_skipped_state(state, now=now, next_sync_at=next_sync_at)
-        append_skipped_event(
-            session,
-            state=state,
-            now=now,
-            reason=reason,
-            event_type=event_type,
-            event_phase=event_phase,
-            event_status=event_status,
-            run_id=run_id,
-            request_id=request_id,
-            trace_id=trace_id,
-            trigger=trigger,
-        )
         return state
 
 
@@ -212,19 +149,7 @@ def mark_sync_failed(
         state = session.get(SubscriptionSyncState, sync_state_id)
         if not state:
             return None
-        started_at = mark_failed_state(state, now=now, error_message=error_message)
-        append_failed_event(
-            session,
-            state=state,
-            started_at=started_at,
-            now=now,
-            error_message=error_message,
-            error_type=error_type,
-            run_id=run_id,
-            request_id=request_id,
-            trace_id=trace_id,
-            trigger=trigger,
-        )
+        mark_failed_state(state, now=now, error_message=error_message)
         return state
 
 
@@ -244,16 +169,6 @@ def defer_sync_state(
         if not state:
             return None
         defer_state(state, now=now, delay=delay, error_message=error_message)
-        append_deferred_event(
-            session,
-            state=state,
-            now=now,
-            error_message=error_message,
-            run_id=run_id,
-            request_id=request_id,
-            trace_id=trace_id,
-            trigger=trigger,
-        )
         return state
 
 

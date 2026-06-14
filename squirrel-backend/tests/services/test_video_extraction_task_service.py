@@ -4,14 +4,13 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from shared_kernel.domain.base import Base
+from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 from domains.subscription.domain.models.crawl_dispatch_scope import CrawlDispatchScope
 from domains.subscription.domain.models.crawl_job import CrawlJob
 from domains.subscription.domain.models.crawl_task import CrawlTask
-from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
-from domains.video.domain.models.video_extraction_projection import VideoExtractionProjection
-from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
 from domains.video.application.services.extraction.task_service import VideoExtractionTaskService
+from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
+from shared_kernel.domain.base import Base
 
 
 @pytest.fixture
@@ -23,7 +22,6 @@ def engine():
             CrawlJob.__table__,
             CrawlTask.__table__,
             CrawlDispatchScope.__table__,
-            VideoExtractionProjection.__table__,
         ],
     )
     return _engine
@@ -51,7 +49,6 @@ def svc(session_factory):
     return VideoExtractionTaskService(
         get_video_by_url=lambda url: None,
         crawl_tasks=task_svc,
-        projection_service=type("ProjectionService", (), {"refresh_projection_for_task": lambda self, task: None})(),
     )
 
 

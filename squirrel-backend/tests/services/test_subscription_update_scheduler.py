@@ -45,12 +45,10 @@ def sched(session_factory):
 @pytest.fixture(autouse=True)
 def _patch_postgres(session_factory):
     """Patch postgres-specific calls to work with SQLite."""
-    from domains.subscription.application.services.core.sync.run_service import subscription_sync_run_service
     from infrastructure.database import session as database
 
     with patch.object(database, 'register_after_commit', lambda session, callback: None), \
-         patch.object(database, 'get_session', session_factory), \
-         patch.object(subscription_sync_run_service, 'next_seq_no', lambda stream_id, *, session=None: 1):
+         patch.object(database, 'get_session', session_factory):
         yield
 
 

@@ -10,15 +10,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from infrastructure.scheduling.workers.leases import ActiveTaskLease
 from infrastructure.scheduling.workers.runtime import CrawlWorkerRuntime
-from domains.subscription.domain.models.crawl_task import CrawlTask
+
 from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskOwnershipError
+from domains.subscription.domain.models.crawl_task import CrawlTask
 
 
 def _noop_runtime(**kwargs):
-    kwargs.setdefault(
-        "video_projection_service",
-        SimpleNamespace(refresh_projection_for_task=lambda task: None),
-    )
     kwargs.setdefault(
         "subscription_task_progress",
         SimpleNamespace(record_retry_transition=lambda *args, **kwargs: None),
@@ -149,7 +146,6 @@ def test_run_once_retries_task_on_failure(monkeypatch):
     calls = []
     task = CrawlTask(id=3, job_id=1, task_type="video_extract", site="youtube.com", payload={})
     progress_calls = []
-    projection_calls = []
     runtime = _noop_runtime(
         dispatcher=SimpleNamespace(claim_next=lambda **kwargs: task),
         worker_id="worker-1",
@@ -157,9 +153,6 @@ def test_run_once_retries_task_on_failure(monkeypatch):
         retry_delay_seconds=45,
         subscription_task_progress=SimpleNamespace(
             record_retry_transition=lambda current_task, **kwargs: progress_calls.append((current_task.id, kwargs)),
-        ),
-        video_projection_service=SimpleNamespace(
-            refresh_projection_for_task=lambda current_task: projection_calls.append(current_task.id),
         ),
     )
 
@@ -191,7 +184,6 @@ def test_run_once_retries_task_on_failure(monkeypatch):
         ("retry", 3, "worker-1", "RuntimeError", 45),
     ]
     assert progress_calls == [(3, {"now": progress_calls[0][1]["now"], "error_message": "boom"})]
-    assert projection_calls == [3, 3, 3]
 
 
 def test_run_once_returns_false_when_no_task_is_claimed(monkeypatch):
@@ -208,9 +200,8 @@ def test_run_once_returns_false_when_no_task_is_claimed(monkeypatch):
     assert runtime.run_once() is False
 
 
-def test_recover_expired_tasks_records_domain_progress_and_projection(monkeypatch):
+def test_recover_expired_tasks_records_domain_progress(monkeypatch):
     progress_calls = []
-    projection_calls = []
     recovered_task = CrawlTask(
         id=41,
         job_id=1,
@@ -226,9 +217,6 @@ def test_recover_expired_tasks_records_domain_progress_and_projection(monkeypatc
         subscription_task_progress=SimpleNamespace(
             record_retry_transition=lambda current_task, **kwargs: progress_calls.append((current_task.id, kwargs)),
         ),
-        video_projection_service=SimpleNamespace(
-            refresh_projection_for_task=lambda current_task: projection_calls.append(current_task.id),
-        ),
     )
     now = datetime(2026, 4, 2, 13, 0, 0)
 
@@ -241,7 +229,6 @@ def test_recover_expired_tasks_records_domain_progress_and_projection(monkeypatc
 
     assert recovered_count == 1
     assert progress_calls == [(41, {"now": now, "error_message": "lease_expired"})]
-    assert projection_calls == [41]
 
 
 def test_run_loop_fills_multiple_slots_with_concurrent_tasks(monkeypatch):

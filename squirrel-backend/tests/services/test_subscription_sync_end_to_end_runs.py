@@ -5,7 +5,6 @@ import pytest
 from sqlalchemy.orm import Session
 
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
-from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
 from shared_kernel.domain.base import Base
 
@@ -17,12 +16,10 @@ def engine(engine):
 
 @pytest.fixture
 def sss_session_patch(session_factory):
-    """Replacement for sss_session fixture using patch instead of monkeypatch."""
-    from domains.subscription.application.services.core.sync.run_service import subscription_sync_run_service
+    """Redirect module-level services to use test session_factory."""
     from infrastructure.database import session as database
 
-    with patch.object(database, 'get_session', session_factory), \
-         patch.object(subscription_sync_run_service, 'next_seq_no', lambda stream_id, *, session=None: 1):
+    with patch.object(database, 'get_session', session_factory):
         yield
 
 
@@ -30,7 +27,6 @@ def _setup_state_env(engine):
     Base.metadata.create_all(
         engine,
         tables=[
-            SubscriptionSyncEvent.__table__,
             SubscriptionSyncState.__table__,
         ],
     )
@@ -40,80 +36,72 @@ def _setup_state_env(engine):
 def test_mark_sync_success_stays_running_until_pending_videos_are_drained(engine, session_factory, sss_session_patch):
     engine = _setup_state_env(engine)
     sss_svc = subscription_sync_state_service
-    captured_events = []
 
-    with patch(
-        "domains.subscription.application.services.core.sync.state._events.append_event",
-        lambda event_input, session=None, project=True: captured_events.append(event_input) or event_input,
-    ):
-
-        now = datetime(2026, 4, 2, 12, 0, 0)
-        with Session(engine, expire_on_commit=False) as session:
-            session.add(
-                SubscriptionSyncState(
-                    id=11,
-                    subscription_id=1,
-                    site="youtube.com",
-                    sync_mode="incremental",
-                    sync_status="running",
-                    cursor_payload={"cursor": "done"},
-                    last_seen_video_url="https://example.com/video/1",
-                    last_sync_at=now - timedelta(minutes=1),
-                    last_success_at=None,
-                    next_sync_at=now + timedelta(minutes=5),
-                    queued_at=now - timedelta(minutes=2),
-                    locked_at=now - timedelta(minutes=2),
-                    queue_token="queue-token",
-                    pending_video_count=3,
-                    failure_count=0,
-                    idle_sync_count=0,
-                    version=0,
-                    last_error=None,
-                    created_at=now - timedelta(hours=1),
-                    updated_at=now - timedelta(minutes=2),
-                ),
-            )
-            session.commit()
-
-        sss_svc.mark_sync_success(
-            11,
-            cursor_payload={"cursor": "done"},
-            latest_video_url="https://example.com/video/1",
-            source_video_count=10,
-            videos_found=10,
-            videos_enqueued=8,
-            run_id="run-1",
-            request_id="req-1",
-            trace_id="trace-1",
-            trigger="manual",
+    now = datetime(2026, 4, 2, 12, 0, 0)
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            SubscriptionSyncState(
+                id=11,
+                subscription_id=1,
+                site="youtube.com",
+                sync_mode="incremental",
+                sync_status="running",
+                cursor_payload={"cursor": "done"},
+                last_seen_video_url="https://example.com/video/1",
+                last_sync_at=now - timedelta(minutes=1),
+                last_success_at=None,
+                next_sync_at=now + timedelta(minutes=5),
+                queued_at=now - timedelta(minutes=2),
+                locked_at=now - timedelta(minutes=2),
+                queue_token="queue-token",
+                pending_video_count=3,
+                failure_count=0,
+                idle_sync_count=0,
+                version=0,
+                last_error=None,
+                created_at=now - timedelta(hours=1),
+                updated_at=now - timedelta(minutes=2),
+            ),
         )
+        session.commit()
 
-        with Session(engine, expire_on_commit=False) as session:
-            state = session.get(SubscriptionSyncState, 11)
+    sss_svc.mark_sync_success(
+        11,
+        cursor_payload={"cursor": "done"},
+        latest_video_url="https://example.com/video/1",
+        source_video_count=10,
+        videos_found=10,
+        videos_enqueued=8,
+        run_id="run-1",
+        request_id="req-1",
+        trace_id="trace-1",
+        trigger="manual",
+    )
 
-        assert state.sync_status == "running"
-        assert state.locked_at is None
-        assert state.pending_video_count == 3
-        assert state.last_success_at is None
-        assert [event.event_type for event in captured_events] == ["phase_changed"]
-        assert captured_events[-1].event_phase == "extracting"
+    with Session(engine, expire_on_commit=False) as session:
+        state = session.get(SubscriptionSyncState, 11)
 
-        sss_svc.decrement_pending_video_count(
-            11,
-            count=3,
-            run_id="run-1",
-            request_id="req-1",
-            trace_id="trace-1",
-            trigger="manual",
-        )
+    # pending videos remain -> stays running, success not finalized
+    assert state.sync_status == "running"
+    assert state.locked_at is None
+    assert state.pending_video_count == 3
+    assert state.last_success_at is None
 
-        with Session(engine, expire_on_commit=False) as session:
-            state = session.get(SubscriptionSyncState, 11)
+    sss_svc.decrement_pending_video_count(
+        11,
+        count=3,
+        run_id="run-1",
+        request_id="req-1",
+        trace_id="trace-1",
+        trigger="manual",
+    )
 
-        assert state.sync_status == "success"
-        assert state.pending_video_count == 0
-        assert state.last_success_at is not None
-        assert [event.event_type for event in captured_events] == ["phase_changed", "completed"]
+    with Session(engine, expire_on_commit=False) as session:
+        state = session.get(SubscriptionSyncState, 11)
+
+    assert state.sync_status == "success"
+    assert state.pending_video_count == 0
+    assert state.last_success_at is not None
 
 
 def test_record_gap_observation_enqueues_full_backfill_when_score_crosses_threshold(engine, session_factory, sss_session_patch):

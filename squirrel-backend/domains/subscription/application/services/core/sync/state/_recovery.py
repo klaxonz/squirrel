@@ -4,12 +4,10 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import select, update
 
-from domains.subscription.application.services.core.sync.run_service import SyncEventType, SyncPhase, SyncRunStatus
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncStatus
 
 from ._completion import _complete_sync_success_in_session
-from ._events import _append_recovery_run_events, _append_terminal_reconcile_run_events
 from ._intervals import QUEUED_RECOVERY_GRACE, RUNNING_TIMEOUT, build_retry_delay
 from ._stale import _recover_stale_running_state
 from .session import get_session
@@ -26,15 +24,6 @@ def recover_stale_sync_state(sync_state_id: int) -> SubscriptionSyncState | None
         if state.locked_at > now - RUNNING_TIMEOUT:
             return state
         _recover_stale_running_state(state, now)
-        _append_recovery_run_events(
-            session,
-            state=state,
-            event_type=SyncEventType.STALE_RUNNING_RECOVERED,
-            event_phase=SyncPhase.FAILED,
-            event_status=SyncRunStatus.TIMEOUT,
-            reason="stale_running_timeout",
-            occurred_at=now,
-        )
         return state
 
 
@@ -93,30 +82,10 @@ def reconcile_terminal_drained_sync_states() -> dict[str, int]:
                 state.idle_sync_count = 0
                 state.next_sync_at = now + build_retry_delay(state.sync_mode, state.failure_count)
                 state.version += 1
-                _append_terminal_reconcile_run_events(
-                    session,
-                    state=state,
-                    event_type=SyncEventType.FAILED,
-                    event_phase=SyncPhase.FAILED,
-                    event_status=SyncRunStatus.FAILED,
-                    reason="video_extract_reconcile_failed",
-                    error_message=state.last_error,
-                    occurred_at=now,
-                )
                 failed += 1
                 continue
 
             _complete_sync_success_in_session(session, state=state)
-            _append_terminal_reconcile_run_events(
-                session,
-                state=state,
-                event_type=SyncEventType.COMPLETED,
-                event_phase=SyncPhase.COMPLETED,
-                event_status=SyncRunStatus.SUCCESS,
-                reason="video_extract_reconcile_completed",
-                error_message=None,
-                occurred_at=now,
-            )
             completed += 1
 
     return {
@@ -151,15 +120,6 @@ def recover_stale_queued_sync_states(grace: timedelta = QUEUED_RECOVERY_GRACE) -
             state.locked_at = None
             state.next_sync_at = now
             state.version += 1
-            _append_recovery_run_events(
-                session,
-                state=state,
-                event_type=SyncEventType.STALE_QUEUED_RECOVERED,
-                event_phase=SyncPhase.FAILED,
-                event_status=SyncRunStatus.FAILED,
-                reason="stale_queued_missing_message",
-                occurred_at=now,
-            )
             recovered += 1
 
     return {
@@ -184,15 +144,6 @@ def recover_stale_running_sync_states(timeout: timedelta = RUNNING_TIMEOUT) -> d
 
         for state in states:
             _recover_stale_running_state(state, now)
-            _append_recovery_run_events(
-                session,
-                state=state,
-                event_type=SyncEventType.STALE_RUNNING_RECOVERED,
-                event_phase=SyncPhase.FAILED,
-                event_status=SyncRunStatus.TIMEOUT,
-                reason="stale_running_timeout",
-                occurred_at=now,
-            )
             recovered += 1
 
     return {
@@ -207,4 +158,3 @@ def _scan_pending_video_counts() -> dict[int, int]:
 
 def _scan_subscription_update_state_ids() -> set[int]:
     return crawl_task_service.list_active_subscription_sync_state_ids()
-

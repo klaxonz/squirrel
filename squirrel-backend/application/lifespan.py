@@ -68,13 +68,6 @@ def bootstrap_runtime(component: str):
             os.environ["YOUTUBE_OAUTH_STATE_FILE"] = oauth_file
         bootstrap_site_runtimes()
         try:
-            import domains.video.application.services.extraction_projection.service as video_extraction_projection_service
-            rebuilt_count = video_extraction_projection_service.ensure_projection_seeded()
-            logger.info("[%s] Video extraction projection ready (rebuilt=%s)", component, rebuilt_count)
-        except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
-            logger.exception("[%s] Failed to seed video extraction projection", component)
-            raise
-        try:
             import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
             drained_result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
             queued_result = subscription_sync_state_service.recover_stale_queued_sync_states()

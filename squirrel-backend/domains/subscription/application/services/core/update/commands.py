@@ -104,15 +104,6 @@ class SubscriptionSyncCommandService:
         task.payload["request_id"] = request_id
         self._set_task_request_id(task.id, request_id)
 
-        self._event_publisher.append_queued_event(
-            command,
-            sync_state_id=queued.sync_state_id,
-            domain=domain,
-            queue_token=queued.queue_token,
-            request_id=request_id,
-            run_context=queued.run_context,
-            pending_video_count=queued.pending_video_count,
-        )
         logger.debug(
             "Queued subscription sync task subscription_id=%s sync_state_id=%s task_id=%s priority=%s",
             command.subscription_id,
@@ -171,16 +162,6 @@ class SubscriptionSyncCommandService:
             )
 
         request_id = f"direct:{queued.run_context.run_id}"
-        self._event_publisher.append_queued_event(
-            command,
-            sync_state_id=queued.sync_state_id,
-            domain=domain,
-            queue_token=queued.queue_token,
-            request_id=request_id,
-            run_context=queued.run_context,
-            pending_video_count=queued.pending_video_count,
-            direct=True,
-        )
 
         from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
             execute_subscription_sync_payload,
