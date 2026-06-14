@@ -231,6 +231,7 @@ class MeiliVideoIndexer:
         domains: list[str] | None = None,
         time_range: str = 'all',
         duration: str = 'all',
+        filter_ids: list[int] | None = None,
         limit: int = 1000,
         sort_by: str = 'publish_date',
     ) -> list[int]:
@@ -238,10 +239,16 @@ class MeiliVideoIndexer:
 
         - query 非空：文本召回，按相关性返回（Meili 默认 ranking，忽略 sort_by）
         - query 为空：placeholder search，按 sort_by 返回（默认 publish_date 即 publish_ts:desc）
+        - filter_ids：额外的 id 约束（read/liked/later 反向交集——PG 提供 per-user id 集合，
+          Meili 在此范围内做文本召回）。None 表示不约束。
         - 返回 video_id 列表，权限/category 过滤由调用方在 PG 侧处理
         - 失败抛出，由调用方决定降级（通常 fallback 到纯 PG 浏览路径或返回空）
         """
         filters = _build_recall_filter(domains=domains, time_range=time_range, duration=duration)
+        if filter_ids:
+            # id IN [列表]：Meili 数字无需引号。列表过大时 Meili 会自行优化，但建议上游控制规模。
+            id_list = ', '.join(str(i) for i in filter_ids)
+            filters.append(f'id IN [{id_list}]')
         opt: dict[str, Any] = {'limit': limit}
         if filters:
             # 用 list 形式：Meili 隐式 AND，避免字符串拼接的转义/优先级 bug
