@@ -6,18 +6,35 @@ from sqlalchemy import select
 
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 import domains.user.application.services.feed as user_video_feed_service
-from infrastructure.database.session import get_session
-from infrastructure.messaging.framework.producer import RedisStreamProducer
-from infrastructure.messaging.models.message import Message
-from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from shared_kernel.system import constants
-from domains.subscription.domain.models.subscription import ContentType, Subscription
 from domains.subscription.application.services.core.crud import subscription_crud_service
 from domains.subscription.application.services.core.listing.service import resolve_subscription_nsfw
 from domains.subscription.application.services.core.runtime_models import SubscriptionMeta
+from domains.subscription.domain.junctions.user_subscription import UserSubscription
+from domains.subscription.domain.models.subscription import ContentType, Subscription
 from domains.user.domain.models.user import User
+from domains.video.domain.junctions.subscription_video import SubscriptionVideo
+from infrastructure.config.settings import settings
+from infrastructure.database.session import get_session, register_after_commit
+from infrastructure.messaging.framework.producer import RedisStreamProducer
+from infrastructure.messaging.models.message import Message
+from shared_kernel.system import constants
 
 logger = logging.getLogger(__name__)
+
+
+def _reindex_videos_safe(video_ids: list[int], *, context: str, subscription_id: int | None = None) -> None:
+    """解绑后重建受影响 video 的 Meili 文档；失败仅告警（全量重建兜底）。
+
+    Lazy import 避免subscription 域静态依赖 video application 层造成循环导入。
+    """
+    try:
+        from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
+        get_meili_video_indexer().reindex_video_ids(video_ids)
+    except Exception:
+        logger.warning(
+            'meili reindex_video_ids failed context=%s subscription_id=%s count=%d (full reindex will catch up)',
+            context, subscription_id, len(video_ids), exc_info=True,
+        )
 
 
 class SubscriptionManageService:
@@ -123,6 +140,16 @@ class SubscriptionManageService:
             if not subscription:
                 return False
 
+            # 提交前查受影响 video_id：解绑后这些文档里的 subscription_names 会过时，
+            # 需要重新构建文档（去掉已解绑的订阅名）。SEARCH_BACKEND 非 meilisearch 时跳过。
+            affected_video_ids: list[int] = []
+            if settings.SEARCH_BACKEND == 'meilisearch':
+                affected_video_ids = session.scalars(
+                    select(SubscriptionVideo.video_id).where(
+                        SubscriptionVideo.subscription_id == subscription.id,
+                    ),
+                ).all()
+
             active_user_subscriptions = session.scalars(
                 select(UserSubscription).where(
                     UserSubscription.subscription_id == subscription.id,
@@ -134,6 +161,11 @@ class SubscriptionManageService:
                 user_subscription.is_deleted = True
 
             subscription.is_deleted = True
+            if affected_video_ids:
+                register_after_commit(
+                    session,
+                    lambda: _reindex_videos_safe(affected_video_ids, context='unsubscribe', subscription_id=subscription.id),
+                )
             session.commit()
 
         user_video_feed_service.remove_subscription_feed(subscription_id)

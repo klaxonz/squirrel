@@ -4,7 +4,6 @@ from sqlalchemy import false, func, literal, select
 from sqlalchemy.orm import Session
 
 from domains.user.domain.models.user_video_feed import UserVideoFeed
-from domains.video.domain.models.video import Video
 from domains.video.application.services.listing.query_filters import (
     build_active_subscriptions_query,
     contains_text,
@@ -16,6 +15,7 @@ from domains.video.application.services.moderation.nsfw_policy import (
     resolve_effective_nsfw_filter as _default_resolve_effective_nsfw_filter,
 )
 from domains.video.application.services.search.query import duration_predicate as _default_duration_predicate
+from domains.video.domain.models.video import Video
 
 
 class VideoListQueryService:
@@ -230,6 +230,7 @@ class VideoListQueryService:
         duration: str,
         content_type: str,
         special: str,
+        recalled_ids: list[int] | None = None,
     ) -> Any:
         active_subscriptions = self._build_active_subscriptions_query(
             user_id=user_id,
@@ -239,36 +240,53 @@ class VideoListQueryService:
             special=special,
         )
         parsed_query = self._parse_search_query(query)
-        has_unsupported_terms = any(
-            [
-                parsed_query.get("creator"),
-                parsed_query.get("url"),
-                parsed_query.get("description"),
-            ]
-        )
 
-        if parsed_query.get("subscription") or parsed_query.get("type"):
-            return self._subscription_search_query(
-                active_subscriptions=active_subscriptions,
-                parsed_query=parsed_query,
-                user_id=user_id,
-                sort_by=sort_by,
-                domains=domains,
-                category=category,
-                time_range=time_range,
-                duration=duration,
+        # Meilisearch 召回路径：recalled_ids 非空时用召回集合过滤，
+        # 跳过 legacy 的字段解析（subscription/type/unsupported 早期分支 + title 搜索条件），
+        # 因为召回已覆盖 title/description/subscription/creator 全文匹配。
+        if recalled_ids is None:
+            has_unsupported_terms = any(
+                [
+                    parsed_query.get("creator"),
+                    parsed_query.get("url"),
+                    parsed_query.get("description"),
+                ]
             )
 
-        if has_unsupported_terms:
+            if parsed_query.get("subscription") or parsed_query.get("type"):
+                return self._subscription_search_query(
+                    active_subscriptions=active_subscriptions,
+                    parsed_query=parsed_query,
+                    user_id=user_id,
+                    sort_by=sort_by,
+                    domains=domains,
+                    category=category,
+                    time_range=time_range,
+                    duration=duration,
+                )
+
+            if has_unsupported_terms:
+                return (
+                    select(
+                        Video.id.label("video_id"),
+                        Video.publish_date.label("publish_date"),
+                        Video.created_at.label("video_created_at"),
+                        literal(0).label("search_rank"),
+                        Video.publish_date.label("sort_value"),
+                    )
+                    .select_from(Video)
+                    .where(false())
+                )
+        elif not recalled_ids:
+            # 搜索词无任何匹配 → 返回空，避免 IN () 退化为全表
             return (
                 select(
-                    Video.id.label("video_id"),
-                    Video.publish_date.label("publish_date"),
-                    Video.created_at.label("video_created_at"),
+                    literal(0).label("video_id"),
+                    literal(None).label("publish_date"),
+                    literal(None).label("video_created_at"),
                     literal(0).label("search_rank"),
-                    Video.publish_date.label("sort_value"),
+                    literal(None).label("sort_value"),
                 )
-                .select_from(Video)
                 .where(false())
             )
 
@@ -310,9 +328,12 @@ class VideoListQueryService:
         for cond in self._duration_predicate(duration):
             query_stmt = query_stmt.where(cond)
 
-        search_conditions = self._title_search_conditions(parsed_query, domain_column=UserVideoFeed.domain)
-        for cond in search_conditions:
-            query_stmt = query_stmt.where(cond)
+        if recalled_ids is not None:
+            query_stmt = query_stmt.where(UserVideoFeed.video_id.in_(recalled_ids))
+        else:
+            search_conditions = self._title_search_conditions(parsed_query, domain_column=UserVideoFeed.domain)
+            for cond in search_conditions:
+                query_stmt = query_stmt.where(cond)
 
         feed_source = query_stmt.subquery("feed_source")
         if sort_by == "created_at":

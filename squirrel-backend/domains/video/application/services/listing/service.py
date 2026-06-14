@@ -7,10 +7,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 import domains.user.application.services.config as user_config_service
-from infrastructure.database.session import get_session as _default_get_session
-from domains.video.domain.models.video import Video
 from domains.video.application.services.engagement.clip_marker import serialize_marker as _default_serialize_marker
-from domains.video.application.services.extraction.thumbnail_downloader import thumbnail_downloader_service as _default_thumbnail_downloader
+from domains.video.application.services.extraction.thumbnail_downloader import (
+    thumbnail_downloader_service as _default_thumbnail_downloader,
+)
 from domains.video.application.services.listing.detail_loader import VideoDetailLoader
 from domains.video.application.services.listing.page_loader import VideoListPageLoader
 from domains.video.application.services.listing.profiles import merge_profiles as _merge_profiles
@@ -24,6 +24,10 @@ from domains.video.application.services.listing.query import (
 from domains.video.application.services.listing.query import (
     fetch_feed_page_video_ids as _default_fetch_feed_page_video_ids,
 )
+from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
+from domains.video.domain.models.video import Video
+from infrastructure.config.settings import settings
+from infrastructure.database.session import get_session as _default_get_session
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
 
@@ -59,6 +63,17 @@ class VideoListService:
     @staticmethod
     def _elapsed_ms(start_time: float) -> float:
         return round((perf_counter() - start_time) * 1000, 3)
+
+    @staticmethod
+    def _recall_video_ids(query: str | None) -> list[int] | None:
+        """SEARCH_BACKEND=meilisearch 时用 Meilisearch 召回 video_id；否则返回 None 走 legacy。"""
+        if not query or settings.SEARCH_BACKEND != 'meilisearch' or not settings.MEILISEARCH_URL:
+            return None
+        try:
+            return get_meili_video_indexer().search(query)
+        except Exception:
+            logger.warning('meili search failed, fallback to legacy', exc_info=True)
+            return None
 
     def list_videos(
         self,
@@ -103,6 +118,7 @@ class VideoListService:
                     special=special,
                 )
             else:
+                recalled_ids = self._recall_video_ids(query)
                 base_ids_query = self._build_list_query(
                     user_id=user_id,
                     show_nsfw=show_nsfw,
@@ -116,6 +132,7 @@ class VideoListService:
                     duration=duration,
                     content_type=content_type,
                     special=special,
+                    recalled_ids=recalled_ids,
                 )
             build_query_ms = self._elapsed_ms(build_query_started_at)
 

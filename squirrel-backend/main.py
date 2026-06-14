@@ -7,14 +7,13 @@ import uvicorn
 from fastapi import FastAPI
 
 from infrastructure.config.settings import settings
-from infrastructure.database.migrations import upgrade_database
 from infrastructure.config.site_config_manager import apply_site_config_overrides
 from infrastructure.config.startup_dependencies import (
     clear_optional_startup_issue,
     record_optional_startup_issue,
     reset_startup_dependency_issues,
 )
-from shared_kernel.infrastructure.log import init_logging
+from infrastructure.database.migrations import upgrade_database
 from infrastructure.site_catalog.cookies import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
 from infrastructure.site_catalog.runtime_http import (
     set_cloudflare_bypass_client,
@@ -22,10 +21,11 @@ from infrastructure.site_catalog.runtime_http import (
     set_cookie_file_resolver,
 )
 from infrastructure.site_runtimes.manager import bootstrap_site_runtimes, shutdown_site_runtimes
+from shared_kernel.infrastructure.log import init_logging
 
 logger = logging.getLogger(__name__)
 
-STARTUP_TOTAL_STEPS = 5
+STARTUP_TOTAL_STEPS = 6
 SHUTDOWN_TOTAL_STEPS = 1
 
 
@@ -126,6 +126,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             exc,
             exc_info=True,
         )
+
+    _log_lifecycle_step("Startup", 6, STARTUP_TOTAL_STEPS, "Ensuring Meilisearch index")
+    if settings.SEARCH_BACKEND == 'meilisearch':
+        # Meili 是 SEARCH_BACKEND=meilisearch 时的强依赖，索引未就绪会导致 domain 过滤报错
+        # 和召回异常，故失败直接终止启动（用户需自行 fallback 到 SEARCH_BACKEND=legacy）。
+        try:
+            from infrastructure.search.meili import ensure_videos_index
+            ensure_videos_index()
+            _log_lifecycle_step("Startup", 6, STARTUP_TOTAL_STEPS, "Meilisearch index ready")
+        except Exception:  # startup/shutdown boundary -- fail-fast on missing Meilisearch
+            logger.exception("Startup [6/%s] Failed to ensure Meilisearch index", STARTUP_TOTAL_STEPS)
+            raise
+    else:
+        _log_lifecycle_step("Startup", 6, STARTUP_TOTAL_STEPS, "Meilisearch skipped (SEARCH_BACKEND != meilisearch)")
 
     _log_lifecycle_event("Startup", "complete")
 

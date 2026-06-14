@@ -1,9 +1,29 @@
+import logging
+
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 import domains.user.application.services.feed as user_video_feed_service
-from infrastructure.database.session import get_session
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
+from infrastructure.config.settings import settings
+from infrastructure.database.session import get_session, register_after_commit
+
+logger = logging.getLogger(__name__)
+
+
+def _reindex_videos_safe(video_ids: list[int], *, context: str, subscription_id: int | None = None) -> None:
+    """关联变更后重建受影响 video 的 Meili 文档；失败仅告警（全量重建兜底）。
+
+    Lazy import 避免 subscription 域静态依赖 video application 层造成循环导入。
+    """
+    try:
+        from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
+        get_meili_video_indexer().reindex_video_ids(video_ids)
+    except Exception:
+        logger.warning(
+            'meili reindex_video_ids failed context=%s subscription_id=%s count=%d (full reindex will catch up)',
+            context, subscription_id, len(video_ids), exc_info=True,
+        )
 
 
 class SubscriptionVideoService:
@@ -38,6 +58,15 @@ class SubscriptionVideoService:
             )
             result = session.execute(stmt)
             row = result.first()
+            # 新建关联会改变 Meili 文档的 subscription_names 字段，提交后重建文档。
+            # 必须在 commit 前注册（after_commit 事件在 commit 时 fire），否则回调永不执行。
+            # SEARCH_BACKEND 非 meilisearch 时跳过，避免无谓 reindex。
+            created = row is not None
+            if created and settings.SEARCH_BACKEND == 'meilisearch':
+                register_after_commit(
+                    session,
+                    lambda: _reindex_videos_safe([video_id], context='subscription_link', subscription_id=subscription_id),
+                )
             session.commit()
             if row is not None:
                 # 新建时直接返回对象

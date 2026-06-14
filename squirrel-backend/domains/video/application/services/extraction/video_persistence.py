@@ -6,13 +6,25 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-import infrastructure.site_catalog.url as url_helper
 import domains.subscription.application.services.core.video_service as subscription_video_service
 import domains.user.application.services.feed as user_video_feed_service
-from infrastructure.database.session import get_session
+import infrastructure.site_catalog.url as url_helper
+from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
 from domains.video.domain.models.video import Video as VideoModel
+from infrastructure.config.settings import settings
+from infrastructure.database.session import get_session, register_after_commit
 
 logger = logging.getLogger(__name__)
+
+
+def _index_video_after_commit(session: Session, video: VideoModel) -> None:
+    """SEARCH_BACKEND=meilisearch 时，事务提交后把 video 推到 Meilisearch（增量直写，失败仅告警）。"""
+    if settings.SEARCH_BACKEND != 'meilisearch' or not settings.MEILISEARCH_URL:
+        return
+    try:
+        register_after_commit(session, lambda: get_meili_video_indexer().upsert_safe(video.id))
+    except Exception:
+        logger.warning('meili index register failed video_id=%s', getattr(video, 'id', None), exc_info=True)
 
 
 class VideoPersistenceService:
@@ -75,6 +87,7 @@ class VideoPersistenceService:
                 )
 
                 session.add(video)
+                _index_video_after_commit(session, video)
                 session.commit()
                 session.refresh(video)
 
@@ -109,6 +122,7 @@ class VideoPersistenceService:
                     updated = True
 
                 if updated:
+                    _index_video_after_commit(session, video)
                     session.commit()
                     session.refresh(video)
                     user_video_feed_service.refresh_video_feed_metadata(video.id)
