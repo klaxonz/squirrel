@@ -6,14 +6,9 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from domains.subscription.application.services.core.sync.projection.service import subscription_sync_projection_service
 from domains.subscription.application.services.core.sync.run_service import subscription_sync_run_service
-from domains.subscription.application.services.sync.channels import (
-    SYNC_DASHBOARD_FEED_CHANNEL,
-    SYNC_DASHBOARD_RUN_CHANNEL,
-)
 from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
-from infrastructure.database.session import get_session, register_after_commit
+from infrastructure.database.session import get_session
 
 
 @dataclass
@@ -36,18 +31,17 @@ class SyncEventInput:
 
 
 class SubscriptionSyncEventService:
-    def __init__(self, session_factory=get_session, projection_service=None, run_service=None, stream_service=None):
-        self.session_factory = session_factory
-        self.projection_service = projection_service or subscription_sync_projection_service
-        self.run_service = run_service or subscription_sync_run_service
-        self._stream_service = stream_service
+    """Append-only writer for the subscription sync event stream.
 
-    @property
-    def stream_service(self):
-        if self._stream_service is None:
-            from domains.subscription.application.services.sync.stream_service import sync_dashboard_stream_service
-            self._stream_service = sync_dashboard_stream_service
-        return self._stream_service
+    The sync dashboard / SSE invalidation hooks and the run/subscription/trend projection writers
+    have been removed. This service now only persists events to ``subscription_sync_event``;
+    ``next_seq_no`` still reads that table to allocate sequence numbers. The ``project`` parameter
+    is accepted for backwards compatibility but is a no-op.
+    """
+
+    def __init__(self, session_factory=get_session, run_service=None):
+        self.session_factory = session_factory
+        self.run_service = run_service or subscription_sync_run_service
 
     @staticmethod
     def _serialize_value(value: Any) -> Any:
@@ -95,21 +89,6 @@ class SubscriptionSyncEventService:
             event = self.build_event(event_input, session=session)
             session.add(event)
             session.flush()
-            if project:
-                self.projection_service.apply_event(event, session=session)
-            register_after_commit(
-                session,
-                lambda: self.stream_service.publish_sync_dashboard_invalidation(
-                    SYNC_DASHBOARD_FEED_CHANNEL,
-                ),
-            )
-            register_after_commit(
-                session,
-                lambda: self.stream_service.publish_sync_dashboard_invalidation(
-                    SYNC_DASHBOARD_RUN_CHANNEL,
-                    {'run_id': event.stream_id},
-                ),
-            )
             return event
 
         with self.session_factory() as managed_session:
@@ -136,28 +115,6 @@ class SubscriptionSyncEventService:
             for event in ordered_events:
                 session.add(event)
             session.flush()
-
-            if project:
-                self.projection_service.apply_events(ordered_events, session=session)
-            if ordered_events:
-                register_after_commit(
-                    session,
-                    lambda: self.stream_service.publish_sync_dashboard_invalidation(
-                        SYNC_DASHBOARD_FEED_CHANNEL,
-                    ),
-                )
-                published_run_ids = []
-                for event in ordered_events:
-                    if event.stream_id in published_run_ids:
-                        continue
-                    published_run_ids.append(event.stream_id)
-                    register_after_commit(
-                        session,
-                        lambda run_id=event.stream_id: self.stream_service.publish_sync_dashboard_invalidation(
-                            SYNC_DASHBOARD_RUN_CHANNEL,
-                            {'run_id': run_id},
-                        ),
-                    )
             return events
 
         with self.session_factory() as managed_session:

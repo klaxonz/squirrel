@@ -26,7 +26,6 @@ from domains.subscription.application.services.core.sync.state._queue import (
 )
 from domains.subscription.application.services.core.sync.state._recovery import (
     reconcile_pending_video_counts,
-    reconcile_retry_wait_run_projections,
     reconcile_terminal_drained_sync_states,
     recover_stale_queued_sync_states,
     recover_stale_running_sync_states,
@@ -55,7 +54,6 @@ __all__ = [
     'prepare_sync_state_for_enqueue',
     'queue_sync_state',
     'reconcile_pending_video_counts',
-    'reconcile_retry_wait_run_projections',
     'reconcile_task_retry_state',
     'reconcile_terminal_drained_sync_states',
     'record_gap_observation',

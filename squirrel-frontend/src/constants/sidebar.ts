@@ -12,7 +12,6 @@ export type AppNavKey =
   | 'history'
   | 'playlists'
   | 'music'
-  | 'sync-center'
   | 'scheduled-tasks'
   | 'profile'
   | 'site-runtimes'
@@ -184,15 +183,6 @@ export const NAV_ITEMS: NavigationItem[] = [
     icon: 'playlists',
     group: 'content',
     activeRouteNames: ['Playlists'],
-  },
-  {
-    key: 'sync-center',
-    name: '采集',
-    title: '同步中心',
-    path: '/sync-center',
-    icon: 'sync',
-    group: 'operations',
-    activeRouteNames: ['SyncCenter'],
   },
   {
     key: 'scheduled-tasks',

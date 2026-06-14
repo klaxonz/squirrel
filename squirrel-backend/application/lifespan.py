@@ -4,14 +4,13 @@ import signal
 import threading
 from contextlib import contextmanager
 
-from infrastructure.database.migrations import upgrade_database
 from infrastructure.config.site_config_manager import apply_site_config_overrides
 from infrastructure.config.startup_dependencies import (
     clear_optional_startup_issue,
     record_optional_startup_issue,
     reset_startup_dependency_issues,
 )
-from shared_kernel.infrastructure.log import init_logging
+from infrastructure.database.migrations import upgrade_database
 from infrastructure.site_catalog.cookies import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
 from infrastructure.site_catalog.runtime_http import (
     set_cloudflare_bypass_client,
@@ -20,6 +19,7 @@ from infrastructure.site_catalog.runtime_http import (
 )
 from infrastructure.site_runtimes.manager import bootstrap_site_runtimes, shutdown_site_runtimes
 from infrastructure.site_runtimes.reload_listener import start_reload_listener, stop_reload_listener
+from shared_kernel.infrastructure.log import init_logging
 
 logger = logging.getLogger(__name__)
 
@@ -79,22 +79,19 @@ def bootstrap_runtime(component: str):
             drained_result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
             queued_result = subscription_sync_state_service.recover_stale_queued_sync_states()
             running_result = subscription_sync_state_service.recover_stale_running_sync_states()
-            retry_wait_result = subscription_sync_state_service.reconcile_retry_wait_run_projections()
             if (
                 drained_result.get("completed")
                 or drained_result.get("failed")
                 or queued_result.get("recovered")
                 or running_result.get("recovered")
-                or retry_wait_result.get("repaired")
             ):
                 logger.info(
-                    "[%s] Recovered sync states: drained_completed=%s drained_failed=%s queued=%s running=%s retry_wait=%s",
+                    "[%s] Recovered sync states: drained_completed=%s drained_failed=%s queued=%s running=%s",
                     component,
                     drained_result.get("completed", 0),
                     drained_result.get("failed", 0),
                     queued_result.get("recovered", 0),
                     running_result.get("recovered", 0),
-                    retry_wait_result.get("repaired", 0),
                 )
         except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
             logger.warning("[%s] Failed to recover stale sync states", component, exc_info=True)

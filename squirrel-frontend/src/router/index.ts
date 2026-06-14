@@ -19,7 +19,6 @@ const Register = () => import('../views/Register.vue')
 const SiteRuntimeManager = () => import('../views/SiteRuntimeManager.vue')
 const LogViewer = () => import('../views/LogViewer.vue')
 const ScheduledTasks = () => import('../views/ScheduledTasks.vue')
-const SyncCenter = () => import('../views/SyncCenter.vue')
 const Profile = () => import('../views/Profile.vue')
 
 const baseSearchMeta = {
@@ -165,17 +164,6 @@ const routes = [
     meta: createNoSearchMeta('个人主页', {
       navKey: 'profile',
       sectionLabel: '个人',
-    }),
-  },
-  {
-    path: '/sync-center',
-    name: 'SyncCenter',
-    component: SyncCenter,
-    meta: createNoSearchMeta('同步中心', {
-      navKey: 'sync-center',
-      sectionLabel: '采集',
-      scrollable: true,
-      hideScrollbar: true,
     }),
   },
   {

@@ -6,13 +6,7 @@ from sqlalchemy import select, update
 
 from domains.subscription.application.services.core.sync.run_service import SyncEventType, SyncPhase, SyncRunStatus
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
-from domains.subscription.application.services.crawl.tasks.task_types import subscription_sync_task_types
-from domains.subscription.domain.models.crawl_task import CrawlTask
-from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncStatus
-from domains.subscription.domain.models.subscription_sync_subscription_projection import (
-    SubscriptionSyncSubscriptionProjection,
-)
 
 from ._completion import _complete_sync_success_in_session
 from ._events import _append_recovery_run_events, _append_terminal_reconcile_run_events
@@ -42,109 +36,6 @@ def recover_stale_sync_state(sync_state_id: int) -> SubscriptionSyncState | None
             occurred_at=now,
         )
         return state
-
-
-def reconcile_retry_wait_run_projections() -> dict[str, int]:
-    scanned = 0
-    repaired = 0
-    now = datetime.now()
-    feed_phase_candidates = {
-        SyncPhase.FETCHING_FEED,
-        SyncPhase.CALCULATING_DELTA,
-        SyncPhase.ENQUEUEING,
-    }
-
-    with get_session() as session:
-        rows = session.execute(
-            select(
-                SubscriptionSyncSubscriptionProjection,
-                SubscriptionSyncRunProjection,
-                SubscriptionSyncState,
-            )
-            .join(
-                SubscriptionSyncRunProjection,
-                SubscriptionSyncRunProjection.run_id == SubscriptionSyncSubscriptionProjection.latest_run_id,
-            )
-            .join(
-                SubscriptionSyncState,
-                SubscriptionSyncState.id == SubscriptionSyncRunProjection.sync_state_id,
-            )
-            .where(
-                SubscriptionSyncSubscriptionProjection.current_status == SyncRunStatus.RUNNING,
-                SubscriptionSyncState.sync_status == SyncStatus.QUEUED.value,
-                SubscriptionSyncRunProjection.current_phase.in_(feed_phase_candidates),
-            ),
-        ).all()
-
-        subscription_ids = {
-            state.subscription_id
-            for _, _, state in rows
-            if state.subscription_id is not None
-        }
-        if not subscription_ids:
-            return {
-                "candidates": 0,
-                "repaired": 0,
-            }
-
-        tasks = session.execute(
-            select(CrawlTask)
-            .where(
-                CrawlTask.task_type.in_(subscription_sync_task_types()),
-                CrawlTask.status == "retry_wait",
-                CrawlTask.last_error == "lease_expired",
-                CrawlTask.subscription_id.in_(subscription_ids),
-            )
-            .order_by(CrawlTask.id.desc()),
-        ).scalars().all()
-
-        latest_task_by_sync_state: dict[int, CrawlTask] = {}
-        for task in tasks:
-            sync_state_id = (task.payload or {}).get("sync_state_id")
-            try:
-                sync_state_id = int(sync_state_id)
-            except (TypeError, ValueError):
-                continue
-            latest_task_by_sync_state.setdefault(sync_state_id, task)
-
-        for _, run_projection, state in rows:
-            scanned += 1
-            task = latest_task_by_sync_state.get(state.id)
-            if not task:
-                continue
-
-            task_payload = task.payload or {}
-            task_run_id = str(task_payload.get("run_id") or "").strip() or None
-            if task_run_id and task_run_id != run_projection.run_id:
-                continue
-            error_message = str(task.last_error or state.last_error or "").strip()
-            occurred_at = state.queued_at or task.updated_at or now
-            from ._events import _append_state_event
-            _append_state_event(
-                session,
-                state=state,
-                run_id=run_projection.run_id,
-                request_id=run_projection.request_id,
-                trace_id=run_projection.trace_id,
-                trigger=run_projection.trigger,
-                event_type=SyncEventType.QUEUED,
-                event_phase=SyncPhase.QUEUED,
-                event_status=SyncRunStatus.QUEUED,
-                payload={
-                    "queue_token": state.queue_token or task_payload.get("queue_token"),
-                    "queued_at": occurred_at,
-                    "pending_video_count": state.pending_video_count,
-                    "error_message": error_message,
-                },
-                message=error_message,
-                occurred_at=occurred_at,
-            )
-            repaired += 1
-
-    return {
-        "candidates": scanned,
-        "repaired": repaired,
-    }
 
 
 def reconcile_pending_video_counts() -> dict[str, int]:
