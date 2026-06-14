@@ -33,7 +33,7 @@ def build_history_conditions(user_id: int, filters: dict, effective_nsfw: str) -
         ),
     ]
 
-    # 搜索词：Meili 召回 video_id 集合，加 IN 过滤（替代旧的 build_video_search_clauses EXISTS 子查询）
+    # 搜索词：Meili 召回匹配的 video_id 集合，加 IN 过滤
     if filters.get('query'):
         recalled = _recall_video_ids_for_history(filters['query'])
         if not recalled:
