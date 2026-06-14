@@ -65,15 +65,43 @@ class VideoListService:
         return round((perf_counter() - start_time) * 1000, 3)
 
     @staticmethod
-    def _recall_video_ids(query: str | None) -> list[int] | None:
-        """SEARCH_BACKEND=meilisearch 时用 Meilisearch 召回 video_id；否则返回 None 走 legacy。"""
-        if not query or settings.SEARCH_BACKEND != 'meilisearch' or not settings.MEILISEARCH_URL:
+    def _has_structural_filter(
+        domains: list[str] | None, time_range: str, duration: str,
+    ) -> bool:
+        """是否有需要 Meili 下沉的结构化过滤（domain/time_range/duration）。"""
+        if time_range != 'all' or duration != 'all':
+            return True
+        return bool(domains)
+
+    @classmethod
+    def _recall_video_ids(
+        cls,
+        query: str | None,
+        domains: list[str] | None,
+        time_range: str,
+        duration: str,
+    ) -> list[int] | None:
+        """有搜索词或结构化过滤时用 Meili 召回（filter 下沉）；否则返回 None 走投影表快路径。
+
+        召回失败时：有搜索词 → 返回空列表（搜索功能强依赖 Meili，失败则无结果）；
+        仅结构化过滤 → 返回 None（回退投影表，浏览不因 Meili 挂掉而中断）。
+        """
+        has_query = bool(query and query.strip())
+        if not has_query and not cls._has_structural_filter(domains, time_range, duration):
             return None
+        if not settings.MEILISEARCH_URL:
+            # Meili 未配置：仅搜索词场景无法兜底（返回空），结构化过滤回退投影表
+            return [] if has_query else None
         try:
-            return get_meili_video_indexer().search(query)
+            return get_meili_video_indexer().recall(
+                query or '',
+                domains=domains,
+                time_range=time_range,
+                duration=duration,
+            )
         except Exception:
-            logger.warning('meili search failed, fallback to legacy', exc_info=True)
-            return None
+            logger.warning('meili recall failed', exc_info=True)
+            return [] if has_query else None
 
     def list_videos(
         self,
@@ -99,12 +127,15 @@ class VideoListService:
 
         with self._session_factory() as session:
             build_query_started_at = perf_counter()
+            # 纯浏览（无搜索词 + 无结构化过滤 + content_type=all + category 仅 preview/all）
+            # 走投影表快路径；其余（有 query / domain / time / duration 过滤）走 Meili 召回 + PG 权限过滤。
             use_feed_row_pagination = (
                 not query
                 and duration == "all"
                 and time_range == "all"
                 and content_type == "all"
                 and category in (None, "all", "preview")
+                and not self._has_structural_filter(domains, time_range, duration)
             )
             if use_feed_row_pagination:
                 base_ids_query = self._build_feed_rows_query(
@@ -118,7 +149,7 @@ class VideoListService:
                     special=special,
                 )
             else:
-                recalled_ids = self._recall_video_ids(query)
+                recalled_ids = self._recall_video_ids(query, domains, time_range, duration)
                 base_ids_query = self._build_list_query(
                     user_id=user_id,
                     show_nsfw=show_nsfw,
