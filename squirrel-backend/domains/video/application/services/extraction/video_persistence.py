@@ -7,7 +7,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import domains.subscription.application.services.core.video_service as subscription_video_service
-import domains.user.application.services.feed as user_video_feed_service
 import infrastructure.site_catalog.url as url_helper
 from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
 from domains.video.domain.models.video import Video as VideoModel
@@ -125,7 +124,6 @@ class VideoPersistenceService:
                     _index_video_after_commit(session, video)
                     session.commit()
                     session.refresh(video)
-                    user_video_feed_service.refresh_video_feed_metadata(video.id)
                     logger.info("Updated video: id=%s, url=%s", video.id, url)
                 else:
                     logger.debug("Video already exists: id=%s, url=%s", video.id, url)

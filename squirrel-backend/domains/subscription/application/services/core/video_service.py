@@ -3,7 +3,6 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-import domains.user.application.services.feed as user_video_feed_service
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from infrastructure.config.settings import settings
 from infrastructure.database.session import get_session, register_after_commit
@@ -70,8 +69,6 @@ class SubscriptionVideoService:
             session.commit()
             if row is not None:
                 # 新建时直接返回对象
-                if refresh_feed:
-                    user_video_feed_service.add_video_to_active_subscribers(subscription_id, video_id)
                 return session.scalars(select(SubscriptionVideo).where(
                     SubscriptionVideo.subscription_id == subscription_id,
                     SubscriptionVideo.video_id == video_id,

@@ -5,7 +5,6 @@ from typing import Any
 from sqlalchemy import select
 
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
-import domains.user.application.services.feed as user_video_feed_service
 from domains.subscription.application.services.core.crud import subscription_crud_service
 from domains.subscription.application.services.core.listing.service import resolve_subscription_nsfw
 from domains.subscription.application.services.core.runtime_models import SubscriptionMeta
@@ -92,8 +91,7 @@ class SubscriptionManageService:
                 session.add(user_subscription)
             session.commit()
         if user_subscription is not None:
-            user_video_feed_service.backfill_user_subscription_feed(user_id, subscription.id, user_subscription.is_nsfw)
-        self.sync_state_service.ensure_sync_states(subscription.id, subscription.url)
+            self.sync_state_service.ensure_sync_states(subscription.id, subscription.url)
         return subscription
 
     def restore_subscription(self, subscription_id: int, user_id: int) -> None:
@@ -123,7 +121,6 @@ class SubscriptionManageService:
                 session.add(user_subscription)
 
             session.commit()
-        user_video_feed_service.backfill_user_subscription_feed(user_id, subscription_id, user_subscription.is_nsfw)
         subscription = self.crud_service.get_subscription_by_id(subscription_id)
         if subscription:
             self.sync_state_service.ensure_sync_states(subscription.id, subscription.url)
@@ -168,7 +165,6 @@ class SubscriptionManageService:
                 )
             session.commit()
 
-        user_video_feed_service.remove_subscription_feed(subscription_id)
         self.sync_state_service.deactivate_sync_states(
             subscription_id,
             reason='manual_unsubscribe',
@@ -191,7 +187,6 @@ class SubscriptionManageService:
 
             user_sub.is_nsfw = is_nsfw
             session.commit()
-        user_video_feed_service.update_user_subscription_nsfw(user_id, subscription_id, is_nsfw)
         return True
 
     def toggle_special_follow_status(self, user_id: int, subscription_id: int, is_special_followed: bool) -> bool:

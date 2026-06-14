@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import and_, exists, false, func, select
 
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import Subscription
-from domains.user.domain.models.user_video_feed import UserVideoFeed
 from domains.video.application.services.moderation.nsfw_policy import resolve_effective_nsfw_filter
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_history import VideoHistory
@@ -89,25 +87,6 @@ def feed_category_predicate(
         )
 
     return published
-
-
-def feed_time_range_predicates(time_range: str) -> list[Any]:
-    if time_range == 'all':
-        return []
-    now = func.now()
-    if time_range == 'today':
-        return [UserVideoFeed.publish_date >= func.date(now)]
-    if time_range == 'week':
-        start = now - timedelta(days=now.extract('dow') - 1)
-        return [UserVideoFeed.publish_date >= func.date(start)]
-    if time_range == 'month':
-        return [
-            func.extract('year', UserVideoFeed.publish_date) == func.extract('year', now),
-            func.extract('month', UserVideoFeed.publish_date) == func.extract('month', now),
-        ]
-    if time_range == 'year':
-        return [func.extract('year', UserVideoFeed.publish_date) == func.extract('year', now)]
-    return []
 
 
 def build_active_subscriptions_query(

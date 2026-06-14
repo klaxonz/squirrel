@@ -3,7 +3,6 @@ from typing import Any
 from sqlalchemy import false, func, literal, select
 from sqlalchemy.orm import Session
 
-from domains.user.domain.models.user_video_feed import UserVideoFeed
 from domains.video.application.services.listing.query_filters import (
     build_active_subscriptions_query,
     feed_category_predicate,
@@ -41,10 +40,11 @@ class VideoListQueryService:
         domains: list[str] | None,
         special: str,
     ) -> Any:
-        """浏览快路径：纯 PG 投影表查询，不调 Meili。
+        """浏览快路径：纯 PG 实时 join，不调 Meili。
 
+        数据源：active_subscriptions × SubscriptionVideo × Video。
+        fan-out 去重（同一 video 多个订阅会多行）由 fetch_feed_page_video_ids 处理。
         domain 过滤在此保留 PG 侧（浏览路径不走 Meili 召回，故不下沉）。
-        投影表读取将在 commit 5 改为实时 join，本方法届时同步迁移。
         """
         active_subscriptions = self._build_active_subscriptions_query(
             user_id=user_id,
@@ -55,15 +55,14 @@ class VideoListQueryService:
         )
         query_stmt = (
             select(
-                UserVideoFeed.video_id.label("video_id"),
-                UserVideoFeed.publish_date.label("publish_date"),
-                UserVideoFeed.video_created_at.label("video_created_at"),
+                Video.id.label("video_id"),
+                Video.publish_date.label("publish_date"),
+                Video.created_at.label("video_created_at"),
             )
-            .select_from(UserVideoFeed)
-            .join(active_subscriptions, UserVideoFeed.subscription_id == active_subscriptions.c.subscription_id)
-            .join(Video, Video.id == UserVideoFeed.video_id)
+            .select_from(active_subscriptions)
+            .join(SubscriptionVideo, SubscriptionVideo.subscription_id == active_subscriptions.c.subscription_id)
+            .join(Video, Video.id == SubscriptionVideo.video_id)
             .where(
-                UserVideoFeed.user_id == user_id,
                 Video.is_deleted.is_(False),
             )
         )
@@ -73,22 +72,22 @@ class VideoListQueryService:
                 feed_category_predicate(
                     user_id,
                     category,
-                    video_id_column=UserVideoFeed.video_id,
-                    publish_date_column=UserVideoFeed.publish_date,
+                    video_id_column=Video.id,
+                    publish_date_column=Video.publish_date,
                 )
             )
 
         normalized_domains = normalize_domains(domains)
         if normalized_domains:
-            query_stmt = query_stmt.where(UserVideoFeed.domain.in_(normalized_domains))
+            query_stmt = query_stmt.where(Video.domain.in_(normalized_domains))
 
         if sort_by == "created_at":
-            return query_stmt.order_by(UserVideoFeed.video_created_at.desc(), UserVideoFeed.video_id.desc())
-        return query_stmt.order_by(UserVideoFeed.publish_date.desc(), UserVideoFeed.video_id.desc())
+            return query_stmt.order_by(Video.created_at.desc(), Video.id.desc())
+        return query_stmt.order_by(Video.publish_date.desc(), Video.id.desc())
 
     @staticmethod
     def fetch_feed_page_video_ids(session: Session, feed_rows_query: Any, *, offset: int, page_size: int) -> list[int]:
-        """投影表/实时 join 的 fan-out 去重分页（同一 video 多个订阅会多行）。
+        """实时 join 的 fan-out 去重分页（同一 video 多个订阅会多行）。
 
         滚动窗口读取 + 集合去重，跳过 offset 前的已见 video_id。
         """
