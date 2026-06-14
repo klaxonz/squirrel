@@ -25,10 +25,10 @@ type InitialState = {
   special?: string
 }
 
-type VideoListResponse = { data?: unknown[] }
+type VideoListResponse = { data?: unknown[]; next_cursor?: string | null; has_more?: boolean }
 type ApiErrorLike = { type?: string | null }
 type VideoListParams = {
-  page: number
+  cursor: string | null
   pageSize: number
   page_size: number
   query: string
@@ -84,7 +84,7 @@ export default function useLatestVideos(initial: InitialState = {}) {
   const allLoaded = ref(false)
   const error = ref<unknown | null>(null)
   const activeTab = ref(initial.activeTab ?? 'unread')
-  const currentPage = ref(1)
+  const cursor = ref<string | null>(null)
   const searchQuery = ref(initial.searchQuery ?? '')
   const isResetting = ref(false)
   const subscriptionId = ref<VideoId | null>(initial.subscriptionId ?? null)
@@ -102,7 +102,7 @@ export default function useLatestVideos(initial: InitialState = {}) {
   let listAbortController: AbortController | null = null
 
   const createRequestParams = (): VideoListParams => ({
-    page: currentPage.value,
+    cursor: cursor.value,
     pageSize: PAGE_SIZE,
     page_size: PAGE_SIZE,
     query: searchQuery.value || '',
@@ -121,8 +121,8 @@ export default function useLatestVideos(initial: InitialState = {}) {
     loading.value = false
   }
 
-  const applyVideoPage = (nextVideos: VideoListItem[], requestedPage: number): void => {
-    if (requestedPage === 1) {
+  const applyVideoPage = (nextVideos: VideoListItem[], isRefresh: boolean): void => {
+    if (isRefresh) {
       videos.value = dedupeByVideoId(nextVideos)
       return
     }
@@ -134,7 +134,7 @@ export default function useLatestVideos(initial: InitialState = {}) {
     if (loading.value || allLoaded.value) return
     loading.value = true
 
-    const requestPage = currentPage.value
+    const isRefresh = cursor.value === null
     const currentToken = ++requestToken
     listAbortController?.abort()
     listAbortController = new AbortController()
@@ -160,16 +160,17 @@ export default function useLatestVideos(initial: InitialState = {}) {
     }
 
     const nextVideos = extractVideoListItems(data)
-    applyVideoPage(nextVideos, requestPage)
+    applyVideoPage(nextVideos, isRefresh)
 
-    currentPage.value++
-    allLoaded.value = nextVideos.length < PAGE_SIZE
+    // 推进游标；后端返回的 next_cursor 为 null 表示无更多
+    cursor.value = data?.next_cursor ?? null
+    allLoaded.value = nextVideos.length < PAGE_SIZE || !data?.next_cursor
     finishRequest()
   }
 
   const resetAndReload = async () => {
     isResetting.value = true
-    currentPage.value = 1
+    cursor.value = null
     allLoaded.value = false
     error.value = null
     try {

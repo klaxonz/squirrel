@@ -121,7 +121,6 @@ const primarySubscription = (item: any) => {
 
 onMounted(async () => {
   const { data, error } = await getVideoList({
-    page: 1,
     pageSize: 12,
     page_size: 12,
     category: 'all',

@@ -339,7 +339,7 @@ const feedItems = ref<any[]>([])
 const loadingFeed = ref(false)
 const loadingMoreFeed = ref(false)
 const feedFinished = ref(false)
-const feedPage = ref(1)
+const feedCursor = ref<string | null>(null)
 const FEED_PAGE_SIZE = 48
 let feedRequestToken = 0
 
@@ -498,15 +498,15 @@ const fetchChannels = async (isReset = false) => {
 
 const fetchFeed = async (isReset = false) => {
   if (!isReset && (loadingFeed.value || loadingMoreFeed.value || feedFinished.value)) return
-  if (isReset) { feedPage.value = 1; feedFinished.value = false; loadingFeed.value = true; loadingMoreFeed.value = false } 
+  if (isReset) { feedCursor.value = null; feedFinished.value = false; loadingFeed.value = true; loadingMoreFeed.value = false }
   else { loadingMoreFeed.value = true }
 
   const requestToken = ++feedRequestToken
-  const requestPage = feedPage.value
+  const wasReset = isReset
   try {
     const nsfwValue = nsfw.value === 'only' ? 'yes' : (['all', 'yes', 'no'].includes(nsfw.value) ? nsfw.value : 'all')
     const { data } = await getVideoList({
-      page: requestPage,
+      cursor: feedCursor.value,
       pageSize: FEED_PAGE_SIZE,
       page_size: FEED_PAGE_SIZE,
       nsfw: nsfwValue,
@@ -517,9 +517,10 @@ const fetchFeed = async (isReset = false) => {
     })
     if (requestToken !== feedRequestToken) return
     const items = data?.data || data?.items || []
-    if (isReset) feedItems.value = items; else feedItems.value.push(...items)
-    if (items.length < FEED_PAGE_SIZE) feedFinished.value = true
-    else feedPage.value = requestPage + 1
+    if (wasReset) feedItems.value = items; else feedItems.value.push(...items)
+    // 推进游标；next_cursor 为 null 表示无更多
+    feedCursor.value = data?.next_cursor ?? null
+    if (items.length < FEED_PAGE_SIZE || !data?.next_cursor) feedFinished.value = true
   } finally {
     if (requestToken === feedRequestToken) {
       loadingFeed.value = false; loadingMoreFeed.value = false

@@ -20,7 +20,6 @@ export default function useRelatedVideos(sourceVideo: Ref<VideoPageVideo | null>
     const primarySubId = video?.subscriptions?.[0]?.id
     if (primarySubId) {
       const { data, error } = (await getVideoList({
-        page: 1,
         pageSize,
         sort_by: 'publish_date',
         subscription_id: primarySubId,
@@ -31,7 +30,6 @@ export default function useRelatedVideos(sourceVideo: Ref<VideoPageVideo | null>
     if (collected.length < pageSize && video?.site) {
       const remaining = pageSize - collected.length
       const { data, error } = (await getVideoList({
-        page: 1,
         pageSize: remaining,
         sort_by: 'publish_date',
         site: video.site,

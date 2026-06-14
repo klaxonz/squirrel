@@ -15,13 +15,19 @@ export type VideoListParams = {
   nsfw?: YesNoAll | string
   special?: YesNoAll | (string & {})
   site?: string
-  withTotal?: boolean
-  page?: number
+  cursor?: string | null
   pageSize?: number | string
   page_size?: number | string
   time_range?: TimeRange | (string & {})
   duration?: DurationFilter | (string & {})
   content_type?: ContentType | (string & {})
+}
+
+export type VideoListResponse = {
+  data?: unknown[]
+  items?: unknown[]
+  next_cursor?: string | null
+  has_more?: boolean
 }
 
 export type RandomVideoParams = {
@@ -40,7 +46,7 @@ export const getVideoDetail = async (videoId: string | number) => {
 }
 
 export const getVideoList = async (params: VideoListParams = {}, config: AxiosRequestConfig = {}) => {
-  return get<{ data?: unknown[]; items?: unknown[] }>('/api/video/list', params, config)
+  return get<VideoListResponse>('/api/video/list', params, config)
 }
 
 export const getVideoSubtitles = async (
