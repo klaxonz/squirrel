@@ -15,15 +15,7 @@ from domains.video.application.services.listing.detail_loader import VideoDetail
 from domains.video.application.services.listing.page_loader import VideoListPageLoader
 from domains.video.application.services.listing.profiles import merge_profiles as _merge_profiles
 from domains.video.application.services.listing.profiles import video_extra_profiles as _video_extra_profiles
-from domains.video.application.services.listing.query import (
-    build_feed_rows_query as _default_build_feed_rows_query,
-)
-from domains.video.application.services.listing.query import (
-    build_list_query as _default_build_list_query,
-)
-from domains.video.application.services.listing.query import (
-    fetch_feed_page_video_ids as _default_fetch_feed_page_video_ids,
-)
+from domains.video.application.services.listing.query import build_list_query as _default_build_list_query
 from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
 from domains.video.domain.models.video import Video
 from infrastructure.config.settings import settings
@@ -40,9 +32,7 @@ class VideoListService:
         session_factory: SessionFactory | None = None,
         get_user_config=None,
         serialize_marker=None,
-        build_feed_rows_query=None,
         build_list_query=None,
-        fetch_feed_page_video_ids=None,
         thumbnail_downloader=None,
         page_loader=None,
         detail_loader=None,
@@ -50,9 +40,7 @@ class VideoListService:
         self._session_factory = session_factory or _default_get_session
         self._get_user_config = get_user_config or user_config_service.get_config
         self._serialize_marker = serialize_marker or _default_serialize_marker
-        self._build_feed_rows_query = build_feed_rows_query or _default_build_feed_rows_query
         self._build_list_query = build_list_query or _default_build_list_query
-        self._fetch_feed_page_video_ids = fetch_feed_page_video_ids or _default_fetch_feed_page_video_ids
         self._thumbnail_downloader = thumbnail_downloader or _default_thumbnail_downloader
         self._page_loader = page_loader or VideoListPageLoader(self._thumbnail_downloader)
         self._detail_loader = detail_loader or VideoDetailLoader(
@@ -64,15 +52,6 @@ class VideoListService:
     def _elapsed_ms(start_time: float) -> float:
         return round((perf_counter() - start_time) * 1000, 3)
 
-    @staticmethod
-    def _has_structural_filter(
-        domains: list[str] | None, time_range: str, duration: str,
-    ) -> bool:
-        """是否有需要 Meili 下沉的结构化过滤（domain/time_range/duration）。"""
-        if time_range != 'all' or duration != 'all':
-            return True
-        return bool(domains)
-
     @classmethod
     def _recall_video_ids(
         cls,
@@ -80,28 +59,30 @@ class VideoListService:
         domains: list[str] | None,
         time_range: str,
         duration: str,
-    ) -> list[int] | None:
-        """有搜索词或结构化过滤时用 Meili 召回（filter 下沉）；否则返回 None 走投影表快路径。
+        sort_by: str,
+    ) -> list[int]:
+        """统一召回：所有列表查询都先走 Meili（文本/结构化过滤 + 排序）。
 
-        召回失败时：有搜索词 → 返回空列表（搜索功能强依赖 Meili，失败则无结果）；
-        仅结构化过滤 → 返回 None（回退投影表，浏览不因 Meili 挂掉而中断）。
+        - query 非空：文本召回（Meili 默认相关性排序）
+        - query 为空：placeholder search，按 sort_by 召回（publish_ts:desc 或 created_at）
+        - 返回 video_id 列表（≤limit），PG 侧在其上做权限/category 过滤
+        - Meili 未配置：返回空（搜索功能不可用；浏览场景也无召回源，无结果）
         """
-        has_query = bool(query and query.strip())
-        if not has_query and not cls._has_structural_filter(domains, time_range, duration):
-            return None
         if not settings.MEILISEARCH_URL:
-            # Meili 未配置：仅搜索词场景无法兜底（返回空），结构化过滤回退投影表
-            return [] if has_query else None
+            logger.warning('recall requested but MEILISEARCH_URL not set -- returning empty')
+            return []
         try:
+            meili_sort = 'created_at' if sort_by == 'created_at' else 'publish_date'
             return get_meili_video_indexer().recall(
                 query or '',
                 domains=domains,
                 time_range=time_range,
                 duration=duration,
+                sort_by=meili_sort,
             )
         except Exception:
             logger.warning('meili recall failed', exc_info=True)
-            return [] if has_query else None
+            return []
 
     def list_videos(
         self,
@@ -127,76 +108,46 @@ class VideoListService:
 
         with self._session_factory() as session:
             build_query_started_at = perf_counter()
-            # 纯浏览（无搜索词 + 无结构化过滤 + content_type=all + category 仅 preview/all）
-            # 走投影表快路径；其余（有 query / domain / time / duration 过滤）走 Meili 召回 + PG 权限过滤。
-            use_feed_row_pagination = (
-                not query
-                and duration == "all"
-                and time_range == "all"
-                and content_type == "all"
-                and category in (None, "all", "preview")
-                and not self._has_structural_filter(domains, time_range, duration)
+            # 所有列表查询统一走 Meili 召回 + PG 权限/category 过滤。
+            # Meili 负责：文本匹配 + domain/time/duration 过滤 + 排序召回（≤limit 个 video_id）
+            # PG 负责：权限（订阅/nsfw/special）join + category（read/unread/liked/later）EXISTS
+            recalled_ids = self._recall_video_ids(query, domains, time_range, duration, sort_by)
+            base_ids_query = self._build_list_query(
+                user_id=user_id,
+                show_nsfw=show_nsfw,
+                subscription_id=subscription_id,
+                query=query,
+                category=category,
+                sort_by=sort_by,
+                nsfw=nsfw,
+                domains=domains,
+                time_range=time_range,
+                duration=duration,
+                content_type=content_type,
+                special=special,
+                recalled_ids=recalled_ids,
             )
-            if use_feed_row_pagination:
-                base_ids_query = self._build_feed_rows_query(
-                    user_id=user_id,
-                    show_nsfw=show_nsfw,
-                    subscription_id=subscription_id,
-                    category=category,
-                    sort_by=sort_by,
-                    nsfw=nsfw,
-                    domains=domains,
-                    special=special,
-                )
-            else:
-                recalled_ids = self._recall_video_ids(query, domains, time_range, duration)
-                base_ids_query = self._build_list_query(
-                    user_id=user_id,
-                    show_nsfw=show_nsfw,
-                    subscription_id=subscription_id,
-                    query=query,
-                    category=category,
-                    sort_by=sort_by,
-                    nsfw=nsfw,
-                    domains=domains,
-                    time_range=time_range,
-                    duration=duration,
-                    content_type=content_type,
-                    special=special,
-                    recalled_ids=recalled_ids,
-                )
             build_query_ms = self._elapsed_ms(build_query_started_at)
 
             video_ids_started_at = perf_counter()
-            if use_feed_row_pagination:
-                video_ids = self._fetch_feed_page_video_ids(session, base_ids_query, offset=offset, page_size=page_size)
-            else:
-                video_ids = [
-                    row.video_id
-                    for row in session.execute(
-                        base_ids_query.limit(page_size).offset(offset),
-                    ).all()
-                ]
+            video_ids = [
+                row.video_id
+                for row in session.execute(
+                    base_ids_query.limit(page_size).offset(offset),
+                ).all()
+            ]
             video_ids_ms = self._elapsed_ms(video_ids_started_at)
 
             total_count = None
             if with_total:
                 total_count_started_at = perf_counter()
                 count_source = base_ids_query.order_by(None).subquery()
-                if use_feed_row_pagination:
-                    total_count = (
-                        session.execute(
-                            select(func.count(func.distinct(count_source.c.video_id))).select_from(count_source),
-                        ).scalar()
-                        or 0
-                    )
-                else:
-                    total_count = (
-                        session.execute(
-                            select(func.count()).select_from(count_source),
-                        ).scalar()
-                        or 0
-                    )
+                total_count = (
+                    session.execute(
+                        select(func.count()).select_from(count_source),
+                    ).scalar()
+                    or 0
+                )
                 total_count_ms = self._elapsed_ms(total_count_started_at)
             else:
                 total_count_ms = 0.0

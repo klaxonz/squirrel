@@ -19,6 +19,8 @@ _client: meilisearch.Client | None = None
 # 权限/分类(阅读状态)/排序/分页一律回 PG（实时 join），不进 Meilisearch
 _VIDEOS_SEARCHABLE_ATTRIBUTES = ['title', 'description', 'subscription_names', 'creator_names']
 _VIDEOS_FILTERABLE_ATTRIBUTES = ['domain', 'duration', 'publish_ts', 'subscription_names', 'creator_names']
+# 可排序字段：publish_ts 用于纯浏览场景的 placeholder search 召回排序（最新优先）
+_VIDEOS_SORTABLE_ATTRIBUTES = ['publish_ts']
 
 
 def get_meili_client() -> meilisearch.Client:
@@ -47,4 +49,5 @@ def ensure_videos_index() -> None:
     index = client.index(index_uid)
     index.update_searchable_attributes(_VIDEOS_SEARCHABLE_ATTRIBUTES)
     index.update_filterable_attributes(_VIDEOS_FILTERABLE_ATTRIBUTES)
+    index.update_sortable_attributes(_VIDEOS_SORTABLE_ATTRIBUTES)
     logger.info('Meilisearch videos 索引就绪: %s', index_uid)

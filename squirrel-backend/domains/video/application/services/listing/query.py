@@ -1,12 +1,10 @@
 from typing import Any
 
 from sqlalchemy import false, func, literal, select
-from sqlalchemy.orm import Session
 
 from domains.video.application.services.listing.query_filters import (
     build_active_subscriptions_query,
     feed_category_predicate,
-    normalize_domains,
 )
 from domains.video.application.services.moderation.nsfw_policy import (
     resolve_effective_nsfw_filter as _default_resolve_effective_nsfw_filter,
@@ -28,92 +26,6 @@ class VideoListQueryService:
             )
         )
 
-    def build_feed_rows_query(
-        self,
-        *,
-        user_id: int,
-        show_nsfw: bool,
-        subscription_id: int | None,
-        category: str | None,
-        sort_by: str,
-        nsfw: str,
-        domains: list[str] | None,
-        special: str,
-    ) -> Any:
-        """浏览快路径：纯 PG 实时 join，不调 Meili。
-
-        数据源：active_subscriptions × SubscriptionVideo × Video。
-        fan-out 去重（同一 video 多个订阅会多行）由 fetch_feed_page_video_ids 处理。
-        domain 过滤在此保留 PG 侧（浏览路径不走 Meili 召回，故不下沉）。
-        """
-        active_subscriptions = self._build_active_subscriptions_query(
-            user_id=user_id,
-            subscription_id=subscription_id,
-            nsfw=nsfw,
-            show_nsfw=show_nsfw,
-            special=special,
-        )
-        query_stmt = (
-            select(
-                Video.id.label("video_id"),
-                Video.publish_date.label("publish_date"),
-                Video.created_at.label("video_created_at"),
-            )
-            .select_from(active_subscriptions)
-            .join(SubscriptionVideo, SubscriptionVideo.subscription_id == active_subscriptions.c.subscription_id)
-            .join(Video, Video.id == SubscriptionVideo.video_id)
-            .where(
-                Video.is_deleted.is_(False),
-            )
-        )
-
-        if category:
-            query_stmt = query_stmt.where(
-                feed_category_predicate(
-                    user_id,
-                    category,
-                    video_id_column=Video.id,
-                    publish_date_column=Video.publish_date,
-                )
-            )
-
-        normalized_domains = normalize_domains(domains)
-        if normalized_domains:
-            query_stmt = query_stmt.where(Video.domain.in_(normalized_domains))
-
-        if sort_by == "created_at":
-            return query_stmt.order_by(Video.created_at.desc(), Video.id.desc())
-        return query_stmt.order_by(Video.publish_date.desc(), Video.id.desc())
-
-    @staticmethod
-    def fetch_feed_page_video_ids(session: Session, feed_rows_query: Any, *, offset: int, page_size: int) -> list[int]:
-        """实时 join 的 fan-out 去重分页（同一 video 多个订阅会多行）。
-
-        滚动窗口读取 + 集合去重，跳过 offset 前的已见 video_id。
-        """
-        video_ids: list[int] = []
-        seen_video_ids: set[int] = set()
-        row_offset = 0
-        batch_size = max(page_size * 4, 100)
-
-        while len(video_ids) < page_size:
-            rows = session.execute(feed_rows_query.limit(batch_size).offset(row_offset)).all()
-            if not rows:
-                break
-
-            row_offset += len(rows)
-            for row in rows:
-                if row.video_id in seen_video_ids:
-                    continue
-                seen_video_ids.add(row.video_id)
-                if len(seen_video_ids) <= offset:
-                    continue
-                video_ids.append(row.video_id)
-                if len(video_ids) >= page_size:
-                    break
-
-        return video_ids
-
     def build_list_query(
         self,
         *,
@@ -129,15 +41,16 @@ class VideoListQueryService:
         duration: str,
         content_type: str,
         special: str,
-        recalled_ids: list[int] | None,
+        recalled_ids: list[int],
     ) -> Any:
-        """搜索/过滤路径：Meili 召回后的 video_id 集合 + PG 权限/category 过滤 + 排序分页。
+        """Meili 召回后的 video_id 集合 + PG 权限/category 过滤 + 排序分页。
 
-        - recalled_ids 由 service 层通过 Meili.recall() 获得（已含 domain/time/duration 下沉过滤），
-          故此处不再重复做这些过滤。
-        - 权限（订阅/nsfw/special）走 active_subscriptions join。
-        - category（read/unread/liked/later/preview）走 feed_category_predicate EXISTS（依赖 VideoHistory/Interaction）。
-        - content_type 走 active_subscriptions.c.subscription_type（用户订阅维度，非全局）。
+        - recalled_ids 由 service 层通过 Meili.recall() 获得（已含 domain/time/duration 下沉过滤 + 排序召回）
+        - 召回为空 → 返回空结果集
+        - 权限（订阅/nsfw/special）走 active_subscriptions join
+        - category（read/unread/liked/later/preview）走 feed_category_predicate EXISTS（依赖 VideoHistory/Interaction）
+        - content_type 走 active_subscriptions.c.subscription_type（用户订阅维度）
+        - 排序：沿用 Meili 召回顺序（按 search_rank 优先，同 rank 内 PG 再排一遍保证稳定分页）
         """
         active_subscriptions = self._build_active_subscriptions_query(
             user_id=user_id,
@@ -147,11 +60,8 @@ class VideoListQueryService:
             special=special,
         )
 
-        # recalled_ids 语义：
-        #   None  = 无文本/结构化过滤（纯 category/nsfw 浏览），不限 video_id，靠 join+category 过滤
-        #   []    = 召回为空（搜索词无匹配），返回空结果集
-        #   [... ] = 召回集合，加 IN 过滤
-        if recalled_ids is not None and not recalled_ids:
+        # 召回为空（搜索词无匹配，或 Meili 未配置）→ 返回空结果集
+        if not recalled_ids:
             return (
                 select(
                     literal(0).label("video_id"),
@@ -175,12 +85,9 @@ class VideoListQueryService:
             .join(active_subscriptions, active_subscriptions.c.subscription_id == SubscriptionVideo.subscription_id)
             .where(
                 Video.is_deleted.is_(False),
+                Video.id.in_(recalled_ids),
             )
         )
-
-        # 有召回集合时限制 video_id 范围；None 表示无文本/结构化过滤，不限范围
-        if recalled_ids is not None:
-            query_stmt = query_stmt.where(Video.id.in_(recalled_ids))
 
         if content_type != "all":
             query_stmt = query_stmt.where(active_subscriptions.c.subscription_type == content_type)
@@ -217,6 +124,4 @@ class VideoListQueryService:
 
 video_list_query_service = VideoListQueryService()
 
-build_feed_rows_query = video_list_query_service.build_feed_rows_query
 build_list_query = video_list_query_service.build_list_query
-fetch_feed_page_video_ids = video_list_query_service.fetch_feed_page_video_ids
