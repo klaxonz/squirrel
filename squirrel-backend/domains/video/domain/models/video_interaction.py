@@ -24,6 +24,8 @@ class VideoInteraction(Base, SerializerMixin):
     __table_args__ = (
         Index("ix_video_interaction_user_video", "user_id", "video_id"),
         Index("ix_video_interaction_user_type_video", "user_id", "interaction_type", "video_id"),
+        # keyset 分页用：liked/later 按交互时间倒序分页
+        Index("ix_video_interaction_user_type_created", "user_id", "interaction_type", "created_at", "id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
