@@ -46,7 +46,7 @@ class VideoCreatorService:
             session.add(video_creator)
             # 新建关联会改变 Meili 文档的 creator_names 字段，提交后重建文档。
             # 必须在 commit 前注册。SEARCH_BACKEND 非 meilisearch 时跳过。
-            if settings.SEARCH_BACKEND == 'meilisearch':
+            if settings.MEILISEARCH_URL:
                 register_after_commit(
                     session,
                     lambda: _reindex_video_safe(video_id, context='creator_link'),

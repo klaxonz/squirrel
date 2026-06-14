@@ -4,20 +4,14 @@ from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import and_, exists, false, func, select
-from sqlalchemy.sql.elements import ColumnElement
 
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from infrastructure.search.query import escape_ilike
 from domains.subscription.domain.models.subscription import Subscription
 from domains.user.domain.models.user_video_feed import UserVideoFeed
+from domains.video.application.services.moderation.nsfw_policy import resolve_effective_nsfw_filter
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_history import VideoHistory
 from domains.video.domain.models.video_interaction import VideoInteraction
-from domains.video.application.services.moderation.nsfw_policy import resolve_effective_nsfw_filter
-
-
-def contains_text(column: Any, term: str) -> ColumnElement[bool]:
-    return column.ilike(f'%{escape_ilike(term)}%')
 
 
 def normalize_domains(domains: list[str] | None) -> list[str]:

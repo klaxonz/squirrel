@@ -60,9 +60,9 @@ class SubscriptionVideoService:
             row = result.first()
             # 新建关联会改变 Meili 文档的 subscription_names 字段，提交后重建文档。
             # 必须在 commit 前注册（after_commit 事件在 commit 时 fire），否则回调永不执行。
-            # SEARCH_BACKEND 非 meilisearch 时跳过，避免无谓 reindex。
+            # 提交后重建。
             created = row is not None
-            if created and settings.SEARCH_BACKEND == 'meilisearch':
+            if created and settings.MEILISEARCH_URL:
                 register_after_commit(
                     session,
                     lambda: _reindex_videos_safe([video_id], context='subscription_link', subscription_id=subscription_id),

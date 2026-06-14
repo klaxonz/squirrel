@@ -12,7 +12,6 @@ from domains.video.application.services.listing.query_filters import (
 from domains.video.application.services.moderation.nsfw_policy import (
     resolve_effective_nsfw_filter as _default_resolve_effective_nsfw_filter,
 )
-from domains.video.application.services.search.query import duration_predicate as _default_duration_predicate
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.models.video import Video
 
@@ -21,11 +20,7 @@ class VideoListQueryService:
     def __init__(
         self,
         resolve_effective_nsfw_filter=None,
-        duration_predicate=None,
-        parse_search_query=None,
-        normalize_subscription_type_term=None,
     ):
-        self._duration_predicate = duration_predicate or _default_duration_predicate
         resolve_nsfw_filter = resolve_effective_nsfw_filter or _default_resolve_effective_nsfw_filter
         self._build_active_subscriptions_query = (
             lambda **kwargs: build_active_subscriptions_query(
@@ -33,19 +28,6 @@ class VideoListQueryService:
                 resolve_effective_nsfw_filter_func=resolve_nsfw_filter,
             )
         )
-        # parse_search_query / normalize_subscription_type_term 保留为可选注入，
-        # 供 history/random 等仍需解析 key:value 的路径复用；listing 主路径已切 Meili 召回，不再用它们。
-        if parse_search_query is None:
-            from infrastructure.search.query import parse_search_query as _psq
-            self._parse_search_query = _psq
-        else:
-            self._parse_search_query = parse_search_query
-
-        if normalize_subscription_type_term is None:
-            from infrastructure.search.query import normalize_subscription_type_term as _nstt
-            self._normalize_subscription_type_term = _nstt
-        else:
-            self._normalize_subscription_type_term = normalize_subscription_type_term
 
     def build_feed_rows_query(
         self,

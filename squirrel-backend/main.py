@@ -128,9 +128,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         )
 
     _log_lifecycle_step("Startup", 6, STARTUP_TOTAL_STEPS, "Ensuring Meilisearch index")
-    if settings.SEARCH_BACKEND == 'meilisearch':
-        # Meili 是 SEARCH_BACKEND=meilisearch 时的强依赖，索引未就绪会导致 domain 过滤报错
-        # 和召回异常，故失败直接终止启动（用户需自行 fallback 到 SEARCH_BACKEND=legacy）。
+    if settings.MEILISEARCH_URL:
+        # Meili 是搜索功能的强依赖；索引未就绪会导致 domain 过滤报错和召回异常，
+        # 故失败直接终止启动。未配置 MEILISEARCH_URL 时跳过（搜索功能不可用，但浏览/详情正常）。
         try:
             from infrastructure.search.meili import ensure_videos_index
             ensure_videos_index()
@@ -139,7 +139,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.exception("Startup [6/%s] Failed to ensure Meilisearch index", STARTUP_TOTAL_STEPS)
             raise
     else:
-        _log_lifecycle_step("Startup", 6, STARTUP_TOTAL_STEPS, "Meilisearch skipped (SEARCH_BACKEND != meilisearch)")
+        logger.warning("Startup [6/%s] MEILISEARCH_URL not configured -- search disabled", STARTUP_TOTAL_STEPS)
+        _log_lifecycle_step("Startup", 6, STARTUP_TOTAL_STEPS, "Meilisearch skipped (MEILISEARCH_URL not set)")
 
     _log_lifecycle_event("Startup", "complete")
 

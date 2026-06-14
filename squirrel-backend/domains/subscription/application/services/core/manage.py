@@ -143,7 +143,7 @@ class SubscriptionManageService:
             # 提交前查受影响 video_id：解绑后这些文档里的 subscription_names 会过时，
             # 需要重新构建文档（去掉已解绑的订阅名）。SEARCH_BACKEND 非 meilisearch 时跳过。
             affected_video_ids: list[int] = []
-            if settings.SEARCH_BACKEND == 'meilisearch':
+            if settings.MEILISEARCH_URL:
                 affected_video_ids = session.scalars(
                     select(SubscriptionVideo.video_id).where(
                         SubscriptionVideo.subscription_id == subscription.id,

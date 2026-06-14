@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 import shlex
-from collections.abc import Iterable
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
@@ -117,17 +116,6 @@ def parse_search_query(query: str | None) -> ParsedSearchQuery:
             parsed.text_terms.append(normalized_token)
 
     return parsed
-
-
-def contains_term(values: Iterable[str | None], term: str) -> bool:
-    normalized_term = _normalize_term(term)
-    if not normalized_term:
-        return True
-    return any(normalized_term in _normalize_term(value) for value in values if value is not None)
-
-
-def contains_all_terms(values: Iterable[str | None], terms: Iterable[str]) -> bool:
-    return all(contains_term(values, term) for term in terms)
 
 
 def extract_search_domain(url: str | None) -> str:

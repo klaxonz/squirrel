@@ -17,11 +17,11 @@ SessionFactory = Callable[[], Generator[Session, None, None]]
 
 
 def _index_video_after_commit(session: Session, video_id: int) -> None:
-    """SEARCH_BACKEND=meilisearch 时，事务提交后把 video 推到 Meilisearch（增量直写，失败仅告警）。
+    """事务提交后把 video 推到 Meilisearch（增量直写，失败仅告警）。
 
     与 video_persistence._index_video_after_commit 同构，供本模块的写入路径复用。
     """
-    if settings.SEARCH_BACKEND != 'meilisearch' or not settings.MEILISEARCH_URL:
+    if not settings.MEILISEARCH_URL:
         return
     try:
         register_after_commit(session, lambda: _upsert_video_safe(video_id))
