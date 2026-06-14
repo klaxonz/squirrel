@@ -9,7 +9,7 @@ beautifulsoup4 = "==4.12.3"
 jinja2 = "==3.1.4"
 pathvalidate = "==3.2.0"
 psycopg2-binary = "==2.9.11"
-python-dotenv = "==1.0.1"
+python-dotenv = ">=1.2.2"
 redis = "==5.0.5"
 requests = {extras = ["socks"], version = "~=2.31.0"}
 uvicorn = "==0.30.1"
@@ -28,6 +28,7 @@ sqlalchemy-to-pydantic= "0.0.8"
 python-redis-lock = "==4.0.0"
 httpx = {extras = ["http2", "socks"], version = "==0.27.0"}
 concurrent-log-handler = "==0.9.29"
+meilisearch = ">=0.31.0"
 
 [dev-packages]
 pytest = "==9.0.2"
