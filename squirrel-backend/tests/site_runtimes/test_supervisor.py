@@ -161,6 +161,20 @@ def test_process_launcher_builds_workspace_runtime_command(tmp_path):
 
 def test_process_launcher_sets_workspace_runtime_environment(monkeypatch, tmp_path):
     monkeypatch.setenv("PATH", r"C:\Windows\System32")
+    override_path = tmp_path / "config" / "sites.json"
+    override_path.parent.mkdir(parents=True, exist_ok=True)
+    override_path.write_text(
+        json.dumps({
+            "sample": {
+                "rate_limit": {
+                    "enabled": True,
+                    "min_interval": 7.0,
+                    "max_interval": 9.0,
+                },
+            },
+        }),
+        encoding="utf-8",
+    )
     record = SiteRuntimeRecord(
         runtime_id="sample",
         version="0.1.0",
@@ -169,11 +183,31 @@ def test_process_launcher_sets_workspace_runtime_environment(monkeypatch, tmp_pa
         data_path=str(tmp_path / "data"),
         entrypoint="sample_runtime:get_site_runtime",
         enabled=True,
-        manifest={},
+        manifest={
+            "sites": [
+                {
+                    "site_name": "sample",
+                    "domains": ["sample.test"],
+                    "features": ["extract_video"],
+                    "metadata": {
+                        "rate_limit": {
+                            "enabled": True,
+                            "min_interval": 3.0,
+                            "max_interval": 5.0,
+                        },
+                    },
+                },
+            ],
+        },
         granted_permissions=["network:http"],
         metadata={"source": "workspace"},
     )
 
+    monkeypatch.setattr(
+        SiteRuntimeProcessLauncher,
+        "site_config_path",
+        staticmethod(lambda: override_path),
+    )
     launcher = SiteRuntimeProcessLauncher(tmp_path, SiteRuntimeAuditWriter(tmp_path))
 
     process_env = launcher.build_process_env(record)
@@ -183,6 +217,14 @@ def test_process_launcher_sets_workspace_runtime_environment(monkeypatch, tmp_pa
     assert process_env["SQUIRREL_SITE_RUNTIME_DATA_DIR"] == str(tmp_path / "data")
     assert process_env["SQUIRREL_SITE_RUNTIME_GRANTED_PERMISSIONS"] == "network:http"
     assert process_env["SQUIRREL_SITE_RUNTIME_SOURCE"] == "workspace"
+    site_configs = json.loads(process_env["SQUIRREL_SITE_RUNTIME_SITE_CONFIGS"])
+    assert site_configs["sample"]["domains"] == ["sample.test"]
+    assert site_configs["sample"]["features"] == ["extract_video"]
+    assert site_configs["sample"]["rate_limit"] == {
+        "enabled": True,
+        "min_interval": 7.0,
+        "max_interval": 9.0,
+    }
 
 
 def test_audit_writer_appends_audit_events(tmp_path):
@@ -211,5 +253,3 @@ def test_audit_writer_appends_audit_events(tmp_path):
     assert payload["version"] == "0.1.0"
     assert payload["event"] == "runtime_started"
     assert payload["details"] == {"pid": 1234}
-
-

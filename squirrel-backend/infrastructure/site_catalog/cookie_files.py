@@ -11,14 +11,13 @@ if os.name == "nt":
 else:
     import fcntl
 
-from infrastructure.config.settings import settings
-
 _COOKIE_FILE_LOCKS: dict[str, threading.Lock] = {}
 _COOKIE_FILE_LOCKS_GUARD = threading.Lock()
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def get_site_cookies_dir() -> Path:
-    return settings.config_dir / "site_cookies"
+    return _REPO_ROOT / "config" / "site_cookies"
 
 
 def get_site_cookies_file_path(site_slug: str) -> Path:
@@ -114,4 +113,3 @@ def write_cookie_text_file(target_path: Path, content: str, encoding: str = "utf
                 except OSError:
                     pass
             raise
-

@@ -1,4 +1,5 @@
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -6,7 +7,35 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import shared.site_catalog.cookie_files as cookie_files
+import infrastructure.site_catalog.cookie_files as cookie_files
+
+
+def test_cookie_files_import_does_not_require_backend_settings_env():
+    backend_root = Path(__file__).resolve().parents[2]
+    allowed_env = {
+        key: value
+        for key, value in os.environ.items()
+        if key.upper() in {"PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "PYTHONIOENCODING"}
+    }
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import sys; "
+                f"sys.path.insert(0, {str(backend_root)!r}); "
+                "from infrastructure.site_catalog.cookie_files import get_site_cookies_dir; "
+                "print(get_site_cookies_dir())"
+            ),
+        ],
+        cwd=str(backend_root),
+        env=allowed_env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.stdout.strip().endswith(os.path.join("config", "site_cookies"))
 
 
 def test_write_cookie_text_file_replaces_existing_content(tmp_path):

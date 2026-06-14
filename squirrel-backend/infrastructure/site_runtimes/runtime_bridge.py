@@ -65,8 +65,9 @@ def main() -> int:
         if import_path and import_path not in sys.path:
             sys.path.insert(0, import_path)
 
-    configure_backend_runtime_state()
     runtime = _load_runtime(args.entrypoint)
+    site_configs = json.loads(os.environ.get("SQUIRREL_SITE_RUNTIME_SITE_CONFIGS") or "{}")
+    configure_backend_runtime_state(site_configs)
     runtime.start({
         "runtime_id": args.runtime_id,
         "version": args.version,
@@ -96,5 +97,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-

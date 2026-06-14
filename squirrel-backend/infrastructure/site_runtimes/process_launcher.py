@@ -6,12 +6,14 @@ import socket
 import subprocess
 import sys
 from collections.abc import Sequence
+from copy import copy
 from pathlib import Path
 
 from shared_kernel.infrastructure.trace import get_trace_id
 
 from .audit import SiteRuntimeAuditWriter
 from .models import SiteRuntimeRecord
+from .runtime_models import SiteRuntimeManifest
 
 
 class SiteRuntimeProcessLauncher:
@@ -81,6 +83,7 @@ class SiteRuntimeProcessLauncher:
         process_env["SQUIRREL_SITE_RUNTIME_GRANTED_PERMISSIONS"] = ",".join(record.granted_permissions)
         process_env["SQUIRREL_SITE_RUNTIME_NETWORK_POLICY"] = json.dumps(self.network_policy(record))
         process_env["SQUIRREL_SITE_RUNTIME_RUNTIME_POLICY"] = json.dumps(self.runtime_policy(record))
+        process_env["SQUIRREL_SITE_RUNTIME_SITE_CONFIGS"] = json.dumps(self.site_configs(record))
         process_env["SQUIRREL_SITE_RUNTIME_DECLARED_PERMISSIONS"] = ",".join(
             str(item.get("name"))
             for item in ((record.manifest or {}).get("permissions") or [])
@@ -135,6 +138,48 @@ class SiteRuntimeProcessLauncher:
             seen.add(resolved)
             import_paths.append(resolved)
         return import_paths
+
+    @staticmethod
+    def _deep_merge(base: dict, overrides: dict) -> dict:
+        result = copy(base)
+        for key, value in overrides.items():
+            if isinstance(value, dict) and isinstance(result.get(key), dict):
+                result[key] = SiteRuntimeProcessLauncher._deep_merge(result.get(key, {}), value)
+            else:
+                result[key] = value
+        return result
+
+    @staticmethod
+    def site_configs(record: SiteRuntimeRecord) -> dict:
+        manifest = SiteRuntimeManifest.from_dict(record.manifest or {})
+        config_path = SiteRuntimeProcessLauncher.site_config_path()
+        overrides: dict[str, dict] = {}
+        if config_path.is_file():
+            try:
+                with open(config_path, encoding="utf-8") as handle:
+                    overrides = {
+                        str(slug).strip().lower(): dict(config or {})
+                        for slug, config in (json.load(handle) or {}).items()
+                        if str(slug).strip()
+                    }
+            except (OSError, ValueError, TypeError):
+                overrides = {}
+        configs: dict[str, dict] = {}
+        for site in manifest.sites:
+            slug = site.site_name.strip().lower()
+            if not slug:
+                continue
+            defaults = dict(site.metadata or {})
+            defaults["domains"] = list(site.domains)
+            defaults["features"] = list(site.features)
+            if site.test_url:
+                defaults["test_url"] = site.test_url
+            configs[slug] = SiteRuntimeProcessLauncher._deep_merge(defaults, overrides.get(slug, {}))
+        return configs
+
+    @staticmethod
+    def site_config_path() -> Path:
+        return Path(__file__).resolve().parents[3] / "config" / "sites.json"
 
     @staticmethod
     def runtime_policy(record: SiteRuntimeRecord) -> dict:
