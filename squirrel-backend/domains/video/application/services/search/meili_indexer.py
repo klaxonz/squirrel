@@ -114,6 +114,73 @@ class MeiliVideoIndexer:
         self._client = get_meili_client()
         self._index = self._client.index(settings.MEILISEARCH_INDEX_VIDEOS)
 
+    def _build_documents_batch(self, session: Session, video_ids: list[int]) -> list[dict[str, Any]]:
+        """批量组装多个 video 的 Meilisearch 文档（reindex_all 优化版）。
+
+        用 3 条聚合查询一次性取出本批所有 video 的基础字段 + subscription/creator 名，
+        避免逐个 _build_document 的 N×3 次 PG 往返。
+        """
+        if not video_ids:
+            return []
+
+        # 1. 批量取 video 基础字段
+        videos = session.execute(
+            select(Video).where(
+                Video.id.in_(video_ids),
+                Video.is_deleted.is_(False),
+            )
+        ).scalars().all()
+        if not videos:
+            return []
+        video_map = {v.id: v for v in videos}
+
+        # 2. 批量取 subscription_names（一次查所有 video 的关联）
+        sub_rows = session.execute(
+            select(SubscriptionVideo.video_id, Subscription.name)
+            .join(Subscription, Subscription.id == SubscriptionVideo.subscription_id)
+            .where(
+                SubscriptionVideo.video_id.in_(video_ids),
+                Subscription.is_deleted.is_(False),
+            )
+        ).all()
+        sub_map: dict[int, list[str]] = {}
+        for vid, name in sub_rows:
+            if name:
+                sub_map.setdefault(vid, []).append(name)
+
+        # 3. 批量取 creator_names
+        creator_rows = session.execute(
+            select(VideoCreator.video_id, Creator.name)
+            .join(Creator, Creator.id == VideoCreator.creator_id)
+            .where(
+                VideoCreator.video_id.in_(video_ids),
+                Creator.is_deleted.is_(False),
+            )
+        ).all()
+        creator_map: dict[int, list[str]] = {}
+        for vid, name in creator_rows:
+            if name:
+                creator_map.setdefault(vid, []).append(name)
+
+        # 4. 按 video_ids 顺序组装文档
+        docs: list[dict[str, Any]] = []
+        for vid in video_ids:
+            video = video_map.get(vid)
+            if video is None:
+                continue  # 已删除
+            docs.append({
+                'id': video.id,
+                'title': video.title or '',
+                'description': video.description or '',
+                'domain': video.domain or '',
+                'url': video.url or '',
+                'subscription_names': sub_map.get(vid, []),
+                'creator_names': creator_map.get(vid, []),
+                'duration': int(video.duration or 0),
+                'publish_ts': int(video.publish_date.timestamp()) if video.publish_date is not None else 0,
+            })
+        return docs
+
     def _build_document(self, session: Session, video_id: int) -> dict[str, Any] | None:
         """从 PG 组装单个 video 的 Meilisearch 文档；视频不存在/已删除返回 None。"""
         video = session.get(Video, video_id)
@@ -185,7 +252,7 @@ class MeiliVideoIndexer:
         for offset in range(0, total, batch_size):
             batch_ids = video_ids[offset:offset + batch_size]
             with self._session_factory() as session:
-                docs = [doc for vid in batch_ids if (doc := self._build_document(session, vid)) is not None]
+                docs = self._build_documents_batch(session, batch_ids)
             if docs:
                 self._index.add_documents(docs)
             logger.info('meili reindex batch %d/%d (pushed=%d)', offset // batch_size + 1, total_batches, len(docs))
