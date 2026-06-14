@@ -116,6 +116,12 @@ build_app_image() {
 build_cf_bypass_image() {
     echo -e "${YELLOW}==> 构建 sidecar 镜像 $CF_BYPASS_IMAGE_NAME:$CF_BYPASS_VERSION...${NC}"
 
+    # camoufox 下载需 GitHub API 鉴权避免限流；从环境变量 GITHUB_TOKEN 读取（可选）
+    TOKEN_ARG=""
+    if [ -n "$GITHUB_TOKEN" ]; then
+        TOKEN_ARG="--build-arg=GITHUB_TOKEN=$GITHUB_TOKEN"
+    fi
+
     if [ "$MULTI_PLATFORM" = true ]; then
         echo -e "${YELLOW}构建多平台 sidecar 镜像 ($PLATFORM)...${NC}"
         if [ "$PUSH" = true ]; then
@@ -123,6 +129,7 @@ build_cf_bypass_image() {
                 --platform $PLATFORM \
                 --push \
                 $NO_CACHE \
+                $TOKEN_ARG \
                 -t "$CF_BYPASS_IMAGE_NAME:$CF_BYPASS_VERSION" \
                 -t "$CF_BYPASS_IMAGE_NAME:latest" \
                 ./squirrel-cf-bypass
@@ -131,7 +138,7 @@ build_cf_bypass_image() {
             exit 1
         fi
     else
-        docker build $NO_CACHE -t "$CF_BYPASS_IMAGE_NAME:$CF_BYPASS_VERSION" ./squirrel-cf-bypass
+        docker build $NO_CACHE $TOKEN_ARG -t "$CF_BYPASS_IMAGE_NAME:$CF_BYPASS_VERSION" ./squirrel-cf-bypass
         docker tag "$CF_BYPASS_IMAGE_NAME:$CF_BYPASS_VERSION" "$CF_BYPASS_IMAGE_NAME:latest"
 
         if [ "$PUSH" = true ]; then

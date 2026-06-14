@@ -34,8 +34,12 @@ RUN apt-get update \
 
 ENV XDG_CACHE_HOME=/root/.cache
 
+# camoufox 构建期下载需访问 GitHub API，匿名易触发限流（403）后走有 bug 的 fallback。
+# 通过 --build-arg GITHUB_TOKEN=xxx 传入 PAT 鉴权（仅此 RUN 构建期可见，不进运行镜像）。
+ARG GITHUB_TOKEN=""
+
 RUN pip install --no-cache-dir . \
-    && python scripts/fetch_camoufox.py
+    && GITHUB_TOKEN="${GITHUB_TOKEN}" python scripts/fetch_camoufox.py
 
 ENV CF_BYPASS_PORT=8002
 
