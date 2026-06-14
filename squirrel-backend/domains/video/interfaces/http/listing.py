@@ -39,9 +39,8 @@ def get_videos(
     nsfw: YesNoAll = Query(YesNoAll.ALL, description='NSFW 过滤: all|yes|no'),
     special: YesNoAll = Query(YesNoAll.ALL, description='特别关注过滤: all|yes|no'),
     site: str = Query(None, description='站点过滤：例如 youtube、bilibili 等（支持别名）'),
-    with_total: bool = Query(False, alias='withTotal', description='是否返回 total（会额外执行 count 查询）'),
-    page: int = Query(1, ge=1, description='页码'),
-    page_size: int = Query(10, ge=1, le=100, alias='pageSize', description='每页数量'),
+    cursor: str | None = Query(None, description='分页游标（首页不传；翻页传上一页响应的 next_cursor）'),
+    page_size: int = Query(20, ge=1, le=100, alias='pageSize', description='每页数量'),
     time_range: TimeRange = Query(TimeRange.ALL, description='时间范围: all|today|week|month|year'),
     duration: DurationFilter = Query(DurationFilter.ALL, description='时长: all|short|medium|long'),
     content_type: ContentType = Query(ContentType.ALL, description='内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR'),
@@ -55,14 +54,14 @@ def get_videos(
     if hasattr(current_user, '_cached_config'):
         logger.info('[Performance] Route: Using cached user config')
 
-    videos, total_counts = list_videos(
-        current_user.id, query, subscription_id, category.value, sort_by.value, nsfw.value, domains_list, page, page_size,
-        with_total=with_total, time_range=time_range.value, duration=duration.value, content_type=content_type.value, special=special.value,
+    videos, next_cursor = list_videos(
+        current_user.id, query, subscription_id, category.value, sort_by.value, nsfw.value, domains_list,
+        cursor, page_size,
+        time_range=time_range.value, duration=duration.value, content_type=content_type.value, special=special.value,
     )
 
     return response.success({
-        'total': total_counts,
-        'page': page,
-        'pageSize': page_size,
         'data': videos,
+        'next_cursor': next_cursor,
+        'has_more': next_cursor is not None,
     })
