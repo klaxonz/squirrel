@@ -2,25 +2,26 @@ from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
+from domains.subscription.schemas.dto.sync_dashboard_dto import SyncDashboardItemDto
 from sqlalchemy.orm import Session
 
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
-from shared_kernel.domain.base import Base
-from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from domains.subscription.domain.models.crawl_job import CrawlJob
-from domains.subscription.domain.models.crawl_task import CrawlTask
-from domains.subscription.domain.models.outbox_event import OutboxEvent
-from domains.subscription.domain.models.subscription import Subscription
-from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
-from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
-from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
-from domains.subscription.domain.models.subscription_sync_subscription_projection import SubscriptionSyncSubscriptionProjection
-from domains.subscription.schemas.dto.sync_dashboard_dto import SyncDashboardItemDto
 from domains.subscription.application.services.core.sync.dashboard_service import SubscriptionSyncDashboardService
 from domains.subscription.application.services.core.sync.progress import subscription_sync_progress
 from domains.subscription.application.services.sync.items import SyncDashboardItemFactory
 from domains.subscription.application.services.sync.presentation import sort_items
 from domains.subscription.application.services.sync.site_icons import SiteIconResolver
+from domains.subscription.domain.junctions.user_subscription import UserSubscription
+from domains.subscription.domain.models.crawl_job import CrawlJob
+from domains.subscription.domain.models.crawl_task import CrawlTask
+from domains.subscription.domain.models.subscription import Subscription
+from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
+from domains.subscription.domain.models.subscription_sync_run_projection import SubscriptionSyncRunProjection
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
+from domains.subscription.domain.models.subscription_sync_subscription_projection import (
+    SubscriptionSyncSubscriptionProjection,
+)
+from shared_kernel.domain.base import Base
 
 
 @pytest.fixture
@@ -32,9 +33,12 @@ def engine(engine):
 def sss_session_patch(session_factory):
     """Replacement for sss_session fixture using patch instead of monkeypatch."""
     import subscription.services.core.sync.projection.store as projection_store
-    from infrastructure.database import session as database
-    from domains.subscription.application.services.core.sync.projection.service import subscription_sync_projection_service
+
+    from domains.subscription.application.services.core.sync.projection.service import (
+        subscription_sync_projection_service,
+    )
     from domains.subscription.application.services.core.sync.run_service import subscription_sync_run_service
+    from infrastructure.database import session as database
 
     with patch.object(database, 'get_session', session_factory), \
          patch.object(subscription_sync_run_service, 'next_seq_no', lambda stream_id, *, session=None: 1), \
@@ -64,7 +68,6 @@ def _setup_state_env(engine):
         tables=[
             SubscriptionSyncEvent.__table__,
             SubscriptionSyncState.__table__,
-            OutboxEvent.__table__,
         ],
     )
     return engine
@@ -775,9 +778,11 @@ def test_reconcile_terminal_drained_sync_states_completes_original_latest_run(en
     ]
 
 
-def test_record_gap_observation_emits_full_backfill_request_when_score_crosses_threshold(engine, session_factory, sss_session_patch):
+def test_record_gap_observation_enqueues_full_backfill_when_score_crosses_threshold(engine, session_factory, sss_session_patch):
     engine = _setup_state_env(engine)
     sss_svc = subscription_sync_state_service
+
+    request_calls = []
 
     now = datetime(2026, 4, 4, 12, 0, 0)
     with Session(engine, expire_on_commit=False) as session:
@@ -794,25 +799,86 @@ def test_record_gap_observation_emits_full_backfill_request_when_score_crosses_t
         )
         session.commit()
 
-    summary = sss_svc.record_gap_observation(
-        sync_state_id=21,
-        head_sample_urls=["https://example.com/video/new-1", "https://example.com/video/new-2"],
-        anchor_found=False,
-        cursor_invalid=True,
-        cursor_loop_detected=False,
-        total_available=120,
-        local_total=80,
-        now=now,
-    )
+    from domains.subscription.application.services.core.sync.state import _gap as gap_module
+    from domains.subscription.application.services.core.update.commands import SubscriptionSyncCommandService
+    from domains.subscription.application.services.core.update.models import UpdateMode, UpdateTrigger
+
+    with patch.object(gap_module, "_can_request_full_sync", return_value=True), \
+         patch.object(SubscriptionSyncCommandService, "request_sync", lambda self, **kw: request_calls.append(kw)):
+        summary = sss_svc.record_gap_observation(
+            sync_state_id=21,
+            head_sample_urls=["https://example.com/video/new-1", "https://example.com/video/new-2"],
+            anchor_found=False,
+            cursor_invalid=True,
+            cursor_loop_detected=False,
+            total_available=120,
+            local_total=80,
+            now=now,
+            trigger="scheduled",
+            trace_id="trace-1",
+        )
 
     assert summary["gap_suspicion_score"] >= 8
+    assert summary["emitted_full_request"] is True
+    assert request_calls == [{
+        "subscription_id": 7,
+        "url": "",
+        "trigger": UpdateTrigger.SCHEDULED,
+        "mode": UpdateMode.FULL,
+        "trace_id": "trace-1",
+    }]
 
     with Session(engine, expire_on_commit=False) as session:
         state = session.get(SubscriptionSyncState, 21)
-        events = session.query(OutboxEvent).all()
 
     assert state.gap_suspicion_score == summary["gap_suspicion_score"]
     assert state.head_anchor_missing_count == 1
-    assert len(events) == 1
-    assert events[0].event_type == "full_backfill_requested"
-    assert events[0].payload["subscription_id"] == 7
+    assert state.last_full_requested_at == now
+
+
+def test_record_gap_observation_skips_full_backfill_when_inflight_budget_exhausted(engine, session_factory, sss_session_patch):
+    engine = _setup_state_env(engine)
+    sss_svc = subscription_sync_state_service
+
+    request_calls = []
+
+    now = datetime(2026, 4, 4, 12, 0, 0)
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            SubscriptionSyncState(
+                id=22,
+                subscription_id=8,
+                site="youtube.com",
+                sync_mode="incremental",
+                sync_status="success",
+                next_sync_at=now + timedelta(minutes=5),
+                last_seen_video_url="https://example.com/video/anchor",
+            ),
+        )
+        session.commit()
+
+    from domains.subscription.application.services.core.sync.state import _gap as gap_module
+    from domains.subscription.application.services.core.update.commands import SubscriptionSyncCommandService
+
+    with patch.object(gap_module, "_can_request_full_sync", return_value=False), \
+         patch.object(SubscriptionSyncCommandService, "request_sync", lambda self, **kw: request_calls.append(kw)):
+        summary = sss_svc.record_gap_observation(
+            sync_state_id=22,
+            head_sample_urls=["https://example.com/video/new-1", "https://example.com/video/new-2"],
+            anchor_found=False,
+            cursor_invalid=True,
+            cursor_loop_detected=False,
+            total_available=120,
+            local_total=80,
+            now=now,
+        )
+
+    assert summary["gap_suspicion_score"] >= 8
+    # score crossed and last_full_requested_at still stamped, but request skipped due to inflight budget
+    assert summary["emitted_full_request"] is False
+    assert request_calls == []
+
+    with Session(engine, expire_on_commit=False) as session:
+        state = session.get(SubscriptionSyncState, 22)
+
+    assert state.last_full_requested_at == now

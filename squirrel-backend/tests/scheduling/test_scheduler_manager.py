@@ -1,10 +1,4 @@
-import sys
-from pathlib import Path
-from threading import Event
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
-from scheduling import lifecycle as scheduler_manager
+from infrastructure.scheduling import lifecycle as scheduler_manager
 
 
 class _FakeScheduler:
@@ -35,9 +29,8 @@ class _FakeThread:
         self.joined = True
 
 
-def test_scheduler_start_and_stop_manage_outbox_listener_thread(monkeypatch):
+def test_scheduler_start_and_stop_manage_heartbeat_thread(monkeypatch):
     started = []
-    stop_event_holder = {}
 
     monkeypatch.setattr(scheduler_manager, "Scheduler", _FakeScheduler)
     monkeypatch.setattr(scheduler_manager.dynamic_task_manager, "initialize", lambda scheduler: None)
@@ -53,23 +46,14 @@ def test_scheduler_start_and_stop_manage_outbox_listener_thread(monkeypatch):
         started.append(thread)
         return thread
 
-    def _fake_create_stop_event():
-        event = Event()
-        stop_event_holder["event"] = event
-        return event
-
     monkeypatch.setattr(scheduler_manager, "Thread", _fake_thread_factory)
-    monkeypatch.setattr(scheduler_manager.outbox_event_service, "create_listener_stop_event", _fake_create_stop_event)
-    monkeypatch.setattr(scheduler_manager.outbox_event_service, "run_notification_listener", lambda event: None)
 
     scheduler_manager.scheduler_start()
 
-    assert len(started) == 2
-    assert scheduler_manager._outbox_listener_thread is started[1]
-    assert scheduler_manager._outbox_listener_thread.started is True
-    assert stop_event_holder["event"].is_set() is False
+    assert len(started) == 1
+    assert scheduler_manager._heartbeat_thread is started[0]
+    assert scheduler_manager._heartbeat_thread.started is True
 
     scheduler_manager.scheduler_stop()
 
-    assert stop_event_holder["event"].is_set() is True
-    assert started[1].joined is True
+    assert started[0].joined is True

@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta
 
+from sqlalchemy import func, select
+
 from domains.subscription.application.services.core.sync.utils import calculate_head_overlap, fingerprint_head_sample
-from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
+from infrastructure.config.settings import settings
 
 from .session import get_session
+
+logger = logging.getLogger(__name__)
 
 
 def record_gap_observation(
@@ -21,8 +27,13 @@ def record_gap_observation(
     trigger: str = "scheduled",
     trace_id: str | None = None,
 ) -> dict[str, int | bool]:
-    import domains.subscription.application.services.outbox.event_service as outbox_event_service
+    """Update gap suspicion score for an incremental sync state and request a full backfill when it crosses threshold.
 
+    Replaces the previous outbox-based flow: when the score crosses the threshold, we enqueue the full sync directly
+    via SubscriptionSyncCommandService.request_sync, subject to global/site inflight limits. The 24h
+    ``last_full_requested_at`` gate on the state row prevents request storms; the inflight check skips the request
+    when too many full syncs are already queued/running, and the next observation tick will retry naturally.
+    """
     current_time = now or datetime.now()
     emitted_full_request = False
 
@@ -77,6 +88,10 @@ def record_gap_observation(
             state.last_gap_detected_at = current_time
         state.version += 1
 
+        site = str(state.site or "").strip()
+        subscription_id = int(state.subscription_id)
+        sync_state_row_id = int(state.id)
+
         should_request_full = (
             state.sync_mode == SyncMode.INCREMENTAL.value
             and state.gap_suspicion_score >= 8
@@ -86,27 +101,102 @@ def record_gap_observation(
             )
         )
         if should_request_full:
-            outbox_event_service.publish_event_in_session(
-                session,
-                event_type="full_backfill_requested",
-                event_key=f'full_backfill_requested:{state.subscription_id}:{current_time.strftime("%Y%m%d")}:{state.gap_suspicion_score}',
-                aggregate_type="subscription",
-                aggregate_id=str(state.subscription_id),
-                payload={
-                    "subscription_id": state.subscription_id,
-                    "sync_state_id": state.id,
-                    "site": state.site,
-                    "trigger": trigger,
-                    "trace_id": trace_id,
-                    "reason": state.gap_suspicion_reason or "gap_suspicion",
-                },
-                priority="normal",
-                available_at=current_time,
-            )
             state.last_full_requested_at = current_time
-            emitted_full_request = True
 
-        return {
-            "gap_suspicion_score": int(state.gap_suspicion_score),
-            "emitted_full_request": emitted_full_request,
-        }
+        gap_score_snapshot = int(state.gap_suspicion_score)
+
+    # Outside the session — direct sync enqueue, subject to inflight limits.
+    if should_request_full and _can_request_full_sync(site):
+        emitted_full_request = _enqueue_full_backfill(
+            subscription_id=subscription_id,
+            site=site,
+            sync_state_id=sync_state_row_id,
+            trigger=trigger,
+            trace_id=trace_id,
+            gap_score=gap_score_snapshot,
+        )
+
+    return {
+        "gap_suspicion_score": gap_score_snapshot,
+        "emitted_full_request": emitted_full_request,
+    }
+
+
+def _can_request_full_sync(site: str) -> bool:
+    """Check global/site full-sync inflight limits. Skip the request if either budget is exhausted."""
+    global_limit = max(1, int(settings.FULL_SYNC_MAX_INFLIGHT))
+    site_limit = max(1, int(settings.FULL_SYNC_SITE_MAX_INFLIGHT))
+
+    with get_session() as session:
+        global_inflight = int(session.execute(
+            select(func.count(SubscriptionSyncState.id)).where(
+                SubscriptionSyncState.sync_mode == SyncMode.FULL.value,
+                SubscriptionSyncState.sync_status.in_([SyncStatus.QUEUED.value, SyncStatus.RUNNING.value]),
+            ),
+        ).scalar_one() or 0)
+        if global_inflight >= global_limit:
+            return False
+
+        if site:
+            site_inflight = int(session.execute(
+                select(func.count(SubscriptionSyncState.id)).where(
+                    SubscriptionSyncState.sync_mode == SyncMode.FULL.value,
+                    SubscriptionSyncState.sync_status.in_([SyncStatus.QUEUED.value, SyncStatus.RUNNING.value]),
+                    SubscriptionSyncState.site == site,
+                ),
+            ).scalar_one() or 0)
+            if site_inflight >= site_limit:
+                return False
+
+    return True
+
+
+def _enqueue_full_backfill(
+    *,
+    subscription_id: int,
+    site: str,
+    sync_state_id: int,
+    trigger: str,
+    trace_id: str | None,
+    gap_score: int,
+) -> bool:
+    from domains.subscription.application.services.core.crud import get_subscription_by_id
+    from domains.subscription.application.services.core.update.commands import SubscriptionSyncCommandService
+    from domains.subscription.application.services.core.update.models import UpdateMode
+
+    try:
+        command_service = SubscriptionSyncCommandService()
+        subscription = get_subscription_by_id(subscription_id)
+        url = (subscription.url if subscription and subscription.url else "")
+        command_service.request_sync(
+            subscription_id=subscription_id,
+            url=url,
+            trigger=_parse_trigger(trigger),
+            mode=UpdateMode.FULL,
+            trace_id=trace_id,
+        )
+        logger.info(
+            "Gap detection enqueued full backfill subscription_id=%s site=%s sync_state_id=%s gap_score=%s",
+            subscription_id,
+            site,
+            sync_state_id,
+            gap_score,
+        )
+        return True
+    except Exception:  # gap backfill boundary — never fail the observation path
+        logger.exception(
+            "Failed to enqueue full backfill from gap detection subscription_id=%s sync_state_id=%s",
+            subscription_id,
+            sync_state_id,
+        )
+        return False
+
+
+def _parse_trigger(raw: str | None):
+    from domains.subscription.application.services.core.update.models import UpdateTrigger
+
+    if str(raw).lower() == UpdateTrigger.MANUAL.value:
+        return UpdateTrigger.MANUAL
+    if str(raw).lower() == UpdateTrigger.API.value:
+        return UpdateTrigger.API
+    return UpdateTrigger.SCHEDULED

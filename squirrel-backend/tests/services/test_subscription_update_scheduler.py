@@ -5,17 +5,20 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.orm import Session
 
-from shared_kernel.domain.base import Base
+from domains.subscription.application.services.core.update.commands import SubscriptionSyncCommandService
+from domains.subscription.application.services.core.update.models import (
+    SubscriptionUpdateResult,
+    UpdateMode,
+    UpdateTrigger,
+)
+from domains.subscription.application.services.core.update.scheduler import SubscriptionScheduler
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.crawl_dispatch_scope import CrawlDispatchScope
 from domains.subscription.domain.models.crawl_job import CrawlJob
 from domains.subscription.domain.models.crawl_task import CrawlTask
-from domains.subscription.domain.models.outbox_event import OutboxEvent
 from domains.subscription.domain.models.subscription import Subscription
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
-from domains.subscription.application.services.core.update.commands import SubscriptionSyncCommandService
-from domains.subscription.application.services.core.update.models import SubscriptionUpdateResult, UpdateMode, UpdateTrigger
-from domains.subscription.application.services.core.update.scheduler import SubscriptionScheduler
+from shared_kernel.domain.base import Base
 
 
 @pytest.fixture
@@ -26,7 +29,6 @@ def engine(engine):
             CrawlJob.__table__,
             CrawlTask.__table__,
             CrawlDispatchScope.__table__,
-            OutboxEvent.__table__,
             Subscription.__table__,
             UserSubscription.__table__,
             SubscriptionSyncState.__table__,
@@ -44,9 +46,12 @@ def sched(session_factory):
 def _patch_postgres(session_factory):
     """Patch postgres-specific calls to work with SQLite."""
     import subscription.services.core.sync.projection.store as projection_store
-    from infrastructure.database import session as database
-    from domains.subscription.application.services.core.sync.projection.service import subscription_sync_projection_service
+
+    from domains.subscription.application.services.core.sync.projection.service import (
+        subscription_sync_projection_service,
+    )
     from domains.subscription.application.services.core.sync.run_service import subscription_sync_run_service
+    from infrastructure.database import session as database
 
     with patch.object(database, 'register_after_commit', lambda session, callback: None), \
          patch.object(database, 'get_session', session_factory), \
@@ -60,6 +65,7 @@ def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sche
     appended_events = []
 
     import subscription.services.core.sync.state.service as ssss
+
     from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod
     from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 
@@ -110,7 +116,6 @@ def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sche
     with Session(engine, expire_on_commit=False) as session:
         jobs = session.query(CrawlJob).all()
         tasks = session.query(CrawlTask).all()
-        events = session.query(OutboxEvent).all()
 
     assert len(jobs) == 1
     assert jobs[0].job_type == "subscription_sync"
@@ -122,7 +127,6 @@ def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sche
     assert tasks[0].payload["trigger"] == "manual"
     assert tasks[0].payload["run_id"] == "run-1"
     assert tasks[0].payload["request_id"] == str(tasks[0].id)
-    assert events == []
     assert result.request_id == str(tasks[0].id)
     assert [event.event_type for event in appended_events] == ["queued"]
 
@@ -131,6 +135,7 @@ def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factor
     appended_events = []
 
     import subscription.services.core.sync.state.service as ssss
+
     from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod
     from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 
@@ -178,7 +183,6 @@ def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factor
     with Session(engine, expire_on_commit=False) as session:
         jobs = session.query(CrawlJob).all()
         tasks = session.query(CrawlTask).all()
-        events = session.query(OutboxEvent).all()
 
     assert len(jobs) == 1
     assert len(tasks) == 1
@@ -187,7 +191,6 @@ def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factor
     assert tasks[0].payload["mode"] == "incremental"
     assert tasks[0].payload["trigger"] == "scheduled"
     assert tasks[0].payload["run_id"] == "run-2"
-    assert events == []
     assert result.request_id == str(tasks[0].id)
     assert [event.event_type for event in appended_events] == ["queued"]
 
@@ -411,10 +414,8 @@ def test_enqueue_due_states_creates_crawl_tasks_from_sync_state_store(engine, se
     assert (success, failed) == (2, 0)
 
     with Session(engine, expire_on_commit=False) as session:
-        events = session.query(OutboxEvent).order_by(OutboxEvent.id.asc()).all()
         tasks = session.query(CrawlTask).order_by(CrawlTask.id.asc()).all()
 
-    assert events == []
     assert [task.task_type for task in tasks] == ["subscription_sync_incremental", "subscription_sync_incremental"]
     assert [task.payload["sync_state_id"] for task in tasks] == [12, 11]
     assert [event.event_type for event in appended_events] == ["run_created", "queued", "run_created", "queued"]

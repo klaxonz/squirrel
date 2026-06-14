@@ -2,7 +2,6 @@ import logging
 from datetime import datetime
 from threading import Lock, Thread
 
-import domains.subscription.application.services.outbox.event_service as outbox_event_service
 from infrastructure.database.session import get_session
 from infrastructure.scheduling.bootstrap import ensure_system_tasks
 from infrastructure.scheduling.engine import Scheduler
@@ -18,8 +17,6 @@ _scheduler_running: bool = False
 _scheduler_lock = Lock()
 _heartbeat_thread: Thread | None = None
 _heartbeat_running: bool = False
-_outbox_listener_thread: Thread | None = None
-_outbox_listener_stop_event = None
 _task_synchronizer = SchedulerTaskSynchronizer()
 
 
@@ -74,7 +71,7 @@ def _heartbeat_worker() -> None:
 
 
 def scheduler_start() -> None:
-    global _scheduler, _scheduler_running, _heartbeat_thread, _heartbeat_running, _outbox_listener_thread, _outbox_listener_stop_event
+    global _scheduler, _scheduler_running, _heartbeat_thread, _heartbeat_running
     with _scheduler_lock:
         if _scheduler_running:
             logger.info("[scheduler] already running, skip start()")
@@ -101,19 +98,11 @@ def scheduler_start() -> None:
         _heartbeat_thread = Thread(target=_heartbeat_worker, daemon=True)
         _heartbeat_thread.start()
 
-        _outbox_listener_stop_event = outbox_event_service.create_listener_stop_event()
-        _outbox_listener_thread = Thread(
-            target=outbox_event_service.run_notification_listener,
-            args=(_outbox_listener_stop_event,),
-            daemon=True,
-        )
-        _outbox_listener_thread.start()
-
         logger.info("[scheduler] started with %s jobs", job_count)
 
 
 def scheduler_stop() -> None:
-    global _scheduler, _scheduler_running, _heartbeat_running, _heartbeat_thread, _outbox_listener_thread, _outbox_listener_stop_event
+    global _scheduler, _scheduler_running, _heartbeat_running, _heartbeat_thread
     with _scheduler_lock:
         if not _scheduler_running:
             logger.info("[scheduler] not running, skip stop()")
@@ -124,11 +113,6 @@ def scheduler_stop() -> None:
             if _heartbeat_thread:
                 _heartbeat_thread.join(timeout=2)
 
-            if _outbox_listener_stop_event is not None:
-                _outbox_listener_stop_event.set()
-            if _outbox_listener_thread:
-                _outbox_listener_thread.join(timeout=2)
-
             if _scheduler:
                 _scheduler.stop()
 
@@ -136,8 +120,6 @@ def scheduler_stop() -> None:
             _scheduler = None
             _scheduler_running = False
             _heartbeat_thread = None
-            _outbox_listener_thread = None
-            _outbox_listener_stop_event = None
             _update_scheduler_status(is_running=False, job_count=0)
             logger.info("[scheduler] stopped")
 
