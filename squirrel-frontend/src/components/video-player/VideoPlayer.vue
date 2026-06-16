@@ -1673,7 +1673,25 @@ watch(containerRef, (container) => {
   updateVideoRotationScale()
 }, { immediate: true })
 
-onMounted(() => { window.addEventListener('keydown', handleKeyDown) })
+// When the window regains visibility (e.g. after Alt-Tab or minimize), the
+// <video> element may have dropped its last decoded frame during background
+// throttling and render black even though playback continues. Nudge it by
+// re-seeking to the current time to force a fresh frame paint.
+const handleVisibilityChange = () => {
+  if (document.hidden) return
+  const video = videoRef.value
+  if (!video || video.paused || video.ended) return
+  const t = video.currentTime
+  if (!Number.isFinite(t)) return
+  // Re-assigning currentTime (even to the same value) triggers a seek that
+  // forces the decoder to repaint the current frame.
+  video.currentTime = t
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+})
 onUnmounted(() => {
   clearHideTimer()
   clearInitialTimeListener()
@@ -1685,6 +1703,7 @@ onUnmounted(() => {
   removeMarkerDragListeners()
   removeProgressScrubListeners()
   window.removeEventListener('keydown', handleKeyDown)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
   stopSleepTimer()
   clearUpNextCountdown()
   if (videoInfoTimer) clearTimeout(videoInfoTimer)

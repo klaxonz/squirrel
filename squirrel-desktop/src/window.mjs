@@ -265,6 +265,10 @@ export const createMainWindow = () => {
       contextIsolation: true,
       nodeIntegration: false,
       webSecurity: false,
+      // Keep video decode / rAF running while the window is unfocused or
+      // minimized, so the <video> element doesn't drop its last frame and
+      // render black after regaining visibility.
+      backgroundThrottling: false,
     },
   })
 
