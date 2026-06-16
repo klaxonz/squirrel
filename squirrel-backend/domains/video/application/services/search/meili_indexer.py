@@ -65,10 +65,15 @@ def _build_recall_filter(
     domains: list[str] | None,
     time_range: str,
     duration: str,
+    category: str = 'all',
+    now: datetime | None = None,
 ) -> list[str]:
     """构建 Meili filter 表达式列表（隐式 AND）。
 
     返回空列表表示无过滤。每个元素是一个 filter 字符串，Meili 对 list 元素做 AND。
+
+    category='preview' 时放行未来视频（该 tab 语义即"预告"）；其余 category（含 all）
+    一律追加 publish_ts <= now 的上界，避免把尚未发布的视频召回进首页/搜索结果。
     """
     filters: list[str] = []
     if domains:
@@ -84,6 +89,10 @@ def _build_recall_filter(
     cutoff = compute_time_range_cutoff(time_range)
     if cutoff is not None:
         filters.append(f'publish_ts >= {cutoff}')
+    # 未来视频只在 preview tab 显式展示；其余场景（all/未读/搜索等）一律排除未发布视频
+    if category != 'preview':
+        now_ts = int((now or datetime.now()).timestamp())
+        filters.append(f'publish_ts <= {now_ts}')
     return filters
 
 
@@ -301,6 +310,7 @@ class MeiliVideoIndexer:
         filter_ids: list[int] | None = None,
         limit: int = 1000,
         sort_by: str = 'publish_date',
+        category: str = 'all',
     ) -> list[int]:
         """统一召回：文本匹配 + 结构化过滤（domain/time_range/duration 下沉 Meili）+ 排序。
 
@@ -308,10 +318,13 @@ class MeiliVideoIndexer:
         - query 为空：placeholder search，按 sort_by 返回（默认 publish_date 即 publish_ts:desc）
         - filter_ids：额外的 id 约束（read/liked/later 反向交集——PG 提供 per-user id 集合，
           Meili 在此范围内做文本召回）。None 表示不约束。
+        - category='preview' 时放行未来视频；其余 category 一律排除未发布视频
         - 返回 video_id 列表，权限/category 过滤由调用方在 PG 侧处理
         - 失败抛出，由调用方决定降级（通常 fallback 到纯 PG 浏览路径或返回空）
         """
-        filters = _build_recall_filter(domains=domains, time_range=time_range, duration=duration)
+        filters = _build_recall_filter(
+            domains=domains, time_range=time_range, duration=duration, category=category,
+        )
         if filter_ids:
             # id IN [列表]：Meili 数字无需引号。列表过大时 Meili 会自行优化，但建议上游控制规模。
             id_list = ', '.join(str(i) for i in filter_ids)
@@ -345,18 +358,22 @@ class MeiliVideoIndexer:
         duration: str = 'all',
         cursor: str | None = None,
         limit: int = 50,
+        category: str = 'all',
     ) -> tuple[list[int], str | None]:
         """keyset 游标分页召回（浏览场景，无文本匹配）。
 
         - sort: publish_ts:desc, id:desc（全序，保证游标稳定）
         - cursor 非空：filter 追加复合游标条件 publish_ts<X OR (publish_ts=X AND id<Y)
+        - category='preview' 时放行未来视频；其余 category 一律排除未发布视频
         - 返回 (video_ids, next_cursor)；next_cursor 为 None 表示无更多
         - 失败抛出，由调用方降级
 
         注意：limit 应略大于 page_size（如 page_size*2），给 PG 权限/category 过滤留缓冲，
         由 service 层循环补足到 page_size。
         """
-        filters = _build_recall_filter(domains=domains, time_range=time_range, duration=duration)
+        filters = _build_recall_filter(
+            domains=domains, time_range=time_range, duration=duration, category=category,
+        )
         if cursor:
             decoded = decode_cursor(cursor)
             if decoded is not None:

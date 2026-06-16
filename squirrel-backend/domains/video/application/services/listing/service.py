@@ -191,7 +191,7 @@ class VideoListService:
             try:
                 recalled_ids, next_cursor = indexer.recall_page(
                     domains=domains, time_range=time_range, duration=duration,
-                    cursor=last_cursor, limit=recall_limit,
+                    cursor=last_cursor, limit=recall_limit, category=category,
                 )
             except Exception:
                 logger.warning('meili recall_page failed', exc_info=True)
@@ -283,6 +283,7 @@ class VideoListService:
                 time_range=time_range,
                 duration=duration,
                 limit=_SEARCH_RECALL_LIMIT,
+                category=category,
             )
         except Exception:
             logger.warning('meili recall failed', exc_info=True)
@@ -404,7 +405,7 @@ class VideoListService:
         try:
             recalled_ids = recall_offset_ids(
                 query=query, domains=domains, time_range=time_range, duration=duration,
-                filter_ids=user_ids, limit=_SEARCH_RECALL_LIMIT,
+                filter_ids=user_ids, limit=_SEARCH_RECALL_LIMIT, category=category,
             )
         except Exception:
             logger.warning('meili recall (reverse-intersection) failed', exc_info=True)

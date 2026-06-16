@@ -226,10 +226,12 @@ def recall_offset_ids(
     duration: str,
     filter_ids: list[int] | None = None,
     limit: int = 5000,
+    category: str = 'all',
 ) -> list[int]:
     """搜索场景 Meili 召回（OFFSET 分页用）。失败抛出由调用方处理。
 
     filter_ids 用于 read/liked/later 反向交集（PG 提供 per-user id 集合）。
+    category='preview' 时放行未来视频；其余 category 一律排除未发布视频。
     """
     from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
     return get_meili_video_indexer().recall(
@@ -239,4 +241,5 @@ def recall_offset_ids(
         duration=duration,
         filter_ids=filter_ids,
         limit=limit,
+        category=category,
     )
