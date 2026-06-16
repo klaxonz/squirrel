@@ -25,15 +25,6 @@
         {{ formatDuration(video.duration) }}
       </div>
 
-      <!-- Optional top-left badge (e.g. 推荐) -->
-      <span
-        v-if="badge"
-        class="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary backdrop-blur-sm"
-      >
-        <AppIcon v-if="badgeIcon" :name="badgeIcon" class="size-3 fill-primary" />
-        {{ badge }}
-      </span>
-
       <!-- Optional play overlay -->
       <div
         v-if="showPlayOverlay"
@@ -81,12 +72,9 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import { formatDuration } from '@/utils/dateFormat'
-import type { AppIconName } from '@/icons/app-icons'
 
 const props = withDefaults(defineProps<{
   video: any
-  badge?: string
-  badgeIcon?: AppIconName
   showDuration?: boolean
   showPlayOverlay?: boolean
   showProgress?: boolean
