@@ -118,7 +118,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     group: 'content',
     activePrefixes: ['/videos', '/video/'],
     activeRouteNames: [
-      'LatestVideos',
+      'HomeView',
       'AllVideos',
       'UnreadVideos',
       'ReadVideos',

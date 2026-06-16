@@ -96,7 +96,7 @@ const showSearch = computed(() => !!route.meta?.showSearch)
 const homeSearchMode = computed(() => uiStore.homeSearchMode)
 const showHomeSearchMode = computed(() => {
   return window.desktopApp?.isDesktop === true
-    && route.matched.some((record) => record.name === 'LatestVideos')
+    && route.matched.some((record) => record.name === 'HomeView')
     && !route.params.id
 })
 const routeContext = computed(() => resolveRouteContext(route))

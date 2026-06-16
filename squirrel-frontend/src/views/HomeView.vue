@@ -241,7 +241,14 @@ import { useSites } from '@/composables/useSites'
 import { useRemoteChannel, type RemoteVideoItem } from '@/composables/useRemoteChannel'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-defineOptions({ name: 'LatestVideos' })
+// NOTE: This view serves two routes — the home feed (/videos) and the
+// subscription/channel detail (/subscription/:id) — branching internally on
+// `subscriptionId`. The two layouts are disjoint (Hero/continue-watching/
+// special-follows are home-only; ChannelHeader + remote mode are channel-only),
+// so this is a known design debt: splitting into HomeView + ChannelDetailView
+// would remove the scattered `subscriptionId` conditionals. Kept unified for
+// now to avoid coupling this rename to a larger refactor.
+defineOptions({ name: 'HomeView' })
 
 type RemoteProfile = {
   id?: string | number | null
@@ -516,7 +523,7 @@ watch(() => route.query.special, (value) => {
 }, { immediate: true })
 
 onActivated(() => {
-  // LatestVideos is kept-alive at the app root; refresh secondary sections when
+  // HomeView is kept-alive at the app root; refresh secondary sections when
   // returning to the home feed, throttled to avoid hammering the API on rapid nav.
   const now = Date.now()
   if (now - secondarySectionsRefreshedAt < 30_000) return

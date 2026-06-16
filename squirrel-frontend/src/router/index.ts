@@ -4,7 +4,7 @@ import { useUserStore } from '../stores/user'
 import { useServerConfig } from '../composables/useServerConfig'
 import { Logger } from '@/utils/logger'
 
-const LatestVideos = () => import('../views/LatestVideos.vue')
+const HomeView = () => import('../views/HomeView.vue')
 const Subscribed = () => import('../views/Subscribed.vue')
 const RssSources = () => import('../views/RssSources.vue')
 const Settings = () => import('../views/Settings.vue')
@@ -76,13 +76,13 @@ const createVideoTabRoute = (
 const routes = [
   {
     path: '/videos',
-    name: 'LatestVideos',
-    component: LatestVideos,
+    name: 'HomeView',
+    component: HomeView,
     meta: createSearchMeta('首页', {
       navKey: 'videos',
       sectionLabel: '首页',
       keepAlive: true,
-      keepAliveComponent: 'LatestVideos',
+      keepAliveComponent: 'HomeView',
     }),
     children: [
       createVideoTabRoute('all', 'AllVideos', '全部视频', { navKey: 'videos', sectionLabel: '首页' }),
@@ -178,12 +178,12 @@ const routes = [
   {
     path: '/subscription/:id',
     name: 'SubscriptionDetail',
-    component: LatestVideos,
+    component: HomeView,
     meta: createSearchMeta('频道', {
       navKey: 'subscribed',
       sectionLabel: '订阅',
       keepAlive: true,
-      keepAliveComponent: 'LatestVideos',
+      keepAliveComponent: 'HomeView',
       contextParentLabel: '频道',
     }),
     children: [
@@ -280,7 +280,7 @@ const routes = [
       navKey: 'videos',
       sectionLabel: '首页',
       searchRedirectName: 'AllVideos',
-      searchPersistKey: 'LatestVideos',
+      searchPersistKey: 'HomeView',
       scrollable: true,
       hideScrollbar: true,
       sidebar: SidebarMode.fixed,
