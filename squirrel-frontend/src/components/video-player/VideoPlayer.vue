@@ -669,8 +669,8 @@ const {
   onError: (e) => {
     errorState.value = {
       show: true,
-      title: e.code || t('errorTitle'),
-      message: e.message,
+      title: t('errorTitle'),
+      message: resolveErrorMessage(e.code, e.message),
       code: e.code,
       canRetry: true
     }
@@ -751,6 +751,20 @@ const pendingUserVolumeHud = ref<number | null>(null)
 const pendingWidescreenValue = ref<boolean | null>(null)
 const shouldResumeAfterSourceSwap = ref(false)
 const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
+
+// 按 code 把引擎/插件产生的英文错误信息映射为中文。
+// 这些 message 来自 core/error-recovery.ts、createPlayerEngine.ts、HlsPlugin/DashPlugin/ShakaDashPlugin，
+// 在源头改会侵入多个插件并丢失原始信息，故在 UI 层统一翻译。
+const resolveErrorMessage = (code: string, fallback: string): string => {
+  const upper = String(code || '').toUpperCase()
+  if (upper.includes('NETWORK') || upper.includes('TIMEOUT')) return t('errorNetwork')
+  if (upper.includes('NOT_SUPPORTED') || upper.includes('CAPABILITY')) return t('errorNotSupported')
+  if (upper.includes('DECODE')) return t('errorDecode')
+  if (upper.includes('MEDIA') || upper.includes('HLS_') || upper.includes('DASH_')) return t('errorMedia')
+  if (upper.includes('STALL')) return t('buffering')
+  return fallback || t('errorUnknown')
+}
+
 const handleRetry = () => {
   errorState.value.show = false
   emit('retry')
@@ -1081,6 +1095,15 @@ watch(() => props.initialTime, (initialTime) => {
   applyInitialTime(props.source, initialTime)
 })
 watch(() => props.subtitles, (ts) => { setSubtitleTracks(ts || []) }, { immediate: true, deep: true })
+
+// 修复"视频在正常播放但错误遮罩仍盖在上面"的问题：
+// 引擎的错误恢复链（HLS recoverMediaError / DASH attachSource / 重试）经常能在底层把播放救回来，
+// 但 reportFatalError 已经触发过 onError → errorState.show=true。这里在视频真正重新进入播放态时兜底清除遮罩。
+watch(() => store.playing, (playing) => {
+  if (playing && errorState.value.show) {
+    errorState.value.show = false
+  }
+})
 
 const closeMenus = () => {
   showSettingsMenu.value = false
