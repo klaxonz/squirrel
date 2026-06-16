@@ -83,7 +83,10 @@ export default function useLatestVideos(initial: InitialState = {}) {
   const loading = ref(false)
   const allLoaded = ref(false)
   const error = ref<unknown | null>(null)
-  const activeTab = ref(initial.activeTab ?? 'unread')
+  // Default to 'all' to match useFeedFilters/VideoTab defaults; 'unread'
+  // here would otherwise leak a stale category before the route-derived tab
+  // is applied on first render.
+  const activeTab = ref(initial.activeTab ?? 'all')
   const cursor = ref<string | null>(null)
   const searchQuery = ref(initial.searchQuery ?? '')
   const isResetting = ref(false)

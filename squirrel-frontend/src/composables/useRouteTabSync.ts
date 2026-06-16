@@ -1,4 +1,4 @@
-import { onActivated, onDeactivated, onMounted, watch } from 'vue'
+import { onActivated, onDeactivated, watch } from 'vue'
 import type { Ref, WatchStopHandle } from 'vue'
 import { VIDEO_TABS } from '../constants/videos'
 import type { RouteLocationNormalizedLoaded, Router } from 'vue-router'
@@ -34,10 +34,13 @@ export function useRouteTabSync(
     }
   }
 
-  onMounted(() => {
-    // initialize from current path
-    setTabFromPath(router.currentRoute.value.path)
-  })
+  // Initialize synchronously from the current path during setup, so child
+  // views (e.g. VideoTab) observe the correct tab in their own setup and the
+  // first API request carries the right category. Deferring this to onMounted
+  // is too late: VideoTab's `immediate` watcher would already have fired with
+  // the default 'all', leaking a stale `category=all` request on a hard
+  // refresh of /videos/<tab>.
+  setTabFromPath(router.currentRoute.value.path)
 
   let tabWatchStop: WatchStopHandle | null = watch(() => activeTabRef.value, (tab) => {
     if (!tabValues.includes(tab)) return
