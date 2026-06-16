@@ -1,4 +1,5 @@
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -24,34 +25,23 @@ from shared_kernel.infrastructure.log import init_logging
 
 logger = logging.getLogger(__name__)
 
-STARTUP_TOTAL_STEPS = 5
-SHUTDOWN_TOTAL_STEPS = 1
-
-
-def _log_lifecycle_event(phase: str, message: str) -> None:
-    logger.info("%s: %s", phase, message)
-
-
-def _log_lifecycle_step(phase: str, step: int, total: int, message: str) -> None:
-    logger.info("%s [%s/%s] %s", phase, step, total, message)
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """FastAPI application lifecycle: bootstrap runtime, serve, then shut down."""
-    _log_lifecycle_event("Startup", "begin")
+    logger.info("Startup: begin")
     reset_startup_dependency_issues()
 
     # 1. Site config (hard dependency)
-    _log_lifecycle_step("Startup", 1, STARTUP_TOTAL_STEPS, "Applying site configuration overrides")
+    logger.info("Startup: applying site configuration overrides")
     try:
         apply_site_config_overrides()
     except Exception:
-        logger.exception("Startup [1/%s] Failed to apply site configuration overrides", STARTUP_TOTAL_STEPS)
+        logger.exception("Startup: failed to apply site configuration overrides")
         raise
 
     # 2. Runtime HTTP: cloudflare bypass is optional (degrade), cookie resolver is required
-    _log_lifecycle_step("Startup", 2, STARTUP_TOTAL_STEPS, "Configuring runtime HTTP helpers")
+    logger.info("Startup: configuring runtime HTTP helpers")
     try:
         from infrastructure.site_catalog.cloudflare_bypass import get_default_client
 
@@ -59,31 +49,29 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         clear_optional_startup_issue("cloudflare_bypass")
     except Exception as exc:
         record_optional_startup_issue("cloudflare_bypass", exc)
-        logger.warning("Startup [2/%s] Cloudflare bypass disabled: %s", STARTUP_TOTAL_STEPS, exc)
+        logger.warning("Startup: cloudflare bypass disabled: %s", exc)
     try:
         set_cookie_file_resolver(resolve_cookie_file_for_url)
         set_cookie_domain_resolver(resolve_cookie_match_domain_for_url)
     except Exception:
-        logger.exception("Startup [2/%s] Failed to configure cookie resolver", STARTUP_TOTAL_STEPS)
+        logger.exception("Startup: failed to configure cookie resolver")
         raise
 
     # 3. Site runtimes (hard dependency) — YouTube OAuth env must be set before bootstrap
-    _log_lifecycle_step("Startup", 3, STARTUP_TOTAL_STEPS, "Bootstrapping site runtime manager")
+    logger.info("Startup: bootstrapping site runtime manager")
     try:
         from infrastructure.site_catalog.youtube_oauth import get_oauth_credentials_for_daemon
 
         oauth_file = get_oauth_credentials_for_daemon()
         if oauth_file:
-            import os
-
             os.environ["YOUTUBE_OAUTH_STATE_FILE"] = oauth_file
         bootstrap_site_runtimes()
     except Exception:
-        logger.exception("Startup [3/%s] Failed to bootstrap site runtime manager", STARTUP_TOTAL_STEPS)
+        logger.exception("Startup: failed to bootstrap site runtime manager")
         raise
 
     # 4. Scheduled tasks (degraded-tolerant)
-    _log_lifecycle_step("Startup", 4, STARTUP_TOTAL_STEPS, "Bootstrapping scheduled tasks")
+    logger.info("Startup: bootstrapping scheduled tasks")
     try:
         from infrastructure.scheduling.bootstrap import ensure_system_tasks
 
@@ -91,10 +79,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         clear_optional_startup_issue("scheduled_task_bootstrap")
     except Exception as exc:
         record_optional_startup_issue("scheduled_task_bootstrap", exc)
-        logger.warning("Startup [4/%s] Scheduled task bootstrap degraded: %s", STARTUP_TOTAL_STEPS, exc, exc_info=True)
+        logger.warning("Startup: scheduled task bootstrap degraded: %s", exc, exc_info=True)
 
     # 5. Meilisearch index (hard dependency when configured; skipped if MEILISEARCH_URL unset)
-    _log_lifecycle_step("Startup", 5, STARTUP_TOTAL_STEPS, "Ensuring Meilisearch index")
+    logger.info("Startup: ensuring Meilisearch index")
     if settings.MEILISEARCH_URL:
         try:
             from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
@@ -103,21 +91,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             ensure_videos_index()
             get_meili_video_indexer()  # 预热单例，避免首个请求的初始化开销
         except Exception:
-            logger.exception("Startup [5/%s] Failed to ensure Meilisearch index", STARTUP_TOTAL_STEPS)
+            logger.exception("Startup: failed to ensure Meilisearch index")
             raise
     else:
-        logger.warning("Startup [5/%s] MEILISEARCH_URL not configured -- search disabled", STARTUP_TOTAL_STEPS)
+        logger.warning("Startup: MEILISEARCH_URL not configured -- search disabled")
 
-    _log_lifecycle_event("Startup", "complete")
+    logger.info("Startup: complete")
 
     yield
 
-    _log_lifecycle_event("Shutdown", "begin")
+    logger.info("Shutdown: begin")
     try:
         shutdown_site_runtimes()
     except Exception as exc:  # cleanup during shutdown -- must not propagate
-        logger.warning("Shutdown [1/%s] Error stopping site runtime manager (ignored): %s", SHUTDOWN_TOTAL_STEPS, exc)
-    _log_lifecycle_event("Shutdown", "complete")
+        logger.warning("Shutdown: error stopping site runtime manager (ignored): %s", exc)
+    logger.info("Shutdown: complete")
 
 
 def create_application() -> FastAPI:
