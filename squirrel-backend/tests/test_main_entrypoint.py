@@ -1,4 +1,3 @@
-import re
 import sys
 import types
 from pathlib import Path
@@ -29,8 +28,6 @@ sys.modules.setdefault("alembic.config", alembic_config_module)
 sys.modules.setdefault("bs4", bs4_module)
 
 import main as app_main
-
-BASE_SOURCE = Path(__file__).resolve().parents[1] / "routes" / "base.py"
 
 
 def test_main_uses_factory_mode_without_prebuilding_app_in_dev(monkeypatch):
@@ -86,9 +83,3 @@ def test_main_prebuilds_app_once_in_prod(monkeypatch):
             },
         ),
     ]
-
-
-def test_routes_base_does_not_eagerly_create_app_on_import():
-    source = BASE_SOURCE.read_text(encoding="utf-8")
-
-    assert re.search(r"^\s*app\s*=\s*create_app\(\)\s*$", source, re.MULTILINE) is None

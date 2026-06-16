@@ -98,7 +98,7 @@ def test_sync_account_upserts_feeds_and_entries(engine, session_factory, account
                 ),
             ]
 
-    with patch('services.rss.sync.service.create_client', lambda config: _FakeClient()):
+    with patch('domains.rss.application.services.sync.service.create_client', lambda config: _FakeClient()):
         result = sync_svc.sync_account(1, account['id'], entry_limit=20)
     entries = account_svc.list_entries(1)
 
@@ -466,7 +466,7 @@ def test_sync_greader_uses_reading_list_entries(engine, session_factory, account
             return []
 
     client = _FakeGReaderClient()
-    with patch('services.rss.sync.service.create_client', lambda config: client):
+    with patch('domains.rss.application.services.sync.service.create_client', lambda config: client):
         result = sync_svc.sync_account(1, account['id'])
     entries = account_svc.list_entries(1)
 
@@ -565,7 +565,7 @@ def test_sync_greader_imports_missing_unread_entries(engine, session_factory, ac
             raise AssertionError('incremental sync should not run full state reconciliation')
 
     client = _FakeGReaderClient()
-    with patch('services.rss.sync.service.create_client', lambda config: client):
+    with patch('domains.rss.application.services.sync.service.create_client', lambda config: client):
         sync_svc.sync_account(1, account['id'])
 
     unread = account_svc.list_entries(1, account_id=account['id'], is_read=False)
@@ -638,7 +638,7 @@ def test_sync_progress_reports_completed_state(engine, session_factory, account_
         def fetch_items_contents(self, entry_ids):
             return []
 
-    with patch('services.rss.sync.service.create_client', lambda config: _FakeGReaderClient()):
+    with patch('domains.rss.application.services.sync.service.create_client', lambda config: _FakeGReaderClient()):
         sync_svc.sync_account(1, account['id'])
     progress = account_svc.get_sync_progress(1, account['id'])
 
@@ -734,7 +734,7 @@ def test_greader_incremental_sync_stops_when_page_has_no_changes(
             return []
 
     client = _FakeGReaderClient()
-    with patch('services.rss.sync.service.create_client', lambda config: client):
+    with patch('domains.rss.application.services.sync.service.create_client', lambda config: client):
         result = sync_svc.sync_account(1, account['id'])
     progress = account_svc.get_sync_progress(1, account['id'])
 
@@ -864,7 +864,7 @@ def test_greader_full_sync_reconciles_read_and_starred_state(
             return []
 
     client = _FakeGReaderClient()
-    with patch('services.rss.sync.service.create_client', lambda config: client):
+    with patch('domains.rss.application.services.sync.service.create_client', lambda config: client):
         sync_svc.sync_account(1, account['id'], force_full_sync=True)
 
     with Session(engine) as session:

@@ -614,7 +614,7 @@ async def test_get_user_playlist_tracks_includes_file_id(mock_redis):
 
 async def test_add_track_to_user_playlist_formats_track_data(mock_redis):
     svc = _svc(mock_redis)
-    from domains.music.schemas.music import MusicTrackPayload
+    from domains.music.interfaces.dto.music import MusicTrackPayload
     track = MusicTrackPayload(title='T', hash='H', album_id='A', album_audio_id='AA')
     async with respx.mock:
         route = respx.get(f'{BASE_URL}/playlist/tracks/add').mock(

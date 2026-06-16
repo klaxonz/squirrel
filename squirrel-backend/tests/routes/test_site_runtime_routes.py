@@ -97,7 +97,7 @@ def test_get_supported_sites_merges_runtime_sites_when_catalog_is_partial(monkey
     assert bilibili["supports_login_status"] is True
 
 
-def test_sites_api_returns_list_and_catalog_on_explicit_paths(monkeypatch):
+def test_sites_catalog_get_returns_merged_catalog(monkeypatch):
     effective_catalog = {
         "youtube": {
             "label": "YouTube",
@@ -110,14 +110,10 @@ def test_sites_api_returns_list_and_catalog_on_explicit_paths(monkeypatch):
     app = FastAPI()
     app.include_router(site_routes.router)
     app.dependency_overrides[site_routes.dependencies.get_catalog_service] = lambda: FakeCatalogService(effective_catalog)
-    app.dependency_overrides[site_routes.dependencies.get_login_service] = lambda: FakeLoginService()
     client = TestClient(app)
 
-    sites_response = client.get("/api/sites")
-    catalog_response = client.get("/api/sites/catalog")
+    catalog_response = client.get("/catalog")
 
-    assert sites_response.status_code == 200
-    assert sites_response.json()["data"]["sites"][0]["site_name"] == "youtube"
     assert catalog_response.status_code == 200
     assert catalog_response.json()["data"] == effective_catalog
 
@@ -130,7 +126,7 @@ def test_update_sites_catalog_accepts_override_payload(monkeypatch):
     app.dependency_overrides[site_routes.dependencies.get_catalog_service] = lambda: FakeCatalogService({}, saved_catalog)
     client = TestClient(app)
 
-    response = client.put("/api/sites/catalog", json={"sites": {"youtube": {"enabled": False}}})
+    response = client.put("/catalog", json={"sites": {"youtube": {"enabled": False}}})
 
     assert response.status_code == 200
     assert response.json()["code"] == 0
@@ -270,7 +266,7 @@ def test_get_site_login_status_includes_youtube_oauth_state(monkeypatch):
     catalog = {"youtube": {"label": "YouTube", "domains": ["youtube.com"], "enabled": True}}
     monkeypatch.setitem(
         sys.modules,
-        "services.site_catalog.youtube_oauth",
+        "infrastructure.site_catalog.youtube_oauth",
         SimpleNamespace(
             get_oauth_state=lambda timeout_seconds=5.0: SimpleNamespace(
                 status="authenticated",

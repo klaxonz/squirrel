@@ -44,7 +44,6 @@ def test_site_catalog_builds_from_backend_runtime_manifest_models(monkeypatch):
             "enabled": True,
             "features": ["extract_video", "fetch_subtitles"],
             "test_url": "https://www.youtube.com",
-            "icon_url": "/api/sites/youtube/icon",
         },
     }
 
@@ -108,8 +107,8 @@ def test_site_catalog_builds_icon_url_from_plugin_assets_when_metadata_does_not_
         ],
     )
 
-    monkeypatch.setattr("services.site_catalog.catalog.resolve_site_icon_path", lambda site_name: Path(f"/tmp/{site_name}.png"))
-    monkeypatch.setattr("services.site_catalog.catalog.build_site_icon_url", lambda site_name: f"/api/sites/{site_name}/icon")
+    monkeypatch.setattr("infrastructure.site_catalog.catalog.resolve_site_icon_path", lambda site_name: Path(f"/tmp/{site_name}.png"))
+    monkeypatch.setattr("infrastructure.site_catalog.catalog.build_site_icon_url", lambda site_name: f"/api/sites/{site_name}/icon")
 
     catalog = SiteCatalog.build_runtime_site_catalog(
         snapshot=SimpleNamespace(

@@ -10,7 +10,7 @@ def test_save_site_overrides_persists_override_only(tmp_path):
     config_path = tmp_path / 'sites.json'
 
     with patch.object(SiteCatalogService, '_config_path', return_value=config_path):
-        with patch('services.site_catalog.service.build_runtime_site_catalog', return_value={
+        with patch('infrastructure.site_catalog.service.build_runtime_site_catalog', return_value={
             'youtube': {
                 'label': 'YouTube',
                 'domains': ['youtube.com', 'youtu.be'],
@@ -18,10 +18,10 @@ def test_save_site_overrides_persists_override_only(tmp_path):
                 'proxy': {'read_timeout': 180.0},
             },
         }):
-            with patch('services.site_catalog.catalog.SiteCatalog.load_override_catalog', return_value={}):
-                with patch('services.site_catalog.catalog.SiteCatalog.set_override_catalog'):
-                    with patch('services.site_catalog.service.apply_site_config_overrides'):
-                        with patch('services.site_catalog.service.get_effective_site_catalog', return_value={
+            with patch('infrastructure.site_catalog.catalog.SiteCatalog.load_override_catalog', return_value={}):
+                with patch('infrastructure.site_catalog.catalog.SiteCatalog.set_override_catalog'):
+                    with patch('infrastructure.site_catalog.service.apply_site_config_overrides'):
+                        with patch('infrastructure.site_catalog.service.get_effective_site_catalog', return_value={
                             'youtube': {
                                 'label': 'YouTube',
                                 'domains': ['youtube.com', 'youtu.be'],
@@ -63,7 +63,7 @@ def test_save_site_overrides_merges_patch_and_prunes_values_equal_to_plugin_defa
     )
 
     with patch.object(SiteCatalogService, '_config_path', return_value=config_path):
-        with patch('services.site_catalog.service.build_runtime_site_catalog', return_value={
+        with patch('infrastructure.site_catalog.service.build_runtime_site_catalog', return_value={
             'youtube': {
                 'label': 'YouTube',
                 'domains': ['youtube.com', 'youtu.be'],
@@ -71,10 +71,10 @@ def test_save_site_overrides_merges_patch_and_prunes_values_equal_to_plugin_defa
                 'proxy': {'read_timeout': 180.0},
             },
         }):
-            with patch('services.site_catalog.catalog.SiteCatalog.load_override_catalog', return_value={'youtube': {'enabled': False, 'proxy': {'read_timeout': 240.0}}}):
-                with patch('services.site_catalog.catalog.SiteCatalog.set_override_catalog'):
-                    with patch('services.site_catalog.service.apply_site_config_overrides'):
-                        with patch('services.site_catalog.service.get_effective_site_catalog', return_value={
+            with patch('infrastructure.site_catalog.catalog.SiteCatalog.load_override_catalog', return_value={'youtube': {'enabled': False, 'proxy': {'read_timeout': 240.0}}}):
+                with patch('infrastructure.site_catalog.catalog.SiteCatalog.set_override_catalog'):
+                    with patch('infrastructure.site_catalog.service.apply_site_config_overrides'):
+                        with patch('infrastructure.site_catalog.service.get_effective_site_catalog', return_value={
                             'youtube': {
                                 'label': 'YouTube',
                                 'domains': ['youtube.com', 'youtu.be'],

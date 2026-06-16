@@ -5,6 +5,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from crawl import filter_cookies_to_query_string
 
+from infrastructure.site_catalog import runtime_http
+
 
 class DummyClient:
     pass

@@ -22,7 +22,7 @@ def _build_context(url: str) -> PipelineContext:
 def test_extraction_stage_records_blocked_video_for_short_redirect(monkeypatch):
     calls = []
     monkeypatch.setattr(
-        "extraction.pipeline.stages.extraction.record_blocked_video",
+        "infrastructure.extraction.pipeline.stages.extraction.record_blocked_video",
         lambda **kwargs: calls.append(kwargs),
     )
 
@@ -46,7 +46,7 @@ def test_extraction_stage_records_blocked_video_for_short_redirect(monkeypatch):
 def test_extraction_stage_records_blocked_video_for_vip(monkeypatch):
     calls = []
     monkeypatch.setattr(
-        "extraction.pipeline.stages.extraction.record_blocked_video",
+        "infrastructure.extraction.pipeline.stages.extraction.record_blocked_video",
         lambda **kwargs: calls.append(kwargs),
     )
 

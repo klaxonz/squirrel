@@ -35,19 +35,19 @@ def test_run_once_executes_video_extract_task(monkeypatch):
     )
 
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
+        "workers.scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
         lambda now=None, retry_delay_seconds=30: [],
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.start_task",
+        "workers.scheduling.workers.tasks.crawl_task_service.start_task",
         lambda task_id, worker_id, now=None: calls.append(("start", task_id, worker_id)) or task,
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.execute_video_extract_task",
+        "workers.scheduling.workers.tasks.execute_video_extract_task",
         lambda current_task: calls.append(("video", current_task.id)),
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.complete_task",
+        "workers.scheduling.workers.tasks.crawl_task_service.complete_task",
         lambda task_id, worker_id, now=None: calls.append(("complete", task_id, worker_id)) or task,
     )
 
@@ -78,19 +78,19 @@ def test_run_once_executes_legacy_subscription_sync_task_type(monkeypatch):
     )
 
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
+        "workers.scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
         lambda now=None, retry_delay_seconds=30: [],
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.start_task",
+        "workers.scheduling.workers.tasks.crawl_task_service.start_task",
         lambda task_id, worker_id, now=None: calls.append(("start", task_id, worker_id)) or task,
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.execute_subscription_sync_task",
+        "workers.scheduling.workers.tasks.execute_subscription_sync_task",
         lambda current_task: calls.append(("sync", current_task.id, current_task.task_type)),
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.complete_task",
+        "workers.scheduling.workers.tasks.crawl_task_service.complete_task",
         lambda task_id, worker_id, now=None: calls.append(("complete", task_id, worker_id)) or task,
     )
 
@@ -115,19 +115,19 @@ def test_run_once_executes_full_subscription_sync_task(monkeypatch):
     )
 
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
+        "workers.scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
         lambda now=None, retry_delay_seconds=30: [],
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.start_task",
+        "workers.scheduling.workers.tasks.crawl_task_service.start_task",
         lambda task_id, worker_id, now=None: calls.append(("start", task_id, worker_id)) or task,
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.execute_subscription_sync_task",
+        "workers.scheduling.workers.tasks.execute_subscription_sync_task",
         lambda current_task: calls.append(("sync", current_task.id, current_task.task_type)),
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.complete_task",
+        "workers.scheduling.workers.tasks.crawl_task_service.complete_task",
         lambda task_id, worker_id, now=None: calls.append(("complete", task_id, worker_id)) or task,
     )
 
@@ -156,20 +156,20 @@ def test_run_once_retries_task_on_failure(monkeypatch):
     )
 
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
+        "workers.scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
         lambda now=None, retry_delay_seconds=30: [],
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.start_task",
+        "workers.scheduling.workers.tasks.crawl_task_service.start_task",
         lambda task_id, worker_id, now=None: calls.append(("start", task_id, worker_id)) or task,
     )
 
     def _raise(_task):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr("scheduling.workers.tasks.execute_video_extract_task", _raise)
+    monkeypatch.setattr("workers.scheduling.workers.tasks.execute_video_extract_task", _raise)
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.retry_task",
+        "workers.scheduling.workers.tasks.crawl_task_service.retry_task",
         lambda task_id, worker_id, error_message, error_type, now=None, delay_seconds=30: calls.append(
             ("retry", task_id, worker_id, error_type, delay_seconds),
         ) or task,
@@ -192,7 +192,7 @@ def test_run_once_returns_false_when_no_task_is_claimed(monkeypatch):
     )
 
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
+        "workers.scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
         lambda now=None, retry_delay_seconds=30: [],
     )
 
@@ -220,7 +220,7 @@ def test_recover_expired_tasks_records_domain_progress(monkeypatch):
     now = datetime(2026, 4, 2, 13, 0, 0)
 
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
+        "workers.scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
         lambda **kwargs: [recovered_task],
     )
 
@@ -249,15 +249,15 @@ def test_run_loop_fills_multiple_slots_with_concurrent_tasks(monkeypatch):
     )
 
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
+        "workers.scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
         lambda now=None, retry_delay_seconds=30: [],
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.start_task",
+        "workers.scheduling.workers.tasks.crawl_task_service.start_task",
         lambda task_id, worker_id, now=None: started.append((task_id, worker_id)) or next(task for task in [*tasks, CrawlTask(id=task_id, job_id=1, task_type="video_extract", site="youtube.com", payload={})] if task.id == task_id),
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.complete_task",
+        "workers.scheduling.workers.tasks.crawl_task_service.complete_task",
         lambda task_id, worker_id, now=None: CrawlTask(id=task_id, job_id=1, task_type="video_extract", site="youtube.com", payload={}),
     )
 
@@ -265,7 +265,7 @@ def test_run_loop_fills_multiple_slots_with_concurrent_tasks(monkeypatch):
         execute_gate.wait(timeout=1)
         release_event.wait(timeout=1)
 
-    monkeypatch.setattr("scheduling.workers.tasks.execute_video_extract_task", _execute)
+    monkeypatch.setattr("workers.scheduling.workers.tasks.execute_video_extract_task", _execute)
 
     stop_event = threading.Event()
     thread = threading.Thread(target=runtime.run_loop, args=(stop_event,))
@@ -297,26 +297,26 @@ def test_run_loop_renews_lease_for_running_tasks(monkeypatch):
     )
 
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
+        "workers.scheduling.workers.tasks.crawl_task_service.recover_expired_tasks",
         lambda now=None, retry_delay_seconds=30: [],
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.start_task",
+        "workers.scheduling.workers.tasks.crawl_task_service.start_task",
         lambda task_id, worker_id, now=None: task,
     )
     monkeypatch.setattr(
-        "scheduling.workers.leases.crawl_task_service.renew_task_lease",
+        "workers.scheduling.workers.leases.crawl_task_service.renew_task_lease",
         lambda task_id, worker_id, now=None, lease_seconds=60: renew_calls.append((task_id, worker_id)),
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.complete_task",
+        "workers.scheduling.workers.tasks.crawl_task_service.complete_task",
         lambda task_id, worker_id, now=None: task,
     )
 
     def _execute(_task):
         release_event.wait(timeout=1)
 
-    monkeypatch.setattr("scheduling.workers.tasks.execute_video_extract_task", _execute)
+    monkeypatch.setattr("workers.scheduling.workers.tasks.execute_video_extract_task", _execute)
 
     stop_event = threading.Event()
     thread = threading.Thread(target=runtime.run_loop, args=(stop_event,))
@@ -343,7 +343,7 @@ def test_renew_active_leases_ignores_lost_task_ownership(monkeypatch):
     runtime._lease_tracker.active_leases[future] = ActiveTaskLease(task_id=99, last_renewed_at=last_renewed_at)
 
     monkeypatch.setattr(
-        "scheduling.workers.leases.crawl_task_service.renew_task_lease",
+        "workers.scheduling.workers.leases.crawl_task_service.renew_task_lease",
         lambda **kwargs: (_ for _ in ()).throw(CrawlTaskOwnershipError("lost ownership")),
     )
 
@@ -358,19 +358,19 @@ def test_run_task_does_not_retry_when_task_ownership_is_lost_on_complete(monkeyp
     retry_calls = []
 
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.start_task",
+        "workers.scheduling.workers.tasks.crawl_task_service.start_task",
         lambda task_id, worker_id, now=None: task,
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.execute_video_extract_task",
+        "workers.scheduling.workers.tasks.execute_video_extract_task",
         lambda current_task: None,
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.complete_task",
+        "workers.scheduling.workers.tasks.crawl_task_service.complete_task",
         lambda task_id, worker_id, now=None: (_ for _ in ()).throw(CrawlTaskOwnershipError("lost ownership")),
     )
     monkeypatch.setattr(
-        "scheduling.workers.tasks.crawl_task_service.retry_task",
+        "workers.scheduling.workers.tasks.crawl_task_service.retry_task",
         lambda **kwargs: retry_calls.append(kwargs),
     )
 

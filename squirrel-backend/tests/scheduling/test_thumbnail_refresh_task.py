@@ -142,24 +142,16 @@ def test_thumbnail_refresh_task_retries_page_fetch_for_retryable_status(monkeypa
     ]
     sleep_calls = []
 
-    from domains.video.application.services.extraction.thumbnail import client as thumbnail_client
-    from domains.video.application.services.extraction.thumbnail.client import ThumbnailHttpClient
-
-    http_client = ThumbnailHttpClient()
-    monkeypatch.setattr(http_client, "_get_http_client", lambda: SimpleNamespace(get=lambda url, headers=None: responses.pop(0)))
-    monkeypatch.setattr(thumbnail_refresh_task.thumbnail_downloader_service, "_http_client", http_client)
+    fake_client = SimpleNamespace(get=lambda url, headers=None: responses.pop(0))
+    monkeypatch.setattr(thumbnail_refresh_task, "_get_shared_http_client", lambda: fake_client)
     monkeypatch.setattr(
         thumbnail_refresh_task.thumbnail_downloader_service,
         "build_request_headers",
         lambda site_name, source_url=None, target_url=None: {"User-Agent": "UA"},
     )
+    monkeypatch.setattr(ThumbnailRefreshTask, "_build_page_fetch_retry_delay", lambda attempt: 0.8)
     monkeypatch.setattr(
-        thumbnail_refresh_task.thumbnail_downloader_service._http_client,
-        "_page_retry_delay",
-        lambda attempt: 0.8,
-    )
-    monkeypatch.setattr(
-        thumbnail_client.time,
+        thumbnail_refresh_task.time,
         "sleep",
         lambda seconds: sleep_calls.append(seconds),
     )

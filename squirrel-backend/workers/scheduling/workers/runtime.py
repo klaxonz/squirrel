@@ -27,7 +27,6 @@ class CrawlWorkerRuntime:
         poll_interval_seconds: float = 1.0,
         max_concurrency: int | None = None,
         subscription_task_progress: SubscriptionSyncTaskProgressService | None = None,
-        video_projection_service=None,
     ):
         self.dispatcher = dispatcher or CrawlDispatcherService()
         self.worker_id = worker_id
@@ -39,7 +38,6 @@ class CrawlWorkerRuntime:
             worker_id=self.worker_id,
             retry_delay_seconds=self.retry_delay_seconds,
             subscription_task_progress=subscription_task_progress,
-            video_projection_service=video_projection_service,
         )
         self._lease_tracker = CrawlWorkerLeaseTracker(worker_id=self.worker_id, lease_seconds=self.lease_seconds)
 
@@ -50,7 +48,6 @@ class CrawlWorkerRuntime:
         if not task:
             return False
 
-        self.task_runner.refresh_video_projection(task)
         self.task_runner.run_task(task, claimed_at=now)
         return True
 
@@ -76,7 +73,6 @@ class CrawlWorkerRuntime:
                         )
                         if not task:
                             break
-                        self.task_runner.refresh_video_projection(task)
                         submitted_at = datetime.now()
                         future = executor.submit(self.task_runner.run_task, task, submitted_at)
                         self._lease_tracker.track(future, task_id=task.id, now=submitted_at)

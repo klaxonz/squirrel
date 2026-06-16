@@ -69,7 +69,7 @@ def test_store_write_failure_removes_new_temp_file(monkeypatch, tmp_path):
         manifest={"runtime_id": "sample", "version": "0.1.0", "capabilities": [], "sites": []},
     )
 
-    monkeypatch.setattr("site_runtimes.store.os.replace", lambda *_args, **_kwargs: (_ for _ in ()).throw(PermissionError("locked")))
+    monkeypatch.setattr("infrastructure.site_runtimes.store.os.replace", lambda *_args, **_kwargs: (_ for _ in ()).throw(PermissionError("locked")))
 
     with pytest.raises(PermissionError, match="locked"):
         store.upsert(record)

@@ -53,16 +53,13 @@ def _patch_postgres(session_factory):
 
 
 def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sched):
-    appended_events = []
-
-    import subscription.services.core.sync.state.service as ssss
-
+    import domains.subscription.application.services.core.sync.state.service as ssss
     from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod
     from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
 
-    with patch('services.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True), \
+    with patch('infrastructure.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True), \
          patch.object(SubscriptionSyncCommandService, '_has_active_subscribers', return_value=True), \
          patch.object(ssss, 'prepare_sync_state_for_enqueue', return_value=(
              SimpleNamespace(id=11, pending_video_count=0, sync_mode=UpdateMode.FULL),
@@ -76,7 +73,6 @@ def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sche
              queued_at="2026-04-01 12:00:00",
              pending_video_count=0,
          )), \
-         patch('services.subscription.update.command_events.append_event', lambda event: appended_events.append(event)), \
          patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task), \
          patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job), \
          patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task), \
@@ -119,20 +115,16 @@ def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sche
     assert tasks[0].payload["run_id"] == "run-1"
     assert tasks[0].payload["request_id"] == str(tasks[0].id)
     assert result.request_id == str(tasks[0].id)
-    assert [event.event_type for event in appended_events] == ["queued"]
 
 
 def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factory, sched):
-    appended_events = []
-
-    import subscription.services.core.sync.state.service as ssss
-
+    import domains.subscription.application.services.core.sync.state.service as ssss
     from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod
     from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
 
-    with patch('services.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True), \
+    with patch('infrastructure.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True), \
          patch.object(SubscriptionSyncCommandService, '_has_active_subscribers', return_value=True), \
          patch.object(ssss, 'prepare_sync_state_for_enqueue', return_value=(
              SimpleNamespace(id=12, pending_video_count=0, sync_mode=UpdateMode.INCREMENTAL),
@@ -146,7 +138,6 @@ def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factor
              queued_at="2026-04-01 12:00:00",
              pending_video_count=0,
          )), \
-         patch('services.subscription.update.command_events.append_event', lambda event: appended_events.append(event)), \
          patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task), \
          patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job), \
          patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task), \
@@ -183,16 +174,14 @@ def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factor
     assert tasks[0].payload["trigger"] == "scheduled"
     assert tasks[0].payload["run_id"] == "run-2"
     assert result.request_id == str(tasks[0].id)
-    assert [event.event_type for event in appended_events] == ["queued"]
 
 
 def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(engine, session_factory, sched):
-    appended_events = []
     payloads = []
 
-    import subscription.services.core.sync.state.service as ssss
+    import domains.subscription.application.services.core.sync.state.service as ssss
 
-    with patch('services.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True), \
+    with patch('infrastructure.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True), \
          patch.object(SubscriptionSyncCommandService, '_has_active_subscribers', return_value=True), \
          patch.object(ssss, 'prepare_sync_state_for_enqueue', return_value=(
              SimpleNamespace(id=21, pending_video_count=0, sync_mode=UpdateMode.INCREMENTAL),
@@ -206,9 +195,8 @@ def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(en
              queued_at="2026-04-01 12:00:00",
              pending_video_count=0,
          )), \
-         patch('services.subscription.update.command_events.append_event', lambda event: appended_events.append(event)), \
          patch(
-             'services.crawl.executors.subscription_sync_executor.execute_subscription_sync_payload',
+             'domains.subscription.application.services.crawl.executors.subscription_sync_executor.execute_subscription_sync_payload',
              lambda payload: payloads.append(payload) or SubscriptionUpdateResult(
                  subscription_id=payload["subscription_id"],
                  success=True,
@@ -245,7 +233,6 @@ def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(en
         "request_id": "direct:run-3",
         "inline_video_extraction": True,
     }]
-    assert [event.event_type for event in appended_events] == ["queued"]
 
 
 def test_enqueue_all_active_includes_active_subscriptions_without_sync_state(engine, session_factory, sched):
@@ -323,7 +310,7 @@ def test_enqueue_all_active_counts_failed_results(engine, session_factory, sched
         )
         session.commit()
 
-    import subscription.services.core.sync.state.service as ssss
+    import domains.subscription.application.services.core.sync.state.service as ssss
 
     with patch.object(ssss, 'get_sync_state', lambda subscription_id, mode: None), \
          patch.object(SubscriptionScheduler, 'schedule_one', lambda self, subscription_id, url, trigger, mode: SimpleNamespace(
@@ -340,15 +327,13 @@ def test_enqueue_all_active_counts_failed_results(engine, session_factory, sched
 
 def test_enqueue_due_states_creates_crawl_tasks_from_sync_state_store(engine, session_factory, sched):
     now = datetime(2026, 4, 4, 12, 0, 0)
-    appended_events = []
 
     from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod
     from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
 
-    with patch('services.subscription.update.command_events.append_event', lambda event: appended_events.append(event)), \
-         patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task), \
+    with patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task), \
          patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job), \
          patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task), \
          patch.object(crawl_task_service_mod, 'recover_expired_tasks', injected_cts.recover_expired_tasks), \
@@ -409,4 +394,3 @@ def test_enqueue_due_states_creates_crawl_tasks_from_sync_state_store(engine, se
 
     assert [task.task_type for task in tasks] == ["subscription_sync_incremental", "subscription_sync_incremental"]
     assert [task.payload["sync_state_id"] for task in tasks] == [12, 11]
-    assert [event.event_type for event in appended_events] == ["run_created", "queued", "run_created", "queued"]
