@@ -1,12 +1,18 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from domains.subscription.domain.models.crawl_task import CrawlTask
-from domains.subscription.application.services.core.update.models import SubscriptionUpdateResult, UpdateMode, UpdateTrigger
+from domains.subscription.application.services.core.update.models import (
+    SubscriptionUpdateResult,
+    UpdateMode,
+    UpdateTrigger,
+)
 from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
     CrawlExecutorService as SubscriptionSyncExecutor,
 )
-from domains.subscription.application.services.crawl.executors.video_extract_executor import CrawlExecutorService as VideoExtractExecutor
+from domains.subscription.application.services.crawl.executors.video_extract_executor import (
+    CrawlExecutorService as VideoExtractExecutor,
+)
+from domains.subscription.domain.models.crawl_task import CrawlTask
 
 
 def _make_video_extract_svc(extract_video_func=None):

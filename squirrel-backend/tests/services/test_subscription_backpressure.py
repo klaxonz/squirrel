@@ -1,16 +1,15 @@
 from datetime import datetime, timedelta
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from infrastructure.messaging.framework.monitor import QueueBackpressureMonitor
-from shared_kernel.domain.base import Base
+import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
+from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 from domains.subscription.domain.models.crawl_job import CrawlJob
 from domains.subscription.domain.models.crawl_task import CrawlTask
-from domains.subscription.domain.models.subscription_sync_event import SubscriptionSyncEvent
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
-from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
+from infrastructure.messaging.framework.monitor import QueueBackpressureMonitor
+from shared_kernel.domain.base import Base
 
 
 @pytest.fixture
@@ -21,7 +20,6 @@ def engine(engine):
             CrawlJob.__table__,
             CrawlTask.__table__,
             SubscriptionSyncState.__table__,
-            SubscriptionSyncEvent.__table__,
         ],
     )
     return engine
@@ -46,17 +44,6 @@ def _seed_job(engine, *, site: str = "youtube.com") -> int:
         job_id = job.id
         session.commit()
         return job_id
-
-
-def _fetch_events(engine, sync_state_id: int):
-    with Session(engine, expire_on_commit=False) as session:
-        return list(
-            session.execute(
-                select(SubscriptionSyncEvent)
-                .where(SubscriptionSyncEvent.sync_state_id == sync_state_id)
-                .order_by(SubscriptionSyncEvent.seq_no)
-            ).scalars()
-        )
 
 
 def test_queue_monitor_counts_pending_videos_from_task_store(engine, session_factory, svc, sss_session):
@@ -99,7 +86,6 @@ def test_queue_monitor_counts_pending_videos_from_task_store(engine, session_fac
 
 
 def test_reconcile_pending_video_counts_uses_task_store(engine, session_factory, svc, sss_session):
-    import subscription.services.core.sync.state.service as subscription_sync_state_service
     sss_svc = subscription_sync_state_service
 
     with Session(engine, expire_on_commit=False) as session:
@@ -171,7 +157,6 @@ def test_recover_stale_queued_sync_states_uses_task_store(engine, session_factor
         )
         session.commit()
 
-    import subscription.services.core.sync.state.service as subscription_sync_state_service
     sss_svc = subscription_sync_state_service
     result = sss_svc.recover_stale_queued_sync_states()
 
@@ -182,7 +167,6 @@ def test_recover_stale_queued_sync_states_uses_task_store(engine, session_factor
 
 
 def test_reconcile_terminal_drained_sync_states_auto_completes_running_extract_phase(engine, session_factory, svc, sss_session):
-    import subscription.services.core.sync.state.service as subscription_sync_state_service
     sss_svc = subscription_sync_state_service
 
     with Session(engine, expire_on_commit=False) as session:
@@ -214,12 +198,8 @@ def test_reconcile_terminal_drained_sync_states_auto_completes_running_extract_p
     assert state.pending_video_count == 0
     assert state.last_success_at is not None
 
-    events = _fetch_events(engine, sync_state_id=10)
-    assert [e.event_type for e in events] == ["run_created", "completed"]
-
 
 def test_reconcile_terminal_drained_sync_states_auto_fails_when_extract_tasks_are_dead(engine, session_factory, svc, sss_session):
-    import subscription.services.core.sync.state.service as subscription_sync_state_service
     sss_svc = subscription_sync_state_service
 
     with Session(engine, expire_on_commit=False) as session:
@@ -261,6 +241,3 @@ def test_reconcile_terminal_drained_sync_states_auto_fails_when_extract_tasks_ar
     assert state.sync_status == "failed"
     assert state.pending_video_count == 0
     assert state.last_error == "extract_failed"
-
-    events = _fetch_events(engine, sync_state_id=10)
-    assert [e.event_type for e in events] == ["run_created", "failed"]

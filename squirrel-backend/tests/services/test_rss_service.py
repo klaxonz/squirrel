@@ -5,13 +5,17 @@ import pytest
 from sqlalchemy import Text, select
 from sqlalchemy.orm import Session
 
-from domains.rss.domain.models.rss import RssAccount, RssEntry, RssFeed
 from domains.rss.application.services.account.service import RssAccountService
 from domains.rss.application.services.client._base import RemoteEntry, RemoteFeed, RssAccountConfig
-from domains.rss.application.services.client._greader import G_READER_QUICK_ENTRIES_PER_FEED, GReaderClient, _greader_entry_to_remote
+from domains.rss.application.services.client._greader import (
+    G_READER_QUICK_ENTRIES_PER_FEED,
+    GReaderClient,
+    _greader_entry_to_remote,
+)
 from domains.rss.application.services.client._miniflux import MinifluxClient
 from domains.rss.application.services.credential import decrypt_credential
 from domains.rss.application.services.sync.service import RssSyncService
+from domains.rss.domain.models.rss import RssAccount, RssEntry, RssFeed
 from shared_kernel.domain.base import Base
 
 

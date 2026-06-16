@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import shared.site_catalog.cookies as cookie
+import infrastructure.site_catalog.cookies as cookie
 
 
 def test_filter_cookies_to_query_string_reads_matching_domain_cookies(tmp_path, monkeypatch):

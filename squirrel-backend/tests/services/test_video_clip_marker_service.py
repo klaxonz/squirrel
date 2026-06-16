@@ -7,11 +7,11 @@ from pydantic import ValidationError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from shared_kernel.domain.base import Base
+from domains.video.application.services.engagement.clip_marker import VideoClipMarkerService
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_clip_marker import VideoClipMarker
 from domains.video.interfaces.dto.video_clip_marker import ClipMarkerCreate, ClipMarkerUpdate
-from domains.video.application.services.engagement.clip_marker import VideoClipMarkerService
+from shared_kernel.domain.base import Base
 
 
 @pytest.fixture

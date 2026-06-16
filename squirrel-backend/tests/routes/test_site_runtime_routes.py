@@ -8,9 +8,18 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes import sites as site_routes
-from infrastructure.site_catalog.routes.site_cookies_bulk_import import bulk_import as site_cookie_bulk_import
-from infrastructure.site_catalog.routes.site_cookies_bulk_import import single_upload as site_cookie_single_upload
+from infrastructure.site_catalog.routes import site_cookies_bulk_import as site_cookie_bulk_import
+from infrastructure.site_catalog.routes import site_cookies_single_upload as site_cookie_single_upload
+from infrastructure.site_catalog.routes import sites_catalog as _sites_catalog
+from infrastructure.site_catalog.routes import sites_dependencies as _sites_dependencies
+from infrastructure.site_catalog.routes import sites_login as _sites_login
+
+site_routes = SimpleNamespace(
+    catalog=_sites_catalog,
+    router=_sites_catalog.router,
+    dependencies=_sites_dependencies,
+    login=_sites_login,
+)
 
 
 class FakeCatalogService:

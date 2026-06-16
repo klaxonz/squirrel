@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from shared_kernel.domain.base import Base
 from domains.subscription.domain.models.crawl_job import CrawlJob
 from domains.subscription.domain.models.crawl_task import CrawlTask
+from shared_kernel.domain.base import Base
 
 
 def test_crawl_task_defaults_to_pending():

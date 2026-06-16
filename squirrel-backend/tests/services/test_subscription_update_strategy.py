@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from infrastructure.config.settings import settings
 from domains.subscription.application.services.core.update.models import (
     SubscriptionUpdateRequest,
     SubscriptionUpdateResult,
@@ -15,6 +14,7 @@ from domains.subscription.application.services.core.update.strategies.default_st
     DefaultUpdateStrategy,
     should_schedule_total_video_backfill,
 )
+from infrastructure.config.settings import settings
 
 
 def test_should_schedule_total_video_backfill_when_full_never_succeeded():

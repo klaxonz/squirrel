@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from crawl import SiteRuntimeInvokeResponse
 
-import extraction.factory as factory_module
+import infrastructure.extraction.factory as factory_module
 from infrastructure.extraction.contracts import ExtractionTask
 from infrastructure.extraction.factory import ExtractorFactory
 
@@ -49,15 +49,15 @@ def test_gateway_extractor_adapter_extracts_via_plugin_gateway(monkeypatch):
             )
 
     monkeypatch.setattr(
-        "extraction.factory.SiteCatalog.is_site_enabled",
+        "infrastructure.extraction.factory.SiteCatalog.is_site_enabled",
         lambda site=None, domain=None: True,
     )
     monkeypatch.setattr(
-        "extraction.factory.SiteCatalog.find_site_by_domain",
+        "infrastructure.extraction.factory.SiteCatalog.find_site_by_domain",
         lambda domain: ("bilibili", {"domains": ["bilibili.com", "b23.tv"]}),
     )
     monkeypatch.setattr(
-        "extraction.factory.SiteCatalog.get_catalog",
+        "infrastructure.extraction.factory.SiteCatalog.get_catalog",
         lambda: {
             "bilibili": {
                 "domains": ["bilibili.com", "b23.tv"],
@@ -99,7 +99,7 @@ def test_get_extractor_factory_initializes_without_legacy_registry(monkeypatch):
     factory_module.reset_factory()
 
     monkeypatch.setattr(
-        "extraction.factory.SiteCatalog.get_catalog",
+        "infrastructure.extraction.factory.SiteCatalog.get_catalog",
         dict,
     )
 

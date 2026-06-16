@@ -3,8 +3,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from routes import subscription as subscription_route
-from routes import video as video_route
+from domains.subscription.interfaces.http import basic as subscription_route
+from domains.video.interfaces.http import listing as video_route
 
 
 def _route_paths(router):

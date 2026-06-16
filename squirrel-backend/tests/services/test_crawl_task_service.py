@@ -3,12 +3,12 @@ from datetime import datetime, timedelta
 import pytest
 from sqlalchemy.orm import Session
 
-from shared_kernel.domain.base import Base
+from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 from domains.subscription.domain.models.crawl_dispatch_scope import CrawlDispatchScope
 from domains.subscription.domain.models.crawl_job import CrawlJob
 from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
-from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
+from shared_kernel.domain.base import Base
 
 
 @pytest.fixture

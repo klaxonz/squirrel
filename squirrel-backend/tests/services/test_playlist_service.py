@@ -5,14 +5,14 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from domains.playlist.domain.models.playlist import Playlist
-from domains.playlist.domain.models.playlist_item import PlaylistItem
-from domains.playlist.schemas.playlist import PlaylistItemReorder
 from domains.playlist.application.services.commands import PlaylistCommandService
 from domains.playlist.application.services.playback import PlaylistPlaybackService
 from domains.playlist.application.services.queries import PlaylistQueryService
-from shared_kernel.domain.base import Base
+from domains.playlist.domain.models.playlist import Playlist
+from domains.playlist.domain.models.playlist_item import PlaylistItem
+from domains.playlist.interfaces.dto.playlist import PlaylistItemReorder
 from domains.video.domain.models.video import Video
+from shared_kernel.domain.base import Base
 
 
 @pytest.fixture

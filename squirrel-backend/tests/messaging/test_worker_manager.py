@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from messaging import worker as worker_manager
+from workers.messaging import worker as worker_manager
 
 
 class _FakeRunner:

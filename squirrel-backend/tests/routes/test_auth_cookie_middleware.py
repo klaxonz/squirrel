@@ -7,8 +7,8 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from application.middleware.auth import AuthenticationMiddleware
 from infrastructure.auth.jwt import AUTH_COOKIE_NAME
+from infrastructure.http.middleware.auth import AuthenticationMiddleware
 
 
 def _build_app(monkeypatch):
@@ -19,7 +19,7 @@ def _build_app(monkeypatch):
     async def private_api():
         return JSONResponse({"ok": True})
 
-    monkeypatch.setattr("routes.middleware.auth.validate_auth_token", lambda token: ({"sub": "7", "tv": 0}, object()))
+    monkeypatch.setattr("infrastructure.http.middleware.auth.validate_auth_token", lambda token: ({"sub": "7", "tv": 0}, object()))
     return app
 
 

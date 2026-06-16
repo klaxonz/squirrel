@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from infrastructure.scheduling.routes.control.dependencies import get_scheduled_task_service
 
 from infrastructure.scheduling.routes.control import router
+from infrastructure.scheduling.routes.dependencies import get_scheduled_task_service
 
 
 class FakeScheduledTaskService:

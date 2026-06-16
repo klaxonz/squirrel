@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import shared.site_catalog.url as url_helper
+import infrastructure.site_catalog.url as url_helper
 
 
 def test_get_site_from_url_reads_runtime_registrations(monkeypatch):
