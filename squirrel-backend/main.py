@@ -30,19 +30,13 @@ def main() -> None:
         "development" if settings.is_dev else "production",
     )
 
-    if settings.is_dev:
-        uvicorn.run(
-            "main:create_application",
-            host="0.0.0.0",
-            port=settings.PORT,
-            reload=False,
-            factory=True,
-            log_config=None,
-            access_log=False,
-        )
-    else:
-        app = create_application()
-        uvicorn.run(app, host="0.0.0.0", port=settings.PORT, log_config=None, access_log=False)
+    uvicorn.run(
+        create_application(),
+        host="0.0.0.0",
+        port=settings.PORT,
+        log_config=None,
+        access_log=False,
+    )
 
 
 if __name__ == "__main__":
