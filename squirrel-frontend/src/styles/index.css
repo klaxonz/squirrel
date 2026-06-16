@@ -54,21 +54,29 @@
   }
 }
 
-/* Page-level transitions (router-view) */
+/* Page-level transitions (router-view).
+   Crossfade (no out-in): the old and new page coexist briefly so the
+   viewport is never empty. The leaving page is lifted out of flow and
+   sunk beneath the entering page to avoid stacking on top of it. */
 .page-enter-active,
 .page-leave-active {
   transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.page-enter-active {
+  position: relative;
+  z-index: 1;
 }
 .page-enter-from {
   opacity: 0;
   transform: translateY(6px);
 }
-.page-leave-to {
-  opacity: 0;
-}
 .page-leave-active {
   position: absolute;
   inset: 0;
+  z-index: 0;
+}
+.page-leave-to {
+  opacity: 0;
 }
 
 /* Lightweight fade for header content swaps */
