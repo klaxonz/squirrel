@@ -1,7 +1,7 @@
 import logging
 
-from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from domains.user.application.services.auth import validate_auth_token
 from infrastructure.auth.jwt import AUTH_COOKIE_NAME, clear_auth_cookie
@@ -57,33 +57,51 @@ class TokenExpiredError(AuthenticationError):
         super().__init__(detail="登录已过期，请重新登录")
 
 
-class AuthenticationMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, public_paths: list[str] = None):
-        super().__init__(app)
+class AuthenticationMiddleware:
+    """Cookie-based authentication for /api/* routes as a pure ASGI middleware."""
+
+    def __init__(self, app: ASGIApp, public_paths: list[str] | None = None):
+        self.app = app
         self.public_paths = public_paths or list(PUBLIC_PATH_PREFIXES)
 
-    async def dispatch(self, request: Request, call_next):
-        path = request.url.path
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
 
+        path = scope["path"]
         if not path.startswith("/api") or is_public_api_path(path):
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
+        request = Request(scope)
         token = request.cookies.get(AUTH_COOKIE_NAME)
+
         if not token:
-            return self._unauthorized_response(TokenMissingError())
+            await self._reject(scope, receive, send, TokenMissingError(), request)
+            return
 
         try:
             validate_auth_token(token)
         except Exception:
             # API boundary -- convert to HTTP error response
             logger.error("Invalid token", exc_info=True)
-            return self._unauthorized_response(TokenExpiredError(), request=request, clear_cookie=True)
-        return await call_next(request)
+            await self._reject(scope, receive, send, TokenExpiredError(), request, clear_cookie=True)
+            return
+
+        await self.app(scope, receive, send)
 
     @staticmethod
-    def _unauthorized_response(error: AuthenticationError, request: Request | None = None, clear_cookie: bool = False):
+    async def _reject(
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        error: AuthenticationError,
+        request: Request,
+        *,
+        clear_cookie: bool = False,
+    ) -> None:
         unauthorized_response = response.unauthorized(error.detail)
         if clear_cookie:
             clear_auth_cookie(unauthorized_response, request)
-        return unauthorized_response
-
+        await unauthorized_response(scope, receive, send)
