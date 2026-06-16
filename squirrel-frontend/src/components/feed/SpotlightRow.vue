@@ -1,5 +1,5 @@
 <template>
-  <section v-if="items.length > 0" class="group/container mb-8 px-6 pt-8">
+  <section v-if="items.length > 0 || loading" class="group/container mb-8 px-6 pt-8">
     <div class="mb-5 flex items-center justify-between">
       <h2 class="flex items-center gap-2 text-lg font-bold tracking-tight text-foreground/90">
         <AppIcon name="star" class="size-5 fill-primary text-primary" />
@@ -28,6 +28,7 @@
       class="no-scrollbar flex gap-4 overflow-x-auto pb-4 snap-x scroll-smooth"
       @scroll="updateScrollState"
     >
+      <RecommendationSkeleton v-if="loading && items.length === 0" :count="6" />
       <RecommendationCard
         v-for="video in items"
         :key="video.id"
@@ -47,10 +48,12 @@ import { getVideoList } from '@/api'
 import { Logger } from '@/utils/logger'
 import AppIcon from '@/components/common/AppIcon.vue'
 import RecommendationCard from '@/components/feed/RecommendationCard.vue'
+import RecommendationSkeleton from '@/components/feed/RecommendationSkeleton.vue'
 
 defineEmits(['openModal', 'goToSubscription'])
 
 const items = ref<any[]>([])
+const loading = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
 const canScrollLeft = ref(false)
 const canScrollRight = ref(false)
@@ -73,6 +76,7 @@ const scroll = (direction: 'left' | 'right') => {
 }
 
 const load = async () => {
+  loading.value = true
   try {
     const { data, error } = await getVideoList({
       pageSize: 10,
@@ -87,6 +91,8 @@ const load = async () => {
     updateScrollState()
   } catch (e) {
     Logger.error('Failed to load spotlight videos:', e)
+  } finally {
+    loading.value = false
   }
 }
 

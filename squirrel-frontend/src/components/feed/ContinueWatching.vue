@@ -1,5 +1,5 @@
 <template>
-  <div v-if="historyItems.length > 0" class="mb-6 pt-4 px-6 overflow-hidden relative group/container">
+  <div v-if="historyItems.length > 0 || loading" class="mb-6 pt-4 px-6 overflow-hidden relative group/container">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-xl font-bold tracking-tight flex items-center gap-2 text-foreground/90">
         <AppIcon name="time" class="size-5 text-primary" />
@@ -38,6 +38,7 @@
       class="no-scrollbar flex gap-4 overflow-x-auto pb-4 snap-x scroll-smooth"
       @scroll="updateScrollState"
     >
+      <RecommendationSkeleton v-if="loading && historyItems.length === 0" :count="6" />
       <RecommendationCard
         v-for="item in historyItems"
         :key="item.id"
@@ -56,6 +57,7 @@
 import { ref, onMounted, nextTick } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import RecommendationCard from '@/components/feed/RecommendationCard.vue'
+import RecommendationSkeleton from '@/components/feed/RecommendationSkeleton.vue'
 import useVideoHistory from '@/composables/useVideoHistory'
 import { Logger } from '@/utils/logger'
 
@@ -63,6 +65,7 @@ const emit = defineEmits(['openModal', 'viewMore'])
 
 const { getWatchHistory } = useVideoHistory()
 const historyItems = ref<any[]>([])
+const loading = ref(false)
 
 const scrollContainer = ref<HTMLElement | null>(null)
 const canScrollLeft = ref(false)
@@ -95,6 +98,7 @@ const getProgress = (video: any) => {
 }
 
 const load = async () => {
+  loading.value = true
   try {
     const { items } = await getWatchHistory(1, { pageSize: 15 })
     // Filter out items that are completed or barely started
@@ -108,6 +112,8 @@ const load = async () => {
     updateScrollState()
   } catch (e) {
     Logger.error('Failed to load continue watching history:', e)
+  } finally {
+    loading.value = false
   }
 }
 

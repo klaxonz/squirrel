@@ -1,5 +1,5 @@
 <template>
-  <section v-if="items.length > 0" class="group/container mb-6 px-6 pt-2">
+  <section v-if="items.length > 0 || loading" class="group/container mb-6 px-6 pt-2">
     <div class="mb-4 flex items-center justify-between">
       <h2 class="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground/90">
         <AppIcon name="star" class="size-5 fill-current text-amber-500" />
@@ -38,6 +38,7 @@
       class="no-scrollbar flex gap-4 overflow-x-auto pb-4 scroll-smooth snap-x"
       @scroll="updateScrollState"
     >
+      <RecommendationSkeleton v-if="loading && items.length === 0" :count="6" />
       <RecommendationCard
         v-for="item in items"
         :key="item.id"
@@ -56,10 +57,12 @@ import { nextTick, onMounted, ref } from 'vue'
 import { getVideoList } from '@/api'
 import AppIcon from '@/components/common/AppIcon.vue'
 import RecommendationCard from '@/components/feed/RecommendationCard.vue'
+import RecommendationSkeleton from '@/components/feed/RecommendationSkeleton.vue'
 
 const emit = defineEmits(['openModal', 'goToSubscription', 'viewMore'])
 
 const items = ref<any[]>([])
+const loading = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
 const canScrollLeft = ref(false)
 const canScrollRight = ref(false)
@@ -82,19 +85,24 @@ const scroll = (direction: 'left' | 'right') => {
 }
 
 const load = async () => {
-  const { data, error } = await getVideoList({
-    pageSize: 12,
-    page_size: 12,
-    category: 'all',
-    sort_by: 'publish_date',
-    nsfw: 'all',
-    special: 'yes',
-  })
-  if (error) return
+  loading.value = true
+  try {
+    const { data, error } = await getVideoList({
+      pageSize: 12,
+      page_size: 12,
+      category: 'all',
+      sort_by: 'publish_date',
+      nsfw: 'all',
+      special: 'yes',
+    })
+    if (error) return
 
-  items.value = (data?.data || []).slice(0, 12)
-  await nextTick()
-  updateScrollState()
+    items.value = (data?.data || []).slice(0, 12)
+    await nextTick()
+    updateScrollState()
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(load)
