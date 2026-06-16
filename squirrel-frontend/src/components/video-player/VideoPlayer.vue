@@ -74,7 +74,7 @@
         <div v-for="n in 5" :key="n" class="sp-audio-dot" :class="{ 'is-active': isPlaying }"></div>
       </div>
     </div>
-    <CentralHudOverlay :hud="centralHud" />
+    <CentralHudOverlay :hud="centralHud" :shifted="showLoadingOverlay" />
 
     <!-- ?????-->
     <Transition name="sp-loading-fade" @after-enter="onLoadingEnter" @after-leave="onLoadingLeave">
@@ -879,7 +879,6 @@ const thumbnailSpriteStyle = computed(() => {
 
 const handleChapterClick = (time: number) => {
   seek(time)
-  showCentralHud('seek', formatTime(time), 'skipForward')
 }
 
 const {
@@ -1387,10 +1386,10 @@ const handleKeyDown = (e: KeyboardEvent) => {
     return
   }
 
-  if (matches(ks.seekBackward)) { seek(currentTime.value - 10); showCentralHud('seek', '-10s', 'skipBackward'); return }
-  if (matches(ks.seekForward)) { seek(currentTime.value + 10); showCentralHud('seek', '+10s', 'skipForward'); return }
-  if (matches(ks.volumeUp)) { setUserVolume(Math.min(MAX_VOLUME, volume.value + 5)); return }
-  if (matches(ks.volumeDown)) { setUserVolume(Math.max(0, volume.value - 5)); return }
+  if (matches(ks.seekBackward)) { e.preventDefault(); seek(currentTime.value - 10); return }
+  if (matches(ks.seekForward)) { e.preventDefault(); seek(currentTime.value + 10); return }
+  if (matches(ks.volumeUp)) { e.preventDefault(); setUserVolume(Math.min(MAX_VOLUME, volume.value + 5)); return }
+  if (matches(ks.volumeDown)) { e.preventDefault(); setUserVolume(Math.max(0, volume.value - 5)); return }
 
   if (matches(ks.markSegmentStart)) {
     if (isInputFocused()) return
@@ -1793,42 +1792,144 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   transform: translate(-50%, -50%);
   z-index: 100;
   pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  /* smooth repositioning when shifting out of the spinner's way */
+  transition: transform var(--duration-slow) var(--ease-default);
 }
 
-.sp-central-hud-content {
+/* When the buffering spinner is showing, nudge the HUD up so they don't overlap. */
+.sp-central-hud--shifted {
+  transform: translate(-50%, -240%);
+}
+
+/* ====================== Volume capsule bar ====================== */
+.sp-vol-capsule {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(8px);
-  padding: 8px 16px;
-  border-radius: 20px;
+  gap: 14px;
+  padding: 10px 16px;
+  border-radius: var(--sp-radius-full);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--sp-border);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.sp-central-hud-icon {
-  width: 20px;
-  height: 20px;
-  color: var(--sp-primary);
+.sp-vol-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
 }
 
-.sp-central-hud-value {
+.sp-vol-icon {
+  width: 22px;
+  height: 22px;
+  color: #fff;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+}
+
+.sp-vol-track {
+  position: relative;
+  width: 160px;
+  height: 6px;
+  border-radius: var(--sp-radius-full);
+  background: rgba(255, 255, 255, 0.15);
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+.sp-vol-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: var(--sp-radius-full);
+  background: var(--sp-primary);
+  box-shadow: 0 0 8px rgba(var(--sp-primary-rgb), 0.6);
+  transition: width var(--duration-normal) var(--ease-default);
+}
+
+.sp-vol-thumb {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--sp-radius-full);
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transform: translate(-50%, -50%);
+  transition: left var(--duration-normal) var(--ease-default);
+}
+
+.sp-vol-percent {
   color: #fff;
   font-family: var(--sp-font-mono);
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.02em;
+  min-width: 40px;
+  text-align: right;
+  flex-shrink: 0;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
-.sp-hud-fade-enter-active, .sp-hud-fade-leave-active {
-  transition:
-    opacity var(--duration-fast) var(--ease-default),
-    transform var(--duration-fast) var(--ease-default);
+/* ====================== Generic notice ====================== */
+.sp-notice-badge {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--sp-radius-full);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--sp-border);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.sp-hud-fade-enter-from { opacity: 0; transform: translate(-50%, -30%) scale(0.95); }
-.sp-hud-fade-leave-to { opacity: 0; transform: translate(-50%, -70%) scale(1.05); }
+.sp-notice-icon {
+  width: 28px;
+  height: 28px;
+  color: #fff;
+}
+
+.sp-notice-text {
+  color: #fff;
+  font-family: var(--sp-font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+  padding: 3px 14px;
+  border-radius: var(--sp-radius-full);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* enter/leave only drive opacity on the root — transform is reserved for
+   centering + shift, so transitions never clobber each other */
+.sp-hud-fade-enter-active,
+.sp-hud-fade-leave-active {
+  transition: opacity var(--duration-normal) var(--ease-default);
+}
+
+.sp-hud-fade-enter-from,
+.sp-hud-fade-leave-to {
+  opacity: 0;
+}
 
 /* HUD ?????*/
 .sp-hud-overlay {
