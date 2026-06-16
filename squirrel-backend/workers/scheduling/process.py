@@ -2,10 +2,10 @@ import logging
 import time
 
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
-from application.lifespan import bootstrap_runtime, create_shutdown_event
 from infrastructure.scheduling.lifecycle import scheduler_start, scheduler_stop
 from shared_kernel.system.config import SystemConfigService
 from shared_kernel.system.constants import SYS_ENABLE_SCHEDULER
+from workers.bootstrap import bootstrap_runtime, create_shutdown_event
 
 logger = logging.getLogger(__name__)
 

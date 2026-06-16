@@ -1,9 +1,9 @@
 import logging
 import time
 
-from application.lifespan import bootstrap_runtime, create_shutdown_event
 from shared_kernel.system.config import SystemConfigService
 from shared_kernel.system.constants import SYS_ENABLE_WORKER
+from workers.bootstrap import bootstrap_runtime, create_shutdown_event
 from workers.messaging.worker import worker_start, worker_stop
 
 logger = logging.getLogger(__name__)

@@ -1,3 +1,11 @@
+"""Worker process bootstrap: runtime initialization + shutdown coordination.
+
+Used by standalone worker/scheduler processes (``workers/messaging/process.py``,
+``workers/scheduling/process.py``). This is the sync counterpart to the FastAPI
+lifespan in ``main.py`` — both initialize the same shared runtime (logging, db,
+site config, http, site runtimes), but worker processes are plain Python scripts
+without a FastAPI app, so they use a sync context manager instead.
+"""
 import logging
 import os
 import signal
@@ -26,8 +34,9 @@ logger = logging.getLogger(__name__)
 
 @contextmanager
 def bootstrap_runtime(component: str):
-    """Initialize shared runtime pieces (logging, site runtime manager)
-    for standalone worker/scheduler processes.
+    """Initialize shared runtime for a standalone worker/scheduler process.
+
+    ``component`` is a short label (e.g. 'worker', 'scheduler') used in log lines.
     """
     init_logging()
     logger.info("[%s] Bootstrapping runtime...", component)
