@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from domains.user.application.services.auth import get_current_user
-from domains.user.interfaces.http import auth_cookie as user_routes
+from domains.user.interfaces.http import router as user_routes
 from domains.user.interfaces.http.dependencies import get_user_service
 from infrastructure.auth.jwt import AUTH_COOKIE_NAME
 
@@ -57,17 +57,17 @@ def _build_app(
     rotate_token_version_impl=None,
 ):
     app = FastAPI()
-    app.include_router(user_routes.router)
+    app.include_router(user_routes)
     app.dependency_overrides[get_user_service] = lambda: FakeUserService(
         authenticate_impl=authenticate_impl,
         update_password_impl=update_password_impl,
         rotate_token_version_impl=rotate_token_version_impl,
     )
     monkeypatch.setattr(
-        "routes.user.auth_cookie.create_access_token",
+        "domains.user.interfaces.http.auth_cookie.create_access_token",
         create_access_token_impl or (lambda data, expires_delta=None: "cookie-token"),
     )
-    monkeypatch.setattr("routes.user.auth_cookie.should_persist_auth_cookie", lambda token: False)
+    monkeypatch.setattr("domains.user.interfaces.http.auth_cookie.should_persist_auth_cookie", lambda token: False)
     if current_user is not None:
         app.dependency_overrides[get_current_user] = lambda: current_user
     return app
@@ -157,7 +157,7 @@ def test_update_password_rotates_cookie_for_current_session(monkeypatch):
         create_access_token_impl=_capture_token,
         update_password_impl=lambda user_id, current_password, new_password: (updated_user, object()),
     )
-    monkeypatch.setattr("routes.user.auth_cookie.should_persist_auth_cookie", lambda token: True)
+    monkeypatch.setattr("domains.user.interfaces.http.auth_cookie.should_persist_auth_cookie", lambda token: True)
     client = TestClient(app)
     response = client.put(
         "/api/users/me/password",
@@ -187,7 +187,7 @@ def test_revoke_sessions_rotates_cookie_for_current_session(monkeypatch):
         create_access_token_impl=_capture_token,
         rotate_token_version_impl=lambda user_id: updated_user,
     )
-    monkeypatch.setattr("routes.user.auth_cookie.should_persist_auth_cookie", lambda token: False)
+    monkeypatch.setattr("domains.user.interfaces.http.auth_cookie.should_persist_auth_cookie", lambda token: False)
     client = TestClient(app)
     response = client.post("/api/users/me/revoke-sessions")
 

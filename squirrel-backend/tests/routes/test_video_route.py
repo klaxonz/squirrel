@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from domains.user.application.services.auth import get_current_user
-from domains.video.interfaces.http.listing import router
+from domains.video.interfaces.http import router
 
 
 def test_get_videos_defaults_missing_category_to_all(monkeypatch):
@@ -40,7 +40,7 @@ def test_get_videos_defaults_missing_category_to_all(monkeypatch):
         })
         return [], None
 
-    monkeypatch.setattr("routes.video.listing.list_videos", fake_list_videos)
+    monkeypatch.setattr("domains.video.interfaces.http.listing.list_videos", fake_list_videos)
 
     app = FastAPI()
     app.include_router(router)

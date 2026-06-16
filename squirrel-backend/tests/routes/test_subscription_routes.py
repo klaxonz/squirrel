@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from domains.subscription.application.services.core.update.models import SubscriptionUpdateResult
 from domains.subscription.application.services.core.update.scheduler import scheduler as subscription_update_scheduler
-from domains.subscription.interfaces.http.basic import router
+from domains.subscription.interfaces.http import router
 from domains.user.application.services.auth import get_current_user
 
 
@@ -18,7 +18,7 @@ def _build_client(monkeypatch):
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=7)
     monkeypatch.setattr(
-        "routes.subscription.basic.SiteCatalog.is_site_enabled",
+        "domains.subscription.interfaces.http.basic.SiteCatalog.is_site_enabled",
         classmethod(lambda cls, site=None, domain=None: True),
     )
     return TestClient(app)
@@ -32,7 +32,7 @@ def test_subscribe_route_creates_subscription_synchronously(monkeypatch):
         return SimpleNamespace(id=42)
 
     monkeypatch.setattr(
-        "routes.subscription.basic.subscription_import_service.handle_subscribe_request",
+        "domains.subscription.interfaces.http.basic.subscription_import_service.handle_subscribe_request",
         _handle_subscribe_request,
     )
     client = _build_client(monkeypatch)
@@ -55,7 +55,7 @@ def test_refresh_direct_runs_subscription_without_scheduler_queue(monkeypatch):
     calls = []
 
     monkeypatch.setattr(
-        "routes.subscription.refresh.subscription_crud_service.verify_subscription_access",
+        "domains.subscription.interfaces.http.refresh.subscription_crud_service.verify_subscription_access",
         lambda user_id, subscription_id: (
             SimpleNamespace(id=subscription_id, url="https://space.bilibili.com/32781024"),
             "ok",
@@ -107,7 +107,7 @@ def test_toggle_special_follow_route_updates_current_user_subscription(monkeypat
         return True
 
     monkeypatch.setattr(
-        "routes.subscription.basic.subscription_manage_service.toggle_special_follow_status",
+        "domains.subscription.interfaces.http.basic.subscription_manage_service.toggle_special_follow_status",
         _toggle,
     )
     client = _build_client(monkeypatch)
