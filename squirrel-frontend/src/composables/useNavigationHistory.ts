@@ -61,13 +61,19 @@ export function useNavigationHistory() {
     } catch (err) {
       Logger.warn('[useNavigationHistory] goBack failed', err)
       isInternalNavigation = false
+      // No history to go back to — fall back to the video source page if any.
+      if (videoBackTarget.value) router.push(videoBackTarget.value)
       return
     }
     if (route.fullPath !== pathBefore) {
       forwardDepth.value++
     } else {
-      // No history to go back to — reset
+      // No history to go back to (e.g. deep-linked/refreshed page).
       isInternalNavigation = false
+      // For a video page with a recorded source, jump there as a fallback.
+      if (isVideoPage.value && videoBackTarget.value) {
+        router.push(videoBackTarget.value)
+      }
     }
   }
 
@@ -134,6 +140,13 @@ export function useNavigationHistory() {
     return sectionName || ctx.pageTitle || null
   })
 
+  // Unified label for the global back button: on video pages show the source
+  // page name (e.g. "返回未读视频"); elsewhere just "返回".
+  const backLabel = computed(() => {
+    if (isVideoPage.value) return videoBackLabel.value
+    return '返回'
+  })
+
   const videoBackTarget = computed((): RouteLocationRaw | null => {
     const ctx = lastNonVideoRoute.value
     if (!ctx) return null
@@ -141,6 +154,15 @@ export function useNavigationHistory() {
   })
 
   const isVideoPage = computed(() => route.name === 'VideoPlay')
+
+  // The global back button shows whenever there is somewhere to go back to:
+  // either browser history exists (path !== initial) or an internal handler
+  // is registered. On a video page we also accept having a recorded source.
+  const showBackButton = computed(() => {
+    if (canGoBack.value) return true
+    if (isVideoPage.value && videoBackTarget.value) return true
+    return false
+  })
 
   function registerInternalBackHandler(handler: () => boolean) {
     internalBackHandler = handler
@@ -161,6 +183,8 @@ export function useNavigationHistory() {
     canGoForward,
     goBack,
     goForward,
+    backLabel,
+    showBackButton,
     videoBackLabel,
     videoBackTarget,
     isVideoPage,

@@ -81,7 +81,7 @@ const restoreScrollForRoute = async (scrollRoute: ScrollRouteState, restoreSaved
   const scrollEl = mainScrollRef.value
   if (!scrollEl) return
 
-  scrollEl.scrollTop = scrollRoute.keepAlive && restoreSavedPosition
+  scrollEl.scrollTop = restoreSavedPosition
     ? scrollPositions.get(scrollRoute.fullPath) ?? 0
     : 0
 }
@@ -89,7 +89,9 @@ const restoreScrollForRoute = async (scrollRoute: ScrollRouteState, restoreSaved
 watch(() => route.fullPath, async () => {
   const currentHistoryPosition = Number(window.history.state?.position ?? previousHistoryPosition)
   const scrollEl = mainScrollRef.value
-  if (scrollEl && activeScrollRoute.keepAlive) {
+  // Save scroll position for ALL pages (not just keep-alive) so back-navigation
+  // restores where the user left off regardless of caching.
+  if (scrollEl) {
     scrollPositions.set(activeScrollRoute.fullPath, scrollEl.scrollTop)
   }
 

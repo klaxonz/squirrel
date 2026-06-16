@@ -1,13 +1,13 @@
 <template>
   <header class="h-14 sticky top-0 z-[60] flex items-center px-6 gap-4 bg-background">
     <button
-      v-if="nav.isVideoPage && nav.videoBackTarget"
-      @click="handleVideoBack"
+      v-if="nav.showBackButton"
+      @click="handleBack"
       class="flex items-center gap-1.5 px-2 py-1.5 -ml-2 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-all shrink-0"
-      :title="`返回${nav.videoBackLabel || ''}`"
+      :title="nav.backLabel ? `返回${nav.backLabel}` : '返回'"
     >
       <AppIcon name="back" class="w-4 h-4" />
-      <span class="text-[13px] font-medium whitespace-nowrap">{{ nav.videoBackLabel }}</span>
+      <span v-if="nav.backLabel" class="text-[13px] font-medium whitespace-nowrap">{{ nav.backLabel }}</span>
     </button>
 
     <div class="flex items-center gap-4 flex-1 min-w-0">
@@ -88,10 +88,8 @@ const goToProfile = () => {
   router.push('/profile')
 }
 
-function handleVideoBack() {
-  if (nav.videoBackTarget.value) {
-    router.replace(nav.videoBackTarget.value)
-  }
+function handleBack() {
+  nav.goBack()
 }
 
 const showSearch = computed(() => !!route.meta?.showSearch)
