@@ -1,21 +1,13 @@
 import logging
 
 import uvicorn
-from fastapi import FastAPI
 
-from application.lifespan import lifespan
+from application.app import app
 from infrastructure.config.settings import settings
 from infrastructure.database.migrations import upgrade_database
 from shared_kernel.infrastructure.log import init_logging
 
 logger = logging.getLogger(__name__)
-
-
-def create_application() -> FastAPI:
-    """Create a FastAPI application instance with lifecycle management."""
-    from application.app import create_app
-
-    return create_app(lifespan=lifespan)
 
 
 def main() -> None:
@@ -31,7 +23,7 @@ def main() -> None:
     )
 
     uvicorn.run(
-        create_application(),
+        app,
         host="0.0.0.0",
         port=settings.PORT,
         log_config=None,

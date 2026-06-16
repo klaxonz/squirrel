@@ -11,6 +11,7 @@ from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
 
+from application.lifespan import lifespan
 from application.routes.health import router as health_router
 from application.routes.logs import router as logs_router
 from domains.music.interfaces.http import router as music_router
@@ -45,7 +46,6 @@ logger = logging.getLogger(__name__)
 
 def create_app(lifespan=None) -> FastAPI:
     app = FastAPI(exception_handlers=None, lifespan=lifespan)
-
     async def authentication_error_handler(request: Request, exc: AuthenticationError):
         logger.error("AuthenticationError: %s", exc.detail, exc_info=True)
         return JSONResponse(
@@ -126,6 +126,9 @@ def create_app(lifespan=None) -> FastAPI:
         _register_spa_route(app)
 
     return app
+
+
+app = create_app(lifespan=lifespan)
 
 
 def _mount_thumbnails(app: FastAPI) -> None:
