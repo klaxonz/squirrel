@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div ref="root" class="space-y-6">
     <div v-if="error" class="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
       <p class="text-sm font-medium text-destructive">{{ error }}</p>
     </div>
@@ -37,7 +37,7 @@
     </div>
 
     <div v-if="loading" class="grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5">
-      <VideoSkeleton v-for="i in 8" :key="i" />
+      <VideoSkeleton v-for="i in skeletonCount" :key="i" />
     </div>
 
     <div v-if="items.length && !allLoaded" class="flex justify-center py-4">
@@ -56,6 +56,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import { Button } from '@/components/ui/button'
 import VideoSkeleton from '@/components/feed/VideoSkeleton.vue'
 import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
+import { useSkeletonCount, type GridBreakpoint } from '@/composables/useSkeletonCount'
 import { formatDuration } from '@/utils/dateFormat'
 
 type RemoteSearchItem = {
@@ -85,6 +86,21 @@ const emit = defineEmits<{
 
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
+
+// --- Adaptive skeleton count ----------------------------------------------
+// Mirrors `grid-cols-1 sm:2 xl:3 2xl:4 3xl:5` on the grid container.
+const GRID_BREAKPOINTS: GridBreakpoint[] = [
+  [1920, 5], // 3xl
+  [1536, 4], // 2xl
+  [1280, 3], // xl
+  [640, 2],  // sm
+  [0, 1],    // base
+]
+const { count: skeletonCount, attachRef: root } = useSkeletonCount({
+  breakpoints: GRID_BREAKPOINTS,
+  cardHeight: 200, // thumbnail + 2-line title + date
+  rowGap: 32,      // matches `gap-y-8` (2rem ≈ 32px)
+})
 
 const displayDate = (item: RemoteSearchItem) => {
   if (item.published_text) return item.published_text

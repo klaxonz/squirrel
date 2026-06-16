@@ -211,7 +211,7 @@
       </header>
 
       <div ref="feedContainer" class="flex-1 overflow-y-auto custom-scrollbar bg-background">
-        <div class="mx-auto w-full max-w-[1800px] p-4 lg:p-6 lg:px-8">
+        <div ref="gridWrapper" class="mx-auto w-full max-w-[1800px] p-4 lg:p-6 lg:px-8">
           <RemoteChannelVideoGrid
             v-if="channelDataMode === 'remote'"
             :items="remoteItems"
@@ -243,7 +243,7 @@
             </div>
 
             <div v-if="loadingMoreFeed" class="grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 pt-6">
-              <VideoSkeleton v-for="i in 10" :key="i" />
+              <VideoSkeleton v-for="i in videoSkeletonCount" :key="i" />
             </div>
             <div ref="feedTrigger" class="h-20" />
           </div>
@@ -259,7 +259,7 @@
               />
             </div>
             <div v-if="loadingChannels && !list.length" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-              <SubscriptionCardSkeleton v-for="i in 12" :key="i" />
+              <SubscriptionCardSkeleton v-for="i in channelSkeletonCount" :key="i" />
             </div>
             <div v-if="!channelsFinished" ref="gridMoreTrigger" class="h-20" />
           </div>
@@ -294,6 +294,7 @@ import { useRemoteChannel, type RemoteVideoItem } from '@/composables/useRemoteC
 import { useDesktopBridge } from '@/composables/useDesktopBridge'
 import { getSubscriptions, getVideoList, updateSpecialFollowStatus } from '@/api'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
+import { useSkeletonCount, type GridBreakpoint } from '@/composables/useSkeletonCount'
 
 defineOptions({ name: 'Subscribed' })
 
@@ -322,6 +323,47 @@ const showAddDialog = ref(false)
 const showImportDialog = ref(false)
 const feedContainer = ref<HTMLElement | null>(null)
 const channelsContainer = ref<HTMLElement | null>(null)
+
+// --- Adaptive skeleton counts ---------------------------------------------
+// Shared width measurement on the centered content wrapper. Two configs,
+// one per branch (feed videos vs subscription channel cards).
+const gridWrapper = ref<HTMLElement | null>(null)
+
+// Feed video grid: `grid-cols-1 sm:2 xl:3 2xl:4 3xl:5`, gap-y-10 (40px).
+const VIDEO_BREAKPOINTS: GridBreakpoint[] = [
+  [1920, 5], // 3xl
+  [1536, 4], // 2xl
+  [1280, 3], // xl
+  [640, 2],  // sm
+  [0, 1],    // base
+]
+const { count: videoSkeletonCount, attachRef: videoGridRef } = useSkeletonCount({
+  breakpoints: VIDEO_BREAKPOINTS,
+  cardHeight: 220,
+  rowGap: 40,
+})
+
+// Subscription card grid: `grid-cols-1 sm:2 lg:3 xl:4 2xl:5`, gap-5 (20px).
+// Cards are taller (avatar header + 3 thumbs + footer ≈ 280px).
+const CHANNEL_BREAKPOINTS: GridBreakpoint[] = [
+  [1536, 5], // 2xl
+  [1280, 4], // xl
+  [1024, 3], // lg
+  [640, 2],  // sm
+  [0, 1],    // base
+]
+const { count: channelSkeletonCount, attachRef: channelGridRef } = useSkeletonCount({
+  breakpoints: CHANNEL_BREAKPOINTS,
+  cardHeight: 280,
+  rowGap: 20,
+})
+
+// Both branches render inside the same centered wrapper; point each composable's
+// observer at it so column counts track the real container width.
+watch(gridWrapper, (node) => {
+  videoGridRef.value = node
+  channelGridRef.value = node
+}, { immediate: true })
 
 // Data State (Channels)
 const list = ref<any[]>([])

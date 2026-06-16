@@ -1,6 +1,6 @@
 <template>
   <AppPageShell variant="compact" :fill="false">
-    <div class="app-page-content">
+    <div ref="root" class="app-page-content">
       <div v-if="errorMessage" class="px-6 pt-6">
         <div class="flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 p-4">
           <p class="text-sm font-medium text-destructive">{{ errorMessage }}</p>
@@ -84,7 +84,7 @@
       </div>
 
       <div v-if="loading" class="grid grid-cols-1 gap-x-5 gap-y-10 p-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6">
-        <VideoSkeleton v-for="i in 12" :key="i" :delay="i * 50" />
+        <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" />
       </div>
 
       <div v-if="items.length > 0 && !allLoaded" class="flex justify-center px-6 pb-8">
@@ -119,6 +119,7 @@ import VideoSkeleton from '@/components/feed/VideoSkeleton.vue'
 import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
+import { useSkeletonCount, type GridBreakpoint } from '@/composables/useSkeletonCount'
 import { formatDuration } from '@/utils/dateFormat'
 import { getSubscriptionStatus, subscribe, unsubscribe } from '@/api'
 
@@ -185,6 +186,23 @@ let requestToken = 0
 let observer: IntersectionObserver | null = null
 let scrollRoot: HTMLElement | null = null
 let loadedChannelKey = ''
+
+// --- Adaptive skeleton count ----------------------------------------------
+// Mirrors `grid-cols-1 sm:2 md:3 lg:3 xl:4 2xl:5 3xl:6` on the grid container.
+const CHANNEL_BREAKPOINTS: GridBreakpoint[] = [
+  [1920, 6], // 3xl
+  [1536, 5], // 2xl
+  [1280, 4], // xl
+  [1024, 3], // lg
+  [768, 3],  // md
+  [640, 2],  // sm
+  [0, 1],    // base
+]
+const { count: skeletonCount, attachRef: root } = useSkeletonCount({
+  breakpoints: CHANNEL_BREAKPOINTS,
+  cardHeight: 220, // thumbnail + 2-line title + date
+  rowGap: 40,      // matches `gap-y-10` (2.5rem ≈ 40px)
+})
 
 const queryValue = (key: string) => {
   const value = route.query[key]

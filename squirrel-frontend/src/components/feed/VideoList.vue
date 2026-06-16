@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full">
+  <div ref="root" class="w-full">
     <!-- List/Grid Container -->
     <div v-if="videos.length > 0"
          :class="uiStore.viewMode === 'grid'
@@ -22,7 +22,7 @@
          :class="uiStore.viewMode === 'grid'
            ? 'grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-6 p-6'
            : 'flex flex-col gap-4 p-6 max-w-4xl mx-auto'">
-      <VideoSkeleton v-for="i in 12" :key="i" :delay="i * 50" :layout="uiStore.viewMode" />
+      <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" :layout="uiStore.viewMode" />
     </div>
 
     <!-- Empty State -->
@@ -40,11 +40,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import VideoItem from './VideoItem.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
 import { useUIStore } from '@/stores/ui'
+import { useSkeletonCount, type GridBreakpoint } from '@/composables/useSkeletonCount'
 
 const uiStore = useUIStore()
 
@@ -62,16 +63,38 @@ const emit = defineEmits(['goToSubscription', 'openModal', 'loadMore'])
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 
+// --- Adaptive skeleton count ----------------------------------------------
+// Breakpoints must mirror the grid classes below:
+// `grid-cols-1 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6`
+const GRID_BREAKPOINTS: GridBreakpoint[] = [
+  [1920, 6], // 3xl
+  [1536, 5], // 2xl
+  [1024, 4], // lg
+  [768, 3],  // md
+  [0, 1],    // base
+]
+// List mode is always a single column.
+const LIST_BREAKPOINTS: GridBreakpoint[] = [[0, 1]]
+
+const { count: skeletonCount, attachRef: root } = useSkeletonCount({
+  // Layout swaps between grid and list depending on the toolbar view mode.
+  breakpoints: computed(() =>
+    uiStore.viewMode === 'grid' ? GRID_BREAKPOINTS : LIST_BREAKPOINTS,
+  ),
+  cardHeight: computed(() => (uiStore.viewMode === 'grid' ? 220 : 140)),
+  rowGap: 24, // matches `gap-6` (1.5rem ≈ 24px)
+})
+
 onMounted(() => {
   // Use the specific scroll container as root
-  const root = document.getElementById('app-main-scroll')
+  const scrollRoot = document.getElementById('app-main-scroll')
 
   observer = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting && !props.loading && !props.allLoaded) {
       emit('loadMore')
     }
   }, {
-    root: root,
+    root: scrollRoot,
     rootMargin: '600px'
   })
 
