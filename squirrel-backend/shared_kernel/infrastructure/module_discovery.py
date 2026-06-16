@@ -2,7 +2,6 @@
 
 import importlib
 import pkgutil
-from typing import Any
 
 
 def import_classes_from_package(

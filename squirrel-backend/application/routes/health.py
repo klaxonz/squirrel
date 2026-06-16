@@ -8,8 +8,8 @@ from fastapi import APIRouter, status
 from sqlalchemy import text
 
 from infrastructure.cache.redis_client import redis_client
-from infrastructure.database.session import engine
 from infrastructure.config.startup_dependencies import list_optional_startup_issues
+from infrastructure.database.session import engine
 
 logger = logging.getLogger(__name__)
 

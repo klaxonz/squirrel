@@ -29,10 +29,3 @@ class VideoDto(sqlalchemy_to_pydantic(Video)):
     @field_serializer("created_at", "updated_at")
     def serialize_datetime(self, dt: datetime | None) -> str:
         return dt.strftime("%Y-%m-%d %H:%M:%S") if dt else ""
-
-
-class VideoCountDto(BaseModel):
-    total: int
-    preview: int
-    read: int
-    unread: int

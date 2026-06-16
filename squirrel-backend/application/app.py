@@ -11,11 +11,19 @@ from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
 
-from infrastructure.config.settings import settings
-from domains.music.interfaces.http import router as music_router
-from domains.playlist.interfaces.http import router as playlist_router
 from application.routes.health import router as health_router
 from application.routes.logs import router as logs_router
+from domains.music.interfaces.http import router as music_router
+from domains.playlist.interfaces.http import router as playlist_router
+from domains.rss.interfaces.http import router as rss_router
+from domains.subscription.interfaces.http import router as subscription_router
+from domains.user.interfaces.http import router as user_router
+from domains.user.interfaces.http.search import router as search_router
+from domains.video.interfaces.http import router as video_router
+from domains.video.interfaces.http.clip_marker import router as video_clip_marker_router
+from domains.video.interfaces.http.history import router as video_history_router
+from domains.video.interfaces.http.interaction import router as video_interaction_router
+from infrastructure.config.settings import settings
 from infrastructure.http.middleware.access_log import AccessLogMiddleware
 from infrastructure.http.middleware.auth import (
     AuthenticationError,
@@ -24,21 +32,13 @@ from infrastructure.http.middleware.auth import (
     TokenMissingError,
 )
 from infrastructure.http.middleware.trace import RequestContextMiddleware
-from domains.rss.interfaces.http import router as rss_router
 from infrastructure.scheduling.routes import router as scheduler_router
-from shared_kernel.application.response import ErrorCode
-from shared_kernel.system.routes.system_config import router as system_config_router
 from infrastructure.site_catalog.routes.connectivity_batch import router as connectivity_router
 from infrastructure.site_catalog.routes.site_cookies_bulk_import import router as site_cookies_router
 from infrastructure.site_catalog.routes.site_runtimes import router as site_runtimes_router
 from infrastructure.site_catalog.routes.sites_catalog import router as sites_router
-from domains.subscription.interfaces.http import router as subscription_router
-from domains.user.interfaces.http import router as user_router
-from domains.user.interfaces.http.search import router as search_router
-from domains.video.interfaces.http import router as video_router
-from domains.video.interfaces.http.clip_marker import router as video_clip_marker_router
-from domains.video.interfaces.http.history import router as video_history_router
-from domains.video.interfaces.http.interaction import router as video_interaction_router
+from shared_kernel.application.response import ErrorCode
+from shared_kernel.system.routes.system_config import router as system_config_router
 
 logger = logging.getLogger(__name__)
 
