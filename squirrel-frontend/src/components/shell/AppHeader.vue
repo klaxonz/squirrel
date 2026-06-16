@@ -11,26 +11,28 @@
     </button>
 
     <div class="flex items-center gap-4 flex-1 min-w-0">
-      <div v-if="!showSearch" class="flex items-center overflow-hidden">
-        <RouteContextBar 
-          :page-title="routeContext.pageTitle" 
-          :breadcrumbs="routeContext.breadcrumbs"
-          :section-label="routeContext.sectionLabel"
-        />
-      </div>
-      
-      <div v-else class="flex min-w-0 flex-1 justify-center">
-        <div class="flex w-full max-w-[720px] items-center justify-center gap-2">
-          <GlobalSearchBar
-            class="min-w-0 flex-1"
-            :placeholder="String(route.meta.searchPlaceholder || '搜索或输入命令...')"
-            :suggestion-scope="String(route.meta.search || 'home')"
-            :search-modes="showHomeSearchMode ? searchModeOptions : []"
-            :active-search-mode="homeSearchMode"
-            @search-mode-change="uiStore.setHomeSearchMode"
+      <Transition name="fade" mode="out-in">
+        <div v-if="!showSearch" key="context" class="flex items-center overflow-hidden">
+          <RouteContextBar
+            :page-title="routeContext.pageTitle"
+            :breadcrumbs="routeContext.breadcrumbs"
+            :section-label="routeContext.sectionLabel"
           />
         </div>
-      </div>
+
+        <div v-else key="search" class="flex min-w-0 flex-1 justify-center">
+          <div class="flex w-full max-w-[720px] items-center justify-center gap-2">
+            <GlobalSearchBar
+              class="min-w-0 flex-1"
+              :placeholder="String(route.meta.searchPlaceholder || '搜索或输入命令...')"
+              :suggestion-scope="String(route.meta.search || 'home')"
+              :search-modes="showHomeSearchMode ? searchModeOptions : []"
+              :active-search-mode="homeSearchMode"
+              @search-mode-change="uiStore.setHomeSearchMode"
+            />
+          </div>
+        </div>
+      </Transition>
     </div>
     
     <div class="flex items-center gap-1">

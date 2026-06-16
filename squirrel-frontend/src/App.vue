@@ -1,9 +1,11 @@
 <template>
   <component :is="layout">
-    <router-view v-slot="{ Component }">
-      <keep-alive :include="keepAliveIncludes">
-        <component :is="Component" />
-      </keep-alive>
+    <router-view v-slot="{ Component, route }">
+      <Transition name="page" mode="out-in">
+        <keep-alive :include="keepAliveIncludes">
+          <component :is="Component" :key="(route.meta.transitionKey as string) ?? route.path" />
+        </keep-alive>
+      </Transition>
     </router-view>
   </component>
 </template>

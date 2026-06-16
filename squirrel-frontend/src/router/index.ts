@@ -84,6 +84,7 @@ const routes = [
       sectionLabel: '首页',
       keepAlive: true,
       keepAliveComponent: 'HomeView',
+      transitionKey: 'home',
     }),
     children: [
       createVideoTabRoute('all', 'AllVideos', '全部视频', { navKey: 'videos', sectionLabel: '首页' }),
@@ -186,6 +187,7 @@ const routes = [
       keepAlive: true,
       keepAliveComponent: 'ChannelDetailView',
       contextParentLabel: '频道',
+      transitionKey: 'channel',
     }),
     children: [
       {
