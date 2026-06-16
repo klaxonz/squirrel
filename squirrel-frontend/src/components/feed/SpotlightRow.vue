@@ -1,7 +1,7 @@
 <template>
-  <section v-if="videos.length > 0" class="group/container mb-6 px-6 pt-4">
-    <div class="mb-4 flex items-center justify-between">
-      <h2 class="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground/90">
+  <section v-if="videos.length > 0" class="group/container mb-8 px-6 pt-8">
+    <div class="mb-5 flex items-center justify-between">
+      <h2 class="flex items-center gap-2 text-lg font-bold tracking-tight text-foreground/90">
         <AppIcon name="star" class="size-5 fill-primary text-primary" />
         精选推荐
       </h2>
