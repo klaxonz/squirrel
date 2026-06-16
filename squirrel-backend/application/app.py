@@ -79,7 +79,7 @@ async def default_exception_handler(request: Request, exc: Exception) -> JSONRes
     )
 
 
-def create_app(lifespan=None) -> FastAPI:
+def create_app() -> FastAPI:
     app = FastAPI(exception_handlers=None, lifespan=lifespan)
     _register_middleware(app)
     _register_routers(app)
@@ -196,4 +196,4 @@ def _register_spa_route(app: FastAPI) -> None:
         )
 
 
-app = create_app(lifespan=lifespan)
+app = create_app()
