@@ -1,26 +1,23 @@
 import logging
-import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
 
+from application.runtime_setup import (
+    apply_site_config,
+    bootstrap_site_runtimes_with_oauth,
+    configure_runtime_http,
+)
 from infrastructure.config.settings import settings
-from infrastructure.config.site_config_manager import apply_site_config_overrides
 from infrastructure.config.startup_dependencies import (
     clear_optional_startup_issue,
     record_optional_startup_issue,
     reset_startup_dependency_issues,
 )
 from infrastructure.database.migrations import upgrade_database
-from infrastructure.site_catalog.cookies import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
-from infrastructure.site_catalog.runtime_http import (
-    set_cloudflare_bypass_client,
-    set_cookie_domain_resolver,
-    set_cookie_file_resolver,
-)
-from infrastructure.site_runtimes.manager import bootstrap_site_runtimes, shutdown_site_runtimes
+from infrastructure.site_runtimes.manager import shutdown_site_runtimes
 from shared_kernel.infrastructure.log import init_logging
 
 logger = logging.getLogger(__name__)
@@ -39,7 +36,7 @@ def _log_lifecycle_step(phase: str, step: int, total: int, message: str) -> None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """FastAPI application lifecycle management
+    """FastAPI application lifecycle management.
 
     Executes in order on startup:
     1. Start the plugin runtime manager
@@ -50,53 +47,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     reset_startup_dependency_issues()
 
     _log_lifecycle_step("Startup", 1, STARTUP_TOTAL_STEPS, "Applying site configuration overrides")
-    try:
-        apply_site_config_overrides()
-    except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
-        logger.exception("Startup [1/%s] Failed to apply site configuration overrides", STARTUP_TOTAL_STEPS)
-        raise
+    apply_site_config()
     _log_lifecycle_step("Startup", 1, STARTUP_TOTAL_STEPS, "Site configuration overrides applied")
 
     _log_lifecycle_step("Startup", 2, STARTUP_TOTAL_STEPS, "Configuring runtime HTTP helpers")
-    runtime_http_enabled: list[str] = []
-    runtime_http_degraded: list[str] = []
-    try:
-        from infrastructure.site_catalog.cloudflare_bypass import get_default_client
-        set_cloudflare_bypass_client(get_default_client())
-        runtime_http_enabled.append("cloudflare_bypass")
-        clear_optional_startup_issue("cloudflare_bypass")
-    except Exception as exc:  # startup/shutdown boundary -- prevent crash during lifecycle
-        record_optional_startup_issue("cloudflare_bypass", exc)
-        runtime_http_degraded.append(f"cloudflare_bypass={exc}")
-    try:
-        set_cookie_file_resolver(resolve_cookie_file_for_url)
-        set_cookie_domain_resolver(resolve_cookie_match_domain_for_url)
-        runtime_http_enabled.append("cookie_resolver")
-    except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
-        logger.exception("Startup [2/%s] Failed to configure cookie resolver", STARTUP_TOTAL_STEPS)
-        raise
-
-    if runtime_http_degraded:
-        logger.warning(
-            "Startup [2/%s] Runtime HTTP helpers ready with degraded features: enabled=%s degraded=%s",
-            STARTUP_TOTAL_STEPS,
-            ", ".join(runtime_http_enabled) if runtime_http_enabled else "none",
-            "; ".join(runtime_http_degraded),
-        )
-    else:
-        _log_lifecycle_step("Startup", 2, STARTUP_TOTAL_STEPS, "Runtime HTTP helpers ready")
+    configure_runtime_http()
+    _log_lifecycle_step("Startup", 2, STARTUP_TOTAL_STEPS, "Runtime HTTP helpers ready")
 
     _log_lifecycle_step("Startup", 3, STARTUP_TOTAL_STEPS, "Bootstrapping site runtime manager")
-    try:
-        from infrastructure.site_catalog.youtube_oauth import get_oauth_credentials_for_daemon
-        oauth_file = get_oauth_credentials_for_daemon()
-        if oauth_file:
-            os.environ["YOUTUBE_OAUTH_STATE_FILE"] = oauth_file
-        bootstrap_site_runtimes()
-        _log_lifecycle_step("Startup", 3, STARTUP_TOTAL_STEPS, "Site runtime manager ready")
-    except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
-        logger.exception("Startup [3/%s] Failed to bootstrap site runtime manager", STARTUP_TOTAL_STEPS)
-        raise
+    bootstrap_site_runtimes_with_oauth()
+    _log_lifecycle_step("Startup", 3, STARTUP_TOTAL_STEPS, "Site runtime manager ready")
 
     _log_lifecycle_step("Startup", 4, STARTUP_TOTAL_STEPS, "Bootstrapping scheduled tasks")
     try:

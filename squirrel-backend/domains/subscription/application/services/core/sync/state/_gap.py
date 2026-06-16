@@ -1,17 +1,34 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 from datetime import datetime, timedelta
 
 from sqlalchemy import func, select
 
-from domains.subscription.application.services.core.sync.utils import calculate_head_overlap, fingerprint_head_sample
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
 from infrastructure.config.settings import settings
 
 from .session import get_session
 
 logger = logging.getLogger(__name__)
+
+
+def fingerprint_head_sample(urls: list[str] | None) -> str | None:
+    normalized = [str(url).strip() for url in (urls or []) if str(url).strip()]
+    if not normalized:
+        return None
+    payload = "\n".join(normalized[:20]).encode("utf-8")
+    return hashlib.sha1(payload).hexdigest()
+
+
+def calculate_head_overlap(previous_urls: list[str] | None, current_urls: list[str] | None) -> float | None:
+    previous = {str(url).strip() for url in (previous_urls or []) if str(url).strip()}
+    current = {str(url).strip() for url in (current_urls or []) if str(url).strip()}
+    if not previous or not current:
+        return None
+    overlap = len(previous & current)
+    return overlap / max(1, min(len(previous), len(current)))
 
 
 def record_gap_observation(

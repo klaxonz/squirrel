@@ -54,116 +54,25 @@ class RssSyncService:
         config = None
 
         try:
-            with self.session_factory() as session:
-                account = self.account_service.get_account(session, user_id, account_id)
-                if not account:
-                    return None
-                config = self.account_service.config_from_account(account)
-                configured_entry_limit = account.sync_entry_limit
-
+            loaded = self._load_account_and_config(user_id, account_id)
+            if loaded is None:
+                return None
+            account, config, configured_entry_limit = loaded
             effective_entry_limit = entry_limit if entry_limit is not None else configured_entry_limit
 
             client = create_client(config)
-            self.account_service.set_sync_progress(account_id, phase="feeds_fetching", message="Fetching RSS feeds")
-            remote_feeds = client.list_feeds()
-            self.account_service.set_sync_progress(
-                account_id,
-                phase="feeds_saving",
-                message="Saving RSS feeds",
-                feeds_total=len(remote_feeds),
-            )
-            feed_refs: list[tuple[int, str, bool]] = []
-            with self.session_factory() as session:
-                account = self.account_service.get_account(session, user_id, account_id)
-                if not account:
-                    return None
-                account.last_error = None
-                feeds = rss_entry_store.upsert_feeds(session, account, remote_feeds)
-                for index, feed in enumerate(feeds, start=1):
-                    feed_refs.append((feed.id, feed.external_feed_id, feed.enabled))
-                    if index % 50 == 0 or index == len(feeds):
-                        self.account_service.set_sync_progress(account_id, feeds_synced=index)
-            synced_feeds = len(feeds)
-
-            if isinstance(client, GReaderClient):
-                synced_entries = self.greader_sync.sync_entries(
-                    account_id=account_id,
-                    client=client,
-                    feed_refs=feed_refs,
-                    entry_limit=effective_entry_limit,
-                    force_full_sync=force_full_sync,
-                )
-            else:
-                if effective_entry_limit is None:
-                    raise RssServiceError("Sync entry limit is required for this RSS provider")
-                with self.session_factory() as session:
-                    for feed_id, external_feed_id, enabled in feed_refs:
-                        if not enabled:
-                            continue
-                        self.account_service.set_sync_progress(
-                            account_id,
-                            phase="entries_fetching",
-                            message="Fetching RSS entries",
-                            current_feed_id=feed_id,
-                            feeds_synced=synced_feeds,
-                        )
-                        remote_entries = client.list_entries(external_feed_id, effective_entry_limit)
-                        feed = session.scalars(
-                            select(RssFeed).where(
-                                RssFeed.id == feed_id,
-                                RssFeed.user_id == user_id,
-                                RssFeed.account_id == account_id,
-                            ),
-                        ).first()
-                        if not feed:
-                            continue
-                        feeds_by_external_id = {external_feed_id: feed}
-                        if remote_entries:
-                            remote_entries = [replace(re, external_feed_id=re.external_feed_id or external_feed_id) for re in remote_entries]
-                        batch_entries = rss_entry_store.upsert_remote_entries_batch(session, feeds_by_external_id, remote_entries)
-                        synced_entries += batch_entries
-                        feed.last_entry_sync_at = datetime.now()
-                        self.account_service.set_sync_progress(
-                            account_id,
-                            phase="entries_saving",
-                            entries_synced=synced_entries,
-                        )
-                        session.commit()
-
-            with self.session_factory() as session:
-                account = self.account_service.get_account(session, user_id, account_id)
-                if account:
-                    account.last_sync_at = datetime.now()
-                    account.last_error = None
-            self.account_service.set_sync_progress(
-                account_id,
-                running=False,
-                phase="completed",
-                message="RSS sync completed",
+            synced_feeds, feed_refs = self._sync_feeds(user_id, account_id, client)
+            synced_entries = self._sync_entries(
+                user_id, account_id, client, feed_refs,
                 feeds_synced=synced_feeds,
-                entries_synced=synced_entries,
-                error=None,
-                finished_at=datetime.now().isoformat(),
+                entry_limit=effective_entry_limit, force_full_sync=force_full_sync,
             )
+            self._finalize_success(user_id, account_id, synced_feeds, synced_entries)
         except Exception as exc:
             error_message = str(exc)
             provider = config.provider if config else "unknown"
             logger.warning("RSS account sync failed: account_id=%s provider=%s error=%s", account_id, provider, exc)
-            with self.session_factory() as session:
-                account = self.account_service.get_account(session, user_id, account_id)
-                if account:
-                    account.last_error = error_message
-                    session.commit()
-            self.account_service.set_sync_progress(
-                account_id,
-                running=False,
-                phase="failed",
-                message="RSS sync failed",
-                feeds_synced=synced_feeds,
-                entries_synced=synced_entries,
-                error=error_message,
-                finished_at=datetime.now().isoformat(),
-            )
+            self._record_failure(user_id, account_id, synced_feeds, synced_entries, error_message)
             raise
         finally:
             sync_lock.release()
@@ -174,6 +83,140 @@ class RssSyncService:
             "entries": synced_entries,
             "error": error_message,
         }
+
+    def _load_account_and_config(self, user_id: int, account_id: int):
+        """Load the account and derive its config + configured entry limit.
+
+        Returns ``(account, config, sync_entry_limit)`` or ``None`` if the account is gone.
+        """
+        with self.session_factory() as session:
+            account = self.account_service.get_account(session, user_id, account_id)
+            if not account:
+                return None
+            config = self.account_service.config_from_account(account)
+            configured_entry_limit = account.sync_entry_limit
+        return account, config, configured_entry_limit
+
+    def _sync_feeds(self, user_id: int, account_id: int, client) -> tuple[int, list[tuple[int, str, bool]]]:
+        """Fetch remote feeds, persist them, and report progress. Returns ``(feed_count, feed_refs)``."""
+        self.account_service.set_sync_progress(account_id, phase="feeds_fetching", message="Fetching RSS feeds")
+        remote_feeds = client.list_feeds()
+        self.account_service.set_sync_progress(
+            account_id,
+            phase="feeds_saving",
+            message="Saving RSS feeds",
+            feeds_total=len(remote_feeds),
+        )
+        feed_refs: list[tuple[int, str, bool]] = []
+        with self.session_factory() as session:
+            account = self.account_service.get_account(session, user_id, account_id)
+            if not account:
+                return 0, feed_refs
+            account.last_error = None
+            feeds = rss_entry_store.upsert_feeds(session, account, remote_feeds)
+            for index, feed in enumerate(feeds, start=1):
+                feed_refs.append((feed.id, feed.external_feed_id, feed.enabled))
+                if index % 50 == 0 or index == len(feeds):
+                    self.account_service.set_sync_progress(account_id, feeds_synced=index)
+        return len(feeds), feed_refs
+
+    def _sync_entries(
+        self,
+        user_id: int,
+        account_id: int,
+        client,
+        feed_refs: list[tuple[int, str, bool]],
+        *,
+        feeds_synced: int,
+        entry_limit: int | None,
+        force_full_sync: bool,
+    ) -> int:
+        """Sync entries for the given feeds. GReader accounts delegate to ``greader_sync``;
+        other providers use a per-feed fetch/upsert loop. Returns the entry count synced.
+        """
+        if isinstance(client, GReaderClient):
+            return self.greader_sync.sync_entries(
+                account_id=account_id,
+                client=client,
+                feed_refs=feed_refs,
+                entry_limit=entry_limit,
+                force_full_sync=force_full_sync,
+            )
+
+        if entry_limit is None:
+            raise RssServiceError("Sync entry limit is required for this RSS provider")
+
+        synced_entries = 0
+        with self.session_factory() as session:
+            for feed_id, external_feed_id, enabled in feed_refs:
+                if not enabled:
+                    continue
+                self.account_service.set_sync_progress(
+                    account_id,
+                    phase="entries_fetching",
+                    message="Fetching RSS entries",
+                    current_feed_id=feed_id,
+                    feeds_synced=feeds_synced,
+                )
+                remote_entries = client.list_entries(external_feed_id, entry_limit)
+                feed = session.scalars(
+                    select(RssFeed).where(
+                        RssFeed.id == feed_id,
+                        RssFeed.user_id == user_id,
+                        RssFeed.account_id == account_id,
+                    ),
+                ).first()
+                if not feed:
+                    continue
+                feeds_by_external_id = {external_feed_id: feed}
+                if remote_entries:
+                    remote_entries = [replace(re, external_feed_id=re.external_feed_id or external_feed_id) for re in remote_entries]
+                batch_entries = rss_entry_store.upsert_remote_entries_batch(session, feeds_by_external_id, remote_entries)
+                synced_entries += batch_entries
+                feed.last_entry_sync_at = datetime.now()
+                self.account_service.set_sync_progress(
+                    account_id,
+                    phase="entries_saving",
+                    entries_synced=synced_entries,
+                )
+                session.commit()
+        return synced_entries
+
+    def _finalize_success(self, user_id: int, account_id: int, feeds: int, entries: int) -> None:
+        """Stamp ``last_sync_at`` and report the completed progress."""
+        with self.session_factory() as session:
+            account = self.account_service.get_account(session, user_id, account_id)
+            if account:
+                account.last_sync_at = datetime.now()
+                account.last_error = None
+        self.account_service.set_sync_progress(
+            account_id,
+            running=False,
+            phase="completed",
+            message="RSS sync completed",
+            feeds_synced=feeds,
+            entries_synced=entries,
+            error=None,
+            finished_at=datetime.now().isoformat(),
+        )
+
+    def _record_failure(self, user_id: int, account_id: int, feeds: int, entries: int, error_message: str) -> None:
+        """Persist ``last_error`` and report the failed progress."""
+        with self.session_factory() as session:
+            account = self.account_service.get_account(session, user_id, account_id)
+            if account:
+                account.last_error = error_message
+                session.commit()
+        self.account_service.set_sync_progress(
+            account_id,
+            running=False,
+            phase="failed",
+            message="RSS sync failed",
+            feeds_synced=feeds,
+            entries_synced=entries,
+            error=error_message,
+            finished_at=datetime.now().isoformat(),
+        )
 
     def subscribe_feed(
         self,

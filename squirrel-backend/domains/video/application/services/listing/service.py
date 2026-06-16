@@ -39,6 +39,9 @@ _MAX_RECALL_ROUNDS = 5
 # 搜索场景 OFFSET 的 Meili 召回上限（覆盖深度搜索分页需求）
 _SEARCH_RECALL_LIMIT = 5000
 
+# 各路径共用的空计时字典
+_EMPTY_TIMINGS: dict[str, float] = {'recall_ms': 0.0, 'filter_ms': 0.0, 'page_ms': 0.0}
+
 
 def _encode_page_cursor(page: int) -> str:
     """搜索场景把 page 编码成 base64 cursor（复用 cursor 字段，前端无需区分场景）。"""
@@ -52,6 +55,10 @@ def _decode_page_cursor(cursor: str) -> int:
         return int(base64.urlsafe_b64decode(padded.encode()).decode())
     except (ValueError, TypeError):
         return 1
+
+
+def _timings(recall_ms: float, filter_ms: float, page_ms: float) -> dict[str, float]:
+    return {'recall_ms': recall_ms, 'filter_ms': filter_ms, 'page_ms': page_ms}
 
 
 class VideoListService:
@@ -151,6 +158,94 @@ class VideoListService:
         )
         return videos, next_cursor
 
+    def _filter_and_paginate(
+        self,
+        session: Session,
+        recalled_ids: list[int],
+        *,
+        user_id: int,
+        show_nsfw: bool,
+        subscription_id: int | None,
+        category: str,
+        nsfw: str,
+        content_type: str,
+        special: str,
+        page_size: int,
+        next_cursor: str | None,
+        recall_ms: float,
+    ) -> tuple[list[dict], str | None, dict[str, float]]:
+        """共享的「PG 权限过滤 → 切页 → hydration」尾部。
+
+        用于所有单轮召回的列表路径（user-state / special-follow 的浏览与搜索、
+        以及普通搜索 OFFSET）。返回 ``(items, cursor, timings)``。
+        """
+        filter_started = perf_counter()
+        filtered_ids = filter_recalled_ids(
+            session,
+            recalled_ids=recalled_ids,
+            user_id=user_id,
+            show_nsfw=show_nsfw,
+            subscription_id=subscription_id,
+            category=category,
+            nsfw=nsfw,
+            content_type=content_type,
+            special=special,
+        )
+        filter_ms = self._elapsed_ms(filter_started)
+
+        page_ids = filtered_ids[:page_size]
+        if not page_ids:
+            return [], next_cursor, _timings(recall_ms, filter_ms, 0.0)
+
+        page_started = perf_counter()
+        page_items = self._page_loader.load_page(session, user_id=user_id, video_ids=page_ids)
+        page_ms = self._elapsed_ms(page_started)
+        return page_items.items, next_cursor, _timings(recall_ms, filter_ms, page_ms)
+
+    def _filter_and_offset_paginate(
+        self,
+        session: Session,
+        recalled_ids: list[int],
+        *,
+        user_id: int,
+        show_nsfw: bool,
+        subscription_id: int | None,
+        category: str,
+        nsfw: str,
+        content_type: str,
+        special: str,
+        page: int,
+        page_size: int,
+        recall_ms: float,
+    ) -> tuple[list[dict], str | None, dict[str, float]]:
+        """搜索 OFFSET 场景的「PG 权限过滤 → OFFSET 切页 → hydration」尾部。"""
+        filter_started = perf_counter()
+        filtered_ids = filter_recalled_ids(
+            session,
+            recalled_ids=recalled_ids,
+            user_id=user_id,
+            show_nsfw=show_nsfw,
+            subscription_id=subscription_id,
+            category=category,
+            nsfw=nsfw,
+            content_type=content_type,
+            special=special,
+        )
+        filter_ms = self._elapsed_ms(filter_started)
+
+        offset = max((page - 1) * page_size, 0)
+        page_ids = filtered_ids[offset:offset + page_size]
+        has_more = offset + page_size < len(filtered_ids)
+        next_cursor = _encode_page_cursor(page + 1) if has_more else None
+
+        if not page_ids:
+            return [], next_cursor, _timings(recall_ms, filter_ms, 0.0)
+
+        page_started = perf_counter()
+        page_items = self._page_loader.load_page(session, user_id=user_id, video_ids=page_ids)
+        page_ms = self._elapsed_ms(page_started)
+        return page_items.items, next_cursor, _timings(recall_ms, filter_ms, page_ms)
+
     def _list_browse_keyset(
         self, session: Session, *, user_id: int, show_nsfw: bool, subscription_id: int | None,
         category: str, sort_by: str, nsfw: str, domains: list[str] | None,
@@ -184,10 +279,9 @@ class VideoListService:
                 content_type=content_type, special=special,
             )
 
-        empty_timings = {'recall_ms': 0.0, 'filter_ms': 0.0, 'page_ms': 0.0}
         if not settings.MEILISEARCH_URL:
             logger.warning('browse requested but MEILISEARCH_URL not set -- returning empty')
-            return [], None, empty_timings
+            return [], None, _EMPTY_TIMINGS
 
         indexer = get_meili_video_indexer()
         collected_video_ids: list[int] = []
@@ -209,7 +303,7 @@ class VideoListService:
                 )
             except Exception:
                 logger.warning('meili recall_page failed', exc_info=True)
-                return [], None, {'recall_ms': total_recall_ms, 'filter_ms': total_filter_ms, 'page_ms': 0.0}
+                return [], None, _timings(total_recall_ms, total_filter_ms, 0.0)
             total_recall_ms += self._elapsed_ms(recall_started)
 
             if next_cursor is None:
@@ -248,17 +342,16 @@ class VideoListService:
         # 是否还有下一页：只看 Meili 是否还有更多（last_cursor 非 None）。
         # 不依赖 collected 数量——collected 不足 page_size 只说明本页较小（category 命中率低），
         # 不代表 Meili 没数据了。若 Meili 已到底（exhausted），last_cursor 为 None。
-        has_more = last_cursor is not None
-        page_cursor = last_cursor if has_more else None
+        page_cursor = last_cursor if last_cursor is not None else None
 
         # 只取 page_size 个，hydration
         page_ids = collected_video_ids[:page_size]
         if not page_ids:
-            return [], None, {'recall_ms': total_recall_ms, 'filter_ms': total_filter_ms, 'page_ms': 0.0}
+            return [], None, _timings(total_recall_ms, total_filter_ms, 0.0)
         page_started = perf_counter()
         page_items = self._page_loader.load_page(session, user_id=user_id, video_ids=page_ids)
         page_ms = self._elapsed_ms(page_started)
-        return page_items.items, page_cursor, {'recall_ms': total_recall_ms, 'filter_ms': total_filter_ms, 'page_ms': page_ms}
+        return page_items.items, page_cursor, _timings(total_recall_ms, total_filter_ms, page_ms)
 
     def _list_search_offset(
         self, session: Session, *, user_id: int, show_nsfw: bool, query: str,
@@ -293,13 +386,11 @@ class VideoListService:
                 content_type=content_type, special=special,
             )
 
-        empty_timings = {'recall_ms': 0.0, 'filter_ms': 0.0, 'page_ms': 0.0}
-        page = _decode_page_cursor(cursor) if cursor else 1
-        offset = max((page - 1) * page_size, 0)
-
         if not settings.MEILISEARCH_URL:
             logger.warning('search requested but MEILISEARCH_URL not set -- returning empty')
-            return [], None, empty_timings
+            return [], None, _EMPTY_TIMINGS
+
+        page = _decode_page_cursor(cursor) if cursor else 1
 
         recall_started = perf_counter()
         try:
@@ -313,38 +404,18 @@ class VideoListService:
             )
         except Exception:
             logger.warning('meili recall failed', exc_info=True)
-            return [], None, {'recall_ms': self._elapsed_ms(recall_started), 'filter_ms': 0.0, 'page_ms': 0.0}
+            return [], None, _timings(self._elapsed_ms(recall_started), 0.0, 0.0)
         recall_ms = self._elapsed_ms(recall_started)
 
         if not recalled_ids:
-            return [], None, {'recall_ms': recall_ms, 'filter_ms': 0.0, 'page_ms': 0.0}
+            return [], None, _timings(recall_ms, 0.0, 0.0)
 
-        filter_started = perf_counter()
-        filtered_ids = filter_recalled_ids(
-            session,
-            recalled_ids=recalled_ids,
-            user_id=user_id,
-            show_nsfw=show_nsfw,
-            subscription_id=subscription_id,
-            category=category,
-            nsfw=nsfw,
-            content_type=content_type,
-            special=special,
+        return self._filter_and_offset_paginate(
+            session, recalled_ids,
+            user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
+            category=category, nsfw=nsfw, content_type=content_type, special=special,
+            page=page, page_size=page_size, recall_ms=recall_ms,
         )
-        filter_ms = self._elapsed_ms(filter_started)
-
-        # OFFSET 分页
-        page_ids = filtered_ids[offset:offset + page_size]
-        has_more = offset + page_size < len(filtered_ids)
-        next_cursor = _encode_page_cursor(page + 1) if has_more else None
-
-        if not page_ids:
-            return [], None, {'recall_ms': recall_ms, 'filter_ms': filter_ms, 'page_ms': 0.0}
-
-        page_started = perf_counter()
-        page_items = self._page_loader.load_page(session, user_id=user_id, video_ids=page_ids)
-        page_ms = self._elapsed_ms(page_started)
-        return page_items.items, next_cursor, {'recall_ms': recall_ms, 'filter_ms': filter_ms, 'page_ms': page_ms}
 
     def _list_user_state_browse(
         self, session: Session, *, user_id: int, show_nsfw: bool, subscription_id: int | None,
@@ -357,7 +428,6 @@ class VideoListService:
         - PG keyset: read 按 end_time，liked/later 按 interaction.created_at
         - 取出 video_ids 后走 filter_recalled_ids 做权限(订阅/nsfw/special/content_type)过滤
         """
-        empty_timings = {'recall_ms': 0.0, 'filter_ms': 0.0, 'page_ms': 0.0}
         # 多取一些缓冲，给权限过滤留余量
         fetch_limit = max(page_size * _RECALL_BUFFER_FACTOR, 20)
 
@@ -369,35 +439,21 @@ class VideoListService:
             )
         except Exception:
             logger.warning('fetch_user_state_video_ids failed', exc_info=True)
-            return [], None, empty_timings
+            return [], None, _EMPTY_TIMINGS
         recall_ms = self._elapsed_ms(recall_started)
 
         if not video_ids:
-            return [], None, {'recall_ms': recall_ms, 'filter_ms': 0.0, 'page_ms': 0.0}
+            return [], None, _timings(recall_ms, 0.0, 0.0)
 
-        filter_started = perf_counter()
         # 权限过滤；category 传 'all'（per-user 表已保证 category 语义，不再 EXISTS）
-        filtered_ids = filter_recalled_ids(
-            session,
-            recalled_ids=video_ids,
-            user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
-            category='all', nsfw=nsfw, content_type=content_type, special=special,
-        )
-        filter_ms = self._elapsed_ms(filter_started)
-
-        # 取 page_size 个；权限过滤后可能不足一页（用户解绑了部分订阅）
-        page_ids = filtered_ids[:page_size]
         # has_more 看 PG per-user 表是否还有更多（next_cursor 非 None）
         # 注意：即使权限过滤后不足一页，只要 per-user 表还有更多，就允许翻页
-        page_cursor = next_cursor
-
-        if not page_ids:
-            return [], page_cursor, {'recall_ms': recall_ms, 'filter_ms': filter_ms, 'page_ms': 0.0}
-
-        page_started = perf_counter()
-        page_items = self._page_loader.load_page(session, user_id=user_id, video_ids=page_ids)
-        page_ms = self._elapsed_ms(page_started)
-        return page_items.items, page_cursor, {'recall_ms': recall_ms, 'filter_ms': filter_ms, 'page_ms': page_ms}
+        return self._filter_and_paginate(
+            session, video_ids,
+            user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
+            category='all', nsfw=nsfw, content_type=content_type, special=special,
+            page_size=page_size, next_cursor=next_cursor, recall_ms=recall_ms,
+        )
 
     def _list_special_follow_browse(
         self, session: Session, *, user_id: int, show_nsfw: bool, subscription_id: int | None,
@@ -412,7 +468,6 @@ class VideoListService:
         - 取出 video_ids 后走 filter_recalled_ids 做权限(nsfw/special/content_type)过滤
           （category 传 'all'；special 语义已由 fetch_special_follow_video_ids 保证）
         """
-        empty_timings = {'recall_ms': 0.0, 'filter_ms': 0.0, 'page_ms': 0.0}
         # 多取一些缓冲，给权限过滤留余量
         fetch_limit = max(page_size * _RECALL_BUFFER_FACTOR, 20)
 
@@ -423,34 +478,19 @@ class VideoListService:
             )
         except Exception:
             logger.warning('fetch_special_follow_video_ids failed', exc_info=True)
-            return [], None, empty_timings
+            return [], None, _EMPTY_TIMINGS
         recall_ms = self._elapsed_ms(recall_started)
 
         if not video_ids:
-            return [], None, {'recall_ms': recall_ms, 'filter_ms': 0.0, 'page_ms': 0.0}
+            return [], None, _timings(recall_ms, 0.0, 0.0)
 
-        filter_started = perf_counter()
         # 权限过滤；category='all' + special='all'（fetch 已保证 special 语义，避免重复 EXISTS）
-        filtered_ids = filter_recalled_ids(
-            session,
-            recalled_ids=video_ids,
+        return self._filter_and_paginate(
+            session, video_ids,
             user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
             category='all', nsfw=nsfw, content_type=content_type, special='all',
+            page_size=page_size, next_cursor=next_cursor, recall_ms=recall_ms,
         )
-        filter_ms = self._elapsed_ms(filter_started)
-
-        # 取 page_size 个；权限过滤后可能不足一页
-        page_ids = filtered_ids[:page_size]
-        # has_more 看 PG 是否还有更多（next_cursor 非 None）
-        page_cursor = next_cursor
-
-        if not page_ids:
-            return [], page_cursor, {'recall_ms': recall_ms, 'filter_ms': filter_ms, 'page_ms': 0.0}
-
-        page_started = perf_counter()
-        page_items = self._page_loader.load_page(session, user_id=user_id, video_ids=page_ids)
-        page_ms = self._elapsed_ms(page_started)
-        return page_items.items, page_cursor, {'recall_ms': recall_ms, 'filter_ms': filter_ms, 'page_ms': page_ms}
 
     def _list_user_state_search(
         self, session: Session, *, user_id: int, show_nsfw: bool, query: str,
@@ -464,20 +504,18 @@ class VideoListService:
         - Meili: 全局索引 filter id IN [集合] + query 文本召回
         - PG: 权限过滤 + OFFSET 分页
         """
-        empty_timings = {'recall_ms': 0.0, 'filter_ms': 0.0, 'page_ms': 0.0}
         if not settings.MEILISEARCH_URL:
             logger.warning('user-state search requested but MEILISEARCH_URL not set -- returning empty')
-            return [], None, empty_timings
+            return [], None, _EMPTY_TIMINGS
 
         page = _decode_page_cursor(cursor) if cursor else 1
-        offset = max((page - 1) * page_size, 0)
 
         # 1. PG 取 per-user id 集合
         pg_started = perf_counter()
         user_ids = fetch_user_state_id_set(session, user_id=user_id, category=category)
         pg_ms = self._elapsed_ms(pg_started)
         if not user_ids:
-            return [], None, {'recall_ms': pg_ms, 'filter_ms': 0.0, 'page_ms': 0.0}
+            return [], None, _timings(pg_ms, 0.0, 0.0)
 
         # 2. Meili 反向交集召回
         recall_started = perf_counter()
@@ -488,34 +526,19 @@ class VideoListService:
             )
         except Exception:
             logger.warning('meili recall (reverse-intersection) failed', exc_info=True)
-            return [], None, {'recall_ms': pg_ms + self._elapsed_ms(recall_started), 'filter_ms': 0.0, 'page_ms': 0.0}
+            return [], None, _timings(pg_ms + self._elapsed_ms(recall_started), 0.0, 0.0)
         recall_ms = pg_ms + self._elapsed_ms(recall_started)
 
         if not recalled_ids:
-            return [], None, {'recall_ms': recall_ms, 'filter_ms': 0.0, 'page_ms': 0.0}
+            return [], None, _timings(recall_ms, 0.0, 0.0)
 
-        # 3. PG 权限过滤
-        filter_started = perf_counter()
-        filtered_ids = filter_recalled_ids(
-            session,
-            recalled_ids=recalled_ids,
+        # 3. PG 权限过滤 + 4. OFFSET 分页
+        return self._filter_and_offset_paginate(
+            session, recalled_ids,
             user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
             category='all', nsfw=nsfw, content_type=content_type, special=special,
+            page=page, page_size=page_size, recall_ms=recall_ms,
         )
-        filter_ms = self._elapsed_ms(filter_started)
-
-        # 4. OFFSET 分页
-        page_ids = filtered_ids[offset:offset + page_size]
-        has_more = offset + page_size < len(filtered_ids)
-        next_cursor = _encode_page_cursor(page + 1) if has_more else None
-
-        if not page_ids:
-            return [], next_cursor, {'recall_ms': recall_ms, 'filter_ms': filter_ms, 'page_ms': 0.0}
-
-        page_started = perf_counter()
-        page_items = self._page_loader.load_page(session, user_id=user_id, video_ids=page_ids)
-        page_ms = self._elapsed_ms(page_started)
-        return page_items.items, next_cursor, {'recall_ms': recall_ms, 'filter_ms': filter_ms, 'page_ms': page_ms}
 
     def _list_special_follow_search(
         self, session: Session, *, user_id: int, show_nsfw: bool, query: str,
@@ -529,20 +552,18 @@ class VideoListService:
         - Meili: 全局索引 filter id IN [集合] + query 文本召回
         - PG: 权限过滤 + OFFSET 分页
         """
-        empty_timings = {'recall_ms': 0.0, 'filter_ms': 0.0, 'page_ms': 0.0}
         if not settings.MEILISEARCH_URL:
             logger.warning('special-follow search requested but MEILISEARCH_URL not set -- returning empty')
-            return [], None, empty_timings
+            return [], None, _EMPTY_TIMINGS
 
         page = _decode_page_cursor(cursor) if cursor else 1
-        offset = max((page - 1) * page_size, 0)
 
         # 1. PG 取特别关注 id 集合
         pg_started = perf_counter()
         special_ids = fetch_special_follow_id_set(session, user_id=user_id)
         pg_ms = self._elapsed_ms(pg_started)
         if not special_ids:
-            return [], None, {'recall_ms': pg_ms, 'filter_ms': 0.0, 'page_ms': 0.0}
+            return [], None, _timings(pg_ms, 0.0, 0.0)
 
         # 2. Meili 反向交集召回
         recall_started = perf_counter()
@@ -553,34 +574,19 @@ class VideoListService:
             )
         except Exception:
             logger.warning('meili recall (special-follow) failed', exc_info=True)
-            return [], None, {'recall_ms': pg_ms + self._elapsed_ms(recall_started), 'filter_ms': 0.0, 'page_ms': 0.0}
+            return [], None, _timings(pg_ms + self._elapsed_ms(recall_started), 0.0, 0.0)
         recall_ms = pg_ms + self._elapsed_ms(recall_started)
 
         if not recalled_ids:
-            return [], None, {'recall_ms': recall_ms, 'filter_ms': 0.0, 'page_ms': 0.0}
+            return [], None, _timings(recall_ms, 0.0, 0.0)
 
-        # 3. PG 权限过滤（special 语义已由 fetch_special_follow_id_set 保证，传 'all' 避免重复）
-        filter_started = perf_counter()
-        filtered_ids = filter_recalled_ids(
-            session,
-            recalled_ids=recalled_ids,
+        # 3. PG 权限过滤（special 语义已由 fetch_special_follow_id_set 保证，传 'all' 避免重复）+ 4. OFFSET 分页
+        return self._filter_and_offset_paginate(
+            session, recalled_ids,
             user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
             category='all', nsfw=nsfw, content_type=content_type, special='all',
+            page=page, page_size=page_size, recall_ms=recall_ms,
         )
-        filter_ms = self._elapsed_ms(filter_started)
-
-        # 4. OFFSET 分页
-        page_ids = filtered_ids[offset:offset + page_size]
-        has_more = offset + page_size < len(filtered_ids)
-        next_cursor = _encode_page_cursor(page + 1) if has_more else None
-
-        if not page_ids:
-            return [], next_cursor, {'recall_ms': recall_ms, 'filter_ms': filter_ms, 'page_ms': 0.0}
-
-        page_started = perf_counter()
-        page_items = self._page_loader.load_page(session, user_id=user_id, video_ids=page_ids)
-        page_ms = self._elapsed_ms(page_started)
-        return page_items.items, next_cursor, {'recall_ms': recall_ms, 'filter_ms': filter_ms, 'page_ms': page_ms}
 
     def get_video(self, user_id: int, video_id: int) -> dict[str, Any] | None:
         with self._session_factory() as session:
