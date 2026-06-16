@@ -60,9 +60,8 @@ class TokenExpiredError(AuthenticationError):
 class AuthenticationMiddleware:
     """Cookie-based authentication for /api/* routes as a pure ASGI middleware."""
 
-    def __init__(self, app: ASGIApp, public_paths: list[str] | None = None):
+    def __init__(self, app: ASGIApp):
         self.app = app
-        self.public_paths = public_paths or list(PUBLIC_PATH_PREFIXES)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
