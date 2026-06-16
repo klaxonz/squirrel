@@ -1,15 +1,12 @@
 <template>
   <Dialog :open="modelValue" @update:open="emit('update:modelValue', $event)">
-    <DialogContent class="sm:max-w-[640px] !p-0">
+    <DialogContent class="sm:max-w-[480px] !p-0 gap-0">
       <div class="flex max-h-[82vh] flex-col overflow-hidden bg-background">
-        <header class="flex items-start justify-between gap-4 border-b border-border/30 px-5 py-4 sm:px-6">
-          <div class="min-w-0">
-            <DialogTitle class="text-base font-semibold text-foreground">筛选</DialogTitle>
-          </div>
-
+        <header class="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
+          <DialogTitle class="text-base font-semibold text-foreground">筛选</DialogTitle>
           <button
             type="button"
-            class="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            class="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             title="关闭"
             @click="close"
           >
@@ -17,49 +14,45 @@
           </button>
         </header>
 
-        <div class="overflow-y-auto px-5 py-3 sm:px-6">
-          <div class="filter-panel">
-            <section
-              v-for="section in filterSections"
-              :key="section.key"
-              class="filter-section"
-            >
-              <div class="filter-section__label">
-                <AppIcon :name="section.icon" class="size-3.5 text-muted-foreground/70" />
-                <span>{{ section.title }}</span>
-              </div>
+        <div class="overflow-y-auto px-5 pb-2 sm:px-6">
+          <section
+            v-for="(section, i) in filterSections"
+            :key="section.key"
+            class="filter-section"
+            :class="{ 'filter-section--first': i === 0 }"
+          >
+            <h3 class="filter-section__title">
+              <AppIcon :name="section.icon" class="size-3.5" />
+              <span>{{ section.title }}</span>
+            </h3>
 
-              <div class="filter-options" :aria-label="section.title">
-                <button
-                  v-for="opt in section.options"
-                  :key="opt.value"
-                  type="button"
-                  class="filter-option"
-                  :class="{ 'is-active': section.model.value === opt.value }"
-                  :aria-pressed="section.model.value === opt.value"
-                  @click="section.model.value = opt.value"
-                >
-                  <span class="truncate">{{ opt.label }}</span>
-                </button>
-              </div>
-            </section>
-          </div>
+            <div class="filter-section__options" :aria-label="section.title">
+              <button
+                v-for="opt in section.options"
+                :key="opt.value"
+                type="button"
+                class="filter-pill"
+                :class="{ 'is-active': section.model.value === opt.value }"
+                :aria-pressed="section.model.value === opt.value"
+                @click="section.model.value = opt.value"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+          </section>
         </div>
 
-        <footer class="flex flex-col gap-3 border-t border-border/30 bg-muted/20 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <footer class="flex items-center justify-between gap-3 border-t border-border/30 bg-muted/20 px-5 py-3 sm:px-6">
           <Button
             variant="ghost"
             size="sm"
-            class="self-start px-2 text-muted-foreground"
+            class="px-2 text-muted-foreground hover:text-foreground"
             :disabled="draftActiveCount === 0 && localSortBy === 'publish_date'"
             @click="resetAll"
           >
             重置
           </Button>
-          <div class="flex justify-end gap-2">
-            <Button variant="outline" size="sm" class="min-w-20" @click="close">取消</Button>
-            <Button size="sm" class="min-w-24" @click="confirm">应用</Button>
-          </div>
+          <Button size="sm" class="min-w-20" @click="confirm">应用</Button>
         </footer>
       </div>
     </DialogContent>
@@ -151,17 +144,15 @@ const filterSections = computed<FilterSection[]>(() => {
   return sections
 })
 
-const draftChips = computed(() => {
-  const chips: { key: FilterKey, label: string }[] = []
-  if (localSortBy.value !== 'publish_date') chips.push({ key: 'sortBy', label: `排序：${labelFor(sortOptions, localSortBy.value)}` })
-  if (localTimeRange.value !== 'all') chips.push({ key: 'timeRange', label: `时间：${labelFor(timeRangeOptions, localTimeRange.value)}` })
-  if (localDuration.value !== 'all') chips.push({ key: 'duration', label: `时长：${labelFor(durationOptions, localDuration.value)}` })
-  if (localContentType.value !== 'all' && !props.subscriptionId) chips.push({ key: 'contentType', label: `类型：${labelFor(contentTypeOptions, localContentType.value)}` })
-  if (localNsfw.value !== 'all' && settings.value.showNsfw) chips.push({ key: 'nsfw', label: `分级：${labelFor(nsfwOptions, localNsfw.value)}` })
-  return chips
+const draftActiveCount = computed(() => {
+  let c = 0
+  if (localSortBy.value !== 'publish_date') c++
+  if (localTimeRange.value !== 'all') c++
+  if (localDuration.value !== 'all') c++
+  if (localContentType.value !== 'all' && !props.subscriptionId) c++
+  if (localNsfw.value !== 'all' && settings.value.showNsfw) c++
+  return c
 })
-
-const draftActiveCount = computed(() => draftChips.value.length)
 
 watch(() => props.modelValue, (open) => {
   if (open) {
@@ -191,8 +182,6 @@ const resetAll = () => {
   localNsfw.value = 'all'
   localSortBy.value = 'publish_date'
 }
-
-const labelFor = (options: FilterOption[], value: string) => options.find((opt) => opt.value === value)?.label || value
 
 onMounted(async () => { await loadUserSettings() })
 
@@ -225,88 +214,60 @@ const sortOptions: FilterOption[] = [
 </script>
 
 <style scoped>
-.filter-panel {
-  display: flex;
-  flex-direction: column;
-}
-
 .filter-section {
   display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.25rem;
-  padding: 0.875rem 0;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 1rem 0;
+  border-top: 1px solid hsl(var(--border) / 0.4);
 }
 
-.filter-section + .filter-section {
-  border-top: 1px solid hsl(var(--border) / 0.28);
+.filter-section--first {
+  padding-top: 0.25rem;
+  border-top: 0;
 }
 
-.filter-section__label {
+.filter-section__title {
   display: inline-flex;
-  min-width: 6.5rem;
   align-items: center;
-  gap: 0.5rem;
-  color: hsl(var(--foreground));
-  font-size: 0.8125rem;
-  font-weight: 650;
-}
-
-.filter-options {
-  display: inline-flex;
-  min-width: 0;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 1.125rem;
-}
-
-.filter-option {
-  display: inline-flex;
-  min-width: 0;
-  height: 1.75rem;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0 0.125rem;
+  gap: 0.4rem;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 600;
-  transition: color var(--duration-fast, 150ms) var(--ease-default, ease);
+  letter-spacing: 0.02em;
 }
 
-.filter-option:hover {
-  color: hsl(var(--foreground));
+.filter-section__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.filter-option.is-active {
-  color: hsl(var(--foreground));
-  font-weight: 700;
-}
-
-.filter-option.is-active::after {
-  position: absolute;
-  right: 0;
-  bottom: -0.125rem;
-  left: 0;
-  height: 2px;
+.filter-pill {
+  display: inline-flex;
+  min-width: 0;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
   border-radius: 999px;
-  background: hsl(var(--primary));
-  content: '';
+  background: hsl(var(--muted) / 0.5);
+  padding: 0 0.9rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color var(--duration-fast, 150ms) var(--ease-default, ease),
+              color var(--duration-fast, 150ms) var(--ease-default, ease);
 }
 
-@media (max-width: 639px) {
-  .filter-section {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 0.625rem;
-  }
+.filter-pill:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
 
-  .filter-options {
-    justify-content: flex-start;
-  }
+.filter-pill.is-active {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
 }
 </style>
