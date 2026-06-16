@@ -5,21 +5,21 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 
-from application.runtime_setup import (
-    apply_site_config,
-    configure_cloudflare_bypass,
-    configure_cookie_resolvers,
-    prepare_youtube_oauth_env,
-    start_site_runtimes,
-)
 from infrastructure.config.settings import settings
+from infrastructure.config.site_config_manager import apply_site_config_overrides
 from infrastructure.config.startup_dependencies import (
     clear_optional_startup_issue,
     record_optional_startup_issue,
     reset_startup_dependency_issues,
 )
 from infrastructure.database.migrations import upgrade_database
-from infrastructure.site_runtimes.manager import shutdown_site_runtimes
+from infrastructure.site_catalog.cookies import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
+from infrastructure.site_catalog.runtime_http import (
+    set_cloudflare_bypass_client,
+    set_cookie_domain_resolver,
+    set_cookie_file_resolver,
+)
+from infrastructure.site_runtimes.manager import bootstrap_site_runtimes, shutdown_site_runtimes
 from shared_kernel.infrastructure.log import init_logging
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 1. Site config (hard dependency)
     _log_lifecycle_step("Startup", 1, STARTUP_TOTAL_STEPS, "Applying site configuration overrides")
     try:
-        apply_site_config()
+        apply_site_config_overrides()
     except Exception:
         logger.exception("Startup [1/%s] Failed to apply site configuration overrides", STARTUP_TOTAL_STEPS)
         raise
@@ -53,13 +53,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 2. Runtime HTTP: cloudflare bypass is optional (degrade), cookie resolver is required
     _log_lifecycle_step("Startup", 2, STARTUP_TOTAL_STEPS, "Configuring runtime HTTP helpers")
     try:
-        configure_cloudflare_bypass()
+        from infrastructure.site_catalog.cloudflare_bypass import get_default_client
+
+        set_cloudflare_bypass_client(get_default_client())
         clear_optional_startup_issue("cloudflare_bypass")
     except Exception as exc:
         record_optional_startup_issue("cloudflare_bypass", exc)
         logger.warning("Startup [2/%s] Cloudflare bypass disabled: %s", STARTUP_TOTAL_STEPS, exc)
     try:
-        configure_cookie_resolvers()
+        set_cookie_file_resolver(resolve_cookie_file_for_url)
+        set_cookie_domain_resolver(resolve_cookie_match_domain_for_url)
     except Exception:
         logger.exception("Startup [2/%s] Failed to configure cookie resolver", STARTUP_TOTAL_STEPS)
         raise
@@ -67,8 +70,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 3. Site runtimes (hard dependency) — YouTube OAuth env must be set before bootstrap
     _log_lifecycle_step("Startup", 3, STARTUP_TOTAL_STEPS, "Bootstrapping site runtime manager")
     try:
-        prepare_youtube_oauth_env()
-        start_site_runtimes()
+        from infrastructure.site_catalog.youtube_oauth import get_oauth_credentials_for_daemon
+
+        oauth_file = get_oauth_credentials_for_daemon()
+        if oauth_file:
+            import os
+
+            os.environ["YOUTUBE_OAUTH_STATE_FILE"] = oauth_file
+        bootstrap_site_runtimes()
     except Exception:
         logger.exception("Startup [3/%s] Failed to bootstrap site runtime manager", STARTUP_TOTAL_STEPS)
         raise
@@ -77,6 +86,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     _log_lifecycle_step("Startup", 4, STARTUP_TOTAL_STEPS, "Bootstrapping scheduled tasks")
     try:
         from infrastructure.scheduling.bootstrap import ensure_system_tasks
+
         ensure_system_tasks()
         clear_optional_startup_issue("scheduled_task_bootstrap")
     except Exception as exc:
@@ -89,6 +99,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         try:
             from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
             from infrastructure.search.meili import ensure_videos_index
+
             ensure_videos_index()
             get_meili_video_indexer()  # 预热单例，避免首个请求的初始化开销
         except Exception:
@@ -110,31 +121,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 def create_application() -> FastAPI:
-    """Create a FastAPI application instance with lifecycle management
-
-    Returns:
-        Configured FastAPI application instance
-
-    """
+    """Create a FastAPI application instance with lifecycle management."""
     from application.app import create_app
 
-    # Create application instance and inject lifecycle management
     app = create_app()
     app.router.lifespan_context = lifespan
-
     return app
 
 
 def main() -> None:
-    """Application main entry point
-
-    Execution flow:
-    1. Upgrade database
-    2. Initialize logging system
-    3. Create FastAPI application (with lifecycle management)
-    4. Start server
-    """
-    # Pre-initialization steps
+    """Application main entry point."""
     upgrade_database()
     init_logging()
 
@@ -162,5 +158,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

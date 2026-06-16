@@ -1,21 +1,23 @@
 import logging
+import os
 import signal
 import threading
 from contextlib import contextmanager
 
-from application.runtime_setup import (
-    apply_site_config,
-    configure_cloudflare_bypass,
-    configure_cookie_resolvers,
-    prepare_youtube_oauth_env,
-    start_site_runtimes,
-)
+from infrastructure.config.site_config_manager import apply_site_config_overrides
 from infrastructure.config.startup_dependencies import (
     clear_optional_startup_issue,
     record_optional_startup_issue,
     reset_startup_dependency_issues,
 )
 from infrastructure.database.migrations import upgrade_database
+from infrastructure.site_catalog.cookies import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
+from infrastructure.site_catalog.runtime_http import (
+    set_cloudflare_bypass_client,
+    set_cookie_domain_resolver,
+    set_cookie_file_resolver,
+)
+from infrastructure.site_runtimes.manager import bootstrap_site_runtimes, shutdown_site_runtimes
 from infrastructure.site_runtimes.reload_listener import start_reload_listener, stop_reload_listener
 from shared_kernel.infrastructure.log import init_logging
 
@@ -38,27 +40,34 @@ def bootstrap_runtime(component: str):
         raise
 
     try:
-        apply_site_config()
+        apply_site_config_overrides()
     except Exception:
         logger.exception("[%s] Failed to apply site config overrides", component)
         raise
 
     # Cloudflare bypass is optional; cookie resolver is required.
     try:
-        configure_cloudflare_bypass()
+        from infrastructure.site_catalog.cloudflare_bypass import get_default_client
+
+        set_cloudflare_bypass_client(get_default_client())
         clear_optional_startup_issue("cloudflare_bypass")
     except Exception as exc:
         record_optional_startup_issue("cloudflare_bypass", exc)
         logger.warning("[%s] Failed to configure Cloudflare bypass client: %s", component, exc)
     try:
-        configure_cookie_resolvers()
+        set_cookie_file_resolver(resolve_cookie_file_for_url)
+        set_cookie_domain_resolver(resolve_cookie_match_domain_for_url)
     except Exception:
         logger.exception("[%s] Failed to configure cookie resolver", component)
         raise
 
     try:
-        prepare_youtube_oauth_env()
-        start_site_runtimes()
+        from infrastructure.site_catalog.youtube_oauth import get_oauth_credentials_for_daemon
+
+        oauth_file = get_oauth_credentials_for_daemon()
+        if oauth_file:
+            os.environ["YOUTUBE_OAUTH_STATE_FILE"] = oauth_file
+        bootstrap_site_runtimes()
         try:
             import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
             drained_result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
@@ -93,15 +102,13 @@ def bootstrap_runtime(component: str):
         except Exception:
             logger.warning("[%s] Failed to stop reload listener", component, exc_info=True)
         try:
-            from infrastructure.site_runtimes.manager import shutdown_site_runtimes
             shutdown_site_runtimes()
         except Exception:
             logger.warning("[%s] Site runtime shutdown failed", component, exc_info=True)
 
 
 def create_shutdown_event(component: str) -> threading.Event:
-    """Register signal handlers and return an Event that flips when shutdown is requested.
-    """
+    """Register signal handlers and return an Event that flips when shutdown is requested."""
     event = threading.Event()
 
     def _handle(sig, _frame):
@@ -115,13 +122,9 @@ def create_shutdown_event(component: str) -> threading.Event:
 
 
 def wait_for_shutdown(event: threading.Event):
-    """Block until shutdown_event is set.
-    """
+    """Block until shutdown_event is set."""
     try:
         while not event.is_set():
             event.wait(timeout=1.0)
     except KeyboardInterrupt:
         event.set()
-
-
-
