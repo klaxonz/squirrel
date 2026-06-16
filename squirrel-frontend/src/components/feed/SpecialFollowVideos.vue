@@ -41,7 +41,7 @@
       <article
         v-for="item in items"
         :key="item.id"
-        class="group w-64 shrink-0 cursor-pointer snap-start"
+        class="group w-[18rem] shrink-0 cursor-pointer snap-start"
         @click="emit('openModal', item)"
       >
         <div class="relative aspect-video overflow-hidden rounded-sm bg-muted transition-all duration-300 group-hover:brightness-110">
@@ -108,7 +108,7 @@ const updateScrollState = () => {
 const scroll = (direction: 'left' | 'right') => {
   if (!scrollContainer.value) return
 
-  const scrollAmount = 272 * 2
+  const scrollAmount = 304 * 2
   scrollContainer.value.scrollTo({
     left: scrollContainer.value.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount),
     behavior: 'smooth',
@@ -119,7 +119,7 @@ const primarySubscription = (item: any) => {
   return Array.isArray(item?.subscriptions) ? item.subscriptions[0] : null
 }
 
-onMounted(async () => {
+const load = async () => {
   const { data, error } = await getVideoList({
     pageSize: 12,
     page_size: 12,
@@ -133,5 +133,9 @@ onMounted(async () => {
   items.value = (data?.data || []).slice(0, 12)
   await nextTick()
   updateScrollState()
-})
+}
+
+onMounted(load)
+
+defineExpose({ refresh: load })
 </script>

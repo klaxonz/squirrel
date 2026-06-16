@@ -33,6 +33,7 @@
   --app-empty-padding: 2rem;
   --app-empty-border-alpha: 0.5;
   --app-surface-radius: var(--radius-lg);
+  --app-card-radius: var(--radius-xl);
   --app-empty-copy-width: 22rem;
 
   --app-row-hover-bg: hsl(var(--foreground) / 0.03);

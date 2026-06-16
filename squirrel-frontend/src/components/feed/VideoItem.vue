@@ -7,9 +7,10 @@
   >
     <!-- Thumbnail Container -->
     <div :class="[
-      'relative overflow-hidden rounded-sm bg-muted transition-colors group-hover:brightness-110',
+      'relative overflow-hidden bg-muted transition-all duration-300 group-hover:brightness-110 group-hover:shadow-lg',
       layout === 'list' ? 'w-48 shrink-0 md:w-64 aspect-video' : 'aspect-video w-full'
-    ]">
+    ]"
+    :style="{ borderRadius: 'var(--app-card-radius)' }">
       <VideoThumbnail
         :src="thumbnailSrc"
         :alt="video.title"
@@ -52,11 +53,6 @@
       <!-- Bottom Shadow/Gradient for Overlay Visibility -->
       <div class="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-black/60 to-transparent opacity-100 pointer-events-none z-10" />
 
-      <!-- Hover Timeline (Visual only for now) -->
-      <div class="absolute bottom-0 left-0 right-0 h-1 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-        <div class="h-full bg-white/40 w-1/3 animate-[pulse_2s_ease-in-out_infinite]" />
-      </div>
-
       <!-- Progress Bar -->
       <div v-if="progressRatio > 0" class="absolute bottom-0 inset-x-0 h-1 group-hover:h-1.5 transition-all duration-300 z-20 bg-white/30">
         <div class="h-full bg-white transition-all duration-500 ease-out" :style="{ width: `${progressRatio * 100}%` }" />
@@ -77,7 +73,8 @@
         />
       </div>
 
-      <div class="flex-1 min-w-0 flex flex-col gap-1 justify-center">
+      <div class="flex-1 min-w-0 flex flex-col gap-1 justify-center"
+           :class="{ 'min-h-[2.6em]': layout === 'grid' }">
         <h3 :class="[
           'font-semibold leading-[1.3] text-foreground/90 group-hover:text-primary transition-colors tracking-tight',
           layout === 'list' ? 'text-[16px] line-clamp-2 md:line-clamp-3 mb-1' : 'text-[14px] line-clamp-2'
@@ -98,9 +95,9 @@
             <span class="hover:text-foreground transition-colors truncate" @click.stop="goToSubscription(primarySubscriptionId)">
               {{ displayNames }}
             </span>
-            <span v-if="video.site" class="shrink-0 px-1 py-0 rounded-[4px] bg-accent/50 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{{ video.site }}</span>
+            <span v-if="video.site" class="shrink-0 px-1 py-px rounded-[4px] bg-accent/50 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{{ video.site }}</span>
           </div>
-          <div class="flex items-center gap-1 text-[11px] text-muted-foreground/50 font-medium">
+          <div class="flex items-center gap-1 text-[11px] text-muted-foreground/70 font-medium">
             <span>{{ displayDateText }}</span>
             <span v-if="layout === 'list' && video.duration" class="ml-2 font-mono bg-muted px-1 rounded">{{ formatDuration(video.duration) }}</span>
           </div>
@@ -228,7 +225,4 @@ onMounted(() => document.addEventListener('closeAllContextMenus', () => showMenu
 </script>
 
 <style scoped>
-.group:hover {
-  /* Minimal zoom effect without card feeling */
-}
 </style>

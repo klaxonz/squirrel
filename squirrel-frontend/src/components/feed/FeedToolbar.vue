@@ -1,18 +1,23 @@
 <template>
   <section class="flex flex-col bg-transparent relative z-10 w-fit">
     <div class="flex items-center p-1 sm:p-1.5 gap-2 sm:gap-4">
-      <nav v-if="showTabs" class="flex items-center h-full space-x-1 overflow-x-auto scrollbar-hide shrink-0">
-        <button
-          v-for="tab in tabs"
-          :key="tab.value"
-          class="flex items-center text-[13px] font-bold whitespace-nowrap transition-colors outline-none focus-visible:ring-0 shrink-0"
-          @click="localActiveTab = tab.value"
-        >
-          <span class="relative inline-flex items-center px-4 py-2 rounded-full transition-all duration-300"
-                :class="localActiveTab === tab.value ? 'bg-foreground text-background shadow-md' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'">
-            {{ tab.label }}
-          </span>
-        </button>
+      <nav v-if="showTabs" class="relative shrink-0">
+        <div class="flex items-center h-full space-x-1 overflow-x-auto scrollbar-hide">
+          <button
+            v-for="tab in tabs"
+            :key="tab.value"
+            class="flex items-center text-[13px] font-bold whitespace-nowrap transition-colors outline-none focus-visible:ring-0 shrink-0"
+            @click="localActiveTab = tab.value"
+          >
+            <span class="relative inline-flex items-center px-4 py-2 rounded-full transition-all duration-300"
+                  :class="localActiveTab === tab.value ? 'bg-foreground text-background shadow-md' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'">
+              {{ tab.label }}
+            </span>
+          </button>
+        </div>
+        <!-- Edge fade hints for overflow -->
+        <div class="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-background to-transparent"></div>
+        <div class="pointer-events-none absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-background to-transparent"></div>
       </nav>
 
       <!-- Removed flex-1 spacer to keep tabs and filters grouped compactly -->

@@ -41,7 +41,7 @@
       <div
         v-for="item in historyItems"
         :key="item.id"
-        class="w-64 shrink-0 snap-start group cursor-pointer"
+        class="w-[18rem] shrink-0 snap-start group cursor-pointer"
         @click="$emit('openModal', item)"
       >
         <div class="relative aspect-video rounded-sm bg-muted overflow-hidden transition-all duration-300 group-hover:brightness-110">
@@ -102,8 +102,8 @@ const updateScrollState = () => {
 const scroll = (direction: 'left' | 'right') => {
   if (!scrollContainer.value) return
 
-  // Scroll by roughly 2 items worth of width (64 * 4px + 16px gap = 272px per item)
-  const scrollAmount = 272 * 2
+  // Scroll by roughly 2 items worth of width (288px card + 16px gap = 304px per item)
+  const scrollAmount = 304 * 2
   const targetScroll = scrollContainer.value.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount)
 
   scrollContainer.value.scrollTo({
@@ -117,7 +117,7 @@ const getProgress = (video: any) => {
   return d > 0 ? Math.min(1, Number(video.last_position || 0) / d) : 0
 }
 
-onMounted(async () => {
+const load = async () => {
   try {
     const { items } = await getWatchHistory(1, { pageSize: 15 })
     // Filter out items that are completed or barely started
@@ -132,5 +132,9 @@ onMounted(async () => {
   } catch (e) {
     Logger.error('Failed to load continue watching history:', e)
   }
-})
+}
+
+onMounted(load)
+
+defineExpose({ refresh: load })
 </script>

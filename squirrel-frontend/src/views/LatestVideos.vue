@@ -13,25 +13,26 @@
     <!-- Main Content Area -->
     <div class="app-page-content">
 
-      <!-- Cinematic Full-Bleed Spotlight Hero -->
-      <div v-if="showSpotlightHero" class="relative w-[calc(100%+3rem)] -mx-6 -mt-6 mb-6 border-b border-border/10 overflow-hidden group bg-black" @mouseenter="handleSpotlightMouseEnter" @mouseleave="handleSpotlightMouseLeave">
-        <div class="relative w-full h-[320px] lg:h-[380px]">
-          <!-- Carousel Items -->
-          <div 
-            v-for="(video, index) in spotlightVideos" 
-            :key="video.id"
-            class="absolute inset-0 cursor-pointer transition-opacity duration-1000 ease-in-out"
-            :class="index === activeSpotlightIndex ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'"
-            @click="handleOpenModal(video)"
+      <!-- Cinematic Spotlight Hero -->
+      <div v-if="showSpotlightHero" class="relative w-full mb-6 border border-border/10 overflow-hidden group bg-black"
+           :style="{ borderRadius: 'var(--app-card-radius)' }"
+           @mouseenter="handleSpotlightMouseEnter" @mouseleave="handleSpotlightMouseLeave">
+        <div class="relative w-full h-[clamp(220px,36vh,400px)]">
+          <!-- Active Carousel Item (single-frame render; others stay in registry cache) -->
+          <div
+            v-if="activeSpotlightVideo"
+            :key="activeSpotlightVideo.id"
+            class="absolute inset-0 cursor-pointer"
+            @click="handleOpenModal(activeSpotlightVideo)"
           >
             <!-- Full-Width Background Image Layers -->
             <div class="absolute inset-0 z-0 bg-black">
               <!-- Blurred Background for cinematic full-bleed effect -->
-              <VideoThumbnail :src="video?.thumbnail" :alt="video?.title" fit="cover" position="center" blur no-fade img-class="opacity-40 scale-125 transition-transform [transition-duration:10000ms] ease-out" />
+              <VideoThumbnail :src="activeSpotlightVideo?.thumbnail" :alt="activeSpotlightVideo?.title" fit="cover" position="center" blur no-fade img-class="opacity-40 scale-125 transition-transform [transition-duration:10000ms] ease-out" />
 
               <!-- Uncropped Foreground Image aligned to the right -->
               <div class="absolute inset-0 flex justify-end md:pr-12">
-                <VideoThumbnail :src="video?.thumbnail" :alt="video?.title" fit="contain" position="center" no-fade :img-class="`md:w-3/4 md:object-right opacity-95 transition-transform [transition-duration:10000ms] ease-out ${index === activeSpotlightIndex ? 'scale-[1.03]' : 'scale-100'}`" />
+                <VideoThumbnail :src="activeSpotlightVideo?.thumbnail" :alt="activeSpotlightVideo?.title" fit="contain" position="center" no-fade img-class="md:w-3/4 md:object-right opacity-95 transition-transform [transition-duration:10000ms] ease-out scale-[1.03]" />
               </div>
 
               <!-- Heavy gradient on left for text readability (placed over the image) -->
@@ -42,34 +43,35 @@
 
             <!-- Content Overlay -->
             <div class="relative z-10 w-full h-full flex items-end pb-12 px-8 md:px-12">
-              <div class="max-w-3xl flex flex-col gap-3 transition-all duration-1000 transform" :class="index === activeSpotlightIndex ? 'translate-y-0 opacity-100 delay-300' : 'translate-y-8 opacity-0'">
+              <div class="max-w-3xl flex flex-col gap-3">
                 <div class="flex items-center gap-3 text-sm text-white/80 font-medium">
                   <span class="flex items-center gap-1.5 text-primary tracking-widest uppercase text-xs font-bold drop-shadow">
                     <AppIcon name="star" class="w-4 h-4 fill-primary"/> SPOTLIGHT
                   </span>
                   <span class="flex items-center gap-1.5 drop-shadow">
-                    <AppIcon name="time" class="w-4 h-4"/> 
-                    {{ formatDate(video?.uploaded_at || video?.created_at) }}
+                    <AppIcon name="time" class="w-4 h-4"/>
+                    {{ formatDate(activeSpotlightVideo?.uploaded_at || activeSpotlightVideo?.created_at) }}
                   </span>
                 </div>
-                
+
                 <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold leading-tight text-white line-clamp-2 drop-shadow-md">
-                  {{ video?.title }}
+                  {{ activeSpotlightVideo?.title }}
                 </h2>
-                
+
                 <p class="text-white/70 text-sm md:text-base line-clamp-2 max-w-xl drop-shadow">
-                  {{ video?.description || 'No description available for this video.' }}
+                  {{ activeSpotlightVideo?.description || 'No description available for this video.' }}
                 </p>
 
                 <div class="flex items-center gap-5 mt-3">
-                  <button class="flex items-center gap-2 bg-white text-black hover:bg-white/90 px-6 py-2 rounded-sm text-sm font-bold transition-colors">
+                  <button class="flex items-center gap-2 bg-white text-black hover:bg-white/90 px-6 py-2 rounded-sm text-sm font-bold transition-colors"
+                          @click.stop="handleOpenModal(activeSpotlightVideo)">
                     <AppIcon name="play" class="w-4 h-4" />
                     立即播放
                   </button>
-                  
-                  <div class="flex items-center gap-2.5 text-white/80 hover:text-white transition-colors" @click.stop="goToChannelDetail(video?.subscriptions?.[0]?.id)">
-                    <SubscriptionAvatar :src="video?.subscriptions?.[0]?.avatar" :name="video?.subscriptions?.[0]?.name" size="sm" class="ring-1 ring-white/20" />
-                    <span class="text-xs font-medium drop-shadow">{{ video?.subscriptions?.[0]?.name || '未知频道' }}</span>
+
+                  <div class="flex items-center gap-2.5 text-white/80 hover:text-white transition-colors" @click.stop="goToChannelDetail(activeSpotlightVideo?.subscriptions?.[0]?.id)">
+                    <SubscriptionAvatar :src="activeSpotlightVideo?.subscriptions?.[0]?.avatar" :name="activeSpotlightVideo?.subscriptions?.[0]?.name" size="sm" class="ring-1 ring-white/20" />
+                    <span class="text-xs font-medium drop-shadow">{{ activeSpotlightVideo?.subscriptions?.[0]?.name || '未知频道' }}</span>
                   </div>
                 </div>
               </div>
@@ -100,6 +102,7 @@
       <div v-if="!subscriptionId && searchMode === 'local' && activeTab === 'all' && !searchQuery" class="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-2 mb-6 mt-2">
         <!-- Continue Watching Section -->
         <ContinueWatching
+          ref="continueWatchingRef"
           class="!mb-0"
           @openModal="handleOpenModal"
           @viewMore="goToContinueWatching"
@@ -107,6 +110,7 @@
 
         <!-- Special Follows Section -->
         <SpecialFollowVideos
+          ref="specialFollowRef"
           class="!mb-0"
           @openModal="handleOpenModal"
           @goToSubscription="goToChannelDetail"
@@ -114,20 +118,9 @@
         />
       </div>
 
-      <!-- Sentinel for Sticky Toolbar -->
-      <div ref="toolbarSentinel" class="h-px w-full invisible pointer-events-none -mt-6 absolute"></div>
-
-      <!-- Zero-height Sticky Wrapper to respect AppLayout's scroll container -->
-      <div v-if="searchMode === 'local' || subscriptionId" class="sticky top-6 z-30 h-0 w-full overflow-visible pointer-events-none">
-        <!-- Pure Dynamic Island (Only visible when scrolling) -->
-        <div 
-          class="mx-auto w-fit transition-all duration-500 ease-out bg-background/90 backdrop-blur-3xl shadow-2xl border border-border/15 rounded-full ring-1 ring-black/5 dark:ring-white/10 px-2 py-0.5"
-          :class="[
-            isToolbarSticky 
-              ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' 
-              : 'opacity-0 -translate-y-6 scale-95 pointer-events-none'
-          ]"
-        >
+      <!-- Persistent Sticky Toolbar (always visible, zero-flicker) -->
+      <div v-if="searchMode === 'local' || subscriptionId"
+           class="sticky top-0 z-20 -mx-6 px-6 py-2 bg-background/95 backdrop-blur border-b border-border/10">
         <FeedToolbar
           :active-tab="activeTab"
           :nsfw="nsfw"
@@ -147,7 +140,6 @@
           @update:special="setSpecialFilter"
           @refresh="refreshCurrentList"
         />
-      </div>
       </div>
 
       <!-- Main Feed Section Header -->
@@ -225,7 +217,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUIStore } from '@/stores/ui'
 import { useRouteTabSync } from '../composables/useRouteTabSync'
@@ -282,6 +274,9 @@ const isRefreshing = ref(false)
 const loadError = ref<any>(null)
 const videoChildRef = ref<any>(null)
 const remoteSearchRef = ref<any>(null)
+const continueWatchingRef = ref<any>(null)
+const specialFollowRef = ref<any>(null)
+let secondarySectionsRefreshedAt = 0
 const channelDataMode = ref<'local' | 'remote'>('local')
 const channelDetail = ref<any>(null)
 
@@ -312,11 +307,10 @@ const remoteChannelKey = computed(() => {
 const SPOTLIGHT_INTERVAL = 6000
 const spotlightVideos = ref<any[]>([])
 const activeSpotlightIndex = ref(0)
+const activeSpotlightVideo = computed(() => spotlightVideos.value[activeSpotlightIndex.value])
 const isSpotlightHovered = ref(false)
 let spotlightTimer: ReturnType<typeof setInterval> | null = null
 
-const toolbarSentinel = ref<HTMLElement | null>(null)
-const isToolbarSticky = ref(false)
 const showSpotlightHero = computed(() => !subscriptionId.value && searchMode.value === 'local' && activeTab.value === 'all' && !searchQuery.value && spotlightVideos.value.length > 0)
 
 const updateRemoteSite = (value: unknown) => {
@@ -521,23 +515,20 @@ watch(() => route.query.special, (value) => {
   special.value = !subscriptionId.value && value === 'yes' ? 'yes' : 'all'
 }, { immediate: true })
 
+onActivated(() => {
+  // LatestVideos is kept-alive at the app root; refresh secondary sections when
+  // returning to the home feed, throttled to avoid hammering the API on rapid nav.
+  const now = Date.now()
+  if (now - secondarySectionsRefreshedAt < 30_000) return
+  secondarySectionsRefreshedAt = now
+  continueWatchingRef.value?.refresh?.()
+  specialFollowRef.value?.refresh?.()
+})
+
 onMounted(() => {
   onSubscriptionRemoved(({ subscriptionId }) => {
     if (String(route.params.id || '') === String(subscriptionId)) router.replace({ name: 'AllVideos' })
   })
-
-  const scrollContainer = document.getElementById('app-main-scroll')
-  if (scrollContainer && toolbarSentinel.value) {
-    const observer = new IntersectionObserver(([entry]) => {
-      // The element is sticky when the sentinel scrolls past the sticky offset (24px = top-6)
-      isToolbarSticky.value = !entry.isIntersecting && entry.boundingClientRect.top < (entry.rootBounds?.top || 0) + 24
-    }, {
-      root: scrollContainer,
-      rootMargin: '-24px 0px 0px 0px',
-      threshold: 0
-    })
-    observer.observe(toolbarSentinel.value)
-  }
 
   fetchSites()
 })

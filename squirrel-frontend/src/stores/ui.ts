@@ -9,7 +9,13 @@ export const useUIStore = defineStore('ui', () => {
   const searchQuery = ref('')
   const searchTrigger = ref(0)
   const homeSearchMode = ref<'local' | 'remote'>('local')
-  const viewMode = ref<'grid' | 'list'>('grid')
+
+  const VIEW_MODE_KEY = 'ui.viewMode'
+  const readPersistedViewMode = (): 'grid' | 'list' => {
+    if (typeof localStorage === 'undefined') return 'grid'
+    return localStorage.getItem(VIEW_MODE_KEY) === 'list' ? 'list' : 'grid'
+  }
+  const viewMode = ref<'grid' | 'list'>(readPersistedViewMode())
 
   const toggleSidebar = () => {
     isSidebarOpen.value = !isSidebarOpen.value
@@ -28,6 +34,7 @@ export const useUIStore = defineStore('ui', () => {
 
   const setViewMode = (mode: 'grid' | 'list') => {
     viewMode.value = mode
+    if (typeof localStorage !== 'undefined') localStorage.setItem(VIEW_MODE_KEY, mode)
   }
 
   const setVideoWidescreen = (enabled: boolean) => {
