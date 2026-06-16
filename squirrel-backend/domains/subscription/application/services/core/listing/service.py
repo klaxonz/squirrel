@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from sqlalchemy import and_, false, func, literal, or_, select
+from sqlalchemy import and_, case, false, func, literal, or_, select
 
 import domains.user.application.services.config as user_config_service
 from domains.subscription.application.services.core.listing.enrichment import (
@@ -17,12 +17,11 @@ from domains.subscription.application.services.core.listing.site import (
 )
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import Subscription
-from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
 from domains.subscription.interfaces.dto.dto.subscription_dto import SubscriptionDto
 from domains.video.application.services.moderation.nsfw_policy import resolve_effective_nsfw_filter
+from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from infrastructure.database.session import get_session
-from shared_kernel.infrastructure.sql_parser import parse_dynamic_sql
-from sql.subscription_sql import get_subscription_sql
 
 logger = logging.getLogger(__name__)
 
@@ -125,15 +124,14 @@ class SubscriptionListService:
                 .offset((page - 1) * page_size)
             )
 
-            results = session.execute(statement).all()
-            subscription_ids = [int(row._mapping['id']) for row in results]
+            results = session.execute(statement).mappings().all()
+            subscription_ids = [int(row['id']) for row in results]
             extract_count_map = load_subscription_extract_counts(session, subscription_ids)
             unread_count_map = load_subscription_unread_counts(session, user_id, subscription_ids)
             recent_videos_map = load_recent_videos(session, subscription_ids)
 
             subscriptions = []
-            for row in results:
-                row_mapping = row._mapping
+            for row_mapping in results:
                 sub_id = int(row_mapping['id'])
                 total_extract = extract_count_map.get(sub_id, 0)
                 unread_count = unread_count_map.get(sub_id, 0)
@@ -143,17 +141,54 @@ class SubscriptionListService:
             return subscriptions, total_count
 
     def get_subscription_detail(self, subscription_id: int) -> SubscriptionDto | None:
-        from sqlalchemy.sql import text
         with self.session_factory() as session:
-            sql = get_subscription_sql()
-            params = {
-                'subscription_id': subscription_id,
-            }
-            parse_dynamic_sql(sql, params)
-            subscription = session.execute(text(sql), params).first()
-            if not subscription:
+            video_count_subq = (
+                select(func.count(SubscriptionVideo.video_id))
+                .where(SubscriptionVideo.subscription_id == Subscription.id)
+                .correlate(Subscription)
+                .scalar_subquery()
+            )
+            # 与裸 SQL 对齐：subscription 列 + total_videos 用 max(total_videos, video_count) 覆盖，
+            # 附加 sync_state 列 + 合成的 is_nsfw/is_special_followed（详情视图无 per-user 上下文）。
+            effective_total = case(
+                (func.coalesce(video_count_subq, 0) > Subscription.total_videos, func.coalesce(video_count_subq, 0)),
+                else_=Subscription.total_videos,
+            )
+            row = session.execute(
+                select(
+                    Subscription.id,
+                    Subscription.type,
+                    Subscription.name,
+                    Subscription.url,
+                    Subscription.avatar,
+                    Subscription.description,
+                    effective_total.label('total_videos'),
+                    Subscription.is_deleted,
+                    Subscription.extra_data,
+                    Subscription.created_at,
+                    Subscription.updated_at,
+                    literal(0).label('is_nsfw'),
+                    literal(0).label('is_special_followed'),
+                    func.coalesce(video_count_subq, 0).label('total_extract'),
+                    func.coalesce(SubscriptionSyncState.sync_status, SyncStatus.IDLE.value).label('sync_status'),
+                    SubscriptionSyncState.last_sync_at.label('last_sync_at'),
+                    SubscriptionSyncState.last_success_at.label('last_success_at'),
+                    SubscriptionSyncState.next_sync_at.label('next_sync_at'),
+                    SubscriptionSyncState.last_error.label('last_error'),
+                    func.coalesce(SubscriptionSyncState.pending_video_count, 0).label('pending_video_count'),
+                )
+                .outerjoin(
+                    SubscriptionSyncState,
+                    and_(
+                        SubscriptionSyncState.subscription_id == Subscription.id,
+                        SubscriptionSyncState.sync_mode == SyncMode.INCREMENTAL.value,
+                    ),
+                )
+                .where(Subscription.id == subscription_id)
+            ).mappings().first()
+            if not row:
                 return None
-            dto = SubscriptionDto.model_validate(subscription._mapping)
+            dto = SubscriptionDto.model_validate(row)
             dto.site = resolve_site_slug(dto.url)
             return dto
 
