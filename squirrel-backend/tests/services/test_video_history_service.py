@@ -142,7 +142,7 @@ def test_list_histories_returns_filtered_total_instead_of_current_page_size(engi
 
 
 def test_list_histories_applies_site_filter_before_pagination(engine, svc):
-    with patch('services.site_catalog.catalog.SiteCatalog.resolve_domains', return_value=['site-a.com']):
+    with patch('infrastructure.site_catalog.catalog.SiteCatalog.resolve_domains', return_value=['site-a.com']):
         _seed_history(engine, [
             {'video_id': 1, 'domain': 'site-a.com', 'end_time': datetime(2024, 6, 1)},
             {'video_id': 2, 'domain': 'site-b.com', 'end_time': datetime(2024, 6, 2)},
@@ -228,7 +228,8 @@ def test_list_histories_filters_by_video_title_query(engine, svc):
         {'video_id': 2, 'domain': 'example.com', 'title': 'Cat Video', 'end_time': datetime(2024, 6, 2)},
     ])
 
-    result = svc.list_histories(1, {'query': 'tutorial'}, 1, 20)
+    with patch('domains.video.application.services.history.query._recall_video_ids_for_history', return_value=[1]):
+        result = svc.list_histories(1, {'query': 'tutorial'}, 1, 20)
 
     assert result['total'] == 1
     assert result['items'][0]['id'] == 1
@@ -249,7 +250,7 @@ def test_delete_history_removes_only_target_history_for_current_user(engine, svc
 
 
 def test_list_histories_filters_by_subscription_name_query(engine, svc):
-    with patch('services.site_catalog.catalog.SiteCatalog.resolve_domains', return_value=['example.com']):
+    with patch('infrastructure.site_catalog.catalog.SiteCatalog.resolve_domains', return_value=['example.com']):
         _seed_history(engine, [
             {'video_id': 1, 'domain': 'example.com', 'end_time': datetime(2024, 6, 1)},
             {'video_id': 2, 'domain': 'example.com', 'end_time': datetime(2024, 6, 2)},
@@ -265,7 +266,8 @@ def test_list_histories_filters_by_subscription_name_query(engine, svc):
             ])
             session.commit()
 
-        result = svc.list_histories(1, {'query': 'tech'}, 1, 20)
+        with patch('domains.video.application.services.history.query._recall_video_ids_for_history', return_value=[1]):
+            result = svc.list_histories(1, {'query': 'tech'}, 1, 20)
 
     assert result['total'] == 1, f'expected 1 but got {result}'
     assert result['items'][0]['id'] == 1
@@ -277,7 +279,8 @@ def test_list_histories_supports_field_search_tokens(engine, svc):
         {'video_id': 2, 'domain': 'example.com', 'title': 'Rust 101', 'end_time': datetime(2024, 6, 2)},
     ])
 
-    result = svc.list_histories(1, {'query': 'title:python'}, 1, 20)
+    with patch('domains.video.application.services.history.query._recall_video_ids_for_history', return_value=[1]):
+        result = svc.list_histories(1, {'query': 'title:python'}, 1, 20)
 
     assert result['total'] == 1
     assert result['items'][0]['id'] == 1
