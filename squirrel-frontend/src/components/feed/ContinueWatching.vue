@@ -100,12 +100,10 @@ const getProgress = (video: any) => {
 const load = async () => {
   loading.value = true
   try {
-    const { items } = await getWatchHistory(1, { pageSize: 15 })
-    // Filter out items that are completed or barely started
-    historyItems.value = items.filter((item: any) => {
-      const progress = getProgress(item)
-      return progress > 0.01 && progress < 0.95
-    }).slice(0, 8) // Limit to 8 items
+    const { items } = await getWatchHistory(1, { pageSize: 30 })
+    // Keep anything the user has actually started watching (progress > 0);
+    // drop only items that were never played.
+    historyItems.value = items.filter((item: any) => getProgress(item) > 0).slice(0, 12)
 
     // Check scroll state after items are rendered
     await nextTick()
