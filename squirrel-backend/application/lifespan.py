@@ -68,27 +68,6 @@ def bootstrap_runtime(component: str):
         if oauth_file:
             os.environ["YOUTUBE_OAUTH_STATE_FILE"] = oauth_file
         bootstrap_site_runtimes()
-        try:
-            import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
-            drained_result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
-            queued_result = subscription_sync_state_service.recover_stale_queued_sync_states()
-            running_result = subscription_sync_state_service.recover_stale_running_sync_states()
-            if (
-                drained_result.get("completed")
-                or drained_result.get("failed")
-                or queued_result.get("recovered")
-                or running_result.get("recovered")
-            ):
-                logger.info(
-                    "[%s] Recovered sync states: drained_completed=%s drained_failed=%s queued=%s running=%s",
-                    component,
-                    drained_result.get("completed", 0),
-                    drained_result.get("failed", 0),
-                    queued_result.get("recovered", 0),
-                    running_result.get("recovered", 0),
-                )
-        except Exception:
-            logger.warning("[%s] Failed to recover stale sync states", component, exc_info=True)
         start_reload_listener(component)
     except Exception:
         logger.exception("[%s] Runtime bootstrap failed", component)

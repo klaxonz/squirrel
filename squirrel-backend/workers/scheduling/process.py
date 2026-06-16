@@ -1,6 +1,7 @@
 import logging
 import time
 
+import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 from application.lifespan import bootstrap_runtime, create_shutdown_event
 from infrastructure.scheduling.lifecycle import scheduler_start, scheduler_stop
 from shared_kernel.system.config import SystemConfigService
@@ -14,6 +15,17 @@ def main():
     shutdown_event = create_shutdown_event('scheduler')
 
     with bootstrap_runtime('scheduler'):
+        # 清理上次 crash/interrupt 留下的脏 sync 状态（drained terminal / stale queued / expired running）。
+        # 只在 scheduler 进程启动时做——它才是推进 subscription sync 的进程。
+        try:
+            recovered = subscription_sync_state_service.recover_stale_sync_states_on_startup()
+            if any(recovered.values()):
+                logger.info(
+                    "[scheduler] Recovered stale sync states on startup: %s", recovered,
+                )
+        except Exception:
+            logger.warning("[scheduler] Failed to recover stale sync states", exc_info=True)
+
         is_running = False
 
         while not shutdown_event.is_set():

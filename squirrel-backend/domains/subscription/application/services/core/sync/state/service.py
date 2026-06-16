@@ -30,6 +30,7 @@ from domains.subscription.application.services.core.sync.state._recovery import 
     recover_stale_queued_sync_states,
     recover_stale_running_sync_states,
     recover_stale_sync_state,
+    recover_stale_sync_states_on_startup,
 )
 from domains.subscription.application.services.core.sync.state._utils import build_queue_token
 
@@ -60,4 +61,5 @@ __all__ = [
     'recover_stale_queued_sync_states',
     'recover_stale_running_sync_states',
     'recover_stale_sync_state',
+    'recover_stale_sync_states_on_startup',
 ]

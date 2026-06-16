@@ -152,6 +152,24 @@ def recover_stale_running_sync_states(timeout: timedelta = RUNNING_TIMEOUT) -> d
     }
 
 
+def recover_stale_sync_states_on_startup() -> dict[str, int]:
+    """Recover all stale sync-state rows left by a crashed/interrupted process.
+
+    Called once at scheduler-worker startup to reconcile drained terminal states,
+    revive queued states whose message never arrived, and time out runs whose lease
+    expired. Returns a flat summary dict; callers log only when something was recovered.
+    """
+    drained = reconcile_terminal_drained_sync_states()
+    queued = recover_stale_queued_sync_states()
+    running = recover_stale_running_sync_states()
+    return {
+        'drained_completed': int(drained.get('completed', 0)),
+        'drained_failed': int(drained.get('failed', 0)),
+        'queued_recovered': int(queued.get('recovered', 0)),
+        'running_recovered': int(running.get('recovered', 0)),
+    }
+
+
 def _scan_pending_video_counts() -> dict[int, int]:
     return crawl_task_service.count_pending_video_tasks_by_sync_state()
 
