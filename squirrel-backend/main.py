@@ -7,8 +7,10 @@ from fastapi import FastAPI
 
 from application.runtime_setup import (
     apply_site_config,
-    bootstrap_site_runtimes_with_oauth,
-    configure_runtime_http,
+    configure_cloudflare_bypass,
+    configure_cookie_resolvers,
+    prepare_youtube_oauth_env,
+    start_site_runtimes,
 )
 from infrastructure.config.settings import settings
 from infrastructure.config.startup_dependencies import (
@@ -36,74 +38,74 @@ def _log_lifecycle_step(phase: str, step: int, total: int, message: str) -> None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """FastAPI application lifecycle management.
-
-    Executes in order on startup:
-    1. Start the plugin runtime manager
-
-    Gracefully stops all services on shutdown
-    """
+    """FastAPI application lifecycle: bootstrap runtime, serve, then shut down."""
     _log_lifecycle_event("Startup", "begin")
     reset_startup_dependency_issues()
 
+    # 1. Site config (hard dependency)
     _log_lifecycle_step("Startup", 1, STARTUP_TOTAL_STEPS, "Applying site configuration overrides")
-    apply_site_config()
-    _log_lifecycle_step("Startup", 1, STARTUP_TOTAL_STEPS, "Site configuration overrides applied")
+    try:
+        apply_site_config()
+    except Exception:
+        logger.exception("Startup [1/%s] Failed to apply site configuration overrides", STARTUP_TOTAL_STEPS)
+        raise
 
+    # 2. Runtime HTTP: cloudflare bypass is optional (degrade), cookie resolver is required
     _log_lifecycle_step("Startup", 2, STARTUP_TOTAL_STEPS, "Configuring runtime HTTP helpers")
-    configure_runtime_http()
-    _log_lifecycle_step("Startup", 2, STARTUP_TOTAL_STEPS, "Runtime HTTP helpers ready")
+    try:
+        configure_cloudflare_bypass()
+        clear_optional_startup_issue("cloudflare_bypass")
+    except Exception as exc:
+        record_optional_startup_issue("cloudflare_bypass", exc)
+        logger.warning("Startup [2/%s] Cloudflare bypass disabled: %s", STARTUP_TOTAL_STEPS, exc)
+    try:
+        configure_cookie_resolvers()
+    except Exception:
+        logger.exception("Startup [2/%s] Failed to configure cookie resolver", STARTUP_TOTAL_STEPS)
+        raise
 
+    # 3. Site runtimes (hard dependency) — YouTube OAuth env must be set before bootstrap
     _log_lifecycle_step("Startup", 3, STARTUP_TOTAL_STEPS, "Bootstrapping site runtime manager")
-    bootstrap_site_runtimes_with_oauth()
-    _log_lifecycle_step("Startup", 3, STARTUP_TOTAL_STEPS, "Site runtime manager ready")
+    try:
+        prepare_youtube_oauth_env()
+        start_site_runtimes()
+    except Exception:
+        logger.exception("Startup [3/%s] Failed to bootstrap site runtime manager", STARTUP_TOTAL_STEPS)
+        raise
 
+    # 4. Scheduled tasks (degraded-tolerant)
     _log_lifecycle_step("Startup", 4, STARTUP_TOTAL_STEPS, "Bootstrapping scheduled tasks")
     try:
         from infrastructure.scheduling.bootstrap import ensure_system_tasks
         ensure_system_tasks()
         clear_optional_startup_issue("scheduled_task_bootstrap")
-        _log_lifecycle_step("Startup", 4, STARTUP_TOTAL_STEPS, "Scheduled tasks ready")
-    except Exception as exc:  # startup/shutdown boundary -- prevent crash during lifecycle
+    except Exception as exc:
         record_optional_startup_issue("scheduled_task_bootstrap", exc)
-        logger.warning(
-            "Startup [5/%s] Scheduled task bootstrap degraded: %s",
-            STARTUP_TOTAL_STEPS,
-            exc,
-            exc_info=True,
-        )
+        logger.warning("Startup [4/%s] Scheduled task bootstrap degraded: %s", STARTUP_TOTAL_STEPS, exc, exc_info=True)
 
+    # 5. Meilisearch index (hard dependency when configured; skipped if MEILISEARCH_URL unset)
     _log_lifecycle_step("Startup", 5, STARTUP_TOTAL_STEPS, "Ensuring Meilisearch index")
     if settings.MEILISEARCH_URL:
-        # Meili 是搜索功能的强依赖；索引未就绪会导致 domain 过滤报错和召回异常，
-        # 故失败直接终止启动。未配置 MEILISEARCH_URL 时跳过（搜索功能不可用，但浏览/详情正常）。
         try:
+            from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
             from infrastructure.search.meili import ensure_videos_index
             ensure_videos_index()
-            # 预热 MeiliVideoIndexer 单例（建立 client/index 对象），避免首个请求的初始化开销
-            from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
-            get_meili_video_indexer()
-            _log_lifecycle_step("Startup", 5, STARTUP_TOTAL_STEPS, "Meilisearch index ready")
-        except Exception:  # startup/shutdown boundary -- fail-fast on missing Meilisearch
+            get_meili_video_indexer()  # 预热单例，避免首个请求的初始化开销
+        except Exception:
             logger.exception("Startup [5/%s] Failed to ensure Meilisearch index", STARTUP_TOTAL_STEPS)
             raise
     else:
         logger.warning("Startup [5/%s] MEILISEARCH_URL not configured -- search disabled", STARTUP_TOTAL_STEPS)
-        _log_lifecycle_step("Startup", 5, STARTUP_TOTAL_STEPS, "Meilisearch skipped (MEILISEARCH_URL not set)")
 
     _log_lifecycle_event("Startup", "complete")
 
     yield
 
     _log_lifecycle_event("Shutdown", "begin")
-
-    _log_lifecycle_step("Shutdown", 1, SHUTDOWN_TOTAL_STEPS, "Stopping site runtime manager")
     try:
         shutdown_site_runtimes()
-        _log_lifecycle_step("Shutdown", 1, SHUTDOWN_TOTAL_STEPS, "Site runtime manager stopped")
     except Exception as exc:  # cleanup during shutdown -- must not propagate
         logger.warning("Shutdown [1/%s] Error stopping site runtime manager (ignored): %s", SHUTDOWN_TOTAL_STEPS, exc)
-
     _log_lifecycle_event("Shutdown", "complete")
 
 

@@ -5,10 +5,16 @@ from contextlib import contextmanager
 
 from application.runtime_setup import (
     apply_site_config,
-    bootstrap_site_runtimes_with_oauth,
-    configure_runtime_http,
+    configure_cloudflare_bypass,
+    configure_cookie_resolvers,
+    prepare_youtube_oauth_env,
+    start_site_runtimes,
 )
-from infrastructure.config.startup_dependencies import reset_startup_dependency_issues
+from infrastructure.config.startup_dependencies import (
+    clear_optional_startup_issue,
+    record_optional_startup_issue,
+    reset_startup_dependency_issues,
+)
 from infrastructure.database.migrations import upgrade_database
 from infrastructure.site_runtimes.reload_listener import start_reload_listener, stop_reload_listener
 from shared_kernel.infrastructure.log import init_logging
@@ -27,15 +33,32 @@ def bootstrap_runtime(component: str):
 
     try:
         upgrade_database()
-    except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
+    except Exception:
         logger.exception("[%s] Database upgrade failed", component)
         raise
 
-    apply_site_config(component)
-    configure_runtime_http(component)
+    try:
+        apply_site_config()
+    except Exception:
+        logger.exception("[%s] Failed to apply site config overrides", component)
+        raise
+
+    # Cloudflare bypass is optional; cookie resolver is required.
+    try:
+        configure_cloudflare_bypass()
+        clear_optional_startup_issue("cloudflare_bypass")
+    except Exception as exc:
+        record_optional_startup_issue("cloudflare_bypass", exc)
+        logger.warning("[%s] Failed to configure Cloudflare bypass client: %s", component, exc)
+    try:
+        configure_cookie_resolvers()
+    except Exception:
+        logger.exception("[%s] Failed to configure cookie resolver", component)
+        raise
 
     try:
-        bootstrap_site_runtimes_with_oauth(component)
+        prepare_youtube_oauth_env()
+        start_site_runtimes()
         try:
             import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
             drained_result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
@@ -55,10 +78,10 @@ def bootstrap_runtime(component: str):
                     queued_result.get("recovered", 0),
                     running_result.get("recovered", 0),
                 )
-        except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
+        except Exception:
             logger.warning("[%s] Failed to recover stale sync states", component, exc_info=True)
         start_reload_listener(component)
-    except Exception:  # startup/shutdown boundary -- prevent crash during lifecycle
+    except Exception:
         logger.exception("[%s] Runtime bootstrap failed", component)
         raise
 
@@ -67,12 +90,12 @@ def bootstrap_runtime(component: str):
     finally:
         try:
             stop_reload_listener(component)
-        except Exception:  # cleanup during shutdown -- must not propagate
+        except Exception:
             logger.warning("[%s] Failed to stop reload listener", component, exc_info=True)
         try:
             from infrastructure.site_runtimes.manager import shutdown_site_runtimes
             shutdown_site_runtimes()
-        except Exception:  # cleanup during shutdown -- must not propagate
+        except Exception:
             logger.warning("[%s] Site runtime shutdown failed", component, exc_info=True)
 
 
