@@ -43,37 +43,54 @@ from shared_kernel.system.routes.system_config import router as system_config_ro
 
 logger = logging.getLogger(__name__)
 
+# HTTP 状态码 → 业务错误码映射；未列出的状态码归 UNKNOWN_ERROR。
+_STATUS_CODE_TO_ERROR_CODE: dict[int, int] = {
+    status.HTTP_400_BAD_REQUEST: ErrorCode.PARAM_ERROR,
+    status.HTTP_401_UNAUTHORIZED: ErrorCode.UNAUTHORIZED,
+    status.HTTP_403_FORBIDDEN: ErrorCode.FORBIDDEN,
+    status.HTTP_404_NOT_FOUND: ErrorCode.NOT_FOUND,
+    status.HTTP_500_INTERNAL_SERVER_ERROR: ErrorCode.SERVER_ERROR,
+}
+
+
+async def authentication_error_handler(request: Request, exc: AuthenticationError) -> JSONResponse:
+    logger.error("AuthenticationError: %s", exc.detail, exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content={"code": ErrorCode.UNAUTHORIZED, "msg": exc.detail},
+    )
+
+
+async def http_exception_handler(request: Request, exc: StarletteHTTPException | FastAPIHTTPException) -> JSONResponse:
+    logger.error("HTTPException: %s", exc.detail, exc_info=True)
+    code = _STATUS_CODE_TO_ERROR_CODE.get(exc.status_code, ErrorCode.UNKNOWN_ERROR)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"code": code, "msg": exc.detail},
+    )
+
+
+async def default_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.error("DefaultException: %s", exc, exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"code": ErrorCode.SERVER_ERROR, "msg": "服务器内部错误"},
+    )
+
 
 def create_app(lifespan=None) -> FastAPI:
     app = FastAPI(exception_handlers=None, lifespan=lifespan)
-    async def authentication_error_handler(request: Request, exc: AuthenticationError):
-        logger.error("AuthenticationError: %s", exc.detail, exc_info=True)
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"code": ErrorCode.UNAUTHORIZED, "msg": exc.detail},
-        )
+    _register_middleware(app)
+    _register_routers(app)
+    _mount_static_assets(app)
+    return app
 
-    async def http_exception_handler(request: Request, exc: StarletteHTTPException | FastAPIHTTPException):
-        logger.error("HTTPException: %s", exc.detail, exc_info=True)
-        code = exc.status_code if exc.status_code in {
-            ErrorCode.PARAM_ERROR, ErrorCode.UNAUTHORIZED,
-            ErrorCode.FORBIDDEN, ErrorCode.NOT_FOUND,
-            ErrorCode.SERVER_ERROR,
-        } else ErrorCode.UNKNOWN_ERROR
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={"code": code, "msg": exc.detail},
-        )
 
-    async def default_exception_handler(request: Request, exc: Exception):
-        logger.error("DefaultException: %s", exc, exc_info=True)
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"code": ErrorCode.SERVER_ERROR, "msg": "服务器内部错误"},
-        )
-
+def _register_middleware(app: FastAPI) -> None:
+    """Register middleware. Starlette executes them in reverse-add order (last added = outermost):
+    request flow is CORS -> RequestContext -> AccessLog -> Exception -> Authentication.
+    """
     app.add_middleware(AuthenticationMiddleware)
-
     app.add_middleware(
         ExceptionMiddleware,
         handlers={
@@ -85,11 +102,8 @@ def create_app(lifespan=None) -> FastAPI:
             TokenExpiredError: authentication_error_handler,
         },
     )
-
     app.add_middleware(AccessLogMiddleware)
-
     app.add_middleware(RequestContextMiddleware)
-
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_allow_origins,
@@ -99,6 +113,8 @@ def create_app(lifespan=None) -> FastAPI:
         expose_headers=["X-Trace-Id"],
     )
 
+
+def _register_routers(app: FastAPI) -> None:
     app.include_router(health_router)
     app.include_router(video_router)
     app.include_router(video_clip_marker_router)
@@ -118,17 +134,13 @@ def create_app(lifespan=None) -> FastAPI:
     app.include_router(rss_router)
     app.include_router(music_router)
 
+
+def _mount_static_assets(app: FastAPI) -> None:
     _mount_thumbnails(app)
     _mount_clip_marker_previews(app)
-
     if not settings.is_dev:
         _mount_static_files(app)
         _register_spa_route(app)
-
-    return app
-
-
-app = create_app(lifespan=lifespan)
 
 
 def _mount_thumbnails(app: FastAPI) -> None:
@@ -174,3 +186,6 @@ def _register_spa_route(app: FastAPI) -> None:
             status_code=404,
             content={"code": ErrorCode.NOT_FOUND, "msg": "Frontend static files not found"},
         )
+
+
+app = create_app(lifespan=lifespan)
