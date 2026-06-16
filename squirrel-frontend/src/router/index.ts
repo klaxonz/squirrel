@@ -5,6 +5,7 @@ import { useServerConfig } from '../composables/useServerConfig'
 import { Logger } from '@/utils/logger'
 
 const HomeView = () => import('../views/HomeView.vue')
+const ChannelDetailView = () => import('../views/ChannelDetailView.vue')
 const Subscribed = () => import('../views/Subscribed.vue')
 const RssSources = () => import('../views/RssSources.vue')
 const Settings = () => import('../views/Settings.vue')
@@ -178,12 +179,12 @@ const routes = [
   {
     path: '/subscription/:id',
     name: 'SubscriptionDetail',
-    component: HomeView,
+    component: ChannelDetailView,
     meta: createSearchMeta('频道', {
       navKey: 'subscribed',
       sectionLabel: '订阅',
       keepAlive: true,
-      keepAliveComponent: 'HomeView',
+      keepAliveComponent: 'ChannelDetailView',
       contextParentLabel: '频道',
     }),
     children: [

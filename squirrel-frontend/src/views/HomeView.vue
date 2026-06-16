@@ -1,15 +1,5 @@
 <template>
-  <AppPageShell class="latest-videos-page" variant="compact" :fill="false">
-    <!-- Channel Header -->
-    <ChannelHeader
-      v-if="subscriptionId"
-      :subscription-id="subscriptionId"
-      :mode="channelDataMode"
-      @update:mode="handleChannelModeChange"
-      @loaded="channelDetail = $event"
-      @synced="handleChannelSynced"
-    />
-
+  <AppPageShell class="home-view-page" variant="compact" :fill="false">
     <!-- Main Content Area -->
     <div class="app-page-content">
 
@@ -81,16 +71,16 @@
 
         <!-- Carousel Indicators -->
         <div v-if="spotlightVideos.length > 1" class="absolute bottom-5 left-8 md:left-12 flex items-center gap-2 z-20">
-          <button 
-            v-for="(_, index) in spotlightVideos" 
+          <button
+            v-for="(_, index) in spotlightVideos"
             :key="index"
             class="h-1.5 rounded-full transition-all duration-300 overflow-hidden relative"
             :class="index === activeSpotlightIndex ? 'w-10 bg-white/30' : 'w-2 bg-white/40 hover:bg-white/60'"
             @click.stop="setSpotlightIndex(index)"
           >
             <!-- Progress bar effect for active item -->
-            <div 
-              v-if="index === activeSpotlightIndex" 
+            <div
+              v-if="index === activeSpotlightIndex"
               class="absolute inset-y-0 left-0 bg-white"
               :style="{ animation: `spotlight-progress ${SPOTLIGHT_INTERVAL}ms linear forwards`, animationPlayState: isSpotlightHovered ? 'paused' : 'running' }"
             ></div>
@@ -99,7 +89,7 @@
       </div>
 
       <!-- Secondary Feed Sections (Grid layout on wide screens for better space utilization) -->
-      <div v-if="!subscriptionId && searchMode === 'local' && activeTab === 'all' && !searchQuery" class="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-2 mb-6 mt-2">
+      <div v-if="activeTab === 'all' && !searchQuery" class="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-2 mb-6 mt-2">
         <!-- Continue Watching Section -->
         <ContinueWatching
           ref="continueWatchingRef"
@@ -119,20 +109,18 @@
       </div>
 
       <!-- Persistent Sticky Toolbar (always visible, zero-flicker) -->
-      <div v-if="searchMode === 'local' || subscriptionId"
-           class="sticky top-0 z-20 -mx-6 px-6 py-2 bg-background/95 backdrop-blur border-b border-border/10">
+      <div class="sticky top-0 z-20 -mx-6 px-6 py-2 bg-background/95 backdrop-blur border-b border-border/10">
         <FeedToolbar
           :active-tab="activeTab"
           :nsfw="nsfw"
           :sort-by="sortBy"
           :site="site"
           :special="special"
-          :subscription-id="subscriptionId"
           :tabs="tabs"
           :is-refreshing="isRefreshing"
-          :show-tabs="searchMode === 'local'"
-          :show-sort="searchMode === 'local'"
-          :show-filter="searchMode === 'local'"
+          :show-tabs="true"
+          :show-sort="true"
+          :show-filter="true"
           @update:activeTab="activeTab = $event"
           @update:nsfw="nsfw = $event"
           @update:sortBy="sortBy = $event"
@@ -143,11 +131,30 @@
       </div>
 
       <!-- Main Feed Section Header -->
-      <div v-if="searchMode === 'local' && !searchQuery" class="px-6 flex items-center justify-between mb-2">
+      <div v-if="!searchQuery" class="px-6 flex items-center justify-between mb-2">
         <h2 class="text-xl font-bold tracking-tight text-foreground/90 flex items-center gap-2">
           <AppIcon name="list" class="w-5 h-5 text-primary" />
           最新动态
         </h2>
+      </div>
+
+      <!-- Remote Search Section Header -->
+      <div v-else-if="searchMode === 'remote'" class="px-6 flex items-center justify-between mb-2 mt-4">
+        <h2 class="text-[16px] font-bold tracking-tight text-foreground/90 flex items-center gap-2">
+          <AppIcon name="siteFallback" class="w-5 h-5 text-primary opacity-80" />
+          远端搜索结果
+        </h2>
+
+        <!-- Remote Site Selector -->
+        <Select :model-value="remoteSite || 'all'" @update:model-value="updateRemoteSite">
+          <SelectTrigger class="h-8 w-auto min-w-[120px] bg-accent/40 border-0 text-[12px] font-bold rounded-full transition-colors hover:bg-accent/60">
+            <SelectValue placeholder="全部站点" />
+          </SelectTrigger>
+          <SelectContent class="border-border/10 bg-background/70 backdrop-blur-2xl shadow-2xl rounded-md min-w-[140px]">
+            <SelectItem value="all" class="text-xs">全部站点</SelectItem>
+            <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">{{ opt.label }}</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div v-if="loadError" class="px-6 pt-6">
@@ -157,47 +164,18 @@
         </div>
       </div>
 
-      <template v-if="searchMode === 'remote'">
-        <div v-if="searchQuery" class="px-6 flex items-center justify-between mb-2 mt-4">
-          <h2 class="text-[16px] font-bold tracking-tight text-foreground/90 flex items-center gap-2">
-            <AppIcon name="siteFallback" class="w-5 h-5 text-primary opacity-80" />
-            远端搜索结果
-          </h2>
-          
-          <!-- Remote Site Selector -->
-          <Select :model-value="site || 'all'" @update:model-value="updateRemoteSite">
-            <SelectTrigger class="h-8 w-auto min-w-[120px] bg-accent/40 border-0 text-[12px] font-bold rounded-full transition-colors hover:bg-accent/60">
-              <SelectValue placeholder="全部站点" />
-            </SelectTrigger>
-            <SelectContent class="border-border/10 bg-background/70 backdrop-blur-2xl shadow-2xl rounded-md min-w-[140px]">
-              <SelectItem value="all" class="text-xs">全部站点</SelectItem>
-              <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">{{ opt.label }}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <!-- Remote search results (occupies main content area only; Hero/sections above stay) -->
+      <keep-alive v-if="searchMode === 'remote' && searchQuery">
+        <RemoteSearchResults
+          ref="remoteSearchRef"
+          :query="searchQuery"
+          :site="remoteSite"
+          @error="loadError = $event"
+          @loading-change="isRefreshing = !!$event"
+        />
+      </keep-alive>
 
-        <keep-alive>
-          <RemoteSearchResults
-            ref="remoteSearchRef"
-            :query="searchQuery"
-            :site="site"
-            @error="loadError = $event"
-            @loading-change="isRefreshing = !!$event"
-          />
-        </keep-alive>
-      </template>
-
-      <RemoteChannelVideoGrid
-        v-else-if="subscriptionId && channelDataMode === 'remote'"
-        class="p-6"
-        :items="remoteItems"
-        :loading="remoteLoading"
-        :all-loaded="remoteAllLoaded"
-        :error="remoteError"
-        @open="openRemoteResult"
-        @load-more="loadMoreRemote"
-      />
-
+      <!-- Local feed -->
       <router-view v-else v-slot="{ Component }">
         <keep-alive :max="10">
           <component
@@ -224,56 +202,28 @@ import { useRouteTabSync } from '../composables/useRouteTabSync'
 import { useFeedFilters } from '../composables/useFeedFilters'
 import { useRefreshTriggers } from '../composables/useRefreshTriggers'
 import FeedToolbar from '@/components/feed/FeedToolbar.vue'
-import ChannelHeader from '@/components/feed/ChannelHeader.vue'
-import RemoteChannelVideoGrid from '@/components/feed/RemoteChannelVideoGrid.vue'
 import RemoteSearchResults from '@/components/feed/RemoteSearchResults.vue'
 import ContinueWatching from '@/components/feed/ContinueWatching.vue'
 import SpecialFollowVideos from '@/components/feed/SpecialFollowVideos.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import { VIDEO_TABS } from '@/constants/videos'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
-import { onSubscriptionRemoved } from '@/utils/subscriptionEvents'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
-import { formatDate, formatDuration } from '@/utils/dateFormat'
+import { formatDate } from '@/utils/dateFormat'
 import { useSites } from '@/composables/useSites'
-import { useRemoteChannel, type RemoteVideoItem } from '@/composables/useRemoteChannel'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-// NOTE: This view serves two routes — the home feed (/videos) and the
-// subscription/channel detail (/subscription/:id) — branching internally on
-// `subscriptionId`. The two layouts are disjoint (Hero/continue-watching/
-// special-follows are home-only; ChannelHeader + remote mode are channel-only),
-// so this is a known design debt: splitting into HomeView + ChannelDetailView
-// would remove the scattered `subscriptionId` conditionals. Kept unified for
-// now to avoid coupling this rename to a larger refactor.
+// Home feed view: spotlight hero + continue-watching + special-follows + tabbed feed.
+// Channel detail lives in its own ChannelDetailView.vue.
 defineOptions({ name: 'HomeView' })
-
-type RemoteProfile = {
-  id?: string | number | null
-  type?: string | null
-  name: string
-  url?: string | null
-  avatar?: string | null
-  description?: string | null
-  site?: string | null
-  is_nsfw?: boolean | null
-}
-
-const REMOTE_PLAYABLE_SITE_PATTERNS: Record<string, RegExp> = {
-  bilibili: /(?:bilibili\.com\/video\/|b23\.tv\/)/i,
-  pornhub: /pornhub\.com\/(?:view_video\.php|video\/|embed\/)/i,
-  youtube: /(?:youtube\.com\/|youtu\.be\/)/i,
-  youporn: /youporn\.com\/watch\//i,
-}
 
 const router = useRouter()
 const route = useRoute()
 const uiStore = useUIStore()
 
-const subscriptionId = computed(() => route.params.id as string)
-const { activeTab, nsfw, sortBy, site, searchQuery, special, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId })
+const { activeTab, nsfw, sortBy, site, searchQuery, special, filters } = useFeedFilters()
 const { options: siteOptions, fetchSites } = useSites()
 
 const tabs = ref(VIDEO_TABS)
@@ -284,32 +234,16 @@ const remoteSearchRef = ref<any>(null)
 const continueWatchingRef = ref<any>(null)
 const specialFollowRef = ref<any>(null)
 let secondarySectionsRefreshedAt = 0
-const channelDataMode = ref<'local' | 'remote'>('local')
-const channelDetail = ref<any>(null)
 
-const remoteChannel = useRemoteChannel()
-const {
-  items: remoteItems,
-  loading: remoteLoading,
-  allLoaded: remoteAllLoaded,
-  error: remoteError,
-} = remoteChannel
-const loadMoreRemote = () => {
-  const channel = channelDetail.value
-  if (!channel?.site || !channel?.url) return
-  return remoteChannel.loadMore({ site: channel.site, url: channel.url, profile: channel })
-}
-let loadedRemoteChannelKey = ''
+// Remote search uses an independent site filter so it never clobbers the local `site` ref.
+const remoteSite = ref('')
+
 const searchMode = computed({
   get: () => uiStore.homeSearchMode,
   set: (value: 'local' | 'remote') => uiStore.setHomeSearchMode(value),
 })
 
 const childFilters = computed(() => filters.value)
-const remoteChannelKey = computed(() => {
-  const channel = channelDetail.value
-  return channel ? `${channel.site || ''}::${channel.url || ''}` : ''
-})
 
 const SPOTLIGHT_INTERVAL = 6000
 const spotlightVideos = ref<any[]>([])
@@ -318,11 +252,12 @@ const activeSpotlightVideo = computed(() => spotlightVideos.value[activeSpotligh
 const isSpotlightHovered = ref(false)
 let spotlightTimer: ReturnType<typeof setInterval> | null = null
 
-const showSpotlightHero = computed(() => !subscriptionId.value && searchMode.value === 'local' && activeTab.value === 'all' && !searchQuery.value && spotlightVideos.value.length > 0)
+// Hero shows when browsing (no active search) on the "all" tab; independent of search mode
+// so remote-search results occupy only the main area without hiding the hero.
+const showSpotlightHero = computed(() => activeTab.value === 'all' && !searchQuery.value && spotlightVideos.value.length > 0)
 
 const updateRemoteSite = (value: unknown) => {
-  const nextSite = String(value || 'all')
-  site.value = nextSite === 'all' ? '' : nextSite
+  remoteSite.value = String(value || 'all') === 'all' ? '' : String(value)
 }
 
 const startSpotlightTimer = () => {
@@ -380,22 +315,11 @@ const setSpotlightIndex = (index: number) => {
 
 const refreshCurrentList = () => {
   loadError.value = null
-  if (subscriptionId.value && channelDataMode.value === 'remote') {
-    fetchRemoteChannel(true)
-    return
-  }
   if (searchMode.value === 'remote') {
     remoteSearchRef.value?.refresh?.()
     return
   }
   videoChildRef.value?.refresh?.()
-}
-
-const handleChannelSynced = () => {
-  if (channelDataMode.value === 'remote') {
-    channelDataMode.value = 'local'
-  }
-  refreshCurrentList()
 }
 
 const handleOpenModal = (video: any) => {
@@ -417,80 +341,8 @@ const setSpecialFilter = (value: string) => {
   router.replace({ query })
 }
 
-const handleTabDoubleClick = (tab: string) => {
-  if (tab === activeTab.value) refreshCurrentList()
-}
-
 useRefreshTriggers({ onRefresh: refreshCurrentList })
-useRouteTabSync(router, route, activeTab, subscriptionId)
-
-const handleChannelModeChange = async (mode: 'local' | 'remote') => {
-  channelDataMode.value = mode
-  if (mode === 'remote' && loadedRemoteChannelKey !== remoteChannelKey.value) {
-    await fetchRemoteChannel(true)
-  }
-}
-
-const fetchRemoteChannel = async (isReset = false) => {
-  const channel = channelDetail.value
-  if (!channel?.site || !channel?.url) return
-
-  if (isReset) {
-    loadedRemoteChannelKey = remoteChannelKey.value
-  }
-
-  isRefreshing.value = true
-  await remoteChannel.fetchRemote({ site: channel.site, url: channel.url, profile: channel }, isReset)
-  isRefreshing.value = false
-}
-
-const hashRemoteUrl = (url: string) => {
-  let hash = 0
-  for (let index = 0; index < url.length; index += 1) {
-    hash = Math.imul(31, hash) + url.charCodeAt(index)
-    hash |= 0
-  }
-  return Math.abs(hash).toString(36)
-}
-
-const buildRemoteVideoSeed = (item: RemoteVideoItem) => {
-  const channel = channelDetail.value
-  const url = String(item.url || '').trim()
-  return {
-    id: `remote-${item.site}-${hashRemoteUrl(url)}`,
-    source: 'remote',
-    site: item.site,
-    title: item.title,
-    url,
-    thumbnail: item.thumbnail || '',
-    duration: item.duration || null,
-    publish_date: item.publish_date || null,
-    uploaded_at: item.publish_date || null,
-    description: item.description || '',
-    subscriptions: item.subscriptions?.length ? item.subscriptions : [{
-      id: channel?.id ?? null,
-      type: 'CHANNEL',
-      name: channel?.name || '',
-      url: channel?.url || '',
-      avatar: channel?.avatar || '',
-      is_nsfw: channel?.is_nsfw === true,
-    }],
-    actors: item.actors || [],
-  }
-}
-
-const canPlayRemoteResult = (item: RemoteVideoItem) => {
-  const pattern = REMOTE_PLAYABLE_SITE_PATTERNS[item.site]
-  return !!pattern && pattern.test(String(item.url || ''))
-}
-
-const openRemoteResult = async (item: RemoteVideoItem) => {
-  if (!item.url || !canPlayRemoteResult(item)) return
-
-  const videoSeed = buildRemoteVideoSeed(item)
-  rememberVideoPlaybackSeed(videoSeed)
-  await router.push({ name: 'VideoPlay', params: { videoId: videoSeed.id } })
-}
+useRouteTabSync(router, route, activeTab, undefined)
 
 watch(() => uiStore.searchTrigger, () => {
   if (route.meta.search === 'home' || !route.meta.search) {
@@ -498,28 +350,8 @@ watch(() => uiStore.searchTrigger, () => {
   }
 })
 
-watch(subscriptionId, (value) => {
-  channelDataMode.value = 'local'
-  channelDetail.value = null
-  loadedRemoteChannelKey = ''
-  if (value && searchMode.value === 'remote') {
-    searchMode.value = 'local'
-  }
-})
-
-watch(remoteChannelKey, () => {
-  loadedRemoteChannelKey = ''
-  if (subscriptionId.value && channelDataMode.value === 'remote') fetchRemoteChannel(true)
-})
-
-watch(searchMode, (value) => {
-  if (value === 'remote') {
-    site.value = undefined
-  }
-})
-
 watch(() => route.query.special, (value) => {
-  special.value = !subscriptionId.value && value === 'yes' ? 'yes' : 'all'
+  special.value = value === 'yes' ? 'yes' : 'all'
 }, { immediate: true })
 
 onActivated(() => {
@@ -533,16 +365,12 @@ onActivated(() => {
 })
 
 onMounted(() => {
-  onSubscriptionRemoved(({ subscriptionId }) => {
-    if (String(route.params.id || '') === String(subscriptionId)) router.replace({ name: 'AllVideos' })
-  })
-
   fetchSites()
 })
 </script>
 
 <style scoped>
-.latest-videos-page {
+.home-view-page {
   --app-page-max-width: 2400px;
 }
 
