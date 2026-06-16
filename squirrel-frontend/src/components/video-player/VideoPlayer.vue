@@ -2756,6 +2756,10 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   justify-content: center;
   gap: 12px;
   z-index: 50;
+  /* Loading overlay is purely presentational; let pointer events (click/dblclick)
+     pass through to the video/container underneath so fullscreen toggling still
+     works while the video is loading. */
+  pointer-events: none;
 }
 
 .sp-loader {
