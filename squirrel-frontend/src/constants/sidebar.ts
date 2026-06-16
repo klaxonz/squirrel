@@ -6,6 +6,7 @@
 import type { AppIconName } from '@/icons/app-icons'
 
 export type AppNavKey =
+  | 'home'
   | 'videos'
   | 'subscribed'
   | 'rss-sources'
@@ -110,15 +111,24 @@ const SETTINGS_TAB_BY_ROUTE_NAME = new Map(
 
 export const NAV_ITEMS: NavigationItem[] = [
   {
-    key: 'videos',
+    key: 'home',
     name: '首页',
-    title: '内容总览',
-    path: '/videos/all',
+    title: '推荐',
+    path: '/home',
     icon: 'home',
+    group: 'content',
+    activeRouteNames: ['HomeView'],
+  },
+  {
+    key: 'videos',
+    name: '视频',
+    title: '全部视频',
+    path: '/videos/all',
+    icon: 'film',
     group: 'content',
     activePrefixes: ['/videos', '/video/'],
     activeRouteNames: [
-      'HomeView',
+      'VideosView',
       'AllVideos',
       'UnreadVideos',
       'ReadVideos',

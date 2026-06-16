@@ -5,6 +5,7 @@ import { useServerConfig } from '../composables/useServerConfig'
 import { Logger } from '@/utils/logger'
 
 const HomeView = () => import('../views/HomeView.vue')
+const VideosView = () => import('../views/VideosView.vue')
 const ChannelDetailView = () => import('../views/ChannelDetailView.vue')
 const Subscribed = () => import('../views/Subscribed.vue')
 const RssSources = () => import('../views/RssSources.vue')
@@ -76,29 +77,41 @@ const createVideoTabRoute = (
 
 const routes = [
   {
-    path: '/videos',
+    path: '/home',
     name: 'HomeView',
     component: HomeView,
     meta: createSearchMeta('首页', {
-      navKey: 'videos',
+      navKey: 'home',
       sectionLabel: '首页',
       keepAlive: true,
       keepAliveComponent: 'HomeView',
       transitionKey: 'home',
     }),
+  },
+  {
+    path: '/videos',
+    name: 'VideosView',
+    component: VideosView,
+    meta: createSearchMeta('视频', {
+      navKey: 'videos',
+      sectionLabel: '视频',
+      keepAlive: true,
+      keepAliveComponent: 'VideosView',
+      transitionKey: 'videos',
+    }),
     children: [
-      createVideoTabRoute('all', 'AllVideos', '全部视频', { navKey: 'videos', sectionLabel: '首页' }),
-      createVideoTabRoute('unread', 'UnreadVideos', '未读视频', { navKey: 'videos', sectionLabel: '首页' }),
-      createVideoTabRoute('read', 'ReadVideos', '已读视频', { navKey: 'videos', sectionLabel: '首页' }),
-      createVideoTabRoute('preview', 'PreviewVideos', '预览视频', { navKey: 'videos', sectionLabel: '首页' }),
-      createVideoTabRoute('liked', 'LikedVideos', '喜欢的视频', { navKey: 'videos', sectionLabel: '首页' }),
-      createVideoTabRoute('later', 'LaterVideos', '稍后再看', { navKey: 'videos', sectionLabel: '首页' }),
+      createVideoTabRoute('all', 'AllVideos', '全部视频', { navKey: 'videos', sectionLabel: '视频' }),
+      createVideoTabRoute('unread', 'UnreadVideos', '未读视频', { navKey: 'videos', sectionLabel: '视频' }),
+      createVideoTabRoute('read', 'ReadVideos', '已读视频', { navKey: 'videos', sectionLabel: '视频' }),
+      createVideoTabRoute('preview', 'PreviewVideos', '预览视频', { navKey: 'videos', sectionLabel: '视频' }),
+      createVideoTabRoute('liked', 'LikedVideos', '喜欢的视频', { navKey: 'videos', sectionLabel: '视频' }),
+      createVideoTabRoute('later', 'LaterVideos', '稍后再看', { navKey: 'videos', sectionLabel: '视频' }),
     ],
     redirect: { name: 'AllVideos' },
   },
   {
     path: '/',
-    redirect: { name: 'AllVideos', replace: true },
+    redirect: { name: 'HomeView', replace: true },
   },
   {
     path: '/subscribed',
@@ -283,7 +296,7 @@ const routes = [
       navKey: 'videos',
       sectionLabel: '首页',
       searchRedirectName: 'AllVideos',
-      searchPersistKey: 'HomeView',
+      searchPersistKey: 'VideosView',
       scrollable: true,
       hideScrollbar: true,
       sidebar: SidebarMode.fixed,

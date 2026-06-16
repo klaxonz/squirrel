@@ -2,189 +2,75 @@
   <AppPageShell class="home-view-page" variant="compact" :fill="false">
     <div class="app-page-content">
 
-      <!-- Persistent Sticky Toolbar (always at top, never moves) -->
-      <div class="sticky top-0 z-20 -mx-6 mb-4 px-6 py-2 bg-background/95 backdrop-blur border-b border-border/10">
-        <FeedToolbar
-          :active-tab="activeTab"
-          :nsfw="nsfw"
-          :sort-by="sortBy"
-          :site="site"
-          :special="special"
-          :time-range="timeRange"
-          :duration="duration"
-          :content-type="contentType"
-          :tabs="tabs"
-          :is-refreshing="isRefreshing"
-          :show-tabs="true"
-          :show-sort="true"
-          :show-filter="true"
-          @update:activeTab="activeTab = $event"
-          @update:nsfw="nsfw = $event"
-          @update:sortBy="sortBy = $event"
-          @update:site="site = $event"
-          @update:time-range="timeRange = $event"
-          @update:duration="duration = $event"
-          @update:content-type="contentType = $event"
-          @update:special="setSpecialFilter"
-          @refresh="refreshCurrentList"
-        />
+      <!-- Page header -->
+      <div class="flex items-center justify-between px-6 pt-6 pb-2">
+        <h1 class="text-2xl font-bold tracking-tight text-foreground/90">首页</h1>
+        <button
+          type="button"
+          class="flex size-9 items-center justify-center rounded-full bg-muted/40 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          :class="{ 'animate-spin': isRefreshing }"
+          title="刷新推荐"
+          @click="refresh"
+        >
+          <AppIcon name="refresh" class="size-4" />
+        </button>
       </div>
 
-      <!-- Error -->
-      <div v-if="loadError" class="px-6 pt-2 pb-4">
-        <div class="bg-destructive/10 rounded-sm p-4 flex items-center justify-between">
-          <p class="text-sm text-destructive font-medium">{{ loadError?.message || loadError }}</p>
-          <button @click="refreshCurrentList" class="text-xs font-bold uppercase tracking-widest px-4 py-2 bg-destructive text-white rounded-full">重试</button>
-        </div>
+      <!-- Recommendation rows -->
+      <SpotlightRow
+        ref="spotlightRef"
+        @openModal="handleOpenModal"
+        @goToSubscription="goToChannelDetail"
+      />
+      <ContinueWatching
+        ref="continueWatchingRef"
+        @openModal="handleOpenModal"
+        @viewMore="goToContinueWatching"
+      />
+      <SpecialFollowVideos
+        ref="specialFollowRef"
+        @openModal="handleOpenModal"
+        @goToSubscription="goToChannelDetail"
+        @viewMore="goToSpecialFollowVideos"
+      />
+
+      <!-- Empty state: all recommendation rows hide themselves when empty,
+           so if nothing has rendered we offer a path to the full list. -->
+      <div class="px-6 pb-10 pt-2 text-center">
+        <button
+          type="button"
+          class="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/20"
+          @click="goToAllVideos"
+        >
+          浏览全部视频
+          <AppIcon name="chevronRight" class="size-4" />
+        </button>
       </div>
-
-      <!-- Recommendation rows (fade out when leaving "all" tab or searching, instead of hard cut) -->
-      <Transition name="fade">
-        <div v-if="showRecommendations">
-          <SpotlightRow
-            :videos="spotlightVideos"
-            @openModal="handleOpenModal"
-            @goToSubscription="goToChannelDetail"
-          />
-          <ContinueWatching
-            ref="continueWatchingRef"
-            @openModal="handleOpenModal"
-            @viewMore="goToContinueWatching"
-          />
-          <SpecialFollowVideos
-            ref="specialFollowRef"
-            @openModal="handleOpenModal"
-            @goToSubscription="goToChannelDetail"
-            @viewMore="goToSpecialFollowVideos"
-          />
-        </div>
-      </Transition>
-
-      <!-- Remote search header (replaces nothing above; only an inline section header) -->
-      <div v-if="searchMode === 'remote' && searchQuery" class="px-6 flex items-center justify-between mb-2 mt-4">
-        <h2 class="text-[16px] font-bold tracking-tight text-foreground/90 flex items-center gap-2">
-          <AppIcon name="siteFallback" class="w-5 h-5 text-primary opacity-80" />
-          远端搜索结果
-        </h2>
-
-        <Select :model-value="remoteSite || 'all'" @update:model-value="updateRemoteSite">
-          <SelectTrigger class="h-8 w-auto min-w-[120px] bg-accent/40 border-0 text-[12px] font-bold rounded-full transition-colors hover:bg-accent/60">
-            <SelectValue placeholder="全部站点" />
-          </SelectTrigger>
-          <SelectContent class="border-border/10 bg-background/70 backdrop-blur-2xl shadow-2xl rounded-md min-w-[140px]">
-            <SelectItem value="all" class="text-xs">全部站点</SelectItem>
-            <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">{{ opt.label }}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <!-- Remote search results (main area only; recommendation rows above stay if visible) -->
-      <keep-alive v-if="searchMode === 'remote' && searchQuery">
-        <RemoteSearchResults
-          ref="remoteSearchRef"
-          :query="searchQuery"
-          :site="remoteSite"
-          @error="loadError = $event"
-          @loading-change="isRefreshing = !!$event"
-        />
-      </keep-alive>
-
-      <!-- Local feed -->
-      <router-view v-else v-slot="{ Component, route: childRoute }">
-        <keep-alive :max="10">
-          <component
-            :is="Component"
-            :key="childRoute.name"
-            :filters="childFilters"
-            ref="videoChildRef"
-            @goToSubscription="goToChannelDetail"
-            @openModal="handleOpenModal"
-            @error="loadError = $event"
-            @loading-change="isRefreshing = !!$event"
-            @loaded="handleChildLoaded"
-          />
-        </keep-alive>
-      </router-view>
     </div>
   </AppPageShell>
 </template>
 
 <script setup lang="ts">
-import { computed, onActivated, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useUIStore } from '@/stores/ui'
-import { useRouteTabSync } from '../composables/useRouteTabSync'
-import { useFeedFilters } from '../composables/useFeedFilters'
-import { useRefreshTriggers } from '../composables/useRefreshTriggers'
-import FeedToolbar from '@/components/feed/FeedToolbar.vue'
-import RemoteSearchResults from '@/components/feed/RemoteSearchResults.vue'
+import { onActivated, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import SpotlightRow from '@/components/feed/SpotlightRow.vue'
 import ContinueWatching from '@/components/feed/ContinueWatching.vue'
 import SpecialFollowVideos from '@/components/feed/SpecialFollowVideos.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
-import { VIDEO_TABS } from '@/constants/videos'
-import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import AppIcon from '@/components/common/AppIcon.vue'
-import { useSites } from '@/composables/useSites'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 
-// Home feed view: recommendation rows (spotlight/continue/special) + tabbed feed.
-// Channel detail lives in its own ChannelDetailView.vue.
+// Home view: recommendation rows only. The full tabbed feed lives in VideosView (/videos).
 defineOptions({ name: 'HomeView' })
 
 const router = useRouter()
-const route = useRoute()
-const uiStore = useUIStore()
 
-const { activeTab, nsfw, sortBy, site, searchQuery, special, timeRange, duration, contentType, filters } = useFeedFilters()
-const { options: siteOptions, fetchSites } = useSites()
-
-const tabs = ref(VIDEO_TABS)
-const isRefreshing = ref(false)
-const loadError = ref<any>(null)
-const videoChildRef = ref<any>(null)
-const remoteSearchRef = ref<any>(null)
+const spotlightRef = ref<any>(null)
 const continueWatchingRef = ref<any>(null)
 const specialFollowRef = ref<any>(null)
-let secondarySectionsRefreshedAt = 0
+const isRefreshing = ref(false)
 
-// Remote search uses an independent site filter so it never clobbers the local `site` ref.
-const remoteSite = ref('')
-
-const searchMode = computed({
-  get: () => uiStore.homeSearchMode,
-  set: (value: 'local' | 'remote') => uiStore.setHomeSearchMode(value),
-})
-
-const childFilters = computed(() => filters.value)
-
-// Recommendation data: take the first few videos from the "all" tab feed.
-const spotlightVideos = ref<any[]>([])
-
-// Recommendation rows show only when browsing the "all" tab with no active search,
-// so switching tabs/search fades them out instead of a hard DOM cut.
-const showRecommendations = computed(() => activeTab.value === 'all' && !searchQuery.value)
-
-const updateRemoteSite = (value: unknown) => {
-  remoteSite.value = String(value || 'all') === 'all' ? '' : String(value)
-}
-
-const handleChildLoaded = (videos: any) => {
-  if (Array.isArray(videos) && videos.length > 0) {
-    spotlightVideos.value = videos.slice(0, 8)
-  } else {
-    spotlightVideos.value = []
-  }
-}
-
-const refreshCurrentList = () => {
-  loadError.value = null
-  if (searchMode.value === 'remote') {
-    remoteSearchRef.value?.refresh?.()
-    return
-  }
-  videoChildRef.value?.refresh?.()
-}
+let lastRefreshedAt = 0
 
 const handleOpenModal = (video: any) => {
   rememberVideoPlaybackSeed(video)
@@ -192,44 +78,33 @@ const handleOpenModal = (video: any) => {
 }
 
 const goToChannelDetail = (id: string) => router.push(`/subscription/${id}/all`)
-
 const goToContinueWatching = () => router.push({ name: 'History', query: { mode: 'continue' } })
-
 const goToSpecialFollowVideos = () => router.push({ name: 'AllVideos', query: { special: 'yes' } })
+const goToAllVideos = () => router.push({ name: 'AllVideos' })
 
-const setSpecialFilter = (value: string) => {
-  special.value = value === 'yes' ? 'yes' : 'all'
-  const query = { ...route.query }
-  if (special.value === 'yes') query.special = 'yes'
-  else delete query.special
-  router.replace({ query })
+const refresh = () => {
+  isRefreshing.value = true
+  Promise.allSettled([
+    spotlightRef.value?.refresh?.(),
+    continueWatchingRef.value?.refresh?.(),
+    specialFollowRef.value?.refresh?.(),
+  ]).finally(() => {
+    isRefreshing.value = false
+    lastRefreshedAt = Date.now()
+  })
 }
 
-useRefreshTriggers({ onRefresh: refreshCurrentList })
-useRouteTabSync(router, route, activeTab, undefined)
-
-watch(() => uiStore.searchTrigger, () => {
-  if (route.meta.search === 'home' || !route.meta.search) {
-    searchQuery.value = uiStore.searchQuery
-  }
-})
-
-watch(() => route.query.special, (value) => {
-  special.value = value === 'yes' ? 'yes' : 'all'
-}, { immediate: true })
-
+// HomeView is kept-alive at the app root; refresh recommendation rows when
+// returning to the home page, throttled to avoid hammering the API on rapid nav.
 onActivated(() => {
-  // HomeView is kept-alive at the app root; refresh secondary sections when
-  // returning to the home feed, throttled to avoid hammering the API on rapid nav.
   const now = Date.now()
-  if (now - secondarySectionsRefreshedAt < 30_000) return
-  secondarySectionsRefreshedAt = now
-  continueWatchingRef.value?.refresh?.()
-  specialFollowRef.value?.refresh?.()
+  if (now - lastRefreshedAt < 30_000) return
+  refresh()
 })
 
 onMounted(() => {
-  fetchSites()
+  // Initial load is handled by each row's onMounted; just stamp the timestamp.
+  lastRefreshedAt = Date.now()
 })
 </script>
 

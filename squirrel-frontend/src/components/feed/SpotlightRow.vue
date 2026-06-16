@@ -1,5 +1,5 @@
 <template>
-  <section v-if="videos.length > 0" class="group/container mb-8 px-6 pt-8">
+  <section v-if="items.length > 0" class="group/container mb-8 px-6 pt-8">
     <div class="mb-5 flex items-center justify-between">
       <h2 class="flex items-center gap-2 text-lg font-bold tracking-tight text-foreground/90">
         <AppIcon name="star" class="size-5 fill-primary text-primary" />
@@ -29,7 +29,7 @@
       @scroll="updateScrollState"
     >
       <article
-        v-for="video in videos"
+        v-for="video in items"
         :key="video.id"
         class="group w-[18rem] shrink-0 cursor-pointer snap-start"
         @click="$emit('openModal', video)"
@@ -74,16 +74,15 @@
 
 <script setup lang="ts">
 import { nextTick, onMounted, ref, watch } from 'vue'
+import { getVideoList } from '@/api'
+import { Logger } from '@/utils/logger'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 
-defineProps<{
-  videos: any[]
-}>()
-
 defineEmits(['openModal', 'goToSubscription'])
 
+const items = ref<any[]>([])
 const scrollContainer = ref<HTMLElement | null>(null)
 const canScrollLeft = ref(false)
 const canScrollRight = ref(false)
@@ -109,11 +108,28 @@ const primarySubscription = (video: any) => {
   return Array.isArray(video?.subscriptions) ? video.subscriptions[0] : null
 }
 
+const load = async () => {
+  try {
+    const { data, error } = await getVideoList({
+      pageSize: 10,
+      page_size: 10,
+      category: 'all',
+      sort_by: 'publish_date',
+      nsfw: 'all',
+    })
+    if (error) return
+    items.value = (data?.data || []).slice(0, 10)
+    await nextTick()
+    updateScrollState()
+  } catch (e) {
+    Logger.error('Failed to load spotlight videos:', e)
+  }
+}
+
 // Re-check scroll state whenever videos change (data loads async)
 watch(() => scrollContainer.value?.scrollWidth, () => nextTick(updateScrollState))
 
-onMounted(async () => {
-  await nextTick()
-  updateScrollState()
-})
+onMounted(load)
+
+defineExpose({ refresh: load })
 </script>
