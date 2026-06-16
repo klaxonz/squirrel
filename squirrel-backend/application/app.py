@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI, status
 from fastapi.exceptions import HTTPException as FastAPIHTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRouter
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.exceptions import ExceptionMiddleware
 from starlette.requests import Request
@@ -114,25 +115,32 @@ def _register_middleware(app: FastAPI) -> None:
     )
 
 
+# 注册顺序即路由匹配顺序；每条路由自带前缀（prefix 互不重叠，无需聚合 /api/v1）。
+_ROUTERS: tuple[APIRouter, ...] = (
+    health_router,
+    video_router,
+    video_clip_marker_router,
+    video_history_router,
+    video_interaction_router,
+    subscription_router,
+    user_router,
+    search_router,
+    playlist_router,
+    music_router,
+    rss_router,
+    system_config_router,
+    site_runtimes_router,
+    sites_router,
+    site_cookies_router,
+    connectivity_router,
+    scheduler_router,
+    logs_router,
+)
+
+
 def _register_routers(app: FastAPI) -> None:
-    app.include_router(health_router)
-    app.include_router(video_router)
-    app.include_router(video_clip_marker_router)
-    app.include_router(subscription_router)
-    app.include_router(user_router)
-    app.include_router(video_history_router)
-    app.include_router(video_interaction_router)
-    app.include_router(playlist_router)
-    app.include_router(system_config_router)
-    app.include_router(site_runtimes_router)
-    app.include_router(sites_router)
-    app.include_router(site_cookies_router)
-    app.include_router(logs_router)
-    app.include_router(search_router)
-    app.include_router(connectivity_router)
-    app.include_router(scheduler_router)
-    app.include_router(rss_router)
-    app.include_router(music_router)
+    for router in _ROUTERS:
+        app.include_router(router)
 
 
 def _mount_static_assets(app: FastAPI) -> None:
