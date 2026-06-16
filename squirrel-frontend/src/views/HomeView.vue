@@ -116,6 +116,9 @@
           :sort-by="sortBy"
           :site="site"
           :special="special"
+          :time-range="timeRange"
+          :duration="duration"
+          :content-type="contentType"
           :tabs="tabs"
           :is-refreshing="isRefreshing"
           :show-tabs="true"
@@ -125,6 +128,9 @@
           @update:nsfw="nsfw = $event"
           @update:sortBy="sortBy = $event"
           @update:site="site = $event"
+          @update:time-range="timeRange = $event"
+          @update:duration="duration = $event"
+          @update:content-type="contentType = $event"
           @update:special="setSpecialFilter"
           @refresh="refreshCurrentList"
         />
@@ -176,10 +182,11 @@
       </keep-alive>
 
       <!-- Local feed -->
-      <router-view v-else v-slot="{ Component }">
+      <router-view v-else v-slot="{ Component, route: childRoute }">
         <keep-alive :max="10">
           <component
             :is="Component"
+            :key="childRoute.name"
             :filters="childFilters"
             ref="videoChildRef"
             @goToSubscription="goToChannelDetail"
@@ -223,7 +230,7 @@ const router = useRouter()
 const route = useRoute()
 const uiStore = useUIStore()
 
-const { activeTab, nsfw, sortBy, site, searchQuery, special, filters } = useFeedFilters()
+const { activeTab, nsfw, sortBy, site, searchQuery, special, timeRange, duration, contentType, filters } = useFeedFilters()
 const { options: siteOptions, fetchSites } = useSites()
 
 const tabs = ref(VIDEO_TABS)

@@ -19,6 +19,9 @@
           :nsfw="nsfw"
           :sort-by="sortBy"
           :special="special"
+          :time-range="timeRange"
+          :duration="duration"
+          :content-type="contentType"
           :subscription-id="subscriptionId"
           :tabs="tabs"
           :is-refreshing="isRefreshing"
@@ -28,6 +31,9 @@
           @update:activeTab="activeTab = $event"
           @update:nsfw="nsfw = $event"
           @update:sortBy="sortBy = $event"
+          @update:time-range="timeRange = $event"
+          @update:duration="duration = $event"
+          @update:content-type="contentType = $event"
           @update:special="setSpecialFilter"
           @refresh="refreshCurrentList"
         />
@@ -54,10 +60,11 @@
       />
 
       <!-- Local mode: tabbed feed -->
-      <router-view v-else v-slot="{ Component }">
+      <router-view v-else v-slot="{ Component, route: childRoute }">
         <keep-alive :max="10">
           <component
             :is="Component"
+            :key="childRoute.name"
             :filters="childFilters"
             ref="videoChildRef"
             @goToSubscription="goToChannelDetail"
@@ -99,7 +106,7 @@ const router = useRouter()
 const route = useRoute()
 
 const subscriptionId = computed(() => route.params.id as string)
-const { activeTab, nsfw, sortBy, special, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId })
+const { activeTab, nsfw, sortBy, special, timeRange, duration, contentType, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId })
 
 const tabs = ref(VIDEO_TABS)
 const isRefreshing = ref(false)
