@@ -38,47 +38,15 @@
       class="no-scrollbar flex gap-4 overflow-x-auto pb-4 scroll-smooth snap-x"
       @scroll="updateScrollState"
     >
-      <article
+      <RecommendationCard
         v-for="item in items"
         :key="item.id"
-        class="group w-[18rem] shrink-0 cursor-pointer snap-start"
-        @click="emit('openModal', item)"
-      >
-        <div class="relative aspect-video overflow-hidden rounded-sm bg-muted transition-all duration-300 group-hover:brightness-110">
-          <VideoThumbnail
-            :src="item.thumbnail"
-            :alt="item.title"
-            fit="cover"
-            interactive
-          />
-          <div v-if="item.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium tabular-nums text-white backdrop-blur-sm">
-            {{ formatDuration(item.duration) }}
-          </div>
-          <div class="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity group-hover:opacity-100">
-            <div class="flex size-10 scale-75 items-center justify-center rounded-full bg-primary/90 text-primary-foreground shadow-lg backdrop-blur-sm transition-transform group-hover:scale-100">
-              <AppIcon name="play" class="size-5" />
-            </div>
-          </div>
-        </div>
-
-        <h3 class="mt-2 line-clamp-2 text-sm font-medium text-foreground/80 transition-colors group-hover:text-primary">
-          {{ item.title }}
-        </h3>
-        <button
-          v-if="primarySubscription(item)"
-          class="mt-1 flex max-w-full items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-          type="button"
-          @click.stop="emit('goToSubscription', primarySubscription(item)?.id)"
-        >
-          <SubscriptionAvatar
-            :src="primarySubscription(item)?.avatar"
-            :name="primarySubscription(item)?.name"
-            size="sm"
-            class="size-4"
-          />
-          <span class="truncate">{{ primarySubscription(item)?.name }}</span>
-        </button>
-      </article>
+        :video="item"
+        show-duration
+        show-play-overlay
+        @openModal="emit('openModal', item)"
+        @goToSubscription="(id) => emit('goToSubscription', id)"
+      />
     </div>
   </section>
 </template>
@@ -87,9 +55,7 @@
 import { nextTick, onMounted, ref } from 'vue'
 import { getVideoList } from '@/api'
 import AppIcon from '@/components/common/AppIcon.vue'
-import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
-import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
-import { formatDuration } from '@/utils/dateFormat'
+import RecommendationCard from '@/components/feed/RecommendationCard.vue'
 
 const emit = defineEmits(['openModal', 'goToSubscription', 'viewMore'])
 
@@ -113,10 +79,6 @@ const scroll = (direction: 'left' | 'right') => {
     left: scrollContainer.value.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount),
     behavior: 'smooth',
   })
-}
-
-const primarySubscription = (item: any) => {
-  return Array.isArray(item?.subscriptions) ? item.subscriptions[0] : null
 }
 
 const load = async () => {

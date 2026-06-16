@@ -28,46 +28,15 @@
       class="no-scrollbar flex gap-4 overflow-x-auto pb-4 snap-x scroll-smooth"
       @scroll="updateScrollState"
     >
-      <article
+      <RecommendationCard
         v-for="video in items"
         :key="video.id"
-        class="group w-[18rem] shrink-0 cursor-pointer snap-start"
-        @click="$emit('openModal', video)"
-      >
-        <div class="relative aspect-video overflow-hidden bg-muted transition-all duration-300 group-hover:brightness-110 group-hover:shadow-lg"
-             :style="{ borderRadius: 'var(--app-card-radius)' }">
-          <VideoThumbnail
-            :src="video.thumbnail"
-            :alt="video.title"
-            fit="cover"
-            interactive
-          />
-          <!-- Bottom gradient for overlay readability -->
-          <div class="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
-          <!-- Spotlight badge -->
-          <span class="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary backdrop-blur-sm">
-            <AppIcon name="star" class="size-3 fill-primary" />
-            推荐
-          </span>
-        </div>
-        <h3 class="mt-2 line-clamp-2 text-sm font-medium text-foreground/80 transition-colors group-hover:text-primary">
-          {{ video.title }}
-        </h3>
-        <button
-          v-if="primarySubscription(video)"
-          class="mt-1 flex max-w-full items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-          type="button"
-          @click.stop="$emit('goToSubscription', primarySubscription(video)?.id)"
-        >
-          <SubscriptionAvatar
-            :src="primarySubscription(video)?.avatar"
-            :name="primarySubscription(video)?.name"
-            size="sm"
-            class="size-4"
-          />
-          <span class="truncate">{{ primarySubscription(video)?.name }}</span>
-        </button>
-      </article>
+        :video="video"
+        badge="推荐"
+        badge-icon="star"
+        @openModal="$emit('openModal', video)"
+        @goToSubscription="(id) => $emit('goToSubscription', id)"
+      />
     </div>
   </section>
 </template>
@@ -77,8 +46,7 @@ import { nextTick, onMounted, ref, watch } from 'vue'
 import { getVideoList } from '@/api'
 import { Logger } from '@/utils/logger'
 import AppIcon from '@/components/common/AppIcon.vue'
-import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
-import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
+import RecommendationCard from '@/components/feed/RecommendationCard.vue'
 
 defineEmits(['openModal', 'goToSubscription'])
 
@@ -102,10 +70,6 @@ const scroll = (direction: 'left' | 'right') => {
     left: scrollContainer.value.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount),
     behavior: 'smooth',
   })
-}
-
-const primarySubscription = (video: any) => {
-  return Array.isArray(video?.subscriptions) ? video.subscriptions[0] : null
 }
 
 const load = async () => {

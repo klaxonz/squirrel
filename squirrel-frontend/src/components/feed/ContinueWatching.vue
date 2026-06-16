@@ -38,38 +38,16 @@
       class="no-scrollbar flex gap-4 overflow-x-auto pb-4 snap-x scroll-smooth"
       @scroll="updateScrollState"
     >
-      <div
+      <RecommendationCard
         v-for="item in historyItems"
         :key="item.id"
-        class="w-[18rem] shrink-0 snap-start group cursor-pointer"
-        @click="$emit('openModal', item)"
-      >
-        <div class="relative aspect-video rounded-sm bg-muted overflow-hidden transition-all duration-300 group-hover:brightness-110">
-          <VideoThumbnail
-            :src="item.thumbnail"
-            :alt="item.title"
-            fit="cover"
-          />
-          <!-- Bottom Shadow/Gradient for Overlay Visibility -->
-          <div class="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-10" />
-
-          <div v-if="item.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium tabular-nums text-white backdrop-blur-sm z-20">
-            {{ formatDuration(item.duration) }}
-          </div>
-          <!-- Progress Bar -->
-          <div class="absolute bottom-0 inset-x-0 h-1 group-hover:h-1.5 transition-all duration-300 z-20 bg-white/30">
-            <div class="h-full bg-white transition-all duration-500 ease-out" :style="{ width: `${getProgress(item) * 100}%` }" />
-          </div>
-          <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <div class="size-10 rounded-full bg-primary/90 flex items-center justify-center text-primary-foreground shadow-lg backdrop-blur-sm scale-75 group-hover:scale-100 transition-transform">
-              <AppIcon name="play" class="size-5" />
-            </div>
-          </div>
-        </div>
-        <h3 class="mt-2 text-sm font-medium line-clamp-2 text-foreground/80 group-hover:text-primary transition-colors">
-          {{ item.title }}
-        </h3>
-      </div>
+        :video="item"
+        show-duration
+        show-play-overlay
+        show-progress
+        :show-subscription="false"
+        @openModal="$emit('openModal', item)"
+      />
     </div>
   </div>
 </template>
@@ -77,9 +55,8 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
-import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
+import RecommendationCard from '@/components/feed/RecommendationCard.vue'
 import useVideoHistory from '@/composables/useVideoHistory'
-import { formatDuration } from '@/utils/dateFormat'
 import { Logger } from '@/utils/logger'
 
 const emit = defineEmits(['openModal', 'viewMore'])
