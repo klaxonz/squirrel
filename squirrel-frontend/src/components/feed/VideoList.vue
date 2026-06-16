@@ -17,8 +17,11 @@
       />
     </div>
 
-    <!-- Loading State -->
-    <div v-if="loading"
+    <!-- Loading State: only the initial load shows the skeleton grid.
+         On tab switch / refresh / load-more, `videos` already holds
+         content and `refreshing` is true — we must NOT render the
+         skeleton block alongside the stale items. -->
+    <div v-if="loading && !refreshing"
          :class="uiStore.viewMode === 'grid'
            ? 'grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-6 p-6'
            : 'flex flex-col gap-4 p-6 max-w-4xl mx-auto'">
