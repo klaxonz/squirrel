@@ -46,8 +46,8 @@
         show-duration
         show-play-overlay
         show-progress
-        :show-subscription="false"
         @openModal="$emit('openModal', item)"
+        @goToSubscription="(id) => $emit('goToSubscription', id)"
       />
     </div>
   </div>
@@ -61,7 +61,7 @@ import RecommendationSkeleton from '@/components/feed/RecommendationSkeleton.vue
 import useVideoHistory from '@/composables/useVideoHistory'
 import { Logger } from '@/utils/logger'
 
-const emit = defineEmits(['openModal', 'viewMore'])
+const emit = defineEmits(['openModal', 'viewMore', 'goToSubscription'])
 
 const { getWatchHistory } = useVideoHistory()
 const historyItems = ref<any[]>([])

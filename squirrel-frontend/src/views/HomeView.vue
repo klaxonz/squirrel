@@ -12,6 +12,7 @@
         ref="continueWatchingRef"
         @openModal="handleOpenModal"
         @viewMore="goToContinueWatching"
+        @goToSubscription="goToChannelDetail"
       />
       <SpecialFollowVideos
         ref="specialFollowRef"
