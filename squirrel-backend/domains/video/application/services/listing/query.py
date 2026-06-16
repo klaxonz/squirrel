@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from domains.video.application.services.listing.query_filters import (
@@ -105,6 +105,70 @@ video_list_query_service = VideoListQueryService()
 
 # 模块级便捷函数
 filter_recalled_ids = video_list_query_service.filter_recalled_ids
+
+
+def fetch_special_follow_video_ids(
+    session: Session,
+    *,
+    user_id: int,
+    cursor: str | None,
+    limit: int,
+) -> tuple[list[int], str | None]:
+    """特别关注浏览：PG keyset 直查用户标记为 is_special_followed 的订阅名下的视频。
+
+    - 基表 Video ⨝ SubscriptionVideo ⨝ UserSubscription(is_special_followed=true)
+    - 排序 publish_date DESC, id DESC（全序，与首页/Meili 浏览一致）
+    - fan-out 去重：同一 video 可能被多个特别关注订阅关联，取最新的 publish_date 作为排序键
+    - 只返回 publish_date <= now 的视频（与首页"全部"语义一致，排除未来视频）
+    - cursor 编码 (sort_ts, video_id)，首页 cursor=None
+    """
+    from domains.subscription.domain.junctions.user_subscription import UserSubscription
+
+    base = (
+        select(
+            Video.id,
+            Video.publish_date,
+        )
+        .select_from(Video)
+        .join(SubscriptionVideo, SubscriptionVideo.video_id == Video.id)
+        .join(
+            UserSubscription,
+            and_(
+                UserSubscription.subscription_id == SubscriptionVideo.subscription_id,
+                UserSubscription.user_id == user_id,
+                UserSubscription.is_deleted.is_(False),
+                UserSubscription.is_special_followed.is_(True),
+            ),
+        )
+        .where(
+            Video.is_deleted.is_(False),
+            Video.publish_date.is_not(None),
+            Video.publish_date <= func.now(),
+        )
+        # fan-out 去重：同一 video 取一行（多个特别关注订阅关联不影响排序键）
+        .group_by(Video.id, Video.publish_date)
+        .order_by(Video.publish_date.desc(), Video.id.desc())
+        .limit(limit + 1)  # 多取 1 条判断 has_more
+    )
+    if cursor:
+        decoded = decode_cursor(cursor)
+        if decoded is not None:
+            cur_ts, cur_id = decoded
+            cur_ts_dt = datetime.fromtimestamp(cur_ts)
+            base = base.where(
+                (Video.publish_date < cur_ts_dt)
+                | and_(Video.publish_date == cur_ts_dt, Video.id < cur_id),
+            )
+
+    rows = session.execute(base).all()
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    video_ids = [r.id for r in rows]
+    next_cursor = None
+    if has_more and rows:
+        last = rows[-1]
+        next_cursor = encode_cursor(int(last.publish_date.timestamp()), last.id)
+    return video_ids, next_cursor
 
 
 def fetch_user_state_video_ids(
@@ -215,6 +279,45 @@ def fetch_user_state_id_set(
             .order_by(VideoInteraction.created_at.desc())
             .limit(limit)
         )
+    return [r[0] for r in session.execute(stmt).all()]
+
+
+def fetch_special_follow_id_set(
+    session: Session,
+    *,
+    user_id: int,
+    limit: int = 5000,
+) -> list[int]:
+    """特别关注有 query 场景：取该用户标记为 is_special_followed 订阅名下的 video_id 集合（供 Meili filter）。
+
+    buffer 策略：按 publish_date 倒序取最近 limit 个（默认 5000）。超过 limit 的旧视频
+    不在搜索范围（可接受：用户极少搜索超旧的特别关注视频）。
+    """
+    from domains.subscription.domain.junctions.user_subscription import UserSubscription
+
+    stmt = (
+        select(Video.id)
+        .select_from(Video)
+        .join(SubscriptionVideo, SubscriptionVideo.video_id == Video.id)
+        .join(
+            UserSubscription,
+            and_(
+                UserSubscription.subscription_id == SubscriptionVideo.subscription_id,
+                UserSubscription.user_id == user_id,
+                UserSubscription.is_deleted.is_(False),
+                UserSubscription.is_special_followed.is_(True),
+            ),
+        )
+        .where(
+            Video.is_deleted.is_(False),
+            Video.publish_date.is_not(None),
+            Video.publish_date <= func.now(),
+        )
+        # fan-out 去重
+        .group_by(Video.id)
+        .order_by(Video.publish_date.desc())
+        .limit(limit)
+    )
     return [r[0] for r in session.execute(stmt).all()]
 
 
