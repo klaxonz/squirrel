@@ -15,9 +15,7 @@ def create_application() -> FastAPI:
     """Create a FastAPI application instance with lifecycle management."""
     from application.app import create_app
 
-    app = create_app()
-    app.router.lifespan_context = lifespan
-    return app
+    return create_app(lifespan=lifespan)
 
 
 def main() -> None:

@@ -43,8 +43,8 @@ from shared_kernel.system.routes.system_config import router as system_config_ro
 logger = logging.getLogger(__name__)
 
 
-def create_app() -> FastAPI:
-    app = FastAPI(exception_handlers=None)
+def create_app(lifespan=None) -> FastAPI:
+    app = FastAPI(exception_handlers=None, lifespan=lifespan)
 
     async def authentication_error_handler(request: Request, exc: AuthenticationError):
         logger.error("AuthenticationError: %s", exc.detail, exc_info=True)
