@@ -214,7 +214,6 @@ def test_execute_full_sync_with_more_batches_continues_without_marking_success()
          patch("domains.subscription.application.services.core.update.orchestrator.subscription_sync_state_service.mark_sync_success", side_effect=lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs))), \
          patch("domains.subscription.application.services.core.update.orchestrator.subscription_sync_state_service.continue_full_sync_batch", side_effect=lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs))), \
          patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued", run_id=kwargs.get("run_id"))), \
-         patch("domains.subscription.application.services.core.update.strategies.base.metrics.counter"), \
          patch("infrastructure.database.session.get_session"):
 
         request = SubscriptionUpdateRequest(
@@ -285,7 +284,6 @@ def test_execute_final_full_sync_batch_marks_success():
          patch("domains.subscription.application.services.core.update.orchestrator.subscription_sync_state_service.mark_sync_success", side_effect=lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs))), \
          patch("domains.subscription.application.services.core.update.orchestrator.subscription_sync_state_service.continue_full_sync_batch", side_effect=lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs))), \
          patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued", run_id=kwargs.get("run_id"))), \
-         patch("domains.subscription.application.services.core.update.strategies.base.metrics.counter"), \
          patch("infrastructure.database.session.get_session"):
 
         request = SubscriptionUpdateRequest(
@@ -345,7 +343,6 @@ def test_execute_incremental_schedules_full_backfill_when_observed_total_grows()
              last_success_at=datetime(2026, 4, 8, 10, 0, 0),
          )), \
          patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued")), \
-         patch("domains.subscription.application.services.core.update.strategies.base.metrics.counter"), \
          patch("infrastructure.database.session.get_session"):
 
         request = SubscriptionUpdateRequest(
@@ -392,7 +389,6 @@ def test_execute_incremental_does_not_schedule_full_backfill_when_full_already_r
              last_success_at=datetime(2026, 4, 8, 10, 0, 0),
          )), \
          patch.object(_scheduler_instance, "schedule_one", side_effect=lambda **kwargs: schedule_calls.append(kwargs) or SimpleNamespace(status="queued")), \
-         patch("domains.subscription.application.services.core.update.strategies.base.metrics.counter"), \
          patch("infrastructure.database.session.get_session"):
 
         request = SubscriptionUpdateRequest(

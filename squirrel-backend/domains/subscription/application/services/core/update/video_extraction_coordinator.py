@@ -8,7 +8,6 @@ from domains.video.application.services.extraction.extractor import extract_vide
 from domains.video.application.services.moderation.blocked import is_blocked_video
 from domains.video.interfaces.dto.video_dto import VideoExtractDto
 from infrastructure.database.session import get_session
-from infrastructure.observability.collector.instance import metrics
 from infrastructure.site_catalog.url import resolve_site
 
 from .models import SubscriptionUpdateRequest, UpdateMode, UpdateTrigger
@@ -42,11 +41,9 @@ class VideoExtractionCoordinator:
             existing_video = existing_videos.get(video_url)
             if existing_video:
                 existing_count += 1
-                metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "already_in_db"})
                 continue
             if video_url in blocked_video_urls:
                 blocked_count += 1
-                metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "blocked_video"})
                 continue
 
             reserved_pending = False

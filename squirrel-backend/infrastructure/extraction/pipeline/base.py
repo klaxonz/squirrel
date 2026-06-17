@@ -145,25 +145,9 @@ class ExtractionPipeline:
             )
 
         except Exception as e:  # pipeline execution boundary — catch all to return ExtractionResult
-            import traceback
             duration = context.get_duration()
 
             self.logger.error("Pipeline failed: task_id=%s, duration=%f'.2f's, error=%s", context.task.task_id, duration, e, exc_info=True)
-
-            # Record detailed error info (with stack trace) to metrics
-            try:
-                from infrastructure.observability.collector.instance import metrics
-                from infrastructure.site_catalog.url import extract_top_level_domain
-                stack_trace = traceback.format_exc()
-                site = extract_top_level_domain(context.task.url) if context.task.url else "unknown"
-                metrics.record_error(
-                    site=site,
-                    url=context.task.url,
-                    error_type=type(e).__name__,
-                    error_msg=f"{e!s}\n\n{stack_trace}",
-                )
-            except Exception:  # metrics recording must never fail
-                pass
 
             return ExtractionResult(
                 success=False,

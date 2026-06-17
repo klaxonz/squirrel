@@ -14,7 +14,6 @@ from domains.subscription.application.services.core.crud import get_subscription
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription_sync_state import SyncMode
 from infrastructure.database.session import get_session
-from infrastructure.observability.collector.instance import metrics
 from infrastructure.site_catalog.catalog import SiteCatalog
 
 from .models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateMode, UpdateTrigger
@@ -65,8 +64,6 @@ class SubscriptionOrchestrator:
                         trigger=request.trigger.value,
                         reason="site_disabled",
                     )
-                # 记录跳过指标
-                metrics.counter("subscription.update.total", tags={"site": domain, "status": "skipped", "reason": "site_disabled"})
                 return SubscriptionUpdateResult(
                     subscription_id=request.subscription_id,
                     success=True,
@@ -87,7 +84,6 @@ class SubscriptionOrchestrator:
                         trigger=request.trigger.value,
                         reason="no_subscribers",
                     )
-                metrics.counter("subscription.update.total", tags={"site": domain, "status": "skipped", "reason": "no_subscribers"})
                 return SubscriptionUpdateResult(
                     subscription_id=request.subscription_id,
                     success=True,

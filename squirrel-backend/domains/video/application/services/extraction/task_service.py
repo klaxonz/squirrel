@@ -5,7 +5,6 @@ from sqlalchemy.exc import IntegrityError
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
 from domains.video.application.services.crud import get_video_by_url as default_get_video_by_url
 from domains.video.interfaces.dto.video_dto import VideoExtractDto
-from infrastructure.observability.collector.instance import metrics
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
 
@@ -31,10 +30,6 @@ class VideoExtractionTaskService:
             video = self._get_video_by_url(params.url)
             if video:
                 logger.debug("Video already extracted, skipping: %s", params.url)
-                metrics.counter(
-                    "crawl.tasks.total",
-                    tags={"site": domain, "status": "skipped", "reason": "already_extracted"},
-                )
                 return False
 
         return self._create_task(params)
@@ -77,7 +72,6 @@ class VideoExtractionTaskService:
             return True
         except IntegrityError:
             logger.debug("Video extraction task already exists in task store, skipping: %s", params.url)
-            metrics.counter("crawl.tasks.total", tags={"site": domain, "status": "skipped", "reason": "already_in_queue"})
             return False
 
 

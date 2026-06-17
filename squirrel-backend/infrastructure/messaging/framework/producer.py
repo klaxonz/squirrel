@@ -4,7 +4,6 @@ import logging
 import time
 
 from infrastructure.cache.redis_client import redis_client
-from infrastructure.observability.collector.instance import metrics
 
 from .message import MqMessage
 
@@ -37,23 +36,11 @@ class RedisStreamProducer:
             trace_id = get_trace_id()
 
         payload = MqMessage(body=message, trace_id=trace_id).to_stream_fields()
-        tags = {"queue": stream}
 
         for attempt in range(max_retries + 1):
             try:
                 # Use approximate trimming to prevent unbounded growth
                 msg_id = redis_client.xadd(stream, payload, maxlen=approximate_maxlen, approximate=True)
-
-                # Record successful message send
-                metrics.counter("queue.messages.total", tags={**tags, "action": "publish", "status": "success"})
-
-                # Update queue depth
-                try:
-                    depth = redis_client.xlen(stream)
-                    metrics.gauge("queue.depth", depth, tags=tags)
-                except (ConnectionError, OSError, ValueError, TypeError):
-                    pass  # Queue depth query failure does not affect the main flow
-
                 return msg_id  # type: ignore[return-value]
             except (ConnectionError, OSError, ValueError, TypeError) as e:
                 last_err = e
@@ -66,5 +53,4 @@ class RedisStreamProducer:
                         max_retries,
                         e,
                     )
-                    metrics.counter("queue.messages.total", tags={**tags, "action": "publish", "status": "error"})
                     raise last_err

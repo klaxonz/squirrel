@@ -4,8 +4,6 @@ Each site can implement its own update strategy
 from abc import ABC, abstractmethod
 from typing import Any
 
-from infrastructure.observability.collector.instance import metrics
-
 from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult
 
 
@@ -39,16 +37,8 @@ class UpdateStrategy(ABC):
     def execute(self, request: SubscriptionUpdateRequest) -> SubscriptionUpdateResult:
         """Execute update flow (template method)
         """
-        import infrastructure.site_catalog.url as url_helper
-        try:
-            domain = url_helper.extract_top_level_domain(request.url)
-        except (ValueError, TypeError):
-            domain = "unknown"
-        tags = {"site": domain}
-
         should_update, skip_reason = self.should_update(request)
         if not should_update:
-            metrics.counter("subscription.update.total", tags={**tags, "status": "skipped", "reason": skip_reason or "unknown"})
             return SubscriptionUpdateResult(
                 subscription_id=request.subscription_id,
                 success=True,
@@ -60,10 +50,6 @@ class UpdateStrategy(ABC):
         try:
             fetch_result = self.fetch_videos(request)
             enqueued = self.enqueue_extraction(fetch_result, request)
-
-            metrics.counter("subscription.update.total", tags={**tags, "status": "success"})
-            metrics.counter("subscription.videos.found", value=len(fetch_result.video_urls), tags=tags)
-            metrics.counter("subscription.videos.enqueued", value=enqueued, tags=tags)
 
             return SubscriptionUpdateResult(
                 subscription_id=request.subscription_id,
@@ -82,7 +68,5 @@ class UpdateStrategy(ABC):
                 cursor_loop_detected=bool(getattr(fetch_result, "cursor_loop_detected", False)),
                 scan_depth=getattr(fetch_result, "scan_depth", None),
             )
-        except (ValueError, TypeError, AttributeError, KeyError) as exc:
-            metrics.counter("subscription.update.total", tags={**tags, "status": "error"})
-            metrics.counter("subscription.errors.total", tags={**tags, "error_type": type(exc).__name__})
+        except (ValueError, TypeError, AttributeError, KeyError):
             raise
