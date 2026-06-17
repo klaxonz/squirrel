@@ -171,6 +171,93 @@ def fetch_special_follow_video_ids(
     return video_ids, next_cursor
 
 
+def fetch_subscription_video_ids(
+    session: Session,
+    *,
+    user_id: int,
+    subscription_id: int,
+    cursor: str | None,
+    limit: int,
+    category: str = 'all',
+) -> tuple[list[int], str | None]:
+    """指定订阅浏览：PG keyset 直查该订阅名下的视频。
+
+    与 fetch_special_follow_video_ids 同构，但用途不同——后者服务首页"特别关注"区块
+    （is_special_followed=true），本函数服务频道详情页"本地"列表（指定 subscription_id）。
+
+    为什么不走 Meili 全局召回：Meili recall_page 按 publish_ts:desc 全局召回最新 N 条
+    （最多 _MAX_RECALL_ROUNDS×(page_size*2)），再用 subscription_id 在 PG 侧过滤。
+    指定订阅的视频一旦比其他订阅旧，或未被索引/重建，就永远进不了召回窗口 →
+    频道详情页即使解析了上百条视频，"本地"列表也只显示寥寥几条，且 Meili 游标到底后
+    next_cursor=None 导致前端无限滚动立刻停止。改走 PG keyset 直查彻底规避此问题。
+
+    - 基表 Video ⨝ SubscriptionVideo ⨝ UserSubscription(归属校验，防越权)
+    - 排序 publish_date DESC, id DESC（全序，与首页/Meili 浏览一致）
+    - fan-out 去重：同一 video 可能被多个订阅关联，group_by 取一行
+    - publish_date 边界：category='preview' 取未来视频(publish_date > now)；
+      其余取已发布(publish_date <= now AND IS NOT NULL)
+    - read/unread/liked/later 的 EXISTS 语义不在 fetch 阶段过滤——交给下游 filter_recalled_ids
+      （调用方 _list_subscription_browse 仅会被 category ∈ {all, unread, preview} 触发：
+      read/liked/later 在 _list_browse_keyset 开头即分流到 user-state 路径）
+    - has_more 看 PG keyset 是否还有更多（与 user-state/special-follow 一致），
+      即使下游 filter 后不足一页也允许翻页
+    - cursor 编码 (sort_ts, video_id)，首页 cursor=None
+    """
+    from domains.subscription.domain.junctions.user_subscription import UserSubscription
+
+    base = (
+        select(
+            Video.id,
+            Video.publish_date,
+        )
+        .select_from(Video)
+        .join(SubscriptionVideo, SubscriptionVideo.video_id == Video.id)
+        .join(
+            UserSubscription,
+            and_(
+                UserSubscription.subscription_id == SubscriptionVideo.subscription_id,
+                UserSubscription.user_id == user_id,
+                UserSubscription.is_deleted.is_(False),
+                UserSubscription.subscription_id == subscription_id,
+            ),
+        )
+        .where(Video.is_deleted.is_(False))
+    )
+    if category == 'preview':
+        # 预告 tab：只看未来视频（与 Meili _build_recall_filter 的 preview 分支一致）
+        base = base.where(Video.publish_date > func.now())
+    else:
+        base = base.where(
+            Video.publish_date.is_not(None),
+            Video.publish_date <= func.now(),
+        )
+    # fan-out 去重：同一 video 多个订阅关联只取一行
+    base = (
+        base.group_by(Video.id, Video.publish_date)
+        .order_by(Video.publish_date.desc(), Video.id.desc())
+        .limit(limit + 1)  # 多取 1 条判断 has_more
+    )
+    if cursor:
+        decoded = decode_cursor(cursor)
+        if decoded is not None:
+            cur_ts, cur_id = decoded
+            cur_ts_dt = datetime.fromtimestamp(cur_ts)
+            base = base.where(
+                (Video.publish_date < cur_ts_dt)
+                | and_(Video.publish_date == cur_ts_dt, Video.id < cur_id),
+            )
+
+    rows = session.execute(base).all()
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    video_ids = [r.id for r in rows]
+    next_cursor = None
+    if has_more and rows:
+        last = rows[-1]
+        next_cursor = encode_cursor(int(last.publish_date.timestamp()), last.id)
+    return video_ids, next_cursor
+
+
 def fetch_user_state_video_ids(
     session: Session,
     *,

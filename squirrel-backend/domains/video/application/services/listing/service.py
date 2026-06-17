@@ -18,6 +18,7 @@ from domains.video.application.services.listing.profiles import video_extra_prof
 from domains.video.application.services.listing.query import (
     fetch_special_follow_id_set,
     fetch_special_follow_video_ids,
+    fetch_subscription_video_ids,
     fetch_user_state_id_set,
     fetch_user_state_video_ids,
     filter_recalled_ids,
@@ -279,6 +280,20 @@ class VideoListService:
                 content_type=content_type, special=special,
             )
 
+        # 指定 subscription_id 走 PG keyset 直查（频道详情页"本地"列表），不走 Meili 全局召回。
+        # 与 special=yes 同构：Meili 全局召回只取最新 N 条，指定订阅的视频若比其他订阅旧
+        # 或未被索引，就永远进不了召回窗口 → 频道页即使解析了上百条，"本地"也只显示寥寥几条。
+        # 注：read/liked/later 已在上方分流到 user-state 路径（per-user 表保证 category 语义），
+        # 此处只会收到 category ∈ {all, unread, preview}。
+        if subscription_id is not None:
+            return self._list_subscription_browse(
+                session,
+                user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
+                category=category, nsfw=nsfw, domains=domains, cursor=cursor,
+                page_size=page_size, time_range=time_range, duration=duration,
+                content_type=content_type, special=special,
+            )
+
         if not settings.MEILISEARCH_URL:
             logger.warning('browse requested but MEILISEARCH_URL not set -- returning empty')
             return [], None, _EMPTY_TIMINGS
@@ -489,6 +504,45 @@ class VideoListService:
             session, video_ids,
             user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
             category='all', nsfw=nsfw, content_type=content_type, special='all',
+            page_size=page_size, next_cursor=next_cursor, recall_ms=recall_ms,
+        )
+
+    def _list_subscription_browse(
+        self, session: Session, *, user_id: int, show_nsfw: bool, subscription_id: int,
+        category: str, nsfw: str, domains: list[str] | None, cursor: str | None,
+        page_size: int, time_range: str, duration: str, content_type: str, special: str,
+    ) -> tuple[list[dict], str | None, dict[str, float]]:
+        """指定订阅浏览：PG keyset 直查该订阅名下的视频（频道详情页"本地"列表）。
+
+        - 不走 Meili 全局召回（与 _list_special_follow_browse 同理：指定订阅的视频可能
+          比其他订阅旧，永远进不了全局召回窗口）
+        - PG keyset: Video ⨝ SubscriptionVideo ⨝ UserSubscription(归属校验)
+          按 publish_date DESC, id DESC；publish_date 边界由 category 决定（preview 取未来）
+        - 取出 video_ids 后走 filter_recalled_ids 做 nsfw/special/content_type + unread EXISTS 过滤
+          （category 透传：unread 仍需 NOT EXISTS VideoHistory，all/preview 不需）
+        - has_more 看 PG keyset 是否还有更多，与 user-state/special-follow 一致
+        """
+        fetch_limit = max(page_size * _RECALL_BUFFER_FACTOR, 20)
+
+        recall_started = perf_counter()
+        try:
+            video_ids, next_cursor = fetch_subscription_video_ids(
+                session, user_id=user_id, subscription_id=subscription_id,
+                cursor=cursor, limit=fetch_limit, category=category,
+            )
+        except Exception:
+            logger.warning('fetch_subscription_video_ids failed', exc_info=True)
+            return [], None, _EMPTY_TIMINGS
+        recall_ms = self._elapsed_ms(recall_started)
+
+        if not video_ids:
+            return [], None, _timings(recall_ms, 0.0, 0.0)
+
+        # 权限过滤；category 透传（unread 仍需 EXISTS，all/preview 不需）；special 透传
+        return self._filter_and_paginate(
+            session, video_ids,
+            user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
+            category=category, nsfw=nsfw, content_type=content_type, special=special,
             page_size=page_size, next_cursor=next_cursor, recall_ms=recall_ms,
         )
 
