@@ -9,7 +9,6 @@ from domains.subscription.domain.models.crawl_job import CrawlJob
 from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
 from infrastructure.database.base import Base
-from infrastructure.messaging.framework.monitor import QueueBackpressureMonitor
 
 
 @pytest.fixture
@@ -44,45 +43,6 @@ def _seed_job(engine, *, site: str = "youtube.com") -> int:
         job_id = job.id
         session.commit()
         return job_id
-
-
-def test_queue_monitor_counts_pending_videos_from_task_store(engine, session_factory, svc, sss_session):
-    with Session(engine, expire_on_commit=False) as session:
-        job_id = _seed_job(engine)
-        session.add_all([
-            CrawlTask(
-                job_id=job_id,
-                task_type="video_extract",
-                site="youtube.com",
-                subscription_id=1,
-                status="pending",
-                payload={"sync_state_id": 10},
-            ),
-            CrawlTask(
-                job_id=job_id,
-                task_type="video_extract",
-                site="youtube.com",
-                subscription_id=1,
-                status="running",
-                payload={"sync_state_id": 10},
-            ),
-            CrawlTask(
-                job_id=job_id,
-                task_type="video_extract",
-                site="youtube.com",
-                subscription_id=1,
-                status="succeeded",
-                payload={"sync_state_id": 10},
-            ),
-        ])
-        session.commit()
-
-    count = QueueBackpressureMonitor().count_pending_videos_for_subscription(
-        subscription_id=1,
-        url="https://www.youtube.com/watch?v=demo",
-    )
-
-    assert count == 2
 
 
 def test_reconcile_pending_video_counts_uses_task_store(engine, session_factory, svc, sss_session):

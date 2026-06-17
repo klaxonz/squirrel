@@ -2,14 +2,10 @@
 """
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Optional
 
 from ..contracts import ExtractionResult
 from ..exceptions import StageExecutionError
 from .context import PipelineContext
-
-if TYPE_CHECKING:
-    from .middleware import MiddlewareChain
 
 logger = logging.getLogger(__name__)
 
@@ -82,16 +78,14 @@ class ExtractionPipeline:
     Executes multiple Stages in sequence to complete the full extraction flow.
     """
 
-    def __init__(self, stages: list[PipelineStage], middleware: Optional["MiddlewareChain"] = None):
+    def __init__(self, stages: list[PipelineStage]):
         """Initialize the pipeline
 
         Args:
             stages: List of Stages (in execution order)
-            middleware: Middleware chain (optional)
 
         """
         self.stages = stages
-        self._middleware = middleware
         self.logger = logger
 
     def execute(self, context: PipelineContext) -> ExtractionResult:
@@ -120,21 +114,13 @@ class ExtractionPipeline:
                 try:
                     self.logger.debug("Executing stage '%s': task_id=%s", stage.stage_name, context.task.task_id)
 
-                    if self._middleware:
-                        self._middleware.before_stage(context, stage)
-
                     context = stage.execute(context)
-
-                    if self._middleware:
-                        self._middleware.after_stage(context, stage)
 
                     self.logger.debug("Stage '%s' completed: task_id=%s", stage.stage_name, context.task.task_id)
 
                 except (ValueError, TypeError, AttributeError, KeyError) as e:
                     # Stage execution failed
                     stage.on_error(context, e)
-                    if self._middleware:
-                        self._middleware.on_error(context, stage, e)
 
                     # Determine whether to continue
                     if not self._should_continue_after_error(stage, e):
