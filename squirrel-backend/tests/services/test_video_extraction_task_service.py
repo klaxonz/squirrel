@@ -9,7 +9,7 @@ from domains.subscription.domain.models.crawl_dispatch_scope import CrawlDispatc
 from domains.subscription.domain.models.crawl_job import CrawlJob
 from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.video.application.services.extraction.task_service import VideoExtractionTaskService
-from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
+from domains.video.interfaces.dto.video_dto import VideoExtractDto
 from infrastructure.database.base import Base
 
 

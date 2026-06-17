@@ -1,4 +1,3 @@
-from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field, SecretStr, model_validator
 
@@ -50,13 +49,3 @@ class UserConfigUpdate(BaseModel):
         if 'loop' in self.settings and not isinstance(self.settings['loop'], bool):
             raise ValueError('loop必须是布尔值')
         return self
-
-
-class UserResponse(BaseModel):
-    id: int
-    nickname: str
-    email: str
-    is_verified: bool
-    created_at: datetime
-
-    model_config = {'from_attributes': True}

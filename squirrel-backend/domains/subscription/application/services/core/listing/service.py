@@ -18,7 +18,7 @@ from domains.subscription.application.services.core.listing.site import (
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import Subscription
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
-from domains.subscription.interfaces.dto.dto.subscription_dto import SubscriptionDto
+from domains.subscription.interfaces.dto.subscription_dto import SubscriptionDto
 from domains.video.application.services.moderation.nsfw_policy import resolve_effective_nsfw_filter
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from infrastructure.database.session import get_session

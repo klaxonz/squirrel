@@ -140,9 +140,6 @@ class ExtractorFactory:
     def clear_cache(self) -> None:
         self._instances.clear()
 
-    def register(self, site_name: str, extractor_class, domains: list[str]) -> None:
-        logger.info("Ignoring legacy extractor registration for site: %s, domains: %s", site_name, domains)
-
     def get_test_url(self, site_name: str) -> str | None:
         site_info = get_effective_site_catalog().get(site_name) or {}
         return site_info.get("test_url")

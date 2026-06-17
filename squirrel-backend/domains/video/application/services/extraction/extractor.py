@@ -8,7 +8,7 @@ import re
 
 import domains.video.application.services.extraction.progress_service as progress_service
 import infrastructure.site_catalog.url as url_helper
-from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
+from domains.video.interfaces.dto.video_dto import VideoExtractDto
 from infrastructure.extraction.contracts import ExtractionResult, ExtractionTask, TaskPriority
 from infrastructure.extraction.handlers.video_handler import VideoExtractionHandler
 from infrastructure.extraction.task_manager import TaskManager

@@ -20,10 +20,6 @@ class RssFeedSubscribeRequest(BaseModel):
     category: str | None = None
 
 
-class RssFeedUnsubscribeRequest(BaseModel):
-    accountId: int
-
-
 @router.post("/feeds/subscribe")
 def subscribe_rss_feed(
     req: RssFeedSubscribeRequest,

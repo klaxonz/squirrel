@@ -40,17 +40,6 @@ class PlaylistItemReorder(BaseModel):
     new_position: int = Field(..., ge=1, description="新的位置（从 1 开始）")
 
 
-class PlaylistItemDto(BaseModel):
-    id: int
-    playlist_id: int
-    video_id: int
-    position: int
-    added_at: str
-
-    class Config:
-        from_attributes = True
-
-
 class PlaylistDto(BaseModel):
     id: int
     user_id: int
@@ -63,7 +52,3 @@ class PlaylistDto(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-class PlaylistDetailDto(PlaylistDto):
-    items: list[PlaylistItemDto] = []

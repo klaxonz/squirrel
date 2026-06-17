@@ -146,20 +146,6 @@ class DatabaseError(ExtractionError):
         super().__init__(message, retryable=True, **kwargs)
 
 
-class CircuitBreakerOpenError(ExtractionError):
-    """Circuit breaker open error
-
-    Scenarios:
-    - Service unavailable
-    - Failure rate too high
-    """
-
-    def __init__(self, service_name: str, **kwargs):
-        message = f"Circuit breaker is open for {service_name}"
-        super().__init__(message, retryable=False, **kwargs)
-        self.service_name = service_name
-
-
 # ========== Pipeline errors ==========
 
 class PipelineError(ExtractionError):

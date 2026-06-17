@@ -1,6 +1,6 @@
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 import domains.video.application.services.extraction.task_service as video_extraction_task_service
-from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
+from domains.video.interfaces.dto.video_dto import VideoExtractDto
 
 
 class VideoExtractionProgressService:

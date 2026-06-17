@@ -1,33 +1,12 @@
 """Task manager
 """
 import logging
-from abc import ABC, abstractmethod
 from typing import Any
 
 from .contracts import ExtractionTask, TaskPriority
 from .factory import get_extractor_factory
 
 logger = logging.getLogger(__name__)
-
-
-class ICacheManager(ABC):
-    """Cache manager interface"""
-
-    @abstractmethod
-    def get(self, key: str) -> Any | None:
-        """Get cached value"""
-
-    @abstractmethod
-    def set(self, key: str, value: Any, ttl: int | None = None) -> None:
-        """Set cached value"""
-
-    @abstractmethod
-    def delete(self, key: str) -> None:
-        """Delete cached value"""
-
-    @abstractmethod
-    def exists(self, key: str) -> bool:
-        """Check if cache key exists"""
 
 
 class TaskManager:

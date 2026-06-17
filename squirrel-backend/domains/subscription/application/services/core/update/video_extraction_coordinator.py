@@ -6,7 +6,7 @@ from domains.subscription.application.services.core.runtime_models import Subscr
 from domains.video.application.services.crud import get_videos_by_urls
 from domains.video.application.services.extraction.extractor import extract_video
 from domains.video.application.services.moderation.blocked import is_blocked_video
-from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
+from domains.video.interfaces.dto.video_dto import VideoExtractDto
 from infrastructure.database.session import get_session
 from infrastructure.observability.collector.instance import metrics
 from infrastructure.site_catalog.url import resolve_site
