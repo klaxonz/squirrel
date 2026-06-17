@@ -4,7 +4,7 @@
       <aside class="hidden w-72 shrink-0 flex-col border-r border-border/50 bg-background lg:flex">
         <div class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4">
           <div class="min-w-0">
-            <h1 class="truncate text-sm font-semibold">站点运行时</h1>
+            <h1 class="truncate text-sm font-semibold">站点</h1>
             <p class="mt-0.5 text-xs text-muted-foreground">{{ siteRuntimeSummary.total }} 个已安装</p>
           </div>
           <Button variant="ghost" size="icon" class="h-8 w-8 rounded-md" :disabled="reloading || loading" @click="handleReload">
@@ -58,8 +58,8 @@
       <main class="flex min-w-0 flex-1 flex-col bg-background">
         <header class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4 lg:px-6">
           <div class="min-w-0">
-            <h2 class="truncate text-base font-semibold">站点运行时</h2>
-            <p class="mt-0.5 text-xs text-muted-foreground">{{ siteRuntimeSummary.total }} 个站点运行时 · {{ siteRuntimeSummary.running }} 个运行</p>
+            <h2 class="truncate text-base font-semibold">站点</h2>
+            <p class="mt-0.5 text-xs text-muted-foreground">{{ siteRuntimeSummary.total }} 个站点 · {{ siteRuntimeSummary.running }} 个运行</p>
           </div>
 
           <div class="flex shrink-0 items-center gap-2">
@@ -67,7 +67,7 @@
               <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 v-model="searchQuery"
-                placeholder="搜索站点运行时、站点或描述"
+                placeholder="搜索站点、站点或描述"
                 class="h-9 w-full rounded-md border-border/50 pl-9 pr-8 text-sm shadow-none"
               />
               <button
@@ -89,7 +89,7 @@
             <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               v-model="searchQuery"
-              placeholder="搜索站点运行时、站点或描述"
+              placeholder="搜索站点、站点或描述"
               class="h-9 w-full rounded-md border-border/50 pl-9 pr-8 text-sm shadow-none"
             />
             <button
@@ -127,12 +127,12 @@
         <div class="flex-1 overflow-y-auto custom-scrollbar">
           <div class="mx-auto w-full max-w-[1400px] p-4 lg:p-6">
             <div v-if="discoveryErrors.length" class="mb-3 rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              <div class="font-medium">发现 {{ discoveryErrors.length }} 个站点运行时失败</div>
+              <div class="font-medium">发现 {{ discoveryErrors.length }} 个站点失败</div>
               <div class="mt-1 truncate text-xs">{{ discoveryErrors[0].metadata_path }} · {{ discoveryErrors[0].reason }}</div>
             </div>
             <div class="overflow-x-auto rounded-lg border border-border/50">
               <div class="site-runtime-grid min-w-[980px] border-b border-border/50 bg-muted/20 px-4 py-3 text-xs font-medium text-muted-foreground">
-                <div>站点运行时</div>
+                <div>站点</div>
                 <div>状态</div>
                 <div>能力</div>
                 <div>网络</div>
@@ -146,8 +146,8 @@
 
               <div v-else-if="!displaySiteRuntimes.length" class="flex min-h-[20rem] flex-col items-center justify-center text-center">
                 <AppIcon name="cube" class="h-9 w-9 text-muted-foreground/30" />
-                <h2 class="mt-4 text-sm font-semibold">{{ searchQuery ? '没有匹配的站点运行时' : '暂无站点运行时' }}</h2>
-                <p class="mt-1 text-sm text-muted-foreground">{{ searchQuery ? '更换搜索关键词后再试。' : '本地站点运行时发现后会显示在这里。' }}</p>
+                <h2 class="mt-4 text-sm font-semibold">{{ searchQuery ? '没有匹配的站点' : '暂无站点' }}</h2>
+                <p class="mt-1 text-sm text-muted-foreground">{{ searchQuery ? '更换搜索关键词后再试。' : '本地站点发现后会显示在这里。' }}</p>
               </div>
 
               <div v-else class="min-w-[980px] divide-y divide-border/50">
@@ -215,7 +215,7 @@
                       size="icon"
                       class="h-8 w-8 rounded-md text-muted-foreground"
                       :disabled="actioning === runtime.runtime_id"
-                      :title="runtime.enabled ? '停用站点运行时' : '启用站点运行时'"
+                      :title="runtime.enabled ? '停用站点' : '启用站点'"
                       @click="runtime.enabled ? handleDisable(runtime) : handleEnable(runtime)"
                     >
                       <AppIcon v-if="runtime.enabled" name="pause" class="h-4 w-4" />

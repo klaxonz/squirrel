@@ -205,8 +205,8 @@ export const NAV_ITEMS: NavigationItem[] = [
   },
   {
     key: 'site-runtimes',
-    name: '站点运行时',
-    title: '站点运行时',
+    name: '站点',
+    title: '站点',
     path: '/site-runtimes',
     icon: 'plugins',
     group: 'system',

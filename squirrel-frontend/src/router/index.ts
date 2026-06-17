@@ -158,9 +158,9 @@ const routes = [
     path: '/site-runtimes',
     name: 'SiteRuntimes',
     component: SiteRuntimeManager,
-    meta: createNoSearchMeta('站点运行时', {
+    meta: createNoSearchMeta('站点', {
       navKey: 'site-runtimes',
-      sectionLabel: '站点运行时',
+      sectionLabel: '站点',
     }),
   },
   {
