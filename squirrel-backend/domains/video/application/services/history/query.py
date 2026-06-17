@@ -15,7 +15,7 @@ from infrastructure.site_catalog.catalog import SiteCatalog
 
 def _recall_video_ids_for_history(query: str | None) -> list[int]:
     """有搜索词时用 Meili 召回 video_id；无搜索词返回空（history 走全量）。"""
-    if not query or not query.strip() or not settings.MEILISEARCH_URL:
+    if not query or not query.strip() or not settings.meili.url:
         return []
     try:
         return get_meili_video_indexer().recall(query)

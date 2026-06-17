@@ -18,7 +18,7 @@ class MeiliReindexTask(BaseTask):
 
     @classmethod
     def run(cls):
-        if not settings.MEILISEARCH_URL:
+        if not settings.meili.url:
             return
         try:
             count = get_meili_video_indexer().reindex_all()

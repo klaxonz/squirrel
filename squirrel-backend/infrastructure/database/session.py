@@ -13,18 +13,18 @@ logger = logging.getLogger(__name__)
 AFTER_COMMIT_CALLBACKS_KEY = "after_commit_callbacks"
 
 db_config = {
-    "host": settings.POSTGRES_HOST,
-    "port": settings.POSTGRES_PORT,
-    "user": settings.POSTGRES_USER,
-    "password": settings.POSTGRES_PASSWORD,
-    "database": settings.POSTGRES_DATABASE,
+    "host": settings.postgres.host,
+    "port": settings.postgres.port,
+    "user": settings.postgres.user,
+    "password": settings.postgres.password,
+    "database": settings.postgres.database,
 }
 
 engine = create_engine(
     settings.database_url,
-    pool_size=settings.POOL_SIZE,
-    max_overflow=settings.POOL_MAX_SIZE,
-    pool_recycle=settings.POOL_RECYCLE,
+    pool_size=settings.postgres.pool_size,
+    max_overflow=settings.postgres.pool_max_size,
+    pool_recycle=settings.postgres.pool_recycle,
     pool_pre_ping=True,  # 检测失效连接
     pool_use_lifo=True,  # LIFO 池，提高连接复用
     echo=False,

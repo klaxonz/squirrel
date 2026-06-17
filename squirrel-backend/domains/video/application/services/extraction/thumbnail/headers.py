@@ -1,7 +1,7 @@
 import time
 from urllib.parse import urlparse
 
-from infrastructure.config.site_config_manager import get_effective_site_catalog
+from infrastructure.runtime.site_config_manager import get_effective_site_catalog
 from infrastructure.site_catalog.cookies import filter_cookies_to_query_string
 from infrastructure.site_catalog.site_constants import (
     SITE_META_OFFLINE_THUMBNAILS_DISPLAY,

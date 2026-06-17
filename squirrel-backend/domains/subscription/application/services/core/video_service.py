@@ -61,7 +61,7 @@ class SubscriptionVideoService:
             # 必须在 commit 前注册（after_commit 事件在 commit 时 fire），否则回调永不执行。
             # 提交后重建。
             created = row is not None
-            if created and settings.MEILISEARCH_URL:
+            if created and settings.meili.url:
                 register_after_commit(
                     session,
                     lambda: _reindex_videos_safe([video_id], context='subscription_link', subscription_id=subscription_id),

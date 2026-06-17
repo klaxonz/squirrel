@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from infrastructure.config.site_config_manager import get_effective_site_catalog
+from infrastructure.runtime.site_config_manager import get_effective_site_catalog
 from infrastructure.site_catalog.icons import build_site_icon_url, resolve_site_icon_path
 from infrastructure.site_runtimes.manager import get_site_runtime_manager
 from infrastructure.site_runtimes.runtime_models import SiteRuntimeManifest

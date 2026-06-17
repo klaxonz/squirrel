@@ -3,7 +3,7 @@ from datetime import datetime
 from threading import Lock
 from time import monotonic
 
-from infrastructure.config.site_config_manager import get_effective_site_catalog
+from infrastructure.runtime.site_config_manager import get_effective_site_catalog
 
 logger = logging.getLogger(__name__)
 

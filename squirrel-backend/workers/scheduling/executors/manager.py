@@ -23,8 +23,8 @@ def crawl_worker_start() -> None:
         _stop_event = threading.Event()
         runtime = CrawlWorkerRuntime(
             worker_id="crawl-runtime-1",
-            max_concurrency=max(1, int(settings.CRAWL_SLOTS_PER_PROCESS)),
-            poll_interval_seconds=settings.CRAWL_WORKER_POLL_INTERVAL_MS / 1000.0,
+            max_concurrency=max(1, int(settings.crawl.slots_per_process)),
+            poll_interval_seconds=settings.crawl.worker_poll_interval_ms / 1000.0,
         )
         thread = threading.Thread(
             target=runtime.run_loop,

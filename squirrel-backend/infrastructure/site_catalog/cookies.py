@@ -2,7 +2,7 @@ import http.cookiejar as cookielib
 from pathlib import Path
 from urllib.parse import urlparse
 
-from infrastructure.config.site_config_manager import get_effective_site_catalog
+from infrastructure.runtime.site_config_manager import get_effective_site_catalog
 from infrastructure.site_catalog.cookie_files import get_site_cookies_file_path
 
 

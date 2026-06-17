@@ -294,7 +294,7 @@ class VideoListService:
                 content_type=content_type, special=special,
             )
 
-        if not settings.MEILISEARCH_URL:
+        if not settings.meili.url:
             logger.warning('browse requested but MEILISEARCH_URL not set -- returning empty')
             return [], None, _EMPTY_TIMINGS
 
@@ -401,7 +401,7 @@ class VideoListService:
                 content_type=content_type, special=special,
             )
 
-        if not settings.MEILISEARCH_URL:
+        if not settings.meili.url:
             logger.warning('search requested but MEILISEARCH_URL not set -- returning empty')
             return [], None, _EMPTY_TIMINGS
 
@@ -558,7 +558,7 @@ class VideoListService:
         - Meili: 全局索引 filter id IN [集合] + query 文本召回
         - PG: 权限过滤 + OFFSET 分页
         """
-        if not settings.MEILISEARCH_URL:
+        if not settings.meili.url:
             logger.warning('user-state search requested but MEILISEARCH_URL not set -- returning empty')
             return [], None, _EMPTY_TIMINGS
 
@@ -606,7 +606,7 @@ class VideoListService:
         - Meili: 全局索引 filter id IN [集合] + query 文本召回
         - PG: 权限过滤 + OFFSET 分页
         """
-        if not settings.MEILISEARCH_URL:
+        if not settings.meili.url:
             logger.warning('special-follow search requested but MEILISEARCH_URL not set -- returning empty')
             return [], None, _EMPTY_TIMINGS
 

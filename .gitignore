@@ -2,7 +2,10 @@
 .venv/
 
 # Configurations and sensitive data
-config
+# NOTE: anchored to repo root (/config) so it only ignores the top-level
+# secrets/config directory — a bare "config" previously shadowed source
+# directories like squirrel-backend/infrastructure/config/ and tests/config/.
+/config
 data/plugins/
 data/site-runtimes/state/
 downloads

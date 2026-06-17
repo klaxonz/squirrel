@@ -21,7 +21,7 @@ def _index_video_after_commit(session: Session, video_id: int) -> None:
 
     与 video_persistence._index_video_after_commit 同构，供本模块的写入路径复用。
     """
-    if not settings.MEILISEARCH_URL:
+    if not settings.meili.url:
         return
     try:
         register_after_commit(session, lambda: _upsert_video_safe(video_id))

@@ -12,13 +12,13 @@ import signal
 import threading
 from contextlib import contextmanager
 
-from infrastructure.config.site_config_manager import apply_site_config_overrides
 from infrastructure.config.startup_dependencies import (
     clear_optional_startup_issue,
     record_optional_startup_issue,
     reset_startup_dependency_issues,
 )
 from infrastructure.database.migrations import upgrade_database
+from infrastructure.runtime.site_config_manager import apply_site_config_overrides
 from infrastructure.site_catalog.cookies import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
 from infrastructure.site_catalog.runtime_http import (
     set_cloudflare_bypass_client,

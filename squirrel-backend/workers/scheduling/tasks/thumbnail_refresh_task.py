@@ -11,8 +11,8 @@ from sqlalchemy import func, select
 
 from domains.video.application.services.extraction.thumbnail_downloader import thumbnail_downloader_service
 from domains.video.domain.models.video import Video
-from infrastructure.config.site_config_manager import get_effective_site_catalog
 from infrastructure.database.session import get_session
+from infrastructure.runtime.site_config_manager import get_effective_site_catalog
 from infrastructure.scheduling.base import BaseTask, TaskRegistry
 
 logger = logging.getLogger(__name__)

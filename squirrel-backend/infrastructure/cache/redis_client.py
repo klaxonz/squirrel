@@ -11,11 +11,12 @@ logger = logging.getLogger(__name__)
 
 
 def get_redis_connection_kwargs() -> dict[str, Any]:
+    redis_cfg = settings.redis
     return {
-        "host": settings.REDIS_HOST,
-        "port": settings.REDIS_PORT,
-        "db": settings.REDIS_DB,
-        "password": settings.REDIS_PASSWORD or None,
+        "host": redis_cfg.host,
+        "port": redis_cfg.port,
+        "db": redis_cfg.db,
+        "password": redis_cfg.password or None,
         "decode_responses": True,
         "retry_on_timeout": True,
         "socket_keepalive": True,
@@ -30,9 +31,10 @@ def create_redis_pool(
     max_connections: int | None = None,
     timeout: int | None = None,
 ) -> BlockingConnectionPool:
+    redis_cfg = settings.redis
     return BlockingConnectionPool(
-        max_connections=max_connections or settings.REDIS_MAX_CONNECTIONS,
-        timeout=timeout or settings.REDIS_POOL_TIMEOUT,
+        max_connections=max_connections or redis_cfg.max_connections,
+        timeout=timeout or redis_cfg.pool_timeout,
         **get_redis_connection_kwargs(),
     )
 

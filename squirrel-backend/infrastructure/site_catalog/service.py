@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from infrastructure.config.site_config_manager import (
+from infrastructure.runtime.site_config_manager import (
     apply_site_config_overrides,
     build_runtime_site_catalog,
     get_effective_site_catalog,

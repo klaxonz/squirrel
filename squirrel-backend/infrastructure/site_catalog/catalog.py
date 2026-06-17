@@ -180,7 +180,7 @@ class SiteCatalog:
 
     @classmethod
     def _get_effective_catalog(cls) -> dict[str, dict]:
-        from infrastructure.config.site_config_manager import get_effective_site_catalog
+        from infrastructure.runtime.site_config_manager import get_effective_site_catalog
 
         return get_effective_site_catalog()
 

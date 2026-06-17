@@ -13,12 +13,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from infrastructure.config.settings import settings
-from infrastructure.config.site_config_manager import apply_site_config_overrides
 from infrastructure.config.startup_dependencies import (
     clear_optional_startup_issue,
     record_optional_startup_issue,
     reset_startup_dependency_issues,
 )
+from infrastructure.runtime.site_config_manager import apply_site_config_overrides
 from infrastructure.site_catalog.cookies import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
 from infrastructure.site_catalog.runtime_http import (
     set_cloudflare_bypass_client,
@@ -87,7 +87,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 5. Meilisearch index (hard dependency when configured; skipped if MEILISEARCH_URL unset)
     logger.info("Startup: ensuring Meilisearch index")
-    if settings.MEILISEARCH_URL:
+    if settings.meili.url:
         try:
             from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
             from infrastructure.search.meili import ensure_videos_index

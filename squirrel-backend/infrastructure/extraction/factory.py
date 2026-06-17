@@ -3,7 +3,7 @@
 import logging
 from urllib.parse import urlparse
 
-from infrastructure.config.site_config_manager import get_effective_site_catalog
+from infrastructure.runtime.site_config_manager import get_effective_site_catalog
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_runtimes.gateway import SiteRuntimeGateway
 from infrastructure.site_runtimes.ports import get_runtime_gateway

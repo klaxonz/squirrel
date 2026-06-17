@@ -29,9 +29,10 @@ def get_meili_client() -> meilisearch.Client:
     """返回 Meilisearch 客户端单例。"""
     global _client
     if _client is None:
-        if not settings.MEILISEARCH_URL:
+        meili_cfg = settings.meili
+        if not meili_cfg.url:
             raise RuntimeError('MEILISEARCH_URL 未配置，无法初始化 Meilisearch 客户端')
-        _client = meilisearch.Client(settings.MEILISEARCH_URL, settings.MEILISEARCH_KEY or None)
+        _client = meilisearch.Client(meili_cfg.url, meili_cfg.key or None)
     return _client
 
 
@@ -42,7 +43,7 @@ def ensure_videos_index() -> None:
     并在写入前就把 searchable/filterable 配好。
     """
     client = get_meili_client()
-    index_uid = settings.MEILISEARCH_INDEX_VIDEOS
+    index_uid = settings.meili.index_videos
     # 显式建索引并指定主键；已存在时 Meilisearch 返回错误，这里忽略
     try:
         client.create_index(index_uid, {'primaryKey': 'id'})

@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from infrastructure.config import site_config_manager
+from infrastructure.runtime import site_config_manager
 from infrastructure.site_catalog import runtime_config as runtime_site_config
 
 

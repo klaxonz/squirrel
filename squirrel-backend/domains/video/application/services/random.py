@@ -51,7 +51,7 @@ class VideoRandomService:
         has_query = bool(query and query.strip())
         if not has_query and not cls._has_structural_filter(domains, time_range, duration):
             return None
-        if not settings.MEILISEARCH_URL:
+        if not settings.meili.url:
             return [] if has_query else None
         try:
             return get_meili_video_indexer().recall(

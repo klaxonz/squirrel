@@ -3,27 +3,6 @@ from __future__ import annotations
 from infrastructure.config.settings import settings
 
 
-def _parse_limit_mapping(raw: str) -> dict[str, int]:
-    limits: dict[str, int] = {}
-    for token in (raw or "").replace(";", ",").split(","):
-        token = token.strip()
-        if not token or "=" not in token:
-            continue
-        key, value = token.split("=", 1)
-        key = key.strip()
-        value = value.strip()
-        if not key:
-            continue
-        try:
-            parsed_value = int(value)
-        except ValueError:
-            continue
-        if parsed_value < 1:
-            continue
-        limits[key] = parsed_value
-    return limits
-
-
 class CrawlDispatcherPolicy:
     def __init__(
         self,
@@ -38,10 +17,11 @@ class CrawlDispatcherPolicy:
 
     @classmethod
     def from_settings(cls) -> CrawlDispatcherPolicy:
+        crawl_cfg = settings.crawl
         return cls(
-            default_site_concurrency=settings.CRAWL_DEFAULT_SITE_CONCURRENCY,
-            site_concurrency_overrides=_parse_limit_mapping(settings.CRAWL_SITE_CONCURRENCY_OVERRIDES),
-            task_type_limits=_parse_limit_mapping(settings.CRAWL_TASK_TYPE_LIMITS),
+            default_site_concurrency=crawl_cfg.default_site_concurrency,
+            site_concurrency_overrides=dict(crawl_cfg.site_concurrency_overrides),
+            task_type_limits=dict(crawl_cfg.task_type_limits),
         )
 
     def get_site_limit(self, site: str) -> int:

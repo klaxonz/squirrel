@@ -121,7 +121,7 @@ class MeiliVideoIndexer:
     def __init__(self, session_factory: sessionmaker | Any = None) -> None:
         self._session_factory = session_factory or get_session
         self._client = get_meili_client()
-        self._index = self._client.index(settings.MEILISEARCH_INDEX_VIDEOS)
+        self._index = self._client.index(settings.meili.index_videos)
 
     def _build_documents_batch(self, session: Session, video_ids: list[int]) -> list[dict[str, Any]]:
         """批量组装多个 video 的 Meilisearch 文档（reindex_all 优化版）。

@@ -30,7 +30,7 @@ def test_crawl_worker_start_uses_configured_worker_count(monkeypatch):
     runtimes = []
     threads = []
 
-    monkeypatch.setattr(crawl_worker_manager.settings, "CRAWL_SLOTS_PER_PROCESS", 3, raising=False)
+    monkeypatch.setattr(crawl_worker_manager.settings.crawl, "slots_per_process", 3, raising=False)
     monkeypatch.setattr(
         crawl_worker_manager,
         "CrawlWorkerRuntime",

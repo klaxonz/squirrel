@@ -19,7 +19,7 @@ class WorkerRunner:
         exact: dict[str, int] = {}
         prefixes: list[tuple[str, int]] = []
 
-        raw = (settings.MQ_CONSUMER_COUNT_OVERRIDES or "").strip()
+        raw = (settings.mq.consumer_count_overrides or "").strip()
         if not raw:
             return exact, prefixes
 
@@ -57,7 +57,7 @@ class WorkerRunner:
         return exact, prefixes
 
     def _resolve_consumer_count(self, stream: str, configured_count: int, *, exact: dict[str, int], prefixes: list[tuple[str, int]]) -> int:
-        count = configured_count if configured_count != 1 else settings.MQ_CONSUMER_DEFAULT_COUNT
+        count = configured_count if configured_count != 1 else settings.mq.consumer_default_count
         if stream in exact:
             return exact[stream]
         for prefix, override_count in prefixes:

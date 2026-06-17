@@ -30,10 +30,10 @@ class CrawlWorkerRuntime:
     ):
         self.dispatcher = dispatcher or CrawlDispatcherService()
         self.worker_id = worker_id
-        self.lease_seconds = lease_seconds or settings.CRAWL_WORKER_LEASE_SECONDS
+        self.lease_seconds = lease_seconds or settings.crawl.worker_lease_seconds
         self.retry_delay_seconds = retry_delay_seconds
         self.poll_interval_seconds = poll_interval_seconds
-        self.max_concurrency = max(1, max_concurrency or settings.CRAWL_SLOTS_PER_PROCESS)
+        self.max_concurrency = max(1, max_concurrency or settings.crawl.slots_per_process)
         self.task_runner = CrawlWorkerTaskRunner(
             worker_id=self.worker_id,
             retry_delay_seconds=self.retry_delay_seconds,

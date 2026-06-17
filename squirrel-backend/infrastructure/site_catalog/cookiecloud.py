@@ -10,7 +10,7 @@ from PyCookieCloud import PyCookieCloud
 from PyCookieCloud.PyCryptoJS import decrypt
 
 from infrastructure.config.settings import settings
-from infrastructure.config.site_config_manager import get_effective_site_catalog
+from infrastructure.runtime.site_config_manager import get_effective_site_catalog
 from infrastructure.site_catalog.cookie_files import (
     get_site_cookies_dir,
     get_site_cookies_file_path,
