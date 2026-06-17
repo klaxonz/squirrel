@@ -4,7 +4,7 @@ from domains.user.application.services.auth import get_current_user
 from domains.user.domain.models.user import User
 from domains.video.application.services.engagement.clip_marker import VideoClipMarkerService
 from domains.video.interfaces.dto.video_clip_marker import ClipMarkerCreate, ClipMarkerPreviewUpload, ClipMarkerUpdate
-from shared_kernel.application import response
+from infrastructure.http import response
 
 router = APIRouter(prefix="/api/video-clip-markers", tags=["视频片段标记"])
 

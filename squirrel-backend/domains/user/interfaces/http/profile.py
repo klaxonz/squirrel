@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from domains.user.application.services.auth import get_current_user
 from domains.user.application.services.service import UserService
 from domains.user.domain.models.user import User
-from shared_kernel.application import response
+from infrastructure.http import response
 
 from .auth_cookie import issue_auth_cookie, serialize_user, should_remember_current_session
 from .dependencies import get_user_service

@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter
 
-from shared_kernel.application.response import error, success
+from infrastructure.http.response import error, success
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

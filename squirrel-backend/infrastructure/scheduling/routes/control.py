@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
+from infrastructure.http import response
 from infrastructure.scheduling.routes.dependencies import get_system_config_service
-from shared_kernel.application import response
 from shared_kernel.system.config import SystemConfigService
 from shared_kernel.system.constants import SYS_ENABLE_SCHEDULER
 

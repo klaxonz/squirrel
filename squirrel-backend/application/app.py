@@ -25,6 +25,7 @@ from domains.video.interfaces.http.clip_marker import router as video_clip_marke
 from domains.video.interfaces.http.history import router as video_history_router
 from domains.video.interfaces.http.interaction import router as video_interaction_router
 from infrastructure.config.settings import settings
+from infrastructure.http import response
 from infrastructure.http.middleware.access_log import AccessLogMiddleware
 from infrastructure.http.middleware.auth import (
     AuthenticationError,
@@ -33,19 +34,18 @@ from infrastructure.http.middleware.auth import (
     TokenMissingError,
 )
 from infrastructure.http.middleware.trace import RequestContextMiddleware
+from infrastructure.http.response import ErrorCode
 from infrastructure.scheduling.routes import router as scheduler_router
 from infrastructure.site_catalog.routes.connectivity_batch import router as connectivity_router
 from infrastructure.site_catalog.routes.site_cookies_bulk_import import router as site_cookies_router
 from infrastructure.site_catalog.routes.site_runtimes import router as site_runtimes_router
 from infrastructure.site_catalog.routes.sites_catalog import router as sites_router
-from shared_kernel.application import response
-from shared_kernel.application.response import ErrorCode
 from shared_kernel.system.routes.system_config import router as system_config_router
 
 logger = logging.getLogger(__name__)
 
 # HTTP 状态码 → 业务错误码映射；未列出的状态码归 UNKNOWN_ERROR。
-# 与 shared_kernel.application.response._http_status_for_code 方向相反：那边是 code→status，
+# 与 infrastructure.http.response._http_status_for_code 方向相反：那边是 code→status，
 # 这里需要从 exc.status_code 反查业务码，故本地维护。
 _STATUS_CODE_TO_ERROR_CODE: dict[int, int] = {
     status.HTTP_400_BAD_REQUEST: ErrorCode.PARAM_ERROR,

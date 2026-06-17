@@ -7,7 +7,7 @@ from domains.subscription.application.services.core.import_service import subscr
 from domains.subscription.interfaces.dto.request.subscription import ImportSubscriptionsRequest
 from domains.user.application.services.auth import get_current_user
 from domains.user.domain.models.user import User
-from shared_kernel.application import response
+from infrastructure.http import response
 
 from .site_imports import get_enabled_import_sites, get_supported_site_set, normalize_site_name
 

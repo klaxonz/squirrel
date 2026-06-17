@@ -6,7 +6,7 @@ from domains.user.application.services.search.suggestion_service import (
     search_suggestion_service,
 )
 from domains.user.domain.models.user import User
-from shared_kernel.application import response
+from infrastructure.http import response
 
 router = APIRouter(prefix="/api/search", tags=["搜索建议接口"])
 

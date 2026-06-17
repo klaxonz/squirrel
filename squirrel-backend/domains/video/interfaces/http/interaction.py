@@ -4,7 +4,7 @@ from domains.user.application.services.auth import get_current_user
 from domains.user.domain.models.user import User
 from domains.video.application.services.engagement.interaction import VideoInteractionService
 from domains.video.interfaces.dto.video_interaction import VideoInteractionDelete, VideoInteractionUpdate
-from shared_kernel.application import response
+from infrastructure.http import response
 
 router = APIRouter(
     prefix="/api/video-interaction",

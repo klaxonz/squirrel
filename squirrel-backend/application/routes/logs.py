@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 
 from domains.user.application.services.auth import get_current_user
 from domains.user.domain.models.user import User
-from shared_kernel.application import response
+from infrastructure.http import response
 from shared_kernel.system.logs import LogService
 
 logger = logging.getLogger(__name__)

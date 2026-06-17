@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from shared_kernel.application import response
+from infrastructure.http import response
 
 
 def _build_client() -> TestClient:

@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, Query
 
+from infrastructure.http import response
 from infrastructure.scheduling.routes.dependencies import get_scheduled_task_service
 from infrastructure.scheduling.routes.schemas import TaskCreateRequest, TaskUpdateRequest
 from infrastructure.scheduling.service import ScheduledTaskService
-from shared_kernel.application import response
 
 router = APIRouter()
 

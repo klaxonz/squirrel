@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from domains.user.application.services.auth import get_current_user
 from domains.user.application.services.config import UserConfigService
 from domains.user.domain.models.user import User
-from shared_kernel.application import response
+from infrastructure.http import response
 
 from .dependencies import get_config_service
 from .schemas import UserConfigUpdate

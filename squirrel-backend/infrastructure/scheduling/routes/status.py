@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
+from infrastructure.http import response
 from infrastructure.scheduling.lifecycle import scheduler_status
 from infrastructure.scheduling.service import ScheduledTaskService
-from shared_kernel.application import response
 
 router = APIRouter()
 

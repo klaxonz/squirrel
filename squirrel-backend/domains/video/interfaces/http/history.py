@@ -9,7 +9,7 @@ from domains.video.interfaces.dto.video_history import (
     HistoryBatchUpdate,
     HistoryCreate,
 )
-from shared_kernel.application import response
+from infrastructure.http import response
 
 router = APIRouter(
     prefix='/api/video-history',

@@ -14,8 +14,8 @@ from domains.video.interfaces.dto.request.video import (
     VideoCategory,
     YesNoAll,
 )
+from infrastructure.http import response
 from infrastructure.site_catalog.catalog import SiteCatalog
-from shared_kernel.application import response
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

@@ -5,7 +5,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from domains.user.application.services.auth import validate_auth_token
 from infrastructure.auth.jwt import AUTH_COOKIE_NAME, clear_auth_cookie
-from shared_kernel.application import response
+from infrastructure.http import response
 
 logger = logging.getLogger(__name__)
 

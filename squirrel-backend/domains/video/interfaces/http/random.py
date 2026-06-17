@@ -5,8 +5,8 @@ from domains.user.domain.models.user import User
 from domains.video.application.services.listing.service import get_video as get_video_detail
 from domains.video.application.services.random import get_random_video as get_random_video_record
 from domains.video.interfaces.dto.request.video import ContentType, DurationFilter, TimeRange, VideoCategory, YesNoAll
+from infrastructure.http import response
 from infrastructure.site_catalog.catalog import SiteCatalog
-from shared_kernel.application import response
 
 router = APIRouter()
 
