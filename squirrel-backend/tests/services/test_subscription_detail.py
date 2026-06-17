@@ -13,7 +13,7 @@ from domains.subscription.domain.models.subscription import Subscription
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.models.video import Video
-from shared_kernel.domain.base import Base
+from infrastructure.database.base import Base
 
 
 def _make_service():

@@ -13,7 +13,7 @@ from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_history import VideoHistory
 from domains.video.interfaces.dto.video_history import HistoryCreate
-from shared_kernel.domain.base import Base
+from infrastructure.database.base import Base
 
 pytestmark = [pytest.mark.anyio]
 

@@ -5,8 +5,8 @@ from typing import Any
 from sqlalchemy import JSON, TEXT, VARCHAR, Boolean, DateTime, Index, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
-from shared_kernel.domain.base import Base
-from shared_kernel.domain.mixins import SerializerMixin
+from infrastructure.database.base import Base
+from infrastructure.database.mixins import SerializerMixin
 
 
 class TaskType(StrEnum):

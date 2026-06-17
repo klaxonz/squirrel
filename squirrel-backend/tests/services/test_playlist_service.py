@@ -12,7 +12,7 @@ from domains.playlist.domain.models.playlist import Playlist
 from domains.playlist.domain.models.playlist_item import PlaylistItem
 from domains.playlist.interfaces.dto.playlist import PlaylistItemReorder
 from domains.video.domain.models.video import Video
-from shared_kernel.domain.base import Base
+from infrastructure.database.base import Base
 
 
 @pytest.fixture

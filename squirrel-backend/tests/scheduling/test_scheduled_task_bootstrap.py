@@ -3,11 +3,11 @@ from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
+from infrastructure.database.base import Base
 from infrastructure.scheduling.base import BaseTask
 from infrastructure.scheduling.bootstrap import ScheduledTaskBootstrap
 from infrastructure.scheduling.factory import TaskFactory
 from infrastructure.scheduling.models.scheduled_task import ScheduledTask, TaskStatus, TaskType
-from shared_kernel.domain.base import Base
 
 
 @contextmanager

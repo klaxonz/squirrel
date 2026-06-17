@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
-from shared_kernel.domain.base import Base
+from infrastructure.database.base import Base
 
 
 @pytest.fixture

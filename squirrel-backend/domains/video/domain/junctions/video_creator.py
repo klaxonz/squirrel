@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Index, Integer
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
-from shared_kernel.domain.base import Base
+from infrastructure.database.base import Base
 
 if TYPE_CHECKING:
     from domains.video.domain.models.creator import Creator

@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 from sqlalchemy import JSON, VARCHAR, Boolean, Text
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
-from shared_kernel.domain.base import Base
-from shared_kernel.domain.mixins import SerializerMixin
+from infrastructure.database.base import Base
+from infrastructure.database.mixins import SerializerMixin
 
 if TYPE_CHECKING:
     from domains.video.domain.junctions.video_creator import VideoCreator

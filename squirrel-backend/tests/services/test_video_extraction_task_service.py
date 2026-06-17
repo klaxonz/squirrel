@@ -10,7 +10,7 @@ from domains.subscription.domain.models.crawl_job import CrawlJob
 from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.video.application.services.extraction.task_service import VideoExtractionTaskService
 from domains.video.interfaces.dto.dto.video_dto import VideoExtractDto
-from shared_kernel.domain.base import Base
+from infrastructure.database.base import Base
 
 
 @pytest.fixture

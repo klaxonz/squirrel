@@ -11,7 +11,7 @@ from domains.video.application.services.engagement.clip_marker import VideoClipM
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_clip_marker import VideoClipMarker
 from domains.video.interfaces.dto.video_clip_marker import ClipMarkerCreate, ClipMarkerUpdate
-from shared_kernel.domain.base import Base
+from infrastructure.database.base import Base
 
 
 @pytest.fixture

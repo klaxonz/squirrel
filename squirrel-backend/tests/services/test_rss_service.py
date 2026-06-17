@@ -16,7 +16,7 @@ from domains.rss.application.services.client._miniflux import MinifluxClient
 from domains.rss.application.services.credential import decrypt_credential
 from domains.rss.application.services.sync.service import RssSyncService
 from domains.rss.domain.models.rss import RssAccount, RssEntry, RssFeed
-from shared_kernel.domain.base import Base
+from infrastructure.database.base import Base
 
 
 @pytest.fixture

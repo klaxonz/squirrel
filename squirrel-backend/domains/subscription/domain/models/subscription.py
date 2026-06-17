@@ -7,8 +7,8 @@ from sqlalchemy import VARCHAR, Boolean, Index, Integer, Text
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 from sqlalchemy.types import JSON
 
-from shared_kernel.domain.base import Base
-from shared_kernel.domain.mixins import SerializerMixin
+from infrastructure.database.base import Base
+from infrastructure.database.mixins import SerializerMixin
 
 if TYPE_CHECKING:
     from domains.video.domain.junctions.subscription_video import SubscriptionVideo

@@ -8,8 +8,8 @@ from domains.subscription.application.services.crawl.tasks.service import CrawlT
 from domains.subscription.domain.models.crawl_job import CrawlJob
 from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
+from infrastructure.database.base import Base
 from infrastructure.messaging.framework.monitor import QueueBackpressureMonitor
-from shared_kernel.domain.base import Base
 
 
 @pytest.fixture

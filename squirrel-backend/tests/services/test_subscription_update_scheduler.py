@@ -18,7 +18,7 @@ from domains.subscription.domain.models.crawl_job import CrawlJob
 from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.subscription.domain.models.subscription import Subscription
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
-from shared_kernel.domain.base import Base
+from infrastructure.database.base import Base
 
 
 @pytest.fixture
