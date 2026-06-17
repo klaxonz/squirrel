@@ -10,8 +10,8 @@ from domains.subscription.application.services.core.update.task_progress_service
 )
 from domains.subscription.application.services.crawl.dispatcher.service import CrawlDispatcherService
 from infrastructure.config.settings import settings
-from workers.scheduling.workers.leases import CrawlWorkerLeaseTracker
-from workers.scheduling.workers.tasks import CrawlWorkerTaskRunner
+from workers.scheduling.executors.leases import CrawlWorkerLeaseTracker
+from workers.scheduling.executors.tasks import CrawlWorkerTaskRunner
 
 logger = logging.getLogger(__name__)
 

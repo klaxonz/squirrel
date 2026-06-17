@@ -3,7 +3,7 @@ import threading
 from threading import Lock
 
 from infrastructure.messaging.framework.runner import WorkerRunner
-from workers.scheduling.workers.manager import crawl_worker_start, crawl_worker_status, crawl_worker_stop
+from workers.scheduling.executors.manager import crawl_worker_start, crawl_worker_status, crawl_worker_stop
 
 _logger = logging.getLogger(__name__)
 

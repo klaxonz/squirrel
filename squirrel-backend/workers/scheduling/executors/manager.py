@@ -3,7 +3,7 @@ import threading
 from threading import Lock
 
 from infrastructure.config.settings import settings
-from workers.scheduling.workers.runtime import CrawlWorkerRuntime
+from workers.scheduling.executors.runtime import CrawlWorkerRuntime
 
 _logger = logging.getLogger(__name__)
 
