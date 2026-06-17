@@ -31,6 +31,15 @@ class ScheduledTaskBootstrap:
             system_names = [f"system_{name}"[:100] for name in default_names]
             candidate_names = default_names + system_names
 
+            # Class paths that should be considered "alive" for orphan detection.
+            # Prefer the explicit task_classes argument (covers test/migration scenarios
+            # where the caller passes a curated list); otherwise fall back to the
+            # factory's discovered builtin registry.
+            if task_classes is not None:
+                available_classes = {f"{cls.__module__}.{cls.__name__}" for cls in classes}
+            else:
+                available_classes = set(self._available_task_class_paths())
+
             with self.session_factory() as session:
                 existing_system_tasks = session.query(ScheduledTask).filter(
                     ScheduledTask.task_type == TaskType.SYSTEM.value,
@@ -97,12 +106,28 @@ class ScheduledTaskBootstrap:
                     session.add(task)
                     created_count += 1
 
+                # Drop system tasks whose backing class is gone.
+                # Runs after the update loop so tasks that were merely renamed/module-moved
+                # have already had their task_class refreshed and won't be treated as orphans.
+                orphaned = [
+                    task for task in existing_system_tasks
+                    if task.task_class not in available_classes
+                ]
+                for task in orphaned:
+                    logger.info('Removing orphaned system task %s (class %s no longer exists)', task.name, task.task_class)
+                    session.delete(task)
+
                 if created_count:
                     logger.info("Bootstrap created %s system scheduled tasks", created_count)
                 if updated_count:
                     logger.info("Bootstrap updated %s system scheduled task classes", updated_count)
         except Exception as e:
             logger.error("Failed to ensure system tasks: %s", e, exc_info=True)
+
+    @staticmethod
+    def _available_task_class_paths() -> set[str]:
+        """Return the set of registered task class paths (module.ClassName)."""
+        return set(dynamic_task_manager.task_factory.get_available_task_classes().keys())
 
 
 scheduled_task_bootstrap = ScheduledTaskBootstrap()

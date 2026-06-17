@@ -67,6 +67,59 @@ def test_ensure_system_tasks_updates_existing_system_task_class_by_name():
     assert tasks[0].last_error is None
 
 
+def test_ensure_system_tasks_removes_orphaned_system_tasks_whose_class_is_gone():
+    engine = create_engine('sqlite:///:memory:')
+    Base.metadata.create_all(engine, tables=[ScheduledTask.__table__])
+
+    class SurvivorTask(BaseTask):
+        pass
+
+    SurvivorTask.__module__ = 'workers.scheduling.tasks.survivor_task'
+
+    with Session(engine, expire_on_commit=False) as session:
+        session.add_all([
+            ScheduledTask(
+                name='SurvivorTask',
+                task_type=TaskType.SYSTEM.value,
+                interval=60,
+                unit='seconds',
+                start_immediately=True,
+                max_retries=3,
+                status=TaskStatus.ENABLED.value,
+                is_active=True,
+                task_class='workers.scheduling.tasks.survivor_task.SurvivorTask',
+                task_params={},
+                created_by='system',
+                updated_by='system',
+            ),
+            ScheduledTask(
+                name='MetricsCollectionTask',
+                task_type=TaskType.SYSTEM.value,
+                interval=5,
+                unit='minutes',
+                start_immediately=True,
+                max_retries=3,
+                status=TaskStatus.ERROR.value,
+                is_active=True,
+                task_class='workers.scheduling.tasks.metrics_collection_task.MetricsCollectionTask',
+                task_params={},
+                last_error='Cannot create task instance',
+                created_by='system',
+                updated_by='system',
+            ),
+        ])
+        session.commit()
+
+    bootstrap = ScheduledTaskBootstrap(session_factory=lambda: _get_session(engine))
+    bootstrap.ensure_system_tasks([SurvivorTask])
+
+    with Session(engine, expire_on_commit=False) as session:
+        tasks = session.query(ScheduledTask).all()
+
+    assert len(tasks) == 1
+    assert tasks[0].name == 'SurvivorTask'
+
+
 def test_task_factory_discovers_nested_worker_task_modules():
     factory = TaskFactory()
 

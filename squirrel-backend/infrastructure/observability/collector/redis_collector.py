@@ -10,7 +10,6 @@ Core features:
 
 Storage strategy:
 - Real-time data stored in Redis (1-hour TTL)
-- Periodic snapshots written to PostgreSQL (long-term storage)
 - Supports tag-based aggregation and querying
 
 Example:
@@ -36,8 +35,6 @@ from contextlib import contextmanager
 
 from infrastructure.observability.collector.keys import build_metric_key
 from infrastructure.observability.collector.recent_errors import RecentErrorStore
-from infrastructure.observability.collector.snapshot import MetricSnapshot
-from infrastructure.observability.collector.snapshot_collector import RedisMetricSnapshotCollector
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +60,6 @@ class MetricsCollector:
         self.ttl = 3600  # 1-hour TTL
         self.enabled = True  # Can be toggled via config
         self.recent_errors = RecentErrorStore(redis_client)
-        self.snapshot_collector = RedisMetricSnapshotCollector(
-            redis_client,
-            self.get_metrics_keys_by_pattern,
-            self.get_histogram_stats,
-        )
 
     def counter(self, name: str, value: int = 1, tags: dict[str, str] | None = None) -> None:
         """Counter: cumulative metric
@@ -373,35 +365,6 @@ class MetricsCollector:
         d0 = sorted_values[f] * (c - k)
         d1 = sorted_values[c] * (k - f)
         return d0 + d1
-
-    def get_metrics_keys_by_pattern(self, pattern: str) -> list[str]:
-        """Query metric keys by pattern
-
-        Args:
-            pattern: Redis key pattern, e.g. "metrics:counter:crawl.tasks.total:*"
-
-        Returns:
-            List of matching keys
-
-        """
-        try:
-            return [k.decode("utf-8") if isinstance(k, bytes) else k for k in self.redis.keys(pattern)]
-        except Exception as e:
-            # infrastructure boundary -- metrics must never crash the caller
-            logger.error("Failed to get metrics keys by pattern %s: %s", pattern, e)
-            return []
-
-    def collect_snapshots(self, metric_names: list[str] | None = None) -> list[MetricSnapshot]:
-        """Collect metric snapshots (for persistence to database)
-
-        Args:
-            metric_names: List of metric names to collect, None means collect all
-
-        Returns:
-            List of metric snapshots
-
-        """
-        return self.snapshot_collector.collect(metric_names)
 
     def enable(self) -> None:
         """Enable metrics collection"""
