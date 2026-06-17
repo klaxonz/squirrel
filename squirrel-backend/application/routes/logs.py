@@ -2,10 +2,10 @@ import logging
 
 from fastapi import APIRouter, Depends, Query
 
+from domains.system.infrastructure.logs import LogService
 from domains.user.application.services.auth import get_current_user
 from domains.user.domain.models.user import User
 from infrastructure.http import response
-from shared_kernel.system.logs import LogService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/logs", tags=["Log Management"])

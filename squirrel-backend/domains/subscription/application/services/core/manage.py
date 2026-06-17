@@ -10,13 +10,13 @@ from domains.subscription.application.services.core.listing.service import resol
 from domains.subscription.application.services.core.runtime_models import SubscriptionMeta
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import ContentType, Subscription
+from domains.system.domain.models import constants
 from domains.user.domain.models.user import User
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from infrastructure.config.settings import settings
 from infrastructure.database.session import get_session, register_after_commit
 from infrastructure.messaging.framework.producer import RedisStreamProducer
 from infrastructure.messaging.models.message import Message
-from shared_kernel.system import constants
 
 logger = logging.getLogger(__name__)
 

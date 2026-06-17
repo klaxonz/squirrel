@@ -5,8 +5,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from domains.system.domain.models.system_config import SystemConfig
 from infrastructure.database.session import get_session as _default_get_session
-from shared_kernel.system.system_config_model import SystemConfig
 
 logger = logging.getLogger(__name__)
 

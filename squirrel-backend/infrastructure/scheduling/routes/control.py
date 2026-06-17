@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 
+from domains.system.application.services.config_service import SystemConfigService
+from domains.system.domain.models.constants import SYS_ENABLE_SCHEDULER
 from infrastructure.http import response
 from infrastructure.scheduling.routes.dependencies import get_system_config_service
-from shared_kernel.system.config import SystemConfigService
-from shared_kernel.system.constants import SYS_ENABLE_SCHEDULER
 
 router = APIRouter()
 

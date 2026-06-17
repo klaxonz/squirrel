@@ -2,8 +2,8 @@ import logging
 
 from fastapi import APIRouter, Body, Depends
 
-from shared_kernel.system.config import SystemConfigService
-from shared_kernel.system.constants import SYS_BLUR_NSFW_THUMBNAILS, SYS_ENABLE_SCHEDULER, SYS_ENABLE_WORKER
+from domains.system.application.services.config_service import SystemConfigService
+from domains.system.domain.models.constants import SYS_BLUR_NSFW_THUMBNAILS, SYS_ENABLE_SCHEDULER, SYS_ENABLE_WORKER
 
 router = APIRouter(prefix='/api/system/config', tags=['system-config'])
 _logger = logging.getLogger(__name__)

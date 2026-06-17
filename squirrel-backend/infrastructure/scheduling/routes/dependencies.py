@@ -1,5 +1,5 @@
+from domains.system.application.services.config_service import SystemConfigService
 from infrastructure.scheduling.service import ScheduledTaskService
-from shared_kernel.system.config import SystemConfigService
 
 
 def get_system_config_service():

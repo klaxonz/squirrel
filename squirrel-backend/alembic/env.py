@@ -22,7 +22,6 @@ config.set_main_option("sqlalchemy.url", settings.database_url)
 # for 'autogenerate' support
 module_discovery.import_classes_from_package(package="domains", base_class=Base, recursive=True)
 module_discovery.import_classes_from_package(package="infrastructure", base_class=Base, recursive=True)
-module_discovery.import_classes_from_package(package="shared_kernel", base_class=Base, recursive=True)
 target_metadata = Base.metadata
 
 

@@ -11,6 +11,7 @@ from domains.subscription.application.services.core.runtime_models import (
     SubscriptionMeta,
 )
 from domains.subscription.domain.models.subscription import Subscription
+from domains.system.domain.models import constants
 from infrastructure.database.session import get_session
 from infrastructure.messaging.framework.producer import RedisStreamProducer
 from infrastructure.messaging.models.message import Message
@@ -19,7 +20,6 @@ from infrastructure.site_catalog.url import extract_top_level_domain
 from infrastructure.site_runtimes.gateway import SiteRuntimeGateway
 from infrastructure.site_runtimes.models import SiteRuntimeSnapshot
 from infrastructure.site_runtimes.ports import get_runtime_gateway, get_runtime_snapshot
-from shared_kernel.system import constants
 
 logger = logging.getLogger(__name__)
 

@@ -1,8 +1,8 @@
 import logging
 import time
 
-from shared_kernel.system.config import SystemConfigService
-from shared_kernel.system.constants import SYS_ENABLE_WORKER
+from domains.system.application.services.config_service import SystemConfigService
+from domains.system.domain.models.constants import SYS_ENABLE_WORKER
 from workers.bootstrap import bootstrap_runtime, create_shutdown_event
 from workers.messaging.worker import worker_start, worker_stop
 

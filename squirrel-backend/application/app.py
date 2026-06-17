@@ -18,6 +18,7 @@ from domains.music.interfaces.http import router as music_router
 from domains.playlist.interfaces.http import router as playlist_router
 from domains.rss.interfaces.http import router as rss_router
 from domains.subscription.interfaces.http import router as subscription_router
+from domains.system.interfaces.http.system_config import router as system_config_router
 from domains.user.interfaces.http import router as user_router
 from domains.user.interfaces.http.search import router as search_router
 from domains.video.interfaces.http import router as video_router
@@ -40,7 +41,6 @@ from infrastructure.site_catalog.routes.connectivity_batch import router as conn
 from infrastructure.site_catalog.routes.site_cookies_bulk_import import router as site_cookies_router
 from infrastructure.site_catalog.routes.site_runtimes import router as site_runtimes_router
 from infrastructure.site_catalog.routes.sites_catalog import router as sites_router
-from shared_kernel.system.routes.system_config import router as system_config_router
 
 logger = logging.getLogger(__name__)
 
