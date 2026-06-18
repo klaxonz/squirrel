@@ -299,267 +299,75 @@
     </transition>
 
     <!-- ???? -->
-    <transition name="sp-ui-fade">
-      <div v-if="showSettingsMenu" class="sp-settings-pop" ref="settingsPopupRef" data-player-interactive role="menu">
-        <template v-if="settingsView === 'main'">
-          <div class="sp-menu-list">
-            <div class="sp-menu-item" @click="toggleAutoplayNext" role="menuitem">
-              <span>{{ t('autoplayNext') }}</span>
-              <div class="sp-simple-switch" :class="{ 'is-on': store.autoplayNext }" role="switch" :aria-checked="store.autoplayNext"></div>
-            </div>
-            <div class="sp-menu-item" @click="toggleLoop" role="menuitem">
-              <span>{{ t('loop') }}</span>
-              <div class="sp-simple-switch" :class="{ 'is-on': store.loop }" role="switch" :aria-checked="store.loop"></div>
-            </div>
-            <div class="sp-menu-item" @click="settingsView = 'sleepTimer'">
-              <span>{{ t('sleepTimer') }}</span>
-              <span class="sp-menu-val">{{ sleepTimerLabel }}</span>
-            </div>
-            <div class="sp-menu-item" @click="captureScreenshot">
-              <span>{{ t('screenshot') }}</span>
-            </div>
-            <div class="sp-menu-item" @click="settingsView = 'speed'">
-              <span>{{ t('playbackSpeed') }}</span>
-              <span class="sp-menu-val">{{ store.playbackRate }}x</span>
-            </div>
-            <div class="sp-menu-item" @click="settingsView = 'rotation'">
-              <span>{{ t('rotate') }}</span>
-              <span class="sp-menu-val">{{ videoRotation }}°</span>
-            </div>
-            <div v-if="displayedQualities.length > 0" class="sp-menu-item" @click="settingsView = 'quality'">
-              <span>{{ t('quality') }}</span>
-              <span class="sp-menu-val">{{ qualityMenuLabel }}</span>
-            </div>
-            <div v-if="subtitleTracks.length > 0" class="sp-menu-item" @click="settingsView = 'subtitleStyle'">
-              <span>{{ t('subtitleSettings') }}</span>
-              <span class="sp-menu-val">{{ subtitleMenuLabel }}</span>
-            </div>
-          </div>
-        </template>
-        <template v-else-if="settingsView === 'speed'">
-          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'main'">
-            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('playbackSpeed') }}
-          </div>
-          <div class="sp-menu-list">
-            <div v-for="rate in playbackRates" :key="rate" 
-                 class="sp-menu-item" :class="{ 'is-active': store.playbackRate === rate }"
-                 @click="handleSpeedSelect(rate)">
-              {{ rate }}x
-            </div>
-          </div>
-        </template>
-        <template v-else-if="settingsView === 'quality'">
-          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'main'">
-            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('quality') }}
-          </div>
-          <div class="sp-menu-list">
-            <div v-for="q in displayedQualities" :key="q.id" 
-                 class="sp-menu-item" :class="{ 'is-active': isQualityActive(q) }"
-                 @click="handleQualitySelect(q)">
-              {{ q.label }}
-            </div>
-          </div>
-        </template>
-        <template v-else-if="settingsView === 'rotation'">
-          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'main'">
-            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('rotate') }}
-          </div>
-          <div class="sp-menu-list">
-            <div
-              v-for="rotation in rotationOptions"
-              :key="rotation"
-              class="sp-menu-item"
-              :class="{ 'is-active': videoRotation === rotation }"
-              @click="handleRotationSelect(rotation)"
-            >
-              {{ rotation }}°
-            </div>
-          </div>
-        </template>
-        <template v-else-if="settingsView === 'subtitles'">
-          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'main'">
-            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('subtitleSettings') }}
-          </div>
-          <div class="sp-menu-list">
-            <div
-              class="sp-menu-item"
-              :class="{ 'is-active': !store.subtitlesEnabled || !currentSubtitle }"
-              @click="handleSubtitleDisable"
-            >
-              {{ t('subtitlesOff') }}
-            </div>
-            <div
-              v-for="track in subtitleTracks"
-              :key="track.id"
-              class="sp-menu-item"
-              :class="{ 'is-active': store.subtitlesEnabled && currentSubtitle?.id === track.id }"
-              @click="handleSubtitleSelect(track)"
-            >
-              {{ track.label }}
-            </div>
-          </div>
-        </template>
-        <template v-else-if="settingsView === 'subtitleStyle'">
-          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'subtitles'">
-            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('subtitleSettings') }}
-          </div>
-          <div class="sp-menu-list">
-            <!-- ?? -->
-            <div class="sp-menu-item" @click="settingsView = 'subtitlePreset'">
-              <span>{{ t('preset') }}</span>
-              <span class="sp-menu-val">{{ currentPresetLabel }}</span>
-            </div>
-            <!-- ???? -->
-            <div class="sp-menu-item" @click="settingsView = 'subtitleFontSize'">
-              <span>{{ t('fontSize') }}</span>
-              <span class="sp-menu-val">{{ subtitleStyleLabel('fontSize', subtitleStyle.fontSize || 'medium', fontSizeOptions) }}</span>
-            </div>
-            <!-- ???? -->
-            <div class="sp-menu-item" @click="settingsView = 'subtitleColor'">
-              <span>{{ t('fontColor') }}</span>
-              <span class="sp-subtitle-color-preview" :style="{ background: subtitleStyle.color || '#ffffff' }"></span>
-            </div>
-            <!-- ???? -->
-            <div class="sp-menu-item" @click="settingsView = 'subtitleBg'">
-              <span>{{ t('backgroundColor') }}</span>
-              <span class="sp-subtitle-color-preview" :style="{ background: subtitleStyle.backgroundColor || 'rgba(0,0,0,0.8)' }"></span>
-            </div>
-            <!-- ???? -->
-              <div class="sp-menu-item" @click="settingsView = 'subtitlePosition'">
-                <span>{{ t('position') }}</span>
-                <span class="sp-menu-val">{{ subtitleStyle.position === 'top' ? t('positionTop') : t('positionBottom') }}</span>
-              </div>
-              <!-- Subtitle offset -->
-              <div class="sp-menu-item sp-menu-item--offset">
-                <span>{{ t('subtitleOffset') }}</span>
-                <div class="sp-offset-controls">
-                  <button class="sp-offset-btn" @click.stop="handleSubtitleOffsetChange(-0.5)">-0.5s</button>
-                  <span class="sp-offset-value">{{ subtitleOffset > 0 ? '+' : '' }}{{ subtitleOffset.toFixed(1) }}s</span>
-                  <button class="sp-offset-btn" @click.stop="handleSubtitleOffsetChange(0.5)">+0.5s</button>
-                </div>
-              </div>
-          </div>
-        </template>
-        <template v-else-if="settingsView === 'subtitleFontSize'">
-          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'subtitleStyle'">
-            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('fontSize') }}
-          </div>
-          <div class="sp-menu-list">
-            <div
-              v-for="opt in fontSizeOptions"
-              :key="opt.value"
-              class="sp-menu-item"
-              :class="{ 'is-active': (subtitleStyle.fontSize || 'medium') === opt.value }"
-              @click="handleSubtitleStyleChange('fontSize', opt.value)"
-            >
-              {{ opt.label }}
-            </div>
-          </div>
-        </template>
-        <template v-else-if="settingsView === 'subtitleColor'">
-          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'subtitleStyle'">
-            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('fontColor') }}
-          </div>
-          <div class="sp-subtitle-color-grid">
-            <div
-              v-for="c in subtitleColorOptions"
-              :key="c.value"
-              class="sp-subtitle-color-swatch"
-              :class="{ 'is-active': subtitleStyle.color === c.value }"
-              :style="{ background: c.value }"
-              :title="c.label"
-              @click="handleSubtitleStyleChange('color', c.value)"
-            ></div>
-          </div>
-        </template>
-        <template v-else-if="settingsView === 'subtitleBg'">
-          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'subtitleStyle'">
-            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('backgroundColor') }}
-          </div>
-          <div class="sp-subtitle-color-grid">
-            <div
-              v-for="c in subtitleBgOptions"
-              :key="c.value"
-              class="sp-subtitle-color-swatch"
-              :class="{ 'is-active': subtitleStyle.backgroundColor === c.value }"
-              :style="{ background: c.value }"
-              :title="c.label"
-              @click="handleSubtitleStyleChange('backgroundColor', c.value)"
-            ></div>
-          </div>
-          <div class="sp-subtitle-opacity-row">
-            <span class="sp-subtitle-opacity-label">{{ t('opacity') }}</span>
-            <div class="sp-subtitle-opacity-slider">
-              <div class="sp-opacity-rail" ref="opacityRailRef" @pointerdown="onOpacityPointerDown">
-                <div class="sp-opacity-fill" :style="{ width: `${(subtitleStyle.backgroundOpacity ?? 0.8) * 100}%` }"></div>
-                <div class="sp-opacity-thumb" :style="{ left: `${(subtitleStyle.backgroundOpacity ?? 0.8) * 100}%` }"></div>
-              </div>
-            </div>
-            <span class="sp-subtitle-opacity-val">{{ Math.round((subtitleStyle.backgroundOpacity ?? 0.8) * 100) }}%</span>
-          </div>
-        </template>
-        <template v-else-if="settingsView === 'subtitlePreset'">
-          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'subtitleStyle'">
-            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('preset') }}
-          </div>
-          <div class="sp-menu-list">
-            <div
-              v-for="preset in subtitlePresets"
-              :key="preset.id"
-              class="sp-menu-item"
-              :class="{ 'is-active': isPresetActive(preset) }"
-              @click="handlePresetSelect(preset.id)"
-            >
-              {{ preset.label }}
-            </div>
-          </div>
-        </template>
-        <template v-else-if="settingsView === 'subtitlePosition'">
-          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'subtitleStyle'">
-            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('position') }}
-          </div>
-          <div class="sp-menu-list">
-            <div
-              class="sp-menu-item"
-              :class="{ 'is-active': subtitleStyle.position === 'bottom' }"
-              @click="handleSubtitleStyleChange('position', 'bottom')"
-            >
-              {{ t('positionBottom') }}
-            </div>
-            <div
-              class="sp-menu-item"
-              :class="{ 'is-active': subtitleStyle.position === 'top' }"
-              @click="handleSubtitleStyleChange('position', 'top')"
-            >
-              {{ t('positionTop') }}
-            </div>
-          </div>
-        </template>
-        <template v-else-if="settingsView === 'sleepTimer'">
-          <div class="sp-menu-item" style="opacity: 0.5" @click="settingsView = 'main'">
-            <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ t('sleepTimer') }}
-          </div>
-          <div class="sp-menu-list">
-            <div
-              class="sp-menu-item"
-              :class="{ 'is-active': store.sleepTimerMinutes === null }"
-              @click="sleepTimerSelect(null)"
-            >
-              {{ t('sleepTimerOff') }}
-            </div>
-            <div
-              v-for="mins in sleepTimerOptions"
-              :key="mins"
-              class="sp-menu-item"
-              :class="{ 'is-active': store.sleepTimerMinutes === mins }"
-              @click="sleepTimerSelect(mins)"
-            >
-              {{ t('sleepTimerMinutes', { minutes: mins }) }}
-            </div>
-          </div>
-        </template>
-      </div>
-    </transition>
+    <SettingsMenu
+      :visible="showSettingsMenu"
+      :view="settingsView"
+      :autoplay-next="store.autoplayNext"
+      :loop="store.loop"
+      :playback-rate="store.playbackRate"
+      :rotation="videoRotation"
+      :qualities="settingsQualities"
+      :has-quality="displayedQualities.length > 0"
+      :has-subtitles="subtitleTracks.length > 0"
+      :subtitle-tracks="subtitleTracks"
+      :subtitles-enabled="store.subtitlesEnabled"
+      :active-subtitle-id="currentSubtitle?.id ?? null"
+      :subtitle-color="subtitleStyle.color || '#ffffff'"
+      :subtitle-bg="subtitleStyle.backgroundColor || 'rgba(0,0,0,0.8)'"
+      :subtitle-position="subtitleStyle.position || 'bottom'"
+      :subtitle-offset="subtitleOffset"
+      :bg-opacity="subtitleStyle.backgroundOpacity ?? 0.8"
+      :current-font-size="subtitleStyle.fontSize || 'medium'"
+      :current-preset-label="currentPresetLabel"
+      :active-preset-id="settingsActivePresetId"
+      :subtitle-presets="subtitlePresets"
+      :color-options="settings.subtitleColorOptions"
+      :bg-options="settings.subtitleBgOptions"
+      :font-size-options="settings.fontSizeOptions"
+      :font-size-value="settings.subtitleStyleLabel('fontSize', subtitleStyle.fontSize || 'medium', settings.fontSizeOptions)"
+      :quality-value="qualityMenuLabel"
+      :subtitle-value="subtitleMenuLabel"
+      :speeds="settings.playbackRates"
+      :rotations="settings.rotationOptions"
+      :show-sleep-timer="true"
+      :active-sleep-timer="store.sleepTimerMinutes"
+      :sleep-timer-options="sleepTimerOptions"
+      :sleep-timer-value="sleepTimerLabel"
+      :autoplay-next-label="t('autoplayNext')"
+      :loop-label="t('loop')"
+      :speed-label="t('playbackSpeed')"
+      :rotate-label="t('rotate')"
+      :quality-label="t('quality')"
+      :subtitle-label="t('subtitleSettings')"
+      :subtitles-off-label="t('subtitlesOff')"
+      :preset-label="t('preset')"
+      :font-size-label="t('fontSize')"
+      :font-color-label="t('fontColor')"
+      :bg-color-label="t('backgroundColor')"
+      :position-label="t('position')"
+      :position-bottom-label="t('positionBottom')"
+      :position-top-label="t('positionTop')"
+      :opacity-label="t('opacity')"
+      :offset-label="t('subtitleOffset')"
+      :sleep-timer-label="t('sleepTimer')"
+      :sleep-timer-off-label="t('sleepTimerOff')"
+      :screenshot-label="t('screenshot')"
+      :sleep-timer-mins-label="(mins: number) => t('sleepTimerMinutes', { minutes: mins })"
+      @navigate="settingsView = $event"
+      @toggle-autoplay-next="toggleAutoplayNext"
+      @toggle-loop="toggleLoop"
+      @screenshot="captureScreenshot"
+      @select-speed="settings.handleSpeedSelect"
+      @select-rotation="handleRotationSelect"
+      @select-quality="settings.handleQualitySelect"
+      @disable-subtitles="settings.handleSubtitleDisable"
+      @select-subtitle="settings.handleSubtitleSelect"
+      @change-subtitle-style="settings.handleSubtitleStyleChange"
+      @select-preset="settings.handlePresetSelect"
+      @offset-change="settings.handleSubtitleOffsetChange"
+      @update-opacity="settings.handleOpacityChange"
+      @select-sleep-timer="sleepTimerSelect"
+    />
 
   </div>
 </template>
@@ -568,7 +376,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { formatTime } from '@/utils/dateFormat'
 import { usePlayer, type PlayerOptions } from './runtime/usePlayer'
-import type { Chapter, MediaSource, QualityLevel, SubtitleTrack } from './core'
+import type { Chapter, MediaSource, SubtitleTrack } from './core'
 import { getCodecFamily } from './core/codec'
 import type { ThemeName } from './themes'
 import type { VideoClipMarker } from '@/types/videoClipMarker'
@@ -581,9 +389,11 @@ import VideoInfoOverlay from './VideoInfoOverlay.vue'
 import SleepTimerBadge from './SleepTimerBadge.vue'
 import ChapterOverlay from './ChapterOverlay.vue'
 import UpNextOverlay from './UpNextOverlay.vue'
+import SettingsMenu from './SettingsMenu.vue'
 import { useClipMarkers } from './composables/useClipMarkers'
 import { useSleepTimer } from './composables/useSleepTimer'
 import { useCentralHud } from './composables/useCentralHud'
+import { useSettingsMenu } from './composables/useSettingsMenu'
 
 import './themes/variables.css'
 import './themes/dark.css'
@@ -694,8 +504,6 @@ const handlePlaylistSelect = (index: number) => {
 const videoRef = ref<HTMLVideoElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
 const progressAreaRef = ref<HTMLElement | null>(null)
-const settingsPopupRef = ref<HTMLElement | null>(null)
-const opacityRailRef = ref<HTMLElement | null>(null)
 
 // Fullscreen feature state
 const showVideoInfo = ref(true)
@@ -735,11 +543,8 @@ const {
   stopSleepTimer,
 } = useSleepTimer({ store, pause, showCentralHud, t: t as (key: string, params?: Record<string, string | number>) => string })
 
-const showSettingsMenu = ref(false)
-const showQualityMenu = ref(false)
 const showStats = ref(false)
 const showPlaylist = ref(false)
-const settingsView = ref('main')
 const previewTime = ref<number | null>(null)
 const previewPercent = ref(0)
 const isScrubbing = ref(false)
@@ -815,34 +620,44 @@ watch(volume, (newVol, oldVol) => {
   showCentralHud('volume', `${Math.round(newVol)}%`, volumeIconName.value, newVol)
 })
 
-const playbackRates = [0.5, 0.75, 1, 1.25, 1.5, 2]
-const rotationOptions = [0, 90, 180, 270]
-const fontSizeOptions = [
-  { value: 'small', label: '1' },
-  { value: 'medium', label: '2' },
-  { value: 'large', label: '3' },
-  { value: 'xlarge', label: '4' },
-]
-const subtitleColorOptions = [
-  { value: '#ffffff', label: 'White' },
-  { value: '#ffff00', label: 'Yellow' },
-  { value: '#00ff00', label: 'Green' },
-  { value: '#00ffff', label: 'Cyan' },
-  { value: '#ff55ff', label: 'Pink' },
-  { value: '#ff5500', label: 'Orange' },
-]
-const subtitleBgOptions = [
-  { value: 'rgba(0,0,0,0.8)', label: 'Black' },
-  { value: 'rgba(0,0,0,0.5)', label: 'Dark' },
-  { value: 'rgba(0,0,128,0.8)', label: 'Blue' },
-  { value: 'rgba(0,80,0,0.8)', label: 'Green' },
-  { value: 'rgba(80,0,0,0.8)', label: 'Red' },
-  { value: 'transparent', label: 'None' },
-]
-const subtitleStyleLabel = (key: string, value: string, options: Array<{ value: string; label: string }>) => {
-  const opt = options.find((o) => o.value === value)
-  return opt ? opt.label : value
-}
+// ponytail: settings menu state + handlers + option arrays live in
+// useSettingsMenu; VideoPlayer keeps only the quality-pipeline computeds it
+// shares with the rest of the controls (displayedQualities / isQualityActive /
+// qualityMenuLabel / subtitleMenuLabel / currentPresetLabel).
+const settings = useSettingsMenu({
+  subtitleStyle,
+  subtitleOffset,
+  setPlaybackRate,
+  setQuality,
+  setSubtitle,
+  setSubtitleStyle,
+  setSubtitleOffset,
+  applySubtitlePreset,
+})
+// destructure the refs + the symbols still referenced by bare name elsewhere
+// in VideoPlayer (controls bar buttons, quality quick-popup, hideControls,
+// keyboard speed shortcuts). The rest are accessed via `settings.*`.
+const {
+  showSettingsMenu,
+  showQualityMenu,
+  settingsView,
+  closeMenus,
+  toggleSettingsMenu,
+  toggleQualityMenu,
+  handleSpeedSelect,
+  handleQualitySelect,
+  playbackRates,
+} = settings
+
+// ponytail: SettingsMenu expects qualities as {id,label,active}; map the shared
+// displayedQualities + isQualityActive into that shape instead of duplicating.
+const settingsQualities = computed(() =>
+  displayedQualities.value.map((q) => ({ id: q.id, label: q.label, active: isQualityActive(q) })),
+)
+const settingsActivePresetId = computed(() => {
+  const active = subtitlePresets.find((p) => settings.isPresetActive(p))
+  return active ? active.id : null
+})
 const progress = computed(() => duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0)
 
 const sourceChapters = computed(() => props.source?.chapters || [])
@@ -1101,34 +916,7 @@ watch(() => store.playing, (playing) => {
   }
 })
 
-const closeMenus = () => {
-  showSettingsMenu.value = false
-  showQualityMenu.value = false
-  settingsView.value = 'main'
-}
-
 const togglePlay = () => isPlaying.value ? pause() : play()
-const toggleSettingsMenu = () => {
-  const nextVisible = !showSettingsMenu.value
-  showQualityMenu.value = false
-  showSettingsMenu.value = nextVisible
-  settingsView.value = 'main'
-}
-const toggleQualityMenu = () => {
-  const nextVisible = !showQualityMenu.value
-  showSettingsMenu.value = false
-  showQualityMenu.value = nextVisible
-}
-const handleSpeedSelect = (rate: number) => { setPlaybackRate(rate); closeMenus() }
-const handleQualitySelect = (q: QualityLevel) => { setQuality(q.id); closeMenus() }
-const handleSubtitleSelect = (track: SubtitleTrack) => { setSubtitle(track); closeMenus() }
-const handleSubtitleDisable = () => { setSubtitle(null); closeMenus() }
-const handleSubtitleStyleChange = (key: string, value: unknown) => { setSubtitleStyle({ [key]: value }) }
-const handleSubtitleOffsetChange = (delta: number) => {
-  const next = subtitleOffset.value + delta
-  setSubtitleOffset(Math.max(-10, Math.min(10, Math.round(next * 10) / 10)))
-}
-const handlePresetSelect = (presetId: string) => { applySubtitlePreset(presetId); closeMenus() }
 const rotateVideo = () => {
   videoRotation.value = (videoRotation.value + 90) % 360
   showCentralHud('rotation', `${videoRotation.value}°`, 'rotate')
@@ -1138,36 +926,8 @@ const handleRotationSelect = (rotation: number) => {
   showCentralHud('rotation', `${videoRotation.value}°`, 'rotate')
   closeMenus()
 }
-const handleOpacityChange = (e: PointerEvent) => {
-  if (!opacityRailRef.value) return
-  const rect = opacityRailRef.value.getBoundingClientRect()
-  const p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-  setSubtitleStyle({ backgroundOpacity: Math.round(p * 10) / 10 })
-}
-const onOpacityPointerDown = (e: PointerEvent) => {
-  handleOpacityChange(e)
-  const onMove = (ev: PointerEvent) => handleOpacityChange(ev)
-  const onUp = () => {
-    window.removeEventListener('pointermove', onMove)
-    window.removeEventListener('pointerup', onUp)
-  }
-  window.addEventListener('pointermove', onMove)
-  window.addEventListener('pointerup', onUp)
-}
-const isPresetActive = (preset: { style: Record<string, unknown> }) => {
-  const s = preset.style
-  const current = subtitleStyle.value
-  return (
-    (current.fontSize || 'medium') === (s.fontSize || 'medium') &&
-    (current.color || '#ffffff') === (s.color || '#ffffff') &&
-    (current.backgroundColor || 'rgba(0,0,0,0.8)') === (s.backgroundColor || 'rgba(0,0,0,0.8)') &&
-    (current.backgroundOpacity ?? 0.8) === (s.backgroundOpacity ?? 0.8) &&
-    (current.position || 'bottom') === (s.position || 'bottom') &&
-    (current.textShadow ?? true) === (s.textShadow ?? true)
-  )
-}
 const currentPresetLabel = computed(() => {
-  const active = subtitlePresets.find(p => isPresetActive(p))
+  const active = subtitlePresets.find((p) => settings.isPresetActive(p))
   return active ? active.label : t('custom')
 })
 const toggleWidescreen = async () => {

@@ -57,7 +57,7 @@
         <div class="sp-menu-list">
           <div v-for="q in qualities" :key="q.id"
                class="sp-menu-item" :class="{ 'is-active': q.active }"
-               @click="$emit('selectQuality', q.id)">
+               @click="$emit('selectQuality', q)">
             {{ q.label }}
           </div>
         </div>
@@ -86,7 +86,7 @@
           </div>
           <div v-for="track in subtitleTracks" :key="track.id"
                class="sp-menu-item" :class="{ 'is-active': subtitlesEnabled && activeSubtitleId === track.id }"
-               @click="$emit('selectSubtitle', track.id)">
+               @click="$emit('selectSubtitle', track)">
             {{ track.label }}
           </div>
         </div>
@@ -229,17 +229,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import PlayerIcon from './PlayerIcon.vue'
+import type { SubtitleTrack } from './core'
 
 interface QualityOption {
-  id: string
+  id: string | number
   label: string
   active: boolean
 }
 
-interface SubtitleTrackOption {
-  id: string
-  label: string
-}
+// ponytail: alias so the prop list reads as a plain option shape; the runtime
+// value is a full SubtitleTrack, which the parent needs back on select.
+type SubtitleTrackOption = SubtitleTrack
 
 interface PresetOption {
   id: string
@@ -320,9 +320,9 @@ const emit = defineEmits<{
   screenshot: []
   selectSpeed: [rate: number]
   selectRotation: [rot: number]
-  selectQuality: [id: string]
+  selectQuality: [option: QualityOption]
   disableSubtitles: []
-  selectSubtitle: [id: string]
+  selectSubtitle: [track: SubtitleTrackOption]
   changeSubtitleStyle: [key: string, value: string]
   selectPreset: [id: string]
   offsetChange: [delta: number]
@@ -336,11 +336,30 @@ const positionValue = computed(() => {
 
 const opacityRailRef = ref<HTMLElement | null>(null)
 
+// ponytail: drag the opacity thumb by listening on window while the pointer is
+// held. Matches the inline VideoPlayer behaviour (press + drag updates the
+// value); a press-only emit would lose the drag. Listeners are added on
+// pointerdown and removed on pointerup.
+function computeOpacityFromEvent(rail: HTMLElement, clientX: number): number {
+  const rect = rail.getBoundingClientRect()
+  return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+}
+
 function onOpacityPointerDown(e: PointerEvent) {
   const rail = opacityRailRef.value
   if (!rail) return
-  const rect = rail.getBoundingClientRect()
-  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-  emit('updateOpacity', pct)
+  emit('updateOpacity', computeOpacityFromEvent(rail, e.clientX))
+
+  const onMove = (ev: PointerEvent) => {
+    if (opacityRailRef.value) {
+      emit('updateOpacity', computeOpacityFromEvent(opacityRailRef.value, ev.clientX))
+    }
+  }
+  const onUp = () => {
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+  }
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
 }
 </script>
