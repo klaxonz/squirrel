@@ -377,7 +377,6 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { formatTime } from '@/utils/dateFormat'
 import { usePlayer, type PlayerOptions } from './runtime/usePlayer'
 import type { Chapter, MediaSource, SubtitleTrack } from './core'
-import { getCodecFamily } from './core/codec'
 import type { ThemeName } from './themes'
 import type { VideoClipMarker } from '@/types/videoClipMarker'
 import { usePlayerStore } from '@/stores/player'
@@ -394,6 +393,7 @@ import { useClipMarkers } from './composables/useClipMarkers'
 import { useSleepTimer } from './composables/useSleepTimer'
 import { useCentralHud } from './composables/useCentralHud'
 import { useSettingsMenu } from './composables/useSettingsMenu'
+import { useQualityDisplay } from './composables/useQualityDisplay'
 
 import './themes/variables.css'
 import './themes/dark.css'
@@ -721,70 +721,22 @@ const {
 const volumeIconName = computed(() => (isMuted.value || volume.value === 0) ? 'volumeOff' : volume.value < 50 ? 'volumeLow' : 'volumeHigh')
 const volumeText = computed(() => isMuted.value ? 'Muted' : `${Math.round(volume.value)}%`)
 const volumeFillPercent = computed(() => (isMuted.value ? 0 : Math.min(100, (volume.value / MAX_VOLUME) * 100)))
-const visibleCodecFamily = computed(() => (
-  selectedCodecFamily.value !== 'auto'
-    ? selectedCodecFamily.value
-    : currentCodecFamily.value
-))
-const isInternalQualityLabel = (label: string | null | undefined) => /^level[_\s-]?\d+$/i.test(String(label || '').trim())
-const isAutoQualityLabel = (label: string | null | undefined) => ['auto', '??', '??'].includes(String(label || '').trim().toLowerCase())
-const isDisplayableQualityLabel = (label: string | null | undefined) => !isInternalQualityLabel(label) && !isAutoQualityLabel(label)
-const resolvedCurrentQuality = computed(() => {
-  if (currentQualityId.value === null || currentQualityId.value === undefined) return null
-  return qualities.value.find((quality) => String(quality.id) === String(currentQualityId.value)) || null
+// ponytail: quality display pipeline (codec matching, dedup/score, active
+// check, labels) lives in useQualityDisplay; VideoPlayer just consumes the
+// derived values. Behavior is byte-identical to the former inline block.
+const {
+  displayedQualities,
+  qualityTagLabel,
+  qualityMenuLabel,
+  isQualityActive,
+} = useQualityDisplay({
+  qualities,
+  selectedCodecFamily,
+  currentCodecFamily,
+  currentQualityId,
+  currentQualityLabel,
+  t: t as (key: string, params?: Record<string, string | number>) => string,
 })
-const getQualityBucketKey = (quality: { height?: number | null; label?: string | null; id?: string | number | null }) => {
-  const height = Number(quality.height || 0)
-  if (Number.isFinite(height) && height > 0) {
-    return `height:${height}`
-  }
-  const label = String(quality.label || quality.id || '').trim().toLowerCase()
-  return `label:${label}`
-}
-const scoreQualityForDisplay = (quality: { id?: string | number | null; codec?: string | null; height?: number | null; bitrate?: number | null }) => {
-  let score = 0
-  if (resolvedCurrentQuality.value && String(quality.id) === String(resolvedCurrentQuality.value.id)) {
-    score += 1_000_000_000_000
-  }
-
-  const preferredCodecFamily = visibleCodecFamily.value
-    || getCodecFamily(resolvedCurrentQuality.value?.codec)
-    || currentCodecFamily.value
-  if (preferredCodecFamily && getCodecFamily(quality.codec) === preferredCodecFamily) {
-    score += 1_000_000_000
-  }
-
-  score += Math.max(0, Number(quality.height || 0)) * 1_000_000
-  score += Math.max(0, Number(quality.bitrate || 0))
-  return score
-}
-const displayedQualities = computed(() => {
-  const codecMatchedQualities = visibleCodecFamily.value
-    ? qualities.value.filter((quality) => getCodecFamily(quality.codec) === visibleCodecFamily.value)
-    : qualities.value
-  const sourceQualities = codecMatchedQualities.length > 0 ? codecMatchedQualities : qualities.value
-  const dedupedQualities = new Map<string, typeof sourceQualities[number]>()
-
-  sourceQualities.forEach((quality) => {
-    const bucketKey = getQualityBucketKey(quality)
-    const existing = dedupedQualities.get(bucketKey)
-    if (!existing || scoreQualityForDisplay(quality) > scoreQualityForDisplay(existing)) {
-      dedupedQualities.set(bucketKey, quality)
-    }
-  })
-
-  return [...dedupedQualities.values()].sort((left, right) => {
-    const heightDelta = (Number(right.height || 0) - Number(left.height || 0))
-    if (heightDelta !== 0) return heightDelta
-    return Number(right.bitrate || 0) - Number(left.bitrate || 0)
-  })
-})
-const currentQualityText = computed(() => (
-  resolvedCurrentQuality.value?.label
-    || (isDisplayableQualityLabel(currentQualityLabel.value) ? (currentQualityLabel.value || '') : '')
-))
-const qualityTagLabel = computed(() => currentQualityText.value)
-const qualityMenuLabel = computed(() => currentQualityText.value || t('quality'))
 const subtitleMenuLabel = computed(() => {
   if (!store.subtitlesEnabled || !currentSubtitle.value) return t('subtitlesOff')
   return currentSubtitle.value.label
@@ -1240,11 +1192,6 @@ const handleKeyDown = (e: KeyboardEvent) => {
     return
   }
 }
-
-const isQualityActive = (quality: { id: string | number }) => (
-  resolvedCurrentQuality.value !== null
-    && String(resolvedCurrentQuality.value.id) === String(quality.id)
-)
 
 const markPlayerActive = () => {}
 const handlePointerDown = () => {}
