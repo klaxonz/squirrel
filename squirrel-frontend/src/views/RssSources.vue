@@ -1056,11 +1056,6 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { onClickOutside } from '@vueuse/core'
-import {
-  getRssSyncStatus,
-  syncRssAccount,
-} from '@/api'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SiteIcon from '@/components/common/SiteIcon.vue'
 import ReaderSettingsPanel from '@/components/rss/ReaderSettingsPanel.vue'
@@ -1075,20 +1070,8 @@ import { useRssAccounts } from '@/composables/useRssAccounts'
 import { useRssFeeds } from '@/composables/useRssFeeds'
 import { useRssEntries } from '@/composables/useRssEntries'
 import { useRssReader } from '@/composables/useRssReader'
+import { useRssSync } from '@/composables/useRssSync'
 import type { RssEntry, RecentEntry } from '@/composables/rssTypes'
-import type { ApiResult } from '@/types/api'
-
-// ponytail: minimal slice of GET /api/rss/accounts/:id/sync-status consumed by the view.
-type RssSyncStatus = {
-  running?: boolean
-  sync_mode?: string
-  phase?: string
-  entries_fetched?: number | null
-  entries_synced?: number | null
-  feeds_synced?: number | null
-  message?: string | null
-  error?: string | null
-}
 
 // Cross-cutting UI state
 const loading = ref(false)
@@ -1107,16 +1090,6 @@ const setStatus = (message: string, isError = false) => {
       statusError.value = false
     }, 6000)
   }
-}
-
-// Sync state
-const syncing = ref(false)
-const showSyncMenu = ref(false)
-const syncDropdownRef = ref<HTMLElement | null>(null)
-let syncPollTimer: ReturnType<typeof setInterval> | null = null
-
-const getRssSyncModeLabel = (syncMode?: string) => {
-  return syncMode === 'full' ? '全量同步' : '轻量同步'
 }
 
 // Forward ref for loadAll (defined after composables)
@@ -1287,6 +1260,23 @@ const {
   onStatus: setStatus,
 })
 
+// ponytail: sync polling owns its own state + onClickOutside + timer cleanup;
+// injects selectedAccountId, setStatus, and the three completion loaders.
+const {
+  syncing,
+  showSyncMenu,
+  syncDropdownRef,
+  syncSelectedAccount,
+  resumeSyncPollingIfRunning,
+  stopSyncPolling,
+} = useRssSync({
+  selectedAccountId,
+  setStatus,
+  loadAccounts,
+  loadFeeds,
+  loadEntries,
+})
+
 // Cross-composable computed properties
 const selectedFeedTitle = computed(() => {
   if (activeFilter.value === 'recent') return '最近浏览'
@@ -1373,93 +1363,6 @@ const selectAccount = async (accountId: number) => {
   await loadEntries(true)
 }
 
-// Sync polling
-const pollSyncProgress = () => {
-  if (syncPollTimer) clearInterval(syncPollTimer)
-  const accountId = selectedAccountId.value
-  if (!accountId) {
-    syncing.value = false
-    return
-  }
-
-  syncPollTimer = setInterval(async () => {
-    const result = await getRssSyncStatus(accountId) as ApiResult<RssSyncStatus>
-    if (result.error) {
-      clearInterval(syncPollTimer!)
-      syncPollTimer = null
-      syncing.value = false
-      setStatus((result.error as { message?: string })?.message || '获取同步状态失败', true)
-      return
-    }
-    const data = result.data
-    if (!data) return
-    const modeLabel = getRssSyncModeLabel(data.sync_mode)
-    if (data.running) {
-      const phaseLabel: Record<string, string> = {
-        starting: '启动中',
-        feeds_fetching: '同步订阅源',
-        feeds_saving: '同步订阅源',
-        entries_fetching: '同步文章',
-        entries_saving: '同步文章',
-      }
-      const label = (data.phase && phaseLabel[data.phase]) || data.phase || ''
-      let progress = ''
-      if (data.phase === 'entries_fetching') {
-        progress = data.entries_fetched != null ? `已获取 ${data.entries_fetched} 篇` : '等待服务器响应...'
-      } else if (data.phase === 'entries_saving') {
-        progress = `已更新 ${data.entries_synced || 0} 篇`
-      } else if (data.feeds_synced != null) {
-        progress = `${data.feeds_synced} 个`
-      }
-      setStatus(`${modeLabel}中 [${label}] ${progress}`, false)
-    } else {
-      clearInterval(syncPollTimer!)
-      syncPollTimer = null
-      syncing.value = false
-      if (data.phase === 'completed') {
-        const changedEntries = data.entries_synced || 0
-        const entryText = changedEntries > 0 ? `已更新 ${changedEntries} 篇文章` : '所有内容已是最新'
-        setStatus(`${modeLabel}完成：${entryText}`)
-      } else {
-        setStatus(data.message || data.error || '同步失败', true)
-      }
-      await loadAccounts()
-      await loadFeeds()
-      await loadEntries(true)
-    }
-  }, 1000)
-}
-
-const syncSelectedAccount = async (forceFullSync = false) => {
-  if (!selectedAccountId.value) return
-  syncing.value = true
-  statusMessage.value = ''
-  const result = await syncRssAccount(selectedAccountId.value, undefined, forceFullSync)
-  if (result.error) {
-    syncing.value = false
-    setStatus((result.error as { message?: string })?.message || '启动同步失败', true)
-    return
-  }
-  pollSyncProgress()
-}
-
-const resumeSyncPollingIfRunning = async () => {
-  const accountId = selectedAccountId.value
-  if (!accountId) return
-  const result = await getRssSyncStatus(accountId) as ApiResult<RssSyncStatus>
-  if (result.error) return
-  const data = result.data
-  if (data && data.running) {
-    syncing.value = true
-    pollSyncProgress()
-  }
-}
-
-// Click outside handlers (for component-level refs)
-onClickOutside(syncDropdownRef, () => {
-  showSyncMenu.value = false
-})
-
 // Watchers
 watch(selectedAccountId, () => {
   collapsedFolders.value = {}
@@ -1482,10 +1385,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
   window.removeEventListener('click', closeContextMenu)
   window.removeEventListener('contextmenu', closeContextMenu)
-  if (syncPollTimer) {
-    clearInterval(syncPollTimer)
-    syncPollTimer = null
-  }
+  stopSyncPolling()
 })
 </script>
 
