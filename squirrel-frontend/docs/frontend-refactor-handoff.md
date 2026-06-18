@@ -197,3 +197,35 @@ npm run build:check   # vue-tsc + vite build 通过
 - `<style>` 287 行 reader-content 排版：属 reader 语义，不该单独抽
 - in-app browser iframe 覆盖层（398-469）：状态全在 useRssReader，与 reader 主区共用 refs，非独立单元
 - **结论：RssSources 的干净接缝已抽完（1779 → 1519，-260 行，3 个新 composable/组件）。进一步收益需架构改造（拆 useRssAccounts / useRssReader），单独立项。**
+
+---
+
+## VideoPlayer.vue UpNext 子系统提取（本会话续）
+
+> 起点行数 2792（接 VideoPlayer epic 上轮）。
+> 原则：**只沿干净接缝切**。UpNext 是少数交接文档标注「可单独评估」的小候选。
+
+### commit `（待提交）` — UpNext 子系统提取（2792 → 2746，-46 行）
+
+新建 `composables/useUpNext.ts`（93 行）：把 UpNext 子系统整进一个 composable。
+
+**为何是干净接缝**：UpNext 是**封闭子系统**——
+- 4 个 state（showUpNext/upNextCountdown/upNextTimer/nextEpisodeTitle）+ 3 个函数 + 2 个 watch，全部围绕"剩余 ≤30s 时弹下一集倒计时"这一个职责
+- 外部触点只有 `emit('next')`（已被 useClipMarkers/useSleepTimer 用过的 `onX: () => emit(...)` DI 模式覆盖）+ 6 个播放器已有 ref（duration/currentTime/isFullscreen/isPlaying/playlistEntries/playlistIndex）
+- 模板只剩 `<UpNextOverlay>` 一个组件引用（overlay 早已抽好），算"子系统最后一公里"
+
+**接口设计**（DI 惯例对齐 useSleepTimer）：
+- options：`{ playlistEntries, playlistIndex, onNext }`
+- 返回：`{ showUpNext, upNextCountdown, nextEpisodeTitle, maybeStart, startNow, clear }`
+- `maybeStart(remainingSeconds)`：父组件 currentTime watch 调用，内部做 hasNextEntry / 30s 阈值 / 已显示 三个 guard（不把 currentTime 当 DI 传进 composable，子系统不持有 watch 副作用回收职责）
+- `startNow()`：用户点"立即开始" 或倒计时归零都走它（clear + fire onNext）
+- `clear()`：onUnmounted + 非 fullscreen/非 playing 时调
+
+**小行为优化**：原代码 5 处重复 `nextIdx < 0 || nextIdx >= entries.length` 检查散落在 3 个函数 + 2 个 watch，收敛成 1 个 `hasNextEntry` computed。
+
+**累计 VideoPlayer epic：3085 → 2746（-339 行，3 个 composable：useSettingsMenu / useQualityDisplay / useUpNext）；typecheck/lint(0e/3w 不变)/build:check 全程绿。**
+
+### VideoPlayer 剩余可选（用户重新评估时参考）
+
+- progress-scrub 引擎（~85 行）：与 clip-markers 片段捕获 + 控制条自动隐藏深度交织，非干净接缝，需 DI `progressAreaRef`/`duration`/`seek`/`hasPendingSegment`，接口变宽，**按 YAGNI 不硬拆**
+- 全面采纳 `useControlsLayout`（替换静态控制条模板）—— 最大也最高风险，单独 epic

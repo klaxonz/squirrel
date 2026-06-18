@@ -35,12 +35,12 @@
     </div>
 
     <UpNextOverlay
-      :visible="showUpNext"
+      :visible="upNext.showUpNext.value"
       :label="t('upNext')"
-      :next-title="nextEpisodeTitle"
-      :countdown="upNextCountdown"
+      :next-title="upNext.nextEpisodeTitle.value"
+      :countdown="upNext.upNextCountdown.value"
       :start-now-label="t('startNow')"
-      @start-now="handleStartNow"
+      @start-now="upNext.startNow"
     />
 
     <ChapterOverlay
@@ -394,6 +394,7 @@ import { useSleepTimer } from './composables/useSleepTimer'
 import { useCentralHud } from './composables/useCentralHud'
 import { useSettingsMenu } from './composables/useSettingsMenu'
 import { useQualityDisplay } from './composables/useQualityDisplay'
+import { useUpNext } from './composables/useUpNext'
 
 import './themes/variables.css'
 import './themes/dark.css'
@@ -508,20 +509,15 @@ const progressAreaRef = ref<HTMLElement | null>(null)
 // Fullscreen feature state
 const showVideoInfo = ref(true)
 const showChapterOverlay = ref(false)
-const showUpNext = ref(false)
-const upNextCountdown = ref(5)
-const nextEpisodeTitle = computed(() => {
-  const entries = props.playlistEntries || []
-  const nextIdx = (props.playlistIndex ?? -1) + 1
-  if (nextIdx >= 0 && nextIdx < entries.length) {
-    return entries[nextIdx].title || `Episode ${nextIdx + 1}`
-  }
-  return ''
-})
 let videoInfoTimer: ReturnType<typeof setTimeout> | null = null
-let upNextTimer: ReturnType<typeof setInterval> | null = null
 
 const { centralHud, showCentralHud } = useCentralHud()
+
+const upNext = useUpNext({
+  playlistEntries: computed(() => props.playlistEntries || []),
+  playlistIndex: computed(() => props.playlistIndex ?? -1),
+  onNext: () => emit('next'),
+})
 
 const clipMarkersState = useClipMarkers({
   clipMarkers: computed(() => props.clipMarkers),
@@ -1244,39 +1240,6 @@ const handleLoopABToggle = () => {
 }
 
 
-const handleStartNow = () => {
-  showUpNext.value = false
-  if (upNextTimer) {
-    clearInterval(upNextTimer)
-    upNextTimer = null
-  }
-  emit('next')
-}
-
-const startUpNextCountdown = () => {
-  const entries = props.playlistEntries || []
-  const nextIdx = (props.playlistIndex ?? -1) + 1
-  if (nextIdx < 0 || nextIdx >= entries.length) return
-  const remaining = duration.value - currentTime.value
-  if (remaining > 30 || remaining < 0) return
-  showUpNext.value = true
-  upNextCountdown.value = Math.min(5, Math.floor(remaining))
-  upNextTimer = setInterval(() => {
-    upNextCountdown.value--
-    if (upNextCountdown.value <= 0) {
-      handleStartNow()
-    }
-  }, 1000)
-}
-
-const clearUpNextCountdown = () => {
-  showUpNext.value = false
-  if (upNextTimer) {
-    clearInterval(upNextTimer)
-    upNextTimer = null
-  }
-}
-
 watch(isPlaying, (playing) => {
   if (!playing) {
     showControls()
@@ -1297,16 +1260,11 @@ watch(() => currentTime.value, (t) => {
 // Up next countdown
 watch(() => currentTime.value, (t) => {
   if (!isFullscreen.value || !isPlaying.value) {
-    clearUpNextCountdown()
+    upNext.clear()
     return
   }
-  const entries = props.playlistEntries || []
-  const nextIdx = (props.playlistIndex ?? -1) + 1
-  if (nextIdx < 0 || nextIdx >= entries.length || duration.value <= 0) return
-  const remaining = duration.value - t
-  if (remaining <= 30 && remaining > 0 && !showUpNext.value) {
-    startUpNextCountdown()
-  }
+  if (duration.value <= 0) return
+  upNext.maybeStart(duration.value - t)
 })
 
 // Video info timer
@@ -1398,7 +1356,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   stopSleepTimer()
-  clearUpNextCountdown()
+  upNext.clear()
   if (videoInfoTimer) clearTimeout(videoInfoTimer)
 })
 
