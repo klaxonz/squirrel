@@ -110,10 +110,10 @@ Executed in two commits on branch `fix/bug`. Baseline preserved throughout: **36
 - [x] **11** suggestions/listings.py deleted; duplicate constants in pools.py removed (CREATOR_FEED_WINDOW kept — it IS used internally).
 - [x] **12** `with_trace` decorator + now-unused imports deleted; `wait_for_shutdown` deleted; 6 task `shutdown()` classmethods deleted.
 - [x] **15** duplicate `_parse_trigger` hoisted to `update/models.py:parse_trigger`; `RATE_LIMITS` empty-dict scaffolding collapsed.
-- [~] **30** to_bool — **skipped**. The two versions have different signatures (`bool|None` vs `default`-returning); merging needs caller refactor, low ROI.
-- [~] **31** normalize_query — **skipped**. Each copy is used only within its own module with no cross-module import; merging would create coupling for a 1-line dedupe. Harmless duplicate.
+- [~] **30** to_bool — **DONE in round 2** (see below). The round-1 skip理由 was over-cautious: a single `to_bool(val, default: bool | None = None)` module function in `config_service.py` satisfies both old signatures (`bool|None` unknown-return via the default, `default`-returning via the explicit arg). `SystemConfigService._to_bool` removed; `system_config.py:to_bool` replaced with an import.
+- [~] **31** normalize_query — **DEFERRED, intentionally**. Each copy (`suggestions/formatting.py:9`, `suggestions/text.py:4`) is used only within its own module; merging a 1-line `' '.join(str(value or '').strip().split())` would create cross-module coupling for trivial dedupe. Re-confirmed round 2: not worth it.
 
-Deferred/skipped items (9, 30, 31) remain documented above for a future pass.
+Deferred item **9** remains documented above for a future PR — high caller-count (orchestrator/commands/coordinator/progress_service) on failure-path code, pure cosmetic, low ROI vs. miss-risk.
 
 ---
 

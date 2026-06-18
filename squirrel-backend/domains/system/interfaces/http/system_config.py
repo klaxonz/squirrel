@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, Body, Depends
 
-from domains.system.application.services.config_service import SystemConfigService
+from domains.system.application.services.config_service import SystemConfigService, to_bool
 from domains.system.domain.models.constants import SYS_BLUR_NSFW_THUMBNAILS, SYS_ENABLE_SCHEDULER, SYS_ENABLE_WORKER
 
 router = APIRouter(prefix='/api/system/config', tags=['system-config'])
@@ -11,17 +11,6 @@ _logger = logging.getLogger(__name__)
 
 def get_system_config_service():
     return SystemConfigService()
-
-
-def to_bool(val: str | None) -> bool | None:
-    if val is None:
-        return None
-    s = str(val).strip().lower()
-    if s in ('true', '1', 'yes', 'y', 'on'):
-        return True
-    if s in ('false', '0', 'no', 'n', 'off'):
-        return False
-    return None
 
 
 def _convert_config_types(config_dict: dict) -> dict:

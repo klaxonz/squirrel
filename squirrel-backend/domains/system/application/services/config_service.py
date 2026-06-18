@@ -16,20 +16,26 @@ TRUE_SET = {'true', '1', 'yes', 'y', 'on'}
 FALSE_SET = {'false', '0', 'no', 'n', 'off'}
 
 
+def to_bool(val: str | None, default: bool | None = None) -> bool | None:
+    """Coerce a config string to bool.
+
+    Returns ``default`` (``None`` if unset) for null input or unknown tokens,
+    matching the old module-level ``to_bool`` and ``SystemConfigService._to_bool``
+    signatures.
+    """
+    if val is None:
+        return default
+    v = str(val).strip().lower()
+    if v in TRUE_SET:
+        return True
+    if v in FALSE_SET:
+        return False
+    return default
+
+
 class SystemConfigService:
     def __init__(self, session_factory: SessionFactory | None = None):
         self._session_factory = session_factory or _default_get_session
-
-    @staticmethod
-    def _to_bool(val: str | None, default: bool) -> bool:
-        if val is None:
-            return default
-        v = str(val).strip().lower()
-        if v in TRUE_SET:
-            return True
-        if v in FALSE_SET:
-            return False
-        return default
 
     @staticmethod
     def _from_bool(val: bool) -> str:
@@ -55,7 +61,7 @@ class SystemConfigService:
 
     def get_bool(self, key: str, default: bool) -> bool:
         db_value = self.get_value(key, None)
-        bool_val = self._to_bool(db_value, default)
+        bool_val = to_bool(db_value, default)
         if db_value is not None:
             logger.debug('[system_config] get_bool(%s) from database=%s -> %s', key, db_value, bool_val)
         else:
