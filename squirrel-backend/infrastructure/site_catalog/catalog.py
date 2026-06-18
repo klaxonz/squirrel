@@ -131,10 +131,6 @@ class SiteCatalog:
         cls._override_catalog_mtime = cls._get_config_mtime()
 
     @classmethod
-    def set_catalog(cls, catalog: dict[str, dict]) -> None:
-        cls.set_override_catalog(catalog)
-
-    @classmethod
     def reload(cls) -> dict[str, dict]:
         """Force reloading override catalog from disk."""
         cls._override_catalog = None
@@ -147,11 +143,6 @@ class SiteCatalog:
 
         return get_effective_site_catalog()
 
-    @classmethod
-    def _load_from_file(cls) -> dict[str, dict] | None:
-        return cls.load_override_catalog()
-
-    @classmethod
     @classmethod
     def get_all_domains(cls) -> list[str]:
         domains: list[str] = []
