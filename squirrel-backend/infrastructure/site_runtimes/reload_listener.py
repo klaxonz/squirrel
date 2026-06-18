@@ -1,8 +1,8 @@
 import logging
 import threading
+from collections.abc import Callable
 
 from infrastructure.cache.redis_client import create_redis_client
-from infrastructure.site_runtimes.manager import reload_site_runtimes
 
 logger = logging.getLogger(__name__)
 
@@ -10,9 +10,10 @@ _listener_thread: threading.Thread | None = None
 _stop_event: threading.Event | None = None
 
 
-def _listen_for_reload_signals(component: str):
+def _listen_for_reload_signals(component: str, reloader: Callable[[], None]):
     global _stop_event
     _stop_event = threading.Event()
+    pubsub = None
 
     try:
         client = create_redis_client()
@@ -27,7 +28,7 @@ def _listen_for_reload_signals(component: str):
             if message["type"] == "message":
                 logger.info("[%s] received site runtime reload signal", component)
                 try:
-                    reload_site_runtimes()
+                    reloader()
                     logger.info("[%s] site runtime reloaded successfully", component)
                 except Exception as e:
                     # background thread safety net -- prevent a single reload failure from crashing the listener
@@ -35,13 +36,19 @@ def _listen_for_reload_signals(component: str):
     except (ConnectionError, OSError, ValueError) as e:
         logger.error("[%s] site runtime reload listener error: %s", component, e, exc_info=True)
     finally:
-        try:
-            pubsub.close()
-        except (AttributeError, ConnectionError, OSError):
-            pass
+        if pubsub is not None:
+            try:
+                pubsub.close()
+            except (AttributeError, ConnectionError, OSError):
+                pass
 
 
-def start_reload_listener(component: str):
+def start_reload_listener(component: str, *, reloader: Callable[[], None]):
+    """Start the reload listener thread.
+
+    ``reloader`` is invoked on every received reload message; composition roots
+    pass ``manager.reload_enabled_site_runtimes`` (or a lambda wrapping it).
+    """
     global _listener_thread
     if _listener_thread is not None and _listener_thread.is_alive():
         logger.warning("[%s] reload listener already running", component)
@@ -49,7 +56,7 @@ def start_reload_listener(component: str):
 
     _listener_thread = threading.Thread(
         target=_listen_for_reload_signals,
-        args=(component,),
+        args=(component, reloader),
         daemon=True,
         name=f"site-runtime-reload-listener-{component}",
     )
@@ -65,5 +72,3 @@ def stop_reload_listener(component: str):
     if _listener_thread is not None:
         _listener_thread.join(timeout=5)
         _listener_thread = None
-
-

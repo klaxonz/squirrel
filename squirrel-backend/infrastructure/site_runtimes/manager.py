@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from concurrent.futures import Future, ThreadPoolExecutor, wait
 
 from .discovery import SiteRuntimeDiscovery
@@ -11,13 +12,23 @@ from .models import (
     SiteRuntimeStatus,
 )
 from .paths import SiteRuntimePaths, build_site_runtime_paths
-from .runtime_models import SiteRuntimeManifest
 from .store import SiteRuntimeStore
 from .supervisor import SiteRuntimeSupervisor
 
+logger = logging.getLogger(__name__)
+
 
 class SiteRuntimeManager:
-    """Coordinate site runtime records, runtime state, and routing."""
+    """Coordinate site runtime records, runtime state, and routing.
+
+    Composition roots (FastAPI lifespan for web, ``bootstrap_runtime`` for
+    workers) construct exactly one of these and inject it down the call chain.
+    Read methods (``list_site_runtimes`` / ``get_snapshot`` / ``gateway``)
+    never mutate the store or gateway as a side effect — only explicit write
+    entry points (``sync_workspace`` / ``bootstrap_enabled_site_runtimes`` /
+    ``reload_enabled_site_runtimes`` / ``enable_site_runtime`` /
+    ``disable_site_runtime``) do.
+    """
 
     def __init__(
         self,
@@ -31,26 +42,62 @@ class SiteRuntimeManager:
         self._supervisor = supervisor or SiteRuntimeSupervisor()
         self._gateway = gateway or SiteRuntimeGateway(invocation_client=self._supervisor)
         self._discovery = SiteRuntimeDiscovery(self._paths, self._store, self._gateway)
-        self._gateway.set_registration_refresh(self._refresh_gateway_registrations)
 
     @property
     def gateway(self) -> SiteRuntimeGateway:
         return self._gateway
 
+    @property
+    def supervisor(self) -> SiteRuntimeSupervisor:
+        return self._supervisor
+
+    # ------------------------------------------------------------------
+    # Read paths — pure reads, no store/gateway mutation
+    # ------------------------------------------------------------------
+
     def list_site_runtimes(self) -> list[SiteRuntimeRecord]:
-        return self.discover_site_runtimes()
+        return self.scan_workspace().records
+
+    def scan_workspace(self) -> SiteRuntimeDiscoveryResult:
+        """Read-only workspace scan; does not persist."""
+        return self._discovery.scan_workspace()
 
     def discover_site_runtimes(self) -> list[SiteRuntimeRecord]:
-        return self.discover_site_runtime_result().records
+        return self.list_site_runtimes()
 
     def discover_site_runtime_result(self) -> SiteRuntimeDiscoveryResult:
-        return self._discovery.discover_workspace_site_runtimes()
+        return self.scan_workspace()
 
     def get_site_runtime(self, runtime_id: str) -> SiteRuntimeRecord | None:
-        for record in self.discover_site_runtimes():
+        for record in self.list_site_runtimes():
             if record.runtime_id == runtime_id:
                 return record
         return None
+
+    def get_snapshot(self) -> SiteRuntimeSnapshot:
+        # Single scan; reuse the result for records + errors (was previously
+        # scanned twice, once via discover_site_runtimes() and once via
+        # discover_site_runtime_result().errors).
+        discovery = self.scan_workspace()
+        return SiteRuntimeSnapshot(
+            records=discovery.records,
+            runtimes=self._supervisor.list_handles(),
+            registrations=self._gateway.list_registrations(),
+            discovery_errors=discovery.errors,
+        )
+
+    def get_runtime_snapshot(self) -> SiteRuntimeSnapshot:
+        """Convenience alias for :meth:`get_snapshot` (replaces ports.get_runtime_snapshot)."""
+        return self.get_snapshot()
+
+    # ------------------------------------------------------------------
+    # Write paths
+    # ------------------------------------------------------------------
+
+    def sync_workspace(self) -> SiteRuntimeDiscoveryResult:
+        """Persist the latest workspace scan and resync gateway registrations."""
+        result = self.scan_workspace()
+        return self._discovery.apply_discovery_result(result)
 
     def enable_site_runtime(self, runtime_id: str) -> SiteRuntimeRecord | None:
         record = self.get_site_runtime(runtime_id)
@@ -61,7 +108,7 @@ class SiteRuntimeManager:
         self._gateway.register_manifest(
             runtime_id=record.runtime_id,
             version=record.version,
-            manifest=SiteRuntimeManifest.from_dict(record.manifest),
+            manifest=_manifest_from_record(record),
         )
         self._supervisor.start_runtime(record)
         return self._store.upsert(record)
@@ -76,17 +123,10 @@ class SiteRuntimeManager:
         record.status = SiteRuntimeStatus.DISABLED
         return self._store.upsert(record)
 
-    def get_snapshot(self) -> SiteRuntimeSnapshot:
-        records = self.discover_site_runtimes()
-        return SiteRuntimeSnapshot(
-            records=records,
-            runtimes=self._supervisor.list_handles(),
-            registrations=self._gateway.list_registrations(),
-            discovery_errors=self.discover_site_runtime_result().errors,
-        )
-
     def bootstrap_enabled_site_runtimes(self) -> list[SiteRuntimeRecord]:
-        enabled_records = [record for record in self.discover_site_runtimes() if record.enabled]
+        # Persist the current workspace scan before reading the enabled set.
+        self.sync_workspace()
+        enabled_records = [record for record in self.list_site_runtimes() if record.enabled]
         if not enabled_records:
             return []
 
@@ -94,11 +134,13 @@ class SiteRuntimeManager:
             self._gateway.register_manifest(
                 runtime_id=record.runtime_id,
                 version=record.version,
-                manifest=SiteRuntimeManifest.from_dict(record.manifest),
+                manifest=_manifest_from_record(record),
             )
 
         futures: list[tuple[SiteRuntimeRecord, Future[object]]] = []
-        with ThreadPoolExecutor(max_workers=len(enabled_records), thread_name_prefix="site-runtime-bootstrap") as executor:
+        with ThreadPoolExecutor(
+            max_workers=len(enabled_records), thread_name_prefix="site-runtime-bootstrap"
+        ) as executor:
             for record in enabled_records:
                 futures.append((record, executor.submit(self._supervisor.start_runtime, record)))
 
@@ -115,6 +157,8 @@ class SiteRuntimeManager:
                 # process boundary -- one runtime startup failure should not crash the batch
                 if first_error is None:
                     first_error = exc
+                record.status = SiteRuntimeStatus.FAILED
+                self._store.upsert(record)
                 continue
             record.status = SiteRuntimeStatus.RUNNING
             self._store.upsert(record)
@@ -124,7 +168,7 @@ class SiteRuntimeManager:
         return started
 
     def shutdown_all(self) -> None:
-        records = self.discover_site_runtimes()
+        records = self.list_site_runtimes()
         for record in records:
             handle = self._supervisor.stop_runtime(record.runtime_id, record.version)
             if handle is not None and record.enabled:
@@ -137,45 +181,8 @@ class SiteRuntimeManager:
         self.shutdown_all()
         return self.bootstrap_enabled_site_runtimes()
 
-    def _refresh_gateway_registrations(self) -> None:
-        records = self.discover_site_runtimes()
-        existing_runtime_ids = {registration.runtime_id for registration in self._gateway.list_registrations()}
-        active_runtime_ids: set[str] = set()
 
-        for record in records:
-            active_runtime_ids.add(record.runtime_id)
-            if not record.enabled:
-                self._gateway.unregister_plugin(record.runtime_id)
-                continue
-            self._gateway.register_manifest(
-                runtime_id=record.runtime_id,
-                version=record.version,
-                manifest=SiteRuntimeManifest.from_dict(record.manifest),
-            )
+def _manifest_from_record(record: SiteRuntimeRecord):
+    from .models import SiteRuntimeManifest
 
-        for runtime_id in existing_runtime_ids - active_runtime_ids:
-            self._gateway.unregister_plugin(runtime_id)
-
-_site_runtime_manager: SiteRuntimeManager | None = None
-
-
-def get_site_runtime_manager() -> SiteRuntimeManager:
-    global _site_runtime_manager
-    if _site_runtime_manager is None:
-        _site_runtime_manager = SiteRuntimeManager()
-    return _site_runtime_manager
-
-
-def bootstrap_site_runtimes() -> list[SiteRuntimeRecord]:
-    return get_site_runtime_manager().bootstrap_enabled_site_runtimes()
-
-
-def shutdown_site_runtimes() -> None:
-    get_site_runtime_manager().shutdown_all()
-
-
-def reload_site_runtimes() -> list[SiteRuntimeRecord]:
-    return get_site_runtime_manager().reload_enabled_site_runtimes()
-
-
-
+    return SiteRuntimeManifest.from_dict(record.manifest)
