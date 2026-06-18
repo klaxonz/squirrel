@@ -57,11 +57,12 @@ def test_gateway_extractor_adapter_extracts_via_plugin_gateway(monkeypatch):
         lambda domain: ("bilibili", {"domains": ["bilibili.com", "b23.tv"]}),
     )
     monkeypatch.setattr(
-        "infrastructure.extraction.factory.SiteCatalog.get_catalog",
+        "infrastructure.extraction.factory.get_effective_site_catalog",
         lambda: {
             "bilibili": {
                 "domains": ["bilibili.com", "b23.tv"],
                 "test_url": "https://www.bilibili.com",
+                "enabled": True,
             },
         },
     )

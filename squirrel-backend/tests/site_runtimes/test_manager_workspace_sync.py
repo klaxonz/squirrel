@@ -126,7 +126,7 @@ def test_discover_site_runtimes_refreshes_existing_workspace_manifest(tmp_path, 
         paths=paths,
     )
 
-    manager.discover_site_runtimes()
+    manager.sync_workspace()
 
     record = store.get_record("javdb")
     assert record is not None
@@ -145,35 +145,52 @@ def test_discover_site_runtimes_refreshes_existing_workspace_manifest(tmp_path, 
 
     monkeypatch.setattr(store, "upsert", track_upsert)
 
-    manager.discover_site_runtimes()
+    # Second call must be idempotent: scan is pure read, no further writes.
+    manager.sync_workspace()
 
     assert upserted_runtime_ids == []
 
 
-def test_manager_gateway_rebuilds_enabled_registrations_on_route_miss(tmp_path):
+def test_manager_gateway_rebuilds_enabled_registrations_on_sync(tmp_path):
     repo_root = tmp_path / "repo"
     backend_root = repo_root / "squirrel-backend"
     backend_root.mkdir(parents=True, exist_ok=True)
     paths = build_site_runtime_paths(repo_root=repo_root, backend_root=backend_root)
     store = SiteRuntimeStore(data_path=paths.records_file, paths=paths)
+
+    runtime_root = repo_root / "squirrel-site-runtimes" / "youporn"
+    runtime_root.mkdir(parents=True, exist_ok=True)
+    (runtime_root / "src").mkdir(parents=True, exist_ok=True)
+    manifest = SiteRuntimeManifest(
+        runtime_id="youporn",
+        version="0.1.0",
+        capabilities=[
+            SiteRuntimeCapability(name="resolve_subscription", timeout_ms=30000),
+        ],
+        sites=[
+            SiteRuntimeSite(site_name="youporn", domains=["youporn.com"]),
+        ],
+    )
+    (runtime_root / "site-runtime.json").write_text(
+        json.dumps(
+            {
+                "entrypoint": "squirrel_youporn.runtime:get_site_runtime",
+                "manifest": manifest.to_dict(),
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    # Pre-seed store with a stale record so sync detects a change and re-registers.
     store.upsert(
         SiteRuntimeRecord(
             runtime_id="youporn",
             version="0.1.0",
-            install_path=str(repo_root / "squirrel-site-runtimes" / "youporn"),
-            entrypoint="squirrel_youporn.runtime:get_site_runtime",
+            install_path=str(runtime_root),
+            entrypoint="old.entrypoint:get_site_runtime",
             enabled=True,
-            manifest=SiteRuntimeManifest(
-                runtime_id="youporn",
-                version="0.1.0",
-                capabilities=[
-                    SiteRuntimeCapability(name="resolve_subscription", timeout_ms=30000),
-                ],
-                sites=[
-                    SiteRuntimeSite(site_name="youporn", domains=["youporn.com"]),
-                ],
-            ).to_dict(),
-            runtime_path=str(repo_root / "squirrel-site-runtimes" / "youporn" / "src"),
+            manifest=manifest.to_dict(),
+            runtime_path=str(runtime_root / "src"),
             metadata={"source": "workspace"},
         ),
     )
@@ -182,6 +199,10 @@ def test_manager_gateway_rebuilds_enabled_registrations_on_route_miss(tmp_path):
         store=store,
         paths=paths,
     )
+
+    # Gateway is empty until sync_workspace registers enabled manifests.
+    assert manager.gateway.resolve_route("resolve_subscription", domain="youporn.com") is None
+    manager.sync_workspace()
 
     route = manager.gateway.resolve_route("resolve_subscription", domain="youporn.com")
 
@@ -300,7 +321,8 @@ def test_bootstrap_enabled_site_runtimes_raises_after_persisting_successful_star
 
     assert sorted(supervisor.started) == ["alpha", "gamma"]
     assert store.get_record("alpha").status == SiteRuntimeStatus.RUNNING
-    assert store.get_record("beta").status == SiteRuntimeStatus.INSTALLED
+    # Failed runtimes are persisted as FAILED so the store reflects reality.
+    assert store.get_record("beta").status == SiteRuntimeStatus.FAILED
     assert store.get_record("gamma").status == SiteRuntimeStatus.RUNNING
 
 

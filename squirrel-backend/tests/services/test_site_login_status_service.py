@@ -5,6 +5,11 @@ from crawl import SiteRuntimeInvokeResponse
 from infrastructure.site_catalog.login_status import SiteLoginStatusService
 
 
+def _make_manager(*, gateway=None, snapshot=None):
+    """Build a minimal fake manager exposing the attributes the service reads."""
+    return SimpleNamespace(gateway=gateway, get_runtime_snapshot=lambda: snapshot)
+
+
 def test_get_supported_sites_reads_login_status_registrations():
     registrations = [
         SimpleNamespace(capability='check_login_status', site_name='youtube'),
@@ -13,7 +18,8 @@ def test_get_supported_sites_reads_login_status_registrations():
         SimpleNamespace(capability='check_login_status', site_name='youtube'),
         SimpleNamespace(capability='check_login_status', site_name=''),
     ]
-    svc = SiteLoginStatusService(snapshot=SimpleNamespace(registrations=registrations))
+    manager = _make_manager(snapshot=SimpleNamespace(registrations=registrations))
+    svc = SiteLoginStatusService(manager)
 
     result = svc.get_supported_sites()
 
@@ -25,7 +31,8 @@ def test_test_site_login_status_returns_fallback_when_route_missing():
         def resolve_route(self, capability, site_name=None, domain=None):
             return None
 
-    svc = SiteLoginStatusService(gateway=_FakeGateway())
+    manager = _make_manager(gateway=_FakeGateway())
+    svc = SiteLoginStatusService(manager)
     payload = svc.test_site_login_status('youtube')
 
     assert payload['site_name'] == 'youtube'
@@ -60,7 +67,8 @@ def test_test_site_login_status_normalizes_runtime_payload():
                 },
             )
 
-    svc = SiteLoginStatusService(gateway=_FakeGateway())
+    manager = _make_manager(gateway=_FakeGateway())
+    svc = SiteLoginStatusService(manager)
     payload = svc.test_site_login_status('youtube')
 
     assert calls == [{

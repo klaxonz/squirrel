@@ -15,7 +15,12 @@ def _build_client(monkeypatch):
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: type("User", (), {"id": 7})()
     monkeypatch.setattr("domains.subscription.interfaces.http.imports.subscription_import_service.get_runtime_supported_sites", lambda _cap: ["javdb"])
-    monkeypatch.setattr("domains.subscription.interfaces.http.basic.SiteCatalog.is_site_enabled", classmethod(lambda cls, site=None, domain=None: True))
+    # All supported sites are enabled — avoids depending on the runtime provider
+    # snapshot being populated by the autouse fixture.
+    monkeypatch.setattr(
+        "domains.subscription.interfaces.http.site_imports.SiteCatalog.get_enabled_site_names",
+        classmethod(lambda cls: {"javdb"}),
+    )
     return TestClient(app)
 
 
@@ -49,7 +54,7 @@ def test_preview_import_route_forwards_cursor_and_limit(monkeypatch):
         params={"cursor": '{"page":2}', "limit": 50},
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     body = response.json()
     assert body["code"] == 0
     assert body["data"]["has_more"] is True
