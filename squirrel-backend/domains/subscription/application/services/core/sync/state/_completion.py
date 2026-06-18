@@ -24,14 +24,8 @@ def _complete_sync_success_in_session(
     session: Session,
     *,
     state: SubscriptionSyncState,
-    source_video_count: int | None = None,
     videos_found: int = 0,
-    videos_enqueued: int = 0,
     next_sync_at: datetime | None = None,
-    run_id: str | None = None,
-    request_id: str | None = None,
-    trace_id: str | None = None,
-    trigger: str | None = None,
 ) -> SubscriptionSyncState:
     now = datetime.now()
     complete_success_state(
@@ -48,13 +42,7 @@ def continue_full_sync_batch(
     *,
     cursor_payload: dict | None,
     latest_video_url: str | None,
-    source_video_count: int | None = None,
     videos_found: int = 0,
-    videos_enqueued: int = 0,
-    run_id: str | None = None,
-    request_id: str | None = None,
-    trace_id: str | None = None,
-    trigger: str | None = None,
 ) -> SubscriptionSyncState | None:
     now = datetime.now()
     with get_session() as session:
@@ -75,14 +63,8 @@ def mark_sync_success(
     *,
     cursor_payload: dict | None,
     latest_video_url: str | None,
-    source_video_count: int | None = None,
     videos_found: int = 0,
-    videos_enqueued: int = 0,
     next_sync_at: datetime | None = None,
-    run_id: str | None = None,
-    request_id: str | None = None,
-    trace_id: str | None = None,
-    trigger: str | None = None,
 ) -> SubscriptionSyncState | None:
     with get_session() as session:
         state = session.get(SubscriptionSyncState, sync_state_id)
@@ -103,14 +85,8 @@ def mark_sync_success(
         _complete_sync_success_in_session(
             session,
             state=state,
-            source_video_count=source_video_count,
             videos_found=videos_found,
-            videos_enqueued=videos_enqueued,
             next_sync_at=next_sync_at,
-            run_id=run_id,
-            request_id=request_id,
-            trace_id=trace_id,
-            trigger=trigger,
         )
         return state
 
@@ -119,10 +95,6 @@ def mark_sync_skipped(
     sync_state_id: int,
     *,
     next_sync_at: datetime | None = None,
-    run_id: str | None = None,
-    request_id: str | None = None,
-    trace_id: str | None = None,
-    trigger: str | None = None,
     reason: str | None = None,
 ) -> SubscriptionSyncState | None:
     now = datetime.now()
@@ -138,11 +110,7 @@ def mark_sync_failed(
     sync_state_id: int,
     error_message: str,
     *,
-    run_id: str | None = None,
-    request_id: str | None = None,
-    trace_id: str | None = None,
     error_type: str | None = None,
-    trigger: str | None = None,
 ) -> SubscriptionSyncState | None:
     now = datetime.now()
     with get_session() as session:
@@ -158,10 +126,6 @@ def defer_sync_state(
     *,
     delay: timedelta,
     error_message: str | None = None,
-    run_id: str | None = None,
-    request_id: str | None = None,
-    trace_id: str | None = None,
-    trigger: str | None = None,
 ) -> SubscriptionSyncState | None:
     now = datetime.now()
     with get_session() as session:
@@ -176,10 +140,6 @@ def decrement_pending_video_count(
     sync_state_id: int | None,
     count: int = 1,
     *,
-    run_id: str | None = None,
-    request_id: str | None = None,
-    trace_id: str | None = None,
-    trigger: str | None = None,
     allow_completion: bool = True,
 ) -> None:
     if not sync_state_id or count <= 0:
@@ -196,11 +156,4 @@ def decrement_pending_video_count(
             and state.locked_at is None
             and _can_complete_drained_state(state.id)
         ):
-            _complete_sync_success_in_session(
-                session,
-                state=state,
-                run_id=run_id,
-                request_id=request_id,
-                trace_id=trace_id,
-                trigger=trigger,
-            )
+            _complete_sync_success_in_session(session, state=state)

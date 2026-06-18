@@ -53,10 +53,6 @@ class SubscriptionOrchestrator:
                 if request.sync_state_id:
                     subscription_sync_state_service.mark_sync_skipped(
                         request.sync_state_id,
-                        run_id=request.run_id,
-                        request_id=request.request_id,
-                        trace_id=request.trace_id,
-                        trigger=request.trigger.value,
                         reason="site_disabled",
                     )
                 return SubscriptionUpdateResult(
@@ -73,10 +69,6 @@ class SubscriptionOrchestrator:
                 if request.sync_state_id:
                     subscription_sync_state_service.mark_sync_skipped(
                         request.sync_state_id,
-                        run_id=request.run_id,
-                        request_id=request.request_id,
-                        trace_id=request.trace_id,
-                        trigger=request.trigger.value,
                         reason="no_subscribers",
                     )
                 return SubscriptionUpdateResult(
@@ -110,11 +102,7 @@ class SubscriptionOrchestrator:
                 subscription_sync_state_service.mark_sync_failed(
                     request.sync_state_id,
                     str(e),
-                    run_id=request.run_id,
-                    request_id=request.request_id,
-                    trace_id=request.trace_id,
                     error_type=type(e).__name__,
-                    trigger=request.trigger.value,
                 )
 
             return SubscriptionUpdateResult(
@@ -131,10 +119,6 @@ class SubscriptionOrchestrator:
             return
         subscription_sync_state_service.mark_sync_skipped(
             request.sync_state_id,
-            run_id=request.run_id,
-            request_id=request.request_id,
-            trace_id=request.trace_id,
-            trigger=request.trigger.value,
             reason=reason,
         )
 
@@ -147,13 +131,7 @@ class SubscriptionOrchestrator:
                 request.sync_state_id,
                 cursor_payload=result.cursor_payload,
                 latest_video_url=result.latest_video_url,
-                source_video_count=result.source_video_count,
                 videos_found=result.videos_found,
-                videos_enqueued=result.videos_enqueued,
-                run_id=request.run_id,
-                request_id=request.request_id,
-                trace_id=request.trace_id,
-                trigger=request.trigger.value,
             )
             self._schedule_continuation(request)
             return
@@ -162,13 +140,7 @@ class SubscriptionOrchestrator:
             request.sync_state_id,
             cursor_payload=result.cursor_payload,
             latest_video_url=result.latest_video_url,
-            source_video_count=result.source_video_count,
             videos_found=result.videos_found,
-            videos_enqueued=result.videos_enqueued,
-            run_id=request.run_id,
-            request_id=request.request_id,
-            trace_id=request.trace_id,
-            trigger=request.trigger.value,
         )
 
     @staticmethod

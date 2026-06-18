@@ -105,7 +105,7 @@ Executed in two commits on branch `fix/bug`. Baseline preserved throughout: **36
 - [x] **6** `ExtractionTask.to_dict`/`can_retry`, `ExtractionResult.to_dict`, `PipelineContext.to_dict` deleted.
 - [x] **7** `TaskProcessor`/`ResultHandler` Protocols deleted; `TaskPriority.LOW/URGENT` removed.
 - [x] **8** redis_client: `get_redis_client`/`set_redis_client`/`get_distributed_lock` deleted; **`python-redis-lock` dependency dropped** (Pipfile + Pipfile.lock regenerated).
-- [~] **9** _completion.py dead params — **DEFERRED**. 10+ callers across orchestrator/executors, pure cosmetic with no functional gain and high miss-risk. Worth a dedicated PR if pursued.
+- [x] **9** _completion.py dead params — **DONE in round 2** (see below). Round-1 defer理由 over-cautious: dropped `run_id`/`request_id`/`trace_id`/`trigger`/`source_video_count`/`videos_enqueued` from all 7 `_completion.py` functions (kept `videos_found` — it IS read by `complete_success_state`). Call sites updated: `orchestrator.py` (6), `commands.py` (1), `progress_service.py` (1). Tests updated: `test_subscription_sync_end_to_end_runs.py` (kwargs), `test_subscription_update_strategy.py` (2 assertion dicts), `test_video_extraction_progress_service.py` (2 assertion dicts). The "high miss-risk" concern was overstated — Python raises `TypeError` loudly on any leftover kwarg, and the test suite asserted exact kwarg dicts so regressions were caught immediately.
 - [x] **10** CrawlExecutor ctor params (`session_factory`/`get_type_mapping`) removed on both classes + test helpers updated.
 - [x] **11** suggestions/listings.py deleted; duplicate constants in pools.py removed (CREATOR_FEED_WINDOW kept — it IS used internally).
 - [x] **12** `with_trace` decorator + now-unused imports deleted; `wait_for_shutdown` deleted; 6 task `shutdown()` classmethods deleted.
@@ -151,7 +151,8 @@ Executed on branch `fix/bug`. Baseline preserved: **360 tests pass, ruff clean**
 - [x] **34** `VideoListPage.timings` field + 6 perf_counter blocks removed from `page_loader.py`; `VideoListPage` now carries only `items`.
 - [x] **35** Duplicate `site_cookies_dependencies.py` deleted; 2 callers re-pointed at `sites_dependencies.py`.
 - [x] **36** `CookieCloudSyncTask` redundant class attrs removed.
+- [x] **(round-1 #9)** _completion.py dead params dropped from all 7 functions (`run_id`/`request_id`/`trace_id`/`trigger`/`source_video_count`/`videos_enqueued`); 8 call sites + 5 test assertion blocks updated. `videos_found` kept (read by `complete_success_state`). Round-1 DEFER moved to DONE — the "high miss-risk"理由 was overstated: Python raises `TypeError` loudly on stray kwargs and the test suite asserted exact kwarg dicts.
 - [~] **(write-only producer)** DEFERRED — functional decision (was the subscribe-queue ever meant to be consumed?). Documented above; needs product input before the producer + its 2 call sites + `MqMessage` codec are pulled.
 
-**Round-2 net: ~-50 lines, -5 dependencies** (jinja2, pathvalidate, feedparser, yt-dlp, bgutil-ytdlp-pot-provider). Cumulative since round 1: ~-600 lines, -6 deps (round-1 `python-redis-lock` + round-2's five).
+**Round-2 net: ~-110 lines, -5 dependencies** (jinja2, pathvalidate, feedparser, yt-dlp, bgutil-ytdlp-pot-provider). Cumulative since round 1: ~-660 lines, -6 deps (round-1 `python-redis-lock` + round-2's five).
 

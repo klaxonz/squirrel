@@ -182,11 +182,7 @@ class SubscriptionSyncCommandService:
             self._sync_state_service.mark_sync_failed(
                 queued.sync_state_id,
                 str(exc),
-                run_id=queued.run_context.run_id,
-                request_id=request_id,
-                trace_id=command.trace_id,
                 error_type=type(exc).__name__,
-                trigger=command.trigger.value,
             )
             sync_result = SubscriptionUpdateResult(
                 subscription_id=command.subscription_id,

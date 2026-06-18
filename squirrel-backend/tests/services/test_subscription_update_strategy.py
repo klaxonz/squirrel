@@ -237,13 +237,7 @@ def test_execute_full_sync_with_more_batches_continues_without_marking_success()
             {
                 "cursor_payload": {"page": 2},
                 "latest_video_url": "https://example.com/a",
-                "source_video_count": 2,
                 "videos_found": 2,
-                "videos_enqueued": 2,
-                "run_id": "run-1",
-                "request_id": "req-1",
-                "trace_id": "trace-1",
-                "trigger": "manual",
             },
         ),
     ]
@@ -307,13 +301,7 @@ def test_execute_final_full_sync_batch_marks_success():
             {
                 "cursor_payload": {"page": 3},
                 "latest_video_url": "https://example.com/c",
-                "source_video_count": 1,
                 "videos_found": 1,
-                "videos_enqueued": 1,
-                "run_id": "run-1",
-                "request_id": "req-2",
-                "trace_id": "trace-1",
-                "trigger": "manual",
             },
         ),
     ]

@@ -69,13 +69,7 @@ def test_mark_sync_success_stays_running_until_pending_videos_are_drained(engine
         11,
         cursor_payload={"cursor": "done"},
         latest_video_url="https://example.com/video/1",
-        source_video_count=10,
         videos_found=10,
-        videos_enqueued=8,
-        run_id="run-1",
-        request_id="req-1",
-        trace_id="trace-1",
-        trigger="manual",
     )
 
     with Session(engine, expire_on_commit=False) as session:
@@ -90,10 +84,6 @@ def test_mark_sync_success_stays_running_until_pending_videos_are_drained(engine
     sss_svc.decrement_pending_video_count(
         11,
         count=3,
-        run_id="run-1",
-        request_id="req-1",
-        trace_id="trace-1",
-        trigger="manual",
     )
 
     with Session(engine, expire_on_commit=False) as session:

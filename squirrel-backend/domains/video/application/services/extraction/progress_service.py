@@ -8,8 +8,6 @@ class VideoExtractionProgressService:
         video_extraction_task_service.clear_video_extraction_dedupe(params)
         subscription_sync_state_service.decrement_pending_video_count(
             params.sync_state_id,
-            run_id=params.run_id,
-            trigger=params.trigger or ("manual" if params.is_manual else "scheduled"),
             allow_completion=succeeded,
         )
 

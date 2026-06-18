@@ -36,8 +36,6 @@ def test_record_finished_clears_dedupe_and_completes_pending_on_success(monkeypa
         (
             (2,),
             {
-                "run_id": "run-1",
-                "trigger": "scheduled",
                 "allow_completion": True,
             },
         ),
@@ -64,8 +62,6 @@ def test_record_finished_clears_dedupe_without_completing_pending_on_failure(mon
         (
             (2,),
             {
-                "run_id": "run-1",
-                "trigger": "scheduled",
                 "allow_completion": False,
             },
         ),
