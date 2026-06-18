@@ -102,6 +102,7 @@ import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { getSearchSuggestions } from '@/api/search'
+import type { SearchSuggestionItem } from '@/api/search'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import {
   findDesktopPlaybackProvider,
@@ -113,6 +114,22 @@ import { useUIStore } from '@/stores/ui'
 type SearchModeOption = {
   value: string
   label: string
+}
+
+// ponytail: dropdown row union — 'search' for remote suggestions, 'recent' for
+// local history; collapsed into one shape so the template list stays flat.
+type SuggestionItem = {
+  id: string
+  type: 'search' | 'recent'
+  value: string
+  label: string
+  meta?: string
+}
+
+type SeedSubscription = {
+  name: string
+  url: string
+  avatar: string
 }
 
 const props = defineProps<{
@@ -134,29 +151,29 @@ const isComposing = ref(false)
 const isPanelOpen = ref(false)
 const activeSuggestionIndex = ref(-1)
 const recentSearches = ref<string[]>([])
-const remoteSuggestions = ref<any[]>([])
+const remoteSuggestions = ref<SearchSuggestionItem[]>([])
 const rootRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
 
-let typingTimeout: any = null
-let suggestionTimeout: any = null
+let typingTimeout: ReturnType<typeof setTimeout> | undefined
+let suggestionTimeout: ReturnType<typeof setTimeout> | undefined
 
 const trimmedInputValue = computed(() => inputValue.value.trim())
 const showSuggestions = computed(() => isPanelOpen.value && isFocused.value)
 const searchModesList = computed(() => props.searchModes ?? [])
 const activeSearchModeLabel = computed(() => {
-  return searchModesList.value.find((mode: any) => mode.value === props.activeSearchMode)?.label || ''
+  return searchModesList.value.find((mode) => mode.value === props.activeSearchMode)?.label || ''
 })
-const selectableItems = computed(() => [...suggestionItems.value])
+const selectableItems = computed<SuggestionItem[]>(() => [...suggestionItems.value])
 
 watch(() => uiStore.searchQuery, (newVal) => {
   if (newVal !== inputValue.value) inputValue.value = newVal
 })
 
-const suggestionItems = computed(() => {
-  const items: any[] = []
-  const seen = new Set()
-  
+const suggestionItems = computed<SuggestionItem[]>(() => {
+  const items: SuggestionItem[] = []
+  const seen = new Set<string>()
+
   remoteSuggestions.value.forEach(s => {
     if (!seen.has(s.value.toLowerCase())) {
       seen.add(s.value.toLowerCase())
@@ -233,16 +250,16 @@ async function handleSearch() {
     let uploader = ''
     let uploaderUrl = ''
     let uploaderAvatar = ''
-    let subscriptions: any[] = []
+    let subscriptions: SeedSubscription[] = []
 
     if (isDesktop) {
       try {
         const info = await resolveDesktopPlayback(provider, url, { forceRefresh: true })
-        if ((info as any)?.title) title = (info as any).title
-        if ((info as any)?.thumbnail) thumbnail = (info as any).thumbnail
-        const uname = (info as any)?.uploader_name
-        const uurl = (info as any)?.uploader_url
-        const uavatar = (info as any)?.uploader_avatar
+        if (info?.title) title = info.title
+        if (info?.thumbnail) thumbnail = info.thumbnail
+        const uname = info?.uploader_name
+        const uurl = info?.uploader_url
+        const uavatar = info?.uploader_avatar
         if (uname) {
           uploader = String(uname)
           uploaderUrl = String(uurl || '')
@@ -263,7 +280,7 @@ async function handleSearch() {
       uploader_url: uploaderUrl,
       uploader_avatar: uploaderAvatar,
       subscriptions,
-    } as any)
+    })
     isPanelOpen.value = false
     inputRef.value?.blur()
     router.push({ name: 'VideoPlay', params: { videoId: fakeId } })

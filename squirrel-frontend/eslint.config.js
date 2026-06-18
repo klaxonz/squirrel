@@ -103,17 +103,6 @@ export default tseslint.config(
   // (or delete the override) once each area is fully typed. Tracked in the
   // frontend maintainability refactor (Phase 4).
   {
-    // ponytail: feed components, views, composables, history cleared in the
-    // maintainability refactor — no-explicit-any is now error there.
-    // GlobalSearchBar (layout) still carries a search-union any cluster; keep
-    // warn until that component is retyped.
-    files: ['src/components/layout/**/*.vue'],
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
-      'vue/no-mutating-props': 'warn',
-    },
-  },
-  {
     // VideoPlayer.vue is a 2784-line component slated for a separate refactor epic;
     // keep its any-usage non-blocking until then.
     files: ['src/components/video-player/**/*.{vue,ts}'],

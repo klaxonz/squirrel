@@ -93,14 +93,13 @@ DTO 不是猜的，是 trace 后端 serialization 层得来。关键字段差异
 
 ---
 
-## 剩余 17 warnings 的分布（下一会话可选）
+## 剩余 3 warnings 的分布（lint 收敛已完成）
 
-按价值/工作量评估：
-
-| 区域 | 数量 | 建议 |
+| 区域 | 数量 | 说明 |
 |------|------|------|
-| GlobalSearchBar.vue | 14 | 搜索建议/订阅结果 union，类型复杂，**单独评估**（layout override 仍 warn） |
 | video-player（EventEmitter/usePlayer） | 3 | 全是 ponytail 保留的设计性 any，**不应清** |
+
+> GlobalSearchBar 的 14 个 any 已在后续会话清零（见下「散点清理续」），layout override 块已删，规则自动升 error。lint 收敛到此结束，后续增量 any 由 `@typescript-eslint/no-explicit-any: 'error'` 直接拦截。
 
 ## 明确未做（按 ponytail YAGNI 主动排除）
 
@@ -116,14 +115,13 @@ DTO 不是猜的，是 trace 后端 serialization 层得来。关键字段差异
 
 ```bash
 cd squirrel-frontend
-npm run lint          # 0 error / 17 warning
+npm run lint          # 0 error / 3 warning（全为 video-player 设计性保留）
 npm run typecheck     # vue-tsc 0 error
 npm run build:check   # vue-tsc + vite build 通过
 ```
 
 ## 给下一会话的建议
 
-1. **先和用户确认方向**：剩余 17 warning 边际收益极低（GlobalSearchBar 需单独评估，video-player 是设计性保留）；建议转向架构 epic（VideoPlayer/RssSources 拆分）或 store/composable 收敛
-2. **GlobalSearchBar retyping**：14 个 any 是搜索建议/订阅结果 union，需要 trace 后端 search API 返回结构，单组件工作
-3. 若推进架构：VideoPlayer 拆分是最大杠杆但风险高，建议先出拆分方案（沿现有 composable 接缝）再动手
-4. **新发现的后端字段差异**（latest_videos vs recent_videos 等）需对照真实 payload 确认，DTO 里标了 ponytail 待办
+1. **方向选择**：lint 收敛已完成（17 → 3，剩余为设计性保留）；下一步杠杆最大的是架构 epic —— VideoPlayer.vue 2784 行 / RssSources.vue 1633 行拆分，或 store/composable 收敛
+2. 若推进架构：VideoPlayer 拆分是最大杠杆但风险高，建议先出拆分方案（沿已有 composable 接缝：useClipMarkers/createPlayerEngine/useCentralHud）再动手
+3. **新发现的后端字段差异**（latest_videos vs recent_videos 等）需对照真实 payload 确认，DTO 里标了 ponytail 待办
