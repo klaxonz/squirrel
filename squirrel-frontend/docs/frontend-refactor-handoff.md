@@ -155,6 +155,19 @@ npm run build:check   # vue-tsc + vite build 通过
 - Up-next / A-B loop 小 composable（较小、较独立，可单独评估）
 - 全面采纳 `useControlsLayout`（替换静态控制条模板）—— 最大也最高风险，单独 epic
 
-### RssSources.vue（1633 行）—— 下一目标
+### RssSources.vue —— 进行中
 
-待评估其干净接缝（沿现有 composable / 纯 derived state 切），先出方案再动手。
+**关键发现**：RssSources.vue 已是薄编排 shell（状态在 4 个 composable 里），不是「巨型组件」问题，是「最后一个 in-file cluster 没抽」问题。
+
+3. **commit `6b809155`** — sync polling 提取（1779 → 1679，-100 行）
+   - 新建 `composables/useRssSync.ts`（158 行）：syncing/showSyncMenu/syncDropdownRef + pollSyncProgress/syncSelectedAccount/resumeSyncPollingIfRunning/stopSyncPolling。自带 RssSyncStatus 类型 + 唯一的 `@/api` 调用（syncRssAccount/getRssSyncStatus）+ onClickOutside(syncDropdownRef) 守卫
+   - 这是文件里**唯一碰 @/api 的地方**，是天然干净接缝，零双向耦合
+   - 小行为改进：syncSelectedAccount 改用 `setStatus('')` 走共享 bus（原代码直接戳 statusMessage，漏了 cancel timer）
+
+**RssSources 剩余候选（按 value/÷risk，待用户决定是否继续）**：
+- 文章右键菜单 → `RssArticleContextMenu.vue`（127 行模板，14 个 binding，中等风险）
+- feed 右键菜单 → `RssFeedContextMenu.vue`（84 行，单 composable 依赖，**低风险**，若做先做这个）
+- 账号增删 dialog → `RssAccountDialog.vue`（172 行模板，单 composable，中等风险，3 处打开入口需保留契约）
+- `<style>` 287 行 reader-content 排版：属 reader，不要单独抽
+
+这些都是**模板子组件提取**（prop surface 宽），不是状态提取，风险高于 useRssSync。
