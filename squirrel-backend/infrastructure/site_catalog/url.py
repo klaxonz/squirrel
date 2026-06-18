@@ -4,7 +4,7 @@ import time
 from urllib.parse import urlparse
 
 from infrastructure.site_runtimes.models import SiteRuntimeSnapshot
-from infrastructure.site_runtimes.ports import get_runtime_snapshot
+from infrastructure.site_runtimes.runtime_provider import get_runtime_snapshot
 
 logger = logging.getLogger(__name__)
 

@@ -21,7 +21,9 @@ from infrastructure.site_catalog.runtime_http import (
     set_cookie_domain_resolver,
     set_cookie_file_resolver,
 )
-from infrastructure.site_runtimes.manager import bootstrap_site_runtimes, shutdown_site_runtimes
+from infrastructure.site_runtimes.manager import SiteRuntimeManager
+from infrastructure.site_runtimes.paths import build_site_runtime_paths
+from infrastructure.site_runtimes.runtime_provider import set_runtime_manager
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +34,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Startup: begin")
     startup_issues = StartupHealth()
     app.state.startup_health = startup_issues
+
+    # Site-runtime manager is the single composition-root-owned instance.
+    # Installed into runtime_provider so deep-stack subsystems (SiteCatalog,
+    # orchestrator/scheduler singletons) can reach it without request scope.
+    site_runtime_paths = build_site_runtime_paths(backend_root=settings.base_dir)
+    site_runtime_manager = SiteRuntimeManager(paths=site_runtime_paths)
+    app.state.site_runtime_manager = site_runtime_manager
+    set_runtime_manager(site_runtime_manager)
 
     for notice in settings.optional_feature_warnings():
         logger.warning("Startup: %s", notice)
@@ -69,7 +79,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         oauth_file = get_oauth_credentials_for_daemon()
         if oauth_file:
             os.environ["YOUTUBE_OAUTH_STATE_FILE"] = oauth_file
-        bootstrap_site_runtimes()
+        site_runtime_manager.bootstrap_enabled_site_runtimes()
     except Exception:
         logger.exception("Startup: failed to bootstrap site runtime manager")
         raise
@@ -106,7 +116,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info("Shutdown: begin")
     try:
-        shutdown_site_runtimes()
+        site_runtime_manager.shutdown_all()
     except Exception as exc:  # cleanup during shutdown -- must not propagate
         logger.warning("Shutdown: error stopping site runtime manager (ignored): %s", exc)
     logger.info("Shutdown: complete")

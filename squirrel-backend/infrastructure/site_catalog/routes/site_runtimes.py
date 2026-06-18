@@ -1,15 +1,19 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from infrastructure.http.response import error, success
 from infrastructure.site_catalog.runtime import SiteRuntimeService
-from infrastructure.site_runtimes.manager import reload_site_runtimes
+from infrastructure.site_runtimes.manager import SiteRuntimeManager
 from infrastructure.site_runtimes.signals import publish_site_runtime_reload_signal
 
 router = APIRouter(prefix="/api/site-runtimes", tags=["site-runtimes"])
 
 
-def get_site_runtime_service() -> SiteRuntimeService:
-    return SiteRuntimeService()
+def get_site_runtime_manager(request: Request) -> SiteRuntimeManager:
+    return request.app.state.site_runtime_manager
+
+
+def get_site_runtime_service(request: Request) -> SiteRuntimeService:
+    return SiteRuntimeService(get_site_runtime_manager(request))
 
 
 @router.get("/")
@@ -36,7 +40,7 @@ def disable_site_runtime(name: str, svc: SiteRuntimeService = Depends(get_site_r
 
 
 @router.post("/reload")
-def reload_all_site_runtimes():
-    reload_site_runtimes()
+def reload_all_site_runtimes(manager: SiteRuntimeManager = Depends(get_site_runtime_manager)):
+    manager.reload_enabled_site_runtimes()
     publish_site_runtime_reload_signal()
     return success(msg="reloaded")

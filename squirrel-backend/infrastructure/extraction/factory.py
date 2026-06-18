@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 from infrastructure.runtime.site_config_manager import get_effective_site_catalog
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_runtimes.gateway import SiteRuntimeGateway
-from infrastructure.site_runtimes.ports import get_runtime_gateway
+from infrastructure.site_runtimes.runtime_provider import get_runtime_gateway
 
 from .contracts import ExtractionResult, ExtractionTask
 from .runtime_payloads import RuntimeVideoData
@@ -21,7 +21,7 @@ class GatewayExtractorAdapter:
         self,
         site_name: str,
         supported_domains: list[str],
-        runtime_gateway: SiteRuntimeGateway | None = None,
+        runtime_gateway: SiteRuntimeGateway,
     ):
         self.site_name = site_name
         self.supported_domains = list(supported_domains)
@@ -42,8 +42,7 @@ class GatewayExtractorAdapter:
             return False
 
     def extract(self, task: ExtractionTask) -> ExtractionResult:
-        runtime_gateway = self._runtime_gateway or get_runtime_gateway()
-        response = runtime_gateway.invoke(
+        response = self._runtime_gateway.invoke(
             "extract_video",
             site_name=self.site_name,
             payload={
@@ -75,12 +74,17 @@ class GatewayExtractorAdapter:
 class ExtractorFactory:
     """Resolve extractors from site runtime registrations."""
 
-    def __init__(self, runtime_gateway: SiteRuntimeGateway | None = None):
+    def __init__(self, runtime_gateway: SiteRuntimeGateway | None = None) -> None:
         self._instances: dict[str, GatewayExtractorAdapter] = {}
+        # Allow either explicit injection (preferred — tests pass a fake) or
+        # lazy resolution from the runtime provider (production module singleton).
         self._runtime_gateway = runtime_gateway
 
+    def _resolve_gateway(self) -> SiteRuntimeGateway:
+        return self._runtime_gateway or get_runtime_gateway()
+
     def _create_adapter(self, site_name: str) -> GatewayExtractorAdapter | None:
-        runtime_gateway = self._runtime_gateway or get_runtime_gateway()
+        runtime_gateway = self._resolve_gateway()
         route = runtime_gateway.resolve_route("extract_video", site_name=site_name)
         if route is None:
             logger.info("No extract_video capability found for site: %s", site_name)

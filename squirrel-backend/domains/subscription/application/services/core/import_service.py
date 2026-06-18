@@ -18,17 +18,32 @@ from infrastructure.messaging.models.message import Message
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
 from infrastructure.site_runtimes.gateway import SiteRuntimeGateway
+from infrastructure.site_runtimes.manager import SiteRuntimeManager
 from infrastructure.site_runtimes.models import SiteRuntimeSnapshot
-from infrastructure.site_runtimes.ports import get_runtime_gateway, get_runtime_snapshot
+from infrastructure.site_runtimes.runtime_provider import get_runtime_gateway, get_runtime_snapshot
 
 logger = logging.getLogger(__name__)
 
 
 class SubscriptionImportService:
-    def __init__(self, session_factory=get_session, crud_service=None, manage_service=None):
+    def __init__(
+        self,
+        *,
+        manager: SiteRuntimeManager | None = None,
+        session_factory=get_session,
+        crud_service=None,
+        manage_service=None,
+    ):
+        self._manager = manager
         self.session_factory = session_factory
         self.crud_service = crud_service or subscription_crud_service
         self.manage_service = manage_service or subscription_manage_service
+
+    def _resolve_gateway(self) -> SiteRuntimeGateway:
+        return self._manager.gateway if self._manager is not None else get_runtime_gateway()
+
+    def _resolve_snapshot(self) -> SiteRuntimeSnapshot:
+        return self._manager.get_runtime_snapshot() if self._manager is not None else get_runtime_snapshot()
 
     @staticmethod
     def get_runtime_supported_sites(
@@ -50,8 +65,8 @@ class SubscriptionImportService:
             if SiteCatalog.is_site_enabled(site=site)
         ]
 
-    @staticmethod
     def _load_runtime_subscription_meta(
+        self,
         url: str,
         gateway: SiteRuntimeGateway | None = None,
     ) -> SubscriptionMeta:
@@ -62,7 +77,7 @@ class SubscriptionImportService:
             'url': url,
             'domain': domain or parsed_url.netloc.lower().split(':')[0],
         }
-        runtime_gateway = gateway or get_runtime_gateway()
+        runtime_gateway = gateway or self._resolve_gateway()
         response = runtime_gateway.invoke(
             'resolve_subscription',
             payload=payload,
@@ -88,8 +103,8 @@ class SubscriptionImportService:
             result.append(sub)
         return result
 
-    @staticmethod
     def _load_runtime_import_batch(
+        self,
         site_name: str,
         *,
         cursor_payload: dict[str, Any] | None = None,
@@ -102,7 +117,7 @@ class SubscriptionImportService:
         if limit is not None:
             payload['limit'] = limit
 
-        runtime_gateway = gateway or get_runtime_gateway()
+        runtime_gateway = gateway or self._resolve_gateway()
         response = runtime_gateway.invoke(
             'import_subscriptions',
             payload=payload or None,
@@ -120,13 +135,12 @@ class SubscriptionImportService:
         batch.items = SubscriptionImportService._dedupe_import_items(batch.items)
         return batch
 
-    @staticmethod
-    def _load_runtime_import_items(site_name: str) -> list[SubscriptionImportItem]:
+    def _load_runtime_import_items(self, site_name: str) -> list[SubscriptionImportItem]:
         items: list[SubscriptionImportItem] = []
         cursor_payload: dict[str, Any] | None = None
 
         while True:
-            batch = SubscriptionImportService._load_runtime_import_batch(
+            batch = self._load_runtime_import_batch(
                 site_name,
                 cursor_payload=cursor_payload,
             )

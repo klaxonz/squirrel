@@ -4,11 +4,16 @@ from typing import Any
 
 from infrastructure.runtime.site_config_manager import get_effective_site_catalog
 from infrastructure.site_catalog.icons import build_site_icon_url, resolve_site_icon_path
-from infrastructure.site_runtimes.manager import get_site_runtime_manager
-from infrastructure.site_runtimes.runtime_models import SiteRuntimeManifest
+from infrastructure.site_runtimes.manager import SiteRuntimeManager
+from infrastructure.site_runtimes.models import SiteRuntimeManifest
 
 
 class SiteRuntimeService:
+    """Reads/mutates site-runtime state via an injected :class:`SiteRuntimeManager`."""
+
+    def __init__(self, manager: SiteRuntimeManager) -> None:
+        self._manager = manager
+
     @staticmethod
     def _normalize_runtime_site(site_item: dict[str, Any], catalog: dict[str, dict]) -> dict[str, Any]:
         payload = dict(site_item)
@@ -53,10 +58,8 @@ class SiteRuntimeService:
             "active_runtime": None if runtime_handle is None else runtime_handle.to_dict(),
         }
 
-    @staticmethod
-    def list_site_runtimes() -> dict[str, Any]:
-        manager = get_site_runtime_manager()
-        snapshot = manager.get_snapshot()
+    def list_site_runtimes(self) -> dict[str, Any]:
+        snapshot = self._manager.get_snapshot()
         catalog = get_effective_site_catalog()
         return {
             "items": [
@@ -66,13 +69,10 @@ class SiteRuntimeService:
             "discovery_errors": [item.to_dict() for item in snapshot.discovery_errors],
         }
 
-    @staticmethod
-    def set_enabled_by_name(name: str, enabled: bool) -> bool:
-        manager = get_site_runtime_manager()
-        record = manager.enable_site_runtime(name) if enabled else manager.disable_site_runtime(name)
+    def set_enabled_by_name(self, name: str, enabled: bool) -> bool:
+        record = (
+            self._manager.enable_site_runtime(name)
+            if enabled
+            else self._manager.disable_site_runtime(name)
+        )
         return record is not None
-
-
-site_runtime_service = SiteRuntimeService()
-list_site_runtimes = site_runtime_service.list_site_runtimes
-set_enabled_by_name = site_runtime_service.set_enabled_by_name

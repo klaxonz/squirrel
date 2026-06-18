@@ -21,8 +21,10 @@ from infrastructure.site_catalog.runtime_http import (
     set_cookie_domain_resolver,
     set_cookie_file_resolver,
 )
-from infrastructure.site_runtimes.manager import bootstrap_site_runtimes, shutdown_site_runtimes
+from infrastructure.site_runtimes.manager import SiteRuntimeManager
+from infrastructure.site_runtimes.paths import build_site_runtime_paths
 from infrastructure.site_runtimes.reload_listener import start_reload_listener, stop_reload_listener
+from infrastructure.site_runtimes.runtime_provider import set_runtime_manager
 from shared_kernel.infrastructure.log import init_logging
 
 logger = logging.getLogger(__name__)
@@ -66,14 +68,24 @@ def bootstrap_runtime(component: str):
         logger.exception("[%s] Failed to configure cookie resolver", component)
         raise
 
+    # Worker-process composition root: construct the single manager and install
+    # it into the runtime provider so worker-side singletons (orchestrator,
+    # scheduler, SiteCatalog via site_config_manager) can reach it.
+    site_runtime_paths = build_site_runtime_paths(backend_root=settings.base_dir)
+    site_runtime_manager = SiteRuntimeManager(paths=site_runtime_paths)
+    set_runtime_manager(site_runtime_manager)
+
     try:
         from infrastructure.site_catalog.youtube_oauth import get_oauth_credentials_for_daemon
 
         oauth_file = get_oauth_credentials_for_daemon()
         if oauth_file:
             os.environ["YOUTUBE_OAUTH_STATE_FILE"] = oauth_file
-        bootstrap_site_runtimes()
-        start_reload_listener(component)
+        site_runtime_manager.bootstrap_enabled_site_runtimes()
+        start_reload_listener(
+            component,
+            reloader=site_runtime_manager.reload_enabled_site_runtimes,
+        )
     except Exception:
         logger.exception("[%s] Runtime bootstrap failed", component)
         raise
@@ -86,7 +98,7 @@ def bootstrap_runtime(component: str):
         except Exception:
             logger.warning("[%s] Failed to stop reload listener", component, exc_info=True)
         try:
-            shutdown_site_runtimes()
+            site_runtime_manager.shutdown_all()
         except Exception:
             logger.warning("[%s] Site runtime shutdown failed", component, exc_info=True)
 

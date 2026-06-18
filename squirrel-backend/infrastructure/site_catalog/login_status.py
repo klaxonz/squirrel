@@ -3,16 +3,25 @@ from datetime import datetime
 from typing import Any
 
 from infrastructure.site_runtimes.gateway import SiteRuntimeGateway
+from infrastructure.site_runtimes.manager import SiteRuntimeManager
 from infrastructure.site_runtimes.models import SiteRuntimeSnapshot
-from infrastructure.site_runtimes.ports import get_runtime_gateway, get_runtime_snapshot
 
 logger = logging.getLogger(__name__)
 
 
 class SiteLoginStatusService:
-    def __init__(self, gateway: SiteRuntimeGateway | None = None, snapshot: SiteRuntimeSnapshot | None = None):
-        self._gateway = gateway or get_runtime_gateway()
-        self._snapshot = snapshot or get_runtime_snapshot()
+    """Probes login status for sites via an injected :class:`SiteRuntimeManager`."""
+
+    def __init__(self, manager: SiteRuntimeManager):
+        self._manager = manager
+
+    @property
+    def _gateway(self) -> SiteRuntimeGateway:
+        return self._manager.gateway
+
+    @property
+    def _snapshot(self) -> SiteRuntimeSnapshot:
+        return self._manager.get_runtime_snapshot()
 
     def get_supported_sites(self) -> set[str]:
         return {
