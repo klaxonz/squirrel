@@ -34,28 +34,3 @@ class _FakeRedis:
 def mock_redis():
     return _FakeRedis()
 
-
-@pytest.fixture(autouse=True)
-def _isolated_runtime_manager(tmp_path, monkeypatch):
-    """Install an isolated SiteRuntimeSupervisor for every test.
-
-    Production code reaches the manager through the single-point
-    ``runtime_provider`` (used by deep-stack subsystems like SiteCatalog via
-    site_config_manager, and by worker-side singletons). Without an installed
-    manager, any code path that resolves the effective site catalog would raise.
-
-    Each test gets a fresh manager backed by a tmp_path store so tests never
-    share runtime state or touch the real filesystem.
-    """
-    from infrastructure.site_runtimes import locator
-    from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
-    from infrastructure.site_runtimes.paths import build_site_runtime_paths
-
-    paths = build_site_runtime_paths(
-        repo_root=tmp_path / "repo",
-        backend_root=tmp_path / "repo" / "backend",
-    )
-    manager = SiteRuntimeSupervisor(paths=paths)
-    monkeypatch.setattr(locator, "_runtime_manager", manager)
-    yield
-    monkeypatch.setattr(locator, "_runtime_manager", None)

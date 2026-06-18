@@ -1,25 +1,13 @@
-from types import SimpleNamespace
-
-from crawl import SiteRuntimeInvokeResponse
-
 from infrastructure.site_catalog.login_status import SiteLoginStatusService
-
-
-def _make_manager(*, gateway=None, snapshot=None):
-    """Build a minimal fake manager exposing the attributes the service reads."""
-    return SimpleNamespace(gateway=gateway, get_snapshot=lambda: snapshot)
+from infrastructure.site_plugins.registry import SitePluginResult
 
 
 def test_get_supported_sites_reads_login_status_registrations():
-    registrations = [
-        SimpleNamespace(capability='check_login_status', site_name='youtube'),
-        SimpleNamespace(capability='extract_video', site_name='youtube'),
-        SimpleNamespace(capability='check_login_status', site_name='bilibili'),
-        SimpleNamespace(capability='check_login_status', site_name='youtube'),
-        SimpleNamespace(capability='check_login_status', site_name=''),
-    ]
-    manager = _make_manager(snapshot=SimpleNamespace(registrations=registrations))
-    svc = SiteLoginStatusService(manager)
+    class _Registry:
+        def get_supported_sites(self, capability):
+            return {'youtube', 'bilibili'} if capability == 'check_login_status' else set()
+
+    svc = SiteLoginStatusService(_Registry())
 
     result = svc.get_supported_sites()
 
@@ -27,12 +15,11 @@ def test_get_supported_sites_reads_login_status_registrations():
 
 
 def test_test_site_login_status_returns_fallback_when_route_missing():
-    class _FakeGateway:
-        def resolve_route(self, capability, site_name=None, domain=None):
-            return None
+    class _Registry:
+        def has_capability(self, site_name, capability):
+            return False
 
-    manager = _make_manager(gateway=_FakeGateway())
-    svc = SiteLoginStatusService(manager)
+    svc = SiteLoginStatusService(_Registry())
     payload = svc.test_site_login_status('youtube')
 
     assert payload['site_name'] == 'youtube'
@@ -45,20 +32,18 @@ def test_test_site_login_status_returns_fallback_when_route_missing():
 def test_test_site_login_status_normalizes_runtime_payload():
     calls = []
 
-    class _FakeGateway:
-        def resolve_route(self, capability, site_name=None, domain=None):
-            return object()
+    class _Registry:
+        def has_capability(self, site_name, capability):
+            return True
 
-        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+        def invoke(self, capability, payload=None, site_name=None, domain=None):
             calls.append({
                 'capability': capability,
                 'payload': payload,
                 'site_name': site_name,
                 'domain': domain,
-                'timeout_ms': timeout_ms,
             })
-            return SiteRuntimeInvokeResponse(
-                request_id='login-1',
+            return SitePluginResult(
                 ok=True,
                 data={
                     'logged_in': True,
@@ -67,8 +52,7 @@ def test_test_site_login_status_normalizes_runtime_payload():
                 },
             )
 
-    manager = _make_manager(gateway=_FakeGateway())
-    svc = SiteLoginStatusService(manager)
+    svc = SiteLoginStatusService(_Registry())
     payload = svc.test_site_login_status('youtube')
 
     assert calls == [{
@@ -76,7 +60,6 @@ def test_test_site_login_status_normalizes_runtime_payload():
         'payload': None,
         'site_name': 'youtube',
         'domain': None,
-        'timeout_ms': None,
     }]
     assert payload['site_name'] == 'youtube'
     assert payload['supported'] is True

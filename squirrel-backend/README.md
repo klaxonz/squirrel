@@ -1,46 +1,15 @@
-Site Runtime
+Site Plugins
 ============
 
-The backend owns a site runtime system for first-party site adapters:
+The backend uses first-party site plugins from this monorepo:
 
-- site runtimes are discovered from workspace runtime metadata
-- each runtime exposes a `create_site_runtime()` entrypoint through the monorepo runtime contract
-- host-side routing goes through `SiteRuntimeManager` and `SiteRuntimeGateway`
-- runtime capabilities are declared in the manifest instead of inferred from legacy registries
-- the old `plugins_ext` compatibility tree has been removed from the backend repository
+- plugin metadata and capability handlers live under `../squirrel-site-runtimes`
+- backend routing goes through `infrastructure.site_plugins.registry`
+- plugin calls are in-process Python calls
+- the backend does not accept uploaded plugin packages
+- plugin enablement and site settings come from `config/sites.json`
 
-Runtime packages are expected to ship a `site-runtime.json` file containing:
-
-- `entrypoint`
-- `manifest.runtime_id`
-- `manifest.version`
-- `manifest.capabilities`
-- `manifest.sites`
-- `manifest.permissions`
-
-The backend owns runtime bootstrap state for the host process, including
-Cloudflare bypass client wiring, site config projection, backend rate-limit
-policy, and backend-side cookie resolution. Runtime contracts and shared helper
-code live inside this monorepo under `squirrel-site-runtimes/shared`.
-
-Discovery and activation
-------------------------
-
-Site runtime packages under `../squirrel-site-runtimes/<site>/site-runtime.json` are
-auto-discovered and bootstrapped as local site runtimes. The backend no longer
-accepts uploaded zip packages or provisions per-runtime virtual environments. Runtime subprocesses use
-the backend interpreter and receive explicit `SQUIRREL_SITE_RUNTIME_*` variables for
-runtime id, version, granted permissions, and data directory.
-
-Operators can define `manifest.metadata.runtime_policy` and
-`manifest.metadata.network_policy`; these values are passed into the runtime
-context. Runtime stdout/stderr and audit events are written under the runtime data
-directory when one is configured.
-
-Permissions and trust model
----------------------------
-
-Site runtime requests go through explicit capabilities declared by each manifest:
+Supported capabilities:
 
 - `extract_video`
 - `sync_subscription`
@@ -51,14 +20,14 @@ Site runtime requests go through explicit capabilities declared by each manifest
 - `resolve_proxy_config`
 - `rewrite_proxy_playlist`
 
+The only retained process boundary is inside plugins that actually need one,
+such as YouTube's Node `youtubei` worker. There is no backend site-runtime
+supervisor, bridge server, gateway, store, health check, or runtime discovery
+layer.
+
 Development setup
 -----------------
 
 ```bash
 pipenv install
 ```
-
-
-
-
-

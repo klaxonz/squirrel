@@ -111,7 +111,7 @@ def test_apply_site_config_overrides_updates_shared_rate_limiter(monkeypatch):
 def test_get_effective_site_catalog_merges_plugin_defaults_with_overrides(monkeypatch):
     monkeypatch.setattr(
         site_config_manager,
-        "build_runtime_site_catalog",
+        "build_plugin_site_catalog",
         lambda: {
             "youporn": {
                 "label": "YouPorn",

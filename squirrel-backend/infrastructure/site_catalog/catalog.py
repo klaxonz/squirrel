@@ -3,8 +3,7 @@ import os
 from pathlib import Path
 
 from infrastructure.site_catalog.icons import build_site_icon_url, resolve_site_icon_path
-from infrastructure.site_runtimes.models import SiteRuntimeManifest, SiteRuntimeSnapshot
-from infrastructure.site_runtimes.locator import get_runtime_snapshot
+from infrastructure.site_plugins.registry import get_site_plugin_registry
 
 
 class SiteCatalog:
@@ -103,46 +102,11 @@ class SiteCatalog:
         return None
 
     @classmethod
-    def build_runtime_site_catalog(cls, snapshot: SiteRuntimeSnapshot | None = None) -> dict[str, dict]:
-        catalog: dict[str, dict] = {}
-        snapshot = snapshot or get_runtime_snapshot()
-        for record in snapshot.records:
-            manifest = SiteRuntimeManifest.from_dict(record.manifest)
-            for site in manifest.sites:
-                slug = site.site_name.strip().lower()
-                defaults = dict(site.metadata or {})
-                item = catalog.setdefault(slug, {
-                    "label": defaults.get("label") or site.site_name,
-                    "domains": [],
-                    "aliases": [],
-                    "enabled": record.enabled,
-                    "features": [],
-                })
-                item["enabled"] = bool(defaults.get("enabled", item.get("enabled", True))) and record.enabled
-                item["label"] = defaults.get("label") or item.get("label") or site.site_name
-                if site.test_url:
-                    item["test_url"] = site.test_url
-                default_aliases = [str(alias).strip().lower() for alias in list(defaults.get("aliases") or []) if alias]
-                existing_aliases = set(item.get("aliases") or [])
-                for alias in default_aliases:
-                    if alias not in existing_aliases:
-                        item.setdefault("aliases", []).append(alias)
-                        existing_aliases.add(alias)
-                for key in ("http", "proxy", "login", "rate_limit", "cookie", "metadata", "icon_url"):
-                    value = defaults.get(key)
-                    if value is not None:
-                        item[key] = value
-                if not item.get("icon_url") and resolve_site_icon_path(site.site_name):
-                    item["icon_url"] = build_site_icon_url(site.site_name)
-                existing_features = set(item.get("features") or [])
-                for feature in site.features:
-                    if feature not in existing_features:
-                        item.setdefault("features", []).append(feature)
-                        existing_features.add(feature)
-                for domain in site.domains:
-                    normalized = str(domain).strip().lower()
-                    if normalized and normalized not in item["domains"]:
-                        item["domains"].append(normalized)
+    def build_plugin_site_catalog(cls) -> dict[str, dict]:
+        catalog = get_site_plugin_registry().build_site_catalog()
+        for slug, item in catalog.items():
+            if not item.get("icon_url") and resolve_site_icon_path(slug):
+                item["icon_url"] = build_site_icon_url(slug)
         return catalog
 
     @classmethod
@@ -188,9 +152,6 @@ class SiteCatalog:
         return cls.load_override_catalog()
 
     @classmethod
-    def _build_from_manifests(cls, snapshot: SiteRuntimeSnapshot | None = None) -> dict[str, dict]:
-        return cls.build_runtime_site_catalog(snapshot=snapshot)
-
     @classmethod
     def get_all_domains(cls) -> list[str]:
         domains: list[str] = []
@@ -324,5 +285,4 @@ class SiteCatalog:
             for slug, site_info in catalog.items()
             if str(slug).strip() and site_info.get("enabled", True)
         }
-
 

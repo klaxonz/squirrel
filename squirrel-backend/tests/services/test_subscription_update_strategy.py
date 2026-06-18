@@ -15,6 +15,7 @@ from domains.subscription.application.services.core.update.strategies.default_st
     should_schedule_total_video_backfill,
 )
 from infrastructure.config.settings import settings
+from infrastructure.site_plugins.registry import SitePluginResult
 
 
 def test_should_schedule_total_video_backfill_when_full_never_succeeded():
@@ -116,20 +117,18 @@ def test_inline_video_extraction_does_not_schedule_total_video_backfill():
         SubscriptionOrchestrator._schedule_total_video_backfill(request, result)
 
 
-def test_fetch_videos_uses_plugin_gateway_sync_subscription():
+def test_fetch_videos_uses_site_plugin_sync_subscription():
     calls = []
 
-    class _FakeGateway:
-        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+    class _FakeRegistry:
+        def invoke(self, capability, payload=None, site_name=None, domain=None):
             calls.append({
                 "capability": capability,
                 "payload": payload,
                 "site_name": site_name,
                 "domain": domain,
-                "timeout_ms": timeout_ms,
             })
-            return SimpleNamespace(
-                request_id="sync-1",
+            return SitePluginResult(
                 ok=True,
                 data={
                     "video_urls": ["https://www.bilibili.com/video/BV1xx411c7mD"],
@@ -153,7 +152,7 @@ def test_fetch_videos_uses_plugin_gateway_sync_subscription():
             last_seen_video_url="https://www.bilibili.com/video/OLD",
         )
 
-        result = DefaultUpdateStrategy(runtime_gateway=_FakeGateway()).fetch_videos(request)
+        result = DefaultUpdateStrategy(plugin_registry=_FakeRegistry()).fetch_videos(request)
 
     assert calls == [{
         "capability": "sync_subscription",
@@ -166,7 +165,6 @@ def test_fetch_videos_uses_plugin_gateway_sync_subscription():
         },
         "site_name": "bilibili",
         "domain": "space.bilibili.com",
-        "timeout_ms": None,
     }]
     assert result.video_urls == ["https://www.bilibili.com/video/BV1xx411c7mD"]
     assert result.latest_video_url == "https://www.bilibili.com/video/BV1xx411c7mD"

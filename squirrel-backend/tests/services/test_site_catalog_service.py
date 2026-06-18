@@ -10,7 +10,7 @@ def test_save_site_overrides_persists_override_only(tmp_path):
     config_path = tmp_path / 'sites.json'
 
     with patch.object(SiteCatalogService, '_config_path', return_value=config_path):
-        with patch('infrastructure.site_catalog.service.build_runtime_site_catalog', return_value={
+        with patch('infrastructure.site_catalog.service.build_plugin_site_catalog', return_value={
             'youtube': {
                 'label': 'YouTube',
                 'domains': ['youtube.com', 'youtu.be'],
@@ -63,7 +63,7 @@ def test_save_site_overrides_merges_patch_and_prunes_values_equal_to_plugin_defa
     )
 
     with patch.object(SiteCatalogService, '_config_path', return_value=config_path):
-        with patch('infrastructure.site_catalog.service.build_runtime_site_catalog', return_value={
+        with patch('infrastructure.site_catalog.service.build_plugin_site_catalog', return_value={
             'youtube': {
                 'label': 'YouTube',
                 'domains': ['youtube.com', 'youtu.be'],

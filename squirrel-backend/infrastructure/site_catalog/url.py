@@ -3,8 +3,7 @@ import logging
 import time
 from urllib.parse import urlparse
 
-from infrastructure.site_runtimes.models import SiteRuntimeSnapshot
-from infrastructure.site_runtimes.locator import get_runtime_snapshot
+from infrastructure.site_plugins.registry import get_site_plugin_registry
 
 logger = logging.getLogger(__name__)
 
@@ -86,16 +85,13 @@ def _normalize_registration_domain(domain: str) -> str:
     return value.lstrip(".")
 
 
-def _build_site_registration_index(snapshot: SiteRuntimeSnapshot | None = None) -> dict[str, str]:
-    registrations = (snapshot or get_runtime_snapshot()).registrations
+def _build_site_registration_index() -> dict[str, str]:
     index: dict[str, str] = {}
-    for registration in registrations:
-        if not registration.site_name:
-            continue
-        for candidate in registration.domains:
+    for site_name, info in get_site_plugin_registry().build_site_catalog().items():
+        for candidate in info.get('domains') or []:
             normalized = _normalize_registration_domain(candidate)
             if normalized:
-                index.setdefault(normalized, registration.site_name)
+                index.setdefault(normalized, site_name)
     return index
 
 
@@ -150,7 +146,7 @@ def reset_site_lookup_cache() -> None:
 
 
 def get_site_from_url(url: str) -> str | None:
-    """Get site name from URL using runtime capability registrations.
+    """Get site name from URL using plugin domains.
 
     :param url: Full URL string
     :return: Site name, or None if not found
@@ -167,5 +163,4 @@ def get_site_from_url(url: str) -> str | None:
     except (ValueError, AttributeError, TypeError) as e:
         logger.error("get_site_from_url exception occurred: url=%s, error=%s", url, e, exc_info=True)
         return None
-
 

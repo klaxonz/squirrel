@@ -1,35 +1,29 @@
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
-from crawl import SiteRuntimeInvokeResponse
 
 import infrastructure.extraction.factory as factory_module
 from infrastructure.extraction.contracts import ExtractionTask
 from infrastructure.extraction.factory import ExtractorFactory
+from infrastructure.site_plugins.registry import SitePluginResult
 
 
-def test_gateway_extractor_adapter_extracts_via_plugin_gateway(monkeypatch):
+def test_plugin_extractor_adapter_extracts_via_site_plugin(monkeypatch):
     calls = []
 
-    class _FakeGateway:
-        def resolve_route(self, capability, site_name=None, domain=None):
-            if capability == "extract_video" and site_name == "bilibili":
-                return SimpleNamespace(runtime_id="bilibili", capability=capability)
-            return None
+    class _FakeRegistry:
+        def has_capability(self, site_name, capability):
+            return capability == "extract_video" and site_name == "bilibili"
 
-        def invoke(self, capability, payload=None, site_name=None, domain=None, timeout_ms=None):
+        def invoke(self, capability, payload=None, site_name=None, domain=None):
             calls.append({
                 "capability": capability,
                 "payload": payload,
                 "site_name": site_name,
                 "domain": domain,
-                "timeout_ms": timeout_ms,
             })
-            return SiteRuntimeInvokeResponse(
-                request_id="extract-1",
+            return SitePluginResult(
                 ok=True,
                 data={
                     "success": True,
@@ -41,10 +35,6 @@ def test_gateway_extractor_adapter_extracts_via_plugin_gateway(monkeypatch):
                         "publish_date": None,
                         "extra_data": {"id": "BV1xx411c7mD"},
                     },
-                    "error": None,
-                    "error_category": None,
-                    "retryable": False,
-                    "error_context": None,
                 },
             )
 
@@ -67,7 +57,7 @@ def test_gateway_extractor_adapter_extracts_via_plugin_gateway(monkeypatch):
         },
     )
 
-    factory = ExtractorFactory(runtime_gateway=_FakeGateway())
+    factory = ExtractorFactory(plugin_registry=_FakeRegistry())
     extractor = factory.create_extractor("https://www.bilibili.com/video/BV1xx411c7mD")
 
     assert extractor is not None
@@ -84,7 +74,6 @@ def test_gateway_extractor_adapter_extracts_via_plugin_gateway(monkeypatch):
     assert calls[0]["capability"] == "extract_video"
     assert calls[0]["site_name"] == "bilibili"
     assert calls[0]["domain"] is None
-    assert calls[0]["timeout_ms"] is None
     assert calls[0]["payload"]["url"] == "https://www.bilibili.com/video/BV1xx411c7mD"
     assert calls[0]["payload"]["site_name"] == "bilibili"
     assert calls[0]["payload"]["retry_count"] == 0

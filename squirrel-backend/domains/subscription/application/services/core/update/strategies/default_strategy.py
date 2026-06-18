@@ -13,8 +13,7 @@ from domains.subscription.domain.models.subscription_sync_state import SyncMode,
 from infrastructure.config.settings import settings
 from infrastructure.database.session import get_session
 from infrastructure.site_catalog.catalog import SiteCatalog
-from infrastructure.site_runtimes.gateway import SiteRuntimeGateway
-from infrastructure.site_runtimes.locator import get_runtime_gateway
+from infrastructure.site_plugins.registry import SitePluginRegistry, get_site_plugin_registry
 
 from ..models import SubscriptionUpdateRequest, UpdateMode
 from ..video_extraction_coordinator import enqueue_discovered_videos
@@ -60,8 +59,8 @@ def should_schedule_total_video_backfill(
 class DefaultUpdateStrategy(UpdateStrategy):
     """Default update strategy (applicable to all sites)"""
 
-    def __init__(self, runtime_gateway: SiteRuntimeGateway | None = None) -> None:
-        self._runtime_gateway = runtime_gateway
+    def __init__(self, plugin_registry: SitePluginRegistry | None = None) -> None:
+        self._plugin_registry = plugin_registry or get_site_plugin_registry()
 
     @property
     def site_name(self) -> str:
@@ -83,8 +82,7 @@ class DefaultUpdateStrategy(UpdateStrategy):
             raise ValueError(f"No subscription route found for domain: {domain}")
 
         sync_mode = UpdateMode.FULL if request.mode == UpdateMode.FULL else UpdateMode.INCREMENTAL
-        runtime_gateway = self._runtime_gateway or get_runtime_gateway()
-        response = runtime_gateway.invoke(
+        response = self._plugin_registry.invoke(
             "sync_subscription",
             site_name=site_name,
             domain=domain,

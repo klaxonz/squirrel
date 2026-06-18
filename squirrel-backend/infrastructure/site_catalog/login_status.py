@@ -2,38 +2,23 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from infrastructure.site_runtimes.gateway import SiteRuntimeGateway
-from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
-from infrastructure.site_runtimes.models import SiteRuntimeSnapshot
+from infrastructure.site_plugins.registry import SitePluginRegistry, get_site_plugin_registry
 
 logger = logging.getLogger(__name__)
 
 
 class SiteLoginStatusService:
-    """Probes login status for sites via an injected :class:`SiteRuntimeSupervisor`."""
+    """Probes login status via first-party site plugins."""
 
-    def __init__(self, manager: SiteRuntimeSupervisor):
-        self._manager = manager
-
-    @property
-    def _gateway(self) -> SiteRuntimeGateway:
-        return self._manager.gateway
-
-    @property
-    def _snapshot(self) -> SiteRuntimeSnapshot:
-        return self._manager.get_snapshot()
+    def __init__(self, registry: SitePluginRegistry | None = None):
+        self._registry = registry or get_site_plugin_registry()
 
     def get_supported_sites(self) -> set[str]:
-        return {
-            registration.site_name
-            for registration in self._snapshot.registrations
-            if registration.capability == 'check_login_status' and registration.site_name
-        }
+        return self._registry.get_supported_sites('check_login_status')
 
     def test_site_login_status(self, site_name: str) -> dict[str, Any]:
         timestamp = datetime.now().isoformat()
-        route = self._gateway.resolve_route('check_login_status', site_name=site_name)
-        if route is None:
+        if not self._registry.has_capability(site_name, 'check_login_status'):
             return {
                 'site_name': site_name,
                 'supported': False,
@@ -42,7 +27,7 @@ class SiteLoginStatusService:
                 'checked_at': timestamp,
             }
 
-        result = self._gateway.invoke('check_login_status', site_name=site_name)
+        result = self._registry.invoke('check_login_status', site_name=site_name)
         if not result.ok or result.error is not None:
             return {
                 'site_name': site_name,

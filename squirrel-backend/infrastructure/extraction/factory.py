@@ -5,8 +5,7 @@ from urllib.parse import urlparse
 
 from infrastructure.runtime.site_config_manager import get_effective_site_catalog
 from infrastructure.site_catalog.catalog import SiteCatalog
-from infrastructure.site_runtimes.gateway import SiteRuntimeGateway
-from infrastructure.site_runtimes.locator import get_runtime_gateway
+from infrastructure.site_plugins.registry import SitePluginRegistry, get_site_plugin_registry
 
 from .contracts import ExtractionResult, ExtractionTask
 from .runtime_payloads import RuntimeVideoData
@@ -14,18 +13,18 @@ from .runtime_payloads import RuntimeVideoData
 logger = logging.getLogger(__name__)
 
 
-class GatewayExtractorAdapter:
-    """Adapter that exposes site runtime capabilities as Extractor protocol."""
+class SitePluginExtractorAdapter:
+    """Adapter that exposes site plugin capabilities as Extractor protocol."""
 
     def __init__(
         self,
         site_name: str,
         supported_domains: list[str],
-        runtime_gateway: SiteRuntimeGateway,
+        plugin_registry: SitePluginRegistry,
     ):
         self.site_name = site_name
         self.supported_domains = list(supported_domains)
-        self._runtime_gateway = runtime_gateway
+        self._plugin_registry = plugin_registry
 
     def can_handle(self, url: str) -> bool:
         try:
@@ -42,7 +41,7 @@ class GatewayExtractorAdapter:
             return False
 
     def extract(self, task: ExtractionTask) -> ExtractionResult:
-        response = self._runtime_gateway.invoke(
+        response = self._plugin_registry.invoke(
             "extract_video",
             site_name=self.site_name,
             payload={
@@ -72,21 +71,14 @@ class GatewayExtractorAdapter:
 
 
 class ExtractorFactory:
-    """Resolve extractors from site runtime registrations."""
+    """Resolve extractors from first-party site plugins."""
 
-    def __init__(self, runtime_gateway: SiteRuntimeGateway | None = None) -> None:
-        self._instances: dict[str, GatewayExtractorAdapter] = {}
-        # Allow either explicit injection (preferred — tests pass a fake) or
-        # lazy resolution from the runtime provider (production module singleton).
-        self._runtime_gateway = runtime_gateway
+    def __init__(self, plugin_registry: SitePluginRegistry | None = None) -> None:
+        self._instances: dict[str, SitePluginExtractorAdapter] = {}
+        self._plugin_registry = plugin_registry or get_site_plugin_registry()
 
-    def _resolve_gateway(self) -> SiteRuntimeGateway:
-        return self._runtime_gateway or get_runtime_gateway()
-
-    def _create_adapter(self, site_name: str) -> GatewayExtractorAdapter | None:
-        runtime_gateway = self._resolve_gateway()
-        route = runtime_gateway.resolve_route("extract_video", site_name=site_name)
-        if route is None:
+    def _create_adapter(self, site_name: str) -> SitePluginExtractorAdapter | None:
+        if not self._plugin_registry.has_capability(site_name, "extract_video"):
             logger.info("No extract_video capability found for site: %s", site_name)
             return None
 
@@ -96,13 +88,13 @@ class ExtractorFactory:
             logger.warning("No site domains configured for extractor site: %s", site_name)
             return None
 
-        return GatewayExtractorAdapter(
+        return SitePluginExtractorAdapter(
             site_name=site_name,
             supported_domains=domains,
-            runtime_gateway=runtime_gateway,
+            plugin_registry=self._plugin_registry,
         )
 
-    def create_extractor(self, url: str) -> GatewayExtractorAdapter | None:
+    def create_extractor(self, url: str) -> SitePluginExtractorAdapter | None:
         try:
             domain = urlparse(url).netloc.lower().split(":")[0]
         except (ValueError, TypeError) as exc:
@@ -127,7 +119,7 @@ class ExtractorFactory:
             self._instances[site_name] = adapter
         return adapter
 
-    def get_extractor_by_site(self, site_name: str) -> GatewayExtractorAdapter | None:
+    def get_extractor_by_site(self, site_name: str) -> SitePluginExtractorAdapter | None:
         if not SiteCatalog.is_site_enabled(site=site_name):
             logger.info("Site disabled, skip extractor lookup: %s", site_name)
             return None
@@ -170,5 +162,3 @@ def reset_factory() -> None:
     if _global_factory is not None:
         _global_factory.clear_cache()
     _global_factory = None
-
-

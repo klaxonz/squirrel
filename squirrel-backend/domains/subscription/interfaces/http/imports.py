@@ -24,7 +24,7 @@ def get_supported_sites(
         List of supported sites
 
     """
-    supported_sites = subscription_import_service.get_runtime_supported_sites("import_subscriptions")
+    supported_sites = subscription_import_service.get_plugin_supported_sites("import_subscriptions")
     enabled_sites = get_enabled_import_sites(supported_sites)
 
     return response.success({
@@ -49,7 +49,7 @@ def preview_subscriptions(
 
     """
     try:
-        supported_sites = subscription_import_service.get_runtime_supported_sites("import_subscriptions")
+        supported_sites = subscription_import_service.get_plugin_supported_sites("import_subscriptions")
         supported_site_set = get_supported_site_set(supported_sites)
         normalized_site = normalize_site_name(site)
         enabled_sites = get_enabled_import_sites(supported_sites)
@@ -105,7 +105,7 @@ def import_subscriptions(
 
     """
     try:
-        supported_sites = subscription_import_service.get_runtime_supported_sites("import_subscriptions")
+        supported_sites = subscription_import_service.get_plugin_supported_sites("import_subscriptions")
         supported_site_set = get_supported_site_set(supported_sites)
         normalized_site = normalize_site_name(site)
         enabled_sites = get_enabled_import_sites(supported_sites)

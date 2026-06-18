@@ -3,7 +3,7 @@
 This is the async lifespan bound to the FastAPI app in ``main.py``. It is the
 web-process counterpart to ``workers/bootstrap.py`` (sync, for worker processes):
 both initialize the same shared runtime (logging, db, site config, http,
-site runtimes), but the web process runs inside FastAPI's lifespan protocol.
+site plugins), but the web process runs inside FastAPI's lifespan protocol.
 """
 import logging
 import os
@@ -21,9 +21,7 @@ from infrastructure.site_catalog.runtime_http import (
     set_cookie_domain_resolver,
     set_cookie_file_resolver,
 )
-from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
-from infrastructure.site_runtimes.paths import build_site_runtime_paths
-from infrastructure.site_runtimes.locator import set_runtime_manager
+from infrastructure.site_plugins.registry import get_site_plugin_registry
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +32,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Startup: begin")
     startup_issues = StartupHealth()
     app.state.startup_health = startup_issues
-
-    # Site-runtime manager is the single composition-root-owned instance.
-    # Installed into runtime_provider so deep-stack subsystems (SiteCatalog,
-    # orchestrator/scheduler singletons) can reach it without request scope.
-    site_runtime_paths = build_site_runtime_paths(backend_root=settings.base_dir)
-    site_runtime_manager = SiteRuntimeSupervisor(paths=site_runtime_paths)
-    app.state.site_runtime_manager = site_runtime_manager
-    set_runtime_manager(site_runtime_manager)
 
     for notice in settings.optional_feature_warnings():
         logger.warning("Startup: %s", notice)
@@ -71,17 +61,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.exception("Startup: failed to configure cookie resolver")
         raise
 
-    # 3. Site runtimes (hard dependency) — YouTube OAuth env must be set before bootstrap
-    logger.info("Startup: bootstrapping site runtime manager")
+    # 3. Site plugins (hard dependency) — YouTube OAuth env must be set before plugin start
+    logger.info("Startup: starting site plugins")
     try:
         from infrastructure.site_catalog.youtube_oauth import get_oauth_credentials_for_daemon
 
         oauth_file = get_oauth_credentials_for_daemon()
         if oauth_file:
             os.environ["YOUTUBE_OAUTH_STATE_FILE"] = oauth_file
-        site_runtime_manager.bootstrap_enabled_site_runtimes()
+        get_site_plugin_registry().start_all()
     except Exception:
-        logger.exception("Startup: failed to bootstrap site runtime manager")
+        logger.exception("Startup: failed to start site plugins")
         raise
 
     # 4. Scheduled tasks (degraded-tolerant)
@@ -116,7 +106,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info("Shutdown: begin")
     try:
-        site_runtime_manager.shutdown_all()
+        get_site_plugin_registry().stop_all()
     except Exception as exc:  # cleanup during shutdown -- must not propagate
-        logger.warning("Shutdown: error stopping site runtime manager (ignored): %s", exc)
+        logger.warning("Shutdown: error stopping site plugins (ignored): %s", exc)
     logger.info("Shutdown: complete")

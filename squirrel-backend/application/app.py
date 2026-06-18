@@ -39,7 +39,7 @@ from infrastructure.http.response import ErrorCode
 from infrastructure.scheduling.routes import router as scheduler_router
 from infrastructure.site_catalog.routes.connectivity_batch import router as connectivity_router
 from infrastructure.site_catalog.routes.site_cookies_bulk_import import router as site_cookies_router
-from infrastructure.site_catalog.routes.site_runtimes import router as site_runtimes_router
+from infrastructure.site_catalog.routes.site_plugins import router as site_plugins_router
 from infrastructure.site_catalog.routes.sites_catalog import router as sites_router
 
 logger = logging.getLogger(__name__)
@@ -127,7 +127,7 @@ _ROUTERS: tuple[APIRouter, ...] = (
     music_router,
     rss_router,
     system_config_router,
-    site_runtimes_router,
+    site_plugins_router,
     sites_router,
     site_cookies_router,
     connectivity_router,

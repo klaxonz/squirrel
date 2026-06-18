@@ -17,10 +17,7 @@ from infrastructure.messaging.framework.producer import RedisStreamProducer
 from infrastructure.messaging.models.message import Message
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
-from infrastructure.site_runtimes.gateway import SiteRuntimeGateway
-from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
-from infrastructure.site_runtimes.models import SiteRuntimeSnapshot
-from infrastructure.site_runtimes.locator import get_runtime_gateway, get_runtime_snapshot
+from infrastructure.site_plugins.registry import SitePluginRegistry, get_site_plugin_registry
 
 logger = logging.getLogger(__name__)
 
@@ -29,46 +26,33 @@ class SubscriptionImportService:
     def __init__(
         self,
         *,
-        manager: SiteRuntimeSupervisor | None = None,
+        registry: SitePluginRegistry | None = None,
         session_factory=get_session,
         crud_service=None,
         manage_service=None,
     ):
-        self._manager = manager
+        self._registry = registry or get_site_plugin_registry()
         self.session_factory = session_factory
         self.crud_service = crud_service or subscription_crud_service
         self.manage_service = manage_service or subscription_manage_service
 
-    def _resolve_gateway(self) -> SiteRuntimeGateway:
-        return self._manager.gateway if self._manager is not None else get_runtime_gateway()
-
-    def _resolve_snapshot(self) -> SiteRuntimeSnapshot:
-        return self._manager.get_snapshot() if self._manager is not None else get_runtime_snapshot()
-
     @staticmethod
-    def get_runtime_supported_sites(
+    def get_plugin_supported_sites(
         capability: str,
-        snapshot: SiteRuntimeSnapshot | None = None,
     ) -> list[str]:
-        snapshot = snapshot or get_runtime_snapshot()
-        return sorted({
-            registration.site_name
-            for registration in snapshot.registrations
-            if registration.capability == capability and registration.site_name
-        })
+        return sorted(get_site_plugin_registry().get_supported_sites(capability))
 
     @staticmethod
-    def get_enabled_runtime_import_sites() -> list[str]:
+    def get_enabled_plugin_import_sites() -> list[str]:
         return [
             site
-            for site in SubscriptionImportService.get_runtime_supported_sites('import_subscriptions')
+            for site in SubscriptionImportService.get_plugin_supported_sites('import_subscriptions')
             if SiteCatalog.is_site_enabled(site=site)
         ]
 
-    def _load_runtime_subscription_meta(
+    def _load_plugin_subscription_meta(
         self,
         url: str,
-        gateway: SiteRuntimeGateway | None = None,
     ) -> SubscriptionMeta:
         from urllib.parse import urlparse
         domain = extract_top_level_domain(url)
@@ -77,12 +61,7 @@ class SubscriptionImportService:
             'url': url,
             'domain': domain or parsed_url.netloc.lower().split(':')[0],
         }
-        runtime_gateway = gateway or self._resolve_gateway()
-        response = runtime_gateway.invoke(
-            'resolve_subscription',
-            payload=payload,
-            domain=domain or None,
-        )
+        response = self._registry.invoke('resolve_subscription', payload=payload, domain=domain or None)
         if not response.ok:
             message = response.error.message if response.error else f'Plugin subscription resolution failed for url: {url}'
             raise ValueError(message)
@@ -103,13 +82,12 @@ class SubscriptionImportService:
             result.append(sub)
         return result
 
-    def _load_runtime_import_batch(
+    def _load_plugin_import_batch(
         self,
         site_name: str,
         *,
         cursor_payload: dict[str, Any] | None = None,
         limit: int | None = None,
-        gateway: SiteRuntimeGateway | None = None,
     ) -> SubscriptionImportBatchResult:
         payload: dict[str, Any] = {}
         if cursor_payload:
@@ -117,12 +95,7 @@ class SubscriptionImportService:
         if limit is not None:
             payload['limit'] = limit
 
-        runtime_gateway = gateway or self._resolve_gateway()
-        response = runtime_gateway.invoke(
-            'import_subscriptions',
-            payload=payload or None,
-            site_name=site_name,
-        )
+        response = self._registry.invoke('import_subscriptions', payload=payload or None, site_name=site_name)
         if not response.ok:
             message = response.error.message if response.error else f'Plugin import failed for site: {site_name}'
             raise ValueError(message)
@@ -135,12 +108,12 @@ class SubscriptionImportService:
         batch.items = SubscriptionImportService._dedupe_import_items(batch.items)
         return batch
 
-    def _load_runtime_import_items(self, site_name: str) -> list[SubscriptionImportItem]:
+    def _load_plugin_import_items(self, site_name: str) -> list[SubscriptionImportItem]:
         items: list[SubscriptionImportItem] = []
         cursor_payload: dict[str, Any] | None = None
 
         while True:
-            batch = self._load_runtime_import_batch(
+            batch = self._load_plugin_import_batch(
                 site_name,
                 cursor_payload=cursor_payload,
             )
@@ -156,7 +129,7 @@ class SubscriptionImportService:
         if existing_subscription:
             return existing_subscription
 
-        subscribe_info = self._load_runtime_subscription_meta(url)
+        subscribe_info = self._load_plugin_subscription_meta(url)
 
         subscription = self.crud_service.get_subscription_by_url_and_name(url, subscribe_info.name)
 
@@ -176,7 +149,7 @@ class SubscriptionImportService:
         limit: int | None = None,
     ) -> dict[str, Any]:
         try:
-            import_batch = self._load_runtime_import_batch(
+            import_batch = self._load_plugin_import_batch(
                 site_name,
                 cursor_payload=cursor_payload,
                 limit=limit,
@@ -265,7 +238,7 @@ class SubscriptionImportService:
                 ])
                 found_total = None
             else:
-                subscriptions = self._load_runtime_import_items(site_name)
+                subscriptions = self._load_plugin_import_items(site_name)
                 found_total = len(subscriptions)
                 logger.info('Found %s subscriptions from %s', found_total, site_name)
             selected_total = len(subscriptions)
@@ -315,7 +288,7 @@ class SubscriptionImportService:
         site_names: list[str] | None = None,
     ) -> dict[str, Any]:
         resolved_user_ids = list(dict.fromkeys(user_ids or self.manage_service.list_user_ids()))
-        resolved_site_names = list(dict.fromkeys(site_names or self.get_enabled_runtime_import_sites()))
+        resolved_site_names = list(dict.fromkeys(site_names or self.get_enabled_plugin_import_sites()))
 
         summary = {
             'users': len(resolved_user_ids),
@@ -366,8 +339,8 @@ class SubscriptionImportService:
 
 
 subscription_import_service = SubscriptionImportService()
-get_runtime_supported_sites = subscription_import_service.get_runtime_supported_sites
-get_enabled_runtime_import_sites = subscription_import_service.get_enabled_runtime_import_sites
+get_plugin_supported_sites = subscription_import_service.get_plugin_supported_sites
+get_enabled_plugin_import_sites = subscription_import_service.get_enabled_plugin_import_sites
 handle_subscribe_request = subscription_import_service.handle_subscribe_request
 preview_user_subscriptions = subscription_import_service.preview_user_subscriptions
 import_user_subscriptions = subscription_import_service.import_user_subscriptions

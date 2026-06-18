@@ -14,7 +14,7 @@ def _build_client(monkeypatch):
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: type("User", (), {"id": 7})()
-    monkeypatch.setattr("domains.subscription.interfaces.http.imports.subscription_import_service.get_runtime_supported_sites", lambda _cap: ["javdb"])
+    monkeypatch.setattr("domains.subscription.interfaces.http.imports.subscription_import_service.get_plugin_supported_sites", lambda _cap: ["javdb"])
     # All supported sites are enabled — avoids depending on the runtime provider
     # snapshot being populated by the autouse fixture.
     monkeypatch.setattr(
@@ -113,7 +113,7 @@ def test_get_import_sites_filters_disabled_sites_in_original_order(monkeypatch):
     client = _build_client(monkeypatch)
 
     monkeypatch.setattr(
-        "domains.subscription.interfaces.http.imports.subscription_import_service.get_runtime_supported_sites",
+        "domains.subscription.interfaces.http.imports.subscription_import_service.get_plugin_supported_sites",
         lambda _cap: [" JAVDB ", "youtube", "javdb", "bilibili"],
     )
     monkeypatch.setattr(

@@ -3,7 +3,7 @@
 Used by standalone worker/scheduler processes (``workers/messaging/process.py``,
 ``workers/scheduling/process.py``). This is the sync counterpart to the FastAPI
 lifespan in ``main.py`` — both initialize the same shared runtime (logging, db,
-site config, http, site runtimes), but worker processes are plain Python scripts
+site config, http, site plugins), but worker processes are plain Python scripts
 without a FastAPI app, so they use a sync context manager instead.
 """
 import logging
@@ -21,10 +21,7 @@ from infrastructure.site_catalog.runtime_http import (
     set_cookie_domain_resolver,
     set_cookie_file_resolver,
 )
-from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
-from infrastructure.site_runtimes.paths import build_site_runtime_paths
-from infrastructure.site_runtimes.reload_listener import start_reload_listener, stop_reload_listener
-from infrastructure.site_runtimes.locator import set_runtime_manager
+from infrastructure.site_plugins.registry import get_site_plugin_registry
 from shared_kernel.infrastructure.log import init_logging
 
 logger = logging.getLogger(__name__)
@@ -68,39 +65,24 @@ def bootstrap_runtime(component: str):
         logger.exception("[%s] Failed to configure cookie resolver", component)
         raise
 
-    # Worker-process composition root: construct the single manager and install
-    # it into the runtime provider so worker-side singletons (orchestrator,
-    # scheduler, SiteCatalog via site_config_manager) can reach it.
-    site_runtime_paths = build_site_runtime_paths(backend_root=settings.base_dir)
-    site_runtime_manager = SiteRuntimeSupervisor(paths=site_runtime_paths)
-    set_runtime_manager(site_runtime_manager)
-
     try:
         from infrastructure.site_catalog.youtube_oauth import get_oauth_credentials_for_daemon
 
         oauth_file = get_oauth_credentials_for_daemon()
         if oauth_file:
             os.environ["YOUTUBE_OAUTH_STATE_FILE"] = oauth_file
-        site_runtime_manager.bootstrap_enabled_site_runtimes()
-        start_reload_listener(
-            component,
-            reloader=site_runtime_manager.reload_enabled_site_runtimes,
-        )
+        get_site_plugin_registry().start_all()
     except Exception:
-        logger.exception("[%s] Runtime bootstrap failed", component)
+        logger.exception("[%s] Site plugin bootstrap failed", component)
         raise
 
     try:
         yield
     finally:
         try:
-            stop_reload_listener(component)
+            get_site_plugin_registry().stop_all()
         except Exception:
-            logger.warning("[%s] Failed to stop reload listener", component, exc_info=True)
-        try:
-            site_runtime_manager.shutdown_all()
-        except Exception:
-            logger.warning("[%s] Site runtime shutdown failed", component, exc_info=True)
+            logger.warning("[%s] Site plugin shutdown failed", component, exc_info=True)
 
 
 def create_shutdown_event(component: str) -> threading.Event:
