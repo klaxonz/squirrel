@@ -62,7 +62,7 @@ def get_runtime_gateway() -> SiteRuntimeGateway:
 
 def get_runtime_snapshot() -> SiteRuntimeSnapshot:
     """Convenience: fresh snapshot from the active manager."""
-    return get_runtime_manager().get_runtime_snapshot()
+    return get_runtime_manager().get_snapshot()
 
 
 def reset_runtime_manager() -> None:

@@ -24,7 +24,6 @@ class SiteRuntimeStatus(StrEnum):
 class SiteRuntimeState(StrEnum):
     STARTING = "starting"
     RUNNING = "running"
-    DRAINING = "draining"
     STOPPED = "stopped"
     FAILED = "failed"
 
@@ -111,7 +110,6 @@ class SiteRuntimeHandle:
     process_id: int | None = None
     endpoint: str | None = None
     started_at: str | None = None
-    drained_at: str | None = None
     last_error: str | None = None
     health: SiteRuntimeHealthSnapshot | None = None
 
@@ -123,7 +121,6 @@ class SiteRuntimeHandle:
             "process_id": self.process_id,
             "endpoint": self.endpoint,
             "started_at": self.started_at,
-            "drained_at": self.drained_at,
             "last_error": self.last_error,
             "health": None if self.health is None else {
                 "runtime_id": self.health.runtime_id,
@@ -183,7 +180,7 @@ class SiteRuntimeDiscoveryResult:
 
 
 # ---------------------------------------------------------------------------
-# Manifest DTOs (merged from runtime_models.py)
+# Manifest DTOs
 # ---------------------------------------------------------------------------
 
 

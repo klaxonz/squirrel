@@ -7,7 +7,7 @@ import tempfile
 import threading
 from pathlib import Path
 
-from .models import SiteRuntimeRecord, SiteRuntimeStatus, utcnow_iso
+from .models import SiteRuntimeRecord, utcnow_iso
 from .paths import SiteRuntimePaths, build_site_runtime_paths
 
 logger = logging.getLogger(__name__)
@@ -109,22 +109,3 @@ class SiteRuntimeStore:
             if runtime_id in payload:
                 del payload[runtime_id]
                 self._save_raw(payload)
-
-    def set_enabled(self, runtime_id: str, enabled: bool) -> SiteRuntimeRecord | None:
-        with self._lock:
-            record = self.get_record(runtime_id)
-            if record is None:
-                return None
-            record.enabled = enabled
-            if enabled and record.status == SiteRuntimeStatus.DISABLED:
-                record.status = SiteRuntimeStatus.INSTALLED
-            if not enabled:
-                record.status = SiteRuntimeStatus.DISABLED
-            payload = self._load_raw()
-            record.updated_at = utcnow_iso()
-            payload[record.runtime_id] = record.to_dict()
-            self._save_raw(payload)
-            return record
-
-
-

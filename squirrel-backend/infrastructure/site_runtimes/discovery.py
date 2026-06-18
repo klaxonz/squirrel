@@ -36,18 +36,16 @@ class SiteRuntimeDiscovery:
         Pure read: merges existing persisted records with what is on disk,
         but does not persist anything or touch gateway registrations.
         """
-        records_by_id = {
+        existing_by_id = {
             record.runtime_id: record
             for record in self._store.list_records()
             if record.metadata.get('source') == 'workspace'
         }
+        records_by_id: dict[str, SiteRuntimeRecord] = {}
         errors: list[SiteRuntimeDiscoveryError] = []
         runtimes_root = self._paths.workspace_runtimes_dir
         if not runtimes_root.exists():
-            return SiteRuntimeDiscoveryResult(
-                records=sorted(records_by_id.values(), key=lambda record: record.runtime_id.lower()),
-                errors=[],
-            )
+            return SiteRuntimeDiscoveryResult(records=[], errors=[])
 
         for metadata_path in runtimes_root.glob('*/site-runtime.json'):
             try:
@@ -64,7 +62,7 @@ class SiteRuntimeDiscovery:
 
                 runtime_root = metadata_path.parent
                 runtime_path = runtime_root / 'src'
-                existing = records_by_id.get(manifest.runtime_id)
+                existing = existing_by_id.get(manifest.runtime_id)
                 if existing is not None:
                     existing.version = manifest.version
                     existing.install_path = str(runtime_root)
@@ -74,6 +72,7 @@ class SiteRuntimeDiscovery:
                     existing.package_path = str(metadata_path)
                     existing.runtime_path = str(runtime_path if runtime_path.exists() else runtime_root)
                     existing.metadata = {'source': 'workspace'}
+                    records_by_id[existing.runtime_id] = existing
                     continue
 
                 record = SiteRuntimeRecord(
@@ -101,13 +100,21 @@ class SiteRuntimeDiscovery:
         )
 
     def apply_discovery_result(self, result: SiteRuntimeDiscoveryResult) -> SiteRuntimeDiscoveryResult:
-        """Persist discovery result and re-register changed runtimes.
+        """Persist discovery result and remove stale workspace records.
 
-        Write path: upserts every record into the store and re-syncs gateway
-        registrations for enabled runtimes whose manifest changed. Must only
-        be called from explicit write entry points (bootstrap / reload /
-        sync API), never from read paths.
+        Write path: upserts every record into the store. Must only be called
+        from explicit write entry points, never from read paths.
         """
+        existing_workspace_ids = {
+            record.runtime_id
+            for record in self._store.list_records()
+            if record.metadata.get('source') == 'workspace'
+        }
+        discovered_ids = {record.runtime_id for record in result.records}
+        for runtime_id in existing_workspace_ids - discovered_ids:
+            self._store.delete(runtime_id)
+            self._gateway.unregister_plugin(runtime_id)
+
         persisted: list[SiteRuntimeRecord] = []
         for record in result.records:
             before = self._store.get_record(record.runtime_id)
@@ -120,13 +127,5 @@ class SiteRuntimeDiscovery:
 
             upserted = self._store.upsert(record) if changed else record
             persisted.append(upserted)
-
-            if upserted.enabled and changed:
-                self._gateway.unregister_plugin(upserted.runtime_id)
-                self._gateway.register_manifest(
-                    runtime_id=upserted.runtime_id,
-                    version=upserted.version,
-                    manifest=SiteRuntimeManifest.from_dict(upserted.manifest),
-                )
 
         return SiteRuntimeDiscoveryResult(records=persisted, errors=list(result.errors))

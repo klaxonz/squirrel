@@ -21,7 +21,7 @@ class SiteLoginStatusService:
 
     @property
     def _snapshot(self) -> SiteRuntimeSnapshot:
-        return self._manager.get_runtime_snapshot()
+        return self._manager.get_snapshot()
 
     def get_supported_sites(self) -> set[str]:
         return {

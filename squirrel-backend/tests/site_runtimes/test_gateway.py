@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from crawl import RuntimeErrorCode, SiteRuntimeInvokeResponse
 
 from infrastructure.site_runtimes.gateway import SiteRuntimeGateway
-from infrastructure.site_runtimes.runtime_models import SiteRuntimeCapability, SiteRuntimeManifest, SiteRuntimeSite
+from infrastructure.site_runtimes.models import SiteRuntimeCapability, SiteRuntimeManifest, SiteRuntimeSite
 
 
 class _RecordingInvocationClient:
@@ -58,5 +58,4 @@ def test_gateway_returns_stable_error_code_for_route_miss():
         "site_name": None,
         "domain": "example.com",
     }
-
 

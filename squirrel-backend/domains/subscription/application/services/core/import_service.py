@@ -43,7 +43,7 @@ class SubscriptionImportService:
         return self._manager.gateway if self._manager is not None else get_runtime_gateway()
 
     def _resolve_snapshot(self) -> SiteRuntimeSnapshot:
-        return self._manager.get_runtime_snapshot() if self._manager is not None else get_runtime_snapshot()
+        return self._manager.get_snapshot() if self._manager is not None else get_runtime_snapshot()
 
     @staticmethod
     def get_runtime_supported_sites(

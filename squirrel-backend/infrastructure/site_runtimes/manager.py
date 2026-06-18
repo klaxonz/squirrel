@@ -62,12 +62,6 @@ class SiteRuntimeManager:
         """Read-only workspace scan; does not persist."""
         return self._discovery.scan_workspace()
 
-    def discover_site_runtimes(self) -> list[SiteRuntimeRecord]:
-        return self.list_site_runtimes()
-
-    def discover_site_runtime_result(self) -> SiteRuntimeDiscoveryResult:
-        return self.scan_workspace()
-
     def get_site_runtime(self, runtime_id: str) -> SiteRuntimeRecord | None:
         for record in self.list_site_runtimes():
             if record.runtime_id == runtime_id:
@@ -75,9 +69,6 @@ class SiteRuntimeManager:
         return None
 
     def get_snapshot(self) -> SiteRuntimeSnapshot:
-        # Single scan; reuse the result for records + errors (was previously
-        # scanned twice, once via discover_site_runtimes() and once via
-        # discover_site_runtime_result().errors).
         discovery = self.scan_workspace()
         return SiteRuntimeSnapshot(
             records=discovery.records,
@@ -85,10 +76,6 @@ class SiteRuntimeManager:
             registrations=self._gateway.list_registrations(),
             discovery_errors=discovery.errors,
         )
-
-    def get_runtime_snapshot(self) -> SiteRuntimeSnapshot:
-        """Convenience alias for :meth:`get_snapshot` (replaces ports.get_runtime_snapshot)."""
-        return self.get_snapshot()
 
     # ------------------------------------------------------------------
     # Write paths
@@ -104,13 +91,13 @@ class SiteRuntimeManager:
         if record is None:
             return None
         record.enabled = True
-        record.status = SiteRuntimeStatus.RUNNING
+        self._supervisor.start_runtime(record)
         self._gateway.register_manifest(
             runtime_id=record.runtime_id,
             version=record.version,
             manifest=_manifest_from_record(record),
         )
-        self._supervisor.start_runtime(record)
+        record.status = SiteRuntimeStatus.RUNNING
         return self._store.upsert(record)
 
     def disable_site_runtime(self, runtime_id: str) -> SiteRuntimeRecord | None:
@@ -129,13 +116,6 @@ class SiteRuntimeManager:
         enabled_records = [record for record in self.list_site_runtimes() if record.enabled]
         if not enabled_records:
             return []
-
-        for record in enabled_records:
-            self._gateway.register_manifest(
-                runtime_id=record.runtime_id,
-                version=record.version,
-                manifest=_manifest_from_record(record),
-            )
 
         futures: list[tuple[SiteRuntimeRecord, Future[object]]] = []
         with ThreadPoolExecutor(
@@ -160,6 +140,11 @@ class SiteRuntimeManager:
                 record.status = SiteRuntimeStatus.FAILED
                 self._store.upsert(record)
                 continue
+            self._gateway.register_manifest(
+                runtime_id=record.runtime_id,
+                version=record.version,
+                manifest=_manifest_from_record(record),
+            )
             record.status = SiteRuntimeStatus.RUNNING
             self._store.upsert(record)
             started.append(record)

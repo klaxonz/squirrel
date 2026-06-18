@@ -15,7 +15,6 @@ from .health import SiteRuntimeHealthChecker, SiteRuntimeHealthCheckError, to_he
 from .invocation import SiteRuntimeInvocationClient
 from .models import (
     SiteRuntimeHandle,
-    SiteRuntimeHealthSnapshot,
     SiteRuntimeRecord,
     SiteRuntimeState,
     SiteRuntimeTarget,
@@ -162,14 +161,6 @@ class SiteRuntimeSupervisor:
         self._handles[key] = handle
         return handle
 
-    def drain_runtime(self, runtime_id: str, version: str) -> SiteRuntimeHandle | None:
-        handle = self._handles.get(self._key(runtime_id, version))
-        if handle is None:
-            return None
-        handle.state = SiteRuntimeState.DRAINING
-        handle.drained_at = utcnow_iso()
-        return handle
-
     def stop_runtime(self, runtime_id: str, version: str) -> SiteRuntimeHandle | None:
         key = self._key(runtime_id, version)
         handle = self._handles.get(key)
@@ -213,16 +204,6 @@ class SiteRuntimeSupervisor:
         if record is not None:
             self._audit_writer.append_event(record, event='runtime_stopped', details={})
         return handle
-
-    def heartbeat(self, runtime_id: str, version: str, health: SiteRuntimeHealthSnapshot) -> None:
-        key = self._key(runtime_id, version)
-        handle = self._handles.get(key)
-        if handle is None:
-            raise SiteRuntimeSupervisorError(f"Runtime handle not found: {key}")
-        handle.health = health
-        if not health.healthy:
-            handle.state = SiteRuntimeState.FAILED
-            handle.last_error = health.message
 
     def mark_failed(self, runtime_id: str, version: str, message: str) -> SiteRuntimeHandle | None:
         key = self._key(runtime_id, version)

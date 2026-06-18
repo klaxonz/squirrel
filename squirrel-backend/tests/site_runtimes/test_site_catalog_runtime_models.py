@@ -6,7 +6,7 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from infrastructure.site_catalog.catalog import SiteCatalog
-from infrastructure.site_runtimes.runtime_models import SiteRuntimeCapability, SiteRuntimeManifest, SiteRuntimeSite
+from infrastructure.site_runtimes.models import SiteRuntimeCapability, SiteRuntimeManifest, SiteRuntimeSite
 
 
 def test_site_catalog_builds_from_backend_runtime_manifest_models(monkeypatch):
@@ -170,5 +170,4 @@ def test_site_catalog_load_from_file_keeps_sparse_overrides_sparse(monkeypatch, 
             "offline_thumbnails_display": False,
         },
     }
-
 

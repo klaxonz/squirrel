@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from infrastructure.site_catalog.runtime import SiteRuntimeService
 from infrastructure.site_catalog.service import SiteCatalogService
-from infrastructure.site_runtimes.runtime_models import SiteRuntimeManifest, SiteRuntimeSite
+from infrastructure.site_runtimes.models import SiteRuntimeManifest, SiteRuntimeSite
 
 
 def test_build_site_info_includes_icon_url():
@@ -72,5 +72,4 @@ def test_normalize_runtime_item_includes_site_icon_url_from_catalog():
         "metadata": {},
         "icon_url": "/api/sites/youtube/icon",
     }]
-
 

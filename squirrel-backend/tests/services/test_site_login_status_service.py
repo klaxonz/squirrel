@@ -7,7 +7,7 @@ from infrastructure.site_catalog.login_status import SiteLoginStatusService
 
 def _make_manager(*, gateway=None, snapshot=None):
     """Build a minimal fake manager exposing the attributes the service reads."""
-    return SimpleNamespace(gateway=gateway, get_runtime_snapshot=lambda: snapshot)
+    return SimpleNamespace(gateway=gateway, get_snapshot=lambda: snapshot)
 
 
 def test_get_supported_sites_reads_login_status_registrations():
