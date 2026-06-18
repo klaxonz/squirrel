@@ -72,19 +72,6 @@ type SiteCatalogPayloadItem = {
 
 type SiteCatalogPayload = Record<SiteSlug, SiteCatalogPayloadItem>
 
-type SiteCatalogEditableItem = {
-  label?: string
-  aliases?: string[]
-  enabled?: boolean
-  icon_url?: unknown
-  test_url?: unknown
-  http?: unknown
-  proxy?: unknown
-  login?: unknown
-  rate_limit?: unknown
-  metadata?: unknown
-}
-
 export function useSiteCatalog() {
   const loadCatalog = async () => {
     siteCatalogLoading.value = true

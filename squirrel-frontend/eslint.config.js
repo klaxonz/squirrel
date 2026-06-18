@@ -103,15 +103,11 @@ export default tseslint.config(
   // (or delete the override) once each area is fully typed. Tracked in the
   // frontend maintainability refactor (Phase 4).
   {
-    // feed components + views + composables: any/mutating-props cleared in Phase 4
-    // as DTOs land and VideoItem stops mutating props.
-    files: [
-      'src/components/feed/**/*.vue',
-      'src/components/layout/**/*.vue',
-      'src/components/history/**/*.vue',
-      'src/views/**/*.vue',
-      'src/composables/**/*.ts',
-    ],
+    // ponytail: feed components, views, composables, history cleared in the
+    // maintainability refactor — no-explicit-any is now error there.
+    // GlobalSearchBar (layout) still carries a search-union any cluster; keep
+    // warn until that component is retyped.
+    files: ['src/components/layout/**/*.vue'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'warn',
       'vue/no-mutating-props': 'warn',

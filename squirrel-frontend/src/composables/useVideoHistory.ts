@@ -6,6 +6,10 @@ import type { ApiResult } from '@/types/api'
 
 type VideoId = string | number
 
+// ponytail: Network Information API is non-standard; declare the slice we read.
+type NetworkInformation = { effectiveType?: string; downlink?: number }
+type NavigatorWithConnection = Navigator & { connection?: NetworkInformation }
+
 type SendReportOptions = {
   force?: boolean
   includeMetadata?: boolean
@@ -30,7 +34,7 @@ export default function useVideoHistory() {
     } = options
     const persistedVideoId = toPersistedVideoId(video_id)
 
-    const connection = (navigator as any).connection as { effectiveType?: string; downlink?: number } | undefined
+    const connection = (navigator as NavigatorWithConnection).connection
 
     const reportData: ReportData = {
       video_id,
@@ -197,7 +201,7 @@ export default function useVideoHistory() {
       }
       return true;
     } catch (error: unknown) {
-      const message = typeof (error as any)?.message === 'string' ? (error as any).message : '清空历史失败'
+      const message = typeof (error as { message?: string })?.message === 'string' ? (error as { message?: string }).message : '清空历史失败'
       throw new Error(message)
     }
   }
@@ -212,7 +216,7 @@ export default function useVideoHistory() {
       }
       return true
     } catch (error: unknown) {
-      const message = typeof (error as any)?.message === 'string' ? (error as any).message : '删除历史失败'
+      const message = typeof (error as { message?: string })?.message === 'string' ? (error as { message?: string }).message : '删除历史失败'
       throw new Error(message)
     }
   }

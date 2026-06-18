@@ -197,7 +197,9 @@ const saving = ref(false)
 const saved = ref(false)
 const saveError = ref('')
 const avatarError = ref(false)
-const avatarInput = ref<any>(null)
+// ponytail: shadcn Input wrapper exposes its inner <input> via $el.querySelector;
+// minimal structural type avoids importing the generated ui component type.
+const avatarInput = ref<{ $el?: HTMLElement } | null>(null)
 
 const userInitial = computed(() => {
   const name = userStore.currentUser?.nickname || ''
@@ -234,7 +236,7 @@ onMounted(() => {
 
 const focusAvatarInput = () => {
   if (avatarInput.value) {
-    const inputEl = avatarInput.value.$el?.querySelector?.('input') || avatarInput.value;
+    const inputEl = (avatarInput.value.$el?.querySelector?.('input') as HTMLElement | null) ?? avatarInput.value.$el;
     inputEl?.focus?.();
   }
 }

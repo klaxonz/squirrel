@@ -237,7 +237,7 @@ const props = defineProps<{
   targetPlaylistId: string
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   'retry': []
   'logout': []
   'toggle-rank-type': [type: 0 | 1]

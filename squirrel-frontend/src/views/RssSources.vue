@@ -1078,6 +1078,18 @@ import { useRssReader } from '@/composables/useRssReader'
 import type { RssEntry, RecentEntry } from '@/composables/rssTypes'
 import type { ApiResult } from '@/types/api'
 
+// ponytail: minimal slice of GET /api/rss/accounts/:id/sync-status consumed by the view.
+type RssSyncStatus = {
+  running?: boolean
+  sync_mode?: string
+  phase?: string
+  entries_fetched?: number | null
+  entries_synced?: number | null
+  feeds_synced?: number | null
+  message?: string | null
+  error?: string | null
+}
+
 // Cross-cutting UI state
 const loading = ref(false)
 const statusMessage = ref('')
@@ -1128,14 +1140,12 @@ const {
   showDeleteConfirmModal,
   accountToDelete,
   showAccountDropdown,
-  accountDropdownRef,
   saving,
   testing,
   accountForm,
   formMessage,
   formError,
   selectedAccount,
-  defaultAccountName,
   baseUrlPlaceholder,
   credentialPlaceholder,
   canSaveForm,
@@ -1216,7 +1226,6 @@ const {
   lightboxScale,
 
   readerFontClass,
-  setReaderFontSize,
   saveReaderPrefs,
   handleContentClick,
   closeLightbox,
@@ -1227,8 +1236,6 @@ const {
   cleanAndDecodeHtml,
   stripHtmlTags,
   formatRelativeTime,
-  closeReader,
-  openRecentEntry,
   unsubscribeCurrentFeedFromReader,
 
 } = useRssReader({
@@ -1244,11 +1251,8 @@ const {
 })
 
 const {
-  entries,
   activeFilter,
   entrySearch,
-  page,
-  pageSize,
   totalEntries,
   loadingMoreEntries,
   recentlyViewed,
@@ -1259,17 +1263,13 @@ const {
   contextMenuPosition,
   contextMenuEntry,
   contextMenuRef,
-  hasMoreEntries,
   filteredEntries,
   loadEntries,
-  loadMore,
   loadRecentlyViewed,
   recordRecentlyViewed,
-  resetScroll,
   pushFeedNavStack,
   goBackFromFeed,
   toggleReadStatus,
-  getBatchReadTargets,
   batchUpdateReadStatus,
   toggleStarStatus,
   showArticleContextMenu,
@@ -1383,7 +1383,7 @@ const pollSyncProgress = () => {
   }
 
   syncPollTimer = setInterval(async () => {
-    const result = await getRssSyncStatus(accountId) as ApiResult<any>
+    const result = await getRssSyncStatus(accountId) as ApiResult<RssSyncStatus>
     if (result.error) {
       clearInterval(syncPollTimer!)
       syncPollTimer = null
@@ -1402,7 +1402,7 @@ const pollSyncProgress = () => {
         entries_fetching: '同步文章',
         entries_saving: '同步文章',
       }
-      const label = phaseLabel[data.phase] || data.phase
+      const label = (data.phase && phaseLabel[data.phase]) || data.phase || ''
       let progress = ''
       if (data.phase === 'entries_fetching') {
         progress = data.entries_fetched != null ? `已获取 ${data.entries_fetched} 篇` : '等待服务器响应...'
@@ -1446,7 +1446,7 @@ const syncSelectedAccount = async (forceFullSync = false) => {
 const resumeSyncPollingIfRunning = async () => {
   const accountId = selectedAccountId.value
   if (!accountId) return
-  const result = await getRssSyncStatus(accountId) as ApiResult<any>
+  const result = await getRssSyncStatus(accountId) as ApiResult<RssSyncStatus>
   if (result.error) return
   const data = result.data
   if (data && data.running) {

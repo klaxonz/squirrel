@@ -9,7 +9,7 @@ const currentUser = ref<User | null>(null)
 const isAuthenticated = ref(false)
 const hasResolvedAuth = ref(false)
 const loading = ref(false)
-const error = ref<any>(null)
+const error = ref<unknown>(null)
 
 const clearUserState = () => {
   clearAuthStorage()

@@ -25,7 +25,7 @@ export type VideoUrlInfo = {
   uploader_avatar?: string | null
   default_quality_id?: string | null
   supports_manual_quality?: boolean
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
   qualities?: Array<{
     value: string
     label: string
@@ -196,7 +196,7 @@ export default function useVideoOperations() {
         : undefined
       const resolvedMpdUrl = localMpdUrl || mpdUrl
 
-      const resolvedMetadata = { ...(data?.metadata || {}) } as Record<string, any>
+      const resolvedMetadata = { ...(data?.metadata || {}) } as Record<string, unknown>
       const uploaderName = String(data?.uploader_name || '').trim()
       const uploaderUrl = String(data?.uploader_url || '').trim()
       const uploaderAvatar = String(data?.uploader_avatar || '').trim()

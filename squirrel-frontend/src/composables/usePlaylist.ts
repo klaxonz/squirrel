@@ -1,4 +1,4 @@
-import { ref, reactive, computed } from 'vue'
+import { ref, computed } from 'vue'
 import {
   listPlaylists,
   getPlaylistDetail,
@@ -63,8 +63,8 @@ const createPlaylistStore = () => {
       const { data, error: err } = (await listPlaylists()) as ApiResult<Playlist[]>
       if (err) throw err
       playlists.value = data || []
-    } catch (e: any) {
-      error.value = e?.message || '加载播放列表失败'
+    } catch (e: unknown) {
+      error.value = (e as { message?: string })?.message || '加载播放列表失败'
       Logger.error('[usePlaylist] fetchPlaylists error', e)
     } finally {
       loading.value = false
@@ -79,8 +79,8 @@ const createPlaylistStore = () => {
       if (err) throw err
       activePlaylist.value = data || null
       return data || null
-    } catch (e: any) {
-      error.value = e?.message || '加载播放列表详情失败'
+    } catch (e: unknown) {
+      error.value = (e as { message?: string })?.message || '加载播放列表详情失败'
       Logger.error('[usePlaylist] fetchPlaylistDetail error', e)
       return null
     } finally {
@@ -96,7 +96,7 @@ const createPlaylistStore = () => {
       activePlaylistItems.value = data || []
       setCurrentVideo(currentVideoId.value)
       return data || []
-    } catch (e: any) {
+    } catch (e: unknown) {
       Logger.error('[usePlaylist] fetchPlaylistItems error', e)
       return []
     } finally {

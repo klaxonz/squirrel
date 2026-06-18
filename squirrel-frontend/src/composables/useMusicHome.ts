@@ -16,7 +16,6 @@ import {
   type MusicPlaylistTag,
   type MusicTrack,
 } from '@/api/music'
-import { Logger } from '@/utils/logger'
 
 export function useMusicHome() {
   const banners = ref<Array<{ id: string; title: string; cover: string }>>([])
@@ -62,7 +61,7 @@ export function useMusicHome() {
     ranks.value = data?.items || []
   }
 
-  async function loadPlaylists(append = false) {
+  async function loadPlaylists(_append = false) {
     playlistsLoading.value = true
     const { data } = await getMusicPlaylists({
       category_id: selectedPlaylistCategory.value,

@@ -352,10 +352,10 @@ const loadPage = async (page: number) => {
       errorMessage.value = result.errors.join('；')
       emit('error', new Error(errorMessage.value))
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (currentToken !== requestToken) return
-    errorMessage.value = error?.message || '远端搜索失败'
-    emit('error', error)
+    errorMessage.value = (error as { message?: string })?.message || '远端搜索失败'
+    emit('error', error instanceof Error ? error : new Error(errorMessage.value))
   } finally {
     clearTimeout(timer)
     if (currentToken === requestToken) setLoading(false)

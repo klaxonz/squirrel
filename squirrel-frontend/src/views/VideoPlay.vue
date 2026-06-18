@@ -269,7 +269,7 @@ import { Logger } from '@/utils/logger'
 import useVideoInteraction from '../composables/useVideoInteraction'
 import usePlaylist from '../composables/usePlaylist'
 import { getSubscriptionStatus, saveRemoteVideo, subscribe, unsubscribe } from '@/api'
-import type { ApiResult, VideoPageVideo, VideoProfile } from '@/types/videoPlayback'
+import type { VideoPageVideo, VideoProfile } from '@/types/videoPlayback'
 
 const route = useRoute()
 const router = useRouter()

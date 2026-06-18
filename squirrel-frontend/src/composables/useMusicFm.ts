@@ -25,7 +25,7 @@ export function useMusicFm() {
 
   const queueLen = computed(() => Math.max(0, batch.value.length - batchIndex.value - 1))
 
-  async function loadBatch(isNext = false, autoPlay = true, userPlaylists: { id: string; name: string }[] = []) {
+  async function loadBatch(isNext = false, autoPlay = true, _userPlaylists: { id: string; name: string }[] = []) {
     loading.value = true
     error.value = ''
 

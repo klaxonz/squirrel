@@ -8,6 +8,21 @@ export type SpecialFollowFilter = 'all' | 'yes'
 
 type SubscriptionId = string | number | null | undefined
 
+// ponytail: shape mirrors the computed filters bag returned below; exported so
+// consumers (VideoTab props) can type the inbound filter object.
+export type FeedFilters = {
+  tab?: string
+  q?: string
+  subscription_id?: SubscriptionId
+  sort_by?: string
+  nsfw?: string
+  site?: string
+  timeRange?: string
+  duration?: string
+  contentType?: string
+  special?: string
+}
+
 export function useFeedFilters({ subscriptionIdRef }: { subscriptionIdRef?: Ref<SubscriptionId> } = {}) {
   const activeTab = ref('all')
   const nsfw = ref('all')
@@ -19,7 +34,7 @@ export function useFeedFilters({ subscriptionIdRef }: { subscriptionIdRef?: Ref<
   const contentType = ref<ContentType>('all')
   const special = ref<SpecialFollowFilter>('all')
 
-  const filters = computed(() => ({
+  const filters = computed<FeedFilters>(() => ({
     tab: activeTab.value,
     q: searchQuery.value,
     subscription_id: subscriptionIdRef?.value,

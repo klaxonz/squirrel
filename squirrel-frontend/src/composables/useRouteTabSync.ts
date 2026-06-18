@@ -47,12 +47,12 @@ export function useRouteTabSync(
     pushPathFromTab(tab)
   })
 
-  const pathWatchStop = watch(() => route.path, (newPath) => {
+  watch(() => route.path, (newPath) => {
     setTabFromPath(newPath)
   })
 
   // Pause tab->route pushing while deactivated so a cached sibling view does
-  // not race the active one. Route->tab syncing (pathWatchStop) stays active.
+  // not race the active one. Route->tab syncing stays active.
   onActivated(() => {
     if (!tabWatchStop) {
       tabWatchStop = watch(() => activeTabRef.value, (tab) => {

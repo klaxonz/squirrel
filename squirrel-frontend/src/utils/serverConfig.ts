@@ -5,15 +5,6 @@ const readFromStorage = (): string => {
   return localStorage.getItem(CONFIG_KEY) || ''
 }
 
-const writeToStorage = (url: string): void => {
-  if (typeof window === 'undefined') return
-  if (url) {
-    localStorage.setItem(CONFIG_KEY, url)
-  } else {
-    localStorage.removeItem(CONFIG_KEY)
-  }
-}
-
 let cachedUrl = ''
 
 export const getServerUrl = (): string => {

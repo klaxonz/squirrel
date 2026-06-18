@@ -33,7 +33,7 @@
       <!-- Error -->
       <div v-if="loadError" class="px-6 pt-2 pb-4">
         <div class="bg-destructive/10 rounded-sm p-4 flex items-center justify-between">
-          <p class="text-sm text-destructive font-medium">{{ loadError?.message || loadError }}</p>
+          <p class="text-sm text-destructive font-medium">{{ loadError }}</p>
           <button @click="refreshCurrentList" class="text-xs font-bold uppercase tracking-widest px-4 py-2 bg-destructive text-white rounded-full">重试</button>
         </div>
       </div>
@@ -77,7 +77,7 @@
             ref="videoChildRef"
             @goToSubscription="goToChannelDetail"
             @openModal="handleOpenModal"
-            @error="loadError = $event"
+            @error="loadError = String($event || '')"
             @loading-change="isRefreshing = !!$event"
           />
         </keep-alive>
@@ -115,9 +115,11 @@ const { options: siteOptions } = useSites()
 
 const tabs = ref(VIDEO_TABS)
 const isRefreshing = ref(false)
-const loadError = ref<any>(null)
-const videoChildRef = ref<any>(null)
-const remoteSearchRef = ref<any>(null)
+const loadError = ref<string | null>(null)
+// ponytail: child components (VideoTab / RemoteSearchResults) share a refresh() surface;
+// typing as the minimal interface avoids coupling to specific component instances.
+const videoChildRef = ref<{ refresh?: () => void } | null>(null)
+const remoteSearchRef = ref<{ refresh?: () => void } | null>(null)
 
 // Remote search uses an independent site filter so it never clobbers the local `site` ref.
 const remoteSite = ref('')
@@ -142,7 +144,7 @@ const refreshCurrentList = () => {
   videoChildRef.value?.refresh?.()
 }
 
-const handleOpenModal = (video: any) => {
+const handleOpenModal = (video: { id: string | number }) => {
   rememberVideoPlaybackSeed(video)
   router.push(`/video/${video.id}`)
 }

@@ -188,7 +188,7 @@ function isPlaying(track: MusicTrack): boolean {
   return player.currentTrack?.hash === track.hash
 }
 
-function handleRowClick(track: MusicTrack, event: MouseEvent) {
+function handleRowClick(track: MusicTrack, _event: MouseEvent) {
   if (selectionMode.value) {
     toggleSelect(track)
   } else {

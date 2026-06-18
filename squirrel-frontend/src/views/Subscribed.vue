@@ -284,7 +284,6 @@ import RemoteChannelVideoGrid from '@/components/feed/RemoteChannelVideoGrid.vue
 import VideoItem from '@/components/feed/VideoItem.vue'
 import VideoSkeleton from '@/components/feed/VideoSkeleton.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
-import SiteTag from '@/components/common/SiteTag.vue'
 import SiteIcon from '@/components/common/SiteIcon.vue'
 import AddChannelDialog from '@/components/dialogs/AddChannelDialog.vue'
 import ImportSubscriptionDialog from '@/components/dialogs/ImportSubscriptionDialog.vue'
@@ -295,6 +294,8 @@ import { useDesktopBridge } from '@/composables/useDesktopBridge'
 import { getSubscriptions, getVideoList, updateSpecialFollowStatus } from '@/api'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { useSkeletonCount, type GridBreakpoint } from '@/composables/useSkeletonCount'
+import type { SubscriptionListItem } from '@/types/subscription'
+import type { VideoListItem } from '@/types/video'
 
 defineOptions({ name: 'Subscribed' })
 
@@ -366,7 +367,7 @@ watch(gridWrapper, (node) => {
 }, { immediate: true })
 
 // Data State (Channels)
-const list = ref<any[]>([])
+const list = ref<SubscriptionListItem[]>([])
 const loadingChannels = ref(false)
 const loadingMoreChannels = ref(false)
 const channelsFinished = ref(false)
@@ -377,7 +378,7 @@ let sidebarSearchTimer: number | null = null
 const togglingSpecialIds = ref<Set<string | number>>(new Set())
 
 // Data State (Feed)
-const feedItems = ref<any[]>([])
+const feedItems = ref<VideoListItem[]>([])
 const loadingFeed = ref(false)
 const loadingMoreFeed = ref(false)
 const feedFinished = ref(false)
@@ -395,7 +396,7 @@ const {
 const loadMoreRemote = () => {
   const channel = activeChannel.value
   if (!channel || !canOpenRemoteChannel.value) return
-  return remoteChannel.loadMore({ site: channel.site, url: channel.url, profile: channel })
+  return remoteChannel.loadMore({ site: channel.site ?? '', url: channel.url, profile: channel })
 }
 let loadedRemoteChannelKey = ''
 
@@ -442,7 +443,7 @@ const filteredChannels = computed(() => {
   return list.value
 })
 
-const sortChannels = (items: any[]) => {
+const sortChannels = (items: SubscriptionListItem[]) => {
   return [...items].sort((a, b) => {
     if (a.is_special_followed !== b.is_special_followed) return a.is_special_followed ? -1 : 1
     return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
@@ -467,7 +468,7 @@ const toggleSpecialFilter = () => {
   specialFilter.value = specialFilter.value === 'yes' ? 'all' : 'yes'
 }
 
-const toggleSpecialFollow = async (subscription: any) => {
+const toggleSpecialFollow = async (subscription: SubscriptionListItem) => {
   if (!subscription?.id || togglingSpecialIds.value.has(subscription.id)) return
 
   const nextValue = !subscription.is_special_followed
@@ -482,7 +483,7 @@ const toggleSpecialFollow = async (subscription: any) => {
 }
 
 const videoGroups = computed(() => {
-  const groups: Record<string, any[]> = {}
+  const groups: Record<string, VideoListItem[]> = {}
   feedItems.value.forEach(video => {
     const publishDate = video.uploaded_at || video.created_at
     if (!publishDate) return
@@ -603,7 +604,7 @@ const handleRefresh = () => {
   else fetchFeed(true)
   resetAllScroll()
 }
-const handleOpenVideo = (video: any) => { rememberVideoPlaybackSeed(video); router.push(`/video/${video.id}`) }
+const handleOpenVideo = (video: VideoListItem) => { rememberVideoPlaybackSeed(video); router.push(`/video/${video.id}`) }
 const showLocalFeed = () => {
   channelDataMode.value = 'local'
   viewMode.value = 'feed'
@@ -631,7 +632,7 @@ const fetchRemoteChannel = async (isReset = false) => {
   if (isReset) loadedRemoteChannelKey = remoteChannelKey.value
 
   await remoteChannel.fetchRemote(
-    { site: channel.site, url: channel.url, profile: channel },
+    { site: channel.site ?? '', url: channel.url, profile: channel },
     isReset,
   )
 }

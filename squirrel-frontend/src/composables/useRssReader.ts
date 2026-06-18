@@ -2,7 +2,7 @@ import { computed, nextTick, ref, watch, type Ref } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 import { unsubscribeRssFeed } from '@/api'
 import { formatDate } from '../utils/dateFormat'
-import type { ApiResult, RssEntry, RssFeed, RecentEntry } from './rssTypes'
+import type { RssEntry, RssFeed, RecentEntry } from './rssTypes'
 import { getDesktopBridge } from '@/composables/useDesktopBridge'
 
 export function useRssReader(options: {

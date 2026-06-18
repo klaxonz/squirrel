@@ -192,7 +192,7 @@ const updateScrollState = () => {
   canScrollRight.value = el.scrollLeft < el.scrollWidth - el.clientWidth - 2
 }
 
-const handleSiteChange = (val: any) => emit('update:site', val === 'all' ? '' : val)
+const handleSiteChange = (val: unknown) => emit('update:site', val === 'all' ? '' : val)
 
 const activeFilterCount = computed(() => {
   let c = 0

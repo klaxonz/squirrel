@@ -5,9 +5,7 @@ import {
   getMusicUserPlaylists,
   getMusicUserHistory,
   getMusicUserListenRank,
-  deleteMusicUserPlaylist,
   createMusicUserPlaylist,
-  collectMusicPlaylist,
   addMusicUserPlaylistTrack,
   logoutMusicUser,
   type MusicAuthStatus,
@@ -15,7 +13,6 @@ import {
   type MusicUserPlaylist,
   type MusicTrack,
 } from '@/api/music'
-import { Logger } from '@/utils/logger'
 
 export function useMusicAuth() {
   const authStatus = ref<MusicAuthStatus | null>(null)

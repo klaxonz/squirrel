@@ -1,5 +1,5 @@
 import { ref, shallowRef } from 'vue'
-import { useDesktopBridge, getDesktopBridge } from '@/composables/useDesktopBridge'
+import { getDesktopBridge } from '@/composables/useDesktopBridge'
 
 type RemoteChannelProfile = {
   id?: string | number | null
@@ -35,8 +35,6 @@ type RemoteChannelOptions = {
 }
 
 const REMOTE_CHANNEL_TIMEOUT_MS = 60000
-
-const desktopBridge = useDesktopBridge()
 
 const dedupeByUrl = <T extends { url: string }>(existing: T[], next: T[]): T[] => {
   const seen = new Set(existing.map((item) => item.url))
@@ -117,9 +115,9 @@ export function useRemoteChannel() {
       allLoaded.value = result.has_more === false
 
       return true
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (token !== requestToken) return false
-      error.value = err?.message || '远端频道加载失败'
+      error.value = (err as { message?: string })?.message || '远端频道加载失败'
       return false
     } finally {
       clearTimeout(timer)

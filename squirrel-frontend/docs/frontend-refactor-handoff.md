@@ -1,6 +1,6 @@
 # 前端开源级可维护性改造 · 交接文档
 
-> 分支：`fix/bug` · 范围：`squirrel-frontend/` · 6 个 commit（b4a5cbba → ed76e8f0）
+> 分支：`fix/bug` · 范围：`squirrel-frontend/` · 7 个 commit（b4a5cbba → ed76e8f0 + 散点清理）
 > 后端改动（site_runtimes/site_plugins 等）**非本会话产出**，未触碰。
 
 ---
@@ -20,7 +20,7 @@
 | ESLint | 无 | flat config，0 error |
 | 类型链 | 80 bare call / DTO `unknown[]` | 6 模块 + videoHistory 全接 DTO，api/ 强制 error |
 | 错误处理 | 3 套 | 1 套（handleRequest + axios 401 + main.ts 兜底） |
-| lint warning | 308（含 132 error） | 123（全是带 ponytail 标注的合理保留） |
+| lint warning | 308（含 132 error） | 17（全是带 ponytail 标注的合理保留） |
 | typecheck / build:check | — | 全绿 |
 
 ---
@@ -60,6 +60,12 @@
    - PluginManager.get 约束放宽（`<T extends PlayerPlugin>` → `<T = PlayerPlugin>`）让 engine 请求结构视图
    - 删 dead code：VideoPlayer.vue 5 个 unused，createPlayerEngine/error-recovery/useSleepTimer 死 import
 
+7. **散点清理**（本次会话，warnings 123 → 17）
+   - **死代码删除（53 处 unused-var）**：RssSources destructure 12 个、Music.vue 14 个（顶层未用 import/destructure）、composables 散点（useMusicAuth/Home/Comments/Fm、usePlaylist、useRemoteChannel、useRouteTabSync、useRssReader、useSites、useVideoPageNavigation、useAppTheme、stores/ui、utils/serverConfig、ShakaDashPlugin）、views（Subscribed SiteTag、VideoPlay ApiResult）、GlobalSearchBar catch 占位符
+   - **any 类型化（散点）**：useVideoHistory（navigator.connection 本地声明 + catch）、usePlaylist/useRemoteChannel/useRssEntries/useRssAccounts（catch unknown + response.data 直读）、useUser（error ref unknown）、useVideoOperations（metadata Record<string,unknown>）、History（VideoHistoryEntry + 删 progress 死字段）、HomeView/VideosView/ChannelDetailView（component ref 最小接口 `{ refresh?: () => void }`、loadError string、handleOpenModal `{id}`）、Subscribed（SubscriptionListItem/VideoListItem 接入）、Profile（avatarInput 结构类型）、RemoteChannelDetail（catch unknown）、feed 组件（SpotlightRow/SpecialFollowVideos VideoListItem、RemoteSearchResults catch、FeedToolbar unknown、VideoTab FeedFilters、VirtualList unknown）、RssSources（RssSyncStatus 本地类型）
+   - **eslit override 收紧**：feed/views/composables/history 升 error（清零），仅留 layout（GlobalSearchBar 待 retyping）warn
+   - **修 bug**：History.vue `video.progress` 字段从不存在（交接文档已记），删死字段读取
+
 ---
 
 ## 关键设计决策（防回潮的依据）
@@ -87,17 +93,14 @@ DTO 不是猜的，是 trace 后端 serialization 层得来。关键字段差异
 
 ---
 
-## 剩余 123 warnings 的分布（下一会话可选）
+## 剩余 17 warnings 的分布（下一会话可选）
 
 按价值/工作量评估：
 
 | 区域 | 数量 | 建议 |
 |------|------|------|
-| music composables（useMusicHome/Auth/Detail/Fm/Comments） | ~30 | music 是自包含第三方 API 客户端，已基本 typed，**收益低**，可不做 |
-| GlobalSearchBar.vue | 15 | 搜索建议/订阅结果 union，类型复杂，**单独评估** |
-| video-player 剩余 | 9 | 全是 ponytail 保留的设计性 any，**不应清** |
-| views/composables 散点 | ~30 | 零散 any，机械清，**可做但边际收益低** |
-| RssSources.vue 等大 view | ~20 | 与 VideoPlayer 拆分同属架构 epic |
+| GlobalSearchBar.vue | 14 | 搜索建议/订阅结果 union，类型复杂，**单独评估**（layout override 仍 warn） |
+| video-player（EventEmitter/usePlayer） | 3 | 全是 ponytail 保留的设计性 any，**不应清** |
 
 ## 明确未做（按 ponytail YAGNI 主动排除）
 
@@ -113,14 +116,14 @@ DTO 不是猜的，是 trace 后端 serialization 层得来。关键字段差异
 
 ```bash
 cd squirrel-frontend
-npm run lint          # 0 error / 123 warning
+npm run lint          # 0 error / 17 warning
 npm run typecheck     # vue-tsc 0 error
 npm run build:check   # vue-tsc + vite build 通过
 ```
 
 ## 给下一会话的建议
 
-1. **先和用户确认方向**：继续清 warning（边际递减）vs 推进架构 epic（VideoPlayer/RssSources 拆分）vs 收敛 store/composable
-2. 若清 warning：从 views/composables 散点开始（机械、低风险），music/GlobalSearchBar 评估后决定
+1. **先和用户确认方向**：剩余 17 warning 边际收益极低（GlobalSearchBar 需单独评估，video-player 是设计性保留）；建议转向架构 epic（VideoPlayer/RssSources 拆分）或 store/composable 收敛
+2. **GlobalSearchBar retyping**：14 个 any 是搜索建议/订阅结果 union，需要 trace 后端 search API 返回结构，单组件工作
 3. 若推进架构：VideoPlayer 拆分是最大杠杆但风险高，建议先出拆分方案（沿现有 composable 接缝）再动手
 4. **新发现的后端字段差异**（latest_videos vs recent_videos 等）需对照真实 payload 确认，DTO 里标了 ponytail 待办

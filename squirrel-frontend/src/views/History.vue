@@ -102,12 +102,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import useVideoHistory from '../composables/useVideoHistory'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { formatDate } from '../utils/dateFormat'
+import type { VideoHistoryEntry } from '@/types/video'
 
 const router = useRouter()
 const route = useRoute()
 const { getWatchHistory, clearHistory, deleteHistoryEntry } = useVideoHistory()
 
-const videos = ref<any[]>([])
+const videos = ref<VideoHistoryEntry[]>([])
 const loading = ref(false)
 const showClearConfirm = ref(false)
 const isContinueMode = computed(() => route.query.mode === 'continue')
@@ -115,10 +116,7 @@ const pageTitle = computed(() => isContinueMode.value ? '继续观看' : '播放
 const emptyTitle = computed(() => isContinueMode.value ? '暂无继续观看' : '暂无历史记录')
 const emptyDescription = computed(() => isContinueMode.value ? '未看完的视频会显示在这里。' : '观看过的视频会显示在这里。')
 
-const getProgress = (video: any) => {
-  const progress = Number(video.progress)
-  if (Number.isFinite(progress) && progress > 0) return Math.min(1, progress)
-
+const getProgress = (video: VideoHistoryEntry) => {
   const duration = Number(video.duration || 0)
   return duration > 0 ? Math.min(1, Number(video.last_position || 0) / duration) : 0
 }
@@ -147,18 +145,18 @@ const handleClearHistory = async () => {
   showClearConfirm.value = false
 }
 
-const handleDeleteItem = async (id: any) => {
+const handleDeleteItem = async (id: number | string) => {
   await deleteHistoryEntry(id)
   videos.value = videos.value.filter(v => (v.history_id || v.id) !== id)
 }
 
-const handleOpenVideo = (video: any) => {
+const handleOpenVideo = (video: VideoHistoryEntry) => {
   rememberVideoPlaybackSeed(video)
   router.push(`/video/${video.id}`)
 }
 
 const groupedVideos = computed(() => {
-  const groups: Record<string, any[]> = {}
+  const groups: Record<string, VideoHistoryEntry[]> = {}
   displayVideos.value.forEach(v => {
     const date = v.played_at ? formatDate(v.played_at) : '未知时间'
     if (!groups[date]) groups[date] = []

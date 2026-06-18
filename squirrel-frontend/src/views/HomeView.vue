@@ -38,13 +38,15 @@ defineOptions({ name: 'HomeView' })
 
 const router = useRouter()
 
-const spotlightRef = ref<any>(null)
-const continueWatchingRef = ref<any>(null)
-const specialFollowRef = ref<any>(null)
+// ponytail: feed rows share a refresh() surface via defineExpose; minimal interface
+// avoids coupling the parent to specific component instances.
+const spotlightRef = ref<{ refresh?: () => void } | null>(null)
+const continueWatchingRef = ref<{ refresh?: () => void } | null>(null)
+const specialFollowRef = ref<{ refresh?: () => void } | null>(null)
 
 let lastRefreshedAt = 0
 
-const handleOpenModal = (video: any) => {
+const handleOpenModal = (video: { id: string | number }) => {
   rememberVideoPlaybackSeed(video)
   router.push(`/video/${video.id}`)
 }

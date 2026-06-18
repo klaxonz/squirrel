@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import type { ComputedRef, Ref } from 'vue'
+import type { Ref } from 'vue'
 import type { RouteLocationNormalizedLoaded, Router } from 'vue-router'
 
 import { getRandomVideo } from '@/api'

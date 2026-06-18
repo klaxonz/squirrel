@@ -42,7 +42,7 @@
       <!-- Error -->
       <div v-if="loadError" class="px-6 pt-6">
         <div class="bg-destructive/10 rounded-sm p-4 flex items-center justify-between">
-          <p class="text-sm text-destructive font-medium">{{ loadError?.message || loadError }}</p>
+          <p class="text-sm text-destructive font-medium">{{ loadError }}</p>
           <button @click="refreshCurrentList" class="text-xs font-bold uppercase tracking-widest px-4 py-2 bg-destructive text-white rounded-full">重试</button>
         </div>
       </div>
@@ -69,7 +69,7 @@
             ref="videoChildRef"
             @goToSubscription="goToChannelDetail"
             @openModal="handleOpenModal"
-            @error="loadError = $event"
+            @error="loadError = String($event || '')"
             @loading-change="isRefreshing = !!$event"
           />
         </keep-alive>
@@ -110,11 +110,15 @@ const { activeTab, nsfw, sortBy, special, timeRange, duration, contentType, filt
 
 const tabs = ref(VIDEO_TABS)
 const isRefreshing = ref(false)
-const loadError = ref<any>(null)
-const videoChildRef = ref<any>(null)
+const loadError = ref<string | null>(null)
+// ponytail: child component (VideoTab via router-view) shares a refresh() surface.
+const videoChildRef = ref<{ refresh?: () => void } | null>(null)
 
 const channelDataMode = ref<'local' | 'remote'>('local')
-const channelDetail = ref<any>(null)
+// ponytail: minimal shape read across the view (site/url/profile); the full channel
+// object is opaque from the child @loaded emit, only these keys are consumed.
+type ChannelDetail = { site?: string; url?: string; [key: string]: unknown }
+const channelDetail = ref<ChannelDetail | null>(null)
 
 const remoteChannel = useRemoteChannel()
 const {
@@ -152,7 +156,7 @@ const handleChannelSynced = () => {
   refreshCurrentList()
 }
 
-const handleOpenModal = (video: any) => {
+const handleOpenModal = (video: { id: string | number }) => {
   rememberVideoPlaybackSeed(video)
   router.push(`/video/${video.id}`)
 }

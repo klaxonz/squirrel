@@ -15,7 +15,7 @@
     >
     <div
       v-for="entry in visibleItems"
-      :key="entry.item[keyField || 'id']"
+      :key="String((entry.item as Record<string, unknown>)[keyField || 'id'])"
       class="list-item"
     >
         <slot
@@ -144,7 +144,7 @@ const range = computed(() => {
 const visibleItems = computed(() => {
   const { startIndex, endIndex } = range.value;
   const items = itemsRef.value ?? [];
-  const result: { item: any; index: number; row: number; column: number }[] = [];
+  const result: { item: unknown; index: number; row: number; column: number }[] = [];
   const cols = columnCount.value;
   for (let i = startIndex; i < endIndex; i++) {
     const item = items[i];
@@ -244,14 +244,14 @@ const reset = () => {
   scrollToOffset(0);
 };
 
-const isItemsEqual = (a: any[], b: any[]) => {
+const isItemsEqual = (a: unknown[], b: unknown[]) => {
   if (a === b) return true;
   if (!a || !b) return false;
   if (a.length !== b.length) return false;
   const key = props.keyField || 'id';
   for (let i = 0; i < a.length; i++) {
-    const av = a[i];
-    const bv = b[i];
+    const av = a[i] as Record<string, unknown> | null;
+    const bv = b[i] as Record<string, unknown> | null;
     if (av === bv) continue;
     if (!av || !bv) return false;
     if (av[key] !== bv[key]) return false;
@@ -261,7 +261,7 @@ const isItemsEqual = (a: any[], b: any[]) => {
 
 watch(
   () => props.items,
-  (newItems: any[] | undefined) => {
+  (newItems: unknown[] | undefined) => {
     const oldItems = itemsRef.value ?? [];
     const newLen = newItems ? newItems.length : 0;
     const oldLen = oldItems ? oldItems.length : 0;
@@ -283,7 +283,7 @@ watch(
 
 watch(
   () => [columnCount.value, rowHeight.value],
-  ([newCols, newRowH], [oldCols, oldRowH]) => {
+  ([_newCols, _newRowH], [oldCols, oldRowH]) => {
     const anchorRow = Math.floor(scrollTop.value / oldRowH);
     const anchorIndex = Math.min((itemsRef.value ?? []).length - 1, anchorRow * oldCols);
     nextTick(() => {

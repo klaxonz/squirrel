@@ -43,6 +43,7 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref, watch } from 'vue'
 import { getVideoList } from '@/api'
+import type { VideoListItem } from '@/types/video'
 import { Logger } from '@/utils/logger'
 import AppIcon from '@/components/common/AppIcon.vue'
 import RecommendationCard from '@/components/feed/RecommendationCard.vue'
@@ -50,7 +51,7 @@ import RecommendationSkeleton from '@/components/feed/RecommendationSkeleton.vue
 
 defineEmits(['openModal', 'goToSubscription'])
 
-const items = ref<any[]>([])
+const items = ref<VideoListItem[]>([])
 const loading = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
 const canScrollLeft = ref(false)

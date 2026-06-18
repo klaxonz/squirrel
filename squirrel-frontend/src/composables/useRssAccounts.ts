@@ -6,6 +6,7 @@ import {
   getRssAccounts,
   testRssAccountConfig,
   updateRssAccount,
+  type RssAccountPayload,
 } from '@/api'
 import type { AppIconName } from '@/icons/app-icons'
 import type { ApiResult, RssAccount } from './rssTypes'
@@ -129,7 +130,7 @@ export function useRssAccounts(options?: {
   const saveAccount = async () => {
     saving.value = true
     formMessage.value = ''
-    const payload: Record<string, unknown> = {
+    const payload: RssAccountPayload = {
       provider: accountForm.value.provider,
       name: accountForm.value.name.trim() || defaultAccountName.value,
       base_url: accountForm.value.base_url,
@@ -141,7 +142,7 @@ export function useRssAccounts(options?: {
     }
     const accountId = accountForm.value.id
       ? await updateRssAccount(accountForm.value.id, payload)
-      : await createRssAccount(payload as any)
+      : await createRssAccount(payload)
     saving.value = false
     if (accountId.error) {
       formError.value = true
@@ -167,7 +168,7 @@ export function useRssAccounts(options?: {
     })
     testing.value = false
     formError.value = !!response.error
-    formMessage.value = response.error ? (response.error as { message?: string })?.message || '连接失败' : `连接成功，发现 ${(response.data as any)?.feed_count ?? 0} 个 Feed`
+    formMessage.value = response.error ? (response.error as { message?: string })?.message || '连接失败' : `连接成功，发现 ${(response.data as { feed_count?: number } | null)?.feed_count ?? 0} 个 Feed`
   }
 
   const handleDeleteAccount = async () => {

@@ -18,8 +18,6 @@ export interface ShakaDashPluginOptions {
 
 type ShakaVariantTrack = shaka.extern.Track
 
-const QUALITY_CODEC_FAMILY_ORDER = ['av1', 'vp9', 'avc']
-
 export class ShakaDashPlugin implements PlayerPlugin {
   readonly name = 'shaka-dash'
   readonly version = '1.0.0'

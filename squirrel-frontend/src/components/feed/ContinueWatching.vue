@@ -62,7 +62,7 @@ import useVideoHistory from '@/composables/useVideoHistory'
 import { Logger } from '@/utils/logger'
 import type { VideoHistoryEntry, VideoListItem } from '@/types/video'
 
-const emit = defineEmits(['openModal', 'viewMore', 'goToSubscription'])
+defineEmits(['openModal', 'viewMore', 'goToSubscription'])
 
 const { getWatchHistory } = useVideoHistory()
 const historyItems = ref<VideoHistoryEntry[]>([])

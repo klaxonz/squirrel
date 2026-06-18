@@ -6,7 +6,6 @@ import {
   resolveStoredThemeMode,
   shouldUseDarkTheme,
   type AppThemeMode,
-  type EffectiveTheme,
 } from '@/lib/theme'
 
 const themeMode = ref<AppThemeMode>('system')

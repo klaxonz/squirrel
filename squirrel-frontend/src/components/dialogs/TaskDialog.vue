@@ -200,7 +200,7 @@ watch(taskParamsJson, (newValue) => {
     if (typeof parsed !== 'object' || parsed === null) throw new Error()
     formData.value.task_params = parsed
     jsonError.value = ''
-  } catch (e) {
+  } catch {
     jsonError.value = 'ERR_JSON_FORMAT'
   }
 })

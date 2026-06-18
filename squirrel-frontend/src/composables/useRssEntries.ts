@@ -36,7 +36,7 @@ export function useRssEntries(options: {
 
   const feedNavStack = ref<{
     selectedFeedId: number | null
-    activeFilter: string
+    activeFilter: 'all' | 'unread' | 'starred' | 'recent'
     page: number
     entries: RssEntry[]
     totalEntries: number
@@ -111,7 +111,7 @@ export function useRssEntries(options: {
     }
 
     const fetched = response.data?.data || []
-    totalEntries.value = (response.data as any)?.total || 0
+    totalEntries.value = response.data?.total || 0
 
     if (isReset) {
       entries.value = fetched
@@ -140,7 +140,7 @@ export function useRssEntries(options: {
       return
     }
     const fetched = response.data?.data || []
-    totalEntries.value = (response.data as any)?.total || 0
+    totalEntries.value = response.data?.total || 0
     const existingIds = new Set(entries.value.map((entry) => String(entry.id)))
     entries.value.push(...fetched.filter((entry) => !existingIds.has(String(entry.id))))
   }
@@ -180,7 +180,7 @@ export function useRssEntries(options: {
     const stack = feedNavStack.value
     if (!stack) return
     options.selectedFeedId.value = stack.selectedFeedId
-    activeFilter.value = stack.activeFilter as any
+    activeFilter.value = stack.activeFilter
     page.value = stack.page
     entries.value = stack.entries
     totalEntries.value = stack.totalEntries

@@ -300,9 +300,9 @@ const loadPage = async (page: number) => {
     currentPage.value = page
     nextCursor.value = result.next_cursor || null
     allLoaded.value = result.has_more === false
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (currentToken !== requestToken) return
-    errorMessage.value = error?.message || '远端频道加载失败'
+    errorMessage.value = (error as { message?: string })?.message || '远端频道加载失败'
   } finally {
     clearTimeout(timer)
     if (currentToken === requestToken) loading.value = false
