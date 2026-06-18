@@ -1,4 +1,11 @@
-"""Default update strategy (applicable to all sites)
+"""Default subscription update strategy (applicable to all sites).
+
+Historically this was one implementation of an ``UpdateStrategy`` ABC selected
+through a ``StrategyRegistry``. No second strategy was ever registered, so the
+ABC and registry were removed; this concrete class is the only strategy. It
+keeps its public methods (``should_update``/``fetch_videos``/
+``enqueue_extraction``/``execute``) because they are exercised directly by
+tests and read cleanly as the update flow's phases.
 """
 import logging
 from datetime import datetime, timedelta
@@ -15,9 +22,8 @@ from infrastructure.database.session import get_session
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_plugins.registry import SitePluginRegistry, get_site_plugin_registry
 
-from ..models import SubscriptionUpdateRequest, UpdateMode
+from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateMode
 from ..video_extraction_coordinator import enqueue_discovered_videos
-from .base import UpdateStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +62,7 @@ def should_schedule_total_video_backfill(
     return full_last_success_at <= current_time - FULL_BACKFILL_STALE_AFTER
 
 
-class DefaultUpdateStrategy(UpdateStrategy):
+class DefaultUpdateStrategy:
     """Default update strategy (applicable to all sites)"""
 
     def __init__(self, plugin_registry: SitePluginRegistry | None = None) -> None:
@@ -65,6 +71,39 @@ class DefaultUpdateStrategy(UpdateStrategy):
     @property
     def site_name(self) -> str:
         return "default"
+
+    def execute(self, request: SubscriptionUpdateRequest) -> SubscriptionUpdateResult:
+        """Run the full update flow: gate, fetch, enqueue."""
+        should_update, skip_reason = self.should_update(request)
+        if not should_update:
+            return SubscriptionUpdateResult(
+                subscription_id=request.subscription_id,
+                success=True,
+                videos_found=0,
+                videos_enqueued=0,
+                skipped_reason=skip_reason,
+            )
+
+        fetch_result = self.fetch_videos(request)
+        enqueued = self.enqueue_extraction(fetch_result, request)
+
+        return SubscriptionUpdateResult(
+            subscription_id=request.subscription_id,
+            success=True,
+            videos_found=len(fetch_result.video_urls),
+            videos_enqueued=enqueued,
+            has_more=bool(getattr(fetch_result, "has_more", False)),
+            cursor_payload=fetch_result.cursor_payload,
+            latest_video_url=fetch_result.latest_video_url,
+            source_video_count=fetch_result.source_video_count,
+            total_available=fetch_result.total_available,
+            head_sample_urls=getattr(fetch_result, "head_sample_urls", None),
+            anchor_found=getattr(fetch_result, "anchor_found", None),
+            oldest_scanned_url=getattr(fetch_result, "oldest_scanned_url", None),
+            cursor_invalid=bool(getattr(fetch_result, "cursor_invalid", False)),
+            cursor_loop_detected=bool(getattr(fetch_result, "cursor_loop_detected", False)),
+            scan_depth=getattr(fetch_result, "scan_depth", None),
+        )
 
     def should_update(self, request: SubscriptionUpdateRequest) -> tuple[bool, str | None]:
         """Check whether an update is needed"""

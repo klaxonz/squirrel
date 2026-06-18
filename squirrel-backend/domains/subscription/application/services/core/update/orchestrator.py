@@ -4,7 +4,6 @@ Unified entry point responsible for coordinating the entire update flow
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
@@ -18,10 +17,6 @@ from infrastructure.site_catalog.catalog import SiteCatalog
 
 from .models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateMode, UpdateTrigger
 from .strategies.default_strategy import DefaultUpdateStrategy, should_schedule_total_video_backfill
-from .strategies.registry import StrategyRegistry
-
-if TYPE_CHECKING:
-    from domains.subscription.application.services.core.update.strategies.base import UpdateStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -92,18 +87,14 @@ class SubscriptionOrchestrator:
                     skipped_reason="no_subscribers",
                 )
 
-            site_name = self._resolve_site(request.url)
-            strategy = self._select_strategy(site_name)
-
             logger.debug(
-                "Updating subscription %s using %s strategy (trigger=%s, mode=%s)",
+                "Updating subscription %s (trigger=%s, mode=%s)",
                 request.subscription_id,
-                strategy.site_name,
                 request.trigger.value,
                 request.mode.value,
             )
 
-            result = strategy.execute(request)
+            result = self.default_strategy.execute(request)
             if result.skipped_reason:
                 self._mark_skipped(request, result.skipped_reason)
             elif result.success:
@@ -281,26 +272,6 @@ class SubscriptionOrchestrator:
                 .limit(1),
             ).first()
             return row is not None
-
-    def _resolve_site(self, url: str) -> str:
-        """Resolve site name"""
-        domain = url_helper.extract_top_level_domain(url)
-
-        site_key, _ = SiteCatalog.find_site_by_domain(domain)
-        if site_key:
-            return site_key
-
-        return "default"
-
-    def _select_strategy(self, site_name: str) -> UpdateStrategy:
-        """Select update strategy"""
-        strategy = StrategyRegistry.get_strategy(site_name)
-        if strategy:
-            logger.debug("Using %s strategy", site_name)
-            return strategy
-
-        logger.debug("No specific strategy for %s, using default", site_name)
-        return self.default_strategy
 
 
 orchestrator = SubscriptionOrchestrator()

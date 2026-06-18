@@ -1,0 +1,101 @@
+# Ponytail Audit — `squirrel-backend`
+
+Repo-wide simplicity audit, backend-scoped. Tags follow `ponytail-review`:
+- `delete:` dead code, unused flexibility, speculative feature. Replacement: nothing.
+- `stdlib:` hand-rolled thing the standard library ships. Name the function.
+- `native:` dependency or code doing what the platform already does. Name the feature.
+- `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
+- `shrink:` same logic, fewer lines. Show the shorter form.
+
+Ranked biggest cut first. All references confirmed via repo-wide grep + reading the code.
+
+---
+
+## delete (dead code — largest cuts)
+
+1. **delete** Whole consumer half of the messaging framework — `@queue_listener`/`ConsumerRegistry`/`ConsumerSpec`/`RedisStreamConsumer` are wired but **never used**: no `@queue_listener` is applied anywhere in the repo, and `runner.start()` imports a `messaging.handlers` package that does not exist (`runner.py:70`). Only the producer half (`RedisStreamProducer.xadd`) is live. Drop `decorators.py`, `registry.py`, `consumer.py`, the consumer-start body of `runner.py` (lines 68–106), and `ConsumerOptions.max_delivery` default. Replacement: nothing. ~350 LOC. `infrastructure/messaging/framework/decorators.py`; `registry.py`; `consumer.py`; `runner.py:68`
+
+2. **delete** Whole `strategies/` indirection. `StrategyRegistry` (41 LOC) + `update_strategy` decorator never register (zero `@update_strategy`); `orchestrator._select_strategy` (`orchestrator.py:295`) always falls through to `default_strategy`. Fold `DefaultUpdateStrategy`'s 3 methods into `SubscriptionOrchestrator` and delete `strategies/base.py`, `registry.py`, `__init__.py`. Replacement: nothing. ~120 LOC. `domains/subscription/application/services/core/update/strategies/`
+
+3. **delete** Whole `infrastructure/site_catalog/cache.py` module (66 LOC) — `SiteCatalogCache`, `get_cached_site_catalog`, `format_datetime`, `parse_datetime` have zero references outside the file (the test mentioned in `.pytest_cache/lastfailed` no longer exists; `_parse_datetime` in rss is unrelated). Replacement: nothing. `infrastructure/site_catalog/cache.py`
+
+4. **delete** `ExtractorFactory`'s 5 unreferenced methods: `get_test_url`, `get_all_sites`, `get_all_domains`, `get_extractor_by_site`, `clear_cache`. `reset_factory` (line 160) is only used by one test. Replacement: nothing. `infrastructure/extraction/factory.py:122`
+
+5. **delete** `BaseResultHandler` base class + module-level `video_extraction_handler` singleton — the singleton is never imported, and `VideoExtractionHandler` is the only `BaseResultHandler` subclass and only its own `.process()` is called. Replacement: nothing. `infrastructure/extraction/handlers/video_handler.py:118`; `infrastructure/extraction/base.py`
+
+6. **delete** `ExtractionTask.to_dict`, `ExtractionTask.can_retry`, `PipelineContext.to_dict`, `ExtractionResult.to_dict` — zero callers; `max_retries`/`retry_count` fields exist only to feed unused `can_retry`. Replacement: nothing. `infrastructure/extraction/contracts.py:47`; `infrastructure/extraction/pipeline/context.py:52`
+
+7. **delete** `TaskProcessor` and `ResultHandler` `runtime_checkable` Protocols — nothing is checked against them and `can_process` is never called. Pure speculative abstraction. Replacement: nothing. `infrastructure/extraction/contracts.py:125`
+
+8. **delete** `redis_client.get_redis_client`, `set_redis_client`, `get_distributed_lock` — zero callers; `get_distributed_lock` drags in the **`python-redis-lock`** dependency (`Pipfile:28`) whose only use is this dead function. Removing it lets you **drop 1 dep**. Replacement: nothing. `infrastructure/cache/redis_client.py:51`
+
+9. **delete** Dead params on 6 functions in `_completion.py` — `_complete_sync_success_in_session`, `mark_sync_success`, `continue_full_sync_batch`, `mark_sync_skipped`, `mark_sync_failed`, `defer_sync_state`, `decrement_pending_video_count` all accept `run_id`/`request_id`/`trace_id`/`trigger`/`videos_enqueued`/`source_video_count` but never read them. Trim all signatures. Replacement: nothing. `domains/subscription/application/services/core/sync/state/_completion.py:23`
+
+10. **delete** `session_factory` + `get_type_mapping` ctor params on both `CrawlExecutorService` classes — stored as `self.*`, never referenced in body or call sites (always `None`). Replacement: nothing. `domains/subscription/application/services/crawl/executors/video_extract_executor.py:13`; `subscription_sync_executor.py:19`
+
+11. **delete** `domains/user/application/services/search/suggestions/listings.py` — 5 functions fully superseded by `pools.py`, zero imports anywhere incl. tests. Replacement: nothing. `domains/user/application/services/search/suggestions/listings.py`
+
+12. **delete** `with_trace()` decorator — only referenced in its own docstring examples, never applied. Replacement: nothing. `shared_kernel/infrastructure/trace.py:94`
+
+13. **delete** `workers/bootstrap.py:wait_for_shutdown()` (line 102) — defined but never called; process files run their own `while not event.is_set()` loop. Replacement: nothing.
+
+14. **delete** 6 task `shutdown()` classmethods — `cloudflare_heartbeat`, `meili_reindex`, `subscription_auto_import`, `full_update`, `incremental_update`, `pending_reconcile` each have a `@classmethod shutdown()` with only `logger.info("...shutdown")` and zero call sites. Replacement: nothing. `workers/scheduling/tasks/`
+
+15. **delete** Duplicate `_parse_trigger` — verbatim in both `subscription_sync_executor._parse_trigger` and `_gap._parse_trigger`. Hoist into `update/models.py`, delete one. Replacement: shared helper. `domains/subscription/application/services/crawl/executors/subscription_sync_executor.py:87`; `core/sync/state/_gap.py:212`
+
+16. **delete** Duplicate constants block — `DEFAULT_LIMIT`/`MAX_LIMIT`/`SUGGESTION_POOL_TTL_SECONDS`/`SUGGESTION_RESULT_TTL_SECONDS`/`SUGGESTION_POOL_MAX_ITEMS` already defined and used in `suggestion_service.py`+`formatting.py`; `pools.py`'s copies are never read. Replacement: nothing. `domains/user/application/services/search/suggestions/pools.py:16`
+
+17. **delete** `RATE_LIMITS` scaffolding — `RateLimiter.DEFAULT_LIMITS = {}` is never populated (site configs go through `add_rate_limit`), so `.get(sld, DEFAULT_RATE_LIMIT)` is just `DEFAULT_RATE_LIMIT`. Collapse to one constant. Replacement: nothing. `shared_kernel/infrastructure/rate_limiter.py:30`
+
+18. **delete** `cookiecloud_sync_task` redundant `interval`/`unit`/`start_immediately` class attrs (9–13) — `@TaskRegistry.register` already sets them; only one source is read. Replacement: pick one. `workers/scheduling/tasks/cookiecloud_sync_task.py:9`
+
+19. **delete** `messaging/worker.py:_worker_threads` — assigned but never iterated for join; daemon-thread pattern confirms nothing waits on it. Replacement: nothing. `workers/messaging/worker.py:11`
+
+## yagni (one-impl / pass-through indirection)
+
+20. **yagni** `StageConfig.critical` flag + `PipelineConfig.critical_stages` — written (`config.py:57`) but never read; `ExtractionPipeline._should_continue_after_error` hardcodes its own critical set (`base.py:173`). Replacement: pipeline's local set. `infrastructure/extraction/pipeline/config.py:16`
+
+21. **yagni** `NsfwPolicy` class — one `@staticmethod` instantiated as a singleton and re-exported as a module function. Replacement: plain module function. `domains/video/application/services/moderation/nsfw_policy.py:6`
+
+22. **yagni** `VideoListService.video_extra_profiles`/`merge_profiles` staticmethods only call the already-imported module-level `_video_extra_profiles`/`_merge_profiles`, then re-exported — no caller uses the class attrs (grep confirms). Replacement: re-export from the imported names directly. `domains/video/application/services/listing/service.py:649`
+
+23. **yagni** `VideoInteractionService` / `VideoClipMarkerService` / `ActorProcessorService` — class instantiated as a singleton then re-exported as module-function aliases; callers could import the function directly. Lower priority (real logic lives here). `domains/video/application/services/engagement/interaction.py:57`; `clip_marker.py:202`; `extraction/actor_processor.py:12`
+
+24. **yagni** `RedisStreamProducer.__init__` is empty and every call site is `RedisStreamProducer().send(...)`. Replacement: `send` as a module function/`@staticmethod`; drop the per-call instantiation. `infrastructure/messaging/framework/producer.py:13`
+
+25. **yagni** `CrawlDispatcherPolicy.is_task_type_available`/`is_site_available` — two-line predicates each called once in `_try_claim_candidate`. Replacement: inline at call site. `domains/subscription/application/services/crawl/dispatcher/policy.py:33`
+
+## stdlib / native / shrink
+
+26. **native** `get_distributed_lock` hand-rolls a distributed lock via `redis_lock.Lock` — `redis.Redis.lock(name, timeout=…)` ships built-in (redis-py ≥4). Only relevant if the dead path is revived; replace with `redis_client.lock(key, timeout=…, blocking=True)`. `infrastructure/cache/redis_client.py:61`
+
+27. **shrink** `RedisStreamProducer.send` hand-rolled linear-backoff retry (`producer.py:40–56`) — re-raises anyway after sleeping 0.1–0.4s. Replacement: call `redis_client.xadd(...)` directly and let caller decide. ~15 LOC → 1. `infrastructure/messaging/framework/producer.py:40`
+
+28. **shrink** `MusicCommentsMixin` — 5 paginated comment methods byte-for-byte identical except for endpoint path + param key (~22 LOC each). Replacement: one `_paginated_comments(path, id_field, ...)` helper; each call site becomes one line. ~80 LOC. `domains/music/application/services/_comments.py:10`
+
+29. **shrink** `_filter_and_paginate` vs `_filter_and_offset_paginate` in `VideoListService` — near-duplicate ~30-line methods differing only on `page_ids` slice vs OFFSET+cursor re-encode. Replacement: one `_paginate(filtered_ids, …, *, mode)`. `domains/video/application/services/listing/service.py:162`
+
+30. **shrink** Duplicate `to_bool` — module-level `to_bool` in `system_config.py` reimplements `SystemConfigService._to_bool` (identical `TRUE_SET`/`FALSE_SET`). Replacement: one shared helper. `domains/system/interfaces/http/system_config.py:16` vs `config_service.py:23`
+
+31. **shrink** Duplicate `normalize_query` verbatim in `suggestions/formatting.py:9` and `suggestions/text.py:4`. Replacement: keep one. `domains/user/application/services/search/suggestions/`
+
+---
+
+## Checked and deliberately NOT flagged
+
+- `TaskRegistry` (scheduling/base.py) — load-bearing: `TaskRegistry.tasks` is read by production `bootstrap.py:26`. Kept.
+- `TaskFactory` single-impl — real runtime instantiation hub, not worth the churn.
+- All 49 alembic migrations — linear chain to head `f6c4027dbf73`, no orphans.
+- `create_client` RSS factory — 3 real providers, not YAGNI.
+- music `normalizers/*` and mixins — do genuinely distinct endpoint transforms.
+
+---
+
+**Net: ~-550 lines, -1 dependency possible** (`python-redis-lock`, unlocked by dropping `get_distributed_lock`). The three biggest cuts — the dead consumer framework, the `strategies/` indirection, the `SiteCatalogCache` module —account for ~50% of the deletion size if you want a fast first pass.
+
+## Execution log
+
+- [x] 1–3 (big three) — see git history
+- [ ] 4–19 (delete group)
+- [ ] 20–25 (yagni)
+- [ ] 26–31 (stdlib/native/shrink)
