@@ -21,9 +21,9 @@ from infrastructure.site_catalog.runtime_http import (
     set_cookie_domain_resolver,
     set_cookie_file_resolver,
 )
-from infrastructure.site_runtimes.manager import SiteRuntimeManager
+from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
 from infrastructure.site_runtimes.paths import build_site_runtime_paths
-from infrastructure.site_runtimes.runtime_provider import set_runtime_manager
+from infrastructure.site_runtimes.locator import set_runtime_manager
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Installed into runtime_provider so deep-stack subsystems (SiteCatalog,
     # orchestrator/scheduler singletons) can reach it without request scope.
     site_runtime_paths = build_site_runtime_paths(backend_root=settings.base_dir)
-    site_runtime_manager = SiteRuntimeManager(paths=site_runtime_paths)
+    site_runtime_manager = SiteRuntimeSupervisor(paths=site_runtime_paths)
     app.state.site_runtime_manager = site_runtime_manager
     set_runtime_manager(site_runtime_manager)
 

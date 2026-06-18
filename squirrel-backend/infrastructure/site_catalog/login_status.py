@@ -3,16 +3,16 @@ from datetime import datetime
 from typing import Any
 
 from infrastructure.site_runtimes.gateway import SiteRuntimeGateway
-from infrastructure.site_runtimes.manager import SiteRuntimeManager
+from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
 from infrastructure.site_runtimes.models import SiteRuntimeSnapshot
 
 logger = logging.getLogger(__name__)
 
 
 class SiteLoginStatusService:
-    """Probes login status for sites via an injected :class:`SiteRuntimeManager`."""
+    """Probes login status for sites via an injected :class:`SiteRuntimeSupervisor`."""
 
-    def __init__(self, manager: SiteRuntimeManager):
+    def __init__(self, manager: SiteRuntimeSupervisor):
         self._manager = manager
 
     @property

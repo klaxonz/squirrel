@@ -4,7 +4,7 @@ from pathlib import Path
 
 from infrastructure.site_catalog.icons import build_site_icon_url, resolve_site_icon_path
 from infrastructure.site_runtimes.models import SiteRuntimeManifest, SiteRuntimeSnapshot
-from infrastructure.site_runtimes.runtime_provider import get_runtime_snapshot
+from infrastructure.site_runtimes.locator import get_runtime_snapshot
 
 
 class SiteCatalog:

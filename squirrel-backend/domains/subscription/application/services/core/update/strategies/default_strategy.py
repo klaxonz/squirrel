@@ -14,7 +14,7 @@ from infrastructure.config.settings import settings
 from infrastructure.database.session import get_session
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_runtimes.gateway import SiteRuntimeGateway
-from infrastructure.site_runtimes.runtime_provider import get_runtime_gateway
+from infrastructure.site_runtimes.locator import get_runtime_gateway
 
 from ..models import SubscriptionUpdateRequest, UpdateMode
 from ..video_extraction_coordinator import enqueue_discovered_videos

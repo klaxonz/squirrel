@@ -13,11 +13,11 @@ from infrastructure.site_runtimes.models import (
     SiteRuntimeState,
     SiteRuntimeTarget,
 )
-from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
+from infrastructure.site_runtimes.lifecycle import SiteRuntimeLifecycle
 
 
 def test_supervisor_returns_timeout_error_when_runtime_request_times_out(monkeypatch):
-    supervisor = SiteRuntimeSupervisor()
+    supervisor = SiteRuntimeLifecycle()
     supervisor._handles["javdb:0.1.0"] = SiteRuntimeHandle(
         runtime_id="javdb",
         version="0.1.0",
@@ -53,7 +53,7 @@ def test_supervisor_returns_timeout_error_when_runtime_request_times_out(monkeyp
 
 
 def test_supervisor_records_timeout_invoke_context_in_audit_and_response(monkeypatch, tmp_path):
-    supervisor = SiteRuntimeSupervisor()
+    supervisor = SiteRuntimeLifecycle()
     supervisor._handles["youtube:0.1.0"] = SiteRuntimeHandle(
         runtime_id="youtube",
         version="0.1.0",
@@ -74,7 +74,7 @@ def test_supervisor_records_timeout_invoke_context_in_audit_and_response(monkeyp
     audit_events = []
     monotonic_values = iter([100.0, 220.125])
 
-    monkeypatch.setattr("infrastructure.site_runtimes.invocation.time.monotonic", lambda: next(monotonic_values))
+    monkeypatch.setattr("infrastructure.site_runtimes.client.time.monotonic", lambda: next(monotonic_values))
     monkeypatch.setattr(
         supervisor._audit_writer,
         "append_event",

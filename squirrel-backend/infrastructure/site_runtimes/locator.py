@@ -1,4 +1,4 @@
-"""Single-point access to the active :class:`SiteRuntimeManager`.
+"""Single-point access to the active :class:`SiteRuntimeSupervisor`.
 
 This module exists as a deliberate, narrow bridge for subsystems that cannot
 be reached by explicit dependency injection because they are module-level
@@ -24,13 +24,13 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .gateway import SiteRuntimeGateway
-    from .manager import SiteRuntimeManager
+    from .supervisor import SiteRuntimeSupervisor
     from .models import SiteRuntimeSnapshot
 
-_runtime_manager: SiteRuntimeManager | None = None
+_runtime_manager: SiteRuntimeSupervisor | None = None
 
 
-def set_runtime_manager(manager: SiteRuntimeManager) -> None:
+def set_runtime_manager(manager: SiteRuntimeSupervisor) -> None:
     """Install the active runtime manager.
 
     Called once per process by the composition root. Must be called before any
@@ -40,7 +40,7 @@ def set_runtime_manager(manager: SiteRuntimeManager) -> None:
     _runtime_manager = manager
 
 
-def get_runtime_manager() -> SiteRuntimeManager:
+def get_runtime_manager() -> SiteRuntimeSupervisor:
     """Return the active runtime manager.
 
     Raises ``RuntimeError`` if no manager has been installed — this is
@@ -49,7 +49,7 @@ def get_runtime_manager() -> SiteRuntimeManager:
     """
     if _runtime_manager is None:
         raise RuntimeError(
-            "SiteRuntimeManager has not been installed. "
+            "SiteRuntimeSupervisor has not been installed. "
             "Call set_runtime_manager() from a composition root first."
         )
     return _runtime_manager

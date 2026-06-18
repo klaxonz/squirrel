@@ -4,14 +4,14 @@ from typing import Any
 
 from infrastructure.runtime.site_config_manager import get_effective_site_catalog
 from infrastructure.site_catalog.icons import build_site_icon_url, resolve_site_icon_path
-from infrastructure.site_runtimes.manager import SiteRuntimeManager
+from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
 from infrastructure.site_runtimes.models import SiteRuntimeManifest
 
 
 class SiteRuntimeService:
-    """Reads/mutates site-runtime state via an injected :class:`SiteRuntimeManager`."""
+    """Reads/mutates site-runtime state via an injected :class:`SiteRuntimeSupervisor`."""
 
-    def __init__(self, manager: SiteRuntimeManager) -> None:
+    def __init__(self, manager: SiteRuntimeSupervisor) -> None:
         self._manager = manager
 
     @staticmethod

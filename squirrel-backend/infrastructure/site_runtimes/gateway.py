@@ -22,15 +22,15 @@ class SiteRuntimeGateway:
 
     The gateway only resolves routes from registrations already pushed into it
     via :meth:`register_manifest`. It does *not* perform any side-effecting
-    discovery on a cache miss — the owning manager is responsible for warming
+    discovery on a cache miss — the owning supervisor is responsible for warming
     up registrations before requests arrive.
     """
 
     def __init__(
         self,
-        invocation_client: Any,
+        lifecycle: Any,
     ) -> None:
-        self._invocation_client = invocation_client
+        self._lifecycle = lifecycle
         self._registrations: list[SiteCapabilityRegistration] = []
 
     def register_manifest(self, runtime_id: str, version: str, manifest: SiteRuntimeManifest) -> None:
@@ -124,5 +124,5 @@ class SiteRuntimeGateway:
             metadata={"domain": domain},
             trace_id=get_trace_id(),
         )
-        return self._invocation_client.invoke(route, request)
+        return self._lifecycle.invoke(route, request)
 

@@ -9,7 +9,7 @@ from crawl import SiteRuntimeInvokeRequest
 from infrastructure.site_runtimes.audit import SiteRuntimeAuditWriter
 from infrastructure.site_runtimes.models import SiteRuntimeRecord, SiteRuntimeState, SiteRuntimeTarget
 from infrastructure.site_runtimes.process_launcher import SiteRuntimeProcessLauncher
-from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
+from infrastructure.site_runtimes.lifecycle import SiteRuntimeLifecycle
 
 
 def test_supervisor_runs_site_runtime_in_subprocess(tmp_path):
@@ -51,7 +51,7 @@ def get_site_runtime():
         manifest={},
     )
 
-    supervisor = SiteRuntimeSupervisor()
+    supervisor = SiteRuntimeLifecycle()
     handle = supervisor.start_runtime(record)
 
     assert handle.state == SiteRuntimeState.RUNNING

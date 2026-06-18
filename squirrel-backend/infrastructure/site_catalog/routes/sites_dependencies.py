@@ -2,10 +2,10 @@ from fastapi import Request
 
 from infrastructure.site_catalog.login_status import SiteLoginStatusService
 from infrastructure.site_catalog.service import SiteCatalogService
-from infrastructure.site_runtimes.manager import SiteRuntimeManager
+from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
 
 
-def get_site_runtime_manager(request: Request) -> SiteRuntimeManager:
+def get_site_runtime_manager(request: Request) -> SiteRuntimeSupervisor:
     return request.app.state.site_runtime_manager
 
 

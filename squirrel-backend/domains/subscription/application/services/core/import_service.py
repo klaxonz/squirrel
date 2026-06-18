@@ -18,9 +18,9 @@ from infrastructure.messaging.models.message import Message
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
 from infrastructure.site_runtimes.gateway import SiteRuntimeGateway
-from infrastructure.site_runtimes.manager import SiteRuntimeManager
+from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
 from infrastructure.site_runtimes.models import SiteRuntimeSnapshot
-from infrastructure.site_runtimes.runtime_provider import get_runtime_gateway, get_runtime_snapshot
+from infrastructure.site_runtimes.locator import get_runtime_gateway, get_runtime_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class SubscriptionImportService:
     def __init__(
         self,
         *,
-        manager: SiteRuntimeManager | None = None,
+        manager: SiteRuntimeSupervisor | None = None,
         session_factory=get_session,
         crud_service=None,
         manage_service=None,

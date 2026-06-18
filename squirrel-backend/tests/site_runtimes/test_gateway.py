@@ -22,7 +22,7 @@ class _RecordingInvocationClient:
 
 def test_gateway_uses_manifest_capability_timeout_when_request_timeout_is_omitted():
     client = _RecordingInvocationClient()
-    gateway = SiteRuntimeGateway(invocation_client=client)
+    gateway = SiteRuntimeGateway(lifecycle=client)
     gateway.register_manifest(
         runtime_id="javdb",
         version="0.1.0",
@@ -46,7 +46,7 @@ def test_gateway_uses_manifest_capability_timeout_when_request_timeout_is_omitte
 
 
 def test_gateway_returns_stable_error_code_for_route_miss():
-    gateway = SiteRuntimeGateway(invocation_client=_RecordingInvocationClient())
+    gateway = SiteRuntimeGateway(lifecycle=_RecordingInvocationClient())
 
     response = gateway.invoke("fetch_subtitles", domain="example.com")
 

@@ -9,7 +9,7 @@ import sys
 
 from crawl import SiteRuntime
 
-from infrastructure.site_runtimes.bridge_runtime_state import configure_backend_runtime_state
+from infrastructure.site_runtimes.runtime_config import configure_backend_runtime_state
 from infrastructure.site_runtimes.bridge_server import BridgeHandler, BridgeServer
 
 logger = logging.getLogger(__name__)

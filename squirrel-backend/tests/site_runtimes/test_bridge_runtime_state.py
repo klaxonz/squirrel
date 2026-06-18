@@ -7,8 +7,8 @@ from crawl import filter_cookies_to_query_string, get_rate_limiter
 from crawl import utils as crawl_utils
 
 from infrastructure.site_catalog import runtime_http
-from infrastructure.site_runtimes import bridge_runtime_state
-from infrastructure.site_runtimes.bridge_runtime_state import configure_backend_runtime_state
+from infrastructure.site_runtimes import runtime_config
+from infrastructure.site_runtimes.runtime_config import configure_backend_runtime_state
 
 
 def test_bridge_runtime_state_configures_cookies_from_site_config(monkeypatch, tmp_path):
@@ -33,7 +33,7 @@ def test_bridge_runtime_state_configures_cookies_from_site_config(monkeypatch, t
         },
     }
 
-    monkeypatch.setattr(bridge_runtime_state, 'get_site_cookies_file_path', lambda _site_name: cookie_file)
+    monkeypatch.setattr(runtime_config, 'get_site_cookies_file_path', lambda _site_name: cookie_file)
     runtime_http.reset_runtime_http_state()
 
     configure_backend_runtime_state(site_configs)

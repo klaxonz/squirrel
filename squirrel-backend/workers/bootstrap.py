@@ -21,10 +21,10 @@ from infrastructure.site_catalog.runtime_http import (
     set_cookie_domain_resolver,
     set_cookie_file_resolver,
 )
-from infrastructure.site_runtimes.manager import SiteRuntimeManager
+from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
 from infrastructure.site_runtimes.paths import build_site_runtime_paths
 from infrastructure.site_runtimes.reload_listener import start_reload_listener, stop_reload_listener
-from infrastructure.site_runtimes.runtime_provider import set_runtime_manager
+from infrastructure.site_runtimes.locator import set_runtime_manager
 from shared_kernel.infrastructure.log import init_logging
 
 logger = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ def bootstrap_runtime(component: str):
     # it into the runtime provider so worker-side singletons (orchestrator,
     # scheduler, SiteCatalog via site_config_manager) can reach it.
     site_runtime_paths = build_site_runtime_paths(backend_root=settings.base_dir)
-    site_runtime_manager = SiteRuntimeManager(paths=site_runtime_paths)
+    site_runtime_manager = SiteRuntimeSupervisor(paths=site_runtime_paths)
     set_runtime_manager(site_runtime_manager)
 
     try:

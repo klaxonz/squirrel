@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 from infrastructure.runtime.site_config_manager import get_effective_site_catalog
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_runtimes.gateway import SiteRuntimeGateway
-from infrastructure.site_runtimes.runtime_provider import get_runtime_gateway
+from infrastructure.site_runtimes.locator import get_runtime_gateway
 
 from .contracts import ExtractionResult, ExtractionTask
 from .runtime_payloads import RuntimeVideoData

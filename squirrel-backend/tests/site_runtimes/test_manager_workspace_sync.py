@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from infrastructure.site_runtimes.manager import SiteRuntimeManager
+from infrastructure.site_runtimes.supervisor import SiteRuntimeSupervisor
 from infrastructure.site_runtimes.models import (
     SiteRuntimeCapability,
     SiteRuntimeManifest,
@@ -145,7 +145,7 @@ def test_discover_site_runtimes_refreshes_existing_workspace_manifest(tmp_path, 
         ),
     )
 
-    manager = SiteRuntimeManager(
+    manager = SiteRuntimeSupervisor(
         store=store,
         paths=paths,
     )
@@ -219,7 +219,7 @@ def test_sync_workspace_does_not_register_unstarted_runtimes(tmp_path):
         ),
     )
 
-    manager = SiteRuntimeManager(
+    manager = SiteRuntimeSupervisor(
         store=store,
         paths=paths,
     )
@@ -253,7 +253,7 @@ def test_manager_ignores_non_workspace_records(tmp_path):
         ),
     )
 
-    manager = SiteRuntimeManager(store=store, paths=paths)
+    manager = SiteRuntimeSupervisor(store=store, paths=paths)
 
     assert manager.list_site_runtimes() == []
     assert manager.get_site_runtime("uploaded") is None
@@ -267,7 +267,7 @@ def test_manager_uses_shared_paths_for_workspace_discovery(tmp_path):
     backend_root.mkdir(parents=True)
     paths = build_site_runtime_paths(repo_root=repo_root, backend_root=backend_root)
 
-    manager = SiteRuntimeManager(paths=paths)
+    manager = SiteRuntimeSupervisor(paths=paths)
 
     assert manager._paths.workspace_runtimes_dir == repo_root / "squirrel-site-runtimes"
 
@@ -281,7 +281,7 @@ def test_sync_workspace_removes_deleted_workspace_runtime(tmp_path):
     store.upsert(_create_enabled_record(repo_root, "oldsite", "oldsite.test"))
     (repo_root / "squirrel-site-runtimes" / "oldsite" / "site-runtime.json").unlink()
 
-    manager = SiteRuntimeManager(store=store, paths=paths)
+    manager = SiteRuntimeSupervisor(store=store, paths=paths)
 
     result = manager.sync_workspace()
 
@@ -311,9 +311,9 @@ def test_bootstrap_enabled_site_runtimes_starts_runtimes_in_parallel_and_preserv
             return object()
 
     supervisor = _ParallelSupervisor()
-    manager = SiteRuntimeManager(
+    manager = SiteRuntimeSupervisor(
         store=store,
-        supervisor=supervisor,
+        lifecycle=supervisor,
         paths=paths,
     )
 
@@ -347,9 +347,9 @@ def test_bootstrap_enabled_site_runtimes_raises_after_persisting_successful_star
             return object()
 
     supervisor = _FailingSupervisor()
-    manager = SiteRuntimeManager(
+    manager = SiteRuntimeSupervisor(
         store=store,
-        supervisor=supervisor,
+        lifecycle=supervisor,
         paths=paths,
     )
 
