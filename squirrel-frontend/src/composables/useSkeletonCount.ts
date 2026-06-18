@@ -131,14 +131,10 @@ export function useSkeletonCount(options: SkeletonCountOptions) {
   return { count, columns, attachRef }
 }
 
-/** Convenience: builds a breakpoints array from Tailwind-style `min:cols` pairs. */
-export function sortBreakpoints(entries: GridBreakpoint[]): GridBreakpoint[] {
-  return [...entries].sort((a, b) => b[0] - a[0])
-}
-
 export type SkeletonCountReturn = {
   count: Ref<number>
   columns: Ref<number>
   attachRef: Ref<HTMLElement | null>
 }
+
 

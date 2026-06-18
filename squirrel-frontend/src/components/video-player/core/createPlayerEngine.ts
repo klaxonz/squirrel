@@ -1,6 +1,6 @@
 import { EventEmitter } from './EventEmitter'
 import { PluginManager } from './PluginManager'
-import { MemoryAdapter, type IPlayerAdapter, type UserConfig, type PlaybackProgress } from './PlayerAdapter'
+import { LocalStorageAdapter, type IPlayerAdapter, type UserConfig, type PlaybackProgress } from './PlayerAdapter'
 import { playerLogger } from './logger'
 import { createErrorRecovery, MAX_VOLUME, detectSourceType } from './error-recovery'
 import type {
@@ -120,7 +120,10 @@ export type PlayerEngine = {
 
 export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEngine {
   const logger = playerLogger
-  const adapter = options.adapter ?? new MemoryAdapter()
+  // ponytail: LocalStorageAdapter is the real no-op baseline (persisted but
+  // inert). The old MemoryAdapter existed only to give the ?? a non-null
+  // default and was never wired in production (BackendPlayerAdapter is).
+  const adapter = options.adapter ?? new LocalStorageAdapter()
 
   const events = new EventEmitter<PlayerEvents>()
   const pluginManager = new PluginManager(events)
@@ -555,7 +558,6 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       errorRecovery.clearWaitingRecovery()
       events.emit('play', undefined)
       options.onPlay?.()
-      adapter.trackEvent?.('play', { sourceType: currentSourceType, currentTime: video.currentTime })
     }
     const onPlaying = () => {
       loading = false
@@ -568,7 +570,6 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       flushProgress()
       events.emit('pause', undefined)
       options.onPause?.()
-      adapter.trackEvent?.('pause', { sourceType: currentSourceType, currentTime: video.currentTime })
     }
     const onEnded = () => {
       errorRecovery.clearWaitingRecovery()
@@ -810,7 +811,6 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     errorRecovery.suppressWaitingRecovery(Math.max(retryDelay * 2, 4000))
     videoElement.currentTime = time
     events.emit('seeking', time)
-    adapter.trackEvent?.('seek', { currentTime: time, duration: videoElement.duration })
   }
 
   const setVolume = (vol: number): void => {
@@ -828,7 +828,6 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
     events.emit('volumechange', { volume: v / 100, muted })
     void adapter.saveConfig({ volume: v, muted })
-    adapter.trackEvent?.('volumechange', { volume: v, muted })
   }
 
   const setMuted = (value: boolean): void => {
@@ -937,7 +936,6 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
     events.emit('qualitychange', { quality: emittedLabel, auto: emittedLabel === 'auto', id: currentQualityId ?? undefined })
     options.onQualityChange?.(emittedLabel)
-    adapter.trackEvent?.('qualitychange', { quality: emittedLabel, auto: emittedLabel === 'auto' })
   }
 
   const toggleFullscreen = async (): Promise<void> => {

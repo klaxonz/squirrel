@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getUserMe, loginUser, logoutUser, registerUser, updateUserMe } from '@/api'
 import { clearAuthStorage } from '@/utils/auth'
-import { ApiError } from '@/utils/request'
 import type { User } from '@/types/user'
 
 export type { User }
@@ -12,7 +11,9 @@ export const useUserStore = defineStore('user', () => {
   const isAuthenticated = ref(false)
   const hasResolvedAuth = ref(false)
   const loading = ref(false)
-  const error = ref<ApiError | null>(null)
+  // ponytail: dropped a dead `error` ref — it was declared and exported but
+  // never written (all actions `return response` without setting it), so it
+  // only ever exposed a perpetual null to consumers.
 
   const clearState = () => {
     clearAuthStorage()
@@ -74,7 +75,6 @@ export const useUserStore = defineStore('user', () => {
     isAuthenticated,
     hasResolvedAuth,
     loading,
-    error,
     fetchCurrentUser,
     login,
     register,

@@ -365,13 +365,9 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
     if (queue.value.length <= 1) return
     prefetchAbortId++
     const myId = prefetchAbortId
-    let nextIdx: number
-    if (shuffle.value) {
-      // Can't predict shuffle, just prefetch the sequential next
-      nextIdx = (queueIndex.value + 1) % queue.value.length
-    } else {
-      nextIdx = (queueIndex.value + 1) % queue.value.length
-    }
+    // ponytail: shuffle can't be predicted, so the sequential next is always
+    // the only prefetch candidate regardless of shuffle state.
+    const nextIdx = (queueIndex.value + 1) % queue.value.length
     const nextTrack = queue.value[nextIdx]
     if (!nextTrack?.hash) return
     const nextKey = `${nextTrack.hash}:${quality.value}`

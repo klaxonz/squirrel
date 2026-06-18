@@ -295,7 +295,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { debounce } from '../utils/debounce'
+import { useDebounceFn } from '@vueuse/core'
 import { Logger } from '@/utils/logger'
 import {
   createTask as apiCreateTask,
@@ -491,7 +491,10 @@ const goToPage = (page) => {
   }
 }
 
-const debouncedSearch = debounce(() => {
+// ponytail: was a hand-rolled debounce(); useDebounceFn is @vueuse/core's stdlib
+// equivalent (project already depends on @vueuse/core). The old util's only
+// non-trivial bit was a mousemove event-shredding optimization with zero callers.
+const debouncedSearch = useDebounceFn(() => {
   currentPage.value = 1
   loadTasks()
 }, 350)

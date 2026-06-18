@@ -9,9 +9,26 @@ export const useThemeStore = defineStore('theme', () => {
   const effectiveTheme = computed(() => resolveEffectiveTheme(themeMode.value, systemTheme.value))
   const isDark = computed(() => shouldUseDarkTheme(themeMode.value, systemTheme.value))
 
+  // ponytail: single source of truth for OS color-scheme changes. Previously
+  // only the now-deleted useAppTheme composable wired this listener, so the
+  // store path (main.ts / AppLayout) never reacted to OS dark-mode flips.
+  let mediaQuery: MediaQueryList | null = null
+  let mediaQueryHandler: ((event: MediaQueryListEvent) => void) | null = null
+
+  const watchSystemTheme = () => {
+    if (typeof window === 'undefined' || mediaQuery) return
+    mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    mediaQueryHandler = (event) => {
+      systemTheme.value = event.matches ? 'dark' : 'light'
+      apply()
+    }
+    mediaQuery.addEventListener('change', mediaQueryHandler)
+  }
+
   const init = () => {
     themeMode.value = resolveStoredThemeMode(localStorage.getItem(APP_THEME_STORAGE_KEY))
     systemTheme.value = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    watchSystemTheme()
     apply()
   }
 

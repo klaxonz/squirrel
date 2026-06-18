@@ -81,10 +81,6 @@ export class BackendPlayerAdapter extends LocalStorageAdapter implements IPlayer
     })
   }
 
-  trackEvent(eventName: string, data?: Record<string, unknown>): void {
-    playerLogger.debug('[BackendPlayerAdapter] Event', eventName, data)
-  }
-
   destroy(): void {
     this.flushPending()
     if (this.syncTimerHandle) {

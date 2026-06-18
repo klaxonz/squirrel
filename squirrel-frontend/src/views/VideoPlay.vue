@@ -259,7 +259,8 @@ import useVideoPlaybackShell from '../composables/useVideoPlaybackShell'
 import useVideoPageNavigation from '../composables/useVideoPageNavigation'
 import { consumeVideoPlaybackSeed, peekVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { useGlobalVideoPlayer } from '@/composables/useGlobalVideoPlayer'
-import { useAppTheme } from '@/composables/useAppTheme'
+import { storeToRefs } from 'pinia'
+import { useThemeStore } from '@/stores/theme'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import { LocalStorageAdapter } from '@/components/video-player/core'
@@ -273,7 +274,10 @@ import type { VideoPageVideo, VideoProfile } from '@/types/videoPlayback'
 
 const route = useRoute()
 const router = useRouter()
-const { effectiveTheme } = useAppTheme()
+// ponytail: useThemeStore replaces the deleted useAppTheme composable (the two
+// had diverged — only useAppTheme wired the matchMedia listener). storeToRefs
+// keeps the computed ref reactive when passed into useVideoPlaybackShell.
+const { effectiveTheme } = storeToRefs(useThemeStore())
 const playerAdapter = new LocalStorageAdapter()
 const {
   seekGlobalVideoPlayer,

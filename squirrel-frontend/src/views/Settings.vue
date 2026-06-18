@@ -297,7 +297,8 @@ import {
   type SettingsTabKey,
 } from '@/constants/sidebar'
 import type { AppIconName } from '@/icons/app-icons'
-import { useAppTheme } from '@/composables/useAppTheme'
+import { storeToRefs } from 'pinia'
+import { useThemeStore } from '@/stores/theme'
 import { useServerConfig } from '@/composables/useServerConfig'
 import type { AppThemeMode } from '@/lib/theme'
 import { Logger } from '@/utils/logger'
@@ -342,7 +343,12 @@ const passwordFields = [
   { key: 'confirmPassword', label: '确认新密码', placeholder: '再次输入新密码', type: 'password' },
 ]
 
-const { themeMode, setThemeMode } = useAppTheme()
+// ponytail: useThemeStore replaces the deleted useAppTheme composable.
+// storeToRefs keeps themeMode reactive for the v-model bindings; the action
+// setThemeMode is destructured directly (Pinia actions don't need wrapping).
+const themeStore = useThemeStore()
+const { themeMode } = storeToRefs(themeStore)
+const { setThemeMode } = themeStore
 
 // User settings
 const { settings, loading: userSaving, loadUserSettings, saveUserSettings } = useUserSettings()

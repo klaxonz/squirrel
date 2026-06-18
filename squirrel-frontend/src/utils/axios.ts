@@ -3,14 +3,7 @@ import type { AxiosError } from 'axios'
 import { getServerUrl } from './serverConfig'
 import { logoutAndRedirect } from './auth'
 
-const generateTraceId = () => {
-  const hex = '0123456789abcdef'
-  let id = ''
-  for (let i = 0; i < 32; i++) {
-    id += hex[Math.floor(Math.random() * 16)]
-  }
-  return id
-}
+const generateTraceId = () => crypto.randomUUID().replace(/-/g, '')
 
 const instance = axios.create({
   timeout: 60000,

@@ -6,9 +6,7 @@ export { createDefaultPlayerPlugins, type DefaultPluginsOptions } from './defaul
 export { useIcons, type IconName } from './useIcons'
 export { getCodecFamily, CODEC_FAMILY_ORDER, compareCodecFamilies } from './codec'
 export {
-  MemoryAdapter,
   LocalStorageAdapter,
-  CompositeAdapter,
   type IPlayerAdapter,
   type UserConfig,
   type PlaybackProgress,

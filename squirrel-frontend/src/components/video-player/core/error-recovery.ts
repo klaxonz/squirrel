@@ -108,7 +108,6 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
     }).catch((e) => {
       deps.logger.warn('[ErrorRecovery] Report error failed', e)
     })
-    deps.adapter.trackEvent?.('error', { code: error.code, message: error.message, fatal: error.fatal })
   }
 
   const setRecoveryQualities = (qs: QualityLevel[]): void => {
@@ -306,21 +305,17 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
     waitingRecoverySuppressedUntil = Date.now() + duration
   }
 
+  // ponytail: the returned object only exposes what the engine actually
+  // calls. Internal helpers (determineRecoveryStrategy, executeRetry,
+  // executeQualityFallback, getNextLowerQuality, getStreamController,
+  // buildRecoveryContext, reloadCurrentSource) stay closure-local; leaking
+  // them onto the return object created a false public API.
   return {
     clearWaitingRecovery,
     scheduleWaitingRecovery,
     handleRecoveryError,
-    determineRecoveryStrategy,
-    executeQualityFallback,
-    getNextLowerQuality,
-    setRecoveryQualities,
-    reloadCurrentSource,
-    getStreamController,
-    buildRecoveryContext,
-    executeRetry,
     reportFatalError,
+    setRecoveryQualities,
     suppressWaitingRecovery,
-    get isRecovering() { return isRecovering },
-    get retryCount() { return deps.getRetryCount() },
   }
 }
