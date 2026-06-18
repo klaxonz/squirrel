@@ -97,12 +97,3 @@ def create_shutdown_event(component: str) -> threading.Event:
         signal.signal(sig, _handle)
 
     return event
-
-
-def wait_for_shutdown(event: threading.Event):
-    """Block until shutdown_event is set."""
-    try:
-        while not event.is_set():
-            event.wait(timeout=1.0)
-    except KeyboardInterrupt:
-        event.set()

@@ -26,9 +26,6 @@ class RateLimiter:
     - Bucketing: unknown domains no longer share a global '*' bucket; each uses its own second-level domain as bucket key
     """
 
-    # Site-specific defaults are driven by site configs; keep the map empty here
-    DEFAULT_LIMITS: dict[str, RateLimit] = {}
-
     # Global default rate limit config (used for unknown domains)
     DEFAULT_RATE_LIMIT = RateLimit(3, 5, "*")
 
@@ -36,7 +33,7 @@ class RateLimiter:
         # key: second-level domain, value: last request timestamp
         self._last_request_time: dict[str, float] = {}
         # key: second-level domain, value: RateLimit
-        self._rate_limits: dict[str, RateLimit] = self.DEFAULT_LIMITS.copy()
+        self._rate_limits: dict[str, RateLimit] = {}
         self._disabled_domains: set[str] = set()
         # per-domain locks to ensure thread safety per bucket
         self._domain_locks: dict[str, threading.Lock] = {}

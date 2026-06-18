@@ -10,12 +10,8 @@ from domains.video.interfaces.dto.video_dto import VideoExtractDto
 class CrawlExecutorService:
     def __init__(
         self,
-        session_factory=None,
-        get_type_mapping: Callable[[str], object] | None = None,
         extract_video_func: Callable | None = None,
     ):
-        self.session_factory = session_factory
-        self.get_type_mapping = get_type_mapping
         self._extract_video = extract_video_func or extract_video
 
     def execute_video_extract_payload(self, payload: dict):

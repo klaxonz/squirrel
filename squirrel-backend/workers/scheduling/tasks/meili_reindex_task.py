@@ -25,7 +25,3 @@ class MeiliReindexTask(BaseTask):
             logger.info('MeiliReindexTask 完成，共 %d 个视频', count)
         except Exception as exc:  # task boundary — 防止单次失败影响调度器
             logger.error('MeiliReindexTask error: %s', exc, exc_info=True)
-
-    @classmethod
-    def shutdown(cls):
-        logger.info('MeiliReindexTask shutdown')

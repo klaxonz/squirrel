@@ -49,20 +49,6 @@ class PipelineContext:
         """Get execution duration in seconds"""
         return (datetime.now() - self.start_time).total_seconds()
 
-    def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary (for logging)"""
-        return {
-            "task_id": self.task.task_id,
-            "url": self.task.url,
-            "current_stage": self.current_stage,
-            "duration": self.get_duration(),
-            "has_plugin_video": self.plugin_video is not None,
-            "has_video_dto": self.video_dto is not None,
-            "has_video_model": self.video_model is not None,
-            "errors_count": len(self.errors),
-            "errors": self.errors,
-        }
-
     def __repr__(self):
         return (
             f"PipelineContext("

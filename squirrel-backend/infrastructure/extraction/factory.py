@@ -119,33 +119,6 @@ class ExtractorFactory:
             self._instances[site_name] = adapter
         return adapter
 
-    def get_extractor_by_site(self, site_name: str) -> SitePluginExtractorAdapter | None:
-        if not SiteCatalog.is_site_enabled(site=site_name):
-            logger.info("Site disabled, skip extractor lookup: %s", site_name)
-            return None
-
-        cached = self._instances.get(site_name)
-        if cached is not None:
-            return cached
-
-        adapter = self._create_adapter(site_name)
-        if adapter is not None:
-            self._instances[site_name] = adapter
-        return adapter
-
-    def clear_cache(self) -> None:
-        self._instances.clear()
-
-    def get_test_url(self, site_name: str) -> str | None:
-        site_info = get_effective_site_catalog().get(site_name) or {}
-        return site_info.get("test_url")
-
-    def get_all_sites(self) -> list[str]:
-        return list(get_effective_site_catalog().keys())
-
-    def get_all_domains(self) -> list[str]:
-        return SiteCatalog.get_all_domains()
-
 
 _global_factory: ExtractorFactory | None = None
 
@@ -158,7 +131,6 @@ def get_extractor_factory() -> ExtractorFactory:
 
 
 def reset_factory() -> None:
+    """Reset the global factory singleton (test helper)."""
     global _global_factory
-    if _global_factory is not None:
-        _global_factory.clear_cache()
     _global_factory = None

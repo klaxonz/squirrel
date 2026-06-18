@@ -25,7 +25,3 @@ class SubscriptionFullUpdateTask(BaseTask):
         except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
             logger.error("SubscriptionFullUpdateTask.run error: %s", e, exc_info=True)
 
-    @classmethod
-    def shutdown(cls):
-        logger.info("SubscriptionFullUpdateTask task shutdown")
-

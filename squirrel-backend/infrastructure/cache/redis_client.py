@@ -3,7 +3,6 @@ from typing import Any
 
 import redis
 from redis import BlockingConnectionPool
-from redis_lock import Lock as RedisLock
 
 from infrastructure.config.settings import settings
 
@@ -46,27 +45,3 @@ def create_redis_client(*, connection_pool: BlockingConnectionPool | None = None
 _redis_pool = create_redis_pool()
 redis_client = create_redis_client(connection_pool=_redis_pool)
 logger.info("Redis client initialized")
-
-
-def get_redis_client() -> redis.Redis:
-    """Get the global Redis client instance."""
-    return redis_client
-
-
-def set_redis_client(client: redis.Redis) -> None:
-    global redis_client
-    redis_client = client
-
-
-def get_distributed_lock(
-    lock_key: str,
-    timeout: int = 180,
-    auto_renewal: bool = True,
-) -> RedisLock:
-    return RedisLock(
-        redis_client,
-        lock_key,
-        expire=timeout,
-        auto_renewal=auto_renewal,
-        strict=True,  # 严格模式：确保锁由当前线程持有
-    )

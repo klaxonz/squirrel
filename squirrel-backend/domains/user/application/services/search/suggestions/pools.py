@@ -13,11 +13,6 @@ from domains.video.domain.models.creator import Creator
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_history import VideoHistory
 
-DEFAULT_LIMIT = 8
-MAX_LIMIT = 20
-SUGGESTION_POOL_TTL_SECONDS = 120
-SUGGESTION_POOL_MAX_ITEMS = 240
-SUGGESTION_RESULT_TTL_SECONDS = 30
 CREATOR_FEED_WINDOW = 1200
 
 SOURCE_ORDERS = {

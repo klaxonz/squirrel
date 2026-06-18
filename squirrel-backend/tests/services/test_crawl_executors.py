@@ -17,16 +17,12 @@ from domains.subscription.domain.models.crawl_task import CrawlTask
 
 def _make_video_extract_svc(extract_video_func=None):
     return VideoExtractExecutor(
-        session_factory=None,
-        get_type_mapping=None,
         extract_video_func=extract_video_func,
     )
 
 
 def _make_sync_svc(sync_state_service=None, orchestrator_service=None, subscription_svc=None):
     return SubscriptionSyncExecutor(
-        session_factory=None,
-        get_type_mapping=None,
         sync_state_service=sync_state_service,
         orchestrator_service=orchestrator_service,
         subscription_svc=subscription_svc,

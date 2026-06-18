@@ -9,10 +9,7 @@ Core features:
 """
 
 import uuid
-from collections.abc import Callable
 from contextvars import ContextVar, Token
-from functools import wraps
-from typing import Any
 
 # Use ContextVar to store trace_id, supports async and thread isolation
 _trace_id_var: ContextVar[str | None] = ContextVar("trace_id", default=None)
@@ -89,42 +86,6 @@ class TraceContext:
     def __exit__(self, exc_type, exc_val, exc_tb):
         _trace_id_var.reset(self.token)
         return False
-
-
-def with_trace(trace_id: str | None = None):
-    """Decorator: adds trace_id to a function call
-
-    Args:
-        trace_id: Specified trace_id, auto-generated if None
-
-    Examples:
-        @with_trace()
-        def my_function():
-            logger.info("This will have a trace_id")
-
-        @with_trace("custom-trace-id")
-        async def my_async_function():
-            logger.info("This will have custom-trace-id")
-
-    """
-    def decorator(func: Callable) -> Callable:
-        @wraps(func)
-        def sync_wrapper(*args, **kwargs) -> Any:
-            with TraceContext(trace_id):
-                return func(*args, **kwargs)
-
-        @wraps(func)
-        async def async_wrapper(*args, **kwargs) -> Any:
-            with TraceContext(trace_id):
-                return await func(*args, **kwargs)
-
-        # Return the appropriate wrapper based on function type
-        import inspect
-        if inspect.iscoroutinefunction(func):
-            return async_wrapper
-        return sync_wrapper
-
-    return decorator
 
 
 def format_trace_id(trace_id: str | None) -> str:

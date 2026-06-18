@@ -95,7 +95,22 @@ Ranked biggest cut first. All references confirmed via repo-wide grep + reading 
 
 ## Execution log
 
-- [x] 1–3 (big three) — see git history
-- [ ] 4–19 (delete group)
-- [ ] 20–25 (yagni)
-- [ ] 26–31 (stdlib/native/shrink)
+Executed in two commits on branch `fix/bug`. Baseline preserved throughout: **360 tests pass, ruff clean** (matches pre-audit baseline).
+
+- [x] **1** (revised) messaging consumer glue — `decorators.py`, `registry.py` deleted; `runner.py` consumer-start body removed (WorkerRunner kept as no-op, live entrypoint preserved); `consumer.py` kept (tested primitive). Original finding over-reached: `WorkerRunner.start()` IS live (called by the worker process entrypoint), only the consumer-dispatch half was dead.
+- [x] **2** strategies/ indirection — `UpdateStrategy` ABC + `StrategyRegistry` + `update_strategy` decorator deleted; `execute()` folded into concrete `DefaultUpdateStrategy`; orchestrator simplified to call it directly. `default_strategy.py` kept (tests import it directly).
+- [x] **3** SiteCatalogCache module deleted.
+- [x] **4** ExtractorFactory: 5 dead methods deleted; `reset_factory` simplified (kept as test helper).
+- [x] **5** BaseResultHandler base deleted; `video_extraction_handler` singleton + dead `handle_failure` override removed; `VideoExtractionHandler` now a plain class.
+- [x] **6** `ExtractionTask.to_dict`/`can_retry`, `ExtractionResult.to_dict`, `PipelineContext.to_dict` deleted.
+- [x] **7** `TaskProcessor`/`ResultHandler` Protocols deleted; `TaskPriority.LOW/URGENT` removed.
+- [x] **8** redis_client: `get_redis_client`/`set_redis_client`/`get_distributed_lock` deleted; **`python-redis-lock` dependency dropped** (Pipfile + Pipfile.lock regenerated).
+- [~] **9** _completion.py dead params — **DEFERRED**. 10+ callers across orchestrator/executors, pure cosmetic with no functional gain and high miss-risk. Worth a dedicated PR if pursued.
+- [x] **10** CrawlExecutor ctor params (`session_factory`/`get_type_mapping`) removed on both classes + test helpers updated.
+- [x] **11** suggestions/listings.py deleted; duplicate constants in pools.py removed (CREATOR_FEED_WINDOW kept — it IS used internally).
+- [x] **12** `with_trace` decorator + now-unused imports deleted; `wait_for_shutdown` deleted; 6 task `shutdown()` classmethods deleted.
+- [x] **15** duplicate `_parse_trigger` hoisted to `update/models.py:parse_trigger`; `RATE_LIMITS` empty-dict scaffolding collapsed.
+- [~] **30** to_bool — **skipped**. The two versions have different signatures (`bool|None` vs `default`-returning); merging needs caller refactor, low ROI.
+- [~] **31** normalize_query — **skipped**. Each copy is used only within its own module with no cross-module import; merging would create coupling for a 1-line dedupe. Harmless duplicate.
+
+Deferred/skipped items (9, 30, 31) remain documented above for a future pass.

@@ -179,7 +179,7 @@ def _enqueue_full_backfill(
 ) -> bool:
     from domains.subscription.application.services.core.crud import get_subscription_by_id
     from domains.subscription.application.services.core.update.commands import SubscriptionSyncCommandService
-    from domains.subscription.application.services.core.update.models import UpdateMode
+    from domains.subscription.application.services.core.update.models import UpdateMode, parse_trigger
 
     try:
         command_service = SubscriptionSyncCommandService()
@@ -188,7 +188,7 @@ def _enqueue_full_backfill(
         command_service.request_sync(
             subscription_id=subscription_id,
             url=url,
-            trigger=_parse_trigger(trigger),
+            trigger=parse_trigger(trigger),
             mode=UpdateMode.FULL,
             trace_id=trace_id,
         )
@@ -207,13 +207,3 @@ def _enqueue_full_backfill(
             sync_state_id,
         )
         return False
-
-
-def _parse_trigger(raw: str | None):
-    from domains.subscription.application.services.core.update.models import UpdateTrigger
-
-    if str(raw).lower() == UpdateTrigger.MANUAL.value:
-        return UpdateTrigger.MANUAL
-    if str(raw).lower() == UpdateTrigger.API.value:
-        return UpdateTrigger.API
-    return UpdateTrigger.SCHEDULED

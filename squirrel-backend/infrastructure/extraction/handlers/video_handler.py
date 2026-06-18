@@ -7,7 +7,6 @@ Refactoring improvements:
 """
 import logging
 
-from ..base import BaseResultHandler
 from ..contracts import ExtractionResult, ExtractionTask
 from ..factory import get_extractor_factory
 from ..pipeline.context import PipelineContext
@@ -16,7 +15,7 @@ from ..pipeline.factory import pipeline_factory
 logger = logging.getLogger(__name__)
 
 
-class VideoExtractionHandler(BaseResultHandler):
+class VideoExtractionHandler:
     """Video extraction result handler (refactored)
 
     Responsibilities:
@@ -42,20 +41,6 @@ class VideoExtractionHandler(BaseResultHandler):
             )
 
         self.pipeline = pipeline
-
-    def handle_failure(
-        self,
-        task: ExtractionTask,
-        result: ExtractionResult,
-    ) -> None:
-        """Handle failed result
-
-        Args:
-            task: Extraction task
-            result: Extraction result
-
-        """
-        logger.error("Video extraction failed: task_id=%s, url=%s, error=%s", task.task_id, task.url, result.error)
 
     def process(self, task: ExtractionTask) -> ExtractionResult:
         """Process extraction task (new method)
@@ -113,7 +98,3 @@ class VideoExtractionHandler(BaseResultHandler):
         # (This check can be performed in PersistenceStage)
 
         return context
-
-
-# Singleton instance (uses default Pipeline)
-video_extraction_handler = VideoExtractionHandler()

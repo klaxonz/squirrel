@@ -27,7 +27,3 @@ class SubscriptionAutoImportTask(BaseTask):
             )
         except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
             logger.error("SubscriptionAutoImportTask.run error: %s", e, exc_info=True)
-
-    @classmethod
-    def shutdown(cls):
-        logger.info("SubscriptionAutoImportTask task shutdown")

@@ -25,7 +25,3 @@ class SubscriptionIncrementalUpdateTask(BaseTask):
         except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
             logger.error("SubscriptionIncrementalUpdateTask.run error: %s", e, exc_info=True)
 
-    @classmethod
-    def shutdown(cls):
-        logger.info("SubscriptionIncrementalUpdateTask task shutdown")
-

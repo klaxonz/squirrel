@@ -27,10 +27,8 @@ class TaskStatus(StrEnum):
 class TaskPriority(int, Enum):
     """Priority of a task; larger values are more important."""
 
-    LOW = 1
     NORMAL = 2
     HIGH = 3
-    URGENT = 4
 
 
 @dataclass
@@ -43,16 +41,6 @@ class ExtractionResult:
     error_category: str | None = None
     retryable: bool = False
     error_context: dict[str, Any] | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "data": self.data.to_dict() if hasattr(self.data, "to_dict") else self.data,
-            "error": self.error,
-            "error_category": self.error_category,
-            "retryable": self.retryable,
-            "error_context": self.error_context,
-        }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ExtractionResult:
@@ -89,21 +77,6 @@ class ExtractionTask:
     def __post_init__(self) -> None:
         self.task_id = uuid.uuid5(uuid.NAMESPACE_URL, f"{self.site_name}:{self.url}").hex
 
-    @property
-    def can_retry(self) -> bool:
-        return self.retry_count < self.max_retries
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "url": self.url,
-            "site_name": self.site_name,
-            "task_id": self.task_id,
-            "priority": self.priority,
-            "retry_count": self.retry_count,
-            "max_retries": self.max_retries,
-            "metadata": self.metadata,
-        }
-
 
 @runtime_checkable
 class Extractor(Protocol):
@@ -119,26 +92,4 @@ class Extractor(Protocol):
         ...
 
     def validate_url(self, url: str) -> bool:
-        ...
-
-
-@runtime_checkable
-class TaskProcessor(Protocol):
-    """Higher-level processor that can execute extraction tasks."""
-
-    def process(self, task: ExtractionTask) -> ExtractionResult:
-        ...
-
-    def can_process(self, task: ExtractionTask) -> bool:
-        ...
-
-
-@runtime_checkable
-class ResultHandler(Protocol):
-    """Protocol for extraction result handling."""
-
-    def handle_success(self, task: ExtractionTask, result: ExtractionResult) -> None:
-        ...
-
-    def handle_failure(self, task: ExtractionTask, result: ExtractionResult) -> None:
         ...

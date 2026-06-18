@@ -12,6 +12,16 @@ class UpdateTrigger(Enum):
     API = "api"              # API triggered
 
 
+def parse_trigger(raw: str | None) -> UpdateTrigger:
+    """Parse a raw trigger string into an UpdateTrigger (defaults to SCHEDULED)."""
+    token = str(raw).lower()
+    if token == UpdateTrigger.MANUAL.value:
+        return UpdateTrigger.MANUAL
+    if token == UpdateTrigger.API.value:
+        return UpdateTrigger.API
+    return UpdateTrigger.SCHEDULED
+
+
 class UpdateMode(Enum):
     """Update mode"""
 

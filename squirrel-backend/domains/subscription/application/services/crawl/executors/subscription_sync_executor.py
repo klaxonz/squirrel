@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 from domains.subscription.application.services.core.crud import subscription_crud_service
 from domains.subscription.application.services.core.update.models import (
     SubscriptionUpdateRequest,
     UpdateMode,
-    UpdateTrigger,
+    parse_trigger,
 )
 from domains.subscription.application.services.core.update.orchestrator import orchestrator
 from domains.subscription.domain.models.crawl_task import CrawlTask
@@ -16,14 +14,10 @@ from domains.subscription.domain.models.crawl_task import CrawlTask
 class CrawlExecutorService:
     def __init__(
         self,
-        session_factory=None,
-        get_type_mapping: Callable[[str], object] | None = None,
         sync_state_service=None,
         orchestrator_service=None,
         subscription_svc=None,
     ):
-        self.session_factory = session_factory
-        self.get_type_mapping = get_type_mapping
         self._sync_state_service = sync_state_service or subscription_sync_state_service
         self._orchestrator = orchestrator_service or orchestrator
         self._subscription_service = subscription_svc or subscription_crud_service
@@ -31,7 +25,7 @@ class CrawlExecutorService:
     def execute_subscription_sync_payload(self, payload: dict):
         subscription_id = int(payload["subscription_id"])
         url = payload.get("url") or self._resolve_subscription_url(subscription_id)
-        trigger = self._parse_trigger(payload.get("trigger"))
+        trigger = parse_trigger(payload.get("trigger"))
         mode = self._parse_mode(payload.get("mode"))
         sync_state_id = payload.get("sync_state_id")
         queue_token = payload.get("queue_token")
@@ -83,14 +77,6 @@ class CrawlExecutorService:
         if not subscription or not subscription.url:
             raise ValueError(f"Subscription URL not found: {subscription_id}")
         return subscription.url
-
-    @staticmethod
-    def _parse_trigger(raw: str | None) -> UpdateTrigger:
-        if str(raw).lower() == UpdateTrigger.MANUAL.value:
-            return UpdateTrigger.MANUAL
-        if str(raw).lower() == UpdateTrigger.API.value:
-            return UpdateTrigger.API
-        return UpdateTrigger.SCHEDULED
 
     @staticmethod
     def _parse_mode(raw: str | None) -> UpdateMode:

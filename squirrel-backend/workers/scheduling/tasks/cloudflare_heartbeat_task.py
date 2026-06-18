@@ -18,7 +18,3 @@ class CloudflareHeartbeatTask(BaseTask):
             logger.info("CloudflareHeartbeatTask health check passed")
         except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
             logger.error("CloudflareHeartbeatTask error: %s", e, exc_info=True)
-
-    @classmethod
-    def shutdown(cls):
-        logger.info("CloudflareHeartbeatTask shutdown")
