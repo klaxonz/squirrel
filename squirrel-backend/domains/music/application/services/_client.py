@@ -44,7 +44,7 @@ class MusicClient:
         use_auth: bool = True,
         user_id: int | None = None,
     ) -> dict[str, Any]:
-        if not self.settings.KUGOU_MUSIC_API_BASE_URL:
+        if not self.settings.kugou_music.api_base_url:
             raise MusicServiceError("KUGOU_MUSIC_API_BASE_URL is not configured")
 
         headers = {}
@@ -55,7 +55,7 @@ class MusicClient:
 
         try:
             result = await self.http_client.get(
-                urljoin(self.settings.KUGOU_MUSIC_API_BASE_URL.rstrip('/') + '/', path.lstrip('/')),
+                urljoin(self.settings.kugou_music.api_base_url.rstrip('/') + '/', path.lstrip('/')),
                 params=params,
                 headers=headers,
             )
@@ -101,7 +101,7 @@ class MusicClient:
             user_cookie = await self._get_user_cookie(user_id)
             if user_cookie:
                 return user_cookie
-        return self.settings.KUGOU_MUSIC_COOKIE
+        return self.settings.kugou_music.cookie
 
     async def _get_user_cookie(self, user_id: int) -> str:
         value = await anyio.to_thread.run_sync(self.redis_client.get, self._auth_redis_key(user_id))

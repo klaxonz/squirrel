@@ -12,8 +12,7 @@ pytestmark = [pytest.mark.anyio]
 
 BASE_URL = 'http://127.0.0.1:3000'
 TEST_SETTINGS = SimpleNamespace(
-    KUGOU_MUSIC_API_BASE_URL=BASE_URL,
-    KUGOU_MUSIC_COOKIE='token=abc;userid=1;dfid=xyz',
+    kugou_music=SimpleNamespace(api_base_url=BASE_URL, cookie='token=abc;userid=1;dfid=xyz'),
 )
 
 
@@ -517,7 +516,7 @@ async def test_track_enrichment_endpoints_normalize_items(mock_redis):
 
 
 async def test_request_requires_configured_base_url(mock_redis):
-    svc = MusicService(redis_client=mock_redis, settings=SimpleNamespace(KUGOU_MUSIC_API_BASE_URL='', KUGOU_MUSIC_COOKIE=''))
+    svc = MusicService(redis_client=mock_redis, settings=SimpleNamespace(kugou_music=SimpleNamespace(api_base_url='', cookie='')))
     from domains.music.application.services._client import MusicServiceError
     with pytest.raises(MusicServiceError, match='KUGOU_MUSIC_API_BASE_URL is not configured'):
         await svc.search_tracks(1, 'test', 1, 20)
@@ -562,7 +561,7 @@ async def test_check_qr_login_saves_redis_cookie(mock_redis):
             return_value=httpx.Response(200, json=check_payload),
         )
         # _save_user_cookie_from_login → _effective_cookie → returns cookie from mock_redis
-        # dfid check: _effective_cookie returns settings.KUGOU_MUSIC_COOKIE which has dfid=xyz
+        # dfid check: _effective_cookie returns settings.kugou_music.cookie which has dfid=xyz
         result = await svc.check_qr_login(1, 'KEY')
 
     assert result['logged_in'] is True

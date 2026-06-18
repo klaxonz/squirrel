@@ -11,10 +11,10 @@ class MusicAuthMixin:
 
     async def get_auth_status(self, user_id: int) -> dict[str, Any]:
         user_cookie = await self._client._get_user_cookie(user_id)
-        cookie = user_cookie or self._client.settings.KUGOU_MUSIC_COOKIE
+        cookie = user_cookie or self._client.settings.kugou_music.cookie
         return {
             'logged_in': bool(self._client._cookie_value(cookie, 'token') and self._client._cookie_value(cookie, 'userid')),
-            'source': 'redis' if user_cookie else ('env' if self._client.settings.KUGOU_MUSIC_COOKIE else ''),
+            'source': 'redis' if user_cookie else ('env' if self._client.settings.kugou_music.cookie else ''),
             'userid': self._client._cookie_value(cookie, 'userid'),
         }
 

@@ -143,6 +143,47 @@ def test_mq_settings_keeps_overrides_as_string():
     assert m.consumer_default_count == 1
 
 
+def test_cookiecloud_settings_read_env_prefix(monkeypatch):
+    from infrastructure.config.settings import CookieCloudSettings
+
+    monkeypatch.setenv("COOKIECLOUD_URL", "https://cc.example.com")
+    monkeypatch.setenv("COOKIECLOUD_UUID", "abc-123")
+    monkeypatch.setenv("COOKIECLOUD_PASSWORD", "secret")
+
+    cc = CookieCloudSettings()
+    assert cc.url == "https://cc.example.com"
+    assert cc.uuid == "abc-123"
+    assert cc.password == "secret"
+    assert cc.is_configured is True
+
+
+def test_cookiecloud_settings_unconfigured_when_any_field_missing(monkeypatch):
+    from infrastructure.config.settings import CookieCloudSettings
+
+    monkeypatch.delenv("COOKIECLOUD_URL", raising=False)
+    monkeypatch.delenv("COOKIECLOUD_UUID", raising=False)
+    monkeypatch.delenv("COOKIECLOUD_PASSWORD", raising=False)
+
+    cc = CookieCloudSettings()
+    assert cc.is_configured is False
+
+    monkeypatch.setenv("COOKIECLOUD_URL", "https://cc.example.com")
+    monkeypatch.setenv("COOKIECLOUD_UUID", "abc-123")
+    # password still unset
+    assert CookieCloudSettings().is_configured is False
+
+
+def test_kugou_music_settings_read_env_prefix(monkeypatch):
+    from infrastructure.config.settings import KugouMusicSettings
+
+    monkeypatch.setenv("KUGOU_MUSIC_API_BASE_URL", "http://localhost:3000")
+    monkeypatch.setenv("KUGOU_MUSIC_COOKIE", "token=abc;userid=1")
+
+    k = KugouMusicSettings()
+    assert k.api_base_url == "http://localhost:3000"
+    assert k.cookie == "token=abc;userid=1"
+
+
 def test_config_package_reexports_classes():
     """The package re-exports the public settings classes/helpers (not the singleton).
 
@@ -152,7 +193,7 @@ def test_config_package_reexports_classes():
     """
     import infrastructure.config as pkg
 
-    for name in ("Settings", "RedisSettings", "PostgresSettings", "MeiliSettings", "CrawlSettings", "MqSettings", "get_settings", "StartupIssues"):
+    for name in ("Settings", "RedisSettings", "PostgresSettings", "MeiliSettings", "CrawlSettings", "MqSettings", "CookieCloudSettings", "KugouMusicSettings", "get_settings", "StartupIssues"):
         assert hasattr(pkg, name), f"missing re-export: {name}"
 
 

@@ -131,6 +131,36 @@ class MqSettings(BaseSettings):
     consumer_count_overrides: str = ""
 
 
+class CookieCloudSettings(BaseSettings):
+    """CookieCloud sync settings (env prefix ``COOKIECLOUD_``).
+
+    CookieCloud sync is disabled when ``password`` is empty; the
+    ``model_post_init`` warning on the top-level Settings surfaces this.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="COOKIECLOUD_", env_file_encoding="utf-8", extra="ignore")
+
+    url: str = ""
+    uuid: str = ""
+    password: str = ""
+
+    @property
+    def is_configured(self) -> bool:
+        return bool(self.url and self.uuid and self.password)
+
+
+class KugouMusicSettings(BaseSettings):
+    """KuGou music sidecar settings (env prefix ``KUGOU_MUSIC_``).
+
+    Music search/playback is unavailable when ``api_base_url`` is empty.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="KUGOU_MUSIC_", env_file_encoding="utf-8", extra="ignore")
+
+    api_base_url: str = ""
+    cookie: str = ""
+
+
 # --------------------------------------------------------------------------- #
 # Top-level settings — flat fields without a clean group, plus grouped accessors.
 # --------------------------------------------------------------------------- #
@@ -150,11 +180,6 @@ class Settings(BaseSettings):
     THUMBNAILS_PATH: str = ""
     CLIP_MARKER_PREVIEWS_PATH: str = ""
     CLOUDFLARE_BYPASS_SERVICE_URL: str = ""
-    COOKIECLOUD_URL: str = ""
-    COOKIECLOUD_UUID: str = ""
-    COOKIECLOUD_PASSWORD: str = ""
-    KUGOU_MUSIC_API_BASE_URL: str = ""
-    KUGOU_MUSIC_COOKIE: str = ""
     JWT_SECRET_KEY: str = ""
 
     @field_validator("JWT_SECRET_KEY", mode="after")
@@ -168,13 +193,13 @@ class Settings(BaseSettings):
         return v
 
     def model_post_init(self, __context: Any) -> None:
-        if not self.COOKIECLOUD_PASSWORD:
+        if not self.cookiecloud.is_configured:
             logger.warning(
                 "COOKIECLOUD_PASSWORD is not configured — CookieCloud sync "
                 "will be unavailable. Set COOKIECLOUD_URL, COOKIECLOUD_UUID, "
                 "and COOKIECLOUD_PASSWORD in .env"
             )
-        if not self.KUGOU_MUSIC_API_BASE_URL:
+        if not self.kugou_music.api_base_url:
             logger.warning(
                 "KUGOU_MUSIC_API_BASE_URL is not configured — Kugou music "
                 "search/playback will be unavailable. Set it in .env"
@@ -208,6 +233,14 @@ class Settings(BaseSettings):
     @property
     def mq(self) -> MqSettings:
         return _get_mq_settings()
+
+    @property
+    def cookiecloud(self) -> CookieCloudSettings:
+        return _get_cookiecloud_settings()
+
+    @property
+    def kugou_music(self) -> KugouMusicSettings:
+        return _get_kugou_music_settings()
 
     # --- environment / derived helpers --- #
 
@@ -286,6 +319,16 @@ def _get_mq_settings() -> MqSettings:
     return MqSettings()
 
 
+@lru_cache
+def _get_cookiecloud_settings() -> CookieCloudSettings:
+    return CookieCloudSettings()
+
+
+@lru_cache
+def _get_kugou_music_settings() -> KugouMusicSettings:
+    return KugouMusicSettings()
+
+
 def reset_sub_settings_cache() -> None:
     """Clear all sub-settings caches (test-only; allows env switching between cases)."""
     _get_redis_settings.cache_clear()
@@ -293,6 +336,8 @@ def reset_sub_settings_cache() -> None:
     _get_meili_settings.cache_clear()
     _get_crawl_settings.cache_clear()
     _get_mq_settings.cache_clear()
+    _get_cookiecloud_settings.cache_clear()
+    _get_kugou_music_settings.cache_clear()
 
 
 # --------------------------------------------------------------------------- #

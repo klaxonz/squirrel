@@ -9,7 +9,9 @@ resolves to the submodule (Python gives submodules precedence over package
 itself lazily resolved via PEP 562 on the submodule.
 """
 from infrastructure.config.settings import (
+    CookieCloudSettings,
     CrawlSettings,
+    KugouMusicSettings,
     MeiliSettings,
     MqSettings,
     PostgresSettings,
@@ -23,7 +25,9 @@ from infrastructure.config.startup_dependencies import (
 )
 
 __all__ = [
+    "CookieCloudSettings",
     "CrawlSettings",
+    "KugouMusicSettings",
     "MeiliSettings",
     "MqSettings",
     "PostgresSettings",

@@ -27,9 +27,10 @@ class CookieCloudSyncError(RuntimeError):
 class CookieCloudService:
     @staticmethod
     def _get_cookiecloud_config() -> tuple[str, str, str]:
-        url = (settings.COOKIECLOUD_URL or "").strip()
-        uuid = (settings.COOKIECLOUD_UUID or "").strip()
-        password = (settings.COOKIECLOUD_PASSWORD or "").strip()
+        cc = settings.cookiecloud
+        url = (cc.url or "").strip()
+        uuid = (cc.uuid or "").strip()
+        password = (cc.password or "").strip()
         return url, uuid, password
 
     @staticmethod
