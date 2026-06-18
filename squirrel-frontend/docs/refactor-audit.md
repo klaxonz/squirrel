@@ -82,6 +82,37 @@ not 2407. This continuation works against the real number.
 - `VideoPlayer.vue`: 2448 → **2317** lines (-131). Each overlay also pulled its
   scoped CSS out of `VideoPlayer`'s `<style>`, which is the bulk of the win.
 
+### Phase 3 (partial) — `SiteRuntimeManager.vue` YouTube OAuth extraction
+
+`SiteRuntimeManager.vue` (was 1067 lines, JS `<script setup>`) is a single view
+holding six tightly-coupled clusters: connectivity testing, login status, YouTube
+OAuth, site catalog/editor, cookie import, and a toast. The audit had deferred
+this file as "split + `lang='ts'`" in one shot; on inspection a full split is a
+forced-seam refactor (every cluster calls into the others — shared cache, shared
+`upsertLoginStatus`, shared `getDesktopBridge`, cross-cluster refresh), so the
+high-leverage move is to extract the **one** cluster with a clean boundary and
+leave the rest.
+
+- `composables/useYouTubeOAuth.ts` (new, 198 lines, **TS**): the YouTube TV-code
+  OAuth flow — start/revoke, the verification-code prompt UI (show/hide/copy +
+  dismiss suppression), and the 3s status poll while authorization is pending.
+  Owns its own `onUnmounted` lifecycle (the only unmount hook the view had).
+  Injects the three cross-cluster deps (`upsertLoginStatus`,
+  `refreshSiteRuntimes`, `openExternalUrl`) so it doesn't reach into the other
+  clusters. Reuses the existing `getDesktopBridge` from `useDesktopBridge`
+  instead of redefining it.
+- `SiteRuntimeManager.vue`: 1067 → **929** lines (-138). Dropped the
+  `onUnmounted` hook (now in the composable), the `ytOAuthPollTimer` /
+  `youtubeOAuthCopyTimer` lets, and three now-unused YouTube API imports
+  (`setupYouTubeOAuth` / `revokeYouTubeOAuth` / `getYouTubeOAuthStatus`).
+- Remaining clusters deferred: connectivity / login-status / cookie-import /
+  site-editor are mutually coupled via shared cache + `upsertLoginStatus` +
+  `getDesktopBridge`; extracting any one needs ~8-12 injected deps and the
+  wiring equals the block. The `lang='ts'` conversion is still deferred — it
+  surfaces dozens of implicit-`any` errors best fixed when each cluster is
+  extracted into a TS composable (new files are TS from the start), not as a
+  standalone annotation flood.
+
 ## Deliberate decisions (defend the choice, don't hide it)
 
 ### Why `createPlayerEngine.ts` stays a single 991-line module
@@ -154,6 +185,8 @@ instantiated with a typed Events map (`EventEmitter<PlayerEvents>`), so the
 | `composables/useSourceSync.ts` | — | 176 | New (source/initialTime/resume sync). |
 | `LoadingOverlay.vue` | — | 73 | New (load/buffering overlay). |
 | `ErrorOverlay.vue` | — | 109 | New (fatal-error overlay). |
+| `SiteRuntimeManager.vue` | 1067 | 929 | YouTube OAuth extracted. |
+| `composables/useYouTubeOAuth.ts` | — | 198 | New (YouTube TV-code OAuth flow). |
 
 ¹ The earlier draft of this table listed `2750 → 2407`; that was aspirational.
 `git show 8c7ef66d:squirrel-frontend/.../VideoPlayer.vue` is 2708 lines. The
@@ -173,7 +206,9 @@ corrected baseline is used here.
   composable extractions above are the high-leverage ones; the template is now
   the bulk of the file and is better addressed by component extraction than by
   more composables.
-- Phase 3: `SiteRuntimeManager.vue` (1067 lines) split + `lang="ts"`.
+- Phase 3 remainder: `SiteRuntimeManager.vue` connectivity / login-status /
+  cookie-import / site-editor clusters (mutually coupled — see note above) +
+  the `lang='ts'` conversion (best done per-cluster as each is extracted).
 - Phase 4: `RssSources` (1519) / `Settings` (617) / `ScheduledTasks` (572) /
   `PlaylistView` (509) / `LogViewer` (546) splits.
 - Phase 5: `Music` (843) / `VideoPlay` (724) / `Subscribed` (755) splits +

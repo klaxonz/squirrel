@@ -375,7 +375,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, computed } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SiteIcon from '@/components/common/SiteIcon.vue'
@@ -392,16 +392,14 @@ import {
 import { Logger } from '@/utils/logger'
 import { mergeLoginStatusResult, shouldRefreshLoginStatusesAfterCookieImport } from '@/utils/site-runtime-login-status'
 import { useSiteCatalog } from '@/composables/useSites'
+import { useYouTubeOAuth } from '@/composables/useYouTubeOAuth'
 import {
   disableSiteRuntime,
   enableSiteRuntime,
   getSiteRuntimes,
   getSupportedSites,
   importAllSiteCookies,
-  getYouTubeOAuthStatus,
   reloadSiteRuntimes,
-  revokeYouTubeOAuth,
-  setupYouTubeOAuth,
   testAllSitesConnectivity,
   testSiteConnectivity,
   testSiteLoginStatus,
@@ -420,7 +418,6 @@ const connectivityResults = ref([])
 const loginStatusResults = ref({})
 const loginStatusTesting = ref({})
 const lastTestedAt = ref(null)
-let ytOAuthPollTimer = null
 
 const { catalog: siteCatalog, loadCatalog, saveCatalog } = useSiteCatalog()
 
@@ -513,15 +510,7 @@ const selectedCookiesFile = ref(null)
 const cookiesFileName = ref('')
 const importingCookies = ref(false)
 const toast = ref({ visible: false, message: '', error: false })
-const youtubeOAuthPrompt = ref({
-  visible: false,
-  verificationUrl: '',
-  userCode: '',
-  copied: false,
-  dismissedCode: '',
-})
 let toastTimer = null
-let youtubeOAuthCopyTimer = null
 
 const editingSite = ref(null)
 const siteEditorVisible = ref(false)
@@ -535,40 +524,6 @@ const showToast = (message, isError = false) => {
   if (toastTimer) clearTimeout(toastTimer)
   toast.value = { visible: true, message, error: isError }
   toastTimer = setTimeout(() => { toast.value.visible = false }, 3000)
-}
-
-const showYouTubeOAuthPrompt = ({ verificationUrl = '', userCode = '' } = {}) => {
-  const code = String(userCode || '').trim()
-  if (!code) {
-    hideYouTubeOAuthPrompt()
-    return
-  }
-  if (!youtubeOAuthPrompt.value.visible && youtubeOAuthPrompt.value.dismissedCode === code) {
-    return
-  }
-  youtubeOAuthPrompt.value = {
-    visible: true,
-    verificationUrl: String(verificationUrl || '').trim(),
-    userCode: code,
-    copied: false,
-    dismissedCode: '',
-  }
-}
-
-const hideYouTubeOAuthPrompt = () => {
-  youtubeOAuthPrompt.value.dismissedCode = youtubeOAuthPrompt.value.userCode
-  youtubeOAuthPrompt.value.visible = false
-}
-
-const copyYouTubeOAuthCode = async () => {
-  const code = String(youtubeOAuthPrompt.value.userCode || '').trim()
-  if (!code) return
-  await navigator.clipboard.writeText(code)
-  youtubeOAuthPrompt.value.copied = true
-  if (youtubeOAuthCopyTimer) clearTimeout(youtubeOAuthCopyTimer)
-  youtubeOAuthCopyTimer = setTimeout(() => {
-    youtubeOAuthPrompt.value.copied = false
-  }, 2000)
 }
 
 const enrichedSiteRuntimes = computed(() => {
@@ -918,113 +873,22 @@ const openExternalUrl = async (targetUrl) => {
   window.open(url, '_blank')
 }
 
-const handleStartYouTubeOAuth = async () => {
-  youtubeOAuthPrompt.value.dismissedCode = ''
-  const bridge = getDesktopBridge()
-  if (bridge?.isDesktop === true && typeof bridge.openSiteLogin === 'function') {
-    const result = await bridge.openSiteLogin('youtube')
-    if (result) {
-      upsertLoginStatus('youtube', result)
-      await openExternalUrl(result.verification_url)
-      showYouTubeOAuthPrompt({
-        verificationUrl: result.verification_url,
-        userCode: result.user_code,
-      })
-      if (result.oauth_status === 'pending') startYouTubeOAuthPolling()
-    }
-    return
-  }
-
-  const { data, error } = await setupYouTubeOAuth()
-  if (!error && data) {
-    if (data.verification_url) await openExternalUrl(data.verification_url)
-    showYouTubeOAuthPrompt({
-      verificationUrl: data.verification_url || '',
-      userCode: data.user_code || '',
-    })
-    upsertLoginStatus('youtube', {
-      site_name: 'youtube',
-      supported: true,
-      logged_in: data.status === 'authenticated',
-      message: data.status === 'pending' ? 'TV 授权中' : (data.status === 'authenticated' ? 'TV 授权有效' : '未配置 TV 授权'),
-      checked_at: new Date().toISOString(),
-      oauth_status: data.status,
-      oauth_account: data.account || null,
-      verification_url: data.verification_url || null,
-      user_code: data.user_code || null,
-    })
-    if (data.status === 'pending') startYouTubeOAuthPolling()
-  }
-}
-
-const handleRevokeYouTubeOAuth = async () => {
-  hideYouTubeOAuthPrompt()
-  const bridge = getDesktopBridge()
-  if (bridge?.isDesktop === true && typeof bridge.clearSiteSession === 'function') {
-    const result = await bridge.clearSiteSession('youtube')
-    if (result) upsertLoginStatus('youtube', result)
-  } else {
-    await revokeYouTubeOAuth()
-  }
-  stopYouTubeOAuthPolling()
-  fetchSiteRuntimes()
-}
-
-const startYouTubeOAuthPolling = () => {
-  stopYouTubeOAuthPolling()
-  ytOAuthPollTimer = setInterval(async () => {
-    const bridge = getDesktopBridge()
-    if (bridge?.isDesktop === true && typeof bridge.getSiteLoginStatus === 'function') {
-      const result = await bridge.getSiteLoginStatus('youtube')
-      if (result) upsertLoginStatus('youtube', result)
-      if (result?.oauth_status === 'pending') {
-        showYouTubeOAuthPrompt({
-          verificationUrl: result.verification_url,
-          userCode: result.user_code,
-        })
-      } else {
-        hideYouTubeOAuthPrompt()
-        stopYouTubeOAuthPolling()
-      }
-      return
-    }
-
-    const { data } = await getYouTubeOAuthStatus()
-    if (data) {
-      if (data.status === 'pending') {
-        showYouTubeOAuthPrompt({
-          verificationUrl: data.verification_url || '',
-          userCode: data.user_code || '',
-        })
-      } else {
-        hideYouTubeOAuthPrompt()
-      }
-      upsertLoginStatus('youtube', {
-        site_name: 'youtube',
-        supported: true,
-        logged_in: data.status === 'authenticated',
-        message: data.status === 'pending' ? 'TV 授权中' : (data.status === 'authenticated' ? 'TV 授权有效' : '未配置 TV 授权'),
-        checked_at: new Date().toISOString(),
-        oauth_status: data.status,
-        oauth_account: data.account || null,
-        verification_url: data.verification_url || null,
-        user_code: data.user_code || null,
-      })
-    }
-    if (data?.status !== 'pending') stopYouTubeOAuthPolling()
-  }, 3000)
-}
-
-const stopYouTubeOAuthPolling = () => {
-  if (ytOAuthPollTimer) clearInterval(ytOAuthPollTimer)
-  ytOAuthPollTimer = null
-}
-
-const cleanupYouTubeOAuthUi = () => {
-  stopYouTubeOAuthPolling()
-  if (youtubeOAuthCopyTimer) clearTimeout(youtubeOAuthCopyTimer)
-  youtubeOAuthCopyTimer = null
-}
+// ponytail: YouTube TV-code OAuth flow (start/revoke, verification-code prompt,
+// 3s status poll) lives in useYouTubeOAuth. The login-status upsert, runtime
+// refresh, and URL opening are injected so the composable doesn't reach into
+// the other clusters. Declared after upsertLoginStatus/fetchSiteRuntimes/
+// openExternalUrl so all three consts are past their TDZ at call time.
+const {
+  youtubeOAuthPrompt,
+  hideYouTubeOAuthPrompt,
+  copyYouTubeOAuthCode,
+  handleStartYouTubeOAuth,
+  handleRevokeYouTubeOAuth,
+} = useYouTubeOAuth({
+  upsertLoginStatus,
+  refreshSiteRuntimes: fetchSiteRuntimes,
+  openExternalUrl,
+})
 
 onMounted(() => {
   fetchSiteRuntimes()
@@ -1032,8 +896,6 @@ onMounted(() => {
   loadResultsFromCache()
   fetchSupportedSites()
 })
-
-onUnmounted(cleanupYouTubeOAuthUi)
 </script>
 
 <style scoped>
