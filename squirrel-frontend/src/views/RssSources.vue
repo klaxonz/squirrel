@@ -967,90 +967,18 @@
     </Teleport>
 
     <!-- Customized Feed Right-Click Context Menu -->
-    <Teleport to="body">
-      <div
-        v-if="showFeedContextMenuState && contextMenuFeed"
-        ref="feedContextMenuRef"
-        class="fixed z-[9999] w-[200px] rounded-xl border border-border/30 bg-popover/90 backdrop-blur-xl p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.18)] animate-fade-in"
-        :style="{ left: feedContextMenuPosition.x + 'px', top: feedContextMenuPosition.y + 'px' }"
-      >
-        <div class="flex flex-col gap-0.5">
-          <button
-            @click="markFeedAllAsRead(contextMenuFeed)"
-            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
-          >
-            <AppIcon name="eye" class="h-3.5 w-3.5 opacity-70" />
-            <span>全部标记为已读</span>
-          </button>
-
-          <button
-            @click="syncFeedFromContextMenu(contextMenuFeed)"
-            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
-          >
-            <AppIcon name="refresh" class="h-3.5 w-3.5 opacity-70" />
-            <span>同步文章</span>
-          </button>
-
-          <button
-            @click="copyFeedLink(contextMenuFeed)"
-            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
-          >
-            <AppIcon name="link" class="h-3.5 w-3.5 opacity-70" />
-            <span>复制订阅源地址</span>
-          </button>
-
-          <button
-            v-if="contextMenuFeed.site_url"
-            @click="openFeedSiteInExternalBrowser(contextMenuFeed)"
-            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
-          >
-            <AppIcon name="externalLink" class="h-3.5 w-3.5 opacity-70" />
-            <span>访问源网站</span>
-          </button>
-
-          <div class="h-px bg-border/20 my-1"></div>
-
-          <div class="px-2.5 py-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">默认打开方式</div>
-
-          <button
-            @click="setFeedOpenMethod(contextMenuFeed!, null)"
-            class="flex h-7 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
-          >
-            <AppIcon name="list" class="h-3.5 w-3.5 opacity-70" />
-            <span class="flex-1">内嵌阅读</span>
-            <AppIcon v-if="!contextMenuFeed.open_method" name="check" class="h-3 w-3 text-primary" />
-          </button>
-
-          <button
-            @click="setFeedOpenMethod(contextMenuFeed!, 'app_browser')"
-            class="flex h-7 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
-          >
-            <AppIcon name="siteFallback" class="h-3.5 w-3.5 opacity-70" />
-            <span class="flex-1">应用内浏览器</span>
-            <AppIcon v-if="contextMenuFeed.open_method === 'app_browser'" name="check" class="h-3 w-3 text-primary" />
-          </button>
-
-          <button
-            @click="setFeedOpenMethod(contextMenuFeed!, 'external_browser')"
-            class="flex h-7 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
-          >
-            <AppIcon name="externalLink" class="h-3.5 w-3.5 opacity-70" />
-            <span class="flex-1">系统浏览器</span>
-            <AppIcon v-if="contextMenuFeed.open_method === 'external_browser'" name="check" class="h-3 w-3 text-primary" />
-          </button>
-
-          <div class="h-px bg-border/20 my-1"></div>
-
-          <button
-            @click="unsubscribeFeedFromContextMenu(contextMenuFeed)"
-            class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-destructive cursor-pointer"
-          >
-            <AppIcon name="close" class="h-3.5 w-3.5 opacity-70" />
-            <span>取消订阅</span>
-          </button>
-        </div>
-      </div>
-    </Teleport>
+    <RssFeedContextMenu
+      :visible="showFeedContextMenuState"
+      :feed="contextMenuFeed"
+      :position="feedContextMenuPosition"
+      :ref="bindFeedContextMenuRef"
+      @mark-all-read="markFeedAllAsRead"
+      @sync-feed="syncFeedFromContextMenu"
+      @copy-link="copyFeedLink"
+      @open-site="openFeedSiteInExternalBrowser"
+      @set-open-method="(feed, method) => setFeedOpenMethod(feed, method)"
+      @unsubscribe="unsubscribeFeedFromContextMenu"
+    />
   </AppPageShell>
 </template>
 
@@ -1071,6 +999,7 @@ import { useRssFeeds } from '@/composables/useRssFeeds'
 import { useRssEntries } from '@/composables/useRssEntries'
 import { useRssReader } from '@/composables/useRssReader'
 import { useRssSync } from '@/composables/useRssSync'
+import RssFeedContextMenu from '@/components/rss/RssFeedContextMenu.vue'
 import type { RssEntry, RecentEntry } from '@/composables/rssTypes'
 
 // Cross-cutting UI state
@@ -1302,6 +1231,15 @@ const selectedFeedSubtitle = computed(() => {
 const closeContextMenu = () => {
   entriesCloseContextMenu()
   closeFeedContextMenu()
+}
+
+// ponytail: bridge the composable-owned feedContextMenuRef to the child
+// component's exposed rootRef, so useRssFeeds can still measure the rendered
+// menu for overflow repositioning after the template moved into the child.
+type FeedContextMenuInstance = { rootRef?: HTMLElement | null }
+const bindFeedContextMenuRef = (el: unknown) => {
+  const instance = (el && typeof el === 'object' ? (el as FeedContextMenuInstance) : null)
+  feedContextMenuRef.value = instance?.rootRef ?? null
 }
 
 loadAllImpl = async () => {
