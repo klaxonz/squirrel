@@ -40,8 +40,8 @@ export class ApiError extends Error {
   }
 }
 
-const isApiEnvelope = (data: any): data is ApiEnvelope => {
-  return !!data && typeof data.code === 'number'
+const isApiEnvelope = (data: unknown): data is ApiEnvelope => {
+  return !!data && typeof data === 'object' && typeof (data as ApiEnvelope).code === 'number'
 }
 const getErrorTypeByStatus = (status: number | null | undefined): ErrorType => {
   switch (status) {

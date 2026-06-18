@@ -305,8 +305,8 @@ export class DashPlugin implements PlayerPlugin {
           if (loaded > 0 && durationSec > 0) {
             this.options.onBandwidthSample(loaded, durationSec)
           }
-        } catch {
-          this.context?.logger.warn('[DashPlugin] Failed to sample bandwidth', arguments)
+        } catch (err) {
+          this.context?.logger.warn('[DashPlugin] Failed to sample bandwidth', err)
         }
       }
     })

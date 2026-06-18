@@ -34,10 +34,11 @@ import VideoPlayer from './VideoPlayer.vue'
 import { BackendPlayerAdapter } from './core/BackendPlayerAdapter'
 import type { ThemeName } from './themes'
 import type { VideoClipMarker } from '@/types/videoClipMarker'
+import type { VideoPlayerHandle, VideoEndedEvent } from '@/types/playerSession'
 
 const playerStore = usePlayerStore()
 const detachedHostRef = ref<HTMLElement | null>(null)
-const playerRef = ref(null)
+const playerRef = ref<VideoPlayerHandle | null>(null)
 const route = useRoute()
 const router = useRouter()
 
@@ -77,14 +78,14 @@ onUnmounted(() => {
 // Event Handlers with safety checks
 const handlePlay = () => playerStore.session.handlers.onPlay?.()
 const handlePause = () => playerStore.session.handlers.onPause?.()
-const handleEnded = (e: any) => playerStore.session.handlers.onEnded?.(e)
+const handleEnded = (e: VideoEndedEvent) => playerStore.session.handlers.onEnded?.(e)
 const handleTimeUpdate = (t: number) => playerStore.session.handlers.onTimeUpdate?.(t)
 const handlePrev = () => playerStore.session.handlers.onPrev?.()
 const handleNext = () => playerStore.session.handlers.onNext?.()
 const handleWidescreenChange = (v: boolean) => playerStore.session.handlers.onWidescreenChange?.(v)
 const handleRetry = () => playerStore.session.handlers.onRetry?.()
 const handleClipMarkerSelect = (t: number) => playerStore.session.handlers.onClipMarkerSelect?.(t)
-const handleClipMarkersUpdated = (m: any[]) => playerStore.session.handlers.onClipMarkersUpdated?.(m)
+const handleClipMarkersUpdated = (m: VideoClipMarker[]) => playerStore.session.handlers.onClipMarkersUpdated?.(m)
 
 watch(playerRef, (instance) => {
   playerStore.playerRef = instance

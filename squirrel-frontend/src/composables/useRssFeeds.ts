@@ -184,7 +184,7 @@ export function useRssFeeds(options: {
   const showFeedContextMenu = (feed: RssFeed, event: MouseEvent) => {
     contextMenuFeed.value = feed
     let x = event.clientX
-    let y = event.clientY
+    const y = event.clientY
     const menuWidth = 200
     if (x + menuWidth > window.innerWidth) {
       x = window.innerWidth - menuWidth - 8
@@ -230,7 +230,7 @@ export function useRssFeeds(options: {
       options?.onStatus?.((response.error as { message?: string })?.message || '同步失败', true)
       return
     }
-    const count = response.data?.entries ?? 0
+    const count = (response.data as { entries?: number } | null)?.entries ?? 0
     options?.onStatus?.(`已同步「${feed.title}」，更新 ${count} 篇文章`)
     await options?.onRefreshEntries?.(true)
   }

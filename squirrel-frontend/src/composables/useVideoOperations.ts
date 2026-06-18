@@ -158,23 +158,21 @@ export default function useVideoOperations() {
     const { forceRefresh = false } = options
     if (!videoId) throw Object.assign(new Error('无效的视频编号'), { code: 'BAD_REQUEST' })
 
-    try {
-      let data: VideoUrlInfo | null | undefined
-      const playbackUrl = String(playbackVideo?.url || '').trim()
-      const isDesktopClient = isDesktopPlaybackClient()
-      const matchedDesktopProvider = findDesktopPlaybackProvider(playbackUrl)
+    const playbackUrl = String(playbackVideo?.url || '').trim()
+    const isDesktopClient = isDesktopPlaybackClient()
+    const matchedDesktopProvider = findDesktopPlaybackProvider(playbackUrl)
 
-      if (!isDesktopClient) {
-        throw Object.assign(new Error('当前环境不支持播放'), { code: 'PLAYBACK_DESKTOP_REQUIRED' })
-      }
+    if (!isDesktopClient) {
+      throw Object.assign(new Error('当前环境不支持播放'), { code: 'PLAYBACK_DESKTOP_REQUIRED' })
+    }
 
-      if (!matchedDesktopProvider) {
-        throw Object.assign(new Error('当前站点不支持桌面端播放'), { code: 'UNSUPPORTED_PLAYBACK_SITE' })
-      }
+    if (!matchedDesktopProvider) {
+      throw Object.assign(new Error('当前站点不支持桌面端播放'), { code: 'UNSUPPORTED_PLAYBACK_SITE' })
+    }
 
-      Logger.debug(`[getPlaybackSource] Resolving ${matchedDesktopProvider.debugLabel} playback via desktop bridge`, { videoId, forceRefresh })
-      data = await resolveDesktopPlayback(matchedDesktopProvider, playbackUrl, { forceRefresh }, playbackVideo)
-      if (!data) {
+    Logger.debug(`[getPlaybackSource] Resolving ${matchedDesktopProvider.debugLabel} playback via desktop bridge`, { videoId, forceRefresh })
+    const data = await resolveDesktopPlayback(matchedDesktopProvider, playbackUrl, { forceRefresh }, playbackVideo)
+    if (!data) {
         throw Object.assign(new Error('桌面端播放解析不可用'), { code: 'DESKTOP_PLAYBACK_UNAVAILABLE' })
       }
 
@@ -239,9 +237,6 @@ export default function useVideoOperations() {
         qualities,
         metadata: resolvedMetadata,
       }
-    } catch (err) {
-      throw err
-    }
   }
 
   return {

@@ -1,6 +1,6 @@
 import { nextTick } from 'vue'
 import { usePlayerStore } from '@/stores/player'
-import type { PlayerSessionState } from '@/types/playerSession'
+import type { PlayerSessionState, VideoPlayerHandle } from '@/types/playerSession'
 import { Logger } from '@/utils/logger'
 
 export function useGlobalVideoPlayer() {
@@ -80,7 +80,7 @@ export function useGlobalVideoPlayer() {
     clearGlobalVideoPlayerSession: playerStore.clearSession,
     registerGlobalVideoPlayerTarget,
     unregisterGlobalVideoPlayerTarget,
-    registerGlobalVideoPlayerInstance: (instance: unknown) => { playerStore.playerRef = instance },
+    registerGlobalVideoPlayerInstance: (instance: VideoPlayerHandle | null) => { playerStore.playerRef = instance },
     focusGlobalVideoPlayer: focusPlayer,
     seekGlobalVideoPlayer: seekPlayer,
     playGlobalVideoPlayer: playPlayer,

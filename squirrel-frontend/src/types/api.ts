@@ -1,4 +1,4 @@
-export type ApiResult<T = any> = {
+export type ApiResult<T = unknown> = {
   data?: T | null
   error?: unknown | null
 }

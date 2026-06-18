@@ -8,10 +8,26 @@ export type ExternalErrorState = {
   canRetry: boolean
 }
 
+// Structural handle for the global VideoPlayer component instance exposed via
+// the player store. Typed structurally to avoid a circular import on the SFC.
+export interface VideoPlayerHandle {
+  $el?: HTMLElement
+  seek?: (time: number) => void
+  play?: () => Promise<void>
+}
+
+// Payload VideoPlayer emits on `ended` — reflects the active user settings so
+// handlers can decide autoplay-next / loop behaviour.
+export type VideoEndedEvent = {
+  autoplay?: boolean
+  autoplayNext?: boolean
+  loop?: boolean
+}
+
 export type PlayerHandlers = {
   onPlay?: (() => void) | null
   onPause?: (() => void) | null
-  onEnded?: ((event?: any) => void | Promise<void>) | null
+  onEnded?: ((event?: VideoEndedEvent) => void | Promise<void>) | null
   onTimeUpdate?: ((currentTime: number) => void) | null
   onPrev?: (() => void | Promise<void>) | null
   onNext?: (() => void | Promise<void>) | null

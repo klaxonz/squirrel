@@ -5,6 +5,7 @@ import { useTheme, type ThemeName, type UseThemeOptions } from '../themes'
 
 import { createPlayerRuntimeStore, type PlayerRuntimeStore } from './PlayerStore'
 import { createPlayerEngine, type PlayerEngine, type PlayerEngineOptions } from '../core/createPlayerEngine'
+import { playerLogger } from '../core/logger'
 import { createDefaultPlayerPlugins } from '../core/defaultPlugins'
 import { BUILT_IN_PRESETS } from '../plugins/subtitles'
 import { useA11y } from './useA11y'
@@ -158,7 +159,7 @@ const loadSubtitleStyleFromStorage = (): Record<string, any> => {
 const saveSubtitleStyleToStorage = (style: Record<string, any>): void => {
   try {
     localStorage.setItem(SUBTITLE_STYLE_KEY, JSON.stringify(style))
-  } catch (err) { console.warn('[SPPlayer] Failed to save subtitle style', err) }
+  } catch (err) { playerLogger.warn('Failed to save subtitle style', err) }
 }
 
 export function usePlayer(options: PlayerOptions = {}): PlayerReturn {

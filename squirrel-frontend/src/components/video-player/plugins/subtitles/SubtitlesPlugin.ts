@@ -236,7 +236,7 @@ export class SubtitlesPlugin implements PlayerPlugin {
     if (!this.containerElement) return
 
     const adjustedTime = currentTime + this.subtitleOffset
-    let foundIndex = this.findCueIndex(adjustedTime)
+    const foundIndex = this.findCueIndex(adjustedTime)
 
     // 如果变化了，更新显示
     if (foundIndex !== this.activeCueIndex) {

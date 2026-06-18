@@ -211,7 +211,7 @@ watch(() => formData.value.task_params, (newValue) => {
     if (JSON.stringify(JSON.parse(taskParamsJson.value)) !== JSON.stringify(newValue)) {
       taskParamsJson.value = currentJson
     }
-  } catch (e) {}
+  } catch { /* ponytail: user-typed task params may be invalid JSON; ignore */ }
 }, { deep: true })
 
 const initializeForm = () => {

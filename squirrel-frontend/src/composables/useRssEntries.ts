@@ -286,7 +286,7 @@ export function useRssEntries(options: {
   const showArticleContextMenu = (entry: RssEntry, event: MouseEvent) => {
     contextMenuEntry.value = entry
     let x = event.clientX
-    let y = event.clientY
+    const y = event.clientY
     const menuWidth = 200
     if (x + menuWidth > window.innerWidth) {
       x = window.innerWidth - menuWidth - 8

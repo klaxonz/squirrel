@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { DEFAULT_SETTINGS_TAB, SETTINGS_TABS } from '@/constants/sidebar'
 import { useUserStore } from '../stores/user'
 import { useServerConfig } from '../composables/useServerConfig'
@@ -75,7 +75,7 @@ const createVideoTabRoute = (
   meta: createSearchMeta(title, overrides),
 })
 
-const routes = [
+const routes: RouteRecordRaw[] = [
   {
     path: '/home',
     name: 'HomeView',
@@ -206,7 +206,7 @@ const routes = [
       {
         path: '',
         name: 'SubscriptionIndex',
-        redirect: (to: any) => ({ name: 'SubscriptionAllVideos', params: { id: to.params.id } }),
+        redirect: (to) => ({ name: 'SubscriptionAllVideos', params: { id: String(to.params.id) } }),
       },
       createVideoTabRoute('all', 'SubscriptionAllVideos', '全部视频', {
         navKey: 'subscribed',

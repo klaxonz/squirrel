@@ -61,7 +61,7 @@ export class PluginManager implements IPluginManager {
       const hook = plugin[hookName]
       if (typeof hook === 'function') {
         try {
-          (hook as Function).apply(plugin, args)
+          (hook as (...a: unknown[]) => void).apply(plugin, args)
         } catch (err) {
           this.logger.error(`[PluginManager] Error in ${plugin.name}.${hookName}`, err)
         }

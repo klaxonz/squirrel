@@ -9,7 +9,7 @@ export const formatDate = (dateString: DateLike | null | undefined): string => {
 
   const raw = typeof dateString === 'string' ? dateString : String(dateString)
   const hasTimeComponent = raw.length > 10
-  const date = new Date(dateString as any)
+  const date = new Date(dateString)
 
   if (Number.isNaN(date.getTime())) return '未知日期'
 

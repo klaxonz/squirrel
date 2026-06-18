@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { reactive, shallowRef } from 'vue'
-import type { PlayerSessionState, PlaylistEntry, PlayerHandlers } from '@/types/playerSession'
+import type { PlayerSessionState, PlaylistEntry, PlayerHandlers, VideoPlayerHandle } from '@/types/playerSession'
 
 export type { PlaylistEntry, PlayerHandlers }
 
@@ -31,7 +31,9 @@ export const usePlayerStore = defineStore('player', () => {
     playlistIndex: -1,
   })
 
-  const playerRef = shallowRef<any>(null)
+  // ponytail: video player component instance accessed via the global host;
+  // typed structurally to avoid a circular import on VideoPlayer.vue.
+  const playerRef = shallowRef<VideoPlayerHandle | null>(null)
 
   const activateSession = (payload: Partial<PlayerSessionState>) => {
     Object.assign(session, payload)
