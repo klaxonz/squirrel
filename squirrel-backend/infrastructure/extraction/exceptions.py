@@ -79,19 +79,6 @@ class NetworkError(ExtractionError):
         super().__init__(message, retryable=True, **kwargs)
 
 
-class RateLimitError(ExtractionError):
-    """Rate limit error
-
-    Scenarios:
-    - Too many requests
-    - Site rate limiting triggered
-    """
-
-    def __init__(self, message: str, retry_after: int = 60, **kwargs):
-        super().__init__(message, retryable=True, **kwargs)
-        self.retry_after = retry_after
-
-
 # ========== Business logic errors (non-retryable) ==========
 
 class ResourceNotFoundError(ExtractionError):

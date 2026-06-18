@@ -6,7 +6,7 @@ from infrastructure.site_catalog.cookie_files import (
     get_site_cookies_file_path,
     write_cookie_text_file,
 )
-from infrastructure.site_catalog.routes.site_cookies_dependencies import get_catalog_service
+from infrastructure.site_catalog.routes.sites_dependencies import get_catalog_service
 from infrastructure.site_catalog.service import SiteCatalogService
 
 router = APIRouter()

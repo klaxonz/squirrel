@@ -114,3 +114,44 @@ Executed in two commits on branch `fix/bug`. Baseline preserved throughout: **36
 - [~] **31** normalize_query — **skipped**. Each copy is used only within its own module with no cross-module import; merging would create coupling for a 1-line dedupe. Harmless duplicate.
 
 Deferred/skipped items (9, 30, 31) remain documented above for a future pass.
+
+---
+
+## Round 2 — re-audit findings (2026-06-19)
+
+Re-scanned `infrastructure/`, `domains/`, `workers/` for new bloat since round 1, plus Pipfile dep audit. Every finding below was confirmed by reading the code (not just grep).
+
+### 32. **delete** 5 dead Pipfile dependencies — zero source importers (confirmed via repo-wide grep): `jinja2`, `pathvalidate`, `feedparser`, `yt-dlp` (no `yt_dlp`/`YoutubeDL` anywhere), `bgutil-ytdlp-pot-provider`. Drop from `Pipfile`. `squirrel-backend/Pipfile:9,10,20,21,22`
+
+### 33. **delete** `RateLimitError` exception class — never raised anywhere (extraction stages raise `NetworkError`/`PermissionError`/`VipError`/`ResourceNotFoundError`). `PipelineError` is NOT dead — it is the parent of live `StageExecutionError` — so only `RateLimitError` was cut. `infrastructure/extraction/exceptions.py:82`
+
+### 34. **delete** `VideoListPage.timings` field + 6 `perf_counter` blocks in `page_loader.load_page` — computed (videos_ms/history_ms/subscriptions_ms/creators_ms/thumbnails_ms/assemble_ms) but **never read**; `service.py` emits its own `recall_ms`/`filter_ms`/`page_ms` timings via `_EMPTY_TIMINGS` and ignores `page.timings`. `domains/video/application/services/listing/page_loader.py:19-110`
+
+### 35. **delete** Duplicate dependency file `infrastructure/site_catalog/routes/site_cookies_dependencies.py` — byte-identical to `sites_dependencies.py` (same `get_catalog_service` + `get_login_service`). Its 2 callers (`site_cookies_bulk_import.py`, `site_cookies_single_upload.py`) re-pointed at `sites_dependencies`; file deleted. `infrastructure/site_catalog/routes/`
+
+### 36. **delete** `CookieCloudSyncTask` redundant `interval`/`unit`/`start_immediately` class attrs (same as round-1 finding #18, applied now) — `@TaskRegistry.register(...)` already assigns them. `workers/scheduling/tasks/cookiecloud_sync_task.py:11-13`
+
+### Round-2 items DEFERRED (functional decisions, not pure dead code)
+
+- **write-only Redis Streams pipeline** — `RedisStreamProducer.send(QUEUE_SUBSCRIBE, ...)` is called from `import_service.py:210` and `manage.py:219`, but nothing consumes that stream (the `@queue_listener`/consumer half was already cut in round 1). The producer writes into a void. Either wire a consumer or delete the producer half + both call sites + `MqMessage` codec. **Deferred pending product decision** on whether the subscribe-queue was ever meant to be consumed. `infrastructure/messaging/framework/producer.py:13`
+
+### Round-2 items REVERSED (agent findings disproven on code inspection)
+
+- `RssService` class (services/service.py:23) flagged as a dead 140-line delegator — **WRONG**: it is the live FastAPI dependency injected via `Depends(get_rss_service)` into every rss http route (accounts/entries/feeds/sync). Not cut.
+- `extraction/dto/validators.py` flagged as yagni wrappers — **WRONG**: all three (`validate_url`/`validate_not_empty`/`validate_duration`) are imported and used by `video_dto.py` pydantic validators. Not cut.
+- `url.py` SLD helpers flagged as three-way duplication — **WRONG**: `extract_top_level_domain` has 12 callers, `extract_second_level_domain` has 3 callers (rate_limiter), `normalize_domain` has 5 callers (crud/persistence/history/query_filters). Distinct functions serving distinct call sites. Not cut.
+- `_resolve_mode` flagged as a no-op — **PARTIALLY WRONG**: it collapses `UpdateMode.SMART` → `INCREMENTAL`, so it is not identity. It is however a duplicate of `command_payloads.py:9`. Low-ROI to dedupe; left in place.
+
+## Round-2 execution log
+
+Executed on branch `fix/bug`. Baseline preserved: **360 tests pass, ruff clean** (matches pre-round-2 baseline).
+
+- [x] **32** 5 dead deps dropped from `Pipfile` (jinja2, pathvalidate, feedparser, yt-dlp, bgutil-ytdlp-pot-provider). `Pipfile.lock` left for a separate `pipenv lock` run (out of scope for this code-only commit).
+- [x] **33** `RateLimitError` deleted from `exceptions.py`.
+- [x] **34** `VideoListPage.timings` field + 6 perf_counter blocks removed from `page_loader.py`; `VideoListPage` now carries only `items`.
+- [x] **35** Duplicate `site_cookies_dependencies.py` deleted; 2 callers re-pointed at `sites_dependencies.py`.
+- [x] **36** `CookieCloudSyncTask` redundant class attrs removed.
+- [~] **(write-only producer)** DEFERRED — functional decision (was the subscribe-queue ever meant to be consumed?). Documented above; needs product input before the producer + its 2 call sites + `MqMessage` codec are pulled.
+
+**Round-2 net: ~-50 lines, -5 dependencies** (jinja2, pathvalidate, feedparser, yt-dlp, bgutil-ytdlp-pot-provider). Cumulative since round 1: ~-600 lines, -6 deps (round-1 `python-redis-lock` + round-2's five).
+
