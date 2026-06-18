@@ -448,7 +448,8 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
     { deep: true },
   )
 
-  function _onEnded() {
+  /** Called when the <audio> element fires `ended`; resolves repeat/shuffle/next. */
+  function handleEnded() {
     if (repeat.value === 'one') {
       if (audioRef.value) {
         audioRef.value.currentTime = 0
@@ -505,6 +506,6 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
     reorderQueue,
     markPlaybackError,
     loadLyric,
-    _onEnded,
+    handleEnded,
   }
 })

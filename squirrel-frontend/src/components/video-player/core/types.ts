@@ -5,6 +5,21 @@
 import type { EventEmitter } from './EventEmitter'
 import type { PlayerLogger } from './logger'
 
+/**
+ * Subtitle style bag persisted to localStorage and read dynamically across the
+ * player UI (backgroundOpacity, fontSize, etc.). Known CSS-like keys are typed
+ * concretely; the index signature preserves dynamic reads for forward-compat
+ * with subtitle preset shapes the engine/plugin layer may add.
+ */
+export type SubtitleStyle = {
+  color?: string
+  backgroundColor?: string
+  backgroundOpacity?: number
+  fontSize?: string
+  position?: 'top' | 'bottom'
+  [key: string]: string | number | undefined
+}
+
 // 播放器事件类型
 export interface PlayerEvents {
   // 播放状态

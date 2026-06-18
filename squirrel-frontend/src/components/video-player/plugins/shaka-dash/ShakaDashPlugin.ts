@@ -1,5 +1,9 @@
 import shaka from 'shaka-player'
 
+// ponytail: shaka-player's TypedEvent<->detail surface and track.allowedByApplication
+// field are runtime-only or loosely declared. The few `as any` reads below are
+// deliberate interop casts at the shaka boundary, not loose internal typing.
+
 import { getCodecFamily, compareCodecFamilies } from '../../core/codec'
 import type {
   MediaSource,

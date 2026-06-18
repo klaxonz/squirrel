@@ -18,7 +18,7 @@
         preload="none"
         @play="store.syncPlayState()"
         @pause="store.syncPlayState()"
-        @ended="store._onEnded()"
+        @ended="store.handleEnded()"
         @error="handleAudioError"
         @timeupdate="store.syncAudioState()"
         @loadedmetadata="store.syncAudioState()"
@@ -142,11 +142,11 @@
     :current-lyric-index="store.currentLyricIndex"
     :lyric-loading="store.lyricLoading"
     :lyric-error="store.lyricError"
-    :comments="comments"
-    :comments-loading="commentsLoading"
-    :comments-error="commentsError"
-    :comments-has-more="commentsHasMore"
-    :comment-count="commentCount"
+    :comments="commentsState.comments.value"
+    :comments-loading="commentsState.loading.value"
+    :comments-error="commentsState.error.value"
+    :comments-has-more="commentsState.hasMore.value"
+    :comment-count="commentsState.count.value"
     @close="closeImmersive"
     @seek="store.seekTo"
     @seek-input="handleSeekInput"
@@ -172,13 +172,11 @@ import MusicBarActions from './player/MusicBarActions.vue'
 import MusicQueuePanel from './player/MusicQueuePanel.vue'
 import MusicImmersivePlayer from './player/MusicImmersivePlayer.vue'
 import {
-  getMusicSongComments,
-  getMusicCommentCounts,
   addMusicFavorite,
   removeMusicFavorite,
-  type MusicComment,
 } from '@/api/music'
 import { Logger } from '@/utils/logger'
+import { useMusicComments } from '@/composables/useMusicComments'
 
 const store = useMusicPlayerStore()
 const route = useRoute()
@@ -191,14 +189,10 @@ const dragIndex = ref<number | null>(null)
 const likedTracks = ref<Set<string>>(new Set())
 const likeLoading = ref(false)
 
-const comments = ref<MusicComment[]>([])
-const commentsLoading = ref(false)
-const commentsError = ref('')
-const commentsPage = ref(1)
-const commentsTotal = ref(0)
-const commentCount = ref(0)
-
-let lastCommentTrackId = ''
+// ponytail: comments logic used to be hand-rolled inline (~50 lines mirroring
+// useMusicComments). The composable now owns load/loadMore/count/switch/
+// resetForNewTrack; we just drive it on track change.
+const commentsState = useMusicComments()
 
 const isMusicPage = computed(() => route.name === 'Music')
 const canStep = computed(() => store.queue.length > 1)
@@ -208,8 +202,6 @@ const isTrackLiked = computed(() => {
   if (!track?.album_audio_id) return false
   return likedTracks.value.has(track.album_audio_id)
 })
-
-const commentsHasMore = computed(() => comments.value.length < commentsTotal.value)
 
 function formatDuration(seconds: number): string {
   if (!seconds || Number.isNaN(seconds)) return '00:00'
@@ -265,54 +257,24 @@ async function toggleLike() {
   }
 }
 
-async function loadComments(trackAlbumAudioId: string, reset = true) {
-  if (reset) {
-    comments.value = []
-    commentsPage.value = 1
-    commentsTotal.value = 0
-  }
-  commentsLoading.value = true
-  commentsError.value = ''
-  const { data, error: err } = await getMusicSongComments({
-    mixsongid: trackAlbumAudioId,
-    page: commentsPage.value,
-    page_size: 20,
-  })
-  commentsLoading.value = false
-  if (err) {
-    commentsError.value = err.message || '加载评论失败'
-    return
-  }
-  const items = data?.items || []
-  comments.value = reset ? items : [...comments.value, ...items]
-  commentsTotal.value = data?.total || comments.value.length
-}
-
 function switchToComments() {
   const track = store.currentTrack
-  if (!track?.album_audio_id || track.album_audio_id === lastCommentTrackId) return
-  lastCommentTrackId = track.album_audio_id
-  void loadComments(track.album_audio_id, true)
+  if (!track?.album_audio_id) return
+  commentsState.switchToComments(track.album_audio_id)
 }
 
 async function loadMoreComments() {
-  if (commentsLoading.value || !commentsHasMore.value) return
-  commentsPage.value++
   const track = store.currentTrack
   if (!track?.album_audio_id) return
-  await loadComments(track.album_audio_id, false)
+  await commentsState.loadMore(track.album_audio_id)
 }
 
 watch(() => store.currentTrack?.album_audio_id, async (newId) => {
-  if (newId && newId !== lastCommentTrackId) {
-    comments.value = []
-    lastCommentTrackId = ''
-    const track = store.currentTrack
-    if (track?.hash) {
-      commentCount.value = 0
-      const { data } = await getMusicCommentCounts(track.hash)
-      if (data) commentCount.value = data.count
-    }
+  if (!newId) return
+  commentsState.resetForNewTrack()
+  const track = store.currentTrack
+  if (track?.hash) {
+    await commentsState.loadCount(track.hash)
   }
 })
 

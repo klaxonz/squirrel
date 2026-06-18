@@ -1,10 +1,11 @@
 import { computed, type ComputedRef } from 'vue'
 import type { PlayerRuntimeStore } from '../runtime/PlayerStore'
+import type { IconName } from '../core/useIcons'
 
 export interface UseSleepTimerOptions {
   store: PlayerRuntimeStore
   pause: () => void
-  showCentralHud: (type: string, value: string, icon: string) => void
+  showCentralHud: (type: string, value: string, icon: IconName) => void
   t?: (key: string, params?: Record<string, string | number>) => string
 }
 

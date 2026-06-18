@@ -1,6 +1,24 @@
+/**
+ * Player engine factory.
+ *
+ * ponytail: this file is intentionally a single cohesive module (~900 lines of
+ * logic) rather than split into per-feature sub-modules. The engine is a state
+ * machine: ~30 closure variables (video element, audio graph, source/quality/
+ * subtitle/progress state) are read and written by overlapping subsets of the
+ * play/pause/seek/volume/quality/subtitle/source/progress operations. Splitting
+ * would force a state-object + getter/setter seam (the cost is visible in
+ * error-recovery.ts, which already needs ~28 deps for its narrower concern) for
+ * every cross-cutting read — a net readability loss.
+ *
+ * The genuinely isolatable concerns ARE split out: error recovery lives in
+ * error-recovery.ts, public types in engine-types.ts, plugin management in
+ * PluginManager.ts, events in EventEmitter.ts. What remains here is the core
+ * playback state machine, which is most readable as one file.
+ */
+
 import { EventEmitter } from './EventEmitter'
 import { PluginManager } from './PluginManager'
-import { LocalStorageAdapter, type IPlayerAdapter, type UserConfig, type PlaybackProgress } from './PlayerAdapter'
+import { LocalStorageAdapter, type UserConfig, type PlaybackProgress } from './PlayerAdapter'
 import { playerLogger } from './logger'
 import { createErrorRecovery, MAX_VOLUME, detectSourceType } from './error-recovery'
 import type {
@@ -11,112 +29,20 @@ import type {
   PlayerStats,
   QualityLevel,
   QualitySelectionRequest,
-  PluginConfig,
   PluginContext,
+  SubtitleStyle,
   SubtitleTrack,
 } from './types'
+import type {
+  PlayerEngineOptions,
+  PlayerEngine,
+  QualityController,
+  SubtitleController,
+} from './engine-types'
 
-// ponytail: structural views of player plugins the engine drives. Typed
-// structurally (only the methods the engine actually calls) to avoid importing
-// the concrete plugin classes, which would create a runtime cycle
-// (plugins -> core).
-interface QualityController {
-  setQuality?: (quality: unknown) => void
-}
-interface SubtitleController {
-  setTracks?: (tracks: SubtitleTrack[]) => Promise<void>
-  loadTrack?: (track: SubtitleTrack) => boolean | Promise<boolean | void>
-  enable?: () => void
-  disable?: () => void
-  toggle?: () => void
-  exportStyle?: () => Record<string, unknown>
-  importStyle?: (style: Record<string, unknown>) => void
-  applyPreset?: (presetId: string) => void
-  setSubtitleOffset?: (offsetSeconds: number) => void
-  getSubtitleOffset?: () => number
-}
-
-export type PlayerEngineOptions = {
-  autoplay?: boolean
-  autoplayNext?: boolean
-  muted?: boolean
-  volume?: number
-  loop?: boolean
-  playbackRate?: number
-
-  adapter?: IPlayerAdapter
-  plugins?: PluginConfig[]
-
-  onPlay?: () => void
-  onPause?: () => void
-  onEnded?: () => void
-  onError?: (error: PlayerError) => void
-  onTimeUpdate?: (time: number) => void
-  onQualityChange?: (quality: string) => void
-
-  errorRecovery?: {
-    maxRetries?: number
-    retryDelay?: number
-    enableQualityFallback?: boolean
-  }
-
-  progress?: {
-    saveInterval?: number
-    thresholdSeconds?: number
-  }
-}
-
-export type PlayerEngine = {
-  attachVideoElement: (el: HTMLVideoElement | null) => void
-  attachContainerElement: (el: HTMLElement | null) => void
-
-  init: () => Promise<void>
-  destroy: () => void
-
-  play: () => Promise<boolean>
-  pause: () => void
-  seek: (time: number) => void
-  setVolume: (volume: number) => void
-  setMuted: (muted: boolean) => void
-  toggleMute: () => void
-  setPlaybackRate: (rate: number) => void
-  setLoop: (loop: boolean) => void
-  setAutoplay: (autoplay: boolean) => void
-  setAutoplayNext: (autoplayNext: boolean) => void
-
-  setQuality: (quality: QualitySelectionRequest) => void
-
-  toggleFullscreen: () => Promise<void>
-  togglePictureInPicture: () => Promise<void>
-
-  loadSource: (source: MediaSource) => void
-  getSource: () => MediaSource | null
-  getSourceType: () => 'native' | 'hls' | 'dash' | null
-
-  setSubtitleTracks: (tracks: SubtitleTrack[]) => Promise<void>
-  setSubtitle: (track: SubtitleTrack | null) => void
-  toggleSubtitles: () => void
-  getSubtitleStyle: () => Record<string, unknown>
-  setSubtitleStyle: (style: Record<string, unknown>) => void
-  applySubtitlePreset: (presetId: string) => void
-  setSubtitleOffset: (offsetSeconds: number) => void
-  getSubtitleOffset: () => number
-
-  saveProgress: () => void
-  loadProgress: (progressKey: string) => Promise<number | null>
-
-  getConfig: () => UserConfig
-  getQualities: () => QualityLevel[]
-  getCurrentQualityLabel: () => string | null
-  getCurrentQualityId: () => string | number | null
-  getSubtitleTracks: () => SubtitleTrack[]
-  getCurrentSubtitle: () => SubtitleTrack | null
-
-  getPlugin: <T>(name: string) => T | null
-  getStats: () => PlayerStats
-  on: EventEmitter<PlayerEvents>['on']
-  off: EventEmitter<PlayerEvents>['off']
-}
+// Re-export the public types so existing `from './createPlayerEngine'` imports
+// keep working without touching every call site.
+export type { PlayerEngineOptions, PlayerEngine } from './engine-types'
 
 export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEngine {
   const logger = playerLogger
@@ -1018,7 +944,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     })
   }
 
-  const getSubtitleStyle = (): Record<string, unknown> => {
+  const getSubtitleStyle = (): SubtitleStyle => {
     const subtitlesPlugin = pluginManager.get<SubtitleController>('subtitles')
     if (subtitlesPlugin && typeof subtitlesPlugin.exportStyle === 'function') {
       return subtitlesPlugin.exportStyle()
@@ -1048,7 +974,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     return 0
   }
 
-  const setSubtitleStyle = (style: Record<string, unknown>): void => {
+  const setSubtitleStyle = (style: SubtitleStyle): void => {
     const subtitlesPlugin = pluginManager.get<SubtitleController>('subtitles')
     if (subtitlesPlugin && typeof subtitlesPlugin.importStyle === 'function') {
       subtitlesPlugin.importStyle(style)

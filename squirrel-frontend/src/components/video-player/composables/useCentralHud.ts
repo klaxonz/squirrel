@@ -1,16 +1,17 @@
 import { ref, type Ref } from 'vue'
+import type { IconName } from '../core/useIcons'
 
 export interface CentralHudState {
   visible: boolean
   type: string
   value: string
-  icon: string
+  icon: IconName
   percent: number
 }
 
 export interface UseCentralHudReturn {
   centralHud: Ref<CentralHudState>
-  showCentralHud: (type: string, value: string, icon: string, percent?: number) => void
+  showCentralHud: (type: string, value: string, icon: IconName, percent?: number) => void
   hideCentralHud: () => void
 }
 
@@ -29,7 +30,7 @@ export function useCentralHud(): UseCentralHudReturn {
     centralHud.value.visible = false
   }
 
-  const showCentralHud = (type: string, value: string, icon: string, percent: number = 0) => {
+  const showCentralHud = (type: string, value: string, icon: IconName, percent: number = 0) => {
     clearTimeout(centralHudTimer)
     centralHud.value = { visible: true, type, value, icon, percent }
     centralHudTimer = setTimeout(hideCentralHud, 1500)

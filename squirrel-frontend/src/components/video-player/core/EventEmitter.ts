@@ -7,10 +7,10 @@ import { playerLogger, type PlayerLogger } from './logger'
 
 // ponytail: generic defaults kept as any deliberately. EventMap is a constraint
 // for user-supplied event->payload maps; tightening to unknown breaks the
-// PlayerEvents constraint downstream (its payload types aren't all assignable
-// to unknown in TS's variance here). The concrete emitter is always
-// instantiated with a typed Events map, so these defaults only apply to the
-// untyped fallback case.
+// PlayerEvents constraint downstream — concrete interfaces like PlayerEvents
+// don't carry a string index signature, so they fail `extends Record<string,
+// unknown>`. The concrete emitter is always instantiated with a typed Events
+// map, so these defaults only apply to the untyped fallback case.
 export type EventHandler<T = any> = (data: T) => void
 export type EventMap = Record<string, any>
 

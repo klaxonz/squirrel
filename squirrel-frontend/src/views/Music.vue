@@ -180,14 +180,14 @@
         >
           <template #login>
             <MusicQrLoginPanel
-              :qr-open="qrOpen"
-              :qr-loading="qrLoading"
-              :qr-login="qrLogin"
-              :qr-status="qrStatus"
-              :qr-status-text="qrStatusText"
-              @open="handleOpenQrLogin"
-              @close="handleCloseQrLogin"
-              @refresh="handleOpenQrLogin"
+              :qr-open="qrLogin.isOpen.value"
+              :qr-loading="qrLogin.loading.value"
+              :qr-login="qrLogin.qrLogin.value"
+              :qr-status="qrLogin.status.value"
+              :qr-status-text="qrLogin.statusText.value"
+              @open="qrLogin.open"
+              @close="qrLogin.close"
+              @refresh="qrLogin.open"
             />
           </template>
         </MusicProfileView>
@@ -276,8 +276,6 @@ import {
   searchMusicComplex,
   getMusicTrackMv,
   getMusicVideoUrl,
-  createMusicQrLogin,
-  checkMusicQrLogin,
   collectMusicPlaylist,
   getMusicArtistDetail,
   getMusicAlbumDetail,
@@ -287,8 +285,8 @@ import {
   type MusicAlbum,
   type MusicRank,
   type MusicUserPlaylist,
-  type MusicQrLogin,
 } from '@/api/music'
+import { useMusicQrLogin } from '@/composables/useMusicQrLogin'
 import { Logger } from '@/utils/logger'
 
 const route = useRoute()
@@ -392,11 +390,11 @@ const videoModalVisible = ref(false)
 const videoTitle = ref('')
 const videoUrl = ref('')
 
-const qrOpen = ref(false)
-const qrLoading = ref(false)
-const qrLogin = ref<MusicQrLogin | null>(null)
-const qrStatus = ref(0)
-let qrTimer: ReturnType<typeof setInterval> | null = null
+// ponytail: QR login used to be hand-rolled inline (~50 lines mirroring
+// useMusicQrLogin). The composable now owns open/close + polling + cleanup;
+// we bridge its authStatus back into useMusicAuth so the logged_in watcher
+// fires loadUserPlaylists exactly as before.
+const qrLogin = useMusicQrLogin()
 
 const viewAlbums = ref<MusicAlbum[]>([])
 let unregisterInternalBack: (() => void) | null = null
@@ -416,12 +414,11 @@ const musicNavItems = computed<Array<{ id: string; label: string; icon: AppIconN
   { id: 'profile', label: authStatus.value?.logged_in ? '我的' : '登录', icon: 'user' },
 ])
 
-const qrStatusText = computed(() => {
-  if (qrLoading.value) return 'Generating QR code'
-  if (qrStatus.value === 4) return 'Login successful'
-  if (qrStatus.value === 2) return 'Scanned, please confirm'
-  if (qrStatus.value === 0 && qrLogin.value) return 'QR code expired, refresh'
-  return 'Scan with KuGou Music App'
+// ponytail: bridge useMusicQrLogin.authStatus -> useMusicAuth.authStatus so
+// the logged_in watcher (loadUserPlaylists) fires after a successful scan,
+// preserving the pre-refactor side effect.
+watch(() => qrLogin.authStatus.value, (status) => {
+  if (status) authStatus.value = status
 })
 
 const favoriteTracks = computed(() => {
@@ -455,7 +452,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  stopQrPolling()
+  qrLogin.close()
   unregisterInternalBack?.()
   unregisterInternalBack = null
   appNavigation.setInternalBackAvailable(false)
@@ -721,7 +718,7 @@ async function handleSelectAlbumFromTrack(track: MusicTrack) {
 async function handleLoadProfile() {
   navigateTo('profile')
   if (!authStatus.value?.logged_in) {
-    qrOpen.value = false
+    qrLogin.close()
     return
   }
   await loadProfile()
@@ -733,51 +730,6 @@ function handleToggleRankType(type: 0 | 1) {
 
 async function handleLogout() {
   await logout()
-}
-
-function handleOpenQrLogin() {
-  qrOpen.value = true
-  qrLoading.value = true
-  qrStatus.value = 0
-
-  createMusicQrLogin().then(({ data, error }) => {
-    qrLoading.value = false
-    if (error || !data) {
-      Logger.error('Failed to create QR login', error)
-      return
-    }
-    qrLogin.value = data
-    startQrPolling()
-  })
-}
-
-function handleCloseQrLogin() {
-  qrOpen.value = false
-  stopQrPolling()
-}
-
-function startQrPolling() {
-  stopQrPolling()
-  qrTimer = setInterval(async () => {
-    if (!qrLogin.value?.key) return
-    const { data } = await checkMusicQrLogin(qrLogin.value.key)
-    qrStatus.value = data?.status || 0
-    if (data?.logged_in) {
-      authStatus.value = data.auth
-      stopQrPolling()
-      qrOpen.value = false
-    }
-    if (qrStatus.value === 0 && qrLogin.value) {
-      stopQrPolling()
-    }
-  }, 2000)
-}
-
-function stopQrPolling() {
-  if (qrTimer) {
-    clearInterval(qrTimer)
-    qrTimer = null
-  }
 }
 </script>
 

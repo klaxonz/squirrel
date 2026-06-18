@@ -3,6 +3,14 @@
  * 基于 dash.js 提供 MPEG-DASH 流播放支持
  */
 
+// ponytail: dash.js ships incomplete TypeScript declarations — its MediaPlayerClass
+// exposes many runtime methods (getInitialPlaybackSettings, getTracksFor,
+// getCurrentTrackFor, updateSettings, ...) that are missing or loosely typed in
+// the .d.ts. Rather than maintain a parallel hand-written type overlay (cost >
+// value, and would drift with every dash.js bump), this plugin narrows to the
+// typed surface where cheap and casts to `any` for the rest. Each `as any` here
+// is a deliberate interop boundary, not loose internal code.
+
 import dashjs, { type MediaPlayerClass, type MediaPlayerSettingClass } from 'dashjs'
 import { getCodecFamily, compareCodecFamilies } from '../../core/codec'
 import type {

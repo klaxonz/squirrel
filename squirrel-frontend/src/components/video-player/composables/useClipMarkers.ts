@@ -1,5 +1,6 @@
 import { ref, computed, watch, type ComputedRef, type Ref } from 'vue'
 import { formatTime } from '@/utils/dateFormat'
+import type { IconName } from '../core/useIcons'
 import {
   createPointMarkerDraft,
   createSegmentMarkerDraft,
@@ -31,7 +32,7 @@ export interface UseClipMarkersOptions {
   currentTime: Ref<number>
   duration: Ref<number>
   seek: (time: number) => void
-  showCentralHud: (type: string, value: string, icon: string, percent?: number) => void
+  showCentralHud: (type: string, value: string, icon: IconName, percent?: number) => void
   onClipMarkerSelect?: (time: number) => void
   onClipMarkersUpdated?: (markers: VideoClipMarker[]) => void
 }

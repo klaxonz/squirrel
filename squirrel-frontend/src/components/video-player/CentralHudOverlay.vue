@@ -9,7 +9,7 @@
       <template v-if="hud.type === 'volume'">
         <div class="sp-vol-capsule">
           <div class="sp-vol-icon-wrap">
-            <PlayerIcon :name="hud.icon as any" class="sp-vol-icon" />
+            <PlayerIcon :name="hud.icon" class="sp-vol-icon" />
           </div>
           <div class="sp-vol-track">
             <div class="sp-vol-fill" :style="{ width: `${volumeRatio * 100}%` }"></div>
@@ -22,7 +22,7 @@
       <!-- Generic notice: badge + text -->
       <template v-else>
         <div class="sp-notice-badge">
-          <PlayerIcon :name="hud.icon as any" class="sp-notice-icon" />
+          <PlayerIcon :name="hud.icon" class="sp-notice-icon" />
         </div>
         <div class="sp-notice-text">{{ hud.value }}</div>
       </template>

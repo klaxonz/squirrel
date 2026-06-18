@@ -3,6 +3,12 @@
  * 基于 hls.js 提供 HLS 流播放支持
  */
 
+// ponytail: hls.js event payloads (FragLoadedData.stats etc.) are typed loosely
+// or as optional. The few `as any` reads below pull bandwidth/timing fields
+// that hls.js exposes at runtime but doesn't declare; modelling them would
+// duplicate hls.js internals and drift on every bump. Deliberate interop cast,
+// not loose internal typing.
+
 import Hls, { type HlsConfig, type Level, type ErrorData } from 'hls.js'
 import { getCodecFamily } from '../../core/codec'
 import type {

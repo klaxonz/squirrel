@@ -54,7 +54,7 @@
     />
 
 
-    <!-- ???? -->
+    <!-- 视频元素 -->
     <video
       ref="videoRef"
       class="sp-video"
@@ -76,7 +76,7 @@
     </div>
     <CentralHudOverlay :hud="centralHud" :shifted="showLoadingOverlay" />
 
-    <!-- ?????-->
+    <!-- 加载遮罩 -->
     <Transition name="sp-loading-fade" @after-enter="onLoadingEnter" @after-leave="onLoadingLeave">
       <div v-if="showLoadingOverlay" class="sp-loading">
         <div class="sp-loader">
@@ -117,14 +117,14 @@
       @select="handlePlaylistSelect"
     />
 
-    <!-- ??????-->
+    <!-- 播放器控制栏 -->
     <transition name="sp-ui-fade">
       <div v-show="store.controlsVisible" class="sp-controls-wrapper" data-player-interactive>
-        <!-- ?????? -->
+        <!-- 底部渐变遮罩 -->
         <div class="sp-gradient-overlay"></div>
 
         <div class="sp-controls-content">
-          <!-- ????????-->
+          <!-- 进度条容器 -->
           <div class="sp-progress-container">
             <div ref="progressAreaRef"
                  class="sp-progress-area" data-progress-area
@@ -183,7 +183,7 @@
                   <div class="sp-progress-dot"></div>
                 </div>
               </div>
-              <!-- ?????? -->
+              <!-- 进度条悬停预览 -->
               <div v-if="previewTime !== null" class="sp-preview-hint" :style="{ left: `${previewPercent}%` }">
                 <div v-if="thumbnailSpriteUrl" class="sp-preview-thumbnail" :style="thumbnailSpriteStyle"></div>
                 <div class="sp-preview-hint-inner">
@@ -193,7 +193,7 @@
             </div>
           </div>
 
-          <!-- ??????-->
+          <!-- 控制栏主行 -->
           <div class="sp-controls-main">
             <div class="sp-controls-left">
               <button class="sp-icon-btn" @click="emit('prev')" :title="t('prev')" :disabled="!props.hasPrev" :aria-label="t('prev')">
@@ -279,7 +279,7 @@
       </div>
     </transition>
 
-    <!-- ?????? -->
+    <!-- 质量快捷菜单 -->
     <transition name="sp-ui-fade">
       <div v-if="showQualityMenu" class="sp-settings-pop sp-quality-pop" data-player-interactive role="menu">
         <div class="sp-menu-list">
@@ -298,7 +298,7 @@
       </div>
     </transition>
 
-    <!-- ???? -->
+    <!-- 设置菜单 -->
     <SettingsMenu
       :visible="showSettingsMenu"
       :view="settingsView"
@@ -395,6 +395,7 @@ import { useCentralHud } from './composables/useCentralHud'
 import { useSettingsMenu } from './composables/useSettingsMenu'
 import { useQualityDisplay } from './composables/useQualityDisplay'
 import { useUpNext } from './composables/useUpNext'
+import { useVideoRotation } from './composables/useVideoRotation'
 
 import './themes/variables.css'
 import './themes/dark.css'
@@ -576,34 +577,6 @@ const loadingStageText = computed(() => {
   if (store.loadingStage === 'buffering') return t('buffering')
   return null
 })
-const videoRotation = ref(0)
-const videoRotationScale = ref(1)
-const videoRotationStyle = computed(() => ({
-  transform: `rotate(${videoRotation.value}deg) scale(${videoRotationScale.value})`,
-}))
-let videoRotationResizeObserver: ResizeObserver | null = null
-let rotationScaleRafId: number | null = null
-
-const updateVideoRotationScale = () => {
-  if (rotationScaleRafId !== null) return
-  rotationScaleRafId = requestAnimationFrame(() => {
-    rotationScaleRafId = null
-    const container = containerRef.value
-    if (!container || videoRotation.value % 180 === 0) {
-      videoRotationScale.value = 1
-      return
-    }
-
-    const rect = container.getBoundingClientRect()
-    if (rect.width <= 0 || rect.height <= 0) {
-      videoRotationScale.value = 1
-      return
-    }
-
-    videoRotationScale.value = Math.min(rect.width / rect.height, rect.height / rect.width)
-  })
-}
-
 // Loading state control
 const onLoadingEnter = () => {}
 const onLoadingLeave = () => {}
@@ -644,6 +617,18 @@ const {
   handleQualitySelect,
   playbackRates,
 } = settings
+
+const {
+  videoRotation,
+  videoRotationStyle,
+  rotateVideo,
+  handleRotationSelect,
+} = useVideoRotation({
+  containerRef,
+  videoId: computed(() => props.videoId),
+  showCentralHud,
+  closeMenus,
+})
 
 // ponytail: SettingsMenu expects qualities as {id,label,active}; map the shared
 // displayedQualities + isQualityActive into that shape instead of duplicating.
@@ -865,15 +850,6 @@ watch(() => store.playing, (playing) => {
 })
 
 const togglePlay = () => isPlaying.value ? pause() : play()
-const rotateVideo = () => {
-  videoRotation.value = (videoRotation.value + 90) % 360
-  showCentralHud('rotation', `${videoRotation.value}°`, 'rotate')
-}
-const handleRotationSelect = (rotation: number) => {
-  videoRotation.value = rotation
-  showCentralHud('rotation', `${videoRotation.value}°`, 'rotate')
-  closeMenus()
-}
 const currentPresetLabel = computed(() => {
   const active = subtitlePresets.find((p) => settings.isPresetActive(p))
   return active ? active.label : t('custom')
@@ -1308,22 +1284,6 @@ watch(isScrubbing, (scrubbing) => {
   syncHideTimer()
 })
 
-watch(videoRotation, updateVideoRotationScale)
-watch(() => props.videoId, () => {
-  videoRotation.value = 0
-})
-watch(containerRef, (container) => {
-  videoRotationResizeObserver?.disconnect()
-  videoRotationResizeObserver = null
-
-  if (container) {
-    videoRotationResizeObserver = new ResizeObserver(updateVideoRotationScale)
-    videoRotationResizeObserver.observe(container)
-  }
-
-  updateVideoRotationScale()
-}, { immediate: true })
-
 // When the window regains visibility (e.g. after Alt-Tab or minimize), the
 // <video> element may have dropped its last decoded frame during background
 // throttling and render black even though playback continues. Nudge it by
@@ -1347,8 +1307,6 @@ onUnmounted(() => {
   clearHideTimer()
   clearInitialTimeListener()
   clearResumeAfterSourceSwapListener()
-  videoRotationResizeObserver?.disconnect()
-  if (rotationScaleRafId !== null) cancelAnimationFrame(rotationScaleRafId)
   releaseMarkerPointerCapture()
   releaseProgressPointerCapture()
   removeMarkerDragListeners()
@@ -1445,7 +1403,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   50% { height: 36px; }
 }
 
-/* ????????*/
+/* 暗角遮罩 */
 .sp-vignette-overlay {
   position: absolute;
   inset: 0;
@@ -1454,7 +1412,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   z-index: 5;
 }
 
-/* ?? HUD ????*/
+/* 中央 HUD 提示 */
 .sp-central-hud {
   position: absolute;
   top: 50%;
@@ -1601,7 +1559,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   opacity: 0;
 }
 
-/* HUD ?????*/
+/* HUD 角标覆盖层 */
 .sp-hud-overlay {
   position: absolute;
   top: 16px;
@@ -1661,7 +1619,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   width: 60px;
 }
 
-/* ?????? */
+/* 底部渐变遮罩 */
 .sp-gradient-overlay {
   position: absolute;
   inset: auto 0 0 0;
@@ -1689,7 +1647,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   pointer-events: auto;
 }
 
-/* ??????*/
+/* 进度条容器 */
 .sp-progress-container {
   padding: 6px 0;
   margin: 0 -4px;
@@ -1960,7 +1918,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   width: 2px;
 }
 
-/* ?????? */
+/* 进度条悬停预览 */
 .sp-preview-hint {
   position: absolute;
   bottom: 20px;
@@ -2018,7 +1976,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   background: var(--sp-primary, #d3d4d8);
 }
 
-/* ????????*/
+/* 控制栏主行 */
 .sp-controls-main {
   display: flex;
   align-items: center;
@@ -2033,7 +1991,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   gap: 10px;
 }
 
-/* ???? */
+/* 质量标签 */
 .sp-quality-tag {
   font-family: var(--sp-font-mono);
   font-size: 10px;
@@ -2056,7 +2014,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   background: var(--sp-bg-hover);
 }
 
-/* ?????? */
+/* 控制按钮 */
 .sp-icon-btn {
   background: transparent;
   border: none;
@@ -2100,7 +2058,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   filter: drop-shadow(0 0 4px rgba(0,0,0,0.4));
 }
 
-/* ???? */
+/* 时间显示 */
 .sp-time-display {
   font-family: var(--sp-font-mono);
   font-size: 12px;
@@ -2121,7 +2079,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   opacity: 0.4;
 }
 
-/* ???? */
+/* 音量控制 */
 .sp-volume-group {
   display: flex;
   align-items: center;
@@ -2179,7 +2137,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   flex-shrink: 0;
 }
 
-/* ????????*/
+/* 设置弹出层 */
 .sp-settings-pop {
   position: absolute;
   bottom: 52px;
@@ -2266,7 +2224,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 
 .sp-simple-switch.is-on::after { transform: translateX(14px); }
 
-/* ?????? */
+/* 字幕颜色预览 */
 .sp-subtitle-color-preview {
   width: 14px;
   height: 14px;
@@ -2275,7 +2233,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   flex-shrink: 0;
 }
 
-/* ?????? */
+/* 字幕颜色网格 */
 .sp-subtitle-color-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -2303,7 +2261,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   box-shadow: 0 0 8px rgba(var(--sp-primary-rgb), 0.5);
 }
 
-/* ????????*/
+/* 字幕透明度调节 */
 .sp-subtitle-opacity-row {
   display: flex;
   align-items: center;
@@ -2397,7 +2355,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   text-align: center;
 }
 
-/* ???? */
+/* 加载遮罩 */
 .sp-loading {
   position: absolute;
   inset: 0;
@@ -2439,7 +2397,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   to { transform: rotate(360deg); }
 }
 
-/* ?????????*/
+/* 加载遮罩淡入淡出 */
 .sp-loading-fade-enter-active,
 .sp-loading-fade-leave-active {
   transition: opacity var(--duration-slow) var(--ease-default);

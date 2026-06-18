@@ -14,14 +14,13 @@ import { useControlsLayout } from './useControlsLayout'
 import { useIcons } from '../core/useIcons'
 import { DEFAULT_SHORTCUTS, type KeyboardShortcutsConfig } from './keyboardShortcuts'
 import type { UserConfig } from '../core/PlayerAdapter'
-import type { MediaSource, PlayerError, PlayerStats, PluginConfig, QualityLevel, SubtitleTrack } from '../core/types'
+import type { MediaSource, PlayerError, PlayerStats, PluginConfig, QualityLevel, SubtitleStyle, SubtitleTrack } from '../core/types'
 
 // ponytail: subtitle style is a loose CSS-style bag persisted to localStorage
 // and read dynamically across the player UI (backgroundOpacity, fontSize, etc.).
-// Kept as Record<string, any> rather than unknown because consumers index into
-// it for arithmetic without narrowing — modelling it concretely would duplicate
-// SubtitleStyle and force guards at every read site for little safety gain.
-type SubtitleStyleBag = Record<string, any>
+// Now typed via core/types SubtitleStyle (concrete known keys + index sig for
+// dynamic reads); consumers still index freely but the common fields are safe.
+type SubtitleStyleBag = SubtitleStyle
 
 // Structural view of the dash/shaka-dash plugin used for codec-family control.
 interface CodecController {

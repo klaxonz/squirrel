@@ -1,13 +1,7 @@
 import { ref } from 'vue'
 import type { Ref } from 'vue'
-import type { SubtitleTrack } from '../core'
+import type { SubtitleTrack, SubtitleStyle } from '../core'
 import type { SubtitlePreset } from '../plugins/subtitles'
-
-// ponytail: SubtitleStyle is a Record<string, any> CSS bag upstream (see
-// runtime/usePlayer.ts SubtitleStyleBag). We keep the same loose type here so
-// the type chain matches usePlayer's return; tightening it is tracked as a
-// separate task (documented design any).
-type SubtitleStyleBag = Record<string, unknown>
 
 type OptionEntry = {
   value: string
@@ -21,14 +15,14 @@ interface DisplayQualityLike {
 
 export interface UseSettingsMenuOptions {
   // subtitle API surface read inside this composable
-  subtitleStyle: Ref<SubtitleStyleBag>
+  subtitleStyle: Ref<SubtitleStyle>
   subtitleOffset: Ref<number>
 
   // player actions (callbacks)
   setPlaybackRate: (rate: number) => void
   setQuality: (id: string | number) => void
   setSubtitle: (track: SubtitleTrack | null) => void
-  setSubtitleStyle: (style: SubtitleStyleBag) => void
+  setSubtitleStyle: (style: SubtitleStyle) => void
   setSubtitleOffset: (offset: number) => void
   applySubtitlePreset: (id: string) => void
 }
@@ -49,7 +43,7 @@ export interface UseSettingsMenuReturn {
   handleQualitySelect: (q: DisplayQualityLike) => void
   handleSubtitleSelect: (track: SubtitleTrack) => void
   handleSubtitleDisable: () => void
-  handleSubtitleStyleChange: (key: string, value: unknown) => void
+  handleSubtitleStyleChange: (key: string, value: string | number) => void
   handleSubtitleOffsetChange: (delta: number) => void
   handleOpacityChange: (value: number) => void
   handlePresetSelect: (presetId: string) => void
@@ -109,7 +103,7 @@ export function useSettingsMenu(options: UseSettingsMenuOptions): UseSettingsMen
   const handleQualitySelect = (q: DisplayQualityLike) => { setQuality(q.id); closeMenus() }
   const handleSubtitleSelect = (track: SubtitleTrack) => { setSubtitle(track); closeMenus() }
   const handleSubtitleDisable = () => { setSubtitle(null); closeMenus() }
-  const handleSubtitleStyleChange = (key: string, value: unknown) => { setSubtitleStyle({ [key]: value }) }
+  const handleSubtitleStyleChange = (key: string, value: string | number) => { setSubtitleStyle({ [key]: value }) }
   const handleSubtitleOffsetChange = (delta: number) => {
     const next = subtitleOffset.value + delta
     setSubtitleOffset(Math.max(-10, Math.min(10, Math.round(next * 10) / 10)))
