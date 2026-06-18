@@ -192,19 +192,6 @@ class Settings(BaseSettings):
             )
         return v
 
-    def model_post_init(self, __context: Any) -> None:
-        if not self.cookiecloud.is_configured:
-            logger.warning(
-                "COOKIECLOUD_PASSWORD is not configured — CookieCloud sync "
-                "will be unavailable. Set COOKIECLOUD_URL, COOKIECLOUD_UUID, "
-                "and COOKIECLOUD_PASSWORD in .env"
-            )
-        if not self.kugou_music.api_base_url:
-            logger.warning(
-                "KUGOU_MUSIC_API_BASE_URL is not configured — Kugou music "
-                "search/playback will be unavailable. Set it in .env"
-            )
-
     CORS_ALLOW_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     # Crawl-related fields whose env-var names carry no CRAWL_ prefix.
@@ -287,6 +274,25 @@ class Settings(BaseSettings):
     @property
     def cors_allow_origins(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ALLOW_ORIGINS.split(",") if origin.strip()]
+
+    def optional_feature_warnings(self) -> list[str]:
+        """Human-readable notices for optional features that are disabled due to missing config.
+
+        Pure query (no side effects): startup entrypoints (lifespan / worker
+        bootstrap) call this and decide how to log them. Keeping the notices
+        out of construction avoids log spam during tests, alembic, and scripts.
+        """
+        warnings: list[str] = []
+        if not self.cookiecloud.is_configured:
+            warnings.append(
+                "COOKIECLOUD not configured (set COOKIECLOUD_URL/UUID/PASSWORD) "
+                "— CookieCloud sync unavailable"
+            )
+        if not self.kugou_music.api_base_url:
+            warnings.append(
+                "KUGOU_MUSIC_API_BASE_URL not set — Kugou music search/playback unavailable"
+            )
+        return warnings
 
 
 # --------------------------------------------------------------------------- #

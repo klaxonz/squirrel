@@ -225,3 +225,45 @@ def test_reset_sub_settings_cache_rebuilds_from_env(monkeypatch):
     reset_sub_settings_cache()
     assert _get_redis_settings().host == "second.example.com"
     reset_sub_settings_cache()
+
+
+def test_optional_feature_warnings_empty_when_all_configured(isolated_settings, monkeypatch):
+    monkeypatch.setenv("JWT_SECRET_KEY", "k")
+    monkeypatch.setenv("COOKIECLOUD_URL", "https://cc.example.com")
+    monkeypatch.setenv("COOKIECLOUD_UUID", "u")
+    monkeypatch.setenv("COOKIECLOUD_PASSWORD", "p")
+    monkeypatch.setenv("KUGOU_MUSIC_API_BASE_URL", "http://localhost:3000")
+
+    s = isolated_settings.settings
+    assert s.optional_feature_warnings() == []
+
+
+def test_optional_feature_warnings_reports_missing_cookiecloud_and_kugou(isolated_settings, monkeypatch):
+    monkeypatch.setenv("JWT_SECRET_KEY", "k")
+    monkeypatch.delenv("COOKIECLOUD_URL", raising=False)
+    monkeypatch.delenv("COOKIECLOUD_UUID", raising=False)
+    monkeypatch.delenv("COOKIECLOUD_PASSWORD", raising=False)
+    monkeypatch.delenv("KUGOU_MUSIC_API_BASE_URL", raising=False)
+
+    warnings = isolated_settings.settings.optional_feature_warnings()
+    assert any("CookieCloud" in w for w in warnings)
+    assert any("KUGOU_MUSIC" in w for w in warnings)
+
+
+def test_settings_construction_does_not_log(isolated_settings, monkeypatch, caplog):
+    """Constructing Settings must NOT emit warnings — optional-feature notices
+    are a pure query (optional_feature_warnings), surfaced only by startup
+    entrypoints. This keeps tests/alembic/scripts spam-free.
+    """
+    import logging
+
+    monkeypatch.setenv("JWT_SECRET_KEY", "k")
+    # Leave CookieCloud / Kugou unset so the old model_post_init WOULD have warned.
+    monkeypatch.delenv("COOKIECLOUD_PASSWORD", raising=False)
+    monkeypatch.delenv("KUGOU_MUSIC_API_BASE_URL", raising=False)
+
+    with caplog.at_level(logging.WARNING, logger="infrastructure.config.settings"):
+        _ = isolated_settings.settings
+
+    assert not any("not configured" in r.message for r in caplog.records)
+    assert not any("unavailable" in r.message for r in caplog.records)

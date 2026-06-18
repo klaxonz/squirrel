@@ -12,6 +12,7 @@ import signal
 import threading
 from contextlib import contextmanager
 
+from infrastructure.config.settings import settings
 from infrastructure.config.startup_dependencies import (
     clear_optional_startup_issue,
     record_optional_startup_issue,
@@ -41,6 +42,9 @@ def bootstrap_runtime(component: str):
     init_logging()
     logger.info("[%s] Bootstrapping runtime...", component)
     reset_startup_dependency_issues()
+
+    for notice in settings.optional_feature_warnings():
+        logger.warning("[%s] %s", component, notice)
 
     try:
         upgrade_database()

@@ -36,6 +36,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Startup: begin")
     reset_startup_dependency_issues()
 
+    for notice in settings.optional_feature_warnings():
+        logger.warning("Startup: %s", notice)
+
     # 1. Site config (hard dependency)
     logger.info("Startup: applying site configuration overrides")
     try:
