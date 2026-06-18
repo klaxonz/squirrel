@@ -97,7 +97,7 @@ class JavdbExtractor(VideoExtractorBase):
 
         except (AuthError, VipError, NotFoundError, ParseError, NetworkError, RateLimitError):
             raise
-        except Exception as e:  # SDK boundary — translate unexpected errors to domain types
+        except Exception as e:  # runtime boundary — translate unexpected errors to domain types
             error_msg = str(e).lower()
             context = {"url": url, "original_error": str(e)}
 

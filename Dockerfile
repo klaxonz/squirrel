@@ -95,7 +95,7 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
 COPY squirrel-site-runtimes/youtube/src/squirrel_youtube/node/ ./
 
 # ========================================
-# python-builder: 安装 Python 依赖 + 构建 SDK / 插件 wheels
+# python-builder: 安装 Python 依赖 + 构建插件 wheels
 # ========================================
 FROM build-base AS python-builder
 
@@ -106,13 +106,12 @@ COPY squirrel-backend/Pipfile squirrel-backend/Pipfile.lock /app/squirrel-backen
 RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
     cd /app/squirrel-backend && pipenv install --deploy --system
 
-COPY squirrel-sdk /app/squirrel-sdk
 COPY squirrel-site-runtimes /app/squirrel-site-runtimes
 
 RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
     set -eux; \
+    export PYTHONPATH="/app/squirrel-site-runtimes/shared:${PYTHONPATH:-}"; \
     mkdir -p /tmp/wheels; \
-    python -m build /app/squirrel-sdk --wheel --outdir /tmp/wheels; \
     find /app/squirrel-site-runtimes -mindepth 2 -maxdepth 2 -name pyproject.toml -print0 | while IFS= read -r -d '' pyproject; do \
         plugin_dir="$(dirname "${pyproject}")"; \
         echo "Building plugin wheel: ${plugin_dir}"; \
@@ -131,7 +130,6 @@ WORKDIR /app/squirrel-backend
 COPY --from=python-builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
 COPY squirrel-backend ./
-COPY squirrel-sdk /app/squirrel-sdk
 COPY squirrel-site-runtimes /app/squirrel-site-runtimes
 
 COPY --from=frontend-builder /app/squirrel-frontend/dist ./static
@@ -141,7 +139,7 @@ RUN mkdir -p /app/config /app/logs /downloads /thumbnails \
     && chmod -R 755 /app \
     && echo "Squirrel Docker Image Built at $(date)" > /app/BUILD_INFO
 
-ENV PYTHONPATH=/app/squirrel-backend:$PYTHONPATH \
+ENV PYTHONPATH=/app/squirrel-backend:/app/squirrel-site-runtimes/shared:$PYTHONPATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     NODE_PATH=/usr/lib/node_modules \

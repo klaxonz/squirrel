@@ -1,8 +1,8 @@
 """Core interfaces & dataclasses for crawl/extraction plugins.
 
-This file is intentionally **dependency-free** (stdlib only) so that
-`squirrel-sdk` can be vendored or installed in a variety of runtimes
-without pulling heavy third-party libraries.
+This file is intentionally **dependency-free** (stdlib only) so first-party
+site runtimes can share the contracts without pulling heavy third-party
+libraries.
 
 Design principles:
 - Use Protocol for interfaces (structural typing)
@@ -20,7 +20,7 @@ from typing import Any, Protocol, runtime_checkable
 # Public API of this module is stable – add to __all__ in parent __init__.
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(str, Enum):  # noqa: UP042
     """Execution status of an extraction task."""
 
     PENDING = "pending"
@@ -265,7 +265,7 @@ class Subscription(Protocol):
     """Protocol for channel/actor subscriptions.
 
     Implementations should be lightweight and rely only on stdlib and the
-    SDK's pure-Python utilities. Network and heavy logic should live in the
+    shared runtime helpers. Network and heavy logic should live in the
     plugin package itself.
     """
 
@@ -296,7 +296,7 @@ class UserSubscriptionImporter(Protocol):
 
         Note:
             This method should use cookies to authenticate and fetch the user's
-            subscription list. The cookies are resolved via the SDK's cookie
+            subscription list. The cookies are resolved via the shared cookie
             configuration.
         """
         ...
@@ -417,4 +417,3 @@ class SubscriptionMeta:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SubscriptionMeta:
         return cls(**data)
-

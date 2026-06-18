@@ -79,7 +79,7 @@ def _iter_rate_limit_entries(effective_catalog: dict[str, dict]):
 
 
 def apply_crawl_rate_limit_overrides(catalog: dict[str, dict] | None = None) -> None:
-    """Apply site rate limits to the SDK runtime used by plugin processes."""
+    """Apply site rate limits to the shared runtime helpers used by plugin processes."""
     effective_catalog = get_effective_site_catalog(catalog)
 
     for domain, rate_limit_enabled, min_value, max_value in _iter_rate_limit_entries(effective_catalog):

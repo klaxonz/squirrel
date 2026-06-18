@@ -1,7 +1,6 @@
-"""Squirrel Crawl SDK
+"""Squirrel crawl runtime helpers.
 
-Light-weight SDK for building crawl / extraction plugins that can be loaded by
-Squirrel backend and other Squirrel compatible runtimes.
+Shared runtime contracts and helpers for first-party site runtimes.
 
 Design principles:
 - Runtime V2 first
@@ -9,21 +8,9 @@ Design principles:
 - VideoMeta as the primary data model
 - Composition over inheritance
 """
-from importlib.metadata import PackageNotFoundError
-from importlib.metadata import version as _pkg_version
 
 
-def _detect_version() -> str:
-    for dist_name in ("squirrel-sdk", "squirrel_sdk"):
-        try:
-            return _pkg_version(dist_name)  # type: ignore[arg-type]
-        except PackageNotFoundError:
-            continue
-    # Development checkout – no installed distribution
-    return "2.0.0.dev0"
-
-
-__version__: str = _detect_version()
+__version__: str = "2.0.0"
 
 # Site runtime API
 # Auth base

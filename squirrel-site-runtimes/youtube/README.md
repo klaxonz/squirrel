@@ -1,7 +1,7 @@
 YouTube Plugin
 ==============
 
-Runtime V2 plugin package for YouTube crawling with `squirrel-sdk`.
+Runtime V2 plugin package for YouTube crawling with the monorepo runtime helpers.
 
 Capabilities
 ------------

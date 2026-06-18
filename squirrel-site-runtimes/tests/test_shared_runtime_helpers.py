@@ -9,18 +9,18 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SDK_CRAWL_ROOT = REPO_ROOT / 'squirrel-sdk' / 'src' / 'crawl'
+SHARED_CRAWL_ROOT = REPO_ROOT / 'squirrel-site-runtimes' / 'shared' / 'crawl'
 
 
 @contextmanager
-def _stub_sdk_crawl_package():
+def _stub_shared_crawl_package():
     originals = {
         name: module
         for name, module in sys.modules.items()
         if name == 'crawl' or name.startswith('crawl.')
     }
     package_module = types.ModuleType('crawl')
-    package_module.__path__ = [str(SDK_CRAWL_ROOT)]
+    package_module.__path__ = [str(SHARED_CRAWL_ROOT)]
 
     try:
         for name in list(originals):
@@ -108,9 +108,9 @@ class _FakeSubtitlesProvider:
         return f'subtitles:{lang}:{fmt}', f'demo.{fmt}'
 
 
-class SharedSdkHelperTests(unittest.TestCase):
-    def test_sdk_cookie_helper_uses_youtube_cookie_domain_for_googlevideo_urls(self):
-        with _stub_sdk_crawl_package():
+class SharedRuntimeHelperTests(unittest.TestCase):
+    def test_shared_cookie_helper_uses_youtube_cookie_domain_for_googlevideo_urls(self):
+        with _stub_shared_crawl_package():
             utils_module = importlib.import_module('crawl.utils')
 
         with TemporaryDirectory() as temp_dir:
@@ -133,7 +133,7 @@ class SharedSdkHelperTests(unittest.TestCase):
             )
 
     def test_site_runtime_wraps_generic_handler_exceptions(self):
-        with _stub_sdk_crawl_package():
+        with _stub_shared_crawl_package():
             runtime_module = importlib.import_module('crawl.site_runtime')
             runtime_models = importlib.import_module('crawl.runtime_models')
             runtime_errors = importlib.import_module('crawl.runtime_errors')
@@ -163,7 +163,7 @@ class SharedSdkHelperTests(unittest.TestCase):
         self.assertEqual(response.error.details, {'exception_type': 'RuntimeError'})
 
     def test_playlist_rewrite_helper_rewrites_media_lines_and_uri_attributes(self):
-        with _stub_sdk_crawl_package():
+        with _stub_shared_crawl_package():
             module = importlib.import_module('crawl.playlist_rewrite')
 
         rewritten = module.rewrite_playlist_for_proxy(
@@ -179,7 +179,7 @@ class SharedSdkHelperTests(unittest.TestCase):
         self.assertTrue(lines[3].startswith('/api/video/proxy?'))
 
     def test_playlist_rewrite_helper_rewrites_extensionless_segment_ids(self):
-        with _stub_sdk_crawl_package():
+        with _stub_shared_crawl_package():
             module = importlib.import_module('crawl.playlist_rewrite')
 
         rewritten = module.rewrite_playlist_for_proxy(
@@ -196,7 +196,7 @@ class SharedSdkHelperTests(unittest.TestCase):
         self.assertIn('url=https%3A%2F%2Fcdn.example.com%2Fpath%2Fvts%3A504%3Fhash%3Ddef%26validto%3D1775464209', lines[2])
 
     def test_subscription_helpers_deduplicate_urls_and_build_cursor_payload(self):
-        with _stub_sdk_crawl_package():
+        with _stub_shared_crawl_package():
             module = importlib.import_module('crawl.subscription_helpers')
             core_module = importlib.import_module('crawl.core')
 
@@ -254,7 +254,7 @@ class SharedSdkHelperTests(unittest.TestCase):
         self.assertIsNone(result.total_available)
 
     def test_build_subscription_sync_result_preserves_explicit_batch_cursor(self):
-        with _stub_sdk_crawl_package():
+        with _stub_shared_crawl_package():
             module = importlib.import_module('crawl.subscription_helpers')
             core_module = importlib.import_module('crawl.core')
 
@@ -277,7 +277,7 @@ class SharedSdkHelperTests(unittest.TestCase):
         self.assertEqual(result.stop_reason, 'batch_exhausted')
 
     def test_build_subscription_sync_result_preserves_explicit_gap_detection_fields(self):
-        with _stub_sdk_crawl_package():
+        with _stub_shared_crawl_package():
             module = importlib.import_module('crawl.subscription_helpers')
             core_module = importlib.import_module('crawl.core')
 
@@ -311,7 +311,7 @@ class SharedSdkHelperTests(unittest.TestCase):
         self.assertIs(result.anchor_found, True)
 
     def test_runtime_helper_builds_common_runtime_handlers(self):
-        with _stub_sdk_crawl_package():
+        with _stub_shared_crawl_package():
             module = importlib.import_module('crawl.runtime_helpers')
             runtime_models = importlib.import_module('crawl.runtime_models')
 
@@ -394,7 +394,7 @@ class SharedSdkHelperTests(unittest.TestCase):
 
             sys.path.insert(0, temp_dir)
             try:
-                with _stub_sdk_crawl_package():
+                with _stub_shared_crawl_package():
                     runtime_module = importlib.import_module('demo_runtime.runtime')
                     subscription_cls = runtime_module.load_subscription_cls()
             finally:
@@ -407,7 +407,7 @@ class SharedSdkHelperTests(unittest.TestCase):
         self.assertEqual(subscription_cls.__module__, 'demo_runtime.subscription')
 
     def test_runtime_helper_passes_full_proxy_config_payload_to_payload_builder(self):
-        with _stub_sdk_crawl_package():
+        with _stub_shared_crawl_package():
             module = importlib.import_module('crawl.runtime_helpers')
             runtime_models = importlib.import_module('crawl.runtime_models')
 
@@ -446,7 +446,7 @@ class SharedSdkHelperTests(unittest.TestCase):
         )
 
     def test_runtime_helper_uses_paginated_importer_batches_when_available(self):
-        with _stub_sdk_crawl_package():
+        with _stub_shared_crawl_package():
             module = importlib.import_module('crawl.runtime_helpers')
             runtime_models = importlib.import_module('crawl.runtime_models')
 

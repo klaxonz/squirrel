@@ -1,13 +1,13 @@
 Squirrel Site Runtimes
 ======================
 
-This repository hosts first-party site runtime packages that depend on `squirrel-sdk`.
+This repository hosts first-party site runtime packages and their monorepo-only shared runtime helpers.
 
 Runtime V2 package shape
 ------------------------
 
-Each site folder is a standalone Python package. New site runtimes should target runtime V2
-instead of host-side registry decorators or backend-local compatibility packages.
+Each site folder is a first-party runtime package. New site runtimes should target runtime V2
+instead of host-side registry decorators or compatibility packages.
 
 Minimal structure:
 
@@ -39,10 +39,9 @@ my_site = "my_site.runtime:get_site_runtime"
 The runtime factory should return `create_site_runtime(...)` and declare all
 capabilities in the manifest explicitly.
 
-`squirrel-sdk` remains the supported runtime contract and helper package.
+Runtime contracts and shared helpers live in `squirrel-site-runtimes/shared`.
 Backend-owned runtime bootstrap state such as host cookie resolution, site
-config projection, and Cloudflare bypass wiring lives in `squirrel-backend`,
-not in SDK-global mutable state.
+config projection, and Cloudflare bypass wiring lives in `squirrel-backend`.
 
 Runtime V2 packages are discovered from sibling workspace folders under
 `squirrel-site-runtimes`. The backend does not accept uploaded runtime zip packages.
@@ -89,8 +88,7 @@ Depending on the site, implement one or more of these runtime V2 capability hand
 - `resolve_proxy_config`
 - `rewrite_proxy_playlist`
 
-Legacy in-process registration helpers have been removed from the SDK export
-surface. Runtime packages should instantiate their components directly inside
+Legacy in-process registration helpers have been removed. Runtime packages should instantiate their components directly inside
 `runtime.py` handlers instead of relying on host-side registries.
 
 

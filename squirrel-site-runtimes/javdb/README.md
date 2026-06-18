@@ -1,7 +1,7 @@
 JavDB Plugin
 ============
 
-Runtime V2 plugin package for JavDB crawling with `squirrel-sdk`.
+Runtime V2 plugin package for JavDB crawling with the monorepo runtime helpers.
 
 Capabilities
 ------------

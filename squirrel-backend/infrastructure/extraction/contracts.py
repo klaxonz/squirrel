@@ -1,7 +1,7 @@
 """Backend-owned extraction contracts.
 
 These types are used by the host extraction pipeline and should not depend on
-SDK-owned extractor/task abstractions.
+Shared runtime extractor/task abstractions.
 """
 
 from __future__ import annotations

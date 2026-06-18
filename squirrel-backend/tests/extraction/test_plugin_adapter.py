@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "squirrel-sdk" / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "squirrel-site-runtimes" / "shared"))
 
 from infrastructure.extraction.adapters.runtime_adapter import RuntimeDataAdapter
 from infrastructure.extraction.dto.validators import parse_publish_date

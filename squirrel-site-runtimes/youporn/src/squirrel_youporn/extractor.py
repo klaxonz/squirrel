@@ -62,7 +62,7 @@ class YouPornExtractor(YoutubeDLExtractorBase):
                 if video_info:
                     self._process_youporn_info(video_info, url)
                 return video_info
-        except Exception as exc:  # SDK boundary — translate yt-dlp errors to domain types
+        except Exception as exc:  # runtime boundary — translate yt-dlp errors to domain types
             error_msg = str(exc).lower()
             context = {"url": url, "original_error": str(exc)}
 

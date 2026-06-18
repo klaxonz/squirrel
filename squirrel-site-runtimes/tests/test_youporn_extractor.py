@@ -13,7 +13,10 @@ EXTRACTOR_PATH = ROOT / 'squirrel-site-runtimes' / 'youporn' / 'src' / 'squirrel
 def _load_extractor_module():
     originals = {name: sys.modules.get(name) for name in ('crawl',)}
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
 
     class YoutubeDLExtractorBase:
         def __init__(self, site_name, supported_domains):
@@ -45,6 +48,9 @@ def _load_extractor_module():
     crawl_module.ParseError = ParseError
     crawl_module.apply_ytdlp_rate_limit = lambda _site, opts: dict(opts)
     crawl_module.filter_cookies_to_query_string = lambda _url: ''
+    crawl_module.fetch_page_thumbnail_url = lambda _url, _cookie_file, _header_builder: (
+        'https://cdn.example.com/thumb.jpg?hash=fresh&validto=456'
+    )
     crawl_module.get_http_headers = lambda _site, headers=None: dict(headers or {})
     crawl_module.resolve_cookie_file_path = lambda _url: None
 
@@ -125,18 +131,7 @@ class YouPornExtractorTests(unittest.TestCase):
                     ],
                 }
 
-        class _FakeHttpResponse:
-            status_code = 200
-            text = (
-                '<meta property="og:image" '
-                'content="https://cdn.example.com/thumb.jpg?hash=fresh&amp;validto=456">'
-            )
-
-        with mock.patch.object(youporn_extractor, 'YoutubeDL', _PreviewYoutubeDL), mock.patch.object(
-            youporn_extractor.httpx,
-            'get',
-            return_value=_FakeHttpResponse(),
-        ):
+        with mock.patch.object(youporn_extractor, 'YoutubeDL', _PreviewYoutubeDL):
             extractor = youporn_extractor.YouPornExtractor()
             extractor._build_ytdlp_opts = lambda url, queue_name=None: {}
 

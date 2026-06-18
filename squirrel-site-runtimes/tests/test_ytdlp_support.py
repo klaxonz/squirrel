@@ -26,7 +26,10 @@ def _import_paths(*paths: Path):
 @contextmanager
 def _stub_crawl_module():
     original = sys.modules.get('crawl')
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.filter_cookies_to_query_string = lambda _url: ''
     crawl_module.resolve_cookie_file_path = lambda _url: None
     try:

@@ -86,7 +86,10 @@ def _stub_pornhub_importer_dependencies():
     response_queue: list[_FakeResponse] = []
     soup_registry: dict[str, _FakeSoup] = {}
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.SubscriptionImportItem = _SubscriptionImportItem
     crawl_module.SubscriptionImportBatchResult = _SubscriptionImportBatchResult
     crawl_module.SubscriptionImportBatchResult = _SubscriptionImportBatchResult
@@ -132,7 +135,10 @@ def _stub_javdb_importer_dependencies():
     response_queue: list[_FakeResponse] = []
     soup_registry: dict[str, _FakeSoup] = {}
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.SubscriptionImportItem = _SubscriptionImportItem
     crawl_module.SubscriptionImportBatchResult = _SubscriptionImportBatchResult
 
@@ -183,7 +189,10 @@ def _stub_youtube_importer_dependencies():
     response_queue: list[_FakeResponse] = []
     soup_registry: dict[str, object] = {}
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.SubscriptionImportItem = _SubscriptionImportItem
     crawl_module.filter_cookies_to_query_string = lambda _url: 'cookie=1'
     crawl_module.get_http_headers = lambda _site, headers=None: dict(headers or {})

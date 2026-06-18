@@ -4,13 +4,12 @@ import importlib
 import json
 import re
 import sys
+import tomllib
 import types
 import unittest
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-
-import tomllib
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PLUGINS_ROOT = REPO_ROOT / 'squirrel-site-runtimes'
@@ -18,23 +17,23 @@ PLUGINS_ROOT = REPO_ROOT / 'squirrel-site-runtimes'
 PLUGIN_SPECS = {
     'bilibili': {
         'package': 'squirrel_bilibili',
-        'expected_dependencies': {'squirrel-sdk', 'yt-dlp'},
+        'expected_dependencies': {'yt-dlp'},
     },
     'javdb': {
         'package': 'squirrel_javdb',
-        'expected_dependencies': {'squirrel-sdk', 'beautifulsoup4', 'httpx', 'fastapi', 'starlette'},
+        'expected_dependencies': {'beautifulsoup4', 'httpx', 'fastapi', 'starlette'},
     },
     'pornhub': {
         'package': 'squirrel_pornhub',
-        'expected_dependencies': {'squirrel-sdk', 'beautifulsoup4', 'yt-dlp', 'phub', 'httpx', 'fastapi', 'starlette'},
+        'expected_dependencies': {'beautifulsoup4', 'yt-dlp', 'phub', 'httpx', 'fastapi', 'starlette'},
     },
     'youporn': {
         'package': 'squirrel_youporn',
-        'expected_dependencies': {'squirrel-sdk', 'beautifulsoup4', 'yt-dlp', 'httpx', 'fastapi', 'starlette'},
+        'expected_dependencies': {'beautifulsoup4', 'yt-dlp', 'httpx', 'fastapi', 'starlette'},
     },
     'youtube': {
         'package': 'squirrel_youtube',
-        'expected_dependencies': {'squirrel-sdk', 'beautifulsoup4', 'pytubefix', 'yt-dlp', 'httpx', 'fastapi', 'starlette'},
+        'expected_dependencies': {'beautifulsoup4', 'pytubefix', 'yt-dlp', 'httpx', 'fastapi', 'starlette'},
     },
 }
 
@@ -108,7 +107,7 @@ def _stub_crawl_module():
     class SiteRuntimeManifest(_BaseModel):
         runtime_id: str
         version: str
-        sdk_api_version: str = '2.0'
+        runtime_api_version: str = '2.0'
         display_name: str = ''
         description: str = ''
         capabilities: list[SiteRuntimeCapability] = field(default_factory=list)
@@ -170,10 +169,10 @@ def _stub_crawl_module():
     def create_site_runtime(*, manifest, **_kwargs):
         return _Runtime(manifest)
 
-    def create_site_runtime(*, manifest, **_kwargs):
-        return _Runtime(manifest)
+    import crawl as real_crawl
 
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.ExtractionResult = ExtractionResult
     crawl_module.ExtractionTask = ExtractionTask
     crawl_module.SiteRuntimeCapability = SiteRuntimeCapability
@@ -186,6 +185,7 @@ def _stub_crawl_module():
     crawl_module.build_runtime_proxy_config = lambda **_kwargs: {}
     crawl_module.create_site_runtime = create_site_runtime
     crawl_module.create_site_runtime = create_site_runtime
+    crawl_module.load_local_attr = lambda _module_name, attr_name: object
     crawl_module.get_http_headers = lambda _site, headers=None: dict(headers or {})
     crawl_module.get_proxy_config = lambda _site: {}
 

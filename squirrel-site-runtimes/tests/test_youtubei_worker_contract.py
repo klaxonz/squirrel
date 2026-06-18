@@ -85,7 +85,10 @@ def test_resolve_with_youtubei_passes_cookie_to_worker(monkeypatch):
     _reset_worker_state()
     captured = {}
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.filter_cookies_to_query_string = lambda _url: 'SAPISID=abc; SID=def'
     monkeypatch.setitem(sys.modules, 'crawl', crawl_module)
 
@@ -143,7 +146,10 @@ def test_worker_timeout_keeps_headroom_for_authenticated_cold_starts():
 def test_resolve_with_youtubei_returns_worker_result_without_media_probe(monkeypatch):
     _reset_worker_state()
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.filter_cookies_to_query_string = lambda _url: 'SAPISID=abc; SID=def'
     monkeypatch.setitem(sys.modules, 'crawl', crawl_module)
 
@@ -177,7 +183,10 @@ def test_resolve_captions_with_youtubei_passes_lang_and_cookie_to_worker(monkeyp
     _reset_worker_state()
     captured = {}
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.filter_cookies_to_query_string = lambda _url: 'SAPISID=abc; SID=def'
     monkeypatch.setitem(sys.modules, 'crawl', crawl_module)
 

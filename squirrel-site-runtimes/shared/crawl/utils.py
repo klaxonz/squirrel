@@ -33,7 +33,7 @@ def configure_cookie_file_resolver(resolver: CookieFileResolver) -> None:
     """Register a callback used to resolve cookie files at runtime.
 
     Legacy compatibility only: host runtimes should prefer owning cookie file
-    resolution locally instead of mutating SDK-global resolver state.
+    resolution locally instead of mutating global resolver state.
     """
 
     global _cookie_file_resolver
@@ -280,5 +280,4 @@ def fetch_page_thumbnail_url(
         return None
 
     return None
-
 

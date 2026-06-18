@@ -52,7 +52,7 @@ class YoutubeExtractor(YoutubeDLExtractorBase):
 
             return video_info
 
-        except Exception as e:  # SDK boundary — translate yt-dlp errors to domain types
+        except Exception as e:  # runtime boundary — translate yt-dlp errors to domain types
             error_msg = str(e).lower()
             context = {"url": url, "original_error": str(e)}
 

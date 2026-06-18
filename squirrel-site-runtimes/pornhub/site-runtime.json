@@ -3,7 +3,7 @@
   "manifest": {
     "runtime_id": "pornhub",
     "version": "0.1.0",
-    "sdk_api_version": "2.0",
+    "runtime_api_version": "2.0",
     "display_name": "Pornhub",
     "description": "Pornhub crawl integration",
     "capabilities": [

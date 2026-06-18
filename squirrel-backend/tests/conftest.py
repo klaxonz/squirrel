@@ -7,7 +7,9 @@ import pytest
 # Default to dev environment for tests (loads .env.dev with JWT_SECRET_KEY, test DB, etc.)
 os.environ.setdefault('ENV', 'dev')
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / 'squirrel-site-runtimes' / 'shared'))
+sys.path.insert(0, str(REPO_ROOT / 'squirrel-backend'))
 
 pytest_plugins = []
 

@@ -69,7 +69,10 @@ class VideoExtractorBase(ABC):
 
         except PluginError as e:
             logger.error(
-                f"Video extraction failed: {task.url}, category={e.category.value}, error={e.message}",
+                "Video extraction failed: %s, category=%s, error=%s",
+                task.url,
+                e.category.value,
+                e.message,
                 exc_info=True,
                 extra={"url": task.url, "error_category": e.category.value}
             )
@@ -77,7 +80,9 @@ class VideoExtractorBase(ABC):
 
         except Exception as e:
             logger.error(
-                f"Unexpected error during extraction: {task.url}, error={e}",
+                "Unexpected error during extraction: %s, error=%s",
+                task.url,
+                e,
                 exc_info=True,
                 extra={"url": task.url}
             )

@@ -3,8 +3,7 @@
 
 ```
 squirrel-backend/    Python/FastAPI 后端（核心项目）
-squirrel-sdk/        Python SDK，stdlib-only，Protocol-based 接口
-squirrel-site-runtimes/  站点插件（bilibili/youtube/pornhub/javdb/youporn）
+squirrel-site-runtimes/  站点插件（bilibili/youtube/pornhub/javdb/youporn）及 shared/crawl 内部 runtime contract
 squirrel-desktop/    Electron 桌面端，ESM 模块
 squirrel-frontend/   Vue 3 前端（桌面端渲染进程）
 squirrel-cf-bypass/  Cloudflare 绕过 sidecar
@@ -57,4 +56,3 @@ npm install; npm run build:check  # 类型检查 + 构建
 - `<script setup>` + Pinia + Tailwind + CSS 变量
 - API 调用用 `utils/request` + `handleRequest`/`ApiError`
 - 播放器核心在 `src/components/video-player/core/`
-

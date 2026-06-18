@@ -4,9 +4,9 @@ Site Runtime
 The backend owns a site runtime system for first-party site adapters:
 
 - site runtimes are discovered from workspace runtime metadata
-- each runtime exposes a `create_site_runtime()` entrypoint through the SDK contract
+- each runtime exposes a `create_site_runtime()` entrypoint through the monorepo runtime contract
 - host-side routing goes through `SiteRuntimeManager` and `SiteRuntimeGateway`
-- runtime capabilities are declared in the manifest instead of inferred from SDK registries
+- runtime capabilities are declared in the manifest instead of inferred from legacy registries
 - the old `plugins_ext` compatibility tree has been removed from the backend repository
 
 Runtime packages are expected to ship a `site-runtime.json` file containing:
@@ -20,9 +20,8 @@ Runtime packages are expected to ship a `site-runtime.json` file containing:
 
 The backend owns runtime bootstrap state for the host process, including
 Cloudflare bypass client wiring, site config projection, backend rate-limit
-policy, and backend-side cookie resolution. `squirrel-sdk` remains the plugin
-runtime contract and helper package, but backend runtime startup should not depend on
-SDK-global mutable state.
+policy, and backend-side cookie resolution. Runtime contracts and shared helper
+code live inside this monorepo under `squirrel-site-runtimes/shared`.
 
 Discovery and activation
 ------------------------
@@ -52,22 +51,11 @@ Site runtime requests go through explicit capabilities declared by each manifest
 - `resolve_proxy_config`
 - `rewrite_proxy_playlist`
 
-Legacy in-process SDK registries remain only as a compatibility layer for code that
-has not yet been migrated. New backend integrations should not use host-side
-registry lookups as their primary path.
-
 Development setup
 -----------------
 
 ```bash
 pipenv install
-pipenv run pip install -e ../squirrel-sdk
-```
-
-For production environments, install the SDK from the local package path or wheel:
-
-```bash
-pip install /path/to/squirrel-sdk
 ```
 
 

@@ -27,7 +27,7 @@ def test_set_and_get_cloudflare_bypass_client():
     assert runtime_http.get_cloudflare_bypass_client() is client
 
 
-def test_set_cookie_file_resolver_updates_sdk_cookie_resolution(tmp_path):
+def test_set_cookie_file_resolver_updates_shared_cookie_resolution(tmp_path):
     runtime_http.reset_runtime_http_state()
     cookie_file = tmp_path / "youtube.txt"
     cookie_file.write_text(
@@ -41,7 +41,7 @@ def test_set_cookie_file_resolver_updates_sdk_cookie_resolution(tmp_path):
     assert filter_cookies_to_query_string("https://www.youtube.com/watch?v=1") == "SID=abc123"
 
 
-def test_set_cookie_domain_resolver_updates_sdk_cookie_domain_matching(tmp_path):
+def test_set_cookie_domain_resolver_updates_shared_cookie_domain_matching(tmp_path):
     runtime_http.reset_runtime_http_state()
     cookie_file = tmp_path / "youtube.txt"
     cookie_file.write_text(

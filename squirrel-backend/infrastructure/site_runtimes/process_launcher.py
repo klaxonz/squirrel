@@ -73,6 +73,14 @@ class SiteRuntimeProcessLauncher:
             if key.upper() in allowed_keys
         }
         process_env["PYTHONUNBUFFERED"] = "1"
+        runtime_shared_path = self._backend_root.parent / "squirrel-site-runtimes" / "shared"
+        python_paths = [str(self._backend_root)]
+        if runtime_shared_path.is_dir():
+            python_paths.append(str(runtime_shared_path))
+        existing_python_path = process_env.get("PYTHONPATH")
+        if existing_python_path:
+            python_paths.append(existing_python_path)
+        process_env["PYTHONPATH"] = os.pathsep.join(python_paths)
         process_env["SQUIRREL_SITE_RUNTIME_ID"] = record.runtime_id
 
         trace_id = get_trace_id()

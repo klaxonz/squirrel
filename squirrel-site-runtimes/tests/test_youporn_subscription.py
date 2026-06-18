@@ -139,7 +139,10 @@ def _stub_youporn_subscription_dependencies():
     response_queue: list[object] = []
     soup_registry: dict[str, object] = {}
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.SubscriptionMeta = _SubscriptionMeta
     crawl_module.SubscriptionSyncContext = _SubscriptionSyncContext
     crawl_module.SubscriptionSyncResult = _SubscriptionSyncResult

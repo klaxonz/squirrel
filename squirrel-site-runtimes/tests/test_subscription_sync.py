@@ -127,7 +127,10 @@ def _stub_pornhub_subscription_dependencies():
     response_queue: list[object] = []
     soup_registry: dict[str, object] = {}
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.SubscriptionMeta = _SubscriptionMeta
     crawl_module.SubscriptionSyncContext = _SubscriptionSyncContext
     crawl_module.SubscriptionSyncResult = _SubscriptionSyncResult
@@ -183,7 +186,10 @@ def _stub_javdb_subscription_dependencies():
     response_queue: list[object] = []
     soup_registry: dict[str, object] = {}
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.SubscriptionMeta = _SubscriptionMeta
     crawl_module.SubscriptionSyncContext = _SubscriptionSyncContext
     crawl_module.SubscriptionSyncResult = _SubscriptionSyncResult
@@ -240,12 +246,15 @@ def _load_javdb_subscription_module():
 def _stub_bilibili_subscription_dependencies():
     originals = {
         name: sys.modules.get(name)
-        for name in ('crawl', 'squirrel_bilibili', 'squirrel_bilibili.sign')
+        for name in ('crawl', 'squirrel_bilibili', 'squirrel_bilibili.sign', 'squirrel_bilibili.subscription_api')
     }
 
     response_queue: list[object] = []
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.SubscriptionMeta = _SubscriptionMeta
     crawl_module.SubscriptionSyncContext = _SubscriptionSyncContext
     crawl_module.SubscriptionSyncResult = _SubscriptionSyncResult
@@ -257,6 +266,7 @@ def _stub_bilibili_subscription_dependencies():
     package_module.__path__ = [str(BILIBILI_SUBSCRIPTION_PATH.parent)]
 
     sign_module = types.ModuleType('squirrel_bilibili.sign')
+    subscription_api_module = types.ModuleType('squirrel_bilibili.subscription_api')
 
     class _ResourceType:
         FAVORITE_LIST = 'favorite_list'
@@ -270,13 +280,25 @@ def _stub_bilibili_subscription_dependencies():
     sign_module.ResourceType = _ResourceType
     sign_module.ChannelSeriesType = _ChannelSeriesType
     sign_module.build_cookies = lambda _url: {}
-    sign_module.parse_subscription_target = lambda _url: types.SimpleNamespace(
-        resource_type=_ResourceType.FAVORITE_LIST,
-        media_id='fav-1',
-        mid=None,
-        series_id=None,
-        series_type=None,
-    )
+    sign_module.sign_params = lambda params: dict(params)
+    def _parse_subscription_target(url: str):
+        if '/list/ml' in url:
+            media_id = url.rsplit('ml', 1)[-1]
+            return types.SimpleNamespace(
+                resource_type=_ResourceType.FAVORITE_LIST,
+                media_id=int(media_id),
+                mid=None,
+                series_id=None,
+                series_type=None,
+            )
+        return types.SimpleNamespace(
+            resource_type=_ResourceType.FAVORITE_LIST,
+            media_id='fav-1',
+            mid=None,
+            series_id=None,
+            series_type=None,
+        )
+    sign_module.parse_subscription_target = _parse_subscription_target
     sign_module.fetch_fav_folder_info = lambda *args, **kwargs: {}
     sign_module.fetch_series_meta = lambda *args, **kwargs: {}
     sign_module.fetch_user_card = lambda *args, **kwargs: {}
@@ -289,11 +311,21 @@ def _stub_bilibili_subscription_dependencies():
         return response_queue.pop(0)
 
     sign_module.fetch_fav_resource_list = fetch_fav_resource_list
+    subscription_api_module.ResourceType = _ResourceType
+    subscription_api_module.ChannelSeriesType = _ChannelSeriesType
+    subscription_api_module.parse_subscription_target = _parse_subscription_target
+    subscription_api_module.fetch_fav_folder_info = sign_module.fetch_fav_folder_info
+    subscription_api_module.fetch_fav_resource_list = fetch_fav_resource_list
+    subscription_api_module.fetch_series_meta = sign_module.fetch_series_meta
+    subscription_api_module.fetch_user_card = sign_module.fetch_user_card
+    subscription_api_module.fetch_user_videos = sign_module.fetch_user_videos
+    subscription_api_module.fetch_series_videos = sign_module.fetch_series_videos
 
     try:
         sys.modules['crawl'] = crawl_module
         sys.modules['squirrel_bilibili'] = package_module
         sys.modules['squirrel_bilibili.sign'] = sign_module
+        sys.modules['squirrel_bilibili.subscription_api'] = subscription_api_module
         yield response_queue
     finally:
         for name, original in originals.items():
@@ -327,7 +359,10 @@ def _stub_youtube_subscription_dependencies():
         )
     }
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.SubscriptionMeta = _SubscriptionMeta
     crawl_module.SubscriptionSyncContext = _SubscriptionSyncContext
     crawl_module.SubscriptionSyncResult = _SubscriptionSyncResult

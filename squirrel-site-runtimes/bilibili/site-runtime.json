@@ -3,7 +3,7 @@
   "manifest": {
     "runtime_id": "bilibili",
     "version": "0.1.0",
-    "sdk_api_version": "2.0",
+    "runtime_api_version": "2.0",
     "display_name": "Bilibili",
     "description": "Bilibili crawl integration",
     "capabilities": [

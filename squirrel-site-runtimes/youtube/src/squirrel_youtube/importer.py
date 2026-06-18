@@ -92,7 +92,7 @@ class YoutubeUserSubscriptionImporter:
             logger.info("Final: Found %s YouTube subscriptions", len(subscriptions))
             return subscriptions
 
-        except Exception as e:  # SDK boundary — top-level import operation
+        except Exception as e:  # runtime boundary — top-level import operation
             logger.error("Failed to import YouTube subscriptions: %s", e, exc_info=True)
             raise
 

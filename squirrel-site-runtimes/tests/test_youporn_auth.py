@@ -33,12 +33,38 @@ def _stub_youporn_auth_dependencies():
     originals = {name: sys.modules.get(name) for name in ('crawl',)}
     response_queue: list[_FakeResponse] = []
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.LoginStatusResult = _LoginStatusResult
     crawl_module.filter_cookies_to_query_string = lambda _url: 'sid=demo'
     crawl_module.request_without_limit = lambda _method, _url, **_kwargs: response_queue.pop(0)
     crawl_module.get_login_config = lambda _site: {}
     crawl_module.get_login_headers = lambda _site, headers=None: dict(headers or {})
+
+    def check_login_status(
+        *,
+        site_name,
+        default_check_url,
+        base_headers,
+        parse_response,
+        default_timeout=20,
+        fetch_page=None,
+        get_cookies=None,
+    ):
+        _ = site_name, get_cookies
+        headers = dict(base_headers or {})
+        headers['Cookie'] = crawl_module.filter_cookies_to_query_string(default_check_url)
+        fetcher = fetch_page or (lambda url, request_headers, timeout: crawl_module.request_without_limit(
+            'GET',
+            url,
+            headers=request_headers,
+            timeout=timeout,
+        ))
+        return parse_response(fetcher(default_check_url, headers, default_timeout))
+
+    crawl_module.check_login_status = check_login_status
 
     try:
         sys.modules['crawl'] = crawl_module

@@ -89,7 +89,7 @@ class SiteRuntimeManifest:
 
     runtime_id: str
     version: str
-    sdk_api_version: str = "2.0"
+    runtime_api_version: str = "2.0"
     display_name: str = ""
     description: str = ""
     capabilities: list[SiteRuntimeCapability] = field(default_factory=list)
@@ -105,7 +105,7 @@ class SiteRuntimeManifest:
         return {
             "runtime_id": self.runtime_id,
             "version": self.version,
-            "sdk_api_version": self.sdk_api_version,
+            "runtime_api_version": self.runtime_api_version,
             "display_name": self.display_name,
             "description": self.description,
             "capabilities": [item.to_dict() for item in self.capabilities],
@@ -123,7 +123,7 @@ class SiteRuntimeManifest:
         return cls(
             runtime_id=str(data.get("runtime_id", "")),
             version=str(data.get("version", "")),
-            sdk_api_version=str(data.get("sdk_api_version", "2.0")),
+            runtime_api_version=str(data.get("runtime_api_version", "2.0")),
             display_name=str(data.get("display_name", "")),
             description=str(data.get("description", "")),
             capabilities=[

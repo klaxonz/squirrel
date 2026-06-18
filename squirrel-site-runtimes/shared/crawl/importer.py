@@ -152,12 +152,12 @@ class PaginatedImporter(BaseImporter):
         for page in range(1, self.max_pages + 1):
             try:
                 page_url = self._build_page_url(page)
-                logger.info(f"Fetching {self.domain} subscriptions page {page}: {page_url}")
+                logger.info("Fetching %s subscriptions page %s: %s", self.domain, page, page_url)
 
                 resp = request_without_limit("GET", page_url, headers=headers, timeout=self.timeout)
 
                 if resp.status_code == 404:
-                    logger.info(f"Page {page} returned 404, stopping pagination")
+                    logger.info("Page %s returned 404, stopping pagination", page)
                     break
 
                 resp.raise_for_status()
@@ -165,7 +165,7 @@ class PaginatedImporter(BaseImporter):
 
                 items = soup.select(self.item_selector)
                 if not items:
-                    logger.info(f"No items found on page {page}, stopping pagination")
+                    logger.info("No items found on page %s, stopping pagination", page)
                     break
 
                 new_count = 0
@@ -175,7 +175,12 @@ class PaginatedImporter(BaseImporter):
                         subscription_urls.append(url)
                         new_count += 1
 
-                logger.info(f"Page {page}: added {new_count} new subscriptions, total={len(subscription_urls)}")
+                logger.info(
+                    "Page %s: added %s new subscriptions, total=%s",
+                    page,
+                    new_count,
+                    len(subscription_urls),
+                )
 
                 if new_count == 0:
                     break
@@ -184,7 +189,7 @@ class PaginatedImporter(BaseImporter):
                     break
 
             except (OSError, ValueError, TypeError) as e:
-                logger.warning(f"Error fetching page {page}: {e}")
+                logger.warning("Error fetching page %s: %s", page, e)
                 break
 
         return [SubscriptionImportItem(url=url) for url in subscription_urls]

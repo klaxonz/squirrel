@@ -18,7 +18,10 @@ SUBTITLES_PATH = YOUTUBE_PACKAGE / 'subtitles.py'
 @contextmanager
 def _stub_crawl_module():
     original = sys.modules.get('crawl')
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     class NoSubtitlesError(ValueError):
         pass
 

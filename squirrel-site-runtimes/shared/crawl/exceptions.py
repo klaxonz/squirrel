@@ -1,4 +1,4 @@
-"""Unified SDK exception system.
+"""Unified runtime helper exception system.
 
 Provides plugin-layer exception classes with error categorization, retry decision support, and context passing.
 """
@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Any
 
 
-class ErrorCategory(str, Enum):
+class ErrorCategory(str, Enum):  # noqa: UP042
     """Error category for determining retry behavior and error display."""
     NETWORK = "network"
     RATE_LIMIT = "rate_limit"

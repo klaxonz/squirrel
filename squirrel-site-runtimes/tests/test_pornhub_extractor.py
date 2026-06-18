@@ -18,7 +18,10 @@ def _load_extractor_module():
         for name in ('crawl', 'yt_dlp', 'yt_dlp.networking', 'yt_dlp.networking.impersonate')
     }
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
 
     class YoutubeDLExtractorBase:
         def __init__(self, site_name, supported_domains):

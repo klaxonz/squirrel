@@ -51,9 +51,9 @@ def test_apply_site_config_overrides_updates_backend_runtime_state(monkeypatch):
     ]
 
 
-def test_apply_site_config_overrides_updates_sdk_rate_limiter(monkeypatch):
+def test_apply_site_config_overrides_updates_shared_rate_limiter(monkeypatch):
     backend_calls: list[tuple[str, str, object]] = []
-    sdk_calls: list[tuple[str, str, object]] = []
+    runtime_calls: list[tuple[str, str, object]] = []
 
     monkeypatch.setattr(
         site_config_manager,
@@ -84,13 +84,13 @@ def test_apply_site_config_overrides_updates_sdk_rate_limiter(monkeypatch):
     monkeypatch.setattr(
         site_config_manager,
         "configure_crawl_rate_limit_enabled",
-        lambda domain, enabled: sdk_calls.append(("enabled", domain, enabled)),
+        lambda domain, enabled: runtime_calls.append(("enabled", domain, enabled)),
         raising=False,
     )
     monkeypatch.setattr(
         site_config_manager,
         "configure_crawl_rate_limit",
-        lambda domain, min_interval, max_interval: sdk_calls.append(
+        lambda domain, min_interval, max_interval: runtime_calls.append(
             ("limit", domain, (min_interval, max_interval)),
         ),
         raising=False,
@@ -102,7 +102,7 @@ def test_apply_site_config_overrides_updates_sdk_rate_limiter(monkeypatch):
         ("enabled", "javdb.com", True),
         ("limit", "javdb.com", (5.0, 8.0)),
     ]
-    assert sdk_calls == [
+    assert runtime_calls == [
         ("enabled", "javdb.com", True),
         ("limit", "javdb.com", (5.0, 8.0)),
     ]

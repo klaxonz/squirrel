@@ -3,7 +3,7 @@
   "manifest": {
     "runtime_id": "youporn",
     "version": "0.1.0",
-    "sdk_api_version": "2.0",
+    "runtime_api_version": "2.0",
     "display_name": "YouPorn",
     "description": "YouPorn crawl integration",
     "capabilities": [

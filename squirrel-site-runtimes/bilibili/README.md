@@ -1,7 +1,7 @@
 Bilibili Plugin
 ===============
 
-Implements subscription crawling for bilibili using `squirrel-sdk`.
+Implements subscription crawling for bilibili using the monorepo runtime helpers.
 
 Install in your backend environment:
 

@@ -36,9 +36,38 @@ def _stub_javdb_auth_dependencies():
     }
     response_queue: list[object] = []
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.LoginStatusResult = _LoginStatusResult
     crawl_module.get_login_config = lambda _site: {}
+
+    def check_login_status(
+        *,
+        site_name,
+        default_check_url,
+        base_headers,
+        parse_response,
+        default_timeout=20,
+        fetch_page=None,
+        get_cookies=None,
+    ):
+        _ = base_headers
+        if get_cookies and not get_cookies(default_check_url):
+            return _LoginStatusResult(site_name=site_name, logged_in=False, message='cookies not found')
+        try:
+            response = fetch_page(default_check_url, {}, default_timeout)
+        except Exception as exc:
+            return _LoginStatusResult(
+                site_name=site_name,
+                logged_in=False,
+                message=f'检测失败: 请求失败: {exc}',
+                extra={'transient_failure': True},
+            )
+        return parse_response(response)
+
+    crawl_module.check_login_status = check_login_status
 
     package_module = types.ModuleType('squirrel_javdb')
     package_module.__path__ = [str(JAVDB_AUTH_PATH.parent)]

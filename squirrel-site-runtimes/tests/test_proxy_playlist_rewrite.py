@@ -59,7 +59,10 @@ def _stub_proxy_dependencies():
         )
     }
 
+    import crawl as real_crawl
+
     crawl_module = types.ModuleType('crawl')
+    crawl_module.__dict__.update(real_crawl.__dict__)
     crawl_module.build_proxy_config_values = lambda _site, defaults: dict(defaults)
 
     def build_runtime_proxy_config(*, site_slug, site_domain, default_site_headers, default_proxy_config, domain=None):

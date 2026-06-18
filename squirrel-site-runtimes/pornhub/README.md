@@ -1,7 +1,7 @@
 Pornhub Plugin
 ==============
 
-Runtime V2 plugin package for Pornhub crawling with `squirrel-sdk`.
+Runtime V2 plugin package for Pornhub crawling with the monorepo runtime helpers.
 
 Capabilities
 ------------

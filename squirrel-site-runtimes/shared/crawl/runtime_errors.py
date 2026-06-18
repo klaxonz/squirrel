@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Any
 
 
-class RuntimeErrorCode(str, Enum):
+class RuntimeErrorCode(str, Enum):  # noqa: UP042
     """Stable error codes exchanged between host and site runtimes."""
 
     TIMEOUT = "PLUGIN_TIMEOUT"

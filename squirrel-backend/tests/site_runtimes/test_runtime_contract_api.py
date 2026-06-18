@@ -52,6 +52,6 @@ def test_crawl_package_does_not_export_legacy_runtime_v1_symbols(name):
 
 
 @pytest.mark.parametrize("module_name", ["crawl.registry", "crawl.downloader", "crawl.registries"])
-def test_removed_legacy_sdk_modules_are_not_importable(module_name):
+def test_removed_legacy_runtime_modules_are_not_importable(module_name):
     with pytest.raises(ModuleNotFoundError):
         importlib.import_module(module_name)
