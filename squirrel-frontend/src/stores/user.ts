@@ -2,21 +2,10 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getUserMe, loginUser, logoutUser, registerUser, updateUserMe } from '@/api'
 import { clearAuthStorage } from '@/utils/auth'
+import { ApiError } from '@/utils/request'
+import type { User } from '@/types/user'
 
-export interface User {
-  id?: number | string
-  nickname?: string
-  email?: string
-  avatar?: string
-  created_at?: string
-  [key: string]: unknown
-}
-
-interface ApiError {
-  status?: number
-  message?: string
-  [key: string]: unknown
-}
+export type { User }
 
 export const useUserStore = defineStore('user', () => {
   const currentUser = ref<User | null>(null)

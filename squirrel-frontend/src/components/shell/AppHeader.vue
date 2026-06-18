@@ -76,7 +76,7 @@ const nav = useNavigationHistory()
 
 const userDisplayName = computed(() => {
   if (!userStore.currentUser) return '未登录'
-  return userStore.currentUser.nickname || userStore.currentUser.email?.split('@')[0] || '用户'
+  return userStore.currentUser.nickname || '用户'
 })
 
 const userInitial = computed(() => {

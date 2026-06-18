@@ -33,7 +33,6 @@
           <h2 class="text-lg font-bold tracking-tight text-foreground">
             {{ userStore.currentUser?.nickname || '未设置昵称' }}
           </h2>
-          <p class="text-xs text-muted-foreground">{{ userStore.currentUser?.email }}</p>
           <div v-if="createdAt" class="flex items-center gap-1 text-[10px] text-muted-foreground/60">
             <AppIcon name="time" class="h-3 w-3" />
             <span>注册于 {{ createdAt }}</span>
@@ -72,20 +71,6 @@
                 </div>
               </div>
 
-              <!-- Email (Readonly) -->
-              <div class="space-y-1.5">
-                <label class="text-xs font-medium text-muted-foreground">绑定邮箱</label>
-                <div class="relative">
-                  <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground/30">
-                    <AppIcon name="inbox" class="h-3.5 w-3.5" />
-                  </div>
-                  <Input
-                    :value="userStore.currentUser?.email"
-                    disabled
-                    class="h-9 pl-9 bg-muted/20 border-border/50 rounded-lg text-sm text-muted-foreground/60 cursor-not-allowed select-none"
-                  />
-                </div>
-              </div>
             </div>
 
             <!-- Avatar URL -->
@@ -215,7 +200,7 @@ const avatarError = ref(false)
 const avatarInput = ref<any>(null)
 
 const userInitial = computed(() => {
-  const name = userStore.currentUser?.nickname || userStore.currentUser?.email || ''
+  const name = userStore.currentUser?.nickname || ''
   return name ? name.charAt(0).toUpperCase() : ''
 })
 

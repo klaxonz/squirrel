@@ -1,30 +1,36 @@
 import type { AxiosRequestConfig } from 'axios'
 import { ApiError, get, post } from '@/utils/request'
+import type {
+  SubscriptionListResponse,
+  SubscriptionDetail,
+  SubscriptionOption,
+  SubscriptionToggleResult,
+} from '@/types/subscription'
 
 export const getSubscriptions = async (params: Record<string, unknown> = {}, config: AxiosRequestConfig = {}) => {
-  return get<{ data?: unknown[]; items?: unknown[] }>('/api/subscription/list', params, config)
+  return get<SubscriptionListResponse>('/api/subscription/list', params, config)
 }
 
-export const getSubscriptionOptions = async <T = unknown>() => {
-  return get<T>('/api/subscription/options')
+export const getSubscriptionOptions = async () => {
+  return get<{ data: SubscriptionOption[] }>('/api/subscription/options')
 }
 
 export const getSubscriptionDetail = async (subscriptionId: string | number) => {
-  return get(`/api/subscription/detail/${subscriptionId}`)
+  return get<SubscriptionDetail>(`/api/subscription/detail/${subscriptionId}`)
 }
 
 export const unsubscribe = async (subscriptionId: string | number) => {
-  return post<{ is_subscribed: boolean, subscription_id: number | null }>('/api/subscription/unsubscribe', {
+  return post<SubscriptionToggleResult>('/api/subscription/unsubscribe', {
     subscription_id: subscriptionId,
   })
 }
 
 export const subscribe = async (url: string) => {
-  return post<{ is_subscribed: boolean, subscription_id: number | null }>('/api/subscription/subscribe', { url })
+  return post<SubscriptionToggleResult>('/api/subscription/subscribe', { url })
 }
 
 export const getSubscriptionStatus = async (url: string) => {
-  return get<{ is_subscribed: boolean, subscription_id: number | null }>('/api/subscription/status', { url })
+  return get<SubscriptionToggleResult>('/api/subscription/status', { url })
 }
 
 export const updateNsfwStatus = async (subscriptionId: string | number, isNsfw: boolean) => {

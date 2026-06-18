@@ -1,23 +1,29 @@
 import { del, get, post, put } from '@/utils/request'
+import type {
+  ScheduledTask,
+  ScheduledTaskListResponse,
+  SchedulerStatus,
+  SchedulerStatistics,
+} from '@/types/scheduler'
 
 export const getSchedulerStatus = async () => {
-  return get('/api/scheduler/status')
+  return get<SchedulerStatus>('/api/scheduler/status')
 }
 
 export const getTaskStatistics = async () => {
-  return get('/api/scheduler/statistics')
+  return get<SchedulerStatistics>('/api/scheduler/statistics')
 }
 
 export const getScheduledTasks = async (params: Record<string, unknown> = {}) => {
-  return get('/api/scheduler/tasks', params)
+  return get<ScheduledTaskListResponse>('/api/scheduler/tasks', params)
 }
 
 export const createTask = async (taskData: Record<string, unknown>) => {
-  return post('/api/scheduler/tasks', taskData)
+  return post<ScheduledTask>('/api/scheduler/tasks', taskData)
 }
 
 export const updateTask = async (taskId: string | number, taskData: Record<string, unknown>) => {
-  return put(`/api/scheduler/tasks/${taskId}`, taskData)
+  return put<ScheduledTask>(`/api/scheduler/tasks/${taskId}`, taskData)
 }
 
 export const deleteTask = async (taskId: string | number) => {
@@ -36,8 +42,9 @@ export const executeTaskNow = async (taskId: string | number) => {
   return post(`/api/scheduler/tasks/${taskId}/execute`, null)
 }
 
+// ponytail: task-classes shape varies by registered plugins; consumer narrows.
 export const getAvailableTaskClasses = async () => {
-  return get('/api/scheduler/task-classes')
+  return get<unknown[]>('/api/scheduler/task-classes')
 }
 
 export const enableScheduler = async () => {

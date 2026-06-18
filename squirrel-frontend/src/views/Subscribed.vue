@@ -527,7 +527,7 @@ const fetchChannels = async (isReset = false) => {
     if (query) params.query = query
     const { data } = await getSubscriptions(params)
     if (requestToken !== channelsRequestToken) return
-    const items = data?.data || data?.items || []
+    const items = data?.data || []
     if (isReset) list.value = items; else list.value.push(...items)
     if (items.length < CHANNELS_PAGE_SIZE) channelsFinished.value = true
     else channelsPage.value = requestPage + 1
@@ -558,7 +558,7 @@ const fetchFeed = async (isReset = false) => {
       special: !activeChannelId.value && specialFilter.value === 'yes' ? 'yes' : undefined,
     })
     if (requestToken !== feedRequestToken) return
-    const items = data?.data || data?.items || []
+    const items = data?.data || []
     if (wasReset) feedItems.value = items; else feedItems.value.push(...items)
     // 推进游标；next_cursor 为 null 表示无更多
     feedCursor.value = data?.next_cursor ?? null

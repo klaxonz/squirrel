@@ -1,17 +1,24 @@
 import { del, get, post } from '@/utils/request'
+import type { VideoHistoryListResponse } from '@/types/video'
 
 type VideoId = string | number
 
-export const updateVideoHistory = async (payload: Record<string, unknown>) => {
+export interface VideoHistoryReport {
+  video_id: number
+  last_position?: number
+  timestamp?: number | null
+}
+
+export const updateVideoHistory = async (payload: VideoHistoryReport) => {
   return post('/api/video-history/update', payload)
 }
 
-export const batchUpdateVideoHistory = async (reports: Record<string, unknown>[] = []) => {
+export const batchUpdateVideoHistory = async (reports: VideoHistoryReport[] = []) => {
   return post('/api/video-history/batch-update', { reports })
 }
 
 export const listVideoHistory = async (params: Record<string, unknown> = {}) => {
-  return get('/api/video-history/list', params)
+  return get<VideoHistoryListResponse>('/api/video-history/list', params)
 }
 
 export const clearVideoHistory = async (videoIds: VideoId[] | null = null) => {

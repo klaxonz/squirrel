@@ -1,22 +1,23 @@
 import { get, post, put, del } from '@/utils/request'
+import type { Playlist, PlaylistDetail, PlaylistItem } from '@/types/playlist'
 
 export const listPlaylists = async (params: Record<string, unknown> = {}) => {
-  return get('/api/playlist', params)
+  return get<Playlist[]>('/api/playlist', params)
 }
 
 export const getPlaylistDetail = async (playlistId: number | string) => {
-  return get(`/api/playlist/${playlistId}`)
+  return get<PlaylistDetail>(`/api/playlist/${playlistId}`)
 }
 
 export const getPlaylistItems = async (playlistId: number | string) => {
-  return get(`/api/playlist/${playlistId}/items`)
+  return get<PlaylistItem[]>(`/api/playlist/${playlistId}/items`)
 }
 
 export const createPlaylist = async (data: {
   name: string
   description?: string | null
 }) => {
-  return post('/api/playlist', data)
+  return post<Playlist>('/api/playlist', data)
 }
 
 export const updatePlaylist = async (
@@ -26,7 +27,7 @@ export const updatePlaylist = async (
     description?: string | null
   }
 ) => {
-  return put(`/api/playlist/${playlistId}`, data)
+  return put<Playlist>(`/api/playlist/${playlistId}`, data)
 }
 
 export const deletePlaylist = async (playlistId: number | string) => {
@@ -56,7 +57,7 @@ export const reorderPlaylistItem = async (data: {
 }
 
 export const getDefaultPlaylist = async () => {
-  return get('/api/playlist/default')
+  return get<Playlist>('/api/playlist/default')
 }
 
 export const playNextVideo = async (

@@ -1,48 +1,46 @@
 import type { AxiosRequestConfig } from 'axios'
 import { get, post } from '@/utils/request'
+import type { VideoListResponse, VideoDetail, RandomVideoResult } from '@/types/video'
 import type { VideoPageVideo } from '@/types/videoPlayback'
 
 type YesNoAll = 'all' | 'yes' | 'no'
 type TimeRange = 'all' | 'today' | 'week' | 'month' | 'year'
 type DurationFilter = 'all' | 'short' | 'medium' | 'long'
 type ContentType = 'all' | 'CHANNEL' | 'PLAYLIST' | 'ACTRESS' | 'MOVIE' | 'TV_SERIES' | 'ACTOR'
+type Category = 'all' | 'read' | 'unread' | 'preview' | 'liked' | 'later'
+type SortBy = 'publish_date' | 'created_at'
 
 export type VideoListParams = {
   query?: string
   subscription_id?: number | string | null
-  category?: 'all' | 'read' | 'unread' | 'preview' | 'liked' | 'later' | (string & {})
-  sort_by?: 'publish_date' | 'created_at' | (string & {})
+  // ponytail: backend accepts arbitrary category/sort strings beyond the known
+  // enum; typed as the union plus a bare string escape hatch for forward-compat.
+  category?: Category | (string & {})
+  sort_by?: SortBy | (string & {})
   nsfw?: YesNoAll | string
-  special?: YesNoAll | (string & {})
+  special?: YesNoAll | string
   site?: string
   cursor?: string | null
   pageSize?: number | string
   page_size?: number | string
-  time_range?: TimeRange | (string & {})
-  duration?: DurationFilter | (string & {})
-  content_type?: ContentType | (string & {})
-}
-
-export type VideoListResponse = {
-  data?: unknown[]
-  items?: unknown[]
-  next_cursor?: string | null
-  has_more?: boolean
+  time_range?: TimeRange | string
+  duration?: DurationFilter | string
+  content_type?: ContentType | string
 }
 
 export type RandomVideoParams = {
-  category?: 'all' | 'read' | 'unread' | 'preview' | 'liked' | 'later' | (string & {})
+  category?: Category | (string & {})
   subscription_id?: number
   nsfw?: YesNoAll
   site?: string
   query?: string
-  time_range?: TimeRange | (string & {})
-  duration?: DurationFilter | (string & {})
-  content_type?: ContentType | (string & {})
+  time_range?: TimeRange | string
+  duration?: DurationFilter | string
+  content_type?: ContentType | string
 }
 
 export const getVideoDetail = async (videoId: string | number) => {
-  return get('/api/video/detail', { video_id: videoId })
+  return get<VideoDetail>('/api/video/detail', { video_id: videoId })
 }
 
 export const getVideoList = async (params: VideoListParams = {}, config: AxiosRequestConfig = {}) => {
@@ -53,7 +51,7 @@ export const getVideoSubtitles = async (
   videoId: string | number,
   { lang, fmt = 'srt' }: { lang?: string; fmt?: string } = {}
 ) => {
-  return get(
+  return get<string>(
     '/api/video/subtitles',
     { video_id: videoId, lang, fmt },
     { responseType: 'text' }
@@ -61,7 +59,7 @@ export const getVideoSubtitles = async (
 }
 
 export const getRandomVideo = async (params: RandomVideoParams = {}) => {
-  return get<{ id: string | number } & Record<string, unknown>>('/api/video/random', params)
+  return get<RandomVideoResult>('/api/video/random', params)
 }
 
 export const saveRemoteVideo = async (data: Record<string, unknown>) => {

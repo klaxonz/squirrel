@@ -101,12 +101,7 @@ export default tseslint.config(
   // --- progressive-convergence overrides (remove each block once clean) ---
   // ponytail: these start as warn so error-level doesn't block; flip to error
   // (or delete the override) once each area is fully typed. Tracked in the
-  // frontend maintainability refactor (Phases 3 & 4).
-  {
-    // API layer: bare calls + unknown[] get typed in Phase 3.
-    files: ['src/api/**/*.{ts,vue}'],
-    rules: { '@typescript-eslint/no-explicit-any': 'warn' },
-  },
+  // frontend maintainability refactor (Phase 4).
   {
     // feed components + views + composables: any/mutating-props cleared in Phase 4
     // as DTOs land and VideoItem stops mutating props.
