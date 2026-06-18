@@ -125,3 +125,36 @@ npm run build:check   # vue-tsc + vite build 通过
 1. **方向选择**：lint 收敛已完成（17 → 3，剩余为设计性保留）；下一步杠杆最大的是架构 epic —— VideoPlayer.vue 2784 行 / RssSources.vue 1633 行拆分，或 store/composable 收敛
 2. 若推进架构：VideoPlayer 拆分是最大杠杆但风险高，建议先出拆分方案（沿已有 composable 接缝：useClipMarkers/createPlayerEngine/useCentralHud）再动手
 3. **新发现的后端字段差异**（latest_videos vs recent_videos 等）需对照真实 payload 确认，DTO 里标了 ponytail 待办
+
+---
+
+## VideoPlayer.vue 拆分 epic 进度（本会话续）
+
+> 起点行数 3085（交接文档原记 2784 是旧值，会话开始时已涨到 3085）。
+> 原则：**只沿干净接缝切，不凭感觉拆**（documented YAGNI 约束）。
+
+### 已完成（2 个干净接缝，零行为风险）
+
+1. **commit `884bc223`** — SettingsMenu 提取（-240 行 → 2845）
+   - 发现 `SettingsMenu.vue`（346 行，12 个 view）早已写好但从未引用；内联了同样 260 行模板 + ~20 handler。接上 + 新建 `composables/useSettingsMenu.ts`（196 行，DI 惯例）
+   - **修 bug**：SettingsMenu opacity slider 只响应 press 丢了 drag（window pointermove），补上
+   - quality 管线 computed（displayedQualities/isQualityActive/qualityMenuLabel）留在 VideoPlayer（质量快捷弹窗也用）
+
+2. **commit `b71ea61f`** — 质量显示管线提取（-53 行 → 2792）
+   - 新建 `composables/useQualityDisplay.ts`（130 行）：codec 匹配/dedup/scoring/active check/labels
+   - 字节级一致；`isAutoQualityLabel` 的 `'??'` mojibake（源文件既有损坏，非本会话引入）保留原样，标 ponytail 注释，修复另议
+
+**累计：3085 → 2792（-293 行）；typecheck/lint(0e/3w 不变)/build:check 全程绿**
+
+### 主动暂停（非干净接缝，按 YAGNI 不硬拆）
+
+- **progress-scrub 引擎**（原 1252-1337，~85 行）：与 clip-markers 片段捕获（`pendingSegmentEndTime`）+ 控制条自动隐藏（`isScrubbing` 读）深度交织。抽进 composable 需 DI `progressAreaRef`/`duration`/`seek`/`hasPendingSegment`/`pendingSegmentEndTime`，接口变宽、跨模块交互变隐晦，违反「不凭感觉拆」。**用户拍板：暂停 VideoPlayer，转向 RssSources.vue。**
+
+### VideoPlayer 后续可选（用户重新评估时参考）
+
+- Up-next / A-B loop 小 composable（较小、较独立，可单独评估）
+- 全面采纳 `useControlsLayout`（替换静态控制条模板）—— 最大也最高风险，单独 epic
+
+### RssSources.vue（1633 行）—— 下一目标
+
+待评估其干净接缝（沿现有 composable / 纯 derived state 切），先出方案再动手。
