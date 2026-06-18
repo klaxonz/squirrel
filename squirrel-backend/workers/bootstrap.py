@@ -13,11 +13,6 @@ import threading
 from contextlib import contextmanager
 
 from infrastructure.config.settings import settings
-from infrastructure.config.startup_dependencies import (
-    clear_optional_startup_issue,
-    record_optional_startup_issue,
-    reset_startup_dependency_issues,
-)
 from infrastructure.database.migrations import upgrade_database
 from infrastructure.runtime.site_config_manager import apply_site_config_overrides
 from infrastructure.site_catalog.cookies import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
@@ -41,7 +36,6 @@ def bootstrap_runtime(component: str):
     """
     init_logging()
     logger.info("[%s] Bootstrapping runtime...", component)
-    reset_startup_dependency_issues()
 
     for notice in settings.optional_feature_warnings():
         logger.warning("[%s] %s", component, notice)
@@ -63,9 +57,7 @@ def bootstrap_runtime(component: str):
         from infrastructure.site_catalog.cloudflare_bypass import get_default_client
 
         set_cloudflare_bypass_client(get_default_client())
-        clear_optional_startup_issue("cloudflare_bypass")
     except Exception as exc:
-        record_optional_startup_issue("cloudflare_bypass", exc)
         logger.warning("[%s] Failed to configure Cloudflare bypass client: %s", component, exc)
     try:
         set_cookie_file_resolver(resolve_cookie_file_for_url)

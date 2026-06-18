@@ -193,7 +193,7 @@ def test_config_package_reexports_classes():
     """
     import infrastructure.config as pkg
 
-    for name in ("Settings", "RedisSettings", "PostgresSettings", "MeiliSettings", "CrawlSettings", "MqSettings", "CookieCloudSettings", "KugouMusicSettings", "get_settings", "StartupIssues"):
+    for name in ("Settings", "RedisSettings", "PostgresSettings", "MeiliSettings", "CrawlSettings", "MqSettings", "CookieCloudSettings", "KugouMusicSettings", "get_settings"):
         assert hasattr(pkg, name), f"missing re-export: {name}"
 
 

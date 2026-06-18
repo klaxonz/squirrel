@@ -4,11 +4,11 @@ Used for Docker container health checks and service monitoring
 import logging
 from typing import Any
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Request, status
 from sqlalchemy import text
 
+from application.startup_health import StartupHealth
 from infrastructure.cache.redis_client import redis_client
-from infrastructure.config.startup_dependencies import list_optional_startup_issues
 from infrastructure.database.session import engine
 
 logger = logging.getLogger(__name__)
@@ -17,13 +17,14 @@ router = APIRouter(prefix="/health", tags=["Health"])
 
 
 @router.get("", status_code=status.HTTP_200_OK)
-async def health_check() -> dict[str, Any]:
+async def health_check(request: Request) -> dict[str, Any]:
     """Health check endpoint
 
     Checks:
     1. API service status
     2. Database connection
     3. Redis connection
+    4. Optional startup dependencies
 
     Returns:
         Health status information
@@ -39,12 +40,13 @@ async def health_check() -> dict[str, Any]:
         },
     }
 
-    startup_issues = list_optional_startup_issues()
-    if startup_issues:
+    startup_issues: StartupHealth = getattr(request.app.state, "startup_health", None)
+    issues = startup_issues.list() if startup_issues is not None else []
+    if issues:
         health_status["checks"]["startup_optional"] = "degraded"
         health_status["startup_optional_issues"] = [
             {"name": issue.name, "error": issue.error}
-            for issue in startup_issues
+            for issue in issues
         ]
         health_status["status"] = "degraded"
 

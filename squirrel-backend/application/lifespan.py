@@ -12,12 +12,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from application.startup_health import StartupHealth
 from infrastructure.config.settings import settings
-from infrastructure.config.startup_dependencies import (
-    clear_optional_startup_issue,
-    record_optional_startup_issue,
-    reset_startup_dependency_issues,
-)
 from infrastructure.runtime.site_config_manager import apply_site_config_overrides
 from infrastructure.site_catalog.cookies import resolve_cookie_file_for_url, resolve_cookie_match_domain_for_url
 from infrastructure.site_catalog.runtime_http import (
@@ -34,7 +30,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """FastAPI application lifecycle: bootstrap runtime, serve, then shut down."""
     logger.info("Startup: begin")
-    reset_startup_dependency_issues()
+    startup_issues = StartupHealth()
+    app.state.startup_health = startup_issues
 
     for notice in settings.optional_feature_warnings():
         logger.warning("Startup: %s", notice)
@@ -53,9 +50,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from infrastructure.site_catalog.cloudflare_bypass import get_default_client
 
         set_cloudflare_bypass_client(get_default_client())
-        clear_optional_startup_issue("cloudflare_bypass")
+        startup_issues.clear("cloudflare_bypass")
     except Exception as exc:
-        record_optional_startup_issue("cloudflare_bypass", exc)
+        startup_issues.record_optional("cloudflare_bypass", exc)
         logger.warning("Startup: cloudflare bypass disabled: %s", exc)
     try:
         set_cookie_file_resolver(resolve_cookie_file_for_url)
@@ -83,9 +80,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from infrastructure.scheduling.bootstrap import ensure_system_tasks
 
         ensure_system_tasks()
-        clear_optional_startup_issue("scheduled_task_bootstrap")
+        startup_issues.clear("scheduled_task_bootstrap")
     except Exception as exc:
-        record_optional_startup_issue("scheduled_task_bootstrap", exc)
+        startup_issues.record_optional("scheduled_task_bootstrap", exc)
         logger.warning("Startup: scheduled task bootstrap degraded: %s", exc, exc_info=True)
 
     # 5. Meilisearch index (hard dependency when configured; skipped if MEILISEARCH_URL unset)

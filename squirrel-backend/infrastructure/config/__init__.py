@@ -19,10 +19,6 @@ from infrastructure.config.settings import (
     Settings,
     get_settings,
 )
-from infrastructure.config.startup_dependencies import (
-    StartupDependencyIssue,
-    StartupIssues,
-)
 
 __all__ = [
     "CookieCloudSettings",
@@ -33,7 +29,5 @@ __all__ = [
     "PostgresSettings",
     "RedisSettings",
     "Settings",
-    "StartupDependencyIssue",
-    "StartupIssues",
     "get_settings",
 ]
