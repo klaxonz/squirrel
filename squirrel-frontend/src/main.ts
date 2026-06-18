@@ -3,7 +3,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import { useThemeStore } from './stores/theme'
-import { vueErrorHandler, unhandledRejectionHandler } from './utils/errorHandler'
+import { Logger } from './utils/logger'
 
 import './styles/index.css'
 import './styles/layout.css'
@@ -22,8 +22,15 @@ const bootstrap = async () => {
   app.use(pinia)
   app.use(router)
 
-  app.config.errorHandler = vueErrorHandler
-  window.addEventListener('unhandledrejection', unhandledRejectionHandler)
+  // ponytail: global last-resort sinks. Per-request API errors are handled by
+  // the axios interceptor (401 -> logout) and the { data, error } return shape
+  // from handleRequest; these two only catch genuinely unhandled throws.
+  app.config.errorHandler = (error, instance, info) => {
+    Logger.error('Uncaught Vue error', error, { info, component: instance?.$?.type?.name })
+  }
+  window.addEventListener('unhandledrejection', (event) => {
+    Logger.error('Unhandled promise rejection', event.reason)
+  })
 
   const themeStore = useThemeStore()
   themeStore.init()
