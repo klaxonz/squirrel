@@ -1,23 +1,41 @@
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 
-from .gateway import SiteRuntimeGateway
-from .models import SiteRuntimeDiscoveryError, SiteRuntimeDiscoveryResult, SiteRuntimeRecord, SiteRuntimeStatus
-from .paths import SiteRuntimePaths
-from .runtime_models import SiteRuntimeManifest
-from .store import SiteRuntimeStore
+from .models import (
+    SiteRuntimeDiscoveryError,
+    SiteRuntimeDiscoveryResult,
+    SiteRuntimeManifest,
+    SiteRuntimeRecord,
+    SiteRuntimeStatus,
+)
+
+if TYPE_CHECKING:
+    from .gateway import SiteRuntimeGateway
+    from .paths import SiteRuntimePaths
+    from .store import SiteRuntimeStore
 
 
 class SiteRuntimeDiscovery:
-    """Discover workspace site runtimes and synchronize store records."""
+    """Discover workspace site runtimes.
+
+    Discovery is split into a pure-read scan and an explicit apply step so
+    read paths (listing, snapshot, route resolution) never mutate the store
+    or gateway registrations as a side effect.
+    """
 
     def __init__(self, paths: SiteRuntimePaths, store: SiteRuntimeStore, gateway: SiteRuntimeGateway) -> None:
         self._paths = paths
         self._store = store
         self._gateway = gateway
 
-    def discover_workspace_site_runtimes(self) -> SiteRuntimeDiscoveryResult:
+    def scan_workspace(self) -> SiteRuntimeDiscoveryResult:
+        """Scan the workspace runtimes dir and return merged records.
+
+        Pure read: merges existing persisted records with what is on disk,
+        but does not persist anything or touch gateway registrations.
+        """
         records_by_id = {
             record.runtime_id: record
             for record in self._store.list_records()
@@ -48,7 +66,6 @@ class SiteRuntimeDiscovery:
                 runtime_path = runtime_root / 'src'
                 existing = records_by_id.get(manifest.runtime_id)
                 if existing is not None:
-                    before = existing.to_dict()
                     existing.version = manifest.version
                     existing.install_path = str(runtime_root)
                     existing.entrypoint = entrypoint
@@ -57,18 +74,6 @@ class SiteRuntimeDiscovery:
                     existing.package_path = str(metadata_path)
                     existing.runtime_path = str(runtime_path if runtime_path.exists() else runtime_root)
                     existing.metadata = {'source': 'workspace'}
-                    after = existing.to_dict()
-                    after['updated_at'] = before.get('updated_at')
-                    if after != before:
-                        records_by_id[existing.runtime_id] = self._store.upsert(existing)
-
-                    if existing.enabled and after != before:
-                        self._gateway.unregister_plugin(existing.runtime_id)
-                        self._gateway.register_manifest(
-                            runtime_id=existing.runtime_id,
-                            version=existing.version,
-                            manifest=SiteRuntimeManifest.from_dict(existing.manifest),
-                        )
                     continue
 
                 record = SiteRuntimeRecord(
@@ -84,7 +89,7 @@ class SiteRuntimeDiscovery:
                     runtime_path=str(runtime_path if runtime_path.exists() else runtime_root),
                     metadata={'source': 'workspace'},
                 )
-                records_by_id[record.runtime_id] = self._store.upsert(record)
+                records_by_id[record.runtime_id] = record
             except Exception as exc:
                 errors.append(SiteRuntimeDiscoveryError(
                     metadata_path=str(metadata_path),
@@ -94,3 +99,34 @@ class SiteRuntimeDiscovery:
             records=sorted(records_by_id.values(), key=lambda record: record.runtime_id.lower()),
             errors=errors,
         )
+
+    def apply_discovery_result(self, result: SiteRuntimeDiscoveryResult) -> SiteRuntimeDiscoveryResult:
+        """Persist discovery result and re-register changed runtimes.
+
+        Write path: upserts every record into the store and re-syncs gateway
+        registrations for enabled runtimes whose manifest changed. Must only
+        be called from explicit write entry points (bootstrap / reload /
+        sync API), never from read paths.
+        """
+        persisted: list[SiteRuntimeRecord] = []
+        for record in result.records:
+            before = self._store.get_record(record.runtime_id)
+            before_dict = before.to_dict() if before is not None else None
+            new_dict = record.to_dict()
+            # Mask updated_at when comparing — it always changes on upsert.
+            if before_dict is not None:
+                before_dict['updated_at'] = new_dict.get('updated_at')
+            changed = before_dict != new_dict
+
+            upserted = self._store.upsert(record) if changed else record
+            persisted.append(upserted)
+
+            if upserted.enabled and changed:
+                self._gateway.unregister_plugin(upserted.runtime_id)
+                self._gateway.register_manifest(
+                    runtime_id=upserted.runtime_id,
+                    version=upserted.version,
+                    manifest=SiteRuntimeManifest.from_dict(upserted.manifest),
+                )
+
+        return SiteRuntimeDiscoveryResult(records=persisted, errors=list(result.errors))

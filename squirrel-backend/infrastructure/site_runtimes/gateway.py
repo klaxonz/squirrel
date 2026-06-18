@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Callable
 from typing import Protocol
 
 from crawl import (
@@ -13,8 +12,7 @@ from crawl import (
 
 from shared_kernel.infrastructure.trace import get_trace_id
 
-from .models import SiteCapabilityRegistration, SiteRuntimeTarget
-from .runtime_models import SiteRuntimeManifest
+from .models import SiteCapabilityRegistration, SiteRuntimeManifest, SiteRuntimeTarget
 
 logger = logging.getLogger(__name__)
 
@@ -27,19 +25,20 @@ class SiteRuntimeInvocationClient(Protocol):
 
 
 class SiteRuntimeGateway:
-    """Route capability requests to runtime targets."""
+    """Route capability requests to runtime targets.
+
+    The gateway only resolves routes from registrations already pushed into it
+    via :meth:`register_manifest`. It does *not* perform any side-effecting
+    discovery on a cache miss — the owning manager is responsible for warming
+    up registrations before requests arrive.
+    """
 
     def __init__(
         self,
         invocation_client: SiteRuntimeInvocationClient | None = None,
-        registration_refresh: Callable[[], None] | None = None,
     ) -> None:
         self._invocation_client = invocation_client
-        self._registration_refresh = registration_refresh
         self._registrations: list[SiteCapabilityRegistration] = []
-
-    def set_registration_refresh(self, callback: Callable[[], None] | None) -> None:
-        self._registration_refresh = callback
 
     def register_manifest(self, runtime_id: str, version: str, manifest: SiteRuntimeManifest) -> None:
         self.unregister_plugin(runtime_id)
@@ -79,37 +78,13 @@ class SiteRuntimeGateway:
                 return registration
         return None
 
-    def _resolve_registration(
-        self,
-        capability: str,
-        site_name: str | None = None,
-        domain: str | None = None,
-    ) -> SiteCapabilityRegistration | None:
-        registration = self._find_registration(capability=capability, site_name=site_name, domain=domain)
-        if registration is not None or self._registration_refresh is None:
-            return registration
-
-        try:
-            self._registration_refresh()
-        except Exception:
-            logger.warning(
-                "Plugin registration refresh failed while resolving capability=%s site_name=%s domain=%s",
-                capability,
-                site_name,
-                domain,
-                exc_info=True,
-            )
-            return None
-
-        return self._find_registration(capability=capability, site_name=site_name, domain=domain)
-
     def resolve_route(
         self,
         capability: str,
         site_name: str | None = None,
         domain: str | None = None,
     ) -> SiteRuntimeTarget | None:
-        registration = self._resolve_registration(capability=capability, site_name=site_name, domain=domain)
+        registration = self._find_registration(capability=capability, site_name=site_name, domain=domain)
         if registration is None:
             return None
         return SiteRuntimeTarget(
@@ -128,7 +103,7 @@ class SiteRuntimeGateway:
         domain: str | None = None,
         timeout_ms: int | None = None,
     ) -> SiteRuntimeInvokeResponse:
-        registration = self._resolve_registration(capability=capability, site_name=site_name, domain=domain)
+        registration = self._find_registration(capability=capability, site_name=site_name, domain=domain)
         if registration is None:
             return SiteRuntimeInvokeResponse(
                 request_id="",
