@@ -85,11 +85,7 @@ def main() -> int:
     try:
         server.serve_forever()
     finally:
-        try:
-            runtime.stop()
-        except Exception:
-            # cleanup during shutdown -- must not propagate
-            pass
+        runtime.stop()
         server.server_close()
 
     return 0

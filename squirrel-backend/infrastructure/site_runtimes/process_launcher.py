@@ -162,15 +162,12 @@ class SiteRuntimeProcessLauncher:
         config_path = SiteRuntimeProcessLauncher.site_config_path()
         overrides: dict[str, dict] = {}
         if config_path.is_file():
-            try:
-                with open(config_path, encoding="utf-8") as handle:
-                    overrides = {
-                        str(slug).strip().lower(): dict(config or {})
-                        for slug, config in (json.load(handle) or {}).items()
-                        if str(slug).strip()
-                    }
-            except (OSError, ValueError, TypeError):
-                overrides = {}
+            with open(config_path, encoding="utf-8") as handle:
+                overrides = {
+                    str(slug).strip().lower(): dict(config or {})
+                    for slug, config in (json.load(handle) or {}).items()
+                    if str(slug).strip()
+                }
         configs: dict[str, dict] = {}
         for site in manifest.sites:
             slug = site.site_name.strip().lower()

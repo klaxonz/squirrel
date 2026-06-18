@@ -16,10 +16,8 @@ logger = logging.getLogger(__name__)
 class SiteRuntimeStore:
     """Persist site runtime records as JSON.
 
-    All read-modify-write operations (``upsert`` / ``delete`` / ``set_enabled``)
-    are serialized by an internal lock so concurrent callers — FastAPI request
-    handlers, the bootstrap ``ThreadPoolExecutor``, and the reload listener
-    thread — cannot interleave and lose updates.
+    All read-modify-write operations are serialized by an internal lock so
+    concurrent callers cannot interleave and lose updates.
     """
 
     def __init__(self, data_path: Path | None = None, paths: SiteRuntimePaths | None = None) -> None:
@@ -37,15 +35,9 @@ class SiteRuntimeStore:
         if not self._data_path.exists():
             return {}
         raw_text = self._data_path.read_text(encoding="utf-8")
-        if not raw_text.strip():
-            return {}
-        try:
-            payload = json.loads(raw_text)
-        except json.JSONDecodeError as exc:
-            logger.warning("Site runtime store is unreadable, treating it as empty: %s", exc)
-            return {}
+        payload = json.loads(raw_text)
         if not isinstance(payload, dict):
-            return {}
+            raise ValueError(f"Site runtime store must contain a JSON object: {self._data_path}")
         return payload
 
     def _save_raw(self, records: dict[str, dict]) -> None:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Protocol
+from typing import Any
 
 from crawl import (
     SiteRuntimeError,
@@ -17,13 +17,6 @@ from .models import SiteCapabilityRegistration, SiteRuntimeManifest, SiteRuntime
 logger = logging.getLogger(__name__)
 
 
-class SiteRuntimeInvocationClient(Protocol):
-    """Transport abstraction between host and site runtimes."""
-
-    def invoke(self, target: SiteRuntimeTarget, request: SiteRuntimeInvokeRequest) -> SiteRuntimeInvokeResponse:
-        ...
-
-
 class SiteRuntimeGateway:
     """Route capability requests to runtime targets.
 
@@ -35,7 +28,7 @@ class SiteRuntimeGateway:
 
     def __init__(
         self,
-        invocation_client: SiteRuntimeInvocationClient | None = None,
+        invocation_client: Any,
     ) -> None:
         self._invocation_client = invocation_client
         self._registrations: list[SiteCapabilityRegistration] = []
@@ -131,26 +124,5 @@ class SiteRuntimeGateway:
             metadata={"domain": domain},
             trace_id=get_trace_id(),
         )
-        if self._invocation_client is None:
-            return SiteRuntimeInvokeResponse(
-                request_id=request.request_id,
-                ok=False,
-                error=SiteRuntimeError.bad_response(
-                    "Plugin invocation client is not configured",
-                    details={"runtime_id": route.runtime_id, "capability": capability},
-                ),
-            )
-
-        response = self._invocation_client.invoke(route, request)
-        if not isinstance(response, SiteRuntimeInvokeResponse):
-            return SiteRuntimeInvokeResponse(
-                request_id=request.request_id,
-                ok=False,
-                error=SiteRuntimeError.bad_response(
-                    "Site runtime returned an invalid response object",
-                    details={"runtime_id": route.runtime_id, "capability": capability},
-                ),
-            )
-        return response
-
+        return self._invocation_client.invoke(route, request)
 

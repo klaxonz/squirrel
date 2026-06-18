@@ -11,11 +11,8 @@ def utcnow_iso() -> str:
 
 
 class SiteRuntimeStatus(StrEnum):
-    VALIDATED = "validated"
     INSTALLED = "installed"
-    STARTING = "starting"
     RUNNING = "running"
-    DEGRADED = "degraded"
     DISABLED = "disabled"
     FAILED = "failed"
     STOPPED = "stopped"
@@ -67,19 +64,13 @@ class SiteRuntimeRecord:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SiteRuntimeRecord:
-        status = str(data.get("status", SiteRuntimeStatus.INSTALLED.value))
-        try:
-            parsed_status = SiteRuntimeStatus(status)
-        except ValueError:
-            parsed_status = SiteRuntimeStatus.FAILED
-
         return cls(
             runtime_id=str(data.get("runtime_id", "")),
             version=str(data.get("version", "")),
             install_path=str(data.get("install_path", "")),
             entrypoint=str(data.get("entrypoint", "")),
             enabled=bool(data.get("enabled", False)),
-            status=parsed_status,
+            status=SiteRuntimeStatus(str(data.get("status", SiteRuntimeStatus.INSTALLED.value))),
             granted_permissions=list(data.get("granted_permissions") or []),
             manifest=dict(data.get("manifest") or {}),
             package_path=data.get("package_path"),
