@@ -111,7 +111,7 @@ export interface MediaSource {
   thumbnailSpriteRows?: number
   thumbnailSpriteInterval?: number
   audioOnly?: boolean
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
   alternativeSources?: { src: string; type: 'native' | 'hls' | 'dash' }[]
 }
 
@@ -120,7 +120,7 @@ export interface PlayerError {
   code: string
   message: string
   fatal: boolean
-  details?: any
+  details?: unknown
 }
 
 export type PlaybackRecoveryAction = 'handled' | 'reload-source' | 'unrecoverable'
@@ -220,13 +220,13 @@ export interface PlayerPlugin extends PluginHooks {
   readonly name: string
   readonly version?: string
 
-  install(context: PluginContext, options?: any): void | Promise<void>
+  install(context: PluginContext, options?: unknown): void | Promise<void>
   recoverPlayback?(error: PlayerError, context: PlaybackRecoveryContext): PlaybackRecoveryAction | Promise<PlaybackRecoveryAction>
   destroy?(): void
 }
 
 // 插件配置
-export interface PluginConfig<T = any> {
+export interface PluginConfig<T = unknown> {
   plugin: PlayerPlugin | (() => PlayerPlugin)
   options?: T
   enabled?: boolean
@@ -234,7 +234,7 @@ export interface PluginConfig<T = any> {
 
 // 插件管理器接口
 export interface IPluginManager {
-  register(plugin: PlayerPlugin, options?: any): Promise<void>
+  register(plugin: PlayerPlugin, options?: unknown): Promise<void>
   unregister(name: string): void
   get<T extends PlayerPlugin>(name: string): T | null
   getAll(): PlayerPlugin[]

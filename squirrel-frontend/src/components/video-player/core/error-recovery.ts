@@ -9,7 +9,13 @@ import type {
   PlaybackRecoveryContext,
   QualityLevel,
 } from './types'
-import { playerLogger, type PlayerLogger } from './logger'
+import { type PlayerLogger } from './logger'
+
+// Structural view of a stream plugin used during recovery (only recoverPlayback
+// is invoked on it).
+interface StreamController {
+  recoverPlayback?: (error: PlayerError, context: PlaybackRecoveryContext) => PlaybackRecoveryAction | Promise<PlaybackRecoveryAction>
+}
 
 export const MAX_VOLUME = 200
 
@@ -47,7 +53,7 @@ export interface ErrorRecoveryDeps {
   adapter: IPlayerAdapter
   onError?: (error: PlayerError) => void
   play: () => Promise<boolean>
-  setQuality: (q: any) => void
+  setQuality: (q: string | number) => void
   doLoadSource: (source: MediaSource) => void
 }
 
@@ -157,13 +163,13 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
     return true
   }
 
-  const getStreamController = (): any => {
+  const getStreamController = (): StreamController | null => {
     const currentSource = deps.getCurrentSource()
     const currentSourceType = deps.getCurrentSourceType()
     const preferredDashPlugin = currentSource?.playbackEngine === 'shaka' ? 'shaka-dash' : 'dash'
-    if (currentSourceType === 'hls') return deps.pluginManager.get<any>('hls')
-    if (currentSourceType === 'dash') return deps.pluginManager.get<any>(preferredDashPlugin)
-    return deps.pluginManager.get<any>('shaka-dash') || deps.pluginManager.get<any>('dash') || deps.pluginManager.get<any>('hls')
+    if (currentSourceType === 'hls') return deps.pluginManager.get<StreamController>('hls')
+    if (currentSourceType === 'dash') return deps.pluginManager.get<StreamController>(preferredDashPlugin)
+    return deps.pluginManager.get<StreamController>('shaka-dash') || deps.pluginManager.get<StreamController>('dash') || deps.pluginManager.get<StreamController>('hls')
   }
 
   const buildRecoveryContext = (): PlaybackRecoveryContext => ({

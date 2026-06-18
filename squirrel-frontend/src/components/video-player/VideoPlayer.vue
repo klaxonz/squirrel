@@ -733,7 +733,6 @@ const {
   formatSleepRemaining,
   handleSleepTimerSelect,
   stopSleepTimer,
-  startSleepTimer,
 } = useSleepTimer({ store, pause, showCentralHud, t: t as (key: string, params?: Record<string, string | number>) => string })
 
 const showSettingsMenu = ref(false)
@@ -882,7 +881,6 @@ const handleChapterClick = (time: number) => {
 }
 
 const {
-  localClipMarkers,
   hoveredMarkerId,
   hasPendingSegment,
   pendingSegmentStartTime,
@@ -891,7 +889,6 @@ const {
   isSavingMarker,
   draggingMarker,
   normalizedClipMarkers,
-  markerColorById,
   activeClipMarkerId,
   getMarkerTitle,
   getMarkerTimeText,
@@ -1229,14 +1226,6 @@ const showControls = () => {
     videoInfoTimer = setTimeout(() => { showVideoInfo.value = false }, 5000)
   }
 }
-const toggleControls = (nextVisible = !store.controlsVisible) => {
-  if (nextVisible) {
-    showControls()
-    return
-  }
-
-  hideControls()
-}
 const handleVideoClick = () => {
   togglePlay()
 }
@@ -1547,9 +1536,6 @@ const handleLoopABToggle = () => {
   }
 }
 
-const isCurrentChapter = (chapter: Chapter): boolean => {
-  return chapter.startTime <= currentTime.value && (chapter.endTime || (duration.value)) > currentTime.value
-}
 
 const handleStartNow = () => {
   showUpNext.value = false

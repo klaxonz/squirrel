@@ -13,8 +13,9 @@ export function getCodecFamily(codec: string | null | undefined): string | null 
 export const CODEC_FAMILY_ORDER = ['av1', 'vp9', 'avc'] as const
 
 export function compareCodecFamilies(left: string, right: string): number {
-  const leftIndex = CODEC_FAMILY_ORDER.indexOf(left as any)
-  const rightIndex = CODEC_FAMILY_ORDER.indexOf(right as any)
+  const order = CODEC_FAMILY_ORDER
+  const leftIndex = order.indexOf(left as (typeof order)[number])
+  const rightIndex = order.indexOf(right as (typeof order)[number])
   const safeLeftIndex = leftIndex >= 0 ? leftIndex : CODEC_FAMILY_ORDER.length
   const safeRightIndex = rightIndex >= 0 ? rightIndex : CODEC_FAMILY_ORDER.length
   if (safeLeftIndex !== safeRightIndex) return safeLeftIndex - safeRightIndex

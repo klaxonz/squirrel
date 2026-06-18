@@ -14,9 +14,27 @@ import type {
   PluginConfig,
   PluginContext,
   SubtitleTrack,
-  PlaybackRecoveryAction,
-  PlaybackRecoveryContext
 } from './types'
+
+// ponytail: structural views of player plugins the engine drives. Typed
+// structurally (only the methods the engine actually calls) to avoid importing
+// the concrete plugin classes, which would create a runtime cycle
+// (plugins -> core).
+interface QualityController {
+  setQuality?: (quality: unknown) => void
+}
+interface SubtitleController {
+  setTracks?: (tracks: SubtitleTrack[]) => Promise<void>
+  loadTrack?: (track: SubtitleTrack) => boolean | Promise<boolean | void>
+  enable?: () => void
+  disable?: () => void
+  toggle?: () => void
+  exportStyle?: () => Record<string, unknown>
+  importStyle?: (style: Record<string, unknown>) => void
+  applyPreset?: (presetId: string) => void
+  setSubtitleOffset?: (offsetSeconds: number) => void
+  getSubtitleOffset?: () => number
+}
 
 export type PlayerEngineOptions = {
   autoplay?: boolean
@@ -78,8 +96,8 @@ export type PlayerEngine = {
   setSubtitleTracks: (tracks: SubtitleTrack[]) => Promise<void>
   setSubtitle: (track: SubtitleTrack | null) => void
   toggleSubtitles: () => void
-  getSubtitleStyle: () => Record<string, any>
-  setSubtitleStyle: (style: Record<string, any>) => void
+  getSubtitleStyle: () => Record<string, unknown>
+  setSubtitleStyle: (style: Record<string, unknown>) => void
   applySubtitlePreset: (presetId: string) => void
   setSubtitleOffset: (offsetSeconds: number) => void
   getSubtitleOffset: () => number
@@ -120,6 +138,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   let config: UserConfig = {}
 
   let autoplay = !!options.autoplay
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- read via getAutoplayNext; flagged due to control-flow write shape
   let autoplayNext = options.autoplayNext !== false
   let muted = !!options.muted
   let volume = typeof options.volume === 'number' ? Math.max(0, Math.min(MAX_VOLUME, options.volume)) : 100
@@ -902,13 +921,13 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   const setQuality = (quality: QualitySelectionRequest): void => {
     errorRecovery.suppressWaitingRecovery(Math.max(retryDelay * 2, 4000))
-    const { controllerQuality, emittedLabel, isAutoQuality } = resolveQualitySelection(quality)
+    const { controllerQuality, emittedLabel } = resolveQualitySelection(quality)
 
-    const getQualityController = (): any => {
+    const getQualityController = (): QualityController | null => {
       const preferredDashPlugin = currentSource?.playbackEngine === 'shaka' ? 'shaka-dash' : 'dash'
-      if (currentSourceType === 'hls') return pluginManager.get<any>('hls')
-      if (currentSourceType === 'dash') return pluginManager.get<any>(preferredDashPlugin)
-      return pluginManager.get<any>('shaka-dash') || pluginManager.get<any>('dash') || pluginManager.get<any>('hls')
+      if (currentSourceType === 'hls') return pluginManager.get<QualityController>('hls')
+      if (currentSourceType === 'dash') return pluginManager.get<QualityController>(preferredDashPlugin)
+      return pluginManager.get<QualityController>('shaka-dash') || pluginManager.get<QualityController>('dash') || pluginManager.get<QualityController>('hls')
     }
 
     const controller = getQualityController()
@@ -958,7 +977,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       currentSubtitle = null
     }
 
-    const subtitlesPlugin = pluginManager.get<any>('subtitles')
+    const subtitlesPlugin = pluginManager.get<SubtitleController>('subtitles')
     if (subtitlesPlugin && typeof subtitlesPlugin.setTracks === 'function') {
       await subtitlesPlugin.setTracks(tracks)
     }
@@ -967,7 +986,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   const setSubtitle = (track: SubtitleTrack | null): void => {
     currentSubtitle = track
     const requestId = ++subtitleLoadRequestId
-    const subtitlesPlugin = pluginManager.get<any>('subtitles')
+    const subtitlesPlugin = pluginManager.get<SubtitleController>('subtitles')
 
     if (subtitlesPlugin) {
       if (track && typeof subtitlesPlugin.loadTrack === 'function') {
@@ -1001,8 +1020,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     })
   }
 
-  const getSubtitleStyle = (): Record<string, any> => {
-    const subtitlesPlugin = pluginManager.get<any>('subtitles')
+  const getSubtitleStyle = (): Record<string, unknown> => {
+    const subtitlesPlugin = pluginManager.get<SubtitleController>('subtitles')
     if (subtitlesPlugin && typeof subtitlesPlugin.exportStyle === 'function') {
       return subtitlesPlugin.exportStyle()
     }
@@ -1010,36 +1029,36 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   }
 
   const applySubtitlePreset = (presetId: string): void => {
-    const subtitlesPlugin = pluginManager.get<any>('subtitles')
+    const subtitlesPlugin = pluginManager.get<SubtitleController>('subtitles')
     if (subtitlesPlugin && typeof subtitlesPlugin.applyPreset === 'function') {
       subtitlesPlugin.applyPreset(presetId)
     }
   }
 
   const setSubtitleOffset = (offsetSeconds: number): void => {
-    const subtitlesPlugin = pluginManager.get<any>('subtitles')
+    const subtitlesPlugin = pluginManager.get<SubtitleController>('subtitles')
     if (subtitlesPlugin && typeof subtitlesPlugin.setSubtitleOffset === 'function') {
       subtitlesPlugin.setSubtitleOffset(offsetSeconds)
     }
   }
 
   const getSubtitleOffset = (): number => {
-    const subtitlesPlugin = pluginManager.get<any>('subtitles')
+    const subtitlesPlugin = pluginManager.get<SubtitleController>('subtitles')
     if (subtitlesPlugin && typeof subtitlesPlugin.getSubtitleOffset === 'function') {
       return subtitlesPlugin.getSubtitleOffset()
     }
     return 0
   }
 
-  const setSubtitleStyle = (style: Record<string, any>): void => {
-    const subtitlesPlugin = pluginManager.get<any>('subtitles')
+  const setSubtitleStyle = (style: Record<string, unknown>): void => {
+    const subtitlesPlugin = pluginManager.get<SubtitleController>('subtitles')
     if (subtitlesPlugin && typeof subtitlesPlugin.importStyle === 'function') {
       subtitlesPlugin.importStyle(style)
     }
   }
 
   const toggleSubtitles = (): void => {
-    const subtitlesPlugin = pluginManager.get<any>('subtitles')
+    const subtitlesPlugin = pluginManager.get<SubtitleController>('subtitles')
     if (subtitlesPlugin && typeof subtitlesPlugin.toggle === 'function') {
       subtitlesPlugin.toggle()
     }
@@ -1119,9 +1138,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   }
 
   const getStats = (): PlayerStats => {
-    const video = videoElement
-    const webkitDropped = (video as any)?.webkitDroppedFrameCount
-    const webkitDecoded = (video as any)?.webkitDecodedFrameCount
+    const video = videoElement as (HTMLVideoElement & { webkitDroppedFrameCount?: number; webkitDecodedFrameCount?: number }) | null
+    const webkitDropped = video?.webkitDroppedFrameCount
+    const webkitDecoded = video?.webkitDecodedFrameCount
     return {
       resolution: video && video.videoWidth > 0
         ? { width: video.videoWidth, height: video.videoHeight }

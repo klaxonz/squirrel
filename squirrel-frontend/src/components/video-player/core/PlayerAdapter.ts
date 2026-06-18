@@ -74,7 +74,7 @@ export interface IPlayerAdapter {
   reportError(report: ErrorReport): Promise<void>
   
   // 分析/统计（可选）
-  trackEvent?(eventName: string, data?: Record<string, any>): void
+  trackEvent?(eventName: string, data?: Record<string, unknown>): void
 }
 
 export type LocalStorageAdapterOptions = {
@@ -124,7 +124,7 @@ export class MemoryAdapter implements IPlayerAdapter {
     this.logger.warn('[MemoryAdapter] Error report', report)
   }
 
-  trackEvent(eventName: string, data?: Record<string, any>): void {
+  trackEvent(eventName: string, data?: Record<string, unknown>): void {
     this.logger.debug('[MemoryAdapter] Event', eventName, data)
   }
 
@@ -263,7 +263,7 @@ export class LocalStorageAdapter implements IPlayerAdapter {
     this.logger.warn('[LocalStorageAdapter] Error report', report)
   }
 
-  trackEvent(eventName: string, data?: Record<string, any>): void {
+  trackEvent(eventName: string, data?: Record<string, unknown>): void {
     this.logger.debug('[LocalStorageAdapter] Event', eventName, data)
   }
 }
@@ -311,7 +311,7 @@ export class CompositeAdapter implements IPlayerAdapter {
     await Promise.all(this.adapters.map(a => a.reportError(report)))
   }
 
-  trackEvent(eventName: string, data?: Record<string, any>): void {
+  trackEvent(eventName: string, data?: Record<string, unknown>): void {
     this.adapters.forEach(a => a.trackEvent?.(eventName, data))
   }
 }

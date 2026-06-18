@@ -11,6 +11,19 @@ import { createVideoClipMarker, deleteVideoClipMarker, updateVideoClipMarker, up
 import type { MediaSource } from '../core'
 import type { VideoClipMarker } from '@/types/videoClipMarker'
 
+// UI-facing marker shape after normalization (percent-based positioning for the
+// progress rail). Distinct from the persisted VideoClipMarker (time-based).
+interface NormalizedClipMarker {
+  id: number
+  title: string | null | undefined
+  startTime: number
+  endTime: number
+  isPoint: boolean
+  startPercent: number
+  widthPercent: number
+  color: string
+}
+
 export interface UseClipMarkersOptions {
   clipMarkers: Ref<VideoClipMarker[]>
   videoId: Ref<string | number | null>
@@ -43,17 +56,17 @@ export interface UseClipMarkersReturn {
     previewEnd: number
     moved: boolean
   } | null>
-  normalizedClipMarkers: ComputedRef<any[]>
+  normalizedClipMarkers: ComputedRef<NormalizedClipMarker[]>
   markerColorById: ComputedRef<Record<number, string>>
   activeClipMarkerId: ComputedRef<number | null>
-  getMarkerTitle: (marker: any) => string
-  getMarkerTimeText: (marker: any) => string
+  getMarkerTitle: (marker: VideoClipMarker | NormalizedClipMarker) => string
+  getMarkerTimeText: (marker: VideoClipMarker | NormalizedClipMarker) => string
   markCurrentPoint: () => Promise<void>
   startSegmentCapture: () => void
   finishSegmentCapture: () => Promise<void>
   cancelSegmentCapture: () => void
   deleteMarkerFromPanel: (marker: { id: number }) => Promise<void>
-  onMarkerPointerDown: (e: PointerEvent, marker: any) => void
+  onMarkerPointerDown: (e: PointerEvent, marker: NormalizedClipMarker) => void
   onWindowMarkerPointerMove: (event: PointerEvent) => void
   onWindowMarkerPointerUp: (event: PointerEvent) => void
   commitDrag: () => void
@@ -264,7 +277,7 @@ export function useClipMarkers(options: UseClipMarkersOptions): UseClipMarkersRe
     window.removeEventListener('pointercancel', onWindowMarkerPointerUp)
   }
 
-  const onMarkerPointerDown = (e: PointerEvent, marker: any) => {
+  const onMarkerPointerDown = (e: PointerEvent, marker: NormalizedClipMarker) => {
     if (isSavingMarker.value || !marker) return
     const rect = getProgressRect()
     if (!rect) return
@@ -417,7 +430,7 @@ export function useClipMarkers(options: UseClipMarkersOptions): UseClipMarkersRe
   }, { immediate: true, deep: true })
 
   watch(() => [videoId.value, source.value] as const, ([vid, src]) => {
-    clipMarkerVideoId.value = resolveClipMarkerVideoId(vid, src as any)
+    clipMarkerVideoId.value = resolveClipMarkerVideoId(vid, src)
   }, { immediate: true })
 
   const normalizedClipMarkers = computed(() => {
@@ -462,15 +475,16 @@ export function useClipMarkers(options: UseClipMarkersOptions): UseClipMarkersRe
     return activeMarker?.id ?? null
   })
 
-  const getMarkerTitle = (marker: any): string => {
+  const getMarkerTitle = (marker: VideoClipMarker | NormalizedClipMarker): string => {
     if (marker.title) return marker.title
-    const startTime = Number(marker.start_time ?? marker.startTime ?? 0)
+    const startTime = Number('start_time' in marker ? marker.start_time : marker.startTime ?? 0)
     return isPointMarker(marker) ? `📍 ${formatTime(startTime)}` : `📌 ${formatTime(startTime)}`
   }
 
-  const getMarkerTimeText = (marker: any): string => {
-    const startTime = Number(marker.start_time ?? marker.startTime ?? 0)
-    const endTime = Number(marker.end_time ?? marker.endTime ?? startTime)
+  const getMarkerTimeText = (marker: VideoClipMarker | NormalizedClipMarker): string => {
+    const startTime = Number('start_time' in marker ? marker.start_time : marker.startTime ?? 0)
+    const rawEnd = 'end_time' in marker ? marker.end_time : marker.endTime
+    const endTime = Number(rawEnd ?? startTime)
     return isPointMarker(marker)
       ? `时间点 ${formatTime(startTime)}`
       : `${formatTime(startTime)} → ${formatTime(endTime)}`

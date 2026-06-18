@@ -46,7 +46,7 @@ export interface UseI18nReturn {
 function detectBrowserLocale(): LocaleCode {
   if (typeof navigator === 'undefined') return 'zh-CN'
   
-  const browserLang = navigator.language || (navigator as any).userLanguage
+  const browserLang = navigator.language || (navigator as Navigator & { userLanguage?: string }).userLanguage || ''
   
   // 精确匹配
   if (builtInLocales[browserLang]) {

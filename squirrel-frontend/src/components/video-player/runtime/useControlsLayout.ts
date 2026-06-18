@@ -29,7 +29,7 @@ export interface ControlDefinition {
   id: string
   component?: Component
   render?: () => VNode
-  props?: Record<string, any>
+  props?: Record<string, unknown>
   visible?: boolean | (() => boolean)
   order?: number
   group?: 'left' | 'center' | 'right'

@@ -17,6 +17,10 @@ const normalizeVideoId = (value) => {
   return null
 }
 
+/**
+ * @param {string | number | null | undefined} videoId
+ * @param {unknown} [source]
+ */
 export const resolveClipMarkerVideoId = (videoId, source = null) => {
   const explicitVideoId = normalizeVideoId(videoId)
   if (explicitVideoId !== null) return explicitVideoId

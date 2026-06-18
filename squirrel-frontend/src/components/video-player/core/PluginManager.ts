@@ -56,7 +56,7 @@ export class PluginManager implements IPluginManager {
   /**
    * 调用所有插件的指定钩子
    */
-  private callHook(hookName: keyof PlayerPlugin, ...args: any[]): void {
+  private callHook(hookName: keyof PlayerPlugin, ...args: unknown[]): void {
     this.plugins.forEach(plugin => {
       const hook = plugin[hookName]
       if (typeof hook === 'function') {
@@ -72,7 +72,7 @@ export class PluginManager implements IPluginManager {
   /**
    * 注册插件
    */
-  async register(plugin: PlayerPlugin, options?: any): Promise<void> {
+  async register(plugin: PlayerPlugin, options?: unknown): Promise<void> {
     if (this.plugins.has(plugin.name)) {
       this.logger.warn(`[PluginManager] Plugin "${plugin.name}" already registered, skipping`)
       return
@@ -134,7 +134,11 @@ export class PluginManager implements IPluginManager {
   /**
    * 获取插件实例
    */
-  get<T extends PlayerPlugin>(name: string): T | null {
+  // ponytail: T is unconstrained (not `extends PlayerPlugin`) because callers
+  // often want a structural view of a plugin (e.g. QualityController,
+  // SubtitleController) that exposes engine-facing methods beyond the base
+  // PlayerPlugin interface. The cast is the whole point of get().
+  get<T = PlayerPlugin>(name: string): T | null {
     return (this.plugins.get(name) as T) || null
   }
 

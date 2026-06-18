@@ -16,6 +16,21 @@ import { DEFAULT_SHORTCUTS, type KeyboardShortcutsConfig } from './keyboardShort
 import type { UserConfig } from '../core/PlayerAdapter'
 import type { MediaSource, PlayerError, PlayerStats, PluginConfig, QualityLevel, SubtitleTrack } from '../core/types'
 
+// ponytail: subtitle style is a loose CSS-style bag persisted to localStorage
+// and read dynamically across the player UI (backgroundOpacity, fontSize, etc.).
+// Kept as Record<string, any> rather than unknown because consumers index into
+// it for arithmetic without narrowing — modelling it concretely would duplicate
+// SubtitleStyle and force guards at every read site for little safety gain.
+type SubtitleStyleBag = Record<string, any>
+
+// Structural view of the dash/shaka-dash plugin used for codec-family control.
+interface CodecController {
+  getAvailableCodecFamilies?: () => string[]
+  getCurrentCodecFamily?: () => string | null
+  getSelectedCodecFamily?: () => string
+  setCodecFamily?: (codecFamily: string) => void
+}
+
 export interface PlayerOptions {
   autoplay?: boolean
   autoplayNext?: boolean
@@ -88,12 +103,12 @@ export interface PlayerReturn {
 
   subtitleTracks: Ref<SubtitleTrack[]>
   currentSubtitle: Ref<SubtitleTrack | null>
-  subtitleStyle: Ref<Record<string, any>>
+  subtitleStyle: Ref<SubtitleStyleBag>
   subtitlePresets: typeof import('../plugins/subtitles').BUILT_IN_PRESETS
   subtitleOffset: Ref<number>
   setSubtitle: (track: SubtitleTrack | null) => void
   setSubtitleTracks: (tracks: SubtitleTrack[]) => Promise<void>
-  setSubtitleStyle: (style: Record<string, any>) => void
+  setSubtitleStyle: (style: SubtitleStyleBag) => void
   applySubtitlePreset: (presetId: string) => void
   toggleSubtitles: () => void
   setSubtitleOffset: (offsetSeconds: number) => void
@@ -147,7 +162,7 @@ const calculateBufferedAheadPercent = (buffered: TimeRanges, duration: number, c
 
 const SUBTITLE_STYLE_KEY = 'squirrel-player-subtitle-style'
 
-const loadSubtitleStyleFromStorage = (): Record<string, any> => {
+const loadSubtitleStyleFromStorage = (): SubtitleStyleBag => {
   try {
     const raw = localStorage.getItem(SUBTITLE_STYLE_KEY)
     return raw ? JSON.parse(raw) : {}
@@ -156,7 +171,7 @@ const loadSubtitleStyleFromStorage = (): Record<string, any> => {
   }
 }
 
-const saveSubtitleStyleToStorage = (style: Record<string, any>): void => {
+const saveSubtitleStyleToStorage = (style: SubtitleStyleBag): void => {
   try {
     localStorage.setItem(SUBTITLE_STYLE_KEY, JSON.stringify(style))
   } catch (err) { playerLogger.warn('Failed to save subtitle style', err) }
@@ -204,7 +219,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
   const subtitleTracks = ref<SubtitleTrack[]>([])
   const currentSubtitle = ref<SubtitleTrack | null>(null)
-  const subtitleStyle = ref<Record<string, any>>(loadSubtitleStyleFromStorage())
+  const subtitleStyle = ref<SubtitleStyleBag>(loadSubtitleStyleFromStorage())
   const subtitlePresets = BUILT_IN_PRESETS
   const subtitleOffset = ref(0)
   const preferredSubtitleEnabled = ref(true)
@@ -236,7 +251,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   const { theme, setTheme: applyTheme } = useTheme({ ...(options.themeOptions ?? {}), defaultTheme: initialTheme, target: containerElement })
   const setTheme = (newTheme: ThemeName) => applyTheme(newTheme)
 
-  const { t, locale, setLocale } = useI18n({ ...(options.i18nOptions ?? {}), locale: initialLocale as any })
+  const { t, locale, setLocale } = useI18n({ ...(options.i18nOptions ?? {}), locale: initialLocale ?? undefined })
 
   const { announce } = useA11y({ videoElement, containerElement, t })
 
@@ -266,7 +281,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   })
 
   const syncCodecFamilies = (): void => {
-    const dashPlugin = engine.getPlugin<any>('shaka-dash') || engine.getPlugin<any>('dash')
+    const dashPlugin = engine.getPlugin<CodecController>('shaka-dash') || engine.getPlugin<CodecController>('dash')
     if (!dashPlugin) {
       codecFamilies.value = []
       selectedCodecFamily.value = 'auto'
@@ -485,7 +500,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   }
 
   const setCodecFamily = (codecFamily: string): void => {
-    const dashPlugin = engine.getPlugin<any>('shaka-dash') || engine.getPlugin<any>('dash')
+    const dashPlugin = engine.getPlugin<CodecController>('shaka-dash') || engine.getPlugin<CodecController>('dash')
     if (dashPlugin && typeof dashPlugin.setCodecFamily === 'function') {
       dashPlugin.setCodecFamily(codecFamily)
       syncCodecFamilies()
@@ -510,7 +525,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     engine.setSubtitle(track)
   }
 
-  const setSubtitleStyle = (style: Record<string, any>): void => {
+  const setSubtitleStyle = (style: SubtitleStyleBag): void => {
     subtitleStyle.value = { ...subtitleStyle.value, ...style }
     engine.setSubtitleStyle(subtitleStyle.value)
     saveSubtitleStyleToStorage(subtitleStyle.value)

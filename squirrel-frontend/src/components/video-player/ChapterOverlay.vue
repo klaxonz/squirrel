@@ -18,10 +18,11 @@
 
 <script setup lang="ts">
 import { formatTime } from '@/utils/dateFormat'
+import type { Chapter } from './core/types'
 
 defineProps<{
   visible: boolean
-  chapters: any[]
+  chapters: Chapter[]
   chaptersLabel: string
   currentTime: number
   duration: number
