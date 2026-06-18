@@ -396,6 +396,8 @@ import { useSettingsMenu } from './composables/useSettingsMenu'
 import { useQualityDisplay } from './composables/useQualityDisplay'
 import { useUpNext } from './composables/useUpNext'
 import { useVideoRotation } from './composables/useVideoRotation'
+import { useProgressScrub } from './composables/useProgressScrub'
+import { usePlayerKeyboard } from './composables/usePlayerKeyboard'
 
 import './themes/variables.css'
 import './themes/dark.css'
@@ -505,7 +507,6 @@ const handlePlaylistSelect = (index: number) => {
 
 const videoRef = ref<HTMLVideoElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
-const progressAreaRef = ref<HTMLElement | null>(null)
 
 // Fullscreen feature state
 const showVideoInfo = ref(true)
@@ -542,9 +543,6 @@ const {
 
 const showStats = ref(false)
 const showPlaylist = ref(false)
-const previewTime = ref<number | null>(null)
-const previewPercent = ref(0)
-const isScrubbing = ref(false)
 const isVolumeScrubbing = ref(false)
 const isVolumeHovered = ref(false)
 
@@ -699,6 +697,29 @@ const {
   releaseMarkerPointerCapture,
   removeMarkerDragListeners,
 } = clipMarkersState
+
+// ponytail: progress-rail pointer scrub (preview + seek + marker-segment sync)
+// lives in useProgressScrub; VideoPlayer keeps only the `isScrubbing` watch that
+// suppresses control auto-hide during a drag, and hideControls() clearing the
+// preview via clearPreview().
+const {
+  progressAreaRef,
+  previewTime,
+  previewPercent,
+  isScrubbing,
+  onProgressPointerDown,
+  onProgressPointerMove,
+  onProgressPointerUp,
+  onProgressPointerLeave,
+  clearPreview,
+  cleanup: cleanupProgressScrub,
+} = useProgressScrub({
+  duration,
+  pendingSegmentEndTime,
+  hasPendingSegment,
+  seek,
+})
+
 const volumeIconName = computed(() => (isMuted.value || volume.value === 0) ? 'volumeOff' : volume.value < 50 ? 'volumeLow' : 'volumeHigh')
 const volumeText = computed(() => isMuted.value ? 'Muted' : `${Math.round(volume.value)}%`)
 const volumeFillPercent = computed(() => (isMuted.value ? 0 : Math.min(100, (volume.value / MAX_VOLUME) * 100)))
@@ -892,7 +913,7 @@ const clearHideTimer = () => clearTimeout(hideTimer)
 const hideControls = () => {
   clearHideTimer()
   store.setControlsVisible(false)
-  previewTime.value = null
+  clearPreview()
   closeMenus()
 }
 const syncHideTimer = () => {
@@ -933,92 +954,6 @@ const onPointerMove = (event: PointerEvent) => {
 const onPointerLeave = () => {
   if (!isScrubbing.value) hideControls()
 }
-let activeProgressPointerId: number | null = null
-
-const updateProgressPreview = (e: PointerEvent) => {
-  const progressArea = progressAreaRef.value
-  if (!progressArea) return
-
-  const rect = progressArea.getBoundingClientRect()
-  if (rect.width <= 0) return
-
-  const p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-  previewPercent.value = p * 100
-  previewTime.value = p * duration.value
-
-  if (isScrubbing.value && !hasPendingSegment.value) {
-    seek(previewTime.value)
-  }
-  if (isScrubbing.value) {
-    pendingSegmentEndTime.value = previewTime.value
-  }
-}
-
-const releaseProgressPointerCapture = () => {
-  const progressArea = progressAreaRef.value
-  if (!progressArea || activeProgressPointerId === null || typeof progressArea.hasPointerCapture !== 'function') return
-
-  if (!progressArea.hasPointerCapture(activeProgressPointerId)) return
-
-  try {
-    progressArea.releasePointerCapture(activeProgressPointerId)
-  } catch {
-    // Ignore browsers that reject release when the capture is already gone.
-  }
-}
-
-const addProgressScrubListeners = () => {
-  window.addEventListener('pointermove', onWindowProgressPointerMove)
-  window.addEventListener('pointerup', onWindowProgressPointerUp)
-  window.addEventListener('pointercancel', onWindowProgressPointerUp)
-}
-
-const removeProgressScrubListeners = () => {
-  window.removeEventListener('pointermove', onWindowProgressPointerMove)
-  window.removeEventListener('pointerup', onWindowProgressPointerUp)
-  window.removeEventListener('pointercancel', onWindowProgressPointerUp)
-}
-
-const stopProgressScrub = (pointerId?: number) => {
-  if (activeProgressPointerId !== null && typeof pointerId === 'number' && pointerId !== activeProgressPointerId) return
-
-  releaseProgressPointerCapture()
-  removeProgressScrubListeners()
-  activeProgressPointerId = null
-  isScrubbing.value = false
-}
-
-const onWindowProgressPointerMove = (e: PointerEvent) => {
-  if (!isScrubbing.value) return
-  if (activeProgressPointerId !== null && e.pointerId !== activeProgressPointerId) return
-
-  updateProgressPreview(e)
-}
-
-const onWindowProgressPointerUp = (e: PointerEvent) => {
-  stopProgressScrub(e.pointerId)
-}
-
-const onProgressPointerDown = (e: PointerEvent) => {
-  activeProgressPointerId = e.pointerId
-  isScrubbing.value = true
-  addProgressScrubListeners()
-  const progressArea = progressAreaRef.value
-  if (progressArea && typeof progressArea.setPointerCapture === 'function') {
-    try {
-      progressArea.setPointerCapture(e.pointerId)
-    } catch {
-      // Ignore browsers that do not support capturing this pointer.
-    }
-  }
-  updateProgressPreview(e)
-}
-const onProgressPointerMove = (e: PointerEvent) => {
-  if (isScrubbing.value) return
-  updateProgressPreview(e)
-}
-const onProgressPointerUp = (e?: PointerEvent) => { stopProgressScrub(e?.pointerId) }
-const onProgressPointerLeave = () => { if (!isScrubbing.value) previewTime.value = null }
 
 const onVolumePointerDown = (e: PointerEvent) => { isVolumeScrubbing.value = true; updateVol(e) }
 const onVolumePointerMove = (e: PointerEvent) => { if (isVolumeScrubbing.value) updateVol(e) }
@@ -1030,139 +965,6 @@ const setUserVolume = (value: number) => {
 const updateVol = (e: PointerEvent) => {
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
   setUserVolume(Math.max(0, Math.min(MAX_VOLUME, ((e.clientX - rect.left) / rect.width) * MAX_VOLUME)))
-}
-
-const isModifierKey = (e: KeyboardEvent): boolean =>
-  e.metaKey || e.ctrlKey || e.altKey
-
-const isInputFocused = (): boolean =>
-  document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA'
-
-const handleKeyDown = (e: KeyboardEvent) => {
-  const ks = keyboardShortcuts
-  if (!ks.enabled) return
-  if (isModifierKey(e)) return
-
-  const matches = (key: string): boolean => {
-    if (e.key === key) return true
-    if (key === ' ' && e.code === 'Space') return true
-    return false
-  }
-
-  if (matches(ks.playPause)) { e.preventDefault(); togglePlay(); return }
-  if (matches(ks.fullscreen)) { toggleFullscreen(); return }
-
-  if (matches(ks.rotate)) {
-    if (isInputFocused()) return
-    e.preventDefault()
-    rotateVideo()
-    return
-  }
-
-  if (matches(ks.seekBackward)) { e.preventDefault(); seek(currentTime.value - 10); return }
-  if (matches(ks.seekForward)) { e.preventDefault(); seek(currentTime.value + 10); return }
-  if (matches(ks.volumeUp)) { e.preventDefault(); setUserVolume(Math.min(MAX_VOLUME, volume.value + 5)); return }
-  if (matches(ks.volumeDown)) { e.preventDefault(); setUserVolume(Math.max(0, volume.value - 5)); return }
-
-  if (matches(ks.markSegmentStart)) {
-    if (isInputFocused()) return
-    e.preventDefault()
-    if (e.shiftKey) {
-      if (hasPendingSegment.value) finishSegmentCapture()
-      else startSegmentCapture()
-      return
-    }
-    if (matches(ks.markPoint)) {
-      markCurrentPoint()
-      return
-    }
-  }
-
-  if (matches(ks.markPoint)) {
-    if (isInputFocused()) return
-    e.preventDefault()
-    markCurrentPoint()
-    return
-  }
-
-  if (matches(ks.cancelSegment) && hasPendingSegment.value) {
-    cancelSegmentCapture()
-    return
-  }
-
-  if (matches(ks.toggleSubtitles)) {
-    if (isInputFocused()) return
-    e.preventDefault()
-    toggleSubtitlesQuick()
-    return
-  }
-
-  if (matches(ks.toggleStats)) {
-    if (isInputFocused()) return
-    e.preventDefault()
-    showStats.value = !showStats.value
-    return
-  }
-
-  if (matches(ks.screenshot) && isFullscreen.value) {
-    e.preventDefault()
-    captureScreenshot()
-    return
-  }
-
-  if (matches(ks.speedUp)) {
-    e.preventDefault()
-    const nextIdx = playbackRates.indexOf(store.playbackRate) + 1
-    if (nextIdx < playbackRates.length) handleSpeedSelect(playbackRates[nextIdx])
-    return
-  }
-
-  if (matches(ks.speedDown)) {
-    e.preventDefault()
-    const prevIdx = playbackRates.indexOf(store.playbackRate) - 1
-    if (prevIdx >= 0) handleSpeedSelect(playbackRates[prevIdx])
-    return
-  }
-
-  if (matches(ks.setLoopA) && isFullscreen.value) {
-    e.preventDefault()
-    store.setAbLoopActive(false)
-    store.setLoopAPoint(currentTime.value)
-    store.setLoopBPoint(null)
-    showCentralHud('loopAB', t('loopSetA'), 'skipBackward')
-    return
-  }
-
-  if (matches(ks.setLoopB) && isFullscreen.value && store.loopAPoint !== null) {
-    e.preventDefault()
-    const bTime = currentTime.value
-    if (bTime <= (store.loopAPoint ?? 0)) return
-    store.setLoopBPoint(bTime)
-    store.setAbLoopActive(true)
-    showCentralHud('loopAB', t('abLoopActive'), 'loop')
-    return
-  }
-
-  if (matches(ks.clearLoopAB) && isFullscreen.value && store.abLoopActive) {
-    e.preventDefault()
-    store.setAbLoopActive(false)
-    store.setLoopAPoint(null)
-    store.setLoopBPoint(null)
-    showCentralHud('loopAB', t('loopClearAB'), 'loop')
-    return
-  }
-
-  if (matches(ks.prevVideo) && props.hasPrev) {
-    e.preventDefault()
-    emit('prev')
-    return
-  }
-
-  if (matches(ks.nextVideo) && props.hasNext) {
-    e.preventDefault()
-    emit('next')
-    return
-  }
 }
 
 const markPlayerActive = () => {}
@@ -1214,6 +1016,41 @@ const handleLoopABToggle = () => {
     return
   }
 }
+
+// ponytail: keyboard-shortcut dispatch table + its window keydown listener
+// lifecycle live in usePlayerKeyboard. VideoPlayer only injects the action
+// surface (transport, volume, markers, speed, loop, playlist nav). Declared
+// after captureScreenshot/handleSpeedSelect/etc. so all action consts are past
+// their TDZ at call time.
+const { handleKeyDown } = usePlayerKeyboard({
+  keyboardShortcuts,
+  currentTime,
+  volume,
+  isFullscreen,
+  hasPendingSegment,
+  hasPrev: computed(() => props.hasPrev),
+  hasNext: computed(() => props.hasNext),
+  store,
+  playbackRates,
+  t: t as (key: string, params?: Record<string, string | number>) => string,
+  showCentralHud,
+  toggleStats: () => { showStats.value = !showStats.value },
+  togglePlay,
+  toggleFullscreen,
+  rotateVideo,
+  seek,
+  setUserVolume,
+  toggleSubtitlesQuick,
+  captureScreenshot,
+  startSegmentCapture,
+  finishSegmentCapture,
+  cancelSegmentCapture,
+  markCurrentPoint,
+  handleSpeedSelect,
+  onPrev: () => emit('prev'),
+  onNext: () => emit('next'),
+  maxVolume: MAX_VOLUME,
+})
 
 
 watch(isPlaying, (playing) => {
@@ -1300,7 +1137,6 @@ const handleVisibilityChange = () => {
 }
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeyDown)
   document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 onUnmounted(() => {
@@ -1308,10 +1144,8 @@ onUnmounted(() => {
   clearInitialTimeListener()
   clearResumeAfterSourceSwapListener()
   releaseMarkerPointerCapture()
-  releaseProgressPointerCapture()
+  cleanupProgressScrub()
   removeMarkerDragListeners()
-  removeProgressScrubListeners()
-  window.removeEventListener('keydown', handleKeyDown)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   stopSleepTimer()
   upNext.clear()

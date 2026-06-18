@@ -42,6 +42,26 @@ choices rather than reverse-engineer them.
   ResizeObserver + RAF throttling, with internal `onUnmounted` cleanup.
 - `VideoPlayer.vue`: dropped from 2750 → 2407 lines (-343).
 
+### Phase 2 (cont.) — progress scrub + keyboard extraction
+
+The Phase-2 "before" figure above was aspirational — `VideoPlayer.vue` was
+actually **2708 lines** at commit `8c7ef66d` (the original Phase-0/1/2 pass),
+not 2407. This continuation works against the real number.
+
+- `composables/useProgressScrub.ts` (new, 150 lines): progress-rail pointer
+  scrub — preview thumbnail/time + actual seek on drag, plus clip-marker
+  pending-segment-end sync. Owns pointer capture + window listeners; released
+  via a `cleanup()` the caller runs in `onUnmounted`. The `isScrubbing` watch
+  that suppresses control auto-hide stays in `VideoPlayer` (it's a
+  controls-visibility concern, not a scrub concern).
+- `composables/usePlayerKeyboard.ts` (new, 215 lines): the keyboard-shortcut
+  dispatch table + its own `window` keydown listener lifecycle. The action
+  surface (transport, volume, markers, speed, loop, playlist nav) is injected,
+  so the composable is a pure dispatch table with no player state of its own.
+  `VideoPlayer` dropped its own `onMounted`/`onUnmounted` keydown wiring.
+- `VideoPlayer.vue`: 2708 → **2542** lines (-166 this session; -208 vs the
+  corrected baseline once `useVideoRotation` is also counted).
+
 ## Deliberate decisions (defend the choice, don't hide it)
 
 ### Why `createPlayerEngine.ts` stays a single 991-line module
@@ -103,17 +123,30 @@ instantiated with a typed Events map (`EventEmitter<PlayerEvents>`), so the
 
 | File | Before | After | Notes |
 |---|---|---|---|
-| `VideoPlayer.vue` | 2750 | 2407 | Rotation extracted; more composables planned. |
+| `VideoPlayer.vue` | 2708¹ | 2542 | Rotation + progress scrub + keyboard extracted. |
 | `createPlayerEngine.ts` | 1050 | 991 | Types extracted; core kept cohesive. |
 | `Music.vue` | ~795 | 752 | Dead QR logic removed. |
 | `GlobalMusicPlayerBar.vue` | ~540 | 505 | Dead comment logic removed. |
 | `engine-types.ts` | — | 106 | New (extracted types). |
 | `composables/useVideoRotation.ts` | — | 79 | New (extracted from VideoPlayer). |
+| `composables/useProgressScrub.ts` | — | 150 | New (progress-rail scrub). |
+| `composables/usePlayerKeyboard.ts` | — | 215 | New (shortcut dispatch + lifecycle). |
+
+¹ The earlier draft of this table listed `2750 → 2407`; that was aspirational.
+`git show 8c7ef66d:squirrel-frontend/.../VideoPlayer.vue` is 2708 lines. The
+corrected baseline is used here.
 
 ## Deferred to a follow-up session
 
-- Further `VideoPlayer.vue` composables (`useProgressScrub`, `useControlsVisibility`,
-  `usePlayerKeyboard`, `useSourceSync`, etc.) and `parts/` child components.
+- `useControlsVisibility`: `hideControls` / `syncHideTimer` / `showControls` /
+  `onPointer*` stay inline. They couple to `showVideoInfo`, `videoInfoTimer`,
+  `isFullscreen`, `showChapterOverlay`, and `store.controlsVisible`, and
+  `showControls`/`hideControls` are reused by the `isScrubbing` watch and
+  `onPointerLeave`. Extracting needs ~5 refs + 3 callbacks plus re-exports of
+  the two functions the caller still calls — the wiring equals the block size,
+  a forced seam (negative net readability). Documented as deferred.
+- Remaining `VideoPlayer.vue` composables (`useSourceSync`, etc.) and `parts/`
+  child components.
 - Phase 3: `SiteRuntimeManager.vue` split + `lang="ts"`.
 - Phase 4: `RssSources` / `Settings` / `ScheduledTasks` / `PlaylistView` /
   `LogViewer` splits.
