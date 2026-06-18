@@ -398,6 +398,7 @@ import { useUpNext } from './composables/useUpNext'
 import { useVideoRotation } from './composables/useVideoRotation'
 import { useProgressScrub } from './composables/useProgressScrub'
 import { usePlayerKeyboard } from './composables/usePlayerKeyboard'
+import { useSourceSync } from './composables/useSourceSync'
 
 import './themes/variables.css'
 import './themes/dark.css'
@@ -548,7 +549,6 @@ const isVolumeHovered = ref(false)
 
 const pendingUserVolumeHud = ref<number | null>(null)
 const pendingWidescreenValue = ref<boolean | null>(null)
-const shouldResumeAfterSourceSwap = ref(false)
 const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
 
 // 按 code 把引擎/插件产生的英文错误信息映射为中文。
@@ -743,122 +743,29 @@ const subtitleMenuLabel = computed(() => {
   if (!store.subtitlesEnabled || !currentSubtitle.value) return t('subtitlesOff')
   return currentSubtitle.value.label
 })
-let removeInitialTimeListener: (() => void) | null = null
-let removeResumeAfterSourceSwapListener: (() => void) | null = null
-let initialTimeAppliedSourceKey: string | null = null
 
-const clearInitialTimeListener = (): void => {
-  if (!removeInitialTimeListener) return
-  removeInitialTimeListener()
-  removeInitialTimeListener = null
-}
-
-const clearResumeAfterSourceSwapListener = (): void => {
-  if (!removeResumeAfterSourceSwapListener) return
-  removeResumeAfterSourceSwapListener()
-  removeResumeAfterSourceSwapListener = null
-}
-
-const getSourceIdentity = (source: MediaSource | null | undefined): string => {
-  if (!source) return ''
-  return String(source.key || source.src || '')
-}
-
-const applyInitialTime = (source: MediaSource | null | undefined, time: number | undefined): void => {
-  const sourceKey = getSourceIdentity(source)
-  if (!sourceKey || initialTimeAppliedSourceKey === sourceKey) return
-  if (store.hasStartedPlayback || currentTime.value > 0.5) return
-
-  const video = videoRef.value
-  const nextTime = Number(time)
-  if (!video || !Number.isFinite(nextTime) || nextTime <= 0) return
-
-  clearInitialTimeListener()
-
-  const applySeek = (): void => {
-    const durationValue = Number(video.duration)
-    const boundedTime = Number.isFinite(durationValue) && durationValue > 0
-      ? Math.min(nextTime, durationValue)
-      : nextTime
-
-    if (boundedTime <= 0) return
-    initialTimeAppliedSourceKey = sourceKey
-    seek(Math.max(0, boundedTime))
-  }
-
-  if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
-    applySeek()
-    return
-  }
-
-  const onLoadedMetadata = (): void => {
-    clearInitialTimeListener()
-    applySeek()
-  }
-
-  video.addEventListener('loadedmetadata', onLoadedMetadata, { once: true })
-  removeInitialTimeListener = () => {
-    video.removeEventListener('loadedmetadata', onLoadedMetadata)
-  }
-}
-
-const resumePlaybackAfterSourceSwap = (): void => {
-  if (!shouldResumeAfterSourceSwap.value) return
-
-  const video = videoRef.value
-  if (!video) {
-    shouldResumeAfterSourceSwap.value = false
-    return
-  }
-
-  const resume = (): void => {
-    clearResumeAfterSourceSwapListener()
-    if (!shouldResumeAfterSourceSwap.value) return
-    shouldResumeAfterSourceSwap.value = false
-    void play()
-  }
-
-  if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
-    resume()
-    return
-  }
-
-  clearResumeAfterSourceSwapListener()
-  video.addEventListener('canplay', resume, { once: true })
-  removeResumeAfterSourceSwapListener = () => {
-    video.removeEventListener('canplay', resume)
-  }
-}
+// ponytail: source/initialTime/resume-after-swap sync lives in useSourceSync.
+// VideoPlayer keeps the videoRef<->videoElement + containerRef<->containerElement
+// bridge watches (those are usePlayer wiring, not source logic) and only injects
+// a small onSourceChange callback to clear the error overlay when the source
+// identity changes.
+const { cleanup: cleanupSourceSync } = useSourceSync({
+  videoRef,
+  source: computed(() => props.source),
+  initialTime: computed(() => props.initialTime),
+  autoplay: computed(() => props.autoplay),
+  currentTime,
+  isPlaying,
+  hasStartedPlayback: computed(() => store.hasStartedPlayback),
+  loadSource,
+  play,
+  pause,
+  seek,
+  onSourceChange: () => { errorState.value.show = false },
+})
 
 watch(videoRef, (el) => { videoElement.value = el }, { immediate: true })
 watch(containerRef, (el) => { containerElement.value = el }, { immediate: true })
-watch(() => props.source, (s, previousSource) => {
-  const sourceChanged = getSourceIdentity(s) !== getSourceIdentity(previousSource)
-  if (sourceChanged) {
-    clearInitialTimeListener()
-    clearResumeAfterSourceSwapListener()
-    initialTimeAppliedSourceKey = null
-    errorState.value.show = false
-  }
-  if (!s) {
-    shouldResumeAfterSourceSwap.value = isPlaying.value
-    clearResumeAfterSourceSwapListener()
-    pause()
-    return
-  }
-  loadSource(s)
-  if (shouldResumeAfterSourceSwap.value) {
-    if (props.autoplay) {
-      shouldResumeAfterSourceSwap.value = false
-    } else {
-      resumePlaybackAfterSourceSwap()
-    }
-  }
-  applyInitialTime(s, props.initialTime)
-}, { immediate: true })
-watch(() => props.initialTime, (initialTime) => {
-  applyInitialTime(props.source, initialTime)
-})
 watch(() => props.subtitles, (ts) => { setSubtitleTracks(ts || []) }, { immediate: true, deep: true })
 
 // 修复"视频在正常播放但错误遮罩仍盖在上面"的问题：
@@ -1141,8 +1048,7 @@ onMounted(() => {
 })
 onUnmounted(() => {
   clearHideTimer()
-  clearInitialTimeListener()
-  clearResumeAfterSourceSwapListener()
+  cleanupSourceSync()
   releaseMarkerPointerCapture()
   cleanupProgressScrub()
   removeMarkerDragListeners()

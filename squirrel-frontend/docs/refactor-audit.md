@@ -59,8 +59,16 @@ not 2407. This continuation works against the real number.
   surface (transport, volume, markers, speed, loop, playlist nav) is injected,
   so the composable is a pure dispatch table with no player state of its own.
   `VideoPlayer` dropped its own `onMounted`/`onUnmounted` keydown wiring.
-- `VideoPlayer.vue`: 2708 → **2542** lines (-166 this session; -208 vs the
-  corrected baseline once `useVideoRotation` is also counted).
+- `composables/useSourceSync.ts` (new, 176 lines): synchronizes the engine with
+  the `source` / `initialTime` props — applies `initialTime` once per source
+  (metadata-gated), arms resume-after-swap when the source briefly goes null
+  (adapter swap) and resumes on the new source's `canplay`, and notifies the
+  caller on source-identity change so it can clear source-scoped UI. The
+  `videoRef`/`containerRef` bridge watches stay in `VideoPlayer` (usePlayer
+  wiring, not source logic).
+- `VideoPlayer.vue`: 2708 → **2448** lines (-260 this session across the three
+  extractions; -302 vs the corrected baseline once `useVideoRotation` is also
+  counted).
 
 ## Deliberate decisions (defend the choice, don't hide it)
 
@@ -123,7 +131,7 @@ instantiated with a typed Events map (`EventEmitter<PlayerEvents>`), so the
 
 | File | Before | After | Notes |
 |---|---|---|---|
-| `VideoPlayer.vue` | 2708¹ | 2542 | Rotation + progress scrub + keyboard extracted. |
+| `VideoPlayer.vue` | 2708¹ | 2448 | Rotation + progress scrub + keyboard + source-sync extracted. |
 | `createPlayerEngine.ts` | 1050 | 991 | Types extracted; core kept cohesive. |
 | `Music.vue` | ~795 | 752 | Dead QR logic removed. |
 | `GlobalMusicPlayerBar.vue` | ~540 | 505 | Dead comment logic removed. |
@@ -131,6 +139,7 @@ instantiated with a typed Events map (`EventEmitter<PlayerEvents>`), so the
 | `composables/useVideoRotation.ts` | — | 79 | New (extracted from VideoPlayer). |
 | `composables/useProgressScrub.ts` | — | 150 | New (progress-rail scrub). |
 | `composables/usePlayerKeyboard.ts` | — | 215 | New (shortcut dispatch + lifecycle). |
+| `composables/useSourceSync.ts` | — | 176 | New (source/initialTime/resume sync). |
 
 ¹ The earlier draft of this table listed `2750 → 2407`; that was aspirational.
 `git show 8c7ef66d:squirrel-frontend/.../VideoPlayer.vue` is 2708 lines. The
@@ -145,12 +154,16 @@ corrected baseline is used here.
   `onPointerLeave`. Extracting needs ~5 refs + 3 callbacks plus re-exports of
   the two functions the caller still calls — the wiring equals the block size,
   a forced seam (negative net readability). Documented as deferred.
-- Remaining `VideoPlayer.vue` composables (`useSourceSync`, etc.) and `parts/`
-  child components.
-- Phase 3: `SiteRuntimeManager.vue` split + `lang="ts"`.
-- Phase 4: `RssSources` / `Settings` / `ScheduledTasks` / `PlaylistView` /
-  `LogViewer` splits.
-- Phase 5: `Music` / `VideoPlay` / `Subscribed` splits + remote-seed dedup.
+- Remaining `VideoPlayer.vue` work: `parts/` child components (template-level
+  splits of the controls bar, settings menu shell, overlays). The script-level
+  composable extractions above are the high-leverage ones; the template is now
+  the bulk of the file and is better addressed by component extraction than by
+  more composables.
+- Phase 3: `SiteRuntimeManager.vue` (1067 lines) split + `lang="ts"`.
+- Phase 4: `RssSources` (1519) / `Settings` (617) / `ScheduledTasks` (572) /
+  `PlaylistView` (509) / `LogViewer` (546) splits.
+- Phase 5: `Music` (843) / `VideoPlay` (724) / `Subscribed` (755) splits +
+  remote-seed dedup.
 
 These are scoped and designed; the Phase-0/1/2 work above establishes the
 patterns (composable extraction, type tightening, ponytail-documented
