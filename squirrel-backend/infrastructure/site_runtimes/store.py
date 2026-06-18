@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import tempfile
+import threading
 from pathlib import Path
 
 from .models import SiteRuntimeRecord, SiteRuntimeStatus, utcnow_iso
@@ -13,12 +14,19 @@ logger = logging.getLogger(__name__)
 
 
 class SiteRuntimeStore:
-    """Persist site runtime records as JSON."""
+    """Persist site runtime records as JSON.
+
+    All read-modify-write operations (``upsert`` / ``delete`` / ``set_enabled``)
+    are serialized by an internal lock so concurrent callers — FastAPI request
+    handlers, the bootstrap ``ThreadPoolExecutor``, and the reload listener
+    thread — cannot interleave and lose updates.
+    """
 
     def __init__(self, data_path: Path | None = None, paths: SiteRuntimePaths | None = None) -> None:
         self._paths = paths or build_site_runtime_paths()
         self._data_path = data_path or self._paths.records_file
         self._data_path.parent.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.Lock()
         self._cleanup_stale_temp_files()
 
     @property
@@ -88,28 +96,35 @@ class SiteRuntimeStore:
         return SiteRuntimeRecord.from_dict(item)
 
     def upsert(self, record: SiteRuntimeRecord) -> SiteRuntimeRecord:
-        payload = self._load_raw()
-        record.updated_at = utcnow_iso()
-        payload[record.runtime_id] = record.to_dict()
-        self._save_raw(payload)
-        return record
+        with self._lock:
+            payload = self._load_raw()
+            record.updated_at = utcnow_iso()
+            payload[record.runtime_id] = record.to_dict()
+            self._save_raw(payload)
+            return record
 
     def delete(self, runtime_id: str) -> None:
-        payload = self._load_raw()
-        if runtime_id in payload:
-            del payload[runtime_id]
-            self._save_raw(payload)
+        with self._lock:
+            payload = self._load_raw()
+            if runtime_id in payload:
+                del payload[runtime_id]
+                self._save_raw(payload)
 
     def set_enabled(self, runtime_id: str, enabled: bool) -> SiteRuntimeRecord | None:
-        record = self.get_record(runtime_id)
-        if record is None:
-            return None
-        record.enabled = enabled
-        if enabled and record.status == SiteRuntimeStatus.DISABLED:
-            record.status = SiteRuntimeStatus.INSTALLED
-        if not enabled:
-            record.status = SiteRuntimeStatus.DISABLED
-        return self.upsert(record)
+        with self._lock:
+            record = self.get_record(runtime_id)
+            if record is None:
+                return None
+            record.enabled = enabled
+            if enabled and record.status == SiteRuntimeStatus.DISABLED:
+                record.status = SiteRuntimeStatus.INSTALLED
+            if not enabled:
+                record.status = SiteRuntimeStatus.DISABLED
+            payload = self._load_raw()
+            record.updated_at = utcnow_iso()
+            payload[record.runtime_id] = record.to_dict()
+            self._save_raw(payload)
+            return record
 
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -11,6 +12,8 @@ from crawl import (
 )
 
 from infrastructure.site_catalog.cookie_files import get_site_cookies_file_path
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_bool(value, default: bool = True) -> bool:
@@ -111,9 +114,14 @@ def configure_backend_runtime_state(site_configs: dict[str, dict]) -> None:
         from infrastructure.site_catalog.runtime_http import set_cloudflare_bypass_client
 
         set_cloudflare_bypass_client(get_default_client())
-    except Exception:
-        # process boundary -- optional runtime init, must not crash the subprocess
-        pass
+    except Exception as exc:
+        # process boundary -- optional runtime init, must not crash the subprocess,
+        # but failures here used to be silently swallowed; log so they are visible.
+        logger.warning(
+            "Site runtime subprocess: failed to configure cloudflare bypass client: %s",
+            exc,
+            exc_info=True,
+        )
 
     _configure_runtime_cookie_resolver(site_configs)
     _configure_runtime_rate_limits(site_configs)
