@@ -33,9 +33,10 @@ instance.interceptors.response.use(
   (response) => {
     return response
   },
-  (error: AxiosError<any>) => {
-    if (error.response?.data?.msg) {
-      error.message = error.response.data.msg
+  (error: AxiosError<unknown>) => {
+    const data = error.response?.data as { msg?: string } | undefined
+    if (data?.msg) {
+      error.message = data.msg
     }
 
     if (error.response?.status === 401) {
@@ -44,7 +45,5 @@ instance.interceptors.response.use(
     return Promise.reject(error)
   }
 )
-
-export const invalidateBaseUrlCache = () => {}
 
 export default instance

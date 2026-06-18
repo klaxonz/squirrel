@@ -1,6 +1,27 @@
+// ponytail: login status shape is aggregated from site-runtime backends and
+// varies per-site; only the fields this module reads are typed here.
+export interface SiteLoginStatus {
+  logged_in?: boolean
+  supported?: boolean
+  message?: string
+  extra?: { transient_failure?: boolean } & Record<string, unknown>
+  oauth_status?: unknown
+  oauth_account?: unknown
+}
+
+export interface StatusBadge {
+  tone: 'muted' | 'success' | 'warning' | 'danger'
+  label: string
+  title: string
+}
+
+interface CookieImportPayload {
+  sites?: Record<string, unknown>
+}
+
 const DEFAULT_TITLE = '未登录'
 
-const containsAny = (text, tokens) => tokens.some(token => text.includes(token))
+const containsAny = (text: string, tokens: string[]): boolean => tokens.some((token) => text.includes(token))
 
 const TRANSIENT_FAILURE_TOKENS = [
   '检测失败',
@@ -16,7 +37,7 @@ const TRANSIENT_FAILURE_TOKENS = [
   '站点错误页',
 ]
 
-const isTransientLoginFailure = (loginStatus) => {
+const isTransientLoginFailure = (loginStatus: SiteLoginStatus | null | undefined): boolean => {
   if (!loginStatus || loginStatus.logged_in) {
     return false
   }
@@ -29,7 +50,7 @@ const isTransientLoginFailure = (loginStatus) => {
   return containsAny(title, TRANSIENT_FAILURE_TOKENS)
 }
 
-export const getLoginStatusBadge = (loginStatus) => {
+export const getLoginStatusBadge = (loginStatus: SiteLoginStatus | null | undefined): StatusBadge => {
   if (!loginStatus) {
     return {
       tone: 'muted',
@@ -104,7 +125,10 @@ export const getLoginStatusBadge = (loginStatus) => {
   }
 }
 
-export const mergeLoginStatusResult = (previousStatus, nextStatus) => {
+export const mergeLoginStatusResult = (
+  previousStatus: SiteLoginStatus | null | undefined,
+  nextStatus: SiteLoginStatus | null | undefined,
+): SiteLoginStatus | null | undefined => {
   if (!nextStatus) {
     return previousStatus
   }
@@ -116,7 +140,9 @@ export const mergeLoginStatusResult = (previousStatus, nextStatus) => {
   return nextStatus
 }
 
-export const shouldRefreshLoginStatusesAfterCookieImport = (payload) => {
+export const shouldRefreshLoginStatusesAfterCookieImport = (
+  payload: CookieImportPayload | null | undefined,
+): boolean => {
   const sites = payload?.sites
   return Boolean(sites && typeof sites === 'object' && Object.keys(sites).length > 0)
 }
