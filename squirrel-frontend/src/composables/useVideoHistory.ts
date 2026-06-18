@@ -166,14 +166,14 @@ export default function useVideoHistory() {
         params.query = query
       }
       
-      const { data, error } = (await listVideoHistory(params)) as ApiResult<any>
+      const { data, error } = await listVideoHistory(params)
       if (error) {
         const e = error as { message?: string }
         const message = typeof e?.message === 'string' ? e.message : '加载历史失败'
         throw new Error(message)
       }
 
-      const payload = data || {}
+      const payload = data || { items: [], total: 0, page, page_size: pageSize }
       const items = Array.isArray(payload.items) ? payload.items : []
       return {
         items,
@@ -182,7 +182,7 @@ export default function useVideoHistory() {
         page_size: payload.page_size ?? pageSize
       }
     } catch (error: unknown) {
-      const message = typeof (error as any)?.message === 'string' ? (error as any).message : '加载历史失败'
+      const message = typeof (error as { message?: string })?.message === 'string' ? (error as { message?: string }).message : '加载历史失败'
       throw new Error(message)
     }
   }

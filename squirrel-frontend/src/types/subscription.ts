@@ -46,6 +46,12 @@ export interface SubscriptionListItem {
   pending_video_count: number
   site: string | null
   recent_videos: SubscriptionRecentVideo[]
+  // ponytail: SubscriptionCard reads latest_videos / last_published_at which
+  // the traced serializer names recent_videos (and last_success_at). Kept as
+  // optional aliases so the card keeps rendering if the backend emits either;
+  // reconcile against the live payload before promoting to required.
+  latest_videos?: SubscriptionRecentVideo[]
+  last_published_at?: string | null
 }
 
 /** Wrapper for GET /api/subscription/list. */

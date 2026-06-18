@@ -24,24 +24,24 @@
         <button
           class="flex size-7 items-center justify-center rounded-md bg-black/60 text-white backdrop-blur hover:bg-primary hover:text-primary-foreground transition-colors"
           title="标记已读"
-          @click.stop="toggleReadStatus(!video.is_read)"
+          @click.stop="toggleReadStatus(!isRead)"
         >
-          <AppIcon :name="video.is_read ? 'statusSuccess' : 'check'" class="size-4" />
+          <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-4" />
         </button>
         <button
           class="flex size-7 items-center justify-center rounded-md bg-black/60 text-white backdrop-blur hover:bg-primary hover:text-primary-foreground transition-colors"
           title="稍后再看"
           @click.stop="toggleLater"
         >
-          <AppIcon :name="video.is_later === 1 ? 'watchLaterActive' : 'watchLater'" class="size-4" />
+          <AppIcon :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'" class="size-4" />
         </button>
         <button
           class="flex size-7 items-center justify-center rounded-md bg-black/60 backdrop-blur transition-colors"
-          :class="video.is_liked === 1 ? 'text-red-500 bg-black/80 hover:bg-black/90' : 'text-white hover:bg-primary hover:text-primary-foreground'"
+          :class="isLiked === 1 ? 'text-red-500 bg-black/80 hover:bg-black/90' : 'text-white hover:bg-primary hover:text-primary-foreground'"
           title="喜欢"
           @click.stop="toggleLikeVideo"
         >
-          <AppIcon name="heart" class="size-4" :class="{ 'fill-current': video.is_liked === 1 }" />
+          <AppIcon name="heart" class="size-4" :class="{ 'fill-current': isLiked === 1 }" />
         </button>
       </div>
 
@@ -123,18 +123,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import ContextMenu from './ContextMenu.vue'
-import VideoThumbnail from './VideoThumbnail.vue'
+import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import useVideoHistory from '@/composables/useVideoHistory'
 import useVideoInteraction from '@/composables/useVideoInteraction'
 import { useSystemConfig } from '@/composables/useSystemConfig'
 import { formatDate, formatDuration } from '@/utils/dateFormat'
+import type { VideoListItem } from '@/types/video'
 
 const props = defineProps<{
-  video: any
+  video: VideoListItem
   showAvatar?: boolean
   sortBy?: string
   layout?: 'grid' | 'list'
@@ -149,9 +150,17 @@ const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction(
 const showMenu = ref(false)
 const menuPosition = ref({ x: 0, y: 0 })
 
+// ponytail: read/like/later interaction state. The list endpoint does not
+// return these flags, so they are kept as local optimistic UI state here
+// rather than mutated on the props object (which would violate one-way flow
+// and previously wrote to nonexistent fields).
+const isRead = ref(false)
+const isLiked = ref<number | null>(null)
+const isLater = ref<number | null>(null)
+
 const thumbnailSrc = computed(() => String(props.video?.thumbnail || '').trim())
-const isNsfwVideo = computed(() => props.video.subscriptions?.some((s: any) => s.is_nsfw))
-const shouldBlurThumbnail = computed(() => systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value)
+const isNsfwVideo = computed(() => props.video.subscriptions?.some((s) => s.is_nsfw))
+const shouldBlurThumbnail = computed(() => Boolean(systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value))
 
 const progressRatio = computed(() => {
   const d = Number(props.video?.duration || 0)
@@ -170,11 +179,13 @@ const displayAvatars = computed(() => {
 })
 
 const displayNames = computed(() => {
-  const names = (props.video.subscriptions || props.video.actors || []).map((a: any) => a.name)
+  const names = (props.video.subscriptions || props.video.actors || []).map((a) => a.name)
   return names.length ? names.join(' / ') : '未知'
 })
 
 const primarySubscriptionId = computed(() => props.video.subscriptions?.[0]?.id || props.video.actors?.[0]?.id)
+
+const closeMenuOnExternalClose = () => { showMenu.value = false }
 
 const showContextMenu = async (event: MouseEvent) => {
   document.dispatchEvent(new CustomEvent('closeAllContextMenus'))
@@ -184,44 +195,43 @@ const showContextMenu = async (event: MouseEvent) => {
 }
 
 const handleClick = () => emit('openModal', props.video)
-const goToSubscription = (id: any) => id && emit('goToSubscription', id)
+const goToSubscription = (id: number | string | null | undefined) => id && emit('goToSubscription', id)
 
-const toggleReadStatus = async (isRead: boolean) => {
-  if (isRead) {
+const toggleReadStatus = async (markRead: boolean) => {
+  if (markRead) {
     const pos = Number(props.video.duration || 0)
     await sendReport(props.video.id, pos, { force: true })
-    props.video.is_read = true
-    props.video.last_position = pos
+    isRead.value = true
   } else {
     await clearHistory([props.video.id])
-    props.video.is_read = false
-    props.video.last_position = 0
+    isRead.value = false
   }
   showMenu.value = false
 }
 
 const toggleLikeVideo = async () => {
-  if (props.video.is_liked === 1) {
+  if (isLiked.value === 1) {
     const { error } = await deleteInteraction(props.video.id)
-    if (!error) props.video.is_liked = null
+    if (!error) isLiked.value = null
   } else {
     const { error } = await toggleLike(props.video.id, INTERACTION_TYPE.LIKE)
-    if (!error) props.video.is_liked = 1
+    if (!error) isLiked.value = 1
   }
   showMenu.value = false
 }
 
 const toggleLater = async () => {
-  if (props.video.is_later === 1) {
+  if (isLater.value === 1) {
     const { error } = await deleteInteraction(props.video.id)
-    if (!error) props.video.is_later = null
+    if (!error) isLater.value = null
   } else {
     const { error } = await toggleLike(props.video.id, INTERACTION_TYPE.LATER)
-    if (!error) props.video.is_later = 1
+    if (!error) isLater.value = 1
   }
 }
 
-onMounted(() => document.addEventListener('closeAllContextMenus', () => showMenu.value = false))
+onMounted(() => document.addEventListener('closeAllContextMenus', closeMenuOnExternalClose))
+onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenuOnExternalClose))
 </script>
 
 <style scoped>

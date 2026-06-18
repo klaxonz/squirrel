@@ -14,7 +14,7 @@
 import { computed } from 'vue'
 
 const props = defineProps<{
-  site: string
+  site?: string | null
 }>()
 
 const siteConfig: Record<string, { color: string, bg: string, border: string }> = {
@@ -30,7 +30,7 @@ const siteConfig: Record<string, { color: string, bg: string, border: string }> 
 
 const config = computed(() => {
   const s = props.site?.toLowerCase()
-  return siteConfig[s] || { color: 'currentColor', bg: 'hsl(var(--accent) / 0.5)', border: 'hsl(var(--border) / 0.5)' }
+  return (s && siteConfig[s]) || { color: 'currentColor', bg: 'hsl(var(--accent) / 0.5)', border: 'hsl(var(--border) / 0.5)' }
 })
 
 const siteColor = computed(() => config.value.color)

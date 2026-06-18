@@ -36,6 +36,11 @@ export interface VideoListItem {
   created_at: string
   subscriptions: VideoProfile[]
   actors: VideoProfile[]
+  // ponytail: the list endpoint does NOT return site/description, but several
+  // feed components read them defensively. Kept optional so those reads type
+  // check; they resolve to undefined on list items and only populate on detail.
+  site?: string | null
+  description?: string | null
 }
 
 /** Wrapper for GET /api/video/list. */

@@ -72,9 +72,10 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import { formatDuration } from '@/utils/dateFormat'
+import type { VideoListItem } from '@/types/video'
 
 const props = withDefaults(defineProps<{
-  video: any
+  video: VideoListItem
   showDuration?: boolean
   showPlayOverlay?: boolean
   showProgress?: boolean
@@ -86,9 +87,9 @@ const props = withDefaults(defineProps<{
   showSubscription: true,
 })
 
-defineEmits<{ openModal: [video: any], goToSubscription: [id: any] }>()
+defineEmits<{ openModal: [video: VideoListItem], goToSubscription: [id: number | string | null | undefined] }>()
 
-const primarySubscription = (video: any) => {
+const primarySubscription = (video: VideoListItem) => {
   if (!props.showSubscription) return null
   return Array.isArray(video?.subscriptions) ? video.subscriptions[0] : null
 }

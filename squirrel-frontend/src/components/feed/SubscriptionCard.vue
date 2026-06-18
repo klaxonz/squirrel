@@ -93,9 +93,10 @@ import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import SiteTag from '@/components/common/SiteTag.vue'
 import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import { formatDate } from '@/utils/dateFormat'
+import type { SubscriptionListItem } from '@/types/subscription'
 
 const props = defineProps<{
-  subscription: any
+  subscription: SubscriptionListItem
 }>()
 
 defineEmits(['click', 'more', 'toggleSpecial'])

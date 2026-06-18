@@ -49,11 +49,12 @@ import VideoItem from './VideoItem.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
 import { useUIStore } from '@/stores/ui'
 import { useSkeletonCount, type GridBreakpoint } from '@/composables/useSkeletonCount'
+import type { VideoListItem } from '@/types/video'
 
 const uiStore = useUIStore()
 
 const props = defineProps<{
-  videos: any[]
+  videos: VideoListItem[]
   loading: boolean
   allLoaded: boolean
   showAvatar: boolean

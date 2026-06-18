@@ -1,15 +1,15 @@
 import { computed, shallowRef, ref } from 'vue'
 import { getVideoList } from '@/api'
 import type { ApiResult } from '@/types/api'
+import type { VideoListItem as ApiVideoListItem, VideoListResponse as ApiVideoListResponse } from '@/types/video'
 
 type VideoId = string | number
 
-type VideoListItem = {
-  id: VideoId
+// Feed video items carry a few local UI-only flags on top of the API shape.
+type VideoListItem = ApiVideoListItem & {
   is_read?: boolean
   isPlaying?: boolean
   video_url?: string | null
-  [key: string]: unknown
 }
 
 type InitialState = {
@@ -25,7 +25,7 @@ type InitialState = {
   special?: string
 }
 
-type VideoListResponse = { data?: unknown[]; next_cursor?: string | null; has_more?: boolean }
+type VideoListResponse = ApiVideoListResponse
 type ApiErrorLike = { type?: string | null }
 type VideoListParams = {
   cursor: string | null
@@ -45,9 +45,9 @@ type VideoListParams = {
 
 const PAGE_SIZE = 50
 
-const normalizeVideoListItem = (video: any): VideoListItem => ({
+const normalizeVideoListItem = (video: ApiVideoListItem): VideoListItem => ({
   ...video,
-  is_read: video?.is_read ?? false,
+  is_read: false,
   isPlaying: false,
   video_url: null,
 })

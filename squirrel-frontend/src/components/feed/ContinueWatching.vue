@@ -42,7 +42,7 @@
       <RecommendationCard
         v-for="item in historyItems"
         :key="item.id"
-        :video="item"
+        :video="item as VideoListItem"
         show-duration
         show-play-overlay
         show-progress
@@ -60,11 +60,12 @@ import RecommendationCard from '@/components/feed/RecommendationCard.vue'
 import RecommendationSkeleton from '@/components/feed/RecommendationSkeleton.vue'
 import useVideoHistory from '@/composables/useVideoHistory'
 import { Logger } from '@/utils/logger'
+import type { VideoHistoryEntry, VideoListItem } from '@/types/video'
 
 const emit = defineEmits(['openModal', 'viewMore', 'goToSubscription'])
 
 const { getWatchHistory } = useVideoHistory()
-const historyItems = ref<any[]>([])
+const historyItems = ref<VideoHistoryEntry[]>([])
 const loading = ref(false)
 
 const scrollContainer = ref<HTMLElement | null>(null)
@@ -92,7 +93,7 @@ const scroll = (direction: 'left' | 'right') => {
   })
 }
 
-const getProgress = (video: any) => {
+const getProgress = (video: VideoHistoryEntry) => {
   const d = Number(video.duration || 0)
   return d > 0 ? Math.min(1, Number(video.last_position || 0) / d) : 0
 }
@@ -103,7 +104,7 @@ const load = async () => {
     const { items } = await getWatchHistory(1, { pageSize: 30 })
     // Keep anything the user has actually started watching (progress > 0);
     // drop only items that were never played.
-    historyItems.value = items.filter((item: any) => getProgress(item) > 0).slice(0, 12)
+    historyItems.value = items.filter((item) => getProgress(item) > 0).slice(0, 12)
 
     // Check scroll state after items are rendered
     await nextTick()

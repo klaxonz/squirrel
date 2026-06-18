@@ -14,8 +14,8 @@
       <div class="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-10" />
 
       <!-- Progress Bar -->
-      <div v-if="video.progress > 0" class="absolute bottom-0 inset-x-0 h-1 group-hover:h-1.5 transition-all duration-300 z-20 bg-white/30">
-        <div class="h-full bg-white transition-all duration-500 ease-out" :style="{ width: `${video.progress * 100}%` }" />
+      <div v-if="progress > 0" class="absolute bottom-0 inset-x-0 h-1 group-hover:h-1.5 transition-all duration-300 z-20 bg-white/30">
+        <div class="h-full bg-white transition-all duration-500 ease-out" :style="{ width: `${progress * 100}%` }" />
       </div>
 
       <div v-if="video.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium text-white tabular-nums backdrop-blur-sm z-20">
@@ -55,9 +55,9 @@
           </span>
           <span class="h-1 w-1 rounded-full bg-border" />
           <span>{{ formatDate(video.played_at) }}</span>
-          <template v-if="video.progress > 0">
+          <template v-if="progress > 0">
             <span class="h-1 w-1 rounded-full bg-border" />
-            <span>已观看 {{ (video.progress * 100).toFixed(0) }}%</span>
+            <span>已观看 {{ (progress * 100).toFixed(0) }}%</span>
           </template>
         </div>
       </div>
@@ -70,9 +70,10 @@ import { computed } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import { formatDate, formatDuration } from '@/utils/dateFormat'
+import type { VideoHistoryEntry } from '@/types/video'
 
 const props = defineProps<{
-  video: any
+  video: VideoHistoryEntry
 }>()
 
 const emit = defineEmits(['open', 'delete'])
@@ -81,16 +82,21 @@ const handleDelete = () => {
   emit('delete', props.video.history_id || props.video.id)
 }
 
+const progress = computed(() => {
+  const d = Number(props.video.duration || 0)
+  return d > 0 ? Math.min(1, Number(props.video.last_position || 0) / d) : 0
+})
+
 const displayAvatars = computed(() => {
   const sources = props.video.subscriptions || props.video.actors || []
-  return sources.slice(0, 3).map((s: any) => ({
+  return sources.slice(0, 3).map((s) => ({
     name: s.name,
-    avatar: s.avatar
+    avatar: s.avatar ?? ''
   }))
 })
 
 const displayChannel = computed(() => {
   const sources = props.video.subscriptions || props.video.actors || []
-  return sources.map((s: any) => s.name).join(' / ')
+  return sources.map((s) => s.name).join(' / ')
 })
 </script>
