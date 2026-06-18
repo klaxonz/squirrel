@@ -77,32 +77,18 @@
     <CentralHudOverlay :hud="centralHud" :shifted="showLoadingOverlay" />
 
     <!-- 加载遮罩 -->
-    <Transition name="sp-loading-fade" @after-enter="onLoadingEnter" @after-leave="onLoadingLeave">
-      <div v-if="showLoadingOverlay" class="sp-loading">
-        <div class="sp-loader">
-          <div class="sp-loader-ring"></div>
-        </div>
-        <div v-if="loadingStageText" class="sp-loading-text">{{ loadingStageText }}</div>
-      </div>
-    </Transition>
+    <LoadingOverlay :visible="showLoadingOverlay" :stage-text="loadingStageText" />
 
     <!-- Error overlay -->
-    <Transition name="sp-loading-fade">
-      <div v-if="errorState.show" class="sp-error-overlay" @click.stop>
-        <div class="sp-error-content">
-          <div class="sp-error-icon">
-            <PlayerIcon name="error" class="sp-error-icon-svg" />
-          </div>
-          <div class="sp-error-title">{{ errorState.title || t('errorTitle') }}</div>
-          <div class="sp-error-message">{{ errorState.message }}</div>
-          <div class="sp-error-actions">
-            <button v-if="errorState.canRetry" class="sp-error-retry-btn" @click.stop="handleRetry">
-              {{ t('retry') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
+    <ErrorOverlay
+      :visible="errorState.show"
+      :title="errorState.title"
+      :message="errorState.message"
+      :can-retry="errorState.canRetry"
+      :fallback-title="t('errorTitle')"
+      :retry-label="t('retry')"
+      @retry="handleRetry"
+    />
 
     <!-- Stats overlay -->
     <StatsOverlay :get-stats="getStats" :visible="showStats" />
@@ -382,6 +368,8 @@ import type { VideoClipMarker } from '@/types/videoClipMarker'
 import { usePlayerStore } from '@/stores/player'
 import PlayerIcon from './PlayerIcon.vue'
 import StatsOverlay from './StatsOverlay.vue'
+import LoadingOverlay from './LoadingOverlay.vue'
+import ErrorOverlay from './ErrorOverlay.vue'
 import PlaylistPanel from './PlaylistPanel.vue'
 import CentralHudOverlay from './CentralHudOverlay.vue'
 import VideoInfoOverlay from './VideoInfoOverlay.vue'
@@ -575,9 +563,6 @@ const loadingStageText = computed(() => {
   if (store.loadingStage === 'buffering') return t('buffering')
   return null
 })
-// Loading state control
-const onLoadingEnter = () => {}
-const onLoadingLeave = () => {}
 
 watch(volume, (newVol, oldVol) => {
   if (Math.abs(newVol - oldVol) < 0.1) return
@@ -2095,59 +2080,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   text-align: center;
 }
 
-/* 加载遮罩 */
-.sp-loading {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  z-index: 50;
-  /* Loading overlay is purely presentational; let pointer events (click/dblclick)
-     pass through to the video/container underneath so fullscreen toggling still
-     works while the video is loading. */
-  pointer-events: none;
-}
-
-.sp-loader {
-  width: 28px;
-  height: 28px;
-  position: relative;
-}
-
-.sp-loader-ring {
-  position: absolute;
-  inset: 0;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-top-color: rgba(255, 255, 255, 0.6);
-  border-radius: 50%;
-  animation: sp-loader-spin 0.8s linear infinite;
-}
-
-.sp-loading-text {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 12px;
-  font-family: var(--sp-font-family);
-  margin-top: 8px;
-}
-
-@keyframes sp-loader-spin {
-  to { transform: rotate(360deg); }
-}
-
-/* 加载遮罩淡入淡出 */
-.sp-loading-fade-enter-active,
-.sp-loading-fade-leave-active {
-  transition: opacity var(--duration-slow) var(--ease-default);
-}
-
-.sp-loading-fade-enter-from,
-.sp-loading-fade-leave-to {
-  opacity: 0;
-}
-
 .sp-ui-fade-enter-active, .sp-ui-fade-leave-active {
   transition:
     opacity var(--duration-slow) var(--ease-out),
@@ -2163,69 +2095,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   opacity: 0.35;
   cursor: not-allowed;
   filter: grayscale(1);
-}
-
-/* Error overlay */
-.sp-error-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 60;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
-}
-
-.sp-error-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 32px 24px;
-  max-width: 320px;
-  text-align: center;
-}
-
-.sp-error-icon-svg {
-  width: 36px;
-  height: 36px;
-  color: var(--sp-primary, #d3d4d8);
-  opacity: 0.7;
-}
-
-.sp-error-title {
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-}
-
-.sp-error-message {
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.sp-error-actions {
-  margin-top: 4px;
-}
-
-.sp-error-retry-btn {
-  padding: 6px 18px;
-  background: var(--sp-primary, #d3d4d8);
-  color: #000;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity var(--duration-fast) var(--ease-default);
-  letter-spacing: 0.03em;
-}
-
-.sp-error-retry-btn:hover {
-  opacity: 0.85;
 }
 
 /* ===== Fullscreen Features CSS ===== */

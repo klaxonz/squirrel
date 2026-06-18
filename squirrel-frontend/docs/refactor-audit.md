@@ -66,9 +66,21 @@ not 2407. This continuation works against the real number.
   caller on source-identity change so it can clear source-scoped UI. The
   `videoRef`/`containerRef` bridge watches stay in `VideoPlayer` (usePlayer
   wiring, not source logic).
-- `VideoPlayer.vue`: 2708 → **2448** lines (-260 this session across the three
-  extractions; -302 vs the corrected baseline once `useVideoRotation` is also
-  counted).
+
+### Phase 2 (cont. 2) — overlay component extraction
+
+- `LoadingOverlay.vue` (new, 73 lines): the buffering/load spinner + stage text,
+  with its own scoped fade transition + spinner keyframes. Narrow surface
+  (`visible`, `stageText`).
+- `ErrorOverlay.vue` (new, 109 lines): the fatal-error panel (icon/title/message/
+  retry), with its own scoped fade + darkening backdrop. Narrow surface (visible/
+  title/message/canRetry/fallbackTitle/retryLabel + `retry` emit).
+- Both follow the existing `*-Overlay.vue` convention (`CentralHudOverlay`,
+  `ChapterOverlay`, `UpNextOverlay`, …). The shared `sp-loading-fade` transition
+  is now duplicated as a tiny scoped block in each (they never animate together,
+  so no shared global CSS is worth the indirection).
+- `VideoPlayer.vue`: 2448 → **2317** lines (-131). Each overlay also pulled its
+  scoped CSS out of `VideoPlayer`'s `<style>`, which is the bulk of the win.
 
 ## Deliberate decisions (defend the choice, don't hide it)
 
@@ -131,7 +143,7 @@ instantiated with a typed Events map (`EventEmitter<PlayerEvents>`), so the
 
 | File | Before | After | Notes |
 |---|---|---|---|
-| `VideoPlayer.vue` | 2708¹ | 2448 | Rotation + progress scrub + keyboard + source-sync extracted. |
+| `VideoPlayer.vue` | 2708¹ | 2317 | Rotation + progress scrub + keyboard + source-sync + 2 overlays extracted. |
 | `createPlayerEngine.ts` | 1050 | 991 | Types extracted; core kept cohesive. |
 | `Music.vue` | ~795 | 752 | Dead QR logic removed. |
 | `GlobalMusicPlayerBar.vue` | ~540 | 505 | Dead comment logic removed. |
@@ -140,6 +152,8 @@ instantiated with a typed Events map (`EventEmitter<PlayerEvents>`), so the
 | `composables/useProgressScrub.ts` | — | 150 | New (progress-rail scrub). |
 | `composables/usePlayerKeyboard.ts` | — | 215 | New (shortcut dispatch + lifecycle). |
 | `composables/useSourceSync.ts` | — | 176 | New (source/initialTime/resume sync). |
+| `LoadingOverlay.vue` | — | 73 | New (load/buffering overlay). |
+| `ErrorOverlay.vue` | — | 109 | New (fatal-error overlay). |
 
 ¹ The earlier draft of this table listed `2750 → 2407`; that was aspirational.
 `git show 8c7ef66d:squirrel-frontend/.../VideoPlayer.vue` is 2708 lines. The
