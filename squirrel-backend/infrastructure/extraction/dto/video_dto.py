@@ -1,7 +1,7 @@
 """VideoDTO - Video data transfer object
 """
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field, validator
 
@@ -52,7 +52,7 @@ class VideoDTO(BaseModel):
 
     class Config:
         frozen = True  # Immutable object
-        json_encoders = {
+        json_encoders: ClassVar[dict[type[datetime], Any]] = {
             datetime: lambda v: v.isoformat() if v else None,
         }
 
@@ -190,12 +190,11 @@ class VideoDTO(BaseModel):
 
         """
         # Convert actors
-        if data.get("actors"):
-            if isinstance(data["actors"], list):
-                data["actors"] = [
-                    ActorDTO(**actor) if isinstance(actor, dict) else actor
-                    for actor in data["actors"]
-                ]
+        if data.get("actors") and isinstance(data["actors"], list):
+            data["actors"] = [
+                ActorDTO(**actor) if isinstance(actor, dict) else actor
+                for actor in data["actors"]
+            ]
 
         return cls(**data)
 

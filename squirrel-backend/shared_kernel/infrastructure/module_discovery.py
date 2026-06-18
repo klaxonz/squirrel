@@ -30,9 +30,8 @@ def import_classes_from_package(
     # Get classes from the package module itself
     for name in dir(package_module):
         obj = getattr(package_module, name)
-        if isinstance(obj, type):
-            if base_class is None or issubclass(obj, base_class):
-                discovered_classes.append(obj)
+        if isinstance(obj, type) and (base_class is None or issubclass(obj, base_class)):
+            discovered_classes.append(obj)
 
     if not recursive:
         return discovered_classes
@@ -42,7 +41,7 @@ def import_classes_from_package(
     if package_path is None:
         return discovered_classes
 
-    for importer, modname, ispkg in pkgutil.walk_packages(package_path):
+    for _importer, modname, _ispkg in pkgutil.walk_packages(package_path):
         full_module_name = f"{package}.{modname}"
 
         try:
@@ -52,8 +51,7 @@ def import_classes_from_package(
 
         for name in dir(module):
             obj = getattr(module, name)
-            if isinstance(obj, type):
-                if base_class is None or issubclass(obj, base_class):
-                    discovered_classes.append(obj)
+            if isinstance(obj, type) and (base_class is None or issubclass(obj, base_class)):
+                discovered_classes.append(obj)
 
     return discovered_classes

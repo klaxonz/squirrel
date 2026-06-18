@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import field_serializer, model_validator
 from sqlalchemy_to_pydantic import sqlalchemy_to_pydantic
@@ -13,7 +13,7 @@ class SubscriptionDto(sqlalchemy_to_pydantic(Subscription)):
 
     class Config:
         from_attributes = True
-        json_encoders = {datetime: lambda v: v.strftime("%Y-%m-%d %H:%M:%S")}
+        json_encoders: ClassVar[dict[type[datetime], Any]] = {datetime: lambda v: v.strftime("%Y-%m-%d %H:%M:%S")}
 
         @staticmethod
         def json_schema_extra(schema: dict[str, Any]) -> None:
@@ -27,12 +27,11 @@ class SubscriptionDto(sqlalchemy_to_pydantic(Subscription)):
     @classmethod
     @model_validator(mode="before")
     def validate_extra_data(cls, data):
-        if isinstance(data, dict) and "extra_data" in data:
-            if isinstance(data["extra_data"], str):
-                try:
-                    data["extra_data"] = json.loads(data["extra_data"])
-                except json.JSONDecodeError:
-                    data["extra_data"] = {}
+        if isinstance(data, dict) and "extra_data" in data and isinstance(data["extra_data"], str):
+            try:
+                data["extra_data"] = json.loads(data["extra_data"])
+            except json.JSONDecodeError:
+                data["extra_data"] = {}
         return data
 
     total_extract: int = 0

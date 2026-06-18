@@ -97,10 +97,11 @@ class MusicCatalogMixin:
         }, user_id=user_id)
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('info', 'list', 'lists', 'data'))
-        if isinstance(data, dict):
-            total = data.get('total') or data.get('count') or len(rows)
-        else:
-            total = len(rows)
+        total = (
+            data.get('total') or data.get('count') or len(rows)
+            if isinstance(data, dict)
+            else len(rows)
+        )
 
         return {
             'items': [normalize_artist(row) for row in rows],
@@ -117,10 +118,11 @@ class MusicCatalogMixin:
         }, user_id=user_id)
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('info', 'list', 'lists', 'videos', 'data'))
-        if isinstance(data, dict):
-            total = data.get('total') or data.get('count') or len(rows)
-        else:
-            total = len(rows)
+        total = (
+            data.get('total') or data.get('count') or len(rows)
+            if isinstance(data, dict)
+            else len(rows)
+        )
 
         return {
             'items': [normalize_video(row) for row in rows],
@@ -143,4 +145,3 @@ class MusicCatalogMixin:
                 for row in rows
             ],
         }
-

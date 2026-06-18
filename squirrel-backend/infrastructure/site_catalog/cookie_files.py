@@ -3,7 +3,7 @@ import tempfile
 import threading
 import time
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 
 if os.name == "nt":
@@ -73,9 +73,9 @@ def _site_cookie_file_lock(lock_path: Path, timeout_seconds: float = 30.0) -> It
             try:
                 _lock_file_handle(handle)
                 break
-            except OSError:
+            except OSError as exc:
                 if time.monotonic() >= deadline:
-                    raise TimeoutError(f"Failed to acquire cookie file lock: {lock_path}")
+                    raise TimeoutError(f"Failed to acquire cookie file lock: {lock_path}") from exc
                 time.sleep(0.05)
 
         try:
@@ -108,8 +108,6 @@ def write_cookie_text_file(target_path: Path, content: str, encoding: str = "utf
             os.replace(temp_path, target)
         except OSError:
             if temp_path is not None:
-                try:
+                with suppress(OSError):
                     temp_path.unlink(missing_ok=True)
-                except OSError:
-                    pass
             raise

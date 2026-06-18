@@ -57,7 +57,7 @@ class VideoExtractionTaskService:
         source_type = "manual" if params.is_manual else "scheduled"
 
         try:
-            _, task = self._crawl_tasks.create_job_with_task(
+            _, _task = self._crawl_tasks.create_job_with_task(
                 job_type="video_extract",
                 source_type=source_type,
                 site=domain,

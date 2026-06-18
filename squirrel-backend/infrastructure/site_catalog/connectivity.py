@@ -31,9 +31,9 @@ class ConnectivityTestRequest(BaseModel):
 
         try:
             parsed = urlparse(v_str)
-            if not parsed.scheme or not parsed.netloc:
-                raise ValueError("Invalid URL format")
-        except Exception:
+        except Exception as exc:
+            raise ValueError("Invalid URL format") from exc
+        if not parsed.scheme or not parsed.netloc:
             raise ValueError("Invalid URL format")
 
         return v_str

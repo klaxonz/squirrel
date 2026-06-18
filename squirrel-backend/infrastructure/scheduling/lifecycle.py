@@ -20,7 +20,7 @@ _heartbeat_running: bool = False
 _task_synchronizer = SchedulerTaskSynchronizer()
 
 
-def _update_scheduler_status(is_running: bool, job_count: int = 0, error_message: str = None) -> None:
+def _update_scheduler_status(is_running: bool, job_count: int = 0, error_message: str | None = None) -> None:
     """Update scheduler status in the database"""
     try:
         with get_session() as session:

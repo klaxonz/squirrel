@@ -57,7 +57,7 @@ class RssSyncService:
             loaded = self._load_account_and_config(user_id, account_id)
             if loaded is None:
                 return None
-            account, config, configured_entry_limit = loaded
+            _account, config, configured_entry_limit = loaded
             effective_entry_limit = entry_limit if entry_limit is not None else configured_entry_limit
 
             client = create_client(config)

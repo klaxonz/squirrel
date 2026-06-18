@@ -172,7 +172,7 @@ class SiteCatalog:
         if k in catalog and catalog[k].get("enabled", True):
             return catalog[k].get("domains", [])
         # alias
-        for slug, site_info in catalog.items():
+        for _slug, site_info in catalog.items():
             if not site_info.get("enabled", True):
                 continue
             aliases = [a.lower() for a in site_info.get("aliases", [])]
@@ -276,4 +276,3 @@ class SiteCatalog:
             for slug, site_info in catalog.items()
             if str(slug).strip() and site_info.get("enabled", True)
         }
-

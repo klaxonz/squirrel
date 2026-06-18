@@ -33,7 +33,7 @@ class TaskFactory:
         except ImportError as e:
             logger.error('Failed to discover builtin tasks: %s', e)
 
-    def register_task_class(self, task_class: type[BaseTask], task_name: str = None) -> None:
+    def register_task_class(self, task_class: type[BaseTask], task_name: str | None = None) -> None:
         """Register a task class."""
         if task_name is None:
             task_name = f'{task_class.__module__}.{task_class.__name__}'

@@ -27,7 +27,7 @@ def serialize_history_items(session: Session, user_id: int, histories: list[Vide
     subs_links = session.scalars(
         select(SubscriptionVideo).where(SubscriptionVideo.video_id.in_(video_ids)),
     ).all()
-    sub_ids = list(set(link.subscription_id for link in subs_links))
+    sub_ids = list({link.subscription_id for link in subs_links})
 
     subs = session.scalars(
         select(Subscription).where(Subscription.id.in_(sub_ids)),

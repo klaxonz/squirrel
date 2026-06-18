@@ -115,7 +115,7 @@ def test_recall_threads_category_to_filter_for_search():
     filters = fake_index.last_options.get('filter', [])
     assert any(f.startswith('publish_ts <= ') for f in filters)
     # 上界是合法 unix 秒（接近真实当前时间即可，容忍主机/容器时钟差异）
-    bound = [f for f in filters if f.startswith('publish_ts <= ')][0]
+    bound = next(f for f in filters if f.startswith('publish_ts <= '))
     bound_ts = int(bound.split('<= ')[1])
     assert abs(bound_ts - int(datetime.now().timestamp())) < 120
 

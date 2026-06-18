@@ -15,10 +15,11 @@ class MusicCommentsMixin:
         }, user_id=user_id)
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
-        if isinstance(data, dict):
-            total = data.get('total') or data.get('count') or data.get('cmtcount') or len(rows)
-        else:
-            total = len(rows)
+        total = (
+            data.get('total') or data.get('count') or data.get('cmtcount') or len(rows)
+            if isinstance(data, dict)
+            else len(rows)
+        )
 
         return {
             'items': [normalize_comment(row) for row in rows],
@@ -38,10 +39,11 @@ class MusicCommentsMixin:
         }, user_id=user_id)
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
-        if isinstance(data, dict):
-            total = data.get('total') or data.get('count') or len(rows)
-        else:
-            total = len(rows)
+        total = (
+            data.get('total') or data.get('count') or len(rows)
+            if isinstance(data, dict)
+            else len(rows)
+        )
 
         return {
             'items': [normalize_comment(row) for row in rows],
@@ -79,10 +81,11 @@ class MusicCommentsMixin:
         payload = await self._client.request_kugou('/comment/floor', params, user_id=user_id)
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
-        if isinstance(data, dict):
-            total = data.get('total') or data.get('count') or len(rows)
-        else:
-            total = len(rows)
+        total = (
+            data.get('total') or data.get('count') or len(rows)
+            if isinstance(data, dict)
+            else len(rows)
+        )
 
         return {
             'items': [normalize_comment(row) for row in rows],
@@ -99,10 +102,11 @@ class MusicCommentsMixin:
         }, user_id=user_id)
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
-        if isinstance(data, dict):
-            total = data.get('total') or data.get('count') or len(rows)
-        else:
-            total = len(rows)
+        total = (
+            data.get('total') or data.get('count') or len(rows)
+            if isinstance(data, dict)
+            else len(rows)
+        )
 
         return {
             'items': [normalize_comment(row) for row in rows],
@@ -119,10 +123,11 @@ class MusicCommentsMixin:
         }, user_id=user_id)
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
-        if isinstance(data, dict):
-            total = data.get('total') or data.get('count') or len(rows)
-        else:
-            total = len(rows)
+        total = (
+            data.get('total') or data.get('count') or len(rows)
+            if isinstance(data, dict)
+            else len(rows)
+        )
 
         return {
             'items': [normalize_comment(row) for row in rows],
@@ -142,4 +147,3 @@ class MusicCommentsMixin:
         elif isinstance(data, (int, float)):
             count = int(data)
         return {'count': count}
-

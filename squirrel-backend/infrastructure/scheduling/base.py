@@ -1,4 +1,5 @@
 import logging
+from typing import ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ class BaseTask:
 
 
 class TaskRegistry:
-    tasks: list[type[BaseTask]] = []
+    tasks: ClassVar[list[type[BaseTask]]] = []
 
     @classmethod
     def register(cls, interval: int, unit: str = "seconds", start_immediately: bool = True):
@@ -26,7 +27,6 @@ class TaskRegistry:
             return task_class
 
         return decorator
-
 
 
 

@@ -78,10 +78,11 @@ class MusicLibraryMixin:
         }, user_id=user_id)
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('info', 'lists', 'list', 'data'))
-        if isinstance(data, dict):
-            total = data.get('total') or data.get('count') or len(rows)
-        else:
-            total = len(rows)
+        total = (
+            data.get('total') or data.get('count') or len(rows)
+            if isinstance(data, dict)
+            else len(rows)
+        )
 
         return {
             'items': [normalize_user_playlist(row) for row in rows],
@@ -98,10 +99,11 @@ class MusicLibraryMixin:
         }, user_id=user_id)
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('info', 'songs', 'list', 'files', 'data'))
-        if isinstance(data, dict):
-            total = data.get('total') or data.get('count') or len(rows)
-        else:
-            total = len(rows)
+        total = (
+            data.get('total') or data.get('count') or len(rows)
+            if isinstance(data, dict)
+            else len(rows)
+        )
 
         return {
             'items': [normalize_track(row) for row in rows],
@@ -163,10 +165,11 @@ class MusicLibraryMixin:
         payload = await self._client.request_kugou('/user/history', params, user_id=user_id)
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('songs', 'info', 'list', 'data'))
-        if isinstance(data, dict):
-            next_bp = data.get('bp') or data.get('next_bp') or ''
-        else:
-            next_bp = ''
+        next_bp = (
+            data.get('bp') or data.get('next_bp') or ''
+            if isinstance(data, dict)
+            else ''
+        )
 
         return {
             'items': [normalize_track(row) for row in rows],
@@ -237,10 +240,11 @@ class MusicLibraryMixin:
         )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('info', 'list', 'lists', 'songs', 'data'))
-        if isinstance(data, dict):
-            total = data.get('total') or data.get('count') or len(rows)
-        else:
-            total = len(rows)
+        total = (
+            data.get('total') or data.get('count') or len(rows)
+            if isinstance(data, dict)
+            else len(rows)
+        )
 
         return {
             'items': [normalize_track(row) for row in rows],
@@ -248,4 +252,3 @@ class MusicLibraryMixin:
             'page_size': page_size,
             'total': total,
         }
-

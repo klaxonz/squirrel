@@ -30,9 +30,7 @@ def is_public_api_path(path: str) -> bool:
         return True
     if any(path == prefix or path.startswith(prefix + "/") for prefix in PUBLIC_PATH_PREFIXES):
         return True
-    if path.startswith("/api/sites/") and path.endswith("/icon"):
-        return True
-    return False
+    return path.startswith("/api/sites/") and path.endswith("/icon")
 
 
 class AuthenticationError(Exception):

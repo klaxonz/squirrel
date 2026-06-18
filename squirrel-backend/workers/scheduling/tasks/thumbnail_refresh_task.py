@@ -5,6 +5,7 @@ import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import suppress
 
 import httpx
 from sqlalchemy import func, select
@@ -51,10 +52,8 @@ def _get_shared_http_client() -> httpx.Client:
         now = time.time()
         if _shared_http_client is None or now - _client_lock_time > _CLIENT_TTL:
             if _shared_http_client:
-                try:
+                with suppress(Exception):
                     _shared_http_client.close()
-                except Exception:
-                    pass
 
             _shared_http_client = httpx.Client(
                 timeout=30.0,

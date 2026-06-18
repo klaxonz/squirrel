@@ -47,7 +47,7 @@ def ensure_videos_index() -> None:
     # 显式建索引并指定主键；已存在时 Meilisearch 返回错误，这里忽略
     try:
         client.create_index(index_uid, {'primaryKey': 'id'})
-    except Exception as exc:  # noqa: BLE001 — 索引已存在等非致命情况
+    except Exception as exc:  # 索引已存在等非致命情况
         logger.debug('create_index %s skipped: %s', index_uid, exc)
     index = client.index(index_uid)
     index.update_searchable_attributes(_VIDEOS_SEARCHABLE_ATTRIBUTES)

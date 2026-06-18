@@ -12,8 +12,8 @@ class SerializerMixin:
 
     def to_dict(
             self,
-            exclude: set[str] = None,
-            include: set[str] = None,
+            exclude: set[str] | None = None,
+            include: set[str] | None = None,
             nested: bool = False,
             nested_depth: int = 1,
     ) -> dict[str, Any]:
@@ -92,7 +92,7 @@ class SerializerMixin:
 
         # Handle simple columns
         for key, value in data.items():
-            if key in mapper.columns.keys():
+            if key in mapper.columns:
                 model_data[key] = cls._deserialize_value(
                     value,
                     mapper.columns[key].type.python_type,

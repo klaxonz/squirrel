@@ -129,12 +129,8 @@ class VideoRandomService:
                     )
                 )
 
-            bind = session.get_bind()
-            dialect_name = getattr(getattr(bind, "dialect", None), "name", "") or ""
-            order_random = func.random() if dialect_name in ("postgresql", "sqlite") else func.random()
-
             random_row = session.execute(
-                base_query.order_by(order_random).limit(1)
+                base_query.order_by(func.random()).limit(1)
             ).first()
             return random_row[0] if random_row else None
 

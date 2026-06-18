@@ -44,9 +44,8 @@ class SubscriptionManageService:
 
     @staticmethod
     def _detect_subscription_type(url: str) -> str:
-        if 'youtube.com' in url or 'youtu.be' in url:
-            if 'list=' in url or '/playlist?' in url:
-                return ContentType.PLAYLIST
+        if ('youtube.com' in url or 'youtu.be' in url) and ('list=' in url or '/playlist?' in url):
+            return ContentType.PLAYLIST
 
         if 'bilibili.com' in url:
             if '/favlist' in url or 'fid=' in url:

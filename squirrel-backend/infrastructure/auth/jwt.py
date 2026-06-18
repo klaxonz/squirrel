@@ -31,10 +31,7 @@ def create_access_token(payload: dict, expires_delta: timedelta | None = None):
     """Create JWT access token
     """
     to_encode = payload.copy()
-    if expires_delta:
-        expire = datetime.now() + expires_delta
-    else:
-        expire = datetime.now() + timedelta(minutes=15)
+    expire = datetime.now() + expires_delta if expires_delta else datetime.now() + timedelta(minutes=15)
 
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, _get_secret_key(), algorithm=ALGORITHM)
@@ -60,14 +57,14 @@ def set_auth_cookie(
     persistent: bool = False,
 ) -> None:
     secure = _should_use_secure_cookie(request)
-    cookie_options = dict(
-        key=AUTH_COOKIE_NAME,
-        value=token,
-        httponly=True,
-        secure=secure,
-        samesite="lax",
-        path="/",
-    )
+    cookie_options = {
+        "key": AUTH_COOKIE_NAME,
+        "value": token,
+        "httponly": True,
+        "secure": secure,
+        "samesite": "lax",
+        "path": "/",
+    }
     if persistent:
         cookie_options["max_age"] = PERSISTENT_AUTH_COOKIE_MAX_AGE
 
@@ -109,6 +106,6 @@ def decode_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, _get_secret_key(), algorithms=[ALGORITHM])
         return payload
-    except JWTError:
+    except JWTError as exc:
         logger.error("Invalid token", exc_info=True)
-        raise _credentials_exception()
+        raise _credentials_exception() from exc

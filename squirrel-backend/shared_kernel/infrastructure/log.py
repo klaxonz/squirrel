@@ -3,8 +3,6 @@ import logging.handlers
 import os
 import sys
 
-from concurrent_log_handler import ConcurrentRotatingFileHandler  # noqa: F401
-
 from shared_kernel.infrastructure.trace import format_trace_id, get_trace_id
 
 current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

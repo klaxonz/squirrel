@@ -14,7 +14,7 @@ target-version = "py311"
 quote-style = "single"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "G"]
+select = ["E", "F", "W", "I", "UP", "G", "B904", "B007", "RUF012", "RUF013", "C4", "RUF059", "RUF015", "RUF034", "SIM103", "SIM105", "SIM117", "SIM118", "SIM102", "SIM108", "RUF100"]
 ignore = ["E501", "G201"]
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 

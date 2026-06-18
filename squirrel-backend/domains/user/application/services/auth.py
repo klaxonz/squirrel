@@ -58,5 +58,5 @@ def validate_auth_token(token: str | None) -> tuple[dict, User]:
             raise credentials_exception
 
         return payload, user
-    except (JWTError, TypeError, ValueError):
-        raise credentials_exception
+    except (JWTError, TypeError, ValueError) as exc:
+        raise credentials_exception from exc

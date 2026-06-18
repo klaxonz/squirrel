@@ -131,7 +131,7 @@ class UserService:
 
         return user
 
-    def update_user(self, user_id: int, nickname: str = None, avatar: str = None) -> User | None:
+    def update_user(self, user_id: int, nickname: str | None = None, avatar: str | None = None) -> User | None:
         with self._session_factory() as session:
             user = session.get(User, user_id)
             if not user:

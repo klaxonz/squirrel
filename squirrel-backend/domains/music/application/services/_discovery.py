@@ -139,10 +139,11 @@ class MusicDiscoveryMixin:
         payload = await self._client.request_kugou('/top/song', params, user_id=user_id)
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('songs', 'songlist', 'info', 'list', 'data'))
-        if isinstance(data, dict):
-            total = data.get('total') or data.get('count') or len(rows)
-        else:
-            total = len(rows)
+        total = (
+            data.get('total') or data.get('count') or len(rows)
+            if isinstance(data, dict)
+            else len(rows)
+        )
 
         return {
             'items': [normalize_track(row) for row in rows],
@@ -162,10 +163,11 @@ class MusicDiscoveryMixin:
         start = (page - 1) * page_size
         end = start + page_size
         page_rows = rows[start:end]
-        if isinstance(data, dict):
-            total = data.get('total') or data.get('count') or len(rows)
-        else:
-            total = len(rows)
+        total = (
+            data.get('total') or data.get('count') or len(rows)
+            if isinstance(data, dict)
+            else len(rows)
+        )
 
         return {
             'items': [normalize_album(row) for row in page_rows],
@@ -238,4 +240,3 @@ class MusicDiscoveryMixin:
                 'target_id': str(row.get('target_id') or row.get('id_extra') or ''),
             })
         return {'items': items}
-

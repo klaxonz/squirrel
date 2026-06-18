@@ -176,12 +176,7 @@ class ExtractionPipeline:
             "persistence",     # Persistence failed, cannot save
         }
 
-        # Critical stage failure must abort
-        if stage.stage_name in critical_stages:
-            return False
-
-        # Non-critical stage failure can continue (e.g. enrichment, post_process)
-        return True
+        return stage.stage_name not in critical_stages
 
     def get_stage_names(self) -> list[str]:
         """Get all stage names"""

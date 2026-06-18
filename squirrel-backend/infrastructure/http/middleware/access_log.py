@@ -31,10 +31,7 @@ class AccessLogMiddleware:
         finally:
             duration_ms = int((time.perf_counter() - started_at) * 1000)
             client = scope.get("client")
-            if client:
-                client_label = f"{client[0]}:{client[1]}"
-            else:
-                client_label = "-"
+            client_label = f"{client[0]}:{client[1]}" if client else "-"
 
             logger.info(
                 "access client=%s method=%s path=%s status=%s duration_ms=%s",

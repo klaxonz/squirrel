@@ -43,7 +43,6 @@ class RedisStreamProducer:
                 msg_id = redis_client.xadd(stream, payload, maxlen=approximate_maxlen, approximate=True)
                 return msg_id  # type: ignore[return-value]
             except (ConnectionError, OSError, ValueError, TypeError) as e:
-                last_err = e
                 if attempt < max_retries:
                     time.sleep(0.1 * (attempt + 1))
                 else:
@@ -53,4 +52,4 @@ class RedisStreamProducer:
                         max_retries,
                         e,
                     )
-                    raise last_err
+                    raise

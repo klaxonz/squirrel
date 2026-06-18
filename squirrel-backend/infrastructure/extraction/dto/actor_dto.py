@@ -19,9 +19,6 @@ class ActorDTO(BaseModel):
 
     class Config:
         frozen = True  # Immutable object
-        json_encoders = {
-            # Custom serializers if needed
-        }
 
     @validator("url")
     def validate_url(cls, v):

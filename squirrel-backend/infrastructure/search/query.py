@@ -124,8 +124,7 @@ def extract_search_domain(url: str | None) -> str:
         return ""
     parsed = urlparse(raw_url if "://" in raw_url else f"https://{raw_url}")
     host = (parsed.netloc or parsed.path or "").strip().lower()
-    if host.startswith("www."):
-        host = host[4:]
+    host = host.removeprefix("www.")
     return host.split(":")[0]
 
 

@@ -17,8 +17,7 @@ class SiteCatalogService:
         if not domain:
             return ''
         d = str(domain).strip()
-        if d.startswith('#HttpOnly_'):
-            d = d[len('#HttpOnly_'):]
+        d = d.removeprefix('#HttpOnly_')
         return d.lstrip('.').lower()
 
     @staticmethod
