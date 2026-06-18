@@ -171,3 +171,29 @@ npm run build:check   # vue-tsc + vite build 通过
 - `<style>` 287 行 reader-content 排版：属 reader，不要单独抽
 
 这些都是**模板子组件提取**（prop surface 宽），不是状态提取，风险高于 useRssSync。
+
+### RssSources.vue 续 —— 两个菜单已抽完（1679 → 1519，-160 行）
+
+4. **commit `c2d6d1af`** — feed 右键菜单提取（1679 → 1617，-62 行）
+   - 新建 `components/rss/RssFeedContextMenu.vue`（114 行）：props {visible, feed, position} + 6 emits。expose rootRef
+   - 关键点：`feedContextMenuRef` 被 useRssFeeds 用来量菜单高度做溢出重定位（getBoundingClientRect），模板移进子组件后 ref 会失效 → 用 `bindFeedContextMenuRef` 函数 ref 把子组件 expose 的 rootRef 写回 composable 的 ref
+
+5. **commit `22c08e0e`** — 文章右键菜单提取（1617 → 1519，-98 行）
+   - 新建 `components/rss/RssArticleContextMenu.vue`（161 行）：props {visible, entry, feed, position} + 9 emits。同 rootRef 桥接
+   - 小优化：原模板每 render 调 `findFeedByEntry` 4 次，改成父组件 `contextMenuFeedResolved` computed 解析一次传下去
+   - batchRead scope 用 `ReadBatchMode` 而非裸 string（类型链收紧）
+
+**累计 RssSources：1779 → 1519（-260 行）；全程 typecheck/lint(0e/3w 不变)/build:check 绿**
+
+### 主动暂停 —— 账号增删 dialog（非干净接缝）
+
+`RssAccountDialog.vue`（172 行模板）经评估**不是干净接缝**，按「不凭感觉拆」放弃：
+- `accountForm` 是 useRssAccounts 里的 `ref({...})`，被 6 处 v-model 深度 mutate（name/base_url/username/credential/enabled/provider）
+- 抽成子组件要么传 ref 让子组件 mutate（绕过 no-mutating-props 精神），要么把 useRssAccounts 拆成 account-state + dialog 两个 composable（架构改造，非机械提取）
+- 与菜单不同（菜单是 read-only render + emit），这是**深度可变表单**，硬抽会引入 prop-mutation 或大改 composable 边界
+
+### RssSources.vue 剩余（低杠杆 / 高风险，建议不动）
+
+- `<style>` 287 行 reader-content 排版：属 reader 语义，不该单独抽
+- in-app browser iframe 覆盖层（398-469）：状态全在 useRssReader，与 reader 主区共用 refs，非独立单元
+- **结论：RssSources 的干净接缝已抽完（1779 → 1519，-260 行，3 个新 composable/组件）。进一步收益需架构改造（拆 useRssAccounts / useRssReader），单独立项。**
