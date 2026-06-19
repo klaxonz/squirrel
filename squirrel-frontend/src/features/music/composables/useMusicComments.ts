@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { getMusicSongComments, getMusicCommentCounts, type MusicComment } from '@/shared/api/music'
 import { Logger } from '@/shared/lib/logger'
+import { isApiError } from '@/shared/lib/apiError'
 
 export function useMusicComments() {
   const comments = ref<MusicComment[]>([])
@@ -26,23 +27,21 @@ export function useMusicComments() {
     loading.value = true
     error.value = ''
 
-    const { data, error: err } = await getMusicSongComments({
-      mixsongid: albumAudioId,
-      page: page.value,
-      page_size: 20,
-    })
-
-    loading.value = false
-
-    if (err) {
-      error.value = err.message || '加载评论失败'
+    try {
+      const data = await getMusicSongComments({
+        mixsongid: albumAudioId,
+        page: page.value,
+        page_size: 20,
+      })
+      const items = data?.items || []
+      comments.value = reset ? items : [...comments.value, ...items]
+      total.value = data?.total || comments.value.length
+    } catch (err) {
+      error.value = isApiError(err) ? err.message : '加载评论失败'
       Logger.error('Failed to load song comments', err)
-      return
+    } finally {
+      loading.value = false
     }
-
-    const items = data?.items || []
-    comments.value = reset ? items : [...comments.value, ...items]
-    total.value = data?.total || comments.value.length
   }
 
   async function loadMore(albumAudioId: string) {
@@ -53,9 +52,13 @@ export function useMusicComments() {
 
   async function loadCount(hash: string) {
     if (!hash) return
-    const { data } = await getMusicCommentCounts(hash)
-    if (data) {
-      count.value = data.count
+    try {
+      const data = await getMusicCommentCounts(hash)
+      if (data) {
+        count.value = data.count
+      }
+    } catch (err) {
+      Logger.warn('loadCount failed', err)
     }
   }
 

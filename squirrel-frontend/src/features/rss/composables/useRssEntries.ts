@@ -1,4 +1,5 @@
-import { computed, nextTick, ref, watch, type Ref } from 'vue'
+import { computed, ref, watch, type Ref } from 'vue'
+import { useContextMenuPosition } from '@/shared/composables/useContextMenuPosition'
 import {
   getRssEntries,
   getRssRecentlyViewed,
@@ -30,9 +31,9 @@ export function useRssEntries(options: {
 
   // Context Menu States
   const showContextMenu = ref(false)
-  const contextMenuPosition = ref({ x: 0, y: 0 })
-  const contextMenuEntry = ref<RssEntry | null>(null)
   const contextMenuRef = ref<HTMLElement | null>(null)
+  const { position: contextMenuPosition, positionMenu } = useContextMenuPosition()
+  const contextMenuEntry = ref<RssEntry | null>(null)
 
   const feedNavStack = ref<{
     selectedFeedId: number | null
@@ -78,9 +79,11 @@ export function useRssEntries(options: {
   }
 
   const loadRecentlyViewed = async () => {
-    const response = await getRssRecentlyViewed()
-    if (!response.error) {
-      recentlyViewed.value = response.data?.data || []
+    try {
+      const data = await getRssRecentlyViewed()
+      recentlyViewed.value = data?.data || []
+    } catch {
+      // silent — recently-viewed is a secondary list
     }
   }
 
@@ -99,12 +102,13 @@ export function useRssEntries(options: {
   }
 
   const fetchEntriesPage = async (): Promise<{ fetched: RssEntry[]; total: number } | null> => {
-    const response = await getRssEntries(buildEntriesParams())
-    if (response.error) {
-      options?.onStatus?.(response.error.message, true)
+    try {
+      const data = await getRssEntries(buildEntriesParams())
+      return { fetched: data?.data || [], total: data?.total || 0 }
+    } catch (err) {
+      options?.onStatus?.(err instanceof Error ? err.message : '加载文章失败', true)
       return null
     }
-    return { fetched: response.data?.data || [], total: response.data?.total || 0 }
   }
 
   const loadEntries = async (isReset = false) => {
@@ -202,17 +206,18 @@ export function useRssEntries(options: {
     if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
       options.readingEntry.value.is_read = newStatus
     }
-    const response = await updateRssEntry(entry.id, { isRead: newStatus })
-    if (response.error) {
+    try {
+      await updateRssEntry(entry.id, { isRead: newStatus })
+      if (reloadFilteredList && shouldReloadAfterEntryUpdate(entry)) {
+        await loadEntries(true)
+      }
+    } catch (err) {
+      // rollback optimistic update
       entry.is_read = !newStatus
       if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
         options.readingEntry.value.is_read = !newStatus
       }
-      options?.onStatus?.(response.error.message, true)
-      return
-    }
-    if (reloadFilteredList && shouldReloadAfterEntryUpdate(entry)) {
-      await loadEntries(true)
+      options?.onStatus?.(err instanceof Error ? err.message : '更新失败', true)
     }
   }
 
@@ -239,24 +244,24 @@ export function useRssEntries(options: {
         options.readingEntry.value.is_read = isRead
       }
     })
-    const response = await updateRssEntries({
-      entryIds: targets.map((entry) => entry.id),
-      isRead,
-    })
-    if (response.error) {
+    try {
+      const data = await updateRssEntries({
+        entryIds: targets.map((entry) => entry.id),
+        isRead,
+      })
+      options?.onStatus?.(`已更新 ${data?.updated ?? targets.length} 篇文章`)
+      if (activeFilter.value === 'unread' && isRead) {
+        totalEntries.value = Math.max(0, totalEntries.value - targets.length)
+        page.value = 0
+      }
+    } catch (err) {
       previous.forEach(({ entry, isRead: previousIsRead }) => {
         entry.is_read = previousIsRead
         if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
           options.readingEntry.value.is_read = previousIsRead
         }
       })
-      options?.onStatus?.(response.error.message, true)
-      return
-    }
-    options?.onStatus?.(`已更新 ${response.data?.updated ?? targets.length} 篇文章`)
-    if (activeFilter.value === 'unread' && isRead) {
-      totalEntries.value = Math.max(0, totalEntries.value - targets.length)
-      page.value = 0
+      options?.onStatus?.(err instanceof Error ? err.message : '批量更新失败', true)
     }
   }
 
@@ -266,36 +271,22 @@ export function useRssEntries(options: {
     if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
       options.readingEntry.value.is_starred = newStatus
     }
-    const response = await updateRssEntry(entry.id, { isStarred: newStatus })
-    if (response.error) {
+    try {
+      await updateRssEntry(entry.id, { isStarred: newStatus })
+      options?.onStatus?.(newStatus ? '已收藏' : '已取消收藏')
+    } catch (err) {
       entry.is_starred = !newStatus
       if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
         options.readingEntry.value.is_starred = !newStatus
       }
-      options?.onStatus?.(response.error.message, true)
-      return
+      options?.onStatus?.(err instanceof Error ? err.message : '收藏失败', true)
     }
-    options?.onStatus?.(newStatus ? '已收藏' : '已取消收藏')
   }
 
   const showArticleContextMenu = (entry: RssEntry, event: MouseEvent) => {
     contextMenuEntry.value = entry
-    let x = event.clientX
-    const y = event.clientY
-    const menuWidth = 200
-    if (x + menuWidth > window.innerWidth) {
-      x = window.innerWidth - menuWidth - 8
-    }
-    contextMenuPosition.value = { x, y }
+    positionMenu(event, contextMenuRef)
     showContextMenu.value = true
-    nextTick(() => {
-      const el = contextMenuRef.value
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      if (rect.bottom > window.innerHeight) {
-        contextMenuPosition.value = { x, y: window.innerHeight - rect.height - 8 }
-      }
-    })
   }
 
   const closeContextMenu = () => {

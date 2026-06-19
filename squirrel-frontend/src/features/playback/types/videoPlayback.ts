@@ -49,5 +49,3 @@ export type VideoPageVideo = {
   uploader?: string
   uploader_name?: string
 }
-
-export type { ApiResult } from '@/shared/types/api'

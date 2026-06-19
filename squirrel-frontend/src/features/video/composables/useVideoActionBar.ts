@@ -32,8 +32,8 @@ export default function useVideoActionBar({
   interactionTypeLike: string | number
   interactionTypeDislike: string | number
   interactionTypeLater: string | number
-  toggleLike: (videoId: VideoId, interactionType: string | number) => Promise<{ error?: unknown }>
-  deleteInteraction: (videoId: VideoId) => Promise<{ error?: unknown }>
+  toggleLike: (videoId: VideoId, interactionType: string | number) => Promise<unknown>
+  deleteInteraction: (videoId: VideoId) => Promise<unknown>
   ensureLocalVideo?: (video: VideoPageVideo) => Promise<VideoPageVideo | null>
   handleAddToPlaylist: () => Promise<void>
   handlePlayRandom: () => Promise<void>
@@ -47,17 +47,24 @@ export default function useVideoActionBar({
       : targetVideo
     if (!localVideo?.id) return
 
+    // Optimistic interaction toggle — the API now throws on failure; we catch
+    // so a failed toggle just leaves the prior interaction_type in place
+    // (no rollback needed since we never mutated on the throwing path).
     if (nextInteractionType != null && localVideo.interaction_type !== nextInteractionType) {
-      const { error } = await toggleLike(localVideo.id, nextInteractionType)
-      if (!error) {
+      try {
+        await toggleLike(localVideo.id, nextInteractionType)
         localVideo.interaction_type = nextInteractionType
+      } catch {
+        // leave interaction_type unchanged
       }
       return
     }
 
-    const { error } = await deleteInteraction(localVideo.id)
-    if (!error) {
+    try {
+      await deleteInteraction(localVideo.id)
       localVideo.interaction_type = undefined
+    } catch {
+      // leave interaction_type unchanged
     }
   }
 

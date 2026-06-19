@@ -92,6 +92,7 @@ import MusicCardGrid from '../shared/MusicCardGrid.vue'
 import MusicRankRow from '../shared/MusicRankRow.vue'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import { formatCount } from '@/shared/lib/dateFormat'
 import type { MusicPlaylist, MusicRank, MusicAlbum, MusicTrack, MusicUserProfile } from '@/shared/api/music'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 
@@ -129,12 +130,6 @@ const player = useMusicPlayerStore()
 
 const recentTracks = computed(() => props.historyTracks?.slice(0, 5) || [])
 const lastPlayedTrack = computed(() => player.lastSessionTrack)
-
-function formatCount(count: number): string {
-  if (count >= 100000000) return (count / 100000000).toFixed(1) + '亿'
-  if (count >= 10000) return (count / 10000).toFixed(1) + '万'
-  return String(count)
-}
 
 function handlePlayTrack(track: MusicTrack) {
   player.playTrack(track)

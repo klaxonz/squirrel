@@ -58,41 +58,46 @@ const createPlaylistStore = () => {
   const fetchPlaylists = async () => {
     loading.value = true
     error.value = null
-    const { data, error: err } = await listPlaylists()
-    loading.value = false
-    if (err) {
-      error.value = err.message
+    try {
+      const data = await listPlaylists()
+      playlists.value = data || []
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : '加载失败'
       Logger.error('[usePlaylist] fetchPlaylists error', err)
-      return
+    } finally {
+      loading.value = false
     }
-    playlists.value = data || []
   }
 
   const fetchPlaylistDetail = async (playlistId: PlaylistId) => {
     loading.value = true
     error.value = null
-    const { data, error: err } = await getPlaylistDetail(playlistId)
-    loading.value = false
-    if (err) {
-      error.value = err.message
+    try {
+      const data = await getPlaylistDetail(playlistId)
+      activePlaylist.value = data || null
+      return data || null
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : '加载失败'
       Logger.error('[usePlaylist] fetchPlaylistDetail error', err)
       return null
+    } finally {
+      loading.value = false
     }
-    activePlaylist.value = data || null
-    return data || null
   }
 
   const fetchPlaylistItems = async (playlistId: PlaylistId) => {
     loadingItems.value = true
-    const { data, error: err } = await getPlaylistItems(playlistId)
-    loadingItems.value = false
-    if (err) {
+    try {
+      const data = await getPlaylistItems(playlistId)
+      activePlaylistItems.value = data || []
+      setCurrentVideo(currentVideoId.value)
+      return data || []
+    } catch (err) {
       Logger.error('[usePlaylist] fetchPlaylistItems error', err)
       return []
+    } finally {
+      loadingItems.value = false
     }
-    activePlaylistItems.value = data || []
-    setCurrentVideo(currentVideoId.value)
-    return data || []
   }
 
   const loadAndSetPlaylist = async (playlistId: PlaylistId) => {
@@ -102,38 +107,41 @@ const createPlaylistStore = () => {
   }
 
   const create = async (name: string, description?: string | null) => {
-    const { data, error: err } = await createPlaylist({ name, description })
-    if (err) {
+    try {
+      const data = await createPlaylist({ name, description })
+      if (data) {
+        playlists.value.unshift(data)
+      }
+      return data
+    } catch (err) {
       Logger.error('[usePlaylist] create error', err)
       return null
     }
-    if (data) {
-      playlists.value.unshift(data)
-    }
-    return data
   }
 
   const update = async (playlistId: PlaylistId, name?: string | null, description?: string | null) => {
-    const { data, error: err } = await updatePlaylist(playlistId, { name, description })
-    if (err) {
+    try {
+      const data = await updatePlaylist(playlistId, { name, description })
+      if (data) {
+        const idx = playlists.value.findIndex(p => String(p.id) === String(playlistId))
+        if (idx !== -1) {
+          playlists.value[idx] = { ...playlists.value[idx], ...data }
+        }
+        if (activePlaylist.value && String(activePlaylist.value.id) === String(playlistId)) {
+          activePlaylist.value = { ...activePlaylist.value, ...data }
+        }
+      }
+      return data
+    } catch (err) {
       Logger.error('[usePlaylist] update error', err)
       return null
     }
-    if (data) {
-      const idx = playlists.value.findIndex(p => String(p.id) === String(playlistId))
-      if (idx !== -1) {
-        playlists.value[idx] = { ...playlists.value[idx], ...data }
-      }
-      if (activePlaylist.value && String(activePlaylist.value.id) === String(playlistId)) {
-        activePlaylist.value = { ...activePlaylist.value, ...data }
-      }
-    }
-    return data
   }
 
   const remove = async (playlistId: PlaylistId) => {
-    const { error: err } = await deletePlaylist(playlistId)
-    if (err) {
+    try {
+      await deletePlaylist(playlistId)
+    } catch (err) {
       Logger.error('[usePlaylist] delete error', err)
       return false
     }
@@ -146,30 +154,32 @@ const createPlaylistStore = () => {
   }
 
   const addVideo = async (videoId: VideoId, playlistId?: PlaylistId | null) => {
-    const { data, error: err } = (await addVideoToPlaylist({
-      video_id: videoId,
-      playlist_id: playlistId,
-    }))
-    if (err) {
+    try {
+      const data = await addVideoToPlaylist({
+        video_id: videoId,
+        playlist_id: playlistId,
+      })
+      if (data) {
+        const resolvedPlaylistId = playlistId ?? data.playlist_id
+        if (resolvedPlaylistId !== null && resolvedPlaylistId !== undefined) {
+          if (activePlaylist.value && String(activePlaylist.value.id) === String(resolvedPlaylistId)) {
+            await fetchPlaylistDetail(resolvedPlaylistId)
+            await fetchPlaylistItems(resolvedPlaylistId)
+          }
+          await fetchPlaylists()
+        }
+      }
+      return data
+    } catch (err) {
       Logger.error('[usePlaylist] addVideo error', err)
       return null
     }
-    if (data) {
-      const resolvedPlaylistId = playlistId ?? data.playlist_id
-      if (resolvedPlaylistId !== null && resolvedPlaylistId !== undefined) {
-        if (activePlaylist.value && String(activePlaylist.value.id) === String(resolvedPlaylistId)) {
-          await fetchPlaylistDetail(resolvedPlaylistId)
-          await fetchPlaylistItems(resolvedPlaylistId)
-        }
-        await fetchPlaylists()
-      }
-    }
-    return data
   }
 
   const removeVideo = async (playlistId: PlaylistId, videoId: VideoId) => {
-    const { error: err } = await removeVideoFromPlaylist(playlistId, videoId)
-    if (err) {
+    try {
+      await removeVideoFromPlaylist(playlistId, videoId)
+    } catch (err) {
       Logger.error('[usePlaylist] removeVideo error', err)
       return false
     }
@@ -190,19 +200,20 @@ const createPlaylistStore = () => {
   }
 
   const reorder = async (playlistId: PlaylistId, videoId: VideoId, newPosition: number) => {
-    const { data, error: err } = (await reorderPlaylistItem({
-      playlist_id: playlistId,
-      video_id: videoId,
-      new_position: newPosition,
-    }))
-    if (err) {
+    try {
+      const data = await reorderPlaylistItem({
+        playlist_id: playlistId,
+        video_id: videoId,
+        new_position: newPosition,
+      })
+      if (data && activePlaylist.value && String(activePlaylist.value.id) === String(playlistId)) {
+        await fetchPlaylistItems(playlistId)
+      }
+      return true
+    } catch (err) {
       Logger.error('[usePlaylist] reorder error', err)
       return false
     }
-    if (data && activePlaylist.value && String(activePlaylist.value.id) === String(playlistId)) {
-      await fetchPlaylistItems(playlistId)
-    }
-    return true
   }
 
   const goToPrev = (): VideoBasic | null => {
@@ -229,8 +240,7 @@ const createPlaylistStore = () => {
 
   const getDefault = async (): Promise<Playlist | null> => {
     try {
-      const { data, error: err } = await getDefaultPlaylist()
-      if (err) return null
+      const data = await getDefaultPlaylist()
       return data || null
     } catch (err) {
       Logger.error('[usePlaylist] getDefault error', err)

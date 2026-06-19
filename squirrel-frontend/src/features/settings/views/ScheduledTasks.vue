@@ -56,7 +56,6 @@
             <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               v-model="searchQuery"
-              @input="debouncedSearch"
               placeholder="搜索任务"
               class="h-9 w-full rounded-md border-border/50 pl-9 pr-8 text-sm shadow-none"
             />
@@ -89,7 +88,6 @@
           <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             v-model="searchQuery"
-            @input="debouncedSearch"
             placeholder="搜索任务"
             class="h-9 w-full rounded-md border-border/50 pl-9 pr-8 text-sm shadow-none"
           />
@@ -249,8 +247,9 @@
   </AppPageShell>
 </template>
 
-<script setup>
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+<script setup lang="ts">
+import { computed, ref, watch, onUnmounted } from 'vue'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
@@ -267,9 +266,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
-import { useDebounceFn } from '@vueuse/core'
-import { Logger } from '@/shared/lib/logger'
+import { refDebounced } from '@vueuse/core'
 import { useToast } from '@/shared/components/toast/useToast'
+import { queryKeys } from '@/shared/lib/queryClient'
+import type { ScheduledTask, ScheduledTaskListResponse, SchedulerStatistics } from '@/features/settings/types/scheduler'
 import {
   createTask as apiCreateTask,
   deleteTask as apiDeleteTask,
@@ -282,27 +282,21 @@ import {
   updateTask as apiUpdateTask,
 } from '@/shared/api'
 
-const statistics = ref({
-  total_tasks: 0,
-  active_tasks: 0,
-  running_tasks: 0,
-  error_tasks: 0,
-  today_executions: 0
-})
-const tasks = ref([])
-const taskClasses = ref({})
-const loading = ref(false)
+const queryClient = useQueryClient()
+const toast = useToast()
+
 const currentPage = ref(1)
-const totalPages = ref(1)
 const searchQuery = ref('')
+// Debounced mirror of searchQuery — drives the tasks queryKey so typing doesn't
+// fire a request per keystroke. Replaces the old hand-rolled debouncedSearch().
+const searchQueryDebounced = refDebounced(searchQuery, 350)
 const statusFilter = ref('all')
 const showCreateDialog = ref(false)
-const editingTask = ref(null)
+const editingTask = ref<ScheduledTask | null>(null)
 const showDeleteDialog = ref(false)
-const deletingTask = ref(null)
+const deletingTask = ref<ScheduledTask | null>(null)
 const showExecuteDialog = ref(false)
-const executingTask = ref(null)
-const toast = useToast()
+const executingTask = ref<ScheduledTask | null>(null)
 
 const hasTaskFilters = computed(() => Boolean(searchQuery.value || statusFilter.value !== 'all'))
 
@@ -323,196 +317,235 @@ const statusOptions = [
   { value: 'error', label: '异常' }
 ]
 
-const setStatusFilter = (val) => {
+const setStatusFilter = (val: string) => {
   statusFilter.value = val
   currentPage.value = 1
-  loadTasks()
+  // No manual refetch needed — tasksQuery's queryKey is reactive on
+  // statusFilter/page/searchQueryDebounced, so vue-query refetches automatically.
 }
 
-const loadData = async () => {
-  loading.value = true
-  try {
-    const [statsResult, classesResult] = await Promise.all([
-      getTaskStatistics(),
-      getAvailableTaskClasses(),
-      loadTasks()
-    ])
+// ponytail: loaders use vue-query as the single source of truth. The template
+// reads derived computeds (tasks/totalPages/statistics/taskClasses) off the
+// query results — no parallel mutable refs, so there's no stale-data window
+// between the query cache and a local copy. Error handling is implicit: a
+// failed load doesn't toast (loaders failing is routine); the list stays empty
+// and the empty state renders. The tasks list refetches reactively when
+// page/status/debounced-search change.
+const statsQuery = useQuery({
+  queryKey: queryKeys.tasks.statistics,
+  queryFn: () => getTaskStatistics(),
+})
 
-    if (!statsResult.error) statistics.value = statsResult.data
-    if (!classesResult.error) taskClasses.value = classesResult.data
-  } catch (error) {
-    Logger.error('ScheduledTasks: Initial load failed', error)
-  } finally {
-    loading.value = false
-  }
-}
+const classesQuery = useQuery({
+  queryKey: queryKeys.tasks.classes,
+  queryFn: () => getAvailableTaskClasses(),
+})
 
-const loadTasks = async () => {
-  try {
-    const result = await getScheduledTasks({
-      page: currentPage.value,
-      page_size: 15,
-      search: searchQuery.value || undefined,
-      status: statusFilter.value === 'all' ? undefined : statusFilter.value
-    })
+const tasksQuery = useQuery({
+  queryKey: computed(() => queryKeys.tasks.list({
+    page: currentPage.value,
+    search: searchQueryDebounced.value || '',
+    status: statusFilter.value,
+  })),
+  queryFn: () => getScheduledTasks({
+    page: currentPage.value,
+    page_size: 15,
+    search: searchQueryDebounced.value || undefined,
+    status: statusFilter.value === 'all' ? undefined : statusFilter.value,
+  }) as Promise<ScheduledTaskListResponse>,
+})
 
-    if (!result.error && result.data) {
-      tasks.value = result.data.data
-      totalPages.value = Math.ceil(result.data.total / 15)
-    }
-  } catch (error) {
-    Logger.error('ScheduledTasks: Task query failed', error)
-  }
-}
+// Derived projections of the query cache — these replace the old mutable refs.
+const statistics = computed<SchedulerStatistics>(() => statsQuery.data.value ?? {
+  total_tasks: 0, active_tasks: 0, running_tasks: 0, error_tasks: 0, today_executions: 0,
+})
+const taskClasses = computed(() => classesQuery.data.value ?? {})
+const tasks = computed<ScheduledTask[]>(() => tasksQuery.data.value?.data ?? [])
+const totalPages = computed(() => {
+  const total = tasksQuery.data.value?.total ?? 0
+  return Math.max(1, Math.ceil(total / 15))
+})
 
+// Skeletons show on the first load only (isLoading); background refetches
+// (isFetching) don't flash the skeleton — the prior list stays visible.
+const loading = computed(() => tasksQuery.isLoading.value)
+
+// Full reload (refresh button). refetch (not invalidate) so the button always
+// forces fresh data regardless of staleTime.
 const refreshData = async () => {
-  await loadData()
+  await Promise.all([
+    statsQuery.refetch(),
+    classesQuery.refetch(),
+    tasksQuery.refetch(),
+  ])
 }
 
-const executeTask = (task) => {
+// After a mutation, mark all task queries stale so the list/stats/classes
+// re-fetch on next read. Preferred over refetch — concurrent invalidations
+// dedupe and respect staleTime.
+const invalidateTasks = () => {
+  void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
+}
+
+const executeTask = (task: ScheduledTask) => {
   executingTask.value = task
   showExecuteDialog.value = true
 }
 
-const doExecuteTask = async () => {
-  if (!executingTask.value) return
-  showExecuteDialog.value = false
-  const result = await apiExecuteTaskNow(executingTask.value.id)
-  if (!result.error) {
-    toast.success(`任务「${executingTask.value.name}」已开始执行`)
-    clearTimeout(refreshTimer)
-    refreshTimer = setTimeout(() => refreshData(), 800)
-  } else {
-    toast.error('执行失败')
-  }
-}
-
-let refreshTimer = null
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
 onUnmounted(() => {
   if (refreshTimer) clearTimeout(refreshTimer)
 })
 
-const editTask = (task) => {
+// execute is a special case: the backend needs a beat to flip the task row to
+// "running", so onSuccess only toasts + schedules a single delayed invalidation
+// (no immediate refetch — that would show stale state briefly).
+const executeMutation = useMutation({
+  mutationFn: (task: ScheduledTask) => apiExecuteTaskNow(task.id),
+  onSuccess: (_data, task) => {
+    toast.success(`任务「${task.name}」已开始执行`)
+    if (refreshTimer) clearTimeout(refreshTimer)
+    refreshTimer = setTimeout(() => invalidateTasks(), 800)
+  },
+})
+
+const doExecuteTask = async () => {
+  if (!executingTask.value) return
+  showExecuteDialog.value = false
+  await executeMutation.mutateAsync(executingTask.value).catch(() => { /* toast handled by MutationCache */ })
+}
+
+const editTask = (task: ScheduledTask) => {
   editingTask.value = task
 }
 
-const handleCreateTask = async (taskData) => {
-  const result = await apiCreateTask(taskData)
-  if (!result.error) {
-    showCreateDialog.value = false
+const createMutation = useMutation({
+  mutationFn: (taskData: Record<string, unknown>) => apiCreateTask(taskData),
+  onSuccess: () => {
     toast.success('任务创建成功')
-    await refreshData()
-  } else {
-    toast.error('创建失败')
-  }
+    showCreateDialog.value = false
+    invalidateTasks()
+  },
+})
+
+const handleCreateTask = async (taskData: Record<string, unknown>) => {
+  await createMutation.mutateAsync(taskData).catch(() => {})
 }
 
-const handleUpdateTask = async (taskData) => {
-  const result = await apiUpdateTask(editingTask.value.id, taskData)
-  if (!result.error) {
-    editingTask.value = null
+const updateMutation = useMutation({
+  mutationFn: ({ task, taskData }: { task: ScheduledTask, taskData: Record<string, unknown> }) =>
+    apiUpdateTask(task.id, taskData),
+  onSuccess: () => {
     toast.success('任务已更新')
-    await refreshData()
-  } else {
-    toast.error('更新失败')
-  }
+    editingTask.value = null
+    invalidateTasks()
+  },
+})
+
+const handleUpdateTask = async (taskData: Record<string, unknown>) => {
+  if (!editingTask.value) return
+  await updateMutation.mutateAsync({ task: editingTask.value, taskData }).catch(() => {})
 }
 
-const confirmDeleteTask = (task) => {
+const confirmDeleteTask = (task: ScheduledTask) => {
   deletingTask.value = task
   showDeleteDialog.value = true
 }
 
+const deleteMutation = useMutation({
+  mutationFn: (task: ScheduledTask) => apiDeleteTask(task.id),
+  onSuccess: () => {
+    toast.success('任务已删除')
+    invalidateTasks()
+  },
+})
+
 const doDeleteTask = async () => {
   if (!deletingTask.value) return
   showDeleteDialog.value = false
-  const result = await apiDeleteTask(deletingTask.value.id)
-  if (!result.error) {
-    toast.success('任务已删除')
-    await refreshData()
-  } else {
-    toast.error('删除失败')
-  }
+  const task = deletingTask.value
   deletingTask.value = null
+  await deleteMutation.mutateAsync(task).catch(() => {})
 }
 
-const enableTask = async (id) => {
-  const result = await apiEnableTask(id)
-  if (!result.error) {
+const enableMutation = useMutation({
+  mutationFn: (id: string | number) => apiEnableTask(id),
+  onSuccess: () => {
     toast.success('任务已恢复')
-    await refreshData()
-  } else {
-    toast.error('恢复失败')
-  }
-}
+    invalidateTasks()
+  },
+})
 
-const disableTask = async (id) => {
-  const result = await apiDisableTask(id)
-  if (!result.error) {
+const disableMutation = useMutation({
+  mutationFn: (id: string | number) => apiDisableTask(id),
+  onSuccess: () => {
     toast.success('任务已暂停')
-    await refreshData()
-  } else {
-    toast.error('暂停失败')
-  }
+    invalidateTasks()
+  },
+})
+
+const enableTask = (id: string | number) => {
+  void enableMutation.mutateAsync(id).catch(() => {})
 }
 
-const goToPage = (page) => {
+const disableTask = (id: string | number) => {
+  void disableMutation.mutateAsync(id).catch(() => {})
+}
+
+const goToPage = (page: number) => {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page
-    loadTasks()
+    // No manual refetch — tasksQuery's queryKey is reactive on currentPage.
   }
 }
 
-// ponytail: was a hand-rolled debounce(); useDebounceFn is @vueuse/core's stdlib
-// equivalent (project already depends on @vueuse/core). The old util's only
-// non-trivial bit was a mousemove event-shredding optimization with zero callers.
-const debouncedSearch = useDebounceFn(() => {
+// Reset to page 1 whenever the (debounced) search changes — typing or clearing
+// the box both flow through here, so the list jumps to the first result page.
+watch(searchQueryDebounced, () => {
   currentPage.value = 1
-  loadTasks()
-}, 350)
+})
 
 const clearSearch = () => {
   searchQuery.value = ''
-  debouncedSearch()
+  // searchQueryDebounced updates after the 350ms window → watch resets page →
+  // queryKey changes → vue-query refetches. Nothing to call manually.
 }
 
-const getUnitFull = (unit) => {
-  return { seconds: '秒', minutes: '分钟', hours: '小时', days: '天' }[unit] || unit
+const getUnitFull = (unit: string) => {
+  return ({ seconds: '秒', minutes: '分钟', hours: '小时', days: '天' } as Record<string, string>)[unit] || unit
 }
 
-const getStatusText = (status) => {
-  return { enabled: '就绪', disabled: '暂停', running: '运行中', error: '异常' }[status] || status
+const getStatusText = (status: string) => {
+  return ({ enabled: '就绪', disabled: '暂停', running: '运行中', error: '异常' } as Record<string, string>)[status] || status
 }
 
-const getStatusCount = (status) => {
+const getStatusCount = (status: string) => {
   const stats = statistics.value
-  return {
+  return ({
     all: stats.total_tasks,
     enabled: stats.active_tasks,
     disabled: Math.max(stats.total_tasks - stats.active_tasks, 0),
     running: stats.running_tasks,
     error: stats.error_tasks
-  }[status] || 0
+  } as Record<string, number>)[status] || 0
 }
 
-const getStatusBadgeClass = (status) => {
-  return {
+const getStatusBadgeClass = (status: string) => {
+  return ({
     enabled: 'border-border/50 bg-background text-foreground',
     disabled: 'border-border/50 bg-muted text-muted-foreground',
     running: 'border-primary/20 bg-primary/10 text-primary',
     error: 'border-destructive/20 bg-destructive/10 text-destructive'
-  }[status] || 'border-border/50 bg-muted text-muted-foreground'
+  } as Record<string, string>)[status] || 'border-border/50 bg-muted text-muted-foreground'
 }
 
-const formatDateTime = (val) => {
+const formatDateTime = (val: string | null | undefined) => {
   if (!val) return null
   const date = new Date(val)
   return date.toLocaleString('zh-CN', {
     month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
   })
 }
-
-onMounted(loadData)
 </script>
 
 <style scoped>
@@ -526,17 +559,6 @@ onMounted(loadData)
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(var(--primary), 0.1); border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(var(--primary), 0.2); }
-
-.toast-enter-active,
-.toast-leave-active {
-  transition: all 0.2s ease;
-}
-
-.toast-enter-from,
-.toast-leave-to {
-  opacity: 0;
-  transform: translateY(0.5rem);
-}
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;

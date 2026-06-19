@@ -274,22 +274,23 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
     if (!track.hash || !track.title) return
 
     lyricLoading.value = true
-    const { data, error: err } = await getMusicLyric({
-      title: track.title,
-      artist: track.artist,
-      hash: track.hash,
-      album_audio_id: track.album_audio_id || undefined,
-      duration: track.duration,
-    })
-    if (requestId !== lyricRequestId) return
-
-    lyricLoading.value = false
-    if (err) {
-      lyricError.value = err.message
+    try {
+      const data = await getMusicLyric({
+        title: track.title,
+        artist: track.artist,
+        hash: track.hash,
+        album_audio_id: track.album_audio_id || undefined,
+        duration: track.duration,
+      })
+      if (requestId !== lyricRequestId) return
+      lyricLines.value = data?.lines || []
+    } catch (err) {
+      if (requestId !== lyricRequestId) return
+      lyricError.value = err instanceof Error ? err.message : '歌词加载失败'
       Logger.error('Failed to load music lyric', err)
-      return
+    } finally {
+      if (requestId === lyricRequestId) lyricLoading.value = false
     }
-    lyricLines.value = data?.lines || []
   }
 
   async function _resolveAndPlay(track: MusicTrack, startAt = 0) {
@@ -314,28 +315,34 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
       return
     }
 
-    const { data, error: err } = await getMusicPlayUrl({
-      hash: track.hash,
-      album_audio_id: track.album_audio_id || undefined,
-      quality: quality.value,
-    })
-    resolvingUrl.value = false
-    if (err || !data?.url) {
-      markPlaybackError(err?.message || '当前歌曲没有可播放地址，可能是无版权、VIP 或地区限制')
-      Logger.error('Failed to resolve music play url', err || data)
-      return
+    try {
+      const data = await getMusicPlayUrl({
+        hash: track.hash,
+        album_audio_id: track.album_audio_id || undefined,
+        quality: quality.value,
+      })
+      if (!data?.url) {
+        markPlaybackError('当前歌曲没有可播放地址，可能是无版权、VIP 或地区限制')
+        Logger.error('Failed to resolve music play url: no url in response', data)
+        return
+      }
+      urlCache.set(cacheKey, data.url)
+      // Limit cache size to 50 entries
+      if (urlCache.size > 50) {
+        const firstKey = urlCache.keys().next().value
+        if (firstKey) urlCache.delete(firstKey)
+      }
+      audioSrc.value = data.url
+      if (startAt > 0) seekAfterAudioReady(startAt)
+      void _uploadPlayHistory(track)
+      void _prefetchNextTrack()
+      await nextTick()
+    } catch (err) {
+      markPlaybackError(err instanceof Error ? err.message : '播放地址获取失败')
+      Logger.error('Failed to resolve music play url', err)
+    } finally {
+      resolvingUrl.value = false
     }
-    urlCache.set(cacheKey, data.url)
-    // Limit cache size to 50 entries
-    if (urlCache.size > 50) {
-      const firstKey = urlCache.keys().next().value
-      if (firstKey) urlCache.delete(firstKey)
-    }
-    audioSrc.value = data.url
-    if (startAt > 0) seekAfterAudioReady(startAt)
-    void _uploadPlayHistory(track)
-    void _prefetchNextTrack()
-    await nextTick()
   }
 
   function markPlaybackError(message: string) {
@@ -372,25 +379,31 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
     if (!nextTrack?.hash) return
     const nextKey = `${nextTrack.hash}:${quality.value}`
     if (urlCache.has(nextKey)) return
-    const { data } = await getMusicPlayUrl({
-      hash: nextTrack.hash,
-      album_audio_id: nextTrack.album_audio_id || undefined,
-      quality: quality.value,
-    })
-    if (myId !== prefetchAbortId) return // Aborted by new prefetch
-    if (data?.url) {
-      urlCache.set(nextKey, data.url)
+    try {
+      const data = await getMusicPlayUrl({
+        hash: nextTrack.hash,
+        album_audio_id: nextTrack.album_audio_id || undefined,
+        quality: quality.value,
+      })
+      if (myId !== prefetchAbortId) return // Aborted by new prefetch
+      if (data?.url) {
+        urlCache.set(nextKey, data.url)
+      }
+    } catch (err) {
+      // Prefetch is best-effort; a failure just means no cache for next track.
+      Logger.warn('Failed to prefetch next music play url', err)
     }
   }
 
   async function _uploadPlayHistory(track: MusicTrack) {
     if (!track.album_audio_id) return
-    const { error: err } = await uploadMusicPlayHistory({
-      album_audio_id: track.album_audio_id,
-      played_at: Math.floor(Date.now() / 1000),
-      play_count: 1,
-    })
-    if (err) {
+    try {
+      await uploadMusicPlayHistory({
+        album_audio_id: track.album_audio_id,
+        played_at: Math.floor(Date.now() / 1000),
+        play_count: 1,
+      })
+    } catch (err) {
       Logger.error('Failed to upload music play history', err)
     }
   }

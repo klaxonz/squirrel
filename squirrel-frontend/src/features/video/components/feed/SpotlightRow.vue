@@ -77,14 +77,13 @@ const scroll = (direction: 'left' | 'right') => {
 const load = async () => {
   loading.value = true
   try {
-    const { data, error } = await getVideoList({
+    const data = await getVideoList({
       pageSize: 10,
       page_size: 10,
       category: 'all',
       sort_by: 'publish_date',
       nsfw: 'all',
     })
-    if (error) return
     items.value = (data?.data || []).slice(0, 10)
     await nextTick()
     updateScrollState()

@@ -151,3 +151,16 @@ export const formatTime = (seconds: number) => {
   date.setSeconds(seconds)
   return date.toISOString().slice(11, 19).replace(/^00:/, '')
 }
+
+/**
+ * Compact Chinese count formatting (亿/万). Anything ≥ 100M collapses to "x.x亿",
+ * ≥ 10K to "x.x万", otherwise the raw number. Trailing ".0" is trimmed so we never
+ * render "1.0万". The single source of truth for play counts, fan counts, etc.
+ */
+export const formatCount = (count: number | null | undefined): string => {
+  if (count == null || Number.isNaN(Number(count))) return '0'
+  const n = Number(count)
+  if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1).replace(/\.0$/, '')}亿`
+  if (n >= 10_000) return `${(n / 10_000).toFixed(1).replace(/\.0$/, '')}万`
+  return String(n)
+}

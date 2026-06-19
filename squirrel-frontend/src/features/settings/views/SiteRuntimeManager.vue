@@ -125,10 +125,11 @@
 
         <div class="flex-1 overflow-y-auto custom-scrollbar">
           <div class="mx-auto w-full max-w-[1400px] p-4 lg:p-6">
-            <div v-if="discoveryErrors.length" class="mb-3 rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              <div class="font-medium">发现 {{ discoveryErrors.length }} 个站点失败</div>
-              <div class="mt-1 truncate text-xs">{{ discoveryErrors[0].metadata_path }} · {{ discoveryErrors[0].reason }}</div>
-            </div>
+            <Alert v-if="discoveryErrors.length" variant="error" class="mb-3 py-2.5">
+              <AppIcon name="error" class="h-4 w-4" />
+              <AlertTitle>发现 {{ discoveryErrors.length }} 个站点失败</AlertTitle>
+              <AlertDescription class="truncate text-xs">{{ discoveryErrors[0].metadata_path }} · {{ discoveryErrors[0].reason }}</AlertDescription>
+            </Alert>
             <div class="overflow-x-auto rounded-lg border border-border/50">
               <div class="site-runtime-grid min-w-[980px] border-b border-border/50 bg-muted/20 px-4 py-3 text-xs font-medium text-muted-foreground">
                 <div>站点</div>
@@ -318,7 +319,7 @@
         @save="saveSiteEditor"
       />
 
-      <Transition name="toast">
+      <Transition name="oauth-prompt">
         <div
           v-if="youtubeOAuthPrompt.visible"
           class="fixed bottom-6 right-6 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-md border border-border/60 bg-background p-4 text-foreground shadow-xl"
@@ -368,6 +369,7 @@ import SiteIcon from '@/shared/components/SiteIcon.vue'
 import SiteConfigEditorDialog from '@/features/settings/components/SiteConfigEditorDialog.vue'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
+import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -584,45 +586,67 @@ const handleCookiesFileChange = (event) => {
 const handleImportAllCookies = async () => {
   if (!selectedCookiesFile.value || importingCookies.value) return
   importingCookies.value = true
-  const result = await importAllSiteCookies(selectedCookiesFile.value)
-  if (result.error) {
-    Logger.error('Failed to import cookies', result.error)
-  } else if (shouldRefreshLoginStatusesAfterCookieImport(result.data)) {
-    if (supportedSites.value.length === 0) await fetchSupportedSites()
-    clearLoginStatusCache()
-    await testLoginForAllSupportedSites()
-    saveResultsToCache()
+  try {
+    const data = await importAllSiteCookies(selectedCookiesFile.value)
+    if (shouldRefreshLoginStatusesAfterCookieImport(data)) {
+      if (supportedSites.value.length === 0) await fetchSupportedSites()
+      clearLoginStatusCache()
+      await testLoginForAllSupportedSites()
+      saveResultsToCache()
+    }
+  } catch (err) {
+    Logger.error('Failed to import cookies', err)
+  } finally {
+    importingCookies.value = false
   }
-  importingCookies.value = false
 }
 
 const handleReload = async () => {
   reloading.value = true
-  const res = await reloadSiteRuntimes()
-  if (!res.error) await fetchSiteRuntimes()
-  reloading.value = false
+  try {
+    await reloadSiteRuntimes()
+    await fetchSiteRuntimes()
+  } catch {
+    // silent — reload failure just leaves the list as-is
+  } finally {
+    reloading.value = false
+  }
 }
 
 const handleEnable = async (plugin) => {
   actioning.value = plugin.runtime_id
-  const res = await enableSiteRuntime(plugin.runtime_id)
-  if (!res.error) await fetchSiteRuntimes()
-  actioning.value = null
+  try {
+    await enableSiteRuntime(plugin.runtime_id)
+    await fetchSiteRuntimes()
+  } catch {
+    // silent — enable failure leaves the row as-is
+  } finally {
+    actioning.value = null
+  }
 }
 
 const handleDisable = async (plugin) => {
   actioning.value = plugin.runtime_id
-  const res = await disableSiteRuntime(plugin.runtime_id)
-  if (!res.error) await fetchSiteRuntimes()
-  actioning.value = null
+  try {
+    await disableSiteRuntime(plugin.runtime_id)
+    await fetchSiteRuntimes()
+  } catch {
+    // silent — disable failure leaves the row as-is
+  } finally {
+    actioning.value = null
+  }
 }
 
 const handleTestAll = async () => {
   testingAll.value = true
   try {
-    const result = await testAllSitesConnectivity()
-    if (!result.error && result.data) {
-      connectivityResults.value = [result.data]
+    try {
+      const data = await testAllSitesConnectivity()
+      if (data) {
+        connectivityResults.value = [data]
+      }
+    } catch {
+      // connectivity test failure is non-fatal — proceed to login tests
     }
     await testLoginForAllSupportedSites()
     saveResultsToCache()
@@ -633,15 +657,16 @@ const handleTestAll = async () => {
 
 const handleTestSingleBySite = async (siteName) => {
   if (!siteName) return
-  const result = await testSiteConnectivity(siteName)
-  if (!result.error && result.data) {
+  try {
+    const data = await testSiteConnectivity(siteName)
+    if (!data) return
     if (connectivityResults.value.length === 0) {
       connectivityResults.value = [{ results: [], summary: { total: 0, accessible: 0, failed: 0, success_rate: 0 } }]
     }
     const results = connectivityResults.value[0].results
     const existingIndex = results.findIndex(r => r.site_name === siteName)
-    if (existingIndex !== -1) results[existingIndex] = result.data
-    else results.push(result.data)
+    if (existingIndex !== -1) results[existingIndex] = data
+    else results.push(data)
 
     const accessible = results.filter(r => r.accessible).length
     connectivityResults.value[0].summary = {
@@ -651,6 +676,8 @@ const handleTestSingleBySite = async (siteName) => {
       success_rate: results.length > 0 ? Math.round((accessible / results.length) * 100) : 0
     }
     saveResultsToCache()
+  } catch {
+    // silent — single-site connectivity test failure
   }
 }
 
@@ -669,13 +696,14 @@ const handleTestLoginBySite = async (siteName) => {
       return
     }
 
-    const { data, error } = await testSiteLoginStatus(siteName)
-    if (!error && data) upsertLoginStatus(siteName, data)
-    else {
+    try {
+      const data = await testSiteLoginStatus(siteName)
+      if (data) upsertLoginStatus(siteName, data)
+    } catch (err) {
       upsertLoginStatus(siteName, {
         site_name: siteName,
         logged_in: false,
-        message: error?.message || '检测失败',
+        message: err instanceof Error ? err.message : '检测失败',
         checked_at: new Date().toISOString(),
       })
     }
@@ -791,17 +819,24 @@ const saveSiteEditor = async ({ slug, sitePayload }) => {
 
 const fetchSiteRuntimes = async () => {
   loading.value = true
-  const { data, error } = await getSiteRuntimes()
-  if (!error) {
+  try {
+    const data = await getSiteRuntimes()
     siteRuntimes.value = data?.items || []
     discoveryErrors.value = data?.discovery_errors || []
+  } catch {
+    // silent — fetch failure leaves the prior list
+  } finally {
+    loading.value = false
   }
-  loading.value = false
 }
 
 const fetchSupportedSites = async () => {
-  const { data, error } = await getSupportedSites()
-  if (!error && data) supportedSites.value = data.sites || []
+  try {
+    const data = await getSupportedSites()
+    if (data) supportedSites.value = data.sites || []
+  } catch {
+    // silent
+  }
 }
 
 const testLoginForAllSupportedSites = async () => {
@@ -883,13 +918,15 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.toast-enter-active,
-.toast-leave-active {
+/* OAuth prompt banner — slides up from the bottom-right. Deliberately NOT named
+   `toast-*` so it can't collide with the global toast stack's `app-toast-*`. */
+.oauth-prompt-enter-active,
+.oauth-prompt-leave-active {
   transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
-.toast-enter-from,
-.toast-leave-to {
+.oauth-prompt-enter-from,
+.oauth-prompt-leave-to {
   opacity: 0;
   transform: translateY(0.5rem);
 }

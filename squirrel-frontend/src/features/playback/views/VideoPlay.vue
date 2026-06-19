@@ -338,10 +338,10 @@ const ensureLocalVideo = async (targetVideo: VideoPageVideo | null): Promise<Vid
       description: targetVideo.description || undefined,
       subscriptions: Array.isArray(targetVideo.subscriptions) ? targetVideo.subscriptions : [],
       actors: Array.isArray(targetVideo.actors) ? targetVideo.actors : [],
-    }).then(({ data, error }) => {
-      if (error || !data?.id) return null
+    }).then((data) => {
+      if (!data?.id) return null
       return data
-    })
+    }).catch(() => null)
     remoteSaveByUrl.set(url, savePromise)
   }
 
@@ -562,15 +562,18 @@ const refreshSubscriptionStatus = async (url: string) => {
   if (!url) return
 
   isCheckingSubscription.value = true
-  const { data, error } = await getSubscriptionStatus(url)
-  isCheckingSubscription.value = false
-
-  if (url !== primarySubscriptionUrl.value) return
-  if (error) return
-
-  isSubscribed.value = data?.is_subscribed === true
-  subscriptionId.value = data?.subscription_id ?? null
-  isSubscriptionChecked.value = true
+  try {
+    const data = await getSubscriptionStatus(url)
+    if (url !== primarySubscriptionUrl.value) return
+    isSubscribed.value = data?.is_subscribed === true
+    subscriptionId.value = data?.subscription_id ?? null
+    isSubscriptionChecked.value = true
+  } catch {
+    if (url !== primarySubscriptionUrl.value) return
+    // silent — subscription status check failure just leaves it unchecked
+  } finally {
+    isCheckingSubscription.value = false
+  }
 }
 
 watch(primarySubscriptionUrl, async (url) => {
@@ -582,20 +585,23 @@ const handleSubscribe = async () => {
   if (!url || isSubscribing.value) return
 
   isSubscribing.value = true
-  const result = isSubscribed.value && subscriptionId.value
-    ? await unsubscribe(subscriptionId.value)
-    : await subscribe(url)
-  isSubscribing.value = false
+  try {
+    const data = isSubscribed.value && subscriptionId.value
+      ? await unsubscribe(subscriptionId.value)
+      : await subscribe(url)
 
-  if (result.error) return
+    if (!isSubscribed.value) {
+      isSubscribed.value = data?.is_subscribed === true
+      subscriptionId.value = data?.subscription_id ?? null
+      isSubscriptionChecked.value = true
+    }
 
-  if (!isSubscribed.value) {
-    isSubscribed.value = result.data?.is_subscribed === true
-    subscriptionId.value = result.data?.subscription_id ?? null
-    isSubscriptionChecked.value = true
+    await refreshSubscriptionStatus(url)
+  } catch {
+    // silent — a failed subscribe/unsubscribe leaves the toggle unchanged
+  } finally {
+    isSubscribing.value = false
   }
-
-  await refreshSubscriptionStatus(url)
 }
 
 const {
@@ -680,20 +686,5 @@ const openChannelDetail = async (profile: VideoProfile) => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-
-.toast-enter-active {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.toast-leave-active {
-  transition: all 0.2s ease-in;
-}
-.toast-enter-from {
-  opacity: 0;
-  transform: translate(-50%, 0.5rem);
-}
-.toast-leave-to {
-  opacity: 0;
-  transform: translate(-50%, 0.25rem);
 }
 </style>

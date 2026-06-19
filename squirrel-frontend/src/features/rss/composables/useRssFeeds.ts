@@ -1,5 +1,6 @@
-import { computed, nextTick, ref, type Ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 import { onClickOutside } from '@vueuse/core'
+import { useContextMenuPosition } from '@/shared/composables/useContextMenuPosition'
 import {
   getRssFeeds,
   markRssFeedAsRead,
@@ -38,7 +39,7 @@ export function useRssFeeds(options: {
 
   const showFeedContextMenuState = ref(false)
   const feedContextMenuRef = ref<HTMLElement | null>(null)
-  const feedContextMenuPosition = ref({ x: 0, y: 0 })
+  const { position: feedContextMenuPosition, positionMenu } = useContextMenuPosition()
   const contextMenuFeed = ref<RssFeed | null>(null)
 
   onClickOutside(categoryDropdownRef, () => {
@@ -81,14 +82,14 @@ export function useRssFeeds(options: {
   })
 
   const loadFeeds = async () => {
-    const response = await getRssFeeds(
-      options.selectedAccountId.value ? { accountId: options.selectedAccountId.value } : {}
-    )
-    if (response.error) {
-      options?.onStatus?.(response.error.message, true)
-      return
+    try {
+      const data = await getRssFeeds(
+        options.selectedAccountId.value ? { accountId: options.selectedAccountId.value } : {}
+      )
+      feeds.value = data?.data || []
+    } catch (err) {
+      options?.onStatus?.(err instanceof Error ? err.message : '加载订阅源失败', true)
     }
-    feeds.value = response.data?.data || []
   }
 
   const confirmCustomCategory = () => {
@@ -115,26 +116,25 @@ export function useRssFeeds(options: {
     subscribeMessage.value = ''
     subscribeError.value = false
 
-    const response = await subscribeRssFeed({
-      accountId: options.selectedAccountId.value,
-      feedUrl: subscribeForm.value.feedUrl.trim(),
-      category: subscribeForm.value.category.trim() || undefined,
-    })
+    try {
+      await subscribeRssFeed({
+        accountId: options.selectedAccountId.value,
+        feedUrl: subscribeForm.value.feedUrl.trim(),
+        category: subscribeForm.value.category.trim() || undefined,
+      })
 
-    subscribingFeed.value = false
-
-    if (response.error) {
+      subscribeMessage.value = '订阅成功'
+      setTimeout(() => {
+        closeSubscribeModal()
+        loadFeeds()
+        options?.onRefreshEntries?.(true)
+      }, 1000)
+    } catch (err) {
       subscribeError.value = true
-      subscribeMessage.value = response.error.message
-      return
+      subscribeMessage.value = err instanceof Error ? err.message : '订阅失败'
+    } finally {
+      subscribingFeed.value = false
     }
-
-    subscribeMessage.value = '订阅成功'
-    setTimeout(() => {
-      closeSubscribeModal()
-      loadFeeds()
-      options?.onRefreshEntries?.(true)
-    }, 1000)
   }
 
   const toggleFolder = (name: string) => {
@@ -168,37 +168,23 @@ export function useRssFeeds(options: {
 
   const handleUnsubscribeFeed = async (feed: RssFeed) => {
     if (!options.selectedAccountId.value) return
-    const response = await unsubscribeRssFeed(feed.id, options.selectedAccountId.value)
-    if (response.error) {
-      options?.onStatus?.(response.error.message, true)
-      return
+    try {
+      await unsubscribeRssFeed(feed.id, options.selectedAccountId.value)
+      if (selectedFeedId.value === feed.id) {
+        selectedFeedId.value = null
+      }
+      options?.onStatus?.(`已取消订阅「${feed.title}」`)
+      await loadFeeds()
+      await options?.onRefreshEntries?.(true)
+    } catch (err) {
+      options?.onStatus?.(err instanceof Error ? err.message : '取消订阅失败', true)
     }
-    if (selectedFeedId.value === feed.id) {
-      selectedFeedId.value = null
-    }
-    options?.onStatus?.(`已取消订阅「${feed.title}」`)
-    await loadFeeds()
-    await options?.onRefreshEntries?.(true)
   }
 
   const showFeedContextMenu = (feed: RssFeed, event: MouseEvent) => {
     contextMenuFeed.value = feed
-    let x = event.clientX
-    const y = event.clientY
-    const menuWidth = 200
-    if (x + menuWidth > window.innerWidth) {
-      x = window.innerWidth - menuWidth - 8
-    }
-    feedContextMenuPosition.value = { x, y }
+    positionMenu(event, feedContextMenuRef)
     showFeedContextMenuState.value = true
-    nextTick(() => {
-      const el = feedContextMenuRef.value
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      if (rect.bottom > window.innerHeight) {
-        feedContextMenuPosition.value = { x, y: window.innerHeight - rect.height - 8 }
-      }
-    })
   }
 
   const closeFeedContextMenu = () => {
@@ -207,43 +193,43 @@ export function useRssFeeds(options: {
   }
 
   const setFeedOpenMethod = async (feed: RssFeed, method: string | null) => {
-    const response = await updateRssFeed(feed.id, { open_method: method })
-    if (response.error) {
-      options?.onStatus?.(response.error.message, true)
-      return
+    try {
+      await updateRssFeed(feed.id, { open_method: method })
+      feed.open_method = method
+      closeFeedContextMenu()
+      options?.onStatus?.(
+        method === 'external_browser'
+          ? '已设为系统浏览器打开'
+          : method === 'app_browser'
+            ? '已设为应用内浏览器打开'
+            : '已设为内嵌阅读'
+      )
+    } catch (err) {
+      options?.onStatus?.(err instanceof Error ? err.message : '更新失败', true)
     }
-    feed.open_method = method
-    closeFeedContextMenu()
-    options?.onStatus?.(
-      method === 'external_browser'
-        ? '已设为系统浏览器打开'
-        : method === 'app_browser'
-          ? '已设为应用内浏览器打开'
-          : '已设为内嵌阅读'
-    )
   }
 
   const syncFeedFromContextMenu = async (feed: RssFeed) => {
     closeFeedContextMenu()
-    const response = await syncRssFeed(feed.id)
-    if (response.error) {
-      options?.onStatus?.(response.error.message, true)
-      return
+    try {
+      const data = await syncRssFeed(feed.id)
+      const count = (data as { entries?: number } | null)?.entries ?? 0
+      options?.onStatus?.(`已同步「${feed.title}」，更新 ${count} 篇文章`)
+      await options?.onRefreshEntries?.(true)
+    } catch (err) {
+      options?.onStatus?.(err instanceof Error ? err.message : '同步失败', true)
     }
-    const count = (response.data as { entries?: number } | null)?.entries ?? 0
-    options?.onStatus?.(`已同步「${feed.title}」，更新 ${count} 篇文章`)
-    await options?.onRefreshEntries?.(true)
   }
 
   const markFeedAllAsRead = async (feed: RssFeed) => {
     closeFeedContextMenu()
-    const response = await markRssFeedAsRead(feed.id)
-    if (response.error) {
-      options?.onStatus?.(response.error.message, true)
-      return
+    try {
+      await markRssFeedAsRead(feed.id)
+      options?.onStatus?.(`已将「${feed.title}」全部文章标记为已读`)
+      await options?.onRefreshEntries?.(true)
+    } catch (err) {
+      options?.onStatus?.(err instanceof Error ? err.message : '标记失败', true)
     }
-    options?.onStatus?.(`已将「${feed.title}」全部文章标记为已读`)
-    await options?.onRefreshEntries?.(true)
   }
 
   const copyFeedLink = async (feed: RssFeed) => {

@@ -1,5 +1,3 @@
-export type { ApiResult } from '@/shared/types/api'
-
 export type RssAccount = {
   id: number
   provider: string

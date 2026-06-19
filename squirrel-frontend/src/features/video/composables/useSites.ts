@@ -18,26 +18,26 @@ const resetCache = () => {
 }
 
 export async function fetchSites() {
-  if (cached.value || loading.value) return { data: cached.value, error: error.value }
+  if (cached.value || loading.value) return { data: cached.value, error: null }
   loading.value = true
   error.value = null
-  const { data, error: requestError } = await getSites()
-  if (requestError) {
-    error.value = requestError
-    loading.value = false
-    return { data: cached.value, error: requestError }
-  }
-
-  const opts: SiteOption[] = []
-  for (const site of data?.sites || []) {
-    const slug = site.site_name || site.name
-    if (slug && site.config_enabled !== false) {
-      opts.push({ value: slug, label: site.label || slug })
+  try {
+    const data = await getSites()
+    const opts: SiteOption[] = []
+    for (const site of data?.sites || []) {
+      const slug = site.site_name || site.name
+      if (slug && site.config_enabled !== false) {
+        opts.push({ value: slug, label: site.label || slug })
+      }
     }
+    cached.value = opts
+    return { data: cached.value, error: null }
+  } catch (requestError) {
+    error.value = requestError
+    return { data: cached.value, error: requestError }
+  } finally {
+    loading.value = false
   }
-  cached.value = opts
-  loading.value = false
-  return { data: cached.value, error: null }
 }
 
 export function useSites() {
@@ -51,23 +51,22 @@ export function useSiteCatalog() {
   const loadCatalog = async () => {
     siteCatalogLoading.value = true
     siteCatalogError.value = null
-    const { data, error } = await getSiteCatalog()
-    if (error) {
-      siteCatalogError.value = error
-    } else {
+    try {
+      const data = await getSiteCatalog()
       siteCatalog.value = data || {}
+    } catch (e: unknown) {
+      siteCatalogError.value = e
+    } finally {
+      siteCatalogLoading.value = false
     }
-    siteCatalogLoading.value = false
   }
 
   const saveCatalog = async (updatedOverrides: SiteCatalogPayload) => {
     siteCatalogLoading.value = true
     siteCatalogError.value = null
     try {
-      const response = await saveSites({ sites: updatedOverrides })
-      if (response.error) throw response.error
-
-      siteCatalog.value = response.data || {}
+      const data = await saveSites({ sites: updatedOverrides })
+      siteCatalog.value = data || {}
       resetCache()
     } catch (e: unknown) {
       siteCatalogError.value = e

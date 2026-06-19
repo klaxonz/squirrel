@@ -3,6 +3,7 @@ import { DEFAULT_SETTINGS_TAB, SETTINGS_TABS } from '@/shared/constants/sidebar'
 import { useUserStore } from '@/shared/stores/user'
 import { useServerConfig } from '@/shared/composables/useServerConfig'
 import { Logger } from '@/shared/lib/logger'
+import { isApiError } from '@/shared/lib/apiError'
 
 const HomeView = () => import('@/features/video/views/HomeView.vue')
 const VideosView = () => import('@/features/video/views/VideosView.vue')
@@ -368,7 +369,7 @@ router.beforeEach(async (to, from, next) => {
 
   if (!userStore.hasResolvedAuth) {
     const user = await userStore.fetchCurrentUser()
-    if (user.error?.status && user.error.status !== 401) {
+    if (user.error && isApiError(user.error) && user.error.status && user.error.status !== 401) {
       Logger.error('Failed to get user info', user.error)
     }
   }

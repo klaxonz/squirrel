@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { getUserMeConfig, updateUserMeConfig } from '@/shared/api'
+import { isApiError } from '@/shared/lib/apiError'
 
 type UserSettings = {
   showNsfw: boolean
@@ -36,17 +37,21 @@ export function useUserSettings() {
       loadingState.value = true
       errorState.value = null
 
-      const { data, error } = await getUserMeConfig()
-      if (!error && data) {
-        settingsState.value = {
-          ...settingsState.value,
-          ...data,
+      try {
+        const data = await getUserMeConfig()
+        if (data) {
+          settingsState.value = {
+            ...settingsState.value,
+            ...data,
+          }
         }
+        loadedState.value = true
+      } catch (error) {
+        errorState.value = error
+        loadedState.value = true
+      } finally {
+        loadingState.value = false
       }
-
-      errorState.value = error
-      loadedState.value = true
-      loadingState.value = false
     })()
 
     try {
@@ -60,39 +65,40 @@ export function useUserSettings() {
     loadingState.value = true
     errorState.value = null
 
-    const response = await updateUserMeConfig({
-      settings: settingsState.value,
-      merge: false,
-    })
+    try {
+      const data = await updateUserMeConfig({
+        settings: settingsState.value,
+        merge: false,
+      })
 
-    if (response.error) {
-      errorState.value = response.error
-
-      const rollbackResult = await getUserMeConfig()
-      if (!rollbackResult.error && rollbackResult.data) {
+      if (data) {
+        // ponytail: UserConfig fields are optional server-side; merge onto
+        // defaults so the store always carries a complete UserSettings shape.
         settingsState.value = {
-          ...settingsState.value,
-          ...rollbackResult.data,
+          showNsfw: data.showNsfw ?? settingsState.value.showNsfw,
+          autoplay: data.autoplay ?? settingsState.value.autoplay,
+          autoplayNext: data.autoplayNext ?? settingsState.value.autoplayNext,
+          loop: data.loop ?? settingsState.value.loop,
         }
       }
-
-      loadingState.value = false
-      return response
-    }
-
-    if (response.data) {
-      // ponytail: UserConfig fields are optional server-side; merge onto
-      // defaults so the store always carries a complete UserSettings shape.
-      settingsState.value = {
-        showNsfw: response.data.showNsfw ?? settingsState.value.showNsfw,
-        autoplay: response.data.autoplay ?? settingsState.value.autoplay,
-        autoplayNext: response.data.autoplayNext ?? settingsState.value.autoplayNext,
-        loop: response.data.loop ?? settingsState.value.loop,
+      return data
+    } catch (error) {
+      errorState.value = error
+      // Roll back to the server's view so the UI doesn't show unsaved toggles.
+      if (isApiError(error)) {
+        try {
+          const rollback = await getUserMeConfig()
+          if (rollback) {
+            settingsState.value = { ...settingsState.value, ...rollback }
+          }
+        } catch {
+          // rollback failed — leave the local state; the error is already surfaced
+        }
       }
+      throw error
+    } finally {
+      loadingState.value = false
     }
-
-    loadingState.value = false
-    return response
   }
 
   return {

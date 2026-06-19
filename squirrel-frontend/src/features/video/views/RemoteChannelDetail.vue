@@ -120,6 +120,7 @@ import { Button } from '@/shared/ui/button'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { useSkeletonCount, type GridBreakpoint } from '@/features/video/composables/useSkeletonCount'
 import { formatDuration } from '@/shared/lib/dateFormat'
+import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import { getSubscriptionStatus, subscribe, unsubscribe } from '@/shared/api'
 
 type RemoteProfile = {
@@ -343,15 +344,18 @@ const refreshSubscriptionStatus = async (url: string) => {
   if (!url) return
 
   isCheckingSubscription.value = true
-  const { data, error } = await getSubscriptionStatus(url)
-  isCheckingSubscription.value = false
-
-  if (url !== channelUrl.value) return
-  if (error) return
-
-  isSubscribed.value = data?.is_subscribed === true
-  subscriptionId.value = data?.subscription_id ?? null
-  isSubscriptionChecked.value = true
+  try {
+    const data = await getSubscriptionStatus(url)
+    if (url !== channelUrl.value) return
+    isSubscribed.value = data?.is_subscribed === true
+    subscriptionId.value = data?.subscription_id ?? null
+    isSubscriptionChecked.value = true
+  } catch {
+    if (url !== channelUrl.value) return
+    // silent — subscription status check failure just leaves it unchecked
+  } finally {
+    isCheckingSubscription.value = false
+  }
 }
 
 watch(channelUrl, async (url) => {
@@ -363,20 +367,23 @@ const handleSubscribe = async () => {
   if (!url || isSubscribing.value) return
 
   isSubscribing.value = true
-  const result = isSubscribed.value && subscriptionId.value
-    ? await unsubscribe(subscriptionId.value)
-    : await subscribe(url)
-  isSubscribing.value = false
+  try {
+    const data = isSubscribed.value && subscriptionId.value
+      ? await unsubscribe(subscriptionId.value)
+      : await subscribe(url)
 
-  if (result.error) return
+    if (!isSubscribed.value) {
+      isSubscribed.value = data?.is_subscribed === true
+      subscriptionId.value = data?.subscription_id ?? null
+      isSubscriptionChecked.value = true
+    }
 
-  if (!isSubscribed.value) {
-    isSubscribed.value = result.data?.is_subscribed === true
-    subscriptionId.value = result.data?.subscription_id ?? null
-    isSubscriptionChecked.value = true
+    await refreshSubscriptionStatus(url)
+  } catch {
+    // silent — a failed subscribe/unsubscribe leaves the toggle unchanged
+  } finally {
+    isSubscribing.value = false
   }
-
-  await refreshSubscriptionStatus(url)
 }
 
 const openLocalChannel = async () => {
@@ -436,7 +443,7 @@ onActivated(() => {
 })
 
 onMounted(() => {
-  scrollRoot = document.getElementById('app-main-scroll')
+  scrollRoot = getMainScrollRoot()
   observer = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting) void loadMore()
   }, {

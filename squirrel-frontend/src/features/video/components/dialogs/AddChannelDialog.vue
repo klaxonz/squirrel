@@ -84,17 +84,15 @@ const handleSubmit = async () => {
   loading.value = true
   error.value = ''
 
-  const result = await subscribe(channelUrl.value)
-
-  if (!result.error) {
+  try {
+    await subscribe(channelUrl.value)
     emit('added')
     emit('close')
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '添加频道失败，请检查地址是否正确'
+  } finally {
     loading.value = false
-    return
   }
-
-  error.value = result.error?.message || '添加频道失败，请检查地址是否正确'
-  loading.value = false
 }
 </script>
 

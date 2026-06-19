@@ -8,6 +8,7 @@ import {
   updateRssAccount,
   type RssAccountPayload,
 } from '@/shared/api'
+import { isApiError } from '@/shared/lib/apiError'
 import type { AppIconName } from '@/shared/icons/app-icons'
 import type { RssAccount } from './rssTypes'
 
@@ -116,14 +117,14 @@ export function useRssAccounts(options?: {
   }
 
   const loadAccounts = async () => {
-    const response = await getRssAccounts()
-    if (response.error) {
-      options?.onStatus?.(response.error.message, true)
-      return
-    }
-    accounts.value = response.data?.data || []
-    if (!selectedAccountId.value && accounts.value.length) {
-      selectedAccountId.value = accounts.value[0].id
+    try {
+      const data = await getRssAccounts()
+      accounts.value = data?.data || []
+      if (!selectedAccountId.value && accounts.value.length) {
+        selectedAccountId.value = accounts.value[0].id
+      }
+    } catch (err) {
+      options?.onStatus?.(err instanceof Error ? err.message : '加载账号失败', true)
     }
   }
 
@@ -140,52 +141,61 @@ export function useRssAccounts(options?: {
     if (accountForm.value.credential.trim()) {
       payload.credential = accountForm.value.credential
     }
-    const accountId = accountForm.value.id
-      ? await updateRssAccount(accountForm.value.id, payload)
-      : await createRssAccount(payload)
-    saving.value = false
-    if (accountId.error) {
+    try {
+      if (accountForm.value.id) {
+        await updateRssAccount(accountForm.value.id, payload)
+      } else {
+        await createRssAccount(payload)
+      }
+      formError.value = false
+      formMessage.value = '已保存'
+      showAddEditModal.value = false
+      resetForm()
+      await options?.onRefresh?.()
+    } catch (err) {
       formError.value = true
-      formMessage.value = accountId.error.message || '保存失败'
-      return
+      formMessage.value = err instanceof Error ? err.message : '保存失败'
+    } finally {
+      saving.value = false
     }
-    formError.value = false
-    formMessage.value = '已保存'
-    showAddEditModal.value = false
-    resetForm()
-    await options?.onRefresh?.()
   }
 
   const testForm = async () => {
     testing.value = true
     formMessage.value = ''
-    const response = await testRssAccountConfig({
-      provider: accountForm.value.provider,
-      name: accountForm.value.name || accountForm.value.provider,
-      base_url: accountForm.value.base_url,
-      username: accountForm.value.username,
-      credential: accountForm.value.credential,
-    })
-    testing.value = false
-    formError.value = !!response.error
-    formMessage.value = response.error ? response.error.message || '连接失败' : `连接成功，发现 ${(response.data as { feed_count?: number } | null)?.feed_count ?? 0} 个 Feed`
+    try {
+      const data = await testRssAccountConfig({
+        provider: accountForm.value.provider,
+        name: accountForm.value.name || accountForm.value.provider,
+        base_url: accountForm.value.base_url,
+        username: accountForm.value.username,
+        credential: accountForm.value.credential,
+      })
+      formError.value = false
+      formMessage.value = `连接成功，发现 ${(data as { feed_count?: number } | null)?.feed_count ?? 0} 个 Feed`
+    } catch (err) {
+      formError.value = true
+      formMessage.value = isApiError(err) ? err.message : '连接失败'
+    } finally {
+      testing.value = false
+    }
   }
 
   const handleDeleteAccount = async () => {
     if (!accountToDelete.value) return
-    const response = await deleteRssAccount(accountToDelete.value.id)
-    if (response.error) {
-      options?.onStatus?.(response.error.message, true)
+    try {
+      await deleteRssAccount(accountToDelete.value.id)
+      options?.onStatus?.(`已成功删除账号「${accountToDelete.value.name}」`)
       showDeleteConfirmModal.value = false
-      return
+      if (selectedAccountId.value === accountToDelete.value.id) {
+        selectedAccountId.value = null
+      }
+      accountToDelete.value = null
+      await options?.onRefresh?.()
+    } catch (err) {
+      options?.onStatus?.(err instanceof Error ? err.message : '删除失败', true)
+      showDeleteConfirmModal.value = false
     }
-    options?.onStatus?.(`已成功删除账号「${accountToDelete.value.name}」`)
-    showDeleteConfirmModal.value = false
-    if (selectedAccountId.value === accountToDelete.value.id) {
-      selectedAccountId.value = null
-    }
-    accountToDelete.value = null
-    await options?.onRefresh?.()
   }
 
   return {

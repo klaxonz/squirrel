@@ -39,7 +39,7 @@
         </div>
 
         <div v-else-if="loadError" class="min-h-[24rem]">
-          <AppEmptyState variant="plain" icon="warning" title="加载失败" :copy="loadError">
+          <AppEmptyState variant="error" title="加载失败" :copy="loadError">
             <template #actions>
               <Button variant="outline" size="sm" @click="loadData">重试</Button>
             </template>

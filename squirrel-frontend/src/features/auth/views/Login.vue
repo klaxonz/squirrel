@@ -28,13 +28,10 @@
 
         <form @submit.prevent="handleSubmit" class="space-y-5">
           <!-- Error Alert -->
-          <div 
-            v-if="errorMessage" 
-            class="p-3 text-sm text-error bg-error/10 border border-error/20 rounded-md flex items-start gap-2.5 animate-in slide-in-from-top-1"
-          >
-            <AppIcon name="error" class="h-4 w-4 shrink-0 mt-0.5" />
-            <span class="leading-relaxed">{{ errorMessage }}</span>
-          </div>
+          <Alert v-if="errorMessage" variant="error" class="animate-in slide-in-from-top-1">
+            <AppIcon name="error" class="h-4 w-4" />
+            <AlertDescription>{{ errorMessage }}</AlertDescription>
+          </Alert>
 
           <!-- Email Field -->
           <div class="space-y-2">
@@ -126,6 +123,7 @@ import { useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
+import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { useUserStore } from '@/shared/stores/user'
 import { useServerConfig } from '@/shared/composables/useServerConfig'
 
@@ -147,8 +145,9 @@ onMounted(async () => {
 
 const currentServerLabel = computed(() => currentServerUrl.value || '未配置服务器')
 
-// ponytail: userStore.login never throws (handleRequest swallows axios errors into
-// RequestResult.error), so there's no catch to write — error surfaces via result.error.
+// ponytail: the user store catches the thrown ApiError and re-shapes it into a
+// { data, error } tuple, so this form can render the message inline (not via the
+// global mutation toast).
 const handleSubmit = async () => {
   loading.value = true
   errorMessage.value = ''
@@ -160,7 +159,7 @@ const handleSubmit = async () => {
   })
   loading.value = false
   if (result.error) {
-    errorMessage.value = result.error.message
+    errorMessage.value = result.error instanceof Error ? result.error.message : '登录失败'
     return
   }
 

@@ -1,7 +1,7 @@
 <template>
   <div ref="root" class="space-y-6">
-    <div v-if="error" class="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
-      <p class="text-sm font-medium text-destructive">{{ error }}</p>
+    <div v-if="error" class="min-h-[24rem]">
+      <AppEmptyState variant="error" title="加载失败" :copy="error" />
     </div>
 
     <div v-if="!items.length && !loading && !error" class="min-h-[24rem]">
@@ -56,6 +56,7 @@ import VideoSkeleton from '@/features/video/components/feed/VideoSkeleton.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
 import { useSkeletonCount, type GridBreakpoint } from '@/features/video/composables/useSkeletonCount'
 import { formatDuration } from '@/shared/lib/dateFormat'
+import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 
 type RemoteSearchItem = {
   source: 'remote'
@@ -107,9 +108,7 @@ const displayDate = (item: RemoteSearchItem) => {
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString()
 }
 
-const resolveScrollRoot = () => {
-  return props.scrollRoot || document.getElementById('app-main-scroll') || null
-}
+const resolveScrollRoot = () => props.scrollRoot || getMainScrollRoot()
 
 const shouldLoadMore = () => {
   return props.items.length > 0 && !props.loading && !props.allLoaded && !props.error

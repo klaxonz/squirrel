@@ -1,7 +1,9 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import { VueQueryPlugin } from '@tanstack/vue-query'
 import App from './App.vue'
 import router from './router'
+import { queryClient } from '@/shared/lib/queryClient'
 import { useThemeStore } from '@/shared/stores/theme'
 import { Logger } from '@/shared/lib/logger'
 
@@ -21,10 +23,12 @@ const bootstrap = async () => {
 
   app.use(pinia)
   app.use(router)
+  app.use(VueQueryPlugin, { queryClient })
 
-  // ponytail: global last-resort sinks. Per-request API errors are handled by
-  // the axios interceptor (401 -> logout) and the { data, error } return shape
-  // from handleRequest; these two only catch genuinely unhandled throws.
+  // ponytail: global last-resort sinks. Per-request API errors surface as
+  // thrown ApiError (caught by vue-query's MutationCache → toast, or by each
+  // view's try/catch); the 401 → logout side-effect lives in the axios
+  // interceptor. These two only catch genuinely unhandled throws.
   app.config.errorHandler = (error, instance, info) => {
     Logger.error('Uncaught Vue error', error, { info, component: instance?.$?.type?.name })
   }

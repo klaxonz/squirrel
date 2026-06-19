@@ -155,16 +155,24 @@ export default function useVideoPageNavigation({
     const maxAttempts = 3
 
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      const response = await getRandomVideo({})
-      if (!response.error && response.data?.id != null && !recentlyPlayed.value.includes(response.data.id)) {
-        await goToVideo(response.data.id as VideoId, response.data as VideoPageVideo | null)
-        return
+      try {
+        const data = await getRandomVideo({})
+        if (data?.id != null && !recentlyPlayed.value.includes(data.id)) {
+          await goToVideo(data.id as VideoId, data as VideoPageVideo | null)
+          return
+        }
+      } catch {
+        // retry — random endpoint may occasionally fail
       }
     }
 
-    const fallbackResponse = await getRandomVideo({})
-    if (!fallbackResponse.error && fallbackResponse.data?.id != null) {
-      await goToVideo(fallbackResponse.data.id as VideoId, fallbackResponse.data as VideoPageVideo | null)
+    try {
+      const data = await getRandomVideo({})
+      if (data?.id != null) {
+        await goToVideo(data.id as VideoId, data as VideoPageVideo | null)
+      }
+    } catch {
+      // all attempts failed — stay on current view
     }
   }
 

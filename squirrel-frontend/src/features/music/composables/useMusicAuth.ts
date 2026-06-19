@@ -14,6 +14,7 @@ import {
   type MusicTrack,
 } from '@/shared/api/music'
 import { Logger } from '@/shared/lib/logger'
+import { isApiError } from '@/shared/lib/apiError'
 
 export function useMusicAuth() {
   const authStatus = ref<MusicAuthStatus | null>(null)
@@ -31,34 +32,25 @@ export function useMusicAuth() {
 
   async function loadAuthStatus() {
     try {
-      const { data, error } = await getMusicAuthStatus()
-      if (error) {
-        Logger.warn('loadAuthStatus failed', error)
-        return
-      }
+      const data = await getMusicAuthStatus()
       authStatus.value = data || null
       if (data?.logged_in) {
         loadUserPlaylists()
       }
     } catch (err) {
-      Logger.warn('loadAuthStatus threw', err)
+      Logger.warn('loadAuthStatus failed', err)
     }
   }
 
   async function loadUserPlaylists() {
     try {
-      const { data, error } = await getMusicUserPlaylists()
-      if (error) {
-        Logger.warn('loadUserPlaylists failed', error)
-        userPlaylists.value = []
-        return
-      }
+      const data = await getMusicUserPlaylists()
       userPlaylists.value = data?.items || []
       if (userPlaylists.value.length && !targetUserPlaylistId.value) {
         targetUserPlaylistId.value = userPlaylists.value[0].id
       }
     } catch (err) {
-      Logger.warn('loadUserPlaylists threw', err)
+      Logger.warn('loadUserPlaylists failed', err)
       userPlaylists.value = []
     }
   }
@@ -69,33 +61,27 @@ export function useMusicAuth() {
     profileLoading.value = true
     profileError.value = ''
 
-    const { data, error } = await getMusicUserProfile()
-    profileLoading.value = false
-
-    if (error) {
-      profileError.value = error.message
+    try {
+      const data = await getMusicUserProfile()
+      kugouProfile.value = data || null
+      loadProfileHistory()
+      loadProfileListenRank()
+    } catch (err) {
+      profileError.value = isApiError(err) ? err.message : '加载失败'
       kugouProfile.value = null
-      return
+    } finally {
+      profileLoading.value = false
     }
-
-    kugouProfile.value = data || null
-    loadProfileHistory()
-    loadProfileListenRank()
   }
 
   async function loadProfileHistory() {
     if (!authStatus.value?.logged_in) return
     profileHistoryLoading.value = true
     try {
-      const { data, error } = await getMusicUserHistory()
-      if (error) {
-        Logger.warn('loadProfileHistory failed', error)
-        profileHistory.value = []
-        return
-      }
+      const data = await getMusicUserHistory()
       profileHistory.value = data?.items || []
     } catch (err) {
-      Logger.warn('loadProfileHistory threw', err)
+      Logger.warn('loadProfileHistory failed', err)
       profileHistory.value = []
     } finally {
       profileHistoryLoading.value = false
@@ -106,15 +92,10 @@ export function useMusicAuth() {
     if (!authStatus.value?.logged_in) return
     profileRankLoading.value = true
     try {
-      const { data, error } = await getMusicUserListenRank({ type: profileRankType.value })
-      if (error) {
-        Logger.warn('loadProfileListenRank failed', error)
-        profileListenRank.value = []
-        return
-      }
+      const data = await getMusicUserListenRank({ type: profileRankType.value })
       profileListenRank.value = data?.items || []
     } catch (err) {
-      Logger.warn('loadProfileListenRank threw', err)
+      Logger.warn('loadProfileListenRank failed', err)
       profileListenRank.value = []
     } finally {
       profileRankLoading.value = false
@@ -129,10 +110,9 @@ export function useMusicAuth() {
   async function logout() {
     logoutLoading.value = true
     try {
-      const { error } = await logoutMusicUser()
-      if (error) Logger.warn('logout failed', error)
+      await logoutMusicUser()
     } catch (err) {
-      Logger.warn('logout threw', err)
+      Logger.warn('logout failed', err)
     } finally {
       logoutLoading.value = false
     }
@@ -142,18 +122,18 @@ export function useMusicAuth() {
   }
 
   async function createPlaylist(name: string) {
-    const { error } = await createMusicUserPlaylist({ name, is_private: false })
-    if (error) {
-      Logger.warn('createPlaylist failed', error)
-      return
+    try {
+      await createMusicUserPlaylist({ name, is_private: false })
+      loadUserPlaylists()
+    } catch (err) {
+      Logger.warn('createPlaylist failed', err)
     }
-    loadUserPlaylists()
   }
 
   async function addToPlaylist(track: MusicTrack) {
     if (!targetUserPlaylistId.value) return
     try {
-      const { error } = await addMusicUserPlaylistTrack({
+      await addMusicUserPlaylistTrack({
         list_id: targetUserPlaylistId.value,
         track: {
           title: track.title,
@@ -162,9 +142,8 @@ export function useMusicAuth() {
           album_audio_id: track.album_audio_id,
         },
       })
-      if (error) Logger.warn('addToPlaylist failed', error)
     } catch (err) {
-      Logger.warn('addToPlaylist threw', err)
+      Logger.warn('addToPlaylist failed', err)
     }
   }
 

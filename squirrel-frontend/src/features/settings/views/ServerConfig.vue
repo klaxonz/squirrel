@@ -16,13 +16,10 @@
 
         <form @submit.prevent="handleConnect" class="space-y-5">
           <!-- Error Alert -->
-          <div 
-            v-if="errorMessage" 
-            class="p-3 text-sm text-error bg-error/10 border border-error/20 rounded-md flex items-start gap-2.5 animate-in slide-in-from-top-1"
-          >
-            <AppIcon name="error" class="h-4 w-4 shrink-0 mt-0.5" />
-            <span class="leading-relaxed">{{ errorMessage }}</span>
-          </div>
+          <Alert v-if="errorMessage" variant="error" class="animate-in slide-in-from-top-1">
+            <AppIcon name="error" class="h-4 w-4" />
+            <AlertDescription>{{ errorMessage }}</AlertDescription>
+          </Alert>
 
           <!-- Server URL Field -->
           <div class="space-y-2">
@@ -58,7 +55,7 @@
             <!-- Test Result Feedback -->
             <div v-if="connectionMessage" :class="[
               'text-xs font-medium mt-1.5 flex items-center gap-1.5',
-              testResult ? 'text-success' : 'text-error'
+              testResult ? 'text-success' : 'text-destructive'
             ]">
               <AppIcon :name="testResult ? 'statusSuccess' : 'warning'" class="w-3.5 h-3.5" />
               {{ connectionMessage }}
@@ -85,7 +82,7 @@
             <div v-if="recentServerUrls.length" class="space-y-2.5">
               <div class="flex items-center justify-between">
                 <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">最近连接</span>
-                <button type="button" class="text-xs font-medium text-muted-foreground hover:text-error transition-colors" @click="handleClearRecent">
+                <button type="button" class="text-xs font-medium text-muted-foreground hover:text-destructive transition-colors" @click="handleClearRecent">
                   清空
                 </button>
               </div>
@@ -142,6 +139,7 @@ import { Logger } from '@/shared/lib/logger'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
+import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { useServerConfig } from '@/shared/composables/useServerConfig'
 
 const router = useRouter()

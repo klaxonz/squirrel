@@ -98,29 +98,33 @@ export function useYouTubeOAuth(options: UseYouTubeOAuthOptions) {
         return
       }
 
-      const { data } = await getYouTubeOAuthStatus()
-      if (data) {
-        if (data.status === 'pending') {
-          showYouTubeOAuthPrompt({
-            verificationUrl: data.verification_url || '',
-            userCode: data.user_code || '',
+      try {
+        const data = await getYouTubeOAuthStatus()
+        if (data) {
+          if (data.status === 'pending') {
+            showYouTubeOAuthPrompt({
+              verificationUrl: data.verification_url || '',
+              userCode: data.user_code || '',
+            })
+          } else {
+            hideYouTubeOAuthPrompt()
+          }
+          upsertLoginStatus('youtube', {
+            site_name: 'youtube',
+            supported: true,
+            logged_in: data.status === 'authenticated',
+            message: data.status === 'pending' ? 'TV 授权中' : (data.status === 'authenticated' ? 'TV 授权有效' : '未配置 TV 授权'),
+            checked_at: new Date().toISOString(),
+            oauth_status: data.status,
+            oauth_account: data.account || null,
+            verification_url: data.verification_url || null,
+            user_code: data.user_code || null,
           })
-        } else {
-          hideYouTubeOAuthPrompt()
         }
-        upsertLoginStatus('youtube', {
-          site_name: 'youtube',
-          supported: true,
-          logged_in: data.status === 'authenticated',
-          message: data.status === 'pending' ? 'TV 授权中' : (data.status === 'authenticated' ? 'TV 授权有效' : '未配置 TV 授权'),
-          checked_at: new Date().toISOString(),
-          oauth_status: data.status,
-          oauth_account: data.account || null,
-          verification_url: data.verification_url || null,
-          user_code: data.user_code || null,
-        })
+        if (data?.status !== 'pending') stopYouTubeOAuthPolling()
+      } catch {
+        // polling failure — keep the current prompt state, retry next tick
       }
-      if (data?.status !== 'pending') stopYouTubeOAuthPolling()
     }, 3000)
   }
 
@@ -146,8 +150,8 @@ export function useYouTubeOAuth(options: UseYouTubeOAuthOptions) {
       return
     }
 
-    const { data, error } = await setupYouTubeOAuth()
-    if (!error && data) {
+    try {
+      const data = await setupYouTubeOAuth()
       if (data.verification_url) await openExternalUrl(data.verification_url)
       showYouTubeOAuthPrompt({
         verificationUrl: data.verification_url || '',
@@ -165,6 +169,8 @@ export function useYouTubeOAuth(options: UseYouTubeOAuthOptions) {
         user_code: data.user_code || null,
       })
       if (data.status === 'pending') startYouTubeOAuthPolling()
+    } catch {
+      // setup failure — prompt stays hidden; user can retry
     }
   }
 

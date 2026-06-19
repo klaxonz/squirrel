@@ -48,16 +48,18 @@ export function useMusicHome() {
     ])
   }
 
+  // ponytail: each loader now uses the throw-based API — the old `{ data, error }`
+  // + `if (error) { log; reset; return }` boilerplate collapses to a try/catch
+  // where the catch resets the section to empty. Loaders stay silent on failure
+  // (a failed section just renders empty; the view's empty state takes over).
   async function loadBanners() {
     bannerLoading.value = true
     try {
-      const { data, error } = await getMusicBanner()
-      if (error) {
-        Logger.warn('loadBanners failed', error)
-        banners.value = []
-        return
-      }
+      const data = await getMusicBanner()
       banners.value = data?.items || []
+    } catch (err) {
+      Logger.warn('loadBanners failed', err)
+      banners.value = []
     } finally {
       bannerLoading.value = false
     }
@@ -66,13 +68,11 @@ export function useMusicHome() {
   async function loadRanks() {
     ranksLoading.value = true
     try {
-      const { data, error } = await getMusicRanks()
-      if (error) {
-        Logger.warn('loadRanks failed', error)
-        ranks.value = []
-        return
-      }
+      const data = await getMusicRanks()
       ranks.value = data?.items || []
+    } catch (err) {
+      Logger.warn('loadRanks failed', err)
+      ranks.value = []
     } finally {
       ranksLoading.value = false
     }
@@ -81,19 +81,17 @@ export function useMusicHome() {
   async function loadPlaylists(_append = false) {
     playlistsLoading.value = true
     try {
-      const { data, error } = await getMusicPlaylists({
+      const data = await getMusicPlaylists({
         category_id: selectedPlaylistCategory.value,
         page: 1,
         page_size: 20,
       })
-      if (error) {
-        Logger.warn('loadPlaylists failed', error)
-        playlists.value = []
-        playlistHasMore.value = false
-        return
-      }
       playlists.value = data?.items || []
       playlistHasMore.value = data?.has_more || false
+    } catch (err) {
+      Logger.warn('loadPlaylists failed', err)
+      playlists.value = []
+      playlistHasMore.value = false
     } finally {
       playlistsLoading.value = false
     }
@@ -101,15 +99,10 @@ export function useMusicHome() {
 
   async function loadPlaylistTags() {
     try {
-      const { data, error } = await getMusicPlaylistTags()
-      if (error) {
-        Logger.warn('loadPlaylistTags failed', error)
-        playlistTags.value = []
-        return
-      }
+      const data = await getMusicPlaylistTags()
       playlistTags.value = (data?.items || []).slice(0, 12) as MusicPlaylistTag[]
     } catch (err) {
-      Logger.warn('loadPlaylistTags threw', err)
+      Logger.warn('loadPlaylistTags failed', err)
       playlistTags.value = []
     }
   }
@@ -117,13 +110,11 @@ export function useMusicHome() {
   async function loadNewAlbums() {
     newAlbumsLoading.value = true
     try {
-      const { data, error } = await getMusicNewAlbums({ page: 1, page_size: 30 })
-      if (error) {
-        Logger.warn('loadNewAlbums failed', error)
-        newAlbums.value = []
-        return
-      }
+      const data = await getMusicNewAlbums({ page: 1, page_size: 30 })
       newAlbums.value = data?.items || []
+    } catch (err) {
+      Logger.warn('loadNewAlbums failed', err)
+      newAlbums.value = []
     } finally {
       newAlbumsLoading.value = false
     }
@@ -132,13 +123,11 @@ export function useMusicHome() {
   async function loadNewAlbumsForView() {
     newAlbumsLoading.value = true
     try {
-      const { data, error } = await getMusicNewAlbums({ page: 1, page_size: 30 })
-      if (error) {
-        Logger.warn('loadNewAlbumsForView failed', error)
-        newAlbums.value = []
-        return
-      }
+      const data = await getMusicNewAlbums({ page: 1, page_size: 30 })
       newAlbums.value = data?.items || []
+    } catch (err) {
+      Logger.warn('loadNewAlbumsForView failed', err)
+      newAlbums.value = []
     } finally {
       newAlbumsLoading.value = false
     }
@@ -147,13 +136,11 @@ export function useMusicHome() {
   async function loadNewSongs() {
     newSongsLoading.value = true
     try {
-      const { data, error } = await getMusicNewSongs({ page: 1, page_size: 50 })
-      if (error) {
-        Logger.warn('loadNewSongs failed', error)
-        newSongs.value = []
-        return
-      }
+      const data = await getMusicNewSongs({ page: 1, page_size: 50 })
       newSongs.value = data?.items || []
+    } catch (err) {
+      Logger.warn('loadNewSongs failed', err)
+      newSongs.value = []
     } finally {
       newSongsLoading.value = false
     }
@@ -161,15 +148,10 @@ export function useMusicHome() {
 
   async function loadHotSearches() {
     try {
-      const { data, error } = await getMusicHotSearch()
-      if (error) {
-        Logger.warn('loadHotSearches failed', error)
-        hotSearches.value = []
-        return
-      }
+      const data = await getMusicHotSearch()
       hotSearches.value = (data?.items || []).slice(0, 12) as MusicHotSearch[]
     } catch (err) {
-      Logger.warn('loadHotSearches threw', err)
+      Logger.warn('loadHotSearches failed', err)
       hotSearches.value = []
     }
   }
@@ -177,13 +159,11 @@ export function useMusicHome() {
   async function loadAiRecommend() {
     aiRecommendLoading.value = true
     try {
-      const { data, error } = await getMusicAiRecommend({ page_size: 30 })
-      if (error) {
-        Logger.warn('loadAiRecommend failed', error)
-        aiRecommend.value = []
-        return
-      }
+      const data = await getMusicAiRecommend({ page_size: 30 })
       aiRecommend.value = data?.items || []
+    } catch (err) {
+      Logger.warn('loadAiRecommend failed', err)
+      aiRecommend.value = []
     } finally {
       aiRecommendLoading.value = false
     }
@@ -192,13 +172,11 @@ export function useMusicHome() {
   async function loadEverydayRecommend() {
     everydayRecommendLoading.value = true
     try {
-      const { data, error } = await getMusicEverydayRecommend()
-      if (error) {
-        Logger.warn('loadEverydayRecommend failed', error)
-        everydayRecommend.value = []
-        return
-      }
+      const data = await getMusicEverydayRecommend()
       everydayRecommend.value = data?.items || []
+    } catch (err) {
+      Logger.warn('loadEverydayRecommend failed', err)
+      everydayRecommend.value = []
     } finally {
       everydayRecommendLoading.value = false
     }
@@ -213,19 +191,17 @@ export function useMusicHome() {
     if (playlistsLoading.value || !playlistHasMore.value) return
     playlistsLoading.value = true
     try {
-      const { data, error } = await getMusicPlaylists({
+      const data = await getMusicPlaylists({
         category_id: selectedPlaylistCategory.value,
         page: 2,
         page_size: 20,
       })
-      if (error) {
-        Logger.warn('handleLoadMorePlaylists failed', error)
-        return
-      }
       if (data?.items?.length) {
         playlists.value = [...playlists.value, ...data.items]
         playlistHasMore.value = data.has_more || false
       }
+    } catch (err) {
+      Logger.warn('handleLoadMorePlaylists failed', err)
     } finally {
       playlistsLoading.value = false
     }

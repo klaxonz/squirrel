@@ -83,6 +83,7 @@ import { Button } from '@/shared/ui/button'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import MusicTrackList from './MusicTrackList.vue'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
+import { formatCount } from '@/shared/lib/dateFormat'
 import type { MusicArtist, MusicTrack, MusicAlbum, MusicVideo } from '@/shared/api/music'
 
 const props = defineProps<{
@@ -120,12 +121,6 @@ function handleFollow() {
   } else {
     emit('follow')
   }
-}
-
-function formatCount(count: number): string {
-  if (count >= 100000000) return (count / 100000000).toFixed(1) + '亿'
-  if (count >= 10000) return (count / 10000).toFixed(1) + '万'
-  return String(count)
 }
 </script>
 

@@ -2,6 +2,7 @@ import { computed, shallowRef, ref } from 'vue'
 import { getVideoList } from '@/shared/api'
 import type { VideoListItem as ApiVideoListItem, VideoListResponse as ApiVideoListResponse } from '@/features/video/types/video'
 import { ErrorTypes } from '@/shared/lib/request'
+import { isApiError } from '@/shared/lib/apiError'
 
 type VideoId = string | number
 
@@ -141,33 +142,32 @@ export function useLatestVideos(initial: InitialState = {}) {
     listAbortController?.abort()
     listAbortController = new AbortController()
 
-    const { data, error: requestError } = await getVideoList(createRequestParams(), {
-      signal: listAbortController.signal,
-    })
+    try {
+      const data = await getVideoList(createRequestParams(), {
+        signal: listAbortController.signal,
+      })
 
-    if (currentToken !== requestToken) {
-      finishRequest()
-      return
-    }
+      if (currentToken !== requestToken) {
+        finishRequest()
+        return
+      }
 
-    if (requestError?.type === ErrorTypes.CANCELED) {
-      finishRequest()
-      return
-    }
+      const nextVideos = extractVideoListItems(data)
+      applyVideoPage(nextVideos, isRefresh)
 
-    if (requestError) {
+      // 推进游标；后端返回的 next_cursor 为 null 表示无更多
+      cursor.value = data?.next_cursor ?? null
+      allLoaded.value = nextVideos.length < PAGE_SIZE || !data?.next_cursor
+    } catch (requestError) {
+      // Aborted by a newer request — not a real error, just drop this response.
+      if (currentToken !== requestToken || (isApiError(requestError) && requestError.type === ErrorTypes.CANCELED)) {
+        finishRequest()
+        return
+      }
       error.value = requestError
+    } finally {
       finishRequest()
-      return
     }
-
-    const nextVideos = extractVideoListItems(data)
-    applyVideoPage(nextVideos, isRefresh)
-
-    // 推进游标；后端返回的 next_cursor 为 null 表示无更多
-    cursor.value = data?.next_cursor ?? null
-    allLoaded.value = nextVideos.length < PAGE_SIZE || !data?.next_cursor
-    finishRequest()
   }
 
   const resetAndReload = async () => {

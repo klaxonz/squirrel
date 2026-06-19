@@ -145,9 +145,13 @@ export default function useVideoDetail(session: PlaybackSession) {
 
   const fetchVideoDetails = async (videoId: VideoId) => {
     const seq = ++detailRequestSeq
-    const { data, error } = (await getVideoDetail(videoId)) as { data?: VideoPageVideo | null; error?: unknown | null }
-    if (!error && seq === detailRequestSeq) {
-      session.update({ video: data || null })
+    try {
+      const data = await getVideoDetail(videoId) as VideoPageVideo | null
+      if (seq === detailRequestSeq) {
+        session.update({ video: data || null })
+      }
+    } catch {
+      // silent — a failed detail fetch leaves the prior video in session
     }
     return session.facts.video
   }

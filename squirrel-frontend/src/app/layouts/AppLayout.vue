@@ -17,7 +17,7 @@
           ref="mainScrollRef"
           class="flex-1 overflow-y-auto overflow-x-hidden relative scrollbar overflow-anchor-none"
           :class="musicBarPadding"
-          id="app-main-scroll"
+          :id="MAIN_SCROLL_ID"
         >
           <GlobalVideoPlayerHost />
           <slot />
@@ -45,6 +45,7 @@ import ToastProvider from '@/shared/components/toast/ToastProvider.vue'
 import { useThemeStore } from '@/shared/stores/theme'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
+import { MAIN_SCROLL_ID } from '@/shared/composables/useMainScrollRoot'
 
 type ScrollRouteState = {
   fullPath: string

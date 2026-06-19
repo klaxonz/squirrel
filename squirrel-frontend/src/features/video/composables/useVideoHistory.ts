@@ -62,27 +62,27 @@ export function useVideoHistory() {
     }
 
     if (sync.syncStatus.isOnline || force) {
-      const { error } = await updateVideoHistory({
-        ...reportData,
-        video_id: persistedVideoId,
-      })
-      if (!error) {
+      try {
+        await updateVideoHistory({
+          ...reportData,
+          video_id: persistedVideoId,
+        })
         sync.syncStatus.lastSyncTime = Date.now()
         sync.syncStatus.failedAttempts = 0
 
         sync.removePendingUpdate(video_id)
 
         return true
+      } catch (err) {
+        Logger.warn('Failed to sync video history', err)
+        sync.syncStatus.failedAttempts++
+
+        if (retryOnFailure) {
+          sync.addToPendingUpdates(reportData)
+        }
+
+        return false
       }
-
-      Logger.warn('Failed to sync video history', error)
-      sync.syncStatus.failedAttempts++
-
-      if (retryOnFailure) {
-        sync.addToPendingUpdates(reportData)
-      }
-
-      return false
     } else {
       sync.addToPendingUpdates(reportData)
       return false
@@ -113,9 +113,9 @@ export function useVideoHistory() {
       return true
     }
 
-    const { error } = await batchUpdateVideoHistory(persistedReports)
+    try {
+      await batchUpdateVideoHistory(persistedReports)
 
-    if (!error) {
       sync.syncStatus.lastSyncTime = Date.now()
       sync.syncStatus.failedAttempts = 0
 
@@ -124,11 +124,11 @@ export function useVideoHistory() {
       })
 
       return true
+    } catch (err) {
+      Logger.error('Failed to batch sync video history', err)
+      sync.syncStatus.failedAttempts++
+      return false
     }
-
-    Logger.error('Failed to batch sync video history', error)
-    sync.syncStatus.failedAttempts++
-    return false
   }
 
   const syncPendingUpdates = async () => {
@@ -168,10 +168,7 @@ export function useVideoHistory() {
       params.query = query
     }
 
-    const { data, error } = await listVideoHistory(params)
-    // ponytail: callers (History.vue) don't catch — rejecting with the already-
-    // shaped ApiError carries the same message the old try/catch/throw re-wrap did.
-    if (error) throw error
+    const data = await listVideoHistory(params)
 
     const payload = data || { items: [], total: 0, page, page_size: pageSize }
     const items = Array.isArray(payload.items) ? payload.items : []
@@ -184,14 +181,12 @@ export function useVideoHistory() {
   }
 
   const clearHistory = async (videoIds: VideoId[] | null = null) => {
-    const { error } = await clearVideoHistory(videoIds)
-    if (error) throw error
+    await clearVideoHistory(videoIds)
     return true
   }
 
   const deleteHistoryEntry = async (historyId: VideoId) => {
-    const { error } = await deleteVideoHistory(historyId)
-    if (error) throw error
+    await deleteVideoHistory(historyId)
     return true
   }
 

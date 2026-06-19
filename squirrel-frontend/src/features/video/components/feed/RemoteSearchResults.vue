@@ -104,6 +104,7 @@ import VideoThumbnail from './VideoThumbnail.vue'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { useSkeletonCount, type GridBreakpoint } from '@/features/video/composables/useSkeletonCount'
 import { formatDuration } from '@/shared/lib/dateFormat'
+import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 
 type RemoteProfile = {
   id?: string | number | null
@@ -431,7 +432,7 @@ onActivated(() => {
 })
 
 onMounted(() => {
-  const root = document.getElementById('app-main-scroll')
+  const root = getMainScrollRoot()
   observer = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting) {
       loadMore()

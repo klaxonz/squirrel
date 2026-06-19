@@ -266,7 +266,7 @@ const handleSave = async () => {
   const result = await userStore.updateProfile(payload)
   saving.value = false
   if (result.error) {
-    saveError.value = result.error.message || '保存失败'
+    saveError.value = (result.error instanceof Error ? result.error.message : null) || '保存失败'
   } else {
     saved.value = true
     if (savedTimer) clearTimeout(savedTimer)

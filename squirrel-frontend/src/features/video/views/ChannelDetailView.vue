@@ -41,9 +41,9 @@
 
       <!-- Error -->
       <div v-if="loadError" class="px-6 pt-6">
-        <div class="bg-destructive/10 rounded-sm p-4 flex items-center justify-between">
+        <div class="rounded-md border border-destructive/20 bg-destructive/10 p-4 flex items-center justify-between gap-4">
           <p class="text-sm text-destructive font-medium">{{ loadError }}</p>
-          <Button variant="destructive" size="sm" class="rounded-full" @click="refreshCurrentList">重试</Button>
+          <Button variant="destructive" size="sm" @click="refreshCurrentList">重试</Button>
         </div>
       </div>
 

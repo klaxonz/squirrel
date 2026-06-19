@@ -302,14 +302,14 @@ const toggleSelection = (sub) => {
 
 const loadSupportedSites = async () => {
   await loadCatalog()
-  const { data, error } = await getSupportedImportSites()
-  if (error) {
-    requestError.value = error.message || '加载可导入站点失败'
+  try {
+    const data = await getSupportedImportSites()
+    requestError.value = ''
+    supportedSites.value = data
+  } catch (err) {
+    requestError.value = err instanceof Error ? err.message : '加载可导入站点失败'
     supportedSites.value = []
-    return
   }
-  requestError.value = ''
-  supportedSites.value = data
 }
 
 const mergePreviewSubscriptions = (existing, incoming) => {
@@ -326,26 +326,27 @@ const mergePreviewSubscriptions = (existing, incoming) => {
 const fetchPreviewBatch = async ({ cursorPayload = null, append = false } = {}) => {
   const loadingState = append ? loadingMorePreview : loadingPreview
   loadingState.value = true
-  const result = await previewImportSubscriptions(selectedSite.value, {
-    cursorPayload,
-    limit: PREVIEW_BATCH_SIZE,
-  })
-  loadingState.value = false
-
-  if (!result.error) {
+  try {
+    const data = await previewImportSubscriptions(selectedSite.value, {
+      cursorPayload,
+      limit: PREVIEW_BATCH_SIZE,
+    })
     requestError.value = ''
     previewData.value = {
-      total: result.data?.total ?? previewData.value.total,
+      total: data?.total ?? previewData.value.total,
       subscriptions: append
-        ? mergePreviewSubscriptions(previewData.value.subscriptions, result.data?.subscriptions || [])
-        : (result.data?.subscriptions || []),
-      has_more: !!result.data?.has_more,
-      cursor_payload: result.data?.cursor_payload || null,
+        ? mergePreviewSubscriptions(previewData.value.subscriptions, data?.subscriptions || [])
+        : (data?.subscriptions || []),
+      has_more: !!data?.has_more,
+      cursor_payload: data?.cursor_payload || null,
     }
     return true
+  } catch (err) {
+    requestError.value = err instanceof Error ? err.message : '预览订阅失败'
+    return false
+  } finally {
+    loadingState.value = false
   }
-  requestError.value = result.error.message || '预览订阅失败'
-  return false
 }
 
 const handlePreview = async () => {
@@ -373,16 +374,16 @@ const handleImport = async () => {
   importing.value = true
   requestError.value = ''
   const subscriptionUrls = Object.keys(selectedUrlMap.value || {})
-  const result = await importSubscriptions(selectedSite.value, subscriptionUrls)
-  importing.value = false
-
-  if (!result.error) {
+  try {
+    const data = await importSubscriptions(selectedSite.value, subscriptionUrls)
     requestError.value = ''
-    importResult.value = result.data
+    importResult.value = data
     step.value = 3
-    return
+  } catch (err) {
+    requestError.value = err instanceof Error ? err.message : '导入订阅失败'
+  } finally {
+    importing.value = false
   }
-  requestError.value = result.error.message || '导入订阅失败'
 }
 
 const handleClose = () => {

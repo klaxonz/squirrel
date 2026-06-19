@@ -1,19 +1,13 @@
-import type { AxiosRequestConfig, AxiosResponse } from 'axios'
+import type { AxiosRequestConfig } from 'axios'
 import axios from './axios'
+import { ApiError, ErrorTypes, getErrorTypeByCode, type ErrorType } from './apiError'
 
-export const ErrorTypes = {
-  CANCELED: 'CANCELED',
-  NETWORK: 'NETWORK',
-  API: 'API',
-  TIMEOUT: 'TIMEOUT',
-  UNAUTHORIZED: 'UNAUTHORIZED',
-  FORBIDDEN: 'FORBIDDEN',
-  NOT_FOUND: 'NOT_FOUND',
-  SERVER_ERROR: 'SERVER_ERROR',
-  UNKNOWN: 'UNKNOWN',
-} as const
-
-export type ErrorType = typeof ErrorTypes[keyof typeof ErrorTypes]
+// Re-exported so existing `import { ApiError, ErrorTypes } from '@/shared/lib/request'`
+// callsites keep working. The definitions live in apiError.ts to avoid a module
+// cycle (axios.ts → request.ts → axios.ts).
+export { ApiError, ErrorTypes }
+export type { ErrorType } from './apiError'
+export { isApiError, getErrorTypeByStatus, getErrorTypeByCode } from './apiError'
 
 type ApiEnvelope<T = unknown> = {
   code: number
@@ -21,126 +15,44 @@ type ApiEnvelope<T = unknown> = {
   data?: T
 }
 
-export type RequestResult<T = unknown> = {
-  data: T | null
-  error: ApiError | null
-}
-
-export class ApiError extends Error {
-  type: ErrorType
-  status: number | null
-  data: unknown | null
-
-  constructor(message: string, type: ErrorType = ErrorTypes.UNKNOWN, status: number | null = null, data: unknown | null = null) {
-    super(message)
-    this.name = 'ApiError'
-    this.type = type
-    this.status = status
-    this.data = data
-  }
-}
-
 const isApiEnvelope = (data: unknown): data is ApiEnvelope => {
   return !!data && typeof data === 'object' && typeof (data as ApiEnvelope).code === 'number'
 }
-const getErrorTypeByStatus = (status: number | null | undefined): ErrorType => {
-  switch (status) {
-    case 401: return ErrorTypes.UNAUTHORIZED
-    case 403: return ErrorTypes.FORBIDDEN
-    case 404: return ErrorTypes.NOT_FOUND
-    case 500:
-    case 502:
-    case 503: return ErrorTypes.SERVER_ERROR
-    default: return ErrorTypes.API
-  }
-}
-const getErrorTypeByCode = (code: number, status: number | null | undefined): ErrorType => {
-  const statusType = getErrorTypeByStatus(status)
-  if (statusType !== ErrorTypes.API) return statusType
 
-  switch (code) {
-    case 401: return ErrorTypes.UNAUTHORIZED
-    case 403: return ErrorTypes.FORBIDDEN
-    case 404: return ErrorTypes.NOT_FOUND
-    case 500: return ErrorTypes.SERVER_ERROR
-    default: return ErrorTypes.API
-  }
-}
-type AxiosErrorLike = { code?: string; response?: { status?: number; data?: unknown } } | null | undefined
-
-const getErrorType = (error: unknown): ErrorType => {
-  const err = error as AxiosErrorLike
-  if (err?.code === 'ERR_CANCELED') {
-    return ErrorTypes.CANCELED
-  }
-
-  if (!err?.response) {
-    if (err?.code === 'ECONNABORTED') return ErrorTypes.TIMEOUT
-    return ErrorTypes.NETWORK
-  }
-
-  return getErrorTypeByStatus(err.response.status)
-}
-const formatErrorMessage = (error: unknown) => {
-  const err = error as { response?: { data?: { msg?: string } } } | null | undefined
-  if (err?.response?.data?.msg) {
-    return err.response.data.msg
-  }
-
-  switch (getErrorType(error)) {
-    case ErrorTypes.CANCELED: return '请求已取消'
-    case ErrorTypes.NETWORK: return '网络连接失败，请检查网络设置'
-    case ErrorTypes.TIMEOUT: return '请求超时，请稍后重试'
-    case ErrorTypes.UNAUTHORIZED: return '登录已过期，请重新登录'
-    case ErrorTypes.FORBIDDEN: return '权限不足'
-    case ErrorTypes.NOT_FOUND: return '请求的资源不存在'
-    case ErrorTypes.SERVER_ERROR: return '服务器错误，请稍后重试'
-    default: return '请求失败，请稍后重试'
-  }
-}
-export const handleRequest = async <T = unknown>(promise: Promise<AxiosResponse<unknown>>): Promise<RequestResult<T>> => {
-  try {
-    const response = await promise
-
-    if (isApiEnvelope(response.data)) {
-      if (response.data.code === 0) {
-        return {
-          data: (response.data.data ?? null) as T | null,
-          error: null,
-        }
-      }
-
-      const error = new ApiError(
-        response.data.msg || '请求失败',
-        getErrorTypeByCode(response.data.code, response.status),
-        response.status,
-        response.data
-      )
-
-      return {
-        data: null,
-        error,
-      }
+/**
+ * Unwrap the backend `{ code, msg, data }` envelope.
+ *
+ * The contract: HTTP success (2xx) with `code === 0` means the body's `data`
+ * field is the payload; any other `code` is a business-level failure. We THROW
+ * an `ApiError` on failure rather than returning `{ data, error }` — this is the
+ * vue-query error model (useMutation/useQuery catch thrown errors). The old
+ * `handleRequest` that swallowed exceptions into a Result tuple is gone; query's
+ * `MutationCache.onError` is now the single global error-feedback channel.
+ *
+ * Transport failures (network/timeout/5xx) never reach here — the axios
+ * response interceptor in `axios.ts` converts those into `ApiError` rejections
+ * first. So by the time `response` resolves, only envelope logic remains.
+ */
+const unwrap = <T>(response: { data: unknown; status: number }): T => {
+  const body = response.data
+  if (isApiEnvelope(body)) {
+    if (body.code === 0) {
+      return (body.data ?? null) as T
     }
-
-    return {
-      data: response.data as T | null,
-      error: null,
-    }
-  } catch (err: unknown) {
-    const axiosErr = err as AxiosErrorLike
-    const errorType = getErrorType(err)
-    const errorMessage = formatErrorMessage(err)
-    const error = new ApiError(errorMessage, errorType, axiosErr?.response?.status ?? null, axiosErr?.response?.data ?? null)
-
-    return {
-      data: null,
-      error,
-    }
+    throw new ApiError(
+      body.msg || '请求失败',
+      getErrorTypeByCode(body.code, response.status),
+      response.status,
+      body,
+    )
   }
+  return body as T
 }
 
-export const request = <T = unknown>(config: AxiosRequestConfig) => handleRequest<T>(axios(config))
+export const request = async <T = unknown>(config: AxiosRequestConfig): Promise<T> => {
+  const response = await axios.request<T>(config)
+  return unwrap<T>({ data: response.data, status: response.status })
+}
 
 export const get = <T = unknown>(url: string, params?: unknown, config: AxiosRequestConfig = {}) =>
   request<T>({ url, method: 'get', params, ...config })

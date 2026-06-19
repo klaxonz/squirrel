@@ -11,8 +11,20 @@ export const alertVariants = cva(
     variants: {
       variant: {
         default: 'border-border/75 bg-card/92 text-foreground',
+        // `destructive` kept as an alias for `error` (red) — pre-existing call
+        // sites in AddChannelDialog / ImportSubscriptionDialog use it. New code
+        // should prefer `error` for consistency with the success/warning/info
+        // status-color family.
         destructive:
           'border-destructive/30 bg-destructive/10 text-destructive [&>svg]:text-destructive',
+        error:
+          'border-destructive/30 bg-destructive/10 text-destructive [&>svg]:text-destructive',
+        success:
+          'border-success/30 bg-success/10 text-success [&>svg]:text-success',
+        warning:
+          'border-warning/30 bg-warning/10 text-warning [&>svg]:text-warning',
+        info:
+          'border-border/75 bg-muted/60 text-foreground [&>svg]:text-muted-foreground',
       },
     },
     defaultVariants: {

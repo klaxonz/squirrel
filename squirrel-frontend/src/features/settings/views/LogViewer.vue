@@ -257,12 +257,7 @@ onUnmounted(() => {
 // 加载日志文件列表
 async function loadLogFiles() {
   try {
-    const { data, error } = await getLogFiles()
-    if (error) {
-      Logger.error('Failed to load log files', error);
-      return
-    }
-
+    const data = await getLogFiles()
     logFiles.value = data || []
     if (logFiles.value.length > 0 && !filters.value.filename) {
       filters.value.filename = logFiles.value[0].name;
@@ -275,9 +270,9 @@ async function loadLogFiles() {
 // 加载日志
 async function loadLogs() {
   if (loading.value) return;
-  
+
   loading.value = true;
-  
+
   try {
     const params = {
       filename: filters.value.filename,
@@ -286,17 +281,15 @@ async function loadLogs() {
       page: 1,
       pageSize: 500
     };
-    
-    const result = await queryLogs(params)
-    if (!result.error && result.data) {
-      const data = result.data;
-      
+
+    const data = await queryLogs(params)
+    if (data) {
       // 为每条日志添加唯一 ID
       const logsWithId = data.logs.map((log, index) => ({
         ...log,
         id: `${Date.now()}-${index}-${log.line_num}`
       }));
-      
+
       logs.value = logsWithId;
       totalLogs.value = data.total;
     }

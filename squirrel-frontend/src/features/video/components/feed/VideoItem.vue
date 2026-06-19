@@ -214,23 +214,31 @@ const toggleReadStatus = async (markRead: boolean) => {
 }
 
 const toggleLikeVideo = async () => {
-  if (isLiked.value === 1) {
-    const { error } = await deleteInteraction(props.video.id)
-    if (!error) isLiked.value = null
-  } else {
-    const { error } = await toggleLike(props.video.id, INTERACTION_TYPE.LIKE)
-    if (!error) isLiked.value = 1
+  try {
+    if (isLiked.value === 1) {
+      await deleteInteraction(props.video.id)
+      isLiked.value = null
+    } else {
+      await toggleLike(props.video.id, INTERACTION_TYPE.LIKE)
+      isLiked.value = 1
+    }
+  } catch {
+    // silent — toggle failure leaves the prior like state
   }
   showMenu.value = false
 }
 
 const toggleLater = async () => {
-  if (isLater.value === 1) {
-    const { error } = await deleteInteraction(props.video.id)
-    if (!error) isLater.value = null
-  } else {
-    const { error } = await toggleLike(props.video.id, INTERACTION_TYPE.LATER)
-    if (!error) isLater.value = 1
+  try {
+    if (isLater.value === 1) {
+      await deleteInteraction(props.video.id)
+      isLater.value = null
+    } else {
+      await toggleLike(props.video.id, INTERACTION_TYPE.LATER)
+      isLater.value = 1
+    }
+  } catch {
+    // silent — toggle failure leaves the prior later state
   }
 }
 

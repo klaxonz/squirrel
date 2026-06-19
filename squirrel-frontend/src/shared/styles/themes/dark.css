@@ -24,6 +24,16 @@
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
 
+  /* Status colors — the design system's semantic feedback palette. Used by the
+     shared <Alert> variants, success/warning banners, and form feedback.
+     Previously feature code referenced `text-error`/`text-success`/`text-warning`
+     classes that resolved to nothing (no tokens defined) → banners rendered
+     colorless. These are the single source of truth for status hue. */
+  --success: 142 71% 40%;          /* emerald-600 — readable on light & dark */
+  --success-foreground: 0 0% 100%;
+  --warning: 32 95% 44%;           /* amber-600 — distinct from destructive red */
+  --warning-foreground: 0 0% 100%;
+
   --border: 240 6% 90%;
   --input: 240 6% 90%;
   --ring: 240 6% 10%;

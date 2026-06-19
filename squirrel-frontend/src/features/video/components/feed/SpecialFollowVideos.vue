@@ -88,7 +88,7 @@ const scroll = (direction: 'left' | 'right') => {
 const load = async () => {
   loading.value = true
   try {
-    const { data, error } = await getVideoList({
+    const data = await getVideoList({
       pageSize: 12,
       page_size: 12,
       category: 'all',
@@ -96,11 +96,12 @@ const load = async () => {
       nsfw: 'all',
       special: 'yes',
     })
-    if (error) return
 
     items.value = (data?.data || []).slice(0, 12)
     await nextTick()
     updateScrollState()
+  } catch {
+    // silent — row stays empty
   } finally {
     loading.value = false
   }

@@ -1,5 +1,5 @@
 import type { AxiosRequestConfig } from 'axios'
-import { ApiError, get, post } from '@/shared/lib/request'
+import { ApiError, ErrorTypes, get, post } from '@/shared/lib/request'
 import type {
   SubscriptionListResponse,
   SubscriptionDetail,
@@ -34,72 +34,58 @@ export const getSubscriptionStatus = async (url: string) => {
 }
 
 export const updateNsfwStatus = async (subscriptionId: string | number, isNsfw: boolean) => {
-  const { data, error } = await post<{ success?: boolean }>('/api/subscription/toggle-nsfw', {
+  const data = await post<{ success?: boolean }>('/api/subscription/toggle-nsfw', {
     subscription_id: subscriptionId,
     is_enable: isNsfw,
   })
-
-  if (error) return { data: null, error }
-  if (data?.success) return { data, error: null }
-
-  return { data: null, error: new ApiError('更新失败', undefined, null, data) }
+  if (!data?.success) {
+    throw new ApiError('更新失败', ErrorTypes.UNKNOWN, null, data)
+  }
+  return data
 }
 
 export const updateSpecialFollowStatus = async (subscriptionId: string | number, isSpecialFollowed: boolean) => {
-  const { data, error } = await post<{ success?: boolean }>('/api/subscription/toggle-special-follow', {
+  const data = await post<{ success?: boolean }>('/api/subscription/toggle-special-follow', {
     subscription_id: subscriptionId,
     is_enable: isSpecialFollowed,
   })
-
-  if (error) return { data: null, error }
-  if (data?.success) return { data, error: null }
-
-  return { data: null, error: new ApiError('更新失败', undefined, null, data) }
+  if (!data?.success) {
+    throw new ApiError('更新失败', ErrorTypes.UNKNOWN, null, data)
+  }
+  return data
 }
 
+// ponytail: transport/envelope errors are thrown by post(); we catch here only
+// to rewrite the status-specific user-facing message (429/403) and re-throw,
+// so the global MutationCache.onError toasts the friendlier wording.
 export const triggerRefresh = async (subscriptionId: string | number, mode: string = 'incremental') => {
-  const response = await post(`/api/subscription/${subscriptionId}/refresh`, null, {
-    params: { mode },
-  })
-  if (!response.error) return response
-
-  if (response.error.status === 429) {
-    return {
-      data: null,
-      error: new ApiError('操作过于频繁，请稍后再试', response.error.type, response.error.status, response.error.data),
+  try {
+    return await post(`/api/subscription/${subscriptionId}/refresh`, null, { params: { mode } })
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 429) {
+      throw new ApiError('操作过于频繁，请稍后再试', e.type, e.status, e.data)
     }
+    throw e
   }
-
-  if (response.error.status === 403) {
-    return {
-      data: null,
-      error: new ApiError('没有权限执行此操作', response.error.type, response.error.status, response.error.data),
-    }
-  }
-
-  return response
 }
 
 export const triggerDirectRefresh = async (subscriptionId: string | number, mode: string = 'incremental') => {
-  const response = await post(`/api/subscription/${subscriptionId}/refresh/direct`, null, {
-    params: { mode },
-    timeout: 0,
-  })
-  if (!response.error) return response
-
-  if (response.error.status === 403) {
-    return {
-      data: null,
-      error: new ApiError('没有权限执行此操作', response.error.type, response.error.status, response.error.data),
+  try {
+    return await post(`/api/subscription/${subscriptionId}/refresh/direct`, null, {
+      params: { mode },
+      timeout: 0,
+    })
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 403) {
+      throw new ApiError('没有权限执行此操作', e.type, e.status, e.data)
     }
+    throw e
   }
-
-  return response
 }
 
 export const getSupportedImportSites = async () => {
-  const { data, error } = await get<{ sites?: string[] }>('/api/subscription/import/sites')
-  return { data: data?.sites || [], error }
+  const data = await get<{ sites?: string[] }>('/api/subscription/import/sites')
+  return data?.sites || []
 }
 
 export const previewImportSubscriptions = async (

@@ -53,49 +53,48 @@ export function useRssSync(options: UseRssSyncOptions): UseRssSyncReturn {
     }
 
     syncPollTimer = setInterval(async () => {
-      const result = await getRssSyncStatus(accountId)
-      if (result.error) {
-        clearInterval(syncPollTimer!)
-        syncPollTimer = null
-        syncing.value = false
-        onStatus(result.error.message, true)
-        return
-      }
-      const data = result.data
-      if (!data) return
-      const modeLabel = getRssSyncModeLabel(data.sync_mode)
-      if (data.running) {
-        const phaseLabel: Record<string, string> = {
-          starting: '启动中',
-          feeds_fetching: '同步订阅源',
-          feeds_saving: '同步订阅源',
-          entries_fetching: '同步文章',
-          entries_saving: '同步文章',
-        }
-        const label = (data.phase && phaseLabel[data.phase]) || data.phase || ''
-        let progress = ''
-        if (data.phase === 'entries_fetching') {
-          progress = data.entries_fetched != null ? `已获取 ${data.entries_fetched} 篇` : '等待服务器响应...'
-        } else if (data.phase === 'entries_saving') {
-          progress = `已更新 ${data.entries_synced || 0} 篇`
-        } else if (data.feeds_synced != null) {
-          progress = `${data.feeds_synced} 个`
-        }
-        onStatus(`${modeLabel}中 [${label}] ${progress}`, false)
-      } else {
-        clearInterval(syncPollTimer!)
-        syncPollTimer = null
-        syncing.value = false
-        if (data.phase === 'completed') {
-          const changedEntries = data.entries_synced || 0
-          const entryText = changedEntries > 0 ? `已更新 ${changedEntries} 篇文章` : '所有内容已是最新'
-          onStatus(`${modeLabel}完成：${entryText}`)
+      try {
+        const data = await getRssSyncStatus(accountId)
+        if (!data) return
+        const modeLabel = getRssSyncModeLabel(data.sync_mode)
+        if (data.running) {
+          const phaseLabel: Record<string, string> = {
+            starting: '启动中',
+            feeds_fetching: '同步订阅源',
+            feeds_saving: '同步订阅源',
+            entries_fetching: '同步文章',
+            entries_saving: '同步文章',
+          }
+          const label = (data.phase && phaseLabel[data.phase]) || data.phase || ''
+          let progress = ''
+          if (data.phase === 'entries_fetching') {
+            progress = data.entries_fetched != null ? `已获取 ${data.entries_fetched} 篇` : '等待服务器响应...'
+          } else if (data.phase === 'entries_saving') {
+            progress = `已更新 ${data.entries_synced || 0} 篇`
+          } else if (data.feeds_synced != null) {
+            progress = `${data.feeds_synced} 个`
+          }
+          onStatus(`${modeLabel}中 [${label}] ${progress}`, false)
         } else {
-          onStatus(data.message || data.error || '同步失败', true)
+          clearInterval(syncPollTimer!)
+          syncPollTimer = null
+          syncing.value = false
+          if (data.phase === 'completed') {
+            const changedEntries = data.entries_synced || 0
+            const entryText = changedEntries > 0 ? `已更新 ${changedEntries} 篇文章` : '所有内容已是最新'
+            onStatus(`${modeLabel}完成：${entryText}`)
+          } else {
+            onStatus(data.message || data.error || '同步失败', true)
+          }
+          await loadAccounts()
+          await loadFeeds()
+          await loadEntries(true)
         }
-        await loadAccounts()
-        await loadFeeds()
-        await loadEntries(true)
+      } catch (err) {
+        clearInterval(syncPollTimer!)
+        syncPollTimer = null
+        syncing.value = false
+        onStatus(err instanceof Error ? err.message : '同步状态查询失败', true)
       }
     }, 1000)
   }
@@ -104,24 +103,26 @@ export function useRssSync(options: UseRssSyncOptions): UseRssSyncReturn {
     if (!selectedAccountId.value) return
     syncing.value = true
     onStatus('')
-    const result = await syncRssAccount(selectedAccountId.value, undefined, forceFullSync)
-    if (result.error) {
+    try {
+      await syncRssAccount(selectedAccountId.value, undefined, forceFullSync)
+      pollSyncProgress()
+    } catch (err) {
       syncing.value = false
-      onStatus(result.error.message, true)
-      return
+      onStatus(err instanceof Error ? err.message : '启动同步失败', true)
     }
-    pollSyncProgress()
   }
 
   const resumeSyncPollingIfRunning = async () => {
     const accountId = selectedAccountId.value
     if (!accountId) return
-    const result = await getRssSyncStatus(accountId)
-    if (result.error) return
-    const data = result.data
-    if (data && data.running) {
-      syncing.value = true
-      pollSyncProgress()
+    try {
+      const data = await getRssSyncStatus(accountId)
+      if (data && data.running) {
+        syncing.value = true
+        pollSyncProgress()
+      }
+    } catch {
+      // silent — resume check failing just means no auto-resume
     }
   }
 

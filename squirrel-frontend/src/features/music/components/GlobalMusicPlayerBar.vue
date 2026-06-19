@@ -246,12 +246,14 @@ async function toggleLike() {
   likeLoading.value = true
   try {
     if (isTrackLiked.value) {
-      const { error } = await removeMusicFavorite(track.album_audio_id)
-      if (!error) likedTracks.value.delete(track.album_audio_id)
+      await removeMusicFavorite(track.album_audio_id)
+      likedTracks.value.delete(track.album_audio_id)
     } else {
-      const { error } = await addMusicFavorite(track.album_audio_id)
-      if (!error) likedTracks.value.add(track.album_audio_id)
+      await addMusicFavorite(track.album_audio_id)
+      likedTracks.value.add(track.album_audio_id)
     }
+  } catch {
+    // silent — failed like toggle leaves the heart state unchanged
   } finally {
     likeLoading.value = false
   }

@@ -189,12 +189,15 @@ const wait = (ms) => new Promise((resolve) => {
 const fetchDetail = async () => {
   if (!props.subscriptionId) return;
   loading.value = true;
-  const { data, error } = await getSubscriptionDetail(props.subscriptionId);
-  if (!error) {
+  try {
+    const data = await getSubscriptionDetail(props.subscriptionId);
     detail.value = data;
     emit('loaded', data)
+  } catch {
+    // silent — failed detail fetch leaves the prior detail
+  } finally {
+    loading.value = false;
   }
-  loading.value = false;
 };
 
 const handleUnsubscribe = async () => {
@@ -203,17 +206,16 @@ const handleUnsubscribe = async () => {
   isUnsubscribing.value = true
   unsubscribeError.value = ''
 
-  const { error } = await apiUnsubscribe(props.subscriptionId)
-
-  if (error) {
-    unsubscribeError.value = error?.message || '取消订阅失败'
+  try {
+    await apiUnsubscribe(props.subscriptionId)
+    isVisible.value = false
+    notifySubscriptionRemoved(props.subscriptionId)
+    await wait(DISMISS_MS)
+  } catch (err) {
+    unsubscribeError.value = err instanceof Error ? err.message : '取消订阅失败'
+  } finally {
     isUnsubscribing.value = false
-    return
   }
-
-  isVisible.value = false
-  notifySubscriptionRemoved(props.subscriptionId)
-  await wait(DISMISS_MS)
 }
 
 const handleToggleSpecialFollow = async () => {
@@ -221,12 +223,15 @@ const handleToggleSpecialFollow = async () => {
 
   isTogglingSpecial.value = true
   const nextValue = !detail.value.is_special_followed
-  const { error } = await updateSpecialFollowStatus(props.subscriptionId, nextValue)
-  if (!error) {
+  try {
+    await updateSpecialFollowStatus(props.subscriptionId, nextValue)
     detail.value = { ...detail.value, is_special_followed: nextValue }
     emit('loaded', detail.value)
+  } catch {
+    // silent — toggle failure leaves the prior special-follow state
+  } finally {
+    isTogglingSpecial.value = false
   }
-  isTogglingSpecial.value = false
 }
 
 const buildSyncSuccessMessage = (data, mode) => {
@@ -246,19 +251,17 @@ const handleDirectSync = async (mode = 'incremental') => {
   syncError.value = ''
   syncMessage.value = ''
 
-  const { data, error } = await triggerDirectRefresh(props.subscriptionId, mode)
-
-  if (error) {
-    syncError.value = error?.message || '同步失败'
+  try {
+    const data = await triggerDirectRefresh(props.subscriptionId, mode)
+    syncMessage.value = buildSyncSuccessMessage(data, mode)
+    await fetchDetail()
+    emit('synced', data)
+  } catch (err) {
+    syncError.value = err instanceof Error ? err.message : '同步失败'
     syncMessage.value = syncError.value
+  } finally {
     isSyncing.value = false
-    return
   }
-
-  syncMessage.value = buildSyncSuccessMessage(data, mode)
-  await fetchDetail()
-  emit('synced', data)
-  isSyncing.value = false
 }
 
 watch(() => props.subscriptionId, () => {

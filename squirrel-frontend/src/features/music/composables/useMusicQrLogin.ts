@@ -24,16 +24,15 @@ export function useMusicQrLogin() {
     status.value = 0
     qrLogin.value = null
 
-    const { data, error } = await createMusicQrLogin()
-    loading.value = false
-
-    if (error) {
-      Logger.error('Failed to create QR login', error)
-      return
+    try {
+      const data = await createMusicQrLogin()
+      qrLogin.value = data
+      startPolling()
+    } catch (err) {
+      Logger.error('Failed to create QR login', err)
+    } finally {
+      loading.value = false
     }
-
-    qrLogin.value = data
-    startPolling()
   }
 
   function close() {
@@ -46,23 +45,21 @@ export function useMusicQrLogin() {
     timer = setInterval(async () => {
       if (!qrLogin.value?.key) return
 
-      const { data, error } = await checkMusicQrLogin(qrLogin.value.key)
+      try {
+        const data = await checkMusicQrLogin(qrLogin.value.key)
+        status.value = data?.status ?? 0
 
-      if (error) {
-        Logger.error('Failed to check QR login status', error)
-        return
-      }
+        if (data?.logged_in && data.auth) {
+          authStatus.value = data.auth
+          stopPolling()
+          close()
+        }
 
-      status.value = data?.status ?? 0
-
-      if (data?.logged_in && data.auth) {
-        authStatus.value = data.auth
-        stopPolling()
-        close()
-      }
-
-      if (status.value === 0 && qrLogin.value) {
-        stopPolling()
+        if (status.value === 0 && qrLogin.value) {
+          stopPolling()
+        }
+      } catch (err) {
+        Logger.error('Failed to check QR login status', err)
       }
     }, 2000)
   }

@@ -223,7 +223,15 @@
           />
 
           <div v-else-if="viewMode === 'feed'" class="space-y-12 pb-12">
-            <div v-if="!feedItems.length && !loadingFeed" class="min-h-[30rem]">
+            <div v-if="fetchError && !loadingFeed" class="min-h-[30rem]">
+              <AppEmptyState variant="error" title="加载失败" :copy="fetchError">
+                <template #actions>
+                  <Button variant="outline" size="sm" @click="fetchFeed(true)">重试</Button>
+                </template>
+              </AppEmptyState>
+            </div>
+
+            <div v-else-if="!feedItems.length && !loadingFeed" class="min-h-[30rem]">
               <AppEmptyState variant="plain" icon="inbox" title="暂无内容" copy="订阅频道更新后会显示在这里。" />
             </div>
 
@@ -381,6 +389,7 @@ const loadingFeed = ref(false)
 const loadingMoreFeed = ref(false)
 const feedFinished = ref(false)
 const feedCursor = ref<string | null>(null)
+const fetchError = ref<string | null>(null)
 const FEED_PAGE_SIZE = 48
 let feedRequestToken = 0
 
@@ -472,12 +481,16 @@ const toggleSpecialFollow = async (subscription: SubscriptionListItem) => {
   const nextValue = !subscription.is_special_followed
   togglingSpecialIds.value = new Set(togglingSpecialIds.value).add(subscription.id)
 
-  const { error } = await updateSpecialFollowStatus(subscription.id, nextValue)
-  if (!error) applySpecialFollowState(subscription.id, nextValue)
-
-  const nextIds = new Set(togglingSpecialIds.value)
-  nextIds.delete(subscription.id)
-  togglingSpecialIds.value = nextIds
+  try {
+    await updateSpecialFollowStatus(subscription.id, nextValue)
+    applySpecialFollowState(subscription.id, nextValue)
+  } catch {
+    // silent — toggle failure leaves the prior special-follow state
+  } finally {
+    const nextIds = new Set(togglingSpecialIds.value)
+    nextIds.delete(subscription.id)
+    togglingSpecialIds.value = nextIds
+  }
 }
 
 const videoGroups = computed(() => {
@@ -524,12 +537,19 @@ const fetchChannels = async (isReset = false) => {
     if (specialFilter.value === 'yes') params.special = 'yes'
     const query = sidebarSearch.value.trim()
     if (query) params.query = query
-    const { data } = await getSubscriptions(params)
-    if (requestToken !== channelsRequestToken) return
-    const items = data?.data || []
-    if (isReset) list.value = items; else list.value.push(...items)
-    if (items.length < CHANNELS_PAGE_SIZE) channelsFinished.value = true
-    else channelsPage.value = requestPage + 1
+    try {
+      const result = await getSubscriptions(params)
+      if (requestToken !== channelsRequestToken) return
+      const items = result?.data || []
+      if (isReset) list.value = items; else list.value.push(...items)
+      if (items.length < CHANNELS_PAGE_SIZE) channelsFinished.value = true
+      else channelsPage.value = requestPage + 1
+    } catch {
+      // Channel-list errors aren't surfaced in-region (the sidebar has no error
+      // branch); bail without clobbering the feed's fetchError ref, and don't
+      // flip channelsFinished so the sidebar stays retryable.
+      if (requestToken !== channelsRequestToken) return
+    }
   } finally {
     if (requestToken === channelsRequestToken) {
       loadingChannels.value = false; loadingMoreChannels.value = false
@@ -546,7 +566,7 @@ const fetchFeed = async (isReset = false) => {
   const wasReset = isReset
   try {
     const nsfwValue = nsfw.value === 'only' ? 'yes' : (['all', 'yes', 'no'].includes(nsfw.value) ? nsfw.value : 'all')
-    const { data } = await getVideoList({
+    const data = await getVideoList({
       cursor: feedCursor.value,
       pageSize: FEED_PAGE_SIZE,
       page_size: FEED_PAGE_SIZE,
@@ -557,11 +577,16 @@ const fetchFeed = async (isReset = false) => {
       special: !activeChannelId.value && specialFilter.value === 'yes' ? 'yes' : undefined,
     })
     if (requestToken !== feedRequestToken) return
+    fetchError.value = null
     const items = data?.data || []
     if (wasReset) feedItems.value = items; else feedItems.value.push(...items)
     // 推进游标；next_cursor 为 null 表示无更多
     feedCursor.value = data?.next_cursor ?? null
     if (items.length < FEED_PAGE_SIZE || !data?.next_cursor) feedFinished.value = true
+  } catch (err) {
+    if (requestToken !== feedRequestToken) return
+    fetchError.value = err instanceof Error ? err.message : '内容加载失败'
+    feedFinished.value = true
   } finally {
     if (requestToken === feedRequestToken) {
       loadingFeed.value = false; loadingMoreFeed.value = false

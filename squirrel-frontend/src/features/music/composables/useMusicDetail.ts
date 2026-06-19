@@ -24,6 +24,8 @@ import {
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { Logger } from '@/shared/lib/logger'
 
+type TrackPage = { items: MusicTrack[]; total: number }
+
 export function useMusicDetail() {
   const store = useMusicPlayerStore()
 
@@ -68,11 +70,7 @@ export function useMusicDetail() {
     const ids = trackList.map(t => t.album_audio_id).filter(Boolean)
     if (!ids.length) return
     try {
-      const { data, error } = await getMusicFavoriteCount(ids.join(','))
-      if (error) {
-        Logger.warn('loadFavoriteCounts failed', error)
-        return
-      }
+      const data = await getMusicFavoriteCount(ids.join(','))
       if (data?.items) {
         const counts: Record<string, number> = { ...favoriteCounts.value }
         for (const item of data.items) {
@@ -83,7 +81,7 @@ export function useMusicDetail() {
         favoriteCounts.value = counts
       }
     } catch (err) {
-      Logger.warn('loadFavoriteCounts threw', err)
+      Logger.warn('loadFavoriteCounts failed', err)
     }
   }
 
@@ -100,20 +98,20 @@ export function useMusicDetail() {
     try {
       const [tracksData, similarData] = await Promise.all([
         getMusicPlaylistTracks({ playlist_id: playlist.id, page: 1, page_size: 30 }),
-        getMusicSimilarPlaylists(playlist.id),
-      ])
+        getMusicSimilarPlaylists(playlist.id).catch((err: unknown) => {
+          Logger.warn('selectPlaylist similar failed', err)
+          return [] as MusicPlaylist[]
+        }),
+      ]) as [TrackPage, MusicPlaylist[]]
 
-      if (tracksData.error) Logger.warn('selectPlaylist tracks failed', tracksData.error)
-      if (similarData.error) Logger.warn('selectPlaylist similar failed', similarData.error)
-
-      tracks.value = tracksData.data?.items || []
-      total.value = tracksData.data?.total || 0
+      tracks.value = tracksData?.items || []
+      total.value = tracksData?.total || 0
       tracksHasMore.value = tracks.value.length < total.value
-      similarPlaylists.value = (similarData.data?.items || []).slice(0, 6)
+      similarPlaylists.value = (similarData || []).slice(0, 6)
 
       loadFavoriteCounts(tracks.value)
     } catch (err) {
-      Logger.warn('selectPlaylist threw', err)
+      Logger.warn('selectPlaylist failed', err)
       tracks.value = []
     } finally {
       tracksLoading.value = false
@@ -131,22 +129,17 @@ export function useMusicDetail() {
 
     tracksLoading.value = true
     try {
-      const { data, error } = await getMusicUserPlaylistTracks({ list_id: playlist.id, page: 1, page_size: 30 })
-      if (error) {
-        Logger.warn('selectUserPlaylist failed', error)
-        tracks.value = []
-        total.value = 0
-        tracksHasMore.value = false
-        return
-      }
+      const data = await getMusicUserPlaylistTracks({ list_id: playlist.id, page: 1, page_size: 30 }) as TrackPage
       tracks.value = data?.items || []
       total.value = data?.total || 0
       tracksHasMore.value = tracks.value.length < total.value
 
       loadFavoriteCounts(tracks.value)
     } catch (err) {
-      Logger.warn('selectUserPlaylist threw', err)
+      Logger.warn('selectUserPlaylist failed', err)
       tracks.value = []
+      total.value = 0
+      tracksHasMore.value = false
     } finally {
       tracksLoading.value = false
     }
@@ -163,26 +156,33 @@ export function useMusicDetail() {
 
     tracksLoading.value = true
     try {
+      // Each sub-fetch is isolated so one failing (e.g. videos) doesn't abort
+      // the whole artist view — a missing section just renders empty.
       const [tracksData, albumsData, videosData] = await Promise.all([
-        getMusicArtistTracks({ artist_id: artist.id, page: 1, page_size: 30 }),
-        getMusicArtistAlbums({ artist_id: artist.id, page: 1, page_size: 6 }),
-        getMusicArtistVideos({ artist_id: artist.id, page: 1, page_size: 4 }),
-      ])
+        getMusicArtistTracks({ artist_id: artist.id, page: 1, page_size: 30 }).catch((err: unknown) => {
+          Logger.warn('selectArtistDetail tracks failed', err)
+          return null
+        }),
+        getMusicArtistAlbums({ artist_id: artist.id, page: 1, page_size: 6 }).catch((err: unknown) => {
+          Logger.warn('selectArtistDetail albums failed', err)
+          return null
+        }),
+        getMusicArtistVideos({ artist_id: artist.id, page: 1, page_size: 4 }).catch((err: unknown) => {
+          Logger.warn('selectArtistDetail videos failed', err)
+          return null
+        }),
+      ]) as [TrackPage | null, { items: MusicAlbum[] } | null, { items: MusicVideo[] } | null]
 
-      if (tracksData.error) Logger.warn('selectArtistDetail tracks failed', tracksData.error)
-      if (albumsData.error) Logger.warn('selectArtistDetail albums failed', albumsData.error)
-      if (videosData.error) Logger.warn('selectArtistDetail videos failed', videosData.error)
-
-      tracks.value = tracksData.data?.items || []
-      total.value = tracksData.data?.total || 0
+      tracks.value = tracksData?.items || []
+      total.value = tracksData?.total || 0
       tracksHasMore.value = tracks.value.length < total.value
-      artistAlbums.value = albumsData.data?.items || []
-      artistVideos.value = videosData.data?.items || []
+      artistAlbums.value = albumsData?.items || []
+      artistVideos.value = videosData?.items || []
       artistFollowed.value = false
 
       loadFavoriteCounts(tracks.value)
     } catch (err) {
-      Logger.warn('selectArtistDetail threw', err)
+      Logger.warn('selectArtistDetail failed', err)
       tracks.value = []
     } finally {
       tracksLoading.value = false
@@ -200,22 +200,17 @@ export function useMusicDetail() {
 
     tracksLoading.value = true
     try {
-      const { data, error } = await getMusicAlbumTracks({ album_id: album.id, page: 1, page_size: 30 })
-      if (error) {
-        Logger.warn('selectAlbum failed', error)
-        tracks.value = []
-        total.value = 0
-        tracksHasMore.value = false
-        return
-      }
+      const data = await getMusicAlbumTracks({ album_id: album.id, page: 1, page_size: 30 }) as TrackPage
       tracks.value = data?.items || []
       total.value = data?.total || 0
       tracksHasMore.value = tracks.value.length < total.value
 
       loadFavoriteCounts(tracks.value)
     } catch (err) {
-      Logger.warn('selectAlbum threw', err)
+      Logger.warn('selectAlbum failed', err)
       tracks.value = []
+      total.value = 0
+      tracksHasMore.value = false
     } finally {
       tracksLoading.value = false
     }
@@ -232,19 +227,12 @@ export function useMusicDetail() {
 
     tracksLoading.value = true
     try {
-      const { data, error } = await getMusicRankTracks({
+      const data = await getMusicRankTracks({
         rank_id: rank.id,
         rank_cid: rank.rank_cid || undefined,
         page: 1,
         page_size: 50,
-      })
-      if (error) {
-        Logger.warn('selectRankAsPlaylist failed', error)
-        tracks.value = []
-        total.value = 0
-        tracksHasMore.value = false
-        return
-      }
+      }) as TrackPage
       tracks.value = data?.items || []
       total.value = data?.total || 0
       tracksHasMore.value = tracks.value.length < total.value
@@ -263,8 +251,10 @@ export function useMusicDetail() {
         list_create_gid: '',
       }
     } catch (err) {
-      Logger.warn('selectRankAsPlaylist threw', err)
+      Logger.warn('selectRankAsPlaylist failed', err)
       tracks.value = []
+      total.value = 0
+      tracksHasMore.value = false
     } finally {
       tracksLoading.value = false
     }
@@ -277,55 +267,39 @@ export function useMusicDetail() {
     tracksLoadingMore.value = true
 
     try {
-      let data: { items: MusicTrack[]; total: number } | null = null
-      let errored = false
+      let data: TrackPage | null = null
 
       if (selectedRank.value) {
-        const response = await getMusicRankTracks({
+        data = await getMusicRankTracks({
           rank_id: selectedRank.value.id,
           rank_cid: selectedRank.value.rank_cid || undefined,
           page: currentPage.value,
           page_size: 30,
-        })
-        data = response.data
-        errored = !!response.error
+        }) as TrackPage
       } else if (selectedPlaylist.value) {
-        const response = await getMusicPlaylistTracks({
+        data = await getMusicPlaylistTracks({
           playlist_id: selectedPlaylist.value.id,
           page: currentPage.value,
           page_size: 30,
-        })
-        data = response.data
-        errored = !!response.error
+        }) as TrackPage
       } else if (selectedUserPlaylist.value) {
-        const response = await getMusicUserPlaylistTracks({
+        data = await getMusicUserPlaylistTracks({
           list_id: selectedUserPlaylist.value.id,
           page: currentPage.value,
           page_size: 30,
-        })
-        data = response.data
-        errored = !!response.error
+        }) as TrackPage
       } else if (selectedArtist.value) {
-        const response = await getMusicArtistTracks({
+        data = await getMusicArtistTracks({
           artist_id: selectedArtist.value.id,
           page: currentPage.value,
           page_size: 30,
-        })
-        data = response.data
-        errored = !!response.error
+        }) as TrackPage
       } else if (selectedAlbum.value) {
-        const response = await getMusicAlbumTracks({
+        data = await getMusicAlbumTracks({
           album_id: selectedAlbum.value.id,
           page: currentPage.value,
           page_size: 30,
-        })
-        data = response.data
-        errored = !!response.error
-      }
-
-      if (errored) {
-        Logger.warn('loadMoreTracks failed')
-        return
+        }) as TrackPage
       }
 
       if (data?.items?.length) {
@@ -334,7 +308,7 @@ export function useMusicDetail() {
         loadFavoriteCounts(data.items)
       }
     } catch (err) {
-      Logger.warn('loadMoreTracks threw', err)
+      Logger.warn('loadMoreTracks failed', err)
     } finally {
       tracksLoadingMore.value = false
     }
@@ -342,45 +316,53 @@ export function useMusicDetail() {
 
   async function collectPlaylist() {
     if (!selectedPlaylist.value?.id) return false
-    const { error } = await getMusicSimilarPlaylists(selectedPlaylist.value.id)
-    if (!error) {
+    try {
+      await getMusicSimilarPlaylists(selectedPlaylist.value.id)
       playlistCollected.value = true
       return true
+    } catch (err) {
+      Logger.warn('collectPlaylist failed', err)
+      return false
     }
-    return false
   }
 
   async function followArtist() {
     if (!selectedArtist.value?.id) return
     artistFollowLoading.value = true
-    const { error } = await followMusicArtist(selectedArtist.value.id)
-    artistFollowLoading.value = false
-    if (!error) artistFollowed.value = true
+    try {
+      await followMusicArtist(selectedArtist.value.id)
+      artistFollowed.value = true
+    } catch (err) {
+      Logger.warn('followArtist failed', err)
+    } finally {
+      artistFollowLoading.value = false
+    }
   }
 
   async function unfollowArtist() {
     if (!selectedArtist.value?.id) return
     artistFollowLoading.value = true
-    const { error } = await unfollowMusicArtist(selectedArtist.value.id)
-    artistFollowLoading.value = false
-    if (!error) artistFollowed.value = false
+    try {
+      await unfollowMusicArtist(selectedArtist.value.id)
+      artistFollowed.value = false
+    } catch (err) {
+      Logger.warn('unfollowArtist failed', err)
+    } finally {
+      artistFollowLoading.value = false
+    }
   }
 
   async function selectArtistFromTrack(track: MusicTrack) {
     if (!track.artist_id) return null
     try {
-      const { data, error } = await getMusicArtistDetail(track.artist_id)
-      if (error) {
-        Logger.warn('selectArtistFromTrack failed', error)
-        return null
-      }
+      const data = await getMusicArtistDetail(track.artist_id)
       if (data) {
         await selectArtistDetail(data)
         return data
       }
       return null
     } catch (err) {
-      Logger.warn('selectArtistFromTrack threw', err)
+      Logger.warn('selectArtistFromTrack failed', err)
       return null
     }
   }
@@ -388,18 +370,14 @@ export function useMusicDetail() {
   async function selectAlbumFromTrack(track: MusicTrack) {
     if (!track.album_id) return null
     try {
-      const { data, error } = await getMusicAlbumDetail(track.album_id)
-      if (error) {
-        Logger.warn('selectAlbumFromTrack failed', error)
-        return null
-      }
+      const data = await getMusicAlbumDetail(track.album_id)
       if (data) {
         await selectAlbum(data)
         return data
       }
       return null
     } catch (err) {
-      Logger.warn('selectAlbumFromTrack threw', err)
+      Logger.warn('selectAlbumFromTrack failed', err)
       return null
     }
   }

@@ -213,7 +213,7 @@ async function loadRemoteSuggestions() {
     return
   }
   try {
-    const { data } = await getSearchSuggestions({ query: trimmedInputValue.value, scope: props.suggestionScope })
+    const data = await getSearchSuggestions({ query: trimmedInputValue.value, scope: props.suggestionScope })
     remoteSuggestions.value = data?.items || []
   } catch {
     remoteSuggestions.value = []

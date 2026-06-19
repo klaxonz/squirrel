@@ -106,16 +106,14 @@ const handlePasswordUpdate = async () => {
   }
   passwordSubmitting.value = true
   try {
-    const result = await updateUserPassword({
+    await updateUserPassword({
       current_password: securityForm.value.currentPassword,
       new_password: securityForm.value.newPassword,
     })
-    if (result.error) {
-      securityError.value = result.error.message || '更新失败'
-      return
-    }
     securitySuccess.value = '密码更新成功'
     securityForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+  } catch (err) {
+    securityError.value = err instanceof Error ? err.message : '更新失败'
   } finally {
     passwordSubmitting.value = false
   }
@@ -125,12 +123,10 @@ const handleRevokeSessions = async () => {
   resetSecurityFeedback()
   sessionSubmitting.value = true
   try {
-    const result = await revokeUserSessions()
-    if (result.error) {
-      securityError.value = '撤销失败'
-      return
-    }
+    await revokeUserSessions()
     securitySuccess.value = '其他会话已撤销'
+  } catch {
+    securityError.value = '撤销失败'
   } finally {
     sessionSubmitting.value = false
   }

@@ -2,18 +2,24 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getUserMe, loginUser, logoutUser, registerUser, updateUserMe } from '@/shared/api'
 import { clearAuthStorage } from '@/shared/lib/auth'
+import { isApiError } from '@/shared/lib/apiError'
 import type { User } from '@/shared/types/user'
 
 export type { User }
+
+// ponytail: the store still owns client-side auth state (currentUser /
+// isAuthenticated / hasResolvedAuth) + the logout side-effect (clears cookies,
+// redirects). API errors now surface as thrown ApiError — the load/login/register
+// actions re-shape them into the legacy `{ data, error }` return tuple so the
+// existing callers (Login/Register/Profile, which render inline field errors) keep
+// working without a broader rewrite. The error here is `ApiError | null`.
+type ResultTuple<T> = { data: T | null; error: unknown | null }
 
 export const useUserStore = defineStore('user', () => {
   const currentUser = ref<User | null>(null)
   const isAuthenticated = ref(false)
   const hasResolvedAuth = ref(false)
   const loading = ref(false)
-  // ponytail: dropped a dead `error` ref — it was declared and exported but
-  // never written (all actions `return response` without setting it), so it
-  // only ever exposed a perpetual null to consumers.
 
   const clearState = () => {
     clearAuthStorage()
@@ -22,52 +28,75 @@ export const useUserStore = defineStore('user', () => {
     hasResolvedAuth.value = true
   }
 
-  const fetchCurrentUser = async () => {
+  const fetchCurrentUser = async (): Promise<ResultTuple<User>> => {
     loading.value = true
-    const response = await getUserMe()
-    if (response.error?.status === 401) {
-      clearState()
-    } else if (!response.error) {
-      currentUser.value = (response.data as User | null) || null
-      isAuthenticated.value = !!response.data
+    try {
+      const data = await getUserMe() as User | null
+      currentUser.value = data || null
+      isAuthenticated.value = !!data
+      hasResolvedAuth.value = true
+      return { data, error: null }
+    } catch (error) {
+      // 401 means the session is gone — clear local auth so the router redirects
+      // to login. Other errors just leave the user unresolved-but-not-logged-out.
+      if (isApiError(error) && error.type === 'UNAUTHORIZED') {
+        clearState()
+      } else {
+        hasResolvedAuth.value = true
+      }
+      return { data: null, error }
+    } finally {
+      loading.value = false
     }
-    hasResolvedAuth.value = true
-    loading.value = false
-    return response
   }
 
-  const login = async (credentials: Record<string, unknown>) => {
+  const login = async (credentials: Record<string, unknown>): Promise<ResultTuple<User>> => {
     loading.value = true
-    const response = await loginUser(credentials)
-    if (!response.error) {
-      currentUser.value = (response.data as User | null) || null
+    try {
+      const data = await loginUser(credentials) as User | null
+      currentUser.value = data || null
       isAuthenticated.value = true
       hasResolvedAuth.value = true
+      return { data, error: null }
+    } catch (error) {
+      return { data: null, error }
+    } finally {
+      loading.value = false
     }
-    loading.value = false
-    return response
   }
 
-  const register = async (payload: Record<string, unknown>) => {
+  const register = async (payload: Record<string, unknown>): Promise<ResultTuple<unknown>> => {
     loading.value = true
-    const response = await registerUser(payload)
-    loading.value = false
-    return response
+    try {
+      const data = await registerUser(payload)
+      return { data, error: null }
+    } catch (error) {
+      return { data: null, error }
+    } finally {
+      loading.value = false
+    }
   }
 
   const logout = async () => {
-    await logoutUser()
+    try {
+      await logoutUser()
+    } catch {
+      // logout best-effort — clear local state regardless
+    }
     clearState()
   }
 
-  const updateProfile = async (profile: Record<string, unknown>) => {
+  const updateProfile = async (profile: Record<string, unknown>): Promise<ResultTuple<User>> => {
     loading.value = true
-    const response = await updateUserMe(profile)
-    if (!response.error) {
-      currentUser.value = (response.data as User | null) || null
+    try {
+      const data = await updateUserMe(profile) as User | null
+      currentUser.value = data || null
+      return { data, error: null }
+    } catch (error) {
+      return { data: null, error }
+    } finally {
+      loading.value = false
     }
-    loading.value = false
-    return response
   }
 
   return {

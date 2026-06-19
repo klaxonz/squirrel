@@ -32,9 +32,9 @@
 
       <!-- Error -->
       <div v-if="loadError" class="px-6 pt-2 pb-4">
-        <div class="bg-destructive/10 rounded-sm p-4 flex items-center justify-between">
+        <div class="rounded-md border border-destructive/20 bg-destructive/10 p-4 flex items-center justify-between gap-4">
           <p class="text-sm text-destructive font-medium">{{ loadError }}</p>
-          <button @click="refreshCurrentList" class="text-xs font-bold uppercase tracking-widest px-4 py-2 bg-destructive text-white rounded-full">重试</button>
+          <Button variant="destructive" size="sm" @click="refreshCurrentList">重试</Button>
         </div>
       </div>
 
@@ -99,6 +99,7 @@ import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import { VIDEO_TABS } from '@/features/video/constants/videos'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
 import { useSites } from '@/features/video/composables/useSites'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
 

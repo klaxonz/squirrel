@@ -44,6 +44,7 @@ import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import VideoItem from './VideoItem.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
 import { useUIStore } from '@/shared/stores/ui'
+import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import { useSkeletonCount, type GridBreakpoint } from '@/features/video/composables/useSkeletonCount'
 import type { VideoListItem } from '@/features/video/types/video'
 
@@ -86,8 +87,9 @@ const { count: skeletonCount, attachRef: root } = useSkeletonCount({
 })
 
 onMounted(() => {
-  // Use the specific scroll container as root
-  const scrollRoot = document.getElementById('app-main-scroll')
+  // Use the app's primary scroll container as the observer root so the sentinel
+  // triggers against the real scrolling viewport, not the window.
+  const scrollRoot = getMainScrollRoot()
 
   observer = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting && !props.loading && !props.allLoaded) {

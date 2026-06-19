@@ -173,29 +173,34 @@ export function useClipMarkers(options: UseClipMarkersOptions): UseClipMarkersRe
     imageDataUrl: string | null
   ): Promise<VideoClipMarker> => {
     if (!imageDataUrl) return marker
-    const { data, error } = await uploadVideoClipMarkerPreview(marker.id, {
-      image_data_url: imageDataUrl,
-    })
-    if (error || !data) return marker
-    return data
+    try {
+      const data = await uploadVideoClipMarkerPreview(marker.id, {
+        image_data_url: imageDataUrl,
+      })
+      return data || marker
+    } catch {
+      // preview upload is best-effort — fall back to the marker without preview
+      return marker
+    }
   }
 
   const markCurrentPoint = async () => {
     if (!clipMarkerVideoId.value || isSavingMarker.value) return
     isSavingMarker.value = true
     try {
-      const { data, error } = await createVideoClipMarker({
+      const data = await createVideoClipMarker({
         video_id: clipMarkerVideoId.value,
         start_time: currentTime.value,
         end_time: currentTime.value,
       })
-      isSavingMarker.value = false
-      if (error || !data) {
-        showCentralHud('error', error?.message || '标记失败', 'play')
+      if (!data) {
+        showCentralHud('error', '标记失败', 'play')
         return
       }
       syncLocalClipMarkers([...localClipMarkers.value, data])
       showCentralHud('marker', `标记 ${formatTime(currentTime.value)}`, 'play')
+    } catch (err) {
+      showCentralHud('error', err instanceof Error ? err.message : '标记失败', 'play')
     } finally {
       isSavingMarker.value = false
     }
@@ -226,19 +231,20 @@ export function useClipMarkers(options: UseClipMarkersOptions): UseClipMarkersRe
     isSavingMarker.value = true
 
     try {
-      const { data, error } = await createVideoClipMarker({
+      const data = await createVideoClipMarker({
         video_id: clipMarkerVideoId.value,
         start_time: draft.startTime,
         end_time: draft.endTime,
       })
-      isSavingMarker.value = false
-      if (error || !data) {
-        showCentralHud('error', error?.message || '保存失败', 'play')
+      if (!data) {
+        showCentralHud('error', '保存失败', 'play')
         return
       }
       const markerWithPreview = await uploadMarkerPreviewIfAvailable(data, previewImageDataUrl)
       syncLocalClipMarkers([...localClipMarkers.value, markerWithPreview])
       showCentralHud('segment', `片段 ${formatTime(draft.startTime)}`, 'skipForward')
+    } catch (err) {
+      showCentralHud('error', err instanceof Error ? err.message : '保存失败', 'play')
     } finally {
       isSavingMarker.value = false
     }
@@ -252,13 +258,13 @@ export function useClipMarkers(options: UseClipMarkersOptions): UseClipMarkersRe
   }
 
   const deleteMarkerFromPanel = async (marker: { id: number }) => {
-    const { error } = await deleteVideoClipMarker(marker.id)
-    if (error) {
-      showCentralHud('error', error.message || '删除失败', 'play')
-      return
+    try {
+      await deleteVideoClipMarker(marker.id)
+      syncLocalClipMarkers(localClipMarkers.value.filter((item) => item.id !== marker.id))
+      hoveredMarkerId.value = null
+    } catch (err) {
+      showCentralHud('error', err instanceof Error ? err.message : '删除失败', 'play')
     }
-    syncLocalClipMarkers(localClipMarkers.value.filter((item) => item.id !== marker.id))
-    hoveredMarkerId.value = null
   }
 
   const getProgressRect = () => {
@@ -389,24 +395,22 @@ export function useClipMarkers(options: UseClipMarkersOptions): UseClipMarkersRe
     }
 
     if (normMarker.isPoint || Math.abs(newStart - newEnd) < 0.1) {
-      updateVideoClipMarker(d.markerId, { start_time: newStart, end_time: newStart }).then(({ data, error }) => {
-        if (error || !data) {
-          showCentralHud('error', error?.message || '更新失败', 'play')
-          return
-        }
+      updateVideoClipMarker(d.markerId, { start_time: newStart, end_time: newStart }).then((data) => {
+        if (!data) return
         syncLocalClipMarkers(localClipMarkers.value.map((m) => m.id === d.markerId ? data : m))
         showCentralHud('marker', `标记 ${formatTime(newStart)}`, 'skipForward')
+      }).catch((err: unknown) => {
+        showCentralHud('error', err instanceof Error ? err.message : '更新失败', 'play')
       })
       return
     }
 
-    updateVideoClipMarker(d.markerId, { start_time: newStart, end_time: newEnd }).then(({ data, error }) => {
-      if (error || !data) {
-        showCentralHud('error', error?.message || '更新失败', 'play')
-        return
-      }
+    updateVideoClipMarker(d.markerId, { start_time: newStart, end_time: newEnd }).then((data) => {
+      if (!data) return
       syncLocalClipMarkers(localClipMarkers.value.map((m) => m.id === d.markerId ? data : m))
       showCentralHud('segment', `${formatTime(newStart)} → ${formatTime(newEnd)}`, 'skipForward')
+    }).catch((err: unknown) => {
+      showCentralHud('error', err instanceof Error ? err.message : '更新失败', 'play')
     })
   }
 

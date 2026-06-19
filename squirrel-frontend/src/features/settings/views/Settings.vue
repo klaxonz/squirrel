@@ -311,9 +311,7 @@ onMounted(async () => {
   await initServerConfig()
   await Promise.all([
     loadUserSettings(),
-    loadSystemConfig().then(result => {
-      if (result.error) Logger.error('Failed to load system config', result.error)
-    }),
+    loadSystemConfig().catch((err) => Logger.error('Failed to load system config', err)),
   ])
   serverForm.value.url = currentServerUrl.value || ''
   pageLoading.value = false
@@ -336,13 +334,15 @@ const onUserSettingChange = async () => {
 
 const onSystemToggle = async (key: string, val: boolean) => {
   systemSaving.value = true
-  const result = await updateSystemConfig({ [key]: val })
-  if (result.error) {
-    toast.error('更新失败')
-  } else {
+  try {
+    await updateSystemConfig({ [key]: val })
     toast.success('系统配置已更新')
+  } catch (err) {
+    Logger.warn('[Settings] Failed to update system config', err)
+    toast.error('更新失败')
+  } finally {
+    systemSaving.value = false
   }
-  systemSaving.value = false
 }
 
 const handleTestServer = async () => {
@@ -458,13 +458,4 @@ const handleSaveServer = async () => {
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(var(--primary), 0.1); border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(var(--primary), 0.2); }
-
-.toast-enter-active, .toast-leave-active {
-  transition: all 0.3s ease;
-}
-
-.toast-enter-from, .toast-leave-to {
-  opacity: 0;
-  transform: translateY(0.75rem);
-}
 </style>

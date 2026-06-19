@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { getMusicRecommendations, reportFmGarbage, addMusicUserPlaylistTrack, type MusicTrack } from '@/shared/api/music'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { Logger } from '@/shared/lib/logger'
+import { isApiError } from '@/shared/lib/apiError'
 
 export type FmMode = 'normal' | 'small' | 'peak'
 
@@ -40,36 +41,35 @@ export function useMusicFm() {
       params.remain_songcnt = queueLen.value
     }
 
-    const { data, error: requestError } = await getMusicRecommendations(params)
-    loading.value = false
+    try {
+      const data = await getMusicRecommendations(params)
+      if (isNext) {
+        const newItems = data?.items || []
+        const seen = new Set(batch.value.map((t: MusicTrack) => t.hash || t.id))
+        const fresh = newItems.filter(t => !seen.has(t.hash || t.id))
+        const appendStart = batch.value.length
+        batch.value = [...batch.value, ...fresh]
 
-    if (requestError) {
-      error.value = requestError.message
-      Logger.error('Failed to load FM batch', requestError)
-      return
-    }
-
-    if (isNext) {
-      const newItems = data?.items || []
-      const seen = new Set(batch.value.map(t => t.hash || t.id))
-      const fresh = newItems.filter(t => !seen.has(t.hash || t.id))
-      const appendStart = batch.value.length
-      batch.value = [...batch.value, ...fresh]
-
-      if (fresh.length && autoPlay) {
-        store.playQueue(batch.value, appendStart)
-      } else {
-        Logger.warn('FM batch exhausted, no more tracks returned')
+        if (fresh.length && autoPlay) {
+          store.playQueue(batch.value, appendStart)
+        } else {
+          Logger.warn('FM batch exhausted, no more tracks returned')
+        }
+        return
       }
-      return
-    }
 
-    batch.value = data?.items || []
-    batchIndex.value = 0
-    hearted.value = {}
+      batch.value = data?.items || []
+      batchIndex.value = 0
+      hearted.value = {}
 
-    if (batch.value.length && autoPlay) {
-      store.playQueue(batch.value, 0)
+      if (batch.value.length && autoPlay) {
+        store.playQueue(batch.value, 0)
+      }
+    } catch (err) {
+      error.value = isApiError(err) ? err.message : '加载失败'
+      Logger.error('Failed to load FM batch', err)
+    } finally {
+      loading.value = false
     }
   }
 
@@ -83,29 +83,29 @@ export function useMusicFm() {
     }
 
     const hash = track.hash
+    // Optimistic heart — rolled back if the like API fails.
     hearted.value = { ...hearted.value, [hash]: true }
     liking.value = true
 
-    const { error: addErr } = await addMusicUserPlaylistTrack({
-      list_id: targetId,
-      track: {
-        title: track.title,
-        hash: track.hash,
-        album_id: track.album_id,
-        album_audio_id: track.album_audio_id,
-      },
-    })
-
-    liking.value = false
-
-    if (addErr) {
-      Logger.error('Failed to like FM track', addErr)
+    try {
+      await addMusicUserPlaylistTrack({
+        list_id: targetId,
+        track: {
+          title: track.title,
+          hash: track.hash,
+          album_id: track.album_id,
+          album_audio_id: track.album_audio_id,
+        },
+      })
+      return true
+    } catch (err) {
+      Logger.error('Failed to like FM track', err)
       hearted.value = { ...hearted.value, [hash]: false }
       error.value = '收藏失败，请重试'
       return false
+    } finally {
+      liking.value = false
     }
-
-    return true
   }
 
   async function dislike() {
@@ -114,43 +114,42 @@ export function useMusicFm() {
     loading.value = true
     error.value = ''
 
-    const { data, error: requestError } = await reportFmGarbage({
-      hash: store.currentTrack.hash,
-      playtime: Math.max(0, Math.floor(store.currentTime)),
-      mode: mode.value,
-      song_pool_id: poolId.value,
-    })
+    try {
+      const data = await reportFmGarbage({
+        hash: store.currentTrack.hash,
+        playtime: Math.max(0, Math.floor(store.currentTime)),
+        mode: mode.value,
+        song_pool_id: poolId.value,
+      })
 
-    loading.value = false
-
-    if (requestError) {
-      error.value = requestError.message
-      Logger.error('Failed to report FM garbage', requestError)
-      return
-    }
-
-    const idx = batch.value.findIndex(t => t.hash === store.currentTrack?.hash)
-    if (idx !== -1) {
-      batch.value.splice(idx, 1)
-      if (batchIndex.value > idx) {
-        batchIndex.value--
+      const idx = batch.value.findIndex(t => t.hash === store.currentTrack?.hash)
+      if (idx !== -1) {
+        batch.value.splice(idx, 1)
+        if (batchIndex.value > idx) {
+          batchIndex.value--
+        }
       }
-    }
 
-    const newItems = data?.items || []
-    if (newItems.length) {
-      batch.value.push(...newItems)
-    }
-
-    if (batch.value.length > 0) {
-      const nextIdx = Math.min(batchIndex.value, batch.value.length - 1)
-      batchIndex.value = nextIdx
-      const nextTrack = batch.value[nextIdx]
-      if (nextTrack) {
-        store.playQueue(batch.value, nextIdx)
+      const newItems = data?.items || []
+      if (newItems.length) {
+        batch.value.push(...newItems)
       }
-    } else {
-      store.clear()
+
+      if (batch.value.length > 0) {
+        const nextIdx = Math.min(batchIndex.value, batch.value.length - 1)
+        batchIndex.value = nextIdx
+        const nextTrack = batch.value[nextIdx]
+        if (nextTrack) {
+          store.playQueue(batch.value, nextIdx)
+        }
+      } else {
+        store.clear()
+      }
+    } catch (err) {
+      error.value = isApiError(err) ? err.message : '操作失败'
+      Logger.error('Failed to report FM garbage', err)
+    } finally {
+      loading.value = false
     }
   }
 

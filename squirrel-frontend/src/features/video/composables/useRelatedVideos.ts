@@ -17,29 +17,40 @@ export default function useRelatedVideos(session: PlaybackSession, sourceVideo: 
 
   const extractItems = (videos: VideoListResponse | null | undefined) => (Array.isArray(videos?.data) ? videos!.data! : [])
 
-  const getRelatedVideos = async (video: VideoPageVideo, { pageSize = 20 }: { pageSize?: number } = {}) => {
-    if (!video) return { data: [] as VideoPageVideo[], error: null as unknown | null }
+  // Collect up to `pageSize` related videos, preferring same-subscription then
+  // same-site. Each sub-fetch is isolated so one failing source doesn't abort
+  // the whole collection — a failed source just contributes nothing.
+  const collectRelated = async (video: VideoPageVideo, { pageSize = 20 }: { pageSize?: number } = {}): Promise<VideoPageVideo[]> => {
+    if (!video) return []
 
     const collected: VideoPageVideo[] = []
 
     const primarySubId = video?.subscriptions?.[0]?.id
     if (primarySubId) {
-      const { data, error } = await getVideoList({
-        pageSize,
-        sort_by: 'publish_date',
-        subscription_id: primarySubId,
-      })
-      if (!error) collected.push(...(extractItems(data) as VideoPageVideo[]))
+      try {
+        const data = await getVideoList({
+          pageSize,
+          sort_by: 'publish_date',
+          subscription_id: primarySubId,
+        })
+        collected.push(...(extractItems(data) as VideoPageVideo[]))
+      } catch {
+        // primary source unavailable — fall through to site-wide
+      }
     }
 
     if (collected.length < pageSize && video?.site) {
       const remaining = pageSize - collected.length
-      const { data, error } = await getVideoList({
-        pageSize: remaining,
-        sort_by: 'publish_date',
-        site: video.site,
-      })
-      if (!error) collected.push(...(extractItems(data) as VideoPageVideo[]))
+      try {
+        const data = await getVideoList({
+          pageSize: remaining,
+          sort_by: 'publish_date',
+          site: video.site,
+        })
+        collected.push(...(extractItems(data) as VideoPageVideo[]))
+      } catch {
+        // site-wide source also unavailable — keep whatever primary gave us
+      }
     }
 
     const unique: VideoPageVideo[] = []
@@ -54,7 +65,7 @@ export default function useRelatedVideos(session: PlaybackSession, sourceVideo: 
       if (unique.length >= pageSize) break
     }
 
-    return { data: unique, error: null as unknown | null }
+    return unique
   }
 
   const fetchRelatedVideos = async (expectedVideoId?: VideoId) => {
@@ -69,10 +80,12 @@ export default function useRelatedVideos(session: PlaybackSession, sourceVideo: 
 
     session.update({ relatedVideos: [], loadingRelated: true })
     try {
-      const { data, error } = await getRelatedVideos(snapshot, { pageSize: 20 })
+      const data = await collectRelated(snapshot, { pageSize: 20 })
       if (seq !== requestSeq) return
       if (String(sourceVideo.value?.id) !== expectedId) return
-      session.update({ relatedVideos: !error ? data || [] : [] })
+      session.update({ relatedVideos: data })
+    } catch {
+      if (seq === requestSeq) session.update({ relatedVideos: [] })
     } finally {
       if (seq === requestSeq) {
         session.update({ loadingRelated: false })

@@ -52,8 +52,11 @@ export default function useVideoClipMarkers({
   }
 
   const handleDeleteMarker = async (markerId: VideoId) => {
-    const { error } = await deleteVideoClipMarker(markerId)
-    if (error) return
+    try {
+      await deleteVideoClipMarker(markerId)
+    } catch {
+      return
+    }
     const current = video.value
     if (!current) return
 
@@ -95,20 +98,22 @@ export default function useVideoClipMarkers({
     }
 
     isSavingClipMarkerTitle.value = true
-    const { data, error } = await updateVideoClipMarker(marker.id, { title: nextTitle })
-    isSavingClipMarkerTitle.value = false
+    try {
+      const data = await updateVideoClipMarker(marker.id, { title: nextTitle })
+      if (!data) return
 
-    if (error || !data) {
-      return
+      const current = video.value
+      if (!current) return
+      const nextMarkers = (current.clip_markers || []).map((item) => (
+        String(item.id) === String(marker.id) ? data : item
+      ))
+      session.update({ video: { ...current, clip_markers: nextMarkers } })
+      cancelClipMarkerTitleEdit()
+    } catch {
+      // silent — title edit save failed; the draft stays so the user can retry
+    } finally {
+      isSavingClipMarkerTitle.value = false
     }
-
-    const current = video.value
-    if (!current) return
-    const nextMarkers = (current.clip_markers || []).map((item) => (
-      String(item.id) === String(marker.id) ? data : item
-    ))
-    session.update({ video: { ...current, clip_markers: nextMarkers } })
-    cancelClipMarkerTitleEdit()
   }
 
   const handleClipRowClick = (marker: ClipMarker) => {

@@ -213,15 +213,15 @@ export function useRssReader(options: {
       return
     }
     if (!options.selectedAccountId.value) return
-    const response = await unsubscribeRssFeed(feed.id, options.selectedAccountId.value)
-    if (response.error) {
-      options?.onStatus?.(response.error.message, true)
-      return
+    try {
+      await unsubscribeRssFeed(feed.id, options.selectedAccountId.value)
+      readingEntry.value = null
+      options?.onStatus?.(`已取消订阅「${feed.title}」`)
+      await options?.onRefreshFeeds?.()
+      await options?.onRefreshEntries?.(true)
+    } catch (err) {
+      options?.onStatus?.(err instanceof Error ? err.message : '取消订阅失败', true)
     }
-    readingEntry.value = null
-    options?.onStatus?.(`已取消订阅「${feed.title}」`)
-    await options?.onRefreshFeeds?.()
-    await options?.onRefreshEntries?.(true)
   }
 
   watch(readingEntry, () => {

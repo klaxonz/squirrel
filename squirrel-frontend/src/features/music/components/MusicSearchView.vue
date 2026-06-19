@@ -42,6 +42,12 @@
     <div v-else class="music-search-results">
       <AppBlockLoader v-if="loading" text="搜索中..." />
 
+      <AppEmptyState v-else-if="error" variant="error" title="搜索失败" :copy="error || '请稍后重试'">
+        <template #actions>
+          <Button variant="outline" size="sm" @click="emit('retry')">重试</Button>
+        </template>
+      </AppEmptyState>
+
       <template v-else-if="result">
         <section v-if="result.songs.length || result.artists.length || result.albums.length" class="music-search-all">
           <header class="music-search-summary">
@@ -158,7 +164,9 @@ import { ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import { Button } from '@/shared/ui/button'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
+import { formatCount } from '@/shared/lib/dateFormat'
 import type { MusicTrack, MusicArtist, MusicAlbum, MusicHotSearch } from '@/shared/api/music'
 
 const HISTORY_KEY = 'squirrel_music_search_history'
@@ -167,12 +175,14 @@ const MAX_HISTORY = 15
 const props = defineProps<{
   hotSearches: MusicHotSearch[]
   loading: boolean
+  error?: string | null
   result: { songs: MusicTrack[]; artists: MusicArtist[]; albums: MusicAlbum[] } | null
   searchQuery?: string
 }>()
 
 const emit = defineEmits<{
   (e: 'search', query: string): void
+  (e: 'retry'): void
   (e: 'select-artist', artist: MusicArtist): void
   (e: 'select-album', album: MusicAlbum): void
 }>()
@@ -218,10 +228,8 @@ function clearHistory() {
   saveHistory()
 }
 
-function formatScore(score: number): string {
-  if (score >= 10000) return (score / 10000).toFixed(1) + '万'
-  return String(score)
-}
+// Hot-search scores use the same 亿/万 compaction as play counts.
+const formatScore = formatCount
 
 function formatDuration(seconds: number): string {
   if (!seconds) return '--:--'
