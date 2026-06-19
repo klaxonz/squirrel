@@ -8,6 +8,10 @@
 
 import type { EventEmitter } from './EventEmitter'
 import type { IPlayerAdapter, UserConfig } from './PlayerAdapter'
+import type { StreamAdapter } from './StreamAdapter'
+import type { HlsAdapterOptions } from '../adapters/HlsAdapter'
+import type { DashAdapterOptions } from '../adapters/DashAdapter'
+import type { ShakaDashAdapterOptions } from '../adapters/ShakaDashAdapter'
 import type {
   MediaSource,
   PlayerError,
@@ -69,6 +73,27 @@ export type PlayerEngineOptions = {
     saveInterval?: number
     thresholdSeconds?: number
   }
+
+  /**
+   * Stream adapter configuration (see docs/adr/0001). The engine instantiates
+   * the HLS / dashjs / shaka adapters itself from this bag; they are no longer
+   * registered as PlayerPlugins. Omitted entries fall back to the adapters'
+   * built-in defaults, and a missing technology is simply not available.
+   */
+  streamAdapters?: StreamAdapterOptions
+}
+
+export type StreamAdapterOptions = {
+  // ponytail: these are `import type`-only references to the adapter modules.
+  // They stay type-level (no runtime cycle): the adapters import only types
+  // from core/, and core/ imports only types from adapters/.
+  hls?: HlsAdapterOptions
+  dash?: DashAdapterOptions
+  'shaka-dash'?: ShakaDashAdapterOptions
+  /** When false, the HLS adapter is not instantiated even for .m3u8 sources. */
+  enableHls?: boolean
+  /** When false, neither DASH adapter is instantiated for .mpd sources. */
+  enableDash?: boolean
 }
 
 export type PlayerEngine = {
@@ -118,6 +143,7 @@ export type PlayerEngine = {
   getCurrentSubtitle: () => SubtitleTrack | null
 
   getPlugin: <T>(name: string) => T | null
+  getStreamAdapter: () => StreamAdapter | null
   getStats: () => PlayerStats
   on: EventEmitter<PlayerEvents>['on']
   off: EventEmitter<PlayerEvents>['off']

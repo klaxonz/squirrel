@@ -112,12 +112,16 @@ export default tseslint.config(
     },
   },
   {
-    // ponytail: player plugins wrap dashjs / hls.js / shaka-player, whose
+    // ponytail: stream adapters wrap dashjs / hls.js / shaka-player, whose
     // dynamic event and track payloads are genuinely untyped in the libs.
     // These are real third-party boundary anys (not laziness); modelling them
     // fully would mean authoring type declarations for every player event, so
-    // they are exempt rather than carried as convergence debt.
-    files: ['src/components/video-player/plugins/**/*.{ts,vue}'],
+    // they are exempt rather than carried as convergence debt. (Formerly
+    // plugins/**; the stream technology moved to adapters/ per ADR-0001.)
+    files: [
+      'src/components/video-player/adapters/**/*.{ts,vue}',
+      'src/components/video-player/plugins/**/*.{ts,vue}',
+    ],
     rules: { '@typescript-eslint/no-explicit-any': 'off' },
   },
   {

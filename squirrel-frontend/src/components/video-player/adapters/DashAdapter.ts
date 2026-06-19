@@ -1,30 +1,33 @@
 /**
- * DASH 插件
- * 基于 dash.js 提供 MPEG-DASH 流播放支持
+ * DASH stream adapter — based on dash.js.
+ *
+ * Stream-adapter form of the former DashPlugin. See docs/adr/0001-stream-adapter-and-sink.md.
+ * The internal loading / quality / codec-family / recovery logic is byte-identical
+ * to the pre-refactor plugin; only the shell changed (constructor injection of
+ * StreamContext, no PlayerPlugin lifecycle hooks, videoElement via lazy getter).
  */
 
 // ponytail: dash.js ships incomplete TypeScript declarations — its MediaPlayerClass
 // exposes many runtime methods (getInitialPlaybackSettings, getTracksFor,
 // getCurrentTrackFor, updateSettings, ...) that are missing or loosely typed in
 // the .d.ts. Rather than maintain a parallel hand-written type overlay (cost >
-// value, and would drift with every dash.js bump), this plugin narrows to the
+// value, and would drift with every dash.js bump), this adapter narrows to the
 // typed surface where cheap and casts to `any` for the rest. Each `as any` here
 // is a deliberate interop boundary, not loose internal code.
 
 import dashjs, { type MediaPlayerClass, type MediaPlayerSettingClass } from 'dashjs'
-import { getCodecFamily, compareCodecFamilies } from '../../core/codec'
+import { getCodecFamily, compareCodecFamilies } from '../core/codec'
+import type { StreamAdapter, StreamContext } from '../core/StreamAdapter'
 import type {
-  PlayerPlugin,
-  PluginContext,
   QualityLevel,
   QualitySelectionRequest,
   PlayerError,
   MediaSource,
   PlaybackRecoveryAction,
   PlaybackRecoveryContext
-} from '../../core/types'
+} from '../core/types'
 
-export interface DashPluginOptions {
+export interface DashAdapterOptions {
   /** dash.js 配置 */
   settings?: Partial<MediaPlayerSettingClass>
   /** 最大重连次数 */
@@ -42,13 +45,10 @@ type DashQualitySelection = {
   qualityIndex: number
 }
 
-export class DashPlugin implements PlayerPlugin {
-  readonly name = 'dash'
-  readonly version = '1.0.0'
-
+export class DashAdapter implements StreamAdapter {
   private player: MediaPlayerClass | null = null
-  private context: PluginContext | null = null
-  private options: DashPluginOptions = {}
+  private context: StreamContext
+  private options: DashAdapterOptions
   private currentSource: string | null = null
   private sourceQualityHints: QualityLevel[] = []
   private selectedCodecFamily: string = 'auto'
@@ -57,6 +57,16 @@ export class DashPlugin implements PlayerPlugin {
   private currentTrackIndex: number | null = null
   private pendingHintedSelection: DashQualitySelection | null = null
   private lastKnownPlaybackQualityId: string | number | null = null
+
+  constructor(context: StreamContext, options?: DashAdapterOptions) {
+    this.context = context
+    this.options = {
+      maxRetries: 3,
+      retryInterval: 3000,
+      enableAutoQuality: false,
+      ...options
+    }
+  }
 
   private buildErrorSignature(error: unknown): string {
     if (!error) return ''
@@ -96,23 +106,12 @@ export class DashPlugin implements PlayerPlugin {
     // - xxx.mpd?query
     // - /mpd/xxx 或 /mpd?xxx
     // - format=mpd
-    return /\.mpd($|\?)/i.test(src) || 
-           url.includes('/mpd') || 
+    return /\.mpd($|\?)/i.test(src) ||
+           url.includes('/mpd') ||
            url.includes('format=mpd')
   }
 
-  install(context: PluginContext, options?: DashPluginOptions): void {
-    this.context = context
-    this.options = {
-      maxRetries: 3,
-      retryInterval: 3000,
-      enableAutoQuality: false,
-      ...options
-    }
-  }
-
   onSourceChange(source: MediaSource): void {
-    if (!this.context) return
     this.sourceQualityHints = Array.isArray(source.qualities) ? source.qualities : []
     this.selectedCodecFamily = 'auto'
     this.currentVisibleCodecFamily = null
@@ -121,10 +120,10 @@ export class DashPlugin implements PlayerPlugin {
     this.pendingHintedSelection = null
 
     // 检查是否为 DASH 源
-    const isDash = source.type === 'dash' || 
-                   (source.type === 'auto' && DashPlugin.isDashSource(source.src))
+    const isDash = source.type === 'dash' ||
+                   (source.type === 'auto' && DashAdapter.isDashSource(source.src))
     const wantsDashJs = source.playbackEngine !== 'shaka'
-    
+
     if (!isDash || !wantsDashJs) {
       this.destroyPlayer()
       this.currentSource = null
@@ -138,7 +137,8 @@ export class DashPlugin implements PlayerPlugin {
    * 加载 DASH 源
    */
   private loadSource(src: string): void {
-    if (!this.context?.videoElement) return
+    const video = this.context.videoElement()
+    if (!video) return
 
     // 解析 URL
     let resolvedUrl: string
@@ -157,7 +157,8 @@ export class DashPlugin implements PlayerPlugin {
    * 初始化 DASH 播放器
    */
   private initializePlayer(src: string): void {
-    if (!this.context?.videoElement) return
+    const video = this.context.videoElement()
+    if (!video) return
 
     const player = dashjs.MediaPlayer().create()
     const customSettings = this.options.settings ?? {}
@@ -218,7 +219,7 @@ export class DashPlugin implements PlayerPlugin {
     player.updateSettings(settings)
     this.setupEventListeners(player)
     this.player = player
-    player.initialize(this.context.videoElement, src, this.context.state.playing)
+    player.initialize(video, src, this.context.getState().playing)
   }
 
   /**
@@ -245,25 +246,25 @@ export class DashPlugin implements PlayerPlugin {
       }
 
       if (transient) {
-        this.context?.logger.warn('[DashPlugin] Transient dash error observed', {
+        this.context.logger.warn('[DashAdapter] Transient dash error observed', {
           code: error.code,
           message: error.message,
         })
-        this.context?.reportError({ ...error, fatal: false })
+        this.context.reportError({ ...error, fatal: false })
       } else if (fatal) {
-        this.context?.reportError(error)
+        this.context.reportError(error)
       } else {
-        this.context?.logger.warn('[DashPlugin] Non-fatal error', error)
+        this.context.logger.warn('[DashAdapter] Non-fatal error', error)
       }
     })
 
     // 缓冲事件
     player.on('bufferingStarted', () => {
-      this.context?.emit('waiting', undefined)
+      this.context.emit('waiting', undefined)
     })
 
     player.on('bufferingCompleted', () => {
-      this.context?.emit('canplay', undefined)
+      this.context.emit('canplay', undefined)
     })
 
     // 质量变化
@@ -275,12 +276,12 @@ export class DashPlugin implements PlayerPlugin {
         const quality = this.findQualityForPlaybackSelection(currentTrackIndex, e.newQuality, qualities)
         const qualityId = quality?.id ?? (typeof e.newQuality === 'number' ? e.newQuality : undefined)
         this.lastKnownPlaybackQualityId = qualityId ?? null
-        this.context?.emit('qualitychange', {
+        this.context.emit('qualitychange', {
           quality: quality?.label || `level_${e.newQuality}`,
           auto: this.isAutoQuality(),
           id: qualityId
         })
-        this.context?.registerCurrentQualityId?.(qualityId)
+        this.context.registerCurrentQualityId?.(qualityId)
         this.updateQualities()
       }
     })
@@ -309,12 +310,12 @@ export class DashPlugin implements PlayerPlugin {
           const t0 = data?.request?.requestStartDate?.getTime?.() || 0
           const t1 = data?.request?.requestEndDate?.getTime?.() || 0
           const durationSec = Math.max(0.001, (t1 - t0) / 1000)
-          
+
           if (loaded > 0 && durationSec > 0) {
             this.options.onBandwidthSample(loaded, durationSec)
           }
         } catch (err) {
-          this.context?.logger.warn('[DashPlugin] Failed to sample bandwidth', err)
+          this.context.logger.warn('[DashAdapter] Failed to sample bandwidth', err)
         }
       }
     })
@@ -333,7 +334,7 @@ export class DashPlugin implements PlayerPlugin {
 
     if (this.isTransientDashError(signature)) {
       if (context.retryCount <= 2) {
-        this.context?.logger.debug('[DashPlugin] Transient recovery handled without source reload', {
+        this.context.logger.debug('[DashAdapter] Transient recovery handled without source reload', {
           code: error.code,
           retryCount: context.retryCount,
         })
@@ -343,20 +344,20 @@ export class DashPlugin implements PlayerPlugin {
       if (this.player && this.currentSource) {
         try {
           this.player.attachSource(this.currentSource)
-          this.context?.logger.debug('[DashPlugin] Escalated transient recovery via attachSource', {
+          this.context.logger.debug('[DashAdapter] Escalated transient recovery via attachSource', {
             code: error.code,
             retryCount: context.retryCount,
           })
           return 'handled'
         } catch (recoverError) {
-          this.context?.logger.warn('[DashPlugin] Failed to escalate transient recovery via attachSource', recoverError)
+          this.context.logger.warn('[DashAdapter] Failed to escalate transient recovery via attachSource', recoverError)
         }
       }
 
       return 'reload-source'
     }
 
-    this.context?.logger.debug('[DashPlugin] Requesting source reload for recovery', {
+    this.context.logger.debug('[DashAdapter] Requesting source reload for recovery', {
       code: error.code,
       source: this.currentSource
     })
@@ -429,12 +430,10 @@ export class DashPlugin implements PlayerPlugin {
    * 更新质量列表到上下文
    */
   private updateQualities(): void {
-    if (!this.context) return
-
     const qualities = this.getAvailableQualities()
     this.currentVisibleCodecFamily = this.resolveVisibleCodecFamily()
     const currentPlaybackQuality = this.getCurrentPlaybackQuality(qualities)
-    
+
     // 按高度、码率降序排列
     qualities.sort((a, b) => {
       const heightDelta = (b.height || 0) - (a.height || 0)
@@ -449,7 +448,7 @@ export class DashPlugin implements PlayerPlugin {
     if (currentPlaybackQuality) {
       this.context.registerCurrentQualityId?.(currentPlaybackQuality.id)
       this.lastKnownPlaybackQualityId = currentPlaybackQuality.id
-      if (!this.context.state.quality) {
+      if (!this.context.getState().quality) {
         this.context.emit('qualitychange', {
           quality: currentPlaybackQuality.label,
           auto: this.isAutoQuality(),
@@ -458,12 +457,12 @@ export class DashPlugin implements PlayerPlugin {
       }
     }
 
-    if (!this.options.enableAutoQuality && !this.context.state.quality && qualities.length > 0) {
+    if (!this.options.enableAutoQuality && !this.context.getState().quality && qualities.length > 0) {
       const defaultQuality = qualities[0]
       if (this.canApplyDefaultQuality(defaultQuality)) {
         this.context.setQuality(defaultQuality.id ?? defaultQuality.label)
       } else {
-        this.context.logger.debug('[DashPlugin] Skipping eager default quality selection that would require a track switch', {
+        this.context.logger.debug('[DashAdapter] Skipping eager default quality selection that would require a track switch', {
           qualityId: defaultQuality.id,
           currentTrackIndex: this.currentTrackIndex
         })
@@ -539,9 +538,9 @@ export class DashPlugin implements PlayerPlugin {
         this.player.updateSettings({
           streaming: { abr: { autoSwitchBitrate: { video: true } } }
         })
-        this.context?.logger.debug('[DashPlugin] Quality set to auto')
+        this.context.logger.debug('[DashAdapter] Quality set to auto')
       } catch (e) {
-        this.context?.logger.warn('[DashPlugin] Failed to enable auto quality', e)
+        this.context.logger.warn('[DashAdapter] Failed to enable auto quality', e)
       }
       return
     }
@@ -552,7 +551,7 @@ export class DashPlugin implements PlayerPlugin {
         streaming: { abr: { autoSwitchBitrate: { video: false } } }
       })
     } catch (e) {
-      this.context?.logger.warn('[DashPlugin] Failed to disable auto quality', e)
+      this.context.logger.warn('[DashAdapter] Failed to disable auto quality', e)
     }
 
     // 设置指定质量
@@ -579,7 +578,7 @@ export class DashPlugin implements PlayerPlugin {
           targetIndex = numericQuality
         }
       } catch (e) {
-        this.context?.logger.warn('[DashPlugin] Failed to parse quality index', e)
+        this.context.logger.warn('[DashAdapter] Failed to parse quality index', e)
       }
     }
 
@@ -610,9 +609,9 @@ export class DashPlugin implements PlayerPlugin {
         } else if (typeof p.setRepresentationForTypeByIndex === 'function') {
           p.setRepresentationForTypeByIndex('video', targetIndex, true)
         }
-        this.context?.logger.debug('[DashPlugin] Quality set to level', targetIndex)
+        this.context.logger.debug('[DashAdapter] Quality set to level', targetIndex)
       } catch (e) {
-        this.context?.logger.warn('[DashPlugin] Failed to set quality', e)
+        this.context.logger.warn('[DashAdapter] Failed to set quality', e)
       }
     }
   }
@@ -635,7 +634,7 @@ export class DashPlugin implements PlayerPlugin {
         return quality?.label || `level_${index}`
       }
     } catch (e) {
-      this.context?.logger.warn('[DashPlugin] Failed to get current quality label', e)
+      this.context.logger.warn('[DashAdapter] Failed to get current quality label', e)
     }
 
     return null
@@ -649,7 +648,7 @@ export class DashPlugin implements PlayerPlugin {
       try {
         this.player.reset()
       } catch (e) {
-        this.context?.logger.warn('[DashPlugin] Failed to reset player', e)
+        this.context.logger.warn('[DashAdapter] Failed to reset player', e)
       }
       this.player = null
     }
@@ -788,7 +787,7 @@ export class DashPlugin implements PlayerPlugin {
         return this.findQualityForPlaybackSelection(trackIndex, qualityIndex, availableQualities)
       }
     } catch (e) {
-      this.context?.logger.warn('[DashPlugin] Failed to get current quality', e)
+      this.context.logger.warn('[DashAdapter] Failed to get current quality', e)
     }
 
     if (this.lastKnownPlaybackQualityId === null) return null
@@ -816,9 +815,9 @@ export class DashPlugin implements PlayerPlugin {
 
     try {
       player.setQualityFor?.('video', this.pendingHintedSelection.qualityIndex, true)
-      this.context?.logger.debug('[DashPlugin] Applied pending quality after track change', this.pendingHintedSelection)
+      this.context.logger.debug('[DashAdapter] Applied pending quality after track change', this.pendingHintedSelection)
     } catch (error) {
-      this.context?.logger.warn('[DashPlugin] Failed to apply pending quality after track change', error)
+      this.context.logger.warn('[DashAdapter] Failed to apply pending quality after track change', error)
     } finally {
       this.pendingHintedSelection = null
     }
@@ -833,7 +832,7 @@ export class DashPlugin implements PlayerPlugin {
         if (currentTrackIndex !== hintedSelection.trackIndex) {
           this.pendingHintedSelection = hintedSelection
           player.setCurrentTrack(targetTrack)
-          this.context?.logger.debug('[DashPlugin] Waiting for target track before applying quality', hintedSelection)
+          this.context.logger.debug('[DashAdapter] Waiting for target track before applying quality', hintedSelection)
           return true
         }
         this.currentTrackIndex = hintedSelection.trackIndex
@@ -842,11 +841,11 @@ export class DashPlugin implements PlayerPlugin {
         player.setQualityFor('video', hintedSelection.qualityIndex, true)
       }
       this.pendingHintedSelection = null
-      this.context?.logger.debug('[DashPlugin] Quality set via hinted selection', hintedSelection)
+      this.context.logger.debug('[DashAdapter] Quality set via hinted selection', hintedSelection)
       return true
     } catch (error) {
       this.pendingHintedSelection = null
-      this.context?.logger.warn('[DashPlugin] Failed to set hinted dash quality', error)
+      this.context.logger.warn('[DashAdapter] Failed to set hinted dash quality', error)
       return false
     }
   }
@@ -945,15 +944,10 @@ export class DashPlugin implements PlayerPlugin {
     return getCodecFamily(track?.codec)
   }
 
-  onDestroy(): void {
-    this.destroyPlayer()
-  }
-
   destroy(): void {
     this.destroyPlayer()
-    this.context = null
     this.currentSource = null
   }
 }
 
-export default DashPlugin
+export default DashAdapter

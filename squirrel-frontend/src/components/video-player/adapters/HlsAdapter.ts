@@ -1,6 +1,10 @@
 /**
- * HLS 插件
- * 基于 hls.js 提供 HLS 流播放支持
+ * HLS stream adapter — based on hls.js.
+ *
+ * Stream-adapter form of the former HlsPlugin. See docs/adr/0001-stream-adapter-and-sink.md.
+ * The internal loading / quality / recovery logic is byte-identical to the
+ * pre-refactor plugin; only the shell changed (constructor injection of
+ * StreamContext, no PlayerPlugin lifecycle hooks, videoElement via lazy getter).
  */
 
 // ponytail: hls.js event payloads (FragLoadedData.stats etc.) are typed loosely
@@ -10,19 +14,18 @@
 // not loose internal typing.
 
 import Hls, { type HlsConfig, type Level, type ErrorData } from 'hls.js'
-import { getCodecFamily } from '../../core/codec'
+import { getCodecFamily } from '../core/codec'
+import type { StreamAdapter, StreamContext } from '../core/StreamAdapter'
 import type {
-  PlayerPlugin,
-  PluginContext,
   QualityLevel,
   QualitySelectionRequest,
   PlayerError,
   MediaSource,
   PlaybackRecoveryAction,
   PlaybackRecoveryContext
-} from '../../core/types'
+} from '../core/types'
 
-export interface HlsPluginOptions {
+export interface HlsAdapterOptions {
   /** hls.js 配置 */
   config?: Partial<HlsConfig>
   /** 最大重连次数 */
@@ -35,13 +38,10 @@ export interface HlsPluginOptions {
   onBandwidthSample?: (loaded: number, durationSec: number) => void
 }
 
-export class HlsPlugin implements PlayerPlugin {
-  readonly name = 'hls'
-  readonly version = '1.0.0'
-
+export class HlsAdapter implements StreamAdapter {
   private hls: Hls | null = null
-  private context: PluginContext | null = null
-  private options: HlsPluginOptions = {}
+  private context: StreamContext
+  private options: HlsAdapterOptions
   private retryCount = 0
   private currentSource: string | null = null
   private sourceQualityHints: QualityLevel[] = []
@@ -51,6 +51,16 @@ export class HlsPlugin implements PlayerPlugin {
   private qualityIdByLevelIndex = new Map<number, string>()
   private levelIndexByQualityId = new Map<string, number>()
   private currentExternalQualityId: string | number | null = null
+
+  constructor(context: StreamContext, options?: HlsAdapterOptions) {
+    this.context = context
+    this.options = {
+      maxRetries: 3,
+      retryInterval: 3000,
+      enableAutoQuality: false,
+      ...options
+    }
+  }
 
   private clearRetryTimers(): void {
     if (this.retryTimer) {
@@ -67,17 +77,17 @@ export class HlsPlugin implements PlayerPlugin {
   private applyLevelSwitch(targetLevel: number): void {
     if (!this.hls) return
 
-    const video = this.context?.videoElement
+    const video = this.context.videoElement()
     const canPreloadBeforeSwitch = !!video && !video.paused && !video.ended && video.readyState > 0
 
     if (canPreloadBeforeSwitch) {
       this.hls.nextLevel = targetLevel
-      this.context?.logger.debug('[HlsPlugin] Quality switch scheduled via nextLevel', targetLevel)
+      this.context.logger.debug('[HlsAdapter] Quality switch scheduled via nextLevel', targetLevel)
       return
     }
 
     this.hls.currentLevel = targetLevel
-    this.context?.logger.debug('[HlsPlugin] Quality switch applied via currentLevel', targetLevel)
+    this.context.logger.debug('[HlsAdapter] Quality switch applied via currentLevel', targetLevel)
   }
 
   private buildStableQualityId(level: Level, index: number): string {
@@ -248,7 +258,7 @@ export class HlsPlugin implements PlayerPlugin {
     // - xxx.m3u8
     // - xxx.m3u8?query
     // - format=m3u8
-    return /\.m3u8($|\?)/i.test(src) || 
+    return /\.m3u8($|\?)/i.test(src) ||
            url.includes('format=m3u8')
   }
 
@@ -260,26 +270,15 @@ export class HlsPlugin implements PlayerPlugin {
     return video.canPlayType('application/vnd.apple.mpegurl') !== ''
   }
 
-  install(context: PluginContext, options?: HlsPluginOptions): void {
-    this.context = context
-    this.options = {
-      maxRetries: 3,
-      retryInterval: 3000,
-      enableAutoQuality: false,
-      ...options
-    }
-  }
-
   onSourceChange(source: MediaSource): void {
-    if (!this.context) return
     this.sourceQualityHints = Array.isArray(source.qualities) ? source.qualities : []
     this.currentQualities = []
     this.currentExternalQualityId = null
 
     // 检查是否为 HLS 源
-    const isHls = source.type === 'hls' || 
-                  (source.type === 'auto' && HlsPlugin.isHlsSource(source.src))
-    
+    const isHls = source.type === 'hls' ||
+                  (source.type === 'auto' && HlsAdapter.isHlsSource(source.src))
+
     if (!isHls) {
       this.destroyHls()
       this.currentSource = null
@@ -293,7 +292,8 @@ export class HlsPlugin implements PlayerPlugin {
    * 加载 HLS 源
    */
   private loadSource(src: string): void {
-    if (!this.context?.videoElement) return
+    const video = this.context.videoElement()
+    if (!video) return
 
     this.currentSource = src
     this.retryCount = 0
@@ -304,8 +304,8 @@ export class HlsPlugin implements PlayerPlugin {
     // 检查支持情况
     if (!Hls.isSupported()) {
       // Safari 等原生支持 HLS 的浏览器
-      if (HlsPlugin.hasNativeSupport()) {
-        this.context.videoElement.src = src
+      if (HlsAdapter.hasNativeSupport()) {
+        video.src = src
         return
       }
       this.context.reportError({
@@ -323,7 +323,8 @@ export class HlsPlugin implements PlayerPlugin {
    * 初始化 HLS 实例
    */
   private initializeHls(src: string): void {
-    if (!this.context?.videoElement) return
+    const video = this.context.videoElement()
+    if (!video) return
 
     const config: Partial<HlsConfig> = {
       enableWorker: true,
@@ -334,7 +335,7 @@ export class HlsPlugin implements PlayerPlugin {
     }
 
     this.hls = new Hls(config)
-    this.hls.attachMedia(this.context.videoElement)
+    this.hls.attachMedia(video)
     this.setupEventListeners()
     this.hls.loadSource(src)
   }
@@ -347,12 +348,12 @@ export class HlsPlugin implements PlayerPlugin {
 
     // 媒体附加完成
     this.hls.on(Hls.Events.MEDIA_ATTACHED, () => {
-      this.context?.logger.debug('[HlsPlugin] Media attached')
+      this.context.logger.debug('[HlsAdapter] Media attached')
     })
 
     // 清单解析完成
     this.hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
-      this.context?.logger.debug('[HlsPlugin] Manifest parsed, levels', data.levels.length)
+      this.context.logger.debug('[HlsAdapter] Manifest parsed, levels', data.levels.length)
       this.updateQualities(data.levels)
     })
 
@@ -363,8 +364,8 @@ export class HlsPlugin implements PlayerPlugin {
         if (this.currentExternalQualityId !== null) {
           const externalQuality = this.currentQualities.find((item) => String(item.id) === String(this.currentExternalQualityId))
           if (externalQuality) {
-            this.context?.registerCurrentQualityId?.(externalQuality.id)
-            this.context?.emit('qualitychange', {
+            this.context.registerCurrentQualityId?.(externalQuality.id)
+            this.context.emit('qualitychange', {
               quality: externalQuality.label,
               auto: false,
               id: externalQuality.id
@@ -376,9 +377,9 @@ export class HlsPlugin implements PlayerPlugin {
         const currentQuality = this.findQualityForLevel(data.level)
         const quality = currentQuality?.label || (level.height ? `${level.height}p` : `level_${data.level}`)
         const qualityId = currentQuality?.id || this.getStableQualityId(level, data.level)
-        this.context?.registerCurrentQualityId?.(qualityId)
-        this.context?.emit('qualitychange', { 
-          quality, 
+        this.context.registerCurrentQualityId?.(qualityId)
+        this.context.emit('qualitychange', {
+          quality,
           auto: this.hls?.autoLevelEnabled ?? false,
           id: qualityId
         })
@@ -395,12 +396,12 @@ export class HlsPlugin implements PlayerPlugin {
           const tfirst = stats.tfirst ?? stats.trequest ?? 0
           const tload = stats.tload ?? stats.tend ?? 0
           const durationSec = Math.max(0.001, (tload - tfirst) / 1000)
-          
+
           if (loaded > 0 && durationSec > 0) {
             this.options.onBandwidthSample(loaded, durationSec)
           }
         } catch (e) {
-          this.context?.logger.warn('[HlsPlugin] Failed to sample bandwidth', e)
+          this.context.logger.warn('[HlsAdapter] Failed to sample bandwidth', e)
         }
       }
     })
@@ -415,7 +416,7 @@ export class HlsPlugin implements PlayerPlugin {
    * 更新可用质量列表
    */
   private updateQualities(levels: Level[]): void {
-    if (!this.context || !levels.length) return
+    if (!levels.length) return
 
     this.registerStableQualityIds(levels)
 
@@ -435,7 +436,7 @@ export class HlsPlugin implements PlayerPlugin {
     this.context.registerQualities(qualities)
     this.context.emit('qualitiesloaded', qualities)
 
-    if (!this.options.enableAutoQuality && !this.context.state.quality && qualities.length > 0) {
+    if (!this.options.enableAutoQuality && !this.context.getState().quality && qualities.length > 0) {
       this.context.setQuality(qualities[0].id ?? qualities[0].label)
     }
   }
@@ -457,7 +458,7 @@ export class HlsPlugin implements PlayerPlugin {
       case Hls.ErrorTypes.NETWORK_ERROR:
         if (this.retryCount < (this.options.maxRetries || 3)) {
           this.retryCount++
-          this.context?.logger.debug(`[HlsPlugin] Network error, retrying (${this.retryCount})...`)
+          this.context.logger.debug(`[HlsAdapter] Network error, retrying (${this.retryCount})...`)
           this.clearRetryTimers()
           this.retryTimer = setTimeout(() => {
             this.retryTimer = null
@@ -469,14 +470,14 @@ export class HlsPlugin implements PlayerPlugin {
         break
 
       case Hls.ErrorTypes.MEDIA_ERROR:
-        this.context?.logger.debug('[HlsPlugin] Media error, attempting recovery...')
+        this.context.logger.debug('[HlsAdapter] Media error, attempting recovery...')
         this.hls?.recoverMediaError()
         return
 
       default:
         if (this.retryCount < (this.options.maxRetries || 3)) {
           this.retryCount++
-          this.context?.logger.debug(`[HlsPlugin] Fatal error, reinitializing (${this.retryCount})...`)
+          this.context.logger.debug(`[HlsAdapter] Fatal error, reinitializing (${this.retryCount})...`)
           this.clearRetryTimers()
           this.reloadTimer = setTimeout(() => {
             this.reloadTimer = null
@@ -489,7 +490,7 @@ export class HlsPlugin implements PlayerPlugin {
         error.message = 'Cannot play video'
     }
 
-    this.context?.reportError(error)
+    this.context.reportError(error)
   }
 
   recoverPlayback(error: PlayerError, _context: PlaybackRecoveryContext): PlaybackRecoveryAction {
@@ -506,10 +507,10 @@ export class HlsPlugin implements PlayerPlugin {
     if (code.includes('NETWORK') || code.includes('TIMEOUT')) {
       try {
         this.hls.startLoad()
-        this.context?.logger.debug('[HlsPlugin] Recovery handled via startLoad')
+        this.context.logger.debug('[HlsAdapter] Recovery handled via startLoad')
         return 'handled'
       } catch (recoverError) {
-        this.context?.logger.warn('[HlsPlugin] Failed to recover network playback', recoverError)
+        this.context.logger.warn('[HlsAdapter] Failed to recover network playback', recoverError)
         return 'reload-source'
       }
     }
@@ -522,10 +523,10 @@ export class HlsPlugin implements PlayerPlugin {
     ) {
       try {
         this.hls.recoverMediaError()
-        this.context?.logger.debug('[HlsPlugin] Recovery handled via recoverMediaError')
+        this.context.logger.debug('[HlsAdapter] Recovery handled via recoverMediaError')
         return 'handled'
       } catch (recoverError) {
-        this.context?.logger.warn('[HlsPlugin] Failed to recover media playback', recoverError)
+        this.context.logger.warn('[HlsAdapter] Failed to recover media playback', recoverError)
         return 'reload-source'
       }
     }
@@ -555,7 +556,7 @@ export class HlsPlugin implements PlayerPlugin {
 
     if (quality === 'auto' || quality === -1) {
       this.applyLevelSwitch(-1)
-      this.context?.logger.debug('[HlsPlugin] Quality set to auto')
+      this.context.logger.debug('[HlsAdapter] Quality set to auto')
       return
     }
 
@@ -597,7 +598,7 @@ export class HlsPlugin implements PlayerPlugin {
 
     if (targetLevel >= 0) {
       this.applyLevelSwitch(targetLevel)
-      this.context?.logger.debug('[HlsPlugin] Quality set to level', targetLevel)
+      this.context.logger.debug('[HlsAdapter] Quality set to level', targetLevel)
     }
   }
 
@@ -606,7 +607,7 @@ export class HlsPlugin implements PlayerPlugin {
    */
   getCurrentQuality(): string | null {
     if (!this.hls) return null
-    
+
     const level = this.hls.currentLevel
     if (level === -1) return 'auto'
 
@@ -622,8 +623,8 @@ export class HlsPlugin implements PlayerPlugin {
     if (!src) return
 
     this.currentExternalQualityId = quality.id
-    this.context?.registerCurrentQualityId?.(quality.id)
-    this.context?.emit('qualitychange', {
+    this.context.registerCurrentQualityId?.(quality.id)
+    this.context.emit('qualitychange', {
       quality: quality.label,
       auto: false,
       id: quality.id
@@ -633,7 +634,7 @@ export class HlsPlugin implements PlayerPlugin {
       return
     }
 
-    const video = this.context?.videoElement
+    const video = this.context.videoElement()
     const resumeTime = video?.currentTime ?? 0
     const shouldResumePlayback = !!video && !video.paused && !video.ended
 
@@ -642,7 +643,7 @@ export class HlsPlugin implements PlayerPlugin {
         try {
           video.currentTime = Math.max(0, resumeTime)
         } catch (error) {
-          this.context?.logger.warn('[HlsPlugin] Failed to restore time after external quality switch', error)
+          this.context.logger.warn('[HlsAdapter] Failed to restore time after external quality switch', error)
         }
       }, { once: true })
     }
@@ -650,13 +651,13 @@ export class HlsPlugin implements PlayerPlugin {
     if (shouldResumePlayback && video) {
       video.addEventListener('canplay', () => {
         void video.play().catch((e) => {
-          this.context?.logger.warn('[HlsPlugin] Auto-play failed after external quality switch', e)
+          this.context.logger.warn('[HlsAdapter] Auto-play failed after external quality switch', e)
         })
       }, { once: true })
     }
 
     this.loadSource(src)
-    this.context?.logger.debug('[HlsPlugin] Quality set to external source', quality.id)
+    this.context.logger.debug('[HlsAdapter] Quality set to external source', quality.id)
   }
 
   /**
@@ -673,15 +674,10 @@ export class HlsPlugin implements PlayerPlugin {
     }
   }
 
-  onDestroy(): void {
-    this.destroyHls()
-  }
-
   destroy(): void {
     this.destroyHls()
-    this.context = null
     this.currentSource = null
   }
 }
 
-export default HlsPlugin
+export default HlsAdapter

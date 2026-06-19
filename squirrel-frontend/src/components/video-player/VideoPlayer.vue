@@ -539,9 +539,9 @@ const pendingUserVolumeHud = ref<number | null>(null)
 const pendingWidescreenValue = ref<boolean | null>(null)
 const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
 
-// 按 code 把引擎/插件产生的英文错误信息映射为中文。
-// 这些 message 来自 core/error-recovery.ts、createPlayerEngine.ts、HlsPlugin/DashPlugin/ShakaDashPlugin，
-// 在源头改会侵入多个插件并丢失原始信息，故在 UI 层统一翻译。
+// 按 code 把引擎/适配器产生的英文错误信息映射为中文。
+// 这些 message 来自 core/error-recovery.ts、createPlayerEngine.ts、adapters/{Hls,Dash,ShakaDash}Adapter.ts，
+// 在源头改会侵入多个适配器并丢失原始信息，故在 UI 层统一翻译。
 const resolveErrorMessage = (code: string, fallback: string): string => {
   const upper = String(code || '').toUpperCase()
   if (upper.includes('NETWORK') || upper.includes('TIMEOUT')) return t('errorNetwork')

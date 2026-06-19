@@ -21,6 +21,10 @@ import { PluginManager } from './PluginManager'
 import { LocalStorageAdapter, type UserConfig, type PlaybackProgress } from './PlayerAdapter'
 import { playerLogger } from './logger'
 import { createErrorRecovery, MAX_VOLUME, detectSourceType } from './error-recovery'
+import type { StreamAdapter, StreamAdapterType, StreamContext } from './StreamAdapter'
+import { HlsAdapter } from '../adapters/HlsAdapter'
+import { DashAdapter } from '../adapters/DashAdapter'
+import { ShakaDashAdapter } from '../adapters/ShakaDashAdapter'
 import type {
   MediaSource,
   PlayerError,
@@ -36,7 +40,6 @@ import type {
 import type {
   PlayerEngineOptions,
   PlayerEngine,
-  QualityController,
   SubtitleController,
 } from './engine-types'
 
@@ -96,6 +99,12 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   let autoPlayOnReady = false
   let mediaLoadStartedForCurrentSource = false
   let mediaMetadataLoadedForCurrentSource = false
+
+  // Stream adapter seam (see docs/adr/0001). The engine owns one adapter at a
+  // time, keyed by currentAdapterType; loadSource reuses it when the source
+  // type is unchanged and destroys + rebuilds it otherwise (A2 strategy).
+  let currentStreamAdapter: StreamAdapter | null = null
+  let currentAdapterType: StreamAdapterType | null = null
 
   let lastSavedTime = 0
   let lastSavedAt = 0
@@ -271,9 +280,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     getMaxRetries: () => maxRetries,
     getRetryDelay: () => retryDelay,
     getEnableQualityFallback: () => enableQualityFallback,
-    events,
-    pluginManager,
-    logger,
+  events,
+  getStreamAdapter: () => currentStreamAdapter,
+  logger,
     adapter,
     onError: options.onError,
     play: () => play(),
@@ -375,6 +384,128 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     getPlugin<T>(name: string) { return pluginManager.get(name) as T }
   })
 
+  /**
+   * StreamContext handed to adapters at construction. Forwards the engine's
+   * reverse-driving surface (emit / registerQualities / setQuality / reportError)
+   * so PR1 is behavior-identical to the old plugin path. PR2 replaces this with
+   * a StreamSink passed to onSourceChange.
+   */
+  const createStreamContext = (): StreamContext => ({
+    videoElement: () => videoElement,
+    getState,
+    logger,
+    // PR1: mirror the PluginContext emit intercept verbatim. Dash/Shaka adapters
+    // drive the engine loading-state machine by emitting 'waiting'/'canplay';
+    // without this intercept their buffering events would no longer set
+    // loading / trigger autoPlayOnReady. PR2 replaces this with sink.loadingStateChanged.
+    emit(event, data) {
+      if (event === 'waiting') {
+        loading = true
+        errorRecovery.scheduleWaitingRecovery()
+      }
+
+      if (event === 'canplay') {
+        loading = false
+        retryCount = 0
+        errorRecovery.clearWaitingRecovery()
+
+        if (autoPlayOnReady) {
+          autoPlayOnReady = false
+          void play().catch((e) => {
+            logger.warn('[PlayerEngine] Auto-play failed after canplay', e)
+          })
+        }
+      }
+
+      events.emit(event, data)
+    },
+    registerQualities: (qs) => {
+      qualities = qs
+      errorRecovery.setRecoveryQualities(qs)
+      if (registeredQualityId !== null) {
+        const match = qs.find((item) => item.id === registeredQualityId)
+        if (match?.label) {
+          currentQualityLabel = match.label
+          currentQualityId = registeredQualityId
+        }
+      }
+    },
+    registerCurrentQualityId: (id) => {
+      registeredQualityId = typeof id === 'string' || typeof id === 'number' ? id : null
+      if (registeredQualityId === null) return
+      const match = qualities.find((item) => item.id === registeredQualityId)
+      if (match?.label) {
+        currentQualityLabel = match.label
+        currentQualityId = registeredQualityId
+      }
+    },
+    setQuality: (q) => setQuality(q),
+    reportError: (error) => {
+      pluginHandlingError = true
+      void errorRecovery.handleRecoveryError(error)
+        .then((recovered) => {
+          if (!recovered) errorRecovery.reportFatalError(error)
+          pluginHandlingError = false
+        })
+        .catch((e) => {
+          logger.warn('[PlayerEngine] Stream adapter recovery chain failed', e)
+          errorRecovery.reportFatalError(error)
+          pluginHandlingError = false
+        })
+    },
+  })
+
+  /**
+   * Resolve which StreamAdapter a source needs, reusing the cached adapter when
+   * the source type is unchanged and destroying + rebuilding it otherwise (A2).
+   * Returns null for native sources (no adapter) or when the technology is
+   * disabled. Mirrors the old "adapter instance lives, internal library instance
+   * is rebuilt per source" semantics — note each adapter rebuilds its library
+   * instance inside onSourceChange regardless.
+   */
+  const resolveStreamAdapter = (source: MediaSource): StreamAdapter | null => {
+    const streamOpts = options.streamAdapters ?? {}
+    const enableHls = streamOpts.enableHls !== false
+    const enableDash = streamOpts.enableDash !== false
+
+    let nextType: StreamAdapterType | null = null
+    if (source.type === 'hls' && enableHls) {
+      nextType = 'hls'
+    } else if (source.type === 'dash' && enableDash) {
+      nextType = source.playbackEngine === 'shaka' ? 'shaka-dash' : 'dash'
+    }
+
+    if (nextType === null) {
+      if (currentStreamAdapter) {
+        currentStreamAdapter.destroy()
+        currentStreamAdapter = null
+        currentAdapterType = null
+      }
+      return null
+    }
+
+    if (currentAdapterType === nextType && currentStreamAdapter) {
+      return currentStreamAdapter
+    }
+
+    if (currentStreamAdapter) {
+      currentStreamAdapter.destroy()
+      currentStreamAdapter = null
+      currentAdapterType = null
+    }
+
+    const ctx = createStreamContext()
+    if (nextType === 'hls') {
+      currentStreamAdapter = new HlsAdapter(ctx, streamOpts.hls)
+    } else if (nextType === 'shaka-dash') {
+      currentStreamAdapter = new ShakaDashAdapter(ctx, streamOpts['shaka-dash'])
+    } else {
+      currentStreamAdapter = new DashAdapter(ctx, streamOpts.dash)
+    }
+    currentAdapterType = nextType
+    return currentStreamAdapter
+  }
+
   const initPlugins = async (): Promise<void> => {
     const context = createPluginContext()
     pluginManager.setContext(context)
@@ -417,6 +548,13 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
     events.emit('sourcetypechange', currentSourceType)
     events.emit('sourcechange', { ...source, src, type })
+
+    // Drive the stream adapter directly. Formerly this happened via the
+    // sourcechange event forwarded by PluginManager to the stream plugins;
+    // adapters are no longer plugins, so the engine calls them itself. The
+    // adapter is resolved/reused by source type (A2) and rebuilds its library
+    // instance inside onSourceChange. Native sources have no adapter.
+    resolveStreamAdapter(source)?.onSourceChange(source)
 
     if (type === 'native') {
       videoElement.src = src
@@ -682,6 +820,11 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     void audioContext?.close()
 
     flushProgress()
+    if (currentStreamAdapter) {
+      currentStreamAdapter.destroy()
+      currentStreamAdapter = null
+      currentAdapterType = null
+    }
     pluginManager.destroy()
     releaseVideoElementMedia(videoElement)
     events.destroy()
@@ -848,17 +991,11 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     errorRecovery.suppressWaitingRecovery(Math.max(retryDelay * 2, 4000))
     const { controllerQuality, emittedLabel } = resolveQualitySelection(quality)
 
-    const getQualityController = (): QualityController | null => {
-      const preferredDashPlugin = currentSource?.playbackEngine === 'shaka' ? 'shaka-dash' : 'dash'
-      if (currentSourceType === 'hls') return pluginManager.get<QualityController>('hls')
-      if (currentSourceType === 'dash') return pluginManager.get<QualityController>(preferredDashPlugin)
-      return pluginManager.get<QualityController>('shaka-dash') || pluginManager.get<QualityController>('dash') || pluginManager.get<QualityController>('hls')
-    }
-
-    const controller = getQualityController()
-    if (controller && typeof controller.setQuality === 'function') {
-      controller.setQuality(controllerQuality)
-    }
+    // Stream adapter drives quality directly (formerly a name-keyed
+    // pluginManager.get<QualityController> dispatch duplicated in three places;
+    // see docs/adr/0001). The adapter is already resolved for the current
+    // source; native sources have no adapter and no quality control.
+    currentStreamAdapter?.setQuality(controllerQuality)
 
     events.emit('qualitychange', { quality: emittedLabel, auto: emittedLabel === 'auto', id: currentQualityId ?? undefined })
     options.onQualityChange?.(emittedLabel)
@@ -1132,6 +1269,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     getCurrentSubtitle: () => currentSubtitle,
 
     getPlugin: <T>(name: string) => pluginManager.get(name) as T,
+    getStreamAdapter: () => currentStreamAdapter,
     getStats,
     on: events.on.bind(events),
     off: events.off.bind(events)

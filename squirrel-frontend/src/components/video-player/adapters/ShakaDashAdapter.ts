@@ -1,33 +1,38 @@
+/**
+ * DASH stream adapter — based on shaka-player.
+ *
+ * Stream-adapter form of the former ShakaDashPlugin. See docs/adr/0001-stream-adapter-and-sink.md.
+ * The internal loading / quality / codec-family / recovery logic is byte-identical
+ * to the pre-refactor plugin; only the shell changed (constructor injection of
+ * StreamContext, no PlayerPlugin lifecycle hooks, videoElement via lazy getter).
+ */
+
 import shaka from 'shaka-player'
 
 // ponytail: shaka-player's TypedEvent<->detail surface and track.allowedByApplication
 // field are runtime-only or loosely declared. The few `as any` reads below are
 // deliberate interop casts at the shaka boundary, not loose internal typing.
 
-import { getCodecFamily, compareCodecFamilies } from '../../core/codec'
+import { getCodecFamily, compareCodecFamilies } from '../core/codec'
+import type { StreamAdapter, StreamContext } from '../core/StreamAdapter'
 import type {
   MediaSource,
   PlaybackRecoveryAction,
   PlaybackRecoveryContext,
   PlayerError,
-  PlayerPlugin,
-  PluginContext,
   QualityLevel,
   QualitySelectionRequest,
-} from '../../core/types'
+} from '../core/types'
 
-export interface ShakaDashPluginOptions {
+export interface ShakaDashAdapterOptions {
   enableAutoQuality?: boolean
 }
 
 type ShakaVariantTrack = shaka.extern.Track
 
-export class ShakaDashPlugin implements PlayerPlugin {
-  readonly name = 'shaka-dash'
-  readonly version = '1.0.0'
-
-  private context: PluginContext | null = null
-  private options: ShakaDashPluginOptions = {}
+export class ShakaDashAdapter implements StreamAdapter {
+  private context: StreamContext
+  private options: ShakaDashAdapterOptions
   private player: shaka.Player | null = null
   private currentSource: string | null = null
   private sourceQualityHints: QualityLevel[] = []
@@ -37,7 +42,7 @@ export class ShakaDashPlugin implements PlayerPlugin {
   private loadRequestSeq = 0
   private isSelectingQuality = false
 
-  install(context: PluginContext, options?: ShakaDashPluginOptions): void {
+  constructor(context: StreamContext, options?: ShakaDashAdapterOptions) {
     this.context = context
     this.options = {
       enableAutoQuality: false,
@@ -63,7 +68,7 @@ export class ShakaDashPlugin implements PlayerPlugin {
   }
 
   private async loadSource(src: string, requestSeq: number): Promise<void> {
-    if (!this.context?.videoElement) return
+    if (!this.context.videoElement()) return
 
     if (!this.hasInstalledPolyfills) {
       shaka.polyfill.installAll()
@@ -71,16 +76,17 @@ export class ShakaDashPlugin implements PlayerPlugin {
     }
 
     await this.destroyPlayer()
-    if (requestSeq !== this.loadRequestSeq || !this.context?.videoElement) return
+    const video = this.context.videoElement()
+    if (requestSeq !== this.loadRequestSeq || !video) return
     this.currentSource = src
 
     const player = new shaka.Player()
     this.player = player
 
-    await player.attach(this.context.videoElement)
+    await player.attach(video)
     if (requestSeq !== this.loadRequestSeq || this.player !== player) {
       await player.destroy().catch((e) => {
-        this.context?.logger.warn('[ShakaDashPlugin] Failed to destroy player on attach race', e)
+        this.context.logger.warn('[ShakaDashAdapter] Failed to destroy player on attach race', e)
       })
       return
     }
@@ -115,14 +121,14 @@ export class ShakaDashPlugin implements PlayerPlugin {
       await player.load(src)
       if (requestSeq !== this.loadRequestSeq || this.player !== player) {
         await player.destroy().catch((e) => {
-          this.context?.logger.warn('[ShakaDashPlugin] Failed to destroy player on load race', e)
+          this.context.logger.warn('[ShakaDashAdapter] Failed to destroy player on load race', e)
         })
         return
       }
       this.updateActiveCodecFamily()
       this.updateQualities()
     } catch (error) {
-      this.context?.reportError({
+      this.context.reportError({
         code: 'SHAKA_LOAD_FAILED',
         message: error instanceof Error ? error.message : 'Shaka failed to load DASH source',
         fatal: false,
@@ -134,7 +140,7 @@ export class ShakaDashPlugin implements PlayerPlugin {
   private setupEventListeners(player: shaka.Player): void {
     player.addEventListener('error', (event: Event) => {
       const detail = (event as CustomEvent).detail
-      this.context?.reportError({
+      this.context.reportError({
         code: `SHAKA_${detail?.code || 'UNKNOWN'}`,
         message: detail?.message || 'Shaka playback error',
         fatal: false,
@@ -146,9 +152,9 @@ export class ShakaDashPlugin implements PlayerPlugin {
       const detail = (event as CustomEvent<any>).detail
       const buffering = Boolean(detail?.buffering ?? (event as any)?.buffering)
       if (buffering) {
-        this.context?.emit('waiting', undefined)
+        this.context.emit('waiting', undefined)
       } else {
-        this.context?.emit('canplay', undefined)
+        this.context.emit('canplay', undefined)
       }
     })
 
@@ -213,8 +219,6 @@ export class ShakaDashPlugin implements PlayerPlugin {
   }
 
   private updateQualities(): void {
-    if (!this.context) return
-
     const hinted = this.sourceQualityHints.length > 0
       ? this.sourceQualityHints.map((quality) => ({
           ...quality,
@@ -226,7 +230,7 @@ export class ShakaDashPlugin implements PlayerPlugin {
     this.context.registerQualities(qualities)
     this.context.emit('qualitiesloaded', qualities)
 
-    if (!this.isSelectingQuality && !this.options.enableAutoQuality && !this.context.state.quality && qualities.length > 0) {
+    if (!this.isSelectingQuality && !this.options.enableAutoQuality && !this.context.getState().quality && qualities.length > 0) {
       this.setQuality(qualities[0].id ?? qualities[0].label)
       return
     }
@@ -380,7 +384,7 @@ export class ShakaDashPlugin implements PlayerPlugin {
       this.updateActiveCodecFamily()
       this.updateQualities()
     } catch (error) {
-      this.context?.logger.warn('[ShakaDashPlugin] Failed to select quality', error)
+      this.context.logger.warn('[ShakaDashAdapter] Failed to select quality', error)
     } finally {
       this.isSelectingQuality = false
     }
@@ -390,14 +394,9 @@ export class ShakaDashPlugin implements PlayerPlugin {
     return 'reload-source'
   }
 
-  onDestroy(): void {
-    this.destroyPlayer()
-  }
-
   destroy(): void {
     this.loadRequestSeq += 1
     void this.destroyPlayer()
-    this.context = null
     this.currentSource = null
   }
 
@@ -406,11 +405,11 @@ export class ShakaDashPlugin implements PlayerPlugin {
     this.player = null
     if (player) {
       await player.destroy().catch((e) => {
-        this.context?.logger.warn('[ShakaDashPlugin] Failed to destroy player', e)
+        this.context.logger.warn('[ShakaDashAdapter] Failed to destroy player', e)
       })
     }
     this.activeCodecFamily = null
   }
 }
 
-export default ShakaDashPlugin
+export default ShakaDashAdapter

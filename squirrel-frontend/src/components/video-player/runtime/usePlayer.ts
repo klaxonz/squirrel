@@ -6,7 +6,7 @@ import { useTheme, type ThemeName, type UseThemeOptions } from '../themes'
 import { createPlayerRuntimeStore, type PlayerRuntimeStore } from './PlayerStore'
 import { createPlayerEngine, type PlayerEngine, type PlayerEngineOptions } from '../core/createPlayerEngine'
 import { playerLogger } from '../core/logger'
-import { createDefaultPlayerPlugins } from '../core/defaultPlugins'
+import { createDefaultPlayerPlugins, createDefaultStreamAdapterOptions } from '../core/defaultPlugins'
 import { BUILT_IN_PRESETS } from '../plugins/subtitles'
 import { useA11y } from './useA11y'
 import { useControlsLayout } from './useControlsLayout'
@@ -21,14 +21,6 @@ import type { MediaSource, PlayerError, PlayerStats, PluginConfig, QualityLevel,
 // Now typed via core/types SubtitleStyle (concrete known keys + index sig for
 // dynamic reads); consumers still index freely but the common fields are safe.
 type SubtitleStyleBag = SubtitleStyle
-
-// Structural view of the dash/shaka-dash plugin used for codec-family control.
-interface CodecController {
-  getAvailableCodecFamilies?: () => string[]
-  getCurrentCodecFamily?: () => string | null
-  getSelectedCodecFamily?: () => string
-  setCodecFamily?: (codecFamily: string) => void
-}
 
 export interface PlayerOptions {
   autoplay?: boolean
@@ -260,6 +252,10 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
       : []
   )
 
+  const engineStreamAdapters = useDefaultPlugins
+    ? createDefaultStreamAdapterOptions({ enableHls, enableDash })
+    : { enableHls, enableDash }
+
   const engine = createPlayerEngine({
     autoplay,
     autoplayNext,
@@ -268,6 +264,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     loop,
     adapter,
     plugins: enginePlugins,
+    streamAdapters: engineStreamAdapters,
     onPlay,
     onPause,
     onEnded,
@@ -280,23 +277,21 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   })
 
   const syncCodecFamilies = (): void => {
-    const dashPlugin = engine.getPlugin<CodecController>('shaka-dash') || engine.getPlugin<CodecController>('dash')
-    if (!dashPlugin) {
+    // Codec-family UI reads the current stream adapter directly. HLS adapters
+    // don't expose codec families (the methods are optional on StreamAdapter),
+    // so they fall back to the empty/auto defaults — matching the old behavior
+    // where only the dash/shaka-dash plugins were consulted.
+    const adapter = engine.getStreamAdapter()
+    if (!adapter?.getAvailableCodecFamilies) {
       codecFamilies.value = []
       selectedCodecFamily.value = 'auto'
       currentCodecFamily.value = null
       return
     }
 
-    codecFamilies.value = typeof dashPlugin.getAvailableCodecFamilies === 'function'
-      ? dashPlugin.getAvailableCodecFamilies()
-      : []
-    selectedCodecFamily.value = typeof dashPlugin.getSelectedCodecFamily === 'function'
-      ? dashPlugin.getSelectedCodecFamily()
-      : 'auto'
-    currentCodecFamily.value = typeof dashPlugin.getCurrentCodecFamily === 'function'
-      ? dashPlugin.getCurrentCodecFamily()
-      : null
+    codecFamilies.value = adapter.getAvailableCodecFamilies()
+    selectedCodecFamily.value = adapter.getSelectedCodecFamily?.() ?? 'auto'
+    currentCodecFamily.value = adapter.getCurrentCodecFamily?.() ?? null
   }
 
   const updateStoreFromConfig = (cfg: UserConfig) => {
@@ -499,9 +494,9 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
   }
 
   const setCodecFamily = (codecFamily: string): void => {
-    const dashPlugin = engine.getPlugin<CodecController>('shaka-dash') || engine.getPlugin<CodecController>('dash')
-    if (dashPlugin && typeof dashPlugin.setCodecFamily === 'function') {
-      dashPlugin.setCodecFamily(codecFamily)
+    const adapter = engine.getStreamAdapter()
+    if (adapter?.setCodecFamily) {
+      adapter.setCodecFamily(codecFamily)
       syncCodecFamilies()
     }
   }

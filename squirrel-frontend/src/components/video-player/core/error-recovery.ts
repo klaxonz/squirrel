@@ -1,5 +1,5 @@
 import { EventEmitter } from './EventEmitter'
-import { PluginManager } from './PluginManager'
+import type { StreamAdapter } from './StreamAdapter'
 import type { IPlayerAdapter } from './PlayerAdapter'
 import type {
   MediaSource,
@@ -10,12 +10,6 @@ import type {
   QualityLevel,
 } from './types'
 import { type PlayerLogger } from './logger'
-
-// Structural view of a stream plugin used during recovery (only recoverPlayback
-// is invoked on it).
-interface StreamController {
-  recoverPlayback?: (error: PlayerError, context: PlaybackRecoveryContext) => PlaybackRecoveryAction | Promise<PlaybackRecoveryAction>
-}
 
 export const MAX_VOLUME = 200
 
@@ -48,7 +42,7 @@ export interface ErrorRecoveryDeps {
   getRetryDelay: () => number
   getEnableQualityFallback: () => boolean
   events: EventEmitter<PlayerEvents>
-  pluginManager: PluginManager
+  getStreamAdapter: () => StreamAdapter | null
   logger: PlayerLogger
   adapter: IPlayerAdapter
   onError?: (error: PlayerError) => void
@@ -162,13 +156,8 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
     return true
   }
 
-  const getStreamController = (): StreamController | null => {
-    const currentSource = deps.getCurrentSource()
-    const currentSourceType = deps.getCurrentSourceType()
-    const preferredDashPlugin = currentSource?.playbackEngine === 'shaka' ? 'shaka-dash' : 'dash'
-    if (currentSourceType === 'hls') return deps.pluginManager.get<StreamController>('hls')
-    if (currentSourceType === 'dash') return deps.pluginManager.get<StreamController>(preferredDashPlugin)
-    return deps.pluginManager.get<StreamController>('shaka-dash') || deps.pluginManager.get<StreamController>('dash') || deps.pluginManager.get<StreamController>('hls')
+  const getStreamController = (): StreamAdapter | null => {
+    return deps.getStreamAdapter()
   }
 
   const buildRecoveryContext = (): PlaybackRecoveryContext => ({
@@ -242,13 +231,12 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
     await new Promise((resolve) => setTimeout(resolve, deps.getRetryDelay()))
 
     const controller = getStreamController()
-    const recoveryAction: PlaybackRecoveryAction =
-      typeof controller?.recoverPlayback === 'function'
-        ? await controller.recoverPlayback(error, {
-            ...buildRecoveryContext(),
-            retryCount: deps.getRetryCount()
-          })
-        : 'reload-source'
+    const recoveryAction: PlaybackRecoveryAction = controller
+      ? await controller.recoverPlayback(error, {
+          ...buildRecoveryContext(),
+          retryCount: deps.getRetryCount()
+        })
+      : 'reload-source'
 
     if (recoveryAction === 'handled') {
       return true

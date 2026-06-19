@@ -1,10 +1,8 @@
 import type { PluginConfig } from './types'
 
 import { AnalyticsPlugin } from '../plugins/analytics'
-import { DashPlugin } from '../plugins/dash'
-import { HlsPlugin } from '../plugins/hls'
-import { ShakaDashPlugin } from '../plugins/shaka-dash'
 import { SubtitlesPlugin } from '../plugins/subtitles'
+import type { StreamAdapterOptions } from './engine-types'
 
 export type DefaultPluginsOptions = {
   enableHls?: boolean
@@ -13,24 +11,21 @@ export type DefaultPluginsOptions = {
   enableAnalytics?: boolean
 }
 
+/**
+ * The non-stream plugins the player registers by default.
+ *
+ * Stream technology (HLS / dashjs / shaka) is no longer carried here: the engine
+ * instantiates those adapters itself from `streamAdapters` (see docs/adr/0001).
+ * This helper now returns only Subtitles + Analytics, which are genuine
+ * lifecycle plugins driven by PluginManager's event forwarding.
+ */
 export const createDefaultPlayerPlugins = (options: DefaultPluginsOptions = {}): PluginConfig[] => {
   const {
-    enableHls = true,
-    enableDash = true,
     enableSubtitles = true,
     enableAnalytics = false
   } = options
 
   const plugins: PluginConfig[] = []
-
-  if (enableHls) {
-    plugins.push({ plugin: () => new HlsPlugin() })
-  }
-
-  if (enableDash) {
-    plugins.push({ plugin: () => new DashPlugin() })
-    plugins.push({ plugin: () => new ShakaDashPlugin() })
-  }
 
   if (enableSubtitles) {
     plugins.push({ plugin: () => new SubtitlesPlugin(), options: { autoLoad: false } })
@@ -41,4 +36,17 @@ export const createDefaultPlayerPlugins = (options: DefaultPluginsOptions = {}):
   }
 
   return plugins
+}
+
+/**
+ * The default stream-adapter configuration the engine uses. Mirrors the
+ * enableHls / enableDash toggles that used to live on the plugin list; the
+ * adapter option bags are left to the adapters' built-in defaults.
+ */
+export const createDefaultStreamAdapterOptions = (options: DefaultPluginsOptions = {}): StreamAdapterOptions => {
+  const { enableHls = true, enableDash = true } = options
+  return {
+    enableHls,
+    enableDash
+  }
 }
