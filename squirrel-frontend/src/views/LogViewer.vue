@@ -206,6 +206,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import { getLogFiles, queryLogs } from '@/api'
 import { Logger } from '@/utils/logger'
+import { useLogClipboard } from '@/composables/useLogClipboard'
 
 
 // 数据
@@ -214,8 +215,6 @@ const logFiles = ref([]);
 const totalLogs = ref(0);
 const loading = ref(false);
 const autoRefresh = ref(true);
-const copiedLogId = ref(null);
-const allCopied = ref(false);
 
 // 过滤条件
 const filters = ref({
@@ -245,8 +244,6 @@ const hasActiveFilters = computed(() => Boolean(filters.value.keyword || filters
 
 // 自动刷新定时器
 let refreshTimer = null;
-let copiedTimer = null;
-let allCopiedTimer = null;
 
 // 生命周期
 onMounted(() => {
@@ -331,90 +328,10 @@ function filterByTraceId(traceId) {
   applyFilters();
 }
 
-// 复制单条日志
-function copyLog(logItem) {
-  // 构建完整的日志文本
-  let logText = '';
-  
-  // 添加日志元信息
-  logText += `时间: ${logItem.timestamp}\n`;
-  if (logItem.trace_id) {
-    logText += `追踪编号: ${logItem.trace_id}\n`;
-  }
-  logText += `级别: ${logItem.level}\n`;
-  logText += `日志器: ${logItem.logger}\n`;
-  logText += `行号: ${logItem.line_num}\n`;
-  logText += `\n内容:\n${logItem.message}\n`;
-  
-  // 复制到剪贴板
-  navigator.clipboard.writeText(logText).then(() => {
-    // 显示复制成功状态
-    copiedLogId.value = logItem.id;
-    
-    // 清除之前的定时器
-    if (copiedTimer) {
-      clearTimeout(copiedTimer);
-    }
-    
-    // 2秒后清除复制状态
-    copiedTimer = setTimeout(() => {
-      copiedLogId.value = null;
-    }, 2000);
-  }).catch(err => {
-    Logger.error('Failed to copy log', err);
-    alert('复制失败，请手动复制');
-  });
-}
-
-// 复制所有日志
-function copyAllLogs() {
-  if (logs.value.length === 0) {
-    return;
-  }
-  
-  // 构建所有日志的文本
-  let allLogsText = `日志导出 - 共 ${logs.value.length} 条\n`;
-  allLogsText += `文件: ${filters.value.filename}\n`;
-  if (filters.value.keyword) {
-    allLogsText += `搜索: ${filters.value.keyword}\n`;
-  }
-  if (filters.value.level) {
-    allLogsText += `级别: ${filters.value.level}\n`;
-  }
-  allLogsText += `导出时间: ${new Date().toLocaleString()}\n`;
-  allLogsText += `${'='.repeat(80)}\n\n`;
-  
-  logs.value.forEach((logItem, index) => {
-    allLogsText += `[${index + 1}] `;
-    allLogsText += `${logItem.timestamp} `;
-    if (logItem.trace_id) {
-      allLogsText += `[${logItem.trace_id}] `;
-    }
-    allLogsText += `${logItem.level} `;
-    allLogsText += `${logItem.logger}: `;
-    allLogsText += `${logItem.message}\n`;
-    allLogsText += `${'-'.repeat(80)}\n`;
-  });
-  
-  // 复制到剪贴板
-  navigator.clipboard.writeText(allLogsText).then(() => {
-    // 显示复制成功状态
-    allCopied.value = true;
-    
-    // 清除之前的定时器
-    if (allCopiedTimer) {
-      clearTimeout(allCopiedTimer);
-    }
-    
-    // 2秒后清除复制状态
-    allCopiedTimer = setTimeout(() => {
-      allCopied.value = false;
-    }, 2000);
-  }).catch(err => {
-    Logger.error('Failed to copy logs', err);
-    alert('复制失败，请手动复制');
-  });
-}
+// ponytail: clipboard formatting + write (single entry and whole filtered
+// list) lives in useLogClipboard; injected logs + filters are read-only. The
+// returned allCopied flag drives the toolbar's success label.
+const { allCopied, copyLog, copyAllLogs } = useLogClipboard({ logs, filters });
 
 // 切换自动刷新
 function toggleAutoRefresh() {

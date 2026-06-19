@@ -155,6 +155,22 @@ win-win of smaller parent + self-contained child.
   already. Extracting them would thread the shared `showSaveToast` + the
   composable refs back in — net-neutral until the toast is also extracted.
 
+### Phase 4 (cont. 2) — `LogViewer.vue` clipboard extraction + dead-code drop
+
+`LogViewer.vue` (was 546 lines, JS) is a single cohesive view (no tabs/dialogs),
+so the lever is a self-contained **subsystem**: the clipboard export logic.
+
+- Deleted dead code first: `copiedLogId` + `copiedTimer` were written but never
+  read — a leftover single-row copy-success flag that never wired into the UI.
+  Removed the ref, the timer, and the two assignments (~17 lines).
+- `composables/useLogClipboard.ts` (new, 95 lines, TS): formats a single entry
+  or the whole filtered list as text, writes to the clipboard, and surfaces a
+  transient `allCopied` flag the toolbar binds to. Injects `logs` + `filters`
+  read-only.
+- `LogViewer.vue`: 546 → **463** lines (-83). Stays JS — the view's
+  untyped log-entry shape would make a standalone `lang='ts'` conversion an
+  annotation flood; the composable is TS (new file) and carries the types.
+
 ## Deliberate decisions (defend the choice, don't hide it)
 
 ### Why `createPlayerEngine.ts` stays a single 991-line module
@@ -233,6 +249,8 @@ instantiated with a typed Events map (`EventEmitter<PlayerEvents>`), so the
 | `components/rss/AccountEditDialog.vue` | — | 230 | New (RSS account add/edit dialog). |
 | `Settings.vue` | 617 | 495 | Security tab extracted. |
 | `components/settings/SecuritySettings.vue` | — | 138 | New (password + session-revoke tab). |
+| `LogViewer.vue` | 546 | 463 | Clipboard extracted + dead code dropped. |
+| `composables/useLogClipboard.ts` | — | 95 | New (log clipboard export). |
 
 ¹ The earlier draft of this table listed `2750 → 2407`; that was aspirational.
 `git show 8c7ef66d:squirrel-frontend/.../VideoPlayer.vue` is 2708 lines. The
@@ -258,7 +276,7 @@ corrected baseline is used here.
 - Phase 4 remainder: `RssSources.vue` Subscribe-feed dialog (needs ref
   bridging) + `Settings.vue` appearance/content/playback/system/server tabs
   (bound to shared user-settings/theme/server composables) /
-  `ScheduledTasks` (572) / `PlaylistView` (509) / `LogViewer` (546) splits.
+  `ScheduledTasks` (572) / `PlaylistView` (509) splits.
 - Phase 5: `Music` (843) / `VideoPlay` (724) / `Subscribed` (755) splits +
   remote-seed dedup.
 
