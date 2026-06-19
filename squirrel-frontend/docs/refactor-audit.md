@@ -171,6 +171,27 @@ so the lever is a self-contained **subsystem**: the clipboard export logic.
   untyped log-entry shape would make a standalone `lang='ts'` conversion an
   annotation flood; the composable is TS (new file) and carries the types.
 
+### Phase 4 (cont. 3) — `ScheduledTasks` / `PlaylistView` ConfirmDialog dedup
+
+Both views shipped the same hand-rolled confirmation modal (icon + title +
+description + cancel/confirm footer) — `ScheduledTasks` had two (delete +
+execute), `PlaylistView` had one (delete). Same layout, only icon/color/labels
+differ.
+
+- `components/dialogs/ConfirmDialog.vue` (new, 54 lines, TS): a generic
+  parameterized confirm modal — `icon` / `iconBgClass` / `iconClass` (optional,
+  e.g. `fill-current` for the play glyph) / `title` / `confirmLabel` /
+  `confirmVariant` / `open` (defineModel). The description is a plain prop or a
+  `#description` slot (for inline-styled task/playlist names).
+- `ScheduledTasks.vue`: 572 → **559** lines (-13); dropped the now-unused
+  `Dialog` / `DialogContent` / `DialogHeader` / `DialogTitle` /
+  `DialogDescription` / `DialogFooter` imports (the two confirmations were the
+  only inline `Dialog` uses).
+- `PlaylistView.vue`: 509 → **507** lines (-2; small line delta but the real
+  win is cross-file dedup — the same modal no longer exists in two places).
+  Dropped the unused `DialogDescription` import (the remaining editor dialog
+  has no description).
+
 ## Deliberate decisions (defend the choice, don't hide it)
 
 ### Why `createPlayerEngine.ts` stays a single 991-line module
@@ -251,6 +272,9 @@ instantiated with a typed Events map (`EventEmitter<PlayerEvents>`), so the
 | `components/settings/SecuritySettings.vue` | — | 138 | New (password + session-revoke tab). |
 | `LogViewer.vue` | 546 | 463 | Clipboard extracted + dead code dropped. |
 | `composables/useLogClipboard.ts` | — | 95 | New (log clipboard export). |
+| `ScheduledTasks.vue` | 572 | 559 | 2 confirm dialogs → ConfirmDialog. |
+| `PlaylistView.vue` | 509 | 507 | Delete confirm → ConfirmDialog. |
+| `components/dialogs/ConfirmDialog.vue` | — | 54 | New (generic confirm modal). |
 
 ¹ The earlier draft of this table listed `2750 → 2407`; that was aspirational.
 `git show 8c7ef66d:squirrel-frontend/.../VideoPlayer.vue` is 2708 lines. The
@@ -275,8 +299,7 @@ corrected baseline is used here.
   the `lang='ts'` conversion (best done per-cluster as each is extracted).
 - Phase 4 remainder: `RssSources.vue` Subscribe-feed dialog (needs ref
   bridging) + `Settings.vue` appearance/content/playback/system/server tabs
-  (bound to shared user-settings/theme/server composables) /
-  `ScheduledTasks` (572) / `PlaylistView` (509) splits.
+  (bound to shared user-settings/theme/server composables).
 - Phase 5: `Music` (843) / `VideoPlay` (724) / `Subscribed` (755) splits +
   remote-seed dedup.
 

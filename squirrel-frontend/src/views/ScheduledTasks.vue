@@ -224,41 +224,35 @@
         @save="handleUpdateTask"
       />
 
-      <Dialog v-model:open="showDeleteDialog">
-        <DialogContent class="max-w-sm overflow-hidden rounded-lg p-0">
-          <DialogHeader class="border-b border-border/50 p-5 text-left">
-            <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-destructive/10 text-destructive">
-              <AppIcon name="trash" class="h-5 w-5" />
-            </div>
-            <DialogTitle class="text-base font-semibold">删除任务？</DialogTitle>
-            <DialogDescription class="text-sm leading-relaxed text-muted-foreground">
-              确定要删除任务 <span class="font-semibold text-foreground">"{{ deletingTask?.name }}"</span> 吗？此操作将停止调度并清除任务记录。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter class="gap-2 bg-muted/30 p-4">
-            <Button variant="outline" class="h-9 rounded-md" @click="showDeleteDialog = false">取消</Button>
-            <Button variant="destructive" class="h-9 rounded-md" @click="doDeleteTask">确认删除</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        v-model:open="showDeleteDialog"
+        icon="trash"
+        icon-bg-class="bg-destructive/10 text-destructive"
+        title="删除任务？"
+        cancel-label="取消"
+        confirm-label="确认删除"
+        confirm-variant="destructive"
+        @confirm="doDeleteTask"
+      >
+        <template #description>
+          确定要删除任务 <span class="font-semibold text-foreground">"{{ deletingTask?.name }}"</span> 吗？此操作将停止调度并清除任务记录。
+        </template>
+      </ConfirmDialog>
 
-      <Dialog v-model:open="showExecuteDialog">
-        <DialogContent class="max-w-sm overflow-hidden rounded-lg p-0">
-          <DialogHeader class="border-b border-border/50 p-5 text-left">
-            <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <AppIcon name="play" class="h-5 w-5 fill-current" />
-            </div>
-            <DialogTitle class="text-base font-semibold">立即触发任务？</DialogTitle>
-            <DialogDescription class="text-sm leading-relaxed text-muted-foreground">
-              任务 <span class="font-semibold text-foreground">"{{ executingTask?.name }}"</span> 将立即进入执行队列。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter class="gap-2 bg-muted/30 p-4">
-            <Button variant="outline" class="h-9 rounded-md" @click="showExecuteDialog = false">取消</Button>
-            <Button class="h-9 rounded-md" @click="doExecuteTask">开始执行</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        v-model:open="showExecuteDialog"
+        icon="play"
+        icon-bg-class="bg-primary/10 text-primary"
+        icon-class="fill-current"
+        title="立即触发任务？"
+        cancel-label="取消"
+        confirm-label="开始执行"
+        @confirm="doExecuteTask"
+      >
+        <template #description>
+          任务 <span class="font-semibold text-foreground">"{{ executingTask?.name }}"</span> 将立即进入执行队列。
+        </template>
+      </ConfirmDialog>
 
       <Transition name="toast">
         <div v-if="toast.visible" class="fixed bottom-6 right-6 z-50">
@@ -278,6 +272,7 @@ import { computed, ref, onMounted } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import TaskDialog from '@/components/dialogs/TaskDialog.vue'
+import ConfirmDialog from '@/components/dialogs/ConfirmDialog.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -287,14 +282,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { useDebounceFn } from '@vueuse/core'
 import { Logger } from '@/utils/logger'
 import {

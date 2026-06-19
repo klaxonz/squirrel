@@ -227,23 +227,21 @@
       </main>
     </div>
 
-    <Dialog :open="showDeleteConfirm" @update:open="handleDeleteConfirmOpenChange">
-      <DialogContent class="max-w-sm overflow-hidden rounded-lg p-0">
-        <DialogHeader class="border-b border-border/50 p-5 text-left">
-          <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-destructive/10 text-destructive">
-            <AppIcon name="trash" class="h-5 w-5" />
-          </div>
-          <DialogTitle class="text-base font-semibold">删除播放列表？</DialogTitle>
-          <DialogDescription class="text-sm leading-relaxed text-muted-foreground">
-            {{ deleteTargetPlaylist ? `确定要删除 "${deleteTargetPlaylist.name}" 吗？此操作不会删除视频本身。` : '确定要删除这个播放列表吗？' }}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter class="gap-2 bg-muted/30 p-4">
-          <Button variant="outline" class="h-9 rounded-md" @click="closeDeleteConfirm">取消</Button>
-          <Button variant="destructive" class="h-9 rounded-md" @click="confirmDelete">确认删除</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <ConfirmDialog
+      :open="showDeleteConfirm"
+      icon="trash"
+      icon-bg-class="bg-destructive/10 text-destructive"
+      title="删除播放列表？"
+      cancel-label="取消"
+      confirm-label="确认删除"
+      confirm-variant="destructive"
+      @update:open="handleDeleteConfirmOpenChange"
+      @confirm="confirmDelete"
+    >
+      <template #description>
+        {{ deleteTargetPlaylist ? `确定要删除 "${deleteTargetPlaylist.name}" 吗？此操作不会删除视频本身。` : '确定要删除这个播放列表吗？' }}
+      </template>
+    </ConfirmDialog>
 
     <Dialog :open="editorOpen" @update:open="handleEditorOpenChange">
       <DialogContent class="max-w-sm overflow-hidden rounded-lg p-0">
@@ -277,11 +275,11 @@ import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import AppPageShell from '@/components/layout/AppPageShell.vue'
 import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
+import ConfirmDialog from '@/components/dialogs/ConfirmDialog.vue'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
