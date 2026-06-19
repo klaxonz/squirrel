@@ -2,8 +2,12 @@
   <div
     class="group flex cursor-pointer"
     :class="[layout === 'list' ? 'flex-row gap-4' : 'flex-col gap-2.5']"
+    role="button"
+    tabindex="0"
     @contextmenu.prevent="showContextMenu"
     @click="handleClick"
+    @keydown.enter.prevent="handleClick"
+    @keydown.space.prevent="handleClick"
   >
     <!-- Thumbnail Container -->
     <div :class="[

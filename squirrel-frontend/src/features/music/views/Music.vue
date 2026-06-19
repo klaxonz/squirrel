@@ -282,11 +282,13 @@ import {
 } from '@/shared/api/music'
 import { useMusicQrLogin } from '@/features/music/composables/useMusicQrLogin'
 import { Logger } from '@/shared/lib/logger'
+import { useToast } from '@/shared/components/toast/useToast'
 
 const route = useRoute()
 const uiStore = useUIStore()
 const playerStore = useMusicPlayerStore()
 const appNavigation = useNavigationHistory()
+const toast = useToast()
 
 const {
   activeView,
@@ -515,9 +517,21 @@ async function handleSearch(query: string) {
   }
   searchQuery.value = normalizedQuery
   searchLoading.value = true
-  const { data } = await searchMusicComplex(normalizedQuery)
-  searchLoading.value = false
-  complexResult.value = data || { songs: [], artists: [], albums: [] }
+  try {
+    const { data, error } = await searchMusicComplex(normalizedQuery)
+    if (error) {
+      Logger.warn('handleSearch failed', error)
+      toast.error('搜索失败，请稍后重试')
+      complexResult.value = { songs: [], artists: [], albums: [] }
+      return
+    }
+    complexResult.value = data || { songs: [], artists: [], albums: [] }
+  } catch (err) {
+    Logger.warn('handleSearch threw', err)
+    toast.error('搜索失败，请稍后重试')
+  } finally {
+    searchLoading.value = false
+  }
 }
 
 function resetSearch() {
@@ -630,9 +644,17 @@ async function handleLoadMoreTracks() {
 
 async function handleCollectPlaylist() {
   if (!selectedPlaylist.value?.id) return
-  const { error } = await collectMusicPlaylist(selectedPlaylist.value.id)
-  if (!error) {
+  try {
+    const { error } = await collectMusicPlaylist(selectedPlaylist.value.id)
+    if (error) {
+      Logger.warn('handleCollectPlaylist failed', error)
+      toast.error('收藏歌单失败')
+      return
+    }
     playlistCollected.value = true
+  } catch (err) {
+    Logger.warn('handleCollectPlaylist threw', err)
+    toast.error('收藏歌单失败')
   }
 }
 
@@ -666,16 +688,31 @@ async function handleAddToPlaylist(track: MusicTrack) {
 
 async function handlePlayMv(track: MusicTrack) {
   if (!track.album_audio_id) return
-  const { data: mvData } = await getMusicTrackMv(track.album_audio_id)
-  const mv = mvData?.items?.[0]
-  if (!mv?.id) return
+  try {
+    const { data: mvData, error: mvError } = await getMusicTrackMv(track.album_audio_id)
+    if (mvError) {
+      Logger.warn('handlePlayMv: getMusicTrackMv failed', mvError)
+      toast.error('MV 信息获取失败')
+      return
+    }
+    const mv = mvData?.items?.[0]
+    if (!mv?.id) return
 
-  videoTitle.value = `${track.title} - ${track.artist}`
-  videoModalVisible.value = true
-  videoUrl.value = ''
+    videoTitle.value = `${track.title} - ${track.artist}`
+    videoModalVisible.value = true
+    videoUrl.value = ''
 
-  const { data: urlData } = await getMusicVideoUrl(mv.id)
-  videoUrl.value = urlData?.url || ''
+    const { data: urlData, error: urlError } = await getMusicVideoUrl(mv.id)
+    if (urlError) {
+      Logger.warn('handlePlayMv: getMusicVideoUrl failed', urlError)
+      toast.error('MV 播放地址获取失败')
+      return
+    }
+    videoUrl.value = urlData?.url || ''
+  } catch (err) {
+    Logger.warn('handlePlayMv threw', err)
+    toast.error('MV 播放失败，请稍后重试')
+  }
 }
 
 function handlePlayArtistVideo(video: { id: string; name: string }) {
@@ -683,9 +720,19 @@ function handlePlayArtistVideo(video: { id: string; name: string }) {
   videoModalVisible.value = true
   videoUrl.value = ''
 
-  getMusicVideoUrl(video.id).then(({ data }) => {
-    videoUrl.value = data?.url || ''
-  })
+  getMusicVideoUrl(video.id)
+    .then(({ data, error }) => {
+      if (error) {
+        Logger.warn('handlePlayArtistVideo failed', error)
+        toast.error('MV 播放地址获取失败')
+        return
+      }
+      videoUrl.value = data?.url || ''
+    })
+    .catch((err) => {
+      Logger.warn('handlePlayArtistVideo threw', err)
+      toast.error('MV 播放失败，请稍后重试')
+    })
 }
 
 function handleCloseVideoModal() {
@@ -699,17 +746,37 @@ function handleSelectRelated(track: MusicTrack) {
 
 async function handleSelectArtistFromTrack(track: MusicTrack) {
   if (!track.artist_id) return
-  const { data } = await getMusicArtistDetail(track.artist_id)
-  if (data) {
-    handleSelectArtistDetail(data)
+  try {
+    const { data, error } = await getMusicArtistDetail(track.artist_id)
+    if (error) {
+      Logger.warn('handleSelectArtistFromTrack failed', error)
+      toast.error('歌手信息获取失败')
+      return
+    }
+    if (data) {
+      handleSelectArtistDetail(data)
+    }
+  } catch (err) {
+    Logger.warn('handleSelectArtistFromTrack threw', err)
+    toast.error('歌手信息获取失败')
   }
 }
 
 async function handleSelectAlbumFromTrack(track: MusicTrack) {
   if (!track.album_id) return
-  const { data } = await getMusicAlbumDetail(track.album_id)
-  if (data) {
-    handleSelectAlbum(data)
+  try {
+    const { data, error } = await getMusicAlbumDetail(track.album_id)
+    if (error) {
+      Logger.warn('handleSelectAlbumFromTrack failed', error)
+      toast.error('专辑信息获取失败')
+      return
+    }
+    if (data) {
+      handleSelectAlbum(data)
+    }
+  } catch (err) {
+    Logger.warn('handleSelectAlbumFromTrack threw', err)
+    toast.error('专辑信息获取失败')
   }
 }
 

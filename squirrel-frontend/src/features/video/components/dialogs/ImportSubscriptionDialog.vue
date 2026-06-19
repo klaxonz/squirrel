@@ -189,7 +189,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import {
   getSupportedImportSites,
@@ -390,8 +390,14 @@ const handleClose = () => {
   if (step.value === 3 && importResult.value.total > 0) {
     emit('imported')
   }
-  setTimeout(resetState, 200)
+  clearTimeout(resetTimer)
+  resetTimer = setTimeout(resetState, 200)
 }
+
+let resetTimer = null
+onUnmounted(() => {
+  if (resetTimer) clearTimeout(resetTimer)
+})
 
 const handleOpenChange = (open) => {
   if (!open) {

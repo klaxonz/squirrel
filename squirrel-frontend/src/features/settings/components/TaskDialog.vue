@@ -1,26 +1,29 @@
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
-    <div class="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-lg border border-border/50 bg-background shadow-lg">
-      <div class="flex shrink-0 items-start justify-between border-b border-border/50 p-5">
+  <Dialog :open="true" @update:open="!$event && $emit('close')">
+    <DialogContent class="flex max-h-[90vh] w-full max-w-xl flex-col gap-0 overflow-hidden rounded-lg border-border/50 p-0">
+      <DialogHeader class="flex shrink-0 flex-row items-start justify-between space-y-0 border-b border-border/50 p-5 text-left">
         <div class="min-w-0">
-          <h2 class="text-base font-semibold text-foreground">
+          <DialogTitle class="text-base font-semibold text-foreground">
             {{ isEditing ? '编辑任务' : '新建任务' }}
-          </h2>
-          <p class="mt-1 text-sm text-muted-foreground">
+          </DialogTitle>
+          <DialogDescription class="mt-1 text-sm text-muted-foreground">
             配置任务逻辑、调度间隔和运行参数。
-          </p>
+          </DialogDescription>
         </div>
-        <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" @click="$emit('close')">
-          <AppIcon name="close" class="h-4 w-4" />
-        </Button>
-      </div>
+        <DialogClose as-child>
+          <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md">
+            <AppIcon name="close" class="h-4 w-4" />
+          </Button>
+        </DialogClose>
+      </DialogHeader>
 
       <div class="flex-1 overflow-y-auto custom-scrollbar">
         <form class="space-y-6 p-5" @submit.prevent="handleSubmit">
           <section class="space-y-4">
             <div class="space-y-2">
-              <label class="text-xs font-medium text-muted-foreground">任务名称</label>
+              <label class="text-xs font-medium text-muted-foreground" for="task-dialog-name">任务名称</label>
               <Input
+                id="task-dialog-name"
                 v-model="formData.name"
                 required
                 placeholder="输入任务名称"
@@ -55,8 +58,9 @@
             </div>
 
             <div class="space-y-2">
-              <label class="text-xs font-medium text-muted-foreground">描述</label>
+              <label class="text-xs font-medium text-muted-foreground" for="task-dialog-desc">描述</label>
               <Textarea
+                id="task-dialog-desc"
                 v-model="formData.description"
                 placeholder="简要说明任务用途"
                 class="min-h-20 rounded-md border-border/50 text-sm shadow-none"
@@ -67,8 +71,9 @@
           <section class="space-y-4 border-t border-border/50 pt-5">
             <div class="grid gap-4 md:grid-cols-3">
             <div class="space-y-2">
-              <label class="text-xs font-medium text-muted-foreground">执行间隔</label>
+              <label class="text-xs font-medium text-muted-foreground" for="task-dialog-interval">执行间隔</label>
               <Input
+                id="task-dialog-interval"
                 v-model.number="formData.interval"
                 type="number"
                 min="1"
@@ -90,8 +95,9 @@
               </Select>
             </div>
             <div class="space-y-2">
-              <label class="text-xs font-medium text-muted-foreground">最大重试</label>
+              <label class="text-xs font-medium text-muted-foreground" for="task-dialog-retries">最大重试</label>
               <Input
+                id="task-dialog-retries"
                 v-model.number="formData.max_retries"
                 type="number"
                 min="0"
@@ -113,9 +119,10 @@
           </section>
 
           <section class="space-y-2 border-t border-border/50 pt-5">
-            <label class="text-xs font-medium text-muted-foreground">任务参数</label>
+            <label class="text-xs font-medium text-muted-foreground" for="task-dialog-params">任务参数</label>
             <div class="relative">
               <Textarea
+                id="task-dialog-params"
                 v-model="taskParamsJson"
                 rows="5"
                 class="font-mono rounded-md border-border/50 bg-muted/30 px-4 py-3 text-xs text-foreground shadow-none"
@@ -130,14 +137,14 @@
         </form>
       </div>
 
-      <div class="flex shrink-0 items-center justify-end gap-2 border-t border-border/50 bg-muted/30 p-4">
+      <DialogFooter class="flex shrink-0 items-center justify-end gap-2 border-t border-border/50 bg-muted/30 p-4 sm:justify-end">
         <Button variant="outline" class="h-9 rounded-md" @click="$emit('close')">取消</Button>
         <Button class="h-9 rounded-md" :loading="loading" :disabled="!!jsonError" @click="handleSubmit">
           {{ isEditing ? '保存' : '创建' }}
         </Button>
-      </div>
-    </div>
-  </div>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>
 
 <script setup>
@@ -147,6 +154,15 @@ import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Textarea } from '@/shared/ui/textarea'
 import { Switch } from '@/shared/ui/switch'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/ui/dialog'
 import {
   Select,
   SelectContent,

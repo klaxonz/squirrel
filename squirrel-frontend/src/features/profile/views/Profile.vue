@@ -12,7 +12,7 @@
           <img
             v-if="form.avatar && !avatarError"
             :src="form.avatar"
-            alt=""
+            :alt="form.nickname ? `${form.nickname}的头像` : '用户头像'"
             class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
           <div 
@@ -95,7 +95,7 @@
                 <div class="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-border/30 bg-muted shadow-inner">
                   <img
                     :src="form.avatar"
-                    alt=""
+                    :alt="form.nickname ? `${form.nickname}的头像` : '用户头像'"
                     class="h-full w-full object-cover"
                     @error="avatarError = true"
                     @load="avatarError = false"
@@ -176,7 +176,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Logger } from '@/shared/lib/logger'
 import AppIcon from '@/shared/icons/AppIcon.vue'
@@ -196,6 +196,10 @@ const form = reactive({
 const saving = ref(false)
 const saved = ref(false)
 const saveError = ref('')
+let savedTimer: ReturnType<typeof setTimeout> | null = null
+onUnmounted(() => {
+  if (savedTimer) clearTimeout(savedTimer)
+})
 const avatarError = ref(false)
 // ponytail: shadcn Input wrapper exposes its inner <input> via $el.querySelector;
 // minimal structural type avoids importing the generated ui component type.
@@ -265,7 +269,8 @@ const handleSave = async () => {
     saveError.value = result.error.message || '保存失败'
   } else {
     saved.value = true
-    setTimeout(() => { saved.value = false }, 3000)
+    if (savedTimer) clearTimeout(savedTimer)
+    savedTimer = setTimeout(() => { saved.value = false }, 3000)
   }
 }
 

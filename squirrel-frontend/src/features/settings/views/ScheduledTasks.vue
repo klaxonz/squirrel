@@ -250,7 +250,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
@@ -380,11 +380,17 @@ const doExecuteTask = async () => {
   const result = await apiExecuteTaskNow(executingTask.value.id)
   if (!result.error) {
     toast.success(`任务「${executingTask.value.name}」已开始执行`)
-    setTimeout(() => refreshData(), 800)
+    clearTimeout(refreshTimer)
+    refreshTimer = setTimeout(() => refreshData(), 800)
   } else {
     toast.error('执行失败')
   }
 }
+
+let refreshTimer = null
+onUnmounted(() => {
+  if (refreshTimer) clearTimeout(refreshTimer)
+})
 
 const editTask = (task) => {
   editingTask.value = task

@@ -78,7 +78,7 @@
       <div v-else class="music-mini">
         <button class="music-mini-track" title="打开沉浸播放" @click="openImmersive">
           <div class="music-mini-cover">
-            <img v-if="store.currentTrack.cover" :src="store.currentTrack.cover" alt="" />
+            <img v-if="store.currentTrack.cover" :src="store.currentTrack.cover" :alt="store.currentTrack.title || '封面'" />
             <AppIcon v-else name="playlistMusic" class="h-4 w-4" />
           </div>
           <div class="music-mini-text">

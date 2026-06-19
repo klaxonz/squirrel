@@ -2,15 +2,25 @@
   <div class="music-discovery-grid">
     <h3 class="text-sm font-semibold mb-3">新碟上架</h3>
     <AppBlockLoader v-if="loading" />
+    <AppEmptyState
+      v-else-if="albums.length === 0"
+      variant="plain"
+      icon="disc"
+      title="暂无专辑"
+    />
     <div v-else class="music-grid">
       <div
         v-for="album in albums"
         :key="album.id"
         class="music-grid-card"
+        role="button"
+        tabindex="0"
         @click="$emit('select', album)"
+        @keydown.enter.prevent="$emit('select', album)"
+        @keydown.space.prevent="$emit('select', album)"
       >
         <div class="music-source-cover-wrap">
-          <img v-if="album.cover" :src="album.cover" alt="" class="music-source-cover" />
+          <img v-if="album.cover" :src="album.cover" :alt="album.name" class="music-source-cover" />
           <div v-else class="music-source-cover">
             <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
           </div>
@@ -34,6 +44,7 @@
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import type { MusicAlbum } from '@/shared/api/music'
 
 defineProps<{

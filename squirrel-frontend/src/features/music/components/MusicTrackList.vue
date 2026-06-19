@@ -39,6 +39,13 @@
       <span class="music-track-col music-track-col--duration">时长</span>
     </header>
 
+    <AppBlockLoader v-if="loading && tracks.length === 0" />
+    <AppEmptyState
+      v-else-if="tracks.length === 0"
+      variant="plain"
+      icon="playlistMusic"
+      title="暂无歌曲"
+    />
     <article
       v-for="(track, index) in tracks"
       :key="track.hash || index"
@@ -139,15 +146,19 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import type { MusicTrack } from '@/shared/api/music'
 
 const props = withDefaults(defineProps<{
   tracks: MusicTrack[]
+  loading?: boolean
   showMv?: boolean
   showRelated?: boolean
   showAddToPlaylist?: boolean
 }>(), {
+  loading: false,
   showMv: true,
   showRelated: true,
   showAddToPlaylist: true,

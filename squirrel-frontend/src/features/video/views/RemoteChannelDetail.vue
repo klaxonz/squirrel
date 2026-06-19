@@ -4,9 +4,9 @@
       <div v-if="errorMessage" class="px-6 pt-6">
         <div class="flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 p-4">
           <p class="text-sm font-medium text-destructive">{{ errorMessage }}</p>
-          <button class="rounded-lg bg-destructive px-4 py-2 text-xs font-bold uppercase tracking-widest text-white" @click="refresh">
+          <Button variant="destructive" size="sm" @click="refresh">
             重试
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -116,6 +116,7 @@ import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.v
 import VideoSkeleton from '@/features/video/components/feed/VideoSkeleton.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import { Button } from '@/shared/ui/button'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { useSkeletonCount, type GridBreakpoint } from '@/features/video/composables/useSkeletonCount'
 import { formatDuration } from '@/shared/lib/dateFormat'

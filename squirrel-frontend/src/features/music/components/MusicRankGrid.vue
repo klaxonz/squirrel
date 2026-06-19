@@ -14,7 +14,7 @@
         class="music-rank-featured-card"
         @click="$emit('select', rank)"
       >
-        <img v-if="rank.cover" :src="rank.cover" alt="" class="music-rank-featured-cover" />
+        <img v-if="rank.cover" :src="rank.cover" :alt="rank.name || '榜单封面'" class="music-rank-featured-cover" />
         <div v-else class="music-rank-featured-cover">
           <AppIcon name="playlistMusic" class="h-7 w-7 text-muted-foreground" />
         </div>
@@ -42,7 +42,7 @@
           @click="$emit('select', rank)"
         >
           <div class="music-source-cover-wrap">
-            <img v-if="rank.cover" :src="rank.cover" alt="" class="music-source-cover" />
+            <img v-if="rank.cover" :src="rank.cover" :alt="rank.name || '榜单封面'" class="music-source-cover" />
             <div v-else class="music-source-cover">
               <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
             </div>

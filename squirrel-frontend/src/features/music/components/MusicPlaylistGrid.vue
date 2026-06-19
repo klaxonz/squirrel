@@ -19,15 +19,26 @@
         {{ tag.name }}
       </button>
     </div>
-    <div class="music-grid">
+    <AppBlockLoader v-if="loading" />
+    <AppEmptyState
+      v-else-if="playlists.length === 0"
+      variant="plain"
+      icon="playlistMusic"
+      title="暂无歌单"
+    />
+    <div v-else class="music-grid">
       <div
         v-for="playlist in playlists"
         :key="playlist.id"
         class="music-grid-card"
+        role="button"
+        tabindex="0"
         @click="$emit('select', playlist)"
+        @keydown.enter.prevent="$emit('select', playlist)"
+        @keydown.space.prevent="$emit('select', playlist)"
       >
         <div class="music-source-cover-wrap">
-          <img v-if="playlist.cover" :src="playlist.cover" alt="" class="music-source-cover" />
+          <img v-if="playlist.cover" :src="playlist.cover" :alt="playlist.name" class="music-source-cover" />
           <div v-else class="music-source-cover">
             <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
           </div>
@@ -50,6 +61,8 @@
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
+import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import type { MusicPlaylist, MusicPlaylistTag } from '@/shared/api/music'
 
 defineProps<{

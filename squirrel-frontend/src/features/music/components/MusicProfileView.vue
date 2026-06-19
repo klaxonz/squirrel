@@ -6,7 +6,8 @@
       v-else-if="error && !profile"
       variant="plain"
       icon="warning"
-      :title="error"
+      title="加载失败"
+      :copy="error"
     >
       <template #actions>
         <Button class="h-8 rounded-md px-3 text-xs" @click="$emit('retry')">
@@ -23,7 +24,7 @@
       <header class="music-profile-banner">
         <div class="music-profile-banner-glass">
           <div class="music-profile-avatar-wrap">
-            <img v-if="profile.avatar" :src="profile.avatar" alt="" class="music-profile-avatar" />
+            <img v-if="profile.avatar" :src="profile.avatar" :alt="profile.nickname ? `${profile.nickname}的头像` : '用户头像'" class="music-profile-avatar" />
             <div v-else class="music-profile-avatar-fallback">
               <AppIcon name="user" class="h-10 w-10 text-primary" />
             </div>
@@ -65,33 +66,25 @@
         </div>
       </header>
       
-      <div class="music-profile-tabs-wrapper">
-        <div class="music-profile-tabs">
-          <button 
-            class="music-profile-tab-btn" 
-            :class="{ 'active': activeTab === 'playlists' }"
-            @click="activeTab = 'playlists'"
-          >
+      <Tabs
+        :value="activeTab"
+        class="music-profile-tabs-wrapper"
+        @update:value="activeTab = $event as 'playlists' | 'history' | 'rank'"
+      >
+        <TabsList class="music-profile-tabs-list">
+          <TabsTrigger value="playlists" class="music-profile-tab-btn" :class="{ 'active': activeTab === 'playlists' }">
             <span>我的歌单</span>
-          </button>
-          <button 
-            class="music-profile-tab-btn" 
-            :class="{ 'active': activeTab === 'history' }"
-            @click="activeTab = 'history'"
-          >
+          </TabsTrigger>
+          <TabsTrigger value="history" class="music-profile-tab-btn" :class="{ 'active': activeTab === 'history' }">
             <span>最近播放</span>
-          </button>
-          <button 
-            class="music-profile-tab-btn" 
-            :class="{ 'active': activeTab === 'rank' }"
-            @click="activeTab = 'rank'"
-          >
+          </TabsTrigger>
+          <TabsTrigger value="rank" class="music-profile-tab-btn" :class="{ 'active': activeTab === 'rank' }">
             <span>听歌排行</span>
-          </button>
-        </div>
-        
+          </TabsTrigger>
+        </TabsList>
+
         <div class="music-profile-tab-actions">
-          <button 
+          <button
             v-if="activeTab !== 'playlists' && currentProfileTracks.length > 0"
             class="music-chip music-chip--primary"
             @click="$emit('play-all-profile', false)"
@@ -99,38 +92,41 @@
             <AppIcon name="play" class="h-3.5 w-3.5" />
             播放全部
           </button>
-          
+
           <div v-if="activeTab === 'rank'" class="music-profile-rank-pills">
-            <button 
+            <button
               class="music-profile-rank-pill"
               :class="{ 'active': rankType === 0 }"
               @click="$emit('toggle-rank-type', 0)"
             >最近一周</button>
-            <button 
+            <button
               class="music-profile-rank-pill"
               :class="{ 'active': rankType === 1 }"
               @click="$emit('toggle-rank-type', 1)"
             >全部累计</button>
           </div>
         </div>
-      </div>
       
       <div class="music-profile-panel">
-        <div v-if="activeTab === 'playlists'" class="music-profile-playlists">
+        <TabsContent value="playlists" class="music-profile-playlists">
           <div class="music-profile-playlist-section">
             <h3 class="music-profile-section-title">创建的歌单 ({{ createdPlaylists.length }})</h3>
             <div v-if="createdPlaylists.length === 0" class="music-profile-playlist-empty">
               暂无自建歌单，您可以在顶部创建歌单
             </div>
             <div v-else class="music-grid">
-              <div 
-                v-for="playlist in createdPlaylists" 
-                :key="playlist.id" 
+              <div
+                v-for="playlist in createdPlaylists"
+                :key="playlist.id"
                 class="music-grid-card"
+                role="button"
+                tabindex="0"
                 @click="$emit('select-playlist', playlist)"
+                @keydown.enter.prevent="$emit('select-playlist', playlist)"
+                @keydown.space.prevent="$emit('select-playlist', playlist)"
               >
                 <div class="music-source-cover-wrap">
-                  <img v-if="playlist.cover" :src="playlist.cover" alt="" class="music-source-cover" />
+                  <img v-if="playlist.cover" :src="playlist.cover" :alt="playlist.name" class="music-source-cover" />
                   <div v-else class="music-source-cover">
                     <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
                   </div>
@@ -143,21 +139,25 @@
               </div>
             </div>
           </div>
-          
+
           <div class="music-profile-playlist-section mt-8">
             <h3 class="music-profile-section-title">收藏的歌单 ({{ collectedPlaylists.length }})</h3>
             <div v-if="collectedPlaylists.length === 0" class="music-profile-playlist-empty">
               暂无收藏歌单，浏览热门歌单并收藏后将在此显示
             </div>
             <div v-else class="music-grid">
-              <div 
-                v-for="playlist in collectedPlaylists" 
-                :key="playlist.id" 
+              <div
+                v-for="playlist in collectedPlaylists"
+                :key="playlist.id"
                 class="music-grid-card"
+                role="button"
+                tabindex="0"
                 @click="$emit('select-playlist', playlist)"
+                @keydown.enter.prevent="$emit('select-playlist', playlist)"
+                @keydown.space.prevent="$emit('select-playlist', playlist)"
               >
                 <div class="music-source-cover-wrap">
-                  <img v-if="playlist.cover" :src="playlist.cover" alt="" class="music-source-cover" />
+                  <img v-if="playlist.cover" :src="playlist.cover" :alt="playlist.name" class="music-source-cover" />
                   <div v-else class="music-source-cover">
                     <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
                   </div>
@@ -170,13 +170,13 @@
               </div>
             </div>
           </div>
-        </div>
-        
-        <div v-else-if="activeTab === 'history'" class="music-profile-tracks-list">
+        </TabsContent>
+
+        <TabsContent value="history" class="music-profile-tracks-list">
           <AppBlockLoader v-if="historyLoading" size="sm" text="正在载入播放历史..." />
           <AppEmptyState v-else-if="history.length === 0" class="py-12" variant="plain" icon="playlistMusic" title="暂无播放历史记录" />
-          <MusicTrackList 
-            v-else 
+          <MusicTrackList
+            v-else
             :tracks="history"
             :show-mv="false"
             :show-related="false"
@@ -184,13 +184,13 @@
             @select-artist="$emit('select-artist', $event)"
             @add-to-playlist="$emit('add-to-playlist', $event)"
           />
-        </div>
-        
-        <div v-else-if="activeTab === 'rank'" class="music-profile-tracks-list">
+        </TabsContent>
+
+        <TabsContent value="rank" class="music-profile-tracks-list">
           <AppBlockLoader v-if="rankLoading" size="sm" text="正在载入听歌排行..." />
           <AppEmptyState v-else-if="listenRank.length === 0" class="py-12" variant="plain" icon="playlistMusic" title="暂无听歌排行数据" />
-          <MusicTrackList 
-            v-else 
+          <MusicTrackList
+            v-else
             :tracks="listenRank"
             :show-mv="false"
             :show-related="false"
@@ -198,8 +198,9 @@
             @select-artist="$emit('select-artist', $event)"
             @add-to-playlist="$emit('add-to-playlist', $event)"
           />
-        </div>
+        </TabsContent>
       </div>
+      </Tabs>
     </div>
   </div>
 </template>
@@ -208,6 +209,7 @@
 import { ref, computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/ui/tabs'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import MusicTrackList from './MusicTrackList.vue'
@@ -396,6 +398,15 @@ function formatRegTime(val: string): string {
 .music-profile-tabs {
   display: flex;
   gap: 0.25rem;
+}
+
+.music-profile-tabs-list {
+  display: inline-flex;
+  gap: 0.25rem;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
 }
 
 .music-profile-tab-btn {

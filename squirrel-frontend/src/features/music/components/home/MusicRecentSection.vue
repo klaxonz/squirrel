@@ -16,7 +16,7 @@
         @click="$emit('play-track', track)"
       >
         <div class="music-recent-cover">
-          <img v-if="track.cover" :src="track.cover" alt="" loading="lazy" />
+          <img v-if="track.cover" :src="track.cover" :alt="track.title || '封面'" loading="lazy" />
           <AppIcon v-else name="playlistMusic" class="h-4 w-4" />
         </div>
         <div class="music-recent-info">

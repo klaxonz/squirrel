@@ -2,7 +2,12 @@
   <article
     class="music-card"
     :class="[sizeClass, variantClass]"
+    role="button"
+    tabindex="0"
+    :aria-label="title"
     @click="$emit('select')"
+    @keydown.enter.prevent="$emit('select')"
+    @keydown.space.prevent="$emit('select')"
     @mouseenter="isHovered = true"
     @mouseleave="isHovered = false"
   >

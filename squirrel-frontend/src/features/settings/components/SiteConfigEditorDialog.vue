@@ -1,11 +1,8 @@
 <template>
-  <div
-    v-if="visible"
-    class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-  >
-    <div class="bg-background border border-border/80 w-full max-w-xl rounded-lg flex flex-col max-h-[80vh] overflow-hidden">
+  <Dialog :open="visible" @update:open="!$event && $emit('close')">
+    <DialogContent class="flex max-h-[80vh] w-full max-w-xl flex-col gap-0 overflow-hidden rounded-lg p-0">
       <!-- Header -->
-      <div class="flex items-center justify-between px-4 py-3 border-b border-border/50">
+      <DialogHeader class="flex flex-row items-center justify-between space-y-0 border-b border-border/50 px-4 py-3 text-left">
         <div class="flex items-center gap-3">
           <SiteIcon
             :icon-url="siteEditorForm.iconUrl"
@@ -14,36 +11,36 @@
             rounded="sm"
           />
           <div>
-            <h3 class="text-sm font-medium text-foreground">站点配置</h3>
-            <p class="text-[11px] text-muted-foreground">{{ siteEditorForm.slug }}</p>
+            <DialogTitle class="text-sm font-medium text-foreground">站点配置</DialogTitle>
+            <DialogDescription class="text-[11px] text-muted-foreground">{{ siteEditorForm.slug }}</DialogDescription>
           </div>
         </div>
-        <button
-          class="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
-          @click="$emit('close')"
-        >
-          <span class="text-xs">✕</span>
-        </button>
-      </div>
+        <DialogClose as-child>
+          <Button variant="ghost" size="icon" class="h-7 w-7 rounded text-muted-foreground hover:bg-muted/60" aria-label="关闭">
+            <AppIcon name="close" class="h-3.5 w-3.5" />
+          </Button>
+        </DialogClose>
+      </DialogHeader>
 
       <!-- Content -->
       <div class="site-editor-scroll flex-1 px-4 py-4 overflow-y-auto">
-        
+
         <!-- 基本参数 -->
         <section class="mb-5">
           <h4 class="text-[11px] font-medium text-muted-foreground uppercase mb-3">基本参数</h4>
           <div class="space-y-2.5">
             <div class="flex items-center gap-2">
-              <label class="text-[11px] text-muted-foreground w-16 shrink-0">显示名称</label>
-              <Input v-model="siteEditorForm.label" placeholder="展示给用户的名称" class="flex-1 h-7 text-xs" />
+              <label class="text-[11px] text-muted-foreground w-16 shrink-0" for="site-editor-label">显示名称</label>
+              <Input id="site-editor-label" v-model="siteEditorForm.label" placeholder="展示给用户的名称" class="flex-1 h-7 text-xs" />
             </div>
             <div class="flex items-center gap-2">
-              <label class="text-[11px] text-muted-foreground w-16 shrink-0">站点别名</label>
-              <Textarea v-model="siteEditorForm.aliasesText" :rows="2" placeholder="每行一个别名" class="flex-1 text-xs resize-none" />
+              <label class="text-[11px] text-muted-foreground w-16 shrink-0" for="site-editor-aliases">站点别名</label>
+              <Textarea id="site-editor-aliases" v-model="siteEditorForm.aliasesText" :rows="2" placeholder="每行一个别名" class="flex-1 text-xs resize-none" />
             </div>
             <div class="flex items-center gap-2">
-              <label class="text-[11px] text-muted-foreground w-16 shrink-0">域名</label>
+              <label class="text-[11px] text-muted-foreground w-16 shrink-0" for="site-editor-domains">域名</label>
               <Textarea
+                id="site-editor-domains"
                 :model-value="siteEditorForm.domainsText"
                 :rows="2"
                 readonly
@@ -62,8 +59,8 @@
           <h4 class="text-[11px] font-medium text-muted-foreground uppercase mb-3">采集策略</h4>
           <div class="space-y-2.5">
             <div class="flex items-center gap-2">
-              <label class="text-[11px] text-muted-foreground w-16 shrink-0">测试地址</label>
-              <Input v-model="siteEditorForm.testUrl" placeholder="用于连通性检测的地址" class="flex-1 h-7 text-xs" />
+              <label class="text-[11px] text-muted-foreground w-16 shrink-0" for="site-editor-test-url">测试地址</label>
+              <Input id="site-editor-test-url" v-model="siteEditorForm.testUrl" placeholder="用于连通性检测的地址" class="flex-1 h-7 text-xs" />
             </div>
             <div class="flex items-center gap-2">
               <label class="text-[11px] text-muted-foreground w-16 shrink-0">频率限制</label>
@@ -84,14 +81,14 @@
         <section>
           <h4 class="text-[11px] font-medium text-muted-foreground uppercase mb-3">内容标记</h4>
           <div class="space-y-0.5">
-            <label 
+            <label
               v-for="meta in [
                 { key: 'metadataNsfw', label: '默认标记为敏感内容' },
                 { key: 'metadataRequiresCookies', label: '需要登录凭据才可抓取' },
                 { key: 'metadataRequiresLogin', label: '需要登录状态' },
                 { key: 'metadataOfflineThumbnailsDownload', label: '解析时下载封面到本地' },
                 { key: 'metadataOfflineThumbnailsDisplay', label: '优先使用本地封面显示' }
-              ]" 
+              ]"
               :key="meta.key"
               class="flex items-center justify-between py-1.5 px-1 rounded hover:bg-muted/40 transition-colors cursor-pointer"
             >
@@ -110,7 +107,7 @@
       </div>
 
       <!-- Footer -->
-      <div class="px-4 py-3 border-t border-border/50 flex items-center justify-end gap-2">
+      <DialogFooter class="border-t border-border/50 px-4 py-3 sm:justify-end">
         <Button
           size="sm"
           variant="ghost"
@@ -125,9 +122,9 @@
         >
           {{ saving ? '保存中...' : '保存' }}
         </Button>
-      </div>
-    </div>
-  </div>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>
 
 <script setup>
@@ -139,6 +136,15 @@ import SiteIcon from '@/shared/components/SiteIcon.vue'
 import { Switch } from '@/shared/ui/switch'
 import { Input } from '@/shared/ui/input'
 import { Textarea } from '@/shared/ui/textarea'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/ui/dialog'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },

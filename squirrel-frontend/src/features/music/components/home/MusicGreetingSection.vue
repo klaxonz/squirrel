@@ -3,7 +3,7 @@
     <div class="music-greeting-header">
       <div class="music-greeting-left">
         <div class="music-greeting-avatar">
-          <img v-if="user?.avatar" :src="user.avatar" alt="" />
+          <img v-if="user?.avatar" :src="user.avatar" :alt="user?.nickname ? `${user.nickname}的头像` : '用户头像'" />
           <AppIcon v-else name="user" class="h-5 w-5" />
         </div>
         <div class="music-greeting-text">

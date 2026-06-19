@@ -16,6 +16,7 @@ import {
   type MusicPlaylistTag,
   type MusicTrack,
 } from '@/shared/api/music'
+import { Logger } from '@/shared/lib/logger'
 
 export function useMusicHome() {
   const banners = ref<Array<{ id: string; title: string; cover: string }>>([])
@@ -49,73 +50,158 @@ export function useMusicHome() {
 
   async function loadBanners() {
     bannerLoading.value = true
-    const { data } = await getMusicBanner()
-    bannerLoading.value = false
-    banners.value = data?.items || []
+    try {
+      const { data, error } = await getMusicBanner()
+      if (error) {
+        Logger.warn('loadBanners failed', error)
+        banners.value = []
+        return
+      }
+      banners.value = data?.items || []
+    } finally {
+      bannerLoading.value = false
+    }
   }
 
   async function loadRanks() {
     ranksLoading.value = true
-    const { data } = await getMusicRanks()
-    ranksLoading.value = false
-    ranks.value = data?.items || []
+    try {
+      const { data, error } = await getMusicRanks()
+      if (error) {
+        Logger.warn('loadRanks failed', error)
+        ranks.value = []
+        return
+      }
+      ranks.value = data?.items || []
+    } finally {
+      ranksLoading.value = false
+    }
   }
 
   async function loadPlaylists(_append = false) {
     playlistsLoading.value = true
-    const { data } = await getMusicPlaylists({
-      category_id: selectedPlaylistCategory.value,
-      page: 1,
-      page_size: 20,
-    })
-    playlistsLoading.value = false
-    playlists.value = data?.items || []
-    playlistHasMore.value = data?.has_more || false
+    try {
+      const { data, error } = await getMusicPlaylists({
+        category_id: selectedPlaylistCategory.value,
+        page: 1,
+        page_size: 20,
+      })
+      if (error) {
+        Logger.warn('loadPlaylists failed', error)
+        playlists.value = []
+        playlistHasMore.value = false
+        return
+      }
+      playlists.value = data?.items || []
+      playlistHasMore.value = data?.has_more || false
+    } finally {
+      playlistsLoading.value = false
+    }
   }
 
   async function loadPlaylistTags() {
-    const { data } = await getMusicPlaylistTags()
-    playlistTags.value = (data?.items || []).slice(0, 12) as MusicPlaylistTag[]
+    try {
+      const { data, error } = await getMusicPlaylistTags()
+      if (error) {
+        Logger.warn('loadPlaylistTags failed', error)
+        playlistTags.value = []
+        return
+      }
+      playlistTags.value = (data?.items || []).slice(0, 12) as MusicPlaylistTag[]
+    } catch (err) {
+      Logger.warn('loadPlaylistTags threw', err)
+      playlistTags.value = []
+    }
   }
 
   async function loadNewAlbums() {
     newAlbumsLoading.value = true
-    const { data } = await getMusicNewAlbums({ page: 1, page_size: 30 })
-    newAlbumsLoading.value = false
-    newAlbums.value = data?.items || []
+    try {
+      const { data, error } = await getMusicNewAlbums({ page: 1, page_size: 30 })
+      if (error) {
+        Logger.warn('loadNewAlbums failed', error)
+        newAlbums.value = []
+        return
+      }
+      newAlbums.value = data?.items || []
+    } finally {
+      newAlbumsLoading.value = false
+    }
   }
 
   async function loadNewAlbumsForView() {
     newAlbumsLoading.value = true
-    const { data } = await getMusicNewAlbums({ page: 1, page_size: 30 })
-    newAlbumsLoading.value = false
-    newAlbums.value = data?.items || []
+    try {
+      const { data, error } = await getMusicNewAlbums({ page: 1, page_size: 30 })
+      if (error) {
+        Logger.warn('loadNewAlbumsForView failed', error)
+        newAlbums.value = []
+        return
+      }
+      newAlbums.value = data?.items || []
+    } finally {
+      newAlbumsLoading.value = false
+    }
   }
 
   async function loadNewSongs() {
     newSongsLoading.value = true
-    const { data } = await getMusicNewSongs({ page: 1, page_size: 50 })
-    newSongsLoading.value = false
-    newSongs.value = data?.items || []
+    try {
+      const { data, error } = await getMusicNewSongs({ page: 1, page_size: 50 })
+      if (error) {
+        Logger.warn('loadNewSongs failed', error)
+        newSongs.value = []
+        return
+      }
+      newSongs.value = data?.items || []
+    } finally {
+      newSongsLoading.value = false
+    }
   }
 
   async function loadHotSearches() {
-    const { data } = await getMusicHotSearch()
-    hotSearches.value = (data?.items || []).slice(0, 12) as MusicHotSearch[]
+    try {
+      const { data, error } = await getMusicHotSearch()
+      if (error) {
+        Logger.warn('loadHotSearches failed', error)
+        hotSearches.value = []
+        return
+      }
+      hotSearches.value = (data?.items || []).slice(0, 12) as MusicHotSearch[]
+    } catch (err) {
+      Logger.warn('loadHotSearches threw', err)
+      hotSearches.value = []
+    }
   }
 
   async function loadAiRecommend() {
     aiRecommendLoading.value = true
-    const { data } = await getMusicAiRecommend({ page_size: 30 })
-    aiRecommendLoading.value = false
-    aiRecommend.value = data?.items || []
+    try {
+      const { data, error } = await getMusicAiRecommend({ page_size: 30 })
+      if (error) {
+        Logger.warn('loadAiRecommend failed', error)
+        aiRecommend.value = []
+        return
+      }
+      aiRecommend.value = data?.items || []
+    } finally {
+      aiRecommendLoading.value = false
+    }
   }
 
   async function loadEverydayRecommend() {
     everydayRecommendLoading.value = true
-    const { data } = await getMusicEverydayRecommend()
-    everydayRecommendLoading.value = false
-    everydayRecommend.value = data?.items || []
+    try {
+      const { data, error } = await getMusicEverydayRecommend()
+      if (error) {
+        Logger.warn('loadEverydayRecommend failed', error)
+        everydayRecommend.value = []
+        return
+      }
+      everydayRecommend.value = data?.items || []
+    } finally {
+      everydayRecommendLoading.value = false
+    }
   }
 
   async function handleSelectPlaylistCategory(categoryId: number) {
@@ -126,15 +212,22 @@ export function useMusicHome() {
   async function handleLoadMorePlaylists() {
     if (playlistsLoading.value || !playlistHasMore.value) return
     playlistsLoading.value = true
-    const { data } = await getMusicPlaylists({
-      category_id: selectedPlaylistCategory.value,
-      page: 2,
-      page_size: 20,
-    })
-    playlistsLoading.value = false
-    if (data?.items?.length) {
-      playlists.value = [...playlists.value, ...data.items]
-      playlistHasMore.value = data.has_more || false
+    try {
+      const { data, error } = await getMusicPlaylists({
+        category_id: selectedPlaylistCategory.value,
+        page: 2,
+        page_size: 20,
+      })
+      if (error) {
+        Logger.warn('handleLoadMorePlaylists failed', error)
+        return
+      }
+      if (data?.items?.length) {
+        playlists.value = [...playlists.value, ...data.items]
+        playlistHasMore.value = data.has_more || false
+      }
+    } finally {
+      playlistsLoading.value = false
     }
   }
 

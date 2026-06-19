@@ -38,6 +38,14 @@
           </div>
         </div>
 
+        <div v-else-if="loadError" class="min-h-[24rem]">
+          <AppEmptyState variant="plain" icon="warning" title="加载失败" :copy="loadError">
+            <template #actions>
+              <Button variant="outline" size="sm" @click="loadData">重试</Button>
+            </template>
+          </AppEmptyState>
+        </div>
+
         <div v-else-if="groupedVideos.length === 0" class="min-h-[24rem]">
           <AppEmptyState variant="plain" icon="time" :title="emptyTitle" :copy="emptyDescription" />
         </div>
@@ -109,6 +117,7 @@ const { getWatchHistory, clearHistory, deleteHistoryEntry } = useVideoHistory()
 
 const videos = ref<VideoHistoryEntry[]>([])
 const loading = ref(false)
+const loadError = ref('')
 const showClearConfirm = ref(false)
 const isContinueMode = computed(() => route.query.mode === 'continue')
 const pageTitle = computed(() => isContinueMode.value ? '继续观看' : '播放历史')
@@ -130,9 +139,12 @@ const displayVideos = computed(() => {
 
 const loadData = async () => {
   loading.value = true
+  loadError.value = ''
   try {
     const data = await getWatchHistory(1, { pageSize: 100 })
     videos.value = data.items || []
+  } catch (err) {
+    loadError.value = err instanceof Error ? err.message : '加载历史记录失败'
   } finally {
     loading.value = false
   }

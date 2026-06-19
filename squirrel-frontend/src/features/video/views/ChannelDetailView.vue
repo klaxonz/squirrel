@@ -43,7 +43,7 @@
       <div v-if="loadError" class="px-6 pt-6">
         <div class="bg-destructive/10 rounded-sm p-4 flex items-center justify-between">
           <p class="text-sm text-destructive font-medium">{{ loadError }}</p>
-          <button @click="refreshCurrentList" class="text-xs font-bold uppercase tracking-widest px-4 py-2 bg-destructive text-white rounded-full">重试</button>
+          <Button variant="destructive" size="sm" class="rounded-full" @click="refreshCurrentList">重试</Button>
         </div>
       </div>
 
@@ -88,6 +88,7 @@ import FeedToolbar from '@/features/video/components/feed/FeedToolbar.vue'
 import ChannelHeader from '@/features/video/components/feed/ChannelHeader.vue'
 import RemoteChannelVideoGrid from '@/features/video/components/feed/RemoteChannelVideoGrid.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import { Button } from '@/shared/ui/button'
 import { VIDEO_TABS } from '@/features/video/constants/videos'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { onSubscriptionRemoved } from '@/shared/lib/subscriptionEvents'

@@ -30,26 +30,28 @@
               服务器接口地址
             </label>
             <div class="relative">
-              <input
+              <Input
                 id="server-url"
                 v-model="form.serverUrl"
                 type="url"
                 required
-                class="flex h-10 w-full rounded-md border border-input bg-transparent pl-3 pr-24 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+                class="pr-24"
                 placeholder="http://127.0.0.1:8001"
                 :disabled="connecting"
                 @input="clearStatus"
               />
               <div class="absolute right-1 top-1/2 -translate-y-1/2">
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   :disabled="!form.serverUrl.trim() || testing"
+                  :loading="testing"
                   @click="handleTest"
-                  class="h-8 px-3 flex items-center justify-center text-xs font-medium rounded-md text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  class="h-8"
                 >
-                  <AppIcon v-if="testing" name="refresh" class="w-3.5 h-3.5 animate-spin mr-1.5" />
                   {{ testing ? '测试中' : '测试连接' }}
-                </button>
+                </Button>
               </div>
             </div>
             
@@ -139,6 +141,7 @@ import { useRouter } from 'vue-router'
 import { Logger } from '@/shared/lib/logger'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
+import { Input } from '@/shared/ui/input'
 import { useServerConfig } from '@/shared/composables/useServerConfig'
 
 const router = useRouter()

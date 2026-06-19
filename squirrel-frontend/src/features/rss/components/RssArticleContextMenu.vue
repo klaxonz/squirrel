@@ -3,11 +3,14 @@
     <div
       v-if="visible && entry"
       ref="rootRef"
+      role="menu"
+      aria-label="文章操作"
       class="fixed z-[9999] w-[200px] rounded-xl border border-border/30 bg-popover/90 backdrop-blur-xl p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.18)] animate-fade-in"
       :style="{ left: position.x + 'px', top: position.y + 'px' }"
     >
       <div class="flex flex-col gap-0.5">
         <button
+          role="menuitem"
           @click="$emit('toggleRead', entry)"
           class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
         >
@@ -16,6 +19,7 @@
         </button>
 
         <button
+          role="menuitem"
           @click="$emit('toggleStar', entry)"
           class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
         >
@@ -24,6 +28,7 @@
         </button>
 
         <button
+          role="menuitem"
           @click="$emit('goToFeed', entry)"
           class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
         >
@@ -31,12 +36,14 @@
           <span>查看订阅源</span>
         </button>
 
-        <div class="h-px bg-border/20 my-1"></div>
+        <div class="h-px bg-border/20 my-1" role="separator"></div>
 
         <template v-if="feed">
-          <div class="px-2.5 py-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">默认打开方式</div>
+          <div class="px-2.5 py-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider" role="group" aria-label="默认打开方式">默认打开方式</div>
 
           <button
+            role="menuitemradio"
+            :aria-checked="!feed.open_method"
             @click="$emit('setOpenMethod', feed, null)"
             class="flex h-7 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
           >
@@ -46,6 +53,8 @@
           </button>
 
           <button
+            role="menuitemradio"
+            :aria-checked="feed.open_method === 'app_browser'"
             @click="$emit('setOpenMethod', feed, 'app_browser')"
             class="flex h-7 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
           >
@@ -55,6 +64,8 @@
           </button>
 
           <button
+            role="menuitemradio"
+            :aria-checked="feed.open_method === 'external_browser'"
             @click="$emit('setOpenMethod', feed, 'external_browser')"
             class="flex h-7 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
           >
@@ -65,6 +76,7 @@
         </template>
 
         <button
+          role="menuitem"
           @click="$emit('batchRead', 'above', true)"
           class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
         >
@@ -73,6 +85,7 @@
         </button>
 
         <button
+          role="menuitem"
           @click="$emit('batchRead', 'below', true)"
           class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
         >
@@ -81,6 +94,7 @@
         </button>
 
         <button
+          role="menuitem"
           @click="$emit('batchRead', 'all', true)"
           class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
         >
@@ -89,6 +103,7 @@
         </button>
 
         <button
+          role="menuitem"
           @click="$emit('batchRead', 'all', false)"
           class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
         >
@@ -96,9 +111,10 @@
           <span>列表全部未读</span>
         </button>
 
-        <div class="h-px bg-border/20 my-1"></div>
+        <div class="h-px bg-border/20 my-1" role="separator"></div>
 
         <button
+          role="menuitem"
           @click="$emit('unsubscribe', entry)"
           class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-destructive cursor-pointer"
         >
@@ -106,9 +122,10 @@
           <span>取消订阅该源</span>
         </button>
 
-        <div class="h-px bg-border/20 my-1"></div>
+        <div class="h-px bg-border/20 my-1" role="separator"></div>
 
         <button
+          role="menuitem"
           @click="$emit('copyLink', entry)"
           class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
         >
@@ -117,6 +134,7 @@
         </button>
 
         <button
+          role="menuitem"
           @click="$emit('openExternal', entry)"
           class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
         >

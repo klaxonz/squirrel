@@ -26,6 +26,12 @@
 
     <MusicSection title="为你推荐" :more-action="true" @more="$emit('navigate', 'playlists')">
       <AppBlockLoader v-if="playlistsLoading" size="sm" text="加载推荐歌单..." />
+      <AppEmptyState
+        v-else-if="playlists.length === 0"
+        variant="plain"
+        icon="playlistMusic"
+        title="暂无推荐歌单"
+      />
       <MusicCardGrid v-else layout="grid-auto">
         <MusicCard
           v-for="item in playlists.slice(0, 8)"
@@ -43,11 +49,23 @@
 
     <MusicSection title="热门榜单" :more-action="true" @more="$emit('navigate', 'ranks')">
       <AppBlockLoader v-if="ranksLoading" size="sm" text="加载排行榜..." />
+      <AppEmptyState
+        v-else-if="ranks.length === 0"
+        variant="plain"
+        icon="list"
+        title="暂无榜单"
+      />
       <MusicRankRow v-else :ranks="ranks.slice(0, 4)" @select="$emit('select-rank', $event)" />
     </MusicSection>
 
     <MusicSection title="新碟上架" :more-action="true" @more="$emit('navigate', 'new_albums')">
       <AppBlockLoader v-if="albumsLoading" size="sm" text="加载新专辑..." />
+      <AppEmptyState
+        v-else-if="albums.length === 0"
+        variant="plain"
+        icon="disc"
+        title="暂无新专辑"
+      />
       <MusicCardGrid v-else layout="grid-auto">
         <MusicCard
           v-for="album in albums"
@@ -73,6 +91,7 @@ import MusicCard from '../shared/MusicCard.vue'
 import MusicCardGrid from '../shared/MusicCardGrid.vue'
 import MusicRankRow from '../shared/MusicRankRow.vue'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import type { MusicPlaylist, MusicRank, MusicAlbum, MusicTrack, MusicUserProfile } from '@/shared/api/music'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 

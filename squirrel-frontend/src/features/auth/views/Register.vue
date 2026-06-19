@@ -41,12 +41,11 @@
             <label for="nickname" class="text-sm font-medium leading-none">
               昵称
             </label>
-            <input
+            <Input
               id="nickname"
               v-model="form.nickname"
               type="text"
               required
-              class="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
               placeholder="您希望被称呼的名字"
               autocomplete="nickname"
             />
@@ -57,12 +56,11 @@
             <label for="email" class="text-sm font-medium leading-none">
               邮箱
             </label>
-            <input
+            <Input
               id="email"
               v-model="form.email"
               type="email"
               required
-              class="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
               placeholder="name@example.com"
               autocomplete="email"
             />
@@ -74,12 +72,12 @@
               密码
             </label>
             <div class="relative">
-              <input
+              <Input
                 id="password"
                 v-model="form.password"
                 :type="showPassword ? 'text' : 'password'"
                 required
-                class="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-colors pr-10"
+                class="pr-10"
                 placeholder="至少输入 8 位字符"
                 autocomplete="new-password"
               />
@@ -88,6 +86,7 @@
                 class="absolute right-1 top-0.5 h-9 w-9 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                 @click="showPassword = !showPassword"
                 :title="showPassword ? '隐藏密码' : '显示密码'"
+                :aria-label="showPassword ? '隐藏密码' : '显示密码'"
               >
                 <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
               </button>
@@ -124,6 +123,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
+import { Input } from '@/shared/ui/input'
 import { useUserStore } from '@/shared/stores/user'
 import { useServerConfig } from '@/shared/composables/useServerConfig'
 

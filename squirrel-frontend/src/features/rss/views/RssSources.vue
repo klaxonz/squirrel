@@ -246,8 +246,7 @@
                     v-if="entry.summary"
                     class="text-[11px] leading-relaxed line-clamp-2 transition-colors"
                     :class="entry.is_read ? 'text-muted-foreground/50' : 'text-muted-foreground/70'"
-                    v-html="stripHtmlTags(entry.summary)"
-                  />
+                  >{{ stripHtmlTags(entry.summary) }}</p>
                 </div>
                 
                 <!-- Card Bottom: Source & Media indicator (clickable to view feed) -->

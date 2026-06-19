@@ -1,5 +1,6 @@
 import { ref, type Ref } from 'vue'
 import { Logger } from '@/shared/lib/logger'
+import { useToast } from '@/shared/components/toast/useToast'
 
 /** A single log entry as returned by the logs API (only the copied fields). */
 interface LogEntry {
@@ -31,6 +32,7 @@ export interface UseLogClipboardOptions {
  */
 export function useLogClipboard(options: UseLogClipboardOptions) {
   const { logs, filters } = options
+  const toast = useToast()
   const allCopied = ref(false)
   let allCopiedTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -55,7 +57,7 @@ export function useLogClipboard(options: UseLogClipboardOptions) {
 
     navigator.clipboard.writeText(logText).catch(err => {
       Logger.error('Failed to copy log', err)
-      alert('复制失败，请手动复制')
+      toast.error('复制失败，请手动复制')
     })
   }
 
@@ -87,7 +89,7 @@ export function useLogClipboard(options: UseLogClipboardOptions) {
 
     navigator.clipboard.writeText(allLogsText).then(flashAllCopied).catch(err => {
       Logger.error('Failed to copy logs', err)
-      alert('复制失败，请手动复制')
+      toast.error('复制失败，请手动复制')
     })
   }
 

@@ -46,7 +46,7 @@
           <div class="immersive-bottom">
             <div class="immersive-meta">
               <div class="immersive-art-wrapper" :class="{ 'immersive-art-wrapper--playing': playing }">
-                <img v-if="track?.cover" :src="track.cover" alt="" class="immersive-cover" />
+                <img v-if="track?.cover" :src="track.cover" :alt="track?.title || '封面'" class="immersive-cover" />
                 <div v-else class="immersive-cover-fallback">
                   <AppIcon name="playlistMusic" class="h-12 w-12" />
                 </div>
@@ -105,10 +105,12 @@
               </div>
             </div>
 
-            <div class="immersive-tabs">
+            <div class="immersive-tabs" role="tablist" aria-label="播放详情">
               <button
                 class="immersive-tab"
                 :class="{ 'immersive-tab--active': activeTab === 'lyrics' }"
+                role="tab"
+                :aria-selected="activeTab === 'lyrics'"
                 @click="activeTab = 'lyrics'"
               >
                 歌词
@@ -116,6 +118,8 @@
               <button
                 class="immersive-tab"
                 :class="{ 'immersive-tab--active': activeTab === 'comments' }"
+                role="tab"
+                :aria-selected="activeTab === 'comments'"
                 @click="$emit('switch-comments')"
               >
                 评论
