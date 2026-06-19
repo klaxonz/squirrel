@@ -72,3 +72,40 @@ export interface RssListResponse<T> {
 export interface RssFeedSyncResult {
   entries?: number
 }
+
+/** GET /api/rss/accounts/:id/sync-status payload. */
+export interface RssSyncStatus {
+  running?: boolean
+  sync_mode?: string
+  phase?: string
+  entries_fetched?: number | null
+  entries_synced?: number | null
+  feeds_synced?: number | null
+  message?: string | null
+  error?: string | null
+}
+
+/** POST /api/rss/entries/bulk result. */
+export interface RssBulkUpdateResult {
+  updated: number
+}
+
+/** Generic ack shape for RSS mutations with no meaningful body. */
+export interface RssMutationResult {
+  [key: string]: unknown
+}
+
+/** POST /api/rss/accounts/:id/sync/start result. */
+export interface RssSyncStartResult {
+  status?: string
+  account_id?: string | number
+}
+
+/** POST /api/rss/accounts/test result. */
+export interface RssAccountTestResult {
+  ok?: boolean
+  feed_count?: number
+  message?: string
+  error?: string
+}
+

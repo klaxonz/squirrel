@@ -1,7 +1,7 @@
 import { computed, shallowRef, ref } from 'vue'
 import { getVideoList } from '@/api'
-import type { ApiResult } from '@/types/api'
 import type { VideoListItem as ApiVideoListItem, VideoListResponse as ApiVideoListResponse } from '@/types/video'
+import { ErrorTypes } from '@/utils/request'
 
 type VideoId = string | number
 
@@ -26,7 +26,6 @@ type InitialState = {
 }
 
 type VideoListResponse = ApiVideoListResponse
-type ApiErrorLike = { type?: string | null }
 type VideoListParams = {
   cursor: string | null
   pageSize: number
@@ -142,16 +141,16 @@ export default function useLatestVideos(initial: InitialState = {}) {
     listAbortController?.abort()
     listAbortController = new AbortController()
 
-    const { data, error: requestError } = (await getVideoList(createRequestParams(), {
+    const { data, error: requestError } = await getVideoList(createRequestParams(), {
       signal: listAbortController.signal,
-    })) as ApiResult<VideoListResponse>
+    })
 
     if (currentToken !== requestToken) {
       finishRequest()
       return
     }
 
-    if ((requestError as ApiErrorLike | null)?.type === 'CANCELED') {
+    if (requestError?.type === ErrorTypes.CANCELED) {
       finishRequest()
       return
     }

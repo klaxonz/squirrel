@@ -2,20 +2,9 @@ import { ref } from 'vue'
 import type { Ref } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 import { getRssSyncStatus, syncRssAccount } from '@/api'
-import type { ApiResult } from '@/types/api'
+import type { RssSyncStatus } from '@/types/rss'
 
-// ponytail: minimal slice of GET /api/rss/accounts/:id/sync-status consumed by
-// the sync poller. Lifted verbatim from RssSources.vue (was an inline type).
-export type RssSyncStatus = {
-  running?: boolean
-  sync_mode?: string
-  phase?: string
-  entries_fetched?: number | null
-  entries_synced?: number | null
-  feeds_synced?: number | null
-  message?: string | null
-  error?: string | null
-}
+export type { RssSyncStatus }
 
 export interface UseRssSyncOptions {
   selectedAccountId: Ref<string | number | null>
@@ -64,12 +53,12 @@ export function useRssSync(options: UseRssSyncOptions): UseRssSyncReturn {
     }
 
     syncPollTimer = setInterval(async () => {
-      const result = await getRssSyncStatus(accountId) as ApiResult<RssSyncStatus>
+      const result = await getRssSyncStatus(accountId)
       if (result.error) {
         clearInterval(syncPollTimer!)
         syncPollTimer = null
         syncing.value = false
-        setStatus((result.error as { message?: string })?.message || '获取同步状态失败', true)
+        setStatus(result.error.message || '获取同步状态失败', true)
         return
       }
       const data = result.data
@@ -118,7 +107,7 @@ export function useRssSync(options: UseRssSyncOptions): UseRssSyncReturn {
     const result = await syncRssAccount(selectedAccountId.value, undefined, forceFullSync)
     if (result.error) {
       syncing.value = false
-      setStatus((result.error as { message?: string })?.message || '启动同步失败', true)
+      setStatus(result.error.message || '启动同步失败', true)
       return
     }
     pollSyncProgress()
@@ -127,7 +116,7 @@ export function useRssSync(options: UseRssSyncOptions): UseRssSyncReturn {
   const resumeSyncPollingIfRunning = async () => {
     const accountId = selectedAccountId.value
     if (!accountId) return
-    const result = await getRssSyncStatus(accountId) as ApiResult<RssSyncStatus>
+    const result = await getRssSyncStatus(accountId)
     if (result.error) return
     const data = result.data
     if (data && data.running) {

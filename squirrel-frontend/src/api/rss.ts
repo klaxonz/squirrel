@@ -7,6 +7,11 @@ import type {
   RssEntryListResponse,
   RssListResponse,
   RssFeedSyncResult,
+  RssSyncStatus,
+  RssBulkUpdateResult,
+  RssMutationResult,
+  RssSyncStartResult,
+  RssAccountTestResult,
 } from '@/types/rss'
 
 export type RssAccountPayload = {
@@ -29,18 +34,18 @@ export const updateRssAccount = async (accountId: string | number, payload: Part
 
 export const deleteRssAccount = async (accountId: string | number) => delRequest(`/api/rss/accounts/${accountId}`)
 
-export const testRssAccountConfig = async (payload: RssAccountPayload) => post('/api/rss/accounts/test', payload)
+export const testRssAccountConfig = async (payload: RssAccountPayload) => post<RssAccountTestResult>('/api/rss/accounts/test', payload)
 
-export const testRssAccount = async (accountId: string | number) => post(`/api/rss/accounts/${accountId}/test`)
+export const testRssAccount = async (accountId: string | number) => post<RssAccountTestResult>(`/api/rss/accounts/${accountId}/test`)
 
 export const syncRssAccount = async (accountId: string | number, entryLimit?: number, forceFullSync?: boolean) => {
   const params: Record<string, unknown> = {}
   if (entryLimit) params.entryLimit = entryLimit
   if (forceFullSync) params.forceFullSync = true
-  return post(`/api/rss/accounts/${accountId}/sync/start`, null, { params })
+  return post<RssSyncStartResult>(`/api/rss/accounts/${accountId}/sync/start`, null, { params })
 }
 
-export const getRssSyncStatus = async (accountId: string | number) => get(`/api/rss/accounts/${accountId}/sync/status`)
+export const getRssSyncStatus = async (accountId: string | number) => get<RssSyncStatus>(`/api/rss/accounts/${accountId}/sync/status`)
 
 export const getRssFeeds = async (params: Record<string, unknown> = {}) =>
   get<RssListResponse<RssFeed>>('/api/rss/feeds', params)
@@ -53,22 +58,22 @@ export const updateRssEntry = async (entryId: string | number, payload: { isRead
 }
 
 export const updateRssEntries = async (payload: { entryIds: Array<string | number>; isRead: boolean }) => {
-  return patch('/api/rss/entries/bulk', payload)
+  return patch<RssBulkUpdateResult>('/api/rss/entries/bulk', payload)
 }
 
 export const recordRssEntryView = async (entryId: string | number) => {
-  return post(`/api/rss/entries/${entryId}/view`)
+  return post<RssMutationResult>(`/api/rss/entries/${entryId}/view`)
 }
 
 export const getRssRecentlyViewed = async () =>
-  get<RssEntryRecentlyViewed[]>('/api/rss/entries/recently-viewed')
+  get<{ data: RssEntryRecentlyViewed[] }>('/api/rss/entries/recently-viewed')
 
 export const subscribeRssFeed = async (payload: { accountId: number; feedUrl: string; category?: string }) => {
-  return post('/api/rss/feeds/subscribe', payload)
+  return post<RssMutationResult>('/api/rss/feeds/subscribe', payload)
 }
 
 export const unsubscribeRssFeed = async (feedId: number, accountId: number) => {
-  return delRequest(`/api/rss/feeds/${feedId}`, null, { params: { accountId } })
+  return delRequest<RssMutationResult>(`/api/rss/feeds/${feedId}`, null, { params: { accountId } })
 }
 
 export const syncRssFeed = async (feedId: number, entryLimit = 50) => {
@@ -76,9 +81,9 @@ export const syncRssFeed = async (feedId: number, entryLimit = 50) => {
 }
 
 export const updateRssFeed = async (feedId: number, payload: Record<string, unknown>) => {
-  return patch(`/api/rss/feeds/${feedId}`, payload)
+  return patch<RssMutationResult>(`/api/rss/feeds/${feedId}`, payload)
 }
 
 export const markRssFeedAsRead = async (feedId: number) => {
-  return post(`/api/rss/feeds/${feedId}/read`)
+  return post<RssMutationResult>(`/api/rss/feeds/${feedId}/read`)
 }

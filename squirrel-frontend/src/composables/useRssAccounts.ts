@@ -9,7 +9,7 @@ import {
   type RssAccountPayload,
 } from '@/api'
 import type { AppIconName } from '@/icons/app-icons'
-import type { ApiResult, RssAccount } from './rssTypes'
+import type { RssAccount } from './rssTypes'
 
 const providers: { value: 'greader' | 'miniflux' | 'fever'; name: string; desc: string; icon: AppIconName }[] = [
   { value: 'greader', name: 'Google Reader', desc: 'Reader API', icon: 'rss' },
@@ -116,9 +116,9 @@ export function useRssAccounts(options?: {
   }
 
   const loadAccounts = async () => {
-    const response = await getRssAccounts() as ApiResult<{ data: RssAccount[] }>
+    const response = await getRssAccounts()
     if (response.error) {
-      options?.onStatus?.((response.error as { message?: string })?.message || '加载 RSS 账号失败', true)
+      options?.onStatus?.(response.error.message || '加载 RSS 账号失败', true)
       return
     }
     accounts.value = response.data?.data || []
@@ -146,7 +146,7 @@ export function useRssAccounts(options?: {
     saving.value = false
     if (accountId.error) {
       formError.value = true
-      formMessage.value = (accountId.error as { message?: string })?.message || '保存失败'
+      formMessage.value = accountId.error.message || '保存失败'
       return
     }
     formError.value = false
@@ -168,14 +168,14 @@ export function useRssAccounts(options?: {
     })
     testing.value = false
     formError.value = !!response.error
-    formMessage.value = response.error ? (response.error as { message?: string })?.message || '连接失败' : `连接成功，发现 ${(response.data as { feed_count?: number } | null)?.feed_count ?? 0} 个 Feed`
+    formMessage.value = response.error ? response.error.message || '连接失败' : `连接成功，发现 ${(response.data as { feed_count?: number } | null)?.feed_count ?? 0} 个 Feed`
   }
 
   const handleDeleteAccount = async () => {
     if (!accountToDelete.value) return
     const response = await deleteRssAccount(accountToDelete.value.id)
     if (response.error) {
-      options?.onStatus?.((response.error as { message?: string })?.message || '删除账号失败', true)
+      options?.onStatus?.(response.error.message || '删除账号失败', true)
       showDeleteConfirmModal.value = false
       return
     }

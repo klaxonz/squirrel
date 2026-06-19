@@ -38,7 +38,7 @@ export const addVideoToPlaylist = async (data: {
   video_id: number | string
   playlist_id?: number | string | null
 }) => {
-  return post('/api/playlist/items', data)
+  return post<PlaylistItem>('/api/playlist/items', data)
 }
 
 export const removeVideoFromPlaylist = async (
@@ -53,7 +53,7 @@ export const reorderPlaylistItem = async (data: {
   video_id: number | string
   new_position: number
 }) => {
-  return put('/api/playlist/items/reorder', data)
+  return put<PlaylistItem>('/api/playlist/items/reorder', data)
 }
 
 export const getDefaultPlaylist = async () => {

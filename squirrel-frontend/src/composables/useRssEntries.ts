@@ -6,7 +6,7 @@ import {
   updateRssEntries,
   updateRssEntry,
 } from '@/api'
-import type { ApiResult, RssEntry, RssFeed, RecentEntry, ReadBatchMode } from './rssTypes'
+import type { RssEntry, RssFeed, RecentEntry, ReadBatchMode } from './rssTypes'
 
 export function useRssEntries(options: {
   selectedAccountId: Ref<number | null>
@@ -78,7 +78,7 @@ export function useRssEntries(options: {
   }
 
   const loadRecentlyViewed = async () => {
-    const response = await getRssRecentlyViewed() as ApiResult<{ data: RecentEntry[] }>
+    const response = await getRssRecentlyViewed()
     if (!response.error) {
       recentlyViewed.value = response.data?.data || []
     }
@@ -104,9 +104,9 @@ export function useRssEntries(options: {
       params.isStarred = true
     }
 
-    const response = await getRssEntries(params) as ApiResult<{ data: RssEntry[], total: number }>
+    const response = await getRssEntries(params)
     if (response.error) {
-      options?.onStatus?.((response.error as { message?: string })?.message || '加载条目失败', true)
+      options?.onStatus?.(response.error.message || '加载条目失败', true)
       return
     }
 
@@ -133,10 +133,10 @@ export function useRssEntries(options: {
       params.isStarred = true
     }
 
-    const response = await getRssEntries(params) as ApiResult<{ data: RssEntry[], total: number }>
+    const response = await getRssEntries(params)
     loadingMoreEntries.value = false
     if (response.error) {
-      options?.onStatus?.((response.error as { message?: string })?.message || '加载条目失败', true)
+      options?.onStatus?.(response.error.message || '加载条目失败', true)
       return
     }
     const fetched = response.data?.data || []
@@ -213,7 +213,7 @@ export function useRssEntries(options: {
       if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
         options.readingEntry.value.is_read = !newStatus
       }
-      options?.onStatus?.((response.error as { message?: string })?.message || '更新已读状态失败', true)
+      options?.onStatus?.(response.error.message || '更新已读状态失败', true)
       return
     }
     if (reloadFilteredList && shouldReloadAfterEntryUpdate(entry)) {
@@ -247,7 +247,7 @@ export function useRssEntries(options: {
     const response = await updateRssEntries({
       entryIds: targets.map((entry) => entry.id),
       isRead,
-    }) as ApiResult<{ updated: number }>
+    })
     if (response.error) {
       previous.forEach(({ entry, isRead: previousIsRead }) => {
         entry.is_read = previousIsRead
@@ -255,7 +255,7 @@ export function useRssEntries(options: {
           options.readingEntry.value.is_read = previousIsRead
         }
       })
-      options?.onStatus?.((response.error as { message?: string })?.message || '批量更新已读状态失败', true)
+      options?.onStatus?.(response.error.message || '批量更新已读状态失败', true)
       return
     }
     options?.onStatus?.(`已更新 ${response.data?.updated ?? targets.length} 篇文章`)
@@ -277,7 +277,7 @@ export function useRssEntries(options: {
       if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
         options.readingEntry.value.is_starred = !newStatus
       }
-      options?.onStatus?.((response.error as { message?: string })?.message || '更新星标状态失败', true)
+      options?.onStatus?.(response.error.message || '更新星标状态失败', true)
       return
     }
     options?.onStatus?.(newStatus ? '已收藏' : '已取消收藏')

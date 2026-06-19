@@ -12,7 +12,6 @@ import {
   getDefaultPlaylist,
 } from '@/api/playlist'
 import type { Playlist, PlaylistDetail, PlaylistItem, VideoBasic, PlaylistId, VideoId } from '@/types/playlist'
-import type { ApiResult } from '@/types/api'
 import { Logger } from '@/utils/logger'
 
 const createPlaylistStore = () => {
@@ -60,7 +59,7 @@ const createPlaylistStore = () => {
     loading.value = true
     error.value = null
     try {
-      const { data, error: err } = (await listPlaylists()) as ApiResult<Playlist[]>
+      const { data, error: err } = await listPlaylists()
       if (err) throw err
       playlists.value = data || []
     } catch (e: unknown) {
@@ -75,7 +74,7 @@ const createPlaylistStore = () => {
     loading.value = true
     error.value = null
     try {
-      const { data, error: err } = (await getPlaylistDetail(playlistId)) as ApiResult<PlaylistDetail>
+      const { data, error: err } = await getPlaylistDetail(playlistId)
       if (err) throw err
       activePlaylist.value = data || null
       return data || null
@@ -91,7 +90,7 @@ const createPlaylistStore = () => {
   const fetchPlaylistItems = async (playlistId: PlaylistId) => {
     loadingItems.value = true
     try {
-      const { data, error: err } = (await getPlaylistItems(playlistId)) as ApiResult<PlaylistItem[]>
+      const { data, error: err } = await getPlaylistItems(playlistId)
       if (err) throw err
       activePlaylistItems.value = data || []
       setCurrentVideo(currentVideoId.value)
@@ -111,7 +110,7 @@ const createPlaylistStore = () => {
   }
 
   const create = async (name: string, description?: string | null) => {
-    const { data, error: err } = (await createPlaylist({ name, description })) as ApiResult<Playlist>
+    const { data, error: err } = await createPlaylist({ name, description })
     if (err) {
       Logger.error('[usePlaylist] create error', err)
       return null
@@ -123,7 +122,7 @@ const createPlaylistStore = () => {
   }
 
   const update = async (playlistId: PlaylistId, name?: string | null, description?: string | null) => {
-    const { data, error: err } = (await updatePlaylist(playlistId, { name, description })) as ApiResult<Playlist>
+    const { data, error: err } = await updatePlaylist(playlistId, { name, description })
     if (err) {
       Logger.error('[usePlaylist] update error', err)
       return null
@@ -141,7 +140,7 @@ const createPlaylistStore = () => {
   }
 
   const remove = async (playlistId: PlaylistId) => {
-    const { error: err } = (await deletePlaylist(playlistId)) as ApiResult<unknown>
+    const { error: err } = await deletePlaylist(playlistId)
     if (err) {
       Logger.error('[usePlaylist] delete error', err)
       return false
@@ -158,7 +157,7 @@ const createPlaylistStore = () => {
     const { data, error: err } = (await addVideoToPlaylist({
       video_id: videoId,
       playlist_id: playlistId,
-    })) as ApiResult<PlaylistItem>
+    }))
     if (err) {
       Logger.error('[usePlaylist] addVideo error', err)
       return null
@@ -177,7 +176,7 @@ const createPlaylistStore = () => {
   }
 
   const removeVideo = async (playlistId: PlaylistId, videoId: VideoId) => {
-    const { error: err } = (await removeVideoFromPlaylist(playlistId, videoId)) as ApiResult<unknown>
+    const { error: err } = await removeVideoFromPlaylist(playlistId, videoId)
     if (err) {
       Logger.error('[usePlaylist] removeVideo error', err)
       return false
@@ -203,7 +202,7 @@ const createPlaylistStore = () => {
       playlist_id: playlistId,
       video_id: videoId,
       new_position: newPosition,
-    })) as ApiResult<PlaylistItem>
+    }))
     if (err) {
       Logger.error('[usePlaylist] reorder error', err)
       return false
@@ -238,7 +237,7 @@ const createPlaylistStore = () => {
 
   const getDefault = async (): Promise<Playlist | null> => {
     try {
-      const { data, error: err } = (await getDefaultPlaylist()) as ApiResult<Playlist>
+      const { data, error: err } = await getDefaultPlaylist()
       if (err) return null
       return data || null
     } catch (err) {

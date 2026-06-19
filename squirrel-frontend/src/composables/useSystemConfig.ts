@@ -1,6 +1,5 @@
 import { ref } from 'vue'
 import { getSystemConfig, saveSystemConfig } from '@/api'
-import type { ApiResult } from '@/types/api'
 
 type SystemConfig = Record<string, unknown>
 
@@ -11,7 +10,7 @@ export function useSystemConfig() {
   const loadSystemConfig = async () => {
     loading.value = true
     try {
-      const response = (await getSystemConfig()) as ApiResult<SystemConfig>
+      const response = await getSystemConfig()
       if (!response.error) {
         config.value = response.data || null
       }
@@ -24,7 +23,7 @@ export function useSystemConfig() {
   const updateSystemConfig = async (payload: Record<string, unknown> = {}) => {
     loading.value = true
     try {
-      const response = (await saveSystemConfig(payload)) as ApiResult<SystemConfig>
+      const response = await saveSystemConfig(payload)
       if (!response.error) {
         config.value = response.data || null
       }

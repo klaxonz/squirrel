@@ -2,7 +2,6 @@ import { batchUpdateVideoHistory, clearVideoHistory, deleteVideoHistory, listVid
 import { Logger } from '@/utils/logger'
 import { toPersistedVideoId, useVideoHistorySync } from './useVideoHistorySync'
 import type { ReportData } from './useVideoHistorySync'
-import type { ApiResult } from '@/types/api'
 
 type VideoId = string | number
 
@@ -63,10 +62,10 @@ export default function useVideoHistory() {
     }
 
     if (sync.syncStatus.isOnline || force) {
-      const { error } = (await updateVideoHistory({
+      const { error } = await updateVideoHistory({
         ...reportData,
         video_id: persistedVideoId,
-      })) as ApiResult<unknown>
+      })
       if (!error) {
         sync.syncStatus.lastSyncTime = Date.now()
         sync.syncStatus.failedAttempts = 0
@@ -114,7 +113,7 @@ export default function useVideoHistory() {
       return true
     }
 
-    const { error } = (await batchUpdateVideoHistory(persistedReports)) as ApiResult<unknown>
+    const { error } = await batchUpdateVideoHistory(persistedReports)
 
     if (!error) {
       sync.syncStatus.lastSyncTime = Date.now()
@@ -172,9 +171,7 @@ export default function useVideoHistory() {
       
       const { data, error } = await listVideoHistory(params)
       if (error) {
-        const e = error as { message?: string }
-        const message = typeof e?.message === 'string' ? e.message : '加载历史失败'
-        throw new Error(message)
+        throw new Error(error.message || '加载历史失败')
       }
 
       const payload = data || { items: [], total: 0, page, page_size: pageSize }
@@ -193,11 +190,9 @@ export default function useVideoHistory() {
 
   const clearHistory = async (videoIds: VideoId[] | null = null) => {
     try {
-      const { error } = (await clearVideoHistory(videoIds)) as ApiResult<unknown>
+      const { error } = await clearVideoHistory(videoIds)
       if (error) {
-        const e = error as { message?: string }
-        const message = typeof e?.message === 'string' ? e.message : '清空历史失败'
-        throw new Error(message)
+        throw new Error(error.message || '清空历史失败')
       }
       return true;
     } catch (error: unknown) {
@@ -208,11 +203,9 @@ export default function useVideoHistory() {
 
   const deleteHistoryEntry = async (historyId: VideoId) => {
     try {
-      const { error } = (await deleteVideoHistory(historyId)) as ApiResult<unknown>
+      const { error } = await deleteVideoHistory(historyId)
       if (error) {
-        const e = error as { message?: string }
-        const message = typeof e?.message === 'string' ? e.message : '删除历史失败'
-        throw new Error(message)
+        throw new Error(error.message || '删除历史失败')
       }
       return true
     } catch (error: unknown) {

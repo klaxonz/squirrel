@@ -1,13 +1,14 @@
 import { get, put } from '@/utils/request'
+import type { SiteListResponse, SitesResponse } from '@/types/sites'
 
 export const getSites = async () => {
-  return get('/api/sites')
+  return get<SiteListResponse>('/api/sites')
 }
 
 export const getSiteCatalog = async () => {
-  return get('/api/sites/catalog')
+  return get<SitesResponse>('/api/sites/catalog')
 }
 
-export const saveSites = async (payload: Record<string, unknown>) => {
-  return put('/api/sites/catalog', payload)
+export const saveSites = async (payload: { sites: SitesResponse }) => {
+  return put<SitesResponse>('/api/sites/catalog', payload)
 }

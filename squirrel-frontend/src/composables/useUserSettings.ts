@@ -1,6 +1,5 @@
 import { ref } from 'vue'
 import { getUserMeConfig, updateUserMeConfig } from '@/api'
-import type { ApiResult } from '@/types/api'
 
 type UserSettings = {
   showNsfw: boolean
@@ -37,7 +36,7 @@ export function useUserSettings() {
       loadingState.value = true
       errorState.value = null
 
-      const { data, error } = (await getUserMeConfig()) as ApiResult<UserSettings>
+      const { data, error } = await getUserMeConfig()
       if (!error && data) {
         settingsState.value = {
           ...settingsState.value,
@@ -61,15 +60,15 @@ export function useUserSettings() {
     loadingState.value = true
     errorState.value = null
 
-    const response = (await updateUserMeConfig({
+    const response = await updateUserMeConfig({
       settings: settingsState.value,
       merge: false,
-    })) as ApiResult<UserSettings>
+    })
 
     if (response.error) {
       errorState.value = response.error
 
-      const rollbackResult = (await getUserMeConfig()) as ApiResult<UserSettings>
+      const rollbackResult = await getUserMeConfig()
       if (!rollbackResult.error && rollbackResult.data) {
         settingsState.value = {
           ...settingsState.value,
@@ -82,7 +81,14 @@ export function useUserSettings() {
     }
 
     if (response.data) {
-      settingsState.value = response.data
+      // ponytail: UserConfig fields are optional server-side; merge onto
+      // defaults so the store always carries a complete UserSettings shape.
+      settingsState.value = {
+        showNsfw: response.data.showNsfw ?? settingsState.value.showNsfw,
+        autoplay: response.data.autoplay ?? settingsState.value.autoplay,
+        autoplayNext: response.data.autoplayNext ?? settingsState.value.autoplayNext,
+        loop: response.data.loop ?? settingsState.value.loop,
+      }
     }
 
     loadingState.value = false

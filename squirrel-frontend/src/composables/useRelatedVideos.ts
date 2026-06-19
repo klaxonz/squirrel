@@ -2,7 +2,7 @@ import { computed } from 'vue'
 import type { ComputedRef } from 'vue'
 
 import { getVideoList } from '@/api'
-import type { ApiResult, VideoId, VideoPageVideo } from '@/types/videoPlayback'
+import type { VideoId, VideoPageVideo } from '@/types/videoPlayback'
 import type { PlaybackSession } from '@/composables/usePlaybackSession'
 
 type VideoListResponse = { data?: unknown[] }
@@ -24,21 +24,21 @@ export default function useRelatedVideos(session: PlaybackSession, sourceVideo: 
 
     const primarySubId = video?.subscriptions?.[0]?.id
     if (primarySubId) {
-      const { data, error } = (await getVideoList({
+      const { data, error } = await getVideoList({
         pageSize,
         sort_by: 'publish_date',
         subscription_id: primarySubId,
-      })) as ApiResult<VideoListResponse>
+      })
       if (!error) collected.push(...(extractItems(data) as VideoPageVideo[]))
     }
 
     if (collected.length < pageSize && video?.site) {
       const remaining = pageSize - collected.length
-      const { data, error } = (await getVideoList({
+      const { data, error } = await getVideoList({
         pageSize: remaining,
         sort_by: 'publish_date',
         site: video.site,
-      })) as ApiResult<VideoListResponse>
+      })
       if (!error) collected.push(...(extractItems(data) as VideoPageVideo[]))
     }
 

@@ -1,32 +1,13 @@
 import { ref } from 'vue'
 import { getSiteCatalog, getSites, saveSites } from '@/api'
-import type { ApiResult } from '@/types/api'
+import type { SiteOption, SitesResponse } from '@/types/sites'
 
 type SiteSlug = string
-type SiteInfo = {
-  label?: string
-  domains?: string[]
-  aliases?: string[]
-  enabled?: boolean
-  http?: unknown
-  proxy?: unknown
-  login?: unknown
-  rate_limit?: unknown
-  metadata?: unknown
-  test_url?: unknown
-  icon_url?: unknown
+type SiteCatalogPayloadItem = {
   [key: string]: unknown
 }
 
-type SiteOption = { value: SiteSlug; label: string }
-type SitesResponse = Record<SiteSlug, SiteInfo>
-type SiteListItem = SiteInfo & {
-  name?: string
-  site_name?: string
-}
-type SiteListResponse = {
-  sites?: SiteListItem[]
-}
+type SiteCatalogPayload = Record<SiteSlug, SiteCatalogPayloadItem>
 
 const cached = ref<SiteOption[] | null>(null)
 const loading = ref(false)
@@ -40,7 +21,7 @@ export async function fetchSites() {
   if (cached.value || loading.value) return { data: cached.value, error: error.value }
   loading.value = true
   error.value = null
-  const { data, error: requestError } = (await getSites()) as ApiResult<SiteListResponse>
+  const { data, error: requestError } = await getSites()
   if (requestError) {
     error.value = requestError
     loading.value = false
@@ -66,17 +47,11 @@ const siteCatalog = ref<SitesResponse>({})
 const siteCatalogLoading = ref(false)
 const siteCatalogError = ref<unknown | null>(null)
 
-type SiteCatalogPayloadItem = {
-  [key: string]: unknown
-}
-
-type SiteCatalogPayload = Record<SiteSlug, SiteCatalogPayloadItem>
-
 export function useSiteCatalog() {
   const loadCatalog = async () => {
     siteCatalogLoading.value = true
     siteCatalogError.value = null
-    const { data, error } = (await getSiteCatalog()) as ApiResult<SitesResponse>
+    const { data, error } = await getSiteCatalog()
     if (error) {
       siteCatalogError.value = error
     } else {
@@ -89,7 +64,7 @@ export function useSiteCatalog() {
     siteCatalogLoading.value = true
     siteCatalogError.value = null
     try {
-      const response = (await saveSites({ sites: updatedOverrides })) as ApiResult<SitesResponse>
+      const response = await saveSites({ sites: updatedOverrides })
       if (response.error) throw response.error
 
       siteCatalog.value = response.data || {}
