@@ -18,10 +18,7 @@
       </div>
     </div>
 
-    <div v-if="loading" class="music-playlist-loading">
-      <AppIcon name="loadingSpinner" class="h-5 w-5 animate-spin text-primary" />
-      <span>加载中...</span>
-    </div>
+    <AppBlockLoader v-if="loading" text="加载中..." />
 
     <div v-else class="music-playlist-tracks">
       <MusicTrackList
@@ -35,10 +32,9 @@
     </div>
 
     <div v-if="hasMore" class="music-playlist-load-more">
-      <button class="music-playlist-load-more-btn" :disabled="loadingMore" @click="$emit('load-more')">
-        <AppIcon v-if="loadingMore" name="loadingSpinner" class="h-4 w-4 animate-spin" />
-        <span>加载更多</span>
-      </button>
+      <Button variant="outline" :loading="loadingMore" @click="$emit('load-more')">
+        加载更多
+      </Button>
     </div>
 
     <section v-if="similar.length" class="music-playlist-similar">
@@ -61,6 +57,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
+import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import MusicTrackList from './MusicTrackList.vue'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import type { MusicPlaylist, MusicTrack } from '@/shared/api/music'
@@ -196,17 +194,6 @@ function shuffleAll() {
 
 .music-playlist-play-btn:active {
   transform: scale(0.95);
-}
-
-.music-playlist-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.625rem;
-  padding: 4rem 0;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.9375rem;
-  font-weight: 500;
 }
 
 .music-playlist-tracks {

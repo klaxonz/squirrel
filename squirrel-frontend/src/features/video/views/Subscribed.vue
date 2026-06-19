@@ -108,16 +108,17 @@
         </div>
         
         <div ref="channelsTrigger" class="flex h-12 w-full items-center justify-center">
-          <div v-if="loadingMoreChannels" class="h-5 w-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+          <AppSpinner v-if="loadingMoreChannels" />
         </div>
 
-        <div v-if="channelsFinished && !filteredChannels.length" class="py-10 flex flex-col items-center justify-center text-center">
-          <div class="h-12 w-12 rounded-full bg-accent/50 flex items-center justify-center mb-3">
-            <AppIcon name="inbox" class="h-6 w-6 text-muted-foreground/40" />
-          </div>
-          <p class="text-sm font-semibold text-foreground/70">暂无匹配订阅</p>
-          <p class="text-xs text-muted-foreground mt-1">请尝试更换筛选条件</p>
-        </div>
+        <AppEmptyState
+          v-if="channelsFinished && !filteredChannels.length"
+          class="py-10"
+          variant="plain"
+          icon="inbox"
+          title="暂无匹配订阅"
+          copy="请尝试更换筛选条件"
+        />
       </div>
 
       <div class="shrink-0 border-t border-border/30 p-4 bg-background/50 backdrop-blur-sm">
@@ -183,9 +184,7 @@
             <div class="mt-1 flex items-center gap-2 text-xs text-muted-foreground/80 font-medium">
               <span>{{ headerSubtitle }}</span>
               <div v-if="headerLoading" class="flex items-center gap-1 ml-2">
-                <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.3s]" />
-                <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/80 [animation-delay:-0.15s]" />
-                <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" />
+                <AppBounceDots />
               </div>
             </div>
           </div>
@@ -224,12 +223,8 @@
           />
 
           <div v-else-if="viewMode === 'feed'" class="space-y-12 pb-12">
-            <div v-if="!feedItems.length && !loadingFeed" class="flex min-h-[30rem] flex-col items-center justify-center text-center">
-              <div class="h-24 w-24 rounded-full bg-accent/40 flex items-center justify-center mb-6 ring-4 ring-background shadow-inner">
-                <AppIcon name="inbox" class="h-10 w-10 text-muted-foreground/30" />
-              </div>
-              <h3 class="text-lg font-bold tracking-tight text-foreground/80">暂无内容</h3>
-              <p class="mt-2 text-sm font-medium text-muted-foreground max-w-[240px]">订阅频道更新后会显示在这里。</p>
+            <div v-if="!feedItems.length && !loadingFeed" class="min-h-[30rem]">
+              <AppEmptyState variant="plain" icon="inbox" title="暂无内容" copy="订阅频道更新后会显示在这里。" />
             </div>
 
             <div v-for="group in videoGroups" :key="group.title" class="space-y-4">
@@ -277,6 +272,9 @@ import { ref, computed, watch, onUnmounted, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { onClickOutside } from '@vueuse/core'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
+import AppBounceDots from '@/shared/components/AppBounceDots.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'
 import SubscriptionCard from '@/features/video/components/feed/SubscriptionCard.vue'
 import SubscriptionCardSkeleton from '@/features/video/components/feed/SubscriptionCardSkeleton.vue'

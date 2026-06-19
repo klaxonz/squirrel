@@ -40,6 +40,39 @@
   --app-surface-border: hsl(var(--border) / 0.65);
   --app-surface-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
   --app-muted-surface: hsl(var(--muted) / 0.45);
+
+  /* Spinner — single source of truth for all loading spinners. */
+  --app-spinner-size-sm: 0.875rem;   /* 14px — buttons, inline */
+  --app-spinner-size-md: 1.25rem;    /* 20px — block loaders */
+  --app-spinner-size-lg: 1.5rem;     /* 24px — full-area loaders */
+  --app-spinner-color: hsl(var(--primary));
+  --app-spinner-muted-color: hsl(var(--muted-foreground));
+
+  /* Block loader — centered spinner + caption for loading regions. */
+  --app-loader-padding: 3rem 1rem;
+  --app-loader-gap: 0.625rem;
+  --app-loader-font-size: 0.875rem;
+  --app-loader-min-height: 8rem;
+
+  /* Skeleton — unified placeholder base. Ends the muted/accent/secondary split. */
+  --app-skeleton-base: hsl(var(--muted) / 0.6);
+  --app-skeleton-base-strong: hsl(var(--muted) / 0.8);
+  --app-skeleton-shimmer: hsl(var(--foreground) / 0.05);
+  --app-skeleton-radius: var(--radius-md);
+
+  /* Toast — single global toast stack, bottom-right. */
+  --app-toast-z: 100;
+  --app-toast-inset: bottom 1.5rem right 1.5rem;
+  --app-toast-gap: 0.5rem;
+  --app-toast-radius: var(--radius-lg);
+  --app-toast-padding: 0.75rem 1rem;
+  --app-toast-font-size: 0.875rem;
+  --app-toast-shadow: 0 8px 24px hsl(var(--foreground) / 0.18);
+  --app-toast-success-bg: hsl(var(--foreground));
+  --app-toast-success-fg: hsl(var(--background));
+  --app-toast-error-bg: hsl(var(--background));
+  --app-toast-error-fg: hsl(var(--destructive));
+  --app-toast-error-border: hsl(var(--destructive) / 0.2);
 }
 
 .app-page-content {

@@ -98,11 +98,8 @@
         </button>
       </div>
 
-      <div v-if="!loading && !errorMessage && items.length === 0" class="flex min-h-[50vh] flex-col items-center justify-center p-10 text-center">
-        <div class="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-secondary">
-          <AppIcon name="inbox" class="h-10 w-10 text-muted-foreground/30" />
-        </div>
-        <h3 class="text-xl font-bold text-foreground/60">暂无频道视频</h3>
+      <div v-if="!loading && !errorMessage && items.length === 0" class="min-h-[50vh] p-10">
+        <AppEmptyState variant="plain" icon="inbox" title="暂无频道视频" />
       </div>
 
       <div ref="loadMoreTrigger" class="h-20 w-full" />
@@ -114,6 +111,7 @@
 import { computed, nextTick, onActivated, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import VideoSkeleton from '@/features/video/components/feed/VideoSkeleton.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'

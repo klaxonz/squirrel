@@ -32,8 +32,7 @@
 
       <DialogFooter class="border-t border-border/70 bg-secondary/28 px-6 py-4 sm:justify-end">
         <Button size="sm" variant="ghost" :disabled="loading" @click="emit('close')">取消</Button>
-        <Button size="sm" :disabled="!channelUrl || loading" @click="handleSubmit">
-          <AppIcon v-if="loading" name="loadingSpinner" class="h-4 w-4 animate-spin" />
+        <Button size="sm" :loading="loading" :disabled="!channelUrl" @click="handleSubmit">
           确认添加
         </Button>
       </DialogFooter>
@@ -43,7 +42,6 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import AppIcon from '@/shared/icons/AppIcon.vue'
 import { subscribe } from '@/shared/api'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'

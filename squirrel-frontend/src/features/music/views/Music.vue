@@ -1,26 +1,19 @@
 <template>
-  <div class="music-page">
-    <main class="music-main">
-      <div class="music-top-nav" aria-label="音乐导航">
-        <div class="music-primary-tabs">
-          <button
-            v-for="item in musicNavItems"
-            :key="item.id"
-            class="music-primary-tab"
-            :class="{ 'music-primary-tab--active': sidebarActiveMode === item.id }"
-            @click="handleNavigate(item.id)"
-          >
-            <AppIcon :name="item.icon" class="h-4 w-4" />
-            <span>{{ item.label }}</span>
-          </button>
-        </div>
-
+  <AppPageShell variant="compact" fill>
+    <div class="flex h-full flex-col">
+      <header class="flex shrink-0 items-center justify-between gap-3 border-b border-border/40 bg-background/96 px-4 py-3 sm:px-8">
+        <AppSegmentedControl
+          :model-value="sidebarActiveMode"
+          :options="musicNavOptions"
+          aria-label="音乐导航"
+          @change="handleNavigate"
+        />
         <MusicCreatePlaylistButton
           v-if="authStatus?.logged_in && activeView === 'profile'"
           class="music-top-create"
           @create="handleCreatePlaylist"
         />
-      </div>
+      </header>
 
       <div class="music-content custom-scrollbar">
         <MusicHomeView
@@ -235,7 +228,7 @@
           @select-album="handleSelectAlbumFromTrack"
         />
       </div>
-    </main>
+    </div>
 
     <MusicVideoModal
       :visible="videoModalVisible"
@@ -243,14 +236,15 @@
       :url="videoUrl"
       @close="handleCloseVideoModal"
     />
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import AppIcon from '@/shared/icons/AppIcon.vue'
 import type { AppIconName } from '@/shared/icons/app-icons'
+import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
 import MusicCreatePlaylistButton from '@/features/music/components/sidebar/MusicCreatePlaylistButton.vue'
 import MusicHomeView from '@/features/music/components/home/MusicHomeView.vue'
 import MusicSearchView from '@/features/music/components/MusicSearchView.vue'
@@ -413,6 +407,10 @@ const musicNavItems = computed<Array<{ id: string; label: string; icon: AppIconN
   { id: 'playlists', label: '歌单', icon: 'playlistMusic' },
   { id: 'profile', label: authStatus.value?.logged_in ? '我的' : '登录', icon: 'user' },
 ])
+
+const musicNavOptions = computed(() =>
+  musicNavItems.value.map(item => ({ value: item.id, label: item.label })),
+)
 
 // ponytail: bridge useMusicQrLogin.authStatus -> useMusicAuth.authStatus so
 // the logged_in watcher (loadUserPlaylists) fires after a successful scan,
@@ -734,70 +732,6 @@ async function handleLogout() {
 </script>
 
 <style scoped>
-.music-page {
-  display: flex;
-  height: 100%;
-  background: hsl(var(--background));
-}
-
-.music-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.music-top-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.75rem 2rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.35);
-  background: hsl(var(--background) / 0.96);
-}
-
-.music-primary-tabs {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.music-primary-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.music-primary-tab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-  height: 2.25rem;
-  padding: 0 0.75rem;
-  border: 1px solid transparent;
-  border-radius: 0.5rem;
-  background: transparent;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-
-.music-primary-tab:hover {
-  background: hsl(var(--accent) / 0.7);
-  color: hsl(var(--foreground));
-}
-
-.music-primary-tab--active {
-  background: hsl(var(--accent));
-  border-color: hsl(var(--border) / 0.6);
-  color: hsl(var(--foreground));
-}
-
 .music-top-create {
   flex: 0 0 auto;
 }
@@ -833,11 +767,5 @@ async function handleLogout() {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.35);
-}
-
-@media (max-width: 768px) {
-  .music-top-nav {
-    padding: 0.625rem 1rem;
-  }
 }
 </style>

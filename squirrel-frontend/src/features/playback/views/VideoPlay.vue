@@ -218,32 +218,14 @@
                   </div>
                 </article>
               </div>
-              <div v-else class="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                <AppIcon name="film" class="w-8 h-8 mb-3 opacity-20" />
-                <p class="text-xs font-medium">暂无相关视频</p>
-              </div>
+              <AppEmptyState v-else class="py-16" variant="plain" icon="film" title="暂无相关视频" />
             </div>
-            <div v-else-if="asideTab === 'clips'" key="clips" class="flex flex-col items-center justify-center py-20 text-muted-foreground">
-              <AppIcon name="clip" class="w-10 h-10 mb-4 opacity-20" />
-              <p class="text-sm font-medium">按 Shift + M 创建片段</p>
-              <p class="text-xs text-muted-foreground/50 mt-1">标记精彩时刻</p>
-            </div>
-            <div v-else-if="asideTab === 'playlist'" key="playlist" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <AppIcon name="playlists" class="w-8 h-8 mb-3 opacity-20" />
-              <p class="text-xs font-medium">播放列表功能开发中</p>
-            </div>
+            <AppEmptyState v-else-if="asideTab === 'clips'" key="clips" class="py-20" variant="plain" icon="clip" title="按 Shift + M 创建片段" copy="标记精彩时刻" />
+            <AppEmptyState v-else-if="asideTab === 'playlist'" key="playlist" class="py-16" variant="plain" icon="playlists" title="播放列表功能开发中" />
           </Transition>
         </div>
       </div>
     </div>
-
-    <!-- Toast -->
-    <Transition name="toast">
-      <div v-if="toast.visible" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 bg-foreground text-background text-sm font-medium rounded-full shadow-premium">
-        <AppIcon :name="toast.error ? 'xCircle' : 'check'" class="w-4 h-4" />
-        {{ toast.message }}
-      </div>
-    </Transition>
   </div>
 </template>
 
@@ -251,6 +233,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import usePlaybackOrchestrator, { mergeVideoMetadata } from '../composables/usePlaybackOrchestrator'
 import usePlaybackReporting from '../composables/usePlaybackReporting'
 import useVideoActionBar from '@/features/video/composables/useVideoActionBar'
@@ -259,7 +242,7 @@ import useVideoPlaybackShell from '../composables/useVideoPlaybackShell'
 import useVideoPageNavigation from '@/features/video/composables/useVideoPageNavigation'
 import { consumeVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { useGlobalVideoPlayer } from '@/features/playback/composables/useGlobalVideoPlayer'
-import { useToast } from '@/features/settings/composables/useToast'
+import { useToast } from '@/shared/components/toast/useToast'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/shared/stores/theme'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
@@ -400,16 +383,16 @@ watch(() => {
 
 const moreMenuOpen = ref(false)
 const moreMenuRef = ref<HTMLElement | null>(null)
-const { toast, show: showToast } = useToast({ duration: 2500 })
+const toast = useToast()
 
 const handleShare = async () => {
   const url = `${window.location.origin}/video/${route.params.videoId}`
   try {
     await navigator.clipboard.writeText(url)
-    showToast('链接已复制到剪贴板')
+    toast.success('链接已复制到剪贴板')
   } catch (err) {
     Logger.warn('[VideoPlay] Failed to copy share link', err)
-    showToast('复制失败，请手动复制链接', true)
+    toast.error('复制失败，请手动复制链接')
   }
 }
 

@@ -132,10 +132,10 @@
               <Button
                 class="h-9 rounded-lg px-4 text-xs font-medium shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-all duration-200"
                 :class="hasChanges ? 'bg-primary text-primary-foreground hover:opacity-90' : 'bg-muted text-muted-foreground/60 border border-border/30 cursor-not-allowed'"
-                :disabled="saving || !hasChanges"
+                :loading="saving"
+                :disabled="!hasChanges"
                 @click="handleSave"
               >
-                <AppIcon v-if="saving" name="loadingSpinner" class="h-3 w-3 animate-spin" />
                 保存修改
               </Button>
               

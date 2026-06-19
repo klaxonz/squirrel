@@ -1,15 +1,13 @@
 <template>
   <div class="music-lyrics-panel">
     <div v-if="loading" class="music-lyrics-state">
-      <AppIcon name="loadingSpinner" class="h-6 w-6 animate-spin" />
+      <AppSpinner size="lg" />
       <span>歌词加载中...</span>
     </div>
     <div v-else-if="error" class="music-lyrics-state text-destructive">
       <span>{{ error }}</span>
     </div>
-    <div v-else-if="!lines.length" class="music-lyrics-state">
-      <span>暂无歌词</span>
-    </div>
+    <AppEmptyState v-else-if="!lines.length" variant="plain" title="暂无歌词" />
     <div v-else ref="scrollRef" class="music-lyrics-scrollable">
       <p
         v-for="(line, index) in lines"
@@ -26,7 +24,8 @@
 
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
-import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import type { MusicLyricLine } from '@/shared/api/music'
 
 const props = defineProps<{

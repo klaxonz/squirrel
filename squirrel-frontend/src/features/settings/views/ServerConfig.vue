@@ -104,17 +104,15 @@
 
           <!-- Submit Button -->
           <div class="pt-4">
-            <button
+            <Button
               type="submit"
-              class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 w-full shadow-sm"
-              :disabled="connecting || !form.serverUrl.trim()"
+              class="w-full"
+              size="lg"
+              :loading="connecting"
+              :disabled="!form.serverUrl.trim()"
             >
-              <span v-if="connecting" class="flex items-center gap-2">
-                <AppIcon name="loadingSpinner" class="w-4 h-4 animate-spin" />
-                正在连接...
-              </span>
-              <span v-else>确认并进入系统</span>
-            </button>
+              {{ connecting ? '正在连接...' : '确认并进入系统' }}
+            </Button>
           </div>
         </form>
       </div>
@@ -140,6 +138,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Logger } from '@/shared/lib/logger'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
 import { useServerConfig } from '@/shared/composables/useServerConfig'
 
 const router = useRouter()

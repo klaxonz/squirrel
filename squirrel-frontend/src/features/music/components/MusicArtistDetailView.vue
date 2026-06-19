@@ -60,9 +60,7 @@
 
     <section class="music-artist-section">
       <h2 class="music-section-title">热门歌曲</h2>
-      <div v-if="tracksLoading" class="music-loading">
-        <AppIcon name="loadingSpinner" class="h-6 w-6 animate-spin text-primary" />
-      </div>
+      <AppBlockLoader v-if="tracksLoading" size="sm" />
       <MusicTrackList
         v-else
         :tracks="tracks"
@@ -71,10 +69,9 @@
         @play-mv="$emit('play-mv', $event)"
       />
       <div v-if="hasMore" class="music-load-more">
-        <button class="music-load-more-btn" :disabled="loadingMore" @click="$emit('load-more')">
-          <AppIcon v-if="loadingMore" name="loadingSpinner" class="h-4 w-4 animate-spin" />
-          <span>加载更多</span>
-        </button>
+        <Button variant="outline" :loading="loadingMore" @click="$emit('load-more')">
+          加载更多
+        </Button>
       </div>
     </section>
   </div>
@@ -82,6 +79,8 @@
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
+import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import MusicTrackList from './MusicTrackList.vue'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import type { MusicArtist, MusicTrack, MusicAlbum, MusicVideo } from '@/shared/api/music'
@@ -294,13 +293,6 @@ function formatCount(count: number): string {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.music-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
 }
 
 .music-load-more {

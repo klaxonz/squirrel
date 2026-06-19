@@ -1,19 +1,11 @@
 <template>
   <div ref="root" class="w-full">
-    <div v-if="!isDesktop" class="flex min-h-[60vh] flex-col items-center justify-center p-10 text-center">
-      <div class="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-secondary">
-        <AppIcon name="search" class="h-10 w-10 text-muted-foreground/30" />
-      </div>
-      <h3 class="text-xl font-bold text-foreground/60">远端搜索仅桌面端可用</h3>
-      <p class="mt-2 text-muted-foreground">桌面端会直接请求源站并使用本机站点会话。</p>
+    <div v-if="!isDesktop" class="min-h-[60vh] p-10">
+      <AppEmptyState variant="plain" icon="search" title="远端搜索仅桌面端可用" copy="桌面端会直接请求源站并使用本机站点会话。" />
     </div>
 
-    <div v-else-if="!trimmedQuery" class="flex min-h-[60vh] flex-col items-center justify-center p-10 text-center">
-      <div class="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-secondary">
-        <AppIcon name="search" class="h-10 w-10 text-muted-foreground/30" />
-      </div>
-      <h3 class="text-xl font-bold text-foreground/60">输入关键词开始远端搜索</h3>
-      <p class="mt-2 text-muted-foreground">结果来自源站，不会写入本地数据。</p>
+    <div v-else-if="!trimmedQuery" class="min-h-[60vh] p-10">
+      <AppEmptyState variant="plain" icon="search" title="输入关键词开始远端搜索" copy="结果来自源站，不会写入本地数据。" />
     </div>
 
     <div v-else>
@@ -91,12 +83,8 @@
         <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" />
       </div>
 
-      <div v-if="!loading && !errorMessage && items.length === 0" class="flex min-h-[60vh] flex-col items-center justify-center p-10 text-center">
-        <div class="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-secondary">
-          <AppIcon name="inbox" class="h-10 w-10 text-muted-foreground/30" />
-        </div>
-        <h3 class="text-xl font-bold text-foreground/60">未找到远端结果</h3>
-        <p class="mt-2 text-muted-foreground">换个关键词或站点再试。</p>
+      <div v-if="!loading && !errorMessage && items.length === 0" class="min-h-[60vh] p-10">
+        <AppEmptyState variant="plain" icon="inbox" title="未找到远端结果" copy="换个关键词或站点再试。" />
       </div>
 
     </div>
@@ -108,7 +96,7 @@
 <script setup lang="ts">
 import { computed, onActivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
 import VideoThumbnail from './VideoThumbnail.vue'

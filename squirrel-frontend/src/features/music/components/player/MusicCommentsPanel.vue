@@ -1,16 +1,13 @@
 <template>
   <div class="music-comments-panel">
     <div v-if="loading" class="music-comments-state">
-      <AppIcon name="loadingSpinner" class="h-6 w-6 animate-spin" />
+      <AppSpinner size="lg" />
       <span>评论加载中...</span>
     </div>
     <div v-else-if="error" class="music-comments-state text-destructive">
       <span>{{ error }}</span>
     </div>
-    <div v-else-if="!comments.length" class="music-comments-state">
-      <AppIcon name="messageCircle" class="h-6 w-6" />
-      <span>暂无评论</span>
-    </div>
+    <AppEmptyState v-else-if="!comments.length" variant="plain" icon="messageCircle" title="暂无评论" />
     <div v-else class="music-comments-scrollable">
       <div v-for="comment in comments" :key="comment.id" class="music-comment">
         <div class="music-comment-avatar">
@@ -46,6 +43,8 @@
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import type { MusicComment } from '@/shared/api/music'
 
 defineProps<{

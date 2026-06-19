@@ -29,12 +29,8 @@
     </div>
 
     <!-- Empty State -->
-    <div v-if="!loading && videos.length === 0" class="flex flex-col items-center justify-center min-h-[60vh] text-center p-10">
-      <div class="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mb-6">
-        <AppIcon name="inbox" class="w-10 h-10 text-muted-foreground/30" />
-      </div>
-      <h3 class="text-xl font-bold text-foreground/60">未找到内容</h3>
-      <p class="text-muted-foreground mt-2">请调整筛选条件或搜索关键词后再试。</p>
+    <div v-if="!loading && videos.length === 0" class="min-h-[60vh] p-10">
+      <AppEmptyState variant="plain" icon="inbox" title="未找到内容" copy="请调整筛选条件或搜索关键词后再试。" />
     </div>
 
     <!-- Infinite Scroll Trigger -->
@@ -44,7 +40,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import VideoItem from './VideoItem.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
 import { useUIStore } from '@/shared/stores/ui'

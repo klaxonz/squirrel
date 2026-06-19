@@ -228,3 +228,22 @@
 .reader-content pre::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.25) !important;
 }
+
+/* Global toast stack — bottom-right, slides in from the right. */
+.app-toast-enter-active,
+.app-toast-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.app-toast-enter-from {
+  opacity: 0;
+  transform: translateX(1rem);
+}
+.app-toast-leave-to {
+  opacity: 0;
+  transform: translateX(1rem);
+}
+/* Keep leaving items in flow during the transition so siblings don't jump. */
+.app-toast-leave-active {
+  position: absolute;
+  right: 0;
+}

@@ -132,8 +132,7 @@
 
       <div class="flex shrink-0 items-center justify-end gap-2 border-t border-border/50 bg-muted/30 p-4">
         <Button variant="outline" class="h-9 rounded-md" @click="$emit('close')">取消</Button>
-        <Button class="h-9 rounded-md" :disabled="loading || !!jsonError" @click="handleSubmit">
-          <AppIcon v-if="loading" name="loadingSpinner" class="h-4 w-4 animate-spin" />
+        <Button class="h-9 rounded-md" :loading="loading" :disabled="!!jsonError" @click="handleSubmit">
           {{ isEditing ? '保存' : '创建' }}
         </Button>
       </div>

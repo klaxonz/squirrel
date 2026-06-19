@@ -1,9 +1,7 @@
 <template>
   <div class="music-discovery-grid">
     <h3 class="text-sm font-semibold mb-3">新碟上架</h3>
-    <div v-if="loading" class="music-loading">
-      <AppIcon name="loadingSpinner" class="h-6 w-6 animate-spin text-primary" />
-    </div>
+    <AppBlockLoader v-if="loading" />
     <div v-else class="music-grid">
       <div
         v-for="album in albums"
@@ -25,16 +23,17 @@
       </div>
     </div>
     <div v-if="hasMore" class="music-load-more">
-      <button class="music-load-more-btn" :disabled="loadingMore" @click="$emit('load-more')">
-        <AppIcon v-if="loadingMore" name="loadingSpinner" class="h-4 w-4 animate-spin" />
-        <span>加载更多</span>
-      </button>
+      <Button variant="outline" :loading="loadingMore" @click="$emit('load-more')">
+        加载更多
+      </Button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
+import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import type { MusicAlbum } from '@/shared/api/music'
 
 defineProps<{
@@ -53,13 +52,6 @@ defineEmits<{
 <style scoped>
 .music-discovery-grid {
   padding: 1rem;
-}
-
-.music-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
 }
 
 .music-grid {

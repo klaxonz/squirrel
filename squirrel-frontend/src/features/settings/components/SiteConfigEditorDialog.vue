@@ -111,20 +111,20 @@
 
       <!-- Footer -->
       <div class="px-4 py-3 border-t border-border/50 flex items-center justify-end gap-2">
-        <button 
-          class="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 rounded hover:bg-muted/60 transition-all"
+        <Button
+          size="sm"
+          variant="ghost"
           @click="$emit('close')"
         >
           取消
-        </button>
-        <button 
-          class="px-4 py-1.5 rounded bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-all disabled:opacity-50 flex items-center"
-          :disabled="saving"
+        </Button>
+        <Button
+          size="sm"
+          :loading="saving"
           @click="handleSave"
         >
-          <AppIcon v-if="saving" name="loadingSpinner" class="h-3 w-3 animate-spin mr-1.5" />
           {{ saving ? '保存中...' : '保存' }}
-        </button>
+        </Button>
       </div>
     </div>
   </div>
@@ -134,6 +134,7 @@
 import { computed, ref, watch } from 'vue';
 
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import { Switch } from '@/shared/ui/switch'
 import { Input } from '@/shared/ui/input'

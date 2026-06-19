@@ -36,10 +36,7 @@
           size="sm"
           class="log-toolbar-button"
         >
-          <span
-            v-if="loading"
-            class="h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground"
-          ></span>
+          <AppSpinner v-if="loading" size="sm" />
           <span>刷新</span>
         </Button>
       </div>
@@ -107,7 +104,7 @@
 
       <div class="log-stream-container flex-1 flex flex-col min-h-0 overflow-hidden font-mono text-[13px]">
         <div v-if="loading && logs.length === 0" class="flex items-center justify-center py-20 text-muted-foreground">
-          <span class="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground mr-2"></span>
+          <AppSpinner size="sm" class="mr-2" />
           加载中...
         </div>
 
@@ -197,6 +194,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import AppIcon from '@/shared/icons/AppIcon.vue';
+import AppSpinner from '@/shared/components/AppSpinner.vue';
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue';
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue';
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue';

@@ -1,7 +1,7 @@
 <template>
   <AppPageShell variant="compact">
-    <div class="flex h-full overflow-hidden bg-background text-foreground">
-      <aside class="hidden w-72 shrink-0 flex-col border-r border-border/50 bg-background lg:flex">
+    <AppTwoColumnLayout>
+      <template #sidebar>
         <div class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4">
           <div class="min-w-0">
             <h1 class="truncate text-sm font-semibold">定时任务</h1>
@@ -43,55 +43,16 @@
             <span class="text-xs font-normal text-muted-foreground tabular-nums">{{ getStatusCount(opt.value) }}</span>
           </button>
         </nav>
-      </aside>
+      </template>
 
-      <main class="flex min-w-0 flex-1 flex-col bg-background">
-        <header class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4 lg:px-6">
-          <div class="min-w-0">
-            <h2 class="truncate text-base font-semibold">{{ activeStatusLabel }}</h2>
-            <p class="mt-0.5 text-xs text-muted-foreground">{{ taskSummary }}</p>
-          </div>
+      <template #header>
+        <div class="min-w-0">
+          <h2 class="truncate text-base font-semibold">{{ activeStatusLabel }}</h2>
+          <p class="mt-0.5 text-xs text-muted-foreground">{{ taskSummary }}</p>
+        </div>
 
-          <div class="flex shrink-0 items-center gap-2">
-            <div class="relative hidden w-80 md:block">
-              <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                v-model="searchQuery"
-                @input="debouncedSearch"
-                placeholder="搜索任务"
-                class="h-9 w-full rounded-md border-border/50 pl-9 pr-8 text-sm shadow-none"
-              />
-              <button
-                v-if="searchQuery"
-                @click="clearSearch"
-                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 transition-colors hover:text-foreground"
-              >
-                <AppIcon name="close" class="h-4 w-4" />
-              </button>
-            </div>
-            <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" @click="refreshData">
-              <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': loading }" />
-            </Button>
-            <Button class="h-9 rounded-md px-3 lg:hidden" @click="showCreateDialog = true">
-              <AppIcon name="plus" class="h-4 w-4" />
-              新建
-            </Button>
-          </div>
-        </header>
-
-        <div class="shrink-0 space-y-2 border-b border-border/50 p-3 md:hidden">
-          <div class="flex overflow-x-auto rounded-md bg-muted p-0.5 custom-scrollbar">
-            <button
-              v-for="opt in statusOptions"
-              :key="opt.value"
-              @click="setStatusFilter(opt.value)"
-              class="h-8 shrink-0 rounded-[6px] px-3 text-sm font-medium transition-colors"
-              :class="statusFilter === opt.value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-            >
-              {{ opt.label }}
-            </button>
-          </div>
-          <div class="relative">
+        <div class="flex shrink-0 items-center gap-2">
+          <div class="relative hidden w-80 md:block">
             <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               v-model="searchQuery"
@@ -107,30 +68,63 @@
               <AppIcon name="close" class="h-4 w-4" />
             </button>
           </div>
+          <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" @click="refreshData">
+            <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+          </Button>
+          <Button class="h-9 rounded-md px-3 lg:hidden" @click="showCreateDialog = true">
+            <AppIcon name="plus" class="h-4 w-4" />
+            新建
+          </Button>
         </div>
+      </template>
 
-        <div class="flex-1 overflow-y-auto custom-scrollbar">
-          <div class="mx-auto w-full max-w-[1320px] p-4 lg:p-6">
-            <div class="overflow-x-auto rounded-lg border border-border/50">
-              <div class="task-grid min-w-[760px] border-b border-border/50 bg-muted/20 px-4 py-3 text-xs font-medium text-muted-foreground">
-                <div>任务</div>
-                <div>状态</div>
-                <div>频率</div>
-                <div>下次运行</div>
-                <div class="text-right">操作</div>
-              </div>
+      <div class="shrink-0 space-y-2 border-b border-border/50 p-3 md:hidden">
+        <AppSegmentedControl
+          v-model="statusFilter"
+          :options="statusOptions"
+          aria-label="任务状态筛选"
+          class="w-full"
+        />
+        <div class="relative">
+          <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            v-model="searchQuery"
+            @input="debouncedSearch"
+            placeholder="搜索任务"
+            class="h-9 w-full rounded-md border-border/50 pl-9 pr-8 text-sm shadow-none"
+          />
+          <button
+            v-if="searchQuery"
+            @click="clearSearch"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 transition-colors hover:text-foreground"
+          >
+            <AppIcon name="close" class="h-4 w-4" />
+          </button>
+        </div>
+      </div>
 
-              <div v-if="loading && tasks.length === 0" class="min-w-[760px] space-y-2 p-4">
-                <div v-for="i in 5" :key="i" class="h-14 animate-pulse rounded-lg bg-accent/30" />
-              </div>
+      <div class="mx-auto w-full max-w-[1320px] p-4 lg:p-6">
+        <div class="overflow-x-auto rounded-lg border border-border/50">
+          <div class="task-grid min-w-[760px] border-b border-border/50 bg-muted/20 px-4 py-3 text-xs font-medium text-muted-foreground">
+            <div>任务</div>
+            <div>状态</div>
+            <div>频率</div>
+            <div>下次运行</div>
+            <div class="text-right">操作</div>
+          </div>
 
-              <div v-else-if="tasks.length === 0" class="flex min-h-[20rem] flex-col items-center justify-center text-center">
-                <AppIcon name="time" class="h-9 w-9 text-muted-foreground/30" />
-                <h2 class="mt-4 text-sm font-semibold">{{ hasTaskFilters ? '未找到相关任务' : '暂无定时任务' }}</h2>
-                <p class="mt-1 text-sm text-muted-foreground">
-                  {{ hasTaskFilters ? '调整筛选条件后再试。' : '创建任务后会显示在这里。' }}
-                </p>
-              </div>
+          <div v-if="loading && tasks.length === 0" class="min-w-[760px] space-y-2 p-4">
+            <div v-for="i in 5" :key="i" class="h-14 animate-pulse rounded-lg bg-accent/30" />
+          </div>
+
+          <div v-else-if="tasks.length === 0" class="min-h-[20rem]">
+            <AppEmptyState
+              variant="plain"
+              icon="time"
+              :title="hasTaskFilters ? '未找到相关任务' : '暂无定时任务'"
+              :copy="hasTaskFilters ? '调整筛选条件后再试。' : '创建任务后会显示在这里。'"
+            />
+          </div>
 
               <div v-else class="min-w-[760px] divide-y divide-border/50">
                 <div
@@ -204,10 +198,8 @@
                   </Button>
                 </div>
               </div>
-            </div>
           </div>
         </div>
-      </main>
 
       <TaskDialog
         v-if="showCreateDialog"
@@ -253,23 +245,16 @@
           任务 <span class="font-semibold text-foreground">"{{ executingTask?.name }}"</span> 将立即进入执行队列。
         </template>
       </ConfirmDialog>
-
-      <Transition name="toast">
-        <div v-if="toast.visible" class="fixed bottom-6 right-6 z-50">
-          <div class="flex items-center gap-3 rounded-lg border border-border/50 bg-background px-4 py-3 text-sm font-medium text-foreground shadow-lg">
-            <AppIcon v-if="!toast.error" name="statusSuccess" class="h-4 w-4 text-primary" />
-            <AppIcon v-else name="warning" class="h-4 w-4 text-destructive" />
-            {{ toast.message }}
-          </div>
-        </div>
-      </Transition>
-    </div>
+    </AppTwoColumnLayout>
   </AppPageShell>
 </template>
 
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
+import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import TaskDialog from '@/features/settings/components/TaskDialog.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
@@ -284,7 +269,7 @@ import {
 } from '@/shared/ui/dropdown-menu'
 import { useDebounceFn } from '@vueuse/core'
 import { Logger } from '@/shared/lib/logger'
-import { useToast } from '@/features/settings/composables/useToast'
+import { useToast } from '@/shared/components/toast/useToast'
 import {
   createTask as apiCreateTask,
   deleteTask as apiDeleteTask,
@@ -317,7 +302,7 @@ const showDeleteDialog = ref(false)
 const deletingTask = ref(null)
 const showExecuteDialog = ref(false)
 const executingTask = ref(null)
-const { toast, show: showToast } = useToast()
+const toast = useToast()
 
 const hasTaskFilters = computed(() => Boolean(searchQuery.value || statusFilter.value !== 'all'))
 
@@ -394,10 +379,10 @@ const doExecuteTask = async () => {
   showExecuteDialog.value = false
   const result = await apiExecuteTaskNow(executingTask.value.id)
   if (!result.error) {
-    showToast(`任务「${executingTask.value.name}」已开始执行`)
+    toast.success(`任务「${executingTask.value.name}」已开始执行`)
     setTimeout(() => refreshData(), 800)
   } else {
-    showToast('执行失败', true)
+    toast.error('执行失败')
   }
 }
 
@@ -409,10 +394,10 @@ const handleCreateTask = async (taskData) => {
   const result = await apiCreateTask(taskData)
   if (!result.error) {
     showCreateDialog.value = false
-    showToast('任务创建成功')
+    toast.success('任务创建成功')
     await refreshData()
   } else {
-    showToast('创建失败', true)
+    toast.error('创建失败')
   }
 }
 
@@ -420,10 +405,10 @@ const handleUpdateTask = async (taskData) => {
   const result = await apiUpdateTask(editingTask.value.id, taskData)
   if (!result.error) {
     editingTask.value = null
-    showToast('任务已更新')
+    toast.success('任务已更新')
     await refreshData()
   } else {
-    showToast('更新失败', true)
+    toast.error('更新失败')
   }
 }
 
@@ -437,10 +422,10 @@ const doDeleteTask = async () => {
   showDeleteDialog.value = false
   const result = await apiDeleteTask(deletingTask.value.id)
   if (!result.error) {
-    showToast('任务已删除')
+    toast.success('任务已删除')
     await refreshData()
   } else {
-    showToast('删除失败', true)
+    toast.error('删除失败')
   }
   deletingTask.value = null
 }
@@ -448,20 +433,20 @@ const doDeleteTask = async () => {
 const enableTask = async (id) => {
   const result = await apiEnableTask(id)
   if (!result.error) {
-    showToast('任务已恢复')
+    toast.success('任务已恢复')
     await refreshData()
   } else {
-    showToast('恢复失败', true)
+    toast.error('恢复失败')
   }
 }
 
 const disableTask = async (id) => {
   const result = await apiDisableTask(id)
   if (!result.error) {
-    showToast('任务已暂停')
+    toast.success('任务已暂停')
     await refreshData()
   } else {
-    showToast('暂停失败', true)
+    toast.error('暂停失败')
   }
 }
 

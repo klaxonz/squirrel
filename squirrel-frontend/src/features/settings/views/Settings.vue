@@ -1,7 +1,7 @@
 <template>
   <AppPageShell variant="compact">
-    <div class="flex h-full overflow-hidden bg-background text-foreground">
-      <aside class="hidden w-72 shrink-0 flex-col border-r border-border/50 bg-background lg:flex">
+    <AppTwoColumnLayout>
+      <template #sidebar>
         <div class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4">
           <div class="min-w-0">
             <h1 class="truncate text-sm font-semibold">设置</h1>
@@ -25,21 +25,20 @@
             <span v-if="tab.badge" class="text-xs font-normal text-muted-foreground">{{ tab.badge }}</span>
           </button>
         </nav>
-      </aside>
+      </template>
 
-      <main class="flex min-w-0 flex-1 flex-col bg-background">
-        <header class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4 lg:px-6">
-          <div class="min-w-0">
-            <h2 class="truncate text-base font-semibold">{{ activeTab.label }}</h2>
-            <p class="mt-0.5 text-xs text-muted-foreground">{{ activeTabDescription }}</p>
-          </div>
+      <template #header>
+        <div class="min-w-0">
+          <h2 class="truncate text-base font-semibold">{{ activeTab.label }}</h2>
+          <p class="mt-0.5 text-xs text-muted-foreground">{{ activeTabDescription }}</p>
+        </div>
 
-          <div class="flex shrink-0 items-center gap-2">
-            <span v-if="hasUnsavedChanges" class="hidden h-7 items-center rounded-md border border-border/50 bg-muted px-2 text-xs text-muted-foreground sm:inline-flex">
-              保存中
-            </span>
-          </div>
-        </header>
+        <div class="flex shrink-0 items-center gap-2">
+          <span v-if="hasUnsavedChanges" class="hidden h-7 items-center rounded-md border border-border/50 bg-muted px-2 text-xs text-muted-foreground sm:inline-flex">
+            保存中
+          </span>
+        </div>
+      </template>
 
         <div class="shrink-0 border-b border-border/50 p-2 lg:hidden">
           <div class="flex overflow-x-auto rounded-md bg-muted p-0.5 custom-scrollbar">
@@ -212,21 +211,7 @@
             </div>
           </main>
         </div>
-      </main>
-
-      <Transition name="toast">
-        <div v-if="saveToast.visible" class="fixed bottom-6 right-6 z-50">
-          <div :class="[
-            'flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium shadow-lg',
-            saveToast.error ? 'border-destructive/20 bg-background text-destructive' : 'border-border/50 bg-foreground text-background'
-          ]">
-            <AppIcon v-if="!saveToast.error" name="statusSuccess" class="h-4 w-4" />
-            <AppIcon v-else name="warning" class="h-4 w-4" />
-            {{ saveToast.message }}
-          </div>
-        </div>
-      </Transition>
-    </div>
+    </AppTwoColumnLayout>
   </AppPageShell>
 </template>
 
@@ -234,6 +219,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import { Button } from '@/shared/ui/button'
 import { Switch } from '@/shared/ui/switch'
@@ -250,7 +236,7 @@ import type { AppIconName } from '@/shared/icons/app-icons'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/shared/stores/theme'
 import { useServerConfig } from '@/shared/composables/useServerConfig'
-import { useToast } from '@/features/settings/composables/useToast'
+import { useToast } from '@/shared/components/toast/useToast'
 import type { AppThemeMode } from '@/shared/lib/theme'
 import { Logger } from '@/shared/lib/logger'
 import { useSystemConfig } from '@/shared/composables/useSystemConfig'
@@ -313,7 +299,7 @@ const serverTestResult = ref<boolean | null>(null)
 const serverTestMessage = ref('')
 
 // Save toast
-const { toast: saveToast, show: showSaveToast } = useToast()
+const toast = useToast()
 const hasUnsavedChanges = ref(false)
 
 const navigateToTab = (path: string) => {
@@ -338,10 +324,10 @@ const onUserSettingChange = async () => {
   hasUnsavedChanges.value = true
   try {
     await saveUserSettings()
-    showSaveToast('设置已更新')
+    toast.success('设置已更新')
   } catch (err) {
     Logger.warn('[Settings] Failed to save user settings', err)
-    showSaveToast('更新失败', true)
+    toast.error('更新失败')
   } finally {
     userSaving.value = false
     hasUnsavedChanges.value = false
@@ -352,9 +338,9 @@ const onSystemToggle = async (key: string, val: boolean) => {
   systemSaving.value = true
   const result = await updateSystemConfig({ [key]: val })
   if (result.error) {
-    showSaveToast('更新失败', true)
+    toast.error('更新失败')
   } else {
-    showSaveToast('系统配置已更新')
+    toast.success('系统配置已更新')
   }
   systemSaving.value = false
 }
@@ -382,14 +368,14 @@ const handleSaveServer = async () => {
   try {
     const ok = await setServerUrl(serverForm.value.url)
     if (!ok) {
-      showSaveToast('无效的服务器地址', true)
+      toast.error('无效的服务器地址')
       return
     }
-    showSaveToast('服务器已更新')
+    toast.success('服务器已更新')
     serverForm.value.url = currentServerUrl.value || ''
   } catch (err) {
     Logger.warn('[Settings] Failed to save server', err)
-    showSaveToast('保存失败', true)
+    toast.error('保存失败')
   } finally {
     serverSaving.value = false
   }

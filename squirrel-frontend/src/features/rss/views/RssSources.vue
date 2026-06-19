@@ -124,9 +124,7 @@
               <div class="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground/80 font-medium">
                 <span>{{ selectedFeedSubtitle }}</span>
                 <div v-if="loading" class="flex items-center gap-1 ml-1">
-                  <div class="h-1 w-1 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.3s]" />
-                  <div class="h-1 w-1 animate-bounce rounded-full bg-primary/80 [animation-delay:-0.15s]" />
-                  <div class="h-1 w-1 animate-bounce rounded-full bg-primary" />
+                  <AppBounceDots />
                 </div>
               </div>
             </div>
@@ -195,21 +193,17 @@
               v-if="loading && filteredEntries.length === 0"
               class="flex min-h-[20rem] flex-col items-center justify-center text-center py-10"
             >
-              <div class="h-7 w-7 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+              <AppSpinner size="lg" />
             </div>
 
             <!-- Empty view -->
-            <div
-              v-else-if="filteredEntries.length === 0"
-              class="flex min-h-[20rem] flex-col items-center justify-center text-center py-10"
-            >
-              <div class="h-16 w-16 rounded-full bg-accent/30 flex items-center justify-center mb-4 ring-4 ring-background shadow-inner">
-                <AppIcon name="inbox" class="h-6 w-6 text-muted-foreground/45" />
-              </div>
-              <h3 class="text-sm font-bold tracking-tight text-foreground/80">{{ activeFilter === 'recent' ? '暂无浏览记录' : '暂无相关文章' }}</h3>
-              <p class="mt-1 text-[11px] text-muted-foreground max-w-[200px] leading-relaxed">
-                {{ activeFilter === 'recent' ? '浏览文章后，这里会记录您最近看过的内容。' : (selectedAccount ? '当前无对应文章，可点击同步获取最新内容。' : '请先添加并选择您的 RSS 账号。') }}
-              </p>
+            <div v-else-if="filteredEntries.length === 0" class="min-h-[20rem] py-10">
+              <AppEmptyState
+                variant="plain"
+                icon="inbox"
+                :title="activeFilter === 'recent' ? '暂无浏览记录' : '暂无相关文章'"
+                :copy="activeFilter === 'recent' ? '浏览文章后，这里会记录您最近看过的内容。' : (selectedAccount ? '当前无对应文章，可点击同步获取最新内容。' : '请先添加并选择您的 RSS 账号。')"
+              />
             </div>
 
             <!-- Articles List -->
@@ -276,7 +270,7 @@
 
             <!-- Infinite Scroll Loader Anchor -->
             <div ref="loadMoreTrigger" class="h-20 flex items-center justify-center w-full">
-              <div v-if="loadingMoreEntries" class="h-6 w-6 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+              <AppSpinner v-if="loadingMoreEntries" />
             </div>
           </div>
         </div>
@@ -715,6 +709,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
+import AppBounceDots from '@/shared/components/AppBounceDots.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import ReaderSettingsPanel from '@/features/rss/components/ReaderSettingsPanel.vue'
 import AccountDropdown from '@/features/rss/components/AccountDropdown.vue'

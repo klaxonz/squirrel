@@ -27,6 +27,9 @@
 
     <!-- Global Music Player Bar -->
     <GlobalMusicPlayerBar />
+
+    <!-- Global toast stack (bottom-right, shared by all pages) -->
+    <ToastProvider />
   </div>
 </template>
 
@@ -38,6 +41,7 @@ import AppSidebar from '@/app/shell/AppSidebar.vue'
 import AppHeader from '@/app/shell/AppHeader.vue'
 import GlobalVideoPlayerHost from '@/features/playback/components/video-player/GlobalVideoPlayerHost.vue'
 import GlobalMusicPlayerBar from '@/features/music/components/GlobalMusicPlayerBar.vue'
+import ToastProvider from '@/shared/components/toast/ToastProvider.vue'
 import { useThemeStore } from '@/shared/stores/theme'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'

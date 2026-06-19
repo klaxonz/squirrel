@@ -40,7 +40,7 @@
     </div>
 
     <div v-else class="music-search-results">
-      <MusicLoadingState v-if="loading" :loading="true" text="搜索中..." />
+      <AppBlockLoader v-if="loading" text="搜索中..." />
 
       <template v-else-if="result">
         <section v-if="result.songs.length || result.artists.length || result.albums.length" class="music-search-all">
@@ -147,7 +147,7 @@
           </div>
         </section>
 
-        <MusicEmptyState v-else icon="search" :text="`未找到「${searchQuery}」相关结果`" />
+        <AppEmptyState v-else variant="plain" icon="search" :title="`未找到「${searchQuery}」相关结果`" />
       </template>
     </div>
   </div>
@@ -156,8 +156,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import MusicLoadingState from './shared/MusicLoadingState.vue'
-import MusicEmptyState from './shared/MusicEmptyState.vue'
+import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import type { MusicTrack, MusicArtist, MusicAlbum, MusicHotSearch } from '@/shared/api/music'
 

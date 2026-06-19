@@ -8,9 +8,7 @@
 
       <div class="flex items-center gap-2">
         <div v-if="loading" class="hidden gap-1 sm:flex">
-          <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.3s]" />
-          <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.15s]" />
-          <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" />
+          <AppBounceDots />
         </div>
         <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" @click="loadData">
           <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': loading }" />
@@ -40,10 +38,8 @@
           </div>
         </div>
 
-        <div v-else-if="groupedVideos.length === 0" class="flex min-h-[24rem] flex-col items-center justify-center text-center">
-          <AppIcon name="time" class="h-9 w-9 text-muted-foreground/30" />
-          <h2 class="mt-4 text-sm font-semibold">{{ emptyTitle }}</h2>
-          <p class="mt-1 text-sm text-muted-foreground">{{ emptyDescription }}</p>
+        <div v-else-if="groupedVideos.length === 0" class="min-h-[24rem]">
+          <AppEmptyState variant="plain" icon="time" :title="emptyTitle" :copy="emptyDescription" />
         </div>
 
         <div v-else class="space-y-10">
@@ -66,7 +62,7 @@
         </div>
 
         <div v-if="loading && videos.length > 0" class="flex justify-center py-10">
-          <div class="h-5 w-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+          <AppSpinner />
         </div>
       </main>
     </div>
@@ -95,6 +91,9 @@
 import { onMounted, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
+import AppBounceDots from '@/shared/components/AppBounceDots.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import HistoryItem from '@/features/video/components/history/HistoryItem.vue'
 import { Button } from '@/shared/ui/button'

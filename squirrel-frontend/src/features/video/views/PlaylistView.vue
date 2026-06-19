@@ -102,15 +102,21 @@
               </div>
             </div>
 
-            <div v-else-if="!playlists.length" class="flex min-h-[24rem] flex-col items-center justify-center text-center">
-              <AppIcon name="playlistVideo" class="h-9 w-9 text-muted-foreground/30" />
-              <h2 class="mt-4 text-sm font-semibold">{{ error ? '加载失败' : '暂无播放列表' }}</h2>
-              <p v-if="!error" class="mt-1 text-sm text-muted-foreground">创建播放列表后会显示在这里。</p>
-              <Button v-if="!error" class="mt-4 h-9 rounded-md px-3" @click="openCreateModal">
-                <AppIcon name="plus" class="h-4 w-4" />
-                新建播放列表
-              </Button>
-              <Button v-else variant="outline" class="mt-4 h-9 rounded-md px-3" @click="reloadPlaylists">重试</Button>
+            <div v-else-if="!playlists.length" class="min-h-[24rem]">
+              <AppEmptyState
+                variant="plain"
+                icon="playlistVideo"
+                :title="error ? '加载失败' : '暂无播放列表'"
+                :copy="error ? '' : '创建播放列表后会显示在这里。'"
+              >
+                <template #actions>
+                  <Button v-if="!error" class="h-9 rounded-md px-3" @click="openCreateModal">
+                    <AppIcon name="plus" class="h-4 w-4" />
+                    新建播放列表
+                  </Button>
+                  <Button v-else variant="outline" class="h-9 rounded-md px-3" @click="reloadPlaylists">重试</Button>
+                </template>
+              </AppEmptyState>
             </div>
 
             <div v-else-if="activePlaylist" class="space-y-6">
@@ -154,10 +160,8 @@
                 <div v-for="i in 6" :key="i" class="h-16 animate-pulse rounded-lg bg-accent/25" />
               </div>
 
-              <div v-else-if="!activePlaylistItems.length" class="flex min-h-[20rem] flex-col items-center justify-center text-center">
-                <AppIcon name="playlistVideo" class="h-9 w-9 text-muted-foreground/30" />
-                <h3 class="mt-4 text-sm font-semibold">暂无视频</h3>
-                <p class="mt-1 text-sm text-muted-foreground">添加到列表的视频会显示在这里。</p>
+              <div v-else-if="!activePlaylistItems.length" class="min-h-[20rem]">
+                <AppEmptyState variant="plain" icon="playlistVideo" title="暂无视频" copy="添加到列表的视频会显示在这里。" />
               </div>
 
               <div v-else class="space-y-1">
@@ -217,10 +221,8 @@
               </div>
             </div>
 
-            <div v-else class="flex min-h-[24rem] flex-col items-center justify-center text-center">
-              <AppIcon name="panelOpen" class="h-9 w-9 text-muted-foreground/30" />
-              <h2 class="mt-4 text-sm font-semibold">选择播放列表</h2>
-              <p class="mt-1 text-sm text-muted-foreground">选择左侧列表后查看内容。</p>
+            <div v-else class="min-h-[24rem]">
+              <AppEmptyState variant="plain" icon="panelOpen" title="选择播放列表" copy="选择左侧列表后查看内容。" />
             </div>
           </div>
         </div>
@@ -273,6 +275,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'

@@ -97,14 +97,14 @@
               </label>
             </div>
 
-            <button
+            <Button
               type="submit"
-              class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 w-full shadow-sm"
-              :disabled="loading"
+              class="w-full"
+              size="lg"
+              :loading="loading"
             >
-              <AppIcon v-if="loading" name="loadingSpinner" class="mr-2 h-4 w-4 animate-spin" />
               {{ loading ? '正在登录...' : '登录' }}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
@@ -124,6 +124,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
 import { useUserStore } from '@/shared/stores/user'
 import { useServerConfig } from '@/shared/composables/useServerConfig'
 

@@ -21,10 +21,7 @@
             autoplay
             class="music-video-element"
           />
-          <div v-else class="music-video-loading">
-            <AppIcon name="loadingSpinner" class="h-8 w-8 animate-spin" />
-            <span>加载视频中...</span>
-          </div>
+          <AppBlockLoader v-else size="lg" text="加载视频中..." />
         </div>
       </div>
     </div>
@@ -33,6 +30,7 @@
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 
 defineProps<{
   visible: boolean
@@ -106,16 +104,5 @@ defineEmits<{
 .music-video-element {
   width: 100%;
   height: 100%;
-}
-
-.music-video-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  height: 100%;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.875rem;
 }
 </style>

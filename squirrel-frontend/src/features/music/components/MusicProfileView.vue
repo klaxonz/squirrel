@@ -1,17 +1,19 @@
 <template>
   <div class="music-profile-view">
-    <div v-if="loading && !profile" class="music-empty">
-      <AppIcon name="loadingSpinner" class="h-6 w-6 animate-spin text-primary" />
-      <p class="mt-2 text-sm text-muted-foreground">加载主页中...</p>
-    </div>
+    <AppBlockLoader v-if="loading && !profile" text="加载主页中..." />
     
-    <div v-else-if="error && !profile" class="music-empty">
-      <AppIcon name="warning" class="h-9 w-9 text-destructive/60" />
-      <p class="mt-2 text-sm text-muted-foreground">{{ error }}</p>
-      <Button class="mt-3 h-8 rounded-md px-3 text-xs" @click="$emit('retry')">
-        重试
-      </Button>
-    </div>
+    <AppEmptyState
+      v-else-if="error && !profile"
+      variant="plain"
+      icon="warning"
+      :title="error"
+    >
+      <template #actions>
+        <Button class="h-8 rounded-md px-3 text-xs" @click="$emit('retry')">
+          重试
+        </Button>
+      </template>
+    </AppEmptyState>
     
     <div v-else-if="!authStatus?.logged_in" class="music-login-showcase">
       <slot name="login" />
@@ -33,15 +35,14 @@
             <p class="music-profile-gender-reg">
               <span v-if="profile.gender" class="music-gender-tag">{{ profile.gender === '1' ? '♂ 男' : (profile.gender === '2' ? '♀ 女' : '密') }}</span>
               <span v-if="profile.register_time" class="music-reg-date">注册时间: {{ formatRegTime(profile.register_time) }}</span>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                class="h-6 px-2 rounded-md text-xs text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors ml-1 font-semibold flex items-center gap-1 shrink-0" 
+              <Button
+                variant="ghost"
+                size="sm"
+                class="h-6 px-2 rounded-md text-xs text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors ml-1 font-semibold flex items-center gap-1 shrink-0"
+                :loading="logoutLoading"
                 @click="$emit('logout')"
-                :disabled="logoutLoading"
               >
-                <AppIcon v-if="logoutLoading" name="loadingSpinner" class="h-3 w-3 animate-spin" />
-                <AppIcon v-else name="logout" class="h-3 w-3" />
+                <AppIcon v-if="!logoutLoading" name="logout" class="h-3 w-3" />
                 退出登录
               </Button>
             </p>
@@ -172,14 +173,8 @@
         </div>
         
         <div v-else-if="activeTab === 'history'" class="music-profile-tracks-list">
-          <div v-if="historyLoading" class="music-profile-tracks-loading">
-            <AppIcon name="loadingSpinner" class="h-5 w-5 animate-spin text-primary" />
-            <span class="text-xs text-muted-foreground ml-2">正在载入播放历史...</span>
-          </div>
-          <div v-else-if="history.length === 0" class="music-empty py-12">
-            <AppIcon name="playlistMusic" class="h-8 w-8 text-muted-foreground/30" />
-            <p class="mt-2 text-xs text-muted-foreground">暂无播放历史记录</p>
-          </div>
+          <AppBlockLoader v-if="historyLoading" size="sm" text="正在载入播放历史..." />
+          <AppEmptyState v-else-if="history.length === 0" class="py-12" variant="plain" icon="playlistMusic" title="暂无播放历史记录" />
           <MusicTrackList 
             v-else 
             :tracks="history"
@@ -192,14 +187,8 @@
         </div>
         
         <div v-else-if="activeTab === 'rank'" class="music-profile-tracks-list">
-          <div v-if="rankLoading" class="music-profile-tracks-loading">
-            <AppIcon name="loadingSpinner" class="h-5 w-5 animate-spin text-primary" />
-            <span class="text-xs text-muted-foreground ml-2">正在载入听歌排行...</span>
-          </div>
-          <div v-else-if="listenRank.length === 0" class="music-empty py-12">
-            <AppIcon name="playlistMusic" class="h-8 w-8 text-muted-foreground/30" />
-            <p class="mt-2 text-xs text-muted-foreground">暂无听歌排行数据</p>
-          </div>
+          <AppBlockLoader v-if="rankLoading" size="sm" text="正在载入听歌排行..." />
+          <AppEmptyState v-else-if="listenRank.length === 0" class="py-12" variant="plain" icon="playlistMusic" title="暂无听歌排行数据" />
           <MusicTrackList 
             v-else 
             :tracks="listenRank"
@@ -219,6 +208,8 @@
 import { ref, computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
+import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import MusicTrackList from './MusicTrackList.vue'
 import type { MusicUserProfile, MusicUserPlaylist, MusicTrack, MusicAuthStatus } from '@/shared/api/music'
 
@@ -587,12 +578,5 @@ function formatRegTime(val: string): string {
 .music-profile-tracks-list {
   display: flex;
   flex-direction: column;
-}
-
-.music-profile-tracks-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
 }
 </style>

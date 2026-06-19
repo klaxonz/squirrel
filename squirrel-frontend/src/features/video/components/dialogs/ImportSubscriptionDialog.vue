@@ -118,8 +118,7 @@
             </div>
 
             <div v-if="previewData.has_more" class="flex justify-center pt-2">
-              <Button size="sm" variant="outline" :disabled="loadingMorePreview" @click="loadMorePreview">
-                <AppIcon v-if="loadingMorePreview" name="loadingSpinner" class="h-4 w-4 animate-spin" />
+              <Button size="sm" variant="outline" :loading="loadingMorePreview" @click="loadMorePreview">
                 {{ loadingMorePreview ? '加载中...' : '加载更多' }}
               </Button>
             </div>
@@ -168,8 +167,7 @@
 
       <DialogFooter class="border-t border-border/70 bg-secondary/24 px-6 py-4 sm:justify-end">
         <Button v-if="step === 1" size="sm" variant="ghost" :disabled="loadingPreview" @click="handleClose">取消</Button>
-        <Button v-if="step === 1" size="sm" :disabled="!selectedSite || loadingPreview" @click="handlePreview">
-          <AppIcon v-if="loadingPreview" name="loadingSpinner" class="h-4 w-4 animate-spin" />
+        <Button v-if="step === 1" size="sm" :loading="loadingPreview" :disabled="!selectedSite" @click="handlePreview">
           预览订阅
         </Button>
 
@@ -177,10 +175,10 @@
         <Button
           v-if="step === 2"
           size="sm"
-          :disabled="importing || selectedCount === 0"
+          :loading="importing"
+          :disabled="selectedCount === 0"
           @click="handleImport"
         >
-          <AppIcon v-if="importing" name="loadingSpinner" class="h-4 w-4 animate-spin" />
           {{ importing ? '导入中...' : `确认导入 (${selectedCount})` }}
         </Button>
 

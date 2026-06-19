@@ -40,8 +40,7 @@
       </div>
     </div>
     <div class="flex justify-center mt-6" v-if="hasMore">
-      <Button variant="outline" class="h-8 text-xs px-4" :disabled="loading" @click="$emit('load-more')">
-        <AppIcon v-if="loading" name="loadingSpinner" class="h-3.5 w-3.5 animate-spin" />
+      <Button variant="outline" class="h-8 text-xs px-4" :loading="loading" @click="$emit('load-more')">
         加载更多歌单
       </Button>
     </div>

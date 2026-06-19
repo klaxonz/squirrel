@@ -1,7 +1,7 @@
 <template>
   <AppPageShell variant="compact">
-    <div class="flex h-full overflow-hidden bg-background text-foreground">
-      <aside class="hidden w-72 shrink-0 flex-col border-r border-border/50 bg-background lg:flex">
+    <AppTwoColumnLayout>
+      <template #sidebar>
         <div class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4">
           <div class="min-w-0">
             <h1 class="truncate text-sm font-semibold">站点</h1>
@@ -53,36 +53,35 @@
             测试全部
           </Button>
         </div>
-      </aside>
+      </template>
 
-      <main class="flex min-w-0 flex-1 flex-col bg-background">
-        <header class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4 lg:px-6">
-          <div class="min-w-0">
-            <h2 class="truncate text-base font-semibold">站点</h2>
-            <p class="mt-0.5 text-xs text-muted-foreground">{{ siteRuntimeSummary.total }} 个站点 · {{ siteRuntimeSummary.running }} 个运行</p>
-          </div>
+      <template #header>
+        <div class="min-w-0">
+          <h2 class="truncate text-base font-semibold">站点</h2>
+          <p class="mt-0.5 text-xs text-muted-foreground">{{ siteRuntimeSummary.total }} 个站点 · {{ siteRuntimeSummary.running }} 个运行</p>
+        </div>
 
-          <div class="flex shrink-0 items-center gap-2">
-            <div class="relative hidden w-80 md:block">
-              <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                v-model="searchQuery"
-                placeholder="搜索站点、站点或描述"
-                class="h-9 w-full rounded-md border-border/50 pl-9 pr-8 text-sm shadow-none"
-              />
-              <button
-                v-if="searchQuery"
-                @click="searchQuery = ''"
-                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 transition-colors hover:text-foreground"
-              >
-                <AppIcon name="close" class="h-4 w-4" />
-              </button>
-            </div>
-            <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md lg:hidden" :disabled="reloading || loading" @click="handleReload">
-              <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': reloading }" />
-            </Button>
+        <div class="flex shrink-0 items-center gap-2">
+          <div class="relative hidden w-80 md:block">
+            <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              v-model="searchQuery"
+              placeholder="搜索站点、站点或描述"
+              class="h-9 w-full rounded-md border-border/50 pl-9 pr-8 text-sm shadow-none"
+            />
+            <button
+              v-if="searchQuery"
+              @click="searchQuery = ''"
+              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 transition-colors hover:text-foreground"
+            >
+              <AppIcon name="close" class="h-4 w-4" />
+            </button>
           </div>
-        </header>
+          <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md lg:hidden" :disabled="reloading || loading" @click="handleReload">
+            <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': reloading }" />
+          </Button>
+        </div>
+      </template>
 
         <div class="shrink-0 space-y-2 border-b border-border/50 p-3 md:hidden">
           <div class="relative">
@@ -144,10 +143,13 @@
                 <div v-for="i in 5" :key="i" class="h-16 animate-pulse rounded-lg bg-accent/30" />
               </div>
 
-              <div v-else-if="!displaySiteRuntimes.length" class="flex min-h-[20rem] flex-col items-center justify-center text-center">
-                <AppIcon name="cube" class="h-9 w-9 text-muted-foreground/30" />
-                <h2 class="mt-4 text-sm font-semibold">{{ searchQuery ? '没有匹配的站点' : '暂无站点' }}</h2>
-                <p class="mt-1 text-sm text-muted-foreground">{{ searchQuery ? '更换搜索关键词后再试。' : '本地站点发现后会显示在这里。' }}</p>
+              <div v-else-if="!displaySiteRuntimes.length" class="min-h-[20rem]">
+                <AppEmptyState
+                  variant="plain"
+                  icon="cube"
+                  :title="searchQuery ? '没有匹配的站点' : '暂无站点'"
+                  :copy="searchQuery ? '更换搜索关键词后再试。' : '本地站点发现后会显示在这里。'"
+                />
               </div>
 
               <div v-else class="min-w-[980px] divide-y divide-border/50">
@@ -305,7 +307,6 @@
             </div>
           </div>
         </div>
-      </main>
 
       <SiteConfigEditorDialog
         :visible="siteEditorVisible"
@@ -353,24 +354,7 @@
           </div>
         </div>
       </Transition>
-
-      <Transition name="toast">
-        <div
-          v-if="toast.visible"
-          class="fixed right-6 z-50"
-          :class="youtubeOAuthPrompt.visible ? 'bottom-56' : 'bottom-6'"
-        >
-          <div
-            class="flex items-center gap-2 rounded-md border px-4 py-3 text-sm shadow-lg"
-            :class="toast.error ? 'border-destructive/20 bg-background text-destructive' : 'border-border/50 bg-foreground text-background'"
-          >
-            <AppIcon v-if="toast.error" name="warning" class="h-4 w-4" />
-            <AppIcon v-else name="statusSuccess" class="h-4 w-4" />
-            <span>{{ toast.message }}</span>
-          </div>
-        </div>
-      </Transition>
-    </div>
+    </AppTwoColumnLayout>
   </AppPageShell>
 </template>
 
@@ -378,6 +362,8 @@
 import { onMounted, ref, computed } from 'vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import SiteConfigEditorDialog from '@/features/settings/components/SiteConfigEditorDialog.vue'
 import { Button } from '@/shared/ui/button'
@@ -393,7 +379,7 @@ import { Logger } from '@/shared/lib/logger'
 import { mergeLoginStatusResult, shouldRefreshLoginStatusesAfterCookieImport } from '@/shared/lib/site-runtime-login-status'
 import { useSiteCatalog } from '@/features/video/composables/useSites'
 import { useYouTubeOAuth } from '@/features/settings/composables/useYouTubeOAuth'
-import { useToast } from '@/features/settings/composables/useToast'
+import { useToast } from '@/shared/components/toast/useToast'
 import {
   disableSiteRuntime,
   enableSiteRuntime,
@@ -510,7 +496,7 @@ const loadResultsFromCache = () => {
 const selectedCookiesFile = ref(null)
 const cookiesFileName = ref('')
 const importingCookies = ref(false)
-const { toast, show: showToast } = useToast()
+const toast = useToast()
 
 const editingSite = ref(null)
 const siteEditorVisible = ref(false)
@@ -708,11 +694,15 @@ const handleDesktopSiteLogin = async (siteName) => {
 
   loginStatusTesting.value[siteName] = true
   try {
-    showToast('桌面登录窗口已打开，手机确认后会自动完成')
+    toast.success('桌面登录窗口已打开，手机确认后会自动完成')
     const result = await bridge.openSiteLogin(siteName)
     if (result) {
       upsertLoginStatus(siteName, result)
-      showToast(result.logged_in ? '桌面登录成功' : (result.message || '未检测到桌面登录态'), !result.logged_in)
+      if (result.logged_in) {
+        toast.success('桌面登录成功')
+      } else {
+        toast.error(result.message || '未检测到桌面登录态')
+      }
     }
   } catch (error) {
     Logger.error('Failed to open desktop site login', error)
@@ -724,7 +714,7 @@ const handleDesktopSiteLogin = async (siteName) => {
       checked_at: new Date().toISOString(),
       source: 'desktop',
     })
-    showToast('桌面登录窗口打开失败', true)
+    toast.error('桌面登录窗口打开失败')
   } finally {
     loginStatusTesting.value[siteName] = false
     saveResultsToCache()
@@ -741,7 +731,7 @@ const handleClearDesktopSiteSession = async (siteName) => {
     const result = await bridge.clearSiteSession(siteName)
     if (result) {
       upsertLoginStatus(siteName, result)
-      showToast('桌面会话已清除')
+      toast.success('桌面会话已清除')
     }
   } catch (error) {
     Logger.error('Failed to clear desktop site session', error)
@@ -753,7 +743,7 @@ const handleClearDesktopSiteSession = async (siteName) => {
       checked_at: new Date().toISOString(),
       source: 'desktop',
     })
-    showToast('清除桌面会话失败', true)
+    toast.error('清除桌面会话失败')
   } finally {
     loginStatusTesting.value[siteName] = false
     saveResultsToCache()

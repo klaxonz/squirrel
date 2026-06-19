@@ -4,10 +4,8 @@
       <p class="text-sm font-medium text-destructive">{{ error }}</p>
     </div>
 
-    <div v-if="!items.length && !loading && !error" class="flex min-h-[24rem] flex-col items-center justify-center text-center">
-      <AppIcon name="inbox" class="h-9 w-9 text-muted-foreground/30" />
-      <h3 class="mt-4 text-sm font-semibold">暂无远端内容</h3>
-      <p class="mt-1 text-sm text-muted-foreground">源站频道暂时没有返回视频。</p>
+    <div v-if="!items.length && !loading && !error" class="min-h-[24rem]">
+      <AppEmptyState variant="plain" icon="inbox" title="暂无远端内容" copy="源站频道暂时没有返回视频。" />
     </div>
 
     <div v-if="items.length" class="grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5">
@@ -52,7 +50,7 @@
 
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'
 import VideoSkeleton from '@/features/video/components/feed/VideoSkeleton.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
