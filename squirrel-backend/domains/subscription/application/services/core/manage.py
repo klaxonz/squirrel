@@ -4,10 +4,10 @@ from typing import Any
 
 from sqlalchemy import select
 
-import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 from domains.subscription.application.services.core.crud import subscription_crud_service
 from domains.subscription.application.services.core.listing.service import resolve_subscription_nsfw
 from domains.subscription.application.services.core.runtime_models import SubscriptionMeta
+from domains.subscription.application.services.core.sync.lifecycle import subscription_sync_lifecycle
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import ContentType, Subscription
 from domains.system.domain.models import constants
@@ -37,10 +37,10 @@ def _reindex_videos_safe(video_ids: list[int], *, context: str, subscription_id:
 
 
 class SubscriptionManageService:
-    def __init__(self, session_factory=get_session, crud_service=None, sync_state_service=None):
+    def __init__(self, session_factory=get_session, crud_service=None, lifecycle=None):
         self.session_factory = session_factory
         self.crud_service = crud_service or subscription_crud_service
-        self.sync_state_service = sync_state_service or subscription_sync_state_service
+        self.lifecycle = lifecycle or subscription_sync_lifecycle
 
     @staticmethod
     def _detect_subscription_type(url: str) -> str:
@@ -60,7 +60,7 @@ class SubscriptionManageService:
             user_subscription = None
             subscription = self.crud_service.get_subscription_by_url_and_name(url=subscribe_info.url, name=subscribe_info.name)
             if subscription:
-                self.sync_state_service.ensure_sync_states(subscription.id, subscription.url)
+                self.lifecycle.ensure_subscription_syncs(subscription.id, subscription.url)
                 return subscription
             content_type = self._detect_subscription_type(subscribe_info.url)
 
@@ -90,7 +90,7 @@ class SubscriptionManageService:
                 session.add(user_subscription)
             session.commit()
         if user_subscription is not None:
-            self.sync_state_service.ensure_sync_states(subscription.id, subscription.url)
+            self.lifecycle.ensure_subscription_syncs(subscription.id, subscription.url)
         return subscription
 
     def restore_subscription(self, subscription_id: int, user_id: int) -> None:
@@ -122,7 +122,7 @@ class SubscriptionManageService:
             session.commit()
         subscription = self.crud_service.get_subscription_by_id(subscription_id)
         if subscription:
-            self.sync_state_service.ensure_sync_states(subscription.id, subscription.url)
+            self.lifecycle.ensure_subscription_syncs(subscription.id, subscription.url)
 
     def unsubscribe_by_id(self, user_id: int, subscription_id: int) -> bool:
         with self.session_factory() as session:
@@ -164,7 +164,7 @@ class SubscriptionManageService:
                 )
             session.commit()
 
-        self.sync_state_service.deactivate_sync_states(
+        self.lifecycle.deactivate_subscription_syncs(
             subscription_id,
             reason='manual_unsubscribe',
         )

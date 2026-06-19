@@ -47,7 +47,7 @@ def record_gap_observation(
     """Update gap suspicion score for an incremental sync state and request a full backfill when it crosses threshold.
 
     Replaces the previous outbox-based flow: when the score crosses the threshold, we enqueue the full sync directly
-    via SubscriptionSyncCommandService.request_sync, subject to global/site inflight limits. The 24h
+    via SubscriptionSyncLifecycle.request_sync, subject to global/site inflight limits. The 24h
     ``last_full_requested_at`` gate on the state row prevents request storms; the inflight check skips the request
     when too many full syncs are already queued/running, and the next observation tick will retry naturally.
     """
@@ -178,14 +178,14 @@ def _enqueue_full_backfill(
     gap_score: int,
 ) -> bool:
     from domains.subscription.application.services.core.crud import get_subscription_by_id
-    from domains.subscription.application.services.core.update.commands import SubscriptionSyncCommandService
+    from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
     from domains.subscription.application.services.core.update.models import UpdateMode, parse_trigger
 
     try:
-        command_service = SubscriptionSyncCommandService()
+        lifecycle = SubscriptionSyncLifecycle()
         subscription = get_subscription_by_id(subscription_id)
         url = (subscription.url if subscription and subscription.url else "")
-        command_service.request_sync(
+        lifecycle.request_sync(
             subscription_id=subscription_id,
             url=url,
             trigger=parse_trigger(trigger),

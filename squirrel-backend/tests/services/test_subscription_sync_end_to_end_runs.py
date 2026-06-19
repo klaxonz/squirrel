@@ -115,13 +115,13 @@ def test_record_gap_observation_enqueues_full_backfill_when_score_crosses_thresh
         )
         session.commit()
 
+    from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
     from domains.subscription.application.services.core.sync.state import _gap as gap_module
-    from domains.subscription.application.services.core.update.commands import SubscriptionSyncCommandService
     from domains.subscription.application.services.core.update.models import UpdateMode, UpdateTrigger
 
     with patch.object(gap_module, "_can_request_full_sync", return_value=True), \
          patch("domains.subscription.application.services.core.crud.get_subscription_by_id", return_value=None), \
-         patch.object(SubscriptionSyncCommandService, "request_sync", lambda self, **kw: request_calls.append(kw)):
+         patch.object(SubscriptionSyncLifecycle, "request_sync", lambda self, **kw: request_calls.append(kw)):
         summary = sss_svc.record_gap_observation(
             sync_state_id=21,
             head_sample_urls=["https://example.com/video/new-1", "https://example.com/video/new-2"],
@@ -174,11 +174,11 @@ def test_record_gap_observation_skips_full_backfill_when_inflight_budget_exhaust
         )
         session.commit()
 
+    from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
     from domains.subscription.application.services.core.sync.state import _gap as gap_module
-    from domains.subscription.application.services.core.update.commands import SubscriptionSyncCommandService
 
     with patch.object(gap_module, "_can_request_full_sync", return_value=False), \
-         patch.object(SubscriptionSyncCommandService, "request_sync", lambda self, **kw: request_calls.append(kw)):
+         patch.object(SubscriptionSyncLifecycle, "request_sync", lambda self, **kw: request_calls.append(kw)):
         summary = sss_svc.record_gap_observation(
             sync_state_id=22,
             head_sample_urls=["https://example.com/video/new-1", "https://example.com/video/new-2"],

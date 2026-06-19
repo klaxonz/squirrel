@@ -21,9 +21,9 @@ def _make_video_extract_svc(extract_video_func=None):
     )
 
 
-def _make_sync_svc(sync_state_service=None, orchestrator_service=None, subscription_svc=None):
+def _make_sync_svc(lifecycle=None, orchestrator_service=None, subscription_svc=None):
     return SubscriptionSyncExecutor(
-        sync_state_service=sync_state_service,
+        lifecycle=lifecycle,
         orchestrator_service=orchestrator_service,
         subscription_svc=subscription_svc,
     )
@@ -88,9 +88,9 @@ def test_execute_video_extract_task_raises_when_extraction_result_is_failed():
 def test_execute_subscription_sync_task_builds_request_from_payload():
     claims = []
 
-    class FakeSyncStateService:
+    class FakeLifecycle:
         @staticmethod
-        def claim_sync_state(sync_state_id, queue_token, **kwargs):
+        def claim_sync(sync_state_id, queue_token, **kwargs):
             claims.append((sync_state_id, queue_token, kwargs))
             return SimpleNamespace(
                 id=sync_state_id,
@@ -115,7 +115,7 @@ def test_execute_subscription_sync_task_builds_request_from_payload():
             )
 
     svc = _make_sync_svc(
-        sync_state_service=FakeSyncStateService,
+        lifecycle=FakeLifecycle,
         orchestrator_service=FakeOrchestrator,
     )
 

@@ -1,8 +1,8 @@
 import logging
 
-import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 import domains.video.application.services.extraction.task_service as video_extraction_task_service
 from domains.subscription.application.services.core.runtime_models import SubscriptionSyncResult
+from domains.subscription.application.services.core.sync.lifecycle import subscription_sync_lifecycle
 from domains.video.application.services.crud import get_videos_by_urls
 from domains.video.application.services.extraction.extractor import extract_video
 from domains.video.application.services.moderation.blocked import is_blocked_video
@@ -59,7 +59,7 @@ class VideoExtractionCoordinator:
                     is_manual=request.trigger == UpdateTrigger.MANUAL,
                     is_extract_all=is_full_update,
                 )
-                subscription_sync_state_service.increment_pending_video_count(request.sync_state_id, 1)
+                subscription_sync_lifecycle.record_video_extraction_enqueued(request.sync_state_id)
                 reserved_pending = True
                 if request.inline_video_extraction:
                     extracted = extract_video(params)
@@ -71,16 +71,10 @@ class VideoExtractionCoordinator:
                 elif video_extraction_task_service.enqueue_video_extraction(params):
                     enqueued += 1
                 else:
-                    subscription_sync_state_service.decrement_pending_video_count(
-                        request.sync_state_id,
-                        allow_completion=False,
-                    )
+                    subscription_sync_lifecycle.record_video_extraction_dispatch_failed(request.sync_state_id)
             except (ValueError, TypeError, AttributeError, KeyError) as exc:
                 if reserved_pending:
-                    subscription_sync_state_service.decrement_pending_video_count(
-                        request.sync_state_id,
-                        allow_completion=False,
-                    )
+                    subscription_sync_lifecycle.record_video_extraction_dispatch_failed(request.sync_state_id)
                 failed_count += 1
                 logger.warning("Failed to enqueue video %s: %s", video_url, exc)
 

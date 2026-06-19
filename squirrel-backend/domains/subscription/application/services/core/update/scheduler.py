@@ -1,16 +1,17 @@
 import logging
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import select
 
-import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
+from domains.subscription.application.services.core.sync.lifecycle import (
+    SubscriptionSyncLifecycle,
+    SubscriptionSyncTarget,
+)
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import Subscription
 from infrastructure.database.session import get_session
 
-from .commands import SubscriptionSyncCommandService
 from .models import (
     SubscriptionDirectRunResult,
     SubscriptionScheduleResult,
@@ -21,20 +22,12 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
-class _DueSyncTarget:
-    subscription_id: int
-    url: str
-    sync_state_id: int | None = None
-    site: str | None = None
-
-
 class SubscriptionScheduler:
     """Subscription update scheduler."""
 
     def __init__(self, session_factory=None):
         self.session_factory = session_factory or get_session
-        self.command_service = SubscriptionSyncCommandService(session_factory=session_factory)
+        self.lifecycle = SubscriptionSyncLifecycle(session_factory=session_factory)
 
     def schedule_one(
         self,
@@ -47,7 +40,7 @@ class SubscriptionScheduler:
         trace_id: str | None = None,
         run_id: str | None = None,
     ) -> SubscriptionScheduleResult:
-        return self.command_service.request_sync(
+        return self.lifecycle.request_sync(
             subscription_id=subscription_id,
             url=url,
             trigger=trigger,
@@ -69,7 +62,7 @@ class SubscriptionScheduler:
         trace_id: str | None = None,
         run_id: str | None = None,
     ) -> SubscriptionDirectRunResult:
-        return self.command_service.run_inline_sync(
+        return self.lifecycle.run_inline_sync(
             subscription_id=subscription_id,
             url=url,
             trigger=trigger,
@@ -121,7 +114,7 @@ class SubscriptionScheduler:
     ) -> tuple[int, int]:
         resolved_mode = self._resolve_mode(mode)
         targets = (
-            _DueSyncTarget(subscription_id=subscription_id, url=url)
+            SubscriptionSyncTarget(subscription_id=subscription_id, url=url)
             for subscription_id, url in self._list_due_active_subscriptions(resolved_mode)
         )
         return self._dispatch_due_targets(
@@ -137,22 +130,14 @@ class SubscriptionScheduler:
         mode: UpdateMode = UpdateMode.INCREMENTAL,
         *,
         now: datetime | None = None,
-        limit: int = subscription_sync_state_service.SYNC_BATCH_SIZE,
+        limit: int | None = None,
     ) -> tuple[int, int]:
         resolved_mode = self._resolve_mode(mode)
         current_time = now or datetime.now()
-        targets = (
-            _DueSyncTarget(
-                subscription_id=sync_state.subscription_id,
-                sync_state_id=sync_state.id,
-                site=sync_state.site,
-                url=url,
-            )
-            for sync_state, url in subscription_sync_state_service.list_due_sync_states(
-                resolved_mode.value,
-                limit=limit,
-                now=current_time,
-            )
+        targets = self.lifecycle.list_due_sync_targets(
+            resolved_mode,
+            limit=limit,
+            now=current_time,
         )
         return self._dispatch_due_targets(
             targets=targets,
@@ -162,17 +147,16 @@ class SubscriptionScheduler:
                 target=target,
                 trigger=trigger,
                 mode=resolved_mode,
-                now=current_time,
             ),
         )
 
     def _dispatch_due_targets(
         self,
         *,
-        targets: Iterable[_DueSyncTarget],
+        targets: Iterable[SubscriptionSyncTarget],
         mode: UpdateMode,
         action_name: str,
-        action: Callable[[_DueSyncTarget], str],
+        action: Callable[[SubscriptionSyncTarget], str],
     ) -> tuple[int, int]:
         success_count = 0
         error_count = 0
@@ -206,7 +190,7 @@ class SubscriptionScheduler:
     def _schedule_due_target(
         self,
         *,
-        target: _DueSyncTarget,
+        target: SubscriptionSyncTarget,
         trigger: UpdateTrigger,
         mode: UpdateMode,
     ) -> str:
@@ -225,15 +209,14 @@ class SubscriptionScheduler:
     def _emit_due_sync_event(
         self,
         *,
-        target: _DueSyncTarget,
+        target: SubscriptionSyncTarget,
         trigger: UpdateTrigger,
         mode: UpdateMode,
-        now: datetime,
     ) -> str:
         if target.sync_state_id is None:
             return "skipped"
 
-        scheduled = self.command_service.request_sync(
+        scheduled = self.lifecycle.request_sync(
             subscription_id=target.subscription_id,
             url=target.url,
             trigger=trigger,

@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.orm import Session
 
-from domains.subscription.application.services.core.update.commands import SubscriptionSyncCommandService
+from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
 from domains.subscription.application.services.core.update.models import (
     SubscriptionUpdateResult,
     UpdateMode,
@@ -60,7 +60,7 @@ def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sche
     injected_cts = CrawlTaskService(session_factory=session_factory)
 
     with patch('infrastructure.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True), \
-         patch.object(SubscriptionSyncCommandService, '_has_active_subscribers', return_value=True), \
+         patch.object(SubscriptionSyncLifecycle, '_has_active_subscribers', return_value=True), \
          patch.object(ssss, 'prepare_sync_state_for_enqueue', return_value=(
              SimpleNamespace(id=11, pending_video_count=0, sync_mode=UpdateMode.FULL),
              "ready",
@@ -125,7 +125,7 @@ def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factor
     injected_cts = CrawlTaskService(session_factory=session_factory)
 
     with patch('infrastructure.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True), \
-         patch.object(SubscriptionSyncCommandService, '_has_active_subscribers', return_value=True), \
+         patch.object(SubscriptionSyncLifecycle, '_has_active_subscribers', return_value=True), \
          patch.object(ssss, 'prepare_sync_state_for_enqueue', return_value=(
              SimpleNamespace(id=12, pending_video_count=0, sync_mode=UpdateMode.INCREMENTAL),
              "ready",
@@ -182,7 +182,7 @@ def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(en
     import domains.subscription.application.services.core.sync.state.service as ssss
 
     with patch('infrastructure.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True), \
-         patch.object(SubscriptionSyncCommandService, '_has_active_subscribers', return_value=True), \
+         patch.object(SubscriptionSyncLifecycle, '_has_active_subscribers', return_value=True), \
          patch.object(ssss, 'prepare_sync_state_for_enqueue', return_value=(
              SimpleNamespace(id=21, pending_video_count=0, sync_mode=UpdateMode.INCREMENTAL),
              "ready",

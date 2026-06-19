@@ -1,6 +1,6 @@
 import logging
 
-import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
+from domains.subscription.application.services.core.sync.lifecycle import subscription_sync_lifecycle
 from infrastructure.scheduling.base import BaseTask, TaskRegistry
 
 logger = logging.getLogger(__name__)
@@ -16,18 +16,15 @@ class SubscriptionPendingReconcileTask(BaseTask):
     @classmethod
     def run(cls):
         try:
-            video_result = subscription_sync_state_service.reconcile_pending_video_counts()
-            drained_result = subscription_sync_state_service.reconcile_terminal_drained_sync_states()
-            queued_result = subscription_sync_state_service.recover_stale_queued_sync_states()
-            running_result = subscription_sync_state_service.recover_stale_running_sync_states()
+            result = subscription_sync_lifecycle.recover()
             logger.info(
                 "Subscription pending reconcile completed: video_states=%s videos=%s drained_completed=%s drained_failed=%s queued_recovered=%s running_recovered=%s",
-                video_result["states"],
-                video_result["videos"],
-                drained_result["completed"],
-                drained_result["failed"],
-                queued_result["recovered"],
-                running_result["recovered"],
+                result.video_states,
+                result.videos,
+                result.drained_completed,
+                result.drained_failed,
+                result.queued_recovered,
+                result.running_recovered,
             )
         except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
             logger.error("SubscriptionPendingReconcileTask.run error: %s", e, exc_info=True)

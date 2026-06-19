@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 from domains.subscription.application.services.core.crud import subscription_crud_service
+from domains.subscription.application.services.core.sync.lifecycle import subscription_sync_lifecycle
 from domains.subscription.application.services.core.update.models import (
     SubscriptionUpdateRequest,
     UpdateMode,
@@ -14,11 +14,11 @@ from domains.subscription.domain.models.crawl_task import CrawlTask
 class CrawlExecutorService:
     def __init__(
         self,
-        sync_state_service=None,
+        lifecycle=None,
         orchestrator_service=None,
         subscription_svc=None,
     ):
-        self._sync_state_service = sync_state_service or subscription_sync_state_service
+        self._lifecycle = lifecycle or subscription_sync_lifecycle
         self._orchestrator = orchestrator_service or orchestrator
         self._subscription_service = subscription_svc or subscription_crud_service
 
@@ -36,7 +36,7 @@ class CrawlExecutorService:
         last_seen_video_url = payload.get("last_seen_video_url")
 
         if sync_state_id and queue_token:
-            claimed_state = self._sync_state_service.claim_sync_state(
+            claimed_state = self._lifecycle.claim_sync(
                 int(sync_state_id),
                 queue_token,
                 run_id=run_id,

@@ -8,7 +8,6 @@ keeps its public methods (``should_update``/``fetch_videos``/
 tests and read cleanly as the update flow's phases.
 """
 import logging
-from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
 from sqlalchemy import update
@@ -16,7 +15,6 @@ from sqlalchemy import update
 from domains.subscription.application.services.core.listing.service import get_subscription_detail
 from domains.subscription.application.services.core.runtime_models import SubscriptionSyncResult
 from domains.subscription.domain.models.subscription import Subscription as SubscriptionModel
-from domains.subscription.domain.models.subscription_sync_state import SyncMode, SyncStatus
 from infrastructure.config.settings import settings
 from infrastructure.database.session import get_session
 from infrastructure.site_catalog.catalog import SiteCatalog
@@ -26,40 +24,6 @@ from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, Update
 from ..video_extraction_coordinator import enqueue_discovered_videos
 
 logger = logging.getLogger(__name__)
-
-FULL_BACKFILL_RETRY_COOLDOWN = timedelta(hours=6)
-FULL_BACKFILL_STALE_AFTER = timedelta(days=3)
-
-
-def should_schedule_total_video_backfill(
-    sync_mode: str,
-    local_total_videos: int | None,
-    observed_total_available: int | None,
-    full_sync_status: str | None,
-    full_last_success_at: datetime | None,
-    *,
-    now: datetime | None = None,
-) -> bool:
-    current_time = now or datetime.now()
-
-    if sync_mode == SyncMode.FULL.value:
-        return False
-    if full_sync_status in {SyncStatus.QUEUED.value, SyncStatus.RUNNING.value}:
-        return False
-
-    local_total = max(int(local_total_videos or 0), 0)
-    observed_total = max(int(observed_total_available), 0) if observed_total_available is not None else None
-
-    if full_last_success_at is None:
-        return True
-
-    if local_total <= 0 and full_last_success_at <= current_time - FULL_BACKFILL_RETRY_COOLDOWN:
-        return True
-
-    if observed_total is not None and observed_total > local_total:
-        return full_last_success_at <= current_time - FULL_BACKFILL_RETRY_COOLDOWN
-
-    return full_last_success_at <= current_time - FULL_BACKFILL_STALE_AFTER
 
 
 class DefaultUpdateStrategy:

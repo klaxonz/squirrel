@@ -26,7 +26,7 @@ def test_enqueue_discovered_videos_skips_blocked_video_urls():
          patch("domains.subscription.application.services.core.update.video_extraction_coordinator.get_session", return_value=_DummySessionContext()), \
          patch("domains.subscription.application.services.core.update.video_extraction_coordinator.is_blocked_video", side_effect=lambda url, session: url.endswith("blocked")), \
          patch("domains.subscription.application.services.core.update.video_extraction_coordinator.video_extraction_task_service.enqueue_video_extraction", side_effect=lambda params: enqueue_calls.append(params.url) or True), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_state_service.increment_pending_video_count"):
+         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_enqueued"):
 
         request = SubscriptionUpdateRequest(
             subscription_id=1,
@@ -49,8 +49,8 @@ def test_enqueue_discovered_videos_skips_blocked_video_urls():
 def test_enqueue_discovered_videos_reserves_pending_count_before_dispatching_video_task():
     pending_counts = {2: 0}
 
-    def _increment_pending(sync_state_id, count):
-        pending_counts[sync_state_id] = pending_counts.get(sync_state_id, 0) + count
+    def _record_enqueued(sync_state_id):
+        pending_counts[sync_state_id] = pending_counts.get(sync_state_id, 0) + 1
 
     def _decrement_pending(sync_state_id, count=1, **kwargs):
         pending_counts[sync_state_id] = max(0, pending_counts.get(sync_state_id, 0) - count)
@@ -62,8 +62,8 @@ def test_enqueue_discovered_videos_reserves_pending_count_before_dispatching_vid
     with patch("domains.subscription.application.services.core.update.video_extraction_coordinator.get_videos_by_urls", return_value={}), \
          patch("domains.subscription.application.services.core.update.video_extraction_coordinator.get_session", return_value=_DummySessionContext()), \
          patch("domains.subscription.application.services.core.update.video_extraction_coordinator.is_blocked_video", return_value=False), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_state_service.increment_pending_video_count", side_effect=_increment_pending), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_state_service.decrement_pending_video_count", side_effect=_decrement_pending), \
+         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_enqueued", side_effect=_record_enqueued), \
+         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_dispatch_failed", side_effect=_decrement_pending), \
          patch("domains.subscription.application.services.core.update.video_extraction_coordinator.video_extraction_task_service.enqueue_video_extraction", side_effect=_enqueue_video):
 
         request = SubscriptionUpdateRequest(
@@ -91,7 +91,7 @@ def test_enqueue_discovered_videos_extracts_inline_without_creating_video_task()
     with patch("domains.subscription.application.services.core.update.video_extraction_coordinator.get_videos_by_urls", return_value={}), \
          patch("domains.subscription.application.services.core.update.video_extraction_coordinator.get_session", return_value=_DummySessionContext()), \
          patch("domains.subscription.application.services.core.update.video_extraction_coordinator.is_blocked_video", return_value=False), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_state_service.increment_pending_video_count"), \
+         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_enqueued"), \
          patch("domains.subscription.application.services.core.update.video_extraction_coordinator.video_extraction_task_service.enqueue_video_extraction", side_effect=lambda params: (_ for _ in ()).throw(AssertionError("inline extraction should not enqueue video task"))), \
          patch("domains.subscription.application.services.core.update.video_extraction_coordinator.extract_video", side_effect=lambda params: extract_calls.append(params) or SimpleNamespace(success=True)):
 

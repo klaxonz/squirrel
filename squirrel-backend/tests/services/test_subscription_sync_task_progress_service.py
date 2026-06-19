@@ -6,16 +6,16 @@ from domains.subscription.application.services.core.update.task_progress_service
 from domains.subscription.domain.models.crawl_task import CrawlTask
 
 
-class _FakeSyncStateService:
+class _FakeLifecycle:
     def __init__(self):
         self.calls = []
 
-    def reconcile_task_retry_state(self, *args, **kwargs):
+    def record_task_retry_transition(self, *args, **kwargs):
         self.calls.append((args, kwargs))
 
 
 def test_record_retry_transition_requeues_retry_wait_subscription_task():
-    sync_state_service = _FakeSyncStateService()
+    lifecycle = _FakeLifecycle()
     now = datetime(2026, 4, 2, 12, 0, 0)
     task = CrawlTask(
         task_type="subscription_sync_incremental",
@@ -30,13 +30,13 @@ def test_record_retry_transition_requeues_retry_wait_subscription_task():
         },
     )
 
-    SubscriptionSyncTaskProgressService(sync_state_service).record_retry_transition(
+    SubscriptionSyncTaskProgressService(lifecycle).record_retry_transition(
         task,
         now=now,
         error_message="lease_expired",
     )
 
-    assert sync_state_service.calls == [
+    assert lifecycle.calls == [
         (
             (1749, "queue-token-1"),
             {
@@ -53,7 +53,7 @@ def test_record_retry_transition_requeues_retry_wait_subscription_task():
 
 
 def test_record_retry_transition_fails_dead_subscription_task():
-    sync_state_service = _FakeSyncStateService()
+    lifecycle = _FakeLifecycle()
     now = datetime(2026, 4, 2, 12, 0, 0)
     task = CrawlTask(
         task_type="subscription_sync_full",
@@ -68,13 +68,13 @@ def test_record_retry_transition_fails_dead_subscription_task():
         },
     )
 
-    SubscriptionSyncTaskProgressService(sync_state_service).record_retry_transition(
+    SubscriptionSyncTaskProgressService(lifecycle).record_retry_transition(
         task,
         now=now,
         error_message="boom",
     )
 
-    assert sync_state_service.calls == [
+    assert lifecycle.calls == [
         (
             (1750, "queue-token-2"),
             {
@@ -91,13 +91,13 @@ def test_record_retry_transition_fails_dead_subscription_task():
 
 
 def test_record_retry_transition_ignores_non_subscription_task():
-    sync_state_service = _FakeSyncStateService()
+    lifecycle = _FakeLifecycle()
     task = CrawlTask(task_type="video_extract", status="retry_wait", payload={"sync_state_id": 1})
 
-    SubscriptionSyncTaskProgressService(sync_state_service).record_retry_transition(
+    SubscriptionSyncTaskProgressService(lifecycle).record_retry_transition(
         task,
         now=datetime(2026, 4, 2, 12, 0, 0),
         error_message="boom",
     )
 
-    assert sync_state_service.calls == []
+    assert lifecycle.calls == []

@@ -25,7 +25,7 @@ def test_record_finished_clears_dedupe_and_completes_pending_on_success(monkeypa
         lambda params: clear_calls.append(params.url),
     )
     monkeypatch.setattr(
-        "domains.video.application.services.extraction.progress_service.subscription_sync_state_service.decrement_pending_video_count",
+        "domains.video.application.services.extraction.progress_service.subscription_sync_lifecycle.record_video_extraction_finished",
         lambda *args, **kwargs: decrement_calls.append((args, kwargs)),
     )
 
@@ -36,7 +36,7 @@ def test_record_finished_clears_dedupe_and_completes_pending_on_success(monkeypa
         (
             (2,),
             {
-                "allow_completion": True,
+                "succeeded": True,
             },
         ),
     ]
@@ -51,7 +51,7 @@ def test_record_finished_clears_dedupe_without_completing_pending_on_failure(mon
         lambda params: clear_calls.append(params.url),
     )
     monkeypatch.setattr(
-        "domains.video.application.services.extraction.progress_service.subscription_sync_state_service.decrement_pending_video_count",
+        "domains.video.application.services.extraction.progress_service.subscription_sync_lifecycle.record_video_extraction_finished",
         lambda *args, **kwargs: decrement_calls.append((args, kwargs)),
     )
 
@@ -62,7 +62,7 @@ def test_record_finished_clears_dedupe_without_completing_pending_on_failure(mon
         (
             (2,),
             {
-                "allow_completion": False,
+                "succeeded": False,
             },
         ),
     ]

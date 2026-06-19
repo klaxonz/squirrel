@@ -1,14 +1,14 @@
 from datetime import datetime
 
-import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
+from domains.subscription.application.services.core.sync.lifecycle import subscription_sync_lifecycle
 from domains.subscription.application.services.crawl.tasks.models import CrawlTaskStatus
 from domains.subscription.application.services.crawl.tasks.task_types import is_subscription_sync_task_type
 from domains.subscription.domain.models.crawl_task import CrawlTask
 
 
 class SubscriptionSyncTaskProgressService:
-    def __init__(self, sync_state_service=None):
-        self._sync_state_service = sync_state_service or subscription_sync_state_service
+    def __init__(self, lifecycle=None):
+        self._lifecycle = lifecycle or subscription_sync_lifecycle
 
     def record_retry_transition(
         self,
@@ -31,7 +31,7 @@ class SubscriptionSyncTaskProgressService:
             return
 
         retryable = task.status == CrawlTaskStatus.RETRY_WAIT.value
-        self._sync_state_service.reconcile_task_retry_state(
+        self._lifecycle.record_task_retry_transition(
             resolved_sync_state_id,
             payload.get("queue_token"),
             now=now,
