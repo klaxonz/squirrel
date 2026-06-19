@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 from domains.subscription.application.services.core.crud import get_subscription_by_id
@@ -30,7 +30,8 @@ from domains.subscription.application.services.core.update.queueing import Subsc
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
 from domains.subscription.application.services.crawl.tasks.task_types import resolve_subscription_sync_task_type
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from domains.subscription.domain.models.subscription_sync_state import SyncMode, SyncStatus
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
+from infrastructure.config.settings import settings
 from infrastructure.database.session import get_session
 from infrastructure.site_catalog.url import resolve_site
 
@@ -364,7 +365,7 @@ class SubscriptionSyncLifecycle:
 
         subscription = get_subscription_by_id(request.subscription_id)
         local_total = getattr(subscription, 'total_videos', None) if subscription else None
-        self._sync_state_service.record_gap_observation(
+        summary = self._sync_state_service.record_gap_observation(
             sync_state_id=request.sync_state_id,
             head_sample_urls=result.head_sample_urls,
             anchor_found=result.anchor_found,
@@ -372,9 +373,35 @@ class SubscriptionSyncLifecycle:
             cursor_loop_detected=bool(result.cursor_loop_detected),
             total_available=result.total_available,
             local_total=local_total,
-            trigger=request.trigger.value,
-            trace_id=request.trace_id,
         )
+        if not summary['should_request_full']:
+            return
+
+        site = str(summary['site'] or '').strip()
+        if not self._can_request_full_sync(site):
+            return
+
+        try:
+            self.request_sync(
+                subscription_id=request.subscription_id,
+                url=request.url,
+                trigger=request.trigger,
+                mode=UpdateMode.FULL,
+                trace_id=request.trace_id,
+            )
+            logger.info(
+                'Gap detection enqueued full backfill subscription_id=%s site=%s sync_state_id=%s gap_score=%s',
+                request.subscription_id,
+                site,
+                summary['sync_state_id'],
+                summary['gap_suspicion_score'],
+            )
+        except Exception:  # gap backfill boundary — never fail the observation path
+            logger.exception(
+                'Failed to enqueue full backfill from gap detection subscription_id=%s sync_state_id=%s',
+                request.subscription_id,
+                summary['sync_state_id'],
+            )
 
     def request_total_video_backfill_if_needed(
         self,
@@ -499,6 +526,33 @@ class SubscriptionSyncLifecycle:
                 f'Failed to continue subscription sync: subscription_id={request.subscription_id}, '
                 f'status={continuation_result.status}',
             )
+
+    def _can_request_full_sync(self, site: str) -> bool:
+        global_limit = max(1, int(settings.FULL_SYNC_MAX_INFLIGHT))
+        site_limit = max(1, int(settings.FULL_SYNC_SITE_MAX_INFLIGHT))
+
+        with self.session_factory() as session:
+            global_inflight = int(session.execute(
+                select(func.count(SubscriptionSyncState.id)).where(
+                    SubscriptionSyncState.sync_mode == SyncMode.FULL.value,
+                    SubscriptionSyncState.sync_status.in_([SyncStatus.QUEUED.value, SyncStatus.RUNNING.value]),
+                ),
+            ).scalar_one() or 0)
+            if global_inflight >= global_limit:
+                return False
+
+            if site:
+                site_inflight = int(session.execute(
+                    select(func.count(SubscriptionSyncState.id)).where(
+                        SubscriptionSyncState.sync_mode == SyncMode.FULL.value,
+                        SubscriptionSyncState.sync_status.in_([SyncStatus.QUEUED.value, SyncStatus.RUNNING.value]),
+                        SubscriptionSyncState.site == site,
+                    ),
+                ).scalar_one() or 0)
+                if site_inflight >= site_limit:
+                    return False
+
+        return True
 
     def _set_task_request_id(self, task_id: int, request_id: str) -> None:
         from domains.subscription.domain.models.crawl_task import CrawlTask

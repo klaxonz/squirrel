@@ -1,17 +1,11 @@
 from __future__ import annotations
 
 import hashlib
-import logging
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select
-
-from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
-from infrastructure.config.settings import settings
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode
 
 from .session import get_session
-
-logger = logging.getLogger(__name__)
 
 
 def fingerprint_head_sample(urls: list[str] | None) -> str | None:
@@ -41,23 +35,23 @@ def record_gap_observation(
     total_available: int | None,
     local_total: int | None,
     now: datetime | None = None,
-    trigger: str = "scheduled",
-    trace_id: str | None = None,
-) -> dict[str, int | bool]:
-    """Update gap suspicion score for an incremental sync state and request a full backfill when it crosses threshold.
+) -> dict[str, int | bool | str | None]:
+    """Update gap suspicion score and return whether a full backfill should be requested.
 
-    Replaces the previous outbox-based flow: when the score crosses the threshold, we enqueue the full sync directly
-    via SubscriptionSyncLifecycle.request_sync, subject to global/site inflight limits. The 24h
-    ``last_full_requested_at`` gate on the state row prevents request storms; the inflight check skips the request
-    when too many full syncs are already queued/running, and the next observation tick will retry naturally.
+    The 24h ``last_full_requested_at`` gate on the state row prevents request storms. The subscription sync lifecycle
+    owns the inflight budget check and the actual full-sync request.
     """
     current_time = now or datetime.now()
-    emitted_full_request = False
 
     with get_session() as session:
         state = session.get(SubscriptionSyncState, sync_state_id)
         if not state:
-            return {"gap_suspicion_score": 0, "emitted_full_request": False}
+            return {
+                'gap_suspicion_score': 0,
+                'should_request_full': False,
+                'site': None,
+                'sync_state_id': None,
+            }
 
         previous_head_sample = list(state.last_head_sample_urls or [])
         score = int(state.gap_suspicion_score or 0)
@@ -106,7 +100,6 @@ def record_gap_observation(
         state.version += 1
 
         site = str(state.site or "").strip()
-        subscription_id = int(state.subscription_id)
         sync_state_row_id = int(state.id)
 
         should_request_full = (
@@ -122,88 +115,9 @@ def record_gap_observation(
 
         gap_score_snapshot = int(state.gap_suspicion_score)
 
-    # Outside the session — direct sync enqueue, subject to inflight limits.
-    if should_request_full and _can_request_full_sync(site):
-        emitted_full_request = _enqueue_full_backfill(
-            subscription_id=subscription_id,
-            site=site,
-            sync_state_id=sync_state_row_id,
-            trigger=trigger,
-            trace_id=trace_id,
-            gap_score=gap_score_snapshot,
-        )
-
     return {
-        "gap_suspicion_score": gap_score_snapshot,
-        "emitted_full_request": emitted_full_request,
+        'gap_suspicion_score': gap_score_snapshot,
+        'should_request_full': should_request_full,
+        'site': site,
+        'sync_state_id': sync_state_row_id,
     }
-
-
-def _can_request_full_sync(site: str) -> bool:
-    """Check global/site full-sync inflight limits. Skip the request if either budget is exhausted."""
-    global_limit = max(1, int(settings.FULL_SYNC_MAX_INFLIGHT))
-    site_limit = max(1, int(settings.FULL_SYNC_SITE_MAX_INFLIGHT))
-
-    with get_session() as session:
-        global_inflight = int(session.execute(
-            select(func.count(SubscriptionSyncState.id)).where(
-                SubscriptionSyncState.sync_mode == SyncMode.FULL.value,
-                SubscriptionSyncState.sync_status.in_([SyncStatus.QUEUED.value, SyncStatus.RUNNING.value]),
-            ),
-        ).scalar_one() or 0)
-        if global_inflight >= global_limit:
-            return False
-
-        if site:
-            site_inflight = int(session.execute(
-                select(func.count(SubscriptionSyncState.id)).where(
-                    SubscriptionSyncState.sync_mode == SyncMode.FULL.value,
-                    SubscriptionSyncState.sync_status.in_([SyncStatus.QUEUED.value, SyncStatus.RUNNING.value]),
-                    SubscriptionSyncState.site == site,
-                ),
-            ).scalar_one() or 0)
-            if site_inflight >= site_limit:
-                return False
-
-    return True
-
-
-def _enqueue_full_backfill(
-    *,
-    subscription_id: int,
-    site: str,
-    sync_state_id: int,
-    trigger: str,
-    trace_id: str | None,
-    gap_score: int,
-) -> bool:
-    from domains.subscription.application.services.core.crud import get_subscription_by_id
-    from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
-    from domains.subscription.application.services.core.update.models import UpdateMode, parse_trigger
-
-    try:
-        lifecycle = SubscriptionSyncLifecycle()
-        subscription = get_subscription_by_id(subscription_id)
-        url = (subscription.url if subscription and subscription.url else "")
-        lifecycle.request_sync(
-            subscription_id=subscription_id,
-            url=url,
-            trigger=parse_trigger(trigger),
-            mode=UpdateMode.FULL,
-            trace_id=trace_id,
-        )
-        logger.info(
-            "Gap detection enqueued full backfill subscription_id=%s site=%s sync_state_id=%s gap_score=%s",
-            subscription_id,
-            site,
-            sync_state_id,
-            gap_score,
-        )
-        return True
-    except Exception:  # gap backfill boundary — never fail the observation path
-        logger.exception(
-            "Failed to enqueue full backfill from gap detection subscription_id=%s sync_state_id=%s",
-            subscription_id,
-            sync_state_id,
-        )
-        return False

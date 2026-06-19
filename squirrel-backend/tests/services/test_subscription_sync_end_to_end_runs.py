@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -94,11 +95,13 @@ def test_mark_sync_success_stays_running_until_pending_videos_are_drained(engine
     assert state.last_success_at is not None
 
 
-def test_record_gap_observation_enqueues_full_backfill_when_score_crosses_threshold(engine, session_factory, sss_session_patch):
+def test_record_gap_observation_returns_full_backfill_request_when_score_crosses_threshold(
+    engine,
+    session_factory,
+    sss_session_patch,
+):
     engine = _setup_state_env(engine)
     sss_svc = subscription_sync_state_service
-
-    request_calls = []
 
     now = datetime(2026, 4, 4, 12, 0, 0)
     with Session(engine, expire_on_commit=False) as session:
@@ -115,35 +118,21 @@ def test_record_gap_observation_enqueues_full_backfill_when_score_crosses_thresh
         )
         session.commit()
 
-    from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
-    from domains.subscription.application.services.core.sync.state import _gap as gap_module
-    from domains.subscription.application.services.core.update.models import UpdateMode, UpdateTrigger
-
-    with patch.object(gap_module, "_can_request_full_sync", return_value=True), \
-         patch("domains.subscription.application.services.core.crud.get_subscription_by_id", return_value=None), \
-         patch.object(SubscriptionSyncLifecycle, "request_sync", lambda self, **kw: request_calls.append(kw)):
-        summary = sss_svc.record_gap_observation(
-            sync_state_id=21,
-            head_sample_urls=["https://example.com/video/new-1", "https://example.com/video/new-2"],
-            anchor_found=False,
-            cursor_invalid=True,
-            cursor_loop_detected=False,
-            total_available=120,
-            local_total=80,
-            now=now,
-            trigger="scheduled",
-            trace_id="trace-1",
-        )
+    summary = sss_svc.record_gap_observation(
+        sync_state_id=21,
+        head_sample_urls=["https://example.com/video/new-1", "https://example.com/video/new-2"],
+        anchor_found=False,
+        cursor_invalid=True,
+        cursor_loop_detected=False,
+        total_available=120,
+        local_total=80,
+        now=now,
+    )
 
     assert summary["gap_suspicion_score"] >= 8
-    assert summary["emitted_full_request"] is True
-    assert request_calls == [{
-        "subscription_id": 7,
-        "url": "",
-        "trigger": UpdateTrigger.SCHEDULED,
-        "mode": UpdateMode.FULL,
-        "trace_id": "trace-1",
-    }]
+    assert summary["should_request_full"] is True
+    assert summary["site"] == "youtube.com"
+    assert summary["sync_state_id"] == 21
 
     with Session(engine, expire_on_commit=False) as session:
         state = session.get(SubscriptionSyncState, 21)
@@ -153,9 +142,12 @@ def test_record_gap_observation_enqueues_full_backfill_when_score_crosses_thresh
     assert state.last_full_requested_at == now
 
 
-def test_record_gap_observation_skips_full_backfill_when_inflight_budget_exhausted(engine, session_factory, sss_session_patch):
+def test_lifecycle_record_gap_observation_enqueues_full_backfill_when_score_crosses_threshold(
+    engine,
+    session_factory,
+    sss_session_patch,
+):
     engine = _setup_state_env(engine)
-    sss_svc = subscription_sync_state_service
 
     request_calls = []
 
@@ -175,27 +167,129 @@ def test_record_gap_observation_skips_full_backfill_when_inflight_budget_exhaust
         session.commit()
 
     from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
-    from domains.subscription.application.services.core.sync.state import _gap as gap_module
+    from domains.subscription.application.services.core.update.models import (
+        SubscriptionUpdateRequest,
+        SubscriptionUpdateResult,
+        UpdateMode,
+        UpdateTrigger,
+    )
 
-    with patch.object(gap_module, "_can_request_full_sync", return_value=False), \
-         patch.object(SubscriptionSyncLifecycle, "request_sync", lambda self, **kw: request_calls.append(kw)):
-        summary = sss_svc.record_gap_observation(
-            sync_state_id=22,
-            head_sample_urls=["https://example.com/video/new-1", "https://example.com/video/new-2"],
-            anchor_found=False,
-            cursor_invalid=True,
-            cursor_loop_detected=False,
-            total_available=120,
-            local_total=80,
-            now=now,
-        )
+    request = SubscriptionUpdateRequest(
+        subscription_id=8,
+        sync_state_id=22,
+        url="https://www.youtube.com/channel/demo",
+        trigger=UpdateTrigger.SCHEDULED,
+        mode=UpdateMode.INCREMENTAL,
+        trace_id="trace-1",
+    )
+    result = SubscriptionUpdateResult(
+        subscription_id=8,
+        success=True,
+        videos_found=2,
+        videos_enqueued=2,
+        head_sample_urls=["https://example.com/video/new-1", "https://example.com/video/new-2"],
+        anchor_found=False,
+        cursor_invalid=True,
+        cursor_loop_detected=False,
+        total_available=120,
+    )
 
-    assert summary["gap_suspicion_score"] >= 8
-    # score crossed and last_full_requested_at still stamped, but request skipped due to inflight budget
-    assert summary["emitted_full_request"] is False
-    assert request_calls == []
+    lifecycle = SubscriptionSyncLifecycle(session_factory=session_factory)
+    with patch(
+        "domains.subscription.application.services.core.sync.lifecycle.get_subscription_by_id",
+        return_value=SimpleNamespace(total_videos=80),
+    ), \
+         patch.object(
+             SubscriptionSyncLifecycle,
+             "request_sync",
+             autospec=True,
+             side_effect=lambda self, **kw: request_calls.append(kw),
+         ):
+        lifecycle.record_gap_observation(request, result)
+
+    assert request_calls == [{
+        "subscription_id": 8,
+        "url": "https://www.youtube.com/channel/demo",
+        "trigger": UpdateTrigger.SCHEDULED,
+        "mode": UpdateMode.FULL,
+        "trace_id": "trace-1",
+    }]
 
     with Session(engine, expire_on_commit=False) as session:
         state = session.get(SubscriptionSyncState, 22)
 
-    assert state.last_full_requested_at == now
+    assert state.last_full_requested_at is not None
+
+
+def test_lifecycle_record_gap_observation_skips_full_backfill_when_inflight_budget_exhausted(
+    engine,
+    session_factory,
+    sss_session_patch,
+):
+    engine = _setup_state_env(engine)
+
+    request_calls = []
+
+    now = datetime(2026, 4, 4, 12, 0, 0)
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            SubscriptionSyncState(
+                id=23,
+                subscription_id=9,
+                site="youtube.com",
+                sync_mode="incremental",
+                sync_status="success",
+                next_sync_at=now + timedelta(minutes=5),
+                last_seen_video_url="https://example.com/video/anchor",
+            ),
+        )
+        session.commit()
+
+    from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
+    from domains.subscription.application.services.core.update.models import (
+        SubscriptionUpdateRequest,
+        SubscriptionUpdateResult,
+        UpdateMode,
+        UpdateTrigger,
+    )
+
+    request = SubscriptionUpdateRequest(
+        subscription_id=9,
+        sync_state_id=23,
+        url="https://www.youtube.com/channel/demo",
+        trigger=UpdateTrigger.SCHEDULED,
+        mode=UpdateMode.INCREMENTAL,
+        trace_id="trace-2",
+    )
+    result = SubscriptionUpdateResult(
+        subscription_id=9,
+        success=True,
+        videos_found=2,
+        videos_enqueued=2,
+        head_sample_urls=["https://example.com/video/new-1", "https://example.com/video/new-2"],
+        anchor_found=False,
+        cursor_invalid=True,
+        cursor_loop_detected=False,
+        total_available=120,
+    )
+
+    lifecycle = SubscriptionSyncLifecycle(session_factory=session_factory)
+    with patch(
+        "domains.subscription.application.services.core.sync.lifecycle.get_subscription_by_id",
+        return_value=SimpleNamespace(total_videos=80),
+    ), \
+         patch.object(SubscriptionSyncLifecycle, "_can_request_full_sync", return_value=False), \
+         patch.object(
+             SubscriptionSyncLifecycle,
+             "request_sync",
+             autospec=True,
+             side_effect=lambda self, **kw: request_calls.append(kw),
+         ):
+        lifecycle.record_gap_observation(request, result)
+
+    assert request_calls == []
+
+    with Session(engine, expire_on_commit=False) as session:
+        state = session.get(SubscriptionSyncState, 23)
+
+    assert state.last_full_requested_at is not None
