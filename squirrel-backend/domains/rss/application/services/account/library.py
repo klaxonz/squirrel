@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from fastapi_pagination import Params
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy import select
 
 from domains.rss.application.services.account.serialization import serialize_entry, serialize_feed
 from domains.rss.application.services.client._base import RssServiceError
@@ -56,8 +58,6 @@ class RssLibraryService:
         page: int = 1,
         page_size: int = 30,
     ) -> dict[str, Any]:
-        page = max(1, int(page or 1))
-        page_size = max(1, min(100, int(page_size or 30)))
         with self.session_factory() as session:
             conditions = [RssEntry.user_id == user_id]
             if account_id is not None:
@@ -69,19 +69,18 @@ class RssLibraryService:
             if is_starred is not None:
                 conditions.append(RssEntry.is_starred == is_starred)
 
-            total = session.scalar(select(func.count()).select_from(RssEntry).where(*conditions)) or 0
-            entries = session.scalars(
+            entry_page = paginate(
+                session,
                 select(RssEntry)
                 .where(*conditions)
-                .order_by(RssEntry.published_at.desc().nullslast(), RssEntry.id.desc())
-                .offset((page - 1) * page_size)
-                .limit(page_size)
-            ).all()
+                .order_by(RssEntry.published_at.desc().nullslast(), RssEntry.id.desc()),
+                Params(page=page, size=page_size),
+            )
             return {
-                'total': total,
-                'page': page,
-                'pageSize': page_size,
-                'data': [serialize_entry(entry) for entry in entries],
+                'total': entry_page.total,
+                'page': entry_page.page,
+                'pageSize': entry_page.size,
+                'data': [serialize_entry(entry) for entry in entry_page.items],
             }
 
     def record_entry_view(self, user_id: int, entry_id: int) -> None:

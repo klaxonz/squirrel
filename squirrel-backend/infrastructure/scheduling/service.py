@@ -2,7 +2,9 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, desc, func, or_
+from fastapi_pagination import Params
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy import and_, desc, or_, select
 
 from infrastructure.database.session import get_session
 from infrastructure.scheduling.bootstrap import discover_task_classes, ensure_system_tasks
@@ -31,10 +33,10 @@ class ScheduledTaskService:
         ensure_system_tasks()
 
         with self.session_factory() as session:
-            db_tasks = session.query(ScheduledTask)
+            conditions = []
 
             if search:
-                db_tasks = db_tasks.filter(
+                conditions.append(
                     or_(
                         ScheduledTask.name.ilike(f'%{escape_ilike(search)}%'),
                         ScheduledTask.description.ilike(f'%{escape_ilike(search)}%'),
@@ -42,25 +44,22 @@ class ScheduledTaskService:
                 )
 
             if status:
-                db_tasks = db_tasks.filter(ScheduledTask.status == status)
+                conditions.append(ScheduledTask.status == status)
 
             if task_type:
-                db_tasks = db_tasks.filter(ScheduledTask.task_type == task_type)
+                conditions.append(ScheduledTask.task_type == task_type)
 
-            total = db_tasks.with_entities(func.count(ScheduledTask.id)).scalar() or 0
-            paginated_tasks = [
-                task.to_dict()
-                for task in db_tasks.order_by(desc(ScheduledTask.created_at))
-                .offset((page - 1) * page_size)
-                .limit(page_size)
-                .all()
-            ]
+            task_page = paginate(
+                session,
+                select(ScheduledTask).where(*conditions).order_by(desc(ScheduledTask.created_at)),
+                Params(page=page, size=page_size),
+            )
 
         return {
-            'page': page,
-            'page_size': page_size,
-            'total': total,
-            'data': paginated_tasks,
+            'page': task_page.page,
+            'page_size': task_page.size,
+            'total': task_page.total,
+            'data': [task.to_dict() for task in task_page.items],
         }
 
     @staticmethod

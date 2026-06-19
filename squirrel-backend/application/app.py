@@ -3,6 +3,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, status
 from fastapi.exceptions import HTTPException as FastAPIHTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRouter
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -72,13 +73,29 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
     )
 
 
+async def request_validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    logger.error('RequestValidationError: %s', exc, exc_info=True)
+    return response.param_error('请求参数错误')
+
+
 async def default_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.error('DefaultException: %s', exc, exc_info=True)
     return response.server_error('服务器内部错误')
 
 
+_EXCEPTION_HANDLERS = {
+    FastAPIHTTPException: http_exception_handler,
+    RequestValidationError: request_validation_error_handler,
+    StarletteHTTPException: http_exception_handler,
+    Exception: default_exception_handler,
+    AuthenticationError: authentication_error_handler,
+    TokenMissingError: authentication_error_handler,
+    TokenExpiredError: authentication_error_handler,
+}
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(exception_handlers=None, lifespan=lifespan)
+    app = FastAPI(exception_handlers=_EXCEPTION_HANDLERS, lifespan=lifespan)
     _register_middleware(app)
     _register_routers(app)
     _mount_static_assets(app)
@@ -92,14 +109,7 @@ def _register_middleware(application: FastAPI) -> None:
     application.add_middleware(AuthenticationMiddleware)
     application.add_middleware(
         ExceptionMiddleware,
-        handlers={
-            FastAPIHTTPException: http_exception_handler,
-            StarletteHTTPException: http_exception_handler,
-            Exception: default_exception_handler,
-            AuthenticationError: authentication_error_handler,
-            TokenMissingError: authentication_error_handler,
-            TokenExpiredError: authentication_error_handler,
-        },
+        handlers=_EXCEPTION_HANDLERS,
     )
     application.add_middleware(AccessLogMiddleware)
     application.add_middleware(RequestContextMiddleware)

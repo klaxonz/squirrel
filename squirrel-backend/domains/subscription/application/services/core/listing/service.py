@@ -1,6 +1,8 @@
 import logging
 from typing import Any
 
+from fastapi_pagination import Params
+from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import and_, case, false, func, literal, or_, select
 
 import domains.user.application.services.config as user_config_service
@@ -78,14 +80,6 @@ class SubscriptionListService:
 
             conditions.extend(build_subscription_search_clauses(query))
 
-            count_statement = (
-                select(func.count())
-                .select_from(UserSubscription)
-                .join(Subscription, Subscription.id == UserSubscription.subscription_id)
-                .where(*conditions)
-            )
-            total_count = session.execute(count_statement).scalar() or 0
-
             statement = (
                 select(
                     Subscription.id,
@@ -120,11 +114,15 @@ class SubscriptionListService:
                 )
                 .where(*conditions)
                 .order_by(UserSubscription.is_special_followed.desc(), Subscription.created_at.desc())
-                .limit(page_size)
-                .offset((page - 1) * page_size)
             )
 
-            results = session.execute(statement).mappings().all()
+            subscription_page = paginate(
+                session,
+                statement,
+                Params(page=page, size=page_size),
+                transformer=lambda rows: [row._mapping for row in rows],
+            )
+            results = subscription_page.items
             subscription_ids = [int(row['id']) for row in results]
             extract_count_map = load_subscription_extract_counts(session, subscription_ids)
             unread_count_map = load_subscription_unread_counts(session, user_id, subscription_ids)
@@ -140,7 +138,7 @@ class SubscriptionListService:
                     serialize_subscription_list_item(row_mapping, total_extract, recent_videos, unread_count)
                 )
 
-            return subscriptions, total_count
+            return subscriptions, subscription_page.total
 
     def get_subscription_detail(self, subscription_id: int) -> SubscriptionDto | None:
         with self.session_factory() as session:
