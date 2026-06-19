@@ -154,9 +154,17 @@ control-flow change with real behavior risk).
 
 ## Consequences for future work
 
-- A test fake for the player now exists as a concept (`FakeStreamAdapter`);
-  player-engine logic that used to require a `<video>` element and a real
-  library can now be unit-tested through the adapter interface.
+- **Testability (deferred).** The `StreamAdapter` / `StreamSink` split makes the
+  quality-delivery contract unit-testable for the first time: a
+  `FakeStreamAdapter` that drives `sink.qualitiesResolved` / `qualityChanged`
+  can exercise the engine's default-quality strategy and the no-round-trip
+  semantics without a `<video>` element or a real library. **The frontend has no
+  test runner today** (no `test` script, no vitest/jest, zero test files), so
+  this contract test is not yet written. Adding a runner is a separate
+  infrastructure decision; when it lands, the layer-1 contract test pinned in
+  the design tree (Q12 of the grilling) is the first test to add — it asserts
+  the adapter delivers facts via the sink and the engine owns strategy, with no
+  `setQuality` round-trip.
 - `PluginContext` remains for `SubtitlesPlugin` / `AnalyticsPlugin`. Narrowing
   it is a separate, future epic (not covered here).
 - The engine's state machine still listens to `<video>` element events

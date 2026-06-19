@@ -18,6 +18,7 @@
 import dashjs, { type MediaPlayerClass, type MediaPlayerSettingClass } from 'dashjs'
 import { getCodecFamily, compareCodecFamilies } from '../core/codec'
 import type { StreamAdapter, StreamContext } from '../core/StreamAdapter'
+import type { StreamSink } from '../core/StreamSink'
 import type {
   QualityLevel,
   QualitySelectionRequest,
@@ -49,6 +50,8 @@ export class DashAdapter implements StreamAdapter {
   private player: MediaPlayerClass | null = null
   private context: StreamContext
   private options: DashAdapterOptions
+  // The sink handed to onSourceChange; the only channel back to the engine.
+  private sink: StreamSink | null = null
   private currentSource: string | null = null
   private sourceQualityHints: QualityLevel[] = []
   private selectedCodecFamily: string = 'auto'
@@ -111,7 +114,8 @@ export class DashAdapter implements StreamAdapter {
            url.includes('format=mpd')
   }
 
-  onSourceChange(source: MediaSource): void {
+  onSourceChange(source: MediaSource, sink: StreamSink): void {
+    this.sink = sink
     this.sourceQualityHints = Array.isArray(source.qualities) ? source.qualities : []
     this.selectedCodecFamily = 'auto'
     this.currentVisibleCodecFamily = null
@@ -250,9 +254,9 @@ export class DashAdapter implements StreamAdapter {
           code: error.code,
           message: error.message,
         })
-        this.context.reportError({ ...error, fatal: false })
+        this.sink?.error({ ...error, fatal: false })
       } else if (fatal) {
-        this.context.reportError(error)
+        this.sink?.error(error)
       } else {
         this.context.logger.warn('[DashAdapter] Non-fatal error', error)
       }
@@ -260,11 +264,11 @@ export class DashAdapter implements StreamAdapter {
 
     // 缓冲事件
     player.on('bufferingStarted', () => {
-      this.context.emit('waiting', undefined)
+      this.sink?.loadingStateChanged(true)
     })
 
     player.on('bufferingCompleted', () => {
-      this.context.emit('canplay', undefined)
+      this.sink?.loadingStateChanged(false)
     })
 
     // 质量变化
@@ -276,12 +280,13 @@ export class DashAdapter implements StreamAdapter {
         const quality = this.findQualityForPlaybackSelection(currentTrackIndex, e.newQuality, qualities)
         const qualityId = quality?.id ?? (typeof e.newQuality === 'number' ? e.newQuality : undefined)
         this.lastKnownPlaybackQualityId = qualityId ?? null
-        this.context.emit('qualitychange', {
-          quality: quality?.label || `level_${e.newQuality}`,
-          auto: this.isAutoQuality(),
-          id: qualityId
-        })
-        this.context.registerCurrentQualityId?.(qualityId)
+        if (qualityId !== undefined) {
+          this.sink?.qualityChanged({
+            label: quality?.label || `level_${e.newQuality}`,
+            auto: this.isAutoQuality(),
+            id: qualityId
+          })
+        }
         this.updateQualities()
       }
     })
@@ -427,7 +432,7 @@ export class DashAdapter implements StreamAdapter {
   }
 
   /**
-   * 更新质量列表到上下文
+   * 更新质量列表到 sink
    */
   private updateQualities(): void {
     const qualities = this.getAvailableQualities()
@@ -441,33 +446,16 @@ export class DashAdapter implements StreamAdapter {
       return (b.bitrate || 0) - (a.bitrate || 0)
     })
 
-
-    this.context.registerQualities(qualities)
-    this.context.emit('qualitiesloaded', qualities)
-
     if (currentPlaybackQuality) {
-      this.context.registerCurrentQualityId?.(currentPlaybackQuality.id)
       this.lastKnownPlaybackQualityId = currentPlaybackQuality.id
-      if (!this.context.getState().quality) {
-        this.context.emit('qualitychange', {
-          quality: currentPlaybackQuality.label,
-          auto: this.isAutoQuality(),
-          id: currentPlaybackQuality.id
-        })
-      }
     }
 
-    if (!this.options.enableAutoQuality && !this.context.getState().quality && qualities.length > 0) {
-      const defaultQuality = qualities[0]
-      if (this.canApplyDefaultQuality(defaultQuality)) {
-        this.context.setQuality(defaultQuality.id ?? defaultQuality.label)
-      } else {
-        this.context.logger.debug('[DashAdapter] Skipping eager default quality selection that would require a track switch', {
-          qualityId: defaultQuality.id,
-          currentTrackIndex: this.currentTrackIndex
-        })
-      }
-    }
+    // Deliver the (possibly updated) quality list + the currently-playing id.
+    // The engine records the list and applies its default-quality strategy on
+    // first resolution; subsequent calls just refresh the list/current state.
+    // DASH codec-family default selection stays adapter-side (option 3,
+    // ADR-0001) — it's already reflected in currentPlaybackQuality.id.
+    this.sink?.qualitiesResolved(qualities, currentPlaybackQuality?.id ?? null)
   }
 
   getAvailableCodecFamilies(): string[] {
@@ -794,16 +782,6 @@ export class DashAdapter implements StreamAdapter {
     return availableQualities.find((quality) => quality.id === this.lastKnownPlaybackQualityId) || null
   }
 
-  private canApplyDefaultQuality(quality: QualityLevel | null): boolean {
-    if (!this.player || !quality) return false
-
-    const hintedSelection = this.getHintedSelection(quality.id)
-    if (!hintedSelection) return true
-
-    const currentTrackIndex = this.getCurrentPlaybackTrackIndex(this.player as any)
-    return currentTrackIndex !== null && currentTrackIndex === hintedSelection.trackIndex
-  }
-
   private applyPendingHintedSelection(player: any): void {
     if (
       !this.pendingHintedSelection ||
@@ -947,6 +925,7 @@ export class DashAdapter implements StreamAdapter {
   destroy(): void {
     this.destroyPlayer()
     this.currentSource = null
+    this.sink = null
   }
 }
 

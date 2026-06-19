@@ -15,6 +15,7 @@ import shaka from 'shaka-player'
 
 import { getCodecFamily, compareCodecFamilies } from '../core/codec'
 import type { StreamAdapter, StreamContext } from '../core/StreamAdapter'
+import type { StreamSink } from '../core/StreamSink'
 import type {
   MediaSource,
   PlaybackRecoveryAction,
@@ -33,6 +34,8 @@ type ShakaVariantTrack = shaka.extern.Track
 export class ShakaDashAdapter implements StreamAdapter {
   private context: StreamContext
   private options: ShakaDashAdapterOptions
+  // The sink handed to onSourceChange; the only channel back to the engine.
+  private sink: StreamSink | null = null
   private player: shaka.Player | null = null
   private currentSource: string | null = null
   private sourceQualityHints: QualityLevel[] = []
@@ -50,7 +53,8 @@ export class ShakaDashAdapter implements StreamAdapter {
     }
   }
 
-  onSourceChange(source: MediaSource): void {
+  onSourceChange(source: MediaSource, sink: StreamSink): void {
+    this.sink = sink
     this.sourceQualityHints = Array.isArray(source.qualities) ? source.qualities : []
 
     const isDash = source.type === 'dash' || (source.type === 'auto' && /\.mpd($|\?)/i.test(source.src))
@@ -128,7 +132,7 @@ export class ShakaDashAdapter implements StreamAdapter {
       this.updateActiveCodecFamily()
       this.updateQualities()
     } catch (error) {
-      this.context.reportError({
+      this.sink?.error({
         code: 'SHAKA_LOAD_FAILED',
         message: error instanceof Error ? error.message : 'Shaka failed to load DASH source',
         fatal: false,
@@ -140,7 +144,7 @@ export class ShakaDashAdapter implements StreamAdapter {
   private setupEventListeners(player: shaka.Player): void {
     player.addEventListener('error', (event: Event) => {
       const detail = (event as CustomEvent).detail
-      this.context.reportError({
+      this.sink?.error({
         code: `SHAKA_${detail?.code || 'UNKNOWN'}`,
         message: detail?.message || 'Shaka playback error',
         fatal: false,
@@ -151,11 +155,7 @@ export class ShakaDashAdapter implements StreamAdapter {
     player.addEventListener('buffering', (event: Event) => {
       const detail = (event as CustomEvent<any>).detail
       const buffering = Boolean(detail?.buffering ?? (event as any)?.buffering)
-      if (buffering) {
-        this.context.emit('waiting', undefined)
-      } else {
-        this.context.emit('canplay', undefined)
-      }
+      this.sink?.loadingStateChanged(buffering)
     })
 
     const refresh = () => {
@@ -227,24 +227,14 @@ export class ShakaDashAdapter implements StreamAdapter {
       : []
 
     const qualities = hinted.length > 0 ? hinted : this.buildQualitiesFromVariants()
-    this.context.registerQualities(qualities)
-    this.context.emit('qualitiesloaded', qualities)
 
-    if (!this.isSelectingQuality && !this.options.enableAutoQuality && !this.context.getState().quality && qualities.length > 0) {
-      this.setQuality(qualities[0].id ?? qualities[0].label)
-      return
-    }
-
+    // Deliver the (possibly updated) quality list + the currently-playing id.
+    // The engine records the list and applies its default-quality strategy on
+    // first resolution. Shaka codec-family selection stays adapter-side; the
+    // old enableAutoQuality / this.setQuality(default) self-recursion is gone
+    // (option 3, ADR-0001).
     const current = this.getCurrentQualityTrack()
-    if (!current) return
-
-    const qualityId = String(current.id)
-    this.context.registerCurrentQualityId?.(qualityId)
-    this.context.emit('qualitychange', {
-      quality: current.label,
-      auto: this.isAutoQuality(),
-      id: qualityId,
-    })
+    this.sink?.qualitiesResolved(qualities, current ? String(current.id) : null)
   }
 
   private getCurrentQualityTrack(): QualityLevel | null {
@@ -398,6 +388,7 @@ export class ShakaDashAdapter implements StreamAdapter {
     this.loadRequestSeq += 1
     void this.destroyPlayer()
     this.currentSource = null
+    this.sink = null
   }
 
   private async destroyPlayer(): Promise<void> {

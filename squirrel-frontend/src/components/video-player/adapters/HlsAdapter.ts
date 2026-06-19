@@ -16,6 +16,7 @@
 import Hls, { type HlsConfig, type Level, type ErrorData } from 'hls.js'
 import { getCodecFamily } from '../core/codec'
 import type { StreamAdapter, StreamContext } from '../core/StreamAdapter'
+import type { StreamSink } from '../core/StreamSink'
 import type {
   QualityLevel,
   QualitySelectionRequest,
@@ -42,6 +43,9 @@ export class HlsAdapter implements StreamAdapter {
   private hls: Hls | null = null
   private context: StreamContext
   private options: HlsAdapterOptions
+  // The sink handed to onSourceChange; the only channel back to the engine.
+  // Set on each onSourceChange, cleared on destroy.
+  private sink: StreamSink | null = null
   private retryCount = 0
   private currentSource: string | null = null
   private sourceQualityHints: QualityLevel[] = []
@@ -270,7 +274,8 @@ export class HlsAdapter implements StreamAdapter {
     return video.canPlayType('application/vnd.apple.mpegurl') !== ''
   }
 
-  onSourceChange(source: MediaSource): void {
+  onSourceChange(source: MediaSource, sink: StreamSink): void {
+    this.sink = sink
     this.sourceQualityHints = Array.isArray(source.qualities) ? source.qualities : []
     this.currentQualities = []
     this.currentExternalQualityId = null
@@ -308,7 +313,7 @@ export class HlsAdapter implements StreamAdapter {
         video.src = src
         return
       }
-      this.context.reportError({
+      this.sink?.error({
         code: 'HLS_NOT_SUPPORTED',
         message: 'HLS is not supported in this browser',
         fatal: true
@@ -364,9 +369,8 @@ export class HlsAdapter implements StreamAdapter {
         if (this.currentExternalQualityId !== null) {
           const externalQuality = this.currentQualities.find((item) => String(item.id) === String(this.currentExternalQualityId))
           if (externalQuality) {
-            this.context.registerCurrentQualityId?.(externalQuality.id)
-            this.context.emit('qualitychange', {
-              quality: externalQuality.label,
+            this.sink?.qualityChanged({
+              label: externalQuality.label,
               auto: false,
               id: externalQuality.id
             })
@@ -377,9 +381,8 @@ export class HlsAdapter implements StreamAdapter {
         const currentQuality = this.findQualityForLevel(data.level)
         const quality = currentQuality?.label || (level.height ? `${level.height}p` : `level_${data.level}`)
         const qualityId = currentQuality?.id || this.getStableQualityId(level, data.level)
-        this.context.registerCurrentQualityId?.(qualityId)
-        this.context.emit('qualitychange', {
-          quality,
+        this.sink?.qualityChanged({
+          label: quality,
           auto: this.hls?.autoLevelEnabled ?? false,
           id: qualityId
         })
@@ -433,12 +436,12 @@ export class HlsAdapter implements StreamAdapter {
     })
 
     this.currentQualities = qualities
-    this.context.registerQualities(qualities)
-    this.context.emit('qualitiesloaded', qualities)
 
-    if (!this.options.enableAutoQuality && !this.context.getState().quality && qualities.length > 0) {
-      this.context.setQuality(qualities[0].id ?? qualities[0].label)
-    }
+    // Deliver the resolved quality list to the engine. HLS has just parsed the
+    // manifest — no quality is playing yet, so currentId is null and the engine
+    // applies its own default-quality strategy (option 3, ADR-0001). The old
+    // enableAutoQuality / context.setQuality round-trip is gone.
+    this.sink?.qualitiesResolved(qualities, null)
   }
 
   /**
@@ -490,7 +493,7 @@ export class HlsAdapter implements StreamAdapter {
         error.message = 'Cannot play video'
     }
 
-    this.context.reportError(error)
+    this.sink?.error(error)
   }
 
   recoverPlayback(error: PlayerError, _context: PlaybackRecoveryContext): PlaybackRecoveryAction {
@@ -623,9 +626,8 @@ export class HlsAdapter implements StreamAdapter {
     if (!src) return
 
     this.currentExternalQualityId = quality.id
-    this.context.registerCurrentQualityId?.(quality.id)
-    this.context.emit('qualitychange', {
-      quality: quality.label,
+    this.sink?.qualityChanged({
+      label: quality.label,
       auto: false,
       id: quality.id
     })
@@ -677,6 +679,7 @@ export class HlsAdapter implements StreamAdapter {
   destroy(): void {
     this.destroyHls()
     this.currentSource = null
+    this.sink = null
   }
 }
 

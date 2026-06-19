@@ -22,6 +22,7 @@ import { LocalStorageAdapter, type UserConfig, type PlaybackProgress } from './P
 import { playerLogger } from './logger'
 import { createErrorRecovery, MAX_VOLUME, detectSourceType } from './error-recovery'
 import type { StreamAdapter, StreamAdapterType, StreamContext } from './StreamAdapter'
+import type { StreamSink } from './StreamSink'
 import { HlsAdapter } from '../adapters/HlsAdapter'
 import { DashAdapter } from '../adapters/DashAdapter'
 import { ShakaDashAdapter } from '../adapters/ShakaDashAdapter'
@@ -102,9 +103,12 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   // Stream adapter seam (see docs/adr/0001). The engine owns one adapter at a
   // time, keyed by currentAdapterType; loadSource reuses it when the source
-  // type is unchanged and destroys + rebuilds it otherwise (A2 strategy).
+  // type is unchanged and destroys + rebuilding it otherwise (A2 strategy).
   let currentStreamAdapter: StreamAdapter | null = null
   let currentAdapterType: StreamAdapterType | null = null
+  // The engine's StreamSink (PR2): the only channel adapters use to drive the
+  // engine. Lazily created; stable for the engine's lifetime.
+  let streamSink: StreamSink | null = null
 
   let lastSavedTime = 0
   let lastSavedAt = 0
@@ -385,26 +389,65 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   })
 
   /**
-   * StreamContext handed to adapters at construction. Forwards the engine's
-   * reverse-driving surface (emit / registerQualities / setQuality / reportError)
-   * so PR1 is behavior-identical to the old plugin path. PR2 replaces this with
-   * a StreamSink passed to onSourceChange.
+   * StreamContext handed to adapters at construction — narrow read-only input
+   * (PR2: the reverse-driving surface that lived here in PR1 is gone; adapters
+   * drive the engine only through the StreamSink passed to onSourceChange).
    */
   const createStreamContext = (): StreamContext => ({
     videoElement: () => videoElement,
     getState,
     logger,
-    // PR1: mirror the PluginContext emit intercept verbatim. Dash/Shaka adapters
-    // drive the engine loading-state machine by emitting 'waiting'/'canplay';
-    // without this intercept their buffering events would no longer set
-    // loading / trigger autoPlayOnReady. PR2 replaces this with sink.loadingStateChanged.
-    emit(event, data) {
-      if (event === 'waiting') {
-        loading = true
-        errorRecovery.scheduleWaitingRecovery()
+  })
+
+  /**
+   * The engine's StreamSink implementation. This is the only channel by which
+   * a stream adapter drives the engine (PR2, ADR-0001). Each callback maps to
+   * the engine state machine that the old PluginContext emit/register helpers
+   * used to mutate; the adapter no longer touches those directly.
+   */
+  const createStreamSink = (): StreamSink => ({
+    qualitiesResolved: (qs, currentId) => {
+      qualities = qs
+      errorRecovery.setRecoveryQualities(qs)
+      events.emit('qualitiesloaded', qs)
+
+      // Record the adapter's currently-playing quality (a fact), then apply the
+      // engine's default-quality strategy on top (option 3, ADR-0001). The
+      // strategy only fires when the engine has no recorded quality yet —
+      // mirroring the old `!state.quality` guard. auto-quality is an engine
+      // concern now, so there is no enableAutoQuality branch here.
+      if (currentId !== null) {
+        registeredQualityId = currentId
+        const match = qs.find((item) => item.id === currentId)
+        if (match?.label) {
+          currentQualityLabel = match.label
+          currentQualityId = currentId
+        }
       }
 
-      if (event === 'canplay') {
+      if (currentQualityId === null && qs.length > 0) {
+        const defaultQuality = qs[0]
+        setQuality(defaultQuality.id ?? defaultQuality.label)
+      }
+    },
+
+    qualityChanged: (quality) => {
+      registeredQualityId = quality.id
+      currentQualityId = quality.id
+      currentQualityLabel = quality.label
+      events.emit('qualitychange', {
+        quality: quality.label,
+        auto: quality.auto,
+        id: quality.id,
+      })
+      options.onQualityChange?.(quality.label)
+    },
+
+    loadingStateChanged: (isLoading) => {
+      if (isLoading) {
+        loading = true
+        errorRecovery.scheduleWaitingRecovery()
+      } else {
         loading = false
         retryCount = 0
         errorRecovery.clearWaitingRecovery()
@@ -416,31 +459,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
           })
         }
       }
+    },
 
-      events.emit(event, data)
-    },
-    registerQualities: (qs) => {
-      qualities = qs
-      errorRecovery.setRecoveryQualities(qs)
-      if (registeredQualityId !== null) {
-        const match = qs.find((item) => item.id === registeredQualityId)
-        if (match?.label) {
-          currentQualityLabel = match.label
-          currentQualityId = registeredQualityId
-        }
-      }
-    },
-    registerCurrentQualityId: (id) => {
-      registeredQualityId = typeof id === 'string' || typeof id === 'number' ? id : null
-      if (registeredQualityId === null) return
-      const match = qualities.find((item) => item.id === registeredQualityId)
-      if (match?.label) {
-        currentQualityLabel = match.label
-        currentQualityId = registeredQualityId
-      }
-    },
-    setQuality: (q) => setQuality(q),
-    reportError: (error) => {
+    error: (error) => {
       pluginHandlingError = true
       void errorRecovery.handleRecoveryError(error)
         .then((recovered) => {
@@ -553,8 +574,10 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     // sourcechange event forwarded by PluginManager to the stream plugins;
     // adapters are no longer plugins, so the engine calls them itself. The
     // adapter is resolved/reused by source type (A2) and rebuilds its library
-    // instance inside onSourceChange. Native sources have no adapter.
-    resolveStreamAdapter(source)?.onSourceChange(source)
+    // instance inside onSourceChange. Native sources have no adapter. The sink
+    // (PR2) is the only channel the adapter uses to drive the engine back.
+    if (!streamSink) streamSink = createStreamSink()
+    resolveStreamAdapter(source)?.onSourceChange(source, streamSink)
 
     if (type === 'native') {
       videoElement.src = src
