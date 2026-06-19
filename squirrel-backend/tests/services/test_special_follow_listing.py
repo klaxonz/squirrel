@@ -1,13 +1,13 @@
 """Tests for special-follow listing (browse keyset + search id-set).
 
 首页"特别关注"区块请求 category=all&special=yes。由于 Meili 全局 publish_ts:desc
-召回只取最新 N 条，特别关注订阅的视频可能比其他订阅旧而永远进不了召回窗口，
-因此 special=yes 走 PG 直查（keyset 浏览 / 反向交集搜索），不依赖全局召回。
+召回只取最新 N 条,特别关注订阅的视频可能比其他订阅旧而永远进不了召回窗口,
+因此 special=yes 走 PG 直查(keyset 浏览 / 反向交集搜索),不依赖全局召回。
 
-这些测试覆盖 PG 层的 fetch_special_follow_video_ids / fetch_special_follow_id_set：
+这些测试覆盖 PG 层的 fetch_special_follow_video_ids / fetch_special_follow_id_set:
 - 只返回 is_special_followed=true 订阅名下的视频
-- 排除已删除、未来（publish_date > now）、publish_date 为 null 的视频
-- fan-out 去重（同一视频被多个特别关注订阅关联只算一次）
+- 排除已删除、未来(publish_date > now)、publish_date 为 null 的视频
+- fan-out 去重(同一视频被多个特别关注订阅关联只算一次)
 - keyset 游标分页正确
 """
 from contextlib import contextmanager
@@ -109,7 +109,7 @@ def _seed(session_factory):
 
 
 def test_fetch_special_follow_video_ids_returns_only_special_published_videos(session_factory):
-    """keyset 浏览：只返回 is_special_followed 订阅名下、已发布、未删除的视频，按 publish_date desc。"""
+    """keyset 浏览:只返回 is_special_followed 订阅名下、已发布、未删除的视频,按 publish_date desc。"""
     _seed(session_factory)
     with session_factory() as s:
         ids, next_cursor = fetch_special_follow_video_ids(s, user_id=1, cursor=None, limit=50)
@@ -121,7 +121,7 @@ def test_fetch_special_follow_video_ids_returns_only_special_published_videos(se
 
 
 def test_fetch_special_follow_video_ids_excludes_future_and_null_and_deleted(session_factory):
-    """显式断言：未来视频、null publish_date、已删除视频都被排除。"""
+    """显式断言:未来视频、null publish_date、已删除视频都被排除。"""
     _seed(session_factory)
     with session_factory() as s:
         ids, _ = fetch_special_follow_video_ids(s, user_id=1, cursor=None, limit=50)
@@ -132,7 +132,7 @@ def test_fetch_special_follow_video_ids_excludes_future_and_null_and_deleted(ses
 
 
 def test_fetch_special_follow_video_ids_dedupes_fan_out(session_factory):
-    """同一视频被多个特别关注订阅关联只返回一次（v8 同时在 sub10 special 和 sub11 non-special）。"""
+    """同一视频被多个特别关注订阅关联只返回一次(v8 同时在 sub10 special 和 sub11 non-special)。"""
     _seed(session_factory)
     with session_factory() as s:
         ids, _ = fetch_special_follow_video_ids(s, user_id=1, cursor=None, limit=50)
@@ -140,7 +140,7 @@ def test_fetch_special_follow_video_ids_dedupes_fan_out(session_factory):
 
 
 def test_fetch_special_follow_video_ids_keyset_pagination(session_factory):
-    """keyset 游标分页：limit=1 取首页，cursor 翻页取后续。"""
+    """keyset 游标分页:limit=1 取首页,cursor 翻页取后续。"""
     _seed(session_factory)
     with session_factory() as s:
         page1, cursor1 = fetch_special_follow_video_ids(s, user_id=1, cursor=None, limit=1)
@@ -164,7 +164,7 @@ def test_fetch_special_follow_video_ids_empty_when_no_special_subs(session_facto
 
 
 def test_fetch_special_follow_id_set_returns_special_published_ids(session_factory):
-    """搜索反向交集：取 id 集合，只含特别关注订阅名下的已发布视频。"""
+    """搜索反向交集:取 id 集合,只含特别关注订阅名下的已发布视频。"""
     _seed(session_factory)
     with session_factory() as s:
         ids = fetch_special_follow_id_set(s, user_id=1)

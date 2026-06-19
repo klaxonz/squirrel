@@ -47,7 +47,7 @@ class VideoRandomService:
         time_range: str,
         duration: str,
     ) -> list[int] | None:
-        """有搜索词或结构化过滤时用 Meili 召回；否则返回 None 走全量随机。"""
+        """有搜索词或结构化过滤时用 Meili 召回;否则返回 None 走全量随机。"""
         has_query = bool(query and query.strip())
         if not has_query and not cls._has_structural_filter(domains, time_range, duration):
             return None
@@ -81,7 +81,7 @@ class VideoRandomService:
 
         recalled_ids = self._recall_video_ids(query, domains, time_range, duration)
 
-        # 召回为空（有搜索词但无匹配）→ 直接无结果
+        # 召回为空(有搜索词但无匹配)→ 直接无结果
         if recalled_ids is not None and not recalled_ids:
             return None
 
@@ -118,7 +118,7 @@ class VideoRandomService:
                 .where(*conditions)
             )
 
-            # category（read/unread/liked/later/preview）走 feed_category_predicate EXISTS
+            # category(read/unread/liked/later/preview)走 feed_category_predicate EXISTS
             if category:
                 base_query = base_query.where(
                     self._category_predicate(

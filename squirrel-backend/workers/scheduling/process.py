@@ -15,7 +15,7 @@ def main():
     shutdown_event = create_shutdown_event('scheduler')
 
     with bootstrap_runtime('scheduler'):
-        # 清理上次 crash/interrupt 留下的脏 sync 状态（drained terminal / stale queued / expired running）。
+        # 清理上次 crash/interrupt 留下的脏 sync 状态(drained terminal / stale queued / expired running)。
         # 只在 scheduler 进程启动时做——它才是推进 subscription sync 的进程。
         try:
             recovered = subscription_sync_state_service.recover_stale_sync_states_on_startup()

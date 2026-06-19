@@ -17,9 +17,9 @@ SessionFactory = Callable[[], Generator[Session, None, None]]
 
 
 def _index_video_after_commit(session: Session, video_id: int) -> None:
-    """事务提交后把 video 推到 Meilisearch（增量直写，失败仅告警）。
+    """事务提交后把 video 推到 Meilisearch(增量直写,失败仅告警)。
 
-    与 video_persistence._index_video_after_commit 同构，供本模块的写入路径复用。
+    与 video_persistence._index_video_after_commit 同构,供本模块的写入路径复用。
     """
     if not settings.meili.url:
         return

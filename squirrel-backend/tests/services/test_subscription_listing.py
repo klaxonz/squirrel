@@ -1,17 +1,17 @@
 """Tests for per-subscription listing (channel detail "local" tab).
 
-频道详情页请求 subscription_id=X&category=all，用于列出该订阅下已解析的视频。
-原先走 Meili 全局 publish_ts:desc 召回（最多 _MAX_RECALL_ROUNDS×(page_size*2) 条）
-再用 subscription_id 在 PG 侧过滤——指定订阅的视频一旦比其他订阅旧，或未被索引，
-就永远进不了召回窗口，导致"本地"列表即使解析了上百条也只显示寥寥几条。
+频道详情页请求 subscription_id=X&category=all,用于列出该订阅下已解析的视频。
+原先走 Meili 全局 publish_ts:desc 召回(最多 _MAX_RECALL_ROUNDSx(page_size*2) 条)
+再用 subscription_id 在 PG 侧过滤——指定订阅的视频一旦比其他订阅旧,或未被索引,
+就永远进不了召回窗口,导致"本地"列表即使解析了上百条也只显示寥寥几条。
 
-现改走 PG keyset 直查 fetch_subscription_video_ids，与 fetch_special_follow_video_ids 同构。
+现改走 PG keyset 直查 fetch_subscription_video_ids,与 fetch_special_follow_video_ids 同构。
 
-这些测试覆盖 PG 层 fetch_subscription_video_ids：
+这些测试覆盖 PG 层 fetch_subscription_video_ids:
 - 只返回指定 subscription_id 名下的视频
-- 归属校验：用户未订阅该 subscription_id → 返回空（防越权）
-- 排除已删除、未来（publish_date > now）、publish_date 为 null 的视频
-- fan-out 去重（同一视频被多个订阅关联只算一次）
+- 归属校验:用户未订阅该 subscription_id → 返回空(防越权)
+- 排除已删除、未来(publish_date > now)、publish_date 为 null 的视频
+- fan-out 去重(同一视频被多个订阅关联只算一次)
 - category='preview' 只取未来视频
 - keyset 游标分页正确
 """
@@ -113,7 +113,7 @@ def _seed(session_factory):
 
 
 def test_fetch_returns_only_specified_subscription_published_videos(session_factory):
-    """keyset 浏览：只返回 sub 10 名下、已发布、未删除的视频，按 publish_date desc。"""
+    """keyset 浏览:只返回 sub 10 名下、已发布、未删除的视频,按 publish_date desc。"""
     _seed(session_factory)
     with session_factory() as s:
         ids, next_cursor = fetch_subscription_video_ids(
@@ -140,7 +140,7 @@ def test_fetch_excludes_future_and_null_and_deleted(session_factory):
 
 
 def test_fetch_enforces_ownership(session_factory):
-    """用户 2 查询 sub 10（用户 1 的订阅）→ 返回空（防越权）。"""
+    """用户 2 查询 sub 10(用户 1 的订阅)→ 返回空(防越权)。"""
     _seed(session_factory)
     with session_factory() as s:
         ids, next_cursor = fetch_subscription_video_ids(
@@ -151,7 +151,7 @@ def test_fetch_enforces_ownership(session_factory):
 
 
 def test_fetch_dedupes_fan_out(session_factory):
-    """同一视频被多个订阅关联只返回一次（v8 同时在 sub10 和 sub11）。"""
+    """同一视频被多个订阅关联只返回一次(v8 同时在 sub10 和 sub11)。"""
     _seed(session_factory)
     with session_factory() as s:
         ids, _ = fetch_subscription_video_ids(
@@ -161,7 +161,7 @@ def test_fetch_dedupes_fan_out(session_factory):
 
 
 def test_fetch_keyset_pagination(session_factory):
-    """keyset 游标分页：limit=1 取首页，cursor 翻页取后续。"""
+    """keyset 游标分页:limit=1 取首页,cursor 翻页取后续。"""
     _seed(session_factory)
     with session_factory() as s:
         page1, cursor1 = fetch_subscription_video_ids(
@@ -195,7 +195,7 @@ def test_fetch_empty_when_subscription_has_no_videos(session_factory):
 
 
 def test_fetch_preview_category_returns_only_future_videos(session_factory):
-    """category='preview' 只取未来视频（publish_date > now）。"""
+    """category='preview' 只取未来视频(publish_date > now)。"""
     _seed(session_factory)
     with session_factory() as s:
         ids, next_cursor = fetch_subscription_video_ids(

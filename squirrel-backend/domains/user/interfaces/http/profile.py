@@ -60,7 +60,7 @@ async def update_password(
         )
         return response.success(
             data=serialize_user(updated_user),
-            msg="密码修改成功，旧会话已失效",
+            msg="密码修改成功,旧会话已失效",
         )
     except ValueError as e:
         return response.param_error(str(e))

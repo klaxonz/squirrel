@@ -15,7 +15,7 @@ SessionFactory = Callable[[], Generator[Session, None, None]]
 
 
 def _reindex_video_safe(video_id: int, *, context: str) -> None:
-    """creator 关联变更后重建 video 的 Meili 文档（creator_names 字段）；失败仅告警。
+    """creator 关联变更后重建 video 的 Meili 文档(creator_names 字段);失败仅告警。
 
     Lazy import 避免 video application 层静态依赖造成循环。
     """
@@ -44,7 +44,7 @@ class VideoCreatorService:
         with self._session_factory() as session:
             video_creator = VideoCreator(video_id=video_id, creator_id=creator_id)
             session.add(video_creator)
-            # 新建关联会改变 Meili 文档的 creator_names 字段，提交后重建文档。
+            # 新建关联会改变 Meili 文档的 creator_names 字段,提交后重建文档。
             # 必须在 commit 前注册。MEILISEARCH_URL 未配置时跳过。
             if settings.meili.url:
                 register_after_commit(

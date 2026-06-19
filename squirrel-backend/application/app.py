@@ -44,9 +44,9 @@ from infrastructure.site_catalog.routes.sites_catalog import router as sites_rou
 
 logger = logging.getLogger(__name__)
 
-# HTTP 状态码 → 业务错误码映射；未列出的状态码归 UNKNOWN_ERROR。
-# 与 infrastructure.http.response._http_status_for_code 方向相反：那边是 code→status，
-# 这里需要从 exc.status_code 反查业务码，故本地维护。
+# HTTP 状态码 → 业务错误码映射;未列出的状态码归 UNKNOWN_ERROR。
+# 与 infrastructure.http.response._http_status_for_code 方向相反:那边是 code→status,
+# 这里需要从 exc.status_code 反查业务码,故本地维护。
 _STATUS_CODE_TO_ERROR_CODE: dict[int, int] = {
     status.HTTP_400_BAD_REQUEST: ErrorCode.PARAM_ERROR,
     status.HTTP_401_UNAUTHORIZED: ErrorCode.UNAUTHORIZED,
@@ -62,7 +62,7 @@ async def authentication_error_handler(request: Request, exc: AuthenticationErro
 
 
 async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-    # exc.status_code 可能是任意值，不能用 response.error()（它按业务码反推 status），
+    # exc.status_code 可能是任意值,不能用 response.error()(它按业务码反推 status),
     # 故手写 JSONResponse 以保留原始 HTTP 状态码。
     logger.error("HTTPException: %s", exc.detail, exc_info=True)
     code = _STATUS_CODE_TO_ERROR_CODE.get(exc.status_code, ErrorCode.UNKNOWN_ERROR)
@@ -113,7 +113,7 @@ def _register_middleware(application: FastAPI) -> None:
     )
 
 
-# 注册顺序即路由匹配顺序；每条路由自带前缀（prefix 互不重叠，无需聚合 /api/v1）。
+# 注册顺序即路由匹配顺序;每条路由自带前缀(prefix 互不重叠,无需聚合 /api/v1)。
 _ROUTERS: tuple[APIRouter, ...] = (
     health_router,
     video_router,

@@ -16,7 +16,7 @@ def apply_nsfw_visibility(conditions: list[Any], effective_nsfw: str) -> list[An
 
 
 def subscription_visibility_predicates(user_id: int, effective_nsfw: str) -> list[Any]:
-    """已订阅维度（UserSubscription × Subscription）的可见性谓词。
+    """已订阅维度(UserSubscription x Subscription)的可见性谓词。
 
     用于 build_subscription_pool / build_video_pool 等 pool 查询的实时 join 路径。
     """

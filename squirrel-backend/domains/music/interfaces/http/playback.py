@@ -21,7 +21,7 @@ async def get_music_play_url(
 
 @router.get("/song/climax")
 async def get_music_track_climax(
-    hash: str = Query(..., min_length=1, description="音乐 hash，多个用逗号分隔"),
+    hash: str = Query(..., min_length=1, description="音乐 hash,多个用逗号分隔"),
     current_user: User = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):

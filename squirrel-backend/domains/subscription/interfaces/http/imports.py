@@ -55,9 +55,9 @@ def preview_subscriptions(
         enabled_sites = get_enabled_import_sites(supported_sites)
 
         if normalized_site not in supported_site_set:
-            return response.param_error(f"不支持的站点: {site}，支持的站点: {', '.join(supported_sites)}")
+            return response.param_error(f"不支持的站点: {site},支持的站点: {', '.join(supported_sites)}")
         if normalized_site not in enabled_sites:
-            return response.param_error(f"站点已禁用，无法预览订阅: {site}")
+            return response.param_error(f"站点已禁用,无法预览订阅: {site}")
 
         cursor_payload = None
         if cursor:
@@ -111,9 +111,9 @@ def import_subscriptions(
         enabled_sites = get_enabled_import_sites(supported_sites)
 
         if normalized_site not in supported_site_set:
-            return response.param_error(f"不支持的站点: {site}，支持的站点: {', '.join(supported_sites)}")
+            return response.param_error(f"不支持的站点: {site},支持的站点: {', '.join(supported_sites)}")
         if normalized_site not in enabled_sites:
-            return response.param_error(f"站点已禁用，无法导入订阅: {site}")
+            return response.param_error(f"站点已禁用,无法导入订阅: {site}")
 
         logger.info("User %s importing subscriptions from %s", current_user.id, normalized_site)
 

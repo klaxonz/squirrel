@@ -24,7 +24,7 @@ def subscribe_content(
 ):
     domain = extract_top_level_domain(req.url)
     if not SiteCatalog.is_site_enabled(domain=domain):
-        return response.param_error("站点插件未启用，无法订阅")
+        return response.param_error("站点插件未启用,无法订阅")
 
     subscription = subscription_import_service.handle_subscribe_request(req.url, current_user.id)
     return response.success({

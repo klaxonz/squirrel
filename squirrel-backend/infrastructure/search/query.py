@@ -28,7 +28,7 @@ FIELD_ALIASES = {
     "类型": "type",
 }
 
-FIELD_TOKEN_PATTERN = re.compile(r"^(?P<key>[^:：\s]+)\s*[:：]\s*(?P<value>.+)$")
+FIELD_TOKEN_PATTERN = re.compile(r"^(?P<key>[^::\s]+)\s*[::]\s*(?P<value>.+)$")
 
 
 @dataclass

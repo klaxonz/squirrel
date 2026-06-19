@@ -62,7 +62,7 @@ class CookieCloudService:
                 last_error = exc
 
         raise CookieCloudSyncError(
-            "CookieCloud 响应不是有效的 JSON 数据，请检查服务端编码或反向代理压缩配置",
+            "CookieCloud 响应不是有效的 JSON 数据,请检查服务端编码或反向代理压缩配置",
         ) from last_error
 
     @staticmethod
@@ -87,7 +87,7 @@ class CookieCloudService:
         url, uuid, password = CookieCloudService._get_cookiecloud_config()
         if not url or not uuid or not password:
             raise CookieCloudSyncError(
-                "CookieCloud 未配置，请设置 COOKIECLOUD_URL / COOKIECLOUD_UUID / COOKIECLOUD_PASSWORD",
+                "CookieCloud 未配置,请设置 COOKIECLOUD_URL / COOKIECLOUD_UUID / COOKIECLOUD_PASSWORD",
             )
 
         client = PyCookieCloud(url=url, uuid=uuid, password=password)

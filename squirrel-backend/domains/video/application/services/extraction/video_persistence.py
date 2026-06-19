@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def _index_video_after_commit(session: Session, video: VideoModel) -> None:
-    """事务提交后把 video 推到 Meilisearch（增量直写，失败仅告警）。"""
+    """事务提交后把 video 推到 Meilisearch(增量直写,失败仅告警)。"""
     if not settings.meili.url:
         return
     try:

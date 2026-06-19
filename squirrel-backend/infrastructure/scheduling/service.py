@@ -216,7 +216,7 @@ class ScheduledTaskService:
                 if not task_config:
                     return False
 
-                # 创建手动执行请求（由 scheduler 进程消费并执行）
+                # 创建手动执行请求(由 scheduler 进程消费并执行)
                 execution_log = TaskExecutionLog(
                     task_id=task_id,
                     task_name=task_config.name,

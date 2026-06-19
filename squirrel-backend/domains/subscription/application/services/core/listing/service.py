@@ -148,8 +148,8 @@ class SubscriptionListService:
                 .correlate(Subscription)
                 .scalar_subquery()
             )
-            # 与裸 SQL 对齐：subscription 列 + total_videos 用 max(total_videos, video_count) 覆盖，
-            # 附加 sync_state 列 + 合成的 is_nsfw/is_special_followed（详情视图无 per-user 上下文）。
+            # 与裸 SQL 对齐:subscription 列 + total_videos 用 max(total_videos, video_count) 覆盖,
+            # 附加 sync_state 列 + 合成的 is_nsfw/is_special_followed(详情视图无 per-user 上下文)。
             effective_total = case(
                 (func.coalesce(video_count_subq, 0) > Subscription.total_videos, func.coalesce(video_count_subq, 0)),
                 else_=Subscription.total_videos,

@@ -52,7 +52,7 @@ class TokenExpiredError(AuthenticationError):
     """Raised when authentication token has expired"""
 
     def __init__(self):
-        super().__init__(detail="登录已过期，请重新登录")
+        super().__init__(detail="登录已过期,请重新登录")
 
 
 class AuthenticationMiddleware:

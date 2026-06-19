@@ -13,10 +13,10 @@ router = APIRouter()
 
 @router.get('/random')
 def get_random_video(
-    category: VideoCategory = Query(VideoCategory.ALL, description='类别：all|read|unread|preview|liked|later'),
+    category: VideoCategory = Query(VideoCategory.ALL, description='类别:all|read|unread|preview|liked|later'),
     subscription_id: int = Query(None, description='订阅ID'),
     nsfw: YesNoAll = Query(YesNoAll.ALL, description='NSFW 过滤: all|yes|no'),
-    site: str = Query(None, description='站点过滤：例如 youtube、bilibili 等（支持别名）'),
+    site: str = Query(None, description='站点过滤:例如 youtube、bilibili 等(支持别名)'),
     query: str = Query(None, description='搜索关键字'),
     time_range: TimeRange = Query(TimeRange.ALL, description='时间范围: all|today|week|month|year'),
     duration: DurationFilter = Query(DurationFilter.ALL, description='时长: all|short|medium|long'),

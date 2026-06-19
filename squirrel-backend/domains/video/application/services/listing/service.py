@@ -33,11 +33,11 @@ SessionFactory = Callable[[], Generator[Session, None, None]]
 
 logger = logging.getLogger(__name__)
 
-# 浏览 keyset 补页：单轮召回倍数（给 PG 权限/category 过滤留缓冲）
+# 浏览 keyset 补页:单轮召回倍数(给 PG 权限/category 过滤留缓冲)
 _RECALL_BUFFER_FACTOR = 2
-# 补页最大轮次（防 liked 等低命中率 category 无限召回）
+# 补页最大轮次(防 liked 等低命中率 category 无限召回)
 _MAX_RECALL_ROUNDS = 5
-# 搜索场景 OFFSET 的 Meili 召回上限（覆盖深度搜索分页需求）
+# 搜索场景 OFFSET 的 Meili 召回上限(覆盖深度搜索分页需求)
 _SEARCH_RECALL_LIMIT = 5000
 
 # 各路径共用的空计时字典
@@ -45,12 +45,12 @@ _EMPTY_TIMINGS: dict[str, float] = {'recall_ms': 0.0, 'filter_ms': 0.0, 'page_ms
 
 
 def _encode_page_cursor(page: int) -> str:
-    """搜索场景把 page 编码成 base64 cursor（复用 cursor 字段，前端无需区分场景）。"""
+    """搜索场景把 page 编码成 base64 cursor(复用 cursor 字段,前端无需区分场景)。"""
     return base64.urlsafe_b64encode(str(page).encode()).decode().rstrip('=')
 
 
 def _decode_page_cursor(cursor: str) -> int:
-    """解码搜索场景的 page cursor；非法返回 1。"""
+    """解码搜索场景的 page cursor;非法返回 1。"""
     try:
         padded = cursor + '=' * (-len(cursor) % 4)
         return int(base64.urlsafe_b64decode(padded.encode()).decode())
@@ -102,11 +102,11 @@ class VideoListService:
         content_type: str = "all",
         special: str = "all",
     ) -> tuple[list[dict], str | None]:
-        """列表查询。返回 (videos, next_cursor)；next_cursor 为 None 表示无更多。
+        """列表查询。返回 (videos, next_cursor);next_cursor 为 None 表示无更多。
 
-        分两条路径：
-        - 浏览（无搜索词）：keyset 游标分页，Meili 按页召回 + PG 过滤，不足补页
-        - 搜索（有搜索词）：Meili 召回全集(≤5000) + PG 过滤 + OFFSET 分页
+        分两条路径:
+        - 浏览(无搜索词):keyset 游标分页,Meili 按页召回 + PG 过滤,不足补页
+        - 搜索(有搜索词):Meili 召回全集(≤5000) + PG 过滤 + OFFSET 分页
         """
         user_config = self._get_user_config(user_id)
         show_nsfw = user_config.get("showNsfw", False)
@@ -177,8 +177,8 @@ class VideoListService:
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """共享的「PG 权限过滤 → 切页 → hydration」尾部。
 
-        用于所有单轮召回的列表路径（user-state / special-follow 的浏览与搜索、
-        以及普通搜索 OFFSET）。返回 ``(items, cursor, timings)``。
+        用于所有单轮召回的列表路径(user-state / special-follow 的浏览与搜索、
+        以及普通搜索 OFFSET)。返回 ``(items, cursor, timings)``。
         """
         filter_started = perf_counter()
         filtered_ids = filter_recalled_ids(
@@ -253,12 +253,12 @@ class VideoListService:
         cursor: str | None, page_size: int, time_range: str, duration: str,
         content_type: str, special: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
-        """浏览 keyset：循环召回 + PG 过滤，补足一页。
+        """浏览 keyset:循环召回 + PG 过滤,补足一页。
 
-        每轮：Meili.recall_page(cursor, limit=page_size*2) → PG filter_recalled_ids
+        每轮:Meili.recall_page(cursor, limit=page_size*2) → PG filter_recalled_ids
         → 累积到 ≥page_size 或 Meili 到底或达 _MAX_RECALL_ROUNDS。
         """
-        # read/liked/later 走 PG 直查（per-user 表 keyset），不走 Meili keyset
+        # read/liked/later 走 PG 直查(per-user 表 keyset),不走 Meili keyset
         if category in ('read', 'liked', 'later'):
             return self._list_user_state_browse(
                 session,
@@ -268,9 +268,9 @@ class VideoListService:
                 content_type=content_type, special=special,
             )
 
-        # special=yes 走 PG 直查（特别关注订阅名下的视频），不走 Meili 全局召回。
-        # 原因：Meili 全局 publish_ts:desc 召回只取最新 N 条，特别关注订阅的最新视频
-        # 可能比其他订阅旧，永远进不了召回窗口 → 首页"特别关注"区块恒空。
+        # special=yes 走 PG 直查(特别关注订阅名下的视频),不走 Meili 全局召回。
+        # 原因:Meili 全局 publish_ts:desc 召回只取最新 N 条,特别关注订阅的最新视频
+        # 可能比其他订阅旧,永远进不了召回窗口 → 首页"特别关注"区块恒空。
         if special == 'yes':
             return self._list_special_follow_browse(
                 session,
@@ -280,10 +280,10 @@ class VideoListService:
                 content_type=content_type, special=special,
             )
 
-        # 指定 subscription_id 走 PG keyset 直查（频道详情页"本地"列表），不走 Meili 全局召回。
-        # 与 special=yes 同构：Meili 全局召回只取最新 N 条，指定订阅的视频若比其他订阅旧
-        # 或未被索引，就永远进不了召回窗口 → 频道页即使解析了上百条，"本地"也只显示寥寥几条。
-        # 注：read/liked/later 已在上方分流到 user-state 路径（per-user 表保证 category 语义），
+        # 指定 subscription_id 走 PG keyset 直查(频道详情页"本地"列表),不走 Meili 全局召回。
+        # 与 special=yes 同构:Meili 全局召回只取最新 N 条,指定订阅的视频若比其他订阅旧
+        # 或未被索引,就永远进不了召回窗口 → 频道页即使解析了上百条,"本地"也只显示寥寥几条。
+        # 注:read/liked/later 已在上方分流到 user-state 路径(per-user 表保证 category 语义),
         # 此处只会收到 category ∈ {all, unread, preview}。
         if subscription_id is not None:
             return self._list_subscription_browse(
@@ -330,7 +330,7 @@ class VideoListService:
                 exhausted = True
                 break
 
-            # PG 过滤本轮召回（权限 + category）
+            # PG 过滤本轮召回(权限 + category)
             filter_started = perf_counter()
             filtered_ids = filter_recalled_ids(
                 session,
@@ -354,12 +354,12 @@ class VideoListService:
             if exhausted:
                 break
 
-        # 是否还有下一页：只看 Meili 是否还有更多（last_cursor 非 None）。
-        # 不依赖 collected 数量——collected 不足 page_size 只说明本页较小（category 命中率低），
-        # 不代表 Meili 没数据了。若 Meili 已到底（exhausted），last_cursor 为 None。
+        # 是否还有下一页:只看 Meili 是否还有更多(last_cursor 非 None)。
+        # 不依赖 collected 数量——collected 不足 page_size 只说明本页较小(category 命中率低),
+        # 不代表 Meili 没数据了。若 Meili 已到底(exhausted),last_cursor 为 None。
         page_cursor = last_cursor if last_cursor is not None else None
 
-        # 只取 page_size 个，hydration
+        # 只取 page_size 个,hydration
         page_ids = collected_video_ids[:page_size]
         if not page_ids:
             return [], None, _timings(total_recall_ms, total_filter_ms, 0.0)
@@ -374,11 +374,11 @@ class VideoListService:
         domains: list[str] | None, cursor: str | None, page_size: int,
         time_range: str, duration: str, content_type: str, special: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
-        """搜索 OFFSET：Meili 召回全集(≤5000) → PG 过滤 → OFFSET 分页。
+        """搜索 OFFSET:Meili 召回全集(≤5000) → PG 过滤 → OFFSET 分页。
 
-        cursor 在搜索场景编码 page 值（复用 cursor 字段，前端无需区分场景）。
+        cursor 在搜索场景编码 page 值(复用 cursor 字段,前端无需区分场景)。
         """
-        # read/liked/later 搜索：PG 取 id 集合 → Meili filter id IN [...] 反向交集
+        # read/liked/later 搜索:PG 取 id 集合 → Meili filter id IN [...] 反向交集
         if category in ('read', 'liked', 'later'):
             return self._list_user_state_search(
                 session,
@@ -389,8 +389,8 @@ class VideoListService:
                 content_type=content_type, special=special,
             )
 
-        # special=yes 搜索：PG 取特别关注 id 集合 → Meili filter id IN [...] 反向交集。
-        # 原因同浏览路径：全局召回无法保证命中特别关注订阅的视频。
+        # special=yes 搜索:PG 取特别关注 id 集合 → Meili filter id IN [...] 反向交集。
+        # 原因同浏览路径:全局召回无法保证命中特别关注订阅的视频。
         if special == 'yes':
             return self._list_special_follow_search(
                 session,
@@ -437,13 +437,13 @@ class VideoListService:
         category: str, nsfw: str, domains: list[str] | None, cursor: str | None,
         page_size: int, time_range: str, duration: str, content_type: str, special: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
-        """read/liked/later 浏览：PG per-user 表 keyset 直查 + 权限过滤。
+        """read/liked/later 浏览:PG per-user 表 keyset 直查 + 权限过滤。
 
-        - 不调 Meili（这些 category 的语义是"最近交互的"，按交互时间排序）
-        - PG keyset: read 按 end_time，liked/later 按 interaction.created_at
+        - 不调 Meili(这些 category 的语义是"最近交互的",按交互时间排序)
+        - PG keyset: read 按 end_time,liked/later 按 interaction.created_at
         - 取出 video_ids 后走 filter_recalled_ids 做权限(订阅/nsfw/special/content_type)过滤
         """
-        # 多取一些缓冲，给权限过滤留余量
+        # 多取一些缓冲,给权限过滤留余量
         fetch_limit = max(page_size * _RECALL_BUFFER_FACTOR, 20)
 
         recall_started = perf_counter()
@@ -460,9 +460,9 @@ class VideoListService:
         if not video_ids:
             return [], None, _timings(recall_ms, 0.0, 0.0)
 
-        # 权限过滤；category 传 'all'（per-user 表已保证 category 语义，不再 EXISTS）
-        # has_more 看 PG per-user 表是否还有更多（next_cursor 非 None）
-        # 注意：即使权限过滤后不足一页，只要 per-user 表还有更多，就允许翻页
+        # 权限过滤;category 传 'all'(per-user 表已保证 category 语义,不再 EXISTS)
+        # has_more 看 PG per-user 表是否还有更多(next_cursor 非 None)
+        # 注意:即使权限过滤后不足一页,只要 per-user 表还有更多,就允许翻页
         return self._filter_and_paginate(
             session, video_ids,
             user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
@@ -475,15 +475,15 @@ class VideoListService:
         category: str, nsfw: str, domains: list[str] | None, cursor: str | None,
         page_size: int, time_range: str, duration: str, content_type: str, special: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
-        """特别关注浏览：PG keyset 直查用户标记为 is_special_followed 的订阅名下的视频。
+        """特别关注浏览:PG keyset 直查用户标记为 is_special_followed 的订阅名下的视频。
 
-        - 不走 Meili 全局召回（特别关注是用户级过滤，全局 publish_ts:desc 召回无法保证命中）
+        - 不走 Meili 全局召回(特别关注是用户级过滤,全局 publish_ts:desc 召回无法保证命中)
         - PG keyset: Video ⨝ SubscriptionVideo ⨝ UserSubscription(is_special_followed=true)
-          按 publish_date DESC, id DESC；只取已发布视频
+          按 publish_date DESC, id DESC;只取已发布视频
         - 取出 video_ids 后走 filter_recalled_ids 做权限(nsfw/special/content_type)过滤
-          （category 传 'all'；special 语义已由 fetch_special_follow_video_ids 保证）
+          (category 传 'all';special 语义已由 fetch_special_follow_video_ids 保证)
         """
-        # 多取一些缓冲，给权限过滤留余量
+        # 多取一些缓冲,给权限过滤留余量
         fetch_limit = max(page_size * _RECALL_BUFFER_FACTOR, 20)
 
         recall_started = perf_counter()
@@ -499,7 +499,7 @@ class VideoListService:
         if not video_ids:
             return [], None, _timings(recall_ms, 0.0, 0.0)
 
-        # 权限过滤；category='all' + special='all'（fetch 已保证 special 语义，避免重复 EXISTS）
+        # 权限过滤;category='all' + special='all'(fetch 已保证 special 语义,避免重复 EXISTS)
         return self._filter_and_paginate(
             session, video_ids,
             user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
@@ -512,15 +512,15 @@ class VideoListService:
         category: str, nsfw: str, domains: list[str] | None, cursor: str | None,
         page_size: int, time_range: str, duration: str, content_type: str, special: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
-        """指定订阅浏览：PG keyset 直查该订阅名下的视频（频道详情页"本地"列表）。
+        """指定订阅浏览:PG keyset 直查该订阅名下的视频(频道详情页"本地"列表)。
 
-        - 不走 Meili 全局召回（与 _list_special_follow_browse 同理：指定订阅的视频可能
-          比其他订阅旧，永远进不了全局召回窗口）
+        - 不走 Meili 全局召回(与 _list_special_follow_browse 同理:指定订阅的视频可能
+          比其他订阅旧,永远进不了全局召回窗口)
         - PG keyset: Video ⨝ SubscriptionVideo ⨝ UserSubscription(归属校验)
-          按 publish_date DESC, id DESC；publish_date 边界由 category 决定（preview 取未来）
+          按 publish_date DESC, id DESC;publish_date 边界由 category 决定(preview 取未来)
         - 取出 video_ids 后走 filter_recalled_ids 做 nsfw/special/content_type + unread EXISTS 过滤
-          （category 透传：unread 仍需 NOT EXISTS VideoHistory，all/preview 不需）
-        - has_more 看 PG keyset 是否还有更多，与 user-state/special-follow 一致
+          (category 透传:unread 仍需 NOT EXISTS VideoHistory,all/preview 不需)
+        - has_more 看 PG keyset 是否还有更多,与 user-state/special-follow 一致
         """
         fetch_limit = max(page_size * _RECALL_BUFFER_FACTOR, 20)
 
@@ -538,7 +538,7 @@ class VideoListService:
         if not video_ids:
             return [], None, _timings(recall_ms, 0.0, 0.0)
 
-        # 权限过滤；category 透传（unread 仍需 EXISTS，all/preview 不需）；special 透传
+        # 权限过滤;category 透传(unread 仍需 EXISTS,all/preview 不需);special 透传
         return self._filter_and_paginate(
             session, video_ids,
             user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
@@ -552,9 +552,9 @@ class VideoListService:
         domains: list[str] | None, cursor: str | None, page_size: int,
         time_range: str, duration: str, content_type: str, special: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
-        """read/liked/later 搜索：PG 取 per-user id 集合 → Meili filter id IN [...] 反向交集。
+        """read/liked/later 搜索:PG 取 per-user id 集合 → Meili filter id IN [...] 反向交集。
 
-        - PG: 取该用户该 category 的 video_id 集合（最近 5000 个）
+        - PG: 取该用户该 category 的 video_id 集合(最近 5000 个)
         - Meili: 全局索引 filter id IN [集合] + query 文本召回
         - PG: 权限过滤 + OFFSET 分页
         """
@@ -600,9 +600,9 @@ class VideoListService:
         domains: list[str] | None, cursor: str | None, page_size: int,
         time_range: str, duration: str, content_type: str, special: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
-        """特别关注搜索：PG 取特别关注 id 集合 → Meili filter id IN [...] 反向交集。
+        """特别关注搜索:PG 取特别关注 id 集合 → Meili filter id IN [...] 反向交集。
 
-        - PG: 取该用户特别关注订阅名下的 video_id 集合（最近 5000 个）
+        - PG: 取该用户特别关注订阅名下的 video_id 集合(最近 5000 个)
         - Meili: 全局索引 filter id IN [集合] + query 文本召回
         - PG: 权限过滤 + OFFSET 分页
         """
@@ -634,7 +634,7 @@ class VideoListService:
         if not recalled_ids:
             return [], None, _timings(recall_ms, 0.0, 0.0)
 
-        # 3. PG 权限过滤（special 语义已由 fetch_special_follow_id_set 保证，传 'all' 避免重复）+ 4. OFFSET 分页
+        # 3. PG 权限过滤(special 语义已由 fetch_special_follow_id_set 保证,传 'all' 避免重复)+ 4. OFFSET 分页
         return self._filter_and_offset_paginate(
             session, recalled_ids,
             user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,

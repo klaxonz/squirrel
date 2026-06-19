@@ -165,7 +165,7 @@ def test_update_password_rotates_cookie_for_current_session(monkeypatch):
     )
 
     assert response.status_code == 200
-    assert response.json()["msg"] == "密码修改成功，旧会话已失效"
+    assert response.json()["msg"] == "密码修改成功,旧会话已失效"
     assert response.cookies.get(AUTH_COOKIE_NAME) == "rotated-token"
     assert captured["data"] == {"sub": "7", "tv": 2, "rm": True}
     assert "max-age=2592000" in response.headers["set-cookie"].lower()

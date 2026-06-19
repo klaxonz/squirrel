@@ -26,7 +26,7 @@ engine = create_engine(
     max_overflow=settings.postgres.pool_max_size,
     pool_recycle=settings.postgres.pool_recycle,
     pool_pre_ping=True,  # 检测失效连接
-    pool_use_lifo=True,  # LIFO 池，提高连接复用
+    pool_use_lifo=True,  # LIFO 池,提高连接复用
     echo=False,
     connect_args={
         "connect_timeout": 10,

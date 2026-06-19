@@ -14,9 +14,9 @@ class SystemConfig(Base, SerializerMixin):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    # 配置键（如 enable_scheduler / enable_worker）
+    # 配置键(如 enable_scheduler / enable_worker)
     key: Mapped[str] = mapped_column(VARCHAR(191), nullable=False)
-    # 配置值（字符串化存储，如 "true"/"false" 或其他文本）
+    # 配置值(字符串化存储,如 "true"/"false" 或其他文本)
     value: Mapped[str] = mapped_column(Text, nullable=False, default="")
     # 创建与更新时间
     created_at: Mapped[datetime] = mapped_column(

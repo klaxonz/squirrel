@@ -31,13 +31,13 @@ class PlaylistUpdate(BaseModel):
 
 class PlaylistItemAdd(BaseModel):
     video_id: int = Field(..., description="视频ID")
-    playlist_id: int | None = Field(None, description="播放列表ID，留空则添加到默认列表")
+    playlist_id: int | None = Field(None, description="播放列表ID,留空则添加到默认列表")
 
 
 class PlaylistItemReorder(BaseModel):
     playlist_id: int = Field(..., description="播放列表ID")
     video_id: int = Field(..., description="视频ID")
-    new_position: int = Field(..., ge=1, description="新的位置（从 1 开始）")
+    new_position: int = Field(..., ge=1, description="新的位置(从 1 开始)")
 
 
 class PlaylistDto(BaseModel):

@@ -14,14 +14,14 @@ from infrastructure.site_catalog.catalog import SiteCatalog
 
 
 def _recall_video_ids_for_history(query: str | None) -> list[int]:
-    """有搜索词时用 Meili 召回 video_id；无搜索词返回空（history 走全量）。"""
+    """有搜索词时用 Meili 召回 video_id;无搜索词返回空(history 走全量)。"""
     if not query or not query.strip() or not settings.meili.url:
         return []
     try:
         return get_meili_video_indexer().recall(query)
     except Exception:
-        # 召回失败：history 搜索降级为无搜索词（返回空集合会被 IN 过滤成空结果，
-        # 故这里返回空列表仅在 query 非空时意味着"搜不到"，符合失败语义）
+        # 召回失败:history 搜索降级为无搜索词(返回空集合会被 IN 过滤成空结果,
+        # 故这里返回空列表仅在 query 非空时意味着"搜不到",符合失败语义)
         return []
 
 
@@ -33,11 +33,11 @@ def build_history_conditions(user_id: int, filters: dict, effective_nsfw: str) -
         ),
     ]
 
-    # 搜索词：Meili 召回匹配的 video_id 集合，加 IN 过滤
+    # 搜索词:Meili 召回匹配的 video_id 集合,加 IN 过滤
     if filters.get('query'):
         recalled = _recall_video_ids_for_history(filters['query'])
         if not recalled:
-            # 召回空 = 无匹配，强制返回空结果
+            # 召回空 = 无匹配,强制返回空结果
             conditions.append(false())
         else:
             conditions.append(VideoHistory.video_id.in_(recalled))
@@ -53,7 +53,7 @@ def build_history_conditions(user_id: int, filters: dict, effective_nsfw: str) -
     if effective_nsfw == 'blocked':
         conditions.append(false())
     elif effective_nsfw != 'all':
-        # nsfw 过滤改用实时 join（UserSubscription.is_nsfw），不再依赖 user_video_feed
+        # nsfw 过滤改用实时 join(UserSubscription.is_nsfw),不再依赖 user_video_feed
         nsfw_history_exists = exists(
             select(1)
             .select_from(SubscriptionVideo)
@@ -73,7 +73,7 @@ def build_history_conditions(user_id: int, filters: dict, effective_nsfw: str) -
         elif effective_nsfw == 'no':
             conditions.append(~nsfw_history_exists)
     if filters.get('site'):
-        # 统一走 SiteCatalog.resolve_domains（修复预先存在的不一致：history 原先用原始 site 字符串）
+        # 统一走 SiteCatalog.resolve_domains(修复预先存在的不一致:history 原先用原始 site 字符串)
         resolved_domains = SiteCatalog.resolve_domains(filters['site'])
         normalized_domains = [
             domain

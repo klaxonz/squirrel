@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def _reindex_videos_safe(video_ids: list[int], *, context: str, subscription_id: int | None = None) -> None:
-    """关联变更后重建受影响 video 的 Meili 文档；失败仅告警（全量重建兜底）。
+    """关联变更后重建受影响 video 的 Meili 文档;失败仅告警(全量重建兜底)。
 
     Lazy import 避免 subscription 域静态依赖 video application 层造成循环导入。
     """
@@ -57,8 +57,8 @@ class SubscriptionVideoService:
             )
             result = session.execute(stmt)
             row = result.first()
-            # 新建关联会改变 Meili 文档的 subscription_names 字段，提交后重建文档。
-            # 必须在 commit 前注册（after_commit 事件在 commit 时 fire），否则回调永不执行。
+            # 新建关联会改变 Meili 文档的 subscription_names 字段,提交后重建文档。
+            # 必须在 commit 前注册(after_commit 事件在 commit 时 fire),否则回调永不执行。
             # 提交后重建。
             created = row is not None
             if created and settings.meili.url:
@@ -73,7 +73,7 @@ class SubscriptionVideoService:
                     SubscriptionVideo.subscription_id == subscription_id,
                     SubscriptionVideo.video_id == video_id,
                 )).first(), True
-            # 已存在：查询并返回
+            # 已存在:查询并返回
             return session.scalars(select(SubscriptionVideo).where(
                 SubscriptionVideo.subscription_id == subscription_id,
                 SubscriptionVideo.video_id == video_id,

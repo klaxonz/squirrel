@@ -183,7 +183,7 @@ async def test_site_connectivity(
             except httpx.TimeoutException as e:
                 test_result.status = "timeout"
                 test_result.accessible = False
-                test_result.error_message = f"请求超时（{timeout}秒）"
+                test_result.error_message = f"请求超时({timeout}秒)"
                 logger.warning("Timeout testing %s: %s", url, e)
 
             except httpx.ConnectError as e:

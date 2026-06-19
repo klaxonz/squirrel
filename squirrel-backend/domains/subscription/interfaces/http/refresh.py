@@ -29,7 +29,7 @@ def refresh_subscription(
 
     domain = extract_top_level_domain(subscription.url)
     if not SiteCatalog.is_site_enabled(domain=domain):
-        return response.param_error("站点插件未启用，无法刷新订阅")
+        return response.param_error("站点插件未启用,无法刷新订阅")
 
     from domains.subscription.application.services.core.update.models import UpdateMode, UpdateTrigger
     from domains.subscription.application.services.core.update.scheduler import scheduler
@@ -73,7 +73,7 @@ def refresh_subscription_direct(
 
     domain = extract_top_level_domain(subscription.url)
     if not SiteCatalog.is_site_enabled(domain=domain):
-        return response.param_error("站点插件未启用，无法刷新订阅")
+        return response.param_error("站点插件未启用,无法刷新订阅")
 
     from domains.subscription.application.services.core.update.models import UpdateMode, UpdateTrigger
     from domains.subscription.application.services.core.update.scheduler import scheduler

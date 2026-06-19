@@ -49,7 +49,7 @@ def worker_stop() -> None:
         # 设置停止标志
         _workers_running = False
 
-        # 等待所有工作线程结束（由于使用了daemon线程，主程序退出时会自动结束）
+        # 等待所有工作线程结束(由于使用了daemon线程,主程序退出时会自动结束)
         _logger.info("[worker] worker threads will stop when main process exits")
 
         _worker_threads = []

@@ -74,7 +74,7 @@ async def add_music_user_playlist_track(
 @router.delete("/user/playlist/tracks")
 async def remove_music_user_playlist_tracks(
     list_id: str = Query(..., min_length=1, description="用户歌单 listid"),
-    file_ids: str = Query(..., min_length=1, description="歌曲 fileid，多个用逗号分隔"),
+    file_ids: str = Query(..., min_length=1, description="歌曲 fileid,多个用逗号分隔"),
     current_user: User = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):
@@ -92,7 +92,7 @@ async def get_music_user_history(
 
 @router.get("/user/listen-rank")
 async def get_music_user_listen_rank(
-    history_type: int = Query(0, alias="type", ge=0, le=1, description="0 最近一周，1 全部累计"),
+    history_type: int = Query(0, alias="type", ge=0, le=1, description="0 最近一周,1 全部累计"),
     current_user: User = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):
@@ -121,7 +121,7 @@ async def upload_music_play_history(
 
 @router.get("/favorite/count")
 async def get_music_favorite_count(
-    mixsongids: str = Query(..., min_length=1, description="音乐 mixsongid，多个用逗号分隔"),
+    mixsongids: str = Query(..., min_length=1, description="音乐 mixsongid,多个用逗号分隔"),
     current_user: User = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):

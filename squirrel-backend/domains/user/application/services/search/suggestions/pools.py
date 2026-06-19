@@ -32,7 +32,7 @@ def match_rank(column: Any, query: str) -> Any:
 
 
 def build_video_pool(session: Session, *, user_id: int, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
-    """已订阅视频 pool：实时 join（UserSubscription × SubscriptionVideo × Video）。"""
+    """已订阅视频 pool:实时 join(UserSubscription x SubscriptionVideo x Video)。"""
     rows = session.execute(
         select(
             Video.title.label('value'),
@@ -86,9 +86,9 @@ def build_subscription_pool(session: Session, *, user_id: int, effective_nsfw: s
 
 
 def build_creator_pool(session: Session, *, user_id: int, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
-    """已订阅视频里的创作者 pool：先取最近 CREATOR_FEED_WINDOW 个已订阅视频，再 join creator。
+    """已订阅视频里的创作者 pool:先取最近 CREATOR_FEED_WINDOW 个已订阅视频,再 join creator。
 
-    recent_feed 子查询改用实时 join（不再查 user_video_feed 投影表）。
+    recent_feed 子查询改用实时 join(不再查 user_video_feed 投影表)。
     """
     recent_feed = (
         select(
@@ -135,7 +135,7 @@ def build_creator_pool(session: Session, *, user_id: int, effective_nsfw: str, l
 
 
 def build_history_pool(session: Session, *, user_id: int, effective_nsfw: str, limit: int) -> list[dict[str, str]]:
-    """观看历史 pool：nsfw 过滤改用实时 join（UserSubscription.is_nsfw）。"""
+    """观看历史 pool:nsfw 过滤改用实时 join(UserSubscription.is_nsfw)。"""
     if effective_nsfw == 'blocked':
         return []
 

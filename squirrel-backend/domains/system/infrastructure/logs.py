@@ -76,7 +76,7 @@ class LogService:
             for line_num, line in enumerate(f, start=1):
                 line = line.rstrip("\n")
 
-                # 先尝试匹配新格式（带 trace_id）
+                # 先尝试匹配新格式(带 trace_id)
                 match = log_pattern_new.match(line)
 
                 if match:
@@ -84,7 +84,7 @@ class LogService:
                     if current_log_entry and LogService._should_include_log(current_log_entry, keyword, level):
                         filtered_lines.append(current_log_entry)
 
-                    # 开始新的日志条目（新格式）
+                    # 开始新的日志条目(新格式)
                     timestamp, trace_id, log_level, logger_name, message = match.groups()
                     current_log_entry = {
                         "line_num": line_num,
@@ -96,14 +96,14 @@ class LogService:
                         "raw_lines": [line],
                     }
                 else:
-                    # 尝试匹配旧格式（不带 trace_id）
+                    # 尝试匹配旧格式(不带 trace_id)
                     match = log_pattern_old.match(line)
                     if match:
                         # 保存之前的日志条目
                         if current_log_entry and LogService._should_include_log(current_log_entry, keyword, level):
                             filtered_lines.append(current_log_entry)
 
-                        # 开始新的日志条目（旧格式）
+                        # 开始新的日志条目(旧格式)
                         timestamp, log_level, logger_name, message = match.groups()
                         current_log_entry = {
                             "line_num": line_num,
@@ -114,7 +114,7 @@ class LogService:
                             "message": message,
                             "raw_lines": [line],
                         }
-                    # 多行日志的后续行（如堆栈信息）
+                    # 多行日志的后续行(如堆栈信息)
                     elif current_log_entry:
                         current_log_entry["message"] += "\n" + line
                         current_log_entry["raw_lines"].append(line)
@@ -126,7 +126,7 @@ class LogService:
         total_count = len(filtered_lines)
         has_more = start_line + limit < total_count
 
-        # 倒序显示（最新的在前）
+        # 倒序显示(最新的在前)
         filtered_lines.reverse()
 
         # 分页
@@ -150,7 +150,7 @@ class LogService:
                 log_entry["level"]
             ).lower()
 
-            # 如果有 trace_id，也包含在搜索范围内
+            # 如果有 trace_id,也包含在搜索范围内
             if log_entry.get("trace_id"):
                 searchable_text += " " + log_entry["trace_id"].lower()
 
