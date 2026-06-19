@@ -38,6 +38,19 @@ _DURATION_BOUNDS: dict[str, tuple[int, int | None]] = {
     'long': (1801, None),
 }
 
+# 游标命名空间 key:每个 key 对应一种排序语义,游标内嵌此标识。
+# 切换排序时前端会清游标;这里再做一道后端校验:decode 出的 key 与当前请求排序键不符
+# (例如 URL 直连残留的老游标)→ 视为失效返回首页,避免串号跳页。
+#   p = 按发布时间(publish_date/publish_ts)排序的视频游标
+#   c = 按抓取时间(created_at/created_ts)排序的视频游标
+#   h = read(VideoHistory.end_time)交互游标
+#   i = liked/later(VideoInteraction.created_at)交互游标
+_CURSOR_KEY_PUBLISH = 'p'
+_CURSOR_KEY_CREATED = 'c'
+_CURSOR_KEY_HISTORY = 'h'
+_CURSOR_KEY_INTERACTION = 'i'
+_CURSOR_KEYS = (_CURSOR_KEY_PUBLISH, _CURSOR_KEY_CREATED, _CURSOR_KEY_HISTORY, _CURSOR_KEY_INTERACTION)
+
 
 def compute_time_range_cutoff(time_range: str, *, now: datetime | None = None) -> int | None:
     """把 time_range 档位转成 unix 秒下界;all/未知返回 None(不过滤)。
@@ -68,6 +81,7 @@ def _build_recall_filter(
     duration: str,
     category: str = 'all',
     now: datetime | None = None,
+    sort_by: str = 'publish_date',
 ) -> list[str]:
     """构建 Meili filter 表达式列表(隐式 AND)。
 
@@ -75,7 +89,12 @@ def _build_recall_filter(
 
     category='preview' 时放行未来视频(该 tab 语义即"预告");其余 category(含 all)
     一律追加 publish_ts <= now 的上界,避免把尚未发布的视频召回进首页/搜索结果。
+
+    time_range 下界按 sort_by 选择字段:按抓取日期(created_at)排序时用 created_ts,
+    其余用 publish_ts —— 排序键与筛选语义保持一致。上界 publish_ts <= now 始终不变
+    (排除未发布视频是发布语义,与排序键无关)。
     """
+    time_field = 'created_ts' if sort_by == 'created_at' else 'publish_ts'
     filters: list[str] = []
     if domains:
         # domain IN ["a", "b"];值需双引号包裹(支持含点号的域名)
@@ -89,7 +108,7 @@ def _build_recall_filter(
             filters.append(f'duration <= {hi}')
     cutoff = compute_time_range_cutoff(time_range)
     if cutoff is not None:
-        filters.append(f'publish_ts >= {cutoff}')
+        filters.append(f'{time_field} >= {cutoff}')
     # 未来视频只在 preview tab 显式展示;其余场景(all/未读/搜索等)一律排除未发布视频
     if category != 'preview':
         now_ts = int((now or datetime.now()).timestamp())
@@ -97,23 +116,44 @@ def _build_recall_filter(
     return filters
 
 
-def encode_cursor(publish_ts: int, video_id: int) -> str:
-    """把 (publish_ts, id) 编码成对前端透明的 base64 字符串。"""
-    raw = f'{publish_ts}:{video_id}'.encode()
+def encode_cursor(key: str, ts: int, video_id: int) -> str:
+    """把 (key, ts, id) 编码成对前端透明的 base64 字符串。
+
+    key 标识游标命名空间(见 _CURSOR_KEY_* 常量),防止不同排序语义的游标串用。
+    """
+    raw = f'{key}:{ts}:{video_id}'.encode()
     return base64.urlsafe_b64encode(raw).decode('ascii').rstrip('=')
 
 
-def decode_cursor(cursor: str) -> tuple[int, int] | None:
-    """解码游标,返回 (publish_ts, video_id);格式非法返回 None。"""
+def decode_cursor(cursor: str) -> tuple[str, int, int] | None:
+    """解码游标,返回 (key, ts, id);格式非法(含旧版 2 段游标)返回 None。
+
+    旧版游标为 `{ts}:{id}` 两段,这里会因 split 出非 3 段而返回 None,
+    调用方据此回退到首页 —— 等价于"老游标自然失效"。
+    """
     try:
-        # base64 urlsafe 可能缺 padding,补齐
         padded = cursor + '=' * (-len(cursor) % 4)
         raw = base64.urlsafe_b64decode(padded.encode('ascii')).decode('utf-8')
-        ts_str, id_str = raw.split(':', 1)
-        return int(ts_str), int(id_str)
+        key_str, ts_str, id_str = raw.split(':', 2)
+        if key_str not in _CURSOR_KEYS:
+            return None
+        return key_str, int(ts_str), int(id_str)
     except (ValueError, IndexError, TypeError):
         logger.warning('invalid cursor ignored: %s', cursor)
         return None
+
+
+def decode_cursor_for_key(cursor: str | None, expected_key: str) -> tuple[int, int] | None:
+    """解码游标并校验 key 是否匹配预期命名空间;不匹配或非法返回 None。
+
+    统一调用点写法:返回 None → 不施加 cursor 条件(回首页)。
+    """
+    if not cursor:
+        return None
+    decoded = decode_cursor(cursor)
+    if decoded is None or decoded[0] != expected_key:
+        return None
+    return decoded[1], decoded[2]
 
 
 class MeiliVideoIndexer:
@@ -193,6 +233,8 @@ class MeiliVideoIndexer:
                     'creator_names': creator_map.get(vid, []),
                     'duration': int(video.duration or 0),
                     'publish_ts': int(video.publish_date.timestamp()) if video.publish_date is not None else 0,
+                    # 抓取时间,用于"按抓取日期"排序;created_at 不可空且有默认值,无需兜底
+                    'created_ts': int(video.created_at.timestamp()),
                 }
             )
         return docs
@@ -239,6 +281,8 @@ class MeiliVideoIndexer:
             # publish_ts: unix 秒,无 publish_date 时存 0(排到 desc 排序最底部,且参与正常游标分页,
             # 避免 null/缺失字段在 keyset 游标过滤里被排除导致这些视频永远看不到)
             'publish_ts': int(video.publish_date.timestamp()) if video.publish_date is not None else 0,
+            # created_ts: 抓取时间 unix 秒,用于"按抓取日期"排序;created_at 不可空有默认值
+            'created_ts': int(video.created_at.timestamp()),
         }
         return doc
 
@@ -346,6 +390,7 @@ class MeiliVideoIndexer:
             time_range=time_range,
             duration=duration,
             category=category,
+            sort_by=sort_by,
         )
         if filter_ids:
             # id IN [列表]:Meili 数字无需引号。列表过大时 Meili 会自行优化,但建议上游控制规模。
@@ -356,9 +401,11 @@ class MeiliVideoIndexer:
             # 用 list 形式:Meili 隐式 AND,避免字符串拼接的转义/优先级 bug
             opt['filter'] = filters
         q = (query or '').strip()
-        # 无搜索词时按 publish_ts 倒序召回(最新优先),让 PG 侧 LIMIT/OFFSET 拿到最近的 N 个
-        if not q and sort_by == 'publish_date':
-            opt['sort'] = ['publish_ts:desc']
+        # 无搜索词时按 sort_by 召回(最新优先),让 PG 侧 LIMIT/OFFSET 拿到最近的 N 个。
+        # 注意:搜索路径(has_query=True)永远走不进此分支,这里仅作 placeholder 浏览兜底。
+        if not q:
+            sort_field = 'created_ts' if sort_by == 'created_at' else 'publish_ts'
+            opt['sort'] = [f'{sort_field}:desc']
         result = self._index.search(q, opt)
         hits = result.get('hits', []) if isinstance(result, dict) else getattr(result, 'hits', [])
         ids: list[int] = []
@@ -381,11 +428,13 @@ class MeiliVideoIndexer:
         cursor: str | None = None,
         limit: int = 50,
         category: str = 'all',
+        sort_by: str = 'publish_date',
     ) -> tuple[list[int], str | None]:
         """keyset 游标分页召回(浏览场景,无文本匹配)。
 
-        - sort: publish_ts:desc, id:desc(全序,保证游标稳定)
-        - cursor 非空:filter 追加复合游标条件 publish_ts<X OR (publish_ts=X AND id<Y)
+        - sort: 按 sort_by 选 publish_ts:desc 或 created_ts:desc,id:desc 作次级键(全序,保证游标稳定)
+        - cursor 非空:filter 追加复合游标条件 field<X OR (field=X AND id<Y);
+          decode 出的 key 必须与当前 sort_by 命名空间匹配,否则视为失效(老游标/串用游标)
         - category='preview' 时放行未来视频;其余 category 一律排除未发布视频
         - 返回 (video_ids, next_cursor);next_cursor 为 None 表示无更多
         - 失败抛出,由调用方降级
@@ -393,22 +442,26 @@ class MeiliVideoIndexer:
         注意:limit 应略大于 page_size(如 page_size*2),给 PG 权限/category 过滤留缓冲,
         由 service 层循环补足到 page_size。
         """
+        sort_field = 'created_ts' if sort_by == 'created_at' else 'publish_ts'
+        expected_key = _CURSOR_KEY_CREATED if sort_by == 'created_at' else _CURSOR_KEY_PUBLISH
         filters = _build_recall_filter(
             domains=domains,
             time_range=time_range,
             duration=duration,
             category=category,
+            sort_by=sort_by,
         )
-        if cursor:
-            decoded = decode_cursor(cursor)
-            if decoded is not None:
-                cursor_ts, cursor_id = decoded
-                # 复合游标:严格小于 (cursor_ts, cursor_id) 的所有文档
-                filters.append(f'(publish_ts < {cursor_ts} OR (publish_ts = {cursor_ts} AND id < {cursor_id}))')
+        decoded = decode_cursor_for_key(cursor, expected_key)
+        if decoded is not None:
+            cursor_ts, cursor_id = decoded
+            # 复合游标:严格小于 (cursor_ts, cursor_id) 的所有文档
+            filters.append(
+                f'({sort_field} < {cursor_ts} OR ({sort_field} = {cursor_ts} AND id < {cursor_id}))'
+            )
 
         opt: dict[str, Any] = {
             'limit': limit,
-            'sort': ['publish_ts:desc', 'id:desc'],
+            'sort': [f'{sort_field}:desc', 'id:desc'],
         }
         if filters:
             opt['filter'] = filters
@@ -428,13 +481,13 @@ class MeiliVideoIndexer:
             except (TypeError, ValueError):
                 continue
             ids.append(vid)
-            last_ts = int(hit.get('publish_ts') or 0)
+            last_ts = int(hit.get(sort_field) or 0)
             last_id = vid
 
         # 有下一页的判定:本次召回满 limit,且拿到了最后一条的游标
         next_cursor = None
         if len(ids) >= limit and last_ts is not None and last_id is not None:
-            next_cursor = encode_cursor(last_ts, last_id)
+            next_cursor = encode_cursor(expected_key, last_ts, last_id)
         return ids, next_cursor
 
 

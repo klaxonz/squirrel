@@ -313,6 +313,7 @@ class VideoListService:
                 duration=duration,
                 content_type=content_type,
                 special=special,
+                sort_by=sort_by,
             )
 
         # 指定 subscription_id 走 PG keyset 直查(频道详情页"本地"列表),不走 Meili 全局召回。
@@ -335,6 +336,7 @@ class VideoListService:
                 duration=duration,
                 content_type=content_type,
                 special=special,
+                sort_by=sort_by,
             )
 
         if not settings.meili.url:
@@ -362,6 +364,7 @@ class VideoListService:
                     cursor=last_cursor,
                     limit=recall_limit,
                     category=category,
+                    sort_by=sort_by,
                 )
             except Exception:
                 logger.warning('meili recall_page failed', exc_info=True)
@@ -593,12 +596,13 @@ class VideoListService:
         duration: str,
         content_type: str,
         special: str,
+        sort_by: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """特别关注浏览:PG keyset 直查用户标记为 is_special_followed 的订阅名下的视频。
 
         - 不走 Meili 全局召回(特别关注是用户级过滤,全局 publish_ts:desc 召回无法保证命中)
         - PG keyset: Video ⨝ SubscriptionVideo ⨝ UserSubscription(is_special_followed=true)
-          按 publish_date DESC, id DESC;只取已发布视频
+          按 sort_by(publish_date/created_at)DESC, id DESC;只取已发布视频
         - 取出 video_ids 后走 filter_recalled_ids 做权限(nsfw/special/content_type)过滤
           (category 传 'all';special 语义已由 fetch_special_follow_video_ids 保证)
         """
@@ -612,6 +616,7 @@ class VideoListService:
                 user_id=user_id,
                 cursor=cursor,
                 limit=fetch_limit,
+                sort_by=sort_by,
             )
         except Exception:
             logger.warning('fetch_special_follow_video_ids failed', exc_info=True)
@@ -653,13 +658,14 @@ class VideoListService:
         duration: str,
         content_type: str,
         special: str,
+        sort_by: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """指定订阅浏览:PG keyset 直查该订阅名下的视频(频道详情页"本地"列表)。
 
         - 不走 Meili 全局召回(与 _list_special_follow_browse 同理:指定订阅的视频可能
           比其他订阅旧,永远进不了全局召回窗口)
         - PG keyset: Video ⨝ SubscriptionVideo ⨝ UserSubscription(归属校验)
-          按 publish_date DESC, id DESC;publish_date 边界由 category 决定(preview 取未来)
+          按 sort_by(publish_date/created_at)DESC, id DESC;publish_date 边界由 category 决定(preview 取未来)
         - 取出 video_ids 后走 filter_recalled_ids 做 nsfw/special/content_type + unread EXISTS 过滤
           (category 透传:unread 仍需 NOT EXISTS VideoHistory,all/preview 不需)
         - has_more 看 PG keyset 是否还有更多,与 user-state/special-follow 一致
@@ -675,6 +681,7 @@ class VideoListService:
                 cursor=cursor,
                 limit=fetch_limit,
                 category=category,
+                sort_by=sort_by,
             )
         except Exception:
             logger.warning('fetch_subscription_video_ids failed', exc_info=True)

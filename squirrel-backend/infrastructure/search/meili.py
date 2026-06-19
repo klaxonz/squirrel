@@ -16,14 +16,18 @@ _client: meilisearch.Client | None = None
 # - searchable:中文文本召回的字段(Meilisearch 内置中文分词)
 # - filterable:结构化过滤下沉到 Meili 的字段
 #   domain/subscription_names/creator_names 用于精确/数组 contains 匹配
-#   duration/publish_ts 用于数值范围过滤(时长档位、时间范围)
-# 权限/分类(阅读状态)/排序/分页一律回 PG(实时 join),不进 Meilisearch
+#   duration/publish_ts/created_ts 用于数值范围过滤(时长档位、时间范围)
+#   publish_ts=发布时间,created_ts=抓取时间;time_range 下界按 sort_by 选用其一
+# 权限/分类(阅读状态)/分页一律回 PG(实时 join),不进 Meilisearch
 _VIDEOS_SEARCHABLE_ATTRIBUTES = ['title', 'description', 'subscription_names', 'creator_names']
-_VIDEOS_FILTERABLE_ATTRIBUTES = ['domain', 'duration', 'publish_ts', 'id', 'subscription_names', 'creator_names']
+_VIDEOS_FILTERABLE_ATTRIBUTES = [
+    'domain', 'duration', 'publish_ts', 'created_ts', 'id', 'subscription_names', 'creator_names',
+]
 # 可排序字段:
-#   publish_ts 用于纯浏览场景的 placeholder search 召回排序(最新优先)
-#   id 作为 keyset 复合游标的次级排序键(保证 publish_ts 相同时的全序确定)
-_VIDEOS_SORTABLE_ATTRIBUTES = ['publish_ts', 'id']
+#   publish_ts 用于纯浏览场景"按上传日期"排序的 placeholder search 召回(最新优先)
+#   created_ts 用于"按抓取日期"排序的浏览召回
+#   id 作为 keyset 复合游标的次级排序键(保证同序值时的全序确定)
+_VIDEOS_SORTABLE_ATTRIBUTES = ['publish_ts', 'created_ts', 'id']
 
 
 def get_meili_client() -> meilisearch.Client:

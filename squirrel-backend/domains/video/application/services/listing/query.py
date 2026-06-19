@@ -10,7 +10,14 @@ from domains.video.application.services.listing.query_filters import (
 from domains.video.application.services.moderation.nsfw_policy import (
     resolve_effective_nsfw_filter as _default_resolve_effective_nsfw_filter,
 )
-from domains.video.application.services.search.meili_indexer import decode_cursor, encode_cursor
+from domains.video.application.services.search.meili_indexer import (
+    _CURSOR_KEY_CREATED,
+    _CURSOR_KEY_HISTORY,
+    _CURSOR_KEY_INTERACTION,
+    _CURSOR_KEY_PUBLISH,
+    decode_cursor_for_key,
+    encode_cursor,
+)
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_history import VideoHistory
@@ -111,21 +118,30 @@ def fetch_special_follow_video_ids(
     user_id: int,
     cursor: str | None,
     limit: int,
+    sort_by: str = 'publish_date',
 ) -> tuple[list[int], str | None]:
     """特别关注浏览:PG keyset 直查用户标记为 is_special_followed 的订阅名下的视频。
 
     - 基表 Video ⨝ SubscriptionVideo ⨝ UserSubscription(is_special_followed=true)
-    - 排序 publish_date DESC, id DESC(全序,与首页/Meili 浏览一致)
-    - fan-out 去重:同一 video 可能被多个特别关注订阅关联,取最新的 publish_date 作为排序键
-    - 只返回 publish_date <= now 的视频(与首页"全部"语义一致,排除未来视频)
-    - cursor 编码 (sort_ts, video_id),首页 cursor=None
+    - 排序按 sort_by:publish_date(上传日期)或 created_at(抓取日期)DESC,id DESC 作次级键(全序)
+    - fan-out 去重:同一 video 可能被多个特别关注订阅关联,group_by 取一行
+    - 只返回 publish_date <= now 的视频(与首页"全部"语义一致,排除未来视频;
+      此过滤与排序键无关,始终用 publish_date)
+    - cursor 编码 (key, sort_ts, video_id),首页 cursor=None;key 与 sort_by 必须匹配,
+      不匹配(老游标/串用)→ decode 返回 None → 等价回首页
     """
     from domains.subscription.domain.junctions.user_subscription import UserSubscription
+
+    # 按 sort_by 选排序键/游标键;默认 publish_date
+    use_created = sort_by == 'created_at'
+    sort_col = Video.created_at if use_created else Video.publish_date
+    expected_key = _CURSOR_KEY_CREATED if use_created else _CURSOR_KEY_PUBLISH
 
     base = (
         select(
             Video.id,
             Video.publish_date,
+            Video.created_at,
         )
         .select_from(Video)
         .join(SubscriptionVideo, SubscriptionVideo.video_id == Video.id)
@@ -144,18 +160,17 @@ def fetch_special_follow_video_ids(
             Video.publish_date <= func.now(),
         )
         # fan-out 去重:同一 video 取一行(多个特别关注订阅关联不影响排序键)
-        .group_by(Video.id, Video.publish_date)
-        .order_by(Video.publish_date.desc(), Video.id.desc())
+        .group_by(Video.id, Video.publish_date, Video.created_at)
+        .order_by(sort_col.desc(), Video.id.desc())
         .limit(limit + 1)  # 多取 1 条判断 has_more
     )
-    if cursor:
-        decoded = decode_cursor(cursor)
-        if decoded is not None:
-            cur_ts, cur_id = decoded
-            cur_ts_dt = datetime.fromtimestamp(cur_ts)
-            base = base.where(
-                (Video.publish_date < cur_ts_dt) | and_(Video.publish_date == cur_ts_dt, Video.id < cur_id),
-            )
+    decoded = decode_cursor_for_key(cursor, expected_key)
+    if decoded is not None:
+        cur_ts, cur_id = decoded
+        cur_ts_dt = datetime.fromtimestamp(cur_ts)
+        base = base.where(
+            (sort_col < cur_ts_dt) | and_(sort_col == cur_ts_dt, Video.id < cur_id),
+        )
 
     rows = session.execute(base).all()
     has_more = len(rows) > limit
@@ -164,7 +179,8 @@ def fetch_special_follow_video_ids(
     next_cursor = None
     if has_more and rows:
         last = rows[-1]
-        next_cursor = encode_cursor(int(last.publish_date.timestamp()), last.id)
+        last_ts = last.created_at if use_created else last.publish_date
+        next_cursor = encode_cursor(expected_key, int(last_ts.timestamp()), last.id)
     return video_ids, next_cursor
 
 
@@ -176,6 +192,7 @@ def fetch_subscription_video_ids(
     cursor: str | None,
     limit: int,
     category: str = 'all',
+    sort_by: str = 'publish_date',
 ) -> tuple[list[int], str | None]:
     """指定订阅浏览:PG keyset 直查该订阅名下的视频。
 
@@ -189,23 +206,30 @@ def fetch_subscription_video_ids(
     next_cursor=None 导致前端无限滚动立刻停止。改走 PG keyset 直查彻底规避此问题。
 
     - 基表 Video ⨝ SubscriptionVideo ⨝ UserSubscription(归属校验,防越权)
-    - 排序 publish_date DESC, id DESC(全序,与首页/Meili 浏览一致)
+    - 排序按 sort_by:publish_date(上传日期)或 created_at(抓取日期)DESC,id DESC 作次级键(全序)
     - fan-out 去重:同一 video 可能被多个订阅关联,group_by 取一行
     - publish_date 边界:category='preview' 取未来视频(publish_date > now);
-      其余取已发布(publish_date <= now AND IS NOT NULL)
+      其余取已发布(publish_date <= now AND IS NOT NULL)。此过滤是发布语义,
+      与排序键无关,始终用 publish_date
     - read/unread/liked/later 的 EXISTS 语义不在 fetch 阶段过滤——交给下游 filter_recalled_ids
       (调用方 _list_subscription_browse 仅会被 category ∈ {all, unread, preview} 触发:
       read/liked/later 在 _list_browse_keyset 开头即分流到 user-state 路径)
     - has_more 看 PG keyset 是否还有更多(与 user-state/special-follow 一致),
       即使下游 filter 后不足一页也允许翻页
-    - cursor 编码 (sort_ts, video_id),首页 cursor=None
+    - cursor 编码 (key, sort_ts, video_id),首页 cursor=None
     """
     from domains.subscription.domain.junctions.user_subscription import UserSubscription
+
+    # 按 sort_by 选排序键/游标键;默认 publish_date
+    use_created = sort_by == 'created_at'
+    sort_col = Video.created_at if use_created else Video.publish_date
+    expected_key = _CURSOR_KEY_CREATED if use_created else _CURSOR_KEY_PUBLISH
 
     base = (
         select(
             Video.id,
             Video.publish_date,
+            Video.created_at,
         )
         .select_from(Video)
         .join(SubscriptionVideo, SubscriptionVideo.video_id == Video.id)
@@ -230,18 +254,17 @@ def fetch_subscription_video_ids(
         )
     # fan-out 去重:同一 video 多个订阅关联只取一行
     base = (
-        base.group_by(Video.id, Video.publish_date)
-        .order_by(Video.publish_date.desc(), Video.id.desc())
+        base.group_by(Video.id, Video.publish_date, Video.created_at)
+        .order_by(sort_col.desc(), Video.id.desc())
         .limit(limit + 1)  # 多取 1 条判断 has_more
     )
-    if cursor:
-        decoded = decode_cursor(cursor)
-        if decoded is not None:
-            cur_ts, cur_id = decoded
-            cur_ts_dt = datetime.fromtimestamp(cur_ts)
-            base = base.where(
-                (Video.publish_date < cur_ts_dt) | and_(Video.publish_date == cur_ts_dt, Video.id < cur_id),
-            )
+    decoded = decode_cursor_for_key(cursor, expected_key)
+    if decoded is not None:
+        cur_ts, cur_id = decoded
+        cur_ts_dt = datetime.fromtimestamp(cur_ts)
+        base = base.where(
+            (sort_col < cur_ts_dt) | and_(sort_col == cur_ts_dt, Video.id < cur_id),
+        )
 
     rows = session.execute(base).all()
     has_more = len(rows) > limit
@@ -250,7 +273,8 @@ def fetch_subscription_video_ids(
     next_cursor = None
     if has_more and rows:
         last = rows[-1]
-        next_cursor = encode_cursor(int(last.publish_date.timestamp()), last.id)
+        last_ts = last.created_at if use_created else last.publish_date
+        next_cursor = encode_cursor(expected_key, int(last_ts.timestamp()), last.id)
     return video_ids, next_cursor
 
 
@@ -268,13 +292,14 @@ def fetch_user_state_video_ids(
     - liked: video_interaction WHERE interaction_type=1 ORDER BY created_at DESC, id DESC
     - later: video_interaction WHERE interaction_type=3 ORDER BY created_at DESC, id DESC
 
-    cursor 编码 (sort_ts, row_id);首页 cursor=None。
+    cursor 编码 (key, sort_ts, row_id),首页 cursor=None。
+    key 用独立命名空间(h=history/i=interaction),与视频排序键(p/c)隔离,
+    互不串用;不匹配或老游标 → decode 返回 None → 等价回首页。
     返回 (video_ids, next_cursor);next_cursor=None 表示无更多。
     """
-    cursor_decoded = decode_cursor(cursor) if cursor else None
-
     if category == 'read':
         # video_history 按 (end_time DESC, id DESC) keyset
+        cursor_decoded = decode_cursor_for_key(cursor, _CURSOR_KEY_HISTORY)
         stmt = (
             select(VideoHistory.id, VideoHistory.video_id, VideoHistory.end_time)
             .where(VideoHistory.user_id == user_id)
@@ -295,7 +320,7 @@ def fetch_user_state_video_ids(
         next_cursor = None
         if has_more and rows:
             last = rows[-1]
-            next_cursor = encode_cursor(int(last.end_time.timestamp()), last.id)
+            next_cursor = encode_cursor(_CURSOR_KEY_HISTORY, int(last.end_time.timestamp()), last.id)
         return video_ids, next_cursor
 
     # liked/later: video_interaction
@@ -303,6 +328,7 @@ def fetch_user_state_video_ids(
     if interaction_type is None:
         return [], None
 
+    cursor_decoded = decode_cursor_for_key(cursor, _CURSOR_KEY_INTERACTION)
     stmt = (
         select(VideoInteraction.id, VideoInteraction.video_id, VideoInteraction.created_at)
         .where(
@@ -326,7 +352,7 @@ def fetch_user_state_video_ids(
     next_cursor = None
     if has_more and rows:
         last = rows[-1]
-        next_cursor = encode_cursor(int(last.created_at.timestamp()), last.id)
+        next_cursor = encode_cursor(_CURSOR_KEY_INTERACTION, int(last.created_at.timestamp()), last.id)
     return video_ids, next_cursor
 
 
