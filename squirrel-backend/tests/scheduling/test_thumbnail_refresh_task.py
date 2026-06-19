@@ -130,35 +130,3 @@ def test_thumbnail_refresh_task_extracts_html_escaped_og_image():
     assert extract_thumbnail_url_from_html(html_doc) == (
         "https://cdn.example.com/thumb.jpg?hash=abc&validto=123"
     )
-
-
-def test_thumbnail_refresh_task_retries_page_fetch_for_retryable_status(monkeypatch):
-    responses = [
-        SimpleNamespace(status_code=403, text="blocked"),
-        SimpleNamespace(
-            status_code=200,
-            text='<meta property="og:image" content="https://cdn.example.com/fresh.jpg?x=1&amp;y=2">',
-        ),
-    ]
-    sleep_calls = []
-
-    fake_client = SimpleNamespace(get=lambda url, headers=None: responses.pop(0))
-    monkeypatch.setattr(thumbnail_refresh_task, "_get_shared_http_client", lambda: fake_client)
-    monkeypatch.setattr(
-        thumbnail_refresh_task.thumbnail_downloader_service,
-        "build_request_headers",
-        lambda site_name, source_url=None, target_url=None: {"User-Agent": "UA"},
-    )
-    monkeypatch.setattr(ThumbnailRefreshTask, "_build_page_fetch_retry_delay", lambda attempt: 0.8)
-    monkeypatch.setattr(
-        thumbnail_refresh_task.time,
-        "sleep",
-        lambda seconds: sleep_calls.append(seconds),
-    )
-
-    video = SimpleNamespace(id=42, url="https://www.pornhub.com/view_video.php?viewkey=demo")
-
-    result = ThumbnailRefreshTask._fetch_thumbnail_url_from_page(video, "pornhub")
-
-    assert result == "https://cdn.example.com/fresh.jpg?x=1&y=2"
-    assert sleep_calls == [0.8]

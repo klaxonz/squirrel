@@ -10,7 +10,7 @@ import logging
 from ..contracts import ExtractionResult, ExtractionTask
 from ..factory import get_extractor_factory
 from ..pipeline.context import PipelineContext
-from ..pipeline.factory import pipeline_factory
+from ..pipeline.factory import create_video_extraction_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +34,9 @@ class VideoExtractionHandler:
 
         """
         if pipeline is None:
-            # Create default Pipeline via factory
+            # Create default Pipeline
             extractor_factory = get_extractor_factory()
-            pipeline = pipeline_factory.create_video_extraction_pipeline(
+            pipeline = create_video_extraction_pipeline(
                 extractor_factory,
             )
 

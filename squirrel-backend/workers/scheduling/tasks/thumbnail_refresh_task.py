@@ -1,13 +1,6 @@
-import html as html_lib
-import json
 import logging
-import re
-import threading
-import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from contextlib import suppress
 
-import httpx
 from sqlalchemy import func, select
 
 from domains.video.application.services.extraction.thumbnail_downloader import thumbnail_downloader_service
@@ -18,52 +11,10 @@ from infrastructure.scheduling.base import BaseTask, TaskRegistry
 
 logger = logging.getLogger(__name__)
 
-_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept-Language": "en-US,en;q=0.9",
-}
-
-_LDJSON_THUMBNAIL_RE = re.compile(r'<script\s+type=["\']application/ld\+json["\']>(.*?)</script>', re.IGNORECASE | re.DOTALL)
-_META_THUMBNAIL_PATTERNS = (
-    re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', re.IGNORECASE),
-    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', re.IGNORECASE),
-    re.compile(r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']', re.IGNORECASE),
-    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image["\']', re.IGNORECASE),
-)
-
 _SUPPORTED_SITE_PATTERNS = {
     "pornhub": "%pornhub.com%",
     "youporn": "%youporn.com%",
 }
-_PAGE_FETCH_MAX_ATTEMPTS = 3
-_PAGE_FETCH_RETRYABLE_STATUS_CODES = {403, 408, 425, 429, 500, 502, 503, 504}
-
-# Global HTTP client, reuse connections
-_shared_http_client: httpx.Client | None = None
-_client_lock_time = 0.0
-_CLIENT_TTL = 300.0  # 5 minutes
-_http_client_lock = threading.Lock()
-
-def _get_shared_http_client() -> httpx.Client:
-    """Get the shared HTTP client"""
-    global _shared_http_client, _client_lock_time
-
-    with _http_client_lock:
-        now = time.time()
-        if _shared_http_client is None or now - _client_lock_time > _CLIENT_TTL:
-            if _shared_http_client:
-                with suppress(Exception):
-                    _shared_http_client.close()
-
-            _shared_http_client = httpx.Client(
-                timeout=30.0,
-                follow_redirects=True,
-                headers=_HEADERS,
-                limits=httpx.Limits(max_keepalive_connections=20, max_connections=50),
-            )
-            _client_lock_time = now
-
-        return _shared_http_client
 
 
 @TaskRegistry.register(interval=60 * 24, unit="minutes", start_immediately=True)
@@ -75,8 +26,6 @@ class ThumbnailRefreshTask(BaseTask):
         """Batch check whether thumbnails exist for multiple videos
         Returns the set of video_ids that already have thumbnails
         """
-        from domains.video.application.services.extraction.thumbnail_downloader import thumbnail_downloader_service
-
         existing_ids = set()
 
         # Group by batch to avoid re-scanning the same directory
@@ -97,33 +46,6 @@ class ThumbnailRefreshTask(BaseTask):
         return existing_ids
 
     @classmethod
-    def _extract_thumbnail_url(cls, html: str) -> str | None:
-        """Extract a thumbnail URL from JSON-LD or social preview metadata."""
-        for match in _LDJSON_THUMBNAIL_RE.finditer(html):
-            try:
-                data = json.loads(match.group(1).strip())
-            except (json.JSONDecodeError, TypeError):
-                continue
-
-            candidates = data if isinstance(data, list) else [data]
-            for item in candidates:
-                if not isinstance(item, dict):
-                    continue
-                thumbnail_url = item.get("thumbnailUrl")
-                if thumbnail_url:
-                    return str(thumbnail_url).strip()
-
-        for pattern in _META_THUMBNAIL_PATTERNS:
-            match = pattern.search(html)
-            if not match:
-                continue
-            thumbnail_url = html_lib.unescape(match.group(1).strip())
-            if thumbnail_url:
-                return thumbnail_url
-
-        return None
-
-    @classmethod
     def _get_refresh_targets(cls) -> list[tuple[str, str]]:
         catalog = get_effective_site_catalog()
         targets: list[tuple[str, str]] = []
@@ -140,10 +62,6 @@ class ThumbnailRefreshTask(BaseTask):
         return targets
 
     @staticmethod
-    def _build_page_fetch_retry_delay(attempt: int) -> float:
-        return min(5.0, 0.8 * attempt)
-
-    @staticmethod
     def _get_site_max_workers(site_name: str) -> int:
         if str(site_name).lower() == "pornhub":
             return 4
@@ -155,48 +73,16 @@ class ThumbnailRefreshTask(BaseTask):
         return stored_thumbnail or None
 
     @classmethod
-    def _fetch_thumbnail_url_from_page(cls, video: Video, site_name: str) -> str | None:
-        client = _get_shared_http_client()
-        headers = thumbnail_downloader_service.build_request_headers(
-            site_name,
-            source_url=video.url,
-            target_url=video.url,
-        )
-        response: httpx.Response | None = None
-
-        for attempt in range(1, _PAGE_FETCH_MAX_ATTEMPTS + 1):
-            response = client.get(video.url, headers=headers)
-            if response.status_code == 200:
-                return cls._extract_thumbnail_url(response.text)
-
-            if (
-                response.status_code in _PAGE_FETCH_RETRYABLE_STATUS_CODES
-                and attempt < _PAGE_FETCH_MAX_ATTEMPTS
-            ):
-                logger.info(
-                    "[ThumbnailRefreshTask] Retrying page thumbnail fetch: site=%s video id=%s status=%s attempt=%s/%s",
-                    site_name,
-                    video.id,
-                    response.status_code,
-                    attempt,
-                    _PAGE_FETCH_MAX_ATTEMPTS,
-                )
-                time.sleep(cls._build_page_fetch_retry_delay(attempt))
-                continue
-
-            logger.warning(
-                "[ThumbnailRefreshTask] Failed to fetch page: site=%s video id=%s status=%s",
-                site_name,
-                video.id,
-                response.status_code,
-            )
-            return None
-
-        return None
-
-    @classmethod
     def _resolve_thumbnail_url(cls, video: Video, site_name: str) -> str | None:
         return cls._get_stored_thumbnail_url(video) or cls._fetch_thumbnail_url_from_page(video, site_name)
+
+    @classmethod
+    def _fetch_thumbnail_url_from_page(cls, video: Video, site_name: str) -> str | None:
+        # ponytail: delegates to thumbnail_downloader_service (shared httpx client +
+        # JSON-LD/meta parsing) instead of re-implementing page fetch + retry here.
+        return thumbnail_downloader_service.fetch_thumbnail_url_from_page(
+            video.id, video.url, site_name,
+        )
 
     @classmethod
     def run(cls):

@@ -134,15 +134,6 @@ def test_crawl_settings_overrides_loaded_from_json_env(monkeypatch):
     assert c.site_concurrency_overrides == {"javdb": 6}
 
 
-def test_mq_settings_keeps_overrides_as_string():
-    """MQ_CONSUMER_COUNT_OVERRIDES stays a raw string to preserve wildcard syntax."""
-    from infrastructure.config.settings import MqSettings
-
-    m = MqSettings()
-    assert m.consumer_count_overrides == ""
-    assert m.consumer_default_count == 1
-
-
 def test_cookiecloud_settings_read_env_prefix(monkeypatch):
     from infrastructure.config.settings import CookieCloudSettings
 
@@ -193,7 +184,7 @@ def test_config_package_reexports_classes():
     """
     import infrastructure.config as pkg
 
-    for name in ("Settings", "RedisSettings", "PostgresSettings", "MeiliSettings", "CrawlSettings", "MqSettings", "CookieCloudSettings", "KugouMusicSettings", "get_settings"):
+    for name in ("Settings", "RedisSettings", "PostgresSettings", "MeiliSettings", "CrawlSettings", "CookieCloudSettings", "KugouMusicSettings", "get_settings"):
         assert hasattr(pkg, name), f"missing re-export: {name}"
 
 

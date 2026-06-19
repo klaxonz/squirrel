@@ -119,18 +119,6 @@ class CrawlSettings(BaseSettings):
     # .env files.
 
 
-class MqSettings(BaseSettings):
-    """Redis-Stream message-queue consumer settings (env prefix ``MQ_``)."""
-
-    model_config = SettingsConfigDict(env_prefix="MQ_", env_file_encoding="utf-8", extra="ignore")
-
-    consumer_default_count: int = 1
-    # Kept as a raw string because the runner parser supports ``stream*=N``
-    # wildcard prefix matching (see WorkerRunner._parse_consumer_count_overrides),
-    # which a plain dict cannot express.
-    consumer_count_overrides: str = ""
-
-
 class CookieCloudSettings(BaseSettings):
     """CookieCloud sync settings (env prefix ``COOKIECLOUD_``).
 
@@ -216,10 +204,6 @@ class Settings(BaseSettings):
     @property
     def crawl(self) -> CrawlSettings:
         return _get_crawl_settings()
-
-    @property
-    def mq(self) -> MqSettings:
-        return _get_mq_settings()
 
     @property
     def cookiecloud(self) -> CookieCloudSettings:
@@ -321,11 +305,6 @@ def _get_crawl_settings() -> CrawlSettings:
 
 
 @lru_cache
-def _get_mq_settings() -> MqSettings:
-    return MqSettings()
-
-
-@lru_cache
 def _get_cookiecloud_settings() -> CookieCloudSettings:
     return CookieCloudSettings()
 
@@ -341,7 +320,6 @@ def reset_sub_settings_cache() -> None:
     _get_postgres_settings.cache_clear()
     _get_meili_settings.cache_clear()
     _get_crawl_settings.cache_clear()
-    _get_mq_settings.cache_clear()
     _get_cookiecloud_settings.cache_clear()
     _get_kugou_music_settings.cache_clear()
 

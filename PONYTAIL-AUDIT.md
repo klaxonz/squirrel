@@ -156,3 +156,35 @@ Executed on branch `fix/bug`. Baseline preserved: **360 tests pass, ruff clean**
 
 **Round-2 net: ~-110 lines, -5 dependencies** (jinja2, pathvalidate, feedparser, yt-dlp, bgutil-ytdlp-pot-provider). Cumulative since round 1: ~-660 lines, -6 deps (round-1 `python-redis-lock` + round-2's five).
 
+---
+
+## Round 3 — re-audit findings (2026-06-19)
+
+Re-scanned `infrastructure/`, `domains/`, `workers/` for debt missed by rounds 1–2, with each finding re-verified by reading the code (not just grep). Round 1–2 completed items were NOT re-touched; the round-2 deferred write-only-producer decision was honored.
+
+### 37. **delete** Orphaned consumer half of the messaging framework — round-1 turned `WorkerRunner.start()` into a no-op (no `@queue_listener` ever registered), which stranded `infrastructure/messaging/framework/consumer.py` (242 LOC: `RedisStreamConsumer` + `ConsumerOptions` + `QueueHandler` Protocol) referenced only by its own `tests/messaging/framework/test_consumer.py`. With the consumer gone, `MqSettings` (`consumer_default_count`/`consumer_count_overrides`) had zero readers. Round-1's "consumer.py kept (tested primitive)" note reversed: a module propped up only by its own test is dead code. Deleted: `consumer.py`, `test_consumer.py`, whole `MqSettings` class + `mq` property + `_get_mq_settings` + cache-clear line + `__init__.py` re-export + `test_mq_settings_keeps_overrides_as_string` + its slot in the re-export test. Kept: `WorkerRunner` no-op, `producer.py`, `message.py` codec (round-2 deferred producer decision). `infrastructure/messaging/framework/consumer.py`; `infrastructure/config/settings.py:122`
+
+### 38. **shrink** Extraction pipeline factory indirection — `PipelineFactory` (dispatch dict for 4 fixed stages) + `PipelineConfig` + `StageConfig`: `enabled`/`params` write-only (round-1 #20 already de-fanged `critical`), `_build_stage` fallback branch never fired (all 4 stages have explicit builders), exactly ONE caller (`video_handler.py`) building ONE fixed pipeline. Replaced `PipelineFactory` + `pipeline_factory` singleton with a flat `create_video_extraction_pipeline(extractor_factory)` that instantiates the 4 stages in order; deleted `infrastructure/extraction/pipeline/config.py` entirely; updated the one caller. The 4 stage classes (`base.py` + `stages/*.py`) untouched — real `can_skip` logic lives there. No tests referenced the removed names. `infrastructure/extraction/pipeline/factory.py`; `config.py`
+
+### 39. **shrink** `ThumbnailRefreshTask` duplicate HTTP/parse machinery — `workers/scheduling/tasks/thumbnail_refresh_task.py` re-implemented what `thumbnail_downloader_service` already exposes: `_HEADERS`/`_LDJSON_THUMBNAIL_RE`/`_META_THUMBNAIL_PATTERNS` (duplicating `thumbnail/headers.py`+`thumbnail/html.py`), `_get_shared_http_client()` + thread-lock TTL cache (duplicating `thumbnail/client.py`'s shared `httpx.Client`), `_extract_thumbnail_url`, `_fetch_thumbnail_url_from_page` retry loop, `_build_page_fetch_retry_delay`, and `_PAGE_FETCH_*` constants. Collapsed `_fetch_thumbnail_url_from_page` to a one-line delegate to `thumbnail_downloader_service.fetch_thumbnail_url_from_page(video.id, video.url, site_name)` (httpx.Client is connection-pooled, thread-pool safe). The obsolete retry-loop test (`test_thumbnail_refresh_task_retries_page_fetch_for_retryable_status`) deleted — its subject (the task's private HTTP client) no longer exists; the retry contract is covered by `thumbnail/client.py`'s own tests. Kept: task-specific orchestration (`_batch_check_thumbnails`, `_get_refresh_targets`, `_get_site_max_workers`, `run`, `_process_single_video`). `workers/scheduling/tasks/thumbnail_refresh_task.py`
+
+### 40. **delete** 6 empty `domain/services/` placeholder packages — `domains/{music,playlist,rss,subscription,user,video}/domain/services/` each contained only a 0-byte `__init__.py`, zero re-exports (all parent `domain/__init__.py` also empty), zero imports anywhere (grep-verified). Pure DDD-layout scaffolding with no content. Deleted all 6 dirs; a future domain service re-creates the dir when actually needed (YAGNI).
+
+### Round-3 items REVERSED (agent findings disproven on code inspection)
+
+- `CLOUDFLARE_BYPASS_SERVICE_URL` flagged as an unused setting — **WRONG**: read at `infrastructure/site_catalog/cloudflare_bypass.py:141` and live in the lifespan/worker bootstrap (`application/lifespan.py:50`, `workers/bootstrap.py:56`) + `cloudflare_heartbeat_task`. Not cut.
+- `_reindex_videos_safe` / `_reindex_video_safe` flagged as 3-way duplication — **NOT CUT**: the copies exist deliberately as a lazy-import boundary so the subscription domain never statically depends on the video domain's application layer (would create an import cycle). Deduping would couple subscription→video; the "duplication" is the cycle-avoidance pattern. Left in place.
+- `Extractor` Protocol flagged as dead abstraction — **NOT CUT**: it IS used as the return annotation of `ExtractionStage._get_extractor` (`stages/extraction.py:110`) and documents the adapter contract. Only the `@runtime_checkable` decorator is unused (0 `isinstance` checks), but stripping a 1-line decorator for zero LOC gain isn't worth the churn. Left in place.
+
+## Round-3 execution log
+
+Executed on branch `fix/bug`. Baseline preserved: **352 tests pass, ruff clean** (was 360 pre-round-3; delta = 6 deleted `test_consumer.py` tests + 1 deleted `test_mq_settings` test + 1 deleted task retry-loop test).
+
+- [x] **37** `consumer.py` + `tests/messaging/framework/test_consumer.py` + `tests/messaging/framework/` dir deleted; `MqSettings` class + `mq` property + `_get_mq_settings` + cache-clear + `__init__.py` re-export + 2 test references removed.
+- [x] **38** `PipelineFactory` + `pipeline_factory` singleton → flat `create_video_extraction_pipeline()`; `infrastructure/extraction/pipeline/config.py` deleted; `video_handler.py` caller updated.
+- [x] **39** `ThumbnailRefreshTask` stripped of duplicated HTTP/regex/client machinery; `_fetch_thumbnail_url_from_page` now a 1-line delegate to `thumbnail_downloader_service`; obsolete retry-loop test deleted.
+- [x] **40** 6 empty `domain/services/` packages deleted (music/playlist/rss/subscription/user/video).
+
+**Round-3 net: ~-470 lines, 1 module deleted, 6 empty packages deleted, 8 obsolete tests removed.** Cumulative since round 1: ~-1130 lines, -6 deps.
+
+
