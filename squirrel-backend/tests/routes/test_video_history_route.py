@@ -45,3 +45,25 @@ def test_batch_update_history_forwards_reports_to_service():
     assert captured['reports'][1].video_id == 2
     assert captured['reports'][1].last_position == 34
     assert captured['reports'][1].timestamp == 1710000002000
+
+
+def test_clear_history_uses_current_user_id():
+    captured = {}
+
+    class FakeVideoHistoryService:
+        @staticmethod
+        def clear_histories(user_id, video_ids):
+            captured['user_id'] = user_id
+            captured['video_ids'] = video_ids
+
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_current_user] = lambda: type('User', (), {'id': 7})()
+    app.dependency_overrides[get_video_history_service] = lambda: FakeVideoHistoryService()
+    client = TestClient(app)
+
+    response = client.post('/api/video-history/clear', json=[1, 2])
+
+    assert response.status_code == 200
+    assert response.json()['code'] == 0
+    assert captured == {'user_id': 7, 'video_ids': [1, 2]}

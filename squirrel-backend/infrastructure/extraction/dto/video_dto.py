@@ -1,9 +1,9 @@
 """VideoDTO - Video data transfer object"""
 
 from datetime import datetime
-from typing import Any, ClassVar
+from typing import Any
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .actor_dto import ActorDTO
 from .validators import (
@@ -29,6 +29,8 @@ class VideoDTO(BaseModel):
     - VideoDTO: pure data, all fields immediately available, no side effects
     """
 
+    model_config = ConfigDict(frozen=True)
+
     # ========== Required fields ==========
     url: str = Field(..., description='Video URL')
     title: str = Field(..., description='Video title')
@@ -50,30 +52,28 @@ class VideoDTO(BaseModel):
         description='Raw data (for debugging and auditing)',
     )
 
-    class Config:
-        frozen = True  # Immutable object
-        json_encoders: ClassVar[dict[type[datetime], Any]] = {
-            datetime: lambda v: v.isoformat() if v else None,
-        }
-
     # ========== Validators ==========
 
-    @validator('url')
+    @field_validator('url')
+    @classmethod
     def validate_url_field(cls, v):
         """Validate URL format"""
         return validate_url(v)
 
-    @validator('title')
+    @field_validator('title')
+    @classmethod
     def validate_title(cls, v):
         """Validate title is not empty"""
         return validate_not_empty(v, 'Title')
 
-    @validator('site_name')
+    @field_validator('site_name')
+    @classmethod
     def validate_site_name(cls, v):
         """Validate site name"""
         return validate_not_empty(v, 'Site name')
 
-    @validator('thumbnail')
+    @field_validator('thumbnail')
+    @classmethod
     def validate_thumbnail_url(cls, v):
         """Validate thumbnail URL (optional)"""
         if v is None or v == '':
@@ -90,17 +90,20 @@ class VideoDTO(BaseModel):
 
         raise ValueError('Thumbnail URL must be absolute or relative path')
 
-    @validator('duration')
+    @field_validator('duration')
+    @classmethod
     def validate_duration_field(cls, v):
         """Validate duration"""
         return validate_duration(v)
 
-    @validator('publish_date', pre=True)
+    @field_validator('publish_date', mode='before')
+    @classmethod
     def parse_and_validate_publish_date(cls, v):
         """Parse and validate publish date"""
         return parse_publish_date(v)
 
-    @validator('description')
+    @field_validator('description')
+    @classmethod
     def clean_description(cls, v):
         """Clean description text"""
         if v is None or v == '':
@@ -119,7 +122,8 @@ class VideoDTO(BaseModel):
 
         return v
 
-    @validator('tags')
+    @field_validator('tags')
+    @classmethod
     def validate_tags(cls, v):
         """Validate tag list"""
         if v is None or v == []:
@@ -138,7 +142,8 @@ class VideoDTO(BaseModel):
 
         return cleaned_tags or None
 
-    @validator('actors')
+    @field_validator('actors')
+    @classmethod
     def validate_actors_list(cls, v):
         """Validate actor list"""
         if v is None:
@@ -166,7 +171,7 @@ class VideoDTO(BaseModel):
             Dictionary representation
 
         """
-        data = self.dict(exclude_none=exclude_none)
+        data = self.model_dump(exclude_none=exclude_none)
 
         # Convert actors to list of dicts
         if data.get('actors'):

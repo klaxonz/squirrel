@@ -2,7 +2,13 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, Request
 
-from domains.subscription.application.services.core.crud import subscription_crud_service
+from domains.subscription.application.services.core.crud import SubscriptionCrudService
+from domains.subscription.application.services.core.update.models import UpdateMode, UpdateTrigger
+from domains.subscription.application.services.core.update.scheduler import SubscriptionScheduler
+from domains.subscription.interfaces.http.dependencies import (
+    get_subscription_crud_service,
+    get_subscription_scheduler,
+)
 from domains.user.application.services.auth import get_current_user
 from domains.user.domain.models.user import User
 from infrastructure.http import response
@@ -18,11 +24,13 @@ def refresh_subscription(
     request: Request,
     mode: str = Query('incremental', description='Sync mode: incremental|full', pattern=r'^(incremental|full)$'),
     current_user: User = Depends(get_current_user),
+    crud_svc: SubscriptionCrudService = Depends(get_subscription_crud_service),
+    subscription_scheduler: SubscriptionScheduler = Depends(get_subscription_scheduler),
 ):
     """Manually refresh subscription
     Responsibility: validate permissions then call scheduler; actual update logic handled by scheduler and orchestrator
     """
-    subscription, status = subscription_crud_service.verify_subscription_access(current_user.id, subscription_id)
+    subscription, status = crud_svc.verify_subscription_access(current_user.id, subscription_id)
     if status == 'not_found':
         return response.not_found('订阅不存在')
     if status == 'forbidden':
@@ -32,12 +40,9 @@ def refresh_subscription(
     if not SiteCatalog.is_site_enabled(domain=domain):
         return response.param_error('站点插件未启用,无法刷新订阅')
 
-    from domains.subscription.application.services.core.update.models import UpdateMode, UpdateTrigger
-    from domains.subscription.application.services.core.update.scheduler import scheduler
-
     trace_id = getattr(request.state, 'trace_id', None)
 
-    schedule_result = scheduler.schedule_one(
+    schedule_result = subscription_scheduler.schedule_one(
         subscription_id=subscription.id,
         url=subscription.url,
         trigger=UpdateTrigger.MANUAL,
@@ -67,8 +72,10 @@ def refresh_subscription_direct(
     request: Request,
     mode: str = Query('incremental', description='Sync mode: incremental|full', pattern=r'^(incremental|full)$'),
     current_user: User = Depends(get_current_user),
+    crud_svc: SubscriptionCrudService = Depends(get_subscription_crud_service),
+    subscription_scheduler: SubscriptionScheduler = Depends(get_subscription_scheduler),
 ):
-    subscription, status = subscription_crud_service.verify_subscription_access(current_user.id, subscription_id)
+    subscription, status = crud_svc.verify_subscription_access(current_user.id, subscription_id)
     if status == 'not_found':
         return response.not_found('订阅不存在')
     if status == 'forbidden':
@@ -78,12 +85,9 @@ def refresh_subscription_direct(
     if not SiteCatalog.is_site_enabled(domain=domain):
         return response.param_error('站点插件未启用,无法刷新订阅')
 
-    from domains.subscription.application.services.core.update.models import UpdateMode, UpdateTrigger
-    from domains.subscription.application.services.core.update.scheduler import scheduler
-
     trace_id = getattr(request.state, 'trace_id', None)
 
-    run_result = scheduler.run_one_inline(
+    run_result = subscription_scheduler.run_one_inline(
         subscription_id=subscription.id,
         url=subscription.url,
         trigger=UpdateTrigger.MANUAL,

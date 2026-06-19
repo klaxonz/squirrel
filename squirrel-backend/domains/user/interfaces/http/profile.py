@@ -13,7 +13,7 @@ router = APIRouter()
 
 
 @router.get('/me')
-async def get_current_user_info(current_user=Depends(get_current_user)):
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
     """Get current user info"""
     return response.success(
         data=serialize_user(current_user),
@@ -23,7 +23,7 @@ async def get_current_user_info(current_user=Depends(get_current_user)):
 @router.put('/me')
 async def update_user(
     request: UserUpdateRequest,
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     user_svc: UserService = Depends(get_user_service),
 ):
     """Update current user info"""

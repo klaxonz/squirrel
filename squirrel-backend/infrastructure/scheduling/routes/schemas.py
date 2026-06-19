@@ -1,6 +1,23 @@
 from typing import Any
 
+from fastapi import Query
 from pydantic import BaseModel, Field
+
+
+class TaskListQuery:
+    def __init__(
+        self,
+        page: int = Query(1, ge=1, description='Page number'),
+        page_size: int = Query(10, ge=1, le=100, description='Page size'),
+        search: str | None = Query(None, description='Search keyword'),
+        status: str | None = Query(None, description='Task status'),
+        task_type: str | None = Query(None, description='Task type'),
+    ) -> None:
+        self.page = page
+        self.page_size = page_size
+        self.search = search
+        self.status = status
+        self.task_type = task_type
 
 
 class TaskCreateRequest(BaseModel):

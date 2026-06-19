@@ -1,13 +1,20 @@
 from fastapi import APIRouter, Depends, Query
 
-from domains.subscription.application.services.core.crud import subscription_crud_service
-from domains.subscription.application.services.core.import_service import subscription_import_service
-from domains.subscription.application.services.core.listing.service import subscription_list_service
-from domains.subscription.application.services.core.manage import subscription_manage_service
+from domains.subscription.application.services.core.crud import SubscriptionCrudService
+from domains.subscription.application.services.core.import_service import SubscriptionImportService
+from domains.subscription.application.services.core.listing.service import SubscriptionListService
+from domains.subscription.application.services.core.manage import SubscriptionManageService
 from domains.subscription.interfaces.dto.request.subscription import (
     SubscribeRequest,
+    SubscriptionListQuery,
     ToggleStatusRequest,
     UnsubscribeRequest,
+)
+from domains.subscription.interfaces.http.dependencies import (
+    get_subscription_crud_service,
+    get_subscription_import_service,
+    get_subscription_list_service,
+    get_subscription_manage_service,
 )
 from domains.user.application.services.auth import get_current_user
 from domains.user.domain.models.user import User
@@ -22,12 +29,13 @@ router = APIRouter()
 def subscribe_content(
     req: SubscribeRequest,
     current_user: User = Depends(get_current_user),
+    import_svc: SubscriptionImportService = Depends(get_subscription_import_service),
 ):
     domain = extract_top_level_domain(req.url)
     if not SiteCatalog.is_site_enabled(domain=domain):
         return response.param_error('站点插件未启用,无法订阅')
 
-    subscription = subscription_import_service.handle_subscribe_request(req.url, current_user.id)
+    subscription = import_svc.handle_subscribe_request(req.url, current_user.id)
     return response.success(
         {
             'subscription_id': subscription.id,
@@ -40,8 +48,9 @@ def subscribe_content(
 def unsubscribe_content(
     req: UnsubscribeRequest,
     current_user: User = Depends(get_current_user),
+    manage_svc: SubscriptionManageService = Depends(get_subscription_manage_service),
 ):
-    subscription_manage_service.unsubscribe_by_id(current_user.id, req.subscription_id)
+    manage_svc.unsubscribe_by_id(current_user.id, req.subscription_id)
     return response.success()
 
 
@@ -49,22 +58,25 @@ def unsubscribe_content(
 def get_subscription_status(
     url: str = Query(None),
     current_user: User = Depends(get_current_user),
+    crud_svc: SubscriptionCrudService = Depends(get_subscription_crud_service),
 ):
-    return response.success(subscription_crud_service.check_subscription_status(current_user.id, url))
+    return response.success(crud_svc.check_subscription_status(current_user.id, url))
 
 
 @router.get('/detail/{subscription_id}')
 def get_subscription_detail(
     subscription_id: int,
     current_user: User = Depends(get_current_user),
+    crud_svc: SubscriptionCrudService = Depends(get_subscription_crud_service),
+    list_svc: SubscriptionListService = Depends(get_subscription_list_service),
 ):
     """Get subscription (channel) details with current user's is_nsfw status and stats"""
-    sub = subscription_list_service.get_subscription_detail(subscription_id)
+    sub = list_svc.get_subscription_detail(subscription_id)
     if not sub:
         return response.not_found('订阅不存在')
 
-    is_nsfw = subscription_crud_service.get_user_subscription_nsfw(current_user.id, subscription_id)
-    is_special_followed = subscription_crud_service.get_user_subscription_special_followed(
+    is_nsfw = crud_svc.get_user_subscription_nsfw(current_user.id, subscription_id)
+    is_special_followed = crud_svc.get_user_subscription_special_followed(
         current_user.id,
         subscription_id,
     )
@@ -76,35 +88,30 @@ def get_subscription_detail(
 
 @router.get('/list')
 def list_subscriptions(
-    query: str = Query(None, description='Search keyword'),
-    type: str = Query(None, description='Content type'),
-    nsfw: str = Query('all', description='NSFW filter: all|yes|no', pattern=r'^(all|yes|no)$'),
-    special: str = Query('all', description='Special follow filter: all|yes|no', pattern=r'^(all|yes|no)$'),
-    site: str = Query(None, description='Site filter: e.g. youtube, bilibili (supports aliases)'),
-    page: int = Query(1, ge=1, description='Page number'),
-    page_size: int = Query(10, ge=1, le=100, alias='pageSize', description='Page size'),
+    params: SubscriptionListQuery = Depends(),
     current_user: User = Depends(get_current_user),
+    list_svc: SubscriptionListService = Depends(get_subscription_list_service),
 ):
     domains: list[str] | None = None
-    if site:
-        resolved = SiteCatalog.resolve_domains(site)
+    if params.site:
+        resolved = SiteCatalog.resolve_domains(params.site)
         domains = resolved or None
 
-    subscriptions, total = subscription_list_service.list_subscriptions(
+    subscriptions, total = list_svc.list_subscriptions(
         current_user.id,
-        query,
-        type,
-        nsfw,
-        page,
-        page_size,
+        params.query,
+        params.type,
+        params.nsfw,
+        params.page,
+        params.page_size,
         domains,
-        special,
+        params.special,
     )
     return response.success(
         {
             'total': total,
-            'page': page,
-            'pageSize': page_size,
+            'page': params.page,
+            'pageSize': params.page_size,
             'data': subscriptions,
         }
     )
@@ -113,10 +120,11 @@ def list_subscriptions(
 @router.get('/options')
 def get_subscription_options(
     current_user: User = Depends(get_current_user),
+    list_svc: SubscriptionListService = Depends(get_subscription_list_service),
 ):
     return response.success(
         {
-            'data': subscription_list_service.list_subscription_options(current_user.id),
+            'data': list_svc.list_subscription_options(current_user.id),
         }
     )
 
@@ -125,8 +133,9 @@ def get_subscription_options(
 def toggle_nsfw(
     req: ToggleStatusRequest,
     current_user: User = Depends(get_current_user),
+    manage_svc: SubscriptionManageService = Depends(get_subscription_manage_service),
 ):
-    success = subscription_manage_service.toggle_nsfw_status(
+    success = manage_svc.toggle_nsfw_status(
         current_user.id,
         req.subscription_id,
         req.is_enable,
@@ -138,8 +147,9 @@ def toggle_nsfw(
 def toggle_special_follow(
     req: ToggleStatusRequest,
     current_user: User = Depends(get_current_user),
+    manage_svc: SubscriptionManageService = Depends(get_subscription_manage_service),
 ):
-    success = subscription_manage_service.toggle_special_follow_status(
+    success = manage_svc.toggle_special_follow_status(
         current_user.id,
         req.subscription_id,
         req.is_enable,

@@ -17,20 +17,20 @@ def get_video_interaction_service() -> VideoInteractionService:
 
 
 @router.post('/toggle-like')
-def update_history(
+def update_video_interaction(
     data: VideoInteractionUpdate,
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     svc: VideoInteractionService = Depends(get_video_interaction_service),
 ):
-    svc.save_or_update_video_interaction(user.id, data.video_id, data.interaction_type)
+    svc.save_or_update_video_interaction(current_user.id, data.video_id, data.interaction_type)
     return response.success()
 
 
 @router.post('/delete')
-def delete_history(
+def delete_video_interaction(
     data: VideoInteractionDelete,
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     svc: VideoInteractionService = Depends(get_video_interaction_service),
 ):
-    svc.delete_video_interaction(user.id, data.video_id)
+    svc.delete_video_interaction(current_user.id, data.video_id)
     return response.success()

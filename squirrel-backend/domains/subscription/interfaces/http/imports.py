@@ -1,10 +1,14 @@
 import json
 import logging
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 
-from domains.subscription.application.services.core.import_service import subscription_import_service
-from domains.subscription.interfaces.dto.request.subscription import ImportSubscriptionsRequest
+from domains.subscription.application.services.core.import_service import SubscriptionImportService
+from domains.subscription.interfaces.dto.request.subscription import (
+    ImportSubscriptionsRequest,
+    SubscriptionImportPreviewQuery,
+)
+from domains.subscription.interfaces.http.dependencies import get_subscription_import_service
 from domains.user.application.services.auth import get_current_user
 from domains.user.domain.models.user import User
 from infrastructure.http import response
@@ -18,6 +22,7 @@ logger = logging.getLogger(__name__)
 @router.get('/import/sites')
 def get_supported_sites(
     current_user: User = Depends(get_current_user),
+    import_svc: SubscriptionImportService = Depends(get_subscription_import_service),
 ):
     """Get list of sites supported for import
 
@@ -25,7 +30,7 @@ def get_supported_sites(
         List of supported sites
 
     """
-    supported_sites = subscription_import_service.get_plugin_supported_sites('import_subscriptions')
+    supported_sites = import_svc.get_plugin_supported_sites('import_subscriptions')
     enabled_sites = get_enabled_import_sites(supported_sites)
 
     return response.success(
@@ -38,9 +43,9 @@ def get_supported_sites(
 @router.get('/import/{site}/preview')
 def preview_subscriptions(
     site: str,
-    cursor: str | None = Query(None, description='Pagination cursor JSON'),
-    limit: int = Query(50, ge=1, le=200, description='Preview page size'),
+    params: SubscriptionImportPreviewQuery = Depends(),
     current_user: User = Depends(get_current_user),
+    import_svc: SubscriptionImportService = Depends(get_subscription_import_service),
 ):
     """Preview user's subscriptions at a given site (without actually importing)
 
@@ -52,7 +57,7 @@ def preview_subscriptions(
 
     """
     try:
-        supported_sites = subscription_import_service.get_plugin_supported_sites('import_subscriptions')
+        supported_sites = import_svc.get_plugin_supported_sites('import_subscriptions')
         supported_site_set = get_supported_site_set(supported_sites)
         normalized_site = normalize_site_name(site)
         enabled_sites = get_enabled_import_sites(supported_sites)
@@ -63,9 +68,9 @@ def preview_subscriptions(
             return response.param_error(f'站点已禁用,无法预览订阅: {site}')
 
         cursor_payload = None
-        if cursor:
+        if params.cursor:
             try:
-                parsed_cursor = json.loads(cursor)
+                parsed_cursor = json.loads(params.cursor)
             except json.JSONDecodeError as exc:
                 raise ValueError(f'无效的预览游标: {exc.msg}') from exc
             if not isinstance(parsed_cursor, dict):
@@ -74,11 +79,11 @@ def preview_subscriptions(
 
         logger.info('User %s previewing subscriptions from %s', current_user.id, normalized_site)
 
-        preview_result = subscription_import_service.preview_user_subscriptions(
+        preview_result = import_svc.preview_user_subscriptions(
             normalized_site,
             current_user.id,
             cursor_payload=cursor_payload,
-            limit=limit,
+            limit=params.limit,
         )
 
         return response.success(preview_result)
@@ -97,6 +102,7 @@ def import_subscriptions(
     site: str,
     req: ImportSubscriptionsRequest | None = None,
     current_user: User = Depends(get_current_user),
+    import_svc: SubscriptionImportService = Depends(get_subscription_import_service),
 ):
     """Import all user subscriptions from a specified site
 
@@ -108,7 +114,7 @@ def import_subscriptions(
 
     """
     try:
-        supported_sites = subscription_import_service.get_plugin_supported_sites('import_subscriptions')
+        supported_sites = import_svc.get_plugin_supported_sites('import_subscriptions')
         supported_site_set = get_supported_site_set(supported_sites)
         normalized_site = normalize_site_name(site)
         enabled_sites = get_enabled_import_sites(supported_sites)
@@ -121,7 +127,7 @@ def import_subscriptions(
         logger.info('User %s importing subscriptions from %s', current_user.id, normalized_site)
 
         selected_urls = req.subscription_urls if req else None
-        import_result = subscription_import_service.import_user_subscriptions(
+        import_result = import_svc.import_user_subscriptions(
             normalized_site,
             current_user.id,
             selected_urls=selected_urls,

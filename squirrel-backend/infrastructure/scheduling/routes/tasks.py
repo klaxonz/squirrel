@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 
 from infrastructure.http import response
 from infrastructure.scheduling.routes.dependencies import get_scheduled_task_service
-from infrastructure.scheduling.routes.schemas import TaskCreateRequest, TaskUpdateRequest
+from infrastructure.scheduling.routes.schemas import TaskCreateRequest, TaskListQuery, TaskUpdateRequest
 from infrastructure.scheduling.service import ScheduledTaskService
 
 router = APIRouter()
@@ -10,21 +10,17 @@ router = APIRouter()
 
 @router.get('/tasks')
 def get_scheduled_tasks(
-    page: int = Query(1, ge=1, description='Page number'),
-    page_size: int = Query(10, ge=1, le=100, description='Page size'),
-    search: str | None = Query(None, description='Search keyword'),
-    status: str | None = Query(None, description='Task status'),
-    task_type: str | None = Query(None, description='Task type'),
+    params: TaskListQuery = Depends(),
     svc: ScheduledTaskService = Depends(get_scheduled_task_service),
 ):
     """Get scheduled task list."""
     return response.success(
         svc.get_task_list(
-            page=page,
-            page_size=page_size,
-            search=search,
-            status=status,
-            task_type=task_type,
+            page=params.page,
+            page_size=params.page_size,
+            search=params.search,
+            status=params.status,
+            task_type=params.task_type,
         )
     )
 

@@ -7,17 +7,22 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from domains.subscription.interfaces.http import router
+from domains.subscription.interfaces.http.dependencies import get_subscription_import_service
 from domains.user.application.services.auth import get_current_user
 
 
-def _build_client(monkeypatch):
+def _build_client(monkeypatch, import_service=None):
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: type('User', (), {'id': 7})()
-    monkeypatch.setattr(
-        'domains.subscription.interfaces.http.imports.subscription_import_service.get_plugin_supported_sites',
-        lambda _cap: ['javdb'],
-    )
+    if import_service:
+        app.dependency_overrides[get_subscription_import_service] = lambda: import_service
+    else:
+        app.dependency_overrides[get_subscription_import_service] = lambda: type(
+            'ImportService',
+            (),
+            {'get_plugin_supported_sites': staticmethod(lambda _cap: ['javdb'])},
+        )()
     # All supported sites are enabled — avoids depending on the runtime provider
     # snapshot being populated by the autouse fixture.
     monkeypatch.setattr(
@@ -30,31 +35,34 @@ def _build_client(monkeypatch):
 def test_preview_import_route_forwards_cursor_and_limit(monkeypatch):
     captured = {}
 
-    def _preview(site_name, user_id, *, cursor_payload=None, limit=None):
-        captured.update(
-            {
-                'site_name': site_name,
-                'user_id': user_id,
-                'cursor_payload': cursor_payload,
-                'limit': limit,
-            }
-        )
-        return {
-            'site': site_name,
-            'total': 1000,
-            'loaded': 50,
-            'imported': 0,
-            'not_imported': 50,
-            'subscriptions': [],
-            'has_more': True,
-            'cursor_payload': {'page': 3},
-            'stop_reason': 'batch_exhausted',
-        }
+    class FakeImportService:
+        @staticmethod
+        def get_plugin_supported_sites(_cap):
+            return ['javdb']
 
-    monkeypatch.setattr(
-        'domains.subscription.interfaces.http.imports.subscription_import_service.preview_user_subscriptions', _preview
-    )
-    client = _build_client(monkeypatch)
+        @staticmethod
+        def preview_user_subscriptions(site_name, user_id, *, cursor_payload=None, limit=None):
+            captured.update(
+                {
+                    'site_name': site_name,
+                    'user_id': user_id,
+                    'cursor_payload': cursor_payload,
+                    'limit': limit,
+                }
+            )
+            return {
+                'site': site_name,
+                'total': 1000,
+                'loaded': 50,
+                'imported': 0,
+                'not_imported': 50,
+                'subscriptions': [],
+                'has_more': True,
+                'cursor_payload': {'page': 3},
+                'stop_reason': 'batch_exhausted',
+            }
+
+    client = _build_client(monkeypatch, FakeImportService())
 
     response = client.get(
         '/api/subscription/import/javdb/preview',
@@ -75,10 +83,6 @@ def test_preview_import_route_forwards_cursor_and_limit(monkeypatch):
 
 
 def test_preview_import_route_rejects_invalid_cursor_json(monkeypatch):
-    monkeypatch.setattr(
-        'domains.subscription.interfaces.http.imports.subscription_import_service.preview_user_subscriptions',
-        lambda *args, **kwargs: {'site': 'javdb'},
-    )
     client = _build_client(monkeypatch)
 
     response = client.get(
@@ -93,10 +97,6 @@ def test_preview_import_route_rejects_invalid_cursor_json(monkeypatch):
 
 
 def test_preview_import_route_rejects_non_object_cursor(monkeypatch):
-    monkeypatch.setattr(
-        'domains.subscription.interfaces.http.imports.subscription_import_service.preview_user_subscriptions',
-        lambda *args, **kwargs: {'site': 'javdb'},
-    )
     client = _build_client(monkeypatch)
 
     response = client.get(
@@ -117,12 +117,12 @@ def test_get_import_sites_filters_disabled_sites_in_original_order(monkeypatch):
         calls['count'] += 1
         return {'javdb', 'bilibili'}
 
-    client = _build_client(monkeypatch)
+    class FakeImportService:
+        @staticmethod
+        def get_plugin_supported_sites(_cap):
+            return [' JAVDB ', 'youtube', 'javdb', 'bilibili']
 
-    monkeypatch.setattr(
-        'domains.subscription.interfaces.http.imports.subscription_import_service.get_plugin_supported_sites',
-        lambda _cap: [' JAVDB ', 'youtube', 'javdb', 'bilibili'],
-    )
+    client = _build_client(monkeypatch, FakeImportService())
     monkeypatch.setattr(
         'domains.subscription.interfaces.http.site_imports.SiteCatalog.get_enabled_site_names',
         classmethod(lambda cls: _get_enabled_site_names()),

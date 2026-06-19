@@ -15,6 +15,22 @@ def get_log_service() -> LogService:
     return LogService()
 
 
+class LogQuery:
+    def __init__(
+        self,
+        filename: str = Query('app.log', description='Log file name'),
+        keyword: str | None = Query(None, description='Search keyword'),
+        level: str | None = Query(None, description='Log level (INFO, WARNING, ERROR, DEBUG)'),
+        page: int = Query(1, ge=1, description='Page number'),
+        page_size: int = Query(500, ge=1, le=2000, alias='pageSize', description='Page size'),
+    ) -> None:
+        self.filename = filename
+        self.keyword = keyword
+        self.level = level
+        self.page = page
+        self.page_size = page_size
+
+
 @router.get('/files')
 def get_log_files(
     current_user: User = Depends(get_current_user),
@@ -32,11 +48,7 @@ def get_log_files(
 
 @router.get('/query')
 def query_logs(
-    filename: str = Query('app.log', description='Log file name'),
-    keyword: str | None = Query(None, description='Search keyword'),
-    level: str | None = Query(None, description='Log level (INFO, WARNING, ERROR, DEBUG)'),
-    page: int = Query(1, ge=1, description='Page number'),
-    page_size: int = Query(500, ge=1, le=2000, alias='pageSize', description='Page size'),
+    params: LogQuery = Depends(),
     current_user: User = Depends(get_current_user),
     svc: LogService = Depends(get_log_service),
 ):
@@ -45,22 +57,22 @@ def query_logs(
     Supports filtering by keyword and log level
     """
     try:
-        start_line = (page - 1) * page_size
+        start_line = (params.page - 1) * params.page_size
 
         lines, total_count, has_more = svc.read_log_lines(
-            filename=filename,
-            keyword=keyword,
-            level=level,
+            filename=params.filename,
+            keyword=params.keyword,
+            level=params.level,
             start_line=start_line,
-            limit=page_size,
+            limit=params.page_size,
         )
 
         return response.success(
             {
                 'logs': lines,
                 'total': total_count,
-                'page': page,
-                'page_size': page_size,
+                'page': params.page,
+                'page_size': params.page_size,
                 'has_more': has_more,
             }
         )

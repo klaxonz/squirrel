@@ -26,7 +26,7 @@ def _credentials_exception() -> HTTPException:
     )
 
 
-async def get_current_user(token: str | None = Cookie(default=None, alias=AUTH_COOKIE_NAME)) -> User | None:
+async def get_current_user(token: str | None = Cookie(default=None, alias=AUTH_COOKIE_NAME)) -> User:
     """Validate token and return current user with config preloaded"""
     _, user = validate_auth_token(token)
 

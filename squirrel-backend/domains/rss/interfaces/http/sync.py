@@ -15,6 +15,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+class RssSyncStartQuery:
+    def __init__(
+        self,
+        entry_limit: int | None = Query(None, ge=1, alias='entryLimit'),
+        force_full_sync: bool = Query(False, alias='forceFullSync'),
+    ) -> None:
+        self.entry_limit = entry_limit
+        self.force_full_sync = force_full_sync
+
+
 @router.post('/accounts/{account_id}/sync')
 def sync_rss_account(
     account_id: int,
@@ -35,8 +45,7 @@ def sync_rss_account(
 @router.post('/accounts/{account_id}/sync/start')
 def start_rss_sync(
     account_id: int,
-    entry_limit: int | None = Query(None, ge=1, alias='entryLimit'),
-    force_full_sync: bool = Query(False, alias='forceFullSync'),
+    params: RssSyncStartQuery = Depends(),
     current_user: User = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
@@ -47,6 +56,8 @@ def start_rss_sync(
         return response.param_error('RSS account sync is already running')
 
     user_id = current_user.id
+    entry_limit = params.entry_limit
+    force_full_sync = params.force_full_sync
 
     def _bg_sync():
         try:

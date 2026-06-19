@@ -1,24 +1,22 @@
 import json
 from datetime import datetime
-from typing import Any, ClassVar
+from typing import Any
 
-from pydantic import field_serializer, model_validator
+from pydantic import ConfigDict, field_serializer, model_validator
 from sqlalchemy_to_pydantic import sqlalchemy_to_pydantic
 
 from domains.subscription.domain.models.subscription import Subscription
 
 
+def _subscription_schema_extra(schema: dict[str, Any]) -> None:
+    if 'properties' in schema and 'extra_data' in schema['properties']:
+        schema['properties']['extra_data']['type'] = ['object', 'string', 'null']
+
+
 class SubscriptionDto(sqlalchemy_to_pydantic(Subscription)):
+    model_config = ConfigDict(from_attributes=True, json_schema_extra=_subscription_schema_extra)
+
     extra_data: dict[str, Any] | str | None = None
-
-    class Config:
-        from_attributes = True
-        json_encoders: ClassVar[dict[type[datetime], Any]] = {datetime: lambda v: v.strftime('%Y-%m-%d %H:%M:%S')}
-
-        @staticmethod
-        def json_schema_extra(schema: dict[str, Any]) -> None:
-            if 'properties' in schema and 'extra_data' in schema['properties']:
-                schema['properties']['extra_data']['type'] = ['object', 'string', 'null']
 
     @field_serializer('created_at', 'updated_at', 'last_sync_at', 'last_success_at', 'next_sync_at')
     def serialize_datetime(self, dt: datetime | None) -> str:

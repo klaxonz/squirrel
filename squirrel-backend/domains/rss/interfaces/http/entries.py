@@ -21,26 +21,39 @@ class RssEntriesBulkUpdateRequest(BaseModel):
     isRead: bool
 
 
+class RssEntryListQuery:
+    def __init__(
+        self,
+        account_id: int | None = Query(None, alias='accountId'),
+        feed_id: int | None = Query(None, alias='feedId'),
+        is_read: bool | None = Query(None, alias='isRead'),
+        is_starred: bool | None = Query(None, alias='isStarred'),
+        page: int = Query(1, ge=1),
+        page_size: int = Query(30, ge=1, le=100, alias='pageSize'),
+    ) -> None:
+        self.account_id = account_id
+        self.feed_id = feed_id
+        self.is_read = is_read
+        self.is_starred = is_starred
+        self.page = page
+        self.page_size = page_size
+
+
 @router.get('/entries')
 def list_rss_entries(
-    account_id: int | None = Query(None, alias='accountId'),
-    feed_id: int | None = Query(None, alias='feedId'),
-    is_read: bool | None = Query(None, alias='isRead'),
-    is_starred: bool | None = Query(None, alias='isStarred'),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(30, ge=1, le=100, alias='pageSize'),
+    params: RssEntryListQuery = Depends(),
     current_user: User = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     return response.success(
         svc.list_entries(
             current_user.id,
-            account_id=account_id,
-            feed_id=feed_id,
-            is_read=is_read,
-            is_starred=is_starred,
-            page=page,
-            page_size=page_size,
+            account_id=params.account_id,
+            feed_id=params.feed_id,
+            is_read=params.is_read,
+            is_starred=params.is_starred,
+            page=params.page,
+            page_size=params.page_size,
         )
     )
 

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class PlaylistCreate(BaseModel):
@@ -41,6 +41,8 @@ class PlaylistItemReorder(BaseModel):
 
 
 class PlaylistDto(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     name: str
@@ -49,6 +51,3 @@ class PlaylistDto(BaseModel):
     video_count: int = 0
     created_at: str
     updated_at: str
-
-    class Config:
-        from_attributes = True
