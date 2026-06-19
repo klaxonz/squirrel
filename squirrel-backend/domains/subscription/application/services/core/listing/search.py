@@ -6,7 +6,8 @@ from sqlalchemy import or_
 from sqlalchemy.sql.elements import ColumnElement
 
 from domains.subscription.domain.models.subscription import Subscription
-from infrastructure.search.query import escape_ilike, normalize_subscription_type_term, parse_search_query
+from infrastructure.database.query import escape_ilike
+from shared_kernel.domain.search.query import normalize_subscription_type_term, parse_search_query
 
 
 def contains(column: Any, term: str) -> ColumnElement[bool]:

@@ -6,11 +6,11 @@ from fastapi_pagination import Params
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import and_, desc, or_, select
 
+from infrastructure.database.query import escape_ilike
 from infrastructure.database.session import get_session
 from infrastructure.scheduling.bootstrap import discover_task_classes, ensure_system_tasks
 from infrastructure.scheduling.models.scheduled_task import ScheduledTask, TaskExecutionLog, TaskStatus, TaskType
 from infrastructure.scheduling.store import dynamic_task_manager
-from infrastructure.search.query import escape_ilike
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,4 @@
-from infrastructure.search.query import parse_search_query
+from shared_kernel.domain.search.query import parse_search_query
 
 
 def normalize_query(value: str | None) -> str:

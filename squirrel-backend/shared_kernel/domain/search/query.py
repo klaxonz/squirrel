@@ -1,9 +1,18 @@
+"""跨域共享的搜索语义契约(Shared Kernel)。
+
+产品级搜索语法解析,被 user / subscription / video 等多个限界上下文复用。
+本模块定义统一的 `field:value` 查询语法、字段别名表(含中文别名)与
+订阅类型归一化规则;变更需各消费方协商。
+
+注意:这是领域语义,不是基础设施。SQL 转义工具(escape_ilike)在
+infrastructure/database/query.py,Meilisearch 适配在 infrastructure/search/。
+"""
+
 from __future__ import annotations
 
 import re
 import shlex
 from dataclasses import dataclass, field
-from urllib.parse import urlparse
 
 FIELD_ALIASES = {
     'title': 'title',
@@ -79,10 +88,6 @@ SUBSCRIPTION_TYPE_ALIASES = {
 }
 
 
-def escape_ilike(term: str) -> str:
-    return term.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
-
-
 def _normalize_term(value: str | None) -> str:
     return ' '.join(str(value or '').strip().lower().split())
 
@@ -118,16 +123,6 @@ def parse_search_query(query: str | None) -> ParsedSearchQuery:
             parsed.text_terms.append(normalized_token)
 
     return parsed
-
-
-def extract_search_domain(url: str | None) -> str:
-    raw_url = str(url or '').strip()
-    if not raw_url:
-        return ''
-    parsed = urlparse(raw_url if '://' in raw_url else f'https://{raw_url}')
-    host = (parsed.netloc or parsed.path or '').strip().lower()
-    host = host.removeprefix('www.')
-    return host.split(':')[0]
 
 
 def normalize_subscription_type_term(value: str | None) -> str | None:
